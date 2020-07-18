@@ -26,12 +26,28 @@ namespace AssetProcessor
     SourceAssetTreeModel::SourceAssetTreeModel(QObject *parent) :
         AssetTreeModel(parent)
     {
+        ApplicationManagerNotifications::Bus::Handler::BusConnect();
         AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusConnect();
     }
 
     SourceAssetTreeModel::~SourceAssetTreeModel()
     {
         AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
+        ApplicationManagerNotifications::Bus::Handler::BusDisconnect();
+    }
+
+    void SourceAssetTreeModel::DoCleanup()
+    {
+        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
+        // SourceAssetTreeModel queues functions on the systemTickBus for processing on the main thread in response to asset changes
+        // We need to clear out any left pending before we go away
+        AZ::SystemTickBus::ExecuteQueuedEvents();
+
+    }
+
+    void SourceAssetTreeModel::ApplicationShutdownRequested()
+    {
+        DoCleanup();
     }
 
     void SourceAssetTreeModel::ResetModel()

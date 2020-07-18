@@ -125,12 +125,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="LIGHTING_TIME_OF_DAY">
+			  <widget class="AzQtComponents::SliderInt" name="LIGHTING_TIME_OF_DAY">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -168,12 +165,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="SUN_DIRECTION">
+			  <widget class="AzQtComponents::SliderInt" name="SUN_DIRECTION">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -202,12 +196,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="SUN_MAP_LONGITUDE">
+			  <widget class="AzQtComponents::SliderInt" name="SUN_MAP_LONGITUDE">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -255,12 +246,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="DAWN_SLIDER">
+			  <widget class="AzQtComponents::SliderInt" name="DAWN_SLIDER">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -277,7 +265,7 @@
 			 <item>
 			  <widget class="QLineEdit" name="DAWN_INFO">
 			   <property name="alignment">
-				<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
 			   </property>
 			  </widget>
 			 </item>
@@ -309,12 +297,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="DAWN_DUR_SLIDER">
+			  <widget class="AzQtComponents::SliderInt" name="DAWN_DUR_SLIDER">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -363,12 +348,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="DUSK_SLIDER">
+			  <widget class="AzQtComponents::SliderInt" name="DUSK_SLIDER">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -385,7 +367,7 @@
 			 <item>
 			  <widget class="QLineEdit" name="DUSK_INFO">
 			   <property name="alignment">
-				<set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+				<set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
 			   </property>
 			  </widget>
 			 </item>
@@ -417,12 +399,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="DUSK_DUR_SLIDER">
+			  <widget class="AzQtComponents::SliderInt" name="DUSK_DUR_SLIDER">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -516,12 +495,9 @@
 			  </widget>
 			 </item>
 			 <item>
-			  <widget class="QSlider" name="SKY_QUALITY">
+			  <widget class="AzQtComponents::SliderInt" name="SKY_QUALITY">
 			   <property name="orientation">
 				<enum>Qt::Horizontal</enum>
-			   </property>
-			   <property name="tickPosition">
-				<enum>QSlider::NoTicks</enum>
 			   </property>
 			  </widget>
 			 </item>
@@ -545,6 +521,12 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>AzQtComponents::SliderInt</class>
+   <extends>QWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/Slider.h</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>PixmapLabelPreview</class>
    <extends>QLabel</extends>

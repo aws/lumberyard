@@ -134,13 +134,13 @@ namespace EMotionFX
         if ((mDisabled && inputNode) || (!mDisabled && inputNode && !subtractNode))
         {
             UpdateIncomingNode(animGraphInstance, inputNode, timePassedInSeconds);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Init(animGraphInstance, inputNode);
             return;
         }
         else if (mDisabled || (!inputNode && !subtractNode))    // If we are disabled or have no inputs.
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
             return;
         }
@@ -148,7 +148,7 @@ namespace EMotionFX
         if (inputNode)
         {
             UpdateIncomingNode(animGraphInstance, inputNode, timePassedInSeconds);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Init(animGraphInstance, inputNode);
         }
         if (subtractNode)
@@ -177,8 +177,8 @@ namespace EMotionFX
 
         // We are disabled but had an input pose, just forward that in this case.
         // Do the same if we are not disabled but have no second pose.
-        AnimGraphRefCountedData* nodeAData = nodeA ? nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
-        AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
+        AnimGraphRefCountedData* nodeAData = nodeA ? nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
+        AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
         if (nodeAData)
         {
             data->SetTrajectoryDelta(nodeAData->GetTrajectoryDelta());
@@ -263,9 +263,9 @@ namespace EMotionFX
         {
             inputNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
-            AnimGraphRefCountedData* inputData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            AnimGraphRefCountedData* inputData = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
             data->SetEventBuffer(inputData->GetEventBuffer());
             data->SetTrajectoryDelta(inputData->GetTrajectoryDelta());
             data->SetTrajectoryDeltaMirrored(inputData->GetTrajectoryDelta());
@@ -274,7 +274,7 @@ namespace EMotionFX
         else if (mDisabled || !inputNode) // If we are disabled or have no inputs.
         {
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -291,7 +291,7 @@ namespace EMotionFX
         }
 
         RequestRefDatas(animGraphInstance);
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         data->ClearEventBuffer();
 

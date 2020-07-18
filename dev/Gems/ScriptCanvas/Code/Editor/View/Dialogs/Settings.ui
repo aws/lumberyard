@@ -107,11 +107,6 @@
        </item>
        <item>
         <widget class="AzToolsFramework::ReflectedPropertyEditor" name="propertyEditor" native="true">
-         <property name="styleSheet">
-          <string notr="true">
-            QLabel{font-size: 13px;}
-          </string>
-         </property>
         </widget>
        </item>
        <item>
@@ -129,11 +124,6 @@
        </item>
        <item>
         <widget class="AzToolsFramework::ReflectedPropertyEditor" name="previewSettingsPropertyEditor" native="true">
-         <property name="styleSheet">
-          <string notr="true">
-            QLabel{font-size: 13px;}
-          </string>
-         </property>
         </widget>
        </item>
        <item>

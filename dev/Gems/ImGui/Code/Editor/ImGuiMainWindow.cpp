@@ -17,8 +17,8 @@
 
 using namespace ImGui;
 
-ImGuiMainWindow::ImGuiMainWindow()
-    : QMainWindow()
+ImGuiMainWindow::ImGuiMainWindow(QWidget* parent)
+    : QMainWindow(parent)
     , m_ui(new Ui::ImGuiMainWindow)
     , m_viewport(new ImGuiViewportWidget(this))
 {

@@ -74,8 +74,6 @@ public:                                                                  \
         AnimGraphObjectData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
         virtual ~AnimGraphObjectData();
 
-        static AnimGraphObjectData* Create(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
-
         MCORE_INLINE AnimGraphObject* GetObject() const                { return mObject; }
         void SetObject(AnimGraphObject* object)                        { mObject = object; }
 
@@ -91,6 +89,11 @@ public:                                                                  \
         void LoadVectorOfObjects(AZStd::vector<T>& inOutObjects, uint8** inOutBuffer, uint32& inOutSize);
 
         virtual void Reset() {}
+        virtual void Update() {}
+
+        void Invalidate() { m_invalidated = true; }
+        bool IsInvalidated() const { return m_invalidated; }
+        void Validate() { m_invalidated = false; }
 
         MCORE_INLINE uint8 GetObjectFlags() const                       { return mObjectFlags; }
         MCORE_INLINE void SetObjectFlags(uint8 flags)                   { mObjectFlags = flags; }
@@ -112,10 +115,14 @@ public:                                                                  \
         MCORE_INLINE bool GetHasError() const                           { return (mObjectFlags & FLAGS_HAS_ERROR); }
         MCORE_INLINE void SetHasError(bool hasError)                    { SetObjectFlags(FLAGS_HAS_ERROR, hasError); }
 
+        AnimGraphInstance* GetAnimGraphInstance() { return mAnimGraphInstance; }
+        const AnimGraphInstance* GetAnimGraphInstance() const { return mAnimGraphInstance; }
+
     protected:
         AnimGraphObject*    mObject;               /**< Pointer to the object where this data belongs to. */
         AnimGraphInstance*  mAnimGraphInstance;    /**< The animgraph instance where this unique data belongs to. */
         uint8               mObjectFlags;
+        bool m_invalidated = true;
     };
 
     template <class T>

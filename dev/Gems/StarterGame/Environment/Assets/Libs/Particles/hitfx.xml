@@ -1,0 +1,72 @@
+<ParticleLibrary Name="HitFX" SandboxVersion="0.0.0.0" ParticleVersion="33">
+ <Particles Name="Water">
+  <Params Count="4" BlendIn="0.5" BlendOut="0.5" Overlap="1" EmitterSizeDiameter="5" LocalSpawnPosRandomOffset="x=0.2,y=0.2" LocalRandomAngles="y=360" BeamAge="1.6" ParticleLifeTime="1.6,Random=0.3" EmitAngle="25,Random=0.999" Curvature="0" Texture="textures/effects/particleassets/fx_waterfallsplash_01.dds" TextureTiling="TilesX=8,TilesY=4,AnimFramesCount=32" SoftParticle="true,Softness=0.6" Alpha="ParticleAge=(;t=0.24,v=1;t=0.74,v=1;t=1)" DiffuseLighting="1.5" DiffuseBacklighting="0.2" SizeX="Random=0.25,ParticleAge=(v=0.76;t=1,v=1)" SizeY="Random=0.25,ParticleAge=(v=0.76;t=1,v=1)" SizeZ="Random=0.25,ParticleAge=(v=0.76;t=1,v=1)" Speed="3,Random=0.209" Acceleration="z=-6" RandomAngles="y=360"/>
+ </Particles>
+ <Particles Name="Default">
+  <Params Count="1" EmitterSizeDiameter="5" LocalSpawnPosRandomOffset="x=0.02,z=0.02" LocalOffsetRoundness="0.999" LocalSpawnIncrement="0.999" LocalInitAngles="y=-45" LocalRandomAngles="y=150" BeamAge="0.9" ParticleLifeTime="0.9" OffsetRoundness="0.999" SpawnIncrement="0.999" FocusAngle="72.3" Curvature="0" Texture="textures/effects/fx_footstepdustanim_01.dds" TextureTiling="TilesX=8,TilesY=4,AnimFramesCount=32" SoftParticle="true,Softness=0.5" Alpha="ParticleAge=(v=0.09;t=0.275,v=0.075;t=0.616,v=0.05;t=1)" Color="(x=0.177888,y=0.147027,z=0.068478)" DiffuseLighting="2" DiffuseBacklighting="0.999" EmissiveLighting="1" ReceiveShadows="true" SizeX="0.42,ParticleAge=(v=0.55,d=0.3294118,flags=32;t=0.21,v=0.88,s=0.3294118,flags=4;t=1,v=1,s=0.24313712,flags=4)" SizeY="0.42,ParticleAge=(v=0.55,d=0.3294118,flags=32;t=0.21,v=0.88,s=0.3294118,flags=4;t=1,v=1,s=0.24313712,flags=4)" SizeZ="0.42,ParticleAge=(v=0.55,d=0.3294118,flags=32;t=0.21,v=0.88,s=0.3294118,flags=4;t=1,v=1,s=0.24313712,flags=4)" Speed="0.4,Random=0.919" Acceleration="x=0.9,y=-0.2,z=0.3" InitAngles="y=-45" RandomAngles="y=150" Platforms="IOS=false,Android=false"/>
+  <Childs>
+   <Particles Name="Debris">
+    <Params Count="5" EmitterSizeDiameter="5" LocalSpawnPosRandomOffset="x=0.1,y=0.1,z=0.1" LocalOffsetRoundness="0.999" LocalRandomAngles="y=45" BeamAge="0.8" ParticleLifeTime="0.8" OffsetRoundness="0.999" FocusAngle="90" FocusAzimuth="180" FocusRotatesEmitter="true" EmitAngle="45,Random=0.999" Curvature="0" Texture="textures/effects/fx_debrissoil_01.dds" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" ReceiveShadows="true" SizeX="0.015974863,Random=0.4,ParticleAge=(t=0.55,v=1;t=1)" SizeY="0.016,Random=0.4,ParticleAge=(t=0.55,v=1;t=1)" SizeZ="0.016,Random=0.4,ParticleAge=(t=0.55,v=1;t=1)" Speed="1.2,Random=0.513" Acceleration="z=-5.1" RandomAngles="y=45"/>
+   </Particles>
+  </Childs>
+ </Particles>
+ <Particles Name="Metal">
+  <Params Count="1" BlendIn="0.5" BlendOut="0.5" Overlap="1" EmitterSizeDiameter="5" LocalSpawnPosRandomOffset="x=0.4,y=0.4,z=0.4" LocalRandomAngles="y=360" BeamAge="0.2" PulsePeriod="Random=1.58" ParticleLifeTime="0.2" Curvature="0" BlendType="Additive" Texture="textures/effects/fx_sparksflash_01.dds" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="ParticleAge=(t=0.384,v=1;t=0.79,v=0.067;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=0.533,v=(x=1,y=0.925,z=0.765);t=1,v=(x=1,y=0.804,z=0.53))" EmissiveLighting="7" LightSource="Radius=4,Intensity=(5,ParticleAge=(v=1;t=1))" StartTrigger="Play_pla_wpn_plasma_pistol_hit" SoundControlTime="EmitterPulsePeriod" SizeX="0.5833,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" SizeY="0.7,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" SizeZ="0.7,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" RandomAngles="y=360" CameraMaxDistance="40" Platforms="Android=false"/>
+  <LODs>
+   <LevelOfDetail>
+    <LodParticle Distance="0" Active="1">
+     <Particle Name="MetalLod0">
+      <Params Count="1" EmitterSizeDiameter="5" LocalSpawnPosRandomOffset="x=0.4,y=0.4,z=0.4" LocalRandomAngles="y=360" BeamAge="0.2" PulsePeriod="Random=1.58" ParticleLifeTime="0.2" Curvature="0" BlendType="Additive" Texture="textures/effects/fx_sparksflash_01.dds" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="ParticleAge=(t=0.384,v=1;t=0.79,v=0.067;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=0.533,v=(x=1,y=0.925,z=0.765);t=1,v=(x=1,y=0.804,z=0.53))" EmissiveLighting="7" LightSource="Radius=4,Intensity=(5,ParticleAge=(v=1;t=1))" StartTrigger="Play_pla_wpn_plasma_pistol_hit" SizeX="0.5833,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" SizeY="0.7,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" SizeZ="0.7,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" RandomAngles="y=360" CameraMaxDistance="40" Platforms="Android=false"/>
+     </Particle>
+    </LodParticle>
+   </LevelOfDetail>
+   <LevelOfDetail>
+    <LodParticle Distance="45" Active="1">
+     <Particle Name="MetalLod45">
+      <Params Count="1" EmitterSizeDiameter="5" LocalSpawnPosRandomOffset="x=0.4,y=0.4,z=0.4" LocalRandomAngles="y=360" BeamAge="0.2" PulsePeriod="Random=1.58" ParticleLifeTime="0.2" Curvature="0" BlendType="Additive" Texture="textures/effects/fx_sparksflash_01.dds" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="ParticleAge=(t=0.384,v=1;t=0.79,v=0.067;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=0.533,v=(x=1,y=0.925,z=0.765);t=1,v=(x=1,y=0.804,z=0.53))" EmissiveLighting="7" LightSource="Radius=4,Intensity=(5,ParticleAge=(v=1;t=1))" StartTrigger="Play_pla_wpn_plasma_pistol_hit" SizeX="0.5833,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" SizeY="0.7,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" SizeZ="0.7,Random=0.2,ParticleAge=(d=1.3568628,flags=32;t=0.396,v=0.68;t=1,v=1)" RandomAngles="y=360" CameraMaxDistance="40" ConfigMin="High" Platforms="IOS=false,Android=false"/>
+     </Particle>
+    </LodParticle>
+   </LevelOfDetail>
+  </LODs>
+  <Childs>
+   <Particles Name="ElectricalSparks">
+    <Params SpawnIndirection="ParentStart" Count="8" EmitterSizeDiameter="5" LocalStretch="0.03,ParticleAge=(v=1;t=1,v=0.25)" BeamAge="1.5" ParticleLifeTime="1.5,Random=0.5" EmitAngle="28.9,Random=0.479" OrientToVelocity="true" Curvature="0" BlendType="Additive" Texture="textures/effects/fx_sparkstreak_01.dds" Alpha="ParticleAge=(t=0.776,v=1;t=1)" Color="(y=0.6502439,z=0.3005438),ParticleAge=(t=0.675,v=(x=1,y=1,z=1);t=1)" EmissiveLighting="9" LightSource="Radius=0.7,Intensity=0.01" SoundControlTime="EmitterPulsePeriod" SizeX="0.05" SizeY="0.05" SizeZ="0.05" Stretch="0.03,ParticleAge=(v=1;t=1,v=0.25)" Speed="8,Random=0.674" Acceleration="z=-18" PhysicsType="SimpleCollision" CollideStaticObjects="true" CollideDynamicObjects="true" FinalCollision="Bounce" Elasticity="0.4" CameraMaxDistance="40"/>
+    <LODs>
+     <LevelOfDetail>
+      <LodParticle Distance="0" Active="1">
+       <Particle Name="ElectricalSparksLod0">
+        <Params SpawnIndirection="ParentStart" Count="8" EmitterSizeDiameter="5" LocalStretch="0.03,ParticleAge=(v=1;t=1,v=0.25)" BeamAge="1.5" ParticleLifeTime="1.5,Random=0.5" EmitAngle="28.9,Random=0.479" OrientToVelocity="true" Curvature="0" BlendType="Additive" Texture="textures/effects/fx_sparkstreak_01.dds" Alpha="ParticleAge=(t=0.776,v=1;t=1)" Color="(y=0.6502439,z=0.3005438),ParticleAge=(t=0.675,v=(x=1,y=1,z=1);t=1)" EmissiveLighting="9" LightSource="Radius=0.7,Intensity=0.01" SizeX="0.05" SizeY="0.05" SizeZ="0.05" Stretch="0.03,ParticleAge=(v=1;t=1,v=0.25)" Speed="8,Random=0.674" Acceleration="z=-18" PhysicsType="SimpleCollision" CollideStaticObjects="true" CollideDynamicObjects="true" FinalCollision="Bounce" Elasticity="0.4" CameraMaxDistance="40"/>
+       </Particle>
+      </LodParticle>
+     </LevelOfDetail>
+     <LevelOfDetail>
+      <LodParticle Distance="45" Active="1">
+       <Particle Name="ElectricalSparksLod45">
+        <Params SpawnIndirection="ParentStart" Count="8" EmitterSizeDiameter="5" LocalStretch="0.03,ParticleAge=(v=1;t=1,v=0.25)" BeamAge="1.5" ParticleLifeTime="1.5,Random=0.5" EmitAngle="28.9,Random=0.479" OrientToVelocity="true" Curvature="0" BlendType="Additive" Texture="textures/effects/fx_sparkstreak_01.dds" Alpha="ParticleAge=(t=0.776,v=1;t=1)" Color="(y=0.6502439,z=0.3005438),ParticleAge=(t=0.675,v=(x=1,y=1,z=1);t=1)" EmissiveLighting="9" LightSource="Radius=0.7,Intensity=0.01" SizeX="0.05" SizeY="0.05" SizeZ="0.05" Stretch="0.03,ParticleAge=(v=1;t=1,v=0.25)" Speed="8,Random=0.674" Acceleration="z=-18" PhysicsType="SimpleCollision" CollideStaticObjects="true" CollideDynamicObjects="true" FinalCollision="Bounce" Elasticity="0.4" CameraMaxDistance="40"/>
+       </Particle>
+      </LodParticle>
+     </LevelOfDetail>
+    </LODs>
+   </Particles>
+   <Particles Name="ElectricalSmoke">
+    <Params SpawnIndirection="ParentStart" Count="1" EmitterSizeDiameter="5" LocalRandomAngles="y=360" BeamAge="3.2" ParticleLifeTime="3.2,Random=0.6" EmitAngle="3.5,Random=0.808" Curvature="0" Texture="textures/effects/fx_damagesmoke_01.dds" TextureTiling="TilesX=8,TilesY=4,AnimFramesCount=32,AnimBlend=true" SoftParticle="true" Alpha="ParticleAge=(v=1;t=0.325,v=1;t=0.694,v=1;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.68,y=0.68,z=0.68))" DiffuseLighting="0" DiffuseBacklighting="0.5" EmissiveLighting="0.2" ReceiveShadows="true" SizeX="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" SizeY="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" SizeZ="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" Speed="0.5,Random=0.5" RandomAngles="y=360" RotationRateY="10,Random=0.868" CameraMaxDistance="40" Platforms="Android=false"/>
+    <LODs>
+     <LevelOfDetail>
+      <LodParticle Distance="0" Active="1">
+       <Particle Name="ElectricalSmokeLod0">
+        <Params SpawnIndirection="ParentStart" Count="1" EmitterSizeDiameter="5" LocalRandomAngles="y=360" BeamAge="3.2" ParticleLifeTime="3.2,Random=0.6" EmitAngle="3.5,Random=0.808" Curvature="0" Texture="textures/effects/fx_damagesmoke_01.dds" TextureTiling="TilesX=8,TilesY=4,AnimFramesCount=32,AnimBlend=true" SoftParticle="true" Alpha="ParticleAge=(v=1;t=0.325,v=1;t=0.694,v=1;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.68,y=0.68,z=0.68))" DiffuseLighting="0" DiffuseBacklighting="0.5" EmissiveLighting="0.2" ReceiveShadows="true" SizeX="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" SizeY="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" SizeZ="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" Speed="0.5,Random=0.5" RandomAngles="y=360" RotationRateY="10,Random=0.868" CameraMaxDistance="40" Platforms="Android=false"/>
+       </Particle>
+      </LodParticle>
+     </LevelOfDetail>
+     <LevelOfDetail>
+      <LodParticle Distance="45" Active="1">
+       <Particle Name="ElectricalSmokeLod45">
+        <Params SpawnIndirection="ParentStart" Count="1" EmitterSizeDiameter="5" LocalRandomAngles="y=360" BeamAge="3.2" ParticleLifeTime="3.2,Random=0.6" EmitAngle="3.5,Random=0.808" Curvature="0" Texture="textures/effects/fx_damagesmoke_01.dds" TextureTiling="TilesX=8,TilesY=4,AnimFramesCount=32,AnimBlend=true" SoftParticle="true" Alpha="ParticleAge=(v=1;t=0.325,v=1;t=0.694,v=1;t=1)" Color="ParticleAge=(v=(x=1,y=1,z=1);t=1,v=(x=0.68,y=0.68,z=0.68))" DiffuseLighting="0" DiffuseBacklighting="0.5" EmissiveLighting="0.2" ReceiveShadows="true" SizeX="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" SizeY="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" SizeZ="1.6,Random=0.303,ParticleAge=(t=0.004,v=0.5;t=1,v=0.925)" Speed="0.5,Random=0.5" RandomAngles="y=360" RotationRateY="10,Random=0.868" CameraMaxDistance="40" Platforms="Android=false"/>
+       </Particle>
+      </LodParticle>
+     </LevelOfDetail>
+    </LODs>
+   </Particles>
+  </Childs>
+ </Particles>
+</ParticleLibrary>

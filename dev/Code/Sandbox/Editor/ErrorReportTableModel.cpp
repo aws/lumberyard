@@ -218,7 +218,7 @@ QVariant CErrorReportTableModel::data(const CErrorRecord& record, int column, in
     }
     case Qt::TextAlignmentRole:
     {
-        return m_alignments.value(column, Qt::AlignLeft);
+        return m_alignments.value(column, Qt::AlignLeft) | Qt::AlignVCenter;
     }
     case Qt::ForegroundRole:
     {
@@ -252,7 +252,7 @@ QVariant CErrorReportTableModel::headerData(int section, Qt::Orientation orienta
     }
     else if (role == Qt::TextAlignmentRole)
     {
-        return m_alignments.value(section, Qt::AlignLeft);
+        return m_alignments.value(section, Qt::AlignLeft) | Qt::AlignVCenter;
     }
     else if (role == Qt::DisplayRole)
     {

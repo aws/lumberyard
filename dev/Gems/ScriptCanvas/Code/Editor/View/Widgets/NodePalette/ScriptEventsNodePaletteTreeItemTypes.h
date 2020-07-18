@@ -87,6 +87,7 @@ namespace ScriptCanvasEditor
         void OnHoverStateChanged() override;
 
         void OnClicked(int row) override;
+        bool OnDoubleClicked(int row) override;
 
     private:
 
@@ -246,6 +247,7 @@ namespace ScriptCanvasEditor
         void OnHoverStateChanged() override;
 
         void OnClicked(int row) override;
+        bool OnDoubleClicked(int row) override;
 
     private:
 

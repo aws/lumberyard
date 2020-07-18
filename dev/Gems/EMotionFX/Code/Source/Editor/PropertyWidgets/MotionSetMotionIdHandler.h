@@ -17,7 +17,7 @@
 #include <QPushButton>
 #include <QGridLayout>
 #include <QLabel>
-#include <MysticQt/Source/DoubleSpinbox.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/list.h>
@@ -52,10 +52,10 @@ namespace EMotionFX
 
         void DestroyGuis();
 
-        QLabel*                     m_labelMotion;
-        MysticQt::DoubleSpinBox*    m_randomWeightSpinbox;
-        QLineEdit*                  m_normalizedProbabilityText;
-        QPushButton*                m_removeButton;
+        QLabel*                         m_labelMotion;
+        AzQtComponents::DoubleSpinBox*  m_randomWeightSpinbox;
+        QLineEdit*                      m_normalizedProbabilityText;
+        QPushButton*                    m_removeButton;
         
         static void ResetDisplayedRoundingError();
 

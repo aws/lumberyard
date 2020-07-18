@@ -1114,12 +1114,12 @@ bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response,
                         baseJobProduct.m_pathDependencies.emplace(GetDependencyAbsolutePath(materialName), AssetBuilderSDK::ProductPathDependencyType::SourceFile);
                     }
                 }
+
+                baseJobProduct.m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             }
 
             response.m_outputProducts.push_back(baseJobProduct);
         }
-
-        AssetBuilderSDK::JobProduct& baseJobProductRef = response.m_outputProducts.back();
 
         bool bHaveSplitLods = false;
         if (bSplitLods)
@@ -1192,6 +1192,7 @@ bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response,
                     response.m_outputProducts.at(0).m_pathDependencies.emplace(
                         GetDependencyAbsolutePath(lodFileName.c_str()),
                         AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+                    response.m_outputProducts.at(0).m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
 
                     m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), lodFullPath);
                 }

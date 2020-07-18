@@ -31,6 +31,7 @@ namespace GraphCanvas
 
         m_disabledLabel = aznew GraphCanvasLabel();
         m_displayLabel = aznew GraphCanvasLabel();
+        m_displayLabel->SetWrapMode(GraphCanvasLabel::WrapMode::ResizeToContent);
     }
 
     AssetIdNodePropertyDisplay::~AssetIdNodePropertyDisplay()
@@ -48,15 +49,6 @@ namespace GraphCanvas
 
         AZStd::string styleName = NodePropertyDisplay::CreateDisplayLabelStyle("assetId");
         m_displayLabel->SetSceneStyle(GetSceneId(), styleName.c_str());
-
-        QSizeF minimumSize = m_displayLabel->minimumSize();
-        QSizeF maximumSize = m_displayLabel->maximumSize();
-
-        if (m_propertyAssetCtrl)
-        {
-            m_propertyAssetCtrl->setMinimumSize(aznumeric_cast<int>(minimumSize.width()), aznumeric_cast<int>(minimumSize.height()));
-            m_propertyAssetCtrl->setMaximumSize(aznumeric_cast<int>(maximumSize.width()), aznumeric_cast<int>(maximumSize.height()));
-        }
     }
 
     void AssetIdNodePropertyDisplay::UpdateDisplay()
@@ -74,6 +66,12 @@ namespace GraphCanvas
             }
 
             m_displayLabel->SetLabel(displayLabel.toUtf8().data());
+
+            QSizeF minimumSize = m_displayLabel->minimumSize();
+            QSizeF maximumSize = m_displayLabel->maximumSize();
+
+            m_propertyAssetCtrl->setMinimumSize(aznumeric_cast<int>(minimumSize.width()), aznumeric_cast<int>(minimumSize.height()));
+            m_propertyAssetCtrl->setMaximumSize(aznumeric_cast<int>(maximumSize.width()), aznumeric_cast<int>(maximumSize.height()));
         } 
 
         if (m_proxyWidget)

@@ -23,6 +23,9 @@
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include "TrackViewNodes.h"
 #include "TrackViewDopeSheetBase.h"
 #include "StringDlg.h"
@@ -58,7 +61,6 @@
 #include <QDebug>
 #include <QTreeWidget>
 #include <QCompleter>
-#include <QColorDialog>
 #include <QScrollBar>
 #include <QStyledItemDelegate>
 #include <QStyleOptionViewItem>
@@ -2742,18 +2744,18 @@ void CTrackViewNodesCtrl::CustomizeTrackColor(CTrackViewTrack* pTrack)
         return;
     }
 
-    QColor defaultColor;
+    AZ::Color defaultColor;
     if (pTrack->HasCustomColor())
     {
         ColorB customColor = pTrack->GetCustomColor();
-        defaultColor = QColor(customColor.r, customColor.g, customColor.b);
+        defaultColor = AZ::Color(customColor.r, customColor.g, customColor.b, customColor.a);
     }
-    QColor res = QColorDialog::getColor(defaultColor, this);
-    if (res.isValid())
+    const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, defaultColor, tr("Select Color"));
+    if (color != defaultColor)
     {
         AzToolsFramework::ScopedUndoBatch undoBatch("Customize Track Color");
 
-        pTrack->SetCustomColor(ColorB(res.red(), res.green(), res.blue()));
+        pTrack->SetCustomColor(ColorB(color.GetR8(), color.GetG8(), color.GetB8()));
         undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
 
         UpdateDopeSheet();

@@ -31,6 +31,7 @@ DockWidgetTitleBar::DockWidgetTitleBar(QWidget* parent)
 
     connect(ui->btnMenu, &QPushButton::clicked, this, &DockWidgetTitleBar::ShowMenuButtonContextMenu);
     ui->btnMenu->setProperty("iconButton", true);
+    ui->btnMenu->setObjectName("DockWidgetContextMenu");
 
     setMaximumHeight(30);
     setMinimumHeight(30);

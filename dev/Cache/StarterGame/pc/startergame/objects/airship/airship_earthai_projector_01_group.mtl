@@ -1,0 +1,16 @@
+<Material MtlFlags="557312" DccMaterialHash="1485527869" vertModifType="0">
+ <SubMaterials>
+  <Material Name="collide_proxy" MtlFlags="557184" DccMaterialHash="4005732576" Shader="Illum" GenMask="800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,0,0,0.42017201" Specular="0,0,0,0.078431375" Opacity="0.42017201" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="Airship_projector_01_mat" MtlFlags="524416" DccMaterialHash="157204000" Shader="Illum" GenMask="200800080080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0,0,0,1" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_projector_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_projector_01_ddna.dds"/>
+    <Texture Map="Emittance" File="objects/airship/airship_projector_01_emis.dds"/>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

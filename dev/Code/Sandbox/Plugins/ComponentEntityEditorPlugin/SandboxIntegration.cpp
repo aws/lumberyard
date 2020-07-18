@@ -652,7 +652,8 @@ void SandboxIntegrationManager::PopulateEditorGlobalContextMenu(QMenu* menu, con
         action = menu->addAction(QObject::tr("Open pinned Inspector"));
         QObject::connect(action, &QAction::triggered, action, [this, selected]
         {
-            OpenPinnedInspector(selected);
+            AzToolsFramework::EntityIdSet pinnedEntities(selected.begin(), selected.end());
+            OpenPinnedInspector(pinnedEntities);
         });
         if (selected.size() > 0)
         {
@@ -666,7 +667,7 @@ void SandboxIntegrationManager::PopulateEditorGlobalContextMenu(QMenu* menu, con
     }
 }
 
-void SandboxIntegrationManager::OpenPinnedInspector(const AzToolsFramework::EntityIdList& entities)
+void SandboxIntegrationManager::OpenPinnedInspector(const AzToolsFramework::EntityIdSet& entities)
 {
     QDockWidget* dockWidget = InstanceViewPane(LyViewPane::EntityInspectorPinned);
     if (dockWidget)
@@ -680,7 +681,7 @@ void SandboxIntegrationManager::OpenPinnedInspector(const AzToolsFramework::Enti
             if (entities.size() == 1)
             {
                 AZStd::string entityName;
-                AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationBus::Events::GetEntityName, entities[0]);
+                AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationBus::Events::GetEntityName, *entities.begin());
                 widgetTitle = AZStd::string::format("%s Inspector", entityName.c_str());
 
                 QObject::connect(editor->GetPropertyEditor(), &AzToolsFramework::EntityPropertyEditor::SelectedEntityNameChanged, [dockWidget](const AZ::EntityId& /*entityId*/, const AZStd::string& name)
@@ -2450,7 +2451,7 @@ void SandboxIntegrationManager::DrawHalfDottedCircle(const AZ::Vector3& pos, flo
     }
 }
 
-void SandboxIntegrationManager::DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height)
+void SandboxIntegrationManager::DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height, bool drawShaded)
 {
     if (m_dc)
     {
@@ -2458,7 +2459,8 @@ void SandboxIntegrationManager::DrawCone(const AZ::Vector3& pos, const AZ::Vecto
             AZVec3ToLYVec3(pos),
             AZVec3ToLYVec3(dir),
             radius,
-            height);
+            height,
+            drawShaded);
     }
 }
 
@@ -2474,7 +2476,7 @@ void SandboxIntegrationManager::DrawWireCylinder(const AZ::Vector3& center, cons
     }
 }
 
-void SandboxIntegrationManager::DrawSolidCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height)
+void SandboxIntegrationManager::DrawSolidCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height, bool drawShaded)
 {
     if (m_dc)
     {
@@ -2482,7 +2484,8 @@ void SandboxIntegrationManager::DrawSolidCylinder(const AZ::Vector3& center, con
             AZVec3ToLYVec3(center),
             AZVec3ToLYVec3(axis),
             radius,
-            height);
+            height,
+            drawShaded);
     }
 }
 

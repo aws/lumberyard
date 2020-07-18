@@ -206,8 +206,7 @@ DoubleSpinBox* ColorRGBAEdit::createComponentSpinBox()
     spinBox->setSingleStep(1.0 / 255.0);
     spinBox->setDecimals(8);
     spinBox->setDisplayDecimals(3);
-    spinBox->setFixedWidth(42);
-    spinBox->setAlignment(Qt::AlignHCenter);
+    spinBox->setFixedWidth(52);
     spinBox->setOptions(DoubleSpinBox::SHOW_ONE_DECIMAL_PLACE_ALWAYS);
     return spinBox;
 }

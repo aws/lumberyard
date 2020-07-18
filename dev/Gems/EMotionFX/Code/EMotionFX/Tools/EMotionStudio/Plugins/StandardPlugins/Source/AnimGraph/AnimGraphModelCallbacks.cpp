@@ -682,7 +682,7 @@ namespace EMStudio
     {
         AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
-        if (animGraph)
+        if (animGraph && commandLine.GetValueAsBool("updateUI", true))
         {
             return animGraphModel.ParameterEdited(animGraph);
         }

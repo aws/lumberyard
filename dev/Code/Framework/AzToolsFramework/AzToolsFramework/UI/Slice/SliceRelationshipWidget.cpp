@@ -74,8 +74,6 @@ namespace AzToolsFramework
         m_sliceDependencyTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         m_sliceDependencyTree->setDragDropMode(QAbstractItemView::DragDropMode::NoDragDrop);
         m_sliceDependencyTree->setDragEnabled(false);
-        m_sliceDependencyTree->header()->setStretchLastSection(false);
-        m_sliceDependencyTree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
         m_sliceDependencyTree->setSelectionMode(QAbstractItemView::SelectionMode::NoSelection);
         m_sliceDependencyTree->setFocusPolicy(Qt::FocusPolicy::NoFocus);
         m_sliceDependencyTree->setColumnCount(1);
@@ -86,8 +84,6 @@ namespace AzToolsFramework
         m_sliceDependentsTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         m_sliceDependentsTree->setDragDropMode(QAbstractItemView::DragDropMode::NoDragDrop);
         m_sliceDependentsTree->setDragEnabled(false);
-        m_sliceDependentsTree->header()->setStretchLastSection(false);
-        m_sliceDependentsTree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
         m_sliceDependentsTree->setSelectionMode(QAbstractItemView::SelectionMode::NoSelection);
         m_sliceDependentsTree->setFocusPolicy(Qt::FocusPolicy::NoFocus);
         m_sliceDependentsTree->setColumnCount(1);
@@ -95,20 +91,9 @@ namespace AzToolsFramework
 
         // Main splitter contains left & right widgets (the two trees).
         QSplitter* splitter = new QSplitter();
+        splitter->addWidget(m_sliceDependencyTree);
+        splitter->addWidget(m_sliceDependentsTree);
 
-        QWidget* leftWidget = new QWidget();
-        QVBoxLayout* leftLayout = new QVBoxLayout();
-        leftLayout->addWidget(m_sliceDependencyTree);
-        leftWidget->setLayout(leftLayout);
-
-        QWidget* rightWidget = new QWidget();
-        QVBoxLayout* rightLayout = new QVBoxLayout();
-        rightLayout->addWidget(m_sliceDependentsTree);
-        rightWidget->setLayout(rightLayout);
-
-        splitter->addWidget(leftWidget);
-        splitter->addWidget(rightWidget);
-        
         QList<int> sizes;
         const int totalWidth = size().width();
         const int firstColumnSize = totalWidth / 2;

@@ -128,13 +128,21 @@ namespace GradientSignal
 
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Constant("GradientSurfaceDataComponentTypeId", BehaviorConstant(GradientSurfaceDataComponentTypeId));
+            behaviorContext->ConstantProperty("GradientSurfaceDataComponentTypeId", BehaviorConstant(GradientSurfaceDataComponentTypeId))
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "vegetation")
+                ;
 
-            behaviorContext->Class<GradientSurfaceDataComponent>()->RequestBus("GradientSurfaceDataRequestBus");
+            behaviorContext->Class<GradientSurfaceDataComponent>()->RequestBus("GradientSurfaceDataRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "vegetation")
+                ;
 
             behaviorContext->EBus<GradientSurfaceDataRequestBus>("GradientSurfaceDataRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "vegetation")
                 ->Event("GetShapeConstraintEntityId", &GradientSurfaceDataRequestBus::Events::GetShapeConstraintEntityId)
                 ->Event("SetShapeConstraintEntityId", &GradientSurfaceDataRequestBus::Events::SetShapeConstraintEntityId)
                 ->VirtualProperty("ShapeConstraintEntityId", "GetShapeConstraintEntityId", "SetShapeConstraintEntityId")

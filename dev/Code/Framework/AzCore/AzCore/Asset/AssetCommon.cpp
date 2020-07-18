@@ -59,8 +59,11 @@ namespace AZ
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                     ->Attribute(AZ::Script::Attributes::Category, "Asset")
                     ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ->Method("CreateString", &Data::AssetId::CreateString)
                     ->Method("IsValid", &Data::AssetId::IsValid)
                         ->Attribute(AZ::Script::Attributes::Alias, "is_valid")
+                    ->Method("ToString", [](const Data::AssetId* self) { return self->ToString<AZStd::string>(); })
+                        ->Attribute(AZ::Script::Attributes::Alias, "to_string")
                     ;
             }
         }
@@ -163,6 +166,25 @@ namespace AZ
             {
                 serializeContext->Class<AZ::Data::AssetData>()
                     ->Version(1)
+                    ;
+            }
+
+            if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+            {
+                behaviorContext->Class<AssetData>("AssetData")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Category, "Asset")
+                    ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ->Method("IsReady", &AssetData::IsReady)
+                        ->Attribute(AZ::Script::Attributes::Alias, "is_ready")
+                    ->Method("IsError", &AssetData::IsError)
+                        ->Attribute(AZ::Script::Attributes::Alias, "is_error")
+                    ->Method("IsLoading", &AssetData::IsLoading)
+                        ->Attribute(AZ::Script::Attributes::Alias, "is_loading")
+                    ->Method("GetId", &AssetData::GetId)
+                        ->Attribute(AZ::Script::Attributes::Alias, "get_id")
+                    ->Method("GetUseCount", &AssetData::GetUseCount)
+                        ->Attribute(AZ::Script::Attributes::Alias, "get_use_count")
                     ;
             }
         }

@@ -11,7 +11,10 @@
 */
 
 #include "StdAfx.h"
+
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
+
+#include <sqlite3.h>
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -39,6 +42,7 @@ namespace AzToolsFramework
                 "Files",
                 "Jobs",
                 "LegacySubIDs",
+                "MissingProductDependencies",
                 "ProductDependencies",
                 "Products",
                 "ScanFolders",
@@ -837,6 +841,10 @@ namespace AzToolsFramework
                 "SELECT * FROM ProductDependencies where UnresolvedPath != ''";
             static const auto s_queryUnresolvedProductDependencies = MakeSqlQuery(GET_UNRESOLVED_PRODUCT_DEPENDENCIES, GET_UNRESOLVED_PRODUCT_DEPENDENCIES_STATEMENT, LOG_NAME);
 
+            static const char* GET_PRODUCT_DEPENDENCY_EXCLUSIONS = "AssetProcessor::GetProductDependencyExclusions";
+            static const char* GET_PRODUCT_DEPENDENCY_EXCLUSIONS_STATEMENT =
+                "SELECT * FROM ProductDependencies WHERE UnresolvedPath LIKE \":%\"";
+            static const auto s_queryProductDependencyExclusions = MakeSqlQuery(GET_PRODUCT_DEPENDENCY_EXCLUSIONS, GET_PRODUCT_DEPENDENCY_EXCLUSIONS_STATEMENT, LOG_NAME);
 
             // lookup by primary key
             static const char* QUERY_FILE_BY_FILEID = "AzToolsFramework::AssetDatabase::QueryFileByFileID";
@@ -1430,7 +1438,8 @@ namespace AzToolsFramework
 
         AZStd::string ProductDependencyDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("ProductDependencyDatabaseEntry id: %i productpk: %i dependencysourceguid: %s dependencysubid: %i dependencyflags: %i unresolvedPath: %s dependencyType: %i fromAssetId: %d", m_productDependencyID, m_productPK, m_dependencySourceGuid.ToString<AZStd::string>().c_str(), m_dependencySubID, m_dependencyFlags, m_unresolvedPath.c_str(), m_dependencyType, m_fromAssetId);
+            return AZStd::string::format("ProductDependencyDatabaseEntry id: %i productpk: %i dependencysourceguid: %s dependencysubid: %i dependencyflags: %lu unresolvedPath: %s dependencyType: %i fromAssetId: %d",
+                m_productDependencyID, m_productPK, m_dependencySourceGuid.ToString<AZStd::string>().c_str(), m_dependencySubID, m_dependencyFlags.to_ulong(), m_unresolvedPath.c_str(), m_dependencyType, m_fromAssetId);
         }
 
         auto ProductDependencyDatabaseEntry::GetColumns()
@@ -1787,6 +1796,7 @@ namespace AzToolsFramework
             AddStatement(m_databaseConnection, s_queryDirectReverseProductdependenciesBySourceGuidSubId);
             AddStatement(m_databaseConnection, s_queryAllProductdependencies);
             AddStatement(m_databaseConnection, s_queryUnresolvedProductDependencies);
+            AddStatement(m_databaseConnection, s_queryProductDependencyExclusions);
 
             AddStatement(m_databaseConnection, s_queryFileByFileid);
             AddStatement(m_databaseConnection, s_queryFilesByFileName);
@@ -2446,6 +2456,97 @@ namespace AzToolsFramework
         bool AssetDatabaseConnection::QueryUnresolvedProductDependencies(productDependencyHandler handler)
         {
             return s_queryUnresolvedProductDependencies.BindAndQuery(*m_databaseConnection, handler, &GetProductDependencyResult);
+        }
+
+        bool AssetDatabaseConnection::QueryProductDependencyExclusions(productDependencyHandler handler)
+        {
+            return s_queryProductDependencyExclusions.BindAndQuery(*m_databaseConnection, handler, &GetProductDependencyResult);
+        }
+
+        bool AssetDatabaseConnection::QueryProductDependenciesUnresolvedAdvanced(const AZStd::vector<AZStd::string>& searchPaths, productDependencyAndPathHandler handler)
+        {
+            AZStd::string sql = R"END(select c.*, b.search FROM (select REPLACE(UnresolvedPath, "*", "%") as search, ProductDependencyID from ProductDependencies where UnresolvedPath LIKE "%*%") as a, ()END";
+
+            bool first = true;
+
+            for(int i = 0; i < searchPaths.size(); ++i)
+            {
+                if(first)
+                {
+                    sql += "SELECT ? as search ";
+                    first = false;
+                }
+                else
+                {
+                    sql += "UNION SELECT ? ";
+                }
+            }
+
+            sql += R"END() as b
+            INNER JOIN ProductDependencies as c ON c.ProductDependencyID = a.ProductDependencyID
+            WHERE b.search LIKE a.search
+            UNION SELECT p.*, UnresolvedPath
+            FROM ProductDependencies as p
+            WHERE UnresolvedPath != ""
+            )END";
+
+            first = true;
+
+            for (int i = 0; i < searchPaths.size(); ++i)
+            {
+                if(first)
+                {
+                    sql += " AND ";
+                    first = false;
+                }
+                else
+                {
+                    sql += " OR ";
+                }
+
+                sql += "UnresolvedPath = ?";
+            }
+
+            bool result = m_databaseConnection->ExecuteRawSqlQuery(sql, [handler](sqlite3_stmt* statement)
+            {
+                ProductDependencyDatabaseEntry entry;
+
+                entry.m_productDependencyID = SQLite::GetColumnInt64(statement, 0);
+                entry.m_productPK = SQLite::GetColumnInt64(statement, 1);
+                entry.m_dependencySourceGuid = SQLite::GetColumnUuid(statement, 2);
+                entry.m_dependencySubID = GetColumnInt(statement, 3);
+                entry.m_platform = GetColumnText(statement, 4);
+                entry.m_dependencyFlags = GetColumnInt64(statement, 5);
+                entry.m_unresolvedPath = GetColumnText(statement, 6);
+                entry.m_dependencyType = static_cast<ProductDependencyDatabaseEntry::DependencyType>(GetColumnInt(statement, 7));
+                entry.m_fromAssetId = sqlite3_column_int(statement, 8);
+
+                AZStd::string matchedPath = GetColumnText(statement, 9);
+
+                handler(entry, matchedPath);
+
+                return true;
+            }, [&searchPaths](sqlite3_stmt* statement)
+            {
+                int index = 1;
+
+                for (const auto& path : searchPaths)
+                {
+                    [[maybe_unused]] int res = sqlite3_bind_text(statement, index, path.c_str(), static_cast<int>(path.size()), nullptr);
+                    AZ_Assert(res == SQLITE_OK, "Statement::BindValueText: failed to bind!");
+                    ++index;
+                }
+
+                // Bind the same ones again since we looped this twice when making the query above
+                for (const auto& path : searchPaths)
+                {
+                    [[maybe_unused]] int res = sqlite3_bind_text(statement, index, path.c_str(), static_cast<int>(path.size()), nullptr);
+                    AZ_Assert(res == SQLITE_OK, "Statement::BindValueText: failed to bind!");
+                    ++index;
+                }
+            });
+
+            return result;
         }
 
         bool AssetDatabaseConnection::QueryProductDependencyByProductId(AZ::s64 productID, productDependencyHandler handler)

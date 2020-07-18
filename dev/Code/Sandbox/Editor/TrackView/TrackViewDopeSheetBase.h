@@ -32,7 +32,11 @@ class CTrackViewAnimNode;
 class QRubberBand;
 class QScrollBar;
 class ReflectedPropertyControl;
-class QColorDialog;
+
+namespace AZ
+{
+    class Color;
+}
 
 enum ETVActionMode
 {
@@ -123,7 +127,7 @@ private:
     void OnCaptureChanged();
 
 private slots:
-    void OnCurrentColorChange(const QColor& color);
+    void OnCurrentColorChange(const AZ::Color& color);
 
 private:
     void UpdateColorKey(const QColor& color, bool addToUndo);
@@ -269,7 +273,6 @@ private:
 
     QRubberBand* m_rubberBand;
     QScrollBar* m_scrollBar;
-    QColorDialog* m_colorDialog;
 
     // Time
     float m_timeScale;

@@ -1,0 +1,22 @@
+<Material MtlFlags="557312" DccMaterialHash="3463521968" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PhysicsNoDraw" MtlFlags="558208" DccMaterialHash="2870446454" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,0.0078740176" Opacity="1" Shininess="2.0078745" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="AM_Oak_Leaf" MtlFlags="524416" DccMaterialHash="271864447" Shader="Vegetation" GenMask="2400000000" StringGenMask="%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="0.79910284,0.79910284,0.79910284,1" Specular="0,0,0,0.039215688" Opacity="1" Shininess="10" AlphaTest="0.72000003" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/foliage/textures/oak_leaf_03_diff.dds"/>
+   </Textures>
+   <PublicParams bendDetailLeafAmplitude="0.2" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="AM_Oak_Bark" MtlFlags="524416" DccMaterialHash="1308628008" Shader="Vegetation" GenMask="2400000000" StringGenMask="%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_wood" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/foliage/textures/oak_bark_01.dds"/>
+   </Textures>
+   <PublicParams bendDetailLeafAmplitude="0.2" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams />
+</Material>

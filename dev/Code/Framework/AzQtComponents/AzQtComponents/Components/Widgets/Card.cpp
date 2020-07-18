@@ -10,11 +10,14 @@
 *
 */
 
+#include <AzCore/Casting/numeric_cast.h>
+
 #include <AzQtComponents/Components/Widgets/Card.h>
 #include <AzQtComponents/Components/Widgets/CardHeader.h>
 #include <AzQtComponents/Components/Widgets/CardNotification.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h> // for the QMargins metatype declarations
 #include <QDesktopWidget>
 #include <QMenu>
@@ -29,6 +32,21 @@ namespace AzQtComponents
     namespace CardConstants
     {
         static const char* kPropertySelected = "selected";
+    }
+
+    static QPixmap ApplyAlphaToPixmap(const QPixmap& pixmap, float alpha)
+    {
+        QImage image = pixmap.toImage().convertToFormat(QImage::Format_ARGB32);
+        for (int y = 0; y < image.height(); ++y)
+        {
+            auto scanLine = reinterpret_cast<QRgb*>(image.scanLine(y));
+            for (int x = 0; x < image.width(); ++x)
+            {
+                const auto color = scanLine[x];
+                scanLine[x] = qRgba(qRed(color), qGreen(color), qBlue(color), static_cast<int>(alpha * qAlpha(color)));
+            }
+        }
+        return QPixmap::fromImage(image);
     }
 
     Card::Card(QWidget* parent /* = nullptr */)
@@ -46,10 +64,11 @@ namespace AzQtComponents
         m_header->setParent(this);
 
         Config defaultConfigValues = defaultConfig();
+        m_warningIconSize = defaultConfigValues.warningIconSize;
 
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
-        m_warningIcon = QIcon(":/Cards/img/UI20/Cards/warning.png");
+        m_warningIcon.addFile(defaultConfigValues.warningIcon, m_warningIconSize);
 
         // create header bar
         Style::addClass(m_header, "primaryCardHeader");
@@ -63,10 +82,19 @@ namespace AzQtComponents
         // as tooltips do not support any kind of css matchers other than QToolTip
         m_header->setStyleSheet(QStringLiteral("QToolTip { padding: %1px; }").arg(defaultConfigValues.toolTipPaddingInPixels));
 
-        m_mainLayout = new QVBoxLayout(this);
+        m_rootLayout = new QVBoxLayout(this);
+        m_rootLayout->setSizeConstraint(QLayout::SetMinimumSize);
+        m_rootLayout->setContentsMargins(QMargins(0, 0, 0, 0));
+        m_rootLayout->addWidget(m_header);
+
+        m_contentContainer = new QFrame(this);
+        m_contentContainer->setObjectName(QStringLiteral("contentContainer"));
+
+        m_mainLayout = new QVBoxLayout(m_contentContainer);
         m_mainLayout->setSizeConstraint(QLayout::SetMinimumSize);
         m_mainLayout->setContentsMargins(QMargins(0, 0, 0, 0));
-        m_mainLayout->addWidget(m_header);
+
+        m_rootLayout->addWidget(m_contentContainer);
 
         // add a placeholder, so that the ordering of widgets in Cards works
         m_contentWidget = new QWidget(this);
@@ -76,6 +104,7 @@ namespace AzQtComponents
         m_separatorContainer = new QFrame(this);
         m_separatorContainer->setObjectName("SeparatorContainer");
         QBoxLayout* separatorLayout = new QHBoxLayout(m_separatorContainer);
+        separatorLayout->setContentsMargins(QMargins(0, 0, 0, 0));
         m_separatorContainer->setLayout(separatorLayout);
 
         m_separator = new QFrame(m_separatorContainer);
@@ -98,8 +127,8 @@ namespace AzQtComponents
         connect(m_header, &CardHeader::expanderChanged, this, &Card::setExpanded);
         connect(m_header, &CardHeader::contextMenuRequested, this, &Card::contextMenuRequested);
 
-        // force the selected property to be set the first time, so the stylesheet works correctly on false
-        setProperty(CardConstants::kPropertySelected, m_selected);
+        StyleHelpers::repolishWhenPropertyChanges(this, &Card::selectedChanged);
+        StyleHelpers::repolishWhenPropertyChanges(this, &Card::expandStateChanged);
     }
 
     QWidget* Card::contentWidget() const
@@ -113,7 +142,7 @@ namespace AzQtComponents
 
         m_contentWidget = contentWidget;
 
-        m_mainLayout->insertWidget(1, contentWidget);
+        m_mainLayout->insertWidget(0, contentWidget);
     }
 
     void Card::setTitle(const QString& title)
@@ -133,7 +162,7 @@ namespace AzQtComponents
 
     CardNotification* Card::addNotification(const QString& message)
     {
-        CardNotification* notification = new CardNotification(this, message, m_warningIcon);
+        CardNotification* notification = new CardNotification(this, message, m_warningIcon, m_warningIconSize);
 
         notification->setVisible(isExpanded());
         m_notifications.push_back(notification);
@@ -163,19 +192,9 @@ namespace AzQtComponents
         setUpdatesEnabled(false);
 
         m_header->setExpanded(expand);
-
-        if (m_contentWidget)
-        {
-            m_contentWidget->setVisible(expand);
-        }
-
-        //toggle notification visibility
-        for (CardNotification* notification : m_notifications)
-        {
-            notification->setVisible(expand);
-        }
-
+        m_contentContainer->setVisible(expand);
         updateSecondaryContentVisibility();
+        updateGeometry();
 
         setUpdatesEnabled(true);
 
@@ -192,9 +211,7 @@ namespace AzQtComponents
         if (m_selected != selected)
         {
             m_selected = selected;
-            setProperty(CardConstants::kPropertySelected, m_selected);
-            style()->unpolish(this);
-            style()->polish(this);
+            emit selectedChanged(m_selected);
         }
     }
 
@@ -261,14 +278,13 @@ namespace AzQtComponents
         m_secondaryContentWidget = secondaryContentWidget;
 
         // Layout is:
-        // 0 - primary header
-        // 1 - content widget
-        // 2 - separator
-        // 3 - secondary header
-        // 4 - secondary widget
-        // 5, etc - notifications
+        // 0 - content widget
+        // 1 - separator
+        // 2 - secondary header
+        // 3 - secondary widget
+        // 4, etc - notifications
 
-        m_mainLayout->insertWidget(4, secondaryContentWidget);
+        m_mainLayout->insertWidget(3, secondaryContentWidget);
 
         updateSecondaryContentVisibility();
     }
@@ -285,13 +301,39 @@ namespace AzQtComponents
         style()->polish(this);
     }
 
+    void Card::mockDisabledState(bool disable)
+    {
+        // Only partially disable CardHeader
+        if (m_header)
+        {
+            m_header->mockDisabledState(disable);
+        }
+        if (m_secondaryHeader)
+        {
+            m_secondaryHeader->mockDisabledState(disable);
+        }
+
+        // Disable Content
+        if (m_contentWidget)
+        {
+            m_contentWidget->setDisabled(disable);
+        }
+        if (m_secondaryContentWidget)
+        {
+            m_secondaryContentWidget->setDisabled(disable);
+        }
+    }
+
     Card::Config Card::loadConfig(QSettings& settings)
     {
         Config config = defaultConfig();
 
         ConfigHelpers::read<int>(settings, QStringLiteral("HeaderIconSizeInPixels"), config.headerIconSizeInPixels);
         ConfigHelpers::read<int>(settings, QStringLiteral("ToolTipPaddingInPixels"), config.toolTipPaddingInPixels);
-        ConfigHelpers::read<int>(settings, QStringLiteral("MainLayoutSpacing"), config.mainLayoutSpacing);
+        ConfigHelpers::read<int>(settings, QStringLiteral("RootLayoutSpacing"), config.rootLayoutSpacing);
+        ConfigHelpers::read<QString>(settings, QStringLiteral("WarningIcon"), config.warningIcon);
+        ConfigHelpers::read<QSize>(settings, QStringLiteral("WarningIconSize"), config.warningIconSize);
+        ConfigHelpers::read<qreal>(settings, QStringLiteral("DisabledIconAlpha"), config.disabledIconAlpha);
 
         return config;
     }
@@ -302,7 +344,10 @@ namespace AzQtComponents
 
         config.toolTipPaddingInPixels = 5;
         config.headerIconSizeInPixels = CardHeader::defaultIconSize();
-        config.mainLayoutSpacing = 0;
+        config.rootLayoutSpacing = 0;
+        config.warningIcon = QStringLiteral(":/Cards/img/UI20/Cards/warning.svg");
+        config.warningIconSize = {24, 24};
+        config.disabledIconAlpha = 0.25;
 
         return config;
     }
@@ -313,7 +358,13 @@ namespace AzQtComponents
 
         if (auto card = qobject_cast<Card*>(widget))
         {
-            card->m_mainLayout->setSpacing(config.mainLayoutSpacing);
+            QIcon warningIcon;
+            warningIcon.addFile(config.warningIcon, config.warningIconSize);
+            card->m_warningIcon = warningIcon;
+            card->m_warningIconSize = config.warningIconSize;
+
+            card->m_rootLayout->setSpacing(config.rootLayoutSpacing);
+            style->repolishOnSettingsChange(card);
             polished = true;
         }
         else if (auto cardHeader = qobject_cast<CardHeader*>(widget))
@@ -345,11 +396,30 @@ namespace AzQtComponents
 
         if (auto card = qobject_cast<Card*>(widget))
         {
-            card->m_mainLayout->setSpacing(3); // restore to default
+            card->m_rootLayout->setSpacing(3); // restore to default
             unpolished = true;
         }
 
         return unpolished;
+    }
+
+    QPixmap Card::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap& pixmap, const QStyleOption* option, const QWidget* widget, const Config& config)
+    {
+        const auto* iconWidget = widget ? widget : qobject_cast<QWidget*>(option->styleObject);
+        if (CardHeader::isCardHeaderMenuButton(iconWidget))
+        {
+            // don't gray out menu icons in the header, even if the card is disabled
+            return pixmap;
+        }
+        if (CardHeader::isCardHeaderIcon(iconWidget))
+        {
+            if (iconMode == QIcon::Disabled)
+            {
+                return ApplyAlphaToPixmap(pixmap, aznumeric_cast<float>(config.disabledIconAlpha));
+            }
+        }
+        // return a null pixmap so that that Style takes the default path
+        return {};
     }
 
     bool Card::hasSecondaryContent() const

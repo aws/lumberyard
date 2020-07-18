@@ -352,7 +352,7 @@ namespace AzToolsFramework
 
                     return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%llu, [Editor Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
                         sourceEntity->GetName().c_str(),
-                        sourceEntity->GetId(),
+                        static_cast<AZ::u64>(sourceEntity->GetId()),
                         componentName,
                         sourceSliceAsset.GetHint().c_str(),
                         result.GetError().c_str()));
@@ -547,7 +547,7 @@ namespace AzToolsFramework
                     const char* componentName = component->RTTI_GetTypeName();
                     return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%llu, [Exported Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
                         exportEntity->GetName().c_str(), 
-                        exportEntity->GetId(),
+                        static_cast<AZ::u64>(exportEntity->GetId()),
                         componentName,
                         sourceSliceAsset.GetHint().c_str(),
                         result.GetError().c_str()));

@@ -152,7 +152,7 @@ namespace GraphCanvas
         , m_offset(0.0)
         , m_connectionEntityId(connectionEntityId)
     {
-        setFlags(ItemIsSelectable);
+        setFlags(ItemIsSelectable | ItemIsFocusable);
         setData(GraphicsItemName, QStringLiteral("DefaultConnectionVisual/%1").arg(static_cast<AZ::u64>(GetEntityId()), 16, 16, QChar('0')));
     }
 
@@ -438,6 +438,11 @@ namespace GraphCanvas
         ConnectionVisualNotificationBus::Event(GetEntityId(), &ConnectionVisualNotifications::OnConnectionPathUpdated);
     }
 
+    void ConnectionGraphicsItem::SetAltDeletionEnabled(bool enabled)
+    {
+        SetAllowQuickDeletion(enabled);
+    }
+
     void ConnectionGraphicsItem::OnSceneMemberHidden()
     {
         AZ::EntityId sourceId;
@@ -641,7 +646,7 @@ namespace GraphCanvas
             else
             {
                 setSelected(!isSelected());
-            }            
+            }
             
             m_trackMove = false;
         }
@@ -649,6 +654,16 @@ namespace GraphCanvas
         {
             RootGraphicsItem<QGraphicsPathItem>::mouseReleaseEvent(mouseEvent);
         }
+    }
+
+    void ConnectionGraphicsItem::focusOutEvent(QFocusEvent* focusEvent)
+    {
+        if (m_trackMove)
+        {
+            m_trackMove = false;
+        }
+        
+        RootGraphicsItem<QGraphicsPathItem>::focusOutEvent(focusEvent);
     }
 
     void ConnectionGraphicsItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget /*= nullptr*/)

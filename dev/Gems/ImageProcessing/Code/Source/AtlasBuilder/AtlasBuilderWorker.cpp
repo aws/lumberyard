@@ -276,7 +276,8 @@ namespace TextureAtlasBuilder
                     accepted = args[1].at(0) == '#' && args[1].length() == 9;
                     if (accepted)
                     {
-                        AZStd::string color = AZStd::string::format("%s%s%s%s", args[1].substr(7), args[1].substr(5, 2), args[1].substr(3, 2), args[1].substr(1, 2));
+                        AZStd::string color = AZStd::string::format("%s%s%s%s", args[1].substr(7).c_str(), args[1].substr(5, 2).c_str(),
+                                                                    args[1].substr(3, 2).c_str(), args[1].substr(1, 2).c_str());
                         data.m_unusedColor.FromU32(AZStd::stoul(color, nullptr, 16));
                     }
                 }
@@ -1085,6 +1086,7 @@ namespace TextureAtlasBuilder
                 // without the texatlasid, but not the other way around
                 AZ::Data::AssetId productAssetId(request.m_sourceFileUUID, response.m_outputProducts.back().m_productSubID);
                 response.m_outputProducts[static_cast<int>(Product::TexatlasidxProduct)].m_dependencies.push_back(AssetBuilderSDK::ProductDependency(productAssetId, 0));
+                response.m_outputProducts[static_cast<int>(Product::TexatlasidxProduct)].m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             }
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         }

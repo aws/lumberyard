@@ -120,14 +120,18 @@ namespace EMStudio
 
         editContext->Class<NodeInfo>("Node info", "")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_name, "Name", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_position, "Position", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_rotation, "Rotation", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_scale, "Scale", "")
-            ->Attribute(AZ::Edit::Attributes::Visibility,
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility,
 #ifndef EMFX_SCALE_DISABLED
             true
 #else
@@ -135,14 +139,23 @@ namespace EMStudio
 #endif
             )
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_parentName, "Parent name", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_mirrorNodeName, "Mirror", "")
-            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMirror)
+                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMirror)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_childNodeNames, "Child nodes", "")
-            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasChildNodes)
+                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasChildNodes)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                ->ElementAttribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_attributeTypes, "Attributes", "")
-            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasAttributes)
+                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasAttributes)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_meshByLod, "Meshes by lod", "")
-            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMeshes)
+                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMeshes)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
         ;
     }
 } // namespace EMStudio

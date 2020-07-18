@@ -14,6 +14,8 @@
 #include <QMenu>
 #include <QAction>
 
+#include <AzQtComponents/Components/Widgets/SegmentBar.h>
+
 #include <Editor/View/Widgets/LoggingPanel/LoggingWindow.h>
 #include <Editor/View/Widgets/LoggingPanel/ui_LoggingWindow.h>
 
@@ -34,15 +36,16 @@ namespace ScriptCanvasEditor
         m_ui->tabWidget->tabBar()->setTabButton(0, QTabBar::ButtonPosition::RightSide, nullptr);
         m_ui->tabWidget->tabBar()->setTabButton(0, QTabBar::ButtonPosition::LeftSide, nullptr);
 
-        m_pivotGroup.addButton(m_ui->entitiesPivotButton);
-        m_pivotGroup.addButton(m_ui->graphsPivotButton);
-        m_pivotGroup.setExclusive(true);
+        m_ui->segmentWidget->addTab(new QWidget(m_ui->segmentWidget), QStringLiteral("Entities"));
+        m_ui->segmentWidget->addTab(new QWidget(m_ui->segmentWidget), QStringLiteral("Graphs"));
 
-        m_ui->entitiesPivotButton->setChecked(true);
+        connect(m_ui->segmentWidget, &AzQtComponents::SegmentControl::currentChanged, [this](int newIndex) {
+            m_ui->stackedWidget->setCurrentIndex(newIndex);
+        });
 
-        QObject::connect(m_ui->entitiesPivotButton, &QPushButton::pressed, this, &LoggingWindow::PivotOnEntities);
-        QObject::connect(m_ui->graphsPivotButton, &QPushButton::pressed, this, &LoggingWindow::PivotOnGraphs);
-        QObject::connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, &LoggingWindow::OnActiveTabChanged);        
+        QObject::connect(m_ui->tabWidget, &QTabWidget::currentChanged, this, &LoggingWindow::OnActiveTabChanged);
+
+        AzQtComponents::TabWidget::applySecondaryStyle(m_ui->tabWidget, false);
 
         m_entityPageIndex = m_ui->stackedWidget->indexOf(m_ui->entitiesPage);
         m_graphPageIndex = m_ui->stackedWidget->indexOf(m_ui->graphsPage);

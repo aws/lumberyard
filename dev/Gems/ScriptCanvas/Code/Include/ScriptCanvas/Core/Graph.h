@@ -43,7 +43,7 @@ namespace ScriptCanvas
         , protected GraphRequestBus::Handler
         , protected RuntimeRequestBus::Handler
         , protected StatusRequestBus::Handler
-        , private AZ::EntityBus::Handler
+        , private AZ::EntityBus::Handler        
     {
     private:
         struct ValidationStruct
@@ -58,7 +58,7 @@ namespace ScriptCanvas
         AZ_COMPONENT(Graph, "{C3267D77-EEDC-490E-9E42-F1D1F473E184}");
 
         static void Reflect(AZ::ReflectContext* context);
-        
+
         Graph(const ScriptCanvasId& executionId = AZ::Entity::MakeId());
         ~Graph() override;
 
@@ -69,7 +69,7 @@ namespace ScriptCanvas
         const AZStd::vector<AZ::EntityId> GetNodesConst() const;
         AZStd::unordered_set<AZ::Entity*>& GetNodeEntities() { return m_graphData.m_nodes; }
         const AZStd::unordered_set<AZ::Entity*>& GetNodeEntities() const { return m_graphData.m_nodes; }
-        
+
         const ScriptCanvas::ScriptCanvasId& GetScriptCanvasId() const { return m_scriptCanvasId; }
 
         //// GraphRequestBus::Handler
@@ -195,14 +195,21 @@ namespace ScriptCanvas
 
         bool IsGraphObserved() const override;
         void SetIsGraphObserved(bool isObserved) override;
+
+        AZ::Data::AssetType GetAssetType() const override;
         ////
 
         const AZStd::unordered_map<AZ::EntityId, Node* >& GetNodeMapping() const { return m_nodeMapping; }
 
+    protected:
+
+        void VersioningRemoveSlot(ScriptCanvas::Node& scriptCanvasNode, const SlotId& slotId);
+
+        GraphData m_graphData;
+        AZ::Data::AssetType m_assetType;
 
     private:
         ScriptCanvasId m_scriptCanvasId;
-        GraphData m_graphData;
         ExecutionContext m_executionContext;
 
         GraphVariableManagerRequests* m_variableRequests = nullptr;

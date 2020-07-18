@@ -78,7 +78,7 @@ namespace ScriptCanvas
                         ScriptCanvas_Node::Name("Script Event", "Base class for Script Events.")
                         ScriptCanvas_Node::Category("Internal")
                         ScriptCanvas_Node::Uuid("{B6614CEC-4788-476C-A19A-BA0A8B490C73}")
-                        ScriptCanvas_Node::Version(5)
+                        ScriptCanvas_Node::Version(6, ScriptEventBaseVersionConverter)
                         ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                     );
 
@@ -86,7 +86,7 @@ namespace ScriptCanvas
                     ScriptCanvas_SerializeProperty(EventMap, m_eventMap);
                     ScriptCanvas_SerializeProperty(SlotIdMapping, m_eventSlotMapping)
                     ScriptCanvas_SerializeProperty(AZ::Data::AssetId, m_scriptEventAssetId);
-                    ScriptCanvas_SerializeProperty(ScriptEvents::ScriptEventsAssetPtr, m_asset);
+                    ScriptCanvas_SerializeProperty(AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>, m_asset);
 
                     ScriptEventBase();
                     ~ScriptEventBase() override;
@@ -101,11 +101,9 @@ namespace ScriptCanvas
                     const ScriptEvents::ScriptEvent& GetScriptEvent() const { return m_definition; }
                     ScriptEvents::ScriptEventsAssetPtr GetAsset() const { return m_asset; }
 
-                    virtual void UpdateScriptEventAsset() { AZ_Error("ScriptCanvas", false, "Unimplemented update function for ScriptEvent Node"); };
+                    virtual void Initialize(const AZ::Data::AssetId assetId);
 
                 protected:
-
-                    virtual void Initialize(const AZ::Data::AssetId assetId);
 
                     // AZ::Data::AssetBus::Handler
                     void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;

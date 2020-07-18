@@ -1,0 +1,21 @@
+<Material MtlFlags="557312" DccMaterialHash="3323691608" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PhysicsNoDraw" MtlFlags="558208" DccMaterialHash="2870446454" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,0.0078740185" Opacity="1" Shininess="2.0078747" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="AM_Background_Trees_Leaf" MtlFlags="524416" DccMaterialHash="879705401" Shader="Vegetation" GenMask="2400000000" StringGenMask="%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0,0,0,1" Opacity="1" Shininess="10" AlphaTest="0.76999998" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/foliage/textures/background_tree_d.dds"/>
+   </Textures>
+   <PublicParams bendDetailLeafAmplitude="0.2" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="AM_Background_Trees_Ground" MtlFlags="524416" DccMaterialHash="1470893496" Shader="Vegetation" GenMask="2400000000" StringGenMask="%TEMP_VEGETATION%VERTCOLORS" SurfaceType="mat_vegetation" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0,0,0,0.039215688" Opacity="1" Shininess="10" AlphaTest="0.88" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/foliage/textures/background_ground_d.dds"/>
+   </Textures>
+   <PublicParams bendDetailLeafAmplitude="0.2" bendDetailFrequency="1" bendDetailBranchAmplitude="-0.5" BlendTerrainCol="0" BlendTerrainColDist="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+</Material>

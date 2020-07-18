@@ -1,0 +1,12 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "f3ae24a1635e4f849535f37ef9f4b4da",
+    "Name": "CryEntityRemoval",
+    "DisplayName": "CryEntity Removal [PREVIEW]",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "The CryEntity Removal Gem provides a preview of the upcoming Lumberyard Editor changes to remove CryEntity support.  These changes remove the Rollup Bar, eliminate CryEntity creation and editing, simplify the Main Menu, and focus the editing experience on Lumberyard's Component Entity workflow.",
+    "Tags": ["CryEntityRemoval"],
+    "IconPath": "preview.png",
+    "EditorModule": true
+}

@@ -39,6 +39,11 @@ namespace EMotionFX
     }
 
 
+    Transform Transform::CreateIdentity()
+    {
+        return Transform(AZ::Vector3::CreateZero(), AZ::Quaternion::CreateIdentity());
+    }
+
     // set
     void Transform::Set(const AZ::Vector3& position, const AZ::Quaternion& rotation)
     {
@@ -47,7 +52,7 @@ namespace EMotionFX
 
         EMFX_SCALECODE
         (
-            mScale.Set(1.0f, 1.0f, 1.0f);
+            mScale = AZ::Vector3::CreateOne();
         )
     }
 
@@ -170,8 +175,8 @@ namespace EMotionFX
     #ifndef EMFX_SCALE_DISABLED
         AZ::Transform transformCopy = transform;
         mPosition = transformCopy.GetTranslation();
-        mScale = transformCopy.ExtractScale();
-        mRotation = AZ::Quaternion::CreateFromTransform(transformCopy);
+        mScale = transformCopy.ExtractScaleExact();
+        mRotation = AZ::Quaternion::CreateRotationFromUnscaledTransform(transformCopy);
     #else
         mPosition = transform.GetTranslation();
         mRotation = AZ::Quaternion::CreateFromTransform(transform);
@@ -205,7 +210,7 @@ namespace EMotionFX
 
         EMFX_SCALECODE
         (
-            mScale.Set(1.0f, 1.0f, 1.0f);
+            mScale = AZ::Vector3::CreateOne();
         );
     }
 
@@ -249,7 +254,6 @@ namespace EMotionFX
         (
             mScale = mScale * other.mScale;
         )
-
 
         return *this;
     }

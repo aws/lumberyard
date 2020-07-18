@@ -1,0 +1,13 @@
+<Material MtlFlags="524544" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="jack" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200A00080080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%FX_DISSOLVE%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0.49693301,0.49693301,0.49693301,1" Emittance="0.40197781,0,0,135.10001" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/brokenrobots/jack_diffuse.dds"/>
+    <Texture Map="Specular" File="objects/brokenrobots/jack_specular.dds"/>
+    <Texture Map="Emittance" File="objects/brokenrobots/jack_emissive.dds"/>
+    <Texture Map="Bumpmap" File="objects/brokenrobots/jack_normals_ddn.dds"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+</Material>

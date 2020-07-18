@@ -99,7 +99,8 @@ namespace EMotionFX
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, false);
+                AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
+                SetHasError(uniqueData, false);
             }
 
             OutputIncomingNode(animGraphInstance, sourceNode);
@@ -112,7 +113,8 @@ namespace EMotionFX
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
+                SetHasError(uniqueData, true);
             }
 
             RequestPoses(animGraphInstance);
@@ -132,7 +134,7 @@ namespace EMotionFX
 
     void AnimGraphEntryNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
 
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
         if (!sourceNode || sourceNode == GetParentNode())
@@ -146,7 +148,7 @@ namespace EMotionFX
         {
             // As the entry node passes the transforms from the source node of the currently active transition in the grand parent state machine,
             // we will transfer ownership of the ref counting to it to make sure it will be decreased properly.
-            AnimGraphStateMachine::UniqueData* parentUniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(grandParentStateMachine->FindUniqueNodeData(animGraphInstance));
+            AnimGraphStateMachine::UniqueData* parentUniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(grandParentStateMachine->FindOrCreateUniqueNodeData(animGraphInstance));
             parentUniqueData->IncreasePoseRefCountForNode(sourceNode, animGraphInstance);
             parentUniqueData->IncreaseDataRefCountForNode(sourceNode, animGraphInstance);
         }
@@ -176,7 +178,7 @@ namespace EMotionFX
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
         if (!sourceNode || sourceNode == GetParentNode())
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             RequestRefDatas(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
@@ -188,18 +190,22 @@ namespace EMotionFX
         sourceNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
         // copy over the event buffer
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         RequestRefDatas(animGraphInstance);
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
-        AnimGraphRefCountedData* sourceData = sourceNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-        data->SetEventBuffer(sourceData->GetEventBuffer());
-        data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
-        data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
-
-        // We moved ownership of decreasing the ref to the parent parent state machine as it might happen that within one of the multiple
-        // passes the state machine is doing, the entry node is transitioned over while we never reach the decrease ref point.
-        //sourceNode->DecreaseRefDataRef(animGraphInstance);
+        AnimGraphRefCountedData* sourceData = sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        if (sourceData)
+        {
+            data->SetEventBuffer(sourceData->GetEventBuffer());
+            data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
+            data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
+        }
+        else
+        {
+            data->ClearEventBuffer();
+            data->ZeroTrajectoryDelta();
+        }
     }
 
     void AnimGraphEntryNode::Reflect(AZ::ReflectContext* context)

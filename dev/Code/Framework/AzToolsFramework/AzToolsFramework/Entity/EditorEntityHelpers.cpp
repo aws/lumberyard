@@ -116,6 +116,26 @@ namespace AzToolsFramework
         return entity;
     }
 
+    AZStd::string GetEntityName(const AZ::EntityId& entityId, const AZStd::string_view& nameOverride)
+    {
+        if (!entityId.IsValid())
+        {
+            return AZStd::string();
+        }
+        if (!nameOverride.empty())
+        {
+            return nameOverride;
+        }
+
+        const AZ::Entity* entity = GetEntityById(entityId);
+        if (!entity)
+        {
+            return AZStd::string();
+        }
+
+        return entity->GetName();
+    }
+
     void GetAllComponentsForEntity(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity)
     {
         if (entity)

@@ -15,8 +15,7 @@
 #include "PropertyAssetCtrl.hxx"
 #include "PropertyQTConstants.h"
 
-AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
-                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel>
@@ -42,6 +41,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetMimeDataContainer.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
@@ -57,74 +57,8 @@ AZ_POP_DISABLE_WARNING
 #include <UI/PropertyEditor/Model/AssetCompleterModel.h>
 #include <UI/PropertyEditor/View/AssetCompleterListView.h>
 
-namespace AzToolsFramework
+    namespace AzToolsFramework
 {
-    /* ----- LineEditLoading ----- */
-
-    LineEditLoading::LineEditLoading(QWidget *parent)
-        : QLineEdit(parent)
-        , m_loadIcon("Editor/Icons/AssetBrowser/in_progress.gif")
-    {
-        m_loadIcon.setCacheMode(QMovie::CacheMode::CacheAll);
-        m_loadIcon.setScaledSize(QSize(10, 10));
-        m_loadIcon.start();
-
-        setStyleSheet("AzToolsFramework--LineEditLoading[DropHighlight=\"true\"] { background-color: #D9822E; }");
-    }
-
-    LineEditLoading::~LineEditLoading()
-    {
-        if (m_isLoading)
-        {
-            AZ::TickBus::Handler::BusDisconnect();
-        }
-    }
-
-    void LineEditLoading::StartLoading()
-    {
-        m_isLoading = true;
-        AZ::TickBus::Handler::BusConnect();
-    }
-
-    void LineEditLoading::StopLoading()
-    {
-        AZ::TickBus::Handler::BusDisconnect();
-        m_isLoading = false;
-    }
-
-    void LineEditLoading::paintEvent(QPaintEvent *event)
-    {
-        QLineEdit::paintEvent(event);
-
-        if (m_isLoading)
-        {
-            QPainter painter(this);
-
-            // Draw loading icon on the right end of the lineEdit
-            int verticalOffset = 4;
-            int horizontalOffset = rect().width() - 15;
-
-            painter.drawPixmap(horizontalOffset, verticalOffset, m_loadIcon.currentPixmap());
-        }
-    }
-
-    void LineEditLoading::focusInEvent(QFocusEvent* event)
-    {
-        emit(focused(true));
-        QLineEdit::focusInEvent(event);
-    }
-
-    void LineEditLoading::focusOutEvent(QFocusEvent* event)
-    {
-        emit(focused(false));
-        QLineEdit::focusOutEvent(event);
-    }
-
-    void LineEditLoading::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
-    {
-        repaint();
-    }
-
     /* ----- PropertyAssetCtrl ----- */
 
     PropertyAssetCtrl::PropertyAssetCtrl(QWidget* pParent, QString optionalValidDragDropExtensions)
@@ -132,86 +66,44 @@ namespace AzToolsFramework
         , m_optionalValidDragDropExtensions(optionalValidDragDropExtensions)
     {
         QHBoxLayout* pLayout = aznew QHBoxLayout();
-        m_lineEdit = aznew LineEditLoading(this);
+        m_browseEdit = new AzQtComponents::BrowseEdit(this);
+        m_browseEdit->lineEdit()->setFocusPolicy(Qt::StrongFocus);
+        m_browseEdit->lineEdit()->installEventFilter(this);
+        m_browseEdit->setClearButtonEnabled(true);
+        QToolButton* clearButton = AzQtComponents::LineEdit::getClearButton(m_browseEdit->lineEdit());
+        assert(clearButton);
+        connect(clearButton, &QToolButton::clicked, this, &PropertyAssetCtrl::OnClearButtonClicked);
 
-        connect(m_lineEdit, &QLineEdit::textEdited, this, &PropertyAssetCtrl::OnTextChange);
-        connect(m_lineEdit, &QLineEdit::returnPressed, this, &PropertyAssetCtrl::OnReturnPressed);
+        connect(m_browseEdit->lineEdit(), &QLineEdit::textEdited, this, &PropertyAssetCtrl::OnTextChange);
+        connect(m_browseEdit->lineEdit(), &QLineEdit::returnPressed, this, &PropertyAssetCtrl::OnReturnPressed);
+
+        connect(m_browseEdit, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &PropertyAssetCtrl::PopupAssetPicker);
 
         pLayout->setContentsMargins(0, 0, 0, 0);
 
-        setFixedHeight(PropertyQTConstant_DefaultHeight);
-
-        m_lineEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-        m_lineEdit->setMinimumWidth(PropertyQTConstant_MinimumWidth);
-        m_lineEdit->setFixedHeight(PropertyQTConstant_DefaultHeight);
-        m_lineEdit->setFocusPolicy(Qt::StrongFocus);
-
         setAcceptDrops(true);
 
-        m_label = aznew QLabel(this);
-        m_label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-        m_label->setMinimumWidth(PropertyQTConstant_MinimumWidth);
-        m_label->setFixedHeight(PropertyQTConstant_DefaultHeight);
-
-        m_label->setFrameShape(QFrame::Panel);
-        m_label->setFrameShadow(QFrame::Sunken);
-        m_label->setFocusPolicy(Qt::StrongFocus);
-        m_label->installEventFilter(this);
-
-        m_label->setVisible(false);
-
-        m_editButton = aznew QPushButton(this);
-        m_editButton->setFlat(true);
-        m_editButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_editButton->setFixedSize(QSize(24, 16));
-        m_editButton->setMouseTracking(true);
-        m_editButton->setContentsMargins(0, 0, 0, 0);
-        m_editButton->setIcon(QIcon(":/PropertyEditor/Resources/edit-asset.png"));
+        m_editButton = aznew QToolButton(this);
+        m_editButton->setAutoRaise(true);
+        m_editButton->setIcon(QIcon(":/stylesheet/img/UI20/open-in-internal-app.svg"));
         m_editButton->setToolTip("Edit asset");
         m_editButton->setVisible(false);
 
-        m_clearButton = aznew QPushButton(this);
-        m_clearButton->setFlat(true);
-        m_clearButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_clearButton->setFixedSize(QSize(16, 16));
-        m_clearButton->setMouseTracking(true);
-        m_clearButton->setIcon(QIcon(":/PropertyEditor/Resources/cross-small.png"));
-        m_clearButton->setContentsMargins(0, 0, 0, 0);
-        m_clearButton->setToolTip("Clear Asset");
-        m_clearButton->setVisible(true);
+        connect(m_editButton, &QToolButton::clicked, this, &PropertyAssetCtrl::OnEditButtonClicked);
 
-        m_browseButton = aznew QPushButton(this); //changed for preview to have right click to open new asset browser popup
-        m_browseButton->setFlat(true);
-        m_browseButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_browseButton->setFixedSize(QSize(16, 16));
-        m_browseButton->setText("...");
-        m_browseButton->setMouseTracking(true);
-        m_browseButton->setContentsMargins(0, 0, 0, 0);
-        m_browseButton->setToolTip("Browse...");
-        m_browseButton->setVisible(true);
-
-        connect(m_editButton, &QPushButton::clicked, this, &PropertyAssetCtrl::OnEditButtonClicked);
-        connect(m_browseButton, &QPushButton::clicked, this, &PropertyAssetCtrl::PopupAssetPicker);
-        connect(m_clearButton, &QPushButton::clicked, this, &PropertyAssetCtrl::ClearAsset);
-
-        pLayout->addWidget(m_lineEdit);
-        pLayout->addWidget(m_label);
-        pLayout->addWidget(m_browseButton);
+        pLayout->addWidget(m_browseEdit);
         pLayout->addWidget(m_editButton);
-        pLayout->addWidget(m_clearButton);
 
         setLayout(pLayout);
 
-        setFocusProxy(m_lineEdit);
-        setFocusPolicy(m_lineEdit->focusPolicy());
+        setFocusProxy(m_browseEdit->lineEdit());
+        setFocusPolicy(m_browseEdit->lineEdit()->focusPolicy());
 
         m_currentAssetType = AZ::Data::s_invalidAssetType;
 
         setContextMenuPolicy(Qt::CustomContextMenu);
         connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
             this, SLOT(ShowContextMenu(const QPoint&)));
-
-        connect(m_lineEdit, &LineEditLoading::focused, this, &PropertyAssetCtrl::OnLineEditFocus);
     }
 
     void PropertyAssetCtrl::ConfigureAutocompleter()
@@ -252,13 +144,13 @@ namespace AzToolsFramework
     void PropertyAssetCtrl::EnableAutocompleter()
     {
         m_completerIsActive = true;
-        m_lineEdit->setCompleter(m_completer);
+        m_browseEdit->lineEdit()->setCompleter(m_completer);
     }
 
     void PropertyAssetCtrl::DisableAutocompleter()
     {
         m_completerIsActive = false;
-        m_lineEdit->setCompleter(nullptr);
+        m_browseEdit->lineEdit()->setCompleter(nullptr);
     }
 
     void PropertyAssetCtrl::HandleFieldClear()
@@ -271,13 +163,11 @@ namespace AzToolsFramework
         {
             SetSelectedAssetID(GetCurrentAssetID());
         }
-        m_lineEdit->StopLoading();
     }
 
     void PropertyAssetCtrl::OnAutocomplete(const QModelIndex& index)
     {
         SetSelectedAssetID(m_model->GetAssetIdFromIndex(GetSourceIndex(index)));
-        m_lineEdit->StopLoading();
     }
 
     void PropertyAssetCtrl::OnReturnPressed()
@@ -301,7 +191,7 @@ namespace AzToolsFramework
             HandleFieldClear();
         }
 
-        m_lineEdit->clearFocus();
+        m_browseEdit->lineEdit()->clearFocus();
     }
 
     void PropertyAssetCtrl::OnTextChange(const QString& text)
@@ -309,7 +199,7 @@ namespace AzToolsFramework
         // Triggered when text in textEdit is deliberately changed by the user
 
         // 0 - Save position of cursor on lineEdit
-        m_lineEditLastCursorPosition = m_lineEdit->cursorPosition();
+        m_lineEditLastCursorPosition = m_browseEdit->lineEdit()->cursorPosition();
 
         // 1 - If the model for this field still hasn't been configured, do so.
         if (!m_completerIsConfigured)
@@ -340,11 +230,8 @@ namespace AzToolsFramework
         m_incompleteFilename = true;
 
         // 5 - If lineEdit isn't manually set to text, first alteration of the text isn't registered correctly. We're also restoring cursor position.
-        m_lineEdit->setText(text);
-        m_lineEdit->setCursorPosition(m_lineEditLastCursorPosition);
-
-        // 6 - Every text change triggers the loading icon
-        m_lineEdit->StartLoading();
+        m_browseEdit->setText(text);
+        m_browseEdit->lineEdit()->setCursorPosition(m_lineEditLastCursorPosition);
     }
 
     void PropertyAssetCtrl::ShowContextMenu(const QPoint& pos)
@@ -693,18 +580,14 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::dragEnterEvent(QDragEnterEvent* event)
     {
-        if (m_lineEdit->isVisible() && IsCorrectMimeData(event->mimeData()))
+        const bool validDropTarget = IsCorrectMimeData(event->mimeData());
+        AzQtComponents::BrowseEdit::applyDropTargetStyle(m_browseEdit, validDropTarget);
+        // Accept the event so that we get a dragLeaveEvent and can remove the style.
+        // Note that this does not accept the proposed action.
+        event->accept();
+
+        if (validDropTarget)
         {
-            m_lineEdit->setProperty("DropHighlight", true);
-            m_lineEdit->style()->unpolish(m_lineEdit);
-            m_lineEdit->style()->polish(m_lineEdit);
-            event->acceptProposedAction();
-        }
-        else if (m_label->isVisible() && m_label->isEnabled() && IsCorrectMimeData(event->mimeData()))
-        {
-            m_label->setProperty("DropHighlight", true);
-            m_label->style()->unpolish(m_label);
-            m_label->style()->polish(m_label);
             event->acceptProposedAction();
         }
     }
@@ -713,24 +596,13 @@ namespace AzToolsFramework
     {
         (void)event;
 
-        if (m_lineEdit->isVisible())
-        {
-            m_lineEdit->setProperty("DropHighlight", QVariant());
-            m_lineEdit->style()->unpolish(m_lineEdit);
-            m_lineEdit->style()->polish(m_lineEdit);
-        }
-        else if (m_label->isVisible() && m_label->isEnabled())
-        {
-            m_label->setProperty("DropHighlight", QVariant());
-            m_label->style()->unpolish(m_label);
-            m_label->style()->polish(m_label);
-        }
+        AzQtComponents::BrowseEdit::removeDropTargetStyle(m_browseEdit);
     }
 
     void PropertyAssetCtrl::dropEvent(QDropEvent* event)
     {
         //do nothing if the line edit is disabled
-        if ((m_lineEdit->isVisible() && !m_lineEdit->isEnabled()) || (m_label->isVisible() && !m_label->isEnabled()))
+        if (m_browseEdit->isVisible() && !m_browseEdit->isEnabled())
         {
             return;
         }
@@ -746,37 +618,32 @@ namespace AzToolsFramework
             event->acceptProposedAction();
         }
 
-        if (m_lineEdit->isVisible())
-        {
-            m_lineEdit->setProperty("DropHighlight", QVariant());
-            m_lineEdit->style()->unpolish(m_lineEdit);
-            m_lineEdit->style()->polish(m_lineEdit);
-        }
-        else if (m_label->isVisible())
-        {
-            m_label->setProperty("DropHighlight", QVariant());
-            m_label->style()->unpolish(m_label);
-            m_label->style()->polish(m_label);
-        }
+        AzQtComponents::BrowseEdit::removeDropTargetStyle(m_browseEdit);
     }
 
     void PropertyAssetCtrl::UpdateTabOrder()
     {
-        setTabOrder(m_lineEdit, m_browseButton);
-        setTabOrder(m_browseButton, m_clearButton);
+        setTabOrder(m_browseEdit, m_editButton);
     }
 
     bool PropertyAssetCtrl::eventFilter(QObject* obj, QEvent* event)
     {
         (void)obj;
 
-        if (isEnabled() && event->type() == QEvent::MouseButtonDblClick)
+        if (isEnabled())
         {
-            // if its filled in with an asset, open the asset.
-            if (m_selectedAssetID.IsValid())
+            switch (event->type())
             {
-                bool someoneHandledIt = false;
-                AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, GetCurrentAssetID(), someoneHandledIt);
+                case QEvent::FocusIn:
+                {
+                    OnLineEditFocus(true);
+                    break;
+                }
+                case QEvent::FocusOut:
+                {
+                    OnLineEditFocus(false);
+                    break;
+                }
             }
         }
 
@@ -853,9 +720,10 @@ namespace AzToolsFramework
         }
     }
 
-    void PropertyAssetCtrl::ClearAsset()
+    void PropertyAssetCtrl::OnClearButtonClicked()
     {
         ClearAssetInternal();
+        m_browseEdit->lineEdit()->clearFocus();
     }
 
     void PropertyAssetCtrl::SetSelectedAssetID(const AZ::Data::AssetId& newID)
@@ -871,6 +739,16 @@ namespace AzToolsFramework
             UpdateAssetDisplay();
             return;
         }
+
+        // If the new asset ID is not valid, raise a clearNotify callback
+        // This is invoked before the new asset is assigned to ensure the callback
+        // has access to the previous asset before it is cleared.
+        if (!newID.IsValid() && m_clearNotifyCallback)
+        {
+            AZ_Error("Asset Property", m_editNotifyTarget, "No notification target set for clear callback.");
+            m_clearNotifyCallback->Invoke(m_editNotifyTarget);
+        }
+
         m_selectedAssetID = newID;
 
         // If the id is valid, connect to the asset system bus
@@ -902,18 +780,8 @@ namespace AzToolsFramework
         AZStd::string assetTypeName;
         AZ::AssetTypeInfoBus::EventResult(assetTypeName, m_currentAssetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
 
-        if (assetTypeName.empty())
-        {
-            m_label->setVisible(true);
-            m_lineEdit->setVisible(false);
-            m_unnamedType = true;
-        }
-        else
-        {
-            m_label->setVisible(false);
-            m_lineEdit->setVisible(true);
-            m_unnamedType = false;
-        }
+        m_unnamedType = assetTypeName.empty();
+        m_browseEdit->setLineEditReadOnly(m_unnamedType);
 
         UpdateAssetDisplay();
     }
@@ -934,18 +802,8 @@ namespace AzToolsFramework
         AZStd::string assetTypeName;
         AZ::AssetTypeInfoBus::EventResult(assetTypeName, m_currentAssetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
 
-        if (assetTypeName.empty())
-        {
-            m_label->setVisible(true);
-            m_lineEdit->setVisible(false);
-            m_unnamedType = true;
-        }
-        else
-        {
-            m_label->setVisible(false);
-            m_lineEdit->setVisible(true);
-            m_unnamedType = false;
-        }
+        m_unnamedType = assetTypeName.empty();
+        m_browseEdit->setLineEditReadOnly(m_unnamedType);
 
         m_selectedAssetID = newID;
 
@@ -986,7 +844,7 @@ namespace AzToolsFramework
             AzFramework::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), m_defaultAssetHint);
         }
 
-        m_lineEdit->setPlaceholderText((m_defaultAssetHint + m_DefaultSuffix).c_str());
+        m_browseEdit->setPlaceholderText((m_defaultAssetHint + m_DefaultSuffix).c_str());
     }
 
     void PropertyAssetCtrl::UpdateAssetDisplay()
@@ -997,8 +855,9 @@ namespace AzToolsFramework
         }
 
         const AZ::Data::AssetId assetID = GetCurrentAssetID();
+        m_currentAssetHint = "";
 
-        if (!m_unnamedType) 
+        if (!m_unnamedType)
         {
             AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
             AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, assetID, false, false);
@@ -1086,15 +945,13 @@ namespace AzToolsFramework
         setToolTip(m_currentAssetHint.c_str());
 
         // If no asset is selected but a default asset id is, show the default name.
-        if(!m_selectedAssetID.IsValid() && m_defaultAssetID.IsValid())
+        if (!m_selectedAssetID.IsValid() && m_defaultAssetID.IsValid())
         {
-            m_lineEdit->setText("");
-            m_label->setText((assetName + m_DefaultSuffix).c_str());
+            m_browseEdit->setText("");
         }
         else
         {
-            m_lineEdit->setText(assetName.c_str());
-            m_label->setText(assetName.c_str());
+            m_browseEdit->setText(assetName.c_str());
         }
     }
 
@@ -1137,9 +994,19 @@ namespace AzToolsFramework
         m_editNotifyCallback = editNotifyCallback;
     }
 
+    void PropertyAssetCtrl::SetClearNotifyCallback(ClearCallbackType* clearNotifyCallback)
+    {
+        m_clearNotifyCallback = clearNotifyCallback;
+    }
+
     void PropertyAssetCtrl::SetEditButtonTooltip(QString tooltip)
     {
         m_editButton->setToolTip(tooltip);
+    }
+
+    void PropertyAssetCtrl::SetBrowseButtonIcon(const QIcon& icon)
+    {
+        m_browseEdit->setAttachedButtonIcon(icon);
     }
 
     const QModelIndex PropertyAssetCtrl::GetSourceIndex(const QModelIndex& index)
@@ -1155,14 +1022,13 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::SetClearButtonEnabled(bool enable)
     {
-        m_clearButton->setEnabled(enable);
+        m_browseEdit->setClearButtonEnabled(enable);
         m_allowEmptyValue = enable;
     }
 
     void PropertyAssetCtrl::SetClearButtonVisible(bool visible)
     {
-        m_clearButton->setVisible(visible);
-        m_allowEmptyValue = visible;
+        SetClearButtonEnabled(visible);
     }
 
     const AZ::Uuid& AssetPropertyHandlerDefault::GetHandledType() const
@@ -1243,6 +1109,29 @@ namespace AzToolsFramework
             bool visible = true;
             attrValue->Read<bool>(visible);
             GUI->SetClearButtonVisible(visible);
+        }
+        else if (attrib == AZ::Edit::Attributes::ClearNotify)
+        {
+            PropertyAssetCtrl::ClearCallbackType* func = azdynamic_cast<PropertyAssetCtrl::ClearCallbackType*>(attrValue->GetAttribute());
+            if (func)
+            {
+                GUI->SetClearButtonVisible(true);
+                GUI->SetClearNotifyCallback(func);
+            }
+            else
+            {
+                GUI->SetClearNotifyCallback(nullptr);
+            }
+        }
+        else if (attrib == AZ_CRC("BrowseIcon", 0x507d7a4f))
+        {
+            AZStd::string iconPath;
+            attrValue->Read<AZStd::string>(iconPath);
+
+            if (!iconPath.empty())
+            {
+                GUI->SetBrowseButtonIcon(QIcon(iconPath.c_str()));
+            }
         }
     }
 

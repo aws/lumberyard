@@ -13,6 +13,7 @@
 
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
+#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 
 #include <Editor/GraphCanvas/Components/MappingComponent.h>
 
@@ -22,6 +23,8 @@
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Variable/GraphVariable.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
+
+#include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 
 
 namespace ScriptCanvasEditor
@@ -150,6 +153,9 @@ namespace ScriptCanvasEditor
         AZStd::any* userData = nullptr;
         
         GraphCanvas::SlotRequestBus::EventResult(userData, slotId, &GraphCanvas::SlotRequests::GetUserData);
+
+        AZStd::string displayTitle;
+        GraphCanvas::NodeTitleRequestBus::EventResult(displayTitle, GetEntityId(), &GraphCanvas::NodeTitleRequests::GetTitle);
         
         if (userData && userData->is<ScriptCanvas::SlotId>())
         {
@@ -178,6 +184,24 @@ namespace ScriptCanvasEditor
         if (mapIter != m_slotMapping.end())
         {
             mappedId = mapIter->second;
+        }
+        else
+        {
+            if (GraphCanvas::GraphUtils::IsWrapperNode(GetEntityId()))
+            {
+                AZStd::vector< AZ::EntityId > wrappedNodes;
+                GraphCanvas::WrapperNodeRequestBus::EventResult(wrappedNodes, GetEntityId(), &GraphCanvas::WrapperNodeRequests::GetWrappedNodeIds);
+
+                for (const auto& wrappedId : wrappedNodes)
+                {
+                    SlotMappingRequestBus::EventResult(mappedId, wrappedId, &SlotMappingRequests::MapToGraphCanvasId, slotId);
+
+                    if (mappedId.IsValid())
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
         return mappedId;

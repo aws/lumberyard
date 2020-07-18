@@ -16,29 +16,83 @@
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'QImageIOHandler::d_ptr': class 'QScopedPointer<QImageIOHandlerPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QImageIOHandler'
 #include <QMovie>
 AZ_POP_DISABLE_WARNING
+#include <QSvgWidget>
+#include <QSvgRenderer>
 #include <QHBoxLayout>
 
 namespace AzQtComponents
 {
     StyledBusyLabel::StyledBusyLabel(QWidget* parent)
         : QWidget(parent)
-        , m_busyIcon(new QLabel(this))
+        , m_busyIcon(new QSvgWidget(this))
+        , m_oldBusyIcon(new QLabel(this))
         , m_text(new QLabel(this))
     {
         setLayout(new QHBoxLayout);
         layout()->setSpacing(6);
         layout()->addWidget(m_busyIcon);
+        layout()->addWidget(m_oldBusyIcon);
         layout()->addWidget(m_text);
-        m_busyIcon->setMovie(new QMovie(this));
+        m_oldBusyIcon->setMovie(new QMovie(this));
+        m_oldBusyIcon->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+
         m_busyIcon->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+        m_busyIcon->setVisible(false);
         m_text->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Minimum);
 
-        SetBusyIcon(":/stylesheet/img/in_progress.gif");
+        loadDefaultIcon();
+    }
+
+    bool StyledBusyLabel::unpolish(Style* style, QWidget* widget)
+    {
+        Q_UNUSED(style);
+        auto busyLabel = qobject_cast<StyledBusyLabel*>(widget);
+        if (busyLabel)
+        {
+            busyLabel->SetUseNewWidget(false);
+        }
+        return busyLabel;
+    }
+
+    bool StyledBusyLabel::polish(Style* style, QWidget* widget)
+    {
+        Q_UNUSED(style);
+        auto busyLabel = qobject_cast<StyledBusyLabel*>(widget);
+        if (busyLabel)
+        {
+            busyLabel->SetUseNewWidget(true);
+        }
+        return busyLabel;
+    }
+
+    void StyledBusyLabel::loadDefaultIcon()
+    {
+        SetBusyIcon(m_useNewWidget ? ":/stylesheet/img/loading.svg" : ":/stylesheet/img/in_progress.gif");
+    }
+
+    void StyledBusyLabel::SetUseNewWidget(bool usenew)
+    {
+        if (m_useNewWidget != usenew)
+        {
+            m_useNewWidget = usenew;
+            loadDefaultIcon();
+            m_oldBusyIcon->setVisible(!m_useNewWidget);
+            m_busyIcon->setVisible(m_useNewWidget);
+            if (m_useNewWidget)
+            {
+                m_oldBusyIcon->movie()->stop();
+            }
+            else
+            {
+                m_oldBusyIcon->movie()->start();
+            }
+            updateMovie();
+        }
     }
 
     bool StyledBusyLabel::GetIsBusy() const
     {
-        return m_busyIcon->movie()->state() == QMovie::Running;
+        return m_useNewWidget ? m_busyIcon->isVisible() : m_oldBusyIcon->movie()->state() == QMovie::Running;
     }
 
     void StyledBusyLabel::SetIsBusy(bool busy)
@@ -62,14 +116,24 @@ namespace AzQtComponents
 
     QString StyledBusyLabel::GetBusyIcon() const
     {
-        return m_busyIcon->movie()->fileName();
+        return m_fileName;
     }
 
     void StyledBusyLabel::SetBusyIcon(const QString& iconSource)
     {
-        m_busyIcon->movie()->setFileName(iconSource);
-        m_busyIcon->setFixedWidth(32);
-        m_busyIcon->movie()->setScaledSize(QSize(height(), height()));
+        m_fileName = iconSource;
+
+        if (m_useNewWidget)
+        {
+            m_busyIcon->renderer()->load(iconSource);
+        }
+        else
+        {
+            m_oldBusyIcon->movie()->setFileName(iconSource);
+            m_oldBusyIcon->setFixedWidth(32);
+            m_oldBusyIcon->movie()->setScaledSize(QSize(height(), height()));
+        }
+
         updateMovie();
     }
 
@@ -96,16 +160,35 @@ namespace AzQtComponents
     {
         if (m_isBusy)
         {
-            m_busyIcon->movie()->start();
-            m_busyIcon->show();
+            if (!m_useNewWidget)
+            {
+                m_oldBusyIcon->movie()->start();
+            }
+            else
+            {
+                m_busyIcon->show();
+            }
         }
         else
         {
-            m_busyIcon->movie()->stop();
-            m_busyIcon->hide();
+            if (!m_useNewWidget)
+            {
+                m_oldBusyIcon->movie()->stop();
+            }
+            else
+            {
+                m_busyIcon->hide();
+            }
         }
-        m_busyIcon->setFixedWidth(m_busyIconSize);
-        m_busyIcon->movie()->setScaledSize(QSize(m_busyIconSize, m_busyIconSize));
+        if (!m_useNewWidget)
+        {
+            m_oldBusyIcon->setFixedWidth(m_busyIconSize);
+            m_oldBusyIcon->movie()->setScaledSize(QSize(m_busyIconSize, m_busyIconSize));
+        }
+        else
+        {
+            m_busyIcon->setFixedSize(m_busyIconSize, m_busyIconSize);
+        }
     }
 
 #include <Components/StyledBusyLabel.moc>

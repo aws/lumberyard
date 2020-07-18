@@ -11,10 +11,15 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// Description : Implementation of IAnimSequence interface.
+
+
 #include "LyShine_precompiled.h"
+
 #include "AnimSequence.h"
 
 #include "StlUtils.h"
+#include "EventNode.h"
 #include "I3DEngine.h"
 #include "AzEntityNode.h"
 #include "UiAnimSerialize.h"
@@ -32,7 +37,7 @@ CUiAnimSequence::CUiAnimSequence()
 CUiAnimSequence::CUiAnimSequence(IUiAnimationSystem* pUiAnimationSystem, uint32 id)
     : m_refCount(0)
 {
-    m_lastGenId = 1;
+    m_nextGenId = 1;
     m_pUiAnimationSystem = pUiAnimationSystem;
     m_flags = 0;
     m_pParentSequence = NULL;
@@ -45,11 +50,21 @@ CUiAnimSequence::CUiAnimSequence(IUiAnimationSystem* pUiAnimationSystem, uint32 
     m_bResetting = false;
     m_id = id;
     m_time = -FLT_MAX;
+
+    m_pEventStrings = aznew CUiAnimStringTable;
 }
 
 //////////////////////////////////////////////////////////////////////////
 CUiAnimSequence::~CUiAnimSequence()
 {
+    // clear reference to me from all my nodes
+    for (int i = m_nodes.size(); --i >= 0;)
+    {
+        if (m_nodes[i])
+        {
+            m_nodes[i]->SetSequence(nullptr);
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -70,6 +85,11 @@ void CUiAnimSequence::release()
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimSequence::SetName(const char* name)
 {
+    if (!m_pUiAnimationSystem)
+    {
+        return;   // should never happen, null pointer guard
+    }
+
     string originalName = GetName();
 
     m_name = name;
@@ -147,26 +167,34 @@ IUiAnimNode* CUiAnimSequence::GetNode(int index) const
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimSequence::AddNode(IUiAnimNode* pAnimNode)
 {
-    assert(pAnimNode != 0);
+    AZ_Assert(pAnimNode, "Expected valid animNode");
+    if(!pAnimNode)
+    {
+        return false;
+    }
+
+    pAnimNode->SetSequence(this);
+    pAnimNode->SetTimeRange(m_timeRange);
 
     // Check if this node already in sequence.
+    bool found = false;
     for (int i = 0; i < (int)m_nodes.size(); i++)
     {
         if (pAnimNode == m_nodes[i].get())
         {
-            // Fail to add node second time.
-            return false;
+            found = true;
+            break;
         }
     }
-
-    static_cast<CUiAnimNode*>(pAnimNode)->SetSequence(this);
-    pAnimNode->SetTimeRange(m_timeRange);
-    m_nodes.push_back(AZStd::intrusive_ptr<IUiAnimNode>(pAnimNode));
+    if (!found)
+    {
+        m_nodes.push_back(AZStd::intrusive_ptr<IUiAnimNode>(pAnimNode));
+    }
 
     const int nodeId = static_cast<CUiAnimNode*>(pAnimNode)->GetId();
-    if (nodeId >= (int)m_lastGenId)
+    if (nodeId >= static_cast<int>(m_nextGenId))
     {
-        m_lastGenId = nodeId + 1;
+        m_nextGenId = nodeId + 1;
     }
 
     if (pAnimNode->NeedToRender())
@@ -190,14 +218,17 @@ IUiAnimNode* CUiAnimSequence::CreateNodeInternal(EUiAnimNodeType nodeType, uint3
 
     if (nNodeId == -1)
     {
-        nNodeId = m_lastGenId;
+        nNodeId = m_nextGenId;
     }
 
     switch (nodeType)
     {
-    case eUiAnimNodeType_AzEntity:
-        pAnimNode = aznew CUiAnimAzEntityNode(nNodeId);
-        break;
+        case eUiAnimNodeType_AzEntity:
+            pAnimNode = aznew CUiAnimAzEntityNode(nNodeId);
+            break;
+        case eUiAnimNodeType_Event:
+            pAnimNode = aznew CUiAnimEventNode(nNodeId);
+            break;
     }
 
     if (pAnimNode)
@@ -217,6 +248,11 @@ IUiAnimNode* CUiAnimSequence::CreateNode(EUiAnimNodeType nodeType)
 //////////////////////////////////////////////////////////////////////////
 IUiAnimNode* CUiAnimSequence::CreateNode(XmlNodeRef node)
 {
+    if (!GetUiAnimationSystem())
+    {
+        return 0;   // should never happen, null pointer guard
+    }
+
     EUiAnimNodeType type;
     static_cast<UiAnimationSystem*>(GetUiAnimationSystem())->SerializeNodeType(type, node, true, IUiAnimSequence::kSequenceVersion, 0);
 
@@ -234,6 +270,20 @@ IUiAnimNode* CUiAnimSequence::CreateNode(XmlNodeRef node)
 
     pNewNode->SetName(name);
     pNewNode->Serialize(node, true, true);
+
+    CUiAnimNode* newAnimNode = static_cast<CUiAnimNode*>(pNewNode);
+
+    // Make sure de-serializing this node didn't just create an id conflict. This can happen sometimes
+    // when copy/pasting nodes from a different sequence to this one.
+    for (auto curNode : m_nodes)
+    {
+        CUiAnimNode* animNode = static_cast<CUiAnimNode*>(curNode.get());
+        if (animNode->GetId() == newAnimNode->GetId() && animNode != newAnimNode)
+        {
+            // Conflict detected, resolve it by assigning a new id to the new node.
+            newAnimNode->SetId(m_nextGenId++);
+        }
+    }
 
     return pNewNode;
 }
@@ -273,6 +323,7 @@ void CUiAnimSequence::RemoveNode(IUiAnimNode* node)
     {
         // Clear the active one.
         m_pActiveDirector = NULL;
+
         // If there is another director node, set it as active.
         for (AnimNodes::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
         {
@@ -290,6 +341,7 @@ void CUiAnimSequence::RemoveNode(IUiAnimNode* node)
 void CUiAnimSequence::RemoveAll()
 {
     stl::free_container(m_nodes);
+    stl::free_container(m_events);
     stl::free_container(m_nodesNeedToRender);
     m_pActiveDirector = NULL;
 }
@@ -546,8 +598,9 @@ void CUiAnimSequence::Activate()
     // Assign animation block to all nodes in this sequence.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IUiAnimNode* pAnimNode = it->get();
-        static_cast<CUiAnimNode*>(pAnimNode)->Activate(true);
+        CUiAnimNode* pAnimNode = static_cast<CUiAnimNode*>(it->get());
+        pAnimNode->OnReset();
+        pAnimNode->Activate(true);
     }
 }
 
@@ -562,9 +615,9 @@ void CUiAnimSequence::Deactivate()
     // Detach animation block from all nodes in this sequence.
     for (AnimNodes::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
     {
-        IUiAnimNode* pAnimNode = it->get();
-        static_cast<CUiAnimNode*>(pAnimNode)->Activate(false);
-        static_cast<CUiAnimNode*>(pAnimNode)->OnReset();
+        CUiAnimNode* pAnimNode = static_cast<CUiAnimNode*>(it->get());
+        pAnimNode->Activate(false);
+        pAnimNode->OnReset();
     }
 
     // Remove a possibly cached game hint associated with this anim sequence.
@@ -605,10 +658,8 @@ void CUiAnimSequence::PrecacheStatic(const float startTime)
     stack_string sTemp("anim_sequence_");
     sTemp += m_name.c_str();
 
-    // Make sure to use the non-serializable game hint type as UI AnimView sequences get properly reactivated after load
-    // Audio: Precache sound
 
-    gEnv->pLog->Log("=== Precaching render data for cutscene: %s ===", GetName());
+    gEnv->pLog->Log("=== Precaching render data for Ui animation: %s ===", GetName());
 
     m_precached = true;
 }
@@ -639,6 +690,19 @@ void CUiAnimSequence::PrecacheEntity(IEntity* pEntity)
 
         m_precachedEntitiesSet.insert(pEntity);
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
+{
+    serializeContext->Class<CUiAnimSequence>()
+        ->Version(2)
+        ->Field("Name", &CUiAnimSequence::m_name)
+        ->Field("Flags", &CUiAnimSequence::m_flags)
+        ->Field("TimeRange", &CUiAnimSequence::m_timeRange)
+        ->Field("ID", &CUiAnimSequence::m_id)
+        ->Field("Nodes", &CUiAnimSequence::m_nodes)
+        ->Field("Events", &CUiAnimSequence::m_events);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -701,9 +765,9 @@ void CUiAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEm
                 pAnimNode->PostLoad();
 
                 // And properly adjust the 'm_lastGenId' to prevent the id clash.
-                if (pAnimNode->GetId() >= (int)m_lastGenId)
+                if (pAnimNode->GetId() >= (int)m_nextGenId)
                 {
-                    m_lastGenId = pAnimNode->GetId() + 1;
+                    m_nextGenId = pAnimNode->GetId() + 1;
                 }
             }
         }
@@ -742,19 +806,21 @@ void CUiAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEm
             }
         }
     }
+
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimSequence::InitPostLoad(IUiAnimationSystem* pUiAnimationSystem, bool remapIds, LyShine::EntityIdMap* entityIdMap)
 {
     m_pUiAnimationSystem = pUiAnimationSystem;
-    int num = GetNodeCount();
-    for (int i = 0; i < num; i++)
+
+    int nodeCount = GetNodeCount();
+    for (int nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
     {
-        IUiAnimNode* pAnimNode = GetNode(i);
-        if (pAnimNode)
+        IUiAnimNode* animNode = GetNode(nodeIndex);
+        if (animNode)
         {
-            pAnimNode->InitPostLoad(this, remapIds, entityIdMap);
+            animNode->InitPostLoad(this, remapIds, entityIdMap);
         }
     }
 }
@@ -788,13 +854,13 @@ void CUiAnimSequence::AdjustKeysToTimeRange(const Range& timeRange)
         int trackCount = pAnimNode->GetTrackCount();
         for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
         {
-            IUiAnimTrack* pTrack = pAnimNode->GetTrackByIndex(paramIndex);
-            int nkey = pTrack->GetNumKeys();
+            IUiAnimTrack* track = pAnimNode->GetTrackByIndex(paramIndex);
+            int nkey = track->GetNumKeys();
             for (int k = 0; k < nkey; k++)
             {
-                float keytime = pTrack->GetKeyTime(k);
+                float keytime = track->GetKeyTime(k);
                 keytime = offset + keytime * scale;
-                pTrack->SetKeyTime(k, keytime);
+                track->SetKeyTime(k, keytime);
             }
         }
     }
@@ -813,12 +879,12 @@ void CUiAnimSequence::ComputeTimeRange()
         int trackCount = pAnimNode->GetTrackCount();
         for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
         {
-            IUiAnimTrack* pTrack = pAnimNode->GetTrackByIndex(paramIndex);
-            int nkey = pTrack->GetNumKeys();
+            IUiAnimTrack* track = pAnimNode->GetTrackByIndex(paramIndex);
+            int nkey = track->GetNumKeys();
             if (nkey > 0)
             {
-                timeRange.start = std::min(timeRange.start, pTrack->GetKeyTime(0));
-                timeRange.end = std::max(timeRange.end, pTrack->GetKeyTime(nkey - 1));
+                timeRange.start = std::min(timeRange.start, track->GetKeyTime(0));
+                timeRange.end = std::max(timeRange.end, track->GetKeyTime(nkey - 1));
             }
         }
     }
@@ -831,6 +897,160 @@ void CUiAnimSequence::ComputeTimeRange()
     m_timeRange = timeRange;
 }
 
+//////////////////////////////////////////////////////////////////////////
+bool CUiAnimSequence::AddTrackEvent(const char* szEvent)
+{
+    AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
+    if (stl::push_back_unique(m_events, szEvent))
+    {
+        NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_Added, szEvent);
+        return true;
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CUiAnimSequence::RemoveTrackEvent(const char* szEvent)
+{
+    AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
+    if (stl::find_and_erase(m_events, szEvent))
+    {
+        NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_Removed, szEvent);
+        return true;
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CUiAnimSequence::RenameTrackEvent(const char* szEvent, const char* szNewEvent)
+{
+    AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
+    AZ_Assert(szNewEvent && szNewEvent[0], "New Track Event is nullptr.");
+
+    for (size_t i = 0; i < m_events.size(); ++i)
+    {
+        if (m_events[i] == szEvent)
+        {
+            m_events[i] = szNewEvent;
+            NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_Renamed, szEvent, szNewEvent);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CUiAnimSequence::MoveUpTrackEvent(const char* szEvent)
+{
+    AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
+
+    for (size_t i = 0; i < m_events.size(); ++i)
+    {
+        if (m_events[i] == szEvent)
+        {
+            AZ_Assert(i > 0, "Event already first in Track.");
+            if (i > 0)
+            {
+                std::swap(m_events[i - 1], m_events[i]);
+                NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_MovedUp, szEvent);
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CUiAnimSequence::MoveDownTrackEvent(const char* szEvent)
+{
+    AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
+
+    for (size_t i = 0; i < m_events.size(); ++i)
+    {
+        if (m_events[i] == szEvent)
+        {
+            AZ_Assert(i < m_events.size() - 1, "Event already last in Track.");
+            if (i < m_events.size() - 1)
+            {
+                std::swap(m_events[i], m_events[i + 1]);
+                NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_MovedDown, szEvent);
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimSequence::ClearTrackEvents()
+{
+    m_events.clear();
+}
+
+//////////////////////////////////////////////////////////////////////////
+int CUiAnimSequence::GetTrackEventsCount() const
+{
+    return static_cast<int>(m_events.size());
+}
+
+//////////////////////////////////////////////////////////////////////////
+char const* CUiAnimSequence::GetTrackEvent(int iIndex) const
+{
+    char const* szResult = NULL;
+    const bool bValid = (iIndex >= 0 && iIndex < GetTrackEventsCount());
+    AZ_Assert(bValid, "Track Event index out of range.");
+
+    if (bValid)
+    {
+        szResult = m_events[iIndex].c_str();
+    }
+
+    return szResult;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimSequence::NotifyTrackEvent(IUiTrackEventListener::ETrackEventReason reason,
+    const char* event, const char* param)
+{
+    // Notify listeners
+    for (TUiTrackEventListeners::iterator j = m_listeners.begin(); j != m_listeners.end(); ++j)
+    {
+        (*j)->OnTrackEvent(this, reason, event, (void*)param);
+    }
+
+    // Pass to Animation System to notify via EBus
+    GetUiAnimationSystem()->NotifyTrackEventListeners(event, param, this);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimSequence::TriggerTrackEvent(const char* event, const char* param)
+{
+    NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_Triggered, event, param);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimSequence::AddTrackEventListener(IUiTrackEventListener* pListener)
+{
+    if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
+    {
+        m_listeners.push_back(pListener);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimSequence::RemoveTrackEventListener(IUiTrackEventListener* pListener)
+{
+    TUiTrackEventListeners::iterator it = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener);
+    if (it != m_listeners.end())
+    {
+        m_listeners.erase(it);
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////
 IUiAnimNode* CUiAnimSequence::FindNodeById(int nNodeId)
@@ -981,17 +1201,6 @@ void CUiAnimSequence::PasteNodes(const XmlNodeRef& xmlNode, IUiAnimNode* pParent
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CUiAnimSequence::Reflect(AZ::SerializeContext* serializeContext)
-{
-    serializeContext->Class<CUiAnimSequence>()
-        ->Version(1)
-        ->Field("Name", &CUiAnimSequence::m_name)
-        ->Field("Flags", &CUiAnimSequence::m_flags)
-        ->Field("TimeRange", &CUiAnimSequence::m_timeRange)
-        ->Field("ID", &CUiAnimSequence::m_id)
-        ->Field("Nodes", &CUiAnimSequence::m_nodes);
-}
 
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimSequence::AddNodeNeedToRender(IUiAnimNode* pNode)
@@ -1010,7 +1219,12 @@ void CUiAnimSequence::RemoveNodeNeedToRender(IUiAnimNode* pNode)
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimSequence::SetActiveDirector(IUiAnimNode* pDirectorNode)
 {
-    assert(pDirectorNode->GetType() == eUiAnimNodeType_Director);
+    if (!pDirectorNode)
+    {
+        return;
+    }
+
+    AZ_Assert(pDirectorNode->GetType() == eUiAnimNodeType_Director, "New Director Node is not Director Type.");
     if (pDirectorNode->GetType() != eUiAnimNodeType_Director)
     {
         return;     // It's not a director node.
@@ -1033,7 +1247,7 @@ IUiAnimNode* CUiAnimSequence::GetActiveDirector() const
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimSequence::IsAncestorOf(const IUiAnimSequence* pSequence) const
 {
-    assert(this != pSequence);
+    AZ_Assert(this != pSequence, "Checked if UiAnimSequence was ancestor of itself.");
     if (this == pSequence)
     {
         return true;
@@ -1043,5 +1257,3 @@ bool CUiAnimSequence::IsAncestorOf(const IUiAnimSequence* pSequence) const
 
     return false;
 }
-
-

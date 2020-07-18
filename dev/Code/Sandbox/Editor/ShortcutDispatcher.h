@@ -23,8 +23,6 @@ class QWidget;
 class QShortcutEvent;
 class QKeyEvent;
 
-static const char* SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY = "ShortcutDispatcherContextBreak";
-
 /* This class provides a workaround against Qt's buggy implementation of shortcut contexts when using dock widgets.
 
    There are several problems with Qt's implementation:
@@ -110,18 +108,6 @@ public:
 
     // Submits LyMetrics about focus
     static void SubmitMetricsEvent(const char* attributeName);
-
-    // Call this method to mark a widget as a shortcut break; any widgets marked this way
-    // will not be searched for shortcuts, and shortcuts under them will only be triggered
-    // if the focus widget is within that hierarchy.
-    //
-    // Most specifically used for view panes.
-    //
-    // Note that this method is inlined and static so that it can be called from anything that includes this header file. Don't move it into the cpp.
-    static void MarkAsShortcutSearchBreak(QWidget* widget)
-    {
-        widget->setProperty(SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY, true);
-    }
 
     /// Assign the widget responsible for getting first attempt
     /// at every shortcut routed through the ShortcutDispatcher.

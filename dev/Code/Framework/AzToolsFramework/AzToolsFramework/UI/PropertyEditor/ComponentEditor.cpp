@@ -28,7 +28,6 @@
 #include <AzQtComponents/Components/Widgets/CardNotification.h>
 #include <AzQtComponents/Utilities/QtViewPaneEffects.h>
 
-#include "EntityIdQLabel.hxx"
 #include <QDesktopWidget>
 #include <QMenu>
 #include <QPushButton>
@@ -245,14 +244,15 @@ namespace AzToolsFramework
 
         //if there were any issues then treat them as warnings
         bool isWarning = hasForwardPCI;
-        bool isReadOnly = isWarning || AreAnyComponentsDisabled();
+        bool isDisabled = AreAnyComponentsDisabled();
+        bool isReadOnly = isWarning || isDisabled;
 
         //display warning icon if component isn't valid
         GetHeader()->SetWarning(isWarning);
         GetHeader()->SetReadOnly(isReadOnly);
 
-        //disable property editor if component isn't valid
-        m_propertyEditor->setDisabled(isReadOnly);
+        // If the Component is ReadOnly, set the mock disabled state on the Card
+        mockDisabledState(isReadOnly);
 
         if (m_components.empty())
         {

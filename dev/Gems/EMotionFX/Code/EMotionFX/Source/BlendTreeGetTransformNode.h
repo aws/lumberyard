@@ -62,34 +62,34 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-            : AnimGraphNodeData(node, animGraphInstance)
-            , m_nodeIndex(MCORE_INVALIDINDEX32)
-            , m_mustUpdate(true) {}
-            ~UniqueData() {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
+
+            void Update() override;
 
         public:
-            uint32          m_nodeIndex;
-            bool            m_mustUpdate;
+            AZ::u32 m_nodeIndex = InvalidIndex32;
         };
 
         BlendTreeGetTransformNode();
         ~BlendTreeGetTransformNode();
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         AZ::Color GetVisualColor() const override                  { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
+        void SetJointName(const AZStd::string& jointName) { m_actorNode.first = jointName; }
+        const AZStd::string& GetNodeName() const { return m_actorNode.first; }
+        int GetActorInstanceParentDepth() const { return m_actorNode.second; }
+
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
 
         using ActorNode = AZStd::pair<AZStd::string, int>;

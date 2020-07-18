@@ -3193,6 +3193,30 @@ namespace AzToolsFramework
         display.SetState(prevState);
     }
 
+    static void DrawManipulatorGrid(
+        AzFramework::DebugDisplayRequests& debugDisplay, const EntityIdManipulators& entityIdManipulators,
+        const float gridSize, const float localSnapping)
+    {
+        const AZ::Matrix3x3 orientation =
+            AZ::Matrix3x3::CreateFromTransform(entityIdManipulators.m_manipulators->GetLocalTransform());
+
+        const AZ::Vector3 unsnappedTranslation =
+            entityIdManipulators.m_manipulators->GetLocalTransform().GetPosition();
+
+        // calculate the offset to snap by to align the manipulator to the grid
+        // note: only perform this if we are not snapping in local space
+        const AZ::Vector3 snappedOffset = !localSnapping
+            ? CalculateSnappedOffset(unsnappedTranslation, orientation.GetBasisX(), gridSize) +
+              CalculateSnappedOffset(unsnappedTranslation, orientation.GetBasisY(), gridSize)
+            : AZ::Vector3::CreateZero();
+
+        const AZ::Vector3 snappedTranslation = unsnappedTranslation + snappedOffset;
+
+        DrawSnappingGrid(
+            debugDisplay, AZ::Transform::CreateFromMatrix3x3AndTranslation(orientation, snappedTranslation),
+            gridSize);
+    }
+
     void EditorTransformComponentSelection::DisplayViewportSelection(
         const AzFramework::ViewportInfo& viewportInfo, AzFramework::DebugDisplayRequests& debugDisplay)
     {
@@ -3318,6 +3342,16 @@ namespace AzToolsFramework
 
             debugDisplay.DepthWriteOn();
             debugDisplay.DepthTestOn();
+
+            if (ShowingGrid(viewportInfo.m_viewportId) && m_mode == Mode::Translation &&
+                !ComponentModeFramework::InComponentMode())
+            {
+                const GridSnapParameters gridSnapParams = GridSnapSettings(viewportInfo.m_viewportId);
+                if (gridSnapParams.m_gridSnap && m_entityIdManipulators.m_manipulators)
+                {
+                    DrawManipulatorGrid(debugDisplay, m_entityIdManipulators, gridSnapParams.m_gridSize, modifiers.Alt());
+                }
+            }
         }
 
         // draw a preview axis of where the manipulator was when the action started

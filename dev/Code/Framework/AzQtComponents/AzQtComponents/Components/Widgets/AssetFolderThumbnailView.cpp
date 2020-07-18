@@ -13,10 +13,10 @@
 
 #include <AzQtComponents/Components/Style.h>
 
-#include <QAbstractItemDelegate>
 AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: 'initializing': conversion from 'int' to 'float', possible loss of data
                                                                     // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
                                                                     // 4800: 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
+#include <QAbstractItemDelegate>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>

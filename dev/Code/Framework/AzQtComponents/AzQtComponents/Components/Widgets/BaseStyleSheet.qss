@@ -18,15 +18,47 @@
 
 *
 {
-    background-color: #444444;
+    background-color: transparent;
     color: white;
     font-family: "Amazon Ember";
     font-weight: 400;
 }
 
+QTableView,
+QListView,
+QTreeView
+{
+    /* give a background color to views without parent (completer popups)
+       it is reset to transparent in the next setting for views with a parent */
+    background-color: #444444;
+}
+
+QWidget > QTableView,
+QWidget > QListView,
+QWidget > QTreeView
+{
+    /* reset the background-color of views with parents to transparent */
+    background-color: transparent;
+}
+
+/* Fix frame HLine and VLine drawing. Affects QFrame but not subclasses */
+.QFrame[frameShape="1"],
+.QFrame[frameShape="2"],
+.QFrame[frameShape="4"],
+.QFrame[frameShape="5"],
+.QFrame[frameShape="6"]
+{
+    background-color: #444444;
+}
+
 QMainWindow:separator
 {
     background-color: #111111;
+}
+
+QMainWindow::separator:hover
+{
+    background-color: #00A1C9;
 }
 
 QMainWindow,
@@ -54,29 +86,66 @@ QComboBox
     line-height: 16px;
 }
 
-@import "Text.qss";
-@import "PushButton.qss";
-@import "Menu.qss";
-@import "CheckBox.qss";
-@import "RadioButton.qss";
-@import "ToolTip.qss";
-@import "ProgressBar.qss";
-@import "ColorPicker.qss";
-@import "Slider.qss";
-@import "Card.qss";
-@import "BrowseEdit.qss";
+QTextEdit,
+QPlainText
+{
+    margin: 2px;
+    border-width: 0px;
+    border-style: solid;
+}
+
+QTextEdit:hover,
+QPlainText:hover
+{
+    margin: 1px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #222222;
+}
+
+QTextEdit:focus,
+QPlainText:focus
+{
+    margin: 1px;
+    border-width: 1px;
+    border-color: #00A1C9;
+    background-color: #FFFFFF;
+}
+
+ConsoleTextEdit
+{
+    margin-top: 6px;
+    background-color: #222222;
+}
+
+@import "AssetFolderListView.qss";
 @import "BreadCrumbs.qss";
-@import "LineEdit.qss";
+@import "BrowseEdit.qss";
+@import "Card.qss";
+@import "CheckBox.qss";
+@import "ColorLabel.qss";
+@import "ColorPicker.qss";
 @import "ComboBox.qss";
-@import "SegmentControl.qss";
-@import "SpinBox.qss";
+@import "FilteredSearchWidget.qss";
+@import "LineEdit.qss";
+@import "Menu.qss";
+@import "MenuBar.qss";
+@import "ProgressBar.qss";
+@import "PushButton.qss";
+@import "QDockWidget.qss";
+@import "RadioButton.qss";
 @import "ScrollBar.qss";
+@import "SegmentControl.qss";
+@import "Slider.qss";
+@import "SpinBox.qss";
+@import "Splitter.qss";
+@import "StyledDockWidget.qss";
+@import "TableView.qss";
 @import "TabWidget.qss";
 @import "TabWidgetActionToolBar.qss";
-@import "TableView.qss";
-@import "FilteredSearchWidget.qss";
-@import "AssetFolderListView.qss";
+@import "Text.qss";
 @import "TitleBar.qss";
-@import "WindowDecorationWrapper.qss";
-@import "StyledDockWidget.qss";
+@import "ToolBar.qss";
+@import "ToolTip.qss";
 @import "VectorInput.qss";
+@import "WindowDecorationWrapper.qss";

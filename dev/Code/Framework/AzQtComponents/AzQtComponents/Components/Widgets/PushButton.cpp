@@ -13,6 +13,7 @@
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <AzCore/Casting/numeric_cast.h>
 
 #include <QStyleFactory>
@@ -28,13 +29,11 @@
 #include <QPixmapCache>
 
 #include <QtWidgets/private/qstyle_p.h>
-#include <QtWidgets/private/qstylehelper_p.h>
 
 namespace AzQtComponents
 {
 
 static QString g_smallIconClass = QStringLiteral("SmallIcon");
-static QString g_attachedButtonClass = QStringLiteral("AttachedButton");
 
 void PushButton::applyPrimaryStyle(QPushButton* button)
 {
@@ -44,11 +43,6 @@ void PushButton::applyPrimaryStyle(QPushButton* button)
 void PushButton::applySmallIconStyle(QToolButton* button)
 {
     Style::addClass(button, g_smallIconClass);
-}
-
-void PushButton::applyAttachedStyle(QToolButton* button)
-{
-    Style::addClass(button, g_attachedButtonClass);
 }
 
 template <typename Button>
@@ -67,7 +61,7 @@ bool PushButton::polish(Style* style, QWidget* widget, const PushButton::Config&
     QToolButton* toolButton = qobject_cast<QToolButton*>(widget);
     QPushButton* pushButton = qobject_cast<QPushButton*>(widget);
 
-    if ((style->hasClass(widget, g_smallIconClass) && (toolButton != nullptr)) || (style->hasClass(widget, g_attachedButtonClass) && (pushButton != nullptr)))
+    if ((style->hasClass(widget, g_smallIconClass) && (toolButton != nullptr)))
     {
         widget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
 
@@ -95,29 +89,29 @@ int PushButton::buttonMargin(const Style* style, const QStyleOption* option, con
     {
         return config.smallIcon.frame.margin;
     }
-    else if (style->hasClass(widget, g_attachedButtonClass))
+
+    int margin = -1;
+    const QPushButton* pushButton = qobject_cast<const QPushButton*>(widget);
+    if (pushButton && !pushButton->isFlat())
     {
-        return 0; // TODO
+        margin = config.defaultFrame.margin;
     }
-    
-    return config.defaultFrame.margin;
+
+    return margin;
 }
 
 QSize PushButton::sizeFromContents(const Style* style, QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget, const PushButton::Config& config)
 {
     QSize sz = style->QProxyStyle::sizeFromContents(type, option, size, widget);
 
-    if (style->hasClass(widget, g_smallIconClass) || style->hasClass(widget, g_attachedButtonClass))
+    const QPushButton* pushButton = qobject_cast<const QPushButton*>(widget);
+    if (style->hasClass(widget, g_smallIconClass))
     {
         sz.setHeight(config.smallIcon.frame.height);
     }
-    else
+    else if (pushButton && !pushButton->isFlat())
     {
-        const QPushButton* pushButton = qobject_cast<const QPushButton*>(widget);
-        if (pushButton != nullptr)
-        {
-            sz.setHeight(config.defaultFrame.height);
-        }
+        sz.setHeight(config.defaultFrame.height);
     }
 
     return sz;
@@ -146,35 +140,32 @@ bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* opt
         return false;
     }
 
-    // Do not draw the bevel for icon buttons
-    if (!button->icon().isNull() && button->text().isEmpty())
-    {
-        return false;
-    }
-
-    QRectF r = option->rect.adjusted(0, 0, -1, -1);
-
-    bool isSmallIconButton = style->hasClass(widget, g_smallIconClass);
-
-    QColor gradientStartColor;
-    QColor gradientEndColor;
     const auto* buttonOption = qstyleoption_cast<const QStyleOptionButton*>(option);
-
-    bool isDefault = buttonOption && (buttonOption->features & QStyleOptionButton::DefaultButton);
-    const bool isPrimary = isDefault || (style->hasClass(widget, QLatin1String("Primary")));
-    bool isDisabled = !(option->state & QStyle::State_Enabled);
-
+    const bool isDisabled = !(option->state & QStyle::State_Enabled);
     Border border = isDisabled ? config.disabledBorder : config.defaultBorder;
 
-    selectColors(option, isPrimary ? config.primary : config.secondary, isDisabled, gradientStartColor, gradientEndColor);
-
-    if (option->state & QStyle::State_HasFocus)
+    if (!button->isFlat())
     {
-        border = config.focusedBorder;
-    }
+        QRectF r = option->rect.adjusted(0, 0, -1, -1);
 
-    float radius = aznumeric_cast<float>(isSmallIconButton ? config.smallIcon.frame.radius : config.defaultFrame.radius);
-    drawFilledFrame(painter, r, gradientStartColor, gradientEndColor, border, radius);
+        bool isSmallIconButton = style->hasClass(widget, g_smallIconClass);
+
+        QColor gradientStartColor;
+        QColor gradientEndColor;
+
+        bool isDefault = buttonOption && (buttonOption->features & QStyleOptionButton::DefaultButton);
+        const bool isPrimary = isDefault || (style->hasClass(widget, QLatin1String("Primary")));
+
+        selectColors(option, isPrimary ? config.primary : config.secondary, isDisabled, gradientStartColor, gradientEndColor);
+
+        if (option->state & QStyle::State_HasFocus)
+        {
+            border = config.focusedBorder;
+        }
+
+        float radius = isSmallIconButton ? aznumeric_cast<float>(config.smallIcon.frame.radius) : aznumeric_cast<float>(config.defaultFrame.radius);
+        drawFilledFrame(painter, r, gradientStartColor, gradientEndColor, border, radius);
+    }
 
     if (buttonOption->features & QStyleOptionButton::HasMenu)
     {
@@ -194,11 +185,6 @@ bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* opt
 
 bool PushButton::drawToolButton(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const PushButton::Config& config)
 {
-    if (style->hasClass(widget, g_attachedButtonClass))
-    {
-        return false;
-    }
-
     if (style->hasClass(widget, g_smallIconClass))
     {
         drawSmallIconButton(style, option, painter, widget, config);
@@ -237,7 +223,7 @@ bool PushButton::drawIndicatorArrowDown(const Style* style, const QStyleOption* 
 bool PushButton::drawPushButtonFocusRect(const Style* /*style*/, const QStyleOption* /*option*/, QPainter* /*painter*/, const QWidget* widget, const PushButton::Config& /*config*/)
 {
     const auto* button = qobject_cast<const QPushButton*>(widget);
-    if (!button || button->isFlat())
+    if (!button)
     {
         return false;
     }
@@ -393,17 +379,17 @@ PushButton::Config PushButton::defaultConfig()
     config.primary.normal.start = QColor("#8156CF");
     config.primary.normal.end = QColor("#6441A4");
 
-    config.secondary.disabled.start = QColor("#808080");
-    config.secondary.disabled.end = QColor("#808080");
+    config.secondary.disabled.start = QColor("#BBBBBB");
+    config.secondary.disabled.end = QColor("#888888");
 
     config.secondary.sunken.start = QColor("#444444");
     config.secondary.sunken.end = QColor("#444444");
 
-    config.secondary.hovered.start = QColor("#777777");
-    config.secondary.hovered.end = QColor("#666666");
+    config.secondary.hovered.start = QColor("#888888");
+    config.secondary.hovered.end = QColor("#777777");
 
-    config.secondary.normal.start = QColor("#666666");
-    config.secondary.normal.end = QColor("#555555");
+    config.secondary.normal.start = QColor("#777777");
+    config.secondary.normal.end = QColor("#666666");
 
     config.defaultBorder.thickness = 1;
     config.defaultBorder.color = QColor("#000000");
@@ -529,16 +515,16 @@ void PushButton::drawSmallIconLabel(const Style* style, const QStyleOptionToolBu
     style->drawControl(QStyle::CE_ToolButtonLabel, &label, painter, widget);
 }
 
-static QRect defaultArrowRect()
+static QRect defaultArrowRect(const QStyleOptionToolButton* buttonOption)
 {
-    static const QRect rect {0, 0, qRound(QStyleHelper::dpiScaled(14)), qRound(QStyleHelper::dpiScaled(8))};
+    static const QRect rect {0, 0, qRound(AzQStyleHelper::dpiScaled(14, AzQStyleHelper::dpi(buttonOption))), qRound(AzQStyleHelper::dpiScaled(8, AzQStyleHelper::dpi(buttonOption)))};
     return rect;
 }
 
-static QPixmap initializeDownArrowPixmap(const QColor& arrowColor, Qt::ArrowType type = Qt::DownArrow, const QRect& rect = defaultArrowRect())
+static QPixmap initializeDownArrowPixmap(const QColor& arrowColor, const QStyleOptionToolButton* buttonOption, const QRect& rect, Qt::ArrowType type = Qt::DownArrow)
 {
-    const int arrowWidth = aznumeric_cast<int>(QStyleHelper::dpiScaled(14));
-    const int arrowHeight = aznumeric_cast<int>(QStyleHelper::dpiScaled(8));
+    const int arrowWidth = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(14, AzQStyleHelper::dpi(buttonOption)));
+    const int arrowHeight = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(8, AzQStyleHelper::dpi(buttonOption)));
 
     const int arrowMax = qMin(arrowHeight, arrowWidth);
     const int rectMax = qMin(rect.height(), rect.width());
@@ -582,7 +568,7 @@ static QPixmap initializeDownArrowPixmap(const QColor& arrowColor, Qt::ArrowType
     return cachePixmap;
 }
 
-static void drawArrow(const Style* style, QPainter* painter, const QRect& rect, const QColor& arrowColor)
+static void drawArrow(const Style* style, const QStyleOptionToolButton* buttonOption, QPainter* painter, const QRect& rect, const QColor& arrowColor)
 {
     Q_UNUSED(style);
 
@@ -591,7 +577,7 @@ static void drawArrow(const Style* style, QPainter* painter, const QRect& rect, 
     
     if (!QPixmapCache::find(downArrowCacheKey, &arrowPixmap))
     {
-        arrowPixmap = initializeDownArrowPixmap(arrowColor);
+        arrowPixmap = initializeDownArrowPixmap(arrowColor, buttonOption, defaultArrowRect(buttonOption));
         QPixmapCache::insert(downArrowCacheKey, arrowPixmap);
     }
 
@@ -653,7 +639,7 @@ void PushButton::drawSmallIconArrow(const Style* style, const QStyleOptionToolBu
 
     if (paintArrow)
     {
-        drawArrow(style, painter, menuArea, color);
+        drawArrow(style, buttonOption, painter, menuArea, color);
     }
 }
 
@@ -666,6 +652,7 @@ void PushButton::drawFilledFrame(QPainter* painter, const QRectF& rect, const QC
     QPen pen(border.color, border.thickness);
     pen.setCosmetic(true);
     painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
 
     // offset the frame so that it smudges and anti-aliases a bit better
     path.addRoundedRect(rect.adjusted(0.5, 0.5, -0.5f, -0.5f), radius, radius);

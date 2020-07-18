@@ -56,8 +56,6 @@ namespace EMotionFX
         static ColliderConfigType GetColliderConfigTypeFromString(const AZStd::string& configTypeString);
         Physics::CharacterColliderConfiguration* GetColliderConfigByType(ColliderConfigType configType);
 
-        Physics::RagdollNodeConfiguration* GetRagdollRootNodeConfig();
-
         const Node* FindRagdollParentNode(const Node* node) const;
 
         Physics::CharacterColliderConfiguration& GetClothConfig();

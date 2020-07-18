@@ -12,9 +12,7 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
-AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::ScrollBar::s_scrollBarWatcher': class 'QPointer<AzQtComponents::ScrollBarWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::ScrollBar'
 #include <AzQtComponents/Components/Widgets/TableView.h>
-AZ_POP_DISABLE_WARNING
 
 class QAbstractItemModel;
 

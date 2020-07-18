@@ -11,9 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// Description : Implementation of IAnimSequence interface.
+
 #pragma once
 
 #include <LyShine/Animation/IUiAnimation.h>
+#include "TrackEventTrack.h"
 
 class CUiAnimSequence
     : public IUiAnimSequence
@@ -27,6 +30,7 @@ public:
     ~CUiAnimSequence();
 
     //////////////////////////////////////////////////////////////////////////
+    // for intrusive_ptr support
     void add_ref() override;
     void release() override;
     //////////////////////////////////////////////////////////////////////////
@@ -40,10 +44,8 @@ public:
 
     float GetTime() const { return m_time; }
 
-    virtual void SetOwner(IUiAnimSequenceOwner* pOwner)
-    { m_pOwner = pOwner; }
-    virtual IUiAnimSequenceOwner* GetOwner() const
-    { return m_pOwner; }
+    virtual void SetOwner(IUiAnimSequenceOwner* pOwner) { m_pOwner = pOwner; }
+    virtual IUiAnimSequenceOwner* GetOwner() const { return m_pOwner; }
 
     virtual void SetActiveDirector(IUiAnimNode* pDirectorNode);
     virtual IUiAnimNode* GetActiveDirector() const;
@@ -107,11 +109,33 @@ public:
     void CopyNodes(XmlNodeRef& xmlNode, IUiAnimNode** pSelectedNodes, uint32 count);
     void PasteNodes(const XmlNodeRef& xmlNode, IUiAnimNode* pParent);
 
+    //! Add/remove track events in sequence
+    virtual bool AddTrackEvent(const char* szEvent);
+    virtual bool RemoveTrackEvent(const char* szEvent);
+    virtual bool RenameTrackEvent(const char* szEvent, const char* szNewEvent);
+    virtual bool MoveUpTrackEvent(const char* szEvent);
+    virtual bool MoveDownTrackEvent(const char* szEvent);
+    virtual void ClearTrackEvents();
+
+    //! Get the track events in the sequence
+    virtual int GetTrackEventsCount() const;
+    virtual char const* GetTrackEvent(int iIndex) const;
+    virtual IUiAnimStringTable* GetTrackEventStringTable() { return m_pEventStrings.get(); }
+
+    //! Call to trigger a track event
+    virtual void TriggerTrackEvent(const char* event, const char* param = NULL);
+
+    //! Track event listener
+    virtual void AddTrackEventListener(IUiTrackEventListener* pListener);
+    virtual void RemoveTrackEventListener(IUiTrackEventListener* pListener);
+
     static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
     void ComputeTimeRange();
     void CopyNodeChildren(XmlNodeRef& xmlNode, IUiAnimNode* pAnimNode);
+    void NotifyTrackEvent(IUiTrackEventListener::ETrackEventReason reason,
+        const char* event, const char* param = NULL);
 
     // Create a new animation node.
     IUiAnimNode* CreateNodeInternal(EUiAnimNodeType nodeType, uint32 nNodeId = -1);
@@ -121,7 +145,7 @@ private:
 
     int m_refCount;
 
-    typedef AZStd::vector< AZStd::intrusive_ptr<IUiAnimNode> > AnimNodes;
+    typedef AZStd::vector<AZStd::intrusive_ptr<IUiAnimNode>> AnimNodes;
     AnimNodes m_nodes;
     AnimNodes m_nodesNeedToRender;
 
@@ -129,8 +153,14 @@ private:
     AZStd::string m_name;
     mutable string m_fullNameHolder;
     Range m_timeRange;
+    UiTrackEvents m_events;
+
+    AZStd::intrusive_ptr<IUiAnimStringTable> m_pEventStrings;
 
     // Listeners
+    typedef AZStd::list<IUiTrackEventListener*> TUiTrackEventListeners;
+    TUiTrackEventListeners m_listeners;
+
     int m_flags;
 
     bool m_precached;
@@ -138,12 +168,11 @@ private:
 
     IUiAnimSequence* m_pParentSequence;
 
-    //
     IUiAnimationSystem* m_pUiAnimationSystem;
     bool m_bPaused;
     bool m_bActive;
 
-    uint32 m_lastGenId;
+    uint32 m_nextGenId;
 
     IUiAnimSequenceOwner* m_pOwner;
 

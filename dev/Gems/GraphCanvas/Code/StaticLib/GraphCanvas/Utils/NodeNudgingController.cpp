@@ -49,15 +49,21 @@ namespace GraphCanvas
             const bool animate = false;
             CancelNudging(animate);
         }
-        
-        m_rootElements = rootElements;
+
+        m_rootElements.clear();
+
+        for (const NodeId& nodeId : rootElements)
+        {
+            NodeId outermostNodeId = GraphUtils::FindOutermostNode(nodeId);
+            m_rootElements.emplace(outermostNodeId);
+        }
+
+        UpdatePositioning();
         
         for (const NodeId& nodeId : m_rootElements)
         {
             GeometryNotificationBus::MultiHandler::BusConnect(nodeId);
         }
-        
-        UpdatePositioning();
     }
 
     void NodeNudgingController::FinalizeNudging()
@@ -137,14 +143,14 @@ namespace GraphCanvas
         SceneRequestBus::EventResult(gridId, m_graphId, &SceneRequests::GetGrid);
 
         GridRequestBus::EventResult(gridStep, gridId, &GridRequests::GetMinorPitch);
-            
+        
         while (!searchableEntities.empty())
         {
             NodeId currentNodeId = (*searchableEntities.begin());
             searchableEntities.erase(searchableEntities.begin());
-                
+
             QRectF currentBoundingBox;
-                
+            
             auto mapIter = m_originalBoundingBoxes.find(currentNodeId);
                 
             // Cache the original bounding boxes so we can math out where we expect to be from our current
@@ -214,79 +220,28 @@ namespace GraphCanvas
                 // So once we have a transition direction, we want to apply all our fixes in that direction.
                 //
                 // We also want to keep track of the inciting elements directions and move in the direciton they tell us                    
-                // to avoid the same situations of moving into a space created by a nod moving out of a space.
+                // to avoid the same situations of moving into a space created by a node moving out of a space.
                 for (auto iter = incitingRange.first; iter != incitingRange.second; ++iter)
                 {
-                    // Calculate our current center, since we are moving around.
-                    AZ::Vector2 centerPoint(aznumeric_cast<float>(currentBoundingBox.center().x()), aznumeric_cast<float>(currentBoundingBox.center().y()));
-                        
-                    QRectF incitingRect = finalBoundingBoxes[iter->second];
-                    AZ::Vector2 incitingCenter = AZ::Vector2(aznumeric_cast<float>(incitingRect.center().x()), aznumeric_cast<float>(incitingRect.center().y()));
-                        
+                    QRectF incitingRect = finalBoundingBoxes[iter->second];                        
                     QPointF incitingMovement = movementDirections[iter->second];
                         
-                    // Determine the direction of movement
-                    AZ::Vector2 movementDirection = centerPoint - incitingCenter;
-                        
-                    // Invert this so we can align centers to make the final movement vector easier to compute
-                    AZ::Vector2 movementVector = -movementDirection;
-                        
-                    if (!movementDirection.IsZero())
-                    {
-                        movementDirection.Normalize();
-                    }
-                    else
-                    {
-                        movementDirection = AZ::Vector2(aznumeric_cast<float>(incitingMovement.x()), aznumeric_cast<float>(incitingMovement.y()));
-                    }
+                    UpdateBoundingBox(currentBoundingBox, incitingRect, transitionDirection, incitingMovement, halfHeight, halfWidth, gridStep);
+                }
 
-                    SanitizeDirection(movementDirection, incitingMovement);
-                    SanitizeDirection(movementDirection, transitionDirection);
-                        
-                    AZ::Vector2 movementAmount;
+                for (auto boundingBoxPair : finalBoundingBoxes)
+                {
+                    QRectF movedSource = boundingBoxPair.second;
 
-                    // Restrict our movement to a single direction, then move so that the two bounding boxes
-                    // won't overlap in that direction anymore, with a single grid step of spacing, because we're fancy
-                    // like that.
-                    if (abs(movementDirection.GetX()) > abs(movementDirection.GetY()))
+                    if (movedSource.intersects(currentBoundingBox))
                     {
-                        float horMove(aznumeric_cast<float>(halfWidth + incitingRect.width() * 0.5f + gridStep.GetX()));
-                            
-                        transitionDirection.setX(1);
-                            
-                        if (movementDirection.GetX() < 0)
-                        {
-                            transitionDirection.setX(-1);
-                            horMove *= -1;
-                        }
-                            
-                        movementAmount.SetX(movementVector.GetX() + horMove);
-                        movementAmount.SetY(0);
+                        QPointF incitingMovement = movementDirections[boundingBoxPair.first];
+
+                        UpdateBoundingBox(currentBoundingBox, movedSource, transitionDirection, incitingMovement, halfHeight, halfWidth, gridStep);
                     }
-                    else
-                    {
-                        float verMove(aznumeric_cast<float>(halfHeight + incitingRect.height() * 0.5f + gridStep.GetY()));
-                        transitionDirection.setY(1);
-                            
-                        if (movementDirection.GetY() < 0)
-                        {
-                            transitionDirection.setY(-1);
-                            verMove *= -1;
-                        }
-                        
-                        movementAmount.SetX(0);
-                        movementAmount.SetY(movementVector.GetY() + verMove);                        
-                    }
-                        
-                    QPointF newTopLeft = currentBoundingBox.topLeft();
-                        
-                    newTopLeft.setX(newTopLeft.x() + movementAmount.GetX());
-                    newTopLeft.setY(newTopLeft.y() + movementAmount.GetY());
-                        
-                    currentBoundingBox.moveTopLeft(newTopLeft);
                 }
                     
-                movementDirections[currentNodeId] = transitionDirection;
+                movementDirections[currentNodeId] = transitionDirection;                
                  
                 // Note: Won't play nicely with the offset anchoring just yet.
                 //       Would need to calculate the actual desired anchor point, and pass that in, and let the internal element handle offsetting it.
@@ -382,5 +337,73 @@ namespace GraphCanvas
         {
             AZ::SystemTickBus::Handler::BusConnect();
         }
+    }
+
+    void NodeNudgingController::UpdateBoundingBox(QRectF& moveableBoundingBox, const QRectF& staticBoundingBox, QPointF& transitionDirection, const QPointF& incitingMovement, float halfHeight, float halfWidth, const AZ::Vector2& gridStep)
+    {
+        AZ::Vector2 incitingCenter = AZ::Vector2(aznumeric_cast<float>(staticBoundingBox.center().x()), aznumeric_cast<float>(staticBoundingBox.center().y()));
+
+        // Calculate our current center, since we are moving around.
+        AZ::Vector2 centerPoint(aznumeric_cast<float>(moveableBoundingBox.center().x()), aznumeric_cast<float>(moveableBoundingBox.center().y()));
+
+        // Determine the direction of movement
+        AZ::Vector2 movementDirection = centerPoint - incitingCenter;
+
+        // Invert this so we can align centers to make the final movement vector easier to compute
+        AZ::Vector2 movementVector = -movementDirection;
+
+        if (!movementDirection.IsZero())
+        {
+            movementDirection.Normalize();
+        }
+        else
+        {
+            movementDirection = AZ::Vector2(aznumeric_cast<float>(incitingMovement.x()), aznumeric_cast<float>(incitingMovement.y()));
+        }
+
+        SanitizeDirection(movementDirection, incitingMovement);
+        SanitizeDirection(movementDirection, transitionDirection);
+
+        AZ::Vector2 movementAmount;
+
+        // Restrict our movement to a single direction, then move so that the two bounding boxes
+        // won't overlap in that direction anymore, with a single grid step of spacing, because we're fancy
+        // like that.
+        if (abs(movementDirection.GetX()) > abs(movementDirection.GetY()))
+        {
+            float horMove(aznumeric_cast<float>(halfWidth + staticBoundingBox.width() * 0.5f + gridStep.GetX()));
+
+            transitionDirection.setX(1);
+
+            if (movementDirection.GetX() < 0)
+            {
+                transitionDirection.setX(-1);
+                horMove *= -1;
+            }
+
+            movementAmount.SetX(movementVector.GetX() + horMove);
+            movementAmount.SetY(0);
+        }
+        else
+        {
+            float verMove(aznumeric_cast<float>(halfHeight + staticBoundingBox.height() * 0.5f + gridStep.GetY()));
+            transitionDirection.setY(1);
+
+            if (movementDirection.GetY() < 0)
+            {
+                transitionDirection.setY(-1);
+                verMove *= -1;
+            }
+
+            movementAmount.SetX(0);
+            movementAmount.SetY(movementVector.GetY() + verMove);
+        }
+
+        QPointF newTopLeft = moveableBoundingBox.topLeft();
+
+        newTopLeft.setX(newTopLeft.x() + movementAmount.GetX());
+        newTopLeft.setY(newTopLeft.y() + movementAmount.GetY());
+
+        moveableBoundingBox.moveTopLeft(newTopLeft);
     }
 }

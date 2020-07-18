@@ -1,0 +1,35 @@
+{
+    "auto": {
+        "Include": [
+            "Include/GraphModel/GraphModelBus.h",
+            "Include/GraphModel/Integration/GraphCanvasMetadata.h",
+            "Include/GraphModel/Integration/GraphController.h",
+            "Include/GraphModel/Integration/GraphControllerManager.h",
+            "Include/GraphModel/Integration/Helpers.h",
+            "Include/GraphModel/Integration/BooleanDataInterface.h",
+            "Include/GraphModel/Integration/FloatDataInterface.h",
+            "Include/GraphModel/Integration/IntegerDataInterface.h",
+            "Include/GraphModel/Integration/StringDataInterface.h",
+            "Include/GraphModel/Integration/VectorDataInterface.inl",
+            "Include/GraphModel/Integration/IntegrationBus.h",
+            "Include/GraphModel/Integration/NodePalette/InputOutputNodePaletteItem.h",
+            "Include/GraphModel/Integration/NodePalette/ModuleNodePaletteItem.h",
+            "Include/GraphModel/Integration/NodePalette/StandardNodePaletteItem.h",
+            "Include/GraphModel/Integration/NodePalette/GraphCanvasNodePaletteItems.h"
+        ],
+        "Source": [
+            "Source/GraphModelModule.cpp",
+            "Source/GraphModelSystemComponent.cpp",
+            "Source/GraphModelSystemComponent.h"
+        ],
+        "Source/Integration": [
+            "Source/Integration/GraphCanvasMetadata.cpp",
+            "Source/Integration/GraphController.cpp",
+            "Source/Integration/GraphControllerManager.cpp",
+            "Source/Integration/BooleanDataInterface.cpp",
+            "Source/Integration/FloatDataInterface.cpp",
+            "Source/Integration/IntegerDataInterface.cpp",
+            "Source/Integration/StringDataInterface.cpp"
+        ]
+    }
+}

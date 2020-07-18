@@ -65,6 +65,7 @@ namespace GraphCanvas
             , m_gridY(1)
             , m_animationDuration(0.0f)
             , m_currentAnimationTime(0.0f)
+            , m_allowQuickDeletion(true)
             , m_itemId(itemId)
             , m_anchorPoint(0,0)
             , m_enabledState(RootGraphicsItemEnabledState::ES_Enabled)
@@ -75,6 +76,8 @@ namespace GraphCanvas
             setAcceptHoverEvents(true);
             RootGraphicsItemRequestBus::Handler::BusConnect(GetEntityId());
             StateController<RootGraphicsItemDisplayState>::Notifications::Handler::BusConnect(&m_forcedStateDisplayState);
+
+            m_gridSize = AZ::Vector2(aznumeric_cast<float>(m_gridX), aznumeric_cast<float>(m_gridY));
         }
 
         ~RootGraphicsItem() override = default;
@@ -150,6 +153,8 @@ namespace GraphCanvas
                 m_gridY = 1;
                 AZ_Error("VisualNotificationsHelper", false, "Invalid Y-Step to snap grid to.");
             }
+
+            m_gridSize = AZ::Vector2(aznumeric_cast<float>(m_gridX), aznumeric_cast<float>(m_gridY));
         }
 
         void SetAnchorPoint(const AZ::Vector2& anchorPoint)
@@ -268,13 +273,16 @@ namespace GraphCanvas
         // ViewSceneNotifications
         void OnAltModifier(bool enabled) override
         {
-            if (enabled)
+            if (m_allowQuickDeletion)
             {
-                SetDisplayState(RootGraphicsItemDisplayState::Deletion);
-            }
-            else
-            {
-                SetDisplayState(RootGraphicsItemDisplayState::Inspection);
+                if (enabled)
+                {
+                    SetDisplayState(RootGraphicsItemDisplayState::Deletion);
+                }
+                else
+                {
+                    SetDisplayState(RootGraphicsItemDisplayState::Inspection);
+                }
             }
         }
         ////
@@ -384,6 +392,11 @@ namespace GraphCanvas
         virtual void OnEnabledStateChanged(RootGraphicsItemEnabledState enabledState)
         {
             AZ_UNUSED(enabledState);
+        }
+
+        void SetAllowQuickDeletion(bool enabled)
+        {
+            m_allowQuickDeletion = enabled;
         }
 
     private:
@@ -561,42 +574,14 @@ namespace GraphCanvas
 
         QPointF CalculatePosition(QPointF position) const
         {
-            QSizeF offset;
-            offset.setWidth(GetBoundingRect().width() * m_anchorPoint.GetX());
-            offset.setHeight(GetBoundingRect().height() * m_anchorPoint.GetY());
-
-            int xPoint = aznumeric_cast<int>(position.x() + offset.width());
-            int yPoint = aznumeric_cast<int>(position.y() + offset.height());
-
             if (m_snapToGrid && !AZ::TickBus::Handler::BusIsConnected())
             {
-                if (xPoint < 0)
-                {
-                    xPoint = aznumeric_cast<int>(xPoint - (m_gridX * 0.5f));
-                    xPoint += aznumeric_cast<int>(abs(xPoint)) % m_gridX;
-                }
-                else
-                {
-                    xPoint = aznumeric_cast<int>(xPoint + (m_gridX * 0.5f));
-                    xPoint -= aznumeric_cast<int>(xPoint) % m_gridX;
-                }
-
-                if (yPoint < 0)
-                {
-                    yPoint = aznumeric_cast<int>(yPoint - (m_gridY * 0.5f));
-                    yPoint += aznumeric_cast<int>(abs(yPoint)) % m_gridY;
-                }
-                else
-                {
-                    yPoint = aznumeric_cast<int>(yPoint + (m_gridY * 0.5f));
-                    yPoint -= aznumeric_cast<int>(yPoint) % m_gridY;
-                }
+                return GraphUtils::CalculateGridSnapPosition(position, m_anchorPoint, GetBoundingRect(), m_gridSize);
             }
-
-            position.setX(xPoint - offset.width());
-            position.setY(yPoint - offset.height());
-
-            return position;
+            else
+            {
+                return GraphUtils::CalculateAnchorPoint(position, m_anchorPoint, GetBoundingRect());
+            }
         }
 
         void CleanUpAnimation()
@@ -606,15 +591,18 @@ namespace GraphCanvas
         }
 
         bool m_resizeToGrid;
-        bool m_snapToGrid;        
+        bool m_snapToGrid;
 
         unsigned int m_gridX;
         unsigned int m_gridY;
+        AZ::Vector2  m_gridSize;
         
         float m_animationDuration;
         float m_currentAnimationTime;
         AZ::Vector2 m_targetPoint;
         AZ::Vector2 m_startPoint;
+
+        bool m_allowQuickDeletion;
 
         RootGraphicsItemEnabledState    m_enabledState;
 

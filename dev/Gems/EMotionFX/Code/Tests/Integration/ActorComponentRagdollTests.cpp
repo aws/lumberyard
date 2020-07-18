@@ -20,52 +20,10 @@
 #include <Tests/TestAssetCode/JackActor.h>
 #include <Tests/TestAssetCode/TestActorAssets.h>
 #include <Tests/TestAssetCode/ActorFactory.h>
+#include <Tests/Mocks/PhysicsRagdoll.h>
 
 namespace EMotionFX
 {
-    class TestRagdoll
-        : public Physics::Ragdoll
-    {
-    public:
-        AZ_RTTI(TestRagdoll, "{A8FCEA6D-DC28-4D7D-9284-D98AD771E944}", Physics::Ragdoll)
-
-        MOCK_METHOD1(EnableSimulation, void(const Physics::RagdollState&));
-        MOCK_METHOD0(DisableSimulation, void());
-
-        MOCK_METHOD0(IsSimulated, bool());
-
-        MOCK_CONST_METHOD1(GetState, void(Physics::RagdollState&));
-        MOCK_METHOD1(SetState, void(const Physics::RagdollState&));
-
-        MOCK_CONST_METHOD2(GetNodeState, void(size_t, Physics::RagdollNodeState&));
-        MOCK_METHOD2(SetNodeState, void(size_t, const Physics::RagdollNodeState&));
-
-        MOCK_CONST_METHOD1(GetNode, Physics::RagdollNode* (size_t));
-        MOCK_CONST_METHOD0(GetNumNodes, size_t());
-
-        MOCK_CONST_METHOD0(GetWorldId, AZ::Crc32());
-
-        // WorldBody
-        MOCK_CONST_METHOD0(GetEntityId, AZ::EntityId());
-        MOCK_CONST_METHOD0(GetWorld, Physics::World*());
-
-        MOCK_CONST_METHOD0(GetTransform, AZ::Transform());
-        MOCK_METHOD1(SetTransform, void(const AZ::Transform&));
-
-        MOCK_CONST_METHOD0(GetPosition, AZ::Vector3());
-        MOCK_CONST_METHOD0(GetOrientation, AZ::Quaternion());
-
-        MOCK_CONST_METHOD0(GetAabb, AZ::Aabb());
-
-        void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override {}
-
-        MOCK_CONST_METHOD0(GetNativeType, AZ::Crc32());
-        MOCK_CONST_METHOD0(GetNativePointer, void*());
-
-        MOCK_METHOD1(AddToWorld, void(Physics::World&));
-        MOCK_METHOD1(RemoveFromWorld, void(Physics::World&));
-    };
-
     class TestRagdollPhysicsRequestHandler
         : public AzFramework::RagdollPhysicsRequestBus::Handler
     {

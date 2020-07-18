@@ -14,19 +14,24 @@
 #include "stdafx.h"
 #include "UiAnimViewNodeFactories.h"
 #include "UiAnimViewAnimNode.h"
+#include "UiAnimViewEventNode.h"
 //#include "UiAnimViewCameraNode.h"
 #include "UiAnimViewTrack.h"
-//#include "UiAnimViewGeomCacheUiAnimationTrack.h"
 
 CUiAnimViewAnimNode* CUiAnimViewAnimNodeFactory::BuildAnimNode(IUiAnimSequence* pSequence, IUiAnimNode* pAnimNode, CUiAnimViewNode* pParentNode)
 {
-#if UI_ANIMATION_REMOVED    // we don't support cameras
-    if (pAnimNode->GetType() == eUiAnimNodeType_Camera)
+    CUiAnimViewAnimNode* retNode = nullptr;
+
+    if (pAnimNode->GetType() == eUiAnimNodeType_Event)
     {
-        return new CUiAnimViewCameraNode(pSequence, pAnimNode, pParentNode);
+        retNode = new CUiAnimViewEventNode(pSequence, pAnimNode, pParentNode);
     }
-#endif
-    return new CUiAnimViewAnimNode(pSequence, pAnimNode, pParentNode);
+    else
+    {
+        retNode = new CUiAnimViewAnimNode(pSequence, pAnimNode, pParentNode);
+    }
+
+    return retNode;
 }
 
 CUiAnimViewTrack* CUiAnimViewTrackFactory::BuildTrack(IUiAnimTrack* pTrack, CUiAnimViewAnimNode* pTrackAnimNode,

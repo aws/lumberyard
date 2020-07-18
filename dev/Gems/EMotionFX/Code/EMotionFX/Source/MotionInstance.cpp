@@ -10,69 +10,39 @@
 *
 */
 
-// include the required headers
-#include "MotionInstance.h"
-#include "Actor.h"
-#include "ActorInstance.h"
-#include "PlayBackInfo.h"
-#include "Pose.h"
-#include "EventManager.h"
-#include "EventHandler.h"
-#include "Node.h"
-#include "TransformData.h"
-#include "MotionEventTable.h"
+#include <EMotionFX/Source/MotionInstance.h>
+#include <EMotionFX/Source/Actor.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/PlayBackInfo.h>
+#include <EMotionFX/Source/Pose.h>
+#include <EMotionFX/Source/EventManager.h>
+#include <EMotionFX/Source/EventHandler.h>
+#include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/TransformData.h>
+#include <EMotionFX/Source/MotionEventTable.h>
 #include <EMotionFX/Source/Allocators.h>
-#include <MCore/Source/IDGenerator.h>
-#include <MCore/Source/Compare.h>
 
+#include <MCore/Source/IDGenerator.h>
 
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(MotionInstance, MotionAllocator, 0)
 
-
-    // constructor
-    MotionInstance::MotionInstance(Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex)
+    MotionInstance::MotionInstance(Motion* motion, ActorInstance* actorInstance, AZ::u32 startNodeIndex)
         : BaseObject()
     {
-        MCORE_ASSERT(actorInstance);
+        AZ_Assert(actorInstance, "Expecting a valid actor instance");
+        AZ_Assert(motion, "Motion pointer cannot be a nullptr");
 
-        mCurrentTime            = 0.0f;
-        mLastCurTime            = 0.0f;
-        mPassedTime             = 0.0f;
-        mClipStartTime          = 0.0f;
-        mClipEndTime            = motion ? motion->GetMaxTime() : 0.0f;
-        mPlaySpeed              = 1.0f;
-        mTargetWeight           = 1.0f;
-        mBlendInTime            = 0.0f;
-        mFreezeAtTime           = -1.0f;
-        mMotion                 = motion;
-        mPlayMode               = PLAYMODE_FORWARD;
-        mBlendMode              = BLENDMODE_OVERWRITE;
-        mFadeTime               = 0.3f;
-        mLastLoops              = 0;
-        mMaxLoops               = EMFX_LOOPFOREVER;
-        mCurLoops               = 0;
-        mPriorityLevel          = 0;
-        mWeight                 = 0.0f;
-        mWeightDelta            = 0.0f;
-        mEventWeightThreshold   = 0.0f;
-        mTotalPlayTime          = 0.0f;
-        mMaxPlayTime            = 0.0f;// disable the maximum play time by setting it to 0 or a negative value
-        mTimeDifToEnd           = 0.0f;
-        mActorInstance          = actorInstance;
-        mStartNodeIndex         = startNodeIndex;
-        mBoolFlags              = 0;// disable all boolean settings on default
-        mCustomData             = nullptr;
-        mID                     = MCore::GetIDGenerator().GenerateID();
-        mCachedKeys             = nullptr;
-        mMotionGroup            = nullptr;
-        mSubPool                = nullptr;
+        m_motion = motion;
+        m_actorInstance = actorInstance;
+        m_startNodeIndex = startNodeIndex;
+        m_id = MCore::GetIDGenerator().GenerateID();
 
-        // enable certain boolean settings
         SetDeleteOnZeroWeight(true);
         SetCanOverwrite(true);
         SetMotionEventsEnabled(true);
+        SetFreezeAtLastFrame(true);
         EnableFlag(BOOL_ISACTIVE);
         EnableFlag(BOOL_ISFIRSTREPOSUPDATE);
         EnableFlag(BOOL_BLENDBEFOREENDED);
@@ -85,80 +55,32 @@ namespace EMotionFX
         }
 #endif // EMFX_DEVELOPMENT_BUILD
 
-        // reset the cache hit counters
         ResetCacheHitCounters();
 
-        // set the memory categories
-        mMotionLinks.SetMemoryCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONLINKS);
-        mNodeWeights.SetMemoryCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
         m_eventHandlersByEventType.resize(EVENT_TYPE_MOTION_INSTANCE_LAST_EVENT - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT + 1);
 
         GetEventManager().OnCreateMotionInstance(this);
     }
 
-
-    // destructor
     MotionInstance::~MotionInstance()
     {
-        // trigger the OnDeleteMotionInstance event
         GetEventManager().OnDeleteMotionInstance(this);
-
-        // remove all event handlers
         RemoveAllEventHandlers();
-
-        // release the allocated cached key memory
-        MCore::Free(mCachedKeys);
-
-        mMotionLinks.Clear();
-        mNodeWeights.Clear();
-
-        if (mMotionGroup)
-        {
-            mMotionGroup->Destroy();
-        }
-
-        mSubPool = nullptr;
+        MCore::Free(m_cachedKeys);
+        m_motionLinks.clear();
+        m_subPool = nullptr;
     }
 
-
-    // create
-    MotionInstance* MotionInstance::Create(Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex)
+    MotionInstance* MotionInstance::Create(Motion* motion, ActorInstance* actorInstance, AZ::u32 startNodeIndex)
     {
         return aznew MotionInstance(motion, actorInstance, startNodeIndex);
     }
 
-
-    // create the motion instance in place
-    MotionInstance* MotionInstance::Create(void* memLocation, Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex)
+    MotionInstance* MotionInstance::Create(void* memLocation, Motion* motion, ActorInstance* actorInstance, AZ::u32 startNodeIndex)
     {
         return new(memLocation) MotionInstance(motion, actorInstance, startNodeIndex);
     }
 
-
-    // allocate the motion group if needed
-    void MotionInstance::InitMotionGroup()
-    {
-        if (mMotionGroup)
-        {
-            return;
-        }
-
-        mMotionGroup = MotionGroup::Create(this);
-    }
-
-
-    // remove the motion group
-    void MotionInstance::RemoveMotionGroup()
-    {
-        if (mMotionGroup)
-        {
-            mMotionGroup->Destroy();
-            mMotionGroup = nullptr;
-        }
-    }
-
-
-    // init the instance from a given playback info
     void MotionInstance::InitFromPlayBackInfo(const PlayBackInfo& info, bool resetCurrentPlaytime)
     {
         SetFadeTime             (info.mBlendOutTime);
@@ -179,563 +101,305 @@ namespace EMotionFX
         SetCanOverwrite         (info.mCanOverwrite);
         SetDeleteOnZeroWeight   (info.mDeleteOnZeroWeight);
         SetMirrorMotion         (info.mMirrorMotion);
-        SetClipStartTime        (info.mClipStartTime);
-        SetClipEndTime          (info.mClipEndTime);
         SetFreezeAtTime         (info.mFreezeAtTime);
         SetIsInPlace            (info.mInPlace);
 
-        if (info.mClipEndTime <= MCore::Math::epsilon && mMotion)
-        {
-            SetClipEndTime(mMotion->GetMaxTime());
-        }
-
-        // if we're playing backwards
         if (resetCurrentPlaytime)
         {
-            if (info.mPlayMode == PLAYMODE_BACKWARD)
-            {
-                if (mMotion)
-                {
-                    mLastCurTime = mClipEndTime;//mMotion->GetMaxTime();
-                }
-                else
-                {
-                    mLastCurTime = mClipStartTime;//0.0f;
-                }
-                mCurrentTime = mLastCurTime;
-            }
-            else
-            {
-                mCurrentTime = mClipStartTime;
-            }
-
-            // the time from the current play time till the end of the motion
-            if (mMotion)
-            {
-                mTimeDifToEnd = mClipEndTime - mClipStartTime;
-            }
-            else
-            {
-                mTimeDifToEnd = 0.0f;
-            }
+            m_currentTime = (info.mPlayMode == PLAYMODE_BACKWARD) ? GetDuration() : 0.0f;
+            m_lastCurTime = m_currentTime;
+            m_timeDiffToEnd = GetDuration();
         }
     }
 
-
-    // initialize the motion instance for sampling
     void MotionInstance::InitForSampling()
     {
-        // resize the number of motion links array to the number of nodes in the actor
-        const uint32 numNodes = mActorInstance->GetActor()->GetNumNodes();
+        const AZ::u32 numNodes = m_actorInstance->GetActor()->GetNumNodes();
 
-        // init the cached keys
-        if (!mCachedKeys)
+        if (!m_cachedKeys)
         {
-            mCachedKeys = (uint32*)MCore::Allocate(sizeof(uint32) * numNodes, EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
-            for (uint32 i = 0; i < numNodes; ++i)
+            m_cachedKeys = (AZ::u32*)MCore::Allocate(sizeof(AZ::u32) * numNodes, EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
+            for (AZ::u32 i = 0; i < numNodes; ++i)
             {
-                mCachedKeys[i] = MCORE_INVALIDINDEX32;
+                m_cachedKeys[i] = MCORE_INVALIDINDEX32;
             }
         }
         else
         {
-            mCachedKeys = (uint32*)MCore::Realloc(mCachedKeys, sizeof(uint32) * numNodes, EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
-            for (uint32 i = 0; i < numNodes; ++i)
+            m_cachedKeys = (AZ::u32*)MCore::Realloc(m_cachedKeys, sizeof(AZ::u32) * numNodes, EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
+            for (AZ::u32 i = 0; i < numNodes; ++i)
             {
-                mCachedKeys[i] = MCORE_INVALIDINDEX32;
+                m_cachedKeys[i] = MCORE_INVALIDINDEX32;
             }
         }
 
-        // create the motion links
-        mMotionLinks.Resize(numNodes);
-        mMotion->CreateMotionLinks(mActorInstance->GetActor(), this);
+        m_motionLinks.resize(static_cast<size_t>(numNodes));
+        m_motion->CreateMotionLinks(m_actorInstance->GetActor(), this);
     }
 
-
-    // change the current time
-    void MotionInstance::SetCurrentTime(float time, bool resetLastAndPastTime)
+    void MotionInstance::SetCurrentTime(float time, bool resetLastTime)
     {
-        mCurrentTime = time;
-        if (resetLastAndPastTime)
+        m_currentTime = time;
+        if (resetLastTime)
         {
-            mLastCurTime    = time;
-            mPassedTime     = 0.0f;
+            m_lastCurTime = time;
         }
     }
 
-
-    // reset the playback times and current position
     void MotionInstance::ResetTimes()
     {
-        if (mPlayMode == PLAYMODE_FORWARD)
-        {
-            mCurrentTime = mClipStartTime;
-        }
-        else
-        {
-            mCurrentTime = mClipEndTime;
-        }
-
-        mPassedTime     = 0.0f;
-        mLastCurTime    = mCurrentTime;
-        mTotalPlayTime  = 0.0f;
-        mCurLoops       = 0;
-        mLastLoops      = 0;
-        mTimeDifToEnd   = mClipEndTime - mClipStartTime;
+        m_currentTime    = (m_playMode == PLAYMODE_FORWARD) ? 0.0f : GetDuration();
+        m_lastCurTime    = m_currentTime;
+        m_totalPlayTime  = 0.0f;
+        m_curLoops       = 0;
+        m_lastLoops      = 0;
+        m_timeDiffToEnd  = GetDuration();
 
         SetIsFrozen(false);
         EnableFlag(MotionInstance::BOOL_ISFIRSTREPOSUPDATE);
     }
 
-
-
-    // update the time values based on the motion playback settings
-    void MotionInstance::CalcNewTimeAfterUpdate(float timePassed, float* outNewTime)
+    MotionInstance::PlayStateOut MotionInstance::CalcPlayState(const PlayStateIn& inState, float timePassed)
     {
-        // init defaults
-        *outNewTime         = mCurrentTime;
+        const float inCurrentTime = AZ::GetClamp(inState.m_currentTime, 0.0f, inState.m_duration);
 
-        // if we're dealing with a grouped motion
-        if (!mMotion)
+        PlayStateOut outState;
+        if (timePassed < AZ::g_fltEps || inState.m_isPaused)
         {
-            return;
+            outState.m_currentTime = inCurrentTime;
+            outState.m_numLoops = inState.m_numLoops;
+            outState.m_hasLooped = false;
+            outState.m_isFrozen = inState.m_isFrozen;
+            outState.m_timeDiffToEnd = (inState.m_playMode == PLAYMODE_FORWARD) ? inState.m_duration - inCurrentTime : inCurrentTime;
+            return outState;
         }
 
-        // if we are playing forward
-        if (mPlayMode == PLAYMODE_FORWARD)
-        {
-            float currentTime = mCurrentTime + timePassed * mPlaySpeed;
-
-            float maxTime = mClipEndTime;////mMotion->GetMaxTime()
-            if (maxTime > mMotion->GetMaxTime())
-            {
-                maxTime = mMotion->GetMaxTime();
-                mClipEndTime = maxTime;
-            }
-
-            // check and handle the bounds of the current playtime, to make it loop etc
-            if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
-            {
-                if (currentTime >= maxTime)
-                {
-                    if (maxTime > 0.0f)
-                    {
-                        currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
-                    }
-                    else
-                    {
-                        currentTime = 0.0f;
-                    }
-                }
-
-                if (currentTime < 0.0f)
-                {
-                    while (currentTime < 0.0f)
-                    {
-                        currentTime = maxTime + currentTime;
-                    }
-                }
-            }
-            else
-            {
-                // if we passed the end of the motion, keep it there
-                if (currentTime >= maxTime)
-                {
-                    if ((mCurLoops + 1) >= mMaxLoops)
-                    {
-                        if (!GetFreezeAtLastFrame())
-                        {
-                            if (maxTime > 0.0f)
-                            {
-                                currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
-                            }
-                            else
-                            {
-                                currentTime = 0.0f;
-                            }
-                        }
-                        else
-                        {
-                            currentTime = maxTime;
-                        }
-                    }
-                    else
-                    {
-                        //DisableFlag( BOOL_ISFROZENATLASTFRAME );
-
-                        if (maxTime > 0.0f)
-                        {
-                            currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
-                        }
-                        else
-                        {
-                            currentTime = 0.0f;
-                        }
-                    }
-                }
-            }
-
-            // if we use the freeze at time setting
-            if (mFreezeAtTime >= 0.0f)
-            {
-                // if we past that freeze time, keep it there
-                if (currentTime > mFreezeAtTime)
-                {
-                    currentTime = mFreezeAtTime;
-                }
-            }
-
-            // if the current time is before the start of the motion, set it to the start of the motion
-            if (currentTime < mClipStartTime)
-            {
-                currentTime = mClipStartTime;
-            }
-
-            // set updated, validated values again
-            *outNewTime = currentTime;
-        }
-        else // backward playback mode
-        {
-            float currentTime   = mCurrentTime - (timePassed * mPlaySpeed);
-            float maxTime       = mClipEndTime;
-            if (maxTime > mMotion->GetMaxTime())
-            {
-                maxTime = mMotion->GetMaxTime();
-                mClipEndTime = maxTime;
-            }
-
-            // check and handle the bounds of the current playtime, to make it loop etc
-            if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
-            {
-                if (currentTime < mClipStartTime)
-                {
-                    currentTime = maxTime + (currentTime - mClipStartTime);
-                }
-
-                if (currentTime > maxTime)
-                {
-                    while (currentTime > maxTime)
-                    {
-                        currentTime = 2.0f * maxTime - currentTime;
-                    }
-                }
-            }
-            else
-            {
-                // if we passed the end of the motion
-                if (currentTime <= mClipStartTime)
-                {
-                    if ((mCurLoops + 1) >= mMaxLoops)
-                    {
-                        if (!GetFreezeAtLastFrame())
-                        {
-                            currentTime = maxTime + (currentTime - mClipStartTime);
-                        }
-                        else
-                        {
-                            currentTime = mClipStartTime;
-                        }
-                    }
-                    else
-                    {
-                        //DisableFlag( BOOL_ISFROZENATLASTFRAME );
-                        currentTime = maxTime + currentTime;
-                    }
-                }
-            }
-
-            // if we use the freeze at time setting
-            if (mFreezeAtTime >= 0.0f)
-            {
-                // if we past that freeze time, keep it there
-                if (currentTime < mFreezeAtTime)
-                {
-                    currentTime = mFreezeAtTime;
-                }
-            }
-
-            // if the current time is before the start of the motion, set it to the start of the motion
-            if (currentTime < mClipStartTime)
-            {
-                currentTime = mClipStartTime;
-            }
-
-            // copy over the current time
-            *outNewTime = currentTime;
-        }
-    }
-
-
-
-    // update the time values based on the motion playback settings
-    void MotionInstance::UpdateTime(float timePassed)
-    {
-        // if we're dealing with a grouped motion
-        if (!mMotion)
-        {
-            mPassedTime      = timePassed * mPlaySpeed;
-            mTotalPlayTime  += MCore::Math::Abs(timePassed);
-            return;
-        }
+        outState.m_numLoops = inState.m_numLoops;
+        outState.m_isFrozen = inState.m_isFrozen;
 
         bool hasLooped = false;
-
-        // if we are playing forward
-        if (mPlayMode == PLAYMODE_FORWARD)
+        if (inState.m_playMode == PLAYMODE_FORWARD)
         {
-            mPassedTime          = timePassed * mPlaySpeed;
-            float currentTime    = mCurrentTime + mPassedTime;
-
-            float maxTime        = mClipEndTime;////mMotion->GetMaxTime()
-            if (maxTime > mMotion->GetMaxTime())
+            float newCurrentTime = inCurrentTime + (timePassed * inState.m_playSpeed);
+            if (inState.m_maxLoops == EMFX_LOOPFOREVER)
             {
-                maxTime = mMotion->GetMaxTime();
-                mClipEndTime = maxTime;
-            }
-
-            mTotalPlayTime += MCore::Math::Abs(timePassed);
-
-            // check and handle the bounds of the current playtime, to make it loop etc
-            if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
-            {
-                if (currentTime >= maxTime)
+                outState.m_isFrozen = false;
+                if (newCurrentTime >= inState.m_duration)
                 {
-                    mCurLoops++;
-                    hasLooped = true;
-
-                    if (maxTime > 0.0f)
-                    {
-                        currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
-                    }
-                    else
-                    {
-                        currentTime = 0.0f;
-                    }
+                    outState.m_numLoops++;
+                    outState.m_hasLooped = true;
                 }
-
-                if (currentTime < 0.0f)
-                {
-                    while (currentTime < 0.0f)
-                    {
-                        currentTime = maxTime + currentTime;
-                    }
-                }
+                newCurrentTime = (inState.m_duration > 0.0f) ? AZ::GetMod(newCurrentTime, inState.m_duration) : 0.0f;
             }
-            else
+            else // Don't loop forever.
             {
-                // if we passed the end of the motion, keep it there
-                if (currentTime >= maxTime)
+                if (newCurrentTime >= inState.m_duration)
                 {
-                    mCurLoops++;
-                    hasLooped = true;
-
-                    if (mCurLoops >= mMaxLoops)
+                    outState.m_numLoops++;
+                    outState.m_hasLooped = true;
+                    if (outState.m_numLoops >= inState.m_maxLoops)
                     {
-                        //if (mActorInstance->GetActor()->GetRepositioningNodeIndex() == MCORE_INVALIDINDEX32)
-                        //currentTime = maxTime;
-                        //else
+                        if (!inState.m_freezeAtLastFrame)
                         {
-                            if (!GetFreezeAtLastFrame())
-                            {
-                                if (maxTime > 0.0f)
-                                {
-                                    currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
-                                }
-                                else
-                                {
-                                    currentTime = 0.0f;
-                                }
-                            }
-                            else
-                            {
-                                mCurLoops = mMaxLoops - 1;
-                                currentTime = maxTime;
-                                mPassedTime = 0.0f;
-                                hasLooped = false;
-
-                                if (!GetIsFrozen())
-                                {
-                                    mMotion->GetEventTable()->ProcessEvents(mCurrentTime, maxTime + 0.00001f, this);
-                                    EnableFlag(BOOL_ISFROZENATLASTFRAME);
-                                    GetEventManager().OnIsFrozenAtLastFrame(this);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        DisableFlag(BOOL_ISFROZENATLASTFRAME);
-
-                        if (maxTime > 0.0f)
-                        {
-                            currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
+                            newCurrentTime = (inState.m_duration > 0.0f) ? AZ::GetMod(newCurrentTime, inState.m_duration) : 0.0f;
+                            outState.m_numLoops = inState.m_maxLoops;
                         }
                         else
                         {
-                            currentTime = 0.0f;
-                        }
-                    }
-                }
-            }
-
-            // if we use the freeze at time setting
-            if (mFreezeAtTime >= 0.0f)
-            {
-                // if we past that freeze time, keep it there
-                if (currentTime > mFreezeAtTime)
-                {
-                    currentTime = mFreezeAtTime;
-                }
-            }
-
-            // if the current time is before the start of the motion, set it to the start of the motion
-            if (currentTime < mClipStartTime)
-            {
-                currentTime = mClipStartTime;
-            }
-
-            // set updated, validated values again
-            mCurrentTime = currentTime;
-
-            // time difference till the loop point
-            mTimeDifToEnd = mClipEndTime - mCurrentTime;
-        }
-        else // backward playback mode
-        {
-            mPassedTime         = -(timePassed * mPlaySpeed);
-            float currentTime   = mCurrentTime + mPassedTime;
-            float maxTime        = mClipEndTime;
-            if (maxTime > mMotion->GetMaxTime())
-            {
-                maxTime = mMotion->GetMaxTime();
-                mClipEndTime = maxTime;
-            }
-
-            mTotalPlayTime += MCore::Math::Abs(timePassed);
-
-            // check and handle the bounds of the current playtime, to make it loop etc
-            if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
-            {
-                if (currentTime <= mClipStartTime)
-                {
-                    hasLooped = true;
-                    mCurLoops++;
-                    currentTime = maxTime + (currentTime - mClipStartTime);
-                }
-
-                if (currentTime > maxTime)
-                {
-                    while (currentTime > maxTime)
-                    {
-                        currentTime = 2.0f * maxTime - currentTime;
-                    }
-                }
-            }
-            else
-            {
-                // if we passed the end of the motion
-                if (currentTime <= mClipStartTime)
-                {
-                    mCurLoops++;
-                    hasLooped = true;
-
-                    if (mCurLoops >= mMaxLoops)
-                    {
-                        if (!GetFreezeAtLastFrame())
-                        {
-                            //if (mActorInstance->GetActor()->GetRepositioningNodeIndex() == MCORE_INVALIDINDEX32)
-                            //currentTime = 0.0f;
-                            //else
+                            outState.m_numLoops = inState.m_maxLoops;
+                            newCurrentTime = inState.m_duration;
+                            if (inState.m_isFrozen) // Don't emit the looped state when we're frozen.
                             {
-                                currentTime = maxTime + (currentTime - mClipStartTime);
+                                outState.m_hasLooped = false;
                             }
-                        }
-                        else
-                        {
-                            mCurLoops = mMaxLoops - 1;
-                            currentTime = mClipStartTime;
-                            mPassedTime = 0.0f;
-                            hasLooped = false;
-
-                            if (!GetIsFrozen())
-                            {
-                                mMotion->GetEventTable()->ProcessEvents(mClipStartTime, mCurrentTime, this);
-                                EnableFlag(BOOL_ISFROZENATLASTFRAME);
-                                GetEventManager().OnIsFrozenAtLastFrame(this);
-                            }
+                            outState.m_isFrozen = true;
                         }
                     }
                     else
                     {
-                        DisableFlag(BOOL_ISFROZENATLASTFRAME);
-                        currentTime = maxTime + currentTime;
+                        newCurrentTime = (inState.m_duration > 0.0f) ? AZ::GetMod(newCurrentTime, inState.m_duration) : 0.0f;
+                        outState.m_isFrozen = false;
                     }
                 }
             }
 
-            // if we use the freeze at time setting
-            if (mFreezeAtTime >= 0.0f)
+            // If we use the freeze at time setting.
+            if (inState.m_freezeAtTime >= 0.0f)
             {
-                // if we past that freeze time, keep it there
-                if (currentTime < mFreezeAtTime)
+                if (newCurrentTime > inState.m_freezeAtTime)
                 {
-                    currentTime = mFreezeAtTime;
+                    newCurrentTime = inState.m_freezeAtTime;
                 }
             }
 
-            // if the current time is before the start of the motion, set it to the start of the motion
-            if (currentTime < mClipStartTime)
+            if (newCurrentTime < 0.0f)
             {
-                currentTime = mClipStartTime;
+                newCurrentTime = 0.0f;
             }
 
-            // copy over the current time
-            mCurrentTime = currentTime;
+            outState.m_currentTime = newCurrentTime;
+            outState.m_timeDiffToEnd = inState.m_duration - newCurrentTime;
+        }
+        else // Backward playback mode.
+        {
+            float newCurrentTime = inCurrentTime - (timePassed * inState.m_playSpeed);
+            if (inState.m_maxLoops == EMFX_LOOPFOREVER)
+            {
+                outState.m_isFrozen = false;
+                if (newCurrentTime <= 0.0f)
+                {
+                    outState.m_hasLooped = true;
+                    outState.m_numLoops++;
+                    newCurrentTime = (inState.m_duration > 0.0f) ? inState.m_duration + AZ::GetMod(newCurrentTime, inState.m_duration) : 0.0f;
+                }
+            }
+            else // Don't loop forever.
+            {
+                if (newCurrentTime <= 0.0f)
+                {
+                    outState.m_numLoops++;
+                    outState.m_hasLooped = true;
+                    if (outState.m_numLoops >= inState.m_maxLoops)
+                    {
+                        if (!inState.m_freezeAtLastFrame)
+                        {
+                            newCurrentTime = (inState.m_duration > 0.0f) ? inState.m_duration + AZ::GetMod(newCurrentTime, inState.m_duration) : 0.0f;
+                            outState.m_numLoops = inState.m_maxLoops;
+                        }
+                        else
+                        {
+                            outState.m_numLoops = inState.m_maxLoops;
+                            newCurrentTime = 0.0f;
+                            if (inState.m_isFrozen) // Don't emit the looped state when we're frozen.
+                            {
+                                outState.m_hasLooped = false;
+                            }
+                            outState.m_isFrozen = true;
+                        }
+                    }
+                    else
+                    {
+                        newCurrentTime = (inState.m_duration > 0.0f) ? inState.m_duration + AZ::GetMod(newCurrentTime, inState.m_duration) : 0.0f;
+                        outState.m_isFrozen = false;
+                    }
+                }
+            }
 
-            // time difference to the loop point
-            mTimeDifToEnd = mCurrentTime - mClipStartTime;
+            // If we use the freeze at time setting.
+            if (inState.m_freezeAtTime >= 0.0f)
+            {
+                if (newCurrentTime < inState.m_freezeAtTime)
+                {
+                    newCurrentTime = inState.m_freezeAtTime;
+                }
+            }
+
+            if (newCurrentTime < 0.0f)
+            {
+                newCurrentTime = 0.0f;
+            }
+
+            outState.m_currentTime = newCurrentTime;
+            outState.m_timeDiffToEnd = newCurrentTime;
         }
 
-        // trigger the OnMotionInstanceHasLooped event
-        if (hasLooped)
+        return outState;
+    }
+
+    void MotionInstance::ExtractMotionEvents(const PlayStateIn& inState, PlayStateOut& outState, AnimGraphEventBuffer& eventBuffer) const
+    {
+        if (inState.m_isFrozen)
+        {
+            return;
+        }
+
+        // This already handles looping inside the ExtractEvents.
+        m_motion->GetEventTable()->ExtractEvents(inState.m_currentTime, outState.m_currentTime, this, &eventBuffer);
+    }
+
+    void MotionInstance::ProcessMotionEvents(const PlayStateIn& inState, PlayStateOut& outState) const
+    {
+        if (inState.m_isFrozen)
+        {
+            return;
+        }
+
+        // This already handles looping inside the ExtractEvents.
+        m_motion->GetEventTable()->ProcessEvents(inState.m_currentTime, outState.m_currentTime, this);
+    }
+
+    MotionInstance::PlayStateIn MotionInstance::ConstructInputPlayState() const
+    {
+        PlayStateIn playState;
+        playState.m_currentTime = m_currentTime;
+        playState.m_duration = GetDuration();
+        playState.m_playSpeed = m_playSpeed;
+        playState.m_freezeAtTime = m_freezeAtTime;
+        playState.m_numLoops = m_curLoops;
+        playState.m_maxLoops = m_maxLoops;
+        playState.m_playMode = m_playMode;
+        playState.m_isFrozen = GetIsFrozen();
+        playState.m_isPaused = GetIsPaused();
+        playState.m_freezeAtLastFrame = GetFreezeAtLastFrame();
+        return playState;
+    }
+
+    void MotionInstance::SetPlayState(const PlayStateIn& inState, const PlayStateOut& outState, bool triggerEvents)
+    {        
+        m_currentTime = outState.m_currentTime;
+        m_timeDiffToEnd = outState.m_timeDiffToEnd;
+        m_curLoops = outState.m_numLoops;
+        SetIsFrozen(outState.m_isFrozen);
+
+        // If we became frozen.
+        if (inState.m_freezeAtLastFrame && inState.m_isFrozen != outState.m_isFrozen && triggerEvents)
+        {
+            GetEventManager().OnIsFrozenAtLastFrame(this);
+        }
+
+        // If we looped.
+        if (outState.m_hasLooped && triggerEvents)
         {
             GetEventManager().OnHasLooped(this);
         }
     }
 
+    // Update the time values based on the motion playback settings.
+    void MotionInstance::CalcNewTimeAfterUpdate(float timePassed, float* outNewTime) const
+    {
+        *outNewTime = CalcPlayState(ConstructInputPlayState(), timePassed).m_currentTime;
+    }
 
-    // update the motion instance information
+    MotionInstance::PlayStateOut MotionInstance::CalcPlayStateAfterUpdate(float timePassed) const
+    {
+        return CalcPlayState(ConstructInputPlayState(), timePassed);
+    }
+
+    void MotionInstance::UpdateTime(float timePassed)
+    {
+        m_lastCurTime = m_currentTime;
+        m_lastLoops = m_curLoops;
+        const PlayStateIn inState = ConstructInputPlayState();
+        PlayStateOut outState = CalcPlayState(inState, timePassed);
+        SetPlayState(inState, outState, true);
+        if (timePassed > 0.0f)
+        {
+            m_totalPlayTime += timePassed;
+        }
+    }
+
     void MotionInstance::Update(float timePassed)
     {
-        // don't do anything when we're not active
         if (!GetIsActive())
         {
             return;
         }
 
-        // update the motion group
-        if (mMotionGroup)
-        {
-            mMotionGroup->Update(timePassed);
-        }
-
-        // update the last number of loops
-        mLastLoops = mCurLoops;
-
-        // if we're paused, don't update the time values and process motion events
-        if (GetIsPaused() || AZ::IsClose(timePassed, 0, AZ::g_fltEps))
-        {
-            mPassedTime     = 0.0f;
-            mLastCurTime    = mCurrentTime;
-            return;
-        }
-
-        // update the current time value
-        const float currentTimePreUpdate = mCurrentTime;
+        const float currentTimePreUpdate = m_currentTime;
         UpdateTime(timePassed);
 
-        // If UpdateTime() did not advance mCurrentTime we can skip over ProcessEvents()
-        if (!AZ::IsClose(mLastCurTime, mCurrentTime, AZ::g_fltEps))
+        // If UpdateTime() did not advance mCurrentTime we can skip over ProcessEvents().
+        if (!AZ::IsClose(m_lastCurTime, m_currentTime, AZ::g_fltEps))
         {
             // if we are blending towards the destination motion or layer.
             // Do this after UpdateTime(timePassed) and use (mCurrentTime - mLastCurTime)
@@ -744,433 +408,172 @@ namespace EMotionFX
             // have mPlaySpeed that is not 1.0f.
             if (GetIsBlending())
             {
+                const float duration = GetDuration();
                 float deltaTime = 0.0f;
-
-                if (mPlayMode == PLAYMODE_FORWARD)
+                if (m_playMode == PLAYMODE_FORWARD)
                 {
                     // Playing forward, if the motion looped, need to consider the wrapped delta time
-                    if (mLastCurTime > mCurrentTime)
+                    if (m_lastCurTime > m_currentTime)
                     {
                         // Need to add the last time up to the end of the motion, and the cur time from the start of the motion.
                         // That will give us the full wrap around time.
-                        deltaTime = (mClipEndTime - mLastCurTime) + (mCurrentTime - mClipStartTime);
+                        deltaTime = (duration - m_lastCurTime) + m_currentTime;
                     }
                     else
                     {
                         // No looping, simple time passed calc.
-                        deltaTime = (mCurrentTime - mLastCurTime);
+                        deltaTime = (m_currentTime - m_lastCurTime);
                     }
                 }
                 else
                 {
                     // Playing in reverse, if the motion looped, need to consider the wrapped delta time
-                    if (mLastCurTime < mCurrentTime)
+                    if (m_lastCurTime < m_currentTime)
                     {
                         // Need to add the last time up to the start of the motion, and the cur time from the end of the motion.
                         // That will give us the full wrap around time.
-                        deltaTime = (mClipStartTime - mLastCurTime) + (mCurrentTime - mClipEndTime);
+                        deltaTime = -m_lastCurTime + (m_currentTime - duration);
                     }
                     else
                     {
                         // No looping, simple time passed calc.
-                        deltaTime = (mLastCurTime - mCurrentTime);
+                        deltaTime = (m_lastCurTime - m_currentTime);
                     }
                 }
 
-                // update the weight
-                mWeight += mWeightDelta * deltaTime;
+                m_weight += m_weightDelta * deltaTime;
 
-                // if we're increasing the weight
-                if (mWeightDelta >= 0)
+                // If we're increasing the weight.
+                if (m_weightDelta >= 0)
                 {
-                    // if we reached our target weight, don't go past that
-                    if (mWeight >= mTargetWeight)
+                    // If we reached our target weight, don't go past that.
+                    if (m_weight >= m_targetWeight)
                     {
-                        mWeight = mTargetWeight;
+                        m_weight = m_targetWeight;
                         DisableFlag(BOOL_ISBLENDING);
                         GetEventManager().OnStopBlending(this);
                     }
                 }
-                else // if we're decreasing the weight
+                else // If we're decreasing the weight.
                 {
-                    // if we reached our target weight, don't let it go lower than that
-                    if (mWeight <= mTargetWeight)
+                    // If we reached our target weight, don't let it go lower than that.
+                    if (m_weight <= m_targetWeight)
                     {
-                        mWeight = mTargetWeight;
+                        m_weight = m_targetWeight;
                         DisableFlag(BOOL_ISBLENDING);
                         GetEventManager().OnStopBlending(this);
                     }
                 }
             }
 
-            // process events
-            ProcessEvents(mLastCurTime, mCurrentTime);
+            ProcessEvents(m_lastCurTime, m_currentTime);
         }
 
-        mLastCurTime = currentTimePreUpdate;
+        m_lastCurTime = currentTimePreUpdate;
     }
 
-
-    // process events between the previous and current time
     void MotionInstance::ProcessEvents(float oldTime, float newTime)
     {
-        // calculate the actual real time passed in the animation playback
         const float realTimePassed = newTime - oldTime;
-
-        // process motion events
-        if (GetMotionEventsEnabled() && !GetIsPaused() && !MCore::Compare<float>::CheckIfIsClose(realTimePassed, 0.0f, MCore::Math::epsilon) && mWeight >= mEventWeightThreshold && !GetHasEnded())
+        if (GetMotionEventsEnabled() &&
+            !GetIsPaused() &&
+            !AZ::IsClose(realTimePassed, 0.0f, AZ::g_fltEps) &&
+            m_weight >= m_eventWeightThreshold &&
+            !GetHasEnded())
         {
-            mMotion->GetEventTable()->ProcessEvents(mLastCurTime, mCurrentTime, this);
+            m_motion->GetEventTable()->ProcessEvents(m_lastCurTime, m_currentTime, this);
         }
     }
-
-
-    // gather events that get triggered between two given time values
+           
     void MotionInstance::ExtractEvents(float oldTime, float newTime, AnimGraphEventBuffer* outBuffer)
     {
-        // calculate the actual real time passed in the animation playback
         const float realTimePassed = newTime - oldTime;
-
-        // process motion events
-        if (GetMotionEventsEnabled() && !GetIsPaused() && !MCore::Compare<float>::CheckIfIsClose(realTimePassed, 0.0f, MCore::Math::epsilon) && mWeight >= mEventWeightThreshold && !GetHasEnded())
+        if (GetMotionEventsEnabled() &&
+            !GetIsPaused() &&
+            !AZ::IsClose(realTimePassed, 0.0f, AZ::g_fltEps) &&
+            m_weight >= m_eventWeightThreshold &&
+            !GetHasEnded())
         {
-            mMotion->GetEventTable()->ExtractEvents(mLastCurTime, mCurrentTime, this, outBuffer);
+            m_motion->GetEventTable()->ExtractEvents(m_lastCurTime, m_currentTime, this, outBuffer);
         }
     }
 
-
-    // gather events that get triggered between two given time values
     void MotionInstance::ExtractEventsNonLoop(float oldTime, float newTime, AnimGraphEventBuffer* outBuffer)
     {
-        // calculate the actual real time passed in the animation playback
         const float realTimePassed = newTime - oldTime;
-
-        // if there is no real time delta
-        if (MCore::Math::Abs(realTimePassed) < MCore::Math::epsilon)
+        if (AZ::GetAbs(realTimePassed) < AZ::g_fltEps)
         {
             return;
         }
 
-        // extract the events
-        mMotion->GetEventTable()->ExtractEvents(oldTime, newTime, this, outBuffer);
+        m_motion->GetEventTable()->ExtractEvents(oldTime, newTime, this, outBuffer);
     }
 
-
-    // update the motion by an old and new time value
     void MotionInstance::UpdateByTimeValues(float oldTime, float newTime, AnimGraphEventBuffer* outEventBuffer)
     {
-        mLastCurTime    = oldTime;
-        mLastLoops      = mCurLoops;
+        // Get the values in valid range.
+        const float duration = GetDuration();
+        oldTime = AZ::GetClamp(oldTime, 0.0f, duration);
+        newTime = AZ::GetClamp(newTime, 0.0f, duration);
 
-        // if we are blending towards the destination motion or layer
-        const float timePassed = newTime - oldTime;
-        if (MCore::Math::Abs(timePassed) < MCore::Math::epsilon)
+        // Figure out our delta update time.
+        float deltaTime = newTime - oldTime;
+        if (m_playMode == PLAYMODE_FORWARD)
         {
-            mCurrentTime = newTime;
-            return;
-        }
-
-        if (GetIsBlending())
-        {
-            // update the weight
-            mWeight += mWeightDelta * timePassed;
-
-            // if we're increasing the weight
-            if (mWeightDelta >= 0)
+            if (newTime < oldTime) // We have looped.
             {
-                // if we reached our target weight, don't go past that
-                if (mWeight >= mTargetWeight)
-                {
-                    mWeight = mTargetWeight;
-                    DisableFlag(BOOL_ISBLENDING);
-                    GetEventManager().OnStopBlending(this);
-                }
-            }
-            else // if we're decreasing the weight
-            {
-                // if we reached our target weight, don't let it go lower than that
-                if (mWeight <= mTargetWeight)
-                {
-                    mWeight = mTargetWeight;
-                    DisableFlag(BOOL_ISBLENDING);
-                    GetEventManager().OnStopBlending(this);
-                }
+                deltaTime = (duration - oldTime) + newTime;
             }
         }
-
-        // if we're dealing with a grouped motion
-        if (!mMotion)
+        else // Backward.
         {
-            mPassedTime      = timePassed;
-            mTotalPlayTime  += MCore::Math::Abs(timePassed);
-            return;
-        }
-
-        bool hasLooped = false;
-
-        //if (Math::Abs(timePassed) > 0.000001f)
-        //MCore::LogInfo("%s passed = %f     mode=%d", mMotion->GetFileName(), timePassed, mPlayMode);
-
-        // if we are playing forward
-        if (mPlayMode == PLAYMODE_FORWARD)
-        {
-            mPassedTime          = timePassed;
-            float currentTime    = newTime;
-
-            float maxTime        = mClipEndTime;////mMotion->GetMaxTime()
-            if (maxTime > mMotion->GetMaxTime())
+            AZ_Assert(m_playMode == PLAYMODE_BACKWARD, "Expected backward play mode.");
+            if (newTime > oldTime)
             {
-                maxTime = mMotion->GetMaxTime();
-                mClipEndTime = maxTime;
-            }
-
-            mTotalPlayTime += MCore::Math::Abs(timePassed);
-
-            // check and handle the bounds of the current playtime, to make it loop etc
-            if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
-            {
-                if (oldTime > newTime)
-                {
-                    mCurLoops++;
-                    hasLooped = true;
-
-                    if (maxTime > 0.0f)
-                    {
-                        currentTime = newTime;
-                    }
-                    else
-                    {
-                        currentTime = 0.0f;
-                    }
-                }
-            }
-            else // not looping forever
-            {
-                // if we passed the end of the motion, keep it there
-                if (oldTime > newTime)
-                {
-                    mCurLoops++;
-                    hasLooped = true;
-
-                    if (mCurLoops >= mMaxLoops)
-                    {
-                        //if (mActorInstance->GetActor()->GetRepositioningNodeIndex() == MCORE_INVALIDINDEX32)
-                        //currentTime = maxTime;
-                        //else
-                        {
-                            if (!GetFreezeAtLastFrame())
-                            {
-                                if (maxTime > 0.0f)
-                                {
-                                    currentTime = newTime; // mClipStartTime + MCore::Math::SafeFMod(currentTime-mClipStartTime, maxTime - mClipStartTime);
-                                }
-                                else
-                                {
-                                    currentTime = 0.0f;
-                                }
-                            }
-                            else
-                            {
-                                mCurLoops = mMaxLoops - 1;
-                                currentTime = maxTime;
-                                mPassedTime = 0.0f;
-                                hasLooped = false;
-
-                                if (!GetIsFrozen())
-                                {
-                                    if (outEventBuffer)
-                                    {
-                                        mMotion->GetEventTable()->ExtractEvents(mCurrentTime, maxTime + 0.00001f, this, outEventBuffer);
-                                    }
-                                    EnableFlag(BOOL_ISFROZENATLASTFRAME);
-                                    GetEventManager().OnIsFrozenAtLastFrame(this);
-                                }
-                            }
-                        }
-                    }
-                    else // we didn't reach max loops yet
-                    {
-                        DisableFlag(BOOL_ISFROZENATLASTFRAME);
-
-                        if (maxTime > 0.0f)
-                        {
-                            currentTime = newTime; // mClipStartTime + MCore::Math::SafeFMod(currentTime-mClipStartTime, maxTime - mClipStartTime);
-                        }
-                        else
-                        {
-                            currentTime = 0.0f;
-                        }
-                    }
-                }
-                // special case for non looping motions when we reached the end of the motion
-                else if (!GetIsPlayingForever() && MCore::Math::IsFloatEqual(newTime, mClipEndTime))
-                {
-                    if (!GetIsFrozen())
-                    {
-                        if (outEventBuffer)
-                        {
-                            mMotion->GetEventTable()->ExtractEvents(mCurrentTime, maxTime + 0.00001f, this, outEventBuffer);
-                        }
-
-                        EnableFlag(BOOL_ISFROZENATLASTFRAME);
-                        GetEventManager().OnIsFrozenAtLastFrame(this);
-                    }
-                }
-            }
-
-            // if we use the freeze at time setting
-            if (mFreezeAtTime >= 0.0f)
-            {
-                // if we past that freeze time, keep it there
-                if (currentTime > mFreezeAtTime)
-                {
-                    currentTime = mFreezeAtTime;
-                }
-            }
-
-            // if the current time is before the start of the motion, set it to the start of the motion
-            if (currentTime < mClipStartTime)
-            {
-                currentTime = mClipStartTime;
-            }
-
-            // set updated, validated values again
-            mCurrentTime = currentTime;
-
-            // time difference till the loop point
-            mTimeDifToEnd = mClipEndTime - mCurrentTime;
-        }
-        else // backward playback mode
-        {
-            mPassedTime         = timePassed;
-            float currentTime   = newTime;//mCurrentTime + mPassedTime;
-            float maxTime       = mClipEndTime;
-            if (maxTime > mMotion->GetMaxTime())
-            {
-                maxTime = mMotion->GetMaxTime();
-                mClipEndTime = maxTime;
-            }
-
-            mTotalPlayTime += MCore::Math::Abs(timePassed);
-
-            // check and handle the bounds of the current playtime, to make it loop etc
-            if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
-            {
-                if (newTime > oldTime)
-                {
-                    hasLooped = true;
-                    mCurLoops++;
-                    currentTime = newTime;//maxTime + (currentTime - mClipStartTime);
-                }
-
-                if (currentTime > maxTime)
-                {
-                    while (currentTime > maxTime)
-                    {
-                        currentTime = 2.0f * maxTime - currentTime;
-                    }
-                }
+                deltaTime = (duration - newTime) + oldTime;
             }
             else
             {
-                // if we passed the end of the motion
-                if (oldTime < newTime)
-                {
-                    mCurLoops++;
-                    hasLooped = true;
-
-                    if (mCurLoops >= mMaxLoops)
-                    {
-                        if (!GetFreezeAtLastFrame())
-                        {
-                            //if (mActorInstance->GetActor()->GetRepositioningNodeIndex() == MCORE_INVALIDINDEX32)
-                            //currentTime = 0.0f;
-                            //else
-                            {
-                                currentTime = newTime;//maxTime + (currentTime - mClipStartTime);
-                            }
-                        }
-                        else
-                        {
-                            mCurLoops = mMaxLoops - 1;
-                            currentTime = mClipStartTime;
-                            mPassedTime = 0.0f;
-                            hasLooped = false;
-
-                            if (!GetIsFrozen())
-                            {
-                                if (outEventBuffer)
-                                {
-                                    mMotion->GetEventTable()->ExtractEvents(mClipStartTime, mCurrentTime, this, outEventBuffer);
-                                }
-                                EnableFlag(BOOL_ISFROZENATLASTFRAME);
-                                GetEventManager().OnIsFrozenAtLastFrame(this);
-                            }
-                        }
-                    }
-                    else // didn't reach the max loops yet
-                    {
-                        DisableFlag(BOOL_ISFROZENATLASTFRAME);
-                        currentTime = newTime;//maxTime + currentTime;
-                    }
-                }
+                deltaTime = AZ::GetAbs(deltaTime);
             }
-
-            // if we use the freeze at time setting
-            if (mFreezeAtTime >= 0.0f)
-            {
-                // if we past that freeze time, keep it there
-                if (currentTime < mFreezeAtTime)
-                {
-                    currentTime = mFreezeAtTime;
-                }
-            }
-
-            // if the current time is before the start of the motion, set it to the start of the motion
-            if (currentTime < mClipStartTime)
-            {
-                currentTime = mClipStartTime;
-            }
-
-            // copy over the current time
-            mCurrentTime = currentTime;
-
-            // time difference to the loop point
-            mTimeDifToEnd = mCurrentTime - mClipStartTime;
         }
 
-        // trigger the OnMotionInstanceHasLooped event
-        if (hasLooped)
-        {
-            GetEventManager().OnHasLooped(this);
-        }
+        m_lastCurTime = oldTime;
+        m_lastLoops = m_curLoops;
 
-        // extract the events if desired
+        // Build the input state and tweak it so it does what we want for this specific method.
+        PlayStateIn inState = ConstructInputPlayState();
+        inState.m_currentTime = oldTime;
+        inState.m_playSpeed = 1.0f;
+
+        // Calculate and set the new output state.
+        PlayStateOut outState = CalcPlayState(inState, deltaTime);
+        SetPlayState(inState, outState, true);
+
+        // Extract the motion events.
         if (outEventBuffer)
         {
-            ExtractEvents(mLastCurTime, mCurrentTime, outEventBuffer);
+            ExtractMotionEvents(inState, outState, *outEventBuffer);
         }
     }
-
-
 
     // start a blend to the new weight
     void MotionInstance::SetWeight(float targetWeight, float blendTimeInSeconds)
     {
         // make sure the inputs are valid
-        MCORE_ASSERT(blendTimeInSeconds >= 0);
-        MCORE_ASSERT(targetWeight >= 0 && targetWeight <= 1);
-        mTargetWeight = MCore::Clamp<float>(targetWeight, 0.0f, 1.0f);
+        AZ_Assert(blendTimeInSeconds >= 0.0f, "Blend time has to be greater than zero.");
+        AZ_Assert(targetWeight >= 0.0f && targetWeight <= 1.0f, "Target weight has to be between 0 and 1.");
+        m_targetWeight = AZ::GetClamp(targetWeight, 0.0f, 1.0f);
 
         if (blendTimeInSeconds > 0.0f)
         {
             // calculate the rate of change of the weight value, so it goes towards the target weight
-            mWeightDelta = (mTargetWeight - mWeight) / blendTimeInSeconds;
+            m_weightDelta = (m_targetWeight - m_weight) / blendTimeInSeconds;
 
             // update the blendin time
-            if (mTargetWeight > mWeight)
+            if (m_targetWeight > m_weight)
             {
-                mBlendInTime = blendTimeInSeconds;
+                m_blendInTime = blendTimeInSeconds;
             }
 
             if (!GetIsBlending())
@@ -1181,13 +584,13 @@ namespace EMotionFX
         }
         else // blendtime is zero
         {
-            if (mTargetWeight > mWeight)
+            if (m_targetWeight > m_weight)
             {
-                mBlendInTime = 0.0f;
+                m_blendInTime = 0.0f;
             }
 
-            mWeight         = mTargetWeight;
-            mWeightDelta    = 0.0f;
+            m_weight         = m_targetWeight;
+            m_weightDelta    = 0.0f;
 
             if (GetIsBlending())
             {
@@ -1196,33 +599,6 @@ namespace EMotionFX
             }
         }
     }
-
-
-    // setup a weight for a given node
-    void MotionInstance::SetNodeWeight(uint32 nodeIndex, float weight)
-    {
-        MCORE_ASSERT(weight >= 0.0f && weight <= 1.0f);
-
-        // if we haven't allocated the node weights yet, do so
-        if (mNodeWeights.GetLength() == 0)
-        {
-            const uint32 numNodes = mMotionLinks.GetLength();
-            mNodeWeights.Resize(numNodes);
-
-            // init them on weight 1.0f
-            for (uint32 i = 0; i < numNodes; ++i)
-            {
-                mNodeWeights[i].FromFloat(1.0f, 0.0f, 1.0f);
-            }
-
-            // setup that this motion cannot overwrite another motion, since we use a blend mask
-            DisableFlag(BOOL_CANOVERWRITE);
-        }
-
-        // adjust the weight we want
-        mNodeWeights[nodeIndex].FromFloat(weight, 0.0f, 1.0f);
-    }
-
 
     // stop the motion with a new fadeout time
     void MotionInstance::Stop(float fadeOutTime)
@@ -1234,13 +610,11 @@ namespace EMotionFX
         SetFadeTime(fadeOutTime);
 
         // fade out
-        SetWeight(0.0f, mFadeTime);
+        SetWeight(0.0f, m_fadeTime);
 
         // we are stopping the motion
-        //if (mFadeTime > 0)    // if the blendtime would be 0, the motion would already have been deleted now
         EnableFlag(BOOL_ISSTOPPING);
     }
-
 
     // stop the motion using the currently setup fadeout time
     void MotionInstance::Stop()
@@ -1249,13 +623,11 @@ namespace EMotionFX
         GetEventManager().OnStop(this);
 
         // fade out
-        SetWeight(0.0f, mFadeTime);
+        SetWeight(0.0f, m_fadeTime);
 
         // we are stopping the motion
-        //  if (mFadeTime > 0)  // if the blendtime would be 0, the motion would already have been deleted now
         EnableFlag(BOOL_ISSTOPPING);
     }
-
 
     void MotionInstance::SetIsActive(bool enabled)
     {
@@ -1266,17 +638,14 @@ namespace EMotionFX
         }
     }
 
-
-    // pause
     void MotionInstance::Pause()
     {
-        if (GetIsPaused() == false)
+        if (!GetIsPaused())
         {
             EnableFlag(BOOL_ISPAUSED);
             GetEventManager().OnChangedPauseState(this);
         }
     }
-
 
     // unpause
     void MotionInstance::UnPause()
@@ -1288,7 +657,6 @@ namespace EMotionFX
         }
     }
 
-
     // enable or disable pause state
     void MotionInstance::SetPause(bool pauseEnabled)
     {
@@ -1298,7 +666,6 @@ namespace EMotionFX
             GetEventManager().OnChangedPauseState(this);
         }
     }
-
 
     // add a given event handler
     void MotionInstance::AddEventHandler(MotionInstanceEventHandler* eventHandler)
@@ -1314,7 +681,6 @@ namespace EMotionFX
         }
     }
 
-
     // remove a given handler from memory
     void MotionInstance::RemoveEventHandler(MotionInstanceEventHandler* eventHandler)
     {
@@ -1324,7 +690,6 @@ namespace EMotionFX
             eventHandlers.erase(AZStd::remove(eventHandlers.begin(), eventHandlers.end(), eventHandler), eventHandlers.end());
         }
     }
-
 
     //  remove all event handlers
     void MotionInstance::RemoveAllEventHandlers()
@@ -1341,125 +706,114 @@ namespace EMotionFX
     //--------------------
 
     // on a motion event
-    void MotionInstance::OnEvent(const EventInfo& eventInfo)
+    void MotionInstance::OnEvent(const EventInfo& eventInfo) const
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_EVENT - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_EVENT - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnEvent(eventInfo);
         }
     }
 
-
     // when this motion instance starts
     void MotionInstance::OnStartMotionInstance(PlayBackInfo* info)
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnStartMotionInstance(info);
         }
     }
 
-
     // when this motion instance gets deleted
     void MotionInstance::OnDeleteMotionInstance()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnDeleteMotionInstance();
         }
     }
 
-
     // when this motion instance is stopped
     void MotionInstance::OnStop()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STOP - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STOP - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnStop();
         }
     }
 
-
     // when it has looped
     void MotionInstance::OnHasLooped()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_LOOPED - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_LOOPED - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnHasLooped();
         }
     }
 
-
     // when it reached the maximimum number of loops
     void MotionInstance::OnHasReachedMaxNumLoops()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_NUM_LOOPS - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_NUM_LOOPS - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnHasReachedMaxNumLoops();
         }
     }
 
-
     // when it has reached the maximimum playback time
     void MotionInstance::OnHasReachedMaxPlayTime()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_PLAY_TIME - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_PLAY_TIME - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnHasReachedMaxPlayTime();
         }
     }
 
-
     // when it is frozen in the last frame
     void MotionInstance::OnIsFrozenAtLastFrame()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_IS_FROZEN_AT_LAST_FRAME - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_IS_FROZEN_AT_LAST_FRAME - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnIsFrozenAtLastFrame();
         }
     }
 
-
     // when the pause state changes
     void MotionInstance::OnChangedPauseState()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_PAUSE_STATE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_PAUSE_STATE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnChangedPauseState();
         }
     }
 
-
     // when the active state changes
     void MotionInstance::OnChangedActiveState()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_ACTIVE_STATE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_ACTIVE_STATE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnChangedActiveState();
         }
     }
 
-
     // when it starts blending in or out
     void MotionInstance::OnStartBlending()
     {
-        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_BLENDING - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_BLENDING - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
         for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
             eventHandler->OnStartBlending();
         }
     }
-
 
     // when it stops blending
     void MotionInstance::OnStopBlending()
@@ -1470,7 +824,6 @@ namespace EMotionFX
             eventHandler->OnStopBlending();
         }
     }
-
 
     // when the motion instance is queued
     void MotionInstance::OnQueueMotionInstance(PlayBackInfo* info)
@@ -1491,21 +844,19 @@ namespace EMotionFX
 #endif
     }
 
-
     bool MotionInstance::GetIsOwnedByRuntime() const
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
-        return (mBoolFlags & BOOL_ISOWNEDBYRUNTIME) != 0;
+        return (m_boolFlags & BOOL_ISOWNEDBYRUNTIME) != 0;
 #else
         return true;
 #endif
     }
 
-
     // calculate a world space transformation for a given node by sampling the motion at a given time
-    void MotionInstance::CalcGlobalTransform(const MCore::Array<uint32>& hierarchyPath, float timeValue, Transform* outTransform) const
+    void MotionInstance::CalcGlobalTransform(const MCore::Array<AZ::u32>& hierarchyPath, float timeValue, Transform* outTransform) const
     {
-        Actor*      actor = mActorInstance->GetActor();
+        Actor*      actor = m_actorInstance->GetActor();
         Skeleton*   skeleton = actor->GetSkeleton();
 
         // start with an identity transform
@@ -1516,12 +867,12 @@ namespace EMotionFX
         for (int32 i = hierarchyPath.GetLength() - 1; i >= 0; --i)
         {
             // get the current node index
-            const uint32 nodeIndex = hierarchyPath[i];
+            const AZ::u32 nodeIndex = hierarchyPath[i];
 
             // sample the motion if this is supported by the type of motion
-            if (mMotion->GetSupportsCalcNodeTransform())
+            if (m_motion->GetSupportsCalcNodeTransform())
             {
-                mMotion->CalcNodeTransform(this, &subMotionTransform, actor, skeleton->GetNode(nodeIndex), timeValue, GetRetargetingEnabled());
+                m_motion->CalcNodeTransform(this, &subMotionTransform, actor, skeleton->GetNode(nodeIndex), timeValue, GetRetargetingEnabled());
             }
             else
             {
@@ -1533,22 +884,21 @@ namespace EMotionFX
         }
     }
 
-
     // get relative movements between two non-looping time values
     void MotionInstance::CalcRelativeTransform(Node* rootNode, float curTime, float oldTime, Transform* outTransform) const
     {
         // get the facial setup of the actor
-        Actor* actor = mActorInstance->GetActor();
+        Actor* actor = m_actorInstance->GetActor();
 
         // check if we support calculating of the node transform
-        if (mMotion->GetSupportsCalcNodeTransform())
+        if (m_motion->GetSupportsCalcNodeTransform())
         {
             // calculate the two node transformations
             Transform curNodeTransform;
-            mMotion->CalcNodeTransform(this, &curNodeTransform, actor, rootNode, curTime, GetRetargetingEnabled());
+            m_motion->CalcNodeTransform(this, &curNodeTransform, actor, rootNode, curTime, GetRetargetingEnabled());
 
             Transform oldNodeTransform;
-            mMotion->CalcNodeTransform(this, &oldNodeTransform, actor, rootNode, oldTime, GetRetargetingEnabled());
+            m_motion->CalcNodeTransform(this, &oldNodeTransform, actor, rootNode, oldTime, GetRetargetingEnabled());
 
             // calculate the relative transforms
             outTransform->mPosition = curNodeTransform.mPosition - oldNodeTransform.mPosition;
@@ -1562,7 +912,6 @@ namespace EMotionFX
         }
     }
 
-
     // extract the motion delta transform
     bool MotionInstance::ExtractMotion(Transform& outTrajectoryDelta)
     {
@@ -1573,7 +922,7 @@ namespace EMotionFX
             return true;
         }
 
-        Actor*  actor               = mActorInstance->GetActor();
+        Actor*  actor               = m_actorInstance->GetActor();
         Node*   motionExtractNode   = actor->GetMotionExtractionNode();
 
         // check if we have enough data to actually calculate the results
@@ -1583,18 +932,16 @@ namespace EMotionFX
         }
 
         // get the motion extraction node index
-        const uint32 motionExtractionNodeIndex = motionExtractNode->GetNodeIndex();
-
-        // check if this motion influences the node
-        const MotionLink* motionLink = GetMotionLink(motionExtractionNodeIndex);
-        if (!motionLink->GetIsActive() || MCore::Compare<float>::CheckIfIsClose(GetPassedTime(), 0.0f, MCore::Math::epsilon))
-        {
-            return false;
-        }
+        const AZ::u32 motionExtractionNodeIndex = motionExtractNode->GetNodeIndex();
 
         // get the current and previous time value from the motion instance
         float curTimeValue = GetCurrentTime();
         float oldTimeValue = GetLastCurrentTime();
+        const MotionLink* motionLink = GetMotionLink(motionExtractionNodeIndex);
+        if (!motionLink->GetIsActive() || AZ::GetAbs(curTimeValue - oldTimeValue) < AZ::g_fltEps)
+        {
+            return false;
+        }
 
         Transform trajectoryDelta;
         trajectoryDelta.ZeroWithIdentityQuaternion();
@@ -1607,18 +954,18 @@ namespace EMotionFX
             relativeTrajectoryTransform.Identity();
 
             // prevent looping from moving the character back to the origin if this is desired
-            if (GetHasLooped())
+            if (GetHasLooped() && !GetIsFrozen())
             {
                 // if we're playing forward
-                if (mPlayMode == PLAYMODE_FORWARD)
+                if (m_playMode == PLAYMODE_FORWARD)
                 {
-                    CalcRelativeTransform(motionExtractNode, mClipEndTime, oldTimeValue, &relativeTrajectoryTransform);
+                    CalcRelativeTransform(motionExtractNode, GetDuration(), oldTimeValue, &relativeTrajectoryTransform);
                     oldTimeValue = 0.0f;
                 }
                 else // we're playing backward
                 {
-                    CalcRelativeTransform(motionExtractNode, mClipStartTime, oldTimeValue, &relativeTrajectoryTransform);
-                    oldTimeValue = mMotion->GetMaxTime();
+                    CalcRelativeTransform(motionExtractNode, 0.0f, oldTimeValue, &relativeTrajectoryTransform);
+                    oldTimeValue = GetDuration();
                 }
 
                 // add the relative transform to the final values
@@ -1638,14 +985,14 @@ namespace EMotionFX
 
         // Calculate the first frame's transform.
         Transform firstFrameTransform;
-        mMotion->CalcNodeTransform(this, &firstFrameTransform, actor, motionExtractNode, GetClipStartTime(), GetRetargetingEnabled());
+        m_motion->CalcNodeTransform(this, &firstFrameTransform, actor, motionExtractNode, 0.0f, GetRetargetingEnabled());
 
         // Calculate the current frame's transform.
         Transform currentFrameTransform;
-        mMotion->CalcNodeTransform(this, &currentFrameTransform, actor, motionExtractNode, GetCurrentTime(), GetRetargetingEnabled());
+        m_motion->CalcNodeTransform(this, &currentFrameTransform, actor, motionExtractNode, GetCurrentTime(), GetRetargetingEnabled());
 
         // Calculate the difference between the first frame of the motion and the bind pose transform.
-        TransformData* transformData = mActorInstance->GetTransformData();
+        TransformData* transformData = m_actorInstance->GetTransformData();
         const Pose* bindPose = transformData->GetBindPose();
         AZ::Quaternion permBindPoseRotDiff = firstFrameTransform.mRotation * bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mRotation.GetConjugate();
         AZ::Vector3 permBindPosePosDiff = bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mPosition - firstFrameTransform.mPosition;
@@ -1653,7 +1000,7 @@ namespace EMotionFX
         permBindPoseRotDiff.SetY(0.0f);
         permBindPoseRotDiff.Normalize();
 
-        if (!(mMotion->GetMotionExtractionFlags() & MOTIONEXTRACT_CAPTURE_Z))
+        if (!(m_motion->GetMotionExtractionFlags() & MOTIONEXTRACT_CAPTURE_Z))
         {
             permBindPosePosDiff.SetZ(0.0f);
         }
@@ -1661,14 +1008,14 @@ namespace EMotionFX
         // If this is the first frame's motion extraction switch turn that flag off.
         AZ::Quaternion bindPoseRotDiff(0.0f, 0.0f, 0.0f, 1.0f);
         AZ::Vector3 bindPosePosDiff(0.0f, 0.0f, 0.0f);
-        if (mBoolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
+        if (m_boolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
         {
             bindPoseRotDiff = permBindPoseRotDiff;
             bindPosePosDiff = permBindPosePosDiff;
         }
 
         // Capture rotation around the up axis only.
-        trajectoryDelta.ApplyMotionExtractionFlags(mMotion->GetMotionExtractionFlags());
+        trajectoryDelta.ApplyMotionExtractionFlags(m_motion->GetMotionExtractionFlags());
 
         AZ::Quaternion removeRot = currentFrameTransform.mRotation * firstFrameTransform.mRotation.GetConjugate();
         removeRot.SetX(0.0f);
@@ -1683,11 +1030,11 @@ namespace EMotionFX
         AZ::Vector3 rotatedPos = rotation * (trajectoryDelta.mPosition - bindPosePosDiff);
 
         // Calculate the real trajectory delta, taking into account the actor instance rotation.
-        outTrajectoryDelta.mPosition = mActorInstance->GetLocalSpaceTransform().mRotation * rotatedPos;
+        outTrajectoryDelta.mPosition = m_actorInstance->GetLocalSpaceTransform().mRotation * rotatedPos;
         outTrajectoryDelta.mRotation = trajectoryDelta.mRotation * bindPoseRotDiff;
         outTrajectoryDelta.mRotation.NormalizeExact();
 
-        if (mBoolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
+        if (m_boolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
         {
             DisableFlag(MotionInstance::BOOL_ISFIRSTREPOSUPDATE);
         }
@@ -1695,91 +1042,72 @@ namespace EMotionFX
         return true;
     }
 
-
     // get the sub pool
     MotionInstancePool::SubPool* MotionInstance::GetSubPool() const
     {
-        return mSubPool;
+        return m_subPool;
     }
-
 
     // set the subpool
     void MotionInstance::SetSubPool(MotionInstancePool::SubPool* subPool)
     {
-        mSubPool = subPool;
+        m_subPool = subPool;
     }
 
-
-    bool MotionInstance::GetIsReadyForSampling() const                          { return (mMotionLinks.GetLength() > 0); }
-    void MotionInstance::SetCustomData(void* customDataPointer)                 { mCustomData = customDataPointer; }
-    void* MotionInstance::GetCustomData() const                                 { return mCustomData; }
-    float MotionInstance::GetBlendInTime() const                                { return mBlendInTime; }
-    float MotionInstance::GetPassedTime() const                                 { return mPassedTime; }
-    float MotionInstance::GetCurrentTime() const                                { return mCurrentTime; }
-    float MotionInstance::GetMaxTime() const                                    { return mClipEndTime; }
-    float MotionInstance::GetDuration() const                                   { return (mClipEndTime - mClipStartTime); }
-    float MotionInstance::GetPlaySpeed() const                                  { return mPlaySpeed; }
-    Motion* MotionInstance::GetMotion() const                                   { return mMotion; }
-    MotionGroup* MotionInstance::GetMotionGroup() const                         { return mMotionGroup; }
-    bool MotionInstance::GetIsGroupedMotion() const                             { return (mMotionGroup && mMotionGroup->GetNumMotionInstances() > 0); }
-    void MotionInstance::SetCurrentTimeNormalized(float normalizedTimeValue)    { mCurrentTime = mClipStartTime + normalizedTimeValue * (mClipEndTime - mClipStartTime); }
-    float MotionInstance::GetCurrentTimeNormalized() const
-    {
-        float maxTime = mClipEndTime;
-        if (maxTime > 0.0f)
-        {
-            return (mCurrentTime - mClipStartTime) / (maxTime - mClipStartTime);
-        }
-        else
-        {
-            return 0.0f;
-        }
-    }
-    float MotionInstance::GetLastCurrentTime() const                            { return mLastCurTime; }
-    void MotionInstance::SetMotion(Motion* motion)                              { mMotion = motion; }
-    void MotionInstance::SetPassedTime(float timePassed)                        { mPassedTime = timePassed; }
-    void MotionInstance::SetPlaySpeed(float speed)                              { MCORE_ASSERT(speed >= 0.0f); mPlaySpeed = speed; }
-    void MotionInstance::SetPlayMode(EPlayMode mode)                            { mPlayMode = mode; }
-    EPlayMode MotionInstance::GetPlayMode() const                               { return mPlayMode; }
-    void MotionInstance::SetFadeTime(float fadeTime)                            { mFadeTime = fadeTime; }
-    float MotionInstance::GetFadeTime() const                                   { return mFadeTime; }
-    EMotionBlendMode MotionInstance::GetBlendMode() const                       { return mBlendMode; }
-    float MotionInstance::GetWeight() const                                     { return mWeight; }
-    float MotionInstance::GetTargetWeight() const                               { return mTargetWeight; }
-    void MotionInstance::SetBlendMode(EMotionBlendMode mode)                    { mBlendMode = mode; }
+    bool MotionInstance::GetIsReadyForSampling() const                          { return !m_motionLinks.empty(); }
+    void MotionInstance::SetCustomData(void* customDataPointer)                 { m_customData = customDataPointer; }
+    void* MotionInstance::GetCustomData() const                                 { return m_customData; }
+    float MotionInstance::GetBlendInTime() const                                { return m_blendInTime; }
+    float MotionInstance::GetCurrentTime() const                                { return m_currentTime; }
+    float MotionInstance::GetDuration() const                                   { return m_motion->GetMaxTime(); }
+    float MotionInstance::GetMaxTime() const                                    { return GetDuration(); }
+    float MotionInstance::GetPlaySpeed() const                                  { return m_playSpeed; }
+    Motion* MotionInstance::GetMotion() const                                   { return m_motion; }
+    void MotionInstance::SetCurrentTimeNormalized(float normalizedTimeValue)    { m_currentTime = normalizedTimeValue * GetDuration(); }
+    float MotionInstance::GetCurrentTimeNormalized() const                      { const float duration = GetDuration(); return (duration > 0.0f) ? m_currentTime / duration : 0.0f; }
+    float MotionInstance::GetLastCurrentTime() const                            { return m_lastCurTime; }
+    void MotionInstance::SetMotion(Motion* motion)                              { m_motion = motion; }
+    void MotionInstance::SetPlaySpeed(float speed)                              { AZ_Assert(speed >= 0.0f, "Play speed cannot be negative."); m_playSpeed = speed; }
+    void MotionInstance::SetPlayMode(EPlayMode mode)                            { m_playMode = mode; }
+    EPlayMode MotionInstance::GetPlayMode() const                               { return m_playMode; }
+    void MotionInstance::SetFadeTime(float fadeTime)                            { m_fadeTime = fadeTime; }
+    float MotionInstance::GetFadeTime() const                                   { return m_fadeTime; }
+    EMotionBlendMode MotionInstance::GetBlendMode() const                       { return m_blendMode; }
+    float MotionInstance::GetWeight() const                                     { return m_weight; }
+    float MotionInstance::GetTargetWeight() const                               { return m_targetWeight; }
+    void MotionInstance::SetBlendMode(EMotionBlendMode mode)                    { m_blendMode = mode; }
     void MotionInstance::SetMirrorMotion(bool enabled)                          { SetFlag(BOOL_MIRRORMOTION, enabled); }
-    bool MotionInstance::GetMirrorMotion() const                                { return (mBoolFlags & BOOL_MIRRORMOTION) != 0; }
+    bool MotionInstance::GetMirrorMotion() const                                { return (m_boolFlags & BOOL_MIRRORMOTION) != 0; }
     void MotionInstance::Rewind()                                               { SetCurrentTime(0.0f); }
-    bool MotionInstance::GetHasEnded() const                                    { return (((mMaxLoops != EMFX_LOOPFOREVER) && (mCurLoops >= mMaxLoops)) || ((mMaxPlayTime > 0.0f) && (mCurrentTime >= mMaxPlayTime))); }
+    bool MotionInstance::GetHasEnded() const                                    { return (((m_maxLoops != EMFX_LOOPFOREVER) && (m_curLoops >= m_maxLoops)) || ((m_maxPlayTime > 0.0f) && (m_currentTime >= m_maxPlayTime))); }
     void MotionInstance::SetMixMode(bool mixModeEnabled)                        { SetFlag(BOOL_ISMIXING, mixModeEnabled); }
-    bool MotionInstance::GetIsStopping() const                                  { return (mBoolFlags & BOOL_ISSTOPPING) != 0; }
+    bool MotionInstance::GetIsStopping() const                                  { return (m_boolFlags & BOOL_ISSTOPPING) != 0; }
     bool MotionInstance::GetIsPlaying() const                                   { return (!GetHasEnded() && !GetIsPaused()); }
-    bool MotionInstance::GetIsMixing() const                                    { return (mBoolFlags & BOOL_ISMIXING) != 0; }
-    bool MotionInstance::GetIsBlending() const                                  { return (mBoolFlags & BOOL_ISBLENDING) != 0; }
-    bool MotionInstance::GetIsPaused() const                                    { return (mBoolFlags & BOOL_ISPAUSED); }
-    void MotionInstance::SetMaxLoops(uint32 numLoops)                           { mMaxLoops = numLoops; }
-    uint32 MotionInstance::GetMaxLoops() const                                  { return mMaxLoops; }
-    bool MotionInstance::GetHasLooped() const                                   { return (mCurLoops != mLastLoops); }
-    void MotionInstance::SetNumCurrentLoops(uint32 numCurrentLoops)             { mCurLoops = numCurrentLoops; }
-    void MotionInstance::SetNumLastLoops(uint32 numCurrentLoops)                { mLastLoops = numCurrentLoops; }
-    uint32 MotionInstance::GetNumLastLoops() const                              { return mLastLoops; }
-    uint32 MotionInstance::GetNumCurrentLoops() const                           { return mCurLoops; }
-    bool MotionInstance::GetIsPlayingForever() const                            { return (mMaxLoops == EMFX_LOOPFOREVER); }
-    ActorInstance* MotionInstance::GetActorInstance() const                     { return mActorInstance; }
-    uint32 MotionInstance::GetPriorityLevel() const                             { return mPriorityLevel; }
-    void MotionInstance::SetPriorityLevel(uint32 priorityLevel)                 { mPriorityLevel = priorityLevel; }
-    bool MotionInstance::GetMotionExtractionEnabled() const                     { return (mBoolFlags & BOOL_USEMOTIONEXTRACTION) != 0; }
+    bool MotionInstance::GetIsMixing() const                                    { return (m_boolFlags & BOOL_ISMIXING) != 0; }
+    bool MotionInstance::GetIsBlending() const                                  { return (m_boolFlags & BOOL_ISBLENDING) != 0; }
+    bool MotionInstance::GetIsPaused() const                                    { return (m_boolFlags & BOOL_ISPAUSED); }
+    void MotionInstance::SetMaxLoops(AZ::u32 numLoops)                          { m_maxLoops = numLoops; }
+    AZ::u32 MotionInstance::GetMaxLoops() const                                 { return m_maxLoops; }
+    bool MotionInstance::GetHasLooped() const                                   { return (m_curLoops != m_lastLoops); }
+    void MotionInstance::SetNumCurrentLoops(AZ::u32 numCurrentLoops)            { m_curLoops = numCurrentLoops; }
+    void MotionInstance::SetNumLastLoops(AZ::u32 numCurrentLoops)               { m_lastLoops = numCurrentLoops; }
+    AZ::u32 MotionInstance::GetNumLastLoops() const                             { return m_lastLoops; }
+    AZ::u32 MotionInstance::GetNumCurrentLoops() const                          { return m_curLoops; }
+    bool MotionInstance::GetIsPlayingForever() const                            { return (m_maxLoops == EMFX_LOOPFOREVER); }
+    ActorInstance* MotionInstance::GetActorInstance() const                     { return m_actorInstance; }
+    AZ::u32 MotionInstance::GetPriorityLevel() const                            { return m_priorityLevel; }
+    void MotionInstance::SetPriorityLevel(AZ::u32 priorityLevel)                { m_priorityLevel = priorityLevel; }
+    bool MotionInstance::GetMotionExtractionEnabled() const                     { return (m_boolFlags & BOOL_USEMOTIONEXTRACTION) != 0; }
     void MotionInstance::SetMotionExtractionEnabled(bool enable)                { SetFlag(BOOL_USEMOTIONEXTRACTION, enable); }
-    bool MotionInstance::GetCanOverwrite() const                                { return (mBoolFlags & BOOL_CANOVERWRITE) != 0; }
+    bool MotionInstance::GetCanOverwrite() const                                { return (m_boolFlags & BOOL_CANOVERWRITE) != 0; }
     void MotionInstance::SetCanOverwrite(bool canOverwrite)                     { SetFlag(BOOL_CANOVERWRITE, canOverwrite); }
-    bool MotionInstance::GetDeleteOnZeroWeight() const                          { return (mBoolFlags & BOOL_DELETEONZEROWEIGHT) != 0; }
+    bool MotionInstance::GetDeleteOnZeroWeight() const                          { return (m_boolFlags & BOOL_DELETEONZEROWEIGHT) != 0; }
     void MotionInstance::SetDeleteOnZeroWeight(bool deleteOnZeroWeight)         { SetFlag(BOOL_DELETEONZEROWEIGHT, deleteOnZeroWeight); }
-    bool MotionInstance::GetHasBlendMask() const                                { return (mNodeWeights.GetLength() > 0); }
-    uint32 MotionInstance::GetStartNodeIndex() const                            { return mStartNodeIndex; }
-    bool MotionInstance::GetRetargetingEnabled() const                          { return (mBoolFlags & BOOL_RETARGET) != 0; }
+    AZ::u32 MotionInstance::GetStartNodeIndex() const                           { return m_startNodeIndex; }
+    bool MotionInstance::GetRetargetingEnabled() const                          { return (m_boolFlags & BOOL_RETARGET) != 0; }
     void MotionInstance::SetRetargetingEnabled(bool enabled)                    { SetFlag(BOOL_RETARGET, enabled); }
-    bool MotionInstance::GetIsActive() const                                    { return (mBoolFlags & BOOL_ISACTIVE) != 0; }
-    bool MotionInstance::GetIsFrozen() const                                    { return (mBoolFlags & BOOL_ISFROZENATLASTFRAME) != 0; }
+    bool MotionInstance::GetIsActive() const                                    { return (m_boolFlags & BOOL_ISACTIVE) != 0; }
+    bool MotionInstance::GetIsFrozen() const                                    { return (m_boolFlags & BOOL_ISFROZENATLASTFRAME) != 0; }
     void MotionInstance::SetIsFrozen(bool isFrozen)
     {
         if (isFrozen)
@@ -1791,58 +1119,58 @@ namespace EMotionFX
             DisableFlag(BOOL_ISFROZENATLASTFRAME);
         }
     }
-    bool MotionInstance::GetMotionEventsEnabled() const                         { return (mBoolFlags & BOOL_ENABLEMOTIONEVENTS) != 0; }
+    bool MotionInstance::GetMotionEventsEnabled() const                         { return (m_boolFlags & BOOL_ENABLEMOTIONEVENTS) != 0; }
     void MotionInstance::SetMotionEventsEnabled(bool enabled)                   { SetFlag(BOOL_ENABLEMOTIONEVENTS, enabled); }
-    void MotionInstance::SetEventWeightThreshold(float weightThreshold)         { mEventWeightThreshold = weightThreshold; }
-    float MotionInstance::GetEventWeightThreshold() const                       { return mEventWeightThreshold; }
-    bool MotionInstance::GetFreezeAtLastFrame() const                           { return (mBoolFlags & BOOL_FREEZEATLASTFRAME) != 0; }
+    void MotionInstance::SetEventWeightThreshold(float weightThreshold)         { m_eventWeightThreshold = weightThreshold; }
+    float MotionInstance::GetEventWeightThreshold() const                       { return m_eventWeightThreshold; }
+    bool MotionInstance::GetFreezeAtLastFrame() const                           { return (m_boolFlags & BOOL_FREEZEATLASTFRAME) != 0; }
     void MotionInstance::SetBlendOutBeforeEnded(bool enabled)                   { SetFlag(BOOL_BLENDBEFOREENDED, enabled); }
-    bool MotionInstance::GetBlendOutBeforeEnded() const                         { return (mBoolFlags & BOOL_BLENDBEFOREENDED) != 0; }
+    bool MotionInstance::GetBlendOutBeforeEnded() const                         { return (m_boolFlags & BOOL_BLENDBEFOREENDED) != 0; }
     void MotionInstance::SetFreezeAtLastFrame(bool enabled)                     { SetFlag(BOOL_FREEZEATLASTFRAME, enabled); }
-    float MotionInstance::GetTotalPlayTime() const                              { return mTotalPlayTime; }
-    void MotionInstance::SetTotalPlayTime(float playTime)                       { mTotalPlayTime = playTime; }
-    float MotionInstance::GetMaxPlayTime() const                                { return mMaxPlayTime; }
-    void MotionInstance::SetMaxPlayTime(float playTime)                         { mMaxPlayTime = playTime; }
-    uint32 MotionInstance::GetNumMotionLinks() const                            { return mMotionLinks.GetLength(); }
-    MotionLink* MotionInstance::GetMotionLink(uint32 nr)                        { return &mMotionLinks[nr]; }
-    const MotionLink* MotionInstance::GetMotionLink(uint32 nr)  const           { return &mMotionLinks[nr]; }
-    void MotionInstance::SetMotionLink(uint32 nr, const MotionLink& link)       { mMotionLinks[nr] = link; }
-    void MotionInstance::DisableNodeWeights()                                   { EnableFlag(BOOL_CANOVERWRITE); mNodeWeights.Clear(); }
-    void MotionInstance::ResetCacheHitCounters()                                { mCacheHits = 0; mCacheMisses = 0; }
+    float MotionInstance::GetTotalPlayTime() const                              { return m_totalPlayTime; }
+    void MotionInstance::SetTotalPlayTime(float playTime)                       { m_totalPlayTime = playTime; }
+    float MotionInstance::GetMaxPlayTime() const                                { return m_maxPlayTime; }
+    void MotionInstance::SetMaxPlayTime(float playTime)                         { m_maxPlayTime = playTime; }
+    AZ::u32 MotionInstance::GetID() const                                       { return m_id; }
+    AZ::u32 MotionInstance::GetNumMotionLinks() const                           { return static_cast<AZ::u32>(m_motionLinks.size()); }
+    MotionLink* MotionInstance::GetMotionLink(AZ::u32 nr)                       { return &m_motionLinks[static_cast<size_t>(nr)]; }
+    const MotionLink* MotionInstance::GetMotionLink(AZ::u32 nr)  const          { return &m_motionLinks[static_cast<size_t>(nr)]; }
+    void MotionInstance::SetMotionLink(AZ::u32 nr, const MotionLink& link)      { m_motionLinks[static_cast<size_t>(nr)] = link; }
+    void MotionInstance::ResetCacheHitCounters()                                { m_cacheHits = 0; m_cacheMisses = 0; }
     void MotionInstance::ProcessCacheHitResult(uint8 wasHitResult)
     {
         if (wasHitResult == 0)
         {
-            mCacheMisses++;
+            m_cacheMisses++;
         }
         else
         {
-            mCacheHits++;
+            m_cacheHits++;
         }
     }
-    uint32 MotionInstance::GetNumCacheHits() const                              { return mCacheHits; }
-    uint32 MotionInstance::GetNumCacheMisses() const                            { return mCacheMisses; }
-    float MotionInstance::CalcCacheHitPercentage() const                        { return (mCacheHits / (float)(mCacheHits + mCacheMisses)) * 100.0f; }
-    float MotionInstance::GetTimeDifToLoopPoint() const                         { return mTimeDifToEnd; }
-    float MotionInstance::GetClipStartTime() const                              { return mClipStartTime; }
-    void MotionInstance::SetClipStartTime(float timeInSeconds)                  { mClipStartTime = timeInSeconds; }
-    float MotionInstance::GetClipEndTime() const                                { return mClipEndTime; }
-    void MotionInstance::SetClipEndTime(float timeInSeconds)                    { mClipEndTime = timeInSeconds; }
-    MotionLink* MotionInstance::GetMotionLinks() const                          { return mMotionLinks.GetPtr(); }
-    float MotionInstance::GetFreezeAtTime() const                               { return mFreezeAtTime; }
-    void MotionInstance::SetFreezeAtTime(float timeInSeconds)                   { mFreezeAtTime = timeInSeconds; }
-    bool MotionInstance::GetIsInPlace() const                                   { return (mBoolFlags & BOOL_INPLACE) != 0; }
+    AZ::u32 MotionInstance::GetNumCacheHits() const                             { return m_cacheHits; }
+    AZ::u32 MotionInstance::GetNumCacheMisses() const                           { return m_cacheMisses; }
+    float MotionInstance::CalcCacheHitPercentage() const                        { return (m_cacheHits / (float)(m_cacheHits + m_cacheMisses)) * 100.0f; }
+    float MotionInstance::GetTimeDifToLoopPoint() const                         { return m_timeDiffToEnd; }
+    const AZStd::vector<MotionLink>& MotionInstance::GetMotionLinks() const     { return m_motionLinks; }
+    float MotionInstance::GetFreezeAtTime() const                               { return m_freezeAtTime; }
+    void MotionInstance::SetFreezeAtTime(float timeInSeconds)                   { m_freezeAtTime = timeInSeconds; }
+    bool MotionInstance::GetIsInPlace() const                                   { return (m_boolFlags & BOOL_INPLACE) != 0; }
     void MotionInstance::SetIsInPlace(bool inPlace)                             { SetFlag(BOOL_INPLACE, inPlace); }
-
-    float MotionInstance::GetNodeWeight(uint32 nodeIndex) const
+    void MotionInstance::SetLastCurrentTime(float timeInSeconds)                { m_lastCurTime = timeInSeconds; }
+    void MotionInstance::SetCachedKey(AZ::u32 nodeIndex, AZ::u32 keyIndex)      { m_cachedKeys[nodeIndex] = keyIndex; }
+    AZ::u32 MotionInstance::GetCachedKey(AZ::u32 nodeIndex) const               { return m_cachedKeys[nodeIndex]; }
+    void MotionInstance::EnableFlag(AZ::u32 flag)                               { m_boolFlags |= flag; }
+    void MotionInstance::DisableFlag(AZ::u32 flag)                              { m_boolFlags &= ~flag; }
+    void MotionInstance::SetFlag(AZ::u32 flag, bool enabled)
     {
-        if (mNodeWeights.GetLength())
+        if (enabled)
         {
-            return mNodeWeights[nodeIndex].ToFloat(0.0f, 1.0f);
+            m_boolFlags |= flag;
         }
         else
         {
-            return 1.0f;
+            m_boolFlags &= ~flag;
         }
     }
 } // namespace EMotionFX

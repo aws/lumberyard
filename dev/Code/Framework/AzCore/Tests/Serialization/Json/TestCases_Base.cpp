@@ -18,6 +18,19 @@ namespace JsonSerializationTests
 {
     // BaseClass
 
+    void BaseClass::add_ref()
+    {
+        ++m_refCount;
+    }
+
+    void BaseClass::release()
+    {
+        if (--m_refCount == 0)
+        {
+            delete this;
+        }
+    }
+
     bool BaseClass::Equals(const BaseClass& rhs, bool) const
     {
         return m_baseVar == rhs.m_baseVar;
@@ -31,13 +44,32 @@ namespace JsonSerializationTests
 
     // BaseClass2
 
+    void BaseClass2::add_ref()
+    {
+        ++m_refCount;
+    }
+
+    void BaseClass2::release()
+    {
+        if (--m_refCount == 0)
+        {
+            delete this;
+        }
+    }
+
     bool BaseClass2::Equals(const BaseClass2& rhs, bool) const
     {
-        return m_base2Var == rhs.m_base2Var;
+        return
+            m_base2Var1 == rhs.m_base2Var1 &&
+            m_base2Var2 == rhs.m_base2Var2 &&
+            m_base2Var3 == rhs.m_base2Var3;
     }
 
     void BaseClass2::Reflect(AZStd::unique_ptr<AZ::SerializeContext>& context)
     {
-        context->Class<BaseClass2>()->Field("base2_var", &BaseClass2::m_base2Var);
+        context->Class<BaseClass2>()
+            ->Field("base2_var1", &BaseClass2::m_base2Var1)
+            ->Field("base2_var2", &BaseClass2::m_base2Var2)
+            ->Field("base2_var3", &BaseClass2::m_base2Var3);
     }
 } // namespace JsonSerializationTests

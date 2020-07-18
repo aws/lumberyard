@@ -17,6 +17,8 @@
 
 #include <AzToolsFramework/UI/Logging/LogLine.h>
 
+#include <AzQtComponents/Components/Widgets/Text.h>
+
 #include <Gallery/ui_TableViewPage.h>
 
 #include <QDateTime>
@@ -95,6 +97,12 @@ TableViewPage::TableViewPage(QWidget* parent)
 {
     ui->setupUi(this);
 
+    const auto titles = {ui->azTableViewTitle, ui->qTableViewTitle, ui->qListViewTitle};
+    for (auto title : titles)
+    {
+        AzQtComponents::Text::addTitleStyle(title);
+    }
+
     auto model = new QFileSystemModel(this);
     model->setRootPath(QDir::currentPath());
     // This proxy model is only needed because QFileSystemModel applies unwanted alignment to the
@@ -130,12 +138,21 @@ TableViewPage::TableViewPage(QWidget* parent)
     auto logItemDelegate = new AzToolsFramework::Logging::LogTableItemDelegate(ui->logTableView);
     ui->logTableView->setItemDelegate(logItemDelegate);
 
+    ui->qTableView->setModel(logModel);
+    ui->qTableView->setAlternatingRowColors(true);
+    ui->qTableView->setShowGrid(false);
+    ui->qTableView->horizontalHeader()->setStretchLastSection(true);
+    ui->qTableView->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    ui->qTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+
+    ui->qListView->setModel(fruitModel);
+    ui->qListView->setAlternatingRowColors(true);
+
     QString exampleText = R"(
 <p>QTreeView docs:
 <a href="http://doc.qt.io/qt-5/qtreeview.html">http://doc.qt.io/qt-5/qtreeview.html</a></p>
-<p>AzQtComponents::TableView derives from QTreeView as this was the easiest way to meet the UI
-specification. It hides the branch controls and therefore assumes the model is only one level
-deep.</p>
+<p>AzQtComponents::TableView derives from QTreeView. It hides the branch controls and therefore
+assumes the model is only one level deep.</p>
 <p>Example:</p>
 <pre>
 #include &lt;AzQtComponents/Components/Widgets/TableView.h&gt;

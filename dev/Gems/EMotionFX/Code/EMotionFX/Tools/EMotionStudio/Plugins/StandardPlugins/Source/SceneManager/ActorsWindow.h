@@ -14,7 +14,7 @@
 
 #include <AzCore/std/string/string.h>
 #include "../StandardPluginsConfig.h"
-#include <QPushButton>
+#include <QAction>
 #include <QTreeWidget>
 #include <QWidget>
 
@@ -26,7 +26,7 @@ namespace EMStudio
     class ActorsWindow
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(ActorsWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
@@ -58,13 +58,12 @@ namespace EMStudio
         void SetVisibilityFlags(bool isVisible);
 
     private:
-        SceneManagerPlugin*     mPlugin;
-        QTreeWidget*            mTreeWidget;
-        QPushButton*            mLoadActorsButton;
-        QPushButton*            mCreateInstanceButton;
-        QPushButton*            mRemoveButton;
-        QPushButton*            mClearButton;
-        QPushButton*            mSaveButton;
-        AZStd::string           mTempString;
+        SceneManagerPlugin* m_plugin = nullptr;
+        QTreeWidget* m_treeWidget = nullptr;
+        QAction* m_loadActorAction = nullptr;
+        QAction* m_mergeActorAction = nullptr;
+        QAction* m_createInstanceAction = nullptr;
+        QAction* m_saveAction = nullptr;
+        AZStd::string m_tempString;
     };
 } // namespace EMStudio

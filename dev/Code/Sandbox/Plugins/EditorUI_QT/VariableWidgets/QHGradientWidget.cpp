@@ -19,7 +19,6 @@
 #include <QResizeEvent>
 #include <QtMath>
 #include <QPropertyAnimation>
-#include <QColorDialog>
 #include <QToolTip>
 #include "QCustomColorDialog.h"
 #include "UIFactory.h"

@@ -41,6 +41,7 @@ public:
     MOCK_METHOD1(ExecuteCommand, void(const QString& sCommand));
     MOCK_METHOD1(SetDocument, void(CCryEditDoc* pDoc));
     MOCK_CONST_METHOD0(GetDocument, CCryEditDoc* ());
+    MOCK_CONST_METHOD0(IsLevelLoaded, bool());
     MOCK_METHOD1(SetModifiedFlag, void(bool));
     MOCK_METHOD2(SetModifiedModule, void(EModifiedModule, bool));
     MOCK_CONST_METHOD0(IsLevelExported, bool());

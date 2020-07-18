@@ -15,13 +15,10 @@
 
 #include <AzCore/base.h>
 
-// Qt tends to have private non-exported classes inside exported classes, and this raises 4251
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") 
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QStyledItemDelegate>
 #include <QtWidgets/QCheckBox>
 #include <QtCore/QRect>
-AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/EntityBus.h>
@@ -201,7 +198,6 @@ protected:
 
     bool m_beginStartPlayInEditor = false;
 
-
     void QueueEntityUpdate(AZ::EntityId entityId);
     void QueueAncestorUpdate(AZ::EntityId entityId);
     void QueueEntityToExpand(AZ::EntityId entityId, bool expand);
@@ -317,22 +313,9 @@ public:
     explicit OutlinerCheckBox(QWidget* parent = nullptr);
 
     void draw(QPainter* painter);
-};
 
-// Class used to identify the visibility checkbox element for styling purposes
-class OutlinerVisibilityCheckBox : public OutlinerCheckBox
-{
-    Q_OBJECT
-public:
-    explicit OutlinerVisibilityCheckBox(QWidget* parent = nullptr);
-};
-
-// Class used to identify the lock checkbox element for styling purposes
-class OutlinerLockCheckBox : public OutlinerCheckBox
-{
-    Q_OBJECT
-public:
-    explicit OutlinerLockCheckBox(QWidget* parent = nullptr);
+private:
+    const int m_toggleColumnWidth = 16;
 };
 
 /*!
@@ -347,11 +330,12 @@ public:
 
     OutlinerItemDelegate(QWidget* parent = nullptr);
 
-    QString GetColumnHighlightedStylesheet(int column, bool highlighted) const;
-
     // Qt overrides
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+
+protected:
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) override;
 
 private:
     // The layer stripe is a continuous line from the layer's color box to the last entity in the layer.
@@ -359,7 +343,8 @@ private:
     void DrawLayerStripeAndBorder(QPainter* painter, int stripeX, int top, int bottom, QColor layerBorderColor, QColor layerColor) const;
 
     // Draws all UI related to layers for the current row.
-    void DrawLayerUI(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index, const AZ::EntityId& entityId, bool isSelected) const;
+    void DrawLayerUI(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index, const AZ::EntityId& entityId,
+        bool isSelected, bool isHovered) const;
 
     // Layers with unsaved changes, and layers with errors, have additional text added to their strings.
     QString GetLayerInfoString(const AZ::EntityId& entityId) const;
@@ -367,26 +352,59 @@ private:
     // Entity names are offset vertically if they are in a layer, and generally to better line up with icons.
     int GetEntityNameVerticalOffset(const AZ::EntityId& entityId) const;
 
+    struct CheckboxGroup
+    {
+        OutlinerCheckBox m_default;
+        OutlinerCheckBox m_mixed;
+        OutlinerCheckBox m_layerOverride;
+
+        OutlinerCheckBox m_defaultHover;
+        OutlinerCheckBox m_mixedHover;
+        OutlinerCheckBox m_layerOverrideHover;
+
+        CheckboxGroup(QWidget* parent, AZStd::string prefix, OutlinerListModel::Roles mixed, OutlinerListModel::Roles layer);
+        OutlinerCheckBox* SelectCheckboxToRender(const QModelIndex& index, bool isHovered);
+
+    private:
+        OutlinerListModel::Roles m_mixedRole;
+        OutlinerListModel::Roles m_layerRole;
+    };
+
     // Mutability added because these are being used ONLY as renderers
     // for custom check boxes. The decision of whether or not to draw
     // them checked is tracked by the individual entities and items in
     // the hierarchy cache.
-    mutable OutlinerVisibilityCheckBox m_visibilityCheckBox;
-    mutable OutlinerVisibilityCheckBox m_visibilityCheckBoxWithBorder;
-    mutable OutlinerVisibilityCheckBox m_visibilityCheckBoxLayerOverride;
-    mutable OutlinerLockCheckBox m_lockCheckBox;
-    mutable OutlinerLockCheckBox m_lockCheckBoxWithBorder;
-    mutable OutlinerLockCheckBox m_lockCheckBoxLayerOverride;
+    mutable CheckboxGroup m_visibilityCheckBoxes;
+    mutable CheckboxGroup m_lockCheckBoxes;
 
     const int m_layerDividerLineHeight = 1;
     const int m_lastEntityInLayerDividerLineHeight = 1;
-
-    QColor m_outlinerSelectionColor;
-
-    OutlinerCheckBox* setupCheckBox(const QStyleOptionViewItem& option, const QModelIndex& index, const QColor& backgroundColor, bool isLayerEntity) const;
+    const int m_toggleColumnWidth = 16;
 
     // this is a cache, and is hence mutable
     mutable QRect m_cachedBoundingRectOfTallCharacter;
+
+    struct OutlinerListModelColorConfig
+    {
+        QColor outlinerSelectionColor = QColor(255, 255, 255, 45);
+        QColor outlinerHoverColor = QColor(255, 255, 255, 30);
+        QColor layerBGColor = "#2F2F2F";
+        QColor layerChildBGColor = "#333333";
+        QColor layerBorderTopColor = "#515151";
+        QColor layerBorderBottomColor = "#252525";
+        QColor selectedLayerBGColor = "#676767"; 
+        QColor hoveredLayerBGColor = "#4B4B4B";
+        QColor sliceRootBackgroundColor = "#1E252F";
+        QColor sliceRootBorderColor = "#1E252F";
+        QColor selectedSliceRootBackgroundColor = "#47487B";
+        QColor selectedSliceRootBorderColor = "#2F306D";
+        QColor sliceEntityColor = "#4285F4";
+        QColor sliceOverrideColor = "#FF7B00";
+        int visibilityColumnWidth = 20;
+        int lockColumnWidth = 20;
+    };
+
+    OutlinerListModelColorConfig m_outlinerConfig;
 };
 
 Q_DECLARE_METATYPE(AZ::ComponentTypeList); // allows type to be stored by QVariable

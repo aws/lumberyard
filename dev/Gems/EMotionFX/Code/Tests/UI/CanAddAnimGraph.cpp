@@ -15,6 +15,7 @@
 #include <QPushButton>
 #include <QAction>
 #include <QtTest>
+#include <qtoolbar.h>
 
 #include <Tests/UI/UIFixture.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
@@ -35,9 +36,9 @@ namespace EMotionFX
         ASSERT_FALSE(animGraphPlugin->GetActiveAnimGraph()) << "No anim graph should be activated.";
         ASSERT_EQ(0, EMotionFX::GetAnimGraphManager().GetNumAnimGraphs()) << "Anim graph manager should contain 0 anim graph.";
 
-        auto addAnimGraphButton = animGraphPlugin->GetViewWidget()->findChild<QPushButton*>("EMFX.BlendGraphViewWidget.NewButton");
-        ASSERT_TRUE(addAnimGraphButton) << "Add Anim graph button not found.";
-
+        auto toolBar = animGraphPlugin->GetViewWidget()->findChild<QToolBar*>("EMFX.BlendGraphViewWidget.TopToolBar");
+        QWidget* addAnimGraphButton = UIFixture::GetWidgetFromToolbar(toolBar, "Create a new anim graph");
+        ASSERT_NE(addAnimGraphButton, nullptr) << "Add Animgraph button was not found";
         QTest::mouseClick(addAnimGraphButton, Qt::LeftButton);
 
         AnimGraph* newGraph = animGraphPlugin->GetActiveAnimGraph();

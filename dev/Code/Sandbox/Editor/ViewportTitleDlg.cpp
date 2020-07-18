@@ -116,18 +116,14 @@ CViewportTitleDlg::CViewportTitleDlg(QWidget* pParent)
 
     if (!newViewportInteractionModelEnabled)
     {
-        m_ui->m_viewportSearch->setMenu(InitializeViewportSearchMenu());
+        m_ui->m_viewportSearch->setClearButtonEnabled(true);
         connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::menuEntryClicked, this, &CViewportTitleDlg::OnViewportSearchButtonClicked);
         connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::returnPressed, this, &CViewportTitleDlg::OnSearchTermChange);
-
-        auto clearAction = new QAction(this);
-        clearAction->setIcon(QIcon(":/stylesheet/img/16x16/lineedit-clear.png"));
-        clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
-        m_ui->m_viewportSearch->addAction(clearAction, QLineEdit::TrailingPosition);
-
-        connect(clearAction, &QAction::triggered, this, &CViewportTitleDlg::OnViewportSearchClear);
-        connect(m_ui->m_viewportSearch, &QLineEdit::textChanged, this, [clearAction, this] {
-            clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
+        connect(m_ui->m_viewportSearch, &QLineEdit::textChanged, this, [this] (const QString& text){
+            if(text.isEmpty())
+            {
+                this->OnViewportSearchClear();
+            }
         });
 
         m_ui->m_viewportSearch->setFixedWidth(190);
@@ -675,7 +671,6 @@ void CViewportTitleDlg::OnViewportSearchClear()
 {
     UnhideUnfreezeAll();
     //clear edit control
-    m_ui->m_viewportSearch->clear();
     gSettings.bIsSearchFilterActive = false;
     GetIEditor()->GetAI()->RestartContinuousUpdate();
 }

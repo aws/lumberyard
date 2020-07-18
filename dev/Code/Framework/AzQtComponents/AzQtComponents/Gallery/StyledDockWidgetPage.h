@@ -15,10 +15,13 @@
 #include <QScopedPointer>
 #include <QPointer>
 
-class QMainWindow;
-
 namespace Ui {
     class StyledDockWidgetPage;
+}
+
+namespace AzQtComponents
+{
+    class DockMainWindow;
 }
 
 class StyledDockWidgetPage : public QWidget
@@ -34,5 +37,5 @@ private slots:
 
 private:
     QScopedPointer<Ui::StyledDockWidgetPage> ui;
-    QPointer<QMainWindow> m_mainWindow;
+    QPointer<AzQtComponents::DockMainWindow> m_mainWindow;
 };

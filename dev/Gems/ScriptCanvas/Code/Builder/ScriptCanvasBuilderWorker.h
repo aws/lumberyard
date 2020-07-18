@@ -18,6 +18,8 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Asset/AssetCommon.h>
 
+namespace ScriptCanvas { class RuntimeFunctionAsset; }
+
 namespace AZ
 {
     namespace Data
@@ -72,6 +74,44 @@ namespace ScriptCanvasBuilder
         bool m_isShuttingDown = false;
         
         AZStd::unique_ptr<AZ::Data::AssetHandler> m_editorAssetHandler;
+        AZStd::unique_ptr<AZ::Data::AssetHandler> m_runtimeAssetHandler;
+
+        // cached on first time query
+        mutable AZStd::string m_fingerprintString;
+    };
+    
+    class FunctionWorker
+        : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
+    {
+    public:
+        static AZ::Outcome<AZ::Data::Asset<ScriptCanvas::RuntimeAsset>, AZStd::string> CreateRuntimeAsset(AZStd::string_view graphPath);
+        static AZ::Data::Asset<ScriptCanvas::RuntimeFunctionAsset> ProcessFunctionAsset(AZ::Data::AssetHandler& functionAssetHandler, AZ::IO::GenericStream& editorAssetStream);
+
+        FunctionWorker() = default;
+        ~FunctionWorker() override = default;
+
+        int GetVersionNumber() const { return 1; }
+        const char* GetFingerprintString() const;
+
+        //! Asset Builder Callback Functions
+        void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response) const;
+        void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const;
+
+        //////////////////////////////////////////////////////////////////////////
+        //!AssetBuilderSDK::AssetBuilderCommandBus interface
+        void ShutDown() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        void Activate();
+        void Deactivate();
+
+        static AZ::Uuid GetUUID();
+
+    private:
+        FunctionWorker(const FunctionWorker&) = delete;
+        bool m_isShuttingDown = false;
+
+        AZStd::unique_ptr<AZ::Data::AssetHandler> m_functionAssetHandler;
         AZStd::unique_ptr<AZ::Data::AssetHandler> m_runtimeAssetHandler;
 
         // cached on first time query

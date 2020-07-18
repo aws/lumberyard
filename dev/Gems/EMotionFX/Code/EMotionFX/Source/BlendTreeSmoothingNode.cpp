@@ -24,6 +24,22 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendTreeSmoothingNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeSmoothingNode::UniqueData::Update()
+    {
+        BlendTreeSmoothingNode* smoothingNode = azdynamic_cast<BlendTreeSmoothingNode*>(mObject);
+        AZ_Assert(smoothingNode, "Unique data linked to incorrect node type.");
+
+        if (!smoothingNode->GetInputNode(BlendTreeSmoothingNode::INPUTPORT_DEST))
+        {
+            mCurrentValue = 0.0f;
+        }
+    }
+
     BlendTreeSmoothingNode::BlendTreeSmoothingNode()
         : AnimGraphNode()
     {
@@ -76,7 +92,7 @@ namespace EMotionFX
         // update all incoming nodes
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         // if there are no incoming connections, there is nothing to do
         if (mConnections.size() == 0)
@@ -118,7 +134,7 @@ namespace EMotionFX
     void BlendTreeSmoothingNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
         // find the unique data for this node, if it doesn't exist yet, create it
-        UniqueData* uniqueData = static_cast<BlendTreeSmoothingNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<BlendTreeSmoothingNode::UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // check if the current value needs to be reset to the input or the start value when rewinding the node
         if (m_useStartValue)
@@ -132,27 +148,6 @@ namespace EMotionFX
             uniqueData->mCurrentValue = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_DEST);
         }
     }
-
-
-    // when attributes have changed their value
-    void BlendTreeSmoothingNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // find the unique data for this node, if it doesn't exist yet, create it
-        UniqueData* uniqueData = static_cast<BlendTreeSmoothingNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-            uniqueData->mCurrentValue = 0.0f;//GetInputNumber( INPUTPORT_DEST );
-        }
-
-        if (GetInputNode(INPUTPORT_DEST) == nullptr)
-        {
-            uniqueData->mCurrentValue = 0.0f;
-        }
-    }
-
-
 
     AZ::Color BlendTreeSmoothingNode::GetVisualColor() const
     {

@@ -21,6 +21,8 @@
 #include <AzQtComponents/Components/SearchLineEdit.h>
 #include <AzQtComponents/Components/StyledLineEdit.h>
 #include <AzQtComponents/Components/StyledDetailsTableView.h>
+#include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Components/DockBar.h>
@@ -61,7 +63,10 @@
 #include <QTimer>
 #include <QFile>
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
 #include <AzQtComponents/Components/Widgets/SpinBox.h>
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 
 #include <assert.h>
 
@@ -120,7 +125,7 @@ namespace EditorProxyStylePrivate
 }
 
 // Constant for the docking drop zone hotspot color when hovered over
-static const QColor g_dropZoneColorOnHover(245, 127, 35);
+static const QColor g_dropZoneColorOnHover(23, 163, 205);
 // Constant for the active button border color
 static const QColor g_activeButtonBorderColor(243, 129, 29);
 
@@ -191,22 +196,24 @@ namespace AzQtComponents
         }
     }
 
-    template <typename T>
-    static T* findParent(const QObject* obj)
+    static QLatin1String GetStandardPixmapFileName(QStyle::StandardPixmap standardPixmap)
     {
-        if (!obj)
+        switch (standardPixmap)
         {
-            return nullptr;
+        case QStyle::StandardPixmap::SP_LineEditClearButton:
+            return QLatin1String(":/stylesheet/img/16x16/lineedit-clear.png");
+
+        case QStyle::StandardPixmap::SP_ToolBarHorizontalExtensionButton:
+            return QLatin1String(":/stylesheet/img/horizontal_arrows.png");
+
+        case QStyle::StandardPixmap::SP_ToolBarVerticalExtensionButton:
+            return QLatin1String(":/stylesheet/img/vertical_arrows.png");
+
+        default:
+            break;
         }
 
-        QObject* parent = obj->parent();
-
-        if (auto p = qobject_cast<T*>(parent))
-        {
-            return p;
-        }
-
-        return findParent<T>(parent);
+        return QLatin1String("");
     }
 
     static int heightForHorizontalToolbar(QToolBar* tb)
@@ -228,7 +235,7 @@ namespace AzQtComponents
 
     static bool isToolBarToolButton(const QWidget* w)
     {
-        return findParent<QToolBar>(qobject_cast<const QToolButton*>(w)) != nullptr;
+        return StyleHelpers::findParent<QToolBar>(qobject_cast<const QToolButton*>(w)) != nullptr;
     }
 
     static bool isImageOnlyToolButton(const QWidget* w)
@@ -254,7 +261,7 @@ namespace AzQtComponents
             return false;
         }
 
-        auto toolbar = findParent<QToolBar>(button);
+        auto toolbar = StyleHelpers::findParent<QToolBar>(button);
         if (!toolbar)
         {
             return false;
@@ -272,7 +279,7 @@ namespace AzQtComponents
 
         auto button = static_cast<const QToolButton*>(w);
         if (!button->menu() || button->popupMode() != QToolButton::MenuButtonPopup ||
-            button->icon().isNull() || !findParent<QToolBar>(qobject_cast<const QToolButton*>(w)))
+            button->icon().isNull() || !StyleHelpers::findParent<QToolBar>(qobject_cast<const QToolButton*>(w)))
         {
             return false;
         }
@@ -377,11 +384,13 @@ namespace AzQtComponents
         setObjectName("EditorProxyStyle");
         qApp->installEventFilter(this);
 
+        LineEdit::initializeWatcher();
         SpinBox::initializeWatcher();
     }
 
     EditorProxyStyle::~EditorProxyStyle()
     {
+        LineEdit::uninitializeWatcher();
         SpinBox::uninitializeWatcher();
     }
 
@@ -396,21 +405,14 @@ namespace AzQtComponents
 
     QIcon EditorProxyStyle::icon(const QString& name)
     {
-        QIcon icon;
-        for (const QString& size : QStringList({"16x16", "24x24", "32x32"}))
+        const QString filePath = QStringLiteral(":/stylesheet/img/UI20/toolbar/%1.svg").arg(name);
+        if (QFile::exists(filePath))
         {
-            const QString filename = QString(":/stylesheet/img/%1/%2.png").arg(size).arg(name);
-            if (QFile::exists(filename))
-            {
-                icon.addPixmap(filename);
-            }
-            else
-            {
-                qWarning() << "EditorProxyStyle::icon: Couldn't find " << filename;
-            }
+            return QIcon(filePath);
         }
 
-        return icon;
+        qWarning() << "EditorProxyStyle::icon: Couldn't find " << filePath;
+        return {};
     }
 
     /**
@@ -451,6 +453,10 @@ namespace AzQtComponents
 
     void EditorProxyStyle::polishToolbar(QToolBar* tb)
     {
+        QVariant iconSizeProp = tb->property(ToolBar::g_ui10IconSizeProperty);
+        int ui10IconSize = iconSizeProp.isValid() ? iconSizeProp.toInt() : ToolBar::g_ui10DefaultIconSize;
+        tb->setIconSize({ui10IconSize, ui10IconSize});
+
         if (QToolButton* expansion = expansionButton(tb))
         {
             connect(expansion, &QAbstractButton::toggled, this, [tb, this](bool)
@@ -477,6 +483,11 @@ namespace AzQtComponents
             auto config = SpinBox::defaultConfig();
             SpinBox::polish(this, widget, config);
         }
+        else if (auto colorPicker = qobject_cast<ColorPicker*>(widget))
+        {
+            auto config = ColorPicker::defaultConfig();
+            colorPicker->polish(config);
+        }
 
         if (auto lineEdit = qobject_cast<QLineEdit*>(widget))
         {
@@ -485,6 +496,9 @@ namespace AzQtComponents
             pal.setColor(QPalette::PlaceholderText, "#80ffffff");
 
             lineEdit->setPalette(pal);
+
+            auto config = LineEdit::defaultConfig();
+            LineEdit::polish(this, widget, config);
         }
         else if (qobject_cast<QToolButton*>(widget))
         {
@@ -497,7 +511,7 @@ namespace AzQtComponents
         }
         else if (auto view = qobject_cast<QAbstractItemView*>(widget))
         {
-            if (findParent<QComboBox>(view))
+            if (StyleHelpers::findParent<QComboBox>(view))
             {
                 // By default QCombobox uses QItemDelegate for its list view, but that doesn't honour css
                 // So set a QStyledItemDelegate to get stylesheets working
@@ -629,11 +643,11 @@ namespace AzQtComponents
         {
             // The popup has a little offset, and is slightly smaller than the combobox
             QRect rect = QProxyStyle::subControlRect(cc, opt, sc, widget);
-            if (findParent<ToolButtonComboBox>(widget))
+            if (StyleHelpers::findParent<ToolButtonComboBox>(widget))
             {
                 rect = QRect(0, 1, rect.width(), rect.height());
             }
-            else if (findParent<QToolBar>(widget))
+            else if (StyleHelpers::findParent<QToolBar>(widget))
             {
                 rect = QRect(5, 2, rect.width() - 11, rect.height());
             }
@@ -754,12 +768,12 @@ namespace AzQtComponents
                         {
                             if ((tbOpt->state & QStyle::State_Sunken) || (tbOpt->state & QStyle::State_MouseOver))
                             {
-                                fixedOpt.icon = QIcon(generateIconPixmap(QIcon::Active, fixedOpt.icon));
+                                fixedOpt.icon = QIcon(generateIconPixmap(QIcon::Active, fixedOpt.icon, fixedOpt.iconSize));
                             }
                         }
                         else
                         {
-                            fixedOpt.icon = QIcon(generateIconPixmap(QIcon::Disabled, fixedOpt.icon));
+                            fixedOpt.icon = QIcon(generateIconPixmap(QIcon::Disabled, fixedOpt.icon, fixedOpt.iconSize));
                         }
                     }
                 }
@@ -919,7 +933,11 @@ namespace AzQtComponents
             const auto tOpt = qstyleoption_cast<const QStyleOptionTab*>(opt);
             const auto colors = DockBar::getColors(tOpt->state & QStyle::State_Selected);
             auto rect(tOpt->rect);
-            rect.adjust(0, 0, DockTabBar::closeButtonOffsetForIndex(tOpt), 0);
+
+            // The close button is now drawn by the tab widget itself instead of DockBar::drawTabContents
+            // so we need to actually shrink the area available if the close button is present
+            rect.adjust(0, 0, -DockTabBar::closeButtonOffsetForIndex(tOpt), 0);
+
             DockBar::drawTabContents(p, rect, colors, tOpt->text);
             return;
         }
@@ -996,7 +1014,7 @@ namespace AzQtComponents
                 return QProxyStyle::drawPrimitive(element, option, painter, widget);
             }
 
-            if (const auto styledSpinBox = findParent<StyledDoubleSpinBox>(le))
+            if (const auto styledSpinBox = StyleHelpers::findParent<StyledDoubleSpinBox>(le))
             {
                 bool focusOn = styledSpinBox->hasFocus() || styledSpinBox->property("SliderSpinBoxFocused").toBool() == true;
                 drawLineEditStyledSpinBox(le, painter, option->rect, focusOn);
@@ -1010,7 +1028,6 @@ namespace AzQtComponents
                 if (searchLineEdit->errorState())
                 {
                     drawSearchLineEdit(le, painter, pathRect, QColor(224, 83, 72));
-                    drawLineEditIcon(painter, option->rect, StyledLineEdit::Invalid);
                 }
                 else
                 {
@@ -1020,7 +1037,7 @@ namespace AzQtComponents
                 return;
             }
 
-            if (!findParent<QSpinBox>(le) && !findParent<QDoubleSpinBox>(le) && !findParent<QTimeEdit>(le))
+            if (!StyleHelpers::findParent<QSpinBox>(le) && !StyleHelpers::findParent<QDoubleSpinBox>(le) && !StyleHelpers::findParent<QTimeEdit>(le))
             {
                 if (qobject_cast<QComboBox*>(le->parentWidget()))
                 {
@@ -1182,7 +1199,7 @@ namespace AzQtComponents
         return QProxyStyle::pixelMetric(metric, option, widget);
     }
 
-    QIcon EditorProxyStyle::generateIconPixmap(QIcon::Mode iconMode, const QIcon& icon) const
+    QIcon EditorProxyStyle::generateIconPixmap(QIcon::Mode iconMode, const QIcon& icon, const QSize& size) const
     {
         if (icon.isNull())
         {
@@ -1205,13 +1222,26 @@ namespace AzQtComponents
 
             QIcon newIcon;
 
-            for (QSize size : icon.availableSizes())
+            auto generatePixmap = [&icon](const QSize& size, const QColor& color)
             {
                 QImage img = icon.pixmap(size).toImage().convertToFormat(QImage::Format_ARGB32_Premultiplied);
                 QPainter painter(&img);
                 painter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
                 painter.fillRect(0, 0, img.width(), img.height(), color);
-                newIcon.addPixmap(QPixmap::fromImage(img));
+                return QPixmap::fromImage(img);
+            };
+
+
+            if (icon.availableSizes().isEmpty())
+            {
+                newIcon.addPixmap(generatePixmap(size, color));
+            }
+            else
+            {
+                for (QSize eachSize : icon.availableSizes())
+                {
+                    newIcon.addPixmap(generatePixmap(eachSize, color));
+                }
             }
 
 
@@ -1224,17 +1254,10 @@ namespace AzQtComponents
     QPixmap EditorProxyStyle::standardPixmap(QStyle::StandardPixmap standardPixmap,
         const QStyleOption* opt, const QWidget* widget) const
     {
-        if (standardPixmap == SP_LineEditClearButton)
+        QLatin1String pixmapFileName = GetStandardPixmapFileName(standardPixmap);
+        if (!pixmapFileName.isEmpty())
         {
-            return QPixmap(QStringLiteral(":/stylesheet/img/16x16/lineedit-clear.png"));
-        }
-        else if (standardPixmap == SP_ToolBarHorizontalExtensionButton)
-        {
-            return QPixmap(QStringLiteral(":/stylesheet/img/horizontal_arrows.png"));
-        }
-        else if (standardPixmap == SP_ToolBarVerticalExtensionButton)
-        {
-            return QPixmap(QStringLiteral(":/stylesheet/img/vertical_arrows.png"));
+            return QPixmap(pixmapFileName);
         }
 
         return QProxyStyle::standardPixmap(standardPixmap, opt, widget);
@@ -1243,10 +1266,11 @@ namespace AzQtComponents
     QIcon EditorProxyStyle::standardIcon(QStyle::StandardPixmap standardIcon,
         const QStyleOption* opt, const QWidget* widget) const
     {
-        if (standardIcon == SP_LineEditClearButton)
+        QLatin1String pixmapFileName = GetStandardPixmapFileName(standardIcon);
+        if (!pixmapFileName.isEmpty())
         {
             QIcon icon;
-            icon.addPixmap(standardPixmap(standardIcon, opt, widget));
+            icon.addPixmap(QPixmap(pixmapFileName));
             return icon;
         }
 
@@ -1302,7 +1326,11 @@ namespace AzQtComponents
 
     void EditorProxyStyle::drawStyledLineEdit(const QLineEdit* le, QPainter* painter, const QPainterPath& path) const
     {
-        if (le->hasFocus())
+        if (Style::hasClass(le, ValidDropTarget) || (le->parentWidget() && Style::hasClass(le->parentWidget(), ValidDropTarget)))
+        {
+            painter->fillPath(path, QColor(217, 130, 46));
+        }
+        else if (le->hasFocus())
         {
             painter->fillPath(path, QColor(204, 204, 204));
             painter->setPen(QColor(66, 133, 244));

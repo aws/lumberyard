@@ -27,7 +27,6 @@
 
 #include "Clipboard.h"
 
-#include <QColorDialog>
 #include <QMenu>
 #include <QPainter>
 #include <QPaintEvent>
@@ -38,6 +37,8 @@
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/QtWin>
 #endif
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
 
 #define EDIT_DISABLE_GRAY_COLOR QColor(128, 128, 128)
 #define KEY_TEXT_COLOR QColor(0, 0, 50)
@@ -1762,14 +1763,16 @@ bool CUiAnimViewDopeSheetBase::CreateColorKey(CUiAnimViewTrack* pTrack, float ke
     Vec3 vColor(0, 0, 0);
     pTrack->GetValue(keyTime, vColor);
 
-    const QColor defaultColor(clamp_tpl(FloatToIntRet(vColor.x), 0, 255),
+    const AZ::Color defaultColor = AZ::Color::CreateFromRgba(clamp_tpl(FloatToIntRet(vColor.x), 0, 255),
         clamp_tpl(FloatToIntRet(vColor.y), 0, 255),
-        clamp_tpl(FloatToIntRet(vColor.z), 0, 255));
-    QColorDialog dlg(defaultColor, this);
+        clamp_tpl(FloatToIntRet(vColor.z), 0, 255), 255);
+    AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, tr("Select Color"), this);
+    dlg.setCurrentColor(defaultColor);
+    dlg.setSelectedColor(defaultColor);
     if (dlg.exec() == QDialog::Accepted)
     {
-        const QColor col = dlg.selectedColor();
-        ColorF colArray = ColorGammaToLinear(col) * 255.0f;
+        const AZ::Color col = dlg.selectedColor().GammaToLinear();
+        const ColorF colArray(col.GetR(), col.GetG(), col.GetB(), col.GetA());
 
         RecordTrackUndo(pTrack);
         CUiAnimViewSequenceNotificationContext context(pTrack->GetSequence());

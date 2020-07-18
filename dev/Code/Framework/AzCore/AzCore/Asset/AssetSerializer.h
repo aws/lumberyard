@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace AZ {
     struct Uuid;
@@ -21,6 +22,8 @@ namespace AZ {
     {
         template<typename T>
         class Asset;
+        class AssetData;
+        using AssetFilterCB = AZStd::function<bool(const Asset<AssetData>& asset)>;
     }   // namespace Data
 
     /*
@@ -153,4 +156,38 @@ namespace AZ {
             return GetGenericInfo()->m_classData.m_typeId;
         }
     };
+
+    //! OnDemandReflection for any generic Data::Asset<T>
+    template<typename T>
+    struct OnDemandReflection<Data::Asset<T>>
+    {
+        using DataAssetType = Data::Asset<T>;
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto behaviorContext = azrtti_cast<BehaviorContext*>(context))
+            {
+                behaviorContext->Class<DataAssetType>()
+                    ->Attribute(Script::Attributes::Scope, Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(Script::Attributes::Module, "asset")
+                    ->Method("IsReady", &DataAssetType::IsReady)
+                    ->Attribute(AZ::Script::Attributes::Alias, "is_ready")
+                    ->Method("IsError", &DataAssetType::IsError)
+                    ->Attribute(AZ::Script::Attributes::Alias, "is_error")
+                    ->Method("IsLoading", &DataAssetType::IsLoading)
+                    ->Attribute(AZ::Script::Attributes::Alias, "is_loading")
+                    ->Method("GetStatus", &DataAssetType::GetStatus)
+                    ->Attribute(AZ::Script::Attributes::Alias, "get_status")
+                    ->Method("GetId", &DataAssetType::GetId)
+                    ->Attribute(AZ::Script::Attributes::Alias, "get_id")
+                    ->Method("GetType", &DataAssetType::GetType)
+                    ->Attribute(AZ::Script::Attributes::Alias, "get_type")
+                    ->Method("GetHint", &DataAssetType::GetHint)
+                    ->Attribute(AZ::Script::Attributes::Alias, "get_hint")
+                    ->Method("GetData", &DataAssetType::GetData)
+                    ->Attribute(AZ::Script::Attributes::Alias, "get_data")
+                    ;
+            }
+        }
+    };
+
 }   // namespace AZ

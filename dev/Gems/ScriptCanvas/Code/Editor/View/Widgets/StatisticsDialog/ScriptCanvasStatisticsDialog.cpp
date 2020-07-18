@@ -13,6 +13,8 @@
 
 #include <AzCore/Asset/AssetManagerBus.h>
 
+#include <AzQtComponents/Components/StyleManager.h>
+
 #include <Editor/View/Widgets/StatisticsDialog/ScriptCanvasStatisticsDialog.h>
 #include <Editor/View/Widgets/StatisticsDialog/ui_ScriptCanvasStatisticsDialog.h>
 
@@ -171,6 +173,8 @@ namespace ScriptCanvasEditor
         setWindowFlags(Qt::WindowFlags::enum_type::WindowCloseButtonHint);
 
         m_ui->setupUi(this);
+
+        AzQtComponents::StyleManager::setStyleSheet(this, QStringLiteral("style:Editor.qss"));
     }
 
     StatisticsDialog::~StatisticsDialog()

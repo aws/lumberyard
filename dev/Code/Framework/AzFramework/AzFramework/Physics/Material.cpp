@@ -173,7 +173,7 @@ namespace Physics
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MaterialLibraryAsset::m_materialLibrary, "Physics Materials", "List of physics materials")
-                        ->Attribute("EditButton", "Editor/Icons/Assets/PhysicsMaterial")
+                        ->Attribute("EditButton", "")
                         ->Attribute(AZ::Edit::Attributes::ForceAutoExpand, true)
                     ;
             }
@@ -200,7 +200,7 @@ namespace Physics
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MaterialLibraryAssetReflectionWrapper::m_asset, "Physics Material Library", "Physics Material Library")
-                        ->Attribute("EditButton", "Editor/Icons/Assets/PhysicsMaterial")
+                        ->Attribute("EditButton", "")
                     ;
             }
         }
@@ -228,7 +228,7 @@ namespace Physics
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &DefaultMaterialLibraryAssetReflectionWrapper::m_asset, "Default Physics Material Library", "Library to use by default")
                         ->Attribute(AZ::Edit::Attributes::AllowClearAsset, false)
-                        ->Attribute("EditButton", "Editor/Icons/Assets/PhysicsMaterial")
+                        ->Attribute("EditButton", "")
                     ;
             }
         }
@@ -367,7 +367,7 @@ namespace Physics
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MaterialSelection::m_materialLibrary, "Library", "Physics material library to use for this object")
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                        ->Attribute("EditButton", "Editor/Icons/Assets/PhysicsMaterial")
+                        ->Attribute("EditButton", "")
                         ->Attribute("EditDescription", "Open in Asset Editor")
                         ->Attribute(AZ::Edit::Attributes::DefaultAsset, &MaterialSelection::GetDefaultMaterialLibraryId)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MaterialSelection::OnMaterialLibraryChanged)

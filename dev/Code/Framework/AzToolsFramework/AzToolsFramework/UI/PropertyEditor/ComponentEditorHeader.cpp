@@ -41,9 +41,9 @@ namespace AzToolsFramework
 
     void ComponentEditorHeader::RefreshTitle()
     {
-        QString label = PropertyRowWidget::MakeFilterHighlightedName(m_title, m_currentFilterString);
-        AzQtComponents::CardHeader::setTitle(label);
-      
+        AzQtComponents::CardHeader::setTitle(m_title);
+        AzQtComponents::CardHeader::setFilter(m_currentFilterString);
+
         AzQtComponents::CardHeader::refreshTitle();
     }
 

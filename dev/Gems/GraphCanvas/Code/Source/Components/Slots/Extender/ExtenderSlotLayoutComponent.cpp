@@ -24,19 +24,21 @@
 #include <GraphCanvas/Components/Slots/Extender/ExtenderSlotBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/GraphCanvasBus.h>
+#include <GraphCanvas/GraphicsItems/GraphCanvasSceneEventFilter.h>
 #include <Components/Slots/Extender/ExtenderSlotConnectionPin.h>
 #include <Widgets/GraphCanvasLabel.h>
 
 namespace GraphCanvas
 {
     class ExtenderLabelEventFilter
-        : public QGraphicsWidget
+        : public SceneEventFilter
     {
     public:
         AZ_CLASS_ALLOCATOR(ExtenderLabelEventFilter, AZ::SystemAllocator, 0);
 
         ExtenderLabelEventFilter(const SlotId& slotId)
-            : m_trackClick(false)
+            : SceneEventFilter(nullptr)
+            , m_trackClick(false)
             , m_slotId(slotId)
         {
         }
@@ -62,7 +64,7 @@ namespace GraphCanvas
                 return true;
             }
             default:
-                break;            
+                break;
             }
 
             return false;

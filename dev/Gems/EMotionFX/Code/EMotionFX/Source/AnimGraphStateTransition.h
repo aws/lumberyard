@@ -63,15 +63,15 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance, AnimGraphNode* sourceNode);
-            ~UniqueData() {}
+            UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
 
         public:
-            AnimGraphNode*  mSourceNode;
-            float           mBlendWeight;
-            float           mBlendProgress;
-            float           mTotalSeconds;
-            bool            mIsDone;
+            AnimGraphNode* mSourceNode = nullptr;
+            float mBlendWeight = 0.0f;
+            float mBlendProgress = 0.0f;
+            float mTotalSeconds = 0.0f;
+            bool mIsDone = false;
         };
 
         class StateFilterLocal final
@@ -120,16 +120,19 @@ namespace EMotionFX
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
+        void InvalidateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
         void RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const override;
         void ExtractMotion(AnimGraphInstance* animGraphInstance, AnimGraphRefCountedData* sourceData, Transform* outTransform, Transform* outTransformMirrored) const;
 
         void OnStartTransition(AnimGraphInstance* animGraphInstance);
         void OnEndTransition(AnimGraphInstance* animGraphInstance);
-        bool GetIsDone(const AnimGraphInstance* animGraphInstance) const;
-        float GetBlendWeight(const AnimGraphInstance* animGraphInstance) const;
+        bool GetIsDone(AnimGraphInstance* animGraphInstance) const;
+        float GetBlendWeight(AnimGraphInstance* animGraphInstance) const;
 
-        void CalcTransitionOutput(const AnimGraphInstance* animGraphInstance, const AnimGraphPose& from, const AnimGraphPose& to, AnimGraphPose* outputPose) const;
+        void CalcTransitionOutput(AnimGraphInstance* animGraphInstance, const AnimGraphPose& from, const AnimGraphPose& to, AnimGraphPose* outputPose) const;
 
         bool CheckIfIsReady(AnimGraphInstance* animGraphInstance) const;
 
@@ -148,7 +151,7 @@ namespace EMotionFX
         void SetCanBeInterrupted(bool canBeInterrupted);
         void SetCanBeInterruptedBy(const AZStd::vector<AZ::u64>& transitionIds) { m_canBeInterruptedByTransitionIds = transitionIds; }
         void SetCanBeInterruptedBy(const AZStd::vector<AnimGraphConnectionId>& transitionIds);
-        bool CanBeInterruptedBy(const AnimGraphStateTransition* transition, const AnimGraphInstance* animGraphInstance = nullptr) const;
+        bool CanBeInterruptedBy(const AnimGraphStateTransition* transition, AnimGraphInstance* animGraphInstance = nullptr) const;
         const AZStd::vector<AZ::u64>& GetCanBeInterruptedByTransitionIds() const { return m_canBeInterruptedByTransitionIds; }
 
         void SetInterruptionMode(EInterruptionMode mode) { m_interruptionMode = mode; }
@@ -162,7 +165,7 @@ namespace EMotionFX
 
         void SetCanInterruptOtherTransitions(bool canInterruptOtherTransitions);
         bool GetCanInterruptOtherTransitions() const;
-        bool GotInterrupted(const AnimGraphInstance* animGraphInstance) const;
+        bool GotInterrupted(AnimGraphInstance* animGraphInstance) const;
 
         void SetCanInterruptItself(bool canInterruptItself);
         bool GetCanInterruptItself() const;

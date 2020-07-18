@@ -23,7 +23,6 @@ CErrorsDlg::CErrorsDlg(QWidget* pParent /*=NULL*/)
 {
     ui->setupUi(this);
 
-    setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
     m_bFirstMessage = true;
@@ -42,14 +41,14 @@ CErrorsDlg::~CErrorsDlg()
 void CErrorsDlg::OnInitDialog()
 {
     auto icon = style()->standardIcon(QStyle::SP_MessageBoxCritical);
-	
+    
     ui->m_errorIconCtrl->setPixmap(icon.pixmap(ui->m_errorIconCtrl->width()));
 }
 
 void CErrorsDlg::AddMessage(const QString& text, const QString& caption)
 {
-	// At the load time this dialog is frozen, cause there is no message loop in progress.
-	// We need to dispatch messages before showing a window if it was closed by user.
+    // At the load time this dialog is frozen, cause there is no message loop in progress.
+    // We need to dispatch messages before showing a window if it was closed by user.
     if (!isVisible())
     {
         show();
@@ -74,7 +73,7 @@ void CErrorsDlg::AddMessage(const QString& text, const QString& caption)
     textCursor.insertText(caption + "\n");
 
     format.setFontWeight(QFont::Normal);
-	// Show message in a dialog
+    // Show message in a dialog
     textCursor.setCharFormat(format);
     textCursor.insertText(text);
 }

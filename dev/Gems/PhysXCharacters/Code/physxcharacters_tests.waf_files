@@ -1,7 +1,11 @@
 {
     "auto": {
         "Tests": [
-            "Tests/Test.cpp"
+            "Tests/CharacterControllerTests.cpp",
+            "Tests/RagdollTestData.h",
+            "Tests/RagdollTests.cpp",
+            "Tests/TestEnvironment.cpp",
+            "Tests/TestEnvironment.h"
         ]
     }
 }

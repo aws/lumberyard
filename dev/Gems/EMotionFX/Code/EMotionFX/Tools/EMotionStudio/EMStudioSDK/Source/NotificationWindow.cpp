@@ -51,15 +51,15 @@ namespace EMStudio
         mIcon->setFocusPolicy(Qt::NoFocus);
         if (type == TYPE_ERROR)
         {
-            mIcon->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/ExclamationMark.png"));
+            mIcon->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/ExclamationMark.svg"));
         }
         else if (type == TYPE_WARNING)
         {
-            mIcon->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Warning.png"));
+            mIcon->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Warning.svg"));
         }
         else if (type == TYPE_SUCCESS)
         {
-            mIcon->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Confirm.png"));
+            mIcon->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Confirm.svg"));
         }
         connect(mIcon, &QToolButton::pressed, this, &NotificationWindow::IconPressed);
 

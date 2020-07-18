@@ -41,8 +41,9 @@ namespace AzQtComponents
                 // Forcing styled background to allow using background-color from QSS
                 actionButton->setAttribute(Qt::WA_StyledBackground, true);
                 layout()->addWidget(actionButton);
-                connect(actionButton, &QPushButton::pressed, actionEvent->action(), &QAction::trigger);
+                connect(actionButton, &QPushButton::clicked, actionEvent->action(), &QAction::trigger);
                 m_actionButtons[actionEvent->action()] = actionButton;
+                emit actionsChanged();
                 return true;
             case QEvent::ActionChanged:
                 actionEvent = static_cast<QActionEvent*>(event);
@@ -57,6 +58,7 @@ namespace AzQtComponents
                 actionEvent = static_cast<QActionEvent*>(event);
                 removeWidgetFromLayout(m_actionButtons[actionEvent->action()]);
                 m_actionButtons.remove(actionEvent->action());
+                emit actionsChanged();
                 return true;
             default:
                 return QObject::eventFilter(watched, event);

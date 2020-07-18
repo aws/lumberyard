@@ -151,7 +151,7 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>:/stylesheet/img/16x16/info.png</normaloff>:/stylesheet/img/16x16/info.png</iconset>
+       <normaloff>:/stylesheet/img/UI20/Info.svg</normaloff>:/stylesheet/img/UI20/Info.svg</iconset>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -165,7 +165,7 @@
      </property>
      <property name="icon">
       <iconset>
-       <normaloff>:/stylesheet/img/16x16/Helpers.png</normaloff>:/stylesheet/img/16x16/Helpers.png</iconset>
+       <normaloff>:/stylesheet/img/UI20/Helpers.svg</normaloff>:/stylesheet/img/UI20/Helpers.svg</iconset>
      </property>
      <property name="checkable">
       <bool>true</bool>

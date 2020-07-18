@@ -11,7 +11,10 @@
 */
 
 #include "PhysX_precompiled.h"
+#include <AzCore/UnitTest/TestTypes.h>
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <Tests/EditorTestUtilities.h>
+#include <EditorColliderComponent.h>
 #include <Physics/PhysicsTests.inl>
 #include <EditorShapeColliderComponent.h>
 #include <EditorColliderComponent.h>
@@ -19,9 +22,11 @@
 #include <EditorSystemComponent.h>
 #include <EditorForceRegionComponent.h>
 #include <SystemComponent.h>
+#include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
 #include <ComponentDescriptors.h>
 #include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/CollisionNotificationBus.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysXEditorTests
 {
@@ -180,5 +185,45 @@ namespace PhysXEditorTests
         AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
         Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(),
             &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
+    }
+
+    void PhysXEditorFixture::ValidateInvalidEditorShapeColliderComponentParams(const float radius, const float height)
+    {
+        // create an editor entity with a shape collider component and a cylinder shape component
+        EntityPtr editorEntity = CreateInactiveEditorEntity("ShapeColliderComponentEditorEntity");
+        editorEntity->CreateComponent<PhysX::EditorShapeColliderComponent>();
+        editorEntity->CreateComponent(LmbrCentral::EditorCylinderShapeComponentTypeId);
+        editorEntity->Activate();
+        //
+        //{
+        //    Physics::ErrorHandler warningHandler("Negative or zero cylinder dimensions are invalid");
+        //    LmbrCentral::CylinderShapeComponentRequestsBus::Event(editorEntity->GetId(),
+        //        &LmbrCentral::CylinderShapeComponentRequests::SetRadius, radius);
+        //
+        //    // expect a warning if the radius is invalid
+        //    int expectedWarningCount = radius <= 0.f ? 1 : 0;
+        //    EXPECT_EQ(warningHandler.GetWarningCount(), expectedWarningCount);
+        //}
+        //
+        //{
+        //    Physics::ErrorHandler warningHandler("Negative or zero cylinder dimensions are invalid");
+        //    LmbrCentral::CylinderShapeComponentRequestsBus::Event(editorEntity->GetId(),
+        //        &LmbrCentral::CylinderShapeComponentRequests::SetHeight, height);
+        //
+        //    // expect a warning if the radius or height is invalid
+        //    int expectedWarningCount = radius <= 0.f || height <= 0.f ? 1 : 0;
+        //    EXPECT_EQ(warningHandler.GetWarningCount(), expectedWarningCount);
+        //}
+        //
+        //EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
+        //
+        //// since there was no editor rigid body component, the runtime entity should have a static rigid body
+        //const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        //const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
+        //
+        //PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
+        //
+        //// there should be no shapes on the rigid body because the cylinder radius and/or height is invalid
+        //EXPECT_EQ(pxRigidStatic->getNbShapes(), 0);
     }
 } // namespace PhysXEditorTests

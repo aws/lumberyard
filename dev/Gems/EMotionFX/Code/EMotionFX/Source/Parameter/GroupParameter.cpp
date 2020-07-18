@@ -56,10 +56,9 @@ namespace EMotionFX
             ;
     }
 
-    const AZStd::string& GroupParameter::GetTypeDisplayName() const
+    const char* GroupParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Group";
-        return typeDisplayName;
+        return "Group";
     }
 
     size_t GroupParameter::GetNumValueParameters() const

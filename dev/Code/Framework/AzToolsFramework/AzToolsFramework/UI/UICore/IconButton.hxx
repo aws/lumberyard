@@ -20,6 +20,8 @@ namespace AzToolsFramework
     class IconButton
         : public QPushButton
     {
+        Q_OBJECT // AUTOMOC
+        Q_PROPERTY(QIcon highlightedIcon READ highlightedIcon WRITE setHighlightedIcon)
     public:
 
         IconButton(QWidget *EntityPropertyEditorUI)
@@ -28,6 +30,13 @@ namespace AzToolsFramework
             , m_mouseOver(false)
         {
             setAttribute(Qt::WA_Hover, true);
+        }
+
+        QIcon highlightedIcon() const { return m_highlightedIcon; }
+        void setHighlightedIcon(const QIcon& icon)
+        {
+            m_highlightedIcon = icon;
+            update();
         }
 
     protected:
@@ -40,8 +49,10 @@ namespace AzToolsFramework
     private:
 
         qint64 m_currentIconCacheKey;
+        QSize m_currentIconCacheKeySize;
         QPixmap m_iconPixmap;
         QPixmap m_highlightedIconPixmap;
+        QIcon m_highlightedIcon;
 
         bool m_mouseOver;
     };

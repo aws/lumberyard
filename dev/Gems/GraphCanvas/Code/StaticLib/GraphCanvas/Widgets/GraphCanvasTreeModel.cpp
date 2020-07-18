@@ -269,6 +269,11 @@ namespace GraphCanvas
         return m_treeRoot.get();
     }
 
+    GraphCanvas::GraphCanvasTreeItem* GraphCanvasTreeModel::ModTreeRoot()
+    {
+        return m_treeRoot.get();
+    }
+
     QModelIndex GraphCanvasTreeModel::CreateIndex(GraphCanvasTreeItem* treeItem, int column)
     {
         if (treeItem == m_treeRoot.get())

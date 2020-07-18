@@ -27,7 +27,6 @@
 #include <QMenu>
 #include <QHeaderView>
 
-
 EMotionFX::Node* SelectionItem::GetNode() const
 {
     EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(mActorInstanceID);
@@ -45,82 +44,71 @@ namespace EMStudio
     NodeHierarchyWidget::NodeHierarchyWidget(QWidget* parent, bool useSingleSelection, bool useDefaultMinWidth)
         : QWidget(parent)
     {
-        mBoneIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Bone.png").c_str());
-        mNodeIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Node.png").c_str());
-        mMeshIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").c_str());
-        mCharacterIcon  = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Character.png").c_str());
+        const auto iconFilename = [](const QString& name) {
+            return QStringLiteral("%1/Images/Icons/%2").arg(MysticQt::GetDataDir().c_str()).arg(name);
+        };
+        const auto boneIconFilename = iconFilename("Bone.svg");
+        const auto nodeIconFilename = iconFilename("Node.svg");
+        const auto meshIconFilename = iconFilename("Mesh.svg");
+        mBoneIcon       = new QIcon(boneIconFilename);
+        mNodeIcon       = new QIcon(nodeIconFilename);
+        mMeshIcon       = new QIcon(meshIconFilename);
+        mCharacterIcon  = new QIcon(iconFilename("Character.svg"));
 
         mActorInstanceIDs.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK);
 
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setMargin(0);
 
-        // create the display layout
-        QHBoxLayout* displayLayout = new QHBoxLayout();
-
-        displayLayout->addWidget(new QLabel("Display:"));
-
-        mDisplayButtonGroup     = new MysticQt::ButtonGroup(this, 1, 3);
-        mDisplayMeshesButton    = mDisplayButtonGroup->GetButton(0, 0);
-        mDisplayNodesButton     = mDisplayButtonGroup->GetButton(0, 1);
-        mDisplayBonesButton     = mDisplayButtonGroup->GetButton(0, 2);
-
-        mDisplayMeshesButton->setText("Meshes");
-        mDisplayNodesButton->setText("Nodes");
-        mDisplayBonesButton->setText("Bones");
-
-        mDisplayBonesButton->setIcon(*mBoneIcon);
-        mDisplayNodesButton->setIcon(*mNodeIcon);
-        mDisplayMeshesButton->setIcon(*mMeshIcon);
-
-        mDisplayMeshesButton->setChecked(true);
-        mDisplayNodesButton->setChecked(true);
-        mDisplayBonesButton->setChecked(true);
-
-        connect(mDisplayMeshesButton, &QPushButton::clicked, this, static_cast<void (NodeHierarchyWidget::*)()>(&NodeHierarchyWidget::Update));
-        connect(mDisplayNodesButton, &QPushButton::clicked, this, static_cast<void (NodeHierarchyWidget::*)()>(&NodeHierarchyWidget::Update));
-        connect(mDisplayBonesButton, &QPushButton::clicked, this, static_cast<void (NodeHierarchyWidget::*)()>(&NodeHierarchyWidget::Update));
-
-        displayLayout->addWidget(mDisplayButtonGroup);
-
-        QWidget* spacerWidget = new QWidget();
-        spacerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        spacerWidget->setFixedWidth(20);
-        displayLayout->addWidget(spacerWidget);
-
         m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        m_searchWidget->setEnabledFiltersVisible(false);
+        m_searchWidget->setTextFilterFillsWidth(true);
+        const auto addFilter = [this](const QString& name, const QString& iconFilename, FilterType type) {
+            AzQtComponents::SearchTypeFilter filter(tr("Node"), name);
+            filter.extraIconFilename = iconFilename;
+            filter.enabled = true;
+            filter.metadata = static_cast<int>(type);
+            m_searchWidget->AddTypeFilter(filter);
+        };
+        addFilter(tr("Meshes"), meshIconFilename, FilterType::Meshes);
+        addFilter(tr("Nodes"), nodeIconFilename, FilterType::Nodes);
+        addFilter(tr("Bones"), boneIconFilename, FilterType::Bones);
+        mFilterState = {FilterType::Meshes, FilterType::Nodes, FilterType::Bones};
         connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NodeHierarchyWidget::OnTextFilterChanged);
-        m_searchWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        displayLayout->addWidget(m_searchWidget);
+        connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged, this, [this](const auto& filters) {
+            FilterTypes filterState;
+            for (const auto& filter : filters)
+            {
+                filterState.setFlag(static_cast<FilterType>(filter.metadata.toInt()));
+            }
+            if (filterState == mFilterState)
+            {
+                return;
+            }
+            mFilterState = filterState;
+            Update();
+            emit FilterStateChanged(filterState);
+        });
+        layout->addWidget(m_searchWidget);
 
         // create the tree widget
         mHierarchy = new QTreeWidget();
 
         // create header items
-        mHierarchy->setColumnCount(5);
-        QStringList headerList;
-        headerList.append("Name");
-        headerList.append("Type");
-        headerList.append("Child");
-        headerList.append("Poly");
-        headerList.append("Mirror");
-        mHierarchy->setHeaderLabels(headerList);
+        mHierarchy->setColumnCount(1);
 
         // set optical stuff for the tree
-        mHierarchy->setColumnWidth(0, 400);
-        mHierarchy->setColumnWidth(1, 63);
-        mHierarchy->setColumnWidth(2, 37);
-        mHierarchy->setColumnWidth(3, 50);
+        mHierarchy->header()->setVisible(false);
+        mHierarchy->header()->setStretchLastSection(true);
         mHierarchy->setSortingEnabled(false);
         mHierarchy->setSelectionMode(QAbstractItemView::SingleSelection);
 
         if (useDefaultMinWidth)
         {
-            mHierarchy->setMinimumWidth(670);
+            mHierarchy->setMinimumWidth(500);
         }
 
-        mHierarchy->setMinimumHeight(500);
-        mHierarchy->setAlternatingRowColors(true);
+        mHierarchy->setMinimumHeight(400);
         mHierarchy->setExpandsOnDoubleClick(true);
         mHierarchy->setAnimated(true);
 
@@ -133,7 +121,6 @@ namespace EMStudio
             connect(mHierarchy, &QTreeWidget::customContextMenuRequested, this, &NodeHierarchyWidget::TreeContextMenu);
         }
 
-        layout->addLayout(displayLayout);
         layout->addWidget(mHierarchy);
         setLayout(layout);
 
@@ -293,9 +280,9 @@ namespace EMStudio
 
     bool NodeHierarchyWidget::CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode, bool isBone, bool isNode)
     {
-        if (((mDisplayMeshesButton->isChecked() && isMeshNode) ||
-            (mDisplayBonesButton->isChecked() && isBone) ||
-            (mDisplayNodesButton->isChecked() && isNode)) &&
+        if (((GetDisplayMeshes() && isMeshNode) ||
+            (GetDisplayBones() && isBone) ||
+            (GetDisplayNodes() && isNode)) &&
             (m_searchWidgetText.empty() || nodeName.find(m_searchWidgetText) != AZStd::string::npos))
         {
             return true;
@@ -740,6 +727,24 @@ namespace EMStudio
                 m_selectedNodes.emplace_back(selectionItem);
             }
         }
+    }
+
+
+    bool NodeHierarchyWidget::GetDisplayMeshes() const
+    {
+        return mFilterState.testFlag(FilterType::Meshes);
+    }
+
+
+    bool NodeHierarchyWidget::GetDisplayNodes() const
+    {
+        return mFilterState.testFlag(FilterType::Nodes);
+    }
+
+
+    bool NodeHierarchyWidget::GetDisplayBones() const
+    {
+        return mFilterState.testFlag(FilterType::Bones);
     }
 
     /*

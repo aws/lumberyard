@@ -34,6 +34,11 @@ namespace GraphCanvas
 
         void selectionChanged(const QItemSelection& selected, const QItemSelection &deselected) override;
 
+    public slots:
+
+    signals:
+        void OnTreeItemDoubleClicked(GraphCanvas::NodePaletteTreeItem* treeItem);
+
     protected:
         void mousePressEvent(QMouseEvent* ev) override;
         void mouseMoveEvent(QMouseEvent* ev) override;
@@ -41,6 +46,9 @@ namespace GraphCanvas
         void leaveEvent(QEvent* ev) override;
 
         void OnClicked(const QModelIndex& modelIndex);
+        void OnDoubleClicked(const QModelIndex& modelIndex);
+
+        void rowsAboutToBeRemoved(const QModelIndex& parentIndex, int first, int last) override;
 
     private:
         void UpdatePointer(const QModelIndex &modelIndex, bool isMousePressed);

@@ -350,6 +350,7 @@ namespace ScriptCanvasEditor
             m_componentEditors.clear();
 
             ScriptCanvas::EndpointNotificationBus::MultiHandler::BusDisconnect();
+            ScriptCanvas::NodeNotificationsBus::MultiHandler::BusDisconnect();
         }
 
         void PropertyGrid::DisplayInstances(const InstancesToDisplay& instances)
@@ -534,6 +535,17 @@ namespace ScriptCanvasEditor
             }
         }
 
+        void PropertyGrid::OnSlotDisplayTypeChanged(const ScriptCanvas::SlotId& slotId, const ScriptCanvas::Data::Type& slotType)
+        {
+            const AZ::EntityId* nodeId = ScriptCanvas::NodeNotificationsBus::GetCurrentBusId();
+
+            if (nodeId)
+            {
+                ScriptCanvas::Endpoint scriptCanvasEndpoint((*nodeId), slotId);
+                UpdateEndpointVisibility(scriptCanvasEndpoint);
+            }
+        }
+
         void PropertyGrid::RefreshPropertyGrid()
         {
             GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
@@ -585,6 +597,8 @@ namespace ScriptCanvasEditor
                     continue;
                 }
 
+                ScriptCanvas::NodeNotificationsBus::MultiHandler::BusConnect(node->GetEntityId());
+
                 AZStd::vector<AZ::EntityId> gcSlotEntityIds;
                 GraphCanvas::NodeRequestBus::EventResult(gcSlotEntityIds, gcNodeEntityId, &GraphCanvas::NodeRequests::GetSlotIds);
 
@@ -595,23 +609,14 @@ namespace ScriptCanvasEditor
                     GraphCanvas::SlotRequestBus::EventResult(slotUserData, gcSlotEntityId, &GraphCanvas::SlotRequests::GetUserData);
                     ScriptCanvas::SlotId scSlotId = slotUserData && slotUserData->is<ScriptCanvas::SlotId>() ? *AZStd::any_cast<ScriptCanvas::SlotId>(slotUserData) : ScriptCanvas::SlotId();
 
-                    const ScriptCanvas::Slot* slot = node->GetSlot(scSlotId);
+                    ScriptCanvas::Slot* slot = node->GetSlot(scSlotId);
 
                     if (!slot || slot->GetDescriptor() != ScriptCanvas::SlotDescriptors::DataIn())
                     {
                         continue;
                     }
 
-                    // Set the visibility based on the connection status.
-                    {
-                        bool isConnected = false;
-                        GraphCanvas::SlotRequestBus::EventResult(isConnected, gcSlotEntityId, &GraphCanvas::SlotRequests::HasConnections);
-
-                        ScriptCanvas::ModifiableDatumView datumView;
-                        node->FindModifiableDatumView(scSlotId, datumView);
-
-                        datumView.SetVisibility(isConnected ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::ShowChildrenOnly);
-                    }
+                    slot->UpdateDatumVisibility();
 
                     // Connect to get notified of changes.
                     ScriptCanvas::EndpointNotificationBus::MultiHandler::BusConnect(ScriptCanvas::Endpoint(scNodeEntityId, scSlotId));
@@ -642,20 +647,52 @@ namespace ScriptCanvasEditor
         {
             const ScriptCanvas::Endpoint* sourceEndpoint = ScriptCanvas::EndpointNotificationBus::GetCurrentBusId();
 
-            ScriptCanvas::ModifiableDatumView datumView;
-            ScriptCanvas::NodeRequestBus::Event(sourceEndpoint->GetNodeId(), &ScriptCanvas::NodeRequests::FindModifiableDatumView, sourceEndpoint->GetSlotId(), datumView);
-
-            datumView.SetVisibility(AZ::Edit::PropertyVisibility::Hide);
+            if (sourceEndpoint)
+            {
+                UpdateEndpointVisibility(*sourceEndpoint);
+            }
         }
 
         void PropertyGrid::OnEndpointDisconnected(const ScriptCanvas::Endpoint& targetEndpoint)
         {
             const ScriptCanvas::Endpoint* sourceEndpoint = ScriptCanvas::EndpointNotificationBus::GetCurrentBusId();
 
-            ScriptCanvas::ModifiableDatumView datumView;
-            ScriptCanvas::NodeRequestBus::Event(sourceEndpoint->GetNodeId(), &ScriptCanvas::NodeRequests::FindModifiableDatumView, sourceEndpoint->GetSlotId(), datumView);
+            if (sourceEndpoint)
+            {
+                UpdateEndpointVisibility(*sourceEndpoint);
+            }
+        }
 
-            datumView.SetVisibility(AZ::Edit::PropertyVisibility::ShowChildrenOnly);
+        void PropertyGrid::OnEndpointConvertedToValue()
+        {
+            const ScriptCanvas::Endpoint* sourceEndpoint = ScriptCanvas::EndpointNotificationBus::GetCurrentBusId();
+
+            if (sourceEndpoint)
+            {
+                UpdateEndpointVisibility(*sourceEndpoint);
+            }
+        }
+
+        void PropertyGrid::OnEndpointConvertedToReference()
+        {
+            const ScriptCanvas::Endpoint* sourceEndpoint = ScriptCanvas::EndpointNotificationBus::GetCurrentBusId();
+
+            if (sourceEndpoint)
+            {
+                UpdateEndpointVisibility(*sourceEndpoint);
+            }
+        }
+
+        void PropertyGrid::UpdateEndpointVisibility(const ScriptCanvas::Endpoint& endpoint)
+        {
+            ScriptCanvas::Slot* slot = nullptr;
+            ScriptCanvas::NodeRequestBus::EventResult(slot, endpoint.GetNodeId(), &ScriptCanvas::NodeRequests::GetSlot, endpoint.GetSlotId());
+
+            if (slot)
+            {
+                slot->UpdateDatumVisibility();
+                RebuildPropertyGrid();
+            }
         }
 
 #include <Editor/View/Widgets/PropertyGrid.moc>

@@ -47,7 +47,7 @@ namespace EMotionFX
         m_animGraphInstance = AnimGraphInstance::Create(m_animGraph.get(), m_actorInstance, m_motionSet);
         m_actorInstance->SetAnimGraphInstance(m_animGraphInstance);
         m_animGraphInstance->IncreaseReferenceCount(); // Two owners now, the test and the actor instance
-        m_animGraphInstance->UpdateUniqueData();
+        m_animGraphInstance->RecursiveInvalidateUniqueDatas();
     }
 
     void JackGraphFixture::ConstructGraph()

@@ -26,7 +26,6 @@
 #include "QtUtilWin.h"
 #include "GameExporter.h"
 #include "GameResourcesExporter.h"
-#include "Core/QtEditorApplication.h"
 #include "MainWindow.h"
 #include "Core/QtEditorApplication.h"
 #include "CryEditDoc.h"
@@ -211,6 +210,8 @@
 #include <AzToolsFramework/ViewportSelection/EditorTransformComponentSelectionRequestBus.h>
 #include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
+#include <AzQtComponents/Components/StyleManager.h>
+#include <AzQtComponents/Utilities/HandleDpiAwareness.h>
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
@@ -978,6 +979,7 @@ public:
     bool m_bNullRenderer = false;
     bool m_bDeveloperMode = false;
     bool m_bRunPythonScript = false;
+    bool m_bRunPythonTestScript = false;
     bool m_bShowVersionInfo = false;
     QString m_exportFile;
     QString m_strFileName;
@@ -1031,6 +1033,7 @@ public:
             { "devmode", m_bDeveloperMode },
             { "VTUNE", dummy },
             { "runpython", m_bRunPythonScript },
+            { "runpythontest", m_bRunPythonTestScript },
             { "version", m_bShowVersionInfo },
             { "NSDocumentRevisionsDebugMode", nsDocumentRevisionsDebugMode},
             { "skipWelcomeScreenDialog", m_bSkipWelcomeScreenDialog},
@@ -1041,7 +1044,7 @@ public:
         const std::vector<std::pair<CommandLineStringOption, QString&> > stringOptions = {
             {{"app-root", "Application Root path override", "app-root"}, m_appRoot},
             {{"logfile", "File name of the log file to write out to.", "logfile"}, m_logFile},
-            {{"runpythonargs", "Command-line argument string to pass to the python script if --runpython was used.", "runpythonargs"}, m_pythonArgs},
+            {{"runpythonargs", "Command-line argument string to pass to the python script if --runpython or --runpythontest was used.", "runpythonargs"}, m_pythonArgs},
             {{"exec", "cfg file to run on startup, used for systems like automation", "exec"}, m_execFile},
             {{"rhi", "Command-line argument to force which rhi to use", "dummyString"}, dummyString },
             {{"exec_line", "command to run on startup, used for systems like automation", "exec_line"}, m_execLineCmd}
@@ -2229,7 +2232,7 @@ QString FormatRichTextCopyrightNotice()
 {
     // copyright symbol is HTML Entity = &#xA9;
     QString copyrightHtmlSymbol = "&#xA9;";
-    QString copyrightString = QObject::tr("Lumberyard and related materials Copyright %1 %2 Amazon Web Services, Inc., its affiliates or licensors.By accessing or using these materials, you agree to the terms of the AWS Customer Agreement.");
+    QString copyrightString = QObject::tr("Lumberyard and related materials Copyright %1 %2 Amazon Web Services, Inc., its affiliates or licensors.<br>By accessing or using these materials, you agree to the terms of the AWS Customer Agreement.");
 
     return copyrightString.arg(copyrightHtmlSymbol).arg(LUMBERYARD_COPYRIGHT_YEAR);
 }
@@ -2330,7 +2333,8 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
     m_bPrecacheShadersLevels = cmdInfo.m_bPrecacheShadersLevels;
     m_bMergeShaders = cmdInfo.m_bMergeShaders;
     m_bExportMode = cmdInfo.m_bExport;
-    m_bRunPythonScript = cmdInfo.m_bRunPythonScript;
+    m_bRunPythonTestScript = cmdInfo.m_bRunPythonTestScript;
+    m_bRunPythonScript = cmdInfo.m_bRunPythonScript || cmdInfo.m_bRunPythonTestScript;
     m_execFile = cmdInfo.m_execFile;
     m_execLineCmd = cmdInfo.m_execLineCmd;
     m_bAutotestMode = cmdInfo.m_bAutotestMode || cmdInfo.m_bConsoleMode;
@@ -2345,7 +2349,7 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
     // Do we have a passed filename ?
     if (!cmdInfo.m_strFileName.isEmpty())
     {
-        if (!cmdInfo.m_bRunPythonScript && IsPreviewableFileType(cmdInfo.m_strFileName.toUtf8().constData()))
+        if (!m_bRunPythonScript && IsPreviewableFileType(cmdInfo.m_strFileName.toUtf8().constData()))
         {
             m_bPreviewMode = true;
             azstrncpy(m_sPreviewFile, _MAX_PATH, cmdInfo.m_strFileName.toUtf8().constData(), _MAX_PATH);
@@ -2559,6 +2563,7 @@ void CCryEditApp::InitLevel(const CEditCommandLineInfo& cmdInfo)
         QString levelName;
         bool isLevelNameValid = false;
         bool doLevelNeedLoading = true;
+        const bool runningPythonScript = cmdInfo.m_bRunPythonScript || cmdInfo.m_bRunPythonTestScript;
 
         AZ::EBusLogicalResult<bool, AZStd::logical_or<bool> > skipStartupUIProcess(false);
         EBUS_EVENT_RESULT(skipStartupUIProcess, AzToolsFramework::EditorEvents::Bus, SkipEditorStartupUI);
@@ -2570,7 +2575,7 @@ void CCryEditApp::InitLevel(const CEditCommandLineInfo& cmdInfo)
                 isLevelNameValid = false;
                 doLevelNeedLoading = true;
                 if (gSettings.bShowDashboardAtStartup
-                    && !cmdInfo.m_bRunPythonScript
+                    && !runningPythonScript
                     && !GetIEditor()->IsInMatEditMode()
                     && !m_bConsoleMode
                     && !m_bSkipWelcomeScreenDialog
@@ -2696,18 +2701,99 @@ BOOL CCryEditApp::InitConsole()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+
+//! This handles the normal logging of Python output in the Editor by outputting
+//! the data to both the Editor Console and the Editor.log file
+struct CCryEditApp::PythonOutputHandler
+    : public AzToolsFramework::EditorPythonConsoleNotificationBus::Handler
+{
+    PythonOutputHandler()
+    {
+        AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusConnect();
+    }
+
+    virtual ~PythonOutputHandler()
+    {
+        AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusDisconnect();
+    }
+
+    int GetOrder() override
+    {
+        return 0;
+    }
+
+    void OnTraceMessage(AZStd::string_view message) override
+    {
+        AZ_TracePrintf("python_test", "%.*s", static_cast<int>(message.size()), message.data());
+    }
+
+    void OnErrorMessage(AZStd::string_view message) override
+    {
+        AZ_Error("python_test", false, "%.*s", static_cast<int>(message.size()), message.data());
+    }
+
+    void OnExceptionMessage(AZStd::string_view message) override
+    {
+        AZ_Error("python_test", false, "EXCEPTION: %.*s", static_cast<int>(message.size()), message.data());
+    }
+};
+
+//! Outputs Python test script print() to stdout
+//! If an exception happens in a Python test script, the process terminates
+struct PythonTestOutputHandler final
+    : public CCryEditApp::PythonOutputHandler
+{
+    PythonTestOutputHandler() = default;
+    virtual ~PythonTestOutputHandler() = default;
+
+    void OnTraceMessage(AZStd::string_view message) override
+    {
+        PythonOutputHandler::OnTraceMessage(message);
+        printf("%.*s\n", static_cast<int>(message.size()), message.data());
+    }
+
+    void OnErrorMessage(AZStd::string_view message) override
+    {
+        PythonOutputHandler::OnErrorMessage(message);
+        printf("ERROR: %.*s\n", static_cast<int>(message.size()), message.data());
+    }
+
+    void OnExceptionMessage(AZStd::string_view message) override
+    {
+        PythonOutputHandler::OnExceptionMessage(message);
+        printf("EXCEPTION: %.*s\n", static_cast<int>(message.size()), message.data());
+        AZ::Debug::Trace::Terminate(1);
+    }
+};
+
 void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 {
-    using namespace AzToolsFramework;
-    if (cmdInfo.m_bRunPythonScript)
+    if (cmdInfo.m_bRunPythonTestScript)
     {
-        if (cmdInfo.m_pythonArgs.length() > 0)
+        m_pythonOutputHandler = AZStd::make_shared<PythonTestOutputHandler>();
+    }
+    else
+    {
+        m_pythonOutputHandler = AZStd::make_shared<PythonOutputHandler>();
+    }
+
+    using namespace AzToolsFramework;
+    if (cmdInfo.m_bRunPythonScript || cmdInfo.m_bRunPythonTestScript)
+    {
+        if (cmdInfo.m_pythonArgs.length() > 0 || cmdInfo.m_bRunPythonTestScript)
         {
             AZStd::vector<AZStd::string> tokens;
             AzFramework::StringFunc::Tokenize(cmdInfo.m_pythonArgs.toUtf8().constData(), tokens, ' ');
             AZStd::vector<AZStd::string_view> pythonArgs;
             std::transform(tokens.begin(), tokens.end(), std::back_inserter(pythonArgs), [](auto& tokenData) { return tokenData.c_str(); });
-            EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs, cmdInfo.m_strFileName.toUtf8().constData(), pythonArgs);
+            if (cmdInfo.m_bRunPythonTestScript)
+            {
+                EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByFilenameAsTest, cmdInfo.m_strFileName.toUtf8().constData(), pythonArgs);
+            }
+            else
+            {
+                EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs, cmdInfo.m_strFileName.toUtf8().constData(), pythonArgs);
+            }
         }
         else
         {
@@ -2814,6 +2900,13 @@ BOOL CCryEditApp::InitInstance()
 #endif
     mainWindowWrapper->setGuest(mainWindow);
     HWND mainWindowWrapperHwnd = (HWND)mainWindowWrapper->winId();
+
+    QDir engineRoot = AzQtComponents::FindEngineRootDir(qApp);
+    AzQtComponents::StyleManager::addSearchPaths(
+        QStringLiteral("style"),
+        engineRoot.filePath(QStringLiteral("Code/Sandbox/Editor/Style")),
+        QStringLiteral(":/Editor/Style"));
+    AzQtComponents::StyleManager::setStyleSheet(mainWindow, QStringLiteral("style:Editor.qss"));
 
     // Note: we should use getNativeHandle to get the HWND from the widget, but
     // it returns an invalid handle unless the widget has been shown and polished and even then
@@ -3167,15 +3260,30 @@ int CCryEditApp::RunPluginUnitTests(CEditCommandLineInfo& cmdLine)
 #endif
 #endif
 
+bool CCryEditApp::CanAddLegacyTerrainLevelComponent()
+{
+#ifdef LY_TERRAIN_EDITOR
+    AZStd::vector<AZStd::string> componentNames = { "Legacy Terrain", };
+    AZStd::vector<AZ::Uuid> uuids;
+    AzToolsFramework::EditorComponentAPIBus::BroadcastResult(uuids, &AzToolsFramework::EditorComponentAPIRequests::FindComponentTypeIdsByEntityType, componentNames, AzToolsFramework::EditorComponentAPIRequests::EntityType::Level);
+    AZ_Assert(uuids.size() == 1, "FindComponentTypeIdsByEntityType failed to return the correct number of results");
+    if (!uuids[0].IsNull())
+    {
+        return true;
+    }
+#endif
+    return false;
+}
+
 bool CCryEditApp::AddLegacyTerrainLevelComponent()
 {
 #ifdef LY_TERRAIN_EDITOR
     AZStd::vector<AZStd::string> componentNames = { "Legacy Terrain", };
     AZStd::vector<AZ::Uuid> uuids;
     AzToolsFramework::EditorComponentAPIBus::BroadcastResult(uuids, &AzToolsFramework::EditorComponentAPIRequests::FindComponentTypeIdsByEntityType, componentNames, AzToolsFramework::EditorComponentAPIRequests::EntityType::Level);
-    if (uuids.size() > 0)
+    AZ_Assert(uuids.size() == 1, "FindComponentTypeIdsByEntityType failed to return the correct number of results");
+    if (!uuids[0].IsNull())
     {
-        AZ_Assert(uuids.size() == 1, "Only one level component named <%s> should exist", componentNames[0].c_str());
         AzToolsFramework::EditorComponentAPIRequests::AddComponentsOutcome outcome;
         AzToolsFramework::EditorLevelComponentAPIBus::BroadcastResult(outcome, &AzToolsFramework::EditorLevelComponentAPIRequests::AddComponentsOfType, uuids);
         if (!outcome.IsSuccess())
@@ -6033,7 +6141,7 @@ void CCryEditApp::OnTerrainCollisionUpdate(QAction* action)
 {
     Q_ASSERT(action->isCheckable());
     uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
-    action->setChecked(flags & SETTINGS_NOCOLLISION);
+    action->setChecked(!(flags & SETTINGS_NOCOLLISION));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6080,7 +6188,7 @@ void CCryEditApp::OnSyncPlayer()
 void CCryEditApp::OnSyncPlayerUpdate(QAction* action)
 {
     Q_ASSERT(action->isCheckable());
-    action->setChecked(GetIEditor()->GetGameEngine()->IsSyncPlayerPosition());
+    action->setChecked(!GetIEditor()->GetGameEngine()->IsSyncPlayerPosition());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6235,9 +6343,8 @@ void CCryEditApp::OnAINavigationNewArea()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnAINavigationFullRebuild()
 {
-    int msgBoxResult = CryMessageBox("Are you sure you want to fully rebuild the MNM data? (The operation can take several minutes)",
-            "MNM Navigation Rebuilding request", MB_YESNO | MB_ICONQUESTION);
-    if (msgBoxResult == IDYES)
+    int result = QMessageBox::question(AzToolsFramework::GetActiveWindow(), QObject::tr("MNM Navigation Rebuilding request"), QObject::tr("Are you sure you want to fully rebuild the MNM data? (The operation can take several minutes)"));
+    if (result == QMessageBox::Yes)
     {
         CAIManager* pAIMgr = GetIEditor()->GetAI();
         pAIMgr->RebuildAINavigation();
@@ -6302,7 +6409,7 @@ void CCryEditApp::OnUpdateNewLevel(QAction* action)
 
 void CCryEditApp::OnUpdatePlayGame(QAction* action)
 {
-    action->setEnabled(!m_bIsExportingLegacyData);
+    action->setEnabled(!m_bIsExportingLegacyData && GetIEditor()->IsLevelLoaded());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6311,6 +6418,7 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     const QScopedValueRollback<bool> rollback(m_creatingNewLevel);
     m_creatingNewLevel = true;
     GetIEditor()->Notify(eNotify_OnBeginCreate);
+    CrySystemEventBus::Broadcast(&CrySystemEventBus::Events::OnCryEditorBeginCreate);
 
     QString currentLevel = GetIEditor()->GetLevelFolder();
     if (!currentLevel.isEmpty())
@@ -6448,6 +6556,7 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     }
 
     GetIEditor()->Notify(eNotify_OnEndCreate);
+    CrySystemEventBus::Broadcast(&CrySystemEventBus::Events::OnCryEditorEndCreate);
     return ECLR_OK;
 }
 
@@ -6550,7 +6659,8 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
 
     int resolution = dlg.GetTerrainResolution();
     int unitSize = dlg.GetTerrainUnits();
-    bool bUseTerrain = dlg.IsUseTerrain();
+
+    bool bUseTerrain = CanAddLegacyTerrainLevelComponent();
 
     if (levelName == temporaryLevelName && GetIEditor()->GetLevelName() != temporaryLevelName)
     {
@@ -9051,7 +9161,11 @@ void CCryEditApp::OpenLUAEditor(const char* files)
     AZStd::string_view binFolderName;
     AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
 
+#if defined(AZ_PLATFORM_WINDOWS)
     AZStd::string process = AZStd::string::format("\"%s%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LuaIDE.exe\"", engineRoot, binFolderName.data());
+#else
+    AZStd::string process = AZStd::string::format("\"%s%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LuaIDE\"", engineRoot, binFolderName.data());
+#endif
     AZStd::string processArgs = AZStd::string::format("%s -app-root \"%s\"", args.c_str(), appRoot);
     StartProcessDetached(process.c_str(), processArgs.c_str());
 }
@@ -9244,38 +9358,6 @@ extern "C"
 #pragma comment(lib, "Shell32.lib")
 #endif
 
-class ForceCommandLineArguments
-{
-public:
-    ForceCommandLineArguments(int argc, char** argv)
-    {
-        // we need to force the dpi awareness setting on Windows to 1.
-        // Qt doesn't currently expose a mechanism to do that other than via
-        // command line arguments or via a qt.conf file.
-        // I didn't want to force the build system to copy the qt.conf
-        // file around and ensure that it's in the same directory as the executable
-        // so instead, we do this.
-
-        for (int i = 0; i < argc; i++)
-        {
-            m_argv.push_back(argv[i]);
-        }
-
-#if defined(AZ_PLATFORM_WINDOWS)
-        m_argv.push_back("-platform");
-        m_argv.push_back("windows:dpiawareness=1");
-#endif
-        m_argc = (int)m_argv.size();
-    }
-
-    char** GetArgV() { return &m_argv[0]; }
-    int&   GetArgC() { return m_argc; }
-
-private:
-    AZStd::fixed_vector<char*, 64> m_argv;
-    int m_argc;
-};
-
 int SANDBOX_API CryEditMain(int argc, char* argv[])
 {
 #if !defined(LEGACYALLOCATOR_MODULE_STATIC)
@@ -9301,6 +9383,7 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
     // on Windows 10
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     // QtOpenGL attributes and surface format setup.
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts, true);
@@ -9320,8 +9403,8 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
     Editor::EditorQtApplication::InstallQtLogHandler();
 
-    ForceCommandLineArguments commandLine(argc, argv);
-    Editor::EditorQtApplication app(commandLine.GetArgC(), commandLine.GetArgV());
+    AzQtComponents::Utilities::HandleDpiAwareness(AzQtComponents::Utilities::SystemDpiAware);
+    Editor::EditorQtApplication app(argc, argv);
 
     // Hook the trace bus to catch errors, boot the AZ app after the QApplication is up
     int ret = 0;

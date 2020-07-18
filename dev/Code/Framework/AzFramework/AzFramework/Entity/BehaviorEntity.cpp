@@ -541,7 +541,7 @@ namespace AzFramework
             }
             else
             {
-                errorMessage = AZStd::string::format("Component (id=%llu) not found on entity(id=%s name='%s').", componentId, m_entityId.ToString().c_str(), entity->GetName().c_str());
+                errorMessage = AZStd::string::format("Component (id=%llu) not found on entity(id=%s name='%s').", static_cast<AZ::u64>(componentId), m_entityId.ToString().c_str(), entity->GetName().c_str());
             }
         }
 

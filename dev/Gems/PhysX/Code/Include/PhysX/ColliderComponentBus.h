@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
 #include <AzFramework/Physics/Shape.h>
 
@@ -74,12 +75,7 @@ namespace PhysX
 
     /// Events dispatched by a PhysX collider component.
     /// A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
-    class ColliderComponentEvents
-        : public AZ::ComponentBus
-    {
-    public:
-        /// Event fired when the collider is updated.
-        virtual void OnColliderChanged() {}
-    };
-    using ColliderComponentEventBus = AZ::EBus<ColliderComponentEvents>;
+    //! LUMBERYARD_DEPRECATED(LY-114678) Use Physics::ColliderComponentEvents instead
+    using ColliderComponentEvents = Physics::ColliderComponentEvents;
+    using ColliderComponentEventBus = AZ::EBus<Physics::ColliderComponentEvents>;
 } // namespace PhysX

@@ -30,7 +30,7 @@ namespace AzQtComponents
     {
         Q_OBJECT
     public:
-        CardNotification(QWidget* parent, const QString& title, const QIcon& icon);
+        CardNotification(QWidget* parent, const QString& title, const QIcon& icon, const QSize = {24, 24});
 
         void addFeature(QWidget* feature);
         QPushButton* addButtonFeature(const QString& buttonText);

@@ -228,9 +228,6 @@
    </item>
    <item>
     <widget class="QTreeView" name="logTree">
-     <property name="verticalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOn</enum>
-     </property>
      <property name="showDropIndicator" stdset="0">
       <bool>false</bool>
      </property>

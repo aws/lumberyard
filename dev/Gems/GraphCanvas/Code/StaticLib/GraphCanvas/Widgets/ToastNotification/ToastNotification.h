@@ -49,6 +49,8 @@ namespace GraphCanvas
         // i.e. anchor point of 0,0 will align the top left position of the dialog with the screen position
         //      anchor point of 1,1 will align the bottom right position of the dialog with the screen position
         void ShowToastAtPoint(const QPoint& screenPosition, const QPointF& anchorPoint);
+
+        void UpdatePosition(const QPoint& screenPosition, const QPointF& anchorPoint);
         
         // QDialog
         void showEvent(QShowEvent* showEvent) override;

@@ -46,16 +46,14 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-                , m_lastLodLevel(MCORE_INVALIDINDEX32)
-                , m_morphTargetIndex(MCORE_INVALIDINDEX32)
-            {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             ~UniqueData() override = default;
 
+            void Update() override;
+
         public:
-            uint32 m_lastLodLevel;
-            uint32 m_morphTargetIndex;
+            uint32 m_lastLodLevel = InvalidIndex32;
+            uint32 m_morphTargetIndex = InvalidIndex32;
         };
 
         BlendTreeMorphTargetNode();
@@ -77,7 +75,7 @@ namespace EMotionFX
 
     private:
         void Output(AnimGraphInstance* animGraphInstance) override;
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         void UpdateMorphIndices(ActorInstance* actorInstance, UniqueData* uniqueData, bool forceUpdate);
 
         void SetNodeInfoNone();

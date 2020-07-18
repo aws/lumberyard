@@ -45,6 +45,8 @@ namespace AzToolsFramework
         return entityId;
     }
 
+    AZStd::string GetEntityName(const AZ::EntityId& entityId, const AZStd::string_view& nameOverride = {});
+
     template <typename... ComponentTypes>
     struct AddComponents
     {

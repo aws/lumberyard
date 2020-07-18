@@ -15,8 +15,12 @@
 
 #include "../StandardPluginsConfig.h"
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
-#include <MysticQt/Source/ButtonGroup.h>
 
+namespace AzQtComponents
+{
+    struct SearchTypeFilter;
+    class FilteredSearchWidget;
+}
 
 namespace EMStudio
 {
@@ -27,7 +31,7 @@ namespace EMStudio
     class LogWindowPlugin
         : public EMStudio::DockWidgetPlugin
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
                            MCORE_MEMORYOBJECTCATEGORY(LogWindowPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
@@ -53,11 +57,13 @@ namespace EMStudio
 
     private slots:
         void OnTextFilterChanged(const QString& text);
-        void OnFilterButtonPressed();
+        void OnTypeFilterChanged(const QVector<AzQtComponents::SearchTypeFilter>& filters);
 
     private:
+        void AddFilter(const QString& name, MCore::LogCallback::ELogLevel level, bool enabled);
+
         LogWindowCallback* mLogCallback;
-        MysticQt::ButtonGroup* mFilterButtonGroup;
+        AzQtComponents::FilteredSearchWidget* mSearchWidget;
     };
 }   // namespace EMStudio
 

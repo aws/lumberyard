@@ -36,6 +36,7 @@ namespace GraphCanvas
         , public AZ::EntityBus::Handler
         , public SlotNotificationBus::MultiHandler
         , public ComponentSaveDataInterface<NodeSaveData>
+        , public ConnectionNotificationBus::Handler
     {
         friend class NodeSerializer;
     public:
@@ -134,16 +135,24 @@ namespace GraphCanvas
         void SignalBatchedConnectionManipulationBegin() override;
         void SignalBatchedConnectionManipulationEnd() override;
 
+        void SignalConnectionMoveBegin(const ConnectionId& connectionId) override;
+
         RootGraphicsItemEnabledState UpdateEnabledState() override;
 
-        bool IsHidingUnusedSlots() override;
+        bool HasHideableSlots() const override;
+        bool IsHidingUnusedSlots() const override;
         void ShowAllSlots() override;
         void HideUnusedSlots() override;
         ////
 
+        // ConnectionNotificationBus
+        void OnMoveFinalized(bool isValidConnection) override;
+        ////
+
     protected:
 
-        void HideUnusedSlotsImpl();        
+        void HideUnusedSlotsImpl();
+        void UpdateDisabledStateVisuals();
 
         //! The ID of the scene this node belongs to.
         AZ::EntityId m_sceneId;

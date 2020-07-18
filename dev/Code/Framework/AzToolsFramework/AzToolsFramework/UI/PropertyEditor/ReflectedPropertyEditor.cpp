@@ -139,7 +139,7 @@ namespace AzToolsFramework
         Impl(ReflectedPropertyEditor* editor)
             : m_editor(editor)
             , m_sizeHintOffset(5, 5)
-            , m_treeIndentation(14)
+            , m_treeIndentation(20) // 16px + 4px to match card header
             , m_leafIndentation(16)
         {
         }
@@ -742,8 +742,11 @@ namespace AzToolsFramework
                     pParent->AddedChild(pWidget);
                 }
 
+                if (pParent || !m_hideRootProperties)
+                {
+                    depth += 1;
+                }
                 pParent = pWidget;
-                depth += 1;
             }
         }
 
@@ -886,8 +889,6 @@ namespace AzToolsFramework
 
         m_impl->SaveExpansion();
 
-        m_impl->m_queuedRefreshLevel = Refresh_None;
-
         m_impl->AdjustLabelWidth();
 
         setUpdatesEnabled(true);
@@ -983,8 +984,6 @@ namespace AzToolsFramework
                 pWidget->UpdateIndicator(m_impl->m_indicatorQueryFunction(pWidget->GetNode()));
             }
         }
-
-        m_impl->m_queuedRefreshLevel = Refresh_None;
     }
 
     void ReflectedPropertyEditor::InvalidateValues()
@@ -1024,8 +1023,6 @@ namespace AzToolsFramework
                 }
             }
         }
-
-        m_impl->m_queuedRefreshLevel = Refresh_None;
     }
 
     PropertyRowWidget* ReflectedPropertyEditor::Impl::CreateOrPullFromPool()
@@ -1599,7 +1596,11 @@ namespace AzToolsFramework
             widget->DoPropertyNotify();
         }
 
+        // Need to refresh any pinned inspectors as well to keep the container state in sync
         QueueInvalidation(Refresh_EntireTree);
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+            AzToolsFramework::Refresh_EntireTree);
     }
 
     void ReflectedPropertyEditor::OnPropertyRowRequestContainerRemoveItem(PropertyRowWidget* widget, InstanceDataNode* node)
@@ -1682,7 +1683,11 @@ namespace AzToolsFramework
             widget->DoPropertyNotify();
         }
 
+        // Need to refresh any pinned inspectors as well to keep the container state in sync
         QueueInvalidation(Refresh_EntireTree);
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+            AzToolsFramework::Refresh_EntireTree);
     }
 
     // Helper functions to populate a dataPtr with a default constructed type, if it's in a list of supported, default-constructable types.
@@ -1914,7 +1919,11 @@ namespace AzToolsFramework
                 m_impl->m_ptrNotify->SealUndoStack();
             }
 
+            // Need to refresh any pinned inspectors as well to keep the container state in sync
             QueueInvalidation(Refresh_EntireTree);
+            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+                AzToolsFramework::Refresh_EntireTree);
         }
     }
 

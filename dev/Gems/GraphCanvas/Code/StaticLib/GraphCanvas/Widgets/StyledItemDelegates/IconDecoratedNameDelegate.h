@@ -31,5 +31,10 @@ namespace GraphCanvas
         IconDecoratedNameDelegate(QWidget* parent);
 
         void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+
+    private:
+        // Magic offset to try to align the icon with where Qt puts the icon. There's some padding it applies
+        // and there's no way to really query it as far as I can tell.
+        int m_paddingOffset = 14;
     };
 }

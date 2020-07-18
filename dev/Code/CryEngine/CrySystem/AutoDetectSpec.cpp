@@ -27,7 +27,6 @@
 #include <StringUtils.h>
 
 #include "System.h"
-#include "AutoDetectCPUTestSuit.h"
 #include "AutoDetectSpec.h"
 
 #pragma warning(disable: 4244)

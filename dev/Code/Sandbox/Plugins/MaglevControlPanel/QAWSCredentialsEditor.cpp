@@ -18,6 +18,8 @@
 
 #include "IEditor.h"
 
+#include <AzQtComponents/Components/Style.h>
+
 #include <QApplication>
 #include <QDesktopServices>
 #include <QDesktopWidget>
@@ -390,8 +392,9 @@ void ProfileSelector::AddRow(int rowNum, QVBoxLayout* scrollLayout)
 
     QPushButton* deleteButton = new QPushButton();
     deleteButton->setObjectName("DeleteProfile");
-    deleteButton->setIcon(QIcon("Editor/Icons/CloudCanvas/clear_search_box.png"));
+    deleteButton->setIcon(QIcon(":/stylesheet/img/UI20/titlebar-close.svg"));
     deleteButton->setIconSize(QSize(11, 11));
+    AzQtComponents::Style::addClass(deleteButton, "flat");
     QString tooltipStr("Remove");
     if (profileName.length())
     {

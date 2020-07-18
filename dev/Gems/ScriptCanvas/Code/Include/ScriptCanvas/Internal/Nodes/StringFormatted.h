@@ -51,8 +51,7 @@ namespace ScriptCanvas
 
                 ScriptCanvas_EditPropertyWithDefaults(AZStd::string, m_format, "{Value}",
                     EditProperty::Name("String", "The format string; any word within {} will create a data pin on the node.")
-                    EditProperty::EditAttributes(AZ::Edit::Attributes::StringLineEditingCompleteNotify(&StringFormatted::OnFormatChanged)
-                    )
+                    EditProperty::EditAttributes(AZ::Edit::Attributes::StringLineEditingCompleteNotify(&StringFormatted::OnFormatChanged))
                 );
 
                 ScriptCanvas_EditPropertyWithDefaults(int, m_numericPrecision, 4,
@@ -75,6 +74,7 @@ namespace ScriptCanvas
                 // Node
                 void OnInit() override;
                 void OnConfigured() override;
+                void OnDeserialized() override;
                 void ConfigureVisualExtensions() override;
 
                 bool CanDeleteSlot(const SlotId& slotId) const override;
@@ -83,7 +83,7 @@ namespace ScriptCanvas
                 NodePropertyInterface* GetPropertyInterface(AZ::Crc32 propertyId) override;
 
                 void OnSlotRemoved(const SlotId& slotId) override;
-                ////                
+                ////
 
                 // Parses the format field to produce the intermediate data for strings that use curly brackets to produce slots.
                 void ParseFormat();

@@ -369,8 +369,19 @@ namespace AzFramework
         if (m_dataSet)
         {
             // Take ownership of the DataSet script property into our shimmed value
-            m_shimmedScriptProperty = m_dataSet->Get();
-            m_dataSet->Set(nullptr);
+            //
+            // If we are the master, we can take ownership and set the data set value to null
+            if (m_dataSet->CanSet())
+            {
+                m_shimmedScriptProperty = m_dataSet->Get();
+                m_dataSet->Set(nullptr);
+            }
+            // Otherwise, we need to clone the data in the data set since we can't modify it and we need to avoid a double deletion.
+            else
+            {
+                AZ::ScriptProperty* scriptProperty = m_dataSet->Get();
+                m_shimmedScriptProperty = scriptProperty->Clone();
+            }
 
             m_dataSet->Release(this);
             m_dataSet = nullptr;
@@ -514,13 +525,13 @@ namespace AzFramework
     {
         if (m_masterReference != LUA_REFNIL)
         {
-            scriptContext.ReleaseCached(m_masterReference);            
+            scriptContext.ReleaseCached(m_masterReference);
             m_masterReference = LUA_REFNIL;
         }
 
         if (m_proxyReference != LUA_REFNIL)
         {
-            scriptContext.ReleaseCached(m_proxyReference);            
+            scriptContext.ReleaseCached(m_proxyReference);
             m_proxyReference = LUA_REFNIL;
         }
     }
@@ -566,7 +577,7 @@ namespace AzFramework
                 }
 
                 if (callContext.CallExecute())
-                {                
+                {
                     bool hasResult = false;
                     if (callContext.GetNumResults() == 1)
                     {
@@ -764,7 +775,7 @@ namespace AzFramework
     }
 
     void ScriptNetBindingTable::FinalizeNetworkTable(AZ::ScriptContext* scriptContext, int entityTableRegistryIndex)
-    {        
+    {
         m_entityScriptContext.ConfigureContext(scriptContext, entityTableRegistryIndex);
 
         if (m_replicaChunk)
@@ -934,7 +945,7 @@ namespace AzFramework
             else
             {
                 networkedTableValue = NetworkedTableValue(scriptProperty->Clone());
-            }            
+            }
 
             if (networkTableContext.PushTableElement("OnNewValue", &elementIndex)) 
             {
@@ -973,7 +984,7 @@ namespace AzFramework
                 networkedTableValue.Destroy();
             }
 
-            handledProperty = true;             
+            handledProperty = true;
         }
 
         return handledProperty;
@@ -988,16 +999,16 @@ namespace AzFramework
         
         // Assuming this is coming from an __call metamethod
         // the lua stack will look as follows
-        // 1 - Table        
+        // 1 - Table
         // n - Params
-        if (stackContext.IsTable(1))        
+        if (stackContext.IsTable(1))
         {
-            // Get the RPC name            
+            // Get the RPC name
             lua_pushliteral(nativeContext,"_rpcName");
             lua_gettable(nativeContext,1);
 
             if (stackContext.IsString(-1))
-            {                
+            {
                 if (stackContext.ReadValue(-1,rpcName))
                 {
                     // Pop off the key value we just read in; It's no longer necessary
@@ -1081,7 +1092,7 @@ namespace AzFramework
                 int functionIndex = 0;
                 if (rpcContext.PushTableElement("OnMaster",&functionIndex))
                 {
-                    helper.SetMasterFunction(rpcContext.CacheValue(functionIndex));                
+                    helper.SetMasterFunction(rpcContext.CacheValue(functionIndex));
                 }
                 else
                 {
@@ -1100,7 +1111,7 @@ namespace AzFramework
 
             if (helper.IsValid())
             {
-                lua_State* nativeContext = rpcTableContext.GetScriptContext()->NativeContext();                
+                lua_State* nativeContext = rpcTableContext.GetScriptContext()->NativeContext();
 
                 // Create the RPC Table inside of our entity table to allow for functions to be called on it.
                 // <RPC Table>
@@ -1120,7 +1131,7 @@ namespace AzFramework
                 lua_rawset(nativeContext,-3);
         
                 lua_setmetatable(nativeContext,-2);
-                // </metatable>                
+                // </metatable>
 
                 lua_rawset(nativeContext,tableStackIndex);
                 // </RPC Table>
@@ -1133,11 +1144,11 @@ namespace AzFramework
     GridMate::ReplicaChunkPtr ScriptNetBindingTable::GetNetworkBinding()
     {
         m_replicaChunk = GridMate::CreateReplicaChunk<ScriptComponentReplicaChunk>();
-        m_replicaChunk->SetHandler(this);        
+        m_replicaChunk->SetHandler(this);
 
         if (m_entityScriptContext.HasScriptContext())
         {
-            AssignDataSets();            
+            AssignDataSets();
         }
 
         return m_replicaChunk;
@@ -1147,6 +1158,11 @@ namespace AzFramework
     {
         m_replicaChunk = chunk;
         m_replicaChunk->SetHandler(this);
+
+        if (m_entityScriptContext.HasScriptContext())
+        {
+            AssignDataSets();
+        }
     }
 
     void ScriptNetBindingTable::UnbindFromNetwork()
@@ -1227,9 +1243,10 @@ namespace AzFramework
 
     void ScriptNetBindingTable::AssignDataSets()
     {
-        if (m_replicaChunk && m_replicaChunk->IsMaster())
+        if (m_replicaChunk)
         {
             ScriptComponentReplicaChunk* scriptComponentChunk = static_cast<ScriptComponentReplicaChunk*>(m_replicaChunk.get());
+
             // Going to do this in two passes, first to do all of the forced ones, then all of the arbitrary ones.
             for (NetworkedTableMap::value_type& tablePair : m_networkedTable)
             {
@@ -1258,7 +1275,7 @@ namespace AzFramework
     ScriptNetBindingTable::NetworkedTableValue* ScriptNetBindingTable::FindTableValue(const AZStd::string& name)
     {
         NetworkedTableValue* retVal = nullptr;
-        NetworkedTableMap::iterator tableIter = m_networkedTable.find(name);        
+        NetworkedTableMap::iterator tableIter = m_networkedTable.find(name);
 
         if (tableIter != m_networkedTable.end())
         {
@@ -1279,7 +1296,7 @@ namespace AzFramework
         }
 
         return retVal;
-    }    
+    }
 
     ////////////////////////////////
     // ScriptComponentReplicaChunk
@@ -1323,13 +1340,6 @@ namespace AzFramework
 
     bool ScriptComponentReplicaChunk::AssignDataSet(ScriptNetBindingTable::NetworkedTableValue& helper)
     {
-        AZ_Error("ScriptComponent",IsMaster(),"Binding table value to arbitrary DataSet on proxy.");
-
-        if (!IsMaster())
-        {
-            return false;
-        }
-
         bool assigned = false;
 
         if (helper.HasForcedDataSetIndex())
@@ -1343,7 +1353,7 @@ namespace AzFramework
                 if (!testDataSet->IsReserved())
                 {
                     assigned = true;
-                    helper.RegisterDataSet(testDataSet);                    
+                    helper.RegisterDataSet(testDataSet);
                     m_enabledDataSetMask |= (1 << testIndex);
                 }
                 else
@@ -1363,7 +1373,7 @@ namespace AzFramework
                 if (!m_propertyDataSets[i].IsReserved())
                 {
                     assigned = true;
-                    helper.RegisterDataSet(&m_propertyDataSets[i]);                    
+                    helper.RegisterDataSet(&m_propertyDataSets[i]);
                     m_enabledDataSetMask |= (1 << i);
                     break;
                 }
@@ -1372,7 +1382,7 @@ namespace AzFramework
             AZ_Error("ScriptComponent",assigned, "Trying to create more then %i datasets for a script",k_maxScriptableDataSets);
         }
 
-        return assigned;        
+        return assigned;
     }
 
     void ScriptComponentReplicaChunk::AssignDataSetForProperty(ScriptNetBindingTable::NetworkedTableValue& helper, AZ::ScriptProperty* targetProperty)
@@ -1385,7 +1395,7 @@ namespace AzFramework
             {
                 if (m_propertyDataSets[i].Get() == targetProperty)
                 {
-                    helper.RegisterDataSet(&m_propertyDataSets[i]);                                        
+                    helper.RegisterDataSet(&m_propertyDataSets[i]);
                     m_enabledDataSetMask |= (1 << i);
                     break;
                 }

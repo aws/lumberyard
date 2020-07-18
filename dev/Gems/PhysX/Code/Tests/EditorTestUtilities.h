@@ -55,10 +55,10 @@ namespace PhysXEditorTests
     //! problem with buses when repeatedly loading and unloading gems. A new default world is created for each test.
     class PhysXEditorFixture
         : public UnitTest::AllocatorsTestFixture
-        , protected Physics::DefaultWorldBus::Handler
-        , private Physics::WorldEventHandler
+        , public Physics::DefaultWorldBus::Handler
+        , public Physics::WorldEventHandler
     {
-    protected:
+    public:
         static void SetUpTestCase();
         static void TearDownTestCase();
         void SetUp() override;
@@ -80,6 +80,8 @@ namespace PhysXEditorTests
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
 
         PhysX::Configuration m_oldConfiguration;
-    };
 
+        // workaround for parameterized tests causing issues with this (and any derived) fixture
+        void ValidateInvalidEditorShapeColliderComponentParams(float radius, float height);
+    };
 } // namespace PhysXEditorTests

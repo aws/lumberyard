@@ -93,9 +93,9 @@ namespace EMotionFX
 
 
     // save and return number of bytes written, when outputBuffer is nullptr only return num bytes it would write
-    uint32 AnimGraphObject::SaveUniqueData(const AnimGraphInstance* animGraphInstance, uint8* outputBuffer) const
+    uint32 AnimGraphObject::SaveUniqueData(AnimGraphInstance* animGraphInstance, uint8* outputBuffer) const
     {
-        AnimGraphObjectData* data = animGraphInstance->FindUniqueObjectData(this);
+        AnimGraphObjectData* data = animGraphInstance->FindOrCreateUniqueObjectData(this);
         if (data)
         {
             return data->Save(outputBuffer);
@@ -107,9 +107,9 @@ namespace EMotionFX
 
 
     // load and return number of bytes read, when dataBuffer is nullptr, 0 should be returned
-    uint32 AnimGraphObject::LoadUniqueData(const AnimGraphInstance* animGraphInstance, const uint8* dataBuffer)
+    uint32 AnimGraphObject::LoadUniqueData(AnimGraphInstance* animGraphInstance, const uint8* dataBuffer)
     {
-        AnimGraphObjectData* data = animGraphInstance->FindUniqueObjectData(this);
+        AnimGraphObjectData* data = animGraphInstance->FindOrCreateUniqueObjectData(this);
         if (data)
         {
             return data->Load(dataBuffer);
@@ -125,39 +125,45 @@ namespace EMotionFX
         outObjects.Add(const_cast<AnimGraphObject*>(this));
     }
 
-
-    // on default create a base class object
-    void AnimGraphObject::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphObject::InvalidateUniqueDatas()
     {
-        // try to find existing data
-        AnimGraphObjectData* data = animGraphInstance->FindUniqueObjectData(this);
-        if (data == nullptr) // doesn't exist
+        AnimGraphObject* object = this;
+        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numAnimGraphInstances; ++i)
         {
-            AnimGraphObjectData* newData = aznew AnimGraphObjectData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(newData);
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+            object->InvalidateUniqueData(animGraphInstance);
         }
     }
 
-
-    void AnimGraphObject::UpdateUniqueDatas()
+    void AnimGraphObject::InvalidateUniqueData(AnimGraphInstance* animGraphInstance)
     {
-        if (mAnimGraph)
+        AnimGraphObjectData* uniqueData = animGraphInstance->GetUniqueObjectData(mObjectIndex);
+        if (uniqueData)
         {
-            mAnimGraph->UpdateUniqueData();
+            uniqueData->Invalidate();
         }
     }
 
-
-    // reset the unique data
     void AnimGraphObject::ResetUniqueData(AnimGraphInstance* animGraphInstance)
     {
-        AnimGraphObjectData* uniqueData = animGraphInstance->FindUniqueObjectData(this);
+        AnimGraphObjectData* uniqueData = animGraphInstance->GetUniqueObjectData(mObjectIndex);
         if (uniqueData)
         {
             uniqueData->Reset();
         }
     }
 
+    void AnimGraphObject::ResetUniqueDatas()
+    {
+        AnimGraphObject* object = this;
+        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numAnimGraphInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+            object->ResetUniqueData(animGraphInstance);
+        }
+    }
 
     // default update implementation
     void AnimGraphObject::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
@@ -166,11 +172,20 @@ namespace EMotionFX
         animGraphInstance->EnableObjectFlags(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_UPDATE_READY);
     }
 
+    void AnimGraphObject::Reinit()
+    {
+        InvalidateUniqueDatas();
+    }
+
+    void AnimGraphObject::RecursiveReinit()
+    {
+        Reinit();
+    }
 
     // check for an error
     bool AnimGraphObject::GetHasErrorFlag(AnimGraphInstance* animGraphInstance) const
     {
-        AnimGraphObjectData* uniqueData = animGraphInstance->FindUniqueObjectData(this);
+        AnimGraphObjectData* uniqueData = animGraphInstance->FindOrCreateUniqueObjectData(this);
         if (uniqueData)
         {
             return uniqueData->GetHasError();
@@ -181,11 +196,10 @@ namespace EMotionFX
         }
     }
 
-
     // set the error flag
     void AnimGraphObject::SetHasErrorFlag(AnimGraphInstance* animGraphInstance, bool hasError)
     {
-        AnimGraphObjectData* uniqueData = animGraphInstance->FindUniqueObjectData(this);
+        AnimGraphObjectData* uniqueData = animGraphInstance->FindOrCreateUniqueObjectData(this);
         if (uniqueData == nullptr)
         {
             return;

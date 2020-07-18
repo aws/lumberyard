@@ -10,306 +10,134 @@
 *
 */
 
-// include required headers
 #include "CommandBarPlugin.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
 #include "../MotionWindow/MotionWindowPlugin.h"
 #include "../MotionWindow/MotionListWindow.h"
+#include <AzQtComponents/Components/Widgets/Slider.h>
+#include <QAction>
 #include <QLineEdit>
-#include <QPushButton>
 #include <QApplication>
 #include <QAction>
 #include <QLabel>
 #include <QHBoxLayout>
 
-
 namespace EMStudio
 {
     AZ_CLASS_ALLOCATOR_IMPL(CommandBarPlugin::ProgressHandler, EMotionFX::EventHandlerAllocator, 0)
 
-
-    // constructor
     CommandBarPlugin::CommandBarPlugin()
         : EMStudio::ToolBarPlugin()
     {
-        mCommandEdit                    = nullptr;
-        mResultEdit                     = nullptr;
-        mPauseButton                    = nullptr;
-        mPlayForwardButton              = nullptr;
-        mStopButton                     = nullptr;
-        mSeekForwardButton              = nullptr;
-        mSeekBackwardButton             = nullptr;
-        mLockSelectionButton            = nullptr;
-        mLockEnabledIcon                = nullptr;
-        mLockDisabledIcon               = nullptr;
-        mToggleLockSelectionCallback    = nullptr;
-        mProgressHandler                = nullptr;
-        mSpeedSlider                    = nullptr;
-        mSpeedResetButton               = nullptr;
     }
 
-
-    // destructor
     CommandBarPlugin::~CommandBarPlugin()
     {
-        delete mLockEnabledIcon;
-        delete mLockDisabledIcon;
+        delete m_lockEnabledIcon;
+        delete m_lockDisabledIcon;
 
-        if (mToggleLockSelectionCallback)
+        if (m_toggleLockSelectionCallback)
         {
-            GetCommandManager()->RemoveCommandCallback(mToggleLockSelectionCallback, false);
-            delete mToggleLockSelectionCallback;
+            GetCommandManager()->RemoveCommandCallback(m_toggleLockSelectionCallback, false);
+            delete m_toggleLockSelectionCallback;
         }
 
-        // remove the event handler again
-        if (mProgressHandler)
+        if (m_progressHandler)
         {
-            EMotionFX::GetEventManager().RemoveEventHandler(mProgressHandler);
-            delete mProgressHandler;
+            EMotionFX::GetEventManager().RemoveEventHandler(m_progressHandler);
+            delete m_progressHandler;
         }
     }
 
-
-    // get the compile date
     const char* CommandBarPlugin::GetCompileDate() const
     {
         return MCORE_DATE;
     }
 
-
-    // get the name
     const char* CommandBarPlugin::GetName() const
     {
         return "Command Bar";
     }
 
-
-    // get the plugin type id
     uint32 CommandBarPlugin::GetClassID() const
     {
         return CommandBarPlugin::CLASS_ID;
     }
 
-
-    // get the creator name
     const char* CommandBarPlugin::GetCreatorName() const
     {
-        return "MysticGD";
+        return "Amazon";
     }
 
-
-    // get the version
     float CommandBarPlugin::GetVersion() const
     {
         return 1.0f;
     }
 
-
-    // clone the log window
     EMStudioPlugin* CommandBarPlugin::Clone()
     {
         CommandBarPlugin* newPlugin = new CommandBarPlugin();
         return newPlugin;
     }
 
-
     // init after the parent dock window has been created
     bool CommandBarPlugin::Init()
     {
-        mToggleLockSelectionCallback = new CommandToggleLockSelectionCallback(false);
-        GetCommandManager()->RegisterCommandCallback("ToggleLockSelection", mToggleLockSelectionCallback);
+        m_toggleLockSelectionCallback = new CommandToggleLockSelectionCallback(false);
+        GetCommandManager()->RegisterCommandCallback("ToggleLockSelection", m_toggleLockSelectionCallback);
 
-        mLockEnabledIcon    = new QIcon(AZStd::string(MysticQt::GetDataDir() + "/Images/Icons/LockEnabled.png").c_str());
-        mLockDisabledIcon   = new QIcon(AZStd::string(MysticQt::GetDataDir() + "/Images/Icons/LockDisabled.png").c_str());
+        m_lockEnabledIcon    = new QIcon(AZStd::string(MysticQt::GetDataDir() + "/Images/Icons/LockEnabled.svg").c_str());
+        m_lockDisabledIcon   = new QIcon(AZStd::string(MysticQt::GetDataDir() + "/Images/Icons/LockDisabled.svg").c_str());
 
-        mCommandEdit = new QLineEdit();
-        mCommandEdit->setPlaceholderText("Enter command");
-        connect(mCommandEdit, &QLineEdit::returnPressed, this, &CommandBarPlugin::OnEnter);
-        mCommandEditAction = mBar->addWidget(mCommandEdit);
+        m_commandEdit = new QLineEdit();
+        m_commandEdit->setPlaceholderText("Enter command");
+        connect(m_commandEdit, &QLineEdit::returnPressed, this, &CommandBarPlugin::OnEnter);
+        m_commandEditAction = mBar->addWidget(m_commandEdit);
 
-        mResultEdit = new QLineEdit();
-        mResultEdit->setReadOnly(true);
-        mCommandResultAction = mBar->addWidget(mResultEdit);
+        m_resultEdit = new QLineEdit();
+        m_resultEdit->setReadOnly(true);
+        m_commandResultAction = mBar->addWidget(m_resultEdit);
 
-        mSpeedSlider = new MysticQt::Slider(Qt::Horizontal);
-        mSpeedSlider->setMaximumWidth(80);
-        mSpeedSlider->setMinimumWidth(30);
-        mSpeedSlider->setRange(0, 100);
-        mSpeedSlider->setValue(50);
-        mSpeedSlider->setToolTip("The global simulation speed factor.\nA value of 1.0 means the normal speed, which is when the slider handle is in the center.\nPress the button on the right of this slider to reset to the normal speed.");
-        connect(mSpeedSlider, &MysticQt::Slider::valueChanged, this, &CommandBarPlugin::OnSpeedSliderValueChanged);
-        mBar->addWidget(mSpeedSlider);
+        m_globalSimSpeedSlider = new AzQtComponents::SliderDouble(Qt::Horizontal);
+        m_globalSimSpeedSlider->setMaximumWidth(80);
+        m_globalSimSpeedSlider->setMinimumWidth(30);
+        m_globalSimSpeedSlider->setRange(0.005, 2.0);
+        m_globalSimSpeedSlider->setValue(1.0);
+        m_globalSimSpeedSlider->setToolTip("The global simulation speed factor.\nA value of 1.0 means the normal speed, which is when the slider handle is in the center.\nPress the button on the right of this slider to reset to the normal speed.");
+        connect(m_globalSimSpeedSlider, &AzQtComponents::SliderDouble::valueChanged, this, &CommandBarPlugin::OnGlobalSimSpeedChanged);
+        m_globalSimSpeedSliderAction = mBar->addWidget(m_globalSimSpeedSlider);
 
-        mSpeedResetButton = CreateButton("/Images/Icons/Reset.png");
-        mSpeedResetButton->setToolTip("Reset the global simulation speed factor to its normal speed");
-        connect(mSpeedResetButton, &QPushButton::clicked, this, &CommandBarPlugin::ResetGlobalSpeed);
+        m_globalSimSpeedResetAction = mBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Reset.svg"),
+            tr("Reset the global simulation speed factor to its normal speed"),
+            this, &CommandBarPlugin::ResetGlobalSimSpeed);
 
-        mProgressText = new QLabel();
-        mProgressText->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        mProgressText->setAlignment(Qt::AlignRight);
-        mProgressText->setStyleSheet("padding-right: 1px; color: rgb(140, 140, 140);");
-        mProgressTextAction = mBar->addWidget(mProgressText);
-        mProgressTextAction->setVisible(false);
+        m_progressText = new QLabel();
+        m_progressText->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        m_progressText->setAlignment(Qt::AlignRight);
+        m_progressText->setStyleSheet("padding-right: 1px; color: rgb(140, 140, 140);");
+        m_progressTextAction = mBar->addWidget(m_progressText);
+        m_progressTextAction->setVisible(false);
 
-        mProgressBar = new QProgressBar();
-        mProgressBar->setRange(0, 100);
-        mProgressBar->setValue(0);
-        mProgressBar->setMaximumWidth(300);
-        mProgressBar->setStyleSheet("padding-right: 2px;");
-        mProgressBarAction = mBar->addWidget(mProgressBar);
-        mProgressBarAction->setVisible(false);
+        m_progressBar = new QProgressBar();
+        m_progressBar->setRange(0, 100);
+        m_progressBar->setValue(0);
+        m_progressBar->setMaximumWidth(300);
+        m_progressBar->setStyleSheet("padding-right: 2px;");
+        m_progressBarAction = mBar->addWidget(m_progressBar);
+        m_progressBarAction->setVisible(false);
 
-        mLockSelectionButton = CreateButton();
-        mLockSelectionButton->setToolTip("Lock or unlock the selection of actor instances");
-        connect(mLockSelectionButton, &QPushButton::clicked, this, &CommandBarPlugin::OnLockSelectionButton);
-
-        mSeekBackwardButton = CreateButton("/Images/Icons/SkipBackward.png");
-        mSeekBackwardButton->setToolTip("Seek backward the selected motions");
-        connect(mSeekBackwardButton, &QPushButton::clicked, this, &CommandBarPlugin::OnSeekBackwardButton);
-
-        mPauseButton = CreateButton("/Images/Icons/Pause.png");
-        mPauseButton->setToolTip("Pause the selected motions");
-        connect(mPauseButton, &QPushButton::clicked, this, &CommandBarPlugin::OnPauseButton);
-
-        mStopButton = CreateButton("/Images/Icons/Stop.png");
-        mStopButton->setToolTip("Stop all motions");
-        connect(mStopButton, &QPushButton::clicked, this, &CommandBarPlugin::OnStopButton);
-
-        mPlayForwardButton = CreateButton("/Images/Icons/PlayForward.png");
-        mPlayForwardButton->setToolTip("Play the selected motions");
-        connect(mPlayForwardButton, &QPushButton::clicked, this, &CommandBarPlugin::OnPlayForwardButton);
-
-        mSeekForwardButton = CreateButton("/Images/Icons/SkipForward.png");
-        mSeekForwardButton->setToolTip("Seek forward the selected motions");
-        connect(mSeekForwardButton, &QPushButton::clicked, this, &CommandBarPlugin::OnSeekForwardButton);
+        m_lockSelectionAction = mBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Reset.svg"),
+            tr("Lock or unlock the selection of actor instances"),
+            this, &CommandBarPlugin::OnLockSelectionButton);
 
         UpdateLockSelectionIcon();
 
-        mProgressHandler = aznew ProgressHandler(this);
-        EMotionFX::GetEventManager().AddEventHandler(mProgressHandler);
+        m_progressHandler = aznew ProgressHandler(this);
+        EMotionFX::GetEventManager().AddEventHandler(m_progressHandler);
 
         return true;
     }
-
-
-    QPushButton* CommandBarPlugin::CreateButton(const char* iconFileName)
-    {
-        QPushButton* button = new QPushButton();
-        button->setStyleSheet("border-radius: 0px;");
-
-        const QSize buttonSize = QSize(18, 18);
-        button->setMinimumSize(buttonSize);
-        button->setMaximumSize(buttonSize);
-        button->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-
-        if (iconFileName)
-        {
-            button->setIcon(MysticQt::GetMysticQt()->FindIcon(iconFileName));
-        }
-
-        button->setIconSize(buttonSize - QSize(2, 2));
-
-        mBar->addWidget(button);
-        return button;
-    }
-
-
-    void CommandBarPlugin::OnPlayForwardButton()
-    {
-        // get the selected motion instances, get the number of them and iterate through them
-        const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-        const size_t numMotionInstances = motionInstances.size();
-        for (size_t i = 0; i < numMotionInstances; ++i)
-        {
-            EMotionFX::MotionInstance* motionInstance = motionInstances[i];
-            motionInstance->UnPause();
-        }
-
-        // get the current selected motions
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedMotions = selectionList.GetNumSelectedMotions();
-
-        AZStd::vector<EMotionFX::Motion*> motionsToPlay;
-        motionsToPlay.reserve(numSelectedMotions);
-
-        // iterate through the motions
-        for (uint32 i = 0; i < numSelectedMotions; ++i)
-        {
-            EMotionFX::Motion* motion = selectionList.GetMotion(i);
-
-            // check if the given motion is already playing
-            bool isPlaying = false;
-            for (uint32 j = 0; j < numMotionInstances; ++j)
-            {
-                if (motion == motionInstances[j]->GetMotion())
-                {
-                    isPlaying = true;
-                    break;
-                }
-            }
-
-            // only start playing the motion in case it is not being played already
-            if (isPlaying == false)
-            {
-                motionsToPlay.push_back(motion);
-            }
-        }
-
-        // finally start playing the motions
-        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
-        if (plugin == nullptr)
-        {
-            return;
-        }
-
-        MotionWindowPlugin* motionWindowPlugin = (MotionWindowPlugin*)plugin;
-        motionWindowPlugin->PlayMotions(motionsToPlay);
-    }
-
-
-    void CommandBarPlugin::OnStopButton()
-    {
-        AZStd::string outResult;
-        GetCommandManager()->ExecuteCommand("StopAllMotionInstances", outResult);
-    }
-
-
-    void CommandBarPlugin::OnPauseButton()
-    {
-        const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-        const size_t numMotionInstances = motionInstances.size();
-        for (size_t i = 0; i < numMotionInstances; ++i)
-        {
-            EMotionFX::MotionInstance* motionInstance = motionInstances[i];
-            motionInstance->Pause();
-        }
-    }
-
-
-    void CommandBarPlugin::OnSeekForwardButton()
-    {
-        const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-        const size_t numMotionInstances = motionInstances.size();
-        for (size_t i = 0; i < numMotionInstances; ++i)
-        {
-            EMotionFX::MotionInstance* motionInstance = motionInstances[i];
-            motionInstance->SetCurrentTime(motionInstance->GetMaxTime());
-        }
-    }
-
-
-    void CommandBarPlugin::OnSeekBackwardButton()
-    {
-        const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-        const size_t numMotionInstances = motionInstances.size();
-        for (size_t i = 0; i < numMotionInstances; ++i)
-        {
-            EMotionFX::MotionInstance* motionInstance = motionInstances[i];
-            motionInstance->Rewind();
-        }
-    }
-
 
     void CommandBarPlugin::OnLockSelectionButton()
     {
@@ -327,20 +155,19 @@ namespace EMStudio
     {
         if (EMStudio::GetCommandManager()->GetLockSelection())
         {
-            mLockSelectionButton->setIcon(*mLockEnabledIcon);
+            m_lockSelectionAction->setIcon(*m_lockEnabledIcon);
         }
         else
         {
-            mLockSelectionButton->setIcon(*mLockDisabledIcon);
+            m_lockSelectionAction->setIcon(*m_lockDisabledIcon);
         }
     }
-
 
     // execute the command when enter is pressed
     void CommandBarPlugin::OnEnter()
     {
         QLineEdit* edit = qobject_cast<QLineEdit*>(sender());
-        assert(edit == mCommandEdit);
+        assert(edit == m_commandEdit);
 
         // get the command string trimmed
         AZStd::string command = FromQtString(edit->text());
@@ -361,88 +188,71 @@ namespace EMStudio
         if (success == false)
         {
             MCore::LogError(resultString.c_str());
-            mResultEdit->setStyleSheet("color: red;");
-            mResultEdit->setText(resultString.c_str());
-            mResultEdit->setToolTip(resultString.c_str());
+            m_resultEdit->setStyleSheet("color: red;");
+            m_resultEdit->setText(resultString.c_str());
+            m_resultEdit->setToolTip(resultString.c_str());
         }
         else // no error
         {
-            mResultEdit->setStyleSheet("color: rgb(0,255,0);");
-            mResultEdit->setText(resultString.c_str());
+            m_resultEdit->setStyleSheet("color: rgb(0,255,0);");
+            m_resultEdit->setText(resultString.c_str());
         }
 
         // clear the text of the edit box
         edit->clear();
     }
 
-
     void CommandBarPlugin::OnProgressStart()
     {
-        mProgressBarAction->setVisible(true);
-        mProgressTextAction->setVisible(true);
+        m_progressBarAction->setVisible(true);
+        m_progressTextAction->setVisible(true);
 
-        mCommandEditAction->setVisible(false);
-        mCommandResultAction->setVisible(false);
+        m_commandEditAction->setVisible(false);
+        m_commandResultAction->setVisible(false);
 
-        // setVisible has no effect, hack to have them not visible
-        mSpeedSlider->setMaximumWidth(0);
-        mSpeedSlider->setMinimumWidth(0);
-        mSpeedResetButton->setMinimumWidth(0);
-        mSpeedResetButton->setMaximumWidth(0);
+        m_globalSimSpeedSliderAction->setVisible(false);
+        m_globalSimSpeedResetAction->setVisible(false);
+        m_lockSelectionAction->setVisible(false);
 
         EMStudio::GetApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     }
-
 
     void CommandBarPlugin::OnProgressEnd()
     {
-        mProgressBarAction->setVisible(false);
-        mProgressTextAction->setVisible(false);
+        m_progressBarAction->setVisible(false);
+        m_progressTextAction->setVisible(false);
 
-        mCommandEditAction->setVisible(true);
-        mCommandResultAction->setVisible(true);
+        m_commandEditAction->setVisible(true);
+        m_commandResultAction->setVisible(true);
 
-        // setVisible has no effect, hack to have them visible again
-        mSpeedSlider->setMaximumWidth(80);
-        mSpeedSlider->setMinimumWidth(30);
-        mSpeedResetButton->setMinimumWidth(18);
-        mSpeedResetButton->setMaximumWidth(18);
+        m_globalSimSpeedSliderAction->setVisible(true);
+        m_globalSimSpeedResetAction->setVisible(true);
+        m_lockSelectionAction->setVisible(true);
 
         EMStudio::GetApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 
-
-    // adjust the main progress text
     void CommandBarPlugin::OnProgressText(const char* text)
     {
-        mProgressText->setText(text);
+        m_progressText->setText(text);
         EMStudio::GetApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 
-
-    // adjust the main progress bar
     void CommandBarPlugin::OnProgressValue(float percentage)
     {
-        mProgressBar->setValue(aznumeric_cast<int>(percentage));
+        m_progressBar->setValue(aznumeric_cast<int>(percentage));
         EMStudio::GetApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 
-
-    // reset the global simulation speed
-    void CommandBarPlugin::ResetGlobalSpeed()
+    void CommandBarPlugin::ResetGlobalSimSpeed()
     {
-        mSpeedSlider->setValue(50);
-        EMotionFX::GetEMotionFX().SetGlobalSimulationSpeed(1.0f);
+        m_globalSimSpeedSlider->setValue(1.0);
     }
 
-
-    // the value of the speed slider changed
-    void CommandBarPlugin::OnSpeedSliderValueChanged(int value)
+    void CommandBarPlugin::OnGlobalSimSpeedChanged(double value)
     {
-        const float newSpeed = (value / 100.0f) * 2.0f;
-        EMotionFX::GetEMotionFX().SetGlobalSimulationSpeed(newSpeed);
+        EMotionFX::GetEMotionFX().SetGlobalSimulationSpeed(aznumeric_cast<float>(value));
     }
-
 
     //-----------------------------------------------------------------------------------------
     // command callbacks
@@ -464,5 +274,3 @@ namespace EMStudio
     bool CommandBarPlugin::CommandToggleLockSelectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)  { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateInterfaceCommandBarPlugin(); }
     bool CommandBarPlugin::CommandToggleLockSelectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateInterfaceCommandBarPlugin(); }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/CommandBar/CommandBarPlugin.moc>

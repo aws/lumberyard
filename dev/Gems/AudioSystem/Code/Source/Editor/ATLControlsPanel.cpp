@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -14,6 +14,7 @@
 #include <ATLControlsPanel.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzQtComponents/Components/Style.h>
 
 #include <ACEEnums.h>
 #include <ATLControlsModel.h>
@@ -95,18 +96,22 @@ namespace AudioControls
         // *********************************
 
         // ************ Filtering ************
-        const int margin = 5;
+        const QMargins margin = QMargins(5, 2, 5, 2);
         for (int i = 0; i < eACET_NUM_TYPES; ++i)
         {
             EACEControlType type = (EACEControlType)i;
             QWidgetAction* pWidgetAction = new QWidgetAction(this);
             QWidget* pWidget = new QWidget(this);
             QHBoxLayout* pLayout = new QHBoxLayout(pWidget);
+
+            // Add class to fix hover state styling for WidgetAction
+            AzQtComponents::Style::addClass(pWidget, "WidgetAction");
+
             pLayout->setSpacing(1);
             m_pControlTypeFilterButtons[type] = new QFilterButton(GetControlTypeIcon(type), "", this);
             m_pControlTypeFilterButtons[type]->setChecked(true);
             pLayout->addWidget(m_pControlTypeFilterButtons[type]);
-            pLayout->setContentsMargins(margin, margin, margin, 0);
+            pLayout->setContentsMargins(margin);
             pWidget->setLayout(pLayout);
             pWidgetAction->setDefaultWidget(pWidget);
             m_filterMenu.addAction(pWidgetAction);
@@ -115,12 +120,16 @@ namespace AudioControls
         QWidgetAction* pWidgetAction = new QWidgetAction(this);
         QWidget* pWidget = new QWidget(this);
         QHBoxLayout* pLayout = new QHBoxLayout(pWidget);
+
+        // Add class to fix hover state styling for WidgetAction
+        AzQtComponents::Style::addClass(pWidget, "WidgetAction");
+
         pLayout->setSpacing(1);
         m_unassignedFilterButton = new QFilterButton(QIcon(":/AudioControlsEditor/Icons/Config_Red_Icon.png"), "", this);
         m_unassignedFilterButton->setChecked(m_showUnassignedControls);
         m_unassignedFilterButton->setText("Unassigned");
         pLayout->addWidget(m_unassignedFilterButton);
-        pLayout->setContentsMargins(margin, margin, margin, 0);
+        pLayout->setContentsMargins(margin);
         pWidget->setLayout(pLayout);
         pWidgetAction->setDefaultWidget(pWidget);
         m_filterMenu.addAction(pWidgetAction);

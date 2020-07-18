@@ -42,6 +42,8 @@ public:
     void OnBnClickedButtonDownEvent();
     void OnListItemChanged();
 
+    const QString& GetLastAddedEvent();
+
 protected:
     void OnInitDialog();
 
@@ -49,6 +51,7 @@ protected:
 
 private:
     QScopedPointer<Ui::TVEventsDialog> m_ui;
+    QString m_lastAddedEvent;
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_TVEVENTSDIALOG_H

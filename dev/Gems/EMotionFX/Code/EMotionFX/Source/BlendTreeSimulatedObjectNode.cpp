@@ -27,12 +27,26 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSimulatedObjectNode::Simulation, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSimulatedObjectNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendTreeSimulatedObjectNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
     BlendTreeSimulatedObjectNode::UniqueData::~UniqueData()
     {
         for (Simulation* simulation : m_simulations)
         {
             delete simulation;
         }
+    }
+
+    void BlendTreeSimulatedObjectNode::UniqueData::Update()
+    {
+        BlendTreeSimulatedObjectNode* simulatedObjectNode = azdynamic_cast<BlendTreeSimulatedObjectNode*>(mObject);
+        AZ_Assert(simulatedObjectNode, "Unique data linked to incorrect node type.");
+
+        const bool solverInitResult = simulatedObjectNode->InitSolvers(GetAnimGraphInstance(), this);
+        SetHasError(!solverInitResult);
     }
 
     BlendTreeSimulatedObjectNode::BlendTreeSimulatedObjectNode()
@@ -65,20 +79,6 @@ namespace EMotionFX
 
         SimulatedObjectNotificationBus::Handler::BusConnect();
         AnimGraphNode::Reinit();
-
-        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
-            if (!uniqueData)
-            {
-                continue;
-            }
-
-            uniqueData->m_mustUpdate = true;
-            animGraphInstance->UpdateUniqueData();
-        }
     }
 
     bool BlendTreeSimulatedObjectNode::InitAfterLoading(AnimGraph* animGraph)
@@ -123,7 +123,7 @@ namespace EMotionFX
 
     void BlendTreeSimulatedObjectNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         for (Simulation* sim : uniqueData->m_simulations)
         {
             sim->m_solver.Stabilize();
@@ -203,20 +203,11 @@ namespace EMotionFX
         return true;
     }
 
-    void BlendTreeSimulatedObjectNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        if (uniqueData->m_mustUpdate)
-        {
-            uniqueData->m_mustUpdate = false;
-            uniqueData->m_isValid = InitSolvers(animGraphInstance, uniqueData);
-        }
-    }
-
     void BlendTreeSimulatedObjectNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         AnimGraphNode::Update(animGraphInstance, timePassedInSeconds);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         uniqueData->m_timePassedInSeconds = timePassedInSeconds;
     }
 
@@ -265,20 +256,19 @@ namespace EMotionFX
         *outputPose = *inputPose;
 
         // Check if we have a valid configuration.
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
-        if (!uniqueData->m_isValid)
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
+        if (uniqueData->GetHasError())
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                SetHasError(uniqueData, true);
             }
             return;
         }
 
         if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, false);
+            SetHasError(uniqueData, false);
         }
 
         // If we are an attachment, update the transforms in the output pose.
@@ -310,27 +300,9 @@ namespace EMotionFX
         }
     }
 
-    void BlendTreeSimulatedObjectNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        uniqueData->m_mustUpdate = true;
-        UpdateUniqueData(animGraphInstance, uniqueData);
-    }
-
     void BlendTreeSimulatedObjectNode::OnSimulatedObjectChanged()
     {
-        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            OnUpdateUniqueData(animGraphInstance);
-        }
+        InvalidateUniqueDatas();
     }
 
     void BlendTreeSimulatedObjectNode::SetSimulatedObjectNames(const AZStd::vector<AZStd::string>& simObjectNames)
@@ -349,7 +321,7 @@ namespace EMotionFX
         for (size_t i = 0; i < numInstances; ++i)
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
             if (!uniqueData)
             {
                 continue;
@@ -373,7 +345,7 @@ namespace EMotionFX
         for (size_t i = 0; i < numInstances; ++i)
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
             if (!uniqueData)
             {
                 continue;

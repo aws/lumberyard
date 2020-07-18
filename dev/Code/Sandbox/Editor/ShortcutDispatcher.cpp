@@ -534,7 +534,7 @@ void ShortcutDispatcher::SubmitMetricsEvent(const char* attributeName)
 
 bool ShortcutDispatcher::IsShortcutSearchBreak(QWidget* widget)
 {
-    return widget->property(SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY).toBool();
+    return widget->property(AzQtComponents::SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY).toBool();
 }
 
 void ShortcutDispatcher::AttachOverride(QWidget* object)

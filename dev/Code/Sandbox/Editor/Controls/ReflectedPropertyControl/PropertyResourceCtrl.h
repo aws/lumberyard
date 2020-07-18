@@ -20,7 +20,7 @@
 #include "ReflectedVar.h"
 #include "Util/VariablePropertyType.h"
 #include <QtWidgets/QWidget>
-#include <QtWidgets/QPushButton>
+#include <QtWidgets/QToolButton>
 #include <QtCore/QVector>
 
 class QLineEdit;
@@ -29,7 +29,7 @@ class CBitmapToolTip;
 class QToolTipWidget;
 
 class BrowseButton
-    : public QPushButton
+    : public QToolButton
 {
     Q_OBJECT
 public:

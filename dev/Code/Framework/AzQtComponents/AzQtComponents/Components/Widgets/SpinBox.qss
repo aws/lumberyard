@@ -15,8 +15,11 @@ QDoubleSpinBox
 {
     height: 16px;
     margin: 2px;
+    border: none;
     /* 4px padding already applied */
     padding-left: 0px;
+    padding-bottom: 1px;
+    padding-top: -1px;
 }
 
 QSpinBox:focus,
@@ -34,6 +37,9 @@ QSpinBox:hover,
 QDoubleSpinBox:hover
 {
     border-color: #222222;
+    background-image: url(:/SpinBox/hoverBackground.svg);
+    background-repeat: no-repeat;
+    background-position: right;
 }
 
 QSpinBox:focus,
@@ -43,11 +49,31 @@ QDoubleSpinBox:focus
     background-color: #FFFFFF;
 }
 
+QSpinBox:hover:focus,
+QDoubleSpinBox:hover:focus
+{
+    background-image: url(:/SpinBox/focusedBackground.svg);
+    background-repeat: no-repeat;
+    background-position: right;
+}
+
+QSpinBox:enabled[acceptableInput=false],
+QDoubleSpinBox:enabled[acceptableInput=false],
+QSpinBox:enabled[HasError=true],
+QDoubleSpinBox:enabled[HasError=true]
+{
+    margin: 0px;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 4px;
+    border-color: #E25243;
+}
+
 QSpinBox:disabled,
 QDoubleSpinBox:disabled
 {
     background-color: #777777;
-    color: #999999;
+    color: #D4D4D4;
 }
 
 QSpinBox::up-button,
@@ -55,46 +81,99 @@ QDoubleSpinBox::up-button,
 QSpinBox::down-button,
 QDoubleSpinBox::down-button
 {
-    width: 4px;
+    width: 6px;
     height: 10px;
 }
 
 QSpinBox::down-button,
 QDoubleSpinBox::down-button
 {
-    right: 10px;
+    right: 8px;
     subcontrol-position: right center;
-    image: url(:/SpinBox/arrowLeftDefault.svg);
+    image: url(:/SpinBox/arrowLeftHover.svg);
 }
 
 QSpinBox::up-button,
 QDoubleSpinBox::up-button
 {
-    right: 4px;
+    right: 2px;
     subcontrol-position: right center;
-    image: url(:/SpinBox/arrowRightDefault.svg);
+    image: url(:/SpinBox/arrowRightHover.svg);
 }
 
-QSpinBox::up-button:pressed,
-QDoubleSpinBox::up-button:pressed
+
+QSpinBox[SpinBoxValueIncreasing=true]::up-button,
+QDoubleSpinBox[SpinBoxValueIncreasing=true]::up-button
 {
     image: url(:/SpinBox/arrowRightIncreasing.svg)
 }
 
-QSpinBox::down-button:pressed,
-QDoubleSpinBox::down-button:pressed
+QSpinBox[SpinBoxValueIncreasing=true]::down-button,
+QDoubleSpinBox[SpinBoxValueIncreasing=true]::down-button
 {
     image: url(:/SpinBox/arrowLeftIncreasing.svg)
 }
 
-QSpinBox::up-button:off,
-QDoubleSpinBox::up-button:off
+QSpinBox[SpinBoxValueDecreasing=true]::up-button,
+QDoubleSpinBox[SpinBoxValueDecreasing=true]::up-button
 {
-    image: url(:/SpinBox/arrowRightMaxed.svg)
+    image: url(:/SpinBox/arrowRightDecreasing.svg)
 }
 
-QSpinBox::down-button:off,
-QDoubleSpinBox::down-button:off
+QSpinBox[SpinBoxValueDecreasing=true]::down-button,
+QDoubleSpinBox[SpinBoxValueDecreasing=true]::down-button
 {
-    image: url(:/SpinBox/arrowLeftMaxed.svg)
+    image: url(:/SpinBox/arrowLeftDecreasing.svg)
+}
+
+QSpinBox[SpinBoxMinReached=true]::up-button,
+QDoubleSpinBox[SpinBoxMinReached=true]::up-button
+{
+    image: url(:/SpinBox/arrowRightMinReached.svg)
+}
+
+QSpinBox[SpinBoxMinReached=true]::down-button,
+QDoubleSpinBox[SpinBoxMinReached=true]::down-button
+{
+    image: url(:/SpinBox/arrowLeftMinReached.svg)
+}
+
+QSpinBox[SpinBoxMaxReached=true]::up-button,
+QDoubleSpinBox[SpinBoxMaxReached=true]::up-button
+{
+    image: url(:/SpinBox/arrowRightMaxReached.svg)
+}
+
+QSpinBox[SpinBoxMaxReached=true]::down-button,
+QDoubleSpinBox[SpinBoxMaxReached=true]::down-button
+{
+    image: url(:/SpinBox/arrowLeftMaxReached.svg)
+}
+
+QSpinBox[SpinBoxDragging=true][SpinBoxMaxReached=false][SpinBoxValueIncreasing=false]::up-button,
+QDoubleSpinBox[SpinBoxDragging=true][SpinBoxMaxReached=false][SpinBoxValueIncreasing=false]::up-button
+{
+    image: url(:/SpinBox/arrowRightDragging.svg);
+}
+
+QSpinBox[SpinBoxDragging=true][SpinBoxMinReached=false][SpinBoxValueDecreasing=false]::down-button,
+QDoubleSpinBox[SpinBoxDragging=true][SpinBoxMinReached=false][SpinBoxValueDecreasing=false]::down-button
+{
+    image: url(:/SpinBox/arrowLeftDragging.svg);
+}
+
+/* Need to use dynamic properties for focus here because 
+QSpinbox:focus::up-button captures the spinbox itself
+instead of the button.
+*/
+QSpinBox[SpinBoxFocused=true][SpinBoxMaxReached=false][SpinBoxValueIncreasing=false]::up-button,
+QDoubleSpinBox[SpinBoxFocused=true][SpinBoxMaxReached=false][SpinBoxValueIncreasing=false]::up-button
+{
+    image: url(:/SpinBox/arrowRightFocused.svg);
+}
+
+QSpinBox[SpinBoxFocused=true][SpinBoxMinReached=false][SpinBoxValueDecreasing=false]::down-button,
+QDoubleSpinBox[SpinBoxFocused=true][SpinBoxMinReached=false][SpinBoxValueDecreasing=false]::down-button
+{
+    image: url(:/SpinBox/arrowLeftFocused.svg);
 }

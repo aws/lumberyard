@@ -11,7 +11,7 @@
 */
 
 #include <AzCore/Serialization/Json/BasicContainerSerializer.h>
-#include <AzCore/std/containers/forward_list.h>
+#include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/vector.h>
@@ -234,27 +234,27 @@ namespace JsonSerializationTests
 
     using BasicContainerConformityTestTypes = ::testing::Types
     <
-        SimpleTestDescription<AZStd::forward_list<int>>,
         SimpleTestDescription<AZStd::list<int>>,
         SimpleTestDescription<AZStd::set<int>>,
         SimpleTestDescription<AZStd::vector<int>>,
+        SimpleTestDescription<AZStd::fixed_vector<int, 256>>,
         SimplePointerTestDescription<AZStd::forward_list<int*>>,
         SimplePointerTestDescription<AZStd::list<int*>>,
         SimplePointerTestDescription<AZStd::set<int*, SimplePointerTestDescriptionLess>>,
         SimplePointerTestDescription<AZStd::vector<int*>>,
+        SimplePointerTestDescription<AZStd::fixed_vector<int*, 256>>,
         ComplextTestDescription<AZStd::forward_list<SimpleClass>>,
         ComplextTestDescription<AZStd::list<SimpleClass>>,
         ComplextTestDescription<AZStd::set<SimpleClass>>,
-        ComplextTestDescription<AZStd::vector<SimpleClass>>
+        ComplextTestDescription<AZStd::vector<SimpleClass>>,
+        ComplextTestDescription<AZStd::fixed_vector<SimpleClass, 256>>
     >;
-    INSTANTIATE_TYPED_TEST_CASE_P(BasicContainers, JsonSerializerConformityTests, BasicContainerConformityTestTypes);
+    INSTANTIATE_TYPED_TEST_CASE_P(JsonBasicContainers, JsonSerializerConformityTests, BasicContainerConformityTestTypes);
 
-    class JsonSetSerializerTests
+    class JsonBasicContainerSerializerTests
         : public BaseJsonSerializerFixture
     {
     public:
-        using Set = AZStd::set<int>;
-
         void SetUp() override
         {
             BaseJsonSerializerFixture::SetUp();
@@ -267,13 +267,88 @@ namespace JsonSerializationTests
             BaseJsonSerializerFixture::TearDown();
         }
 
+    protected:
+        AZStd::unique_ptr<AZ::JsonBasicContainerSerializer> m_serializer;
+    };
+
+
+    // Generic additional tests for the BasicContaienerSerializer using AZStd::vector
+
+    class JsonVectorSerializerTests
+        : public JsonBasicContainerSerializerTests
+    {
+    public:
+        using Container = AZStd::vector<SimpleClass>;
+
+        void RegisterAdditional(AZStd::unique_ptr<AZ::SerializeContext>& serializeContext) override
+        {
+            SimpleClass::Reflect(serializeContext, true);
+            serializeContext->RegisterGenericType<Container>();
+        }
+    };
+
+    TEST_F(JsonVectorSerializerTests, Store_SingleObjectWithAllDefaults_ReturnsDefaultsUsed)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        Container instance;
+        instance.emplace_back();
+        
+        ResultCode result = m_serializer->Store(*m_jsonDocument, &instance, &instance, azrtti_typeid(&instance), *m_jsonSerializationContext);
+        EXPECT_EQ(Processing::Completed, result.GetProcessing());
+        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
+        Expect_DocStrEq("[{}]");
+    }
+
+
+    // Specific tests for AZStd::fixed_vector
+
+    class JsonFixedVectorSerializerTests
+        : public JsonBasicContainerSerializerTests
+    {
+    public:
+        static constexpr size_t ContainerSize = 4;
+        using Container = AZStd::fixed_vector<int, ContainerSize>;
+
+        void RegisterAdditional(AZStd::unique_ptr<AZ::SerializeContext>& serializeContext) override
+        {
+            serializeContext->RegisterGenericType<Container>();
+        }
+    };
+
+    TEST_F(JsonFixedVectorSerializerTests, Load_MoreEntriesThanFit_LoadEntriesThatFitAndRestIsSkipped)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Value testVal(rapidjson::kArrayType);
+        testVal.PushBack(rapidjson::Value().SetInt64(1), m_jsonDocument->GetAllocator());
+        testVal.PushBack(rapidjson::Value().SetInt64(2), m_jsonDocument->GetAllocator());
+        testVal.PushBack(rapidjson::Value().SetInt64(3), m_jsonDocument->GetAllocator());
+        testVal.PushBack(rapidjson::Value().SetInt64(4), m_jsonDocument->GetAllocator());
+        testVal.PushBack(rapidjson::Value().SetInt64(5), m_jsonDocument->GetAllocator());
+
+        Container instance;
+        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::PartialSkip, result.GetOutcome());
+        
+        EXPECT_EQ(1, instance[0]);
+        EXPECT_EQ(2, instance[1]);
+        EXPECT_EQ(3, instance[2]);
+        EXPECT_EQ(4, instance[3]);
+    }
+
+    // Specific tests for AZStd::set
+
+    class JsonSetSerializerTests
+        : public JsonBasicContainerSerializerTests
+    {
+    public:
+        using Set = AZStd::set<int>;
+
         void RegisterAdditional(AZStd::unique_ptr<AZ::SerializeContext>& serializeContext) override
         {
             serializeContext->RegisterGenericType<Set>();
         }
-
-    protected:
-        AZStd::unique_ptr<AZ::JsonBasicContainerSerializer> m_serializer;
     };
 
     TEST_F(JsonSetSerializerTests, Load_DuplicateEntry_CompletesWithDataLeft)
@@ -286,7 +361,7 @@ namespace JsonSerializationTests
         testVal.PushBack(rapidjson::Value(288), m_jsonDocument->GetAllocator());
         testVal.PushBack(rapidjson::Value(288), m_jsonDocument->GetAllocator());
         testVal.PushBack(rapidjson::Value(388), m_jsonDocument->GetAllocator());
-        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unavailable, result.GetOutcome());
         EXPECT_EQ(Processing::PartialAlter, result.GetProcessing());
         
@@ -304,7 +379,7 @@ namespace JsonSerializationTests
         rapidjson::Value testVal(rapidjson::kArrayType);
         testVal.PushBack(rapidjson::Value(188), m_jsonDocument->GetAllocator());
 
-        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, *m_jsonDeserializationContext);
 
         EXPECT_EQ(Processing::Altered, result.GetProcessing());
         EXPECT_EQ(Outcomes::Unavailable, result.GetOutcome());

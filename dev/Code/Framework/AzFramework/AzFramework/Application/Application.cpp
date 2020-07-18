@@ -54,11 +54,13 @@
 #include <AzFramework/Physics/Utils.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/Script/ScriptComponent.h>
+#include <AzFramework/StreamingInstall/StreamingInstall.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzFramework/Viewport/CameraState.h>
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzCore/Console/Console.h>
 #include <AzFramework/Viewport/ViewportBus.h>
 #include <GridMate/Memory.h>
@@ -538,6 +540,7 @@ namespace AzFramework
         AzFramework::ViewportRequests::Reflect(context);
 
         Physics::ReflectionUtils::ReflectPhysicsApi(context);
+        AzFramework::Terrain::TerrainDataRequests::Reflect(context);
 
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
@@ -571,7 +574,7 @@ namespace AzFramework
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
             azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
-
+            azrtti_typeid<AzFramework::StreamingInstall::StreamingInstallSystemComponent>(),
             AZ::Uuid("{624a7be2-3c7e-4119-aee2-1db2bdb6cc89}"), // ScriptDebugAgent
         });
 

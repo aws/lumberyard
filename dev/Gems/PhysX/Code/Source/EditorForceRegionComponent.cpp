@@ -72,31 +72,50 @@ namespace PhysX
         }
     }
 
-    AZ::Vector3 EditorForceRegionComponent::EditorForceProxy::CalculateForce(const EntityParams& entity, const RegionParams& region) const
+    const BaseForce& EditorForceRegionComponent::EditorForceProxy::GetCurrentBaseForce() const
+    {
+        auto* deconstThis = const_cast<EditorForceProxy*>(this);
+        return deconstThis->GetCurrentBaseForce();
+    }
+
+    BaseForce& EditorForceRegionComponent::EditorForceProxy::GetCurrentBaseForce()
     {
         switch (m_type)
         {
         case ForceType::WorldSpace:
-            return m_forceWorldSpace.CalculateForce(entity, region);
-            break;
+            return m_forceWorldSpace;
         case ForceType::LocalSpace:
-            return m_forceLocalSpace.CalculateForce(entity, region);
-            break;
+            return m_forceLocalSpace;
         case ForceType::Point:
-            return m_forcePoint.CalculateForce(entity, region);
-            break;
+            return m_forcePoint;
         case ForceType::SplineFollow:
-            return m_forceSplineFollow.CalculateForce(entity, region);
-            break;
+            return m_forceSplineFollow;
         case ForceType::SimpleDrag:
-            return m_forceSimpleDrag.CalculateForce(entity, region);
-            break;
+            return m_forceSimpleDrag;
         case ForceType::LinearDamping:
-            return m_forceLinearDamping.CalculateForce(entity, region);
-            break;
+            return m_forceLinearDamping;
         default:
-            return AZ::Vector3::CreateZero();
+            AZ_Error("EditorForceRegionComponent", false, "Unsupported force type");
+            return m_forceWorldSpace;
         }
+    }
+
+    void EditorForceRegionComponent::EditorForceProxy::Activate(AZ::EntityId entityId)
+    {
+        BaseForce& force = GetCurrentBaseForce();
+        force.Activate(entityId);
+    }
+
+    void EditorForceRegionComponent::EditorForceProxy::Deactivate()
+    {
+        BaseForce& force = GetCurrentBaseForce();
+        force.Deactivate();
+    }
+
+    AZ::Vector3 EditorForceRegionComponent::EditorForceProxy::CalculateForce(const EntityParams& entity, const RegionParams& region) const
+    {
+        const BaseForce& force = GetCurrentBaseForce();
+        return force.CalculateForce(entity, region);
     }
 
     bool EditorForceRegionComponent::EditorForceProxy::IsWorldSpaceForce() const
@@ -139,8 +158,7 @@ namespace PhysX
                 ->Field("Visible", &EditorForceRegionComponent::m_visibleInEditor)
                 ->Field("DebugForces", &EditorForceRegionComponent::m_debugForces)
                 ->Field("Forces", &EditorForceRegionComponent::m_forces)
-                ->Field("ForceRegion", &EditorForceRegionComponent::m_forceRegion)
-                ->Version(1)
+                ->Version(2)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -168,41 +186,44 @@ namespace PhysX
 
     void EditorForceRegionComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        m_forceRegion.ClearForces();
+        ForceRegion forceRegion;
 
         using ForceType = EditorForceRegionComponent::EditorForceProxy::ForceType;
         // Copy edit component's forces to game-time component.
         for (auto& forceProxy : m_forces)
         {
+            forceProxy.Deactivate();
+
             switch (forceProxy.m_type)
             {
             case ForceType::WorldSpace:
-                m_forceRegion.AddAndActivateForce(AZStd::make_unique<ForceWorldSpace>(forceProxy.m_forceWorldSpace));
+                forceRegion.AddAndActivateForce(AZStd::make_unique<ForceWorldSpace>(forceProxy.m_forceWorldSpace));
                 break;
             case ForceType::LocalSpace:
-                m_forceRegion.AddAndActivateForce(AZStd::make_unique<ForceLocalSpace>(forceProxy.m_forceLocalSpace));
+                forceRegion.AddAndActivateForce(AZStd::make_unique<ForceLocalSpace>(forceProxy.m_forceLocalSpace));
                 break;
             case ForceType::Point:
-                m_forceRegion.AddAndActivateForce(AZStd::make_unique<ForcePoint>(forceProxy.m_forcePoint));
+                forceRegion.AddAndActivateForce(AZStd::make_unique<ForcePoint>(forceProxy.m_forcePoint));
                 break;
             case ForceType::SplineFollow:
-                m_forceRegion.AddAndActivateForce(AZStd::make_unique<ForceSplineFollow>(forceProxy.m_forceSplineFollow));
+                forceRegion.AddAndActivateForce(AZStd::make_unique<ForceSplineFollow>(forceProxy.m_forceSplineFollow));
                 break;
             case ForceType::SimpleDrag:
-                m_forceRegion.AddAndActivateForce(AZStd::make_unique<ForceSimpleDrag>(forceProxy.m_forceSimpleDrag));
+                forceRegion.AddAndActivateForce(AZStd::make_unique<ForceSimpleDrag>(forceProxy.m_forceSimpleDrag));
                 break;
             case ForceType::LinearDamping:
-                m_forceRegion.AddAndActivateForce(AZStd::make_unique<ForceLinearDamping>(forceProxy.m_forceLinearDamping));
+                forceRegion.AddAndActivateForce(AZStd::make_unique<ForceLinearDamping>(forceProxy.m_forceLinearDamping));
                 break;
             }
         }
 
-        gameEntity->CreateComponent<ForceRegionComponent>(m_forceRegion, m_debugForces);
+        gameEntity->CreateComponent<ForceRegionComponent>(std::move(forceRegion), m_debugForces);
     }
 
     void EditorForceRegionComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
         incompatible.push_back(AZ_CRC("ForceRegionService", 0x3c3e4061));
+        incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
     }
 
     void EditorForceRegionComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -221,7 +242,11 @@ namespace PhysX
         AZ::EntityId entityId = GetEntityId();
         EditorComponentBase::Activate();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
-        m_forceRegion.Activate(entityId);
+
+        for (auto& force : m_forces)
+        {
+            force.Activate(entityId);
+        }
 
         AZ_Warning("PhysX Force Region"
             , PhysX::Utils::TriggerColliderExists(entityId)
@@ -232,7 +257,11 @@ namespace PhysX
 
     void EditorForceRegionComponent::Deactivate()
     {
-        m_forceRegion.Deactivate();
+        for (auto& force : m_forces)
+        {
+            force.Deactivate();
+        }
+
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         EditorComponentBase::Deactivate();
     }
@@ -320,7 +349,7 @@ namespace PhysX
         entityParams.m_velocity = AZ::Vector3::CreateZero();
         entityParams.m_mass = 1.f;
 
-        const PhysX::RegionParams regionParams = m_forceRegion.GetRegionParams();
+        const PhysX::RegionParams regionParams = ForceRegionUtil::CreateRegionParams(GetEntityId());
 
         for (const auto& arrowPosition : arrowPositions)
         {

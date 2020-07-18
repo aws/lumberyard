@@ -18,7 +18,9 @@
 #include <QMenu>
 #include <QFileDialog>
 #include <QPainter>
-#include <QColorDialog>
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 using Serialization::Vec3AsColor;
 typedef SerializableColor_tpl<unsigned char> SerializableColorB;
@@ -67,14 +69,15 @@ void FromQColor(SerializableColorF& vColor, QColor color)
 template <class ColorClass>
 bool PropertyRowColor<ColorClass>::pickColor(QPropertyTree* tree)
 {
-    QColor color = QColorDialog::getColor(QColor(color_.red(), color_.green(), color_.blue(), color_.alpha()));
+    const AZ::Color initialColor = AzQtComponents::fromQColor(color_);
+    const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, initialColor, QObject::tr("Select Color"));
 
-    if (color.isValid())
+    if (color != initialColor)
     {
         tree->model()->rowAboutToBeChanged(this);
-        color_.setRed(color.red());
-        color_.setGreen(color.green());
-        color_.setBlue(color.blue());
+        color_.setRed(color.GetR8());
+        color_.setGreen(color.GetG8());
+        color_.setBlue(color.GetB8());
         colorChanged_ = true;
         tree->model()->rowChanged(this);
         return true;

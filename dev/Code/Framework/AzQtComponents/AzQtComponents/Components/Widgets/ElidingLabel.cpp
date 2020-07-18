@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <AzCore/std/algorithm.h>
 #include <AzQtComponents/Components/Widgets/ElidingLabel.h>
 
 #include <QHBoxLayout>
@@ -18,14 +19,15 @@
 
 namespace AzQtComponents
 {
-    ElidingLabel::ElidingLabel(QWidget* parent /* = nullptr */)
-        : QWidget(parent)
+    ElidingLabel::ElidingLabel(const QString& text, QWidget* parent /* = nullptr */)
+        : QLabel(parent)
         , m_elideMode(Qt::ElideRight)
-        , m_label(new QLabel(this))
+        , m_metricsLabel(new QLabel(this))
     {
-        auto layout = new QHBoxLayout(this);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->addWidget(m_label);
+        // Used to return the default sizeHint for a the un-elided text.
+        // Should not be displayed.
+        m_metricsLabel->hide();
+        setText(text);
     }
 
     void ElidingLabel::setText(const QString& text)
@@ -36,9 +38,10 @@ namespace AzQtComponents
         }
 
         m_text = text;
-        m_label->setText(m_text);
+        m_metricsLabel->setText(m_text);
         m_elidedText.clear();
-        update();
+        elide();
+        updateGeometry();
     }
 
     void ElidingLabel::setDescription(const QString& description)
@@ -54,33 +57,20 @@ namespace AzQtComponents
         }
 
         m_elideMode = mode;
-        m_elidedText.clear();
         update();
-    }
-
-    void ElidingLabel::paintEvent(QPaintEvent* event)
-    {
-        elide();
-        QWidget::paintEvent(event);
     }
 
     void ElidingLabel::resizeEvent(QResizeEvent* event)
     {
-        m_elidedText.clear();
         QWidget::resizeEvent(event);
+        elide();
     }
 
     void ElidingLabel::elide()
     {
-        if (!m_elidedText.isEmpty())
-        {
-            return;
-        }
-
-        QPainter painter(this);
-        QFontMetrics fontMetrics = painter.fontMetrics();
-        m_elidedText = fontMetrics.elidedText(m_text, m_elideMode, m_label->contentsRect().width());
-        m_label->setText(m_elidedText);
+        ensurePolished();
+        m_elidedText = fontMetrics().elidedText(m_text, m_elideMode, TextRect().width());
+        QLabel::setText(m_elidedText);
 
         if (m_elidedText != m_text)
         {
@@ -99,11 +89,34 @@ namespace AzQtComponents
         }
     }
 
+    QRect ElidingLabel::TextRect()
+    {
+        QRect textRect = contentsRect();
+
+        // Account for margins when determining how much space we actually have for our text
+        if (indent() == -1)
+        {
+            if (frameWidth())
+            {
+                int textMargin = fontMetrics().width('x') / 2;
+                textRect.adjust(textMargin, 0, -textMargin, 0);
+            }
+        }
+
+        return textRect;
+    }
+
     void ElidingLabel::refreshStyle()
     {
-        m_label->style()->unpolish(m_label);
-        m_label->style()->polish(m_label);
-        m_label->update();
+        style()->unpolish(this);
+        style()->polish(this);
+        update();
+    }
+
+    void ElidingLabel::setObjectName(const QString& name)
+    {
+        m_metricsLabel->setObjectName(name);
+        QLabel::setObjectName(name);
     }
 
     QSize ElidingLabel::minimumSizeHint() const
@@ -111,6 +124,62 @@ namespace AzQtComponents
         // Override the QLabel minimumSizeHint width to let other
         // widgets know we can deal with less space.
         return QWidget::minimumSizeHint().boundedTo({0, std::numeric_limits<int>::max()});
+    }
+
+    QSize ElidingLabel::sizeHint() const
+    {
+        QSize sh = m_metricsLabel->sizeHint();
+
+        const QMargins margins = contentsMargins();
+        sh.rheight() += margins.top() + margins.bottom();
+        sh.rwidth() += margins.left() + margins.right();
+
+        return sh;
+    }
+
+    void ElidingLabel::setFilter(const QString& filter)
+    {
+        m_filterString = filter;
+        m_filterRegex = QRegExp(m_filterString, Qt::CaseInsensitive);
+    }
+
+
+    void ElidingLabel::paintEvent(QPaintEvent* event)
+    {
+        if (m_filterString.isEmpty())
+        {
+            QLabel::paintEvent(event);
+            return;
+        }
+        QPainter painter(this);
+        QRect textRect = TextRect();
+
+        int regexIndex = -1;
+
+        painter.save();
+
+        while ((regexIndex = text().indexOf(m_filterRegex, regexIndex + 1)) >= 0)
+        {
+            QString preSelectedText = text().left(regexIndex);
+            int preSelectedTextLength = fontMetrics().width(preSelectedText);
+            QString selectedText = text().mid(regexIndex, m_filterString.length());
+            int selectedTextLength = fontMetrics().width(selectedText);
+
+            int leftSpot = textRect.left() + preSelectedTextLength;
+
+            // Only need to do the draw if we actually are going to be highlighting the text.                
+            if (leftSpot < textRect.right())
+            {
+                int visibleLength = AZStd::GetMin(selectedTextLength, textRect.right() - leftSpot);
+                QRect highlightRect(textRect.left() + preSelectedTextLength, textRect.top(), visibleLength, textRect.height());
+
+                // paint the highlight rect
+                painter.fillRect(highlightRect, backgroundColor);
+            }
+        }
+        painter.restore();
+
+        QLabel::paintEvent(event);
     }
 
 } // namespace AzQtComponents

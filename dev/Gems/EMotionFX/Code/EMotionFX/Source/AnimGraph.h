@@ -53,8 +53,8 @@ namespace EMotionFX
         void RecursiveReinit();
         bool InitAfterLoading();
 
-        /// Recursive update unique datas for all corresponding anim graph instances.
-        void UpdateUniqueData();
+        /// Recursive invalidate unique data for all corresponding anim graph instances.
+        void RecursiveInvalidateUniqueDatas();
 
         const char* GetFileName() const;
         const AZStd::string& GetFileNameString() const;
@@ -175,7 +175,7 @@ namespace EMotionFX
         * @param groupName The group name to search for.
         * @result A pointer to the group parameter with the given name. nullptr will be returned in case it has not been found.
         */
-        const GroupParameter* FindGroupParameterByName(const AZStd::string& groupName) const;
+        GroupParameter* FindGroupParameterByName(const AZStd::string& groupName) const;
 
         /**
         * Find the group parameter the given parameter is part of.

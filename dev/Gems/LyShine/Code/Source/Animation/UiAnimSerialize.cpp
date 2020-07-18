@@ -19,6 +19,7 @@
 #include "AnimSplineTrack.h"
 #include "AnimSequence.h"
 #include "AzEntityNode.h"
+#include "EventNode.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // NAMESPACE FUNCTIONS
@@ -34,5 +35,7 @@ namespace UiAnimSerialize
         CUiAnimSequence::Reflect(context);
         CUiAnimNode::Reflect(context);
         CUiAnimAzEntityNode::Reflect(context);
+        CUiAnimEventNode::Reflect(context);
+        CUiTrackEventTrack::Reflect(context);
     }
 }

@@ -24,9 +24,8 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(JsonColorSerializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result JsonColorSerializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         AZ_Assert(azrtti_typeid<Color>() == outputValueTypeId,
@@ -40,29 +39,27 @@ namespace AZ
         switch (inputValue.GetType())
         {
         case rapidjson::kArrayType:
-            return LoadFloatArray(*color, inputValue, LoadAlpha::IfAvailable, path, settings);
+            return LoadFloatArray(*color, inputValue, LoadAlpha::IfAvailable, context);
         case rapidjson::kObjectType:
-            return LoadObject(*color, inputValue, path, settings);
+            return LoadObject(*color, inputValue, context);
         
         case rapidjson::kStringType: // fall through
         case rapidjson::kNumberType: // fall through
         case rapidjson::kNullType:   // fall through
         case rapidjson::kFalseType:  // fall through
         case rapidjson::kTrueType:
-            return JSR::Result(settings, "Unsupported type. Colors can only be read from arrays or objects.", 
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Unsupported type. Colors can only be read from arrays or objects.");
         
         default:
-            return JSR::Result(settings, "Unknown json type encountered in Color.", Tasks::ReadField, Outcomes::Unknown, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unknown,
+                "Unknown json type encountered in Color.");
         }
     }
 
-    JsonSerializationResult::Result JsonColorSerializer::Store(rapidjson::Value& outputValue,
-        rapidjson::Document::AllocatorType& allocator, const void* inputValue, 
-        const void* defaultValue, const Uuid& valueTypeId, 
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonColorSerializer::Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+        const Uuid& valueTypeId, JsonSerializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         AZ_Assert(azrtti_typeid<Color>() == valueTypeId, "Unable to serialize Color to json because the provided type is %s",
@@ -73,40 +70,39 @@ namespace AZ
         AZ_Assert(color, "Input value for JsonColorSerializer can't be null.");
         const Color* defaultColor = reinterpret_cast<const Color*>(defaultValue);
 
-        if (!settings.m_keepDefaults && defaultColor && *color == *defaultColor)
+        if (!context.ShouldKeepDefaults() && defaultColor && *color == *defaultColor)
         {
-            return JSR::Result(settings, "Default Color used.", ResultCode::Default(Tasks::WriteValue), path);
+            return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::DefaultsUsed, "Default Color used.");
         }
 
         outputValue.SetArray();
-        outputValue.PushBack(color->GetR(), allocator);
-        outputValue.PushBack(color->GetG(), allocator);
-        outputValue.PushBack(color->GetB(), allocator);
+        outputValue.PushBack(color->GetR(), context.GetJsonAllocator());
+        outputValue.PushBack(color->GetG(), context.GetJsonAllocator());
+        outputValue.PushBack(color->GetB(), context.GetJsonAllocator());
 
-        if (settings.m_keepDefaults || !defaultColor || (defaultColor && color->GetA() != defaultColor->GetA()))
+        if (context.ShouldKeepDefaults() || !defaultColor || (defaultColor && color->GetA() != defaultColor->GetA()))
         {
-            outputValue.PushBack(color->GetA(), allocator);
-            return JSR::Result(settings, "Color successfully stored.", ResultCode::Success(Tasks::WriteValue), path);
+            outputValue.PushBack(color->GetA(), context.GetJsonAllocator());
+            return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::Success, "Color successfully stored.");
         }
         else
         {
-            return JSR::Result(settings, "Color partially stored.", ResultCode::PartialDefault(Tasks::WriteValue), path);
+            return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::PartialDefaults, "Color partially stored.");
         }
     }
 
     JsonSerializationResult::Result JsonColorSerializer::LoadObject(Color& output, const rapidjson::Value& inputValue, 
-        StackedString& path, const JsonDeserializerSettings& settings)
+        JsonDeserializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
-        if (inputValue.ObjectEmpty())
+        if (IsExplicitDefault(inputValue))
         {
-            return JSR::Result(settings, "There's no data in the object to read the color from.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed,
+                "Default value for color provided so no change was made.");
         }
 
-        ResultCode result = ResultCode(Tasks::ReadField, Outcomes::Unsupported);
+        JSR::ResultCode result = JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported);
         auto it = inputValue.MemberEnd() - 1;
         while (true)
         {
@@ -115,48 +111,48 @@ namespace AZ
             {
                 if (it->value.IsArray())
                 {
-                    ScopedStackedString subPath(path, "RGBA8");
-                    result = LoadByteArray(output, it->value, true, subPath, settings);
+                    ScopedContextPath subPath(context, "RGBA8");
+                    result = LoadByteArray(output, it->value, true, context);
                 }
             }
             else if (azstricmp(it->name.GetString(), "RGB8") == 0)
             {
                 if (it->value.IsArray())
                 {
-                    ScopedStackedString subPath(path, "RGB8");
-                    result = LoadByteArray(output, it->value, false, subPath, settings);
+                    ScopedContextPath subPath(context, "RGB8");
+                    result = LoadByteArray(output, it->value, false, context);
                 }
             }
             else if (azstricmp(it->name.GetString(), "RGBA") == 0)
             {
                 if (it->value.IsArray())
                 {
-                    ScopedStackedString subPath(path, "RGBA");
-                    result = LoadFloatArray(output, it->value, LoadAlpha::Yes, subPath, settings);
+                    ScopedContextPath subPath(context, "RGBA");
+                    result = LoadFloatArray(output, it->value, LoadAlpha::Yes, context);
                 }
             }
             else if (azstricmp(it->name.GetString(), "RGB") == 0)
             {
                 if (it->value.IsArray())
                 {
-                    ScopedStackedString subPath(path, "RGB");
-                    result = LoadFloatArray(output, it->value, LoadAlpha::No, subPath, settings);
+                    ScopedContextPath subPath(context, "RGB");
+                    result = LoadFloatArray(output, it->value, LoadAlpha::No, context);
                 }
             }
             else if (azstricmp(it->name.GetString(), "HEXA") == 0)
             {
                 if (it->value.IsString())
                 {
-                    ScopedStackedString subPath(path, "HEXA");
-                    result = LoadHexString(output, it->value, true, subPath, settings);
+                    ScopedContextPath subPath(context, "HEXA");
+                    result = LoadHexString(output, it->value, true, context);
                 }
             }
             else if (azstricmp(it->name.GetString(), "HEX") == 0)
             {
                 if (it->value.IsString())
                 {
-                    ScopedStackedString subPath(path, "HEX");
-                    result = LoadHexString(output, it->value, false, subPath, settings);
+                    ScopedContextPath subPath(context, "HEX");
+                    result = LoadHexString(output, it->value, false, context);
                 }
             }
             else if (it != inputValue.MemberBegin())
@@ -165,15 +161,14 @@ namespace AZ
                 continue;
             }
 
-            return JSR::Result(settings, result.GetProcessing() != Processing::Halted ? "Successfully read color." : "Problem encountered while reading color.",
-                result, path);
+            return context.Report(result, result.GetProcessing() != JSR::Processing::Halted ?
+                "Successfully read color." : "Problem encountered while reading color.");
         }
     }
 
-    JsonSerializationResult::Result JsonColorSerializer::LoadFloatArray(Color& output, const rapidjson::Value& inputValue, LoadAlpha loadAlpha,
-        StackedString& path, const JsonDeserializerSettings& settings)
+    JsonSerializationResult::Result JsonColorSerializer::LoadFloatArray(Color& output, const rapidjson::Value& inputValue,
+        LoadAlpha loadAlpha, JsonDeserializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         rapidjson::SizeType arraySize = inputValue.Size();
@@ -181,8 +176,7 @@ namespace AZ
         float channels[4];
         if (arraySize < minimumLength)
         {
-            return JSR::Result(settings, "Not enough numbers in array to load color from.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported, "Not enough numbers in array to load color from.");
         }
 
         const rapidjson::Value& redValue = inputValue[0];
@@ -192,8 +186,8 @@ namespace AZ
         }
         else
         {
-            return JSR::Result(settings, "Red channel couldn't be read because the value wasn't a decimal number.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Red channel couldn't be read because the value wasn't a decimal number.");
         }
 
         const rapidjson::Value& greenValue = inputValue[1];
@@ -203,8 +197,8 @@ namespace AZ
         }
         else
         {
-            return JSR::Result(settings, "Green channel couldn't be read because the value wasn't a decimal number.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Green channel couldn't be read because the value wasn't a decimal number.");
         }
 
         const rapidjson::Value& blueValue = inputValue[2];
@@ -214,8 +208,8 @@ namespace AZ
         }
         else
         {
-            return JSR::Result(settings, "Blue channel couldn't be read because the value wasn't a decimal number.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Blue channel couldn't be read because the value wasn't a decimal number.");
         }
 
         if (loadAlpha == LoadAlpha::Yes || (loadAlpha == LoadAlpha::IfAvailable && arraySize >= 4))
@@ -224,13 +218,13 @@ namespace AZ
             if (alphaValue.IsDouble())
             {
                 channels[3] = aznumeric_caster(alphaValue.GetDouble());
+                minimumLength = 4; // Set to 4 in case the alpha was optional but present. This is needed in order to report the correct result.
             }
             else
             {
-                return JSR::Result(settings, "Alpha channel couldn't be read because the value wasn't a decimal number.",
-                    Tasks::ReadField, Outcomes::Unsupported, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                    "Alpha channel couldn't be read because the value wasn't a decimal number.");
             }
-            minimumLength = 4; // Set to 4 in case the alpha was optional but present. This needed in order to report the correct result.
         }
         else
         {
@@ -238,15 +232,14 @@ namespace AZ
         }
 
         output = Color::CreateFromFloat4(channels);
-        
-        return JSR::Result(settings, "Successfully loaded color from decimal array.",
-            ResultCode::Success(Tasks::ReadField), path);
+
+        JSR::Outcomes outcome = (minimumLength == 3 && loadAlpha == LoadAlpha::IfAvailable) ? JSR::Outcomes::PartialDefaults : JSR::Outcomes::Success;
+        return context.Report(JSR::Tasks::ReadField, outcome, "Successfully loaded color from decimal array.");
     }
 
-    JsonSerializationResult::Result JsonColorSerializer::LoadByteArray(Color& output, const rapidjson::Value& inputValue, bool loadAlpha,
-        StackedString& path, const JsonDeserializerSettings& settings)
+    JsonSerializationResult::Result JsonColorSerializer::LoadByteArray(Color& output, const rapidjson::Value& inputValue,
+        bool loadAlpha, JsonDeserializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         rapidjson::SizeType arraySize = inputValue.Size();
@@ -254,8 +247,8 @@ namespace AZ
         uint32_t color = 0; // Stored as AABBGGRR
         if (arraySize < expectedSize)
         {
-            return JSR::Result(settings, "Not enough numbers in array to load color from.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Not enough numbers in array to load color from.");
         }
 
         const rapidjson::Value& redValue = inputValue[0];
@@ -265,8 +258,8 @@ namespace AZ
         }
         else
         {
-            return JSR::Result(settings, "Red channel couldn't be read because the value wasn't a byte number.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Red channel couldn't be read because the value wasn't a byte number.");
         }
 
         const rapidjson::Value& greenValue = inputValue[1];
@@ -276,8 +269,8 @@ namespace AZ
         }
         else
         {
-            return JSR::Result(settings, "Green channel couldn't be read because the value wasn't a byte number.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Green channel couldn't be read because the value wasn't a byte number.");
         }
 
         const rapidjson::Value& blueValue = inputValue[2];
@@ -287,8 +280,8 @@ namespace AZ
         }
         else
         {
-            return JSR::Result(settings, "Blue channel couldn't be read because the value wasn't a byte number.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Blue channel couldn't be read because the value wasn't a byte number.");
         }
 
         if (loadAlpha)
@@ -300,8 +293,8 @@ namespace AZ
             }
             else
             {
-                return JSR::Result(settings, "Alpha channel couldn't be read because the value wasn't a byte number.",
-                    Tasks::ReadField, Outcomes::Unsupported, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                    "Alpha channel couldn't be read because the value wasn't a byte number.");
             }
             output.FromU32(color);
         }
@@ -312,13 +305,12 @@ namespace AZ
             output.SetA(alpha);
         }
         
-        return JSR::Result(settings, "Successfully loaded color from byte array.", ResultCode::Success(Tasks::ReadField), path);
+        return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Success, "Successfully loaded color from byte array.");
     }
 
-    JsonSerializationResult::Result JsonColorSerializer::LoadHexString(Color& output, const rapidjson::Value& inputValue, bool loadAlpha,
-        StackedString& path, const JsonDeserializerSettings& settings)
+    JsonSerializationResult::Result JsonColorSerializer::LoadHexString(Color& output, const rapidjson::Value& inputValue,
+        bool loadAlpha, JsonDeserializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         size_t minimumLength = loadAlpha ? 8 : 6; // 8 for RRGGBBAA and 6 for RRGGBB
@@ -326,8 +318,7 @@ namespace AZ
         AZStd::string_view text(inputValue.GetString(), inputValue.GetStringLength());
         if (text.length() < minimumLength)
         {
-            return JSR::Result(settings, "The hex text for color is too short.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported, "The hex text for color is too short.");
         }
 
         uint32_t color = 0;
@@ -361,8 +352,8 @@ namespace AZ
 
         if (hexDigitIndex != minimumLength)
         {
-            return JSR::Result(settings, "Failed to parse hex value. There might be an incorrect character in the string.",
-                Tasks::ReadField, Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Failed to parse hex value. There might be an incorrect character in the string.");
         }
 
         if (loadAlpha)
@@ -379,7 +370,7 @@ namespace AZ
             output.SetB8(color & 0xff);
         }
 
-        return JSR::Result(settings, "Successfully loaded color from hex string.", ResultCode::Success(Tasks::ReadField), path);
+        return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Success, "Successfully loaded color from hex string.");
     }
 
     uint32_t JsonColorSerializer::ClampToByteColorRange(int64_t value) const

@@ -66,11 +66,14 @@ namespace GraphCanvas
         void keyPressEvent(QKeyEvent* keyEvent) override;
         void keyReleaseEvent(QKeyEvent* keyEvent) override;
         void hoverEnterEvent(QGraphicsSceneHoverEvent* hoverEvent) override;
-        void hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent) override;
+        void hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent) override;        
         void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
         void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
         ////
+
+        void OnMouseEnter(bool hasAltModifier);
+        void OnMouseLeave();
 
         // QGraphicsLayoutItem
         void setGeometry(const QRectF& rect) override;
@@ -86,7 +89,8 @@ namespace GraphCanvas
 
         AZ::EntityId m_slotId;
 
-        bool m_trackClick;        
+        bool m_trackClick;
+        bool m_deletionClick;
 
         bool m_hovered;
         StateSetter<RootGraphicsItemDisplayState> m_nodeDisplayStateStateSetter;

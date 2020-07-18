@@ -44,11 +44,6 @@ namespace EMotionFX
     {
     }
 
-    void BlendTreeRaycastNode::Reinit()
-    {
-        AnimGraphNode::Reinit();
-    }
-
     bool BlendTreeRaycastNode::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphNode::InitAfterLoading(animGraph))
@@ -73,20 +68,22 @@ namespace EMotionFX
 
     void BlendTreeRaycastNode::DoOutput(AnimGraphInstance* animGraphInstance)
     {
+        AnimGraphObjectData* uniqueData = animGraphInstance->FindOrCreateUniqueObjectData(this);
+
         // Get the ray start and end.
         AZ::Vector3 rayStart;
         AZ::Vector3 rayEnd;
         if (!TryGetInputVector3(animGraphInstance, INPUTPORT_RAY_START, rayStart) || 
             !TryGetInputVector3(animGraphInstance, INPUTPORT_RAY_END, rayEnd))
         {
-            SetHasError(animGraphInstance, true);
+            SetHasError(uniqueData, true);
             GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(AZ::Vector3(0.0f, 0.0f, 0.0f));
             GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(AZ::Vector3(0.0f, 0.0f, 1.0f));
             GetOutputFloat(animGraphInstance, OUTPUTPORT_INTERSECTED)->SetValue(0.0f);
             return;
         }
 
-        SetHasError(animGraphInstance, false);
+        SetHasError(uniqueData, false);
 
         AZ::Vector3 rayDirection = rayEnd - rayStart;
         const float maxDistance = rayDirection.GetLengthExact();

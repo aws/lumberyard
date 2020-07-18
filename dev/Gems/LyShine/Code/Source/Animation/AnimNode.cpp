@@ -12,17 +12,18 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "LyShine_precompiled.h"
+#include <AzCore/Serialization/SerializeContext.h>
 #include "AnimNode.h"
 #include "AnimTrack.h"
 #include "AnimSequence.h"
 #include "AnimSplineTrack.h"
 #include "BoolTrack.h"
+#include "TrackEventTrack.h"
 #include "CompoundSplineTrack.h"
 
 #include <AzCore/std/sort.h>
 #include <I3DEngine.h>
 #include <ctime>
-
 
 //////////////////////////////////////////////////////////////////////////
 // Old deprecated IDs
@@ -148,11 +149,11 @@ IUiAnimTrack* CUiAnimNode::GetTrackForParameter(const CUiAnimParamType& paramTyp
     return 0;
 }
 
-uint32 CUiAnimNode::GetTrackParamIndex(const IUiAnimTrack* pTrack) const
+uint32 CUiAnimNode::GetTrackParamIndex(const IUiAnimTrack* track) const
 {
-    assert(pTrack);
+    AZ_Assert(track, "Track is nullptr.");
     uint32 index = 0;
-    CUiAnimParamType paramType = pTrack->GetParameterType();
+    CUiAnimParamType paramType = track->GetParameterType();
 
     SParamInfo paramInfo;
     GetParamInfoFromType(paramType, paramInfo);
@@ -164,7 +165,7 @@ uint32 CUiAnimNode::GetTrackParamIndex(const IUiAnimTrack* pTrack) const
 
     for (int i = 0, num = (int)m_tracks.size(); i < num; i++)
     {
-        if (m_tracks[i].get() == pTrack)
+        if (m_tracks[i].get() == track)
         {
             return index;
         }
@@ -176,34 +177,34 @@ uint32 CUiAnimNode::GetTrackParamIndex(const IUiAnimTrack* pTrack) const
 
         // For this case, no subtracks are considered.
     }
-    assert(!"CUiAnimNode::GetTrackParamIndex() called with an invalid argument!");
+    AZ_Assert(false, "CUiAnimNode::GetTrackParamIndex() called with an invalid argument!");
     return 0;
 }
 
 IUiAnimTrack* CUiAnimNode::GetTrackByIndex(int nIndex) const
 {
-    if (nIndex >= (int)m_tracks.size())
+    AZ_Assert(nIndex >= 0 && nIndex < static_cast<int>(m_tracks.size()), "Track index out of range.");
+    if (nIndex < 0 || nIndex >= static_cast<int>(m_tracks.size()))
     {
-        assert("nIndex>=m_tracks.size()" && false);
         return NULL;
     }
     return m_tracks[nIndex].get();
 }
 
-void CUiAnimNode::SetTrack(const CUiAnimParamType& paramType, IUiAnimTrack* pTrack)
+void CUiAnimNode::SetTrack(const CUiAnimParamType& paramType, IUiAnimTrack* track)
 {
-    if (pTrack)
+    if (track)
     {
         for (unsigned int i = 0; i < m_tracks.size(); i++)
         {
             if (m_tracks[i]->GetParameterType() == paramType)
             {
-                m_tracks[i].reset(pTrack);
+                m_tracks[i].reset(track);
                 return;
             }
         }
 
-        AddTrack(pTrack);
+        AddTrack(track);
     }
     else
     {
@@ -225,20 +226,31 @@ bool CUiAnimNode::TrackOrder(const AZStd::intrusive_ptr<IUiAnimTrack>& left, con
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CUiAnimNode::AddTrack(IUiAnimTrack* pTrack)
+void CUiAnimNode::AddTrack(IUiAnimTrack* track)
 {
-    pTrack->SetTimeRange(GetSequence()->GetTimeRange());
-    m_tracks.push_back(AZStd::intrusive_ptr<IUiAnimTrack>(pTrack));
-    AZStd::allocator allocator;
-    AZStd::stable_sort(m_tracks.begin(), m_tracks.end(), TrackOrder, allocator);
+    RegisterTrack(track);
+    m_tracks.push_back(AZStd::intrusive_ptr<IUiAnimTrack>(track));
+    SortTracks();
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CUiAnimNode::RemoveTrack(IUiAnimTrack* pTrack)
+void CUiAnimNode::RegisterTrack(IUiAnimTrack* track)
+{
+    track->SetTimeRange(GetSequence()->GetTimeRange());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUiAnimNode::SortTracks()
+{
+    AZStd::insertion_sort(m_tracks.begin(), m_tracks.end(), TrackOrder);
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CUiAnimNode::RemoveTrack(IUiAnimTrack* track)
 {
     for (unsigned int i = 0; i < m_tracks.size(); i++)
     {
-        if (m_tracks[i].get() == pTrack)
+        if (m_tracks[i].get() == track)
         {
             m_tracks.erase(m_tracks.begin() + i);
             return true;
@@ -253,17 +265,19 @@ void CUiAnimNode::Reflect(AZ::SerializeContext* serializeContext)
     // we do not currently serialize node type because all nodes are the same type (AzEntityNode)
 
     serializeContext->Class<CUiAnimNode>()
-        ->Version(1)
+        ->Version(2)
         ->Field("ID", &CUiAnimNode::m_id)
         ->Field("Parent", &CUiAnimNode::m_parentNodeId)
         ->Field("Name", &CUiAnimNode::m_name)
         ->Field("Flags", &CUiAnimNode::m_flags)
-        ->Field("Tracks", &CUiAnimNode::m_tracks);
+        ->Field("Tracks", &CUiAnimNode::m_tracks)
+        ->Field("Type", &CUiAnimNode::m_nodeType);
 }
 
 //////////////////////////////////////////////////////////////////////////
 IUiAnimTrack* CUiAnimNode::CreateTrackInternal(const CUiAnimParamType& paramType, EUiAnimCurveType trackType, EUiAnimValue valueType)
 {
+
     if (valueType == eUiAnimValue_Unknown)
     {
         SParamInfo info;
@@ -277,13 +291,16 @@ IUiAnimTrack* CUiAnimNode::CreateTrackInternal(const CUiAnimParamType& paramType
         valueType = info.valueType;
     }
 
-    IUiAnimTrack* pTrack = NULL;
+    IUiAnimTrack* track = NULL;
 
     switch (paramType.GetType())
     {
     // Create sub-classed tracks
+    case eUiAnimParamType_TrackEvent:
+        track = aznew CUiTrackEventTrack(m_pSequence->GetTrackEventStringTable());
+        break;
     case eUiAnimParamType_Float:
-        pTrack = CreateTrackInternalFloat(trackType);
+        track = CreateTrackInternalFloat(trackType);
         break;
 
     default:
@@ -291,44 +308,44 @@ IUiAnimTrack* CUiAnimNode::CreateTrackInternal(const CUiAnimParamType& paramType
         switch (valueType)
         {
         case eUiAnimValue_Float:
-            pTrack = CreateTrackInternalFloat(trackType);
+            track = CreateTrackInternalFloat(trackType);
             break;
         case eUiAnimValue_RGB:
         case eUiAnimValue_Vector:
-            pTrack = CreateTrackInternalVector(trackType, paramType, valueType);
+            track = CreateTrackInternalVector(trackType, paramType, valueType);
             break;
         case eUiAnimValue_Quat:
-            pTrack = CreateTrackInternalQuat(trackType, paramType);
+            track = CreateTrackInternalQuat(trackType, paramType);
             break;
         case eUiAnimValue_Bool:
-            pTrack = aznew UiBoolTrack;
+            track = aznew UiBoolTrack;
             break;
         case eUiAnimValue_Vector2:
-            pTrack = CreateTrackInternalVector2(paramType);
+            track = CreateTrackInternalVector2(paramType);
             break;
         case eUiAnimValue_Vector3:
-            pTrack = CreateTrackInternalVector3(paramType);
+            track = CreateTrackInternalVector3(paramType);
             break;
         case eUiAnimValue_Vector4:
-            pTrack = CreateTrackInternalVector4(paramType);
+            track = CreateTrackInternalVector4(paramType);
             break;
         }
     }
 
-    if (pTrack)
+    if (track)
     {
-        pTrack->SetParameterType(paramType);
-        AddTrack(pTrack);
+        track->SetParameterType(paramType);
+        AddTrack(track);
     }
 
-    return pTrack;
+    return track;
 }
 
 //////////////////////////////////////////////////////////////////////////
 IUiAnimTrack* CUiAnimNode::CreateTrack(const CUiAnimParamType& paramType)
 {
-    IUiAnimTrack* pTrack = CreateTrackInternal(paramType, DEFAULT_TRACK_TYPE, eUiAnimValue_Unknown);
-    return pTrack;
+    IUiAnimTrack* track = CreateTrackInternal(paramType, DEFAULT_TRACK_TYPE, eUiAnimValue_Unknown);
+    return track;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -344,7 +361,7 @@ void CUiAnimNode::SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoa
         int paramTypeVersion = 0;
         xmlNode->getAttr("paramIdVersion", paramTypeVersion);
         CUiAnimParamType paramType;
-        int num = xmlNode->getChildCount();
+        const int num = xmlNode->getChildCount();
         for (int i = 0; i < num; i++)
         {
             XmlNodeRef trackNode = xmlNode->getChild(i);
@@ -353,22 +370,23 @@ void CUiAnimNode::SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoa
             int curveType = eUiAnimCurveType_Unknown;
             trackNode->getAttr("Type", curveType);
 
+
             int valueType = eUiAnimValue_Unknown;
             trackNode->getAttr("ValueType", valueType);
 
-            IUiAnimTrack* pTrack = CreateTrackInternal(paramType, (EUiAnimCurveType)curveType, (EUiAnimValue)valueType);
-            if (pTrack)
+            IUiAnimTrack* track = CreateTrackInternal(paramType, (EUiAnimCurveType)curveType, (EUiAnimValue)valueType);
+            if (track)
             {
                 UiAnimParamData paramData;
                 paramData.Serialize(GetUiAnimationSystem(), trackNode, bLoading);
-                pTrack->SetParamData(paramData);
+                track->SetParamData(paramData);
 
-                if (!pTrack->Serialize(GetUiAnimationSystem(), trackNode, bLoading, bLoadEmptyTracks))
+                if (!track->Serialize(GetUiAnimationSystem(), trackNode, bLoading, bLoadEmptyTracks))
                 {
                     // Boolean tracks must always be loaded even if empty.
-                    if (pTrack->GetValueType() != eUiAnimValue_Bool)
+                    if (track->GetValueType() != eUiAnimValue_Bool)
                     {
-                        RemoveTrack(pTrack);
+                        RemoveTrack(track);
                     }
                 }
             }
@@ -380,20 +398,20 @@ void CUiAnimNode::SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoa
         xmlNode->setAttr("paramIdVersion", CUiAnimParamType::kParamTypeVersion);
         for (unsigned int i = 0; i < m_tracks.size(); i++)
         {
-            IUiAnimTrack* pTrack = m_tracks[i].get();
-            if (pTrack)
+            IUiAnimTrack* track = m_tracks[i].get();
+            if (track)
             {
-                CUiAnimParamType paramType = pTrack->GetParameterType();
+                CUiAnimParamType paramType = track->GetParameterType();
                 XmlNodeRef trackNode = xmlNode->newChild("Track");
                 paramType.Serialize(GetUiAnimationSystem(), trackNode, bLoading);
 
-                UiAnimParamData paramData = pTrack->GetParamData();
+                UiAnimParamData paramData = track->GetParamData();
                 paramData.Serialize(GetUiAnimationSystem(), trackNode, bLoading);
 
-                int nTrackType = pTrack->GetCurveType();
+                int nTrackType = track->GetCurveType();
                 trackNode->setAttr("Type", nTrackType);
-                pTrack->Serialize(GetUiAnimationSystem(), trackNode, bLoading);
-                int valueType = pTrack->GetValueType();
+                track->Serialize(GetUiAnimationSystem(), trackNode, bLoading);
+                int valueType = track->GetValueType();
                 trackNode->setAttr("ValueType", valueType);
             }
         }
@@ -413,10 +431,35 @@ void CUiAnimNode::SetTimeRange(Range timeRange)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CUiAnimNode::CUiAnimNode(const int id)
+// AZ::Serialization requires a default constructor
+CUiAnimNode::CUiAnimNode()
+    : CUiAnimNode(0, eUiAnimNodeType_Invalid)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
+// explicit copy constructor is required to prevent compiler's generated copy constructor
+// from calling AZStd::mutex's private copy constructor
+CUiAnimNode::CUiAnimNode(const CUiAnimNode& other)
+    : m_refCount(0)
+    , m_id(0)                                   // don't copy id - these should be unique
+    , m_parentNodeId(other.m_parentNodeId)
+    , m_nodeType(other.m_nodeType)
+    , m_pOwner(other.m_pOwner)
+    , m_pSequence(other.m_pSequence)
+    , m_flags(other.m_flags)
+    , m_pParentNode(other.m_pParentNode)
+    , m_nLoadedParentNodeId(other.m_nLoadedParentNodeId)
+{
+    // m_bIgnoreSetParam not copied
+}
+
+//////////////////////////////////////////////////////////////////////////
+CUiAnimNode::CUiAnimNode(const int id, EUiAnimNodeType nodeType)
     : m_refCount(0)
     , m_id(id)
     , m_parentNodeId(0)
+    , m_nodeType(nodeType)
 {
     m_pOwner = 0;
     m_pSequence = 0;
@@ -424,13 +467,6 @@ CUiAnimNode::CUiAnimNode(const int id)
     m_bIgnoreSetParam = false;
     m_pParentNode = 0;
     m_nLoadedParentNodeId = 0;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// AZ::Serialization requires a default constructor
-CUiAnimNode::CUiAnimNode()
-    : CUiAnimNode(0)
-{
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -491,12 +527,12 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, float value)
         return true;
     }
 
-    IUiAnimTrack* pTrack = GetTrackForParameter(param);
-    if (pTrack && pTrack->GetValueType() == eUiAnimValue_Float)
+    IUiAnimTrack* track = GetTrackForParameter(param);
+    if (track && track->GetValueType() == eUiAnimValue_Float)
     {
         // Float track.
         bool bDefault = !(GetUiAnimationSystem()->IsRecording() && (m_flags & eUiAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
-        pTrack->SetValue(time, value, bDefault);
+        track->SetValue(time, value, bDefault);
         return true;
     }
     return false;
@@ -510,12 +546,12 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec3& 
         return true;
     }
 
-    UiCompoundSplineTrack* pTrack = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eUiAnimValue_Vector)
+    UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
+    if (track && track->GetValueType() == eUiAnimValue_Vector)
     {
         // Vec3 track.
         bool bDefault = !(GetUiAnimationSystem()->IsRecording() && (m_flags & eUiAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
-        pTrack->SetValue(time, value, bDefault);
+        track->SetValue(time, value, bDefault);
         return true;
     }
     return false;
@@ -529,12 +565,12 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec4& 
         return true;
     }
 
-    UiCompoundSplineTrack* pTrack = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eUiAnimValue_Vector4)
+    UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
+    if (track && track->GetValueType() == eUiAnimValue_Vector4)
     {
         // Vec4 track.
         bool bDefault = !(GetUiAnimationSystem()->IsRecording() && (m_flags & eUiAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
-        pTrack->SetValue(time, value, bDefault);
+        track->SetValue(time, value, bDefault);
         return true;
     }
     return false;
@@ -543,11 +579,11 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec4& 
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, float& value)
 {
-    IUiAnimTrack* pTrack = GetTrackForParameter(param);
-    if (pTrack && pTrack->GetValueType() == eUiAnimValue_Float && pTrack->GetNumKeys() > 0)
+    IUiAnimTrack* track = GetTrackForParameter(param);
+    if (track && track->GetValueType() == eUiAnimValue_Float && track->GetNumKeys() > 0)
     {
         // Float track.
-        pTrack->GetValue(time, value);
+        track->GetValue(time, value);
         return true;
     }
     return false;
@@ -556,11 +592,11 @@ bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, float& value
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, Vec3& value)
 {
-    UiCompoundSplineTrack* pTrack = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eUiAnimValue_Vector && pTrack->GetNumKeys() > 0)
+    UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
+    if (track && track->GetValueType() == eUiAnimValue_Vector && track->GetNumKeys() > 0)
     {
         // Vec3 track.
-        pTrack->GetValue(time, value);
+        track->GetValue(time, value);
         return true;
     }
     return false;
@@ -569,11 +605,11 @@ bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, Vec3& value)
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, Vec4& value)
 {
-    UiCompoundSplineTrack* pTrack = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
-    if (pTrack && pTrack->GetValueType() == eUiAnimValue_Vector4 && pTrack->GetNumKeys() > 0)
+    UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
+    if (track && track->GetValueType() == eUiAnimValue_Vector4 && track->GetNumKeys() > 0)
     {
         // Vec4 track.
-        pTrack->GetValue(time, value);
+        track->GetValue(time, value);
         return true;
     }
     return false;
@@ -627,6 +663,15 @@ void CUiAnimNode::InitPostLoad(IUiAnimSequence* pSequence, bool remapIds, LyShin
 {
     m_pSequence = pSequence;
     m_pParentNode = ((CUiAnimSequence*)m_pSequence)->FindNodeById(m_parentNodeId);
+
+    // fix up animNode pointers and time ranges on tracks, then sort them
+    for (unsigned int i = 0; i < m_tracks.size(); i++)
+    {
+        IUiAnimTrack* track = m_tracks[i].get();
+        RegisterTrack(track);
+        track->InitPostLoad(pSequence);
+    }
+    SortTracks();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -687,7 +732,7 @@ IUiAnimTrack* CUiAnimNode::CreateTrackInternalQuat(EUiAnimCurveType trackType, c
 //////////////////////////////////////////////////////////////////////////
 IUiAnimTrack* CUiAnimNode::CreateTrackInternalVector2(const CUiAnimParamType& paramType) const
 {
-    IUiAnimTrack* pTrack;
+    IUiAnimTrack* track;
 
     CUiAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
     for (unsigned int i = 0; i < MAX_SUBTRACKS; ++i)
@@ -695,15 +740,16 @@ IUiAnimTrack* CUiAnimNode::CreateTrackInternalVector2(const CUiAnimParamType& pa
         subTrackParamTypes[i] = eUiAnimParamType_Float;
     }
 
-    pTrack = aznew UiCompoundSplineTrack(2, eUiAnimValue_Vector2, subTrackParamTypes);
 
-    return pTrack;
+    track = aznew UiCompoundSplineTrack(2, eUiAnimValue_Vector2, subTrackParamTypes);
+
+
+    return track;
 }
 
-//////////////////////////////////////////////////////////////////////////
 IUiAnimTrack* CUiAnimNode::CreateTrackInternalVector3(const CUiAnimParamType& paramType) const
 {
-    IUiAnimTrack* pTrack;
+    IUiAnimTrack* track;
 
     CUiAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
     for (unsigned int i = 0; i < MAX_SUBTRACKS; ++i)
@@ -711,15 +757,16 @@ IUiAnimTrack* CUiAnimNode::CreateTrackInternalVector3(const CUiAnimParamType& pa
         subTrackParamTypes[i] = eUiAnimParamType_Float;
     }
 
-    pTrack = aznew UiCompoundSplineTrack(3, eUiAnimValue_Vector3, subTrackParamTypes);
+    track = aznew UiCompoundSplineTrack(3, eUiAnimValue_Vector3, subTrackParamTypes);
 
-    return pTrack;
+    return track;
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 IUiAnimTrack* CUiAnimNode::CreateTrackInternalVector4(const CUiAnimParamType& paramType) const
 {
-    IUiAnimTrack* pTrack;
+    IUiAnimTrack* track;
 
     CUiAnimParamType subTrackParamTypes[MAX_SUBTRACKS];
     for (unsigned int i = 0; i < MAX_SUBTRACKS; ++i)
@@ -727,11 +774,9 @@ IUiAnimTrack* CUiAnimNode::CreateTrackInternalVector4(const CUiAnimParamType& pa
         subTrackParamTypes[i] = eUiAnimParamType_Float;
     }
 
-    pTrack = aznew UiCompoundSplineTrack(4, eUiAnimValue_Vector4, subTrackParamTypes);
-
-    return pTrack;
+    track = aznew UiCompoundSplineTrack(4, eUiAnimValue_Vector4, subTrackParamTypes);
+    return track;
 }
-
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimNode::SetParent(IUiAnimNode* pParent)
 {

@@ -21,6 +21,9 @@
 
 #include "IRenderAuxGeom.h"
 
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
+#include <QGuiApplication>
+
 //////////////////////////////////////////////////////////////////////////
 CRuler::CRuler()
     : m_bActive(false)
@@ -141,6 +144,7 @@ void CRuler::Update()
         {
             QPoint vCursorPoint = QCursor::pos();
             pActiveView->ScreenToClient(vCursorPoint);
+            vCursorPoint = QHighDpi::toNativePixels(vCursorPoint, QGuiApplication::screenAt(vCursorPoint));
             Vec3 vCursorWorldPos = pActiveView->SnapToGrid(pActiveView->ViewToWorld(vCursorPoint));
             Vec3 vOffset(0.1f, 0.1f, 0.1f);
             pAuxGeom->SetRenderFlags(e_Def3DPublicRenderflags | e_AlphaBlended);

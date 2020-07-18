@@ -15,12 +15,30 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/EBus/EBus.h>
 
+#include <QKeySequence>
+
 AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
+#include <QVariant>
 #include <QWidget>
 AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
+    static const QKeySequence RedoKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z);
+
+    static const char* SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY = "ShortcutDispatcherContextBreak";
+
+    // Call this method to mark a widget as a shortcut break; any widgets marked this way
+    // will not be searched for shortcuts, and shortcuts under them will only be triggered
+    // if the focus widget is within that hierarchy.
+    //
+    // Most specifically used for view panes.
+    //
+    // Note that this method is inlined and static so that it can be called from anything that includes this header file. Don't move it into the cpp.
+    static void MarkAsShortcutSearchBreak(QWidget* widget)
+    {
+        widget->setProperty(SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY, true);
+    }
 
     /**
      * The ShortcutDispatcBus is intended to allow systems to hook in and override providing a valid keyboard shortcut

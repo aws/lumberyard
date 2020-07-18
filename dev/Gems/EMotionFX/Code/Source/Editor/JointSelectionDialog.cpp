@@ -50,7 +50,8 @@ namespace EMotionFX
         connect(okButton, &QPushButton::clicked, this, &JointSelectionDialog::accept);
         connect(cancelButton, &QPushButton::clicked, this, &JointSelectionDialog::reject);
 
-        setMinimumSize(QSize(400, 700));
+        setMinimumSize(QSize(500, 400));
+        resize(700, 800);
     }
 
     JointSelectionDialog::~JointSelectionDialog()

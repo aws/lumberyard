@@ -54,12 +54,25 @@ namespace EditorPythonBindings
         void ExecuteByString(AZStd::string_view script) override;
         void ExecuteByFilename(AZStd::string_view filename) override;
         void ExecuteByFilenameWithArgs(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args) override;
+        void ExecuteByFilenameAsTest(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args) override;
         ////////////////////////////////////////////////////////////////////////
         
     private:
         // handle multiple Python initializers
         AZStd::atomic_int m_initalizeWaiterCount {0};
         AZStd::semaphore m_initalizeWaiter;
+    
+        enum class Result
+        {
+            Okay,
+            Error_IsNotInitialized,
+            Error_InvalidFilename,
+            Error_MissingFile,
+            Error_FileOpenValidation,
+            Error_InternalException,
+            Error_PythonException,
+        };
+        Result EvaluateFile(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args);
 
         // bootstrap logic and data
         using PythonPathStack = AZStd::vector<AZStd::string>;

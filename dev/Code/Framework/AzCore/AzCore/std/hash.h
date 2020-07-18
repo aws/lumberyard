@@ -15,6 +15,7 @@
 #include <limits>
 #include <AzCore/std/utils.h>
 #include "typetraits/has_member_function.h"
+#include "typetraits/is_abstract.h"
 
 namespace AZStd
 {

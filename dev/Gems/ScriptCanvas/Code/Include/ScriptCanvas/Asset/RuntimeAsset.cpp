@@ -45,18 +45,50 @@ namespace ScriptCanvas
         return *this;
     }
 
-    RuntimeAsset::RuntimeAsset(const AZ::Data::AssetId& assetId, AZ::Data::AssetData::AssetStatus status)
-        : AZ::Data::AssetData(assetId, status)
+    ////////////////////////
+    // FunctionRuntimeData
+    ////////////////////////
+
+    void FunctionRuntimeData::Reflect(AZ::ReflectContext* reflectContext)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
+        {
+            serializeContext->Class<FunctionRuntimeData, RuntimeData>()
+                ->Version(3)
+                ->Field("m_name", &FunctionRuntimeData::m_name)
+                ->Field("m_version", &FunctionRuntimeData::m_version)
+                ->Field("m_executionNodeOrder", &FunctionRuntimeData::m_executionNodeOrder)
+                ->Field("m_variableOrder", &FunctionRuntimeData::m_variableOrder)
+                ;
+        }
+    }
+
+    FunctionRuntimeData::FunctionRuntimeData(FunctionRuntimeData&& other)
+        : RuntimeData(other)
+        , m_name(AZStd::move(other.m_name))
+        , m_version(AZStd::move(other.m_version))
+        , m_executionNodeOrder(AZStd::move(other.m_executionNodeOrder))
+        , m_variableOrder(AZStd::move(other.m_variableOrder))
     {
     }
 
-    RuntimeAsset::~RuntimeAsset()
+    FunctionRuntimeData& FunctionRuntimeData::operator=(FunctionRuntimeData&& other)
     {
-        m_runtimeData.m_graphData.Clear(true);
+        if (this != &other)
+        {
+            m_name = AZStd::move(other.m_name);
+            m_version = AZStd::move(other.m_version);
+            m_graphData = AZStd::move(other.m_graphData);
+            m_variableData = AZStd::move(other.m_variableData);
+            m_executionNodeOrder = AZStd::move(other.m_executionNodeOrder);
+            m_variableOrder = AZStd::move(other.m_variableOrder);
+        }
+
+        return *this;
     }
 
-    void RuntimeAsset::SetData(const RuntimeData& runtimeData)
-    {
-        m_runtimeData = runtimeData;
-    }
+
+    ///////
+
+
 }

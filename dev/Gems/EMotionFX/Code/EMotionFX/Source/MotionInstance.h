@@ -14,23 +14,20 @@
 
 // include the required headers
 #include <AzCore/PlatformIncl.h>
-#include "EMotionFXConfig.h"
-#include "BaseObject.h"
-#include "Motion.h"
-#include "Pose.h"
-#include "MotionLink.h"
-#include "MotionGroup.h"
-#include "PlayBackInfo.h"
-#include "EventInfo.h"
-#include "MotionInstancePool.h"
+#include <AzCore/std/containers/vector.h>
 
-#include <MCore/Source/Array.h>
-#include <MCore/Source/CompressedFloat.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/BaseObject.h>
+#include <EMotionFX/Source/Motion.h>
+#include <EMotionFX/Source/Pose.h>
+#include <EMotionFX/Source/MotionLink.h>
+#include <EMotionFX/Source/PlayBackInfo.h>
+#include <EMotionFX/Source/EventInfo.h>
+#include <EMotionFX/Source/MotionInstancePool.h>
 
 
 namespace EMotionFX
 {
-    // forward declarations
     class ActorInstance;
     class MotionInstanceEventHandler;
     class AnimGraphEventBuffer;
@@ -51,10 +48,32 @@ namespace EMotionFX
         friend class MotionInstancePool;
 
     public:
-        static MotionInstance* Create(Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex);
-        static MotionInstance* Create(void* memLocation, Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex);
+        struct EMFX_API PlayStateIn
+        {
+            float m_currentTime = 0.0f;
+            float m_duration = 0.0f;
+            float m_playSpeed = 0.0f;
+            float m_freezeAtTime = -1.0f;
+            AZ::u32 m_numLoops = 0;
+            AZ::u32 m_maxLoops = EMFX_LOOPFOREVER;
+            EPlayMode m_playMode = PLAYMODE_FORWARD;
+            bool m_isFrozen = false;
+            bool m_freezeAtLastFrame = false;
+            bool m_isPaused = false;
+        };
 
-        // init it for sampling
+        struct EMFX_API PlayStateOut
+        {
+            float m_currentTime = 0.0f;
+            float m_timeDiffToEnd = 0.0f;
+            AZ::u32 m_numLoops = 0;
+            bool m_isFrozen = false;
+            bool m_hasLooped = false;
+        };
+
+        static MotionInstance* Create(Motion* motion, ActorInstance* actorInstance, AZ::u32 startNodeIndex);
+        static MotionInstance* Create(void* memLocation, Motion* motion, ActorInstance* actorInstance, AZ::u32 startNodeIndex);
+
         void InitForSampling();
         bool GetIsReadyForSampling() const;
 
@@ -74,7 +93,6 @@ namespace EMotionFX
          */
         void UpdateByTimeValues(float oldTime, float newTime, AnimGraphEventBuffer* outEventBuffer);
 
-        // process events
         void ProcessEvents(float oldTime, float newTime);
 
         // extract events to be executed
@@ -104,7 +122,7 @@ namespace EMotionFX
          * Get the unique identification number for the motion instance.
          * @return The unique identification number.
          */
-        MCORE_INLINE uint32 GetID() const                                       { return mID; }
+        AZ::u32 GetID() const;
 
         /**
          * Get the blend in time.
@@ -117,12 +135,6 @@ namespace EMotionFX
         float GetBlendInTime() const;
 
         /**
-         * Returns the passed time since the last update.
-         * @result The passed time since the last update, in seconds.
-         */
-        float GetPassedTime() const;
-
-        /**
          * Returns the current time in the playback of the motion.
          * @result The current time, in seconds.
          */
@@ -132,7 +144,7 @@ namespace EMotionFX
          * Get the maximum time of this motion.
          * @result The maximum time of this motion, in seconds.
          */
-        float GetMaxTime() const;
+        AZ_DEPRECATED(float GetMaxTime() const, "This method has been deprecated. Please use MotionInstance::GetDuration() instead.");
 
         /**
          * Get the duration of the motion, which is the difference between the clip start and end time.
@@ -151,27 +163,7 @@ namespace EMotionFX
          * @result The original motion it's using.
          */
         Motion* GetMotion() const;
-
         void SetMotion(Motion* motion);
-
-        /**
-         * Get the motion group object.
-         * If the number of motion instances inside this group equals zero, no motion grouping is used.
-         * You can also use the IsGroupedMotion() method to check this.
-         * @result The motion group object inside this motion.
-         * @see IsGroupedMotion.
-         */
-        MotionGroup* GetMotionGroup() const;
-
-        /**
-         * Checks if this motion is a grouped motion or not.
-         * A grouped motion can contain any number of motion instances that get blend together using normalized weighting.
-         * For example you can put four motions in a group, with their weight values summing up to 1. Now the result of this group
-         * will be the blend of those four motions, which will be the output of this motion instance. The main motion instance (which is this object)
-         * can control the weight of the blend output of the motion group as well, like all regular motion instances.
-         * @result Returns true when this is a grouped motion, which is when the group returned by GetMotionGroup() has one or more motion instances in it. Otherwise false is returned.
-         */
-        bool GetIsGroupedMotion() const;
 
         /**
          * Set the current time in the animation (automatic wrapping/looping performed when out of range).
@@ -190,12 +182,11 @@ namespace EMotionFX
         /**
          * Set the current time in the animation (automatic wrapping/looping performed when out of range).
          * @param time The current time in the animation, in seconds.
-         * @param resetLastAndPastTime When set to true, the last frame time will be set equal to the new current time as well, and the passed time will be set to zero.
+         * @param resetLastTime When set to true, the last frame time will be set equal to the new current time as well.
          */
-        void SetCurrentTime(float time, bool resetLastAndPastTime = true);
+        void SetCurrentTime(float time, bool resetLastTime = true);
 
-        void InitMotionGroup();
-        void RemoveMotionGroup();
+        void SetLastCurrentTime(float timeInSeconds);
 
         /**
          * Get the current time of the previous update.
@@ -204,15 +195,9 @@ namespace EMotionFX
         float GetLastCurrentTime() const;
 
         /**
-         * Set the passed time of the animation (automatic wrapping/looping performed when out of range).
-         * @param timePassed The passed time in the animation, in seconds.
-         */
-        void SetPassedTime(float timePassed);
-
-        /**
          * Set the current play speed (1.0 is normal, 0.5 is half speed, etc.).
          * The speed has to be bigger or equal to 0. You should not use negative playback speeds.
-         * If you want to play backward, use the SetPlayMode( PLAYMODE_BACKWARD ), or use the PlayBackInfo::mPlayMode value.
+         * If you want to play backward, use the SetPlayMode( PLAYMODE_BACKWARD ), or use the PlayBackInfo::m_playMode value.
          * @param speed The current play speed (1.0 is normal, 0.5 is half speed, etc.).
          */
         void SetPlaySpeed(float speed);
@@ -404,7 +389,7 @@ namespace EMotionFX
          * If you want to loop it forever, set the value to EMFX_LOOPFOREVER (which is defined in Actor.h).
          * @param numLoops The number of loops the motion should play, or EMFX_LOOPFOREVER in case it should play forever.
          */
-        void SetMaxLoops(uint32 numLoops);
+        void SetMaxLoops(AZ::u32 numLoops);
 
         /**
          * Get the number of loops the motion will play.
@@ -412,7 +397,7 @@ namespace EMotionFX
          *         the motion will play forever.
          * @see IsPlayingForever
          */
-        uint32 GetMaxLoops() const;
+        AZ::u32 GetMaxLoops() const;
 
         /**
          * Check if the motion has looped since the last update.
@@ -426,16 +411,16 @@ namespace EMotionFX
          * Set the new number of times the motion has been played. Changing this value will misrepresent the exact number.
          * @param numCurrentLoops The number of times the motion has been played.
          */
-        void SetNumCurrentLoops(uint32 numCurrentLoops);
+        void SetNumCurrentLoops(AZ::u32 numCurrentLoops);
 
-        void SetNumLastLoops(uint32 numCurrentLoops);
-        uint32 GetNumLastLoops() const;
+        void SetNumLastLoops(AZ::u32 numCurrentLoops);
+        AZ::u32 GetNumLastLoops() const;
 
         /**
          * Get the number of times the motion currently has been played.
          * @result The number of times the motion has been completely played.
          */
-        uint32 GetNumCurrentLoops() const;
+        AZ::u32 GetNumCurrentLoops() const;
 
         /**
          * Check if the motion will play forever or not.
@@ -462,7 +447,7 @@ namespace EMotionFX
          * as the previous facial motion. So a priority level of 5 or higher would work in the example case.
          * @result The priority level of the motion instance.
          */
-        uint32 GetPriorityLevel() const;
+        AZ::u32 GetPriorityLevel() const;
 
         /**
          * Set the priority level of the motion instance.
@@ -477,7 +462,7 @@ namespace EMotionFX
          * as the previous facial motion. So a priority level of 5 or higher would work in the example case.
          * @result The priority level of the motion instance.
          */
-        void SetPriorityLevel(uint32 priorityLevel);
+        void SetPriorityLevel(AZ::u32 priorityLevel);
 
         /**
          * Check if this motion has motion extraction enabled or not.
@@ -528,15 +513,6 @@ namespace EMotionFX
         void SetDeleteOnZeroWeight(bool deleteOnZeroWeight);
 
         /**
-         * Check if this motion instance uses a blend mask or not.
-         * A blend mask allows you to specify a weight per node instead of just per motion instance.
-         * This however is a bit slower as well. When the blend mask is disabled, performance will be highest.
-         * You can use the DisableNodeWeights() method to disable the blend mask.
-         * @result Returns true when a blend mask is being used. Otherwise false is returned.
-         */
-        bool GetHasBlendMask() const;
-
-        /**
          * Stop the motion, using a given fade-out time.
          * This will first modify the fade-out time and then fade to a zero weight.
          * @param fadeOutTime The time it takes, in seconds, to fade out the motion.
@@ -557,7 +533,7 @@ namespace EMotionFX
          * When this is set to MCORE_INVALIDINDEX32, which is the default value, no start node is being used.
          * @result The node index of the start node, or MCORE_INVALIDINDEX32 when it is not being used (default setting).
          */
-        uint32 GetStartNodeIndex() const;
+        AZ::u32 GetStartNodeIndex() const;
 
         /**
          * Check if motion retargeting on this motion instance is enabled or not.
@@ -705,28 +681,28 @@ namespace EMotionFX
          * Get the number of motion links. This should always be equal to the number of nodes in the actor.
          * @result The number of motion links.
          */
-        uint32 GetNumMotionLinks() const;
+        AZ::u32 GetNumMotionLinks() const;
 
         /**
          * Get a given motion link.
          * @param nr The motion link number to get, which must be in range of [0..GetNumMotionLinks()-1].
          * @result A pointer to the motion link.
          */
-        MotionLink* GetMotionLink(uint32 nr);
+        MotionLink* GetMotionLink(AZ::u32 nr);
 
         /**
          * Get a given motion link.
          * @param nr The motion link number to get, which must be in range of [0..GetNumMotionLinks()-1].
          * @result A pointer to the motion link.
          */
-        const MotionLink* GetMotionLink(uint32 nr) const;
+        const MotionLink* GetMotionLink(AZ::u32 nr) const;
 
         /**
          * Set a given motion link.
          * @param nr The motion link number, which must be in range of [0..GetNumMotionLinks()-1].
          * @param link The motion link to use.
          */
-        void SetMotionLink(uint32 nr, const MotionLink& link);
+        void SetMotionLink(AZ::u32 nr, const MotionLink& link);
 
         /**
          * Initialize the motion instance from PlayBackInfo settings.
@@ -734,28 +710,6 @@ namespace EMotionFX
          * @param resetCurrentPlaytime Set back the current playtime, even though this is not an attribute of the playback info in case of true. In case of false the current time won't be modified.
          */
         void InitFromPlayBackInfo(const PlayBackInfo& info, bool resetCurrentPlaytime = true);
-
-        /**
-         * Get a weight of the current node (from the blend mask).
-         * When no blend mask is setup, it will return 1.0, which means the node is fully active.
-         * @param nodeIndex The node number to get the weight for.
-         * @result The weight of the node in this motion instance.
-         */
-        float GetNodeWeight(uint32 nodeIndex) const;
-
-        /**
-         * Set the weight for a given node.
-         * This will enable the blend mask system for this motion instance.
-         * This allows you to setup weigths per node. On default all node weights are set to 1.0, which means full influence.
-         * @param nodeIndex The node to set the weight for.
-         * @param weight The weight of the to use, which must be in range of [0..1].
-         */
-        void SetNodeWeight(uint32 nodeIndex, float weight);
-
-        /**
-         * Disable the per node weights (blend mask).
-         */
-        void DisableNodeWeights();
 
         //------------------------------------------
 
@@ -766,14 +720,14 @@ namespace EMotionFX
          * @param nodeIndex The node index we want to store the cached key for.
          * @param keyIndex The cached key index value.
          */
-        MCORE_INLINE void SetCachedKey(uint32 nodeIndex, uint32 keyIndex)       { mCachedKeys[nodeIndex] = keyIndex; }
+        void SetCachedKey(AZ::u32 nodeIndex, AZ::u32 keyIndex);
 
         /**
          * Get the cached key index value for a given node.
          * @param nodeIndex The node index to get the cached key value for.
          * @result The cached key value for the given node.
          */
-        MCORE_INLINE uint32 GetCachedKey(uint32 nodeIndex) const                { return mCachedKeys[nodeIndex]; }
+        AZ::u32 GetCachedKey(AZ::u32 nodeIndex) const;
 
         /**
          * Reset the cache hit and misses counters.
@@ -790,13 +744,13 @@ namespace EMotionFX
          * Get the number of skeletal motion keytrack sampling cache hits so far.
          * @result The number of cache hits so far.
          */
-        uint32 GetNumCacheHits() const;
+        AZ::u32 GetNumCacheHits() const;
 
         /**
          * Get the number of skeletal motion keytrack sampling cache misses so far.
          * @result The number of cache misses so far.
          */
-        uint32 GetNumCacheMisses() const;
+        AZ::u32 GetNumCacheMisses() const;
 
         /**
          * Calculate the percentage of skeletal motion keytrack sampling cache hits so far.
@@ -810,42 +764,6 @@ namespace EMotionFX
          * @result The time remaining until the loop point of the motion would be reached.
          */
         float GetTimeDifToLoopPoint() const;
-
-        /**
-         * Get the start time of the motion. When the motion starts, the initial time will be set to this time value.
-         * When the motion loops it will also use this start position as loop point. By setting the start and end clip time you basically make
-         * EMotion FX internally think that the motion is the part of the original motion between the start and end clip time.
-         * You can use this to play only a section of the motion.
-         * @result The start position, in seconds, of the motion.
-         */
-        float GetClipStartTime() const;
-
-        /**
-         * Set the start time of the motion. When the motion starts, the initial time will be set to this time value.
-         * When the motion loops it will also use this start position as loop point. By setting the start and end clip time you basically make
-         * EMotion FX internally think that the motion is the part of the original motion between the start and end clip time.
-         * You can use this to play only a section of the motion.
-         * @param timeInSeconds The time of the start clip point, in seconds.
-         */
-        void SetClipStartTime(float timeInSeconds);
-
-        /**
-         * Get the end time of the motion.
-         * When the motion loops it will also use this end position as loop point. By setting the start and end clip time you basically make
-         * EMotion FX internally think that the motion is the part of the original motion between the start and end clip time.
-         * You can use this to play only a section of the motion.
-         * @result The end position, in seconds, of the motion.
-         */
-        float GetClipEndTime() const;
-
-        /**
-         * Set the end time of the motion.
-         * When the motion loops it will also use this end position as loop point. By setting the start and end clip time you basically make
-         * EMotion FX internally think that the motion is the part of the original motion between the start and end clip time.
-         * You can use this to play only a section of the motion.
-         * @param timeInSeconds The time of the end clip point, in seconds.
-         */
-        void SetClipEndTime(float timeInSeconds);
 
         //--------------------------
 
@@ -872,13 +790,13 @@ namespace EMotionFX
          * Get the event handler at the given index.
          * @result A pointer to the event handler at the given index.
          */
-        MotionInstanceEventHandler* GetEventHandler(uint32 index) const;
+        MotionInstanceEventHandler* GetEventHandler(AZ::u32 index) const;
 
         /**
          * Get the number of event handlers.
          * @result The number of event handlers assigned to the motion instance.
          */
-        uint32 GetNumEventHandlers() const;
+        AZ::u32 GetNumEventHandlers() const;
 
         //--------------------------------
 
@@ -886,7 +804,7 @@ namespace EMotionFX
          * The method that processes an event.
          * @param eventInfo The struct holding the information about the triggered event.
          */
-        void OnEvent(const EventInfo& eventInfo);
+        void OnEvent(const EventInfo& eventInfo) const;
 
         /**
          * The event that gets triggered when a motion instance is really being played.
@@ -992,60 +910,30 @@ namespace EMotionFX
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
         bool GetIsOwnedByRuntime() const;
 
-        MotionLink* GetMotionLinks() const;
+        const AZStd::vector<MotionLink>& GetMotionLinks() const;
 
         float GetFreezeAtTime() const;
         void SetFreezeAtTime(float timeInSeconds);
 
         void CalcRelativeTransform(Node* rootNode, float curTime, float oldTime, Transform* outTransform) const;
         bool ExtractMotion(Transform& outTrajectoryDelta);
-        void CalcGlobalTransform(const MCore::Array<uint32>& hierarchyPath, float timeValue, Transform* outTransform) const;
-        void CalcNewTimeAfterUpdate(float timePassed, float* outNewTime);
+        void CalcGlobalTransform(const MCore::Array<AZ::u32>& hierarchyPath, float timeValue, Transform* outTransform) const;
         void ResetTimes();
+
+        AZ_DEPRECATED(void CalcNewTimeAfterUpdate(float timePassed, float* outNewTime) const, "MotionInstance::CalcNewTimeAfterUpdate has been deprecated, please use MotionInstance::CalcPlayStateAfterUpdate(timeDelta).m_currentTime instead.");
+        PlayStateOut CalcPlayStateAfterUpdate(float timePassed) const;
+
+        PlayStateIn ConstructInputPlayState() const;
+        void SetPlayState(const PlayStateIn& inState, const PlayStateOut& outState, bool triggerEvents);
+        static PlayStateOut CalcPlayState(const PlayStateIn& inState, float timePassed);
+        void ExtractMotionEvents(const PlayStateIn& inState, PlayStateOut& outState, AnimGraphEventBuffer& eventBuffer) const;
+        void ProcessMotionEvents(const PlayStateIn& inState, PlayStateOut& outState) const;
 
         MotionInstancePool::SubPool* GetSubPool() const;
 
     private:
-        MCore::Array<MotionLink>    mMotionLinks;   /**< The motion links, one for each node. */
-        uint32*             mCachedKeys;            /**< The cached rotation keyframe indices. */
-        float               mCurrentTime;           /**< The current playtime. */
-        float               mClipStartTime;         /**< The start playback position of the motion, as well as the start of the loop point. */
-        float               mClipEndTime;           /**< The end of the motion and loop point. When set to zero or below, the duration of the motion is used internally. */
-        float               mPassedTime;            /**< Passed time. */
-        float               mBlendInTime;           /**< The blend in time. */
-        float               mFadeTime;              /**< Fadeout speed, when playing the animation once. So when it is done playing once, it will fade out in 'mFadeTime' seconds. */
-        float               mPlaySpeed;             /**< The playspeed (1.0=normal speed). */
-        float               mTargetWeight;          /**< The target weight of the layer, when activating the motion. */
-        float               mWeight;                /**< The current weight value, in range of [0..1]. */
-        float               mWeightDelta;           /**< The precalculated weight delta value, used during blending between weights. */
-        float               mLastCurTime;           /**< The last current time, so the current time in the previous update. */
-        float               mTotalPlayTime;         /**< The current total play time that this motion is already playing. */
-        float               mMaxPlayTime;           /**< The maximum play time of the motion. If the mTotalPlayTime is higher than this, the motion will be stopped, unless the max play time is zero or negative. */
-        float               mEventWeightThreshold;  /**< If the weight of the motion instance is below this value, the events won't get processed (default = 0.0f). */
-        float               mTimeDifToEnd;          /**< The time it takes until we reach the loop point in the motion. This also takes the playback direction into account (backward or forward play). */
-        float               mFreezeAtTime;          /**< Freeze at a given time offset in seconds. The current play time would continue running though, and a blend out would be triggered, unlike the mFreezeAtLastFrame. Set to negative value to disable. Default=-1.*/
-        using EventHandlerVector = AZStd::vector<MotionInstanceEventHandler*>;
-        AZStd::vector<EventHandlerVector> m_eventHandlersByEventType; /**< The event handler to use to process events organized by EventTypes. */
-        MCore::Array<MCore::Compressed8BitFloat>    mNodeWeights;   /**< The node weights, one for each node, or an empty array length when disabled. */
-        uint32              mCacheHits;             /**< The number of cache hits in the last update. */
-        uint32              mCacheMisses;           /**< The number of cache misses in the last update. */
-        uint32              mCurLoops;              /**< Number of loops it currently has made (so the number of times the motion played already). */
-        uint32              mMaxLoops;              /**< The maximum number of loops, before it has to stop. */
-        uint32              mLastLoops;             /**< The current number of loops in the previous update. */
-        uint32              mPriorityLevel;         /**< The priority level, where higher values mean higher priority. */
-        uint32              mStartNodeIndex;        /**< The node to start the motion from, using MCORE_INVALIDINDEX32 to effect the whole body, or use for example the upper arm node to only play the motion on the arm. */
-        uint32              mID;                    /**< The unique identification number for the motion instance. */
-        Motion*             mMotion;                /**< The motion that this motion instance is using the keyframing data from. */
-        ActorInstance*      mActorInstance;         /**< The actor instance where we are playing this motion instance on. */
-        void*               mCustomData;            /**< The custom data pointer, which is nullptr on default. */
-        EMotionBlendMode    mBlendMode;             /**< The motion blend mode [default=BLENDMODE_OVERWRITE]. */
-        uint32              mBoolFlags;             /**< The boolean flags mask. */
-        EPlayMode           mPlayMode;              /**< The motion playback mode [default=PLAYMODE_FORWARD]. */
-        MotionGroup*        mMotionGroup;           /**< The motion group (which can be empty in case no motion group is used). */
-        MotionInstancePool::SubPool* mSubPool;      /**< The subpool this motion instance is part of, or nullptr when it isn't part of any subpool. */
-
         /**
-         * Instead of storing a bunch of booleans we use the bits of a 16 bit value.
+         * Instead of storing a bunch of booleans we use bits.
          */
         enum
         {
@@ -1069,7 +957,7 @@ namespace EMotionFX
             BOOL_ISOWNEDBYRUNTIME       = 1 << 15,  /**< Is motion owned by the engine runtime? */
 #endif // EMFX_DEVELOPMENT_BUILD
 
-            BOOL_INPLACE                = 1 << 16   /** Is in place animation enabled? */
+            BOOL_INPLACE                = 1 << 16   /**< Is in place animation enabled? */
         };
 
         /**
@@ -1080,42 +968,47 @@ namespace EMotionFX
          *                       For example when you wish to influence only the arm by this motion, pass a pointer to the upper arm node as start node.
          *                       This will make the upper arm, and all child nodes down the hierarchy to be influenced by this motion.
          */
-        MotionInstance(Motion* motion, ActorInstance* actorInstance, uint32 startNodeIndex);
-
-        /**
-         * The destructor.
-         */
+        MotionInstance(Motion* motion, ActorInstance* actorInstance, AZ::u32 startNodeIndex);
         ~MotionInstance();
 
         void SetSubPool(MotionInstancePool::SubPool* subPool);
+        void EnableFlag(AZ::u32 flag);
+        void DisableFlag(AZ::u32 flag);
+        void SetFlag(AZ::u32 flag, bool enabled);
 
-        /**
-         * Enable boolean flags.
-         * @param flag The flags to enable.
-         */
-        MCORE_INLINE void EnableFlag(uint32 flag)                   { mBoolFlags |= flag; }
+    private:
+        using EventHandlerVector = AZStd::vector<MotionInstanceEventHandler*>;
 
-        /**
-         * Disable boolean flags.
-         * @param flag The flags to disable.
-         */
-        MCORE_INLINE void DisableFlag(uint32 flag)                  { mBoolFlags &= ~flag; }
-
-        /**
-         * Enable or disable specific flags.
-         * @param flag The flags to modify.
-         * @param enabled Set to true to enable the flags, or false to disable them.
-         */
-        MCORE_INLINE void SetFlag(uint32 flag, bool enabled)
-        {
-            if (enabled)
-            {
-                mBoolFlags |= flag;
-            }
-            else
-            {
-                mBoolFlags &= ~flag;
-            }
-        }
+        AZStd::vector<MotionLink> m_motionLinks;            /**< The motion links, one for each node. */
+        AZStd::vector<EventHandlerVector> m_eventHandlersByEventType; /**< The event handler to use to process events organized by EventTypes. */
+        AZ::u32*            m_cachedKeys = nullptr;         /**< The cached rotation keyframe indices. */
+        float               m_currentTime = 0.0f;           /**< The current playtime. */
+        float               m_timeDiffToEnd = 0.0f;         /**< The time it takes until we reach the loop point in the motion. This also takes the playback direction into account (backward or forward play). */
+        float               m_freezeAtTime = -1.0f;         /**< Freeze at a given time offset in seconds. The current play time would continue running though, and a blend out would be triggered, unlike the mFreezeAtLastFrame. Set to negative value to disable. Default=-1.*/
+        float               m_playSpeed = 1.0f;             /**< The playspeed (1.0=normal speed). */
+        float               m_lastCurTime = 0.0f;           /**< The last current time, so the current time in the previous update. */
+        float               m_totalPlayTime = 0.0f;         /**< The current total play time that this motion is already playing. */
+        float               m_maxPlayTime = 0.0f;           /**< The maximum play time of the motion. If the mTotalPlayTime is higher than this, the motion will be stopped, unless the max play time is zero or negative. */
+        float               m_eventWeightThreshold = 0.0f;  /**< If the weight of the motion instance is below this value, the events won't get processed (default = 0.0f). */
+        float               m_weight = 0.0f;                /**< The current weight value, in range of [0..1]. */
+        float               m_weightDelta = 0.0f;           /**< The precalculated weight delta value, used during blending between weights. */
+        float               m_targetWeight = 1.0f;          /**< The target weight of the layer, when activating the motion. */
+        float               m_blendInTime = 0.0f;           /**< The blend in time. */
+        float               m_fadeTime = 0.3f;              /**< Fadeout speed, when playing the animation once. So when it is done playing once, it will fade out in 'mFadeTime' seconds. */
+        AZ::u32             m_curLoops = 0;                 /**< Number of loops it currently has made (so the number of times the motion played already). */
+        AZ::u32             m_maxLoops = EMFX_LOOPFOREVER;  /**< The maximum number of loops, before it has to stop. */
+        AZ::u32             m_lastLoops = 0;                /**< The current number of loops in the previous update. */
+        AZ::u32             m_priorityLevel = 0;            /**< The priority level, where higher values mean higher priority. */
+        AZ::u32             m_startNodeIndex = InvalidIndex32; /**< The node to start the motion from, using MCORE_INVALIDINDEX32 to effect the whole body, or use for example the upper arm node to only play the motion on the arm. */
+        AZ::u32             m_id = InvalidIndex32;          /**< The unique identification number for the motion instance. */
+        AZ::u32             m_cacheHits = 0;                /**< The number of cache hits in the last update. */
+        AZ::u32             m_cacheMisses = 0;              /**< The number of cache misses in the last update. */
+        Motion*             m_motion = nullptr;             /**< The motion that this motion instance is using the keyframing data from. */
+        ActorInstance*      m_actorInstance = nullptr;      /**< The actor instance where we are playing this motion instance on. */
+        void*               m_customData = nullptr;         /**< The custom data pointer, which is nullptr on default. */
+        EMotionBlendMode    m_blendMode = BLENDMODE_OVERWRITE; /**< The motion blend mode [default=BLENDMODE_OVERWRITE]. */
+        AZ::u32             m_boolFlags = 0;                /**< The boolean flags mask. */
+        EPlayMode           m_playMode = PLAYMODE_FORWARD;  /**< The motion playback mode [default=PLAYMODE_FORWARD]. */
+        MotionInstancePool::SubPool* m_subPool = nullptr;   /**< The subpool this motion instance is part of, or nullptr when it isn't part of any subpool. */
     };
 } // namespace EMotionFX

@@ -25,6 +25,8 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
+
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
                                                                // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QAction>
@@ -68,14 +70,12 @@ namespace AzToolsFramework
         m_searchText->setObjectName("SearchText");
         m_searchText->setText("");
         m_searchText->setPlaceholderText("Search...");
+        m_searchText->setClearButtonEnabled(true);
+        AzQtComponents::LineEdit::applySearchStyle(m_searchText);
+
         m_searchRegExp = QRegExp("", Qt::CaseInsensitive, QRegExp::RegExp);
 
-        m_searchClearButton = new QPushButton(m_searchFrame);
-        m_searchClearButton->setObjectName("SearchClearButton");
-        m_searchClearButton->setVisible(false);
-
         searchLayout->addWidget(m_searchText);
-        searchLayout->addWidget(m_searchClearButton);
         m_searchFrame->setLayout(searchLayout);
         outerLayout->addWidget(m_searchFrame);
 
@@ -91,7 +91,9 @@ namespace AzToolsFramework
         m_componentTree->header()->hide();
 
         connect(m_searchText, &QLineEdit::textChanged, this, &ComponentPaletteWidget::QueueUpdateSearch);
-        connect(m_searchClearButton, &QPushButton::pressed, this, &ComponentPaletteWidget::ClearSearch);
+        QToolButton* clearButton = AzQtComponents::LineEdit::getClearButton(m_searchText);
+        assert(clearButton);
+        connect(clearButton, &QToolButton::clicked, this, &ComponentPaletteWidget::ClearSearch);
 
         connect(m_componentTree, &QTreeView::activated, this, &ComponentPaletteWidget::ActivateSelection);
         connect(m_componentTree, &QTreeView::clicked, this, &ComponentPaletteWidget::ActivateSelection);
@@ -287,7 +289,6 @@ namespace AzToolsFramework
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         m_searchRegExp = QRegExp(m_searchText->text(), Qt::CaseInsensitive, QRegExp::RegExp);
-        m_searchClearButton->setVisible(!m_searchText->text().isEmpty());
         m_searchText->setFocus();
         UpdateContent();
     }
@@ -388,7 +389,6 @@ namespace AzToolsFramework
 
         if (object != this &&
             object != m_searchText &&
-            object != m_searchClearButton &&
             object != m_componentTree)
         {
             return false;
@@ -396,7 +396,6 @@ namespace AzToolsFramework
 
         if (!hasFocus() &&
             !m_searchText->hasFocus() &&
-            !m_searchClearButton->hasFocus() &&
             !m_componentTree->hasFocus())
         {
             return false;

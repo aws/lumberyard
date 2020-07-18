@@ -137,6 +137,7 @@ namespace LUAEditor
         void FindNext(FindOperation& previousOperation) const;
 
         void SetAutoCompletionEnabled(bool enabled) { m_AutoCompletionEnabled = enabled; }
+        bool IsAutoCompletionEnabled() const { return m_AutoCompletionEnabled; }
 
         QString GetText();
 

@@ -11,6 +11,7 @@
 */
 #if !defined(BATCH_MODE)
 #include "utilities/GUIApplicationManager.h"
+#include <AzQtComponents/Utilities/HandleDpiAwareness.h>
 #else
 #include "utilities/BatchApplicationManager.h"
 #endif
@@ -88,6 +89,7 @@ int main(int argc, char* argv[])
     BatchApplicationManager applicationManager(&argc, &argv);
     setvbuf(stdout, NULL, _IONBF, 0); // Disabling output buffering to fix test failures due to incomplete logs
 #else
+    AzQtComponents::Utilities::HandleDpiAwareness(AzQtComponents::Utilities::PerScreenDpiAware);
     GUIApplicationManager applicationManager(&argc, &argv);
 #endif
 

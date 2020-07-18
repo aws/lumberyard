@@ -213,7 +213,6 @@ namespace
         {
             return Styling::Attribute::TextVerticalAlignment;
         }
-
         else if (attribute == Styling::Attributes::ConnectionJut)
         {
             return Styling::Attribute::ConnectionJut;
@@ -285,6 +284,10 @@ namespace
         else if (attribute == Styling::Attributes::Opacity)
         {
             return Styling::Attribute::Opacity;
+        }
+        else if (attribute == Styling::Attributes::Steps)
+        {
+            return Styling::Attribute::Steps;
         }
 
         return Styling::Attribute::Invalid;
@@ -973,6 +976,22 @@ namespace GraphCanvas
                 {
                     QString value(member->value.GetString());
                     style->SetAttribute(attribute, value);
+                    break;
+                }
+                case Attribute::Steps:
+                {
+                    QList<QVariant> stepList;
+                    QString value(member->value.GetString());
+
+                    QStringList splitValues = value.split("|");
+
+                    for (QString currentString : splitValues)
+                    {
+                        stepList.append(currentString.toInt());
+                    }
+
+                    style->SetAttribute(attribute, stepList);
+                    break;
                 }
                 default:
                     qWarning() << "Invalid attribute:" << member->name.GetString();

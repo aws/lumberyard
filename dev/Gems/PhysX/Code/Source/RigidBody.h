@@ -78,7 +78,7 @@ namespace PhysX
         AZ::Aabb GetAabb() const override;
         AZ::EntityId GetEntityId() const override;
 
-        void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
 
         // Physics::ReferenceBase
         virtual AZ::Crc32 GetNativeType() const override;

@@ -19,9 +19,8 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(NameJsonSerializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result NameJsonSerializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         AZ_Assert(azrtti_typeid<Name>() == outputValueTypeId,
@@ -33,25 +32,16 @@ namespace AZ
         AZ_Assert(name, "Output value for NameJsonSerializer can't be null.");
 
         AZStd::string value;
-        JSR::ResultCode resultCode = ContinueLoading(&value, azrtti_typeid <AZStd::string()>(), inputValue, path, settings);
+        JSR::ResultCode resultCode = ContinueLoading(&value, azrtti_typeid<AZStd::string>(), inputValue, context);
         *name = value; // If loading fails this will be an empty string.
 
-        if (resultCode.GetOutcome() == Outcomes::Success)
-        {
-            return JSR::Result(settings, "Successfully loaded AZ::Name", resultCode, path);
-        }
-        else
-        {
-            return JSR::Result(settings, "Failed to load AZ::Name", resultCode, path);
-        }
+        return context.Report(resultCode,
+            resultCode.GetOutcome() == JSR::Outcomes::Success ? "Successfully loaded AZ::Name" : "Failed to load AZ::Name");
     }
 
-    JsonSerializationResult::Result NameJsonSerializer::Store(rapidjson::Value& outputValue,
-        rapidjson::Document::AllocatorType& allocator, const void* inputValue,
-        const void* defaultValue, const Uuid& valueTypeId,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result NameJsonSerializer::Store(rapidjson::Value& outputValue, const void* inputValue,
+        const void* defaultValue, const Uuid& valueTypeId, JsonSerializerContext& context)
     {
-        using namespace JsonSerializationResult;
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
         AZ_Assert(azrtti_typeid<Name>() == valueTypeId, "Unable to serialize AZ::Name to json because the provided type is %s",
@@ -62,13 +52,13 @@ namespace AZ
         AZ_Assert(name, "Input value for NameJsonSerializer can't be null.");
         const Name* defaultName = reinterpret_cast<const Name*>(defaultValue);
 
-        if (!settings.m_keepDefaults && defaultName && *name == *defaultName)
+        if (!context.ShouldKeepDefaults() && defaultName && *name == *defaultName)
         {
-            return JSR::Result(settings, "Default AZ::Name used.", ResultCode::Default(Tasks::WriteValue), path);
+            return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::DefaultsUsed, "Default AZ::Name used.");
         }
 
-        outputValue.SetString(name->GetStringView().data(), allocator);
-        return JSR::Result(settings, "AZ::Name successfully stored.", ResultCode::Success(Tasks::WriteValue), path);
+        outputValue.SetString(name->GetStringView().data(), context.GetJsonAllocator());
+        return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::Success, "AZ::Name successfully stored.");
     }
 } // namespace AZ
 

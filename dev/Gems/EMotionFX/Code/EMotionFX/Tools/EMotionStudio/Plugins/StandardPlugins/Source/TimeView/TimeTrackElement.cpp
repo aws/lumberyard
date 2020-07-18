@@ -109,8 +109,8 @@ namespace EMStudio
         // in case the track is disabled
         if (isTrackEnabled == false)
         {
-            borderColor.setAlpha(18);
-            color.setAlpha(18);
+            borderColor.setAlpha(25);
+            color.setAlpha(25);
             textColor.setAlpha(150);
         }
 

@@ -18,6 +18,7 @@
 #include <API/Ragdoll.h>
 #include <API/Utils.h>
 #include <Include/PhysXCharacters/NativeTypeIdentifiers.h>
+#include <PhysX/PhysXLocks.h>
 
 namespace PhysXCharacters
 {
@@ -67,6 +68,7 @@ namespace PhysXCharacters
             physx::PxRigidDynamic* rigidDynamic = GetPxRigidDynamic(m_rootIndex.GetValue());
             if (rigidDynamic)
             {
+                PHYSX_SCENE_READ_LOCK(rigidDynamic->getScene());
                 return rigidDynamic->getGlobalPose();
             }
             else
@@ -216,6 +218,8 @@ namespace PhysXCharacters
             return;
         }
 
+        PHYSX_SCENE_READ_LOCK(actor->getScene());
+
         nodeState.m_position = PxMathConvert(actor->getGlobalPose().p);
         nodeState.m_orientation = PxMathConvert(actor->getGlobalPose().q);
         nodeState.m_linearVelocity = PxMathConvert(actor->getLinearVelocity());
@@ -237,11 +241,7 @@ namespace PhysXCharacters
             return;
         }
 
-        physx::PxScene* scene = actor->getScene();
-        if (scene)
-        {
-            scene->lockWrite();
-        }
+        PHYSX_SCENE_WRITE_LOCK(actor->getScene());
 
         if (nodeState.m_simulationType == Physics::SimulationType::Kinematic)
         {
@@ -269,11 +269,6 @@ namespace PhysXCharacters
                     pxJoint->setDrivePosition(physx::PxTransform(targetRotation));
                 }
             }
-        }
-
-        if (scene)
-        {
-            scene->unlockWrite();
         }
     }
 
@@ -333,13 +328,31 @@ namespace PhysXCharacters
 
     AZ::Aabb Ragdoll::GetAabb() const
     {
-        AZ_WarningOnce("PhysX Ragdoll", false, "Not yet supported.");
-        return AZ::Aabb::CreateNull();
+        AZ::Aabb aabb = AZ::Aabb::CreateNull();
+        for (int i = 0; i < m_nodes.size(); ++i)
+        {
+            if (m_nodes[i]->GetRigidBody().GetShapeCount() > 0)
+            {
+                aabb.AddAabb(m_nodes[i]->GetAabb());
+            }
+        }
+        return aabb;
     }
 
-    void Ragdoll::RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const
+    Physics::RayCastHit Ragdoll::RayCast(const Physics::RayCastRequest& request)
     {
-        AZ_WarningOnce("PhysX Ragdoll", false, "Not yet supported.");
+        Physics::RayCastHit closestHit;
+        float closestHitDist = FLT_MAX;
+        for (int i = 0; i < m_nodes.size(); ++i)
+        {
+            Physics::RayCastHit hit = m_nodes[i]->RayCast(request);
+            if (hit && hit.m_distance < closestHitDist)
+            {
+                closestHit = hit;
+                closestHitDist = hit.m_distance;
+            }
+        }
+        return closestHit;
     }
 
     AZ::Crc32 Ragdoll::GetNativeType() const

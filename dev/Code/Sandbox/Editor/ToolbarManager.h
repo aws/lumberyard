@@ -96,8 +96,10 @@ public:
 
     void SetShowByDefault(bool value) { m_showByDefault = value; }
     void SetShowToggled(bool value) { m_showToggled = value; }
+    void SetMainToolbar(bool value) { m_isMainToolbar = value; }
     bool IsShowByDefault() const { return m_showByDefault; }
     bool IsShowToggled() const { return m_showToggled; }
+    bool IsMainToolbar() const { return m_isMainToolbar; }
 
     void CopyActions(const AmazonToolbar& other) { m_actions = other.m_actions; }
     void SetActionsOnInternalToolbar(ActionManager* actionManager);
@@ -126,6 +128,7 @@ private:
     QVector<ActionData> m_actions;
     bool m_showByDefault = true;
     bool m_showToggled = false;
+    bool m_isMainToolbar = false;
 };
 
 class ToolbarManager
@@ -157,7 +160,6 @@ public:
     AmazonToolbar GetEditModeToolbar() const;
     AmazonToolbar GetObjectToolbar() const;
     AmazonToolbar GetEditorsToolbar() const;
-    AmazonToolbar GetSubstanceToolbar() const;
     AmazonToolbar GetMiscToolbar() const;
 
 private:

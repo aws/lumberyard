@@ -17,8 +17,8 @@
 #include "QtViewPaneManager.h"
 #include "Viewport.h"
 
-CMeasurementSystemDialog::CMeasurementSystemDialog()
-    : QWidget()
+CMeasurementSystemDialog::CMeasurementSystemDialog(QWidget* parent)
+    : QWidget(parent)
     , ui(new Ui::CMeasurementSystemDialog)
 {
     ui->setupUi(this);

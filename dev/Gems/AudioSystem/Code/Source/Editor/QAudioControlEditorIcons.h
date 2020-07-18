@@ -58,20 +58,32 @@ namespace AudioControls
     {
         const int numberOfGroups = 5;
         group = group % numberOfGroups;
+        QString path;
         switch (group)
         {
         case 0:
-            return QIcon(":/Editor/Icons/Config_Red_Icon.png");
+            path = ":/Editor/Icons/folder purple.svg";
+            break;
         case 1:
-            return QIcon(":/Editor/Icons/Config_Blue_Icon.png");
+            path = ":/Editor/Icons/folder blue.svg";
+            break;
         case 2:
-            return QIcon(":/Editor/Icons/Config_Green_Icon.png");
+            path = ":/Editor/Icons/folder green.svg";
+            break;
         case 3:
-            return QIcon(":/Editor/Icons/Config_Purple_Icon.png");
+            path = ":/Editor/Icons/folder red.svg";
+            break;
         case 4:
-            return QIcon(":/Editor/Icons/Config_Yellow_Icon.png");
+            path = ":/Editor/Icons/folder yellow.svg";
+            break;
         default:
-            return QIcon(":/Editor/Icons/Config_Red_Icon.png");
+            path = "Editor/Icons/folder red.svg";
+            break;
         }
+
+        QIcon icon;
+        icon.addFile(path);
+        icon.addFile(path, QSize(), QIcon::Selected);
+        return icon;
     }
 } // namespace AudioControls

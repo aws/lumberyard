@@ -31,7 +31,7 @@ namespace CopyDependencyBuilder
         cfgBuilderDescriptor.m_name = "CfgBuilderWorker";
         cfgBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.cfg", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         cfgBuilderDescriptor.m_busId = azrtti_typeid<CfgBuilderWorker>();
-        cfgBuilderDescriptor.m_version = 2;
+        cfgBuilderDescriptor.m_version = 3;
         cfgBuilderDescriptor.m_createJobFunction =
             AZStd::bind(&CfgBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         cfgBuilderDescriptor.m_processJobFunction =

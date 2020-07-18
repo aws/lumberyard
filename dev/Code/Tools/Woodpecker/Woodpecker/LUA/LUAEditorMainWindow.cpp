@@ -46,6 +46,7 @@
 #include <Woodpecker/LUA/ui_LUAEditorMainWindow.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
+#include <AzQtComponents/Components/StyleManager.h>
 
 #include <QTimer>
 
@@ -68,6 +69,10 @@ namespace LUAEditor
         , m_ptrFindDialog(nullptr)
         , m_settingsDialog(nullptr)
     {
+        AzQtComponents::StyleManager* m_styleSheet = new AzQtComponents::StyleManager(this);
+        const bool useLegacyStyle = false;
+        m_styleSheet->initialize(qApp, useLegacyStyle);
+
         LUAViewMessages::Bus::Handler::BusConnect();
 
         //m_currentTabContextMenuUUID = AZ::Uuid::CreateNull();
@@ -250,7 +255,18 @@ namespace LUAEditor
         EBUS_EVENT(LegacyFramework::CustomMenusMessages::Bus, RegisterMenu, LegacyFramework::CustomMenusCommon::LUAEditor::SourceControl, m_gui->menuSource_Control);
         EBUS_EVENT(LegacyFramework::CustomMenusMessages::Bus, RegisterMenu, LegacyFramework::CustomMenusCommon::LUAEditor::Options, m_gui->menu_Options);
 
+        QObject::connect(m_gui->menu_Options, &QMenu::aboutToShow, this, &LUAEditorMainWindow::OnOptionsMenuRequested);
+
+
         connect(m_gui->m_logPanel, &AzToolsFramework::LogPanel::TracePrintFLogPanel::LogLineSelected, this, &LUAEditorMainWindow::LogLineSelectionChanged);
+    }
+
+    void LUAEditorMainWindow::OnOptionsMenuRequested()
+    {
+        m_gui->actionAutocomplete->blockSignals(true);
+        m_gui->actionAutocomplete->setCheckable(true);
+        m_gui->actionAutocomplete->setChecked(m_bAutocompleteEnabled);
+        m_gui->actionAutocomplete->blockSignals(false);
     }
 
     LUAEditorMainWindow::~LUAEditorMainWindow(void)
@@ -381,6 +397,7 @@ namespace LUAEditor
     {
         m_bAutocompleteEnabled = change;
         m_gui->actionAutocomplete->blockSignals(true);
+        m_gui->actionAutocomplete->setCheckable(true);
         m_gui->actionAutocomplete->setChecked(m_bAutocompleteEnabled);
         m_gui->actionAutocomplete->blockSignals(false);
 

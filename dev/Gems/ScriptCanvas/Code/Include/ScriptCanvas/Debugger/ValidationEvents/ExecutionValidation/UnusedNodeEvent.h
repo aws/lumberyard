@@ -17,6 +17,10 @@
 
 #include <ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/ExecutionValidationIds.h>
 
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/FocusOnEffect.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/GreyOutEffect.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/HighlightEffect.h>
+
 namespace ScriptCanvas
 {
     // UnusedNodeEvent
@@ -24,9 +28,13 @@ namespace ScriptCanvas
     // And thus will never execute.
     class UnusedNodeEvent
         : public ValidationEvent
+        , public HighlightEntityEffect
+        , public GreyOutNodeEffect
+        , public FocusOnEntityEffect
     {
     public:
-        AZ_RTTI(UnusedNodeEvent, "{EC6933F8-0D50-49A7-BCA2-BB4B4534AA8C}");
+        AZ_RTTI(UnusedNodeEvent, "{EC6933F8-0D50-49A7-BCA2-BB4B4534AA8C}", HighlightEntityEffect, GreyOutNodeEffect, ValidationEvent, FocusOnEntityEffect);
+        AZ_CLASS_ALLOCATOR(UnusedNodeEvent, AZ::SystemAllocator, 0);
         
         UnusedNodeEvent(const AZ::EntityId& nodeId)
             : ValidationEvent(ValidationSeverity::Warning)
@@ -54,6 +62,27 @@ namespace ScriptCanvas
         {
             return "Unused Node";
         }
+
+        // HighlightEntityEffect
+        AZ::EntityId GetHighlightTarget() const
+        {
+            return m_nodeId;
+        }
+        ////
+
+        // GreyOutNodeEffect
+        AZ::EntityId GetGreyOutNodeId() const override
+        {
+            return m_nodeId;
+        }
+        ////
+
+        // FocusOnEntityEffect
+        AZ::EntityId GetFocusTarget() const override
+        {
+            return m_nodeId;
+        }
+        ////
         
     private:
     

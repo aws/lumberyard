@@ -34,9 +34,9 @@ namespace EMotionFX
 
         hLayout->setMargin(2);
         setLayout(hLayout);
-        m_spinBoxMin = new MysticQt::DoubleSpinBox(this);
+        m_spinBoxMin = new AzQtComponents::DoubleSpinBox(this);
         layout()->addWidget(m_spinBoxMin);
-        m_spinBoxMax = new MysticQt::DoubleSpinBox(this);
+        m_spinBoxMax = new AzQtComponents::DoubleSpinBox(this);
         layout()->addWidget(m_spinBoxMax);
         m_spinBoxMin->setRange(BlendTreeRotationLimitNode::RotationLimit::s_rotationLimitRangeMin, BlendTreeRotationLimitNode::RotationLimit::s_rotationLimitRangeMax);
         m_spinBoxMax->setRange(BlendTreeRotationLimitNode::RotationLimit::s_rotationLimitRangeMin, BlendTreeRotationLimitNode::RotationLimit::s_rotationLimitRangeMax);
@@ -45,8 +45,8 @@ namespace EMotionFX
 
         m_spinBoxMin->setToolTip(m_tooltipText);
         m_spinBoxMax->setToolTip(m_tooltipText);
-        connect(m_spinBoxMin, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &RotationLimitWdget::HandleMinValueChanged);
-        connect(m_spinBoxMax, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &RotationLimitWdget::HandleMaxValueChanged);
+        connect(m_spinBoxMin, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &RotationLimitWdget::HandleMinValueChanged);
+        connect(m_spinBoxMax, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &RotationLimitWdget::HandleMaxValueChanged);
     }
 
     void RotationLimitWdget::SetRotationLimit(const BlendTreeRotationLimitNode::RotationLimit& rotationLimit)
@@ -65,15 +65,15 @@ namespace EMotionFX
         m_spinBoxMin->setValue(value);
         if (m_spinBoxMin->value() <= m_spinBoxMax->value())
         {
-            m_spinBoxMax->SetStyleToOk();
-            m_spinBoxMin->SetStyleToOk();
+            AzQtComponents::SpinBox::setHasError(m_spinBoxMax, false);
+            AzQtComponents::SpinBox::setHasError(m_spinBoxMin, false);
             m_spinBoxMin->setToolTip(m_tooltipText);
             m_spinBoxMax->setToolTip(m_tooltipText);
             emit DataChanged();
         }
         else
         {
-            m_spinBoxMin->SetStyleToError();
+            AzQtComponents::SpinBox::setHasError(m_spinBoxMin, true);
             QString errorTooltip = QString("The value has to be less than or equal to %1 \xB0").arg(m_spinBoxMax->value());
             m_spinBoxMin->setToolTip(errorTooltip);
         }
@@ -84,8 +84,8 @@ namespace EMotionFX
         m_spinBoxMax->setValue(value);
         if (m_spinBoxMin->value() <= m_spinBoxMax->value())
         {
-            m_spinBoxMax->SetStyleToOk();
-            m_spinBoxMin->SetStyleToOk();
+            AzQtComponents::SpinBox::setHasError(m_spinBoxMax, false);
+            AzQtComponents::SpinBox::setHasError(m_spinBoxMin, false);
             m_spinBoxMin->setToolTip(m_tooltipText);
             m_spinBoxMax->setToolTip(m_tooltipText);
 
@@ -93,7 +93,7 @@ namespace EMotionFX
         }
         else
         {
-            m_spinBoxMax->SetStyleToError();
+            AzQtComponents::SpinBox::setHasError(m_spinBoxMax, true);
             QString errorTooltip = QString("The value has to be greater than or equal to %1 \xB0").arg(m_spinBoxMin->value());
             m_spinBoxMax->setToolTip(errorTooltip);
         }

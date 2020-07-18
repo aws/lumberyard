@@ -28,6 +28,7 @@ class QToolButton;
 namespace AzQtComponents
 {
     class Style;
+    class TabBar;
     class TabWidgetActionToolBar;
     class TabWidgetActionToolBarContainer;
 
@@ -66,6 +67,11 @@ namespace AzQtComponents
         };
 
         /*!
+        * Applies the Secondary styling to a TabWidget.
+        */
+        static void applySecondaryStyle(TabWidget* tabWidget, bool bordered = true);
+
+        /*!
         * Loads the tab bar config data from a settings object.
         */
         static Config loadConfig(QSettings& settings);
@@ -79,6 +85,10 @@ namespace AzQtComponents
         // Extra constructor for using an action toolbar to show the actions belonging to the widget.
         // Implicitly sets actionToolBarEnabled.
         TabWidget(TabWidgetActionToolBar* actionToolBar, QWidget* parent = nullptr);
+
+        // Setter for the TabBar in case a custom one is needed
+        // Makes sure the connections are set properly
+        void setCustomTabBar(TabBar* tabBar);
 
         // Add or replace the action toolbar of the widget. Implicitly sets actionToolBarEnabled.
         void setActionToolBar(TabWidgetActionToolBar* actionToolBar);
@@ -106,6 +116,7 @@ namespace AzQtComponents
         void setOverflowMenuVisible(bool visible);
         void resetOverflowMenu();
         void populateMenu();
+        void showOverflowMenu();
 
         // methods used by Style
         static bool polish(Style* style, QWidget* widget, const TabWidget::Config& config);
@@ -128,6 +139,8 @@ namespace AzQtComponents
     private:
         QToolButton* m_overflowButton = nullptr;
         TabWidgetActionToolBar* m_actionToolBar = nullptr;
+
+        void fixTabOrder();
     };
 
     class AZ_QT_COMPONENTS_API TabBar
@@ -151,6 +164,7 @@ namespace AzQtComponents
         void mouseMoveEvent(QMouseEvent* mouseEvent) override;
         void mouseReleaseEvent(QMouseEvent* mouseEvent) override;
         void paintEvent(QPaintEvent* paintEvent) override;
+        QSize minimumSizeHint() const override;
 
     private:
         friend class Style;

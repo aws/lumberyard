@@ -36,7 +36,7 @@ namespace EMotionFX
     {
         for (EventInfo& curEvent : m_events)
         {
-            AnimGraphNodeData* emitterUniqueData = curEvent.mEmitter->FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* emitterUniqueData = curEvent.mEmitter->FindOrCreateUniqueNodeData(animGraphInstance);
             curEvent.mGlobalWeight = emitterUniqueData->GetGlobalWeight();
             curEvent.mLocalWeight = emitterUniqueData->GetLocalWeight();
         }

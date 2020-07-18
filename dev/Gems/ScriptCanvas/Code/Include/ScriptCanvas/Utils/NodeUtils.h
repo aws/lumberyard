@@ -26,6 +26,8 @@ namespace ScriptCanvas
         static NodeTypeIdentifier ConstructEBusIdentifier(const ScriptCanvas::EBusBusId& ebusIdentifier);
         static NodeTypeIdentifier ConstructEBusEventSenderIdentifier(const ScriptCanvas::EBusBusId& ebusIdentifier, const EBusEventId& eventId);
         static NodeTypeIdentifier ConstructEBusEventReceiverIdentifier(const ScriptCanvas::EBusBusId& ebusIdentifier, const EBusEventId& eventId);
+        
+        static NodeTypeIdentifier ConstructFunctionNodeIdentifier(const AZ::Data::AssetId& assetId);
 
         static NodeTypeIdentifier ConstructScriptEventIdentifier(const ScriptCanvas::EBusBusId& busId);
         static NodeTypeIdentifier ConstructSendScriptEventIdentifier(const ScriptCanvas::EBusBusId& ebusIdentifier, const EBusEventId& eventId);

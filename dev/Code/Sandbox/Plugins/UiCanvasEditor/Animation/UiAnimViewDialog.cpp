@@ -173,6 +173,7 @@ CUiAnimViewDialog::~CUiAnimViewDialog()
     {
         pSequence->RemoveListener(this);
         pSequence->RemoveListener(m_wndNodesCtrl);
+        pSequence->RemoveListener(m_wndKeyProperties);
         pSequence->RemoveListener(m_wndCurveEditor);
         pSequence->RemoveListener(m_wndDopeSheet);
     }
@@ -227,6 +228,15 @@ BOOL CUiAnimViewDialog::OnInitDialog()
     w->setLayout(l);
     setCentralWidget(w);
 
+    m_wndKeyProperties = new CUiAnimViewKeyPropertiesDlg(this);
+    QDockWidget* dw = new AzQtComponents::StyledDockWidget(this);
+    dw->setObjectName("m_wndKeyProperties");
+    dw->setWindowTitle("Key");
+    dw->setWidget(m_wndKeyProperties);
+    addDockWidget(Qt::RightDockWidgetArea, dw);
+    m_wndKeyProperties->PopulateVariables();
+    m_wndKeyProperties->SetKeysCtrl(m_wndDopeSheet);
+
     m_wndCurveEditorDock = new AzQtComponents::StyledDockWidget(this);
     m_wndCurveEditorDock->setObjectName("m_wndCurveEditorDock");
     m_wndCurveEditorDock->setWindowTitle("Curve Editor");
@@ -235,6 +245,10 @@ BOOL CUiAnimViewDialog::OnInitDialog()
     addDockWidget(Qt::BottomDockWidgetArea, m_wndCurveEditorDock);
     m_wndCurveEditor->SetPlayCallback([this] { OnPlay();
         });
+
+    // Close/hide by default to avoid the pane to show up as a standalone, white window when not displayed in a layout.
+    m_wndCurveEditorDock->setVisible(false);
+    m_wndCurveEditorDock->setEnabled(false);
 
     InitSequences();
 
@@ -837,7 +851,7 @@ void CUiAnimViewDialog::OnAddSequence()
             CUiAnimViewSequence* pNewSequence = pSequenceManager->GetSequenceByName(sequenceName);
 
             CUiAnimationContext* pAnimationContext = m_animationContext;
-            pAnimationContext->SetSequence(pNewSequence, true, false);
+            pAnimationContext->SetSequence(pNewSequence, true, false, true);
         }
     }
 }
@@ -1014,7 +1028,7 @@ void CUiAnimViewDialog::OnSequenceComboBox()
     int sel = m_sequencesComboBox->currentIndex();
     if (sel == -1)
     {
-        m_animationContext->SetSequence(nullptr, false, false);
+        m_animationContext->SetSequence(nullptr, false, false, true);
         return;
     }
     QString name = m_sequencesComboBox->currentText();
@@ -1024,7 +1038,7 @@ void CUiAnimViewDialog::OnSequenceComboBox()
     CUiAnimViewSequence* pSequence = pSequenceManager->GetSequenceByName(name);
 
     CUiAnimationContext* pAnimationContext = m_animationContext;
-    pAnimationContext->SetSequence(pSequence, false, false);
+    pAnimationContext->SetSequence(pSequence, false, false, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1042,6 +1056,7 @@ void CUiAnimViewDialog::OnSequenceChanged(CUiAnimViewSequence* pSequence)
     {
         pPrevSequence->RemoveListener(this);
         pPrevSequence->RemoveListener(m_wndNodesCtrl);
+        pPrevSequence->RemoveListener(m_wndKeyProperties);
         pPrevSequence->RemoveListener(m_wndCurveEditor);
         pPrevSequence->RemoveListener(m_wndDopeSheet);
     }
@@ -1063,6 +1078,7 @@ void CUiAnimViewDialog::OnSequenceChanged(CUiAnimViewSequence* pSequence)
 
         pSequence->AddListener(this);
         pSequence->AddListener(m_wndNodesCtrl);
+        pSequence->AddListener(m_wndKeyProperties);
         pSequence->AddListener(m_wndCurveEditor);
         pSequence->AddListener(m_wndDopeSheet);
     }
@@ -1074,6 +1090,7 @@ void CUiAnimViewDialog::OnSequenceChanged(CUiAnimViewSequence* pSequence)
     }
 
     m_wndNodesCtrl->OnSequenceChanged();
+    m_wndKeyProperties->OnSequenceChanged(pSequence);
 
     m_animationContext->ForceAnimation();
 

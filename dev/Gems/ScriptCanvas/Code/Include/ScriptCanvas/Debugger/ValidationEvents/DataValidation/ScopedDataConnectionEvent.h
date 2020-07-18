@@ -17,6 +17,9 @@
 
 #include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h>
 
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/FocusOnEffect.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/HighlightEffect.h>
+
 namespace ScriptCanvas
 {
     // Latent Data Connection Event
@@ -25,10 +28,12 @@ namespace ScriptCanvas
     // for use when the node executes
     class ScopedDataConnectionEvent
         : public ValidationEvent
+        , public HighlightEntityEffect
+        , public FocusOnEntityEffect
     {
     public:
         AZ_CLASS_ALLOCATOR(ScopedDataConnectionEvent, AZ::SystemAllocator, 0);
-        AZ_RTTI(ScopedDataConnectionEvent, "{4C77B468-1405-4997-9A0E-A399E7464906}", ValidationEvent);
+        AZ_RTTI(ScopedDataConnectionEvent, "{4C77B468-1405-4997-9A0E-A399E7464906}", HighlightEntityEffect, ValidationEvent, FocusOnEntityEffect);
         
         ScopedDataConnectionEvent(const AZ::EntityId& connectionId)
             : ValidationEvent(ValidationSeverity::Warning)
@@ -61,6 +66,20 @@ namespace ScriptCanvas
         {
             return "Out of Scope Data Connection";
         }
+
+        // HighlightEntityEffect
+        AZ::EntityId GetHighlightTarget() const override
+        {
+            return m_connectionId;
+        }
+        ////
+
+        // FocusOnEntityEffect
+        AZ::EntityId GetFocusTarget() const override
+        {
+            return m_connectionId;
+        }
+        ////
         
     private:
     

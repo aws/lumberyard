@@ -13,20 +13,46 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+#include <QProxyStyle>
+#include <QToolButton>
 
-#include <QPushButton>
-
+class QSettings;
 class QEvent;
 class QMouseEvent;
 class QWidget;
 
 namespace AzQtComponents
 {
+    class Style;
+
     class AZ_QT_COMPONENTS_API DockBarButton
-        : public QPushButton
+        : public QToolButton
     {
         Q_OBJECT
     public:
+        struct Config
+        {
+            int buttonIconSize;
+            int defaultButtonMargin;
+            int menuIndicatorWidth;
+            QString menuIndicatorIcon;
+            QSize menuIndicatorIconSize;
+            QColor hoverBackgroundColor;
+            QColor closeHoverBackgroundColor;
+            QColor selectedBackgroundColor;
+            QColor closeSelectedBackgroundColor;
+        };
+
+        /*!
+        * Loads the button config data from a settings object.
+        */
+        static Config loadConfig(QSettings& settings);
+
+        /*!
+        * Returns default button config data.
+        */
+        static Config defaultConfig();
+
         enum WindowDecorationButton
         {
             CloseButton,
@@ -52,8 +78,13 @@ namespace AzQtComponents
         void paintEvent(QPaintEvent* event) override;
 
     private:
+        friend class Style;
+
+        static bool drawDockBarButton(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config);
+
         void handleButtonClick();
         const DockBarButton::WindowDecorationButton m_buttonType;
         bool m_isDarkStyle;
+
     };
 } // namespace AzQtComponents

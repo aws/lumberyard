@@ -33,7 +33,9 @@
 #include "AIManager.h"
 #include "IAIObjectManager.h"
 
-#include <QColorDialog>
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include <QPainter>
 #include <QStyle>
 #include <QWheelEvent>
@@ -687,11 +689,12 @@ void CAIDebuggerView::OnRButtonUp_List(QMouseEvent* event)
             }
             else if (selected->data() == ID_AIDEBUGGER_LISTOPTION_COLOR)
             {
-                QColor color = QColorDialog::getColor(pItem->debugColor, this, tr("Choose Debug Color"));
-                if (color.isValid())
-                {
-                    pItem->debugColor = color;
-                }
+                const QColor color = AzQtComponents::toQColor(
+                    AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, 
+                    AzQtComponents::fromQColor(pItem->debugColor), 
+                    tr("Choose Debug Color")));
+
+                pItem->debugColor = color;
             }
             else if (selected->data() == ID_AIDEBUGGER_LISTOPTION_SETVIEW)
             {

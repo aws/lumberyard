@@ -26,6 +26,10 @@ namespace AZ
         public:
             AZStdAnyContainer() = default;
 
+            const char* GetElementName([[maybe_unused]] int index = 0) override { return "m_data"; }
+
+            u32 GetElementNameCrC([[maybe_unused]] int index = 0) override { return AZ_CRC("m_data", 0x335cc942); }
+
             /// Null if element with this name can't be found.
             const SerializeContext::ClassElement* GetElement(u32) const override
             {

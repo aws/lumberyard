@@ -992,13 +992,14 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobProduct>()->
-                Version(5)->
+                Version(6)->
                 Field("Product File Name", &JobProduct::m_productFileName)->
                 Field("Product Asset Type", &JobProduct::m_productAssetType)->
                 Field("Product Sub Id", &JobProduct::m_productSubID)->
                 Field("Legacy Sub Ids", &JobProduct::m_legacySubIDs)->
                 Field("Dependencies", &JobProduct::m_dependencies)->
-                Field("Relative Path Dependencies", &JobProduct::m_pathDependencies);
+                Field("Relative Path Dependencies", &JobProduct::m_pathDependencies)->
+                Field("Dependencies Handled", &JobProduct::m_dependenciesHandled);
         }
     }
 

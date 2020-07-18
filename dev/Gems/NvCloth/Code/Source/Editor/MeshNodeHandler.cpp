@@ -33,7 +33,6 @@ namespace NvCloth
             widget_t* picker = new widget_t(parent);
 
             // Set edit button appearance to go to FBX Settings dialog
-            picker->GetEditButton()->setIcon(QIcon(":/PropertyEditor/Resources/edit-asset.png"));
             picker->GetEditButton()->setToolTip("Open FBX Settings to setup Cloth Modifiers");
             picker->GetEditButton()->setText("");
             picker->GetEditButton()->setEnabled(false);
@@ -46,7 +45,7 @@ namespace NvCloth
                 });
 
             connect(picker->GetEditButton(), 
-                &QPushButton::clicked, this,
+                &QToolButton::clicked, this,
                 [this, picker]()
                 {
                     OnEditButtonClicked(picker);

@@ -28,6 +28,7 @@ namespace GradientSignal
 
     // Gradient Modifiers
     static const AZ::TypeId EditorDitherGradientComponentTypeId = "{D20E867C-692A-4056-B5AC-B372CFBAC524}";
+    static const AZ::TypeId EditorMixedGradientComponentTypeId = "{90642402-6C5F-4C4D-B1F0-8C0F242A2716}";
     static const AZ::TypeId EditorInvertGradientComponentTypeId = "{BC63EA1C-E06B-4771-BF5D-4AE2B54AE494}";
     static const AZ::TypeId EditorLevelsGradientComponentTypeId = "{227E7DB6-E1FE-438E-B837-2D4604DA1DEC}";
     static const AZ::TypeId EditorPosterizeGradientComponentTypeId = "{CC21E213-19B6-46D6-B774-40F20B0950D7}";

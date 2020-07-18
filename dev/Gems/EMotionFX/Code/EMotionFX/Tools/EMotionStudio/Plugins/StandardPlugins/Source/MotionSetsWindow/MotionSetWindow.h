@@ -16,7 +16,6 @@
 #include <AzCore/std/containers/vector.h>
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 #include <MysticQt/Source/DialogStack.h>
-#include <MysticQt/Source/ComboBox.h>
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
@@ -27,6 +26,9 @@
 #include <QTreeWidget>
 #include <QLineEdit>
 #include <QDialog>
+
+QT_FORWARD_DECLARE_CLASS(QAction)
+QT_FORWARD_DECLARE_CLASS(QComboBox)
 
 namespace AzQtComponents
 {
@@ -100,7 +102,7 @@ namespace EMStudio
         QLabel*                         mNumMotionIDsLabel;
         QLabel*                         mNumModifiedIDsLabel;
         QLabel*                         mNumDuplicateIDsLabel;
-        MysticQt::ComboBox*             mComboBox;
+        QComboBox*                      mComboBox;
     };
 
 
@@ -187,17 +189,15 @@ namespace EMStudio
         uint32 CalcNumMotionEntriesUsingMotionExcluding(const AZStd::string& motionFilename, EMotionFX::MotionSet* excludedMotionSet);
 
     private:
-        QVBoxLayout*                            mVLayout;
-        MotionSetTableWidget*                   m_tableWidget;
+        QVBoxLayout* mVLayout = nullptr;
+        MotionSetTableWidget* m_tableWidget = nullptr;
 
-        QPushButton*                            mAddButton;
-        QPushButton*                            mLoadButton;
-        QPushButton*                            mRemoveButton;
-        QPushButton*                            mClearButton;
-        QPushButton*                            mEditButton;
+        QAction* m_addAction = nullptr;
+        QAction* m_loadAction = nullptr;
+        QAction* m_editAction = nullptr;
 
-        AzQtComponents::FilteredSearchWidget*   m_searchWidget;
-        AZStd::string                           m_searchWidgetText;
-        MotionSetsWindowPlugin*                 mPlugin;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget = nullptr;
+        AZStd::string m_searchWidgetText;
+        MotionSetsWindowPlugin* mPlugin = nullptr;
     };
 } // namespace EMStudio

@@ -88,7 +88,7 @@ namespace AzQtComponents
 
         for (QDockWidget* childDockWidget : mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
         {
-            if (childDockWidget->isFloating() && childDockWidget->isVisible())
+            if (childDockWidget->isFloating() && childDockWidget->isVisible() && !childDockWidget->isMinimized())
             {
                 QRect globalDockRect = childDockWidget->geometry();
                 QRect localDockRect(widget->mapFromGlobal(globalDockRect.topLeft()), globalDockRect.size());

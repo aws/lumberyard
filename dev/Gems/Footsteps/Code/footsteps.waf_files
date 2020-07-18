@@ -1,18 +1,10 @@
 {
-    "none": {
-        "Source": [
-            "Source/Footsteps_precompiled.cpp",
-            "Source/Footsteps_precompiled.h"
-        ]
-    },
     "auto": {
         "Include": [
             "Include/Footsteps/FootstepsBus.h"
         ],
         "Source": [
             "Source/FootstepsModule.cpp",
-            "Source/FootstepsSystemComponent.cpp",
-            "Source/FootstepsSystemComponent.h",
             "Source/FootstepComponent.cpp",
             "Source/FootstepComponent.h"
         ]

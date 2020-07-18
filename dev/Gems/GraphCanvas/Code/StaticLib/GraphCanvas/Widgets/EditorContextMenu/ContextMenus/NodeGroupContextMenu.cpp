@@ -11,6 +11,7 @@
 */
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/NodeGroupContextMenu.h>
 
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeGroupMenuActions/NodeGroupContextMenuActions.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h>
 
@@ -35,8 +36,13 @@ namespace GraphCanvas
 
         {
             // Preset Creation
-            m_createPresetFrom = aznew CreatePresetFromSelection(this);
-            AddMenuAction(m_createPresetFrom);
+            const ConstructTypePresetBucket* presetBucket = nullptr;
+            AssetEditorSettingsRequestBus::EventResult(presetBucket, editorId, &AssetEditorSettingsRequests::GetConstructTypePresetBucket, ConstructType::NodeGroup);
+            if (presetBucket)
+            {
+                m_createPresetFrom = aznew CreatePresetFromSelection(this);
+                AddMenuAction(m_createPresetFrom);
+            }
         }
     }
     

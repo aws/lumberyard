@@ -110,7 +110,7 @@ namespace ScriptCanvas
                         {
                             m_applicableInputs.emplace_back(inputDatum);
                         }
-                    }
+                            }
 
                     if (!m_applicableInputs.empty())
                     {

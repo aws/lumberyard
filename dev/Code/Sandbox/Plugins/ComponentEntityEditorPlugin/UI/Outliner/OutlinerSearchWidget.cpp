@@ -14,9 +14,7 @@
 #include "OutlinerSearchWidget.h"
 
 #include <AzToolsFramework/UI/Qt/FlowLayout.h>
-
-
-
+#include <AzQtComponents/Components/StyleManager.h>
 
 namespace AzQtComponents
 {
@@ -29,7 +27,7 @@ namespace AzQtComponents
         m_globalIcons[static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::Separator)] = QIcon();
     }
 
-    OutlinerSearchTypeSelector::OutlinerSearchTypeSelector(QPushButton* parent)
+    OutlinerSearchTypeSelector::OutlinerSearchTypeSelector(QWidget* parent)
         : SearchTypeSelector(parent)
     {
     }
@@ -119,7 +117,11 @@ namespace AzQtComponents
     void OutlinerSearchItemDelegate::PaintRichText(QPainter* painter, QStyleOptionViewItem& opt, QString& text) const
     {
         int textDocDrawYOffset = 3;
-        QPoint paintertextDocRenderOffset = QPoint(1, 4);
+        QPoint paintertextDocRenderOffset = QPoint(-2, -1);
+        if (AzQtComponents::StyleManager::isUi10())
+        {
+            paintertextDocRenderOffset = QPoint(1, 4);
+        }
 
         QTextDocument textDoc;
         textDoc.setDefaultFont(opt.font);

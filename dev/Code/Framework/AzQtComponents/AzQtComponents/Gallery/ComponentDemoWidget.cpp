@@ -21,6 +21,7 @@
 #include "ButtonPage.h"
 #include "CardPage.h"
 #include "CheckBoxPage.h"
+#include "ColorLabelPage.h"
 #include "ColorPickerPage.h"
 #include "ComboBoxPage.h"
 #include "GradientSliderPage.h"
@@ -42,6 +43,12 @@
 #include "SliderComboPage.h"
 #include "MenuPage.h"
 #include "ScrollBarPage.h"
+#include "ToolBarPage.h"
+#include "TreeViewPage.h"
+#include "HyperlinkPage.h"
+#include "DragAndDropPage.h"
+#include "ReflectedPropertyEditorPage.h"
+#include "SplitterPage.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -60,35 +67,45 @@ ComponentDemoWidget::ComponentDemoWidget(bool legacyUISetting, QWidget* parent)
 
     QMap<QString, QWidget*> sortedPages;
 
-    SpinBoxPage* spinBoxPage = new SpinBoxPage(this);
-
-    sortedPages.insert("Buttons", new ButtonPage(this));
-    sortedPages.insert("ToggleSwitches", new ToggleSwitchPage(this));
-    sortedPages.insert("Cards", new CardPage(this));
-    sortedPages.insert("CheckBoxes", new CheckBoxPage(this));
-    sortedPages.insert("ProgressIndicators", new ProgressIndicatorPage(this));
-    sortedPages.insert("RadioButtons", new RadioButtonPage(this));
-    sortedPages.insert("Sliders", new SliderPage(this));
-    sortedPages.insert("SliderCombo", new SliderComboPage(this));
-    sortedPages.insert("GradientSliders", new GradientSliderPage(this));
+    sortedPages.insert("Breadcrumbs", new BreadCrumbsPage(this));
+    sortedPages.insert("Browse Edit", new BrowseEditPage(this));
+    sortedPages.insert("Button", new ButtonPage(this));
+    sortedPages.insert("Card", new CardPage(this));
+    sortedPages.insert("Checkbox", new CheckBoxPage(this));
+    sortedPages.insert("Color Label", new ColorLabelPage(this));
     sortedPages.insert("Color Picker", new ColorPickerPage(this));
-    sortedPages.insert("BrowseEdits", new BrowseEditPage(this));
-    sortedPages.insert("Typography", new TypographyPage(this));
-    sortedPages.insert("BreadCrumbs", new BreadCrumbsPage(this));
-    sortedPages.insert("LineEdits", new LineEditPage(this));
-    sortedPages.insert("SegmentControls", new SegmentControlPage(this));
-    sortedPages.insert("ComboBoxes", new ComboBoxPage(this));
-    sortedPages.insert("SpinBox", spinBoxPage);
-    sortedPages.insert("SVGLabel", new SvgLabelPage(this));
-    sortedPages.insert("Qt Style Sheets", new StyleSheetPage(this));
-    sortedPages.insert("TabWidget", new TabWidgetPage(this));
-    sortedPages.insert("AssetBrowserFolder", new AssetBrowserFolderPage(this));
-    sortedPages.insert("FilteredSearchWidget", new FilteredSearchWidgetPage(this));
-    sortedPages.insert("TableView", new TableViewPage(this));
-    sortedPages.insert("StyledDockWidget", new StyledDockWidgetPage(this));
-    sortedPages.insert("TitleBar", new TitleBarPage(this));
+    sortedPages.insert("Combo Box", new ComboBoxPage(this));
+    sortedPages.insert("Drag and Drop", new DragAndDropPage(this));
+    sortedPages.insert("Filtered Search Widget", new FilteredSearchWidgetPage(this));
+    sortedPages.insert("Gradient Slider", new GradientSliderPage(this));
+    sortedPages.insert("Hyperlink", new HyperlinkPage(this));
+    sortedPages.insert("Line Edit", new LineEditPage(this));
     sortedPages.insert("Menu", new MenuPage(this));
-    sortedPages.insert("ScrollBar", new ScrollBarPage(this));
+    sortedPages.insert("Progress Indicator", new ProgressIndicatorPage(this));
+    sortedPages.insert("Radio Button", new RadioButtonPage(this));
+    sortedPages.insert("Reflected Property Editor", new ReflectedPropertyEditorPage(this));
+    sortedPages.insert("Scrollbar", new ScrollBarPage(this));
+    sortedPages.insert("Segment Control", new SegmentControlPage(this));
+    sortedPages.insert("Slider", new SliderPage(this));
+    sortedPages.insert("Slider Combo", new SliderComboPage(this));
+
+    SpinBoxPage* spinBoxPage = new SpinBoxPage(this);
+    sortedPages.insert("Spin Box", spinBoxPage);
+
+    sortedPages.insert("Splitter", new SplitterPage(this));
+    sortedPages.insert("Styled Dock Widget", new StyledDockWidgetPage(this));
+    sortedPages.insert("Stylesheet", new StyleSheetPage(this));
+    sortedPages.insert("SVG Label", new SvgLabelPage(this));
+    sortedPages.insert("Tab Widget", new TabWidgetPage(this));
+    sortedPages.insert("Table View", new TableViewPage(this));
+    sortedPages.insert("Toggle Switch", new ToggleSwitchPage(this));
+    sortedPages.insert("Toolbar", new ToolBarPage(this));
+    sortedPages.insert("Tree View", new TreeViewPage(this));
+    sortedPages.insert("Typography", new TypographyPage(this));
+
+    // Pages hidden in 1.25 release - unused components, still need work before being made public, or not interesting for external devs
+    //sortedPages.insert("AssetBrowserFolder", new AssetBrowserFolderPage(this));
+    //sortedPages.insert("Titlebar", new TitleBarPage(this));
 
     for (const auto& title : sortedPages.keys())
     {

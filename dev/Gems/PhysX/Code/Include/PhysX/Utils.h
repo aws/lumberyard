@@ -16,8 +16,9 @@
 #include <PxMaterial.h>
 #include <PxShape.h>
 #include <PhysX/UserDataTypes.h>
-#include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/Casts.h>
 #include <AzFramework/Physics/Collision.h>
+#include <AzFramework/Physics/Shape.h>
 
 namespace Physics
 {
@@ -27,6 +28,8 @@ namespace Physics
 
 namespace PhysX
 {
+    class Shape;
+
     namespace Utils
     {
         ActorData* GetUserData(const physx::PxActor* actor);
@@ -41,6 +44,13 @@ namespace PhysX
             void SetGroup(const Physics::CollisionGroup& group, physx::PxFilterData& filterData);
             void SetCollisionLayerAndGroup(physx::PxShape* shape, const Physics::CollisionLayer& layer, const Physics::CollisionGroup& group);
             bool ShouldCollide(const physx::PxFilterData& filterData0, const physx::PxFilterData& filterData1);
+        }
+
+        namespace RayCast
+        {
+            Physics::RayCastHit GetHitFromPxHit(const physx::PxLocationHit& pxHit);
+            physx::PxHitFlags GetPxHitFlags(Physics::HitFlags hitFlags);
+            Physics::RayCastHit ClosestRayHitAgainstPxRigidActor(const Physics::RayCastRequest& request, physx::PxRigidActor* actor);
         }
     }
 }

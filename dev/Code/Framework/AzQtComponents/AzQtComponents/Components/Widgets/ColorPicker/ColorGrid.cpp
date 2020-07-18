@@ -181,6 +181,8 @@ void ColorGrid::mousePressEvent(QMouseEvent* e)
 {
     if (e->button() == Qt::LeftButton)
     {
+        m_userIsSelecting = true;
+
         emit gridPressed();
         handleLeftButtonEvent(e->pos());
     }
@@ -188,32 +190,38 @@ void ColorGrid::mousePressEvent(QMouseEvent* e)
 
 void ColorGrid::mouseMoveEvent(QMouseEvent* e)
 {
-    if (e->buttons() & Qt::LeftButton)
+    if (m_userIsSelecting)
     {
         handleLeftButtonEvent(e->pos());
-    }
 
-    if (e->buttons() == Qt::MouseButtons())
-    {
-        QPoint globalPosition = QCursor::pos();
-        QPoint position = mapFromGlobal(globalPosition);
+        if (e->buttons() == Qt::MouseButtons())
+        {
+            QPoint globalPosition = QCursor::pos();
+            QPoint position = mapFromGlobal(globalPosition);
 
-        auto hsv = positionToColor(position);
-        QPoint toolTipPosition = mapToGlobal(QPoint(position.x(), height()));
+            auto hsv = positionToColor(position);
+            QPoint toolTipPosition = mapToGlobal(QPoint(position.x(), height()));
 
-        QColor rgb = toQColor(Internal::ColorController::fromHsv(hsv.hue, hsv.saturation, hsv.value));
+            QColor rgb = toQColor(Internal::ColorController::fromHsv(hsv.hue, hsv.saturation, hsv.value));
 
-        QString text = QStringLiteral("HSV: %1, %2, %3\nRGB: %4, %5, %6").arg(static_cast<int>(hsv.hue * 360.0)).arg(static_cast<int>(hsv.saturation * 100.0)).arg(static_cast<int>(hsv.value * 100.0)).arg(rgb.red()).arg(rgb.green()).arg(rgb.blue());
-        QToolTip::showText(toolTipPosition, text, this);
+            QString text = QStringLiteral("HSV: %1, %2, %3\nRGB: %4, %5, %6").arg(static_cast<int>(hsv.hue * 360.0)).arg(static_cast<int>(hsv.saturation * 100.0)).arg(static_cast<int>(hsv.value * 100.0)).arg(rgb.red()).arg(rgb.green()).arg(rgb.blue());
+            QToolTip::showText(toolTipPosition, text, this);
+        }
     }
 }
 
 void ColorGrid::mouseReleaseEvent(QMouseEvent* e)
 {
-    if (e->button() == Qt::LeftButton)
+    if (m_userIsSelecting && e->button() == Qt::LeftButton)
     {
-        emit gridReleased();
+        StopSelection();
     }
+}
+
+void ColorGrid::StopSelection()
+{
+    m_userIsSelecting = false;
+    emit gridReleased();
 }
 
 void ColorGrid::handleLeftButtonEvent(const QPoint& eventPos)

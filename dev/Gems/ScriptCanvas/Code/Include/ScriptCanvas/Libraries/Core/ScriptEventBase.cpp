@@ -28,6 +28,16 @@ namespace ScriptCanvas
         {
             namespace Internal
             {
+                static bool ScriptEventBaseVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+                {
+                    if (rootElement.GetVersion() < 6)
+                    {
+                        rootElement.RemoveElementByName(AZ_CRC("m_asset", 0x4e58e538));
+                    }
+
+                    return true;
+                }
+
                 void ScriptEventEntry::Reflect(AZ::ReflectContext* context)
                 {
                     if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
@@ -53,6 +63,7 @@ namespace ScriptCanvas
                 ScriptEventBase::ScriptEventBase()
                     : m_version(0)
                     , m_scriptEventAssetId(0)
+                    , m_asset(AZ::Data::AssetLoadBehavior::QueueLoad)
                 {
                 }
 
@@ -74,6 +85,8 @@ namespace ScriptCanvas
 
                 void ScriptEventBase::Initialize(const AZ::Data::AssetId assetId)
                 {
+                    m_asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId, false, nullptr, false);
+
                     if (assetId.IsValid())
                     {
                         m_scriptEventAssetId = assetId;
@@ -82,8 +95,6 @@ namespace ScriptCanvas
 
                         AZ::Data::AssetBus::Handler::BusConnect(assetId);
                     }
-
-                    m_asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId, false, nullptr, false);
                 }
 
                 void ScriptEventBase::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -106,7 +117,6 @@ namespace ScriptCanvas
                     if (definition.GetVersion() > m_version)
                     {
                         // The asset has changed.
-                        AZ_Warning("Script Canvas", false, "The Script Event (%s) asset has changed, graphs that depend on it may require updates.", definition.GetName().c_str());
                         ScriptEvents::ScriptEventBus::BroadcastResult(m_scriptEvent, &ScriptEvents::ScriptEventRequests::RegisterScriptEvent, m_scriptEventAssetId, definition.GetVersion());
                     }
 

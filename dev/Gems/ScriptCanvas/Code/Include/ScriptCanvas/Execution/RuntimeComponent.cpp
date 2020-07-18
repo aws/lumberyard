@@ -74,8 +74,36 @@ namespace ScriptCanvas
 
     RuntimeComponent::~RuntimeComponent()
     {
-        const bool deleteData{ true };
-        m_runtimeData.m_graphData.Clear(deleteData);
+        for (auto& nodeEntity : m_runtimeData.m_graphData.m_nodes)
+        {
+            if (nodeEntity)
+            {
+                if (nodeEntity->GetState() == AZ::Entity::ES_ACTIVE)
+                {
+                    nodeEntity->Deactivate();
+                }
+            }
+        }
+
+        for (auto& connectionEntity : m_runtimeData.m_graphData.m_connections)
+        {
+            if (connectionEntity)
+            {
+                if (connectionEntity->GetState() == AZ::Entity::ES_ACTIVE)
+                {
+                    connectionEntity->Deactivate();
+                }
+            }
+        }
+
+        // Defer graph deletion to next frame as an executing graph in a dynamic slice can be deleted from a node
+        auto oldRuntimeData(AZStd::move(m_runtimeData));
+        // Use AZ::SystemTickBus, not AZ::TickBus otherwise the deferred delete will not happen if timed just before a level unload
+        AZ::SystemTickBus::QueueFunction([oldRuntimeData]() mutable
+        {
+            oldRuntimeData.m_graphData.Clear(true);
+            oldRuntimeData.m_variableData.Clear();
+        });
     }
 
     void RuntimeComponent::Reflect(AZ::ReflectContext* context)
@@ -95,17 +123,29 @@ namespace ScriptCanvas
 
     void RuntimeComponent::Init()
     {
+        if (m_runtimeAsset.GetId().IsValid())
+        {
+            auto& assetManager = AZ::Data::AssetManager::Instance();
+            m_runtimeAsset = assetManager.GetAsset(m_runtimeAsset.GetId(), GetAssetType(), true, nullptr, false);            
+        }
     }
 
     void RuntimeComponent::Activate()
     {
         RuntimeRequestBus::Handler::BusConnect(GetScriptCanvasId());
 
-        if (m_runtimeAsset.GetId().IsValid())
+        AZ::Data::AssetBus::Handler::BusConnect(m_runtimeAsset.GetId());
+
+        if (m_runtimeAsset.IsReady())
         {
-            auto& assetManager = AZ::Data::AssetManager::Instance();
-            m_runtimeAsset = assetManager.GetAsset(m_runtimeAsset.GetId(), azrtti_typeid<RuntimeAsset>(), true, nullptr, false);
-            AZ::Data::AssetBus::Handler::BusConnect(m_runtimeAsset.GetId());
+            ActivateGraph();
+        }
+        else
+        {
+            if (m_runtimeAsset.IsReady())
+            {
+                OnAssetReady(m_runtimeAsset);
+            }
         }
     }
 
@@ -149,131 +189,55 @@ namespace ScriptCanvas
         }
     }
 
-    void RuntimeComponent::ActivateNodes()
-    {
-        m_runtimeData.m_graphData.BuildEndpointMap();
-        for (auto& nodeEntity : m_runtimeData.m_graphData.m_nodes)
-        {
-            if (nodeEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-            {
-                nodeEntity->Init();
-            }
-            if (nodeEntity->GetState() == AZ::Entity::ES_INIT)
-            {
-                nodeEntity->Activate();
-            }
-        }
-
-        for (auto& connectionEntity : m_runtimeData.m_graphData.m_connections)
-        {
-            if (connectionEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-            {
-                connectionEntity->Init();
-            }
-
-            if (connectionEntity->GetState() == AZ::Entity::ES_INIT)
-            {
-                connectionEntity->Activate();
-            }
-        }
-    }
-
     void RuntimeComponent::ActivateGraph()
     {
-        {
-            AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::RuntimeComponent::ActivateGraph (%s)", m_runtimeAsset.GetId().ToString<AZStd::string>().c_str());
+        AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::RuntimeComponent::ActivateGraph (%s)", m_runtimeAsset.GetId().ToString<AZStd::string>().c_str());
 
+        {
             if (!m_executionContext.ActivateContext(GetScriptCanvasId()))
             {
                 return;
             }
 
-            auto& runtimeAssetData = m_runtimeAsset.Get()->GetData();
+            RuntimeData* runtimeData = GetRuntimeData();
+
             // If there are no nodes, there's nothing to do, deactivate the graph's entity.
-            if (runtimeAssetData.m_graphData.m_nodes.empty())
+            if (runtimeData && runtimeData->m_graphData.m_nodes.empty())
             {
                 DeactivateGraph();
                 return;
             }
         }
 
-        CreateAssetInstance();
-
+        if (!m_createdAsset)
         {
-            AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::RuntimeComponent::ActivateGraph (%s)", m_runtimeAsset.GetId().ToString<AZStd::string>().c_str());
-
-            bool entryPointFound = false;
-            for (auto& nodeEntity : m_runtimeData.m_graphData.m_nodes)
-            {
-                auto node = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(nodeEntity);
-                if (!node)
-                {
-                    AZ_Error("Script Canvas", false, "Entity %s is missing node component", nodeEntity->GetName().data());
-                    continue;
-                }
-
-                entryPointFound = entryPointFound || node->IsEntryPoint();
-
-                if (auto startNode = azrtti_cast<Nodes::Core::Start*>(node))
-                {
-                    m_entryNodes.insert(startNode);
-                }
-                else if (auto errorHandlerNode = azrtti_cast<Nodes::Core::ErrorHandler*>(node))
-                {
-                    AZStd::vector<AZStd::pair<Node*, const SlotId>> errorSources = errorHandlerNode->GetSources();
-
-                    if (errorSources.empty())
-                    {
-                        m_executionContext.AddErrorHandler(m_scriptCanvasId, errorHandlerNode->GetEntityId());
-                    }
-                    else
-                    {
-                        for (auto errorNodes : errorSources)
-                        {
-                            m_executionContext.AddErrorHandler(errorNodes.first->GetEntityId(), errorHandlerNode->GetEntityId());
-                        }
-                    }
-                }
-            }
-
-            // If we still can't find a start node, there's nothing to do.
-            if (!entryPointFound)
-            {
-                AZ_Warning("Script Canvas", false, "Graph does not have any entry point nodes, it will not run.");
-                DeactivateGraph();
-                return;
-            }
-
-            ActivateNodes();
-            
-            SC_EXECUTION_TRACE_GRAPH_ACTIVATED(CreateActivationInfo());            
-
-            CreateNetBindingTable();
-
-            // Track which variables in this canvas should be synced over the network.
-            auto& varData = m_runtimeData.m_variableData.GetVariables();
-            for (auto& iter : varData)
-            {
-                GraphVariable& graphVariable = iter.second;
-                if (graphVariable.IsSynchronized())
-                {
-                    m_graphVariableNetBindingTable->AddDatum(&graphVariable);
-                    VariableNotificationBus::MultiHandler::BusConnect(graphVariable.GetGraphScopedId());
-                }
-            }
-
-            for (auto& nodePair : m_nodeLookupMap)
-            {
-                nodePair.second->PostActivate();
-            }
-
-            if (RuntimeRequestBus::Handler::BusIsConnected())
-            {
-                m_executionContext.Execute();
-            }
-
-            AZ::EntityBus::Handler::BusConnect(GetEntityId());
+            SetupAssetInstance();
         }
+        else
+        {
+            ResetState();
+
+            for (auto entryPoint : m_entryPoints)
+            {
+                AZ::Entity* entryEntity = entryPoint->GetEntity();
+
+                if (entryEntity->GetState() != AZ::Entity::ES_ACTIVE)
+                {
+                    entryEntity->Activate();
+                }
+
+                entryPoint->PostActivate();
+            }
+        }
+
+        // If we still can't find a start node, there's nothing to do.
+        if (m_entryPoints.empty())
+        {
+            AZ_Warning("Script Canvas", false, "Graph does not have any entry point nodes, it will not run.");
+            return;
+        }
+
+        AZ::EntityBus::Handler::BusConnect(GetEntityId());
     }
 
     void RuntimeComponent::DeactivateGraph()
@@ -281,47 +245,31 @@ namespace ScriptCanvas
         AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::RuntimeComponent::DeactivateGraph (%s)", m_runtimeAsset.GetId().ToString<AZStd::string>().c_str());
         VariableRequestBus::MultiHandler::BusDisconnect();
 
-        for (auto& nodeEntity : m_runtimeData.m_graphData.m_nodes)
+        for (auto entryPoint : m_entryPoints)
         {
-            if (nodeEntity)
+            AZ::Entity* entryEntity = entryPoint->GetEntity();
+
+            if (entryEntity->GetState() == AZ::Entity::ES_ACTIVE)
             {
-                if (nodeEntity->GetState() == AZ::Entity::ES_ACTIVE)
-                {
-                    nodeEntity->Deactivate();
-                }
+                entryEntity->Deactivate();
             }
         }
 
-        for (auto& connectionEntity : m_runtimeData.m_graphData.m_connections)
-        {
-            if (connectionEntity)
-            {
-                if (connectionEntity->GetState() == AZ::Entity::ES_ACTIVE)
-                {
-                    connectionEntity->Deactivate();
-                }
-            }
-        }
+        m_executionContext.DeactivateContext();
 
-        // Defer graph deletion to next frame as an executing graph in a dynamic slice can be deleted from a node
-        auto oldRuntimeData(AZStd::move(m_runtimeData));
-        // Use AZ::SystemTickBus, not AZ::TickBus otherwise the deferred delete will not happen if timed just before a level unload
-        AZ::SystemTickBus::QueueFunction([oldRuntimeData]() mutable
-        {
-            oldRuntimeData.m_graphData.Clear(true);
-            oldRuntimeData.m_variableData.Clear();
-        });
-
-        m_runtimeData.m_graphData.Clear();
-        m_runtimeData.m_variableData.Clear();
-        m_nodeLookupMap.clear();
-
-        SC_EXECUTION_TRACE_GRAPH_DEACTIVATED(CreateActivationInfo());
+        SC_EXECUTION_TRACE_GRAPH_DEACTIVATED(CreateDeactivationInfo());
     }
 
-    void RuntimeComponent::CreateAssetInstance()
+    void RuntimeComponent::SetupAssetInstance()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ScriptCanvas);
+
+        if (m_createdAsset)
+        {
+            return;
+        }
+
+        m_createdAsset = true;
 
         AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
         m_runtimeIdToAssetId.clear();
@@ -330,9 +278,14 @@ namespace ScriptCanvas
         m_runtimeData.m_graphData.Clear(true);
         m_runtimeData.m_variableData.Clear();
 
-        auto& assetRuntimeData = m_runtimeAsset.Get()->GetData();
+        m_nodeLookupMap.clear();
+        m_entryNodes.clear();
+        m_entryPoints.clear();
+
+        RuntimeData* assetRuntimeData = GetRuntimeData();
+
         // Clone GraphData
-        serializeContext->CloneObjectInplace(m_runtimeData.m_graphData, &assetRuntimeData.m_graphData);
+        serializeContext->CloneObjectInplace(m_runtimeData.m_graphData, &assetRuntimeData->m_graphData);
 
         for (AZ::Entity* nodeEntity : m_runtimeData.m_graphData.m_nodes)
         {
@@ -359,7 +312,7 @@ namespace ScriptCanvas
         m_runtimeData.m_graphData.LoadDependentAssets();
 
         // Clone Variable Data
-        serializeContext->CloneObjectInplace(m_runtimeData.m_variableData, &assetRuntimeData.m_variableData);
+        serializeContext->CloneObjectInplace(m_runtimeData.m_variableData, &assetRuntimeData->m_variableData);
 
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> loadedGameEntityIdMap;
 
@@ -410,17 +363,91 @@ namespace ScriptCanvas
         AZ::IdUtils::Remapper<AZ::EntityId>::RemapIdsAndIdRefs(&m_runtimeData, worldEntityRemapper, serializeContext);
 
         // Apply Variable Overrides and Remap VariableIds
-        ApplyVariableOverrides();
+        InitializeVariableState();
+
+        m_runtimeData.m_graphData.BuildEndpointMap();
+
+        CreateNetBindingTable();
+
+        // Track which variables in this canvas should be synced over the network.
+        auto& varData = m_runtimeData.m_variableData.GetVariables();
+        for (auto& iter : varData)
+        {
+            GraphVariable& graphVariable = iter.second;
+            if (graphVariable.IsSynchronized())
+            {
+                m_graphVariableNetBindingTable->AddDatum(&graphVariable);
+                VariableNotificationBus::MultiHandler::BusConnect(graphVariable.GetGraphScopedId());
+            }
+        }
+
+        bool entryPointFound = false;
+        for (auto& nodeEntity : m_runtimeData.m_graphData.m_nodes)
+        {
+            auto node = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(nodeEntity);
+            if (!node)
+            {
+                AZ_Error("Script Canvas", false, "Entity %s is missing node component", nodeEntity->GetName().data());
+                continue;
+            }
+
+            if (node->IsEntryPoint())
+            {
+                m_entryPoints.insert(node);
+
+                if (auto startNode = azrtti_cast<Nodes::Core::Start*>(node))
+                {
+                    m_entryNodes.insert(startNode);
+                }
+            }
+
+            if (nodeEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+            {
+                nodeEntity->Init();
+            }
+
+            if (nodeEntity->GetState() == AZ::Entity::ES_INIT)
+            {
+                nodeEntity->Activate();
+            }
+        }
+
+        for (auto& connectionEntity : m_runtimeData.m_graphData.m_connections)
+        {
+            if (connectionEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+            {
+                connectionEntity->Init();
+            }
+
+            if (connectionEntity->GetState() == AZ::Entity::ES_INIT)
+            {
+                connectionEntity->Activate();
+            }
+        }
+
+        SC_EXECUTION_TRACE_GRAPH_ACTIVATED(CreateActivationInfo());
+
+        for (auto& nodePair : m_nodeLookupMap)
+        {
+            if (nodePair.second)
+            {
+                nodePair.second->PostActivate();
+            }
+            else
+            {
+                AZ_TracePrintf("Script Canvas", "Invalid node found");
+            }
+        }
     }
 
     ActivationInfo RuntimeComponent::CreateActivationInfo() const
     {
-        return ActivationInfo(CreateGraphInfo(GetScriptCanvasId(), GetGraphIdentifier()), CreateVariableValues());
+        return ActivationInfo(GraphInfo(GetRuntimeEntityId(), GetGraphIdentifier()), CreateVariableValues());
     }
 
     ActivationInfo RuntimeComponent::CreateDeactivationInfo() const
     {
-        return ActivationInfo(CreateGraphInfo(GetScriptCanvasId(), GetGraphIdentifier()));
+        return ActivationInfo(GraphInfo(GetRuntimeEntityId(), GetGraphIdentifier()));
     }
     
     VariableValues RuntimeComponent::CreateVariableValues() const
@@ -438,12 +465,9 @@ namespace ScriptCanvas
 
     void RuntimeComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        if (auto runtimeAsset = asset.GetAs<RuntimeAsset>())
-        {
-            m_runtimeAsset = runtimeAsset;
-            ActivateGraph();
-        }
-    }
+        m_runtimeAsset = asset;
+        ActivateGraph();
+    } 
 
     void RuntimeComponent::OnEntityActivated(const AZ::EntityId& entityId)
     {
@@ -451,8 +475,6 @@ namespace ScriptCanvas
         {
             m_executionContext.AddToExecutionStack(*startNode, SlotId());
         }
-
-        m_entryNodes.clear();
 
         if (RuntimeRequestBus::Handler::BusIsConnected())
         {
@@ -462,14 +484,21 @@ namespace ScriptCanvas
         AZ::EntityBus::Handler::BusDisconnect();
     }
 
+    void RuntimeComponent::CreateFromGraphData(const GraphData* graphData, const VariableData* variableData)
+    {
+        m_runtimeData.m_graphData = graphData ? *graphData : GraphData();
+        m_runtimeData.m_variableData = variableData ? *variableData : VariableData();
+    }
+
     void RuntimeComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         // TODO: deleting this potentially helps with a rare crash when "live editing"
         DeactivateGraph();
+        m_createdAsset = false;
         OnAssetReady(asset);
     }
 
-    void RuntimeComponent::SetRuntimeAsset(const AZ::Data::Asset<RuntimeAsset>& runtimeAsset)
+    void RuntimeComponent::SetRuntimeAsset(const AZ::Data::Asset<AZ::Data::AssetData>& runtimeAsset)
     {   
         AZ::Entity* entity = GetEntity();
         if (entity && entity->GetState() == AZ::Entity::ES_ACTIVE)
@@ -479,7 +508,7 @@ namespace ScriptCanvas
             if (runtimeAsset.GetId().IsValid())
             {
                 auto& assetManager = AZ::Data::AssetManager::Instance();
-                m_runtimeAsset = assetManager.GetAsset(runtimeAsset.GetId(), azrtti_typeid<RuntimeAsset>(), true, nullptr, false);
+                m_runtimeAsset = assetManager.GetAsset(runtimeAsset.GetId(), m_runtimeAsset.GetType().IsNull() ? azrtti_typeid<RuntimeAsset>() : m_runtimeAsset.GetType(), true, nullptr, false);
                 AZ::Data::AssetBus::Handler::BusConnect(m_runtimeAsset.GetId());
             }
         }
@@ -652,7 +681,7 @@ namespace ScriptCanvas
         m_variableOverrides = overrideData;
     }
 
-    void RuntimeComponent::ApplyVariableOverrides()
+    void RuntimeComponent::InitializeVariableState()
     {
         for (auto& graphVariable : m_runtimeData.m_variableData.GetVariables())
         {
@@ -662,8 +691,41 @@ namespace ScriptCanvas
             {
                 graphVariable.second = (*graphVariableOverride);
             }
+            else
+            {
+                if (!graphVariable.second.IsInScope(ScriptCanvas::VariableFlags::Scope::InOut))
+                {
+                    // In the case of activation/deactivation we want to store our initial state to return to it.
+                    m_internalVariables.AddVariable(graphVariable.second.GetVariableName(), graphVariable.second);
+                }
+            }
 
             graphVariable.second.SetOwningScriptCanvasId(m_scriptCanvasId);
+        }
+    }
+
+    void RuntimeComponent::ResetState()
+    {
+        for (auto& graphVariable : m_variableOverrides.GetVariables())
+        {
+            GraphVariable* variable = m_runtimeData.m_variableData.FindVariable(graphVariable.first);
+
+            if (variable)
+            {
+                (*variable) = graphVariable.second;
+                variable->SetOwningScriptCanvasId(m_scriptCanvasId);
+            }
+        }
+
+        for (auto& graphVariable : m_internalVariables.GetVariables())
+        {
+            GraphVariable* variable = m_runtimeData.m_variableData.FindVariable(graphVariable.first);
+
+            if (variable)
+            {
+                (*variable) = graphVariable.second;
+                variable->SetOwningScriptCanvasId(m_scriptCanvasId);
+            }
         }
     }
 
@@ -703,14 +765,19 @@ namespace ScriptCanvas
         return foundIt != variableMap.end() ? AZStd::string_view(foundIt->second.GetVariableName()) : "";
     }
 
+    bool RuntimeComponent::IsGraphObserved() const
+    {
+        return m_isObserved;
+    }
+
     void RuntimeComponent::SetIsGraphObserved(bool observed)
     {
         m_isObserved = observed;
     }
 
-    bool RuntimeComponent::IsGraphObserved() const
+    AZ::Data::AssetType RuntimeComponent::GetAssetType() const
     {
-        return m_isObserved;
+        return m_runtimeAsset.GetType().IsNull() ? azrtti_typeid<RuntimeAsset>() : m_runtimeAsset.GetType();
     }
 
     void RuntimeComponent::OnVariableValueChanged()

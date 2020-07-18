@@ -24,8 +24,6 @@
 #include "StateGraphNode.h"
 #include "ParameterWindow.h"
 #include "GraphNodeFactory.h"
-#include "RecorderWidget.h"
-#include <MysticQt/Source/DockHeader.h>
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QTreeWidgetItem>
@@ -85,6 +83,8 @@
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/FileIO.h>
+
+#include <AzQtComponents/Components/FancyDocking.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -189,14 +189,12 @@ namespace EMStudio
         mNavigateWidget                 = nullptr;
         mAttributeDock                  = nullptr;
         mNodeGroupDock                  = nullptr;
-        mRecorderWidget                 = nullptr;
         mPaletteWidget                  = nullptr;
         mNodePaletteDock                = nullptr;
         mParameterDock                  = nullptr;
         mParameterWindow                = nullptr;
         mNodeGroupWindow                = nullptr;
         mAttributesWindow               = nullptr;
-        mRecorderDock                   = nullptr;
         mActiveAnimGraph                = nullptr;
         m_animGraphObjectFactory        = nullptr;
         mGraphNodeFactory               = nullptr;
@@ -267,13 +265,6 @@ namespace EMStudio
             delete mNodePaletteDock;
         }
 
-        // remove the recorder dock
-        if (mRecorderDock)
-        {
-            EMStudio::GetMainWindow()->removeDockWidget(mRecorderDock);
-            delete mRecorderDock;
-        }
-
         // remove the game controller dock
     #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (mGameControllerDock)
@@ -321,7 +312,7 @@ namespace EMStudio
     // get the creator name
     const char* AnimGraphPlugin::GetCreatorName() const
     {
-        return "MysticGD";
+        return "Amazon";
     }
 
 
@@ -349,41 +340,95 @@ namespace EMStudio
             mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW] = parent->addAction("Game Controller Window");
             mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW]->setCheckable(true);
 #endif
-            mDockWindowActions[WINDOWS_RECORDER] = parent->addAction("Recorder");
-            mDockWindowActions[WINDOWS_RECORDER]->setCheckable(true);
-
-            connect(mDockWindowActions[WINDOWS_PARAMETERWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
-            connect(mDockWindowActions[WINDOWS_ATTRIBUTEWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
-            connect(mDockWindowActions[WINDOWS_NODEGROUPWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
-            connect(mDockWindowActions[WINDOWS_PALETTEWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
+            connect(mDockWindowActions[WINDOWS_PARAMETERWINDOW], &QAction::triggered, this, [this](bool checked) {
+                UpdateWindowVisibility(WINDOWS_PARAMETERWINDOW, checked);
+            });
+            connect(mDockWindowActions[WINDOWS_ATTRIBUTEWINDOW], &QAction::triggered, this, [this](bool checked) {
+                UpdateWindowVisibility(WINDOWS_ATTRIBUTEWINDOW, checked);
+            });
+            connect(mDockWindowActions[WINDOWS_NODEGROUPWINDOW], &QAction::triggered, this, [this](bool checked) {
+                UpdateWindowVisibility(WINDOWS_NODEGROUPWINDOW, checked);
+            });
+            connect(mDockWindowActions[WINDOWS_PALETTEWINDOW], &QAction::triggered, this, [this](bool checked) {
+                UpdateWindowVisibility(WINDOWS_PALETTEWINDOW, checked);
+            });
 #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
-            connect(mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
+            connect(mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW], &QAction::triggered, this, [this](bool checked) {
+                UpdateWindowVisibility(WINDOWS_GAMECONTROLLERWINDOW, checked);
+            });
 #endif
-            connect(mDockWindowActions[WINDOWS_RECORDER], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
 
-            SetOptionFlag(WINDOWS_PARAMETERWINDOW, GetParameterDock()->isVisible());
-            SetOptionFlag(WINDOWS_ATTRIBUTEWINDOW, GetAttributeDock()->isVisible());
-            SetOptionFlag(WINDOWS_PALETTEWINDOW, GetNodePaletteDock()->isVisible());
-            SetOptionFlag(WINDOWS_NODEGROUPWINDOW, GetNodeGroupDock()->isVisible());
-#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
-            SetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW, GetGameControllerDock()->isVisible());
-#endif
-            SetOptionFlag(WINDOWS_RECORDER, GetRecorderDock()->isVisible());
+            // Keep our action checked state in sync by updating whenever we are about to show the menu,
+            // since the user could've switched the active tab/closed tabs
+            UpdateWindowActionsCheckState();
+            QObject::connect(parent, &QMenu::aboutToShow, this, &AnimGraphPlugin::UpdateWindowActionsCheckState);
         }
     }
 
-    void AnimGraphPlugin::UpdateWindowVisibility()
+    void AnimGraphPlugin::UpdateWindowVisibility(EDockWindowOptionFlag option, bool checked)
     {
-        GetParameterDock()->setVisible(GetOptionFlag(WINDOWS_PARAMETERWINDOW));
-        GetAttributeDock()->setVisible(GetOptionFlag(WINDOWS_ATTRIBUTEWINDOW));
-        GetNodeGroupDock()->setVisible(GetOptionFlag(WINDOWS_NODEGROUPWINDOW));
-        GetNodePaletteDock()->setVisible(GetOptionFlag(WINDOWS_PALETTEWINDOW));
-
+        QDockWidget* dockWidget = nullptr;
+        switch (option)
+        {
+        case WINDOWS_PARAMETERWINDOW:
+            dockWidget = GetParameterDock();
+            break;
+        case WINDOWS_ATTRIBUTEWINDOW:
+            dockWidget = GetAttributeDock();
+            break;
+        case WINDOWS_NODEGROUPWINDOW:
+            dockWidget = GetNodeGroupDock();
+            break;
+        case WINDOWS_PALETTEWINDOW:
+            dockWidget = GetNodePaletteDock();
+            break;
 #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
-        GetGameControllerDock()->setVisible(GetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW));
+        case WINDOWS_GAMECONTROLLERWINDOW:
+            dockWidget = GetGameControllerDock();
+            break;
 #endif
+        }
 
-        GetRecorderDock()->setVisible(GetOptionFlag(WINDOWS_RECORDER));
+        if (dockWidget)
+        {
+            if (checked)
+            {
+                // If the dock widgets wasn't visible and it wasn't tabbed, then it had been closed
+                // so we need to restore its layout state
+                if (!AzQtComponents::DockTabWidget::IsTabbed(dockWidget))
+                {
+                    GetMainWindow()->GetFancyDockingManager()->restoreDockWidget(dockWidget);
+                }
+
+                // If it's in a tab (or was restored to being in a tab), then set it as the new active tab
+                AzQtComponents::DockTabWidget* tabWidget = AzQtComponents::DockTabWidget::ParentTabWidget(dockWidget);
+                if (tabWidget)
+                {
+                    int index = tabWidget->indexOf(dockWidget);
+                    tabWidget->setCurrentIndex(index);
+                }
+                // Otherwise just show the widget
+                else
+                {
+                    dockWidget->show();
+                }
+            }
+            else
+            {
+                dockWidget->close();
+            }
+        }
+    }
+
+    void AnimGraphPlugin::UpdateWindowActionsCheckState()
+    {
+        SetOptionFlag(WINDOWS_PARAMETERWINDOW, GetParameterDock()->isVisible());
+        SetOptionFlag(WINDOWS_ATTRIBUTEWINDOW, GetAttributeDock()->isVisible());
+        SetOptionFlag(WINDOWS_PALETTEWINDOW, GetNodePaletteDock()->isVisible());
+        SetOptionFlag(WINDOWS_NODEGROUPWINDOW, GetNodeGroupDock()->isVisible());
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
+        SetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW, GetGameControllerDock()->isVisible());
+#endif
     }
 
     void AnimGraphPlugin::SetOptionFlag(EDockWindowOptionFlag option, bool isEnabled)
@@ -507,8 +552,7 @@ namespace EMStudio
 
         // create the corresponding widget that holds the menu and the toolbar
         mViewWidget = new BlendGraphViewWidget(this, mDock);
-        mDock->SetContents(mViewWidget);
-        //mDock->SetContents( mGraphWidget );
+        mDock->setWidget(mViewWidget);
         //mDock->setWidget( mGraphWidget ); // old: without menu and toolbar
 
         // create the graph widget
@@ -521,9 +565,7 @@ namespace EMStudio
         QMainWindow* mainWindow = GetMainWindow();
 
         // create the attribute dock window
-        mAttributeDock = new MysticQt::DockWidget(mainWindow, "Attributes");
-        MysticQt::DockHeader* dockHeader = new MysticQt::DockHeader(mAttributeDock);
-        mAttributeDock->setTitleBarWidget(dockHeader);
+        mAttributeDock = new AzQtComponents::StyledDockWidget("Attributes", mainWindow);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mAttributeDock);
         QDockWidget::DockWidgetFeatures features = QDockWidget::NoDockWidgetFeatures;
         //features |= QDockWidget::DockWidgetClosable;
@@ -532,13 +574,10 @@ namespace EMStudio
         mAttributeDock->setFeatures(features);
         mAttributeDock->setObjectName("AnimGraphPlugin::mAttributeDock");
         mAttributesWindow = new AttributesWindow(this);
-        mAttributeDock->SetContents(mAttributesWindow);
-        dockHeader->UpdateIcons();
+        mAttributeDock->setWidget(mAttributesWindow);
 
         // create the node group dock window
-        mNodeGroupDock = new MysticQt::DockWidget(mainWindow, "Node Groups");
-        dockHeader = new MysticQt::DockHeader(mNodeGroupDock);
-        mNodeGroupDock->setTitleBarWidget(dockHeader);
+        mNodeGroupDock = new AzQtComponents::StyledDockWidget("Node Groups", mainWindow);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mNodeGroupDock);
         features = QDockWidget::NoDockWidgetFeatures;
         //features |= QDockWidget::DockWidgetClosable;
@@ -547,13 +586,10 @@ namespace EMStudio
         mNodeGroupDock->setFeatures(features);
         mNodeGroupDock->setObjectName("AnimGraphPlugin::mNodeGroupDock");
         mNodeGroupWindow = new NodeGroupWindow(this);
-        mNodeGroupDock->SetContents(mNodeGroupWindow);
-        dockHeader->UpdateIcons();
+        mNodeGroupDock->setWidget(mNodeGroupWindow);
 
         // create the node palette dock
-        mNodePaletteDock = new MysticQt::DockWidget(mainWindow, "Anim Graph Palette");
-        dockHeader = new MysticQt::DockHeader(mNodePaletteDock);
-        mNodePaletteDock->setTitleBarWidget(dockHeader);
+        mNodePaletteDock = new AzQtComponents::StyledDockWidget("Anim Graph Palette", mainWindow);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mNodePaletteDock);
         features = QDockWidget::NoDockWidgetFeatures;
         //features |= QDockWidget::DockWidgetClosable;
@@ -562,14 +598,11 @@ namespace EMStudio
         mNodePaletteDock->setFeatures(features);
         mNodePaletteDock->setObjectName("AnimGraphPlugin::mPaletteDock");
         mPaletteWidget = new NodePaletteWidget(this);
-        mNodePaletteDock->SetContents(mPaletteWidget);
-        dockHeader->UpdateIcons();
+        mNodePaletteDock->setWidget(mPaletteWidget);
 
         // create the parameter dock
         QScrollArea* scrollArea = new QScrollArea();
-        mParameterDock = new MysticQt::DockWidget(mainWindow, "Parameters");
-        dockHeader = new MysticQt::DockHeader(mParameterDock);
-        mParameterDock->setTitleBarWidget(dockHeader);
+        mParameterDock = new AzQtComponents::StyledDockWidget("Parameters", mainWindow);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mParameterDock);
         features = QDockWidget::NoDockWidgetFeatures;
         //features |= QDockWidget::DockWidgetClosable;
@@ -578,29 +611,12 @@ namespace EMStudio
         mParameterDock->setFeatures(features);
         mParameterDock->setObjectName("AnimGraphPlugin::mParameterDock");
         mParameterWindow = new ParameterWindow(this);
-        mParameterDock->SetContents(scrollArea);
+        mParameterDock->setWidget(scrollArea);
         scrollArea->setWidget(mParameterWindow);
         scrollArea->setWidgetResizable(true);
-        dockHeader->UpdateIcons();
 
         // Create Navigation Widget (embedded into BlendGraphViewWidget)
         mNavigateWidget = new NavigateWidget(this);
-
-        // create the recorder dock
-        mRecorderDock = new MysticQt::DockWidget(mainWindow, "Recorder");
-        dockHeader = new MysticQt::DockHeader(mRecorderDock);
-        mRecorderDock->setTitleBarWidget(dockHeader);
-        mainWindow->addDockWidget(Qt::RightDockWidgetArea, mRecorderDock);
-        features = QDockWidget::NoDockWidgetFeatures;
-        //features |= QDockWidget::DockWidgetClosable;
-        features |= QDockWidget::DockWidgetFloatable;
-        features |= QDockWidget::DockWidgetMovable;
-        mRecorderDock->setFeatures(features);
-        mRecorderDock->setObjectName("AnimGraphPlugin::mRecorderDock");
-        // create the recorder
-        mRecorderWidget = new RecorderWidget(this);
-        mRecorderDock->SetContents(mRecorderWidget);
-        dockHeader->UpdateIcons();
 
         // init the display flags
         mDisplayFlags = 0;
@@ -611,9 +627,7 @@ namespace EMStudio
 
     #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         // create the game controller dock
-        mGameControllerDock = new MysticQt::DockWidget(mainWindow, "Game Controller");
-        dockHeader = new MysticQt::DockHeader(mGameControllerDock);
-        mGameControllerDock->setTitleBarWidget(dockHeader);
+        mGameControllerDock = new AzQtComponents::StyledDockWidget("Game Controller", mainWindow);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mGameControllerDock);
         features = QDockWidget::NoDockWidgetFeatures;
         //features |= QDockWidget::DockWidgetClosable;
@@ -622,8 +636,7 @@ namespace EMStudio
         mGameControllerDock->setFeatures(features);
         mGameControllerDock->setObjectName("AnimGraphPlugin::mGameControllerDock");
         mGameControllerWindow = new GameControllerWindow(this);
-        mGameControllerDock->SetContents(mGameControllerWindow);
-        dockHeader->UpdateIcons();
+        mGameControllerDock->setWidget(mGameControllerWindow);
     #endif
 
         // load options
@@ -642,10 +655,9 @@ namespace EMStudio
         {
             connect(timeViewPlugin, &TimeViewPlugin::DoubleClickedRecorderNodeHistoryItem, this, &AnimGraphPlugin::OnDoubleClickedRecorderNodeHistoryItem);
             connect(timeViewPlugin, &TimeViewPlugin::ClickedRecorderNodeHistoryItem, this, &AnimGraphPlugin::OnClickedRecorderNodeHistoryItem);
+            // detect changes in the recorder
+            connect(timeViewPlugin, &TimeViewPlugin::RecorderStateChanged, mParameterWindow, &ParameterWindow::OnRecorderStateChanged);
         }
-
-        // detect changes in the recorder
-        connect(mRecorderWidget, &RecorderWidget::RecorderStateChanged, mParameterWindow, &ParameterWindow::OnRecorderStateChanged);
 
         EMotionFX::AnimGraph* firstSelectedAnimGraph = CommandSystem::GetCommandManager()->GetCurrentSelection().GetFirstAnimGraph();
         SetActiveAnimGraph(firstSelectedAnimGraph);
@@ -692,7 +704,6 @@ namespace EMStudio
         SetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW, GetGameControllerDock()->isVisible());
 #endif
         SetOptionFlag(WINDOWS_NODEGROUPWINDOW, GetNodeGroupDock()->isVisible());
-        SetOptionFlag(WINDOWS_RECORDER, GetRecorderDock()->isVisible());
     }
 
 

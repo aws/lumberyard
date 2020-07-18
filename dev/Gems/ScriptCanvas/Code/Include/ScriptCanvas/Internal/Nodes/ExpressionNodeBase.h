@@ -75,7 +75,7 @@ namespace ScriptCanvas
 
                 void OnSlotRemoved(const SlotId& slotId) override;
 
-                bool ValidateNode(ValidationResults& validationResults) override;
+                bool OnValidateNode(ValidationResults& validationResults) override;
                 ////
 
                 void ParseFormat(bool signalError = true);
@@ -121,13 +121,14 @@ namespace ScriptCanvas
                 ScriptCanvas_SerializePropertyWithDefaults(bool, m_isInError, false);
 
                 AZStd::unordered_map<SlotId, AZStd::string> m_slotToVariableMap;
+                AZStd::unordered_set<SlotId> m_dirtyInputs;
 
                 ExpressionEvaluation::ParsingError m_parseError;
 
                 TypedNodePropertyInterface<ScriptCanvas::Data::StringType> m_stringInterface;
                 bool m_parsingFormat = false;
 
-                bool m_parseOnSlotRemoval = true;
+                bool m_handlingExtension = false; 
             };
         }
     }

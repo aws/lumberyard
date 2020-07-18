@@ -203,20 +203,4 @@ namespace JsonSerializationTests
 
         AZStd::vector<BaseClass*> m_array;
     };
-
-    struct SharedPointer
-    {
-        AZ_RTTI(SharedPointer, "{D1CF165A-7C3C-4F31-8E7E-A64C794F6FC2}");
-
-        static const bool SupportsPartialDefaults = true;
-
-        virtual ~SharedPointer() = default;
-
-        bool Equals(const SharedPointer& rhs, bool fullReflection) const;
-        static void Reflect(AZStd::unique_ptr<AZ::SerializeContext>& context, bool fullReflection);
-        static InstanceWithSomeDefaults<SharedPointer> GetInstanceWithSomeDefaults();
-        static InstanceWithoutDefaults<SharedPointer> GetInstanceWithoutDefaults();
-
-        AZStd::shared_ptr<BaseClass> m_pointer;
-    };
 } // namespace JsonSerializationTests

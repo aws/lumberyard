@@ -40,12 +40,12 @@ public:
         return true;
     }
 
-    void ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
-    void WriteGUIValuesIntoProperty(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI, UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node) override;
-    bool ReadValuesIntoGUI(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI, const UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)  override;
+    void ConsumeAttribute(AzQtComponents::VectorInput* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
+    void WriteGUIValuesIntoProperty(size_t index, AzQtComponents::VectorInput* GUI, UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node) override;
+    bool ReadValuesIntoGUI(size_t index, AzQtComponents::VectorInput* GUI, const UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)  override;
 
     void GetLabels(UiTransform2dInterface::Anchors& anchors, AZStd::string* labelsOut);
-    void SetLabels(AzToolsFramework::PropertyVectorCtrl* ctrl,
+    void SetLabels(AzQtComponents::VectorInput* ctrl,
         UiTransform2dInterface::Anchors& anchors);
     AZ::EntityId GetParentEntityId(AzToolsFramework::InstanceDataNode* node, size_t index);
 

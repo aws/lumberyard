@@ -235,6 +235,7 @@ namespace PhysXCharacters
         }
 
         AzFramework::RagdollPhysicsRequestBus::Handler::BusConnect(GetEntityId());
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
 
         AzFramework::RagdollPhysicsNotificationBus::Event(GetEntityId(),
             &AzFramework::RagdollPhysicsNotifications::OnRagdollActivated);
@@ -242,6 +243,7 @@ namespace PhysXCharacters
 
     void RagdollComponent::Deactivate()
     {
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         AzFramework::RagdollPhysicsRequestBus::Handler::BusDisconnect();
         DisableSimulation();
         AzFramework::RagdollPhysicsNotificationBus::Event(GetEntityId(),
@@ -291,6 +293,44 @@ namespace PhysXCharacters
     Physics::RagdollNode* RagdollComponent::GetNode(size_t nodeIndex) const
     {
         return m_ragdoll->GetNode(nodeIndex);
+    }
+
+    void RagdollComponent::EnablePhysics()
+    {
+        AZ_Error("Ragdoll", false, "Ragdoll component doesn't support manual physics activation/deactivation through this interface");
+    }
+
+    void RagdollComponent::DisablePhysics()
+    {
+        AZ_Error("Ragdoll", false, "Ragdoll component doesn't support manual physics activation/deactivation through this interface");
+    }
+
+    bool RagdollComponent::IsPhysicsEnabled() const
+    {
+        return m_ragdoll && m_ragdoll->IsSimulated();
+    }
+
+    AZ::Aabb RagdollComponent::GetAabb() const
+    {
+        if (m_ragdoll)
+        {
+            return m_ragdoll->GetAabb();
+        }
+        return AZ::Aabb::CreateNull();
+    }
+
+    Physics::WorldBody* RagdollComponent::GetWorldBody()
+    {
+        return m_ragdoll.get();
+    }
+
+    Physics::RayCastHit RagdollComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        if (m_ragdoll)
+        {
+            return m_ragdoll->RayCast(request);
+        }
+        return Physics::RayCastHit();
     }
 
     void RagdollComponent::OnRagdollConfigurationReady()

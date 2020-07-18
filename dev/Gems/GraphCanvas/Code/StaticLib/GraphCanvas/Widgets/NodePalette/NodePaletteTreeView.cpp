@@ -35,7 +35,8 @@ namespace GraphCanvas
         setDragDropMode(QAbstractItemView::DragDropMode::DragOnly);
         setMouseTracking(true);
 
-        QObject::connect(this, &QTreeView::clicked, this, &NodePaletteTreeView::OnClicked);
+        QObject::connect(this, &AzToolsFramework::QTreeViewWithStateSaving::clicked, this, &NodePaletteTreeView::OnClicked);
+        QObject::connect(this, &AzToolsFramework::QTreeViewWithStateSaving::doubleClicked, this, &NodePaletteTreeView::OnDoubleClicked);
 
         QObject::connect(this,
             &AzToolsFramework::QTreeViewWithStateSaving::entered,
@@ -58,8 +59,7 @@ namespace GraphCanvas
 
         for (const QModelIndex& selectedIndex : selected.indexes())
         {
-            // IMPORTANT: mapToSource() is NECESSARY. Otherwise the internalPointer
-            // in the index is relative to the proxy model, NOT the source model.
+            // If we have a proxy model, we need to remap our index from that to get to the correct index.
             QModelIndex sourceIndex = selectedIndex;
 
             if (lookupModel)
@@ -121,8 +121,7 @@ namespace GraphCanvas
         
         if (index.isValid())
         {
-            // IMPORTANT: mapToSource() is NECESSARY. Otherwise the internalPointer
-            // in the index is relative to the proxy model, NOT the source model.
+            // If we have a proxy model, we need to remap our index from that to get to the correct index.
             QModelIndex sourceIndex = index;
 
             const NodePaletteSortFilterProxyModel* proxyModel = qobject_cast<const NodePaletteSortFilterProxyModel*>(sourceIndex.model());
@@ -142,12 +141,14 @@ namespace GraphCanvas
 
                 treeItem->SetHovered(true);
                 m_lastItem = treeItem;
+                m_lastIndex = index;
             }
         }
         else if (m_lastItem)
         {
             m_lastItem->SetHovered(false);
             m_lastItem = nullptr;
+            m_lastIndex = QModelIndex();
         }
 
         AzToolsFramework::QTreeViewWithStateSaving::mouseMoveEvent(ev);
@@ -166,6 +167,7 @@ namespace GraphCanvas
         {
             m_lastItem->SetHovered(false);
             m_lastItem = nullptr;
+            m_lastIndex = QModelIndex();
         }
     }
 
@@ -187,6 +189,44 @@ namespace GraphCanvas
         if (treeItem)
         {
             treeItem->SignalClicked(sourceIndex.column());
+        }
+    }
+
+    void NodePaletteTreeView::OnDoubleClicked(const QModelIndex& modelIndex)
+    {
+        // IMPORTANT: mapToSource() is NECESSARY. Otherwise the internalPointer
+        // in the index is relative to the proxy model, NOT the source model.
+        QModelIndex sourceIndex = modelIndex;
+
+        const NodePaletteSortFilterProxyModel* proxyModel = qobject_cast<const NodePaletteSortFilterProxyModel*>(sourceIndex.model());
+
+        if (proxyModel)
+        {
+            sourceIndex = proxyModel->mapToSource(sourceIndex);
+        }
+
+        GraphCanvas::NodePaletteTreeItem* treeItem = static_cast<GraphCanvas::NodePaletteTreeItem*>(sourceIndex.internalPointer());
+
+        if (treeItem)
+        {
+            if (!treeItem->SignalDoubleClicked(sourceIndex.column()))
+            {
+                Q_EMIT OnTreeItemDoubleClicked(treeItem);
+            }
+        }
+    }
+
+    void NodePaletteTreeView::rowsAboutToBeRemoved(const QModelIndex& parentIndex, int first, int last)
+    {        
+        clearSelection();
+
+        if (m_lastIndex.parent() == parentIndex)
+        {
+            if (m_lastIndex.row() >= first && m_lastIndex.row() <= last)
+            {
+                m_lastItem = nullptr;
+                m_lastIndex = QModelIndex();
+            }
         }
     }
 

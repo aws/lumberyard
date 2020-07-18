@@ -579,7 +579,8 @@ namespace UnitTest
         SelectEntities(selectedEntities);
 
         // pin entity
-        m_testEntityPropertyEditor->SetOverrideEntityIds(selectedEntities);
+        AzToolsFramework::EntityIdSet selectedSet(selectedEntities.begin(), selectedEntities.end());
+        m_testEntityPropertyEditor->SetOverrideEntityIds(selectedSet);
 
         // deselect entity
         SelectEntities(AzToolsFramework::EntityIdList{});

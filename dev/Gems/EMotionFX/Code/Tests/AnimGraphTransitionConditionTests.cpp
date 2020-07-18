@@ -121,8 +121,7 @@ namespace EMotionFX
             AddParameter<TagParameter>("TagParam1", false);
             AddParameter<TagParameter>("TagParam2", false);
 
-            // Create the appropriate condition type from this test's
-            // parameters
+            // Create the appropriate condition type from this test's parameters
             ConditionType* condition = aznew ConditionType();
             m_transition->AddCondition(condition);
             condition->SetAnimGraph(m_animGraph.get());
@@ -338,7 +337,7 @@ namespace EMotionFX
             AZ_Assert(node, "There is no node named 'testSkeletalMotion0'");
 
             changeFunc(node);
-            node->OnUpdateUniqueData(animGraphInstance);
+            node->InvalidateUniqueData(animGraphInstance);
         }
     }
 

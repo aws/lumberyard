@@ -1,0 +1,19 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="WaterStreamMAT" MtlFlags="557184" Shader="Illum" GenMask="10000020000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.12477184,0.12477184,0.12477184,1" Specular="0.49693301,0.49693301,0.49693301,1" Opacity="0.28999999" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Heightmap" File="textures/rivers/am_rockground_displ.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
+    </Texture>
+    <Texture Map="Smoothness" File="objects/rocks/am_geode_01_ddna.dds"/>
+    <Texture Map="Environment" File="textures/cubemaps/caveriverreflection_cm.dds" TexType="3"/>
+    <Texture Map="Bumpmap" File="objects/rocks/am_geode_01_ddna.dds"/>
+    <Texture Map="Diffuse" File="textures/effects/fx_waterstream_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileV="1.5" TexMod_VOscillatorType="2" TexMod_VOscillatorRate="0.19" TexMod_VOscillatorAmplitude="-1"/>
+    </Texture>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

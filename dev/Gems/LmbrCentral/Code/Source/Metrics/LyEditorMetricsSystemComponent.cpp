@@ -809,7 +809,7 @@ namespace LyEditorMetrics
 
     void LyEditorMetricsSystemComponent::SendSliceInstantiatedMetricsEvent(const char* eventName, const AZ::Crc32& sliceIdentifier)
     {
-        AZStd::string identifier = AZStd::string::format("%u", sliceIdentifier);
+        AZStd::string identifier = AZStd::string::format("%u", static_cast<AZ::u32>(sliceIdentifier));
         LyMetrics::LyScopedMetricsEvent entityMetricsEvent(eventName,
             {
                 // Slice identifier

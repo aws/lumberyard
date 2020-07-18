@@ -49,5 +49,16 @@ namespace GraphCanvas
         m_alignRight->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Right));
 
         contextMenu->AddMenuAction(m_alignRight);
+
+        m_editorMenu = contextMenu;
+    }
+
+    void AlignmentActionsMenuGroup::SetEnabled(bool enabled)
+    {
+        if (m_editorMenu)
+        {
+            QMenu* menu = m_editorMenu->FindSubMenu(m_alignRight->GetSubMenuPath());
+            menu->setEnabled(enabled);
+        }
     }
 }

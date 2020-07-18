@@ -91,6 +91,8 @@ namespace ScriptCanvasEditor
         bool m_isCapturingData;
         bool m_ignoreRegistrations;
 
+        AZStd::recursive_mutex m_notificationMutex;
+
         ScriptCanvas::Debugger::Logger m_logger;
         AZStd::unordered_multimap<AZ::NamedEntityId, ScriptCanvas::GraphIdentifier> m_staticRegistrations;
     };

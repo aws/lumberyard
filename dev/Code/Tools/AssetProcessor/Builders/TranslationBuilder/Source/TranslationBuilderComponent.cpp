@@ -49,6 +49,7 @@ namespace TranslationBuilder
         // since we want to register our builder, we do that here:
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Qt Translation File Builder";
+        builderDescriptor.m_version = 1;
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.ts", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = TranslationBuilderWorker::GetUUID();
         builderDescriptor.m_createJobFunction = AZStd::bind(&TranslationBuilderWorker::CreateJobs, &m_builderWorker, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -199,6 +200,7 @@ namespace TranslationBuilder
                         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
 
                         AssetBuilderSDK::JobProduct jobProduct(fileName);
+                        jobProduct.m_dependenciesHandled = true; // This builder has no product dependencies
                         response.m_outputProducts.push_back(jobProduct);
                     }
                     else

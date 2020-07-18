@@ -349,6 +349,11 @@ namespace AssetProcessor
         // Checks whether or not a file can be skipped for processing (ie, file content hasn't changed, builders haven't been added/removed, builders for the file haven't changed)
         bool CanSkipProcessingFile(const AssetFileInfo &fileInfo);
 
+        // Expect our prebuilt cache to have timestamps in pacific with 2 second precision.  Fast scan can check for this if the TimeZoneOffset value is set
+        // And add an additional exception for files which appear to still be on "archive time" which is also offset by exactly the value we expect our time zone
+        // Differs from the local time where the archiving took place
+        static bool CheckArchiveTimeZoneOffset(QDateTime fileTimeStamp, AZ::u64 adjustedFileTimeMs, AZ::u64 databaseTimeMs, int allowedOffset, QString fileName);
+
         AZ::s64 GenerateNewJobRunKey();
         // Attempt to erase a log file.  Failing to erase it is not a critical problem, but should be logged.
         // returns true if there is no log file there after this operation completes

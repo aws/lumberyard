@@ -67,6 +67,9 @@ namespace PhysX
                 LinearDamping
             };
 
+            void Activate(AZ::EntityId entityId);
+            void Deactivate();
+
             AZ::Vector3 CalculateForce(const EntityParams& entity, const RegionParams& region) const;
             bool IsWorldSpaceForce() const;
             bool IsLocalSpaceForce() const;
@@ -74,6 +77,9 @@ namespace PhysX
             bool IsSplineFollowForce() const;
             bool IsSimpleDragForce() const;
             bool IsLinearDampingForce() const;
+
+            BaseForce& GetCurrentBaseForce();
+            const BaseForce& GetCurrentBaseForce() const;
 
             ForceType m_type = ForceType::WorldSpace;
             ForceWorldSpace m_forceWorldSpace;
@@ -96,6 +102,5 @@ namespace PhysX
         bool m_visibleInEditor = true; ///< Visible in the editor viewport even if force region entity is unselected.
         bool m_debugForces = false; ///< Draw debug lines (arrows) for forces in game.
         AZStd::vector<EditorForceProxy> m_forces; ///< Forces (editor version) in force region.
-        ForceRegion m_forceRegion; ///< Internal force region representation in preparation for building game-time component. Populated with forces and handed over to game-time component on BuildGameEntity.
     };
 }

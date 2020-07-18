@@ -19,6 +19,7 @@
 #include "UiAnimViewSequence.h"
 #include "UiAnimViewTrack.h"
 #include "UiAnimViewUndo.h"
+#include "UiAVTrackEventKeyUIControls.h"
 
 #include <ISplines.h>
 #include <QVBoxLayout>
@@ -76,43 +77,22 @@ CUiAnimViewKeyPropertiesDlg::CUiAnimViewKeyPropertiesDlg(QWidget* hParentWnd)
     l->setMargin(0);
     m_wndTrackProps = new CUiAnimViewTrackPropsDlg(this);
     l->addWidget(m_wndTrackProps);
-#if UI_ANIMATION_REMOVED    // UI_ANIMATION_REVISIT, do we want to support these props?
     m_wndProps = new ReflectedPropertyControl(this);
     m_wndProps->Setup();
     m_wndProps->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     l->addWidget(m_wndProps);
     m_wndProps->SetStoreUndoByItems(false);
-#endif
 
     setLayout(l);
 
     m_pVarBlock = new CVarBlock;
 
-#if UI_ANIMATION_REMOVED     // this ends up crashing - probably with DLL memory allocator issues
-    // maybe getting a pointer back from Editor and using it is local to DLL
-    // Add key UI classes
-    std::vector<IClassDesc*> classes;
-    GetIEditor()->GetClassFactory()->GetClassesBySystemID(ESYSTEM_CLASS_TRACKVIEW_KEYUI, classes);
-    for (IClassDesc* iclass : classes)
-    {
-        if (QObject* pObj = iclass->CreateQObject())
-        {
-            auto keyControl = qobject_cast<CUiAnimViewKeyUIControls*>(pObj);
-            Q_ASSERT(keyControl);
-            m_keyControls.push_back(keyControl);
-        }
-    }
-
-    // Sort key controls by descending priority
-    std::stable_sort(m_keyControls.begin(), m_keyControls.end(),
-        [](const _smart_ptr<CUiAnimViewKeyUIControls>& a, const _smart_ptr<CUiAnimViewKeyUIControls>& b)
-        {
-            return a->GetPriority() > b->GetPriority();
-        }
-        );
+    // Add trackEvent Key Ui
+    CUiAnimViewTrackEventKeyUIControls* trackEventControl = new CUiAnimViewTrackEventKeyUIControls;
+    AZ_Assert(trackEventControl, "Failed to create Track Event Control.");
+    m_keyControls.push_back(trackEventControl);
 
     CreateAllVars();
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -133,7 +113,6 @@ void CUiAnimViewKeyPropertiesDlg::CreateAllVars()
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewKeyPropertiesDlg::PopulateVariables()
 {
-#if UI_ANIMATION_REMOVED    // wndProps
     //SetVarBlock( m_pVarBlock,functor(*this,&CUiAnimViewKeyPropertiesDlg::OnVarChange) );
 
     // Must first clear any selection in properties window.
@@ -146,19 +125,16 @@ void CUiAnimViewKeyPropertiesDlg::PopulateVariables()
 
 
     ReloadValues();
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewKeyPropertiesDlg::PopulateVariables(ReflectedPropertyControl& propCtrl)
 {
-#if UI_ANIMATION_REMOVED
     propCtrl.ClearSelection();
     propCtrl.RemoveAllItems();
     propCtrl.AddVarBlock(m_pVarBlock);
 
     propCtrl.ReloadValues();
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -188,6 +164,15 @@ void CUiAnimViewKeyPropertiesDlg::OnKeysChanged(CUiAnimViewSequence* pSequence)
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSequence)
 {
+    if (nullptr == pSequence)
+    {
+        m_wndProps->ClearSelection();
+        m_pVarBlock->DeleteAllVariables();
+        m_wndProps->setEnabled(false);
+        m_wndTrackProps->setEnabled(false);
+        return;
+    }
+
     CUiAnimViewKeyBundle selectedKeys = pSequence->GetSelectedKeys();
 
     m_wndTrackProps->OnKeySelectionChange(selectedKeys);
@@ -208,16 +193,13 @@ void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSe
 
     if (bSelectChangedInSameTrack)
     {
-#if UI_ANIMATION_REMOVED
         m_wndProps->ClearSelection();
-#endif
     }
     else
     {
         m_pVarBlock->DeleteAllVariables();
     }
 
-#if UI_ANIMATION_REMOVED
     m_wndProps->setEnabled(false);
     bool bAssigned = false;
     if (selectedKeys.GetKeyCount() > 0 && selectedKeys.AreAllKeysOfSameType())
@@ -245,13 +227,9 @@ void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSe
                 break;
             }
         }
+    }
 
-        m_wndProps->setEnabled(true);
-    }
-    else
-    {
-        m_wndProps->setEnabled(false);
-    }
+    m_wndProps->setEnabled(bAssigned);
 
     if (bSelectChangedInSameTrack)
     {
@@ -261,7 +239,6 @@ void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSe
     {
         PopulateVariables();
     }
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -278,16 +255,15 @@ void CUiAnimViewKeyPropertiesDlg::AddVars(CUiAnimViewKeyUIControls* pUI)
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewKeyPropertiesDlg::ReloadValues()
 {
-#if UI_ANIMATION_REMOVED
     if (m_wndProps)
     {
         m_wndProps->ReloadValues();
     }
-#endif
 }
 
-void CUiAnimViewKeyPropertiesDlg::OnSequenceChanged()
+void CUiAnimViewKeyPropertiesDlg::OnSequenceChanged(CUiAnimViewSequence* sequence)
 {
+    OnKeySelectionChanged(sequence);
     m_wndTrackProps->OnSequenceChanged();
 }
 

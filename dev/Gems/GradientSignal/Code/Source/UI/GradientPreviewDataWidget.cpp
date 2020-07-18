@@ -136,7 +136,6 @@ namespace GradientSignal
         //generating a place holder entity
         m_observerEntityStub = AZ::Entity::MakeId();
         LmbrCentral::DependencyNotificationBus::Handler::BusConnect(m_observerEntityStub);
-        GradientPreviewRequestBus::Handler::BusConnect();
     }
 
     GradientPreviewDataWidget::~GradientPreviewDataWidget()
@@ -150,6 +149,10 @@ namespace GradientSignal
     void GradientPreviewDataWidget::SetGradientSampler(const GradientSampler& sampler)
     {
         m_sampler = sampler;
+
+        GradientPreviewRequestBus::Handler::BusDisconnect();
+        GradientPreviewRequestBus::Handler::BusConnect(sampler.m_ownerEntityId);
+
         Refresh();
     }
 
@@ -164,6 +167,10 @@ namespace GradientSignal
         m_sampler = {};
         m_sampler.m_gradientId = id;
         m_sampler.m_ownerEntityId = id;
+
+        GradientPreviewRequestBus::Handler::BusDisconnect();
+        GradientPreviewRequestBus::Handler::BusConnect(id);
+
         Refresh();
     }
 
@@ -199,14 +206,22 @@ namespace GradientSignal
         }
     }
 
-    void GradientPreviewDataWidget::CancelRefresh()
+    AZ::EntityId GradientPreviewDataWidget::CancelRefresh()
     {
+        bool cancelled = false;
         for (GradientPreviewWidget* previewer : { m_preview, m_previewWindow })
         {
             if (previewer)
             {
-                previewer->CancelRefresh();
+                cancelled |= previewer->OnCancelRefresh();
             }
         }
+
+        if (cancelled)
+        {
+            return m_sampler.m_gradientId;
+        }
+
+        return AZ::EntityId();
     }
 } //namespace GradientSignal

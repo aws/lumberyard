@@ -126,13 +126,20 @@ namespace LmbrCentral
         const AZ::Vector3 base = m_intersectionDataCache.m_baseCenterPoint;
         const AZ::Vector3 top = m_intersectionDataCache.m_baseCenterPoint + m_intersectionDataCache.m_axisVector;
         const AZ::Vector3 axis = m_intersectionDataCache.m_axisVector;
+        
+        if (m_cylinderShapeConfig.m_height <= 0.0f || m_cylinderShapeConfig.m_radius <= 0.0f)
+        {
+            return AZ::Aabb::CreateFromPoint(base);
+        }
+        else
+        {
+            const AZ::Vector3 e = m_intersectionDataCache.m_radius *
+                SqrtVector3(AZ::Vector3::CreateOne() - axis * axis / axis.Dot(axis));
 
-        const AZ::Vector3 e = m_intersectionDataCache.m_radius *
-            SqrtVector3(AZ::Vector3::CreateOne() - axis * axis / axis.Dot(axis));
-
-        return AZ::Aabb::CreateFromMinMax(
-            (base - e).GetMin(top - e),
-            (base + e).GetMax(top + e));
+            return AZ::Aabb::CreateFromMinMax(
+                (base - e).GetMin(top - e),
+                (base + e).GetMax(top + e));
+        }
     }
 
     void CylinderShape::GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds)
@@ -235,6 +242,12 @@ namespace LmbrCentral
     float CylinderShape::DistanceSquaredFromPoint(const AZ::Vector3& point)
     {
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_cylinderShapeConfig);
+
+        if (m_cylinderShapeConfig.m_height <= 0.0f || m_cylinderShapeConfig.m_radius <= 0.0f)
+        {
+            AZ::Vector3 diff = m_intersectionDataCache.m_baseCenterPoint - point;
+            return diff.GetLengthSq();
+        }
 
         return Distance::Point_CylinderSq(
             point, m_intersectionDataCache.m_baseCenterPoint,

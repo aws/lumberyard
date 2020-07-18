@@ -397,8 +397,8 @@ namespace AzToolsFramework
             const AZ::Vector3 worldLineHitPosition = manipulatorState.m_worldFromLocal * action.m_localLineHitPosition;
             debugDisplay.SetColor(AZ::Vector4(0.0f, 1.0f, 0.0f, 1.0f));
             debugDisplay.DrawBall(
-                worldLineHitPosition,
-                ManipulatorViewScaleMultiplier(worldLineHitPosition, cameraState) * g_defaultManipulatorSphereRadius);
+                worldLineHitPosition, ManipulatorViewScaleMultiplier(worldLineHitPosition, cameraState)
+                    * g_defaultManipulatorSphereRadius, false);
         }
     }
 
@@ -437,7 +437,7 @@ namespace AzToolsFramework
         const AZ::u32 prevFillMode = debugDisplay.SetFillMode(
             m_shouldCorrect ? /*e_FillModeWireframe =*/ 0x1 << 26 : /*e_FillModeSolid =*/ 0);
 
-        debugDisplay.DrawCone(coneBound.m_base, coneBound.m_axis, coneBound.m_radius, coneBound.m_height);
+        debugDisplay.DrawCone(coneBound.m_base, coneBound.m_axis, coneBound.m_radius, coneBound.m_height, false);
         debugDisplay.SetFillMode(prevFillMode);
 
         if (m_screenSizeFixed || m_boundDirty)
@@ -502,7 +502,7 @@ namespace AzToolsFramework
 
         debugDisplay.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
         debugDisplay.DrawSolidCylinder(cylinderBound.m_base + cylinderBound.m_axis * cylinderBound.m_height * 0.5f,
-            cylinderBound.m_axis, cylinderBound.m_radius, cylinderBound.m_height);
+            cylinderBound.m_axis, cylinderBound.m_radius, cylinderBound.m_height, false);
 
         if (m_screenSizeFixed || m_boundDirty)
         {
@@ -527,7 +527,7 @@ namespace AzToolsFramework
         }
 
         debugDisplay.SetColor(m_decideColorFn(mouseInteraction, manipulatorState.m_mouseOver, m_color).GetAsVector4());
-        debugDisplay.DrawBall(sphereBound.m_center, sphereBound.m_radius);
+        debugDisplay.DrawBall(sphereBound.m_center, sphereBound.m_radius, false);
 
         if (m_depthTest)
         {
@@ -613,16 +613,19 @@ namespace AzToolsFramework
                 manipulatorState.m_worldFromLocal, mouseInteraction.m_mousePick.m_rayOrigin,
                 mouseInteraction.m_mousePick.m_rayDirection, m_spline);
 
-            const AZ::Vector3 worldSplineHitPosition = manipulatorState.m_worldFromLocal * action.m_localSplineHitPosition;
-                debugDisplay.SetColor(m_color.GetAsVector4());
-                debugDisplay.DrawBall(worldSplineHitPosition,
-                    ManipulatorViewScaleMultiplier(worldSplineHitPosition, cameraState) * g_defaultManipulatorSphereRadius);
+            const AZ::Vector3 worldSplineHitPosition =
+                manipulatorState.m_worldFromLocal * action.m_localSplineHitPosition;
+
+            debugDisplay.SetColor(m_color.GetAsVector4());
+            debugDisplay.DrawBall(
+                worldSplineHitPosition, ManipulatorViewScaleMultiplier(worldSplineHitPosition, cameraState)
+                    * g_defaultManipulatorSphereRadius, false);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewQuad(
+    AZStd::unique_ptr<ManipulatorViewQuad> CreateManipulatorViewQuad(
         const PlanarManipulator& planarManipulator, const AZ::Color& axis1Color,
         const AZ::Color& axis2Color, const float size)
     {
@@ -632,19 +635,19 @@ namespace AzToolsFramework
         viewQuad->m_size = size;
         viewQuad->m_axis1Color = axis1Color;
         viewQuad->m_axis2Color = axis2Color;
-        return AZStd::move(viewQuad);
+        return viewQuad;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewQuadBillboard(
+    AZStd::unique_ptr<ManipulatorViewQuadBillboard> CreateManipulatorViewQuadBillboard(
         const AZ::Color& color, const float size)
     {
         AZStd::unique_ptr<ManipulatorViewQuadBillboard> viewQuad = AZStd::make_unique<ManipulatorViewQuadBillboard>();
         viewQuad->m_size = size;
         viewQuad->m_color = color;
-        return AZStd::move(viewQuad);
+        return viewQuad;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewLine(
+    AZStd::unique_ptr<ManipulatorViewLine> CreateManipulatorViewLine(
         const LinearManipulator& linearManipulator, const AZ::Color& color,
         const float length, const float width)
     {
@@ -653,10 +656,10 @@ namespace AzToolsFramework
         viewLine->m_length = length;
         viewLine->m_width = width;
         viewLine->m_color = color;
-        return AZStd::move(viewLine);
+        return viewLine;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewLineSelect(
+    AZStd::unique_ptr<ManipulatorViewLineSelect> CreateManipulatorViewLineSelect(
         const LineSegmentSelectionManipulator& lineSegmentManipulator,
         const AZ::Color& color, const float width)
     {
@@ -665,10 +668,10 @@ namespace AzToolsFramework
         viewLineSelect->m_localEnd = lineSegmentManipulator.GetEnd();
         viewLineSelect->m_width = width;
         viewLineSelect->m_color = color;
-        return AZStd::move(viewLineSelect);
+        return viewLineSelect;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCone(
+    AZStd::unique_ptr<ManipulatorViewCone> CreateManipulatorViewCone(
         const LinearManipulator& linearManipulator, const AZ::Color& color,
         const AZ::Vector3& offset, const float length, const float radius)
     {
@@ -678,10 +681,10 @@ namespace AzToolsFramework
         viewCone->m_radius = radius;
         viewCone->m_offset = offset;
         viewCone->m_color = color;
-        return AZStd::move(viewCone);
+        return viewCone;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewBox(
+    AZStd::unique_ptr<ManipulatorViewBox> CreateManipulatorViewBox(
         const AZ::Transform& transform, const AZ::Color& color,
         const AZ::Vector3& offset, const AZ::Vector3& halfExtents)
     {
@@ -690,10 +693,10 @@ namespace AzToolsFramework
         viewBox->m_halfExtents = halfExtents;
         viewBox->m_offset = offset;
         viewBox->m_color = color;
-        return AZStd::move(viewBox);
+        return viewBox;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCylinder(
+    AZStd::unique_ptr<ManipulatorViewCylinder> CreateManipulatorViewCylinder(
         const LinearManipulator& linearManipulator, const AZ::Color& color,
         const float length, const float radius)
     {
@@ -702,10 +705,10 @@ namespace AzToolsFramework
         viewCylinder->m_radius = radius;
         viewCylinder->m_length = length;
         viewCylinder->m_color = color;
-        return AZStd::move(viewCylinder);
+        return viewCylinder;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSphere(
+    AZStd::unique_ptr<ManipulatorViewSphere> CreateManipulatorViewSphere(
         const AZ::Color& color, const float radius, const DecideColorFn& decideColor, bool enableDepthTest)
     {
         AZStd::unique_ptr<ManipulatorViewSphere> viewSphere = AZStd::make_unique<ManipulatorViewSphere>();
@@ -713,10 +716,10 @@ namespace AzToolsFramework
         viewSphere->m_color = color;
         viewSphere->m_decideColorFn = decideColor;
         viewSphere->m_depthTest = enableDepthTest;
-        return AZStd::move(viewSphere);
+        return viewSphere;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCircle(
+    AZStd::unique_ptr<ManipulatorViewCircle> CreateManipulatorViewCircle(
         const AngularManipulator& angularManipulator, const AZ::Color& color,
         const float radius, const float width, const ManipulatorViewCircle::DrawCircleFunc drawFunc)
     {
@@ -726,10 +729,10 @@ namespace AzToolsFramework
         viewCircle->m_radius = radius;
         viewCircle->m_width = width;
         viewCircle->m_drawCircleFunc = drawFunc;
-        return AZStd::move(viewCircle);
+        return viewCircle;
     }
 
-    AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSplineSelect(
+    AZStd::unique_ptr<ManipulatorViewSplineSelect> CreateManipulatorViewSplineSelect(
         const SplineSelectionManipulator& splineManipulator,
         const AZ::Color& color, const float width)
     {
@@ -737,7 +740,7 @@ namespace AzToolsFramework
         viewSplineSelect->m_spline = splineManipulator.GetSpline();
         viewSplineSelect->m_color = color;
         viewSplineSelect->m_width = width;
-        return AZStd::move(viewSplineSelect);
+        return viewSplineSelect;
     }
 
     AZ::Vector3 CalculateViewDirection(

@@ -19,13 +19,15 @@
 
 #include <ui_TerrainModifyPanel.h>
 
+#include <AzQtComponents/Components/Widgets/Slider.h>
+#include <AzQtComponents/Components/Widgets/SliderCombo.h>
+
 #include <QPainter>
 
 static const char* BRUSH_TYPE_FLATTEN = "Flatten";
 static const char* BRUSH_TYPE_SMOOTH = "Smooth";
 static const char* BRUSH_TYPE_RISE_LOWER = "Rise/Lower";
 static const char* BRUSH_TYPE_PICK_HEIGHT = "Pick Height";
-static const double SLIDER_MULTIPLIER = 100.0;
 
 /////////////////////////////////////////////////////////////////////////////
 // CTerrainModifyPanel dialog
@@ -56,74 +58,48 @@ void CTerrainModifyPanel::OnInitDialog()
     connect(m_ui->riseLowerButton, &QAbstractButton::clicked, this, [=]() { OnBrushTypeCmd(tr(BRUSH_TYPE_RISE_LOWER)); });
     connect(m_ui->pickHeightButton, &QAbstractButton::clicked, this, [=]() { OnBrushTypeCmd(tr(BRUSH_TYPE_PICK_HEIGHT)); });
 
-    auto qSpinBoxValueChangedInt = static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged);
-    auto qSpinBoxValueChangedDouble = static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged);
-
-    // Sliders are subordinate to spinboxes
+    auto qSpinBoxValueChangedInt = static_cast<void(AzQtComponents::SliderCombo::*)()>(&AzQtComponents::SliderCombo::valueChanged);
+    auto qSpinBoxValueChangedDouble = static_cast<void(AzQtComponents::SliderDoubleCombo::*)()>(&AzQtComponents::SliderDoubleCombo::valueChanged);
 
     // Brush outside radius
-    connect(m_ui->brushOutsideRadiusSlider, &QSlider::valueChanged, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->brushOutsideRadiusSpin, i / SLIDER_MULTIPLIER);
-        });
-    connect(m_ui->brushOutsideRadiusSpin, qSpinBoxValueChangedDouble, this, [=](double d)
-        {
-            SyncWidgetValue(m_ui->brushOutsideRadiusSlider, d * SLIDER_MULTIPLIER);
-        });
+    connect(m_ui->brushOutsideRadiusSpin, qSpinBoxValueChangedDouble, this, [=]()
+    {
+        OnUpdateNumbers();
+    });
 
     connect(m_ui->syncRadiusCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnSyncRadius);
 
     // Brush inner radius
-    connect(m_ui->brushInsideRadiusSlider, &QSlider::valueChanged, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->brushInsideRadiusSpin, i / SLIDER_MULTIPLIER);
-        });
-    connect(m_ui->brushInsideRadiusSpin, qSpinBoxValueChangedDouble, this, [=](double d)
-        {
-            SyncWidgetValue(m_ui->brushInsideRadiusSlider, d * SLIDER_MULTIPLIER);
-        });
+    connect(m_ui->brushInsideRadiusSpin, qSpinBoxValueChangedDouble, this, [=]()
+    {
+        OnUpdateNumbers();
+    });
 
     // Brush hardness
-    connect(m_ui->brushHardnessSlider, &QSlider::valueChanged, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->brushHardnessSpin, i / SLIDER_MULTIPLIER);
-        });
-    connect(m_ui->brushHardnessSpin, qSpinBoxValueChangedDouble, this, [=](double d)
-        {
-            SyncWidgetValue(m_ui->brushHardnessSlider, d * SLIDER_MULTIPLIER);
-        });
+    connect(m_ui->brushHardnessSpin, qSpinBoxValueChangedDouble, this, [=]()
+    {
+        OnUpdateNumbers();
+    });
 
     // Brush "height"
-    connect(m_ui->brushHeightSlider, &QSlider::valueChanged, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->brushHeightSpin, i);
-        });
-    connect(m_ui->brushHeightSpin, qSpinBoxValueChangedDouble, this, [=](double d)
-        {
-            SyncWidgetValue(m_ui->brushHeightSlider, d);
-        });
+    connect(m_ui->brushHeightSpin, qSpinBoxValueChangedDouble, this, [=]()
+    {
+        OnUpdateNumbers();
+    });
 
     connect(m_ui->enableNoiseCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnBrushNoise);
 
     // Brush noise scale
-    connect(m_ui->noiseScaleSlider, &QSlider::valueChanged, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->noiseScaleSpin, i);
-        });
-    connect(m_ui->noiseScaleSpin, qSpinBoxValueChangedInt, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->noiseScaleSlider, i);
-        });
+    connect(m_ui->noiseScaleSpin, qSpinBoxValueChangedInt, this, [=]()
+    {
+        OnUpdateNumbers();
+    });
 
     // Brush noise frequency
-    connect(m_ui->noiseFreqSlider, &QSlider::valueChanged, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->noiseFreqSpin, i);
-        });
-    connect(m_ui->noiseFreqSpin, qSpinBoxValueChangedInt, this, [=](int i)
-        {
-            SyncWidgetValue(m_ui->noiseFreqSlider, i);
-        });
+    connect(m_ui->noiseFreqSpin, qSpinBoxValueChangedInt, this, [=]()
+    {
+        OnUpdateNumbers();
+    });
 
     connect(m_ui->repositionObjectsCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnRepositionObjects);
     connect(m_ui->repositionVegetationCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnRepositionVegetation);
@@ -200,7 +176,6 @@ void CTerrainModifyPanel::SetBrush(CTerrainBrush* pBrush, bool bSyncRadiuses)
     bool validHeightRange = !pBrush->bNoise && (!pBrush->heightRange.IsZeroFast());
 
     m_ui->brushHeightSpin->setRange(pBrush->heightRange.x, pBrush->heightRange.y);
-    m_ui->brushHeightSlider->setRange(pBrush->heightRange.x, pBrush->heightRange.y);
     if (pBrush->type == eBrushFlatten)
     {
         m_ui->flattenButton->setChecked(true);
@@ -241,8 +216,6 @@ void CTerrainModifyPanel::SetBrush(CTerrainBrush* pBrush, bool bSyncRadiuses)
 
     m_ui->noiseScaleSpin->setEnabled(pBrush->bNoise);
     m_ui->noiseFreqSpin->setEnabled(pBrush->bNoise);
-    m_ui->noiseScaleSlider->setEnabled(pBrush->bNoise);
-    m_ui->noiseFreqSlider->setEnabled(pBrush->bNoise);
 
     m_ui->enableNoiseCheck->setChecked(pBrush->bNoise);
     m_ui->repositionObjectsCheck->setChecked(pBrush->bRepositionObjects);
@@ -328,25 +301,21 @@ void CTerrainModifyPanel::OnRepositionVegetation()
 
 void CTerrainModifyPanel::EnableRadius(bool isEnable)
 {
-    m_ui->brushOutsideRadiusSlider->setEnabled(isEnable);
     m_ui->brushOutsideRadiusSpin->setEnabled(isEnable);
 }
 
 void CTerrainModifyPanel::EnableRadiusInner(bool isEnable)
 {
-    m_ui->brushInsideRadiusSlider->setEnabled(isEnable);
     m_ui->brushInsideRadiusSpin->setEnabled(isEnable);
 }
 
 void CTerrainModifyPanel::EnableHardness(bool isEnable)
 {
-    m_ui->brushHardnessSlider->setEnabled(isEnable);
     m_ui->brushHardnessSpin->setEnabled(isEnable);
 }
 
 void CTerrainModifyPanel::EnableHeight(bool isEnable)
 {
-    m_ui->brushHeightSlider->setEnabled(isEnable);
     m_ui->brushHeightSpin->setEnabled(isEnable);
 }
 

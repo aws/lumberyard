@@ -227,6 +227,8 @@ namespace GraphCanvas
             // Don't want to start nudging unless we actually have the focus
             if (width != originalWidth && m_lineEdit->hasFocus())
             {
+                NodeUIRequestBus::Event(GetNodeId(), &NodeUIRequests::AdjustSize);
+
                 if (!m_isNudging)
                 {
                     m_isNudging = true;
@@ -234,8 +236,6 @@ namespace GraphCanvas
                     AZStd::unordered_set< NodeId > fixedNodes = { GetNodeId() };
                     SceneRequestBus::Event(GetSceneId(), &SceneRequests::StartNudging, fixedNodes);
                 }
-
-                NodeUIRequestBus::Event(GetNodeId(), &NodeUIRequests::AdjustSize);
             }
         }
     }

@@ -17,7 +17,6 @@
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/Source/PlayBackInfo.h>
-#include <MysticQt/Source/LinkWidget.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <EMotionFX/Source/ActorInstance.h>

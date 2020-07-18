@@ -1,18 +1,33 @@
 {
     "platform": {
         "win_x64_vs2017": {
-            "importlibpath": ["${lib_paths}/vc141win64-cmake"],
+            "nvcloth_lib/importlibpath": ["${lib_paths}/vc141win64-cmake"],
             
-            "import_debug": [
+            "nvcloth_lib/import_debug": [
                 "${lib_names}DEBUG_x64.lib"
             ],
-            "import_profile": [
+            "nvcloth_lib/import_profile": [
                 "${lib_names}PROFILE_x64.lib"
             ],
-            "import_performance": [
+            "nvcloth_lib/import_performance": [
                 "${lib_names}_x64.lib"
             ],
-            "import_release": [
+            "nvcloth_lib/import_release": [
+                "${lib_names}_x64.lib"
+            ],
+            
+            "nvcloth_cuda_lib/importlibpath": ["${lib_paths}/vc141win64-cuda-cmake"],
+            
+            "nvcloth_cuda_lib/import_debug": [
+                "${lib_names}DEBUG_x64.lib"
+            ],
+            "nvcloth_cuda_lib/import_profile": [
+                "${lib_names}PROFILE_x64.lib"
+            ],
+            "nvcloth_cuda_lib/import_performance": [
+                "${lib_names}_x64.lib"
+            ],
+            "nvcloth_cuda_lib/import_release": [
                 "${lib_names}_x64.lib"
             ]
         },

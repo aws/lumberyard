@@ -13,6 +13,7 @@
 
 #include "EditorCommon.h"
 #include "CanvasHelpers.h"
+#include <AzQtComponents/Components/Style.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
@@ -28,11 +29,7 @@ public:
     PropertyContainerOverlay(PropertiesContainer* editor, QWidget* parent)
         : QWidget(parent)
         , m_editor(editor)
-        , m_edgeRadius(3)
-        , m_dropIndicatorOffset(7)
-        , m_dropIndicatorColor("#999999")
-        , m_dragIndicatorColor("#E57829")
-        , m_selectIndicatorColor("#E57829")
+        , m_dropIndicatorOffset(8)
     {
         setPalette(Qt::transparent);
         setWindowFlags(Qt::FramelessWindowHint);
@@ -44,6 +41,11 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override
     {
+        const int TopMargin = 1;
+        const int RightMargin = 2;
+        const int BottomMargin = 5;
+        const int LeftMargin = 2;
+
         QWidget::paintEvent(event);
 
         QPainter painter(this);
@@ -62,67 +64,54 @@ protected:
 
             QRect globalRect = m_editor->GetWidgetGlobalRect(componentEditor);
 
-            currRect = QRect(mapFromGlobal(globalRect.topLeft()), mapFromGlobal(globalRect.bottomRight()));
+            currRect = QRect(
+                QPoint(mapFromGlobal(globalRect.topLeft()) + QPoint(LeftMargin, TopMargin)),
+                QPoint(mapFromGlobal(globalRect.bottomRight()) - QPoint(RightMargin, BottomMargin))
+            );
+
             currRect.setWidth(currRect.width() - 1);
             currRect.setHeight(currRect.height() - 1);
 
             if (componentEditor->IsDragged())
             {
-                drawDragIndicator(painter, currRect);
+                QStyleOption opt;
+                opt.init(this);
+                opt.rect = currRect;
+                static_cast<AzQtComponents::Style*>(style())->drawDragIndicator(&opt, &painter, this);
                 drag = true;
             }
 
             if (componentEditor->IsDropTarget())
             {
-                drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.top() - m_dropIndicatorOffset);
-                drop = true;
-            }
+                QRect dropRect = currRect;
+                dropRect.setTop(currRect.top() - m_dropIndicatorOffset);
+                dropRect.setHeight(0);
 
-            if (componentEditor->IsSelected())
-            {
-                drawSelectIndicator(painter, currRect);
+                QStyleOption opt;
+                opt.init(this);
+                opt.rect = dropRect;
+                style()->drawPrimitive(QStyle::PE_IndicatorItemViewItemDrop, &opt, &painter, this);
+
+                drop = true;
             }
         }
 
         if (drag && !drop)
         {
-            drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.bottom() + m_dropIndicatorOffset);
+            QRect dropRect = currRect;
+            dropRect.setTop(currRect.top() - m_dropIndicatorOffset);
+            dropRect.setHeight(0);
+
+            QStyleOption opt;
+            opt.init(this);
+            opt.rect = dropRect;
+            style()->drawPrimitive(QStyle::PE_IndicatorItemViewItemDrop, &opt, &painter, this);
         }
     }
 
 private:
-    void drawDragIndicator(QPainter& painter, const QRect& currRect)
-    {
-        painter.save();
-        painter.setBrush(QBrush(m_dropIndicatorColor));
-        painter.drawRoundedRect(currRect, m_edgeRadius, m_edgeRadius);
-        painter.restore();
-    }
-
-    void drawDropIndicator(QPainter& painter, int x1, int x2, int y)
-    {
-        painter.save();
-        painter.setPen(QPen(m_dragIndicatorColor, 1));
-        painter.drawEllipse(QPoint(x1 + m_edgeRadius, y), m_edgeRadius, m_edgeRadius);
-        painter.drawLine(QPoint(x1 + m_edgeRadius * 2, y), QPoint(x2 - m_edgeRadius * 2, y));
-        painter.drawEllipse(QPoint(x2 - m_edgeRadius, y), m_edgeRadius, m_edgeRadius);
-        painter.restore();
-    }
-
-    void drawSelectIndicator(QPainter& painter, const QRect& currRect)
-    {
-        painter.save();
-        painter.setPen(QPen(m_selectIndicatorColor, 1));
-        painter.drawRoundedRect(currRect, m_edgeRadius, m_edgeRadius);
-        painter.restore();
-    }
-
     PropertiesContainer* m_editor;
-    int m_edgeRadius;
     int m_dropIndicatorOffset;
-    QColor m_dragIndicatorColor;
-    QColor m_dropIndicatorColor;
-    QColor m_selectIndicatorColor;
 };
 
 //-------------------------------------------------------------------------------

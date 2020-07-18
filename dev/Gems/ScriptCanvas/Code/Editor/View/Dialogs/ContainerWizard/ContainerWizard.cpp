@@ -214,6 +214,11 @@ namespace ScriptCanvasEditor
         return false;
     }
 
+    const AZStd::unordered_map<AZ::Crc32, AZ::TypeId>& ContainerWizard::GetFinalTypeMapping() const
+    {
+        return m_finalContainerTypeIds;
+    }
+
     void ContainerWizard::ReparseDisplay()
     {
         AZ::Crc32 workingCrc = AZ::Crc32(m_genericType.ToString<AZStd::string>().c_str());
@@ -337,19 +342,19 @@ namespace ScriptCanvasEditor
             m_validationAction = nullptr;
         }
 
-        bool validName = false;
+        ScriptCanvas::VariableValidationOutcome validName = AZ::Failure(ScriptCanvas::GraphVariableValidationErrorCode::Unknown);
 
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(validName, m_activeScriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, newName.toUtf8().data());
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(validName, m_activeScriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::IsNameValid, newName.toUtf8().data());
 
         if (!validName || newName.isEmpty())
         {
             m_validationAction = m_ui->variableName->addAction(m_invalidIcon, QLineEdit::TrailingPosition);
 
-            if (newName.isEmpty())
+            if (validName.GetError() == ScriptCanvas::GraphVariableValidationErrorCode::Invalid)
             {
-                m_validationAction->setToolTip("A Variable name cannot be empty.\nPlease specify a name for the variable.");
+                m_validationAction->setToolTip("A Variable name cannot be empty or over 200 characters.\nPlease specify a new name for the variable.");
             }
-            else
+            else if (validName.GetError() == ScriptCanvas::GraphVariableValidationErrorCode::Duplicate)
             {
                 m_validationAction->setToolTip("This name is already in use by\nanother variable");
             }

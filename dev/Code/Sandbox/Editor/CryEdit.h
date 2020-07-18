@@ -483,6 +483,9 @@ private:
     int RunPluginUnitTests(CEditCommandLineInfo& cmdInfo);
 #endif
 
+    //! Helper method to see if a Legacy Terrain Level component could potentially be added.
+    bool CanAddLegacyTerrainLevelComponent();
+
     //! Helper method that should be called to add the Legacy Terrain Level Component
     //! to the Level Entity when CreateLevel() is called with bUseTerrain set to true.
     bool AddLegacyTerrainLevelComponent();
@@ -520,6 +523,8 @@ private:
     bool m_bLevelLoadTestMode = false;
     //! Current file in preview mode.
     char m_sPreviewFile[_MAX_PATH];
+    //! True if "/runpythontest" was passed as a flag.
+    bool m_bRunPythonTestScript = false;
     //! True if "/runpython" was passed as a flag.
     bool m_bRunPythonScript = false;
     //! File to run on startup
@@ -582,6 +587,10 @@ private:
     CCryDocManager* m_pDocManager = nullptr;
 
 private:
+    struct PythonOutputHandler;
+    AZStd::shared_ptr<PythonOutputHandler> m_pythonOutputHandler;
+    friend struct PythonTestOutputHandler;
+
     void OnEditHide();
     void OnUpdateEditHide(QAction* action);
     void OnEditShowLastHidden();
@@ -774,7 +783,7 @@ public:
 namespace AzToolsFramework
 {
     //! A component to reflect scriptable commands for the Editor
-    class CryEditPythonHandler
+    class CryEditPythonHandler final
         : public AZ::Component
     {
     public:

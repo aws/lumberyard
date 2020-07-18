@@ -93,12 +93,13 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, uint32 indexA, uint32 indexB)
-                : AnimGraphNodeData(node, animGraphInstance)       { mIndexA = indexA; mIndexB = indexB; }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+
+            void Update() override;
 
         public:
-            uint32  mIndexA;
-            uint32  mIndexB;
+            uint32 mIndexA = InvalidIndex32;
+            uint32 mIndexB = InvalidIndex32;
         };
 
         BlendTreeBlendNNode();
@@ -106,7 +107,7 @@ namespace EMotionFX
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         bool GetHasOutputPose() const override                  { return true; }
         bool GetSupportsDisable() const override                { return true; }
         bool GetSupportsVisualization() const override          { return true; }
@@ -123,8 +124,10 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
         void SetSyncMode(ESyncMode syncMode);
         void SetEventMode(EEventMode eventMode);
+        bool HasRequiredInputs() const;
 
         void UpdateParamWeights();
+        void UpdateParamWeightRanges();
         void SetParamWeightsEquallyDistributed(float min, float max);
         const AZStd::vector<BlendNParamWeight>& GetParamWeights();
 

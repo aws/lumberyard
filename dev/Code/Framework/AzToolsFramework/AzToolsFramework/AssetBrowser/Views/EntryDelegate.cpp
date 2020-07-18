@@ -57,10 +57,8 @@ namespace AzToolsFramework
 
                 QStyle* style = option.widget ? option.widget->style() : QApplication::style();
 
-                if (isSelected)
-                {
-                    painter->fillRect(option.rect, option.palette.highlight());
-                }
+                // draw the background
+                style->drawPrimitive(QStyle::PE_PanelItemViewItem, &option, painter, option.widget);
 
                 auto entry = qvariant_cast<const AssetBrowserEntry*>(data);
 

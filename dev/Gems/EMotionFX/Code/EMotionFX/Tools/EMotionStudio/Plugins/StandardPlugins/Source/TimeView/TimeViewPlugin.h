@@ -10,20 +10,16 @@
 *
 */
 
-#ifndef __EMSTUDIO_TIMEVIEWPLUGIN_H
-#define __EMSTUDIO_TIMEVIEWPLUGIN_H
+#pragma once
 
 #include <AzCore/PlatformIncl.h>
-#include "../StandardPluginsConfig.h"
-#include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 #include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
 #include <EMotionFX/Source/Recorder.h>
-#include "TimeTrack.h"
-
+#include <Editor/AnimGraphEditorBus.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeTrack.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewShared.h>
 #include <QScrollArea>
-
-//#define TIMEVIEW_PIXELSPERSECOND 200.0
-//#define TIMEVIEW_SECONDSPERPIXEL (1.0 / 200.0) // every 200 pixels represents a second inside the timeline (with mTimeScale = 1)
 
 namespace EMStudio
 {
@@ -33,6 +29,7 @@ namespace EMStudio
     class TrackDataWidget;
     class TrackHeaderWidget;
     class TimeInfoWidget;
+    class TimeViewToolBar;
     class MotionWindowPlugin;
     class MotionEventsPlugin;
     class MotionListWindow;
@@ -51,19 +48,17 @@ namespace EMStudio
         EMotionFX::Motion*              mMotion;// the parent motion of the event track
     };
 
-    /**
-     *
-     *
-     */
     class TimeViewPlugin
         : public EMStudio::DockWidgetPlugin
+        , private EMotionFX::AnimGraphEditorNotificationBus::Handler
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(TimeViewPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
         
         friend class TrackDataHeaderWidget;
         friend class TrackDataWidget;
         friend class TimeViewWidget;
+        friend class TimeViewToolBar;
         friend class TimeInfoWidget;
         friend class TrackHeaderWidget;
 
@@ -94,6 +89,9 @@ namespace EMStudio
 
         void ProcessFrame(float timePassedInSeconds) override;
 
+        void SetMode(TimeViewMode mode);
+        TimeViewMode GetMode() const { return m_mode; }
+
         double GetScrollX() const       { return mScrollX; }
 
         void DeltaScrollX(double deltaX, bool animate = true);
@@ -123,6 +121,7 @@ namespace EMStudio
         void RemoveAllTracks();
         TimeTrack* GetTrack(uint32 index)           { return mTracks[index]; }
         uint32 GetNumTracks() const                 { return mTracks.GetLength(); }
+        AZ::Outcome<AZ::u32> FindTrackIndex(const TimeTrack* track) const;
         TimeTrack* FindTrackByElement(TimeTrackElement* element) const;
 
         void UnselectAllElements();
@@ -145,6 +144,7 @@ namespace EMStudio
         TrackDataWidget*    GetTrackDataWidget()    { return mTrackDataWidget; }
         TrackHeaderWidget*  GetTrackHeaderWidget()  { return mTrackHeaderWidget; }
         TimeInfoWidget*     GetTimeInfoWidget()     { return mTimeInfoWidget; }
+        TimeViewToolBar*    GetTimeViewToolBar()    { return mTimeViewToolBar; }
 
         void OnKeyPressEvent(QKeyEvent* event);
         void OnKeyReleaseEvent(QKeyEvent* event);
@@ -161,7 +161,7 @@ namespace EMStudio
         void Select(const MCore::Array<EventSelectionItem>& selection);
 
         MCORE_INLINE EMotionFX::Motion* GetMotion() const                               { return mMotion; }
-        MCORE_INLINE void SetRedrawFlag()                                               { mDirty = true; }
+        void SetRedrawFlag();
 
         uint32 CalcContentHeight() const;
 
@@ -194,25 +194,29 @@ namespace EMStudio
         void ManualTimeChange(float newTime);       // scrubbing in the time line (moving with the mouse while mouse button clicked)
         void DoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData* actorInstanceData, EMotionFX::Recorder::NodeHistoryItem* item);       // double clicked an item
         void ClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData* actorInstanceData, EMotionFX::Recorder::NodeHistoryItem* item);             // left clicked an item
+        void RecorderStateChanged();
 
     private:
+        // AnimGraphEditorNotificationBus
+        void OnFocusIn() override;
+        void OnShow() override;
+
         MCORE_DEFINECOMMANDCALLBACK(CommandAdjustMotionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandSelectCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandUnselectCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandClearSelectionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandRecorderClearCallback);
-        CommandAdjustMotionCallback*    mAdjustMotionCallback;
-        CommandSelectCallback*          mSelectCallback;
-        CommandUnselectCallback*        mUnselectCallback;
-        CommandClearSelectionCallback*  mClearSelectionCallback;
-        CommandRecorderClearCallback*   mRecorderClearCallback;
+        MCORE_DEFINECOMMANDCALLBACK(UpdateInterfaceCallback);
+        AZStd::vector<MCore::Command::Callback*> m_commandCallbacks;
 
         TrackDataHeaderWidget* mTrackDataHeaderWidget;
         TrackDataWidget*    mTrackDataWidget;
         TrackHeaderWidget*  mTrackHeaderWidget;
         TimeInfoWidget*     mTimeInfoWidget;
+        TimeViewToolBar*    mTimeViewToolBar;
         QWidget*            mMainWidget;
 
+        TimeViewMode m_mode = TimeViewMode::None;
         EMotionFX::Motion*                  mMotion;
         MotionWindowPlugin*                 mMotionWindowPlugin;
         MotionEventsPlugin*                 mMotionEventsPlugin;
@@ -268,6 +272,3 @@ namespace EMStudio
         QBrush              mBrushCurTimeHandle;
     };
 }   // namespace EMStudio
-
-
-#endif

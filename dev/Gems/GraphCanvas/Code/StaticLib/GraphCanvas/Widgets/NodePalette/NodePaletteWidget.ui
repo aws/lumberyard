@@ -34,12 +34,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <property name="spacing">
        <number>0</number>
@@ -74,12 +68,6 @@
       </item>
       <item>
        <widget class="QFrame" name="searchCustomization">
-        <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
-        </property>
-        <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
-        </property>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <property name="spacing">
           <number>0</number>
@@ -136,7 +124,7 @@
        <number>0</number>
       </property>
       <item>
-       <widget class="GraphCanvas::AutoElidingLabel" name="m_categoryLabel">
+       <widget class="AzQtComponents::ElidingLabel" name="m_categoryLabel">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -155,9 +143,6 @@
     <layout class="QVBoxLayout" name="contentLayout">
      <item>
       <widget class="GraphCanvas::NodePaletteTreeView" name="treeView">
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOn</enum>
-       </property>
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>
@@ -172,9 +157,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>GraphCanvas::AutoElidingLabel</class>
+   <class>AzQtComponents::ElidingLabel</class>
    <extends>QLabel</extends>
-   <header>StaticLib/GraphCanvas/Widgets/AutoElidingLabel.h</header>
+   <header>AzQtComponents/Components/Widgets/ElidingLabel.h</header>
   </customwidget>
   <customwidget>
    <class>AzQtComponents::SearchLineEdit</class>

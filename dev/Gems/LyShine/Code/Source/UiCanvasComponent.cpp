@@ -141,11 +141,16 @@ class UiAnimationNotificationBusBehaviorHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiAnimationNotificationBusBehaviorHandler, "{35D19FE8-5F31-426E-877A-8EEF3A42F99F}", AZ::SystemAllocator,
-        OnUiAnimationEvent);
+        OnUiAnimationEvent, OnUiTrackEvent);
 
     void OnUiAnimationEvent(IUiAnimationListener::EUiAnimationEvent uiAnimationEvent, AZStd::string animSequenceName) override
     {
         Call(FN_OnUiAnimationEvent, uiAnimationEvent, animSequenceName);
+    }
+
+    void OnUiTrackEvent(AZStd::string eventName, AZStd::string valueName, AZStd::string animSequenceName) override
+    {
+        Call(FN_OnUiTrackEvent, eventName, valueName, animSequenceName);
     }
 };
 
@@ -1736,6 +1741,12 @@ void UiCanvasComponent::OnUiAnimationEvent(EUiAnimationEvent uiAnimationEvent, I
     {
         m_uiAnimationSystem.RemoveUiAnimationListener(pAnimSequence, this);
     }
+}
+
+void UiCanvasComponent::OnUiTrackEvent(AZStd::string eventName, AZStd::string valueName, IUiAnimSequence* pAnimSequence)
+{
+    // Queue the event to prevent deletions during the canvas update
+    EBUS_QUEUE_EVENT_ID(GetEntityId(), UiAnimationNotificationBus, OnUiTrackEvent, eventName, valueName, pAnimSequence->GetName());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

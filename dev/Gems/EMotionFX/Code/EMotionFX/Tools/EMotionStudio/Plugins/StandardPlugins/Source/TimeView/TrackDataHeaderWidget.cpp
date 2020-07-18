@@ -153,12 +153,6 @@ namespace EMStudio
     // draw the time marker
     void TrackDataHeaderWidget::DrawTimeMarker(QPainter& painter, const QRect& rect)
     {
-        if (hasFocus())
-        {
-            painter.setPen(mPlugin->mPenCurTimeHelper);
-            painter.drawLine(aznumeric_cast<int>(mPlugin->mCurMouseX), 14, aznumeric_cast<int>(mPlugin->mCurMouseX), rect.bottom());
-        }
-
         // draw the current time marker
         float startHeight = 0.0f;
         const float curTimeX = aznumeric_cast<float>(mPlugin->TimeToPixel(mPlugin->mCurTime));
@@ -857,17 +851,11 @@ namespace EMStudio
         // Timeline actions
         //---------------------
         QAction* action = menu.addAction("Zoom To Fit All");
-        //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
         connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnZoomAll);
 
         action = menu.addAction("Reset Timeline");
-        //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
         connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnResetTimeline);
 
-        //action = menu.addAction( "Center on current time" );
-        //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
-        //connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnCenterOnCurTime()));
-        
         // show the menu at the given position
         menu.exec(event->globalPos());
     }

@@ -79,7 +79,7 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override                                          { return true; }
         AZ::Color GetVisualColor() const override                                               { return AZ::Color(0.2f, 0.78f, 0.2f, 1.0f); }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
         const char* GetPaletteName() const override;

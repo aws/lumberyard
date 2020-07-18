@@ -10,14 +10,20 @@
 *
 */
 
+#include <iostream> // Used for pretty printing.
+#include <AzCore/Serialization/Json/RegistrationContext.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/std/typetraits/is_base_of.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
 
 namespace JsonSerializationTests
 {
+    static constexpr char DefaultPath[] = "Test";
+
     class JsonSerializerConformityTestDescriptorFeatures
     {
     public:
@@ -31,6 +37,11 @@ namespace JsonSerializationTests
             AZ_Assert(type < AZ_ARRAY_SIZE(m_typesSupported), "RapidJSON Type not known.");
             return m_typesSupported[type];
         }
+
+        //! A list of fields the serializer always needs.
+        //! It's recommended to avoid mandatory fields, but in some cases this might be unavoidable. In such cases
+        //! the mandatory fields names can be added so test for empty defaults are adjusted to expect the required fields.
+        AZStd::vector<AZStd::string> m_mandatoryFields;
 
         //! This type will be used for additional files or to corrupt a json file. Use a type
         //! that the serializer under test doesn't support.
@@ -51,7 +62,7 @@ namespace JsonSerializationTests
         bool m_supportsInjection{ true };
 
     private:
-        // There's no way to retrieve the number of types from RapidJSON so they're hardcoded here.
+        // There's no way to retrieve the number of types from RapidJSON so they're hard-coded here.
         bool m_typesSupported[7] = { false, false, false, false, false, false, false };
     };
 
@@ -61,7 +72,10 @@ namespace JsonSerializationTests
             AZ::JsonSerializationResult::ResultCode result, AZStd::string_view path)
         {
             EXPECT_LT(0, message.length());
-            EXPECT_TRUE(path.starts_with("Test"));
+            bool isValidPath =
+                path.starts_with(DefaultPath) || // Format during serialization.
+                (path.starts_with("/") && path.substr(1).starts_with(DefaultPath));  // Format during deserialization.
+            EXPECT_TRUE(isValidPath);
             return result;
         }
     }
@@ -91,22 +105,38 @@ namespace JsonSerializationTests
         //! Get the json that represents the instance with all values set.
         virtual AZStd::string_view GetJsonForFullySetInstance() = 0;
         //! Get the json where additional values are added to the json file.
-        //! If this function is not overloaded, but features.m_supportsInjection is enabled than
+        //! If this function is not overloaded, but features.m_supportsInjection is enabled then
         //! the Json Serializer Conformity Tests will inject extra values in the json for a fully.
         //! set instance. It's recommended to use the automatic injection.
         virtual AZStd::string_view GetInjectedJson() { return ""; };
         //! Get the json where one or more values are replaced with invalid values.
-        //! If this function is not overloaded, but features.m_supportsInjection is enabled than
+        //! If this function is not overloaded, but features.m_supportsInjection is enabled then
         //! the Json Serializer Conformity Tests will corrupt the json for a fully set instance.
         //! It's recommended to use the automatic corruption.
         virtual AZStd::string_view GetCorruptedJson() { return "";  };
-
+        
         virtual void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& /*features*/) = 0;
         virtual void SetUp() {}
         virtual void TearDown() {}
         virtual void Reflect(AZStd::unique_ptr<AZ::SerializeContext>& /*context*/) {}
+        virtual void Reflect(AZStd::unique_ptr<AZ::JsonRegistrationContext>& /*context*/) {}
+        virtual void AddSystemComponentDescriptors(BaseJsonSerializerFixture::ComponentContainer& systemComponents) {}
 
         virtual bool AreEqual(const T& lhs, const T& rhs) = 0;
+
+        // The json for specific tests can be overloaded if needed. It's highly recommended to use the
+        // default strings for consistency. This should only be needed for exceptional situations such
+        // as testing particular pointer behaviors.
+
+        virtual AZStd::string_view GetJsonFor_Load_DeserializeUnreflectedType() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Load_DeserializeFullySetInstance() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Load_DeserializePartialInstance() { return this->GetJsonForPartialDefaultInstance(); }
+        virtual AZStd::string_view GetJsonFor_Load_HaltedThroughCallback() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Store_SerializeWithDefaultsKept() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Store_SerializeFullySetInstance() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Store_SerializeWithoutDefault() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Store_SerializeWithoutDefaultAndDefaultsKept() { return this->GetJsonForFullySetInstance(); }
+        virtual AZStd::string_view GetJsonFor_Store_SerializePartialInstance() { return this->GetJsonForPartialDefaultInstance(); }
     };
 
     template<typename T>
@@ -120,26 +150,45 @@ namespace JsonSerializationTests
         void SetUp() override
         {
             using namespace AZ::JsonSerializationResult;
-            
+
+            JsonSerializerConformityTestDescriptor<Type>* descriptor = &(this->m_description);
+
             BaseJsonSerializerFixture::SetUp();
-            this->m_description.SetUp();
-
-            this->m_description.ConfigureFeatures(this->m_features);
-            this->m_description.Reflect(m_serializeContext);
-
-            this->m_path.Push("Test");
-            this->m_deserializationSettings.m_reporting = &Internal::VerifyCallback;
-            this->m_serializationSettings.m_reporting = &Internal::VerifyCallback;
+            descriptor->SetUp();
+            descriptor->ConfigureFeatures(this->m_features);
+            descriptor->Reflect(this->m_serializeContext);
+            descriptor->Reflect(this->m_jsonRegistrationContext);
+            
+            this->m_deserializationSettings->m_reporting = &Internal::VerifyCallback;
+            this->m_serializationSettings->m_reporting = &Internal::VerifyCallback;
+            this->ResetJsonContexts();
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
+            this->m_jsonSerializationContext->PushPath(DefaultPath);
         }
 
         void TearDown() override
         {
-            m_serializeContext->EnableRemoveReflection();
-            this->m_description.Reflect(m_serializeContext);
-            m_serializeContext->DisableRemoveReflection();
+            this->m_features.m_mandatoryFields.clear();
+            this->m_features.m_mandatoryFields.shrink_to_fit();
 
-            this->m_description.TearDown();
+            JsonSerializerConformityTestDescriptor<Type>* descriptor = &(this->m_description);
+
+            this->m_jsonRegistrationContext->EnableRemoveReflection();
+            descriptor->Reflect(this->m_jsonRegistrationContext);
+            this->m_jsonRegistrationContext->DisableRemoveReflection();
+
+            this->m_serializeContext->EnableRemoveReflection();
+            descriptor->Reflect(this->m_serializeContext);
+            this->m_serializeContext->DisableRemoveReflection();
+
+            descriptor->TearDown();
             BaseJsonSerializerFixture::TearDown();
+        }
+
+        void AddSystemComponentDescriptors(ComponentContainer& systemComponents) override
+        {
+            BaseJsonSerializerFixture::AddSystemComponentDescriptors(systemComponents);
+            this->m_description.AddSystemComponentDescriptors(systemComponents);
         }
 
     protected:
@@ -149,14 +198,20 @@ namespace JsonSerializationTests
 
             if (!this->m_features.SupportsJsonType(type))
             {
-                rapidjson::Value testValue(type);
+                rapidjson::Document testValue(type);
+                if (type == rapidjson::kObjectType)
+                {
+                    // For objects add a random field so the object isn't mistaken for
+                    // a default if ContinueLoad is called in the serializer.
+                    testValue.AddMember(rapidjson::StringRef("A"), 42, testValue.GetAllocator());
+                }
 
                 auto serializer = this->m_description.CreateSerializer();
                 auto original = this->m_description.CreateDefaultInstance();
                 auto instance = this->m_description.CreateDefaultInstance();
 
                 ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*original), 
-                    testValue, m_path, m_deserializationSettings);
+                    testValue, *this->m_jsonDeserializationContext);
                 EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
                 EXPECT_EQ(Processing::Altered, result.GetProcessing());
                 EXPECT_TRUE(this->m_description.AreEqual(*original, *instance));
@@ -174,6 +229,25 @@ namespace JsonSerializationTests
     };
 
     TYPED_TEST_CASE_P(JsonSerializerConformityTests);
+
+    TYPED_TEST_P(JsonSerializerConformityTests, Registration_SerializerIsRegisteredWithContext_SerializerFound)
+    {
+        auto serializer = this->m_description.CreateSerializer();
+        AZ::Uuid serializerType = azrtti_typeid(*serializer);
+        const AZ::JsonRegistrationContext::HandledTypesMap& serializers = this->m_jsonRegistrationContext->GetRegisteredSerializers();
+
+        bool serializerRegistered = false;
+        for (const auto& entry : serializers)
+        {
+            if (azrtti_typeid(entry.second) == serializerType)
+            {
+                serializerRegistered = true;
+                break;
+            }
+        }
+
+        EXPECT_TRUE(serializerRegistered);
+    }
 
     TYPED_TEST_P(JsonSerializerConformityTests, Load_InvalidTypeOfNullType_ReturnsUnsupported)
     { 
@@ -216,14 +290,14 @@ namespace JsonSerializationTests
 
         if (this->m_features.m_requiresTypeIdLookups)
         {
-            this->m_jsonDocument->Parse(this->m_description.GetJsonForFullySetInstance().data());
+            this->m_jsonDocument->Parse(this->m_description.GetJsonFor_Load_DeserializeUnreflectedType().data());
             ASSERT_FALSE(this->m_jsonDocument->HasParseError());
 
             auto serializer = this->m_description.CreateSerializer();
             IncorrectClass instance;
             
             ResultCode result = serializer->Load(&instance, azrtti_typeid<IncorrectClass>(),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
             EXPECT_EQ(Processing::Altered, result.GetProcessing());
@@ -244,10 +318,21 @@ namespace JsonSerializationTests
             auto original = this->m_description.CreateDefaultInstance();
 
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*original),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
-            EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-            EXPECT_EQ(Processing::Completed, result.GetProcessing());
+            if (this->m_features.m_mandatoryFields.empty())
+            {
+                EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
+                EXPECT_EQ(Processing::Completed, result.GetProcessing());
+            }
+            else
+            {
+                EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+                bool validProcessing =
+                    result.GetProcessing() == Processing::Altered ||
+                    result.GetProcessing() == Processing::PartialAlter;
+                EXPECT_TRUE(validProcessing);
+            }
             EXPECT_TRUE(this->m_description.AreEqual(*original, *instance));
         }
     }
@@ -265,10 +350,12 @@ namespace JsonSerializationTests
             auto instance = this->m_description.CreateDefaultInstance();
             auto original = this->m_description.CreateDefaultInstance();
 
-            this->m_deserializationSettings.m_clearContainers = false;
+            this->m_deserializationSettings->m_clearContainers = false;
+            this->ResetJsonContexts();
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
 
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             if (this->m_features.m_fixedSizeArray)
             {
@@ -298,10 +385,12 @@ namespace JsonSerializationTests
             auto instance = this->m_description.CreateDefaultInstance();
             auto original = this->m_description.CreateDefaultInstance();
 
-            this->m_deserializationSettings.m_clearContainers = true;
+            this->m_deserializationSettings->m_clearContainers = true;
+            this->ResetJsonContexts();
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
 
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             if (this->m_features.m_fixedSizeArray)
             {
@@ -331,10 +420,12 @@ namespace JsonSerializationTests
             auto instance = this->m_description.CreateFullySetInstance();
             auto original = this->m_description.CreateDefaultInstance();
 
-            this->m_deserializationSettings.m_clearContainers = true;
+            this->m_deserializationSettings->m_clearContainers = true;
+            this->ResetJsonContexts();
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
 
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             if (this->m_features.m_fixedSizeArray)
             {
@@ -366,16 +457,18 @@ namespace JsonSerializationTests
             auto instance = this->m_description.CreateFullySetInstance();
             auto original = this->m_description.CreateFullySetInstance();
 
-            this->m_deserializationSettings.m_clearContainers = true;
-
-            this->m_deserializationSettings.m_reporting = [](AZStd::string_view, ResultCode, AZStd::string_view) -> ResultCode
+            this->m_deserializationSettings->m_clearContainers = true;
+            this->m_deserializationSettings->m_reporting = [](AZStd::string_view, ResultCode, AZStd::string_view) -> ResultCode
             {
                 // Random task and outcome just to trigger the alternative path to clearing and to make sure the correct
                 // result is returned.
                 return ResultCode(Tasks::RetrieveInfo, Outcomes::Unsupported);
             };
+            this->ResetJsonContexts();
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
+
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
             EXPECT_EQ(Processing::Altered, result.GetProcessing());
@@ -388,7 +481,7 @@ namespace JsonSerializationTests
     {
         using namespace AZ::JsonSerializationResult;
 
-        AZStd::string_view json = this->m_description.GetJsonForFullySetInstance();
+        AZStd::string_view json = this->m_description.GetJsonFor_Load_DeserializeFullySetInstance();
         this->m_jsonDocument->Parse(json.data());
         ASSERT_FALSE(this->m_jsonDocument->HasParseError());
 
@@ -397,11 +490,45 @@ namespace JsonSerializationTests
         auto compare = this->m_description.CreateFullySetInstance();
         
         ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-            *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_EQ(Processing::Completed, result.GetProcessing());
         EXPECT_TRUE(this->m_description.AreEqual(*instance, *compare));
+    }
+
+    TYPED_TEST_P(JsonSerializerConformityTests, Load_DeserializeWithMissingMandatoryField_LoadFailedAndUnsupportedReported)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        if (!this->m_features.m_mandatoryFields.empty())
+        {
+            AZStd::string_view json = this->m_description.GetJsonFor_Load_DeserializeFullySetInstance();
+            auto serializer = this->m_description.CreateSerializer();
+            auto compare = this->m_description.CreateDefaultInstance();
+
+            for (const AZStd::string& mandatoryField : this->m_features.m_mandatoryFields)
+            {
+                this->m_jsonDocument->Parse(json.data());
+                ASSERT_FALSE(this->m_jsonDocument->HasParseError());
+                ASSERT_TRUE(this->m_jsonDocument->IsObject());
+                auto memberToErase = this->m_jsonDocument->FindMember(mandatoryField.c_str());
+                ASSERT_NE(this->m_jsonDocument->MemberEnd(), memberToErase);
+                this->m_jsonDocument->RemoveMember(memberToErase);
+
+                auto instance = this->m_description.CreateDefaultInstance();
+                
+                ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
+                    *this->m_jsonDocument, *this->m_jsonDeserializationContext);
+
+                EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+                bool validProcessing =
+                    result.GetProcessing() == Processing::Altered ||
+                    result.GetProcessing() == Processing::PartialAlter;
+                EXPECT_TRUE(validProcessing);
+                EXPECT_TRUE(this->m_description.AreEqual(*instance, *compare));
+            }
+        }
     }
 
     TYPED_TEST_P(JsonSerializerConformityTests, Load_DeserializePartialInstance_SucceedsAndObjectMatchesParialInstance)
@@ -410,7 +537,9 @@ namespace JsonSerializationTests
 
         if (this->m_features.m_supportsPartialInitialization)
         {
-            AZStd::string_view json = this->m_description.GetJsonForPartialDefaultInstance();
+            AZStd::string_view json = this->m_description.GetJsonFor_Load_DeserializePartialInstance();
+            // If tests for partial initialization are enabled than json for the partial initialization is needed.
+            ASSERT_FALSE(json.empty());
             this->m_jsonDocument->Parse(json.data());
             ASSERT_FALSE(this->m_jsonDocument->HasParseError());
 
@@ -420,7 +549,7 @@ namespace JsonSerializationTests
             ASSERT_NE(nullptr, compare);
 
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             EXPECT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
             EXPECT_EQ(Processing::Completed, result.GetProcessing());
@@ -432,22 +561,21 @@ namespace JsonSerializationTests
     {
         using namespace AZ::JsonSerializationResult;
 
-        this->m_jsonDocument->Parse(this->m_description.GetJsonForFullySetInstance().data());
+        this->m_jsonDocument->Parse(this->m_description.GetJsonFor_Load_HaltedThroughCallback().data());
         ASSERT_FALSE(this->m_jsonDocument->HasParseError());
 
         auto serializer = this->m_description.CreateSerializer();
         auto instance = this->m_description.CreateDefaultInstance();
         
-        auto reporting = [](AZStd::string_view message, ResultCode result,
-            AZStd::string_view path) -> ResultCode
-        {
-            Internal::VerifyCallback(message, result, path); 
-            return ResultCode(result.GetTask(), Outcomes::Catastrophic);
-        };
-        this->m_deserializationSettings.m_reporting = reporting;
+        AZ::ScopedContextReporter reporter(*this->m_jsonDeserializationContext,
+            [](AZStd::string_view message, ResultCode result, AZStd::string_view path) -> ResultCode
+            {
+                Internal::VerifyCallback(message, result, path); 
+                return ResultCode(result.GetTask(), Outcomes::Catastrophic);
+            });
 
         ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-            *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+            *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
         EXPECT_EQ(Outcomes::Catastrophic, result.GetOutcome());
         EXPECT_EQ(Processing::Halted, result.GetProcessing());
@@ -478,7 +606,7 @@ namespace JsonSerializationTests
             auto compare = this->m_description.CreateFullySetInstance();
 
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             EXPECT_GE(result.GetOutcome(), Outcomes::Skipped);
             EXPECT_TRUE(this->m_description.AreEqual(*instance, *compare));
@@ -508,7 +636,7 @@ namespace JsonSerializationTests
             auto instance = this->m_description.CreateDefaultInstance();
             
             ResultCode result = serializer->Load(instance.get(), azrtti_typeid(*instance),
-                *this->m_jsonDocument, this->m_path, this->m_deserializationSettings);
+                *this->m_jsonDocument, *this->m_jsonDeserializationContext);
 
             EXPECT_GE(result.GetOutcome(), Outcomes::Unavailable);
             EXPECT_GE(result.GetProcessing(), Processing::PartialAlter);
@@ -524,8 +652,8 @@ namespace JsonSerializationTests
             auto serializer = this->m_description.CreateSerializer();
             IncorrectClass instance;
 
-            ResultCode result = serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(), 
-                &instance, nullptr, azrtti_typeid<IncorrectClass>(), this->m_path, this->m_serializationSettings);
+            ResultCode result = serializer->Store(*this->m_jsonDocument, &instance, nullptr, azrtti_typeid<IncorrectClass>(),
+                *this->m_jsonSerializationContext);
                 
             EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
             EXPECT_EQ(Processing::Altered, result.GetProcessing());
@@ -536,53 +664,108 @@ namespace JsonSerializationTests
     {
         using namespace AZ::JsonSerializationResult;
 
-        this->m_serializationSettings.m_keepDefaults = false;
+        this->m_serializationSettings->m_keepDefaults = false;
+        this->ResetJsonContexts();
+        this->m_jsonSerializationContext->PushPath(DefaultPath);
         
         auto serializer = this->m_description.CreateSerializer();
         auto instance = this->m_description.CreateDefaultInstance();
         rapidjson::Value convertedValue = this->CreateExplicitDefault();
 
-        ResultCode result = serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(),
-            instance.get(), instance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+        ResultCode result = serializer->Store(convertedValue, instance.get(), instance.get(), azrtti_typeid(*instance),
+            *this->m_jsonSerializationContext);
 
         EXPECT_EQ(Processing::Completed, result.GetProcessing());
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        this->Expect_ExplicitDefault(convertedValue);
+        if (convertedValue.IsObject() && !this->m_features.m_mandatoryFields.empty())
+        {
+            ASSERT_EQ(convertedValue.MemberCount(), this->m_features.m_mandatoryFields.size());
+            for (const AZStd::string& mandatoryField : this->m_features.m_mandatoryFields)
+            {
+                EXPECT_NE(convertedValue.MemberEnd(), convertedValue.FindMember(mandatoryField.c_str()));
+            }
+        }
+        else
+        {
+            EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
+            this->Expect_ExplicitDefault(convertedValue);
+        }
     }
 
     TYPED_TEST_P(JsonSerializerConformityTests, Store_SerializeWithDefaultsKept_FullyWrittenJson)
     {
         using namespace AZ::JsonSerializationResult;
 
-        this->m_serializationSettings.m_keepDefaults = true;
+        this->m_serializationSettings->m_keepDefaults = true;
+        this->ResetJsonContexts();
+        this->m_jsonSerializationContext->PushPath(DefaultPath);
 
         auto serializer = this->m_description.CreateSerializer();
         auto instance = this->m_description.CreateFullySetInstance();
 
-        ResultCode result = serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(),
-            instance.get(), instance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+        ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), instance.get(), azrtti_typeid(*instance),
+            *this->m_jsonSerializationContext);
 
         EXPECT_EQ(Processing::Completed, result.GetProcessing());
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        this->Expect_DocStrEq(this->m_description.GetJsonForFullySetInstance());
+        this->Expect_DocStrEq(this->m_description.GetJsonFor_Store_SerializeWithDefaultsKept());
     }
 
     TYPED_TEST_P(JsonSerializerConformityTests, Store_SerializeFullySetInstance_StoredSuccessfullyAndJsonMatches)
     {
         using namespace AZ::JsonSerializationResult;
 
-        this->m_serializationSettings.m_keepDefaults = false;
+        this->m_serializationSettings->m_keepDefaults = false;
+        this->ResetJsonContexts();
+        this->m_jsonSerializationContext->PushPath(DefaultPath);
 
         auto serializer = this->m_description.CreateSerializer();
         auto instance = this->m_description.CreateFullySetInstance();
         auto defaultInstance = this->m_description.CreateDefaultInstance();
         
-        ResultCode result = serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(),
-            instance.get(), defaultInstance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+        ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), defaultInstance.get(), azrtti_typeid(*instance),
+            *this->m_jsonSerializationContext);
 
         EXPECT_EQ(Processing::Completed, result.GetProcessing());
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        this->Expect_DocStrEq(this->m_description.GetJsonForFullySetInstance());
+        this->Expect_DocStrEq(this->m_description.GetJsonFor_Store_SerializeFullySetInstance());
+    }
+
+    TYPED_TEST_P(JsonSerializerConformityTests, Store_SerializeWithoutDefault_StoredSuccessfullyAndJsonMatches)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        this->m_serializationSettings->m_keepDefaults = false;
+        this->ResetJsonContexts();
+        this->m_jsonSerializationContext->PushPath(DefaultPath);
+
+        auto serializer = this->m_description.CreateSerializer();
+        auto instance = this->m_description.CreateFullySetInstance();
+        
+        ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), nullptr, azrtti_typeid(*instance),
+            *this->m_jsonSerializationContext);
+
+        EXPECT_EQ(Processing::Completed, result.GetProcessing());
+        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
+        this->Expect_DocStrEq(this->m_description.GetJsonFor_Store_SerializeWithoutDefault());
+    }
+
+    TYPED_TEST_P(JsonSerializerConformityTests, Store_SerializeWithoutDefaultAndDefaultsKept_StoredSuccessfullyAndJsonMatches)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        this->m_serializationSettings->m_keepDefaults = true;
+        this->ResetJsonContexts();
+        this->m_jsonSerializationContext->PushPath(DefaultPath);
+
+        auto serializer = this->m_description.CreateSerializer();
+        auto instance = this->m_description.CreateFullySetInstance();
+
+        ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), nullptr, azrtti_typeid(*instance),
+            *this->m_jsonSerializationContext);
+
+        EXPECT_EQ(Processing::Completed, result.GetProcessing());
+        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
+        this->Expect_DocStrEq(this->m_description.GetJsonFor_Store_SerializeWithoutDefaultAndDefaultsKept());
     }
 
     TYPED_TEST_P(JsonSerializerConformityTests, Store_SerializePartialInstance_StoredSuccessfullyAndJsonMatches)
@@ -591,19 +774,21 @@ namespace JsonSerializationTests
 
         if (this->m_features.m_supportsPartialInitialization)
         {
-            this->m_serializationSettings.m_keepDefaults = false;
+            this->m_serializationSettings->m_keepDefaults = false;
+            this->ResetJsonContexts();
+            this->m_jsonSerializationContext->PushPath(DefaultPath);
 
             auto serializer = this->m_description.CreateSerializer();
             auto instance = this->m_description.CreatePartialDefaultInstance();
             ASSERT_NE(nullptr, instance);
             auto defaultInstance = this->m_description.CreateDefaultInstance();
             
-            ResultCode result = serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(),
-                instance.get(), defaultInstance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+            ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), defaultInstance.get(), azrtti_typeid(*instance),
+                *this->m_jsonSerializationContext);
 
             EXPECT_EQ(Processing::Completed, result.GetProcessing());
             EXPECT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
-            this->Expect_DocStrEq(this->m_description.GetJsonForPartialDefaultInstance());
+            this->Expect_DocStrEq(this->m_description.GetJsonFor_Store_SerializePartialInstance());
         }
     }
 
@@ -613,13 +798,15 @@ namespace JsonSerializationTests
 
         if (this->m_features.SupportsJsonType(rapidjson::kArrayType) && !this->m_features.m_fixedSizeArray)
         {
-            this->m_serializationSettings.m_keepDefaults = true;
+            this->m_serializationSettings->m_keepDefaults = true;
+            this->ResetJsonContexts();
+            this->m_jsonSerializationContext->PushPath(DefaultPath);
 
             auto serializer = this->m_description.CreateSerializer();
             auto instance = this->m_description.CreateDefaultInstance();
             
-            ResultCode result = serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(),
-                instance.get(), instance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+            ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), instance.get(), azrtti_typeid(*instance),
+                *this->m_jsonSerializationContext);
 
             EXPECT_EQ(Processing::Completed, result.GetProcessing());
             EXPECT_EQ(Outcomes::Success, result.GetOutcome());
@@ -631,23 +818,19 @@ namespace JsonSerializationTests
     {
         using namespace AZ::JsonSerializationResult;
 
-        this->m_jsonDocument->Parse(this->m_description.GetJsonForFullySetInstance().data());
-        ASSERT_FALSE(this->m_jsonDocument->HasParseError());
-
         auto serializer = this->m_description.CreateSerializer();
         auto instance = this->m_description.CreateFullySetInstance();
         auto defaultInstance = this->m_description.CreateDefaultInstance();
 
-        auto reporting = [](AZStd::string_view message, ResultCode result,
-            AZStd::string_view) -> ResultCode
-        {
-            EXPECT_FALSE(message.empty());
-            return ResultCode(result.GetTask(), Outcomes::Catastrophic);
-        };
-        this->m_serializationSettings.m_reporting = reporting;
+        AZ::ScopedContextReporter reporter(*this->m_jsonSerializationContext,
+            [](AZStd::string_view message, ResultCode result, AZStd::string_view) -> ResultCode
+            {
+                EXPECT_FALSE(message.empty());
+                return ResultCode(result.GetTask(), Outcomes::Catastrophic);
+            });
 
-        ResultCode result = serializer->Store(*this->m_jsonDocument, this->m_jsonDocument->GetAllocator(),
-            instance.get(), defaultInstance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+        ResultCode result = serializer->Store(*this->m_jsonDocument, instance.get(), defaultInstance.get(), azrtti_typeid(*instance),
+            *this->m_jsonSerializationContext);
 
         EXPECT_EQ(Outcomes::Catastrophic, result.GetOutcome());
         EXPECT_EQ(Processing::Halted, result.GetProcessing());
@@ -659,20 +842,23 @@ namespace JsonSerializationTests
 
         if (this->m_features.m_supportsPartialInitialization)
         {
-            this->m_serializationSettings.m_keepDefaults = false;
+            this->m_serializationSettings->m_keepDefaults = false;
+            this->ResetJsonContexts();
+            this->m_jsonSerializationContext->PushPath(DefaultPath);
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
 
             auto serializer = this->m_description.CreateSerializer();
             auto instance = this->m_description.CreatePartialDefaultInstance();
             auto defaultInstance = this->m_description.CreateDefaultInstance();
 
             rapidjson::Value convertedValue = this->CreateExplicitDefault();
-            ResultCode result = serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(),
-                instance.get(), defaultInstance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+            ResultCode result = serializer->Store(convertedValue, instance.get(), defaultInstance.get(), azrtti_typeid(*instance),
+                *this->m_jsonSerializationContext);
             ASSERT_EQ(Processing::Completed, result.GetProcessing());
 
             auto loadedInstance = this->m_description.CreateDefaultInstance();
             result = serializer->Load(loadedInstance.get(), azrtti_typeid(*loadedInstance),
-                convertedValue, this->m_path, this->m_deserializationSettings);
+                convertedValue, *this->m_jsonDeserializationContext);
             ASSERT_EQ(Processing::Completed, result.GetProcessing());
 
             EXPECT_TRUE(this->m_description.AreEqual(*instance, *loadedInstance));
@@ -685,20 +871,23 @@ namespace JsonSerializationTests
 
         if (this->m_features.m_supportsPartialInitialization)
         {
-            this->m_serializationSettings.m_keepDefaults = false;
+            this->m_serializationSettings->m_keepDefaults = false;
+            this->ResetJsonContexts();
+            this->m_jsonSerializationContext->PushPath(DefaultPath);
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
 
             auto serializer = this->m_description.CreateSerializer();
             auto instance = this->m_description.CreateFullySetInstance();
             auto defaultInstance = this->m_description.CreateDefaultInstance();
 
             rapidjson::Value convertedValue = this->CreateExplicitDefault();
-            ResultCode result = serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(),
-                instance.get(), defaultInstance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+            ResultCode result = serializer->Store(convertedValue, instance.get(), defaultInstance.get(), azrtti_typeid(*instance),
+                *this->m_jsonSerializationContext);
             ASSERT_EQ(Processing::Completed, result.GetProcessing());
 
             auto loadedInstance = this->m_description.CreateDefaultInstance();
             result = serializer->Load(loadedInstance.get(), azrtti_typeid(*loadedInstance),
-                convertedValue, this->m_path, this->m_deserializationSettings);
+                convertedValue, *this->m_jsonDeserializationContext);
             ASSERT_EQ(Processing::Completed, result.GetProcessing());
 
             EXPECT_TRUE(this->m_description.AreEqual(*instance, *loadedInstance));
@@ -711,19 +900,22 @@ namespace JsonSerializationTests
 
         if (this->m_features.m_supportsPartialInitialization)
         {
-            this->m_serializationSettings.m_keepDefaults = true;
+            this->m_serializationSettings->m_keepDefaults = true;
+            this->ResetJsonContexts();
+            this->m_jsonSerializationContext->PushPath(DefaultPath);
+            this->m_jsonDeserializationContext->PushPath(DefaultPath);
 
             auto serializer = this->m_description.CreateSerializer();
             auto instance = this->m_description.CreateFullySetInstance();
             
             rapidjson::Value convertedValue = this->CreateExplicitDefault();
-            ResultCode result = serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(),
-                instance.get(), instance.get(), azrtti_typeid(*instance), this->m_path, this->m_serializationSettings);
+            ResultCode result = serializer->Store(convertedValue, instance.get(), instance.get(), azrtti_typeid(*instance),
+                *this->m_jsonSerializationContext);
             ASSERT_EQ(Processing::Completed, result.GetProcessing());
 
             auto loadedInstance = this->m_description.CreateDefaultInstance();
             result = serializer->Load(loadedInstance.get(), azrtti_typeid(*loadedInstance),
-                convertedValue, this->m_path, this->m_deserializationSettings);
+                convertedValue, *this->m_jsonDeserializationContext);
             ASSERT_EQ(Processing::Completed, result.GetProcessing());
 
             EXPECT_TRUE(this->m_description.AreEqual(*instance, *loadedInstance));
@@ -731,6 +923,8 @@ namespace JsonSerializationTests
     }
 
     REGISTER_TYPED_TEST_CASE_P(JsonSerializerConformityTests,
+        Registration_SerializerIsRegisteredWithContext_SerializerFound,
+
         Load_InvalidTypeOfNullType_ReturnsUnsupported,
         Load_InvalidTypeOfFalseType_ReturnsUnsupported,
         Load_InvalidTypeOfTrueType_ReturnsUnsupported,
@@ -747,6 +941,7 @@ namespace JsonSerializationTests
         Load_InterruptClearingTarget_ContainerIsNotCleared,
         Load_DeserializeFullySetInstance_SucceedsAndObjectMatchesFullySetInstance,
         Load_DeserializePartialInstance_SucceedsAndObjectMatchesParialInstance,
+        Load_DeserializeWithMissingMandatoryField_LoadFailedAndUnsupportedReported,
         Load_InsertAdditionalData_SucceedsAndObjectMatchesFullySetInstance,
         Load_HaltedThroughCallback_LoadFailsAndHaltReported,
         Load_CorruptedValue_SucceedsWithDefaultValuesUsed,
@@ -755,6 +950,8 @@ namespace JsonSerializationTests
         Store_SerializeDefaultInstance_EmptyJsonReturned,
         Store_SerializeWithDefaultsKept_FullyWrittenJson,
         Store_SerializeFullySetInstance_StoredSuccessfullyAndJsonMatches,
+        Store_SerializeWithoutDefault_StoredSuccessfullyAndJsonMatches,
+        Store_SerializeWithoutDefaultAndDefaultsKept_StoredSuccessfullyAndJsonMatches,
         Store_SerializePartialInstance_StoredSuccessfullyAndJsonMatches,
         Store_SerializeEmptyArray_StoredSuccessfullyAndJsonMatches,
         Store_HaltedThroughCallback_StoreFailsAndHaltReported,
@@ -763,3 +960,61 @@ namespace JsonSerializationTests
         StoreLoad_RoundTripWithFullSet_IdenticalInstances,
         StoreLoad_RoundTripWithDefaultsKept_IdenticalInstances);
 } // namespace JsonSerializationTests
+
+namespace AZ
+{
+    namespace JsonSerializationResult
+    {
+        inline std::ostream& operator<<(std::ostream& stream, Tasks task)
+        {
+            switch (task)
+            {
+            case Tasks::RetrieveInfo:   stream << "Tasks::RetrieveInfo";    break;
+            case Tasks::CreateDefault:  stream << "Tasks::CreateDefault";   break;
+            case Tasks::Convert:        stream << "Tasks::Convert";         break;
+            case Tasks::Clear:          stream << "Tasks::Clear";           break;
+            case Tasks::ReadField:      stream << "Tasks::ReadField";       break;
+            case Tasks::WriteValue:     stream << "Tasks::WriteValue";      break;
+            case Tasks::Merge:          stream << "Tasks::Merge";           break;
+            case Tasks::CreatePatch:    stream << "Tasks::CreatePatch";     break;
+            default:                    stream << "Incorrect task type";
+            }
+            return stream;
+        }
+
+        inline std::ostream& operator<<(std::ostream& stream, Processing processing)
+        {
+            switch (processing)
+            {
+            case Processing::Completed:     stream << "Processing::Completed";      break;
+            case Processing::Altered:       stream << "Processing::Altered";        break;
+            case Processing::PartialAlter:  stream << "Processing::PartialAlter";   break;
+            case Processing::Halted:        stream << "Processing::Halted";         break;
+            default:                        stream << "Incorrect processing type";
+            }
+            return stream;
+        }
+
+        inline std::ostream& operator<<(std::ostream& stream, Outcomes outcome)
+        {
+            switch (outcome)
+            {
+            case Outcomes::Success:         stream << "Outcomes::Success";          break;
+            case Outcomes::Skipped:         stream << "Outcomes::Skipped";          break;
+            case Outcomes::PartialSkip:     stream << "Outcomes::PartialSkip";      break;
+            case Outcomes::DefaultsUsed:    stream << "Outcomes::DefaultsUsed";     break;
+            case Outcomes::PartialDefaults: stream << "Outcomes::PartialDefaults";  break;
+            case Outcomes::Unavailable:     stream << "Outcomes::Unavailable";      break;
+            case Outcomes::Unsupported:     stream << "Outcomes::Unsupported";      break;
+            case Outcomes::TypeMismatch:    stream << "Outcomes::TypeMismatch";     break;
+            case Outcomes::TestFailed:      stream << "Outcomes::TestFailed";       break;
+            case Outcomes::Missing:         stream << "Outcomes::Missing";          break;
+            case Outcomes::Invalid:         stream << "Outcomes::Invalid";          break;
+            case Outcomes::Unknown:         stream << "Outcomes::Unknown";          break;
+            case Outcomes::Catastrophic:    stream << "Outcomes::Catastrophic";     break;
+            default:                        stream << "Incorrect outcome type";
+            }
+            return stream;
+        }
+    } // namespace JsonSerializationResult
+} // namespace AZ

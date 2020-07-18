@@ -63,7 +63,7 @@ class CMainWindow
 {
     Q_OBJECT
 public:
-    CMainWindow();
+    explicit CMainWindow(QWidget* parent = nullptr);
     virtual ~CMainWindow(void);
 
     static const GUID& GetClassID();

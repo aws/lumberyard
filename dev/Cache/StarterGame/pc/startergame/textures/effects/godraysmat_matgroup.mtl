@@ -1,0 +1,13 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="GodraysMAT" MtlFlags="524416" Shader="Illum" GenMask="10000000000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,0.94730669,0.75294232,1" Specular="0,0,0,1" Emittance="1,1,1,1" Opacity="0.16" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Heightmap" File="textures/rivers/am_rockground_displ.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
+    </Texture>
+    <Texture Map="Diffuse" File="objects/effects/particleassets/fx_godray_01.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+</Material>

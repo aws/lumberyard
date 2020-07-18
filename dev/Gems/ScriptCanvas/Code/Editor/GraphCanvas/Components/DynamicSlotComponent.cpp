@@ -142,8 +142,9 @@ namespace ScriptCanvasEditor
 
             if (entityId)
             {
+                m_scriptCanvasNodeId = (*entityId);
                 ScriptCanvas::NodeNotificationsBus::Handler::BusDisconnect();
-                ScriptCanvas::NodeNotificationsBus::Handler::BusConnect((*entityId));
+                ScriptCanvas::NodeNotificationsBus::Handler::BusConnect(m_scriptCanvasNodeId);
             }
         }
     }

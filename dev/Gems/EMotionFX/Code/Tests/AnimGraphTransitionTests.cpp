@@ -46,7 +46,7 @@ namespace EMotionFX
                     // Check if the node is active
                     if (motionNode == activeState)
                     {
-                        AnimGraphNodeData* uniqueData = motionNode->FindUniqueNodeData(m_animGraphInstance);
+                        AnimGraphNodeData* uniqueData = motionNode->FindOrCreateUniqueNodeData(m_animGraphInstance);
                         weight += (uniqueData->*(GetParam()))();
                     }
                 }

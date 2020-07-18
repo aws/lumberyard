@@ -125,24 +125,28 @@ namespace PhysX
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         PhysX::ConfigurationNotificationBus::Handler::BusConnect();
-        PhysX::ColliderComponentEventBus::Handler::BusConnect(GetEntityId());
+        Physics::ColliderComponentEventBus::Handler::BusConnect(GetEntityId());
         Physics::WorldNotificationBus::Handler::BusConnect(Physics::EditorPhysicsWorldId);
 
         const PhysX::PhysXConfiguration& configuration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetPhysXConfiguration();
         UpdateDebugDrawSettings(configuration);
         UpdateEditorWorldRigidBody();
+
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorRigidBodyComponent::Deactivate()
     {
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         Physics::WorldNotificationBus::Handler::BusDisconnect();
-        PhysX::ColliderComponentEventBus::Handler::BusDisconnect();
+        Physics::ColliderComponentEventBus::Handler::BusDisconnect();
         PhysX::ConfigurationNotificationBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
 
         m_editorBody.reset();
+
     }
 
     void EditorRigidBodyComponent::Reflect(AZ::ReflectContext* context)
@@ -307,6 +311,47 @@ namespace PhysX
             UpdateEditorWorldRigidBody();
             m_shouldBeUpdated = false;
         }
+    }
+
+    void EditorRigidBodyComponent::EnablePhysics()
+    {
+        if (!IsPhysicsEnabled())
+        {
+            UpdateEditorWorldRigidBody();
+        }
+    }
+
+    void EditorRigidBodyComponent::DisablePhysics()
+    {
+        m_editorBody.reset();
+    }
+
+    bool EditorRigidBodyComponent::IsPhysicsEnabled() const
+    {
+        return m_editorBody && m_editorBody->GetWorld();
+    }
+
+    AZ::Aabb EditorRigidBodyComponent::GetAabb() const
+    {
+        if (m_editorBody)
+        {
+            return m_editorBody->GetAabb();
+        }
+        return AZ::Aabb::CreateNull();
+    }
+
+    Physics::WorldBody* EditorRigidBodyComponent::GetWorldBody()
+    {
+        return m_editorBody.get();
+    }
+
+    Physics::RayCastHit EditorRigidBodyComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        if (m_editorBody)
+        {
+            return m_editorBody->RayCast(request);
+        }
+        return Physics::RayCastHit();
     }
 
     void EditorRigidBodyComponent::UpdateDebugDrawSettings(const PhysXConfiguration& configuration)

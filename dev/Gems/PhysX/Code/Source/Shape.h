@@ -58,8 +58,9 @@ namespace PhysX
         Physics::CollisionGroup GetCollisionGroup() const override;
 
         void SetName(const char* name) override;
-        
+
         void SetLocalPose(const AZ::Vector3& offset, const AZ::Quaternion& rotation) override;
+        AZStd::pair<AZ::Vector3, AZ::Quaternion> GetLocalPose() const override;
 
         void* GetNativePointer() override;
 
@@ -70,11 +71,23 @@ namespace PhysX
         void AttachedToActor(void* actor) override;
         void DetachedFromActor() override;
 
+        //! Raycast against this shape.
+        //! @param request Ray parameters in world space.
+        //! @param worldTransform World transform of this shape.
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& worldSpaceRequest, const AZ::Transform& worldTransform) override;
+
+        //! Raycast against this shape using local coordinates.
+        //! @param request Ray parameters in local space.
+        Physics::RayCastHit RayCastLocal(const Physics::RayCastRequest& localSpaceRequest) override;
+
+        void GetGeometry(AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, AZ::Aabb* optionalBounds = nullptr) override;
+
     private:
         void BindMaterialsWithPxShape();
         void ExtractMaterialsFromPxShape();
         physx::PxScene* GetScene() const;
         void ReleasePxShape(physx::PxShape* shape);
+        Physics::RayCastHit RayCastInternal(const Physics::RayCastRequest& worldSpaceRequest, const physx::PxTransform& pose);
 
         using PxShapeUniquePtr = AZStd::unique_ptr<physx::PxShape, AZStd::function<void(physx::PxShape*)>>;
         Shape() = default;

@@ -60,9 +60,6 @@ namespace ScriptCanvasEditor
         //! Used to close a graph that is currently opened in the editor.
         virtual void CloseGraph() = 0;
 
-        //! Retrieves script canvas asset reference
-        virtual AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const = 0;        
-
         //! Returns the Entity ID of the Editor Entity that owns this graph.
         virtual AZ::EntityId GetEditorEntityId() const = 0;
         virtual AZ::NamedEntityId GetNamedEditorEntityId() const = 0;
@@ -77,6 +74,7 @@ namespace ScriptCanvasEditor
         using BusIdType = AZ::EntityId;
 
         virtual void SetAssetId(const AZ::Data::AssetId& assetId) = 0;
+        virtual bool HasAssetId() const = 0;
     };
 
     using EditorScriptCanvasComponentRequestBus = AZ::EBus<EditorScriptCanvasComponentRequests>;
@@ -90,7 +88,7 @@ namespace ScriptCanvasEditor
         using BusIdType = AZ::EntityId;
 
         //! Gets the GraphId for the EditorScriptCanvasComponent on the given entity.
-        virtual ScriptCanvas::ScriptCanvasId GetScriptCanvasId() const = 0;
+        virtual AZ::Data::AssetId GetAssetId() const = 0;
     };
 
     using EditorContextMenuRequestBus = AZ::EBus<EditorContextMenuRequests>;
@@ -103,11 +101,11 @@ namespace ScriptCanvasEditor
 
         //! Notification which fires after an EditorGraph has received it's on AssetReady callback
         //! \param scriptCanvasAsset Script Canvas asset which is now ready for use in the Editor
-        virtual void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/) {};
+        virtual void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvas::ScriptCanvasAssetBase>& /*scriptCanvasAsset*/) {};
 
         //! Notification which fires after an EditorGraph has received it's on AssetReloaded callback
         //! \param scriptCanvasAsset Script Canvas asset which is now ready for use in the Editor
-        virtual void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvaAsset */) {};
+        virtual void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvas::ScriptCanvasAssetBase>& /*scriptCanvaAsset */) {};
 
         //! Notification which fires after an EditorGraph has received it's on AssetReady callback
         //! \param AssetId AssetId of unloaded ScriptCanvas
@@ -116,7 +114,7 @@ namespace ScriptCanvasEditor
         //! Notification which fires after an EditorGraph has received an onAssetSaved callback
         //! \param scriptCanvasAsset Script Canvas asset which was attempted to be saved
         //! \param isSuccessful specified where the Script Canvas asset was successfully saved
-        virtual void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/, bool /*isSuccessful*/) {};
+        virtual void OnScriptCanvasAssetSaved(const AZ::Data::AssetId) {};
     };
     using EditorScriptCanvasAssetNotificationBus = AZ::EBus<EditorScriptCanvasAssetNotifications>;
     
@@ -126,13 +124,15 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = ScriptCanvas::ScriptCanvasId;
 
-        //ScriptCanvas::ScriptCanvasId GetScriptCanvasId() const = 0;
+        virtual void SetAssetId(const AZ::Data::AssetId& assetId) = 0;
 
         virtual void CreateGraphCanvasScene() = 0;
         virtual void ClearGraphCanvasScene() = 0;
         virtual GraphCanvas::GraphId GetGraphCanvasGraphId() const = 0;
 
         virtual void DisplayGraphCanvasScene() = 0;
+
+        virtual void OnGraphCanvasSceneVisible() = 0;
 
         virtual void UpdateGraphCanvasSaveData(const AZStd::unordered_map< AZ::EntityId, GraphCanvas::EntitySaveDataContainer* >& saveData) = 0;
         virtual AZStd::unordered_map< AZ::EntityId, GraphCanvas::EntitySaveDataContainer* > GetGraphCanvasSaveData() = 0;
@@ -157,6 +157,12 @@ namespace ScriptCanvasEditor
         virtual bool ConvertReferenceToVariableNode(const GraphCanvas::Endpoint& endpoint) = 0;
 
         virtual void QueueVersionUpdate(const AZ::EntityId& graphCanvasNodeId) = 0;
+
+        virtual bool IsRuntimeGraph() const = 0;
+        virtual bool IsFunctionGraph() const = 0;
+
+        virtual ScriptCanvas::Endpoint ConvertToScriptCanvasEndpoint(const GraphCanvas::Endpoint& endpoinnt) const = 0;
+        virtual GraphCanvas::Endpoint ConvertToGraphCanvasEndpoint(const ScriptCanvas::Endpoint& endpoint) const = 0;
     };
     
     using EditorGraphRequestBus = AZ::EBus<EditorGraphRequests>;
@@ -180,6 +186,9 @@ namespace ScriptCanvasEditor
         using BusIdType = AZ::EntityId;
 
         virtual void OnGraphCanvasNodeDisplayed(AZ::EntityId /*graphCanvasNodeId*/) {}
+
+        virtual void OnVersionConversionBegin() {};
+        virtual void OnVersionConversionEnd() {};
     };
 
     using EditorNodeNotificationBus = AZ::EBus<EditorNodeNotifications>;

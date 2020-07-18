@@ -30,6 +30,31 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSetTransformNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSetTransformNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendTreeSetTransformNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeSetTransformNode::UniqueData::Update()
+    {
+        BlendTreeSetTransformNode* transformNode = azdynamic_cast<BlendTreeSetTransformNode*>(mObject);
+        AZ_Assert(transformNode, "Unique data linked to incorrect node type.");
+
+        ActorInstance* actorInstance = mAnimGraphInstance->GetActorInstance();
+        Actor* actor = actorInstance->GetActor();
+
+        m_nodeIndex = InvalidIndex32;
+
+        const AZStd::string& jointName = transformNode->GetJointName();
+        if (!jointName.empty())
+        {
+            const Node* joint = actor->GetSkeleton()->FindNodeByName(jointName);
+            if (joint)
+            {
+                m_nodeIndex = joint->GetNodeIndex();
+            }
+        }
+    }
 
     BlendTreeSetTransformNode::BlendTreeSetTransformNode()
         : AnimGraphNode()
@@ -47,30 +72,9 @@ namespace EMotionFX
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_RESULT, PORTID_OUTPUT_POSE);
     }
 
-
     BlendTreeSetTransformNode::~BlendTreeSetTransformNode()
     {
     }
-
-
-    void BlendTreeSetTransformNode::Reinit()
-    {
-        AnimGraphNode::Reinit();
-
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-            if (uniqueData)
-            {
-                uniqueData->m_mustUpdate = true;
-                OnUpdateUniqueData(animGraphInstance);
-            }
-        }
-    }
-
 
     bool BlendTreeSetTransformNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -103,13 +107,11 @@ namespace EMotionFX
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         AnimGraphPose* outputPose;
 
-        // get the unique
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, uniqueData->m_nodeIndex == MCORE_INVALIDINDEX32);
+            SetHasError(uniqueData, uniqueData->m_nodeIndex == MCORE_INVALIDINDEX32);
         }
 
         OutputAllIncomingNodes(animGraphInstance);
@@ -203,46 +205,6 @@ namespace EMotionFX
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
     }
-
-
-    void BlendTreeSetTransformNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        if (uniqueData->m_mustUpdate)
-        {
-            ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            Actor* actor = actorInstance->GetActor();
-
-            uniqueData->m_mustUpdate = false;
-            uniqueData->m_nodeIndex  = MCORE_INVALIDINDEX32;
-
-            if (m_nodeName.empty())
-            {
-                return;
-            }
-
-            const Node* node = actor->GetSkeleton()->FindNodeByName(m_nodeName.c_str());
-            if (!node)
-            {
-                return;
-            }
-
-            uniqueData->m_nodeIndex  = node->GetNodeIndex();
-        }
-    }
-
-
-    void BlendTreeSetTransformNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        UpdateUniqueData(animGraphInstance, uniqueData);
-    }
-
 
     void BlendTreeSetTransformNode::Reflect(AZ::ReflectContext* context)
     {

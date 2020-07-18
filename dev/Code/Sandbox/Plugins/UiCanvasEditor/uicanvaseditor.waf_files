@@ -231,9 +231,12 @@
             "Animation/UiAnimUndoObject.h",
             "Animation/UiAnimViewAnimNode.cpp",
             "Animation/UiAnimViewAnimNode.h",
+            "Animation/UiAnimViewEventNode.cpp",
+            "Animation/UiAnimViewEventNode.h",
             "Animation/UiAnimViewNode.cpp",
             "Animation/UiAnimViewNode.h",
             "Animation/UiAnimViewNodeFactories.cpp",
+            "Animation/UiAnimViewNodeFactories.h",
             "Animation/UiAnimViewSequence.cpp",
             "Animation/UiAnimViewSequence.h",
             "Animation/UiAnimViewSequenceManager.cpp",
@@ -278,9 +281,14 @@
         "Animation/Dialog/Key Dialogs":
         [
             "Animation/UiAnimViewTrackPropsDlg.ui",
+            "Animation/UiAVEventsDialog.cpp",
+            "Animation/UiAVEventsDialog.h",
+            "Animation/UiAVEventsDialog.ui",
             "Animation/UiAVSequenceProps.cpp",
             "Animation/UiAVSequenceProps.h",
-            "Animation/UiAVSequenceProps.ui"
+            "Animation/UiAVSequenceProps.ui",
+            "Animation/UiAVTrackEventKeyUIControls.cpp",
+            "Animation/UiAVTrackEventKeyUIControls.h"
         ]
     }
 }

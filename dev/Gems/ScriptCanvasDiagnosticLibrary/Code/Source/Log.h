@@ -50,7 +50,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Property(AZStd::string,
                     ScriptCanvas_Property::Name("Value", "The value to log")
                     ScriptCanvas_Property::Input
-                    ScriptCanvas_Property::Untyped);
+                    );
             };
         }
     }

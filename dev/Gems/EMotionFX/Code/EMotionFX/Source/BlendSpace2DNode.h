@@ -13,7 +13,8 @@
 #pragma once
 
 
-#include "BlendSpaceNode.h"
+#include <EMotionFX/Source/BlendSpaceNode.h>
+#include <EMotionFX/Source/BlendSpaceParamEvaluator.h>
 #include <AzCore/std/containers/vector.h>
 
 namespace EMotionFX
@@ -99,6 +100,7 @@ namespace EMotionFX
             AZ::Vector2 ConvertToNormalizedSpace(const AZ::Vector2& pt) const;
 
             void Reset() override;
+            void Update() override;
 
         public:
             MotionInfos                     m_motionInfos;
@@ -139,7 +141,8 @@ namespace EMotionFX
         bool    GetHasOutputPose() const override { return true; }
         bool    GetNeedsNetTimeSync() const override { return true; }
         AZ::Color GetVisualColor() const override { return AZ::Color(0.23f, 0.71f, 0.78f, 1.0f); }
-        void    OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
         // AnimGraphObject overrides
@@ -199,16 +202,16 @@ namespace EMotionFX
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
     private:
-        bool    UpdateMotionInfos(AnimGraphInstance* animGraphInstance);
-        void    ComputeNormalizationInfo(UniqueData& uniqueData);
-        void    UpdateTriangulation(UniqueData& uniqueData);
-        void    DetermineOuterEdges(UniqueData& uniqueData);
+        bool UpdateMotionInfos(UniqueData* uniqueData);
+        void ComputeNormalizationInfo(UniqueData& uniqueData);
+        void UpdateTriangulation(UniqueData& uniqueData);
+        void DetermineOuterEdges(UniqueData& uniqueData);
 
-        AZ::Vector2 GetCurrentSamplePosition(AnimGraphInstance* animGraphInstance, const UniqueData& uniqueData);
-        void    UpdateBlendingInfoForCurrentPoint(UniqueData& uniqueData);
-        bool    FindTriangleForCurrentPoint(UniqueData& uniqueData);
-        bool    FindOuterEdgeClosestToCurrentPoint(UniqueData& uniqueData);
-        void    SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
+        AZ::Vector2 GetCurrentSamplePosition(AnimGraphInstance* animGraphInstance, UniqueData& uniqueData);
+        void UpdateBlendingInfoForCurrentPoint(UniqueData& uniqueData);
+        bool FindTriangleForCurrentPoint(UniqueData& uniqueData);
+        bool FindOuterEdgeClosestToCurrentPoint(UniqueData& uniqueData);
+        void SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
 
     private:
         AZ::Crc32 GetEvaluatorXVisibility() const;
@@ -217,16 +220,15 @@ namespace EMotionFX
 
         AZStd::vector<BlendSpaceMotion> m_motions;
         AZStd::string                   m_syncMasterMotionId;
-        BlendSpaceParamEvaluator*       m_evaluatorX;
-        AZ::TypeId                      m_evaluatorTypeX;
-        ECalculationMethod              m_calculationMethodX;
-        BlendSpaceParamEvaluator*       m_evaluatorY;
-        AZ::TypeId                      m_evaluatorTypeY;
-        ECalculationMethod              m_calculationMethodY;
-        ESyncMode                       m_syncMode;
-        EBlendSpaceEventMode            m_eventFilterMode;
-
-        AZ::Vector2 m_currentPositionSetInteractively;
+        BlendSpaceParamEvaluator*       m_evaluatorX = nullptr;
+        AZ::TypeId                      m_evaluatorTypeX = azrtti_typeid<BlendSpaceParamEvaluatorNone>();
+        ECalculationMethod              m_calculationMethodX = ECalculationMethod::AUTO;
+        BlendSpaceParamEvaluator*       m_evaluatorY = nullptr;
+        AZ::TypeId                      m_evaluatorTypeY = azrtti_typeid<BlendSpaceParamEvaluatorNone>();
+        ECalculationMethod              m_calculationMethodY = ECalculationMethod::AUTO;
+        ESyncMode                       m_syncMode = ESyncMode::SYNCMODE_DISABLED;
+        EBlendSpaceEventMode            m_eventFilterMode = EBlendSpaceEventMode::BSEVENTMODE_MOST_ACTIVE_MOTION;
+        AZ::Vector2                     m_currentPositionSetInteractively = AZ::Vector2::CreateZero();
 
         static const float s_epsilonForBarycentricCoords;
     };

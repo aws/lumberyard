@@ -19,6 +19,7 @@
 
 namespace ScriptCanvas
 {
+    const size_t k_maximumVariableNameSize = 200;
     const char* CopiedVariableData::k_variableKey = "ScriptCanvas::CopiedVariableData";
 
     bool GraphVariableManagerComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& componentElementNode)
@@ -156,7 +157,7 @@ namespace ScriptCanvas
 
         if (FindVariable(variableName))
         {
-            variableName.append(" Copy");
+            variableName.append(" (Copy)");
 
             if (FindVariable(variableName))
             {
@@ -167,7 +168,7 @@ namespace ScriptCanvas
                 do
                 {
                     ++counter;
-                    variableName = AZStd::string::format("%s (%i)", originalName.c_str(), counter);                    
+                    variableName = AZStd::string::format("%s (%i)", originalName.c_str(), counter);
                 } while (FindVariable(variableName));
             }
         }
@@ -207,7 +208,7 @@ namespace ScriptCanvas
             return cloneOutcome;
         }
 
-        const VariableId& newId = cloneOutcome.GetValue();        
+        const VariableId& newId = cloneOutcome.GetValue();
 
         // Only register a copied variable if it had a valid datum previously.
         if (graphVariable.GetVariableId().IsValid())
@@ -250,9 +251,20 @@ namespace ScriptCanvas
         return AddVariable(keyValuePair.first, keyValuePair.second);
     }
 
-    bool GraphVariableManagerComponent::IsNameAvailable(AZStd::string_view varName)
+    VariableValidationOutcome GraphVariableManagerComponent::IsNameValid(AZStd::string_view varName)
     {
-        return FindVariable(varName) == nullptr;
+        if (varName.size() == 0 || varName.size() >= k_maximumVariableNameSize)
+        {
+            return AZ::Failure(GraphVariableValidationErrorCode::Invalid);
+        }
+        else if (FindVariable(varName) != nullptr)
+        {
+            return AZ::Failure(GraphVariableValidationErrorCode::Duplicate);
+        }
+        else
+        {
+            return AZ::Success();
+        }
     }
 
     bool GraphVariableManagerComponent::RemoveVariable(const VariableId& variableId)
@@ -358,13 +370,18 @@ namespace ScriptCanvas
         {
             return AZ::Failure(AZStd::string::format("Unable to find variable with Id %s on Entity %s. Cannot rename",
                 variableId.ToString().data(), GetEntityId().ToString().data()));
-        }
+        }        
 
         GraphVariable* graphVariable = FindVariable(newVarName);
         if (graphVariable && graphVariable->GetVariableId() != variableId)
         {
             return AZ::Failure(AZStd::string::format("A variable with name %s already exists on Entity %s. Cannot rename",
                 newVarName.data(), GetEntityId().ToString().data()));
+        }
+
+        if (!IsNameValid(newVarName))
+        {
+            return AZ::Failure(AZStd::string::format("%s is an invalid variable name. Cannot Rename", newVarName.data()));
         }
 
         if (!m_variableData.RenameVariable(variableId, newVarName))
@@ -377,6 +394,13 @@ namespace ScriptCanvas
         VariableNotificationBus::Event(GraphScopedVariableId(m_scriptCanvasId, variableId), &VariableNotifications::OnVariableRenamed, newVarName);
 
         return AZ::Success();
+    }
+
+    bool GraphVariableManagerComponent::IsRemappedId(const VariableId& sourceId) const
+    {
+        VariableId remappedId = FindCopiedVariableRemapping(sourceId);
+
+        return remappedId.IsValid();
     }
 
     void GraphVariableManagerComponent::SetVariableData(const VariableData& variableData)

@@ -249,19 +249,34 @@ void CFileUtil::EditTextureFile(const char* textureFile, bool bUseGameFolder)
     AZStd::string fullTexturePath;
     bool fullTexturePathFound = false;
     AZStd::string relativePath = textureFile;
+
+    // First check if we have been given an empty path
+    QString warningTitle = QObject::tr("Cannot open file!");
+    if (relativePath.empty())
+    {
+        QString messageString = QObject::tr("Texture path is empty. You need to assign a texture first.");
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), warningTitle, messageString);
+        return;
+    }
+
     AssetSystemRequestBus::BroadcastResult(fullTexturePathFound, &AssetSystemRequest::GetFullSourcePathFromRelativeProductPath, relativePath, fullTexturePath);
-
-    QWidget* parentWidget = QApplication::activeWindow() ? QApplication::activeWindow() : MainWindow::instance();
-
     if (!fullTexturePathFound)
     {
-        QString messageString = QString("Failed to find absolute path to %1 - could not open texture editor").arg(textureFile);
-        QMessageBox::warning(parentWidget, "Cannot open file!", messageString);
+        QString messageString = QObject::tr("Failed to find absolute path to %1 - could not open texture editor.").arg(textureFile);
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), warningTitle, messageString);
         return;
     }
 
     bool failedToLaunch = true;
     QByteArray textureEditorPath = gSettings.textureEditor.toUtf8();
+
+    // Give the user a warning if they don't have a texture editor configured
+    if (textureEditorPath.isEmpty())
+    {
+        QString messageString = QObject::tr("No texture editor has been configured.\nYou need to configure one by going to Edit > Editor Settings > Global Preferences in the menu bar and then configure the 'External Editors > Texture Editor'.");
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), warningTitle, messageString);
+        return;
+    }
 
 #if defined(AZ_PLATFORM_WINDOWS)
     // Use the Win32 API calls to open the right editor; the OS knows how to do this even better than
@@ -279,8 +294,8 @@ void CFileUtil::EditTextureFile(const char* textureFile, bool bUseGameFolder)
     if (failedToLaunch)
     {
         //failed
-        QString messageString = QString("Failed to open %1 with texture editor %2").arg(fullTexturePath.data()).arg(textureEditorPath.data());
-        QMessageBox::warning(parentWidget, "Cannot open file!", messageString);
+        QString messageString = QObject::tr("Failed to open %1 with texture editor %2.").arg(fullTexturePath.data()).arg(textureEditorPath.data());
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), warningTitle, messageString);
     }
 }
 

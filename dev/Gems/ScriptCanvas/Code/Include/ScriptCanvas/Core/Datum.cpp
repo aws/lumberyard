@@ -558,6 +558,19 @@ namespace
     template<typename t_Value>
     AZ_INLINE bool IsDataEqual(const void* lhs, const void* rhs)
     {
+        // If the address is the same, they're the same
+        if (rhs == lhs)
+        {
+            return true;
+        }
+
+        // If they're not the same, but one is nullptr, they're not the same
+        if (!lhs || !rhs)
+        {
+            return false;
+        }
+
+        // The address is different, we need to check the value
         return *reinterpret_cast<const t_Value*>(lhs) == *reinterpret_cast<const t_Value*>(rhs);
     }
 
@@ -1794,14 +1807,14 @@ namespace ScriptCanvas
             if (dataType.IsValid())
             {
                 m_isDefaultConstructed = false;
-                                
+                
                 Datum tempDatum(dataType, ScriptCanvas::Datum::eOriginality::Original);
                 ReconfigureDatumTo(AZStd::move(tempDatum));
             }
             else
             {
+                (*this) = AZStd::move(Datum());
                 m_isDefaultConstructed = true;
-                (*this) = AZStd::move(Datum());                
             }
         }
     }
@@ -2050,7 +2063,7 @@ namespace ScriptCanvas
             }
             else
             {
-                AZ_Error("Script Canvas", false, "Datum type de-serialized, but no such class found in the behavior context");
+                AZ_Error("Script Canvas", false, AZStd::string::format("Datum type (%s) de-serialized, but no such class found in the behavior context", m_type.GetAZType().ToString<AZStd::string>().c_str()).c_str());
             }
         }
     }

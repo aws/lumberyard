@@ -36,14 +36,14 @@ public:
     void ConsumeAttribute(AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName);
 
     AnchorPresetsWidget* GetAnchorPresetsWidget();
-    AzToolsFramework::PropertyVectorCtrl* GetPropertyVectorCtrl();
+    AzQtComponents::VectorInput* GetPropertyVectorCtrl();
 
     bool IsReadOnly() { return m_isReadOnly; }
 
 private:
 
     AzToolsFramework::VectorPropertyHandlerCommon m_common;
-    AzToolsFramework::PropertyVectorCtrl* m_propertyVectorCtrl;
+    AzQtComponents::VectorInput* m_propertyVectorCtrl;
     AnchorPresetsWidget* m_anchorPresetsWidget;
     QLabel* m_disabledLabel;
     QLabel* m_controlledByFitterLabel;

@@ -47,9 +47,8 @@ namespace EMotionFX
         ;
     }
 
-    const AZStd::string& FloatSpinnerParameter::GetTypeDisplayName() const
+    const char* FloatSpinnerParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Float (spin box)";
-        return typeDisplayName;
+        return "Float (spin box)";
     }
 }

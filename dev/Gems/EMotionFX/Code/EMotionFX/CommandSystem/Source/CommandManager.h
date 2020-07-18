@@ -48,13 +48,18 @@ namespace CommandSystem
         MCORE_INLINE bool GetLockSelection() const                                          { return mLockSelection; }
         void SetLockSelection(bool lockSelection)                                           { mLockSelection = lockSelection; }
 
-        void SetWorkspaceDirtyFlag(bool dirty)                                                { mWorkspaceDirtyFlag = dirty; }
-        MCORE_INLINE bool GetWorkspaceDirtyFlag() const                                       { return mWorkspaceDirtyFlag; }
+        void SetWorkspaceDirtyFlag(bool dirty)                                              { mWorkspaceDirtyFlag = dirty; }
+        MCORE_INLINE bool GetWorkspaceDirtyFlag() const                                     { return mWorkspaceDirtyFlag; }
+
+        // Only true when user create or open a workspace.
+        void SetUserOpenedWorkspaceFlag(bool flag);
+        bool GetUserOpenedWorkspaceFlag() const                                             { return m_userOpenedWorkspaceFlag; }
 
     private:
         SelectionList       mCurrentSelection;      /**< The current selected actors, motions and nodes. */
         bool                mLockSelection;
         bool                mWorkspaceDirtyFlag;
+        bool                m_userOpenedWorkspaceFlag = false;
     };
 
 

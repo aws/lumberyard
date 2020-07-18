@@ -1,5 +1,8 @@
 {
-    "name": "nvcloth_lib",
+    "name": [
+        "nvcloth_lib",
+        "nvcloth_cuda_lib"
+    ],
     "source": "@3P:NVCLOTHLIB@",
     "description": "nVidia Cloth simulation library.",
     "defines": ["NV_CLOTH_IMPORT=","PX_CALL_CONV="],

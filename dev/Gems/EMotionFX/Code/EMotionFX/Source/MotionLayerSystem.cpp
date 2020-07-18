@@ -21,7 +21,6 @@
 #include "TransformData.h"
 #include "MotionQueue.h"
 
-
 namespace EMotionFX
 {
     // constructor
@@ -162,8 +161,7 @@ namespace EMotionFX
         }
     }
 
-
-
+    
     // update the motion tree
     void MotionLayerSystem::UpdateMotionTree()
     {
@@ -172,20 +170,21 @@ namespace EMotionFX
             MotionInstance* source = mMotionInstances[i];
 
             // if we aren't stopping this motion yet
-            if (source->GetIsStopping() == false)
+            if (!source->GetIsStopping())
             {
                 // if numloops not infinite and numloops-1 is the current number of loops
                 // and the current time - blendouttime has been reached
                 if (source->GetBlendOutBeforeEnded())
                 {
                     // if the motion has to stop
-                    if (((source->GetIsPlayingForever() == false) && (source->GetNumCurrentLoops() == source->GetMaxLoops() - 1) &&
-                         (source->GetTimeDifToLoopPoint() <= source->GetFadeTime()) && (source->GetFreezeAtLastFrame() == false)) || source->GetHasEnded())
+                    if ((!source->GetIsPlayingForever() &&
+                        (source->GetNumCurrentLoops() >= source->GetMaxLoops()) &&
+                        (source->GetTimeDifToLoopPoint() <= source->GetFadeTime()) &&
+                        !source->GetFreezeAtLastFrame()) ||
+                        (source->GetHasEnded() && !source->GetFreezeAtLastFrame()))
                     {
-                        //GetEventManager().GetEventHandler()->OnHasReachedMaxNumLoops( source );
-
                         // if we have haven't looped yet, so we are still in time to fade out
-                        if (source->GetHasEnded() == false)
+                        if (!source->GetHasEnded())
                         {
                             source->Stop(source->GetTimeDifToLoopPoint());  // start to fade out in the time left until we reach the end of the motion
                         }
@@ -198,9 +197,8 @@ namespace EMotionFX
                 else
                 {
                     // if it has reached the end
-                    if (source->GetHasEnded() && source->GetFreezeAtLastFrame() == false)
+                    if (source->GetHasEnded() && !source->GetFreezeAtLastFrame())
                     {
-                        //GetEventManager().GetEventHandler()->OnHasReachedMaxNumLoops( source );
                         source->Stop();
                     }
                 }
@@ -365,14 +363,7 @@ namespace EMotionFX
                     }
 
                     // update the temp actor pose with the result from the motion
-                    if (instance->GetIsGroupedMotion())
-                    {
-                        instance->GetMotionGroup()->Output(finalPose, tempActorPose);   // output the result of the grouped motion
-                    }
-                    else
-                    {
-                        instance->GetMotion()->Update(finalPose, tempActorPose, instance); // output the results of the single motion
-                    }
+                    instance->GetMotion()->Update(finalPose, tempActorPose, instance); // output the results of the single motion
 
                     // compensate for motion extraction
                     if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled && !instance->GetMotion()->GetIsAdditive())
@@ -394,14 +385,7 @@ namespace EMotionFX
                     Pose* finalPose = transformData->GetCurrentPose();
                     finalPose->InitFromBindPose(mActorInstance);
 
-                    if (instance->GetIsGroupedMotion())
-                    {
-                        instance->GetMotionGroup()->Output(finalPose, finalPose);   // output the result of the grouped motion
-                    }
-                    else
-                    {
-                        instance->GetMotion()->Update(finalPose, finalPose, instance); // output the results of the single motion
-                    }
+                    instance->GetMotion()->Update(finalPose, finalPose, instance); // output the results of the single motion
 
                     // compensate for motion extraction
                     if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled && !instance->GetMotion()->GetIsAdditive())
@@ -421,16 +405,7 @@ namespace EMotionFX
                     Pose* finalPose = transformData->GetCurrentPose();
 
                     finalPose->InitFromBindPose(mActorInstance);
-
-                    // update the temp actor pose with the result from the motion
-                    if (instance->GetIsGroupedMotion())
-                    {
-                        instance->GetMotionGroup()->Output(finalPose, tempActorPose);   // output the result of the grouped motion
-                    }
-                    else
-                    {
-                        instance->GetMotion()->Update(finalPose, tempActorPose, instance); // output the results of the single motion
-                    }
+                    instance->GetMotion()->Update(finalPose, tempActorPose, instance); // output the results of the single motion
 
                     // compensate for motion extraction
                     if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled && !instance->GetMotion()->GetIsAdditive())

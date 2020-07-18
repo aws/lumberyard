@@ -107,12 +107,12 @@ namespace EMStudio
         // create the dialog stack
         assert(mDialogStack == nullptr);
         mDialogStack = new MysticQt::DialogStack(mDock);
-        mDock->SetContents(mDialogStack);
+        mDock->setWidget(mDialogStack);
 
         // create the motion event presets widget
         mMotionEventPresetsWidget = new MotionEventPresetsWidget(mDialogStack, this);
         mDialogStack->Add(mMotionEventPresetsWidget, "Motion Event Presets", false, true);
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MotionEventsPlugin::WindowReInit);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &MotionEventsPlugin::WindowReInit);
 
         // create the motion event properties widget
         mMotionEventWidget = new MotionEventWidget(mDialogStack);

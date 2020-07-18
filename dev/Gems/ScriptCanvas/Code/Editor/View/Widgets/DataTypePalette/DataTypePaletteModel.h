@@ -64,6 +64,8 @@ namespace ScriptCanvasEditor
         const AZStd::unordered_set< AZ::Uuid >& GetPendingPinChanges() const;
         void SubmitPendingPinChanges();
 
+        const AZStd::vector<AZ::TypeId>& GetVariableTypes() const;
+
     private:
 
         void AddDataTypeImpl(const AZ::TypeId& dataType);

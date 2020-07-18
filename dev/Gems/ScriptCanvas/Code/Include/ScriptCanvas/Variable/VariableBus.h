@@ -33,7 +33,7 @@ namespace ScriptCanvas
         using BusIdType = GraphScopedVariableId;
 
         using AllocatorType = AZStd::allocator;
-        
+
         virtual GraphVariable* GetVariable() = 0;
         virtual const GraphVariable* GetVariableConst() const = 0;
 
@@ -65,12 +65,23 @@ namespace ScriptCanvas
         GraphVariableMapping m_variableMapping;
     };
 
+    enum class GraphVariableValidationErrorCode
+    {
+        Duplicate,
+        Invalid,
+
+        Unknown
+    };
+
+    using VariableValidationOutcome = AZ::Outcome<void, GraphVariableValidationErrorCode>;
+
     class GraphVariableManagerRequests
         : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using MutexType = AZStd::recursive_mutex;
         using BusIdType = ScriptCanvasId;
 
         using AllocatorType = AZStd::allocator;
@@ -82,7 +93,7 @@ namespace ScriptCanvas
         virtual AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view key, const Datum& value) = 0;
         virtual AZ::Outcome<VariableId, AZStd::string> AddVariablePair(const AZStd::pair<AZStd::string_view, Datum>& keyValuePair) = 0;
 
-        virtual bool IsNameAvailable(AZStd::string_view key) = 0;
+        virtual VariableValidationOutcome IsNameValid(AZStd::string_view variableName) = 0;
 
         //! Adds properties from the range [first, last)
         //! returns vector of AZ::Outcome which for successful outcomes contains the VariableId and for failing outcome
@@ -147,6 +158,8 @@ namespace ScriptCanvas
         //! why the rename failed
         virtual AZ::Outcome<void, AZStd::string> RenameVariable(const VariableId& variableId, AZStd::string_view newVarName) = 0;
 
+        virtual bool IsRemappedId(const VariableId& remappedId) const = 0;
+
         virtual const VariableData* GetVariableDataConst() const = 0;
         virtual VariableData* GetVariableData() = 0;
 
@@ -155,6 +168,13 @@ namespace ScriptCanvas
 
         //! Deletes oldVariableData and sends out GraphVariableManagerNotifications for each deleted variable
         virtual void DeleteVariableData(const VariableData& variableData) = 0;
+
+        // <Deprecated>
+        bool IsNameAvailable(AZStd::string_view key)
+        {
+            return IsNameValid(key).IsSuccess();
+        }
+        // </Deprecated>
     };
 
     using GraphVariableManagerRequestBus = AZ::EBus<GraphVariableManagerRequests>;
@@ -217,8 +237,9 @@ namespace ScriptCanvas
         // Invoked after a variable is renamed
         virtual void OnVariableRenamed(AZStd::string_view /*newVariableName*/) {}
 
-        virtual void OnVariableExposureChanged() {};
-        virtual void OnVariableExposureGroupChanged() {};
+        virtual void OnVariableScopeChanged() {};
+
+        virtual void OnVariablePriorityChanged() {};
 
         virtual void OnVariableValueChanged() {};
     };

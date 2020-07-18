@@ -43,7 +43,7 @@ public:
 
     virtual EUiAnimNodeType GetType() const { return eUiAnimNodeType_AzEntity; }
 
-    virtual void AddTrack(IUiAnimTrack* pTrack);
+    virtual void AddTrack(IUiAnimTrack* track);
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from CUiAnimNode
@@ -110,7 +110,7 @@ protected:
     //! compute the offset for the field and set it in the track
     const AZ::SerializeContext::ClassElement* ComputeOffsetFromElementName(
         const AZ::SerializeContext::ClassData* classData,
-        IUiAnimTrack* pTrack,
+        IUiAnimTrack* track,
         size_t baseOffset);
 
     //! This is called on load to compute the offset into the component for each track

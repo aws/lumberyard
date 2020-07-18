@@ -21,11 +21,6 @@ namespace EMotionFX
     // forward declarations
     class AnimGraphInstance;
 
-    /**
-     *
-     *
-     *
-     */
     class EMFX_API AnimGraphPlayTimeCondition
         : public AnimGraphTransitionCondition
     {

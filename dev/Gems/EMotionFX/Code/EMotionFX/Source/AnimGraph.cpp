@@ -114,15 +114,13 @@ namespace EMotionFX
         return mRootStateMachine->InitAfterLoading(this);
     }
 
-
-    void AnimGraph::UpdateUniqueData()
+    void AnimGraph::RecursiveInvalidateUniqueDatas()
     {
         for (AnimGraphInstance* animGraphInstance : m_animGraphInstances)
         {
-            animGraphInstance->UpdateUniqueData();
+            animGraphInstance->RecursiveInvalidateUniqueDatas();
         }
     }
-
 
     bool AnimGraph::AddParameter(Parameter* parameter, const GroupParameter* parentGroup)
     {
@@ -651,24 +649,22 @@ namespace EMotionFX
         mRootStateMachine->RecursiveCollectObjectsAffectedBy(animGraph, outObjects);
     }
 
-
-    const GroupParameter* AnimGraph::FindGroupParameterByName(const AZStd::string& groupName) const
+    GroupParameter* AnimGraph::FindGroupParameterByName(const AZStd::string& groupName) const
     {
         if (groupName.empty())
         {
-            return &m_rootParameter;
+            return const_cast<GroupParameter*>(&m_rootParameter);
         }
         else
         {
-            const Parameter* parameter = FindParameterByName(groupName);
+            Parameter* parameter = const_cast<Parameter*>(FindParameterByName(groupName));
             if (azrtti_typeid(parameter) == azrtti_typeid<GroupParameter>())
             {
-                return static_cast<const GroupParameter*>(parameter);
+                return static_cast<GroupParameter*>(parameter);
             }
         }
         return nullptr;
     }
-
 
     const GroupParameter* AnimGraph::FindParentGroupParameter(const Parameter* parameter) const
     {

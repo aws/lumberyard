@@ -76,7 +76,7 @@ namespace EMStudio
         // create the dialog stack
         assert(mDialogStack == nullptr);
         mDialogStack = new MysticQt::DialogStack(mDock);
-        mDock->SetContents(mDialogStack);
+        mDock->setWidget(mDialogStack);
 
         // create the attachments window
         mAttachmentsWindow = new AttachmentsWindow(mDialogStack);
@@ -119,7 +119,7 @@ namespace EMStudio
         ReInit();
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &AttachmentsPlugin::WindowReInit);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &AttachmentsPlugin::WindowReInit);
 
         return true;
     }

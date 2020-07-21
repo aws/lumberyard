@@ -60,7 +60,7 @@ public:
     static void ResetDecalUpdatesCounter() { CDecalRenderNode::m_nFillBigDecalIndicesCounter = 0; }
 
     // SetMatrix only supports changing position, this will do the full transform
-    void SetMatrixFull(const Matrix34& mat);
+    virtual void SetMatrixFull(const Matrix34& mat);
 public:
     CDecalRenderNode();
     void RequestUpdate() { m_updateRequested = true; DeleteDecal(); }

@@ -818,6 +818,7 @@ struct IDecalRenderNode
     virtual const SDecalProperties* GetDecalProperties() const = 0;
     virtual const Matrix34& GetMatrix() = 0;
     virtual void CleanUpOldDecals() = 0;
+    virtual void SetMatrixFull(const Matrix34& mat) = 0;
     // </interfuscator:shuffle>
 };
 

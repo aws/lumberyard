@@ -76,11 +76,11 @@
             "include/LmbrCentral/Rendering/FogVolumeComponentBus.h",
             "include/LmbrCentral/Rendering/HighQualityShadowComponentBus.h",
             "include/LmbrCentral/Rendering/GeomCacheComponentBus.h",
-            "include/LmbrCentral/Rendering/RenderBoundsBus.h",
-            "include/LmbrCentral/Rendering/GiRegistrationBus.h"
+            "include/LmbrCentral/Rendering/GiRegistrationBus.h",
+            "include/LmbrCentral/Rendering/RenderBoundsBus.h"
         ],
         "Include/Rendering/Utils": [
-            "include/LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h"            
+            "include/LmbrCentral/Rendering/Utils/MaterialOwnerRequestBusHandlerImpl.h"
         ],
         "Include/Scripting": [
             "include/LmbrCentral/Scripting/EditorTagComponentBus.h",

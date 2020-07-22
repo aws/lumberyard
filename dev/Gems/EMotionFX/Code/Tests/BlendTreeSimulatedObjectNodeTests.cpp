@@ -113,7 +113,7 @@ namespace EMotionFX
         void SetActiveObjects(const AZStd::vector<AZStd::string>& activeObjects)
         {
             m_simNode->SetSimulatedObjectNames(activeObjects);
-            m_simNode->OnUpdateUniqueData(m_animGraphInstance);
+            m_simNode->InvalidateUniqueData(m_animGraphInstance);
         }
 
     protected:
@@ -151,7 +151,7 @@ namespace EMotionFX
     {
         SetActiveObjects({});
 
-        const BlendTreeSimulatedObjectNode::UniqueData* uniqueData = static_cast<const BlendTreeSimulatedObjectNode::UniqueData*>(m_simNode->FindUniqueNodeData(m_animGraphInstance));
+        const BlendTreeSimulatedObjectNode::UniqueData* uniqueData = static_cast<const BlendTreeSimulatedObjectNode::UniqueData*>(m_simNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         ASSERT_NE(uniqueData, nullptr);
         ASSERT_EQ(uniqueData->m_simulations.size(), 2);
 
@@ -168,7 +168,7 @@ namespace EMotionFX
     {
         SetActiveObjects({"leftLeg"});
 
-        const BlendTreeSimulatedObjectNode::UniqueData* uniqueData = static_cast<const BlendTreeSimulatedObjectNode::UniqueData*>(m_simNode->FindUniqueNodeData(m_animGraphInstance));
+        const BlendTreeSimulatedObjectNode::UniqueData* uniqueData = static_cast<const BlendTreeSimulatedObjectNode::UniqueData*>(m_simNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         ASSERT_NE(uniqueData, nullptr);
         ASSERT_EQ(uniqueData->m_simulations.size(), 1);
 
@@ -181,7 +181,7 @@ namespace EMotionFX
     {
         SetActiveObjects({"leftLeg", "rightLeg"});
 
-        const BlendTreeSimulatedObjectNode::UniqueData* uniqueData = static_cast<const BlendTreeSimulatedObjectNode::UniqueData*>(m_simNode->FindUniqueNodeData(m_animGraphInstance));
+        const BlendTreeSimulatedObjectNode::UniqueData* uniqueData = static_cast<const BlendTreeSimulatedObjectNode::UniqueData*>(m_simNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         ASSERT_NE(uniqueData, nullptr);
         ASSERT_EQ(uniqueData->m_simulations.size(), 2);
 

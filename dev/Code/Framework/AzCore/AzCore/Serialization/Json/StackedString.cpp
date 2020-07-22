@@ -23,26 +23,29 @@ namespace AZ
     {
         m_offsetStack.push(m_string.length());
 
-        switch (m_format)
+        if (!value.empty())
         {
-        case Format::ContextPath:
-            if (!m_string.empty())
+            switch (m_format)
             {
-                m_string += '.';
+            case Format::ContextPath:
+                if (!m_string.empty())
+                {
+                    m_string += '.';
+                }
+                break;
+            case Format::JsonPointer:
+                m_string += '/';
+                break;
+            default:
+                if (!m_string.empty())
+                {
+                    m_string += ' ';
+                }
+                break;
             }
-            break;
-        case Format::JsonPointer:
-            m_string += '/';
-            break;
-        default:
-            if (!m_string.empty())
-            {
-                m_string += ' ';
-            }
-            break;
-        }
 
-        m_string.append(value.data(), value.length());
+            m_string.append(value.data(), value.length());
+        }
     }
     
     void StackedString::Push(size_t value)
@@ -78,7 +81,7 @@ namespace AZ
             case Format::ContextPath:
                 return AZStd::string_view("<root>");
             case Format::JsonPointer:
-                return AZStd::string_view("/");
+                return AZStd::string_view("");
             default:
                 return AZStd::string_view("<>");
                 break;
@@ -111,30 +114,5 @@ namespace AZ
     ScopedStackedString::~ScopedStackedString()
     {
         m_string.Pop();
-    }
-
-    StackedString& ScopedStackedString::Get()
-    {
-        return m_string;
-    }
-
-    const StackedString& ScopedStackedString::Get() const
-    {
-        return m_string;
-    }
-
-    ScopedStackedString::operator StackedString&()
-    {
-        return m_string;
-    }
-
-    ScopedStackedString::operator const StackedString&() const
-    {
-        return m_string;
-    }
-
-    ScopedStackedString::operator AZStd::string_view() const
-    {
-        return static_cast<AZStd::string_view>(m_string);
     }
 } // namespace AZ

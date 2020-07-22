@@ -80,6 +80,35 @@ SliderPage::SliderPage(QWidget* parent)
         ui->doubleVerticalMidPointSliderDisabled->setValue(-10.0);
     }
 
+    {
+        double min = 0.0;
+        double max = 1.0;
+        double value = 0.5;
+
+        const auto curveMidpointSliders =
+        {
+            ui->curveMidpoint25,
+            ui->curveMidpoint5,
+            ui->curveMidpoint75,
+            ui->verticalcurveMidpoint25,
+            ui->verticalcurveMidpoint5,
+            ui->verticalcurveMidpoint75
+        };
+
+        for (auto slider : curveMidpointSliders)
+        {
+            slider->setRange(min, max);
+            slider->setValue(value);
+            AzQtComponents::Slider::applyMidPointStyle(slider);
+        }
+
+        ui->curveMidpoint25->setCurveMidpoint(0.25);
+        ui->verticalcurveMidpoint25->setCurveMidpoint(0.25);
+
+        ui->curveMidpoint75->setCurveMidpoint(0.75);
+        ui->verticalcurveMidpoint75->setCurveMidpoint(0.75);
+    }
+
     QString exampleText = R"(
 
 A Slider is a wrapper around a QSlider.<br/>

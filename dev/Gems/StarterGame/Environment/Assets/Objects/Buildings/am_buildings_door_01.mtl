@@ -1,0 +1,10 @@
+<Material MtlFlags="557312" DccMaterialHash="1626301714" vertModifType="0">
+ <SubMaterials>
+  <Material Name="AM_Buildings_Door_01_M" MtlFlags="524416" DccMaterialHash="2679531574" Shader="Illum" GenMask="200800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0.015208516,0.015208516,0.015208516,1" Opacity="1" Shininess="6.3117914" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/buildings/buildings_door_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/buildings/buildings_door_01_ddna.dds"/>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

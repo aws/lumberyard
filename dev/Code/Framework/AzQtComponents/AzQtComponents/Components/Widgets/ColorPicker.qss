@@ -22,29 +22,6 @@ AzQtComponents--ColorPicker *
     font-size: 12px;
 }
 
-AzQtComponents--ColorPicker QTextEdit,
-AzQtComponents--ColorPicker QPlainText,
-AzQtComponents--ColorPicker QLineEdit,
-AzQtComponents--ColorPicker QSpinBox,
-AzQtComponents--ColorPicker QDoubleSpinBox
-{
-    padding-bottom: -2px;
-}
-
-AzQtComponents--ColorPicker QLineEdit,
-AzQtComponents--ColorPicker QSpinBox,
-AzQtComponents--ColorPicker QDoubleSpinBox
-{
-    border-width: 1px;
-    border-style: solid;
-    margin: 1px;
-}
-
-AzQtComponents--ColorPicker QLineEdit
-{
-    padding-left: 2px;
-}
-
 AzQtComponents--ColorPicker QToolButton
 {
     border: none;
@@ -55,8 +32,6 @@ AzQtComponents--ColorPicker QToolButton
     background-color: transparent;
 }
 
-AzQtComponents--ColorPicker QLabel,
-AzQtComponents--ColorPicker QCheckBox,
 AzQtComponents--PaletteView,
 AzQtComponents--ColorPicker #Container
 {
@@ -90,20 +65,12 @@ AzQtComponents--PaletteCard[modified="true"] AzQtComponents--CardHeader #Title
     color: #ffa500;
 }
 
-AzQtComponents--PaletteCardBase AzQtComponents--CardHeader #Expander:enabled:checked
+AzQtComponents--ColorPicker QSpinBox:hover,
+AzQtComponents--ColorPicker QDoubleSpinBox:hover,
+AzQtComponents--ColorPicker QSpinBox:hover:focus,
+AzQtComponents--ColorPicker QDoubleSpinBox:hover:focus
 {
-    image: url(:/ColorPickerDialog/PaletteCard/open.png);
-}
-
-AzQtComponents--PaletteCardBase AzQtComponents--CardHeader #Expander:enabled:!checked
-{
-    image: url(:/ColorPickerDialog/PaletteCard/closed.png);
-}
-
-AzQtComponents--ColorPicker QSpinBox,
-AzQtComponents--ColorPicker QDoubleSpinBox
-{
-    padding-left: 0px;
+    background: none;
 }
 
 AzQtComponents--ColorPicker QSpinBox::down-button,

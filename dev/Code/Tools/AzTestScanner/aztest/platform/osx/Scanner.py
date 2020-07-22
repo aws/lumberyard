@@ -50,12 +50,12 @@ class Executor:
                 raise SubprocessTimeoutException("Subprocess timed out after {} seconds. If this is too short, "
                                                  "change it in the command line arguments.".format(timeout))
 
-            line = proc.stdout.readline(400)  # limit to 100 characters to avoid deadlocks
+            line = proc.stdout.readline(400).decode('utf8')  # limit to 100 characters to avoid deadlocks
             if line != '':
                 yield line.strip()
                 # force the loop to read the next line
                 continue
-
+            
             proc.poll()
 
             if proc.returncode is not None:

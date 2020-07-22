@@ -18,6 +18,20 @@
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
 
+#include <QString>
+#include <QToolBar>
+#include <QTreeView>
+
+QT_FORWARD_DECLARE_CLASS(QWidget)
+QT_FORWARD_DECLARE_CLASS(QAction)
+QT_FORWARD_DECLARE_CLASS(QTreeView)
+QT_FORWARD_DECLARE_CLASS(ReselectingTreeView)
+
+namespace AzToolsFramework
+{
+    class ReflectedPropertyEditor;
+}
+
 namespace EMotionFX
 {
     class MakeQtApplicationBase
@@ -51,5 +65,24 @@ namespace EMotionFX
     {
     public:
         void SetUp() override;
+        void TearDown() override;
+        static QWidget* FindTopLevelWidget(const QString& objectName);
+        static QWidget* GetWidgetFromToolbar(const QToolBar* toolbar, const QString &widgetText);
+        static QWidget* GetWidgetFromToolbarWithObjectName(const QToolBar* toolbar, const QString &objectName);
+        static QWidget* GetWidgetWithNameFromNamedToolbar(const QWidget* widget, const QString &toolBarName, const QString &objectName);
+
+        static QAction* GetNamedAction(const QWidget* widget, const QString& actionName);
+        static bool GetActionFromContextMenu(QAction*& action, const QMenu* contextMenu, const QString& actionName);
+
+        void CloseAllPlugins();
+        void CloseAllNotificationWindows();
+        void BringUpContextMenu(const QTreeView* treeview, const QRect& rect);
+        void SelectIndexes(const QModelIndexList& indexList, QTreeView* treeView, const int start, const int end);
+        AzToolsFramework::PropertyRowWidget* GetNamedPropertyRowWidgetFromReflectedPropertyEditor(AzToolsFramework::ReflectedPropertyEditor* rpe, const QString& name);
+    protected:
+        void SetupQtAndFixtureBase();
+        void SetupPluginWindows();
+
+        QApplication* m_uiApp = nullptr;
     };
 } // end namespace EMotionFX

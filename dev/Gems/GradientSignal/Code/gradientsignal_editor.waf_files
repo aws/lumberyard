@@ -10,7 +10,6 @@
             "Include/GradientSignal/Editor/EditorGradientComponentBase.h",
             "Include/GradientSignal/Editor/EditorGradientComponentBase.inl",
             "Include/GradientSignal/Editor/EditorGradientPreviewRenderer.h",
-            "Include/GradientSignal/Editor/EditorGradientSamplerBus.h",
             "Include/GradientSignal/Editor/EditorGradientTypeIds.h"
         ],
         "Source/UI": [

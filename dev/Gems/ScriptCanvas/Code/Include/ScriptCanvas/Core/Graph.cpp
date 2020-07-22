@@ -20,6 +20,8 @@
 
 #include <AzFramework/Entity/EntityContextBus.h>
 
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
+
 #include <ScriptCanvas/Core/Connection.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Datum.h>
@@ -54,6 +56,11 @@ namespace ScriptCanvas
         if (componentElementNode.GetVersion() < 12)
         {
             componentElementNode.RemoveElementByName(AZ_CRC("m_uniqueId", 0x52157a7a));
+        }
+
+        if (componentElementNode.GetVersion() < 13)
+        {
+            componentElementNode.AddElementWithData(context, "m_assetType", azrtti_typeid<RuntimeAsset>());
         }
 
         return true;
@@ -93,8 +100,9 @@ namespace ScriptCanvas
         if (serializeContext)
         {
             serializeContext->Class<Graph, AZ::Component>()
-                ->Version(12, &GraphComponentVersionConverter)
+                ->Version(13, &GraphComponentVersionConverter)
                 ->Field("m_graphData", &Graph::m_graphData)
+                ->Field("m_assetType", &Graph::m_assetType)
                 ;
         }
     }
@@ -700,6 +708,8 @@ namespace ScriptCanvas
     AZStd::vector<AZ::EntityId> Graph::GetConnections() const
     {
         AZStd::vector<AZ::EntityId> entityIds;
+        entityIds.reserve(m_graphData.m_connections.size());
+
         for (auto& connectionRef : m_graphData.m_connections)
         {
             entityIds.push_back(connectionRef->GetId());
@@ -712,10 +722,12 @@ namespace ScriptCanvas
     {
         AZStd::vector<Endpoint> connectedEndpoints;
         auto otherEndpointsRange = m_graphData.m_endpointMap.equal_range(firstEndpoint);
+
         for (auto otherIt = otherEndpointsRange.first; otherIt != otherEndpointsRange.second; ++otherIt)
         {
-            connectedEndpoints.push_back(otherIt->second);
+            connectedEndpoints.emplace_back(otherIt->second);
         }
+
         return connectedEndpoints;
     }
 
@@ -1268,5 +1280,19 @@ namespace ScriptCanvas
     void Graph::SetIsGraphObserved(bool isObserved)
     {
         m_isObserved = isObserved;
+    }
+
+    AZ::Data::AssetType Graph::GetAssetType() const
+    {
+        return m_assetType;
+    }
+
+    void Graph::VersioningRemoveSlot(ScriptCanvas::Node& scriptCanvasNode, const SlotId& slotId)
+    {
+        bool deletedSlot = true;
+
+        // Will suppress warnings based on the slotId being disconnected.
+        scriptCanvasNode.RemoveConnectionsForSlot(slotId, deletedSlot);
+        scriptCanvasNode.SignalSlotRemoved(slotId);
     }
 }

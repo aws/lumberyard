@@ -1,0 +1,30 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+    bld.DefineGem(
+        # General
+        disable_pch = True,
+
+        # This is an Editor only gem
+        Editor = dict(
+            disable_pch = True,
+            platforms = ['win', 'darwin'],
+            file_list = ['qtforpython_editor.waf_files'],
+            win_file_list = ['qtforpython_editor_windows.waf_files'],
+            win_test_all_file_list = ['qtforpython_editor_tests.waf_files'],
+            win_uselib = ['PYSIDE2'],
+            win_features = ['crcfix'],
+            darwin_file_list = ['qtforpython_editor_macos.waf_files'],
+            darwin_exclude_test = True
+         )
+    )

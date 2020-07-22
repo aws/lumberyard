@@ -13,6 +13,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 #include <PhysX/ComponentTypeIds.h>
 
 namespace PhysX
@@ -21,6 +22,7 @@ namespace PhysX
 
     class StaticRigidBodyComponent final
         : public AZ::Component
+        , public Physics::WorldBodyRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
     {
     public:
@@ -37,6 +39,14 @@ namespace PhysX
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
         PhysX::RigidBodyStatic* GetStaticRigidBody();
+
+        // WorldBodyRequestBus
+        void EnablePhysics() override;
+        void DisablePhysics() override;
+        bool IsPhysicsEnabled() const override;
+        AZ::Aabb GetAabb() const override;
+        Physics::WorldBody* GetWorldBody() override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
 
     private:
         void InitStaticRigidBody();

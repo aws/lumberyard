@@ -76,6 +76,17 @@ namespace AzQtComponents
         */
         static Config defaultConfig();
 
+        /*!
+         * Displays the browse edit as a drop target. The valid argument indicates
+         * whether the line edit is a valid drop target or not.
+         */
+        static void applyDropTargetStyle(BrowseEdit* browseEdit, bool valid);
+
+        /*!
+         * Removes the drop target style from the BrowseEdit.
+         */
+        static void removeDropTargetStyle(BrowseEdit* browseEdit);
+
     Q_SIGNALS:
         void attachedButtonTriggered();
 

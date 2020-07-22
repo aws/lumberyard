@@ -69,7 +69,7 @@ namespace GradientSignal
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &SmoothStepGradientConfig::m_smoothStep, "Smooth Step", "Parameters for controlling the smooth-step curve.")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(0, &SmoothStepGradientConfig::m_gradientSampler, "Gradient (Inbound)", "Input gradient whose values will be transformed.")
+                    ->DataElement(0, &SmoothStepGradientConfig::m_gradientSampler, "Gradient", "Input gradient whose values will be transformed.")
                     ;
             }
         }

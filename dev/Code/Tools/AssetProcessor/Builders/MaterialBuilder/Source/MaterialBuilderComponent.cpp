@@ -353,7 +353,7 @@ namespace MaterialBuilder
         builderDescriptor.m_name = "MaterialBuilderWorker";
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.mtl", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = MaterialBuilderWorker::GetUUID();
-        builderDescriptor.m_version = 4;
+        builderDescriptor.m_version = 5;
         builderDescriptor.m_createJobFunction = AZStd::bind(&MaterialBuilderWorker::CreateJobs, &m_materialBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&MaterialBuilderWorker::ProcessJob, &m_materialBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
 
@@ -436,6 +436,7 @@ namespace MaterialBuilder
             if (dependencyResult)
             {
                 jobProduct.m_pathDependencies = AZStd::move(dependencyPaths);
+                jobProduct.m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             }
             else
             {

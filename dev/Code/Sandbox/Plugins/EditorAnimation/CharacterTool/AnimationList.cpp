@@ -1175,7 +1175,7 @@ namespace CharacterTool {
                                 if (actionOutput)
                                 {
                                     AZStd::string errorMessage = "Geppetto - Save failed";
-                                    AZStd::string details = AZStd::string::format("unable to assign animation events file (%s) to current character's .chrparams", m_animEventsFilename);
+                                    AZStd::string details = AZStd::string::format("unable to assign animation events file (%s) to current character's .chrparams", m_animEventsFilename.c_str());
                                     actionOutput->AddError(errorMessage, details);
                                 }
                                 return false;

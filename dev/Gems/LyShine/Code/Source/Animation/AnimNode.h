@@ -11,10 +11,13 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// Description : Base of all Animation Nodes
+
 #pragma once
 
 #include <LyShine/Animation/IUiAnimation.h>
 #include "UiAnimationSystem.h"
+
 
 /*!
         Base class for all Animation nodes,
@@ -40,28 +43,30 @@ public:
             , valueType(_valueType)
             , flags(_flags) {};
 
-        const char* name;           // parameter name.
+        const char* name;               // parameter name.
         CUiAnimParamType paramType;     // parameter id.
-        EUiAnimValue valueType;       // value type, defines type of track to use for animating this parameter.
-        ESupportedParamFlags flags; // combination of flags from ESupportedParamFlags.
+        EUiAnimValue valueType;         // value type, defines type of track to use for animating this parameter.
+        ESupportedParamFlags flags;     // combination of flags from ESupportedParamFlags.
     };
 
 public:
-    CUiAnimNode(const int id);
+    CUiAnimNode(const CUiAnimNode& other);
+    CUiAnimNode(const int id, EUiAnimNodeType nodeType);
     CUiAnimNode();
     ~CUiAnimNode();
+    EUiAnimNodeType GetType() const override { return m_nodeType; }
 
     //////////////////////////////////////////////////////////////////////////
     void add_ref() override;
     void release() override;
     //////////////////////////////////////////////////////////////////////////
 
-    void SetName(const char* name) { m_name = name; };
+    void SetName(const char* name) override { m_name = name; };
     const char* GetName() { return m_name.c_str(); };
 
-    void SetSequence(IUiAnimSequence* pSequence) { m_pSequence = pSequence; }
+    void SetSequence(IUiAnimSequence* pSequence) override { m_pSequence = pSequence; }
     // Return Animation Sequence that owns this node.
-    IUiAnimSequence* GetSequence() { return m_pSequence; };
+    IUiAnimSequence* GetSequence() const override { return m_pSequence; };
 
     void SetFlags(int flags);
     int GetFlags() const;
@@ -69,7 +74,7 @@ public:
     IUiAnimationSystem* GetUiAnimationSystem() const { return m_pSequence->GetUiAnimationSystem(); };
 
     virtual void OnStart() {}
-    virtual void OnReset() {}
+    void OnReset() override {}
     virtual void OnResetHard() { OnReset(); }
     virtual void OnPause() {}
     virtual void OnResume() {}
@@ -96,56 +101,57 @@ public:
     IUiAnimNode* GetTarget() const { return 0; };
 
     void StillUpdate() {}
-    void Animate(SUiAnimContext& ec);
+    void Animate(SUiAnimContext& ec) override;
 
     virtual void PrecacheStatic(float startTime) {}
     virtual void PrecacheDynamic(float time) {}
 
-    virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
-    virtual void InitPostLoad(IUiAnimSequence* pSequence, bool remapIds, LyShine::EntityIdMap* entityIdMap);
+    void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) override;
+    void SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) override;
 
-    virtual void SetNodeOwner(IUiAnimNodeOwner* pOwner);
-    virtual IUiAnimNodeOwner* GetNodeOwner() { return m_pOwner; };
+    void SetNodeOwner(IUiAnimNodeOwner* pOwner) override;
+    IUiAnimNodeOwner* GetNodeOwner() override { return m_pOwner; };
 
     // Called by sequence when needs to activate a node.
     virtual void Activate(bool bActivate);
 
     //////////////////////////////////////////////////////////////////////////
-    virtual void SetParent(IUiAnimNode* pParent);
-    virtual IUiAnimNode* GetParent() const { return m_pParentNode; };
-    virtual IUiAnimNode* HasDirectorAsParent() const;
+    void SetParent(IUiAnimNode* pParent) override;
+    IUiAnimNode* GetParent() const override { return m_pParentNode; };
+    IUiAnimNode* HasDirectorAsParent() const override;
     //////////////////////////////////////////////////////////////////////////
+
+    void UpdateDynamicParams() override {};
 
     //////////////////////////////////////////////////////////////////////////
     // Track functions.
     //////////////////////////////////////////////////////////////////////////
-    virtual int  GetTrackCount() const;
-    virtual IUiAnimTrack* GetTrackByIndex(int nIndex) const;
-    virtual IUiAnimTrack* GetTrackForParameter(const CUiAnimParamType& paramType) const;
-    virtual IUiAnimTrack* GetTrackForParameter(const CUiAnimParamType& paramType, uint32 index) const;
+    int  GetTrackCount() const override;
+    IUiAnimTrack* GetTrackByIndex(int nIndex) const override;
+    IUiAnimTrack* GetTrackForParameter(const CUiAnimParamType& paramType) const override;
+    IUiAnimTrack* GetTrackForParameter(const CUiAnimParamType& paramType, uint32 index) const override;
 
-    virtual uint32 GetTrackParamIndex(const IUiAnimTrack* pTrack) const;
+    uint32 GetTrackParamIndex(const IUiAnimTrack* track) const override;
 
     IUiAnimTrack* GetTrackForAzField(const UiAnimParamData& param) const override { return nullptr; }
     IUiAnimTrack* CreateTrackForAzField(const UiAnimParamData& param) override { return nullptr; }
 
     virtual void SetTrack(const CUiAnimParamType& paramType, IUiAnimTrack* track);
-    virtual IUiAnimTrack* CreateTrack(const CUiAnimParamType& paramType);
-    virtual void SetTimeRange(Range timeRange);
-    virtual void AddTrack(IUiAnimTrack* pTrack);
-    virtual bool RemoveTrack(IUiAnimTrack* pTrack);
-    virtual void SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
-    virtual void CreateDefaultTracks() {};
+    IUiAnimTrack* CreateTrack(const CUiAnimParamType& paramType) override;
+    void SetTimeRange(Range timeRange) override;
+    void AddTrack(IUiAnimTrack* track) override;
+    bool RemoveTrack(IUiAnimTrack* track) override;
+    void CreateDefaultTracks() override {};
     //////////////////////////////////////////////////////////////////////////
 
+    void InitPostLoad(IUiAnimSequence* pSequence, bool remapIds, LyShine::EntityIdMap* entityIdMap) override;
     virtual void PostLoad();
 
     int GetId() const { return m_id; }
+    void SetId(int id) { m_id = id; }
     const char* GetNameFast() const { return m_name.c_str(); }
 
     virtual void Render(){}
-
-    virtual void UpdateDynamicParams() {}
 
     static void Reflect(AZ::SerializeContext* serializeContext);
 
@@ -163,10 +169,14 @@ protected:
     IUiAnimTrack* CreateTrackInternalFloat(int trackType) const;
     UiAnimationSystem* GetUiAnimationSystemImpl() const { return (UiAnimationSystem*)GetUiAnimationSystem(); }
 
+    // sets track animNode pointer to this node and sorts tracks
+    void RegisterTrack(IUiAnimTrack* track);
+
     virtual bool NeedToRender() const { return false; }
 
 protected:
     int m_refCount;
+    EUiAnimNodeType m_nodeType;
     int m_id;
     AZStd::string m_name;
     IUiAnimSequence* m_pSequence;
@@ -177,10 +187,12 @@ protected:
     int m_flags;
     unsigned int m_bIgnoreSetParam : 1; // Internal flags.
 
-    typedef AZStd::vector<AZStd::intrusive_ptr<IUiAnimTrack> > AnimTracks;
+    typedef AZStd::vector<AZStd::intrusive_ptr<IUiAnimTrack>> AnimTracks;
     AnimTracks m_tracks;
 
 private:
+    void SortTracks();
+
     static bool TrackOrder(const AZStd::intrusive_ptr<IUiAnimTrack>& left, const AZStd::intrusive_ptr<IUiAnimTrack>& right);
 };
 
@@ -190,7 +202,7 @@ class CUiAnimNodeGroup
 {
 public:
     CUiAnimNodeGroup(const int id)
-        : CUiAnimNode(id) { SetFlags(GetFlags() | eUiAnimNodeFlags_CanChangeName); }
+        : CUiAnimNode(id, eUiAnimNodeType_Group) { SetFlags(GetFlags() | eUiAnimNodeFlags_CanChangeName); }
     EUiAnimNodeType GetType() const { return eUiAnimNodeType_Group; }
 
     virtual CUiAnimParamType GetParamType(unsigned int nIndex) const { return eUiAnimParamType_Invalid; }

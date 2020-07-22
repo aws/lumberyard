@@ -16,6 +16,7 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
+#include <Asset/Functions/ScriptCanvasFunctionAsset.h>
 
 namespace ScriptCanvasBuilder
 {
@@ -38,26 +39,49 @@ namespace ScriptCanvasBuilder
     void PluginComponent::Activate()
     {
         // Register ScriptCanvas Builder
-        AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
-        builderDescriptor.m_name = "Script Canvas Builder";
-        builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.scriptcanvas", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
-        builderDescriptor.m_busId = ScriptCanvasBuilder::Worker::GetUUID();
-        builderDescriptor.m_createJobFunction = AZStd::bind(&Worker::CreateJobs, &m_scriptCanvasBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-        builderDescriptor.m_processJobFunction = AZStd::bind(&Worker::ProcessJob, &m_scriptCanvasBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-        // changing the version number invalidates all assets and will rebuild everything.
-        builderDescriptor.m_version = m_scriptCanvasBuilder.GetVersionNumber();
-        // changing the analysis fingerprint just invalidates analysis (ie, not the assets themselves)
-        // which will cause the "CreateJobs" function to be called, for each asset, even if the
-        // source file has not changed, but won't actually do the jobs unless the source file has changed
-        // or the fingerprint of the individual job is different.
-        builderDescriptor.m_analysisFingerprint = m_scriptCanvasBuilder.GetFingerprintString();
+        {
+            AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
+            builderDescriptor.m_name = "Script Canvas Builder";
+            builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.scriptcanvas", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+            builderDescriptor.m_busId = ScriptCanvasBuilder::Worker::GetUUID();
+            builderDescriptor.m_createJobFunction = AZStd::bind(&Worker::CreateJobs, &m_scriptCanvasBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+            builderDescriptor.m_processJobFunction = AZStd::bind(&Worker::ProcessJob, &m_scriptCanvasBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+            // changing the version number invalidates all assets and will rebuild everything.
+            builderDescriptor.m_version = m_scriptCanvasBuilder.GetVersionNumber();
+            // changing the analysis fingerprint just invalidates analysis (ie, not the assets themselves)
+            // which will cause the "CreateJobs" function to be called, for each asset, even if the
+            // source file has not changed, but won't actually do the jobs unless the source file has changed
+            // or the fingerprint of the individual job is different.
+            builderDescriptor.m_analysisFingerprint = m_scriptCanvasBuilder.GetFingerprintString();
 
-        m_scriptCanvasBuilder.BusConnect(builderDescriptor.m_busId);
-        AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, builderDescriptor);
+            m_scriptCanvasBuilder.BusConnect(builderDescriptor.m_busId);
+            AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, builderDescriptor);
 
-        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>(), ScriptCanvasEditor::ScriptCanvasAsset::GetFileFilter());
-        m_scriptCanvasBuilder.Activate();
+            AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>(), ScriptCanvasEditor::ScriptCanvasAsset::Description::GetFileFilter<ScriptCanvasEditor::ScriptCanvasAsset>());
+            m_scriptCanvasBuilder.Activate();
+        }
 
+        {
+            AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
+            builderDescriptor.m_name = "Script Canvas Function Builder";
+            builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.scriptcanvas_fn", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+            builderDescriptor.m_busId = ScriptCanvasBuilder::FunctionWorker::GetUUID();
+            builderDescriptor.m_createJobFunction = AZStd::bind(&FunctionWorker::CreateJobs, &m_scriptCanvasFunctionBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+            builderDescriptor.m_processJobFunction = AZStd::bind(&FunctionWorker::ProcessJob, &m_scriptCanvasFunctionBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+            // changing the version number invalidates all assets and will rebuild everything.
+            builderDescriptor.m_version = m_scriptCanvasFunctionBuilder.GetVersionNumber();
+            // changing the analysis fingerprint just invalidates analysis (ie, not the assets themselves)
+            // which will cause the "CreateJobs" function to be called, for each asset, even if the
+            // source file has not changed, but won't actually do the jobs unless the source file has changed
+            // or the fingerprint of the individual job is different.
+            builderDescriptor.m_analysisFingerprint = m_scriptCanvasFunctionBuilder.GetFingerprintString();
+
+            m_scriptCanvasFunctionBuilder.BusConnect(builderDescriptor.m_busId);
+            AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, builderDescriptor);
+
+            AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>(), ScriptCanvas::ScriptCanvasFunctionAsset::Description::GetFileFilter<ScriptCanvas::ScriptCanvasFunctionAsset>());
+            m_scriptCanvasFunctionBuilder.Activate();
+        }
     }
 
     void PluginComponent::Deactivate()
@@ -66,6 +90,7 @@ namespace ScriptCanvasBuilder
         AZ::Data::AssetBus::ExecuteQueuedEvents();
         
         AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>());
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>());
 
         m_scriptCanvasBuilder.Deactivate();
         m_scriptCanvasBuilder.BusDisconnect();

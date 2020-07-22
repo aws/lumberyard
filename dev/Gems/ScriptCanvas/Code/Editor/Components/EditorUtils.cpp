@@ -26,6 +26,7 @@ AZ_POP_DISABLE_WARNING
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
 #include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
+#include <Editor/View/Widgets/NodePalette/FunctionNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/NodePaletteModel.h>
@@ -64,6 +65,10 @@ namespace ScriptCanvasEditor
         else if (auto handleEbusEventTreeItem = azrtti_cast<const EBusHandleEventPaletteTreeItem*>(treeItem))
         {
             resultHash = ScriptCanvas::NodeUtils::ConstructEBusEventReceiverIdentifier(handleEbusEventTreeItem->GetBusId(), handleEbusEventTreeItem->GetEventId());
+        }
+        else if (auto functionTreeItem = azrtti_cast<const FunctionPaletteTreeItem*>(treeItem))
+        {
+            resultHash = ScriptCanvas::NodeUtils::ConstructFunctionNodeIdentifier(functionTreeItem->GetSourceAssetId());
         }
 
         return resultHash;

@@ -18,7 +18,7 @@ namespace GraphCanvas
 {
     class PropertySlotComponent
         : public SlotComponent
-        , public PropertySlotBus::Handler
+        , public PropertySlotRequestBus::Handler
     {
     public:
         AZ_COMPONENT(PropertySlotComponent, "{72D2C614-0E1C-4048-9382-4BBA4B25C66F}", SlotComponent);

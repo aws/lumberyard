@@ -34,8 +34,7 @@ namespace NvCloth
             MeshNodeInfo& meshNodeInfo,
             AZStd::vector<SimParticleType>& meshParticles,
             AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs,
-            bool& simParticlesFullyStatic) override;
+            AZStd::vector<SimUVType>& meshUVs) override;
         bool DoesSupportSkinnedAnimation() const override
         {
             return false;
@@ -47,7 +46,6 @@ namespace NvCloth
             const AZStd::vector<float>& clothInverseMasses,
             AZStd::vector<SimParticleType>& meshParticles,
             AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs,
-            bool& simParticlesFullyStatic);
+            AZStd::vector<SimUVType>& meshUVs);
     };
 } // namespace NvCloth

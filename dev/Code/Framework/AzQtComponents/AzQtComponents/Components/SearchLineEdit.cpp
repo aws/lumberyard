@@ -12,11 +12,13 @@
 #include "SearchLineEdit.h"
 
 #include <AzQtComponents/Components/SearchLineEdit.h>
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
 
 #include <QIcon>
 #include <QAction>
 #include <QMenu>
 #include <QCompleter>
+#include <QStyle>
 
 using namespace AzQtComponents;
 
@@ -25,7 +27,6 @@ SearchLineEdit::SearchLineEdit(QWidget* parent)
       m_errorState(false)
 {
     setProperty("class", "SearchLineEdit");
-    setStyleSheet("color: rgb(192, 192, 192);");
 
     m_searchAction = new QAction(QIcon(":/stylesheet/img/16x16/Search.png"), QString(), this);
     m_searchAction->setEnabled(false);
@@ -93,9 +94,8 @@ void SearchLineEdit::setErrorState(bool errorState)
     }
 
     m_errorState = errorState;
-    adaptColorText();
 
-    setProperty("errorState", errorState);
+    AzQtComponents::LineEdit::setExternalError(this, errorState);
     emit errorStateChanged(m_errorState);
 }
 
@@ -106,18 +106,6 @@ void SearchLineEdit::displayMenu()
         const auto rect = QRect(0,0, width(), height());
         const auto actionSelected = m_menu->exec(mapToGlobal(rect.bottomLeft()));
         emit menuEntryClicked(actionSelected);
-    }
-}
-
-void SearchLineEdit::adaptColorText()
-{
-    if (m_errorState)
-    {
-        setStyleSheet("color: rgb(224, 83, 72);");
-    }
-    else
-    {
-        setStyleSheet("color: rgb(192, 192, 192);");
     }
 }
 

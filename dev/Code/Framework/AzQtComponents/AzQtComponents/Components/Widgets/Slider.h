@@ -39,6 +39,7 @@ namespace AzQtComponents
     protected:
         void mousePressEvent(QMouseEvent* ev) override;
         void mouseReleaseEvent(QMouseEvent* ev) override;
+        void wheelEvent(QWheelEvent* ev) override;
 
     Q_SIGNALS:
         void moveSlider(bool moving);
@@ -115,6 +116,9 @@ namespace AzQtComponents
 
         QSize sizeHint() const override;
         QSize minimumSizeHint() const override;
+
+        void setFocusProxy(QWidget* proxy);
+        QWidget* focusProxy() const;
 
         void setTracking(bool enable);
         bool hasTracking() const;
@@ -262,6 +266,7 @@ namespace AzQtComponents
         Q_PROPERTY(int numSteps READ numSteps WRITE setNumSteps)
         Q_PROPERTY(double value READ value WRITE setValue NOTIFY valueChanged USER true)
         Q_PROPERTY(int decimals READ decimals WRITE setDecimals)
+        Q_PROPERTY(double curveMidpoint READ curveMidpoint WRITE setCurveMidpoint)
 
     public:
         SliderDouble(QWidget* parent = nullptr);
@@ -284,6 +289,16 @@ namespace AzQtComponents
         int decimals() const { return m_decimals; }
         void setDecimals(int decimals) { m_decimals = decimals; }
 
+        /*!
+         * Implement an optional non-linear scale for our slider using a power curve. The midpoint
+         * of the curve can be set using the 'SliderCurveMidpoint' attribute. This midpoint value
+         * is between 0 and 1. By default, the value is 0.5, which will actually give it linear
+         * scale so it ignores the power curve logic. Otherwise, lowering/raising the midpoint
+         * value will shift the scale to have higher precision at the lower or higher end, respectively.
+         */
+        double curveMidpoint() const { return m_curveMidpoint; }
+        void setCurveMidpoint(double midpoint);
+
     Q_SIGNALS:
         void valueChanged(double value);
 
@@ -292,11 +307,18 @@ namespace AzQtComponents
     protected:
         QString hoverValueText(int sliderValue) const override;
 
+        double calculateRealSliderValue(int value) const;
+
+        double convertToSliderValue(double value) const;
+        double convertFromSliderValue(double value) const;
+        double convertPowerCurveValue(double value, bool fromSlider) const;
+
     private:
         double m_minimum = 0.0;
         double m_maximum = 1.0;
         int m_numSteps = 100;
         int m_decimals;
+        double m_curveMidpoint = 0.5;
     };
 
 } // namespace AzQtComponents

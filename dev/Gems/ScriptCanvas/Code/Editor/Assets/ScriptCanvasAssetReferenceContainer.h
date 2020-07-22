@@ -46,11 +46,11 @@ namespace ScriptCanvasEditor
             
             m_baseDataElement.m_name = "m_scriptCanvasData";
             m_baseDataElement.m_nameCrc = AZ_CRC("m_scriptCanvasData", 0x78a93f93);
-            m_baseDataElement.m_typeId = AZ::SerializeGenericTypeInfo<ScriptCanvasData>::GetClassTypeId();
+            m_baseDataElement.m_typeId = AZ::SerializeGenericTypeInfo<ScriptCanvas::ScriptCanvasData>::GetClassTypeId();
             m_baseDataElement.m_offset = m_assetElement.m_offset + m_assetElement.m_dataSize;
-            m_baseDataElement.m_dataSize = sizeof(ScriptCanvasData);
-            m_baseDataElement.m_azRtti = AZ::GetRttiHelper<ScriptCanvasData>();
-            m_baseDataElement.m_genericClassInfo = AZ::SerializeGenericTypeInfo<ScriptCanvasData>::GetGenericInfo();
+            m_baseDataElement.m_dataSize = sizeof(ScriptCanvas::ScriptCanvasData);
+            m_baseDataElement.m_azRtti = AZ::GetRttiHelper<ScriptCanvas::ScriptCanvasData>();
+            m_baseDataElement.m_genericClassInfo = AZ::SerializeGenericTypeInfo<ScriptCanvas::ScriptCanvasData>::GetGenericInfo();
             m_baseDataElement.m_editData = nullptr;
             m_baseDataElement.m_flags = 0;
         }

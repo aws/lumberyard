@@ -74,8 +74,7 @@ namespace NvCloth
         MeshNodeInfo& meshNodeInfo,
         AZStd::vector<SimParticleType>& meshParticles,
         AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs,
-        bool& simParticlesFullyStatic)
+        AZStd::vector<SimUVType>& meshUVs)
     {
         EMotionFX::ActorInstance* actorInstance = nullptr;
         EMotionFX::Integration::ActorComponentRequestBus::EventResult(
@@ -135,7 +134,7 @@ namespace NvCloth
 
         if (emfxMesh)
         {
-            bool dataCopied = CopyDataFromEMotionFXMesh(*emfxMesh, meshParticles, meshIndices, meshUVs, simParticlesFullyStatic);
+            bool dataCopied = CopyDataFromEMotionFXMesh(*emfxMesh, meshParticles, meshIndices, meshUVs);
 
             if (dataCopied)
             {
@@ -170,8 +169,7 @@ namespace NvCloth
         const EMotionFX::Mesh& emfxMesh,
         AZStd::vector<SimParticleType>& meshParticles,
         AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs,
-        bool& simParticlesFullyStatic)
+        AZStd::vector<SimUVType>& meshUVs)
     {
         const int numVertices = emfxMesh.GetNumVertices();
         const int numIndices = emfxMesh.GetNumIndices();
@@ -191,7 +189,6 @@ namespace NvCloth
         }
 
         const SimUVType uvZero(0.0f, 0.0f);
-        simParticlesFullyStatic = true;
 
         meshParticles.resize(numVertices);
         meshUVs.resize(numVertices);
@@ -206,9 +203,6 @@ namespace NvCloth
             meshParticles[index].w = inverseMassColor.GetR(); // Cloth inverse masses is in the red channel
 
             meshUVs[index] = (sourceUVs) ? sourceUVs[index] : uvZero;
-
-            // The moment one particle has inverse mass different than 0 it's not a fully static cloth
-            simParticlesFullyStatic = simParticlesFullyStatic && (inverseMassColor.GetR() == 0.0f);
         }
 
         meshIndices.resize(numIndices);

@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "f3fba4e10ff04a378c46376401a1ebe9",
+    "Name": "Audio",
+    "DisplayName": "Starter Game Audio",
+    "Version": "0.1.0",
+    "LinkType": "NoCode",
+    "Summary": "Holds Starter Game's audio assets and scripts",
+    "Tags": ["Asset","StarterGame", "Audio"],
+    "IconPath": "preview.png"
+}

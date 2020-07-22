@@ -16,6 +16,8 @@
 // if we need to add compile switches, we would add them here.
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/Math/Uuid.h>
+#include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/functional.h>
 #include <sqlite3.h>
 
 namespace AzToolsFramework
@@ -294,6 +296,42 @@ namespace AzToolsFramework
             return true;
         }
 
+        bool Connection::ExecuteRawSqlQuery(const AZStd::string& sql, const AZStd::function<bool(sqlite3_stmt*)>& resultCallback, const AZStd::function<void(sqlite3_stmt*)>& bindCallback)
+        {
+            sqlite3_stmt* statement;
+            int res = sqlite3_prepare_v2(m_db, sql.c_str(), aznumeric_caster(sql.length() + 1), &statement, nullptr);
+
+            if(res != SQLITE_OK)
+            {
+                AZ_Error("Sqlite", false, "Failed to prepare statement.  Error code %d, sql: %s", sqlite3_extended_errcode(m_db), sql.c_str());
+                return false;
+            }
+
+            bindCallback(statement);
+
+            res = sqlite3_step(statement);
+            bool validResult = res == SQLITE_DONE;
+
+            while(res == SQLITE_ROW)
+            {
+                validResult = true;
+
+                if (resultCallback && resultCallback(statement))
+                {
+                    res = sqlite3_step(statement);
+                }
+            }
+
+            if(res != SQLITE_OK && res != SQLITE_DONE && res != SQLITE_ROW)
+            {
+                AZ_Error("Sqlite", false, "Failed to step statement.  Error code %d, sql: %s", sqlite3_extended_errcode(m_db), sql.c_str());
+            }
+
+            sqlite3_finalize(statement);
+
+            return validResult;
+        }
+
         bool Connection::DoesTableExist(const char* name)
         {
             AZ_Assert(IsOpen(), "Connection::DoesTableExist - Invalid state - Database is not open.");
@@ -329,6 +367,88 @@ namespace AzToolsFramework
             execute->Finalize();
 
             return hasData;
+        }
+
+        AZStd::string GetColumnText(sqlite3_stmt* statement, int col)
+        {
+            AZ_Assert(statement, "Statement::GetColumnText: Statement not ready!");
+            if (!statement)
+            {
+                return AZStd::string();
+            }
+
+            const unsigned char* str = sqlite3_column_text(statement, col);
+            if (str)
+            {
+                return reinterpret_cast<const char*>(str);
+            }
+
+            return AZStd::string();
+        }
+
+        int GetColumnInt(sqlite3_stmt* statement, int col)
+        {
+            AZ_Assert(statement, "Statement::GetColumnInt: Statement not ready!");
+            if (!statement)
+            {
+                return 0;
+            }
+            return sqlite3_column_int(statement, col);
+        }
+
+        AZ::s64 GetColumnInt64(sqlite3_stmt* statement, int col)
+        {
+            AZ_Assert(statement, "Statement::GetColumnInt64: Statement not ready!");
+            if (!statement)
+            {
+                return 0;
+            }
+            return sqlite3_column_int64(statement, col);
+        }
+
+        double GetColumnDouble(sqlite3_stmt* statement, int col)
+        {
+            AZ_Assert(statement, "Statement::GetColumnDouble: Statement not ready!");
+            if (!statement)
+            {
+                return 0.0;
+            }
+            return sqlite3_column_double(statement, col);
+        }
+
+        const void* GetColumnBlob(sqlite3_stmt* statement, int col)
+        {
+            AZ_Assert(statement, "Statement::GetColumnBlob: Statement not ready!");
+            if (!statement)
+            {
+                return nullptr;
+            }
+            return sqlite3_column_blob(statement, col);
+        }
+
+        int GetColumnBlobBytes(sqlite3_stmt* statement, int col)
+        {
+            AZ_Assert(statement, "Statement::GetColumnBlobBytes: Statement not ready!");
+            if (!statement)
+            {
+                return 0;
+            }
+            return sqlite3_column_bytes(statement, col);
+        }
+
+        AZ::Uuid GetColumnUuid(sqlite3_stmt* statement, int col)
+        {
+            const void* blobAddr = GetColumnBlob(statement, col);
+            int blobBytes = GetColumnBlobBytes(statement, col);
+            AZ::Uuid newUuid;
+            AZ_Error("SQLiteConnection", blobAddr && (blobBytes == sizeof(newUuid.data)), "GetColumnUuid: Database column %i does not contain a UUID - could be a sign of a corrupt database.", col);
+            if ((!blobAddr) || (blobBytes != sizeof(newUuid.data)))
+            {
+                return AZ::Uuid::CreateNull();
+            }
+
+            memcpy(newUuid.data, blobAddr, blobBytes);
+            return newUuid;
         }
 
         /////////////////////////////////////////////////
@@ -451,8 +571,7 @@ namespace AzToolsFramework
             return FindColumn(name);
         }
 
-
-        AZStd::string   Statement::GetColumnText(int col)
+        AZStd::string Statement::GetColumnText(int col)
         {
             AZ_Assert(m_statement, "Statement::GetColumnText: Statement not ready!");
             if (!m_statement)
@@ -471,68 +590,32 @@ namespace AzToolsFramework
 
         int Statement::GetColumnInt(int col)
         {
-            AZ_Assert(m_statement, "Statement::GetColumnInt: Statement not ready!");
-            if (!m_statement)
-            {
-                return 0;
-            }
-            return sqlite3_column_int(m_statement, col);
+            return SQLite::GetColumnInt(m_statement, col);
         }
 
-        AZ::s64     Statement::GetColumnInt64(int col)
+        AZ::s64 Statement::GetColumnInt64(int col)
         {
-            AZ_Assert(m_statement, "Statement::GetColumnInt64: Statement not ready!");
-            if (!m_statement)
-            {
-                return 0;
-            }
-            return sqlite3_column_int64(m_statement, col);
+            return SQLite::GetColumnInt64(m_statement, col);
         }
 
-
-        double  Statement::GetColumnDouble(int col)
+        double Statement::GetColumnDouble(int col)
         {
-            AZ_Assert(m_statement, "Statement::GetColumnDouble: Statement not ready!");
-            if (!m_statement)
-            {
-                return 0.0;
-            }
-            return sqlite3_column_double(m_statement, col);
+            return SQLite::GetColumnDouble(m_statement, col);
         }
 
         int Statement::GetColumnBlobBytes(int col)
         {
-            AZ_Assert(m_statement, "Statement::GetColumnBlobBytes: Statement not ready!");
-            if (!m_statement)
-            {
-                return 0;
-            }
-            return sqlite3_column_bytes(m_statement, col);
+            return SQLite::GetColumnBlobBytes(m_statement, col);
         }
 
         const void* Statement::GetColumnBlob(int col)
         {
-            AZ_Assert(m_statement, "Statement::GetColumnBlob: Statement not ready!");
-            if (!m_statement)
-            {
-                return nullptr;
-            }
-            return sqlite3_column_blob(m_statement, col);
+            return SQLite::GetColumnBlob(m_statement, col);
         }
 
         AZ::Uuid Statement::GetColumnUuid(int col)
         {
-            const void* blobAddr = GetColumnBlob(col);
-            int blobBytes = GetColumnBlobBytes(col);
-            AZ::Uuid newUuid;
-            AZ_Error("SQLiteConnection", blobAddr && (blobBytes == sizeof(newUuid.data)), "GetColumnUuid: Database column %i does not contain a UUID - could be a sign of a corrupt database.", col);
-            if ((!blobAddr)||(blobBytes != sizeof(newUuid.data)))
-            {
-                return AZ::Uuid::CreateNull();
-            }
-
-            memcpy(newUuid.data, blobAddr, blobBytes);
-            return newUuid;
+            return SQLite::GetColumnUuid(m_statement, col);
         }
 
         bool Statement::BindValueBlob(int idx, void* data, int size)
@@ -547,7 +630,6 @@ namespace AzToolsFramework
             return (res == SQLITE_OK);
         }
 
-
         bool Statement::BindValueUuid(int idx, const AZ::Uuid& data)
         {
             AZ_Assert(m_statement, "Statement::BindValueUuid: Statement not ready!");
@@ -559,7 +641,6 @@ namespace AzToolsFramework
             AZ_Assert(res == SQLITE_OK, "Statement::BindValueUuid: failed to bind!");
             return (res == SQLITE_OK);
         }
-
 
         bool Statement::BindValueDouble(int idx, double data)
         {

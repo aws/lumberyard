@@ -11,7 +11,7 @@
 */
 #include "precompiled.h"
 
-#include <qpainter.h>
+#include <QPainter>
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>

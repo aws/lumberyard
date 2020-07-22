@@ -826,6 +826,17 @@ namespace EMotionFX
 #endif
         }
 
+        bool CryRenderActorInstance::IsInCameraFrustum() const
+        {
+            if (!gEnv || !gEnv->pSystem)
+            {
+                return false;
+            }
+
+            const CCamera& camera = gEnv->pSystem->GetViewCamera();
+            return camera.IsAABBVisible_F(m_worldBoundingBox);
+        }
+
         void CryRenderActorInstance::DebugDraw(const DebugOptions& debugOptions)
         {
             if (debugOptions.m_drawSkeleton)

@@ -14,9 +14,68 @@
 #include <AzCore/Name/NameJsonSerializer.h>
 #include <AzCore/Name/NameDictionary.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
+#include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
 
 namespace JsonSerializationTests
 {
+    class NameJsonSerializerTestDescription :
+        public JsonSerializerConformityTestDescriptor<AZ::Name>
+    {
+    public:
+        void SetUp() override
+        {
+            AZ::NameDictionary::Create();
+        }
+
+        void TearDown() override
+        {
+            AZ::NameDictionary::Destroy();
+        }
+
+        void Reflect(AZStd::unique_ptr<AZ::JsonRegistrationContext>& context)
+        {
+            AZ::Name::Reflect(context.get());
+        }
+
+        AZStd::shared_ptr<AZ::BaseJsonSerializer> CreateSerializer() override
+        {
+            return AZStd::make_shared<AZ::NameJsonSerializer>();
+        }
+
+        AZStd::shared_ptr<AZ::Name> CreateDefaultInstance() override
+        {
+            return AZStd::make_shared<AZ::Name>();
+        }
+
+        AZStd::shared_ptr<AZ::Name> CreateFullySetInstance() override
+        {
+            return AZStd::make_shared<AZ::Name>("hello");
+        }
+
+        AZStd::string_view GetJsonForFullySetInstance() override
+        {
+            return R"("hello")";
+        }
+
+        void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& features) override
+        {
+            features.EnableJsonType(rapidjson::kStringType);
+            features.EnableJsonType(rapidjson::kFalseType);
+            features.EnableJsonType(rapidjson::kTrueType);
+            features.EnableJsonType(rapidjson::kNumberType);
+            features.m_supportsPartialInitialization = false;
+            features.m_supportsInjection = false;
+        }
+
+        bool AreEqual(const AZ::Name& lhs, const AZ::Name& rhs) override
+        {
+            return lhs == rhs;
+        }
+    };
+
+    using NameJsonSerializerTestTypes = ::testing::Types<NameJsonSerializerTestDescription>;
+    INSTANTIATE_TYPED_TEST_CASE_P(NameJsonSerializer, JsonSerializerConformityTests, NameJsonSerializerTestTypes);
+
     class NameJsonSerializerTests
         : public BaseJsonSerializerFixture
     {
@@ -41,44 +100,6 @@ namespace JsonSerializationTests
         const char* m_testStringAlternative = "Goodbye cruel world";
     };
 
-    TEST_F(NameJsonSerializerTests, Load_InvalidTypeOfObjectType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kObjectType);
-        testValue.AddMember("value", "hello", this->m_jsonDocument->GetAllocator());
-
-        AZ::Name convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(AZ::Name(), convertedValue);
-    }
-
-    TEST_F(NameJsonSerializerTests, Load_InvalidTypeOfkNullType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kNullType);
-        AZ::Name convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(AZ::Name(), convertedValue);
-    }
-
-    TEST_F(NameJsonSerializerTests, Load_InvalidTypeOfArrayType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kArrayType);
-        AZ::Name convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(AZ::Name(), convertedValue);
-    }
-
     TEST_F(NameJsonSerializerTests, Load_FalseBoolean_FalseAsString)
     {
         using namespace AZ::JsonSerializationResult;
@@ -87,7 +108,7 @@ namespace JsonSerializationTests
         testValue.SetBool(false);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STRCASEEQ("False", convertedValue.GetStringView().data());
     }
@@ -100,22 +121,9 @@ namespace JsonSerializationTests
         testValue.SetBool(true);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STRCASEEQ("True", convertedValue.GetStringView().data());
-    }
-
-    TEST_F(NameJsonSerializerTests, Load_ParseStringValue_StringIsReturned)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetString(rapidjson::StringRef(this->m_testString));
-        AZ::Name convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_STREQ(this->m_testString, convertedValue.GetStringView().data());
     }
 
     TEST_F(NameJsonSerializerTests, Load_ParseUnsignedIntegerValue_NumberReturnedAsString)
@@ -126,7 +134,7 @@ namespace JsonSerializationTests
         testValue.SetUint(42);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("42", convertedValue.GetStringView().data());
     }
@@ -139,7 +147,7 @@ namespace JsonSerializationTests
         testValue.SetUint64(42);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("42", convertedValue.GetStringView().data());
     }
@@ -152,7 +160,7 @@ namespace JsonSerializationTests
         testValue.SetInt(-42);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("-42", convertedValue.GetStringView().data());
     }
@@ -165,7 +173,7 @@ namespace JsonSerializationTests
         testValue.SetInt64(-42);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("-42", convertedValue.GetStringView().data());
     }
@@ -178,51 +186,8 @@ namespace JsonSerializationTests
         testValue.SetDouble(3.1415);
         AZ::Name convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Name>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("3.141500", convertedValue.GetStringView().data());
-    }
-
-    TEST_F(NameJsonSerializerTests, Store_StoreValue_ValueStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        AZ::Name value{this->m_testString};
-        rapidjson::Value convertedValue(rapidjson::kObjectType); // set to object to ensure we reset the value to expected type later
-
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &value, nullptr,
-            azrtti_typeid<AZ::Name>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsString());
-        EXPECT_STREQ(this->m_testString, convertedValue.GetString());
-    }
-
-    TEST_F(NameJsonSerializerTests, Store_StoreSameAsDefault_ValueIsIgnored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        AZ::Name value{this->m_testString};
-        AZ::Name defaultValue{this->m_testString};
-        rapidjson::Value convertedValue = this->CreateExplicitDefault();
-
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<AZ::Name>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        this->Expect_ExplicitDefault(convertedValue);
-    }
-
-    TEST_F(NameJsonSerializerTests, Store_StoreDifferentFromDefault_ValueIsStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        AZ::Name value{this->m_testString};
-        AZ::Name defaultValue{this->m_testStringAlternative};
-        rapidjson::Value convertedValue(rapidjson::kObjectType);
-
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<AZ::Name>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsString());
-        EXPECT_STREQ(this->m_testString, convertedValue.GetString());
     }
 } // namespace JsonSerializationTests

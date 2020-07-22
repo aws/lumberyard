@@ -15,7 +15,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include "EMStudioConfig.h"
-#include <MysticQt/Source/ButtonGroup.h>
 #include <QDialog>
 #include <QLineEdit>
 #include <QPushButton>
@@ -85,16 +84,20 @@ namespace EMStudio
         AZStd::vector<SelectionItem>& GetSelectedItems();
 
         const AZStd::string& GetSearchWidgetText() const                                                        { return m_searchWidgetText; }
-        bool GetDisplayNodes() const                                                                            { return mDisplayNodesButton->isChecked(); }
-        bool GetDisplayBones() const                                                                            { return mDisplayBonesButton->isChecked(); }
-        bool GetDisplayMeshes() const                                                                           { return mDisplayMeshesButton->isChecked(); }
-
-        QPushButton* GetDisplayNodesButton()                                                                    { return mDisplayNodesButton; }
-        QPushButton* GetDisplayBonesButton()                                                                    { return mDisplayBonesButton; }
-        QPushButton* GetDisplayMeshesButton()                                                                   { return mDisplayMeshesButton; }
+        bool GetDisplayNodes() const;
+        bool GetDisplayBones() const;
+        bool GetDisplayMeshes() const;
 
         bool CheckIfNodeSelected(const char* nodeName, uint32 actorInstanceID);
         bool CheckIfActorInstanceSelected(uint32 actorInstanceID);
+
+        enum class FilterType
+        {
+            Meshes  = 1,
+            Nodes   = 2,
+            Bones   = 4,
+        };
+        Q_DECLARE_FLAGS(FilterTypes, FilterType)
 
     signals:
         // Deprecated
@@ -105,6 +108,8 @@ namespace EMStudio
         void OnDoubleClicked(AZStd::vector<SelectionItem> selectedNodes);
 
         void SelectionChanged();
+
+        void FilterStateChanged(const FilterTypes& filterState);
 
     public slots:
         //void OnVisibilityChanged(bool isVisible);
@@ -129,10 +134,6 @@ namespace EMStudio
 
         AZStd::vector<SelectionItem>        m_selectedNodes;
         QTreeWidget*                        mHierarchy;
-        MysticQt::ButtonGroup*              mDisplayButtonGroup;
-        QPushButton*                        mDisplayBonesButton;
-        QPushButton*                        mDisplayNodesButton;
-        QPushButton*                        mDisplayMeshesButton;
         AzQtComponents::FilteredSearchWidget* m_searchWidget;
         AZStd::string                       m_searchWidgetText;
         QIcon*                              mBoneIcon;
@@ -144,5 +145,6 @@ namespace EMStudio
         AZStd::string                       mItemName;
         AZStd::string                       mActorInstanceIDString;
         bool                                mUseSingleSelection;
+        FilterTypes                         mFilterState;
     };
 } // namespace EMStudio

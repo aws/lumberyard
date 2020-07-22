@@ -20,6 +20,8 @@
 
 namespace AzToolsFramework
 {
+    struct GridSnapAction;
+
     /// LinearManipulator serves as a visual tool for users to modify values
     /// in one dimension on an axis defined in 3D space.
     class LinearManipulator
@@ -53,6 +55,7 @@ namespace AzToolsFramework
             AZ::Vector3 m_localPosition; ///< The current position of the manipulator in local space.
             AZ::Vector3 m_localScale; ///< The current scale of the manipulator in local space.
             AZ::Vector3 m_localHitPosition; ///< The intersection point in local space between the ray and the manipulator when the mouse down event happens.
+            AZ::Vector3 m_localAxis; ///< The axis in the local space of the manipulator itself.
             AZ::Vector3 m_positionSnapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
             AZ::Vector3 m_scaleSnapOffset; ///< The snap offset amount to ensure manipulator is aligned to round scale increments.
             AZ::VectorFloat m_sign; ///< Used to determine which side of the axis we clicked on in case it's flipped to face the camera.
@@ -101,7 +104,11 @@ namespace AzToolsFramework
         AZ::Vector3 GetPosition() const { return m_localTransform.GetTranslation(); }
         const AZ::Vector3& GetAxis() const { return m_fixed.m_axis; }
 
-        void SetViews(ManipulatorViews&& views);
+        template<typename Views>
+        void SetViews(Views&& views)
+        {
+            m_manipulatorViews = AZStd::forward<Views>(views);
+        }
 
         void UseVisualOrientationOverride(bool use) { m_useVisualsOverride = use; }
         void SetVisualOrientationOverride(const AZ::Quaternion& visualOrientation)
@@ -127,6 +134,7 @@ namespace AzToolsFramework
             AZ::Vector3 m_localScale; ///< The scale in local space of the manipulator when the mouse down event happens.
             AZ::Vector3 m_localHitPosition; ///< The intersection point in local space between the ray and the manipulator when the mouse down event happens.
             AZ::Vector3 m_localNormal; ///< The normal in local space of the manipulator when the mouse down event happens.
+            AZ::Vector3 m_localAxis; ///< The axis in the local space of the manipulator itself.
             AZ::Vector3 m_positionSnapOffset; ///< The snap offset amount to ensure manipulator position is aligned to the grid.
             AZ::Vector3 m_scaleSnapOffset; ///< The snap offset amount to ensure manipulator scale is aligned to the grid.
             AZ::VectorFloat m_screenToWorldScale; ///< Used to scale movement based on camera distance if we want screen space instead of world space displacement.
@@ -149,12 +157,12 @@ namespace AzToolsFramework
 
         static StartInternal CalculateManipulationDataStart(
             const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
-            bool snapping, float gridSize, const AZ::Vector3& rayOrigin,const AZ::Vector3& rayDirection,
+            const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
             const AzFramework::CameraState& cameraState);
 
         static Action CalculateManipulationDataAction(
             const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
-            const AZ::Transform& localTransform, bool snapping, float gridSize, const AZ::Vector3& rayOrigin,
+            const AZ::Transform& localTransform, const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin,
             const AZ::Vector3& rayDirection, ViewportInteraction::KeyboardModifiers keyboardModifiers);
     };
 } // namespace AzToolsFramework

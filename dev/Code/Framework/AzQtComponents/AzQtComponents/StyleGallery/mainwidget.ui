@@ -1351,7 +1351,7 @@ p, li { white-space: pre-wrap; }
            </spacer>
           </item>
           <item>
-           <widget class="QTabWidget" name="tabWidget">
+           <widget class="AzQtComponents::TabWidget" name="tabWidget">
             <property name="currentIndex">
              <number>2</number>
             </property>
@@ -1987,6 +1987,12 @@ p, li { white-space: pre-wrap; }
    <class>DeploymentsWidget</class>
    <extends>QWidget</extends>
    <header>AzQtComponents/StyleGallery/DeploymentsWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::TabWidget</class>
+   <extends>QTabWidget</extends>
+   <header>AzQtComponents/Components/Widgets/TabWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

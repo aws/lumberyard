@@ -30,7 +30,7 @@ CACHE_FOLDER = 'Cache'
 #
 # Note:  Only update this value as a last resort.  If there were WAF changes that do not affect the generation or
 #        tracking of intermediate of generated files, then there is no need to wipe out BinTemp
-LMBR_WAF_VERSION_TAG = "E7A426A7-350D-4B4A-A619-ED1DA4463DCA"
+LMBR_WAF_VERSION_TAG = "9AC1223C-C4C9-4F7B-87E8-C06BC2343C6E"
 
 
 # Optional additional table of copyrights.
@@ -100,7 +100,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0')
 LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
-LUMBERYARD_BUILD = 1072245
+LUMBERYARD_BUILD = 1078562
 LUMBERYARD_ENGINE_PATH = os.path.abspath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.'))
 
 # validate the Lumberyard version string above

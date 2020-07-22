@@ -58,12 +58,21 @@ namespace AzQtComponents
         static StyleManager* s_instance;
 
     public:
+        static bool isInstanced() { return s_instance; }
+
         static void addSearchPaths(const QString& searchPrefix, const QString& pathOnDisk, const QString& qrcPrefix);
 
         static bool setStyleSheet(QWidget* widget, QString styleFileName);
 
         static QStyleSheetStyle* styleSheetStyle(const QWidget* widget);
         static QStyle* baseStyle(const QWidget* widget);
+
+        static void repolishStyleSheet(QWidget* widget);
+
+        /*!
+        * Returns true if the current style is the UI 1.0 style
+        */
+        static bool isUi10();
 
         explicit StyleManager(QObject* parent);
         ~StyleManager() override;

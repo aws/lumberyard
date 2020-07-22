@@ -12,7 +12,9 @@
 #include <QtGlobal>
 
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <AzQtComponents/Components/Widgets/DragAndDrop.h>
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Widgets/CheckBox.h>
@@ -32,13 +34,16 @@
 #include <AzQtComponents/Components/Widgets/StatusBar.h>
 #include <AzQtComponents/Components/Widgets/TabWidget.h>
 #include <AzQtComponents/Components/Widgets/TableView.h>
+#include <AzQtComponents/Components/Widgets/TreeView.h>
 #include <AzQtComponents/Components/Widgets/Menu.h>
 #include <AzQtComponents/Components/Widgets/Text.h>
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 #include <AzQtComponents/Components/Widgets/ToolButton.h>
 #include <AzQtComponents/Components/Widgets/VectorInput.h>
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <AzQtComponents/Components/Widgets/AssetFolderThumbnailView.h>
 #include <AzQtComponents/Components/Titlebar.h>
+#include <AzQtComponents/Components/StyledBusyLabel.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Utilities/TextUtilities.h>
 
@@ -67,9 +72,12 @@ AZ_POP_DISABLE_WARNING
 #include <QKeyEvent>
 #include <QTextEdit>
 #include <QKeySequenceEdit>
+#include <QListView>
+#include <QTableView>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'QCss::Declaration::d': class 'QExplicitlySharedDataPointer<QCss::Declaration::DeclarationData>' needs to have dll-interface to be used by clients of struct 'QCss::Declaration'
 #include <QtWidgets/private/qstylesheetstyle_p.h>
+#include <QtGui/private/qscreen_p.h>
 AZ_POP_DISABLE_WARNING
 
 #include <limits>
@@ -87,6 +95,7 @@ namespace AzQtComponents
     struct Style::Data
     {
         QPalette palette;
+
         PushButton::Config pushButtonConfig;
         RadioButton::Config radioButtonConfig;
         CheckBox::Config checkBoxConfig;
@@ -110,8 +119,11 @@ namespace AzQtComponents
         TitleBar::Config titleBarConfig;
         Menu::Config menuConfig;
         ToolButton::Config toolButtonConfig;
+        DockBarButton::Config dockBarButtonConfig;
         StatusBar::Config statusBarConfig;
         DragAndDrop::Config dragAndDropConfig;
+        ToolBar::Config toolBarConfig;
+        TreeView::Config treeViewConfig;
 
         QFileSystemWatcher watcher;
 
@@ -152,6 +164,7 @@ namespace AzQtComponents
         LineEdit::initializeWatcher();
         ScrollBar::initializeWatcher();
         ComboBox::initializeWatcher();
+        TreeView::initializeWatcher();
 
         // set up settings watchers
         loadConfig<PushButton::Config, PushButton>(this, &m_data->watcher, &m_data->pushButtonConfig, "PushButtonConfig.ini");
@@ -177,10 +190,13 @@ namespace AzQtComponents
         loadConfig<TitleBar::Config, TitleBar>(this, &m_data->watcher, &m_data->titleBarConfig, "TitleBarConfig.ini");
         loadConfig<Menu::Config, Menu>(this, &m_data->watcher, &m_data->menuConfig, "MenuConfig.ini");
         loadConfig<ToolButton::Config, ToolButton>(this, &m_data->watcher, &m_data->toolButtonConfig, "ToolButtonConfig.ini");
+        loadConfig<DockBarButton::Config, DockBarButton>(this, &m_data->watcher, &m_data->dockBarButtonConfig, "DockBarButtonConfig.ini");
         loadConfig<StatusBar::Config, StatusBar>(this, &m_data->watcher, &m_data->statusBarConfig, "StatusBarConfig.ini");
         loadConfig<DragAndDrop::Config, DragAndDrop>(this, &m_data->watcher, &m_data->dragAndDropConfig, "DragAndDropConfig.ini");
+        loadConfig<ToolBar::Config, ToolBar>(this, &m_data->watcher, &m_data->toolBarConfig, "ToolBarConfig.ini");
+        loadConfig<TreeView::Config, TreeView>(this, &m_data->watcher, &m_data->treeViewConfig, "TreeViewConfig.ini");
 
-        VectorInput::initStaticVars(m_data->spinBoxConfig.labelSize);
+        VectorElement::initStaticVars(m_data->spinBoxConfig.labelSize);
         Slider::initStaticVars(m_data->sliderConfig.verticalToolTipOffset, m_data->sliderConfig.horizontalToolTipOffset);
     }
 
@@ -190,6 +206,7 @@ namespace AzQtComponents
         LineEdit::uninitializeWatcher();
         ScrollBar::uninitializeWatcher();
         ComboBox::uninitializeWatcher();
+        TreeView::uninitializeWatcher();
     }
 
     QSize Style::sizeFromContents(QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget) const
@@ -249,6 +266,15 @@ namespace AzQtComponents
                 if (tabSize.isValid())
                 {
                     return tabSize;
+                }
+                break;
+            }
+            case QStyle::CT_HeaderSection:
+            {
+                const auto headerSize = TableView::sizeFromContents(this, type, option, size, widget, m_data->tableViewConfig);
+                if (headerSize.isValid())
+                {
+                    return headerSize;
                 }
                 break;
             }
@@ -369,6 +395,18 @@ namespace AzQtComponents
             }
             break;
 
+            case CE_HeaderSection:
+            {
+                if (qobject_cast<const QHeaderView*>(widget))
+                {
+                    if (TableView::drawHeaderSection(this, option, painter, widget, m_data->tableViewConfig))
+                    {
+                        return;
+                    }
+                }
+            }
+            break;
+
             case CE_ComboBoxLabel:
             {
                 if (qobject_cast<const QComboBox*>(widget))
@@ -376,6 +414,61 @@ namespace AzQtComponents
                     if (ComboBox::drawComboBoxLabel(this, option, painter, widget, m_data->comboBoxConfig))
                     {
                         return;
+                    }
+                }
+            }
+            break;
+
+            case CE_ItemViewItem:
+            {
+                // For styling QTableView and QListView
+                auto tableView = qobject_cast<const QTableView*>(widget);
+                auto listView = qobject_cast<const QListView*>(widget);
+                auto validListView = listView && !StyleHelpers::findParent<QComboBox>(listView);
+                // For styling QTreeView (but not AzQtComponents::TableView)
+                auto treeView = qobject_cast<const QTreeView*>(widget);
+                auto validTreeView = treeView && !qobject_cast<const TableView*>(widget);
+
+                auto itemOption = qstyleoption_cast<const QStyleOptionViewItem*>(option);
+
+                if ((tableView || validListView) && itemOption)
+                {
+                    auto copy = *itemOption;
+                    copy.styleObject = const_cast<QObject*>(qobject_cast<const QObject*>(widget));
+
+                    // Need to stretch the focus rect to span all rows in a QTableView.
+                    // Taking into account also possible headers.
+                    if (tableView)
+                    {
+                        auto hHdr = tableView->horizontalHeader()->isVisible() ? tableView->horizontalHeader()->height() : 0;
+                        auto vHdr = tableView->verticalHeader()->isVisible() ? tableView->verticalHeader()->width() : 0;
+
+                        auto rowRect = copy.rect;
+                        rowRect.setWidth(tableView->width());
+                        rowRect.moveLeft(vHdr);
+                        rowRect.adjust(0, hHdr, 0, hHdr);
+
+                        copy.state.setFlag(QStyle::State_MouseOver, rowRect.contains(tableView->mapFromGlobal(QCursor::pos())));
+
+                        // Draw focus frame rectangle in all cells belonging to the selected row.
+                        // The focus frame rectangle is only drawn if QStyle::State_HasFocus is set,
+                        // but we only get QStyle::State_Selected from the selection model, so we
+                        // need to force QStyle::State_HasFocus whenever QStyle::State_Selected is set.
+                        copy.state.setFlag(QStyle::State_HasFocus, tableView->hasFocus() && (copy.state & QStyle::State_Selected));
+                    }
+
+                    // QStyleSheetStyle seems to ignore the background color set by the model
+                    painter->fillRect(copy.rect, copy.backgroundBrush);
+
+                    return QProxyStyle::drawControl(element, &copy, painter, widget);
+                }
+                else if (validTreeView)
+                {
+                    if (TreeView::isBranchLinesEnabled(treeView) && qobject_cast<BranchDelegate*>(treeView->itemDelegate()) && option->state.testFlag(QStyle::State_Children))
+                    {
+                        auto copy = *itemOption;
+                        copy.rect.adjust(treeView->indentation(), 0, 0, 0);
+                        return QProxyStyle::drawControl(element, &copy, painter, widget);
                     }
                 }
             }
@@ -490,6 +583,10 @@ namespace AzQtComponents
 
             case PE_IndicatorBranch:
             {
+                if (TreeView::drawBranchIndicator(this, option, painter, widget, m_data->treeViewConfig))
+                {
+                    return;
+                }
                 // With how we setup our styles, Style::drawPrimitive gets first crack at the treeview branch indicator.
                 // Since it doesn't care to do anything, it delegates to the base style, which is a QStyleSheetStyle.
                 // If there is a css rule in the loaded stylesheet, the QStyleSheetStyle will follow those rules -
@@ -544,6 +641,34 @@ namespace AzQtComponents
                 }
             }
             break;
+
+            case PE_PanelItemViewRow:
+            {
+                /** HACK
+                 * For TableView, we want the first row to use the alternate color, not the second one.
+                 * The "right" way to do this would be to invert the `background-color` and
+                 * `alternate-background-color` properties in the stylesheet, but if we do this:
+                 *
+                 * - the widget won't inherit the background color from the base stylesheet;
+                 * - the widget background outside the list will be filled with a light shade of gray instead
+                 *   of the global background color, which is not what we want.
+                 *
+                 * So here we just flip the Alternate flag before letting the base style fill the item background.
+                 **/
+                if (auto* tableView = qobject_cast<const TableView*>(widget))
+                {
+                    if (tableView->alternatingRowColors())
+                    {
+                        if (auto itemOption = qstyleoption_cast<const QStyleOptionViewItem*>(option))
+                        {
+                            auto copy = *itemOption;
+                            copy.features ^= QStyleOptionViewItem::Alternate;
+                            return QProxyStyle::drawPrimitive(element, &copy, painter, widget);
+                        }
+                    }
+                }
+            }
+            break;
         }
 
         return QProxyStyle::drawPrimitive(element, option, painter, widget);
@@ -579,6 +704,10 @@ namespace AzQtComponents
                 break;
 
             case CC_ToolButton:
+                if (DockBarButton::drawDockBarButton(this, option, painter, widget, m_data->dockBarButtonConfig))
+                {
+                    return;
+                }
                 if (ToolButton::drawToolButton(this, option, painter, widget, m_data->toolButtonConfig))
                 {
                     return;
@@ -609,7 +738,12 @@ namespace AzQtComponents
         {
             alignment = m_drawItemTextAlignmentOverride.value<Qt::Alignment>();
         }
-        return QProxyStyle::drawItemText(painter, rectangle, alignment, palette, enabled, text, textRole);
+        QProxyStyle::drawItemText(painter, rectangle, alignment, palette, enabled, text, textRole);
+    }
+
+    void Style::drawDragIndicator(const QStyleOption* option, QPainter* painter, const QWidget* widget) const
+    {
+        DragAndDrop::drawDragIndicator(this, option, painter, widget, m_data->dragAndDropConfig);
     }
 
     QPixmap Style::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap& pixmap, const QStyleOption* option) const
@@ -619,8 +753,20 @@ namespace AzQtComponents
             return QProxyStyle::generatedIconPixmap(QIcon::Mode::Active, pixmap, option);
         }
 
-        const auto generatedPixmap = PushButton::generatedIconPixmap(iconMode, pixmap, option, m_data->pushButtonConfig);
-        return !generatedPixmap.isNull() ? generatedPixmap : QProxyStyle::generatedIconPixmap(iconMode, pixmap, option);
+        QPixmap generatedPixmap;
+        generatedPixmap = Card::generatedIconPixmap(iconMode, pixmap, option, m_drawControlWidget, m_data->cardConfig);
+        if (!generatedPixmap.isNull())
+        {
+            return generatedPixmap;
+        }
+
+        generatedPixmap = PushButton::generatedIconPixmap(iconMode, pixmap, option, m_data->pushButtonConfig);
+        if (!generatedPixmap.isNull())
+        {
+            return generatedPixmap;
+        }
+
+        return QProxyStyle::generatedIconPixmap(iconMode, pixmap, option);
     }
 
     QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* option, SubControl subControl, const QWidget* widget) const
@@ -632,6 +778,28 @@ namespace AzQtComponents
 
         switch (control)
         {
+            case CC_ComboBox:
+            {
+                if (auto comboBoxOption = qstyleoption_cast<const QStyleOptionComboBox*>(option))
+                {
+                    switch (subControl)
+                    {
+                    case SC_ComboBoxListBoxPopup:
+                    {
+                        QRect r = ComboBox::comboBoxListBoxPopupRect(this, comboBoxOption, widget, m_data->comboBoxConfig);
+                        if (!r.isNull())
+                        {
+                            return r;
+                        }
+                    }
+                    break;
+
+                    default:
+                        break;
+                    }
+                }
+            }
+            break;
             case CC_Slider:
             {
                 if (auto sliderOption = qstyleoption_cast<const QStyleOptionSlider*>(option))
@@ -674,12 +842,11 @@ namespace AzQtComponents
                         QRect r;
                         auto spinBox = qobject_cast<const SpinBox*>(widget);
                         auto doubleSpinBox = qobject_cast<const DoubleSpinBox*>(widget);
-                        auto vectorInput = qobject_cast<const VectorInput*>(widget);
-                        auto doubleVectorInput = qobject_cast<const DoubleVectorInput*>(widget);
+                        auto vectorElement = qobject_cast<const VectorElement*>(widget->parent());
 
-                        if (vectorInput || doubleVectorInput)
+                        if (vectorElement && doubleSpinBox)
                         {
-                            r = VectorInput::editFieldRect(this, option, vectorInput, m_data->spinBoxConfig);
+                            r = VectorElement::editFieldRect(this, option, widget, m_data->spinBoxConfig);
                         }
                         else if (spinBox || doubleSpinBox)
                         {
@@ -720,6 +887,7 @@ namespace AzQtComponents
             case SE_ItemViewItemText:       // intentional fall-through
             case SE_ItemViewItemDecoration: // intentional fall-through
             case SE_ItemViewItemFocusRect:
+            {
                 auto optionItemView = qstyleoption_cast<const QStyleOptionViewItem*>(option);
                 if (qobject_cast<const TableView*>(widget) && optionItemView)
                 {
@@ -729,8 +897,17 @@ namespace AzQtComponents
                         return r;
                     }
                 }
-
-                break;
+            }
+            break;
+            case SE_LineEditContents:
+            {
+                QRect r = LineEdit::lineEditContentsRect(this, element, option, widget, m_data->lineEditConfig);
+                if (!r.isNull())
+                {
+                    return r;
+                }
+            }
+            break;
         }
 
         return QProxyStyle::subElementRect(element, option, widget);
@@ -753,7 +930,14 @@ namespace AzQtComponents
                 {
                     return margin;
                 }
-                return PushButton::buttonMargin(this, option, widget, m_data->pushButtonConfig);
+
+                margin = PushButton::buttonMargin(this, option, widget, m_data->pushButtonConfig);
+                if (margin != -1)
+                {
+                    return margin;
+                }
+
+                break;
             }
 
             case QStyle::PM_LayoutLeftMargin:
@@ -793,21 +977,18 @@ namespace AzQtComponents
                 break;
             }
 
-            case QStyle::PM_ToolBarFrameWidth:
-                // There's a bug in .css, changing right padding also changes top-padding
-                return 0;
-                break;
-
             case QStyle::PM_ToolBarItemSpacing:
-                return 5;
+            {
+                int spacing = ToolBar::itemSpacing(this, option, widget, m_data->toolBarConfig);
+                if (spacing != -1)
+                {
+                    return spacing;
+                }
                 break;
+            }
 
             case QStyle::PM_DockWidgetSeparatorExtent:
                 return 2;
-                break;
-
-            case QStyle::PM_ToolBarIconSize:
-                return 16;
                 break;
 
             case QStyle::PM_SliderThickness:
@@ -867,6 +1048,26 @@ namespace AzQtComponents
                 break;
             }
 
+            case QStyle::PM_MenuHPlacementOffset:
+            {
+                const int hOffset = Menu::horizontalShadowMargin(this, option, widget, m_data->menuConfig);
+                if (hOffset != std::numeric_limits<int>::lowest())
+                {
+                    return hOffset;
+                }
+                break;
+            }
+
+            case QStyle::PM_MenuVPlacementOffset:
+            {
+                const int vOffset = Menu::verticalShadowMargin(this, option, widget, m_data->menuConfig);
+                if (vOffset != std::numeric_limits<int>::lowest())
+                {
+                    return vOffset;
+                }
+                break;
+            }
+
             case QStyle::PM_ScrollView_ScrollBarOverlap:
                 return 16;
                 break;
@@ -894,6 +1095,30 @@ namespace AzQtComponents
                     return overlap;
                 }
                 break;
+            }
+
+            case QStyle::PM_ToolBarExtensionExtent:
+            {
+                const QPoint wPos = widget->pos();
+                const QPoint gPos = widget->mapToGlobal(wPos);
+                int retval{ 12 };
+
+                const QScreen* thisScreen = QGuiApplication::screenAt(gPos);
+                if (!thisScreen)
+                {
+                    thisScreen = QGuiApplication::primaryScreen();
+                }
+                if (thisScreen)
+                {
+                    // We have to do this as the KDAB Dpi functions return a strange rounded value
+                    // that means dpiScaled is always returned 12
+                    const qreal dpi = thisScreen->handle()->logicalDpi().first;
+                    if (dpi > 0)
+                    {
+                        retval = int(QStyleHelper::dpiScaled(12, dpi));
+                    }
+                }
+                return retval;
             }
 
             default:
@@ -928,7 +1153,7 @@ namespace AzQtComponents
             polishedAlready = polishedAlready || Eyedropper::polish(this, widget, m_data->eyedropperConfig);
             polishedAlready = polishedAlready || BreadCrumbs::polish(this, widget, m_data->breadCrumbsConfig);
             polishedAlready = polishedAlready || PaletteView::polish(this, widget, m_data->paletteViewConfig);
-            polishedAlready = polishedAlready || VectorInput::polish(this, widget, m_data->spinBoxConfig);
+            polishedAlready = polishedAlready || VectorElement::polish(this, widget, m_data->spinBoxConfig);
             polishedAlready = polishedAlready || SpinBox::polish(this, widget, m_data->spinBoxConfig);
             polishedAlready = polishedAlready || LineEdit::polish(this, widget, m_data->lineEditConfig);
             polishedAlready = polishedAlready || BrowseEdit::polish(this, widget, m_data->browseEditConfig, m_data->lineEditConfig);
@@ -941,7 +1166,9 @@ namespace AzQtComponents
             polishedAlready = polishedAlready || TabWidget::polish(this, widget, m_data->tabWidgetConfig);
             polishedAlready = polishedAlready || Menu::polish(this, widget, m_data->menuConfig);
             polishedAlready = polishedAlready || ToolButton::polish(this, widget, m_data->toolButtonConfig);
-
+            polishedAlready = polishedAlready || StyledBusyLabel::polish(this, widget);
+            polishedAlready = polishedAlready || ToolBar::polish(this, widget, m_data->toolBarConfig);
+            polishedAlready = polishedAlready || TreeView::polish(this, widget, m_data->scrollBarConfig, m_data->treeViewConfig);
 
             // A number of classes derive from QAbstractScrollArea. If one of these classes requires
             // polishing ensure that their polish function calls ScrollBar::polish.
@@ -968,6 +1195,7 @@ namespace AzQtComponents
             bool unpolishedAlready = false;
 
             unpolishedAlready = unpolishedAlready || Card::unpolish(this, widget, m_data->cardConfig);
+            unpolishedAlready = unpolishedAlready || VectorElement::unpolish(this, widget, m_data->spinBoxConfig);
             unpolishedAlready = unpolishedAlready || SpinBox::unpolish(this, widget, m_data->spinBoxConfig);
             unpolishedAlready = unpolishedAlready || LineEdit::unpolish(this, widget, m_data->lineEditConfig);
             unpolishedAlready = unpolishedAlready || BrowseEdit::unpolish(this, widget, m_data->browseEditConfig, m_data->lineEditConfig);
@@ -978,6 +1206,7 @@ namespace AzQtComponents
             unpolishedAlready = unpolishedAlready || TabBar::unpolish(this, widget, m_data->tabWidgetConfig);
             unpolishedAlready = unpolishedAlready || TabWidget::unpolish(this, widget, m_data->tabWidgetConfig);
             unpolishedAlready = unpolishedAlready || Menu::unpolish(this, widget, m_data->menuConfig);
+            unpolishedAlready = unpolishedAlready || StyledBusyLabel::unpolish(this, widget);
 
             // A number of classes derive from QAbstractScrollArea. If one of these classes requires
             // unpolishing ensure that their unpolish function calls ScrollBar::polish.
@@ -1148,7 +1377,7 @@ namespace AzQtComponents
         return flagToContinueProcessingEvent;
     }
 
-    bool Style::hasClass(const QWidget* button, const QString& className) const
+    bool Style::hasClass(const QWidget* button, const QString& className)
     {
         QVariant buttonClassVariant = button->property("class");
         if (buttonClassVariant.isNull())
@@ -1237,7 +1466,7 @@ namespace AzQtComponents
         widget->setProperty(g_removeAllStylingProperty, QVariant());
     }
 
-    bool Style::hasStyle(const QWidget* widget) const
+    bool Style::hasStyle(const QWidget* widget)
     {
         return (widget == nullptr) || widget->property(g_removeAllStylingProperty).isNull();
     }

@@ -142,7 +142,7 @@ namespace CommandSystem
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Helper functions
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    COMMANDSYSTEM_API void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* targetNode, const EMotionFX::BlendTreeConnection* connection);
+    COMMANDSYSTEM_API void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* targetNode, const EMotionFX::BlendTreeConnection* connection, bool updateUniqueData = true);
 
     COMMANDSYSTEM_API void CreateNodeConnection(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraphNode* targetNode, EMotionFX::BlendTreeConnection* connection);
 

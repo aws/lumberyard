@@ -37,7 +37,7 @@ class CMeasurementSystemDialog
 {
     Q_OBJECT
 public:
-    CMeasurementSystemDialog();
+    explicit CMeasurementSystemDialog(QWidget* parent = nullptr);
     ~CMeasurementSystemDialog();
 
     void UpdateSelectedLength(const float& fNewValue);

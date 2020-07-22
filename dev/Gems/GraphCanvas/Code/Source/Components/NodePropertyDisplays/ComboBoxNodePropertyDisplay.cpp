@@ -222,7 +222,10 @@ namespace GraphCanvas
                     QLinearGradient penGradient;
                     QLinearGradient fillGradient;
 
-                    QtDrawingUtils::GenerateGradients(containerColorPalettes, m_displayLabel->GetDisplayedSize(), penGradient, fillGradient);
+                    if (!containerColorPalettes.empty())
+                    {
+                        QtDrawingUtils::GenerateGradients(containerColorPalettes, m_displayLabel->GetDisplayedSize(), penGradient, fillGradient);
+                    }
 
                     m_displayLabel->SetBorderColorOverride(QBrush(penGradient));
 
@@ -273,6 +276,13 @@ namespace GraphCanvas
 
     void ComboBoxNodePropertyDisplay::SubmitValue()
     {
+        if (!m_valueDirty)
+        {
+            return;
+        }
+
+        m_valueDirty = false;
+
         if (m_comboBox)
         {
             QModelIndex index = m_comboBox->GetSelectedIndex();
@@ -288,11 +298,8 @@ namespace GraphCanvas
     }
 
     void ComboBoxNodePropertyDisplay::EditFinished()
-    {
-        if (m_valueDirty)
-        {
-            SubmitValue();
-        }
+    {        
+        SubmitValue();
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
     }
 
@@ -315,6 +322,8 @@ namespace GraphCanvas
             QObject::connect(m_comboBox, &GraphCanvasComboBox::OnFocusIn, [this]() { this->EditStart();  });
             QObject::connect(m_comboBox, &GraphCanvasComboBox::OnFocusOut, [this]() { this->EditFinished();  });
             QObject::connect(m_comboBox, &GraphCanvasComboBox::OnMenuAboutToDisplay, [this]() { this->OnMenuAboutToDisplay(); });
+
+            QObject::connect(m_comboBox, &GraphCanvasComboBox::OnUserActionComplete, [this]() { this->SubmitValue();  });
 
             m_proxyWidget->setWidget(m_comboBox);
 

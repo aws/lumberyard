@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+            "Include/LandscapeCanvas/LandscapeCanvasBus.h"
+        ],
+        "Source": [
+            "Source/LandscapeCanvasModule.cpp",
+            "Source/LandscapeCanvasModule.h",
+            "Source/LandscapeCanvasComponent.cpp",
+            "Source/LandscapeCanvasComponent.h"
+        ]
+    }
+}

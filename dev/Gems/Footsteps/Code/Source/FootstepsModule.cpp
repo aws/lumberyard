@@ -10,10 +10,8 @@
 *
 */
 
-#include "Footsteps_precompiled.h"
 #include <platform_impl.h>
 
-#include "FootstepsSystemComponent.h"
 #include "FootstepComponent.h"
 
 #include <IGem.h>
@@ -29,9 +27,7 @@ namespace Footsteps
         FootstepsModule()
             : CryHooksModule()
         {
-            // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {
-                FootstepsSystemComponent::CreateDescriptor(),
                 FootstepComponent::CreateDescriptor(),
             });
         }
@@ -41,9 +37,7 @@ namespace Footsteps
          */
         AZ::ComponentTypeList GetRequiredSystemComponents() const override
         {
-            return AZ::ComponentTypeList{
-                azrtti_typeid<FootstepsSystemComponent>(),
-            };
+            return AZ::ComponentTypeList{};
         }
     };
 }

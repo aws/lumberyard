@@ -29,6 +29,11 @@
 
 #include <IFont.h>
 
+namespace AzQtComponents
+{
+    class TabBar;
+}
+
 class AssetTreeEntry;
 
 class EditorWindow
@@ -367,7 +372,7 @@ private: // data
 
     UiSliceManager* m_sliceManager;
 
-    QTabBar* m_canvasTabBar;
+    AzQtComponents::TabWidget* m_canvasTabWidget;
     QWidget* m_canvasTabSectionWidget;
     HierarchyWidget* m_hierarchy;
     PropertiesWrapper* m_properties;

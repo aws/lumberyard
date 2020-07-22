@@ -36,6 +36,9 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <AzQtComponents/AzQtComponentsAPI.h>
+#include <AzQtComponents/Components/Style.h>
+
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
@@ -1775,6 +1778,8 @@ namespace AzToolsFramework
             QWidgetAction* findAction = new QWidgetAction(menu);
             QWidget* sliceLayoutWidget = new QWidget(menu);
             sliceLayoutWidget->setObjectName("SliceHierarchyMenuItem");
+            // Add class to fix hover state styling for WidgetAction
+            AzQtComponents::Style::addClass(sliceLayoutWidget, "WidgetAction");
             QHBoxLayout* sliceLayout = new QHBoxLayout(sliceLayoutWidget);
             findAction->setDefaultWidget(sliceLayoutWidget);
 
@@ -2060,6 +2065,8 @@ namespace AzToolsFramework
             , m_sliceLabel(nullptr)
         {
             setObjectName("SliceHierarchyMenuItem");
+            // Add class to fix hover state styling for WidgetAction
+            AzQtComponents::Style::addClass(this, "WidgetAction");
             QHBoxLayout* sliceLayout = new QHBoxLayout(parent);
             setLayout(sliceLayout);
 
@@ -3486,6 +3493,8 @@ namespace AzToolsFramework
                         QWidgetAction* widgetAction = new QWidgetAction(quickPushMenu);
                         QWidget* widget = new QWidget();
                         widget->setObjectName("SliceHierarchyMenuItem");
+                        // Add class to fix hover state styling for WidgetAction
+                        AzQtComponents::Style::addClass(widget, "WidgetAction");
                         QHBoxLayout* quickPushRowLayout = new QHBoxLayout();
                         widget->setLayout(quickPushRowLayout);
 
@@ -3656,6 +3665,8 @@ namespace AzToolsFramework
                     QWidgetAction* widgetAction = new QWidgetAction(quickPushMenu);
                     QWidget* widget = new QWidget(quickPushMenu);
                     widget->setObjectName("SliceHierarchyMenuItem");
+                    // Add class to fix hover state styling for WidgetAction
+                    AzQtComponents::Style::addClass(widget, "WidgetAction");
                     QHBoxLayout* quickPushRowLayout = new QHBoxLayout(widget);
                     widget->setLayout(quickPushRowLayout);
 

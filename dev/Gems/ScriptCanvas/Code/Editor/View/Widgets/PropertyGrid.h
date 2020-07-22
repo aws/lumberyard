@@ -46,6 +46,7 @@ namespace ScriptCanvasEditor
             , public AzToolsFramework::IPropertyEditorNotify
             , public PropertyGridRequestBus::Handler
             , public ScriptCanvas::EndpointNotificationBus::MultiHandler
+            , public ScriptCanvas::NodeNotificationsBus::MultiHandler
         {
             Q_OBJECT
 
@@ -61,6 +62,10 @@ namespace ScriptCanvasEditor
             void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* pNode) override;
             void RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode* node, const QPoint& point) override;
             /////
+
+            // NodeNotificationsBus
+            void OnSlotDisplayTypeChanged(const ScriptCanvas::SlotId& slotId, const ScriptCanvas::Data::Type& slotType) override;
+            ////
 
             // PropertyGridRequestHandler
             void RefreshPropertyGrid() override;
@@ -89,7 +94,12 @@ namespace ScriptCanvasEditor
             // ScriptCanvas::EndpointNotificationBus::MultiHandler
             void OnEndpointConnected(const ScriptCanvas::Endpoint& targetEndpoint) override;
             void OnEndpointDisconnected(const ScriptCanvas::Endpoint& targetEndpoint) override;
+
+            void OnEndpointConvertedToValue() override;
+            void OnEndpointConvertedToReference() override;
             ////////////////////////////
+
+            void UpdateEndpointVisibility(const ScriptCanvas::Endpoint& endpoint);
 
         private:
 

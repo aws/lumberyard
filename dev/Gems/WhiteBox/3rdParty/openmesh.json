@@ -1,0 +1,41 @@
+{
+    "name": "openmesh",
+    "source": "@GEM@/External/OpenMesh/OpenMesh.v.8.0",
+    "description": "OpenMesh library",
+    "includes": [
+        "include"
+    ],
+    "defines": [
+        "_USE_MATH_DEFINES",
+        "OM_STATIC_BUILD"],
+    "debug_defines": [
+        "OM_FORCE_STATIC_CAST"
+    ],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2017": {
+            "ccflags": [
+                "/GR"
+            ],
+            "libpath_debug": [
+                "lib/debug"
+            ],
+            "libpath_release": [
+                "lib/release"
+            ],
+            "lib_release": [
+                "OpenMeshCore.lib",
+                "OpenMeshTools.lib"
+            ],
+            "lib_debug": [
+                "OpenMeshCored.lib",
+                "OpenMeshToolsd.lib"
+            ],
+            "pdb": [
+                "OpenMeshCore.pdb",
+                "OpenMeshTools.pdb"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

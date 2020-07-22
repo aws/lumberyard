@@ -83,8 +83,8 @@ void CVisualLogWnd::RegisterViewClass()
 
 
 // CVisualLogWnd construction & destruction
-CVisualLogWnd::CVisualLogWnd()
-    : QWidget()
+CVisualLogWnd::CVisualLogWnd(QWidget* parent)
+    : QWidget(parent)
     , m_pControlsDlg(new CVisualLogDialog)
     , m_pView(new CVLogImageView)
     , m_pTextView(new CVLogTextView)

@@ -255,7 +255,7 @@ namespace MCore
                         {
                             if (!value.empty() && !AzFramework::StringFunc::LooksLikeBool(value.c_str()))
                             {
-                                outResult += AZStd::string::format("The value (%s) of boolean parameter '%s' is not a valid boolean (use true|false).\n", value.c_str(), paramName.c_str());
+                                outResult += AZStd::string::format("The value (%s) of boolean parameter '%s' is not a valid boolean (use true|false|0|1).\n", value.c_str(), paramName.c_str());
                             }
                         }
 

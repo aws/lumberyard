@@ -22,7 +22,7 @@
 #include <EMotionStudio/EMStudioSDK/Source/SaveChangedFilesManager.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
-#include <MysticQt/Source/LinkWidget.h>
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 #include <QAction>
 #include <QCheckBox>
 #include <QFileDialog>
@@ -130,11 +130,11 @@ namespace EMStudio
         mClearButton                    = new QPushButton();
         mCancelSelectionButton          = new QPushButton();
 
-        EMStudioManager::MakeTransparentButton(mOpenAttachmentButton,              "/Images/Icons/Open.png",   "Open actor from file and add it as regular attachment");
-        EMStudioManager::MakeTransparentButton(mOpenDeformableAttachmentButton,    "/Images/Icons/Open.png",   "Open actor from file and add it as skin attachment");
-        EMStudioManager::MakeTransparentButton(mRemoveButton,                      "/Images/Icons/Minus.png",  "Remove selected attachments");
-        EMStudioManager::MakeTransparentButton(mClearButton,                       "/Images/Icons/Clear.png",  "Remove all attachments");
-        EMStudioManager::MakeTransparentButton(mCancelSelectionButton,             "/Images/Icons/Remove.png", "Cancel attachment selection");
+        EMStudioManager::MakeTransparentButton(mOpenAttachmentButton,              "/Images/Icons/Open.svg",   "Open actor from file and add it as regular attachment");
+        EMStudioManager::MakeTransparentButton(mOpenDeformableAttachmentButton,    "/Images/Icons/Open.svg",   "Open actor from file and add it as skin attachment");
+        EMStudioManager::MakeTransparentButton(mRemoveButton,                      "/Images/Icons/Minus.svg",  "Remove selected attachments");
+        EMStudioManager::MakeTransparentButton(mClearButton,                       "/Images/Icons/Clear.svg",  "Remove all attachments");
+        EMStudioManager::MakeTransparentButton(mCancelSelectionButton,             "/Images/Icons/Remove.svg", "Cancel attachment selection");
 
         // create the buttons layout
         QHBoxLayout* buttonLayout = new QHBoxLayout();
@@ -285,10 +285,11 @@ namespace EMStudio
             {
                 tableItemNodeName->setWhatsThis(attachedToNode->GetName());
 
-                MysticQt::LinkWidget* nodeSelectionButton = new MysticQt::LinkWidget(attachedToNode->GetName());
+                auto nodeSelectionButton = new AzQtComponents::BrowseEdit();
+                nodeSelectionButton->setPlaceholderText(attachedToNode->GetName());
                 nodeSelectionButton->setStyleSheet("text-align: left;");
                 mTableWidget->setCellWidget(i, 4, nodeSelectionButton);
-                connect(nodeSelectionButton, &MysticQt::LinkWidget::clicked, this, &AttachmentsWindow::OnSelectNodeButtonClicked);
+                connect(nodeSelectionButton, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &AttachmentsWindow::OnSelectNodeButtonClicked);
             }
 
             // create the checkboxes
@@ -381,10 +382,6 @@ namespace EMStudio
                 QAction* deformableAction   = menu.addAction("Open Skin Attachment");
                 menu.addSeparator();
                 /*QAction* cancelAction     =*/menu.addAction("Cancel");
-
-                // add icons to the context menu
-                attachmentAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-                deformableAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
 
                 connect(attachmentAction, &QAction::triggered, this, &AttachmentsWindow::OnDroppedAttachmentsActors);
                 connect(deformableAction, &QAction::triggered, this, &AttachmentsWindow::OnDroppedDeformableActors);

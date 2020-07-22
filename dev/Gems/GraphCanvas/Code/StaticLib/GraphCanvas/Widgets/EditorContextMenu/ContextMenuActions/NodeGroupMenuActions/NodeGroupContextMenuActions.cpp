@@ -64,64 +64,29 @@ namespace GraphCanvas
         bool hasSelection = false;
         SceneRequestBus::EventResult(hasSelection, graphId, &SceneRequests::HasSelectedItems);
 
-        AZ::Entity* nodeGroupEntity = nullptr;
-        GraphCanvasRequestBus::BroadcastResult(nodeGroupEntity, &GraphCanvasRequests::CreateNodeGroupAndActivate);
+        AZStd::vector< AZ::EntityId > selectedNodes;
 
-        if (nodeGroupEntity)
+        if (hasSelection)
         {
-            SceneRequestBus::Event(graphId, &SceneRequests::AddNode, nodeGroupEntity->GetId(), scenePos);
+            SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);
+        }
 
-            if (hasSelection)
-            {
-                AZStd::vector< AZ::EntityId > selectedNodes;
-                SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);
+        AZ::EntityId groupId = GraphUtils::CreateGroupForElements(graphId, selectedNodes, scenePos);
 
-                QGraphicsItem* rootItem = nullptr;
-                QRectF boundingArea;
-
-                for (const AZ::EntityId& selectedNode : selectedNodes)
-                {
-                    SceneMemberUIRequestBus::EventResult(rootItem, selectedNode, &SceneMemberUIRequests::GetRootGraphicsItem);
-
-                    if (rootItem)
-                    {
-                        if (boundingArea.isEmpty())
-                        {
-                            boundingArea = rootItem->sceneBoundingRect();
-                        }
-                        else
-                        {
-                            boundingArea = boundingArea.united(rootItem->sceneBoundingRect());
-                        }
-                    }
-                }
-
-                AZ::Vector2 gridStep;
-                AZ::EntityId grid;
-                SceneRequestBus::EventResult(grid, graphId, &SceneRequests::GetGrid);
-
-                GridRequestBus::EventResult(gridStep, grid, &GridRequests::GetMinorPitch);
-
-                boundingArea.adjust(-gridStep.GetX(), -gridStep.GetY(), gridStep.GetX(), gridStep.GetY());
-
-                NodeGroupRequestBus::Event(nodeGroupEntity->GetId(), &NodeGroupRequests::SetGroupSize, boundingArea);
-            }
-
+        if (groupId.IsValid())
+        {
             SceneRequestBus::Event(graphId, &SceneRequests::ClearSelection);
 
             if (!m_collapseGroup)
             {
-                SceneMemberUIRequestBus::Event(nodeGroupEntity->GetId(), &SceneMemberUIRequests::SetSelected, true);
-                CommentUIRequestBus::Event(nodeGroupEntity->GetId(), &CommentUIRequests::SetEditable, true);
+                SceneMemberUIRequestBus::Event(groupId, &SceneMemberUIRequests::SetSelected, true);
+                CommentUIRequestBus::Event(groupId, &CommentUIRequests::SetEditable, true);
             }
             else
             {
-                NodeGroupRequestBus::Event(nodeGroupEntity->GetId(), &NodeGroupRequests::CollapseGroup);
+                NodeGroupRequestBus::Event(groupId, &NodeGroupRequests::CollapseGroup);
             }
-        }
 
-        if (nodeGroupEntity)
-        {
             return SceneReaction::PostUndo;
         }
         else

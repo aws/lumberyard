@@ -19,8 +19,6 @@
 
 #include "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h"
 #include <ScriptEvents/ScriptEventsAssetRef.h>
-#include <ScriptCanvas/GraphCanvas/VersionControlledNodeBus.h>
-
 
 namespace ScriptCanvasEditor
 {

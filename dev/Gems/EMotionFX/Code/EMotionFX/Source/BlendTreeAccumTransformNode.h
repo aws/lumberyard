@@ -81,34 +81,23 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-            {
-                mDeltaTime  = 0.0f;
-                mNodeIndex  = MCORE_INVALIDINDEX32;
-                mMustUpdate = true;
-                mIsValid    = false;
-                mAdditiveTransform.Identity();
-                EMFX_SCALECODE(mAdditiveTransform.mScale.CreateZero();)
-            }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
 
-            ~UniqueData() {}
+            void Update() override;
 
         public:
-            Transform   mAdditiveTransform;
-            uint32      mNodeIndex;
-            float       mDeltaTime;
-            bool        mMustUpdate;
-            bool        mIsValid;
+            Transform mAdditiveTransform;
+            uint32 mNodeIndex = InvalidIndex32;
+            float mDeltaTime = 0.0f;
         };
 
         BlendTreeAccumTransformNode();
         ~BlendTreeAccumTransformNode();
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         AZ::Color GetVisualColor() const override               { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
         bool GetCanActAsState() const override                  { return false; }
@@ -131,10 +120,11 @@ namespace EMotionFX
         void SetInvertRotation(bool invertRotation);
         void SetInvertScale(bool invertScale);
 
+        const AZStd::string& GetTargetNodeName() const { return m_targetNodeName; }
+
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 

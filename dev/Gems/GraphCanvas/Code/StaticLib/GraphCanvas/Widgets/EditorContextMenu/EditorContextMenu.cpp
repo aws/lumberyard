@@ -10,6 +10,8 @@
 *
 */
 
+#include <QWidgetAction>
+
 #include <GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.h>
 
 namespace GraphCanvas
@@ -55,12 +57,26 @@ namespace GraphCanvas
         }
     }
 
-    void EditorContextMenu::AddMenuAction(QAction* contextMenuAction)
+    void EditorContextMenu::AddMenuAction(QAction* contextMenuAction, MenuActionSection section)
     {
         AZ_Error("GraphCanvas", !m_finalized, "Trying to configure a Menu that has already been finalized.");
         if (!m_finalized)
         {
-            m_unprocessedActions.emplace_back(contextMenuAction);
+            // Add the specified menu action to the proper section of the context menu.
+            // This allows the client to place their custom actions at the front of the menu, back of the menu,
+            // or the default which is just in the order they are configured.
+            switch (section)
+            {
+            case MenuActionSection::Front:
+                m_unprocessedFrontActions.emplace_back(contextMenuAction);
+                break;
+            case MenuActionSection::Default:
+                m_unprocessedActions.emplace_back(contextMenuAction);
+                break;
+            case MenuActionSection::Back:
+                m_unprocessedBackActions.emplace_back(contextMenuAction);
+                break;
+            }
         }
         else
         {
@@ -83,6 +99,37 @@ namespace GraphCanvas
         }
 
         return nullptr;
+    }
+
+    void EditorContextMenu::AddMenuActionFront(QAction* contextMenuAction)
+    {
+        AddMenuAction(contextMenuAction, MenuActionSection::Front);
+    }
+
+    void EditorContextMenu::AddMenuActionBack(QAction* contextMenuAction)
+    {
+        AddMenuAction(contextMenuAction, MenuActionSection::Back);
+    }
+
+    void EditorContextMenu::AddNodePaletteMenuAction(const NodePaletteConfig& config)
+    {
+        if (m_nodePalette)
+        {
+            AZ_Assert(false, "This EditorContextMenu already contains a Node Palette.");
+            return;
+        }
+
+        m_nodePalette = aznew NodePaletteWidget(nullptr);
+        m_nodePalette->setProperty("HasNoWindowDecorations", true);
+        m_nodePalette->SetupNodePalette(config);
+
+        QWidgetAction* actionWidget = new QWidgetAction(this);
+        actionWidget->setDefaultWidget(m_nodePalette);
+
+        AddMenuActionBack(actionWidget);
+
+        QObject::connect(this, &QMenu::aboutToShow, this, &EditorContextMenu::SetupDisplay);
+        QObject::connect(m_nodePalette, &NodePaletteWidget::OnCreateSelection, this, &EditorContextMenu::HandleContextMenuSelection);
     }
 
     void EditorContextMenu::RefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId)
@@ -122,6 +169,11 @@ namespace GraphCanvas
             }
         }
 
+        if (m_nodePalette)
+        {
+            m_nodePalette->ResetSourceSlotFilter();
+        }
+
         OnRefreshActions(graphId, targetMemberId);
     }
 
@@ -130,76 +182,134 @@ namespace GraphCanvas
         ConstructMenu();
         QMenu::showEvent(showEvent);
     }
+
+    const NodePaletteWidget* EditorContextMenu::GetNodePalette() const
+    {
+        return m_nodePalette;
+    }
+
+    void EditorContextMenu::ResetSourceSlotFilter()
+    {
+        if (m_nodePalette)
+        {
+            m_nodePalette->ResetSourceSlotFilter();
+        }
+    }
+
+    void EditorContextMenu::FilterForSourceSlot(const GraphId& graphId, const AZ::EntityId& sourceSlotId)
+    {
+        if (m_nodePalette)
+        {
+            m_nodePalette->FilterForSourceSlot(graphId, sourceSlotId);
+        }
+    }
+
+    void EditorContextMenu::SetupDisplay()
+    {
+        if (m_nodePalette)
+        {
+            if (!m_nodePalette->parent())
+            {
+                m_nodePalette->setParent(this);
+            }
+
+            m_nodePalette->ResetDisplay();
+            m_nodePalette->FocusOnSearchFilter();
+        }
+    }
+
+    void EditorContextMenu::HandleContextMenuSelection()
+    {
+        // Close the menu once an item in the Node Palette context menu has been selected
+        close();
+    }
     
     void EditorContextMenu::OnRefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId)
     {
         AZ_UNUSED(graphId);
         AZ_UNUSED(targetMemberId);
     }
-    
+
+    void EditorContextMenu::keyPressEvent(QKeyEvent* keyEvent)
+    {
+        if (m_nodePalette && !m_nodePalette->hasFocus())
+        {
+            QMenu::keyPressEvent(keyEvent);
+        }
+    }
+
     void EditorContextMenu::ConstructMenu()
     {
         if (!m_finalized)
         {
             m_finalized = true;
 
-            for (ActionGroupId currentGroup : m_actionGroupOrdering)
+            // Process the actions in order of their specified sections
+            for (auto actions : { m_unprocessedFrontActions, m_unprocessedActions, m_unprocessedBackActions })
             {
-                bool addedElement = false;
-                auto actionIter = m_unprocessedActions.begin();
-
-                while (actionIter != m_unprocessedActions.end())
-                {
-                    ContextMenuAction* contextMenuAction = qobject_cast<ContextMenuAction*>((*actionIter));
-                    if (contextMenuAction)
-                    {
-                        if (contextMenuAction->GetActionGroupId() == currentGroup)
-                        {
-                            addedElement = true;
-
-                            if (contextMenuAction->IsInSubMenu())
-                            {
-                                AZStd::string menuString = contextMenuAction->GetSubMenuPath();
-
-                                auto subMenuIter = m_subMenuMap.find(menuString);
-
-                                if (subMenuIter == m_subMenuMap.end())
-                                {
-                                    QMenu* menu = addMenu(menuString.c_str());
-
-                                    auto insertResult = m_subMenuMap.insert(AZStd::make_pair(menuString, menu));
-
-                                    subMenuIter = insertResult.first;
-                                }
-
-                                subMenuIter->second->addAction(contextMenuAction);
-                            }
-                            else
-                            {
-                                addAction(contextMenuAction);
-                            }
-
-                            actionIter = m_unprocessedActions.erase(actionIter);
-                            continue;
-                        }
-                    }
-
-                    ++actionIter;
-                }
-
-                if (addedElement)
-                {
-                    addSeparator();
-                }
+                AddUnprocessedActions(actions);
             }
-
-            for (QAction* uncategorizedAction : m_unprocessedActions)
-            {
-                addAction(uncategorizedAction);
-            }
-
-            m_unprocessedActions.clear();
         }
+    }
+
+    void EditorContextMenu::AddUnprocessedActions(AZStd::vector<QAction*>& actions)
+    {
+        for (ActionGroupId currentGroup : m_actionGroupOrdering)
+        {
+            bool addedElement = false;
+            auto actionIter = actions.begin();
+
+            while (actionIter != actions.end())
+            {
+                ContextMenuAction* contextMenuAction = qobject_cast<ContextMenuAction*>((*actionIter));
+                if (contextMenuAction)
+                {
+                    if (contextMenuAction->GetActionGroupId() == currentGroup)
+                    {
+                        addedElement = true;
+
+                        if (contextMenuAction->IsInSubMenu())
+                        {
+                            AZStd::string menuString = contextMenuAction->GetSubMenuPath();
+
+                            auto subMenuIter = m_subMenuMap.find(menuString);
+
+                            if (subMenuIter == m_subMenuMap.end())
+                            {
+                                QMenu* menu = addMenu(menuString.c_str());
+
+                                auto insertResult = m_subMenuMap.insert(AZStd::make_pair(menuString, menu));
+
+                                subMenuIter = insertResult.first;
+                            }
+
+                            subMenuIter->second->addAction(contextMenuAction);
+                        }
+                        else
+                        {
+                            addAction(contextMenuAction);
+                        }
+
+                        actionIter = actions.erase(actionIter);
+                        continue;
+                    }
+                }
+
+                ++actionIter;
+            }
+
+            if (addedElement)
+            {
+                addSeparator();
+            }
+        }
+
+        for (QAction* uncategorizedAction : actions)
+        {
+            addAction(uncategorizedAction);
+        }
+
+        actions.clear();
     }
 
 #include <StaticLib/GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.moc>

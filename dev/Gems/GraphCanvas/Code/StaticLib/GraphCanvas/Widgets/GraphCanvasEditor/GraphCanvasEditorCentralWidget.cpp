@@ -9,11 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <qevent.h>
-#include <qmimedata.h>
-#include <qtimer.h>
-#include <qgraphicsview.h>
+#include <QEvent>
+#include <QGraphicsView>
+#include <QMimeData>
+#include <QTimer>
+#include <QToolBar>
 
+#include <AzQtComponents/Components/FancyDocking.h>
+
+#include <GraphCanvas/Widgets/AssetEditorToolbar/AssetEditorToolbar.h>
 #include <GraphCanvas/Widgets/GraphCanvasEditor/GraphCanvasEditorCentralWidget.h>
 #include <StaticLib/GraphCanvas/Widgets/GraphCanvasEditor/ui_GraphCanvasEditorCentralWidget.h>
 
@@ -147,15 +151,23 @@ namespace GraphCanvas
     // AssetEditorCentralDockWindow
     /////////////////////////////////
 
-    AssetEditorCentralDockWindow::AssetEditorCentralDockWindow(const EditorId& editorId)
-        : QMainWindow()
+    AssetEditorCentralDockWindow::AssetEditorCentralDockWindow(const EditorId& editorId, const char* saveIdentifier)
+        : AzQtComponents::DockMainWindow()
         , m_editorId(editorId)
+        , m_fancyDockingManager(new AzQtComponents::FancyDocking(this, AZStd::string::format("%s_CentralDockWindow", saveIdentifier).c_str()))
     {
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         setAutoFillBackground(true);
 
         setDockNestingEnabled(false);
         setTabPosition(Qt::DockWidgetArea::AllDockWidgetAreas, QTabWidget::TabPosition::North);
+
+        // Only allow our docked graphs to be tabbed (can also be floating and/or tabbed)
+        setDockOptions((dockOptions() | ForceTabbedDocks));
+
+        QToolBar* toolBar = new QToolBar(this);
+        toolBar->addWidget(aznew AssetEditorToolbar(editorId));
+        addToolBar(toolBar);
 
         m_emptyDockWidget = aznew GraphCanvasEditorEmptyDockWidget(this);
         addDockWidget(Qt::DockWidgetArea::TopDockWidgetArea, m_emptyDockWidget);
@@ -165,6 +177,8 @@ namespace GraphCanvas
 
     AssetEditorCentralDockWindow::~AssetEditorCentralDockWindow()
     {
+        delete m_emptyDockWidget;
+        m_emptyDockWidget = nullptr;
     }
 
     GraphCanvasEditorEmptyDockWidget* AssetEditorCentralDockWindow::GetEmptyDockWidget() const
@@ -175,7 +189,7 @@ namespace GraphCanvas
     void AssetEditorCentralDockWindow::OnEditorOpened(EditorDockWidget* dockWidget)
     {
         QObject::connect(dockWidget, &EditorDockWidget::OnEditorClosed, this, &AssetEditorCentralDockWindow::OnEditorClosed);
-        QObject::connect(dockWidget, &QDockWidget::topLevelChanged, this, &AssetEditorCentralDockWindow::OnEditorDockChanged);
+        QObject::connect(dockWidget, &QDockWidget::visibilityChanged, this, &AssetEditorCentralDockWindow::UpdateCentralWidget);
 
         DockWidgetId activeDockWidgetId;
         ActiveEditorDockWidgetRequestBus::EventResult(activeDockWidgetId, m_editorId, &ActiveEditorDockWidgetRequests::GetDockWidgetId);
@@ -187,9 +201,9 @@ namespace GraphCanvas
             EditorDockWidgetRequestBus::EventResult(activeDockWidget, activeDockWidgetId, &EditorDockWidgetRequests::AsEditorDockWidget);
         }
 
-        if (activeDockWidget && !activeDockWidget->isFloating())
+        if (activeDockWidget && IsDockedInMainWindow(activeDockWidget))
         {
-            tabifyDockWidget(activeDockWidget, dockWidget);
+            m_fancyDockingManager->tabifyDockWidget(activeDockWidget, dockWidget, this);
         }
         else
         {
@@ -205,7 +219,7 @@ namespace GraphCanvas
 
                 for (QDockWidget* testWidget : m_editorDockWidgets)
                 {
-                    if (!testWidget->isFloating())
+                    if (IsDockedInMainWindow(testWidget))
                     {
                         QPoint pos = testWidget->pos();
 
@@ -222,7 +236,7 @@ namespace GraphCanvas
 
                 if (leftMostDock)
                 {
-                    tabifyDockWidget(leftMostDock, dockWidget);
+                    m_fancyDockingManager->tabifyDockWidget(leftMostDock, dockWidget, this);
                 }
                 else
                 {
@@ -242,15 +256,75 @@ namespace GraphCanvas
 
     void AssetEditorCentralDockWindow::OnEditorClosed(EditorDockWidget* dockWidget)
     {
+        emit OnEditorClosing(dockWidget);
+
         m_editorDockWidgets.erase(dockWidget);
+
+        // Handle setting a new active graph if we close the active graph
+        DockWidgetId activeDockWidgetId;
+        ActiveEditorDockWidgetRequestBus::EventResult(activeDockWidgetId, m_editorId, &ActiveEditorDockWidgetRequests::GetDockWidgetId);
+        if (activeDockWidgetId == dockWidget->GetDockWidgetId())
+        {
+            if (AzQtComponents::DockTabWidget::IsTabbed(dockWidget))
+            {
+                AzQtComponents::DockTabWidget* tabWidget = AzQtComponents::DockTabWidget::ParentTabWidget(dockWidget);
+                AZ_Assert(tabWidget, "Unable to find tab widget"); // The IsTabbed method above checks for ParentTabWidget returning a valid DockTabWidget
+
+                // If the active graph is the last one left in a tabbed widget, then there are no tabs left to focus so set the active graph to nullptr
+                int numTabs = tabWidget->count();
+                if (numTabs <= 1)
+                {
+                    ActiveGraphChanged(nullptr);
+                }
+                // Otherwise, listen for the tab index to change which will be updated once the active tab is closed,
+                // so we can set the new active graph to that tab
+                else
+                {
+                    QObject::connect(tabWidget, &QTabWidget::currentChanged, this, &AssetEditorCentralDockWindow::HandleTabWidgetCurrentChanged, Qt::UniqueConnection);
+                }
+            }
+            else
+            {
+                // If the active graph was floating by itself, just set the active graph to nullptr so that the
+                // user can select another graph to be the new active
+                ActiveGraphChanged(nullptr);
+            }
+        }
 
         UpdateCentralWidget();
     }
 
-    void AssetEditorCentralDockWindow::OnEditorDockChanged(bool isDocked)
+    bool AssetEditorCentralDockWindow::CloseAllEditors()
     {
-        AZ_UNUSED(isDocked);
-        UpdateCentralWidget();
+        while (!m_editorDockWidgets.empty())
+        {
+            auto it = m_editorDockWidgets.begin();
+            QDockWidget* dockWidget = *it;
+            if (!dockWidget->close())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    EditorDockWidget* AssetEditorCentralDockWindow::GetEditorDockWidgetByGraphId(const GraphId& graphId) const
+    {
+        for (EditorDockWidget* dockWidget : m_editorDockWidgets)
+        {
+            if (dockWidget->GetGraphId() == graphId)
+            {
+                return dockWidget;
+            }
+        }
+
+        return nullptr;
+    }
+
+    const AZStd::unordered_set<EditorDockWidget*>& AssetEditorCentralDockWindow::GetEditorDockWidgets() const
+    {
+        return m_editorDockWidgets;
     }
 
     void AssetEditorCentralDockWindow::OnFocusChanged(QWidget* oldFocus, QWidget* newFocus)
@@ -268,18 +342,46 @@ namespace GraphCanvas
 
             if (dockWidget)
             {
-                dockWidget->SignalActiveEditor();
+                ActiveGraphChanged(dockWidget);
             }
         }
     }
 
     void AssetEditorCentralDockWindow::UpdateCentralWidget()
     {
+        if (!m_emptyDockWidget)
+        {
+            return;
+        }
+
+        // Only check this if UpdateCentralWidget was invoked by the visibility changing of one of our dock widgets
+        if (sender())
+        {
+            // If our empty dock widget isn't parented to our main window, that means that the user
+            // docked a floating graph to be tabbed with it, so we need to remove it from the tab
+            // widget and add it back to our main window as hidden
+            QDockWidget* senderDockWidget = qobject_cast<QDockWidget*>(sender());
+            if (senderDockWidget && senderDockWidget->isVisible())
+            {
+                if (m_emptyDockWidget->parentWidget() != this)
+                {
+                    if (AzQtComponents::DockTabWidget::IsTabbed(m_emptyDockWidget))
+                    {
+                        AzQtComponents::DockTabWidget* tabWidget = AzQtComponents::DockTabWidget::ParentTabWidget(m_emptyDockWidget);
+                        tabWidget->removeTab(m_emptyDockWidget);
+                    }
+
+                    addDockWidget(Qt::DockWidgetArea::TopDockWidgetArea, m_emptyDockWidget);
+                    m_emptyDockWidget->hide();
+                }
+            }
+        }
+
         bool isMainWindowEmpty = true;
 
         for (QDockWidget* dockWidget : m_editorDockWidgets)
         {
-            if (!dockWidget->isFloating())
+            if (IsDockedInMainWindow(dockWidget))
             {
                 isMainWindowEmpty = false;
                 break;
@@ -289,13 +391,85 @@ namespace GraphCanvas
         if (isMainWindowEmpty && !m_emptyDockWidget->isVisible())
         {
             m_emptyDockWidget->show();
-            setDockOptions((dockOptions() | ForceTabbedDocks));            
         }
         else if (!isMainWindowEmpty && m_emptyDockWidget->isVisible())
         {
             m_emptyDockWidget->hide();
-            setDockOptions((dockOptions() & ~ForceTabbedDocks));
         }
+    }
+
+    void AssetEditorCentralDockWindow::ActiveGraphChanged(EditorDockWidget* dockWidget)
+    {
+        DockWidgetId activeDockWidgetId;
+        ActiveEditorDockWidgetRequestBus::EventResult(activeDockWidgetId, m_editorId, &ActiveEditorDockWidgetRequests::GetDockWidgetId);
+
+        GraphCanvas::GraphId activeGraphId;
+        EditorDockWidgetRequestBus::EventResult(activeGraphId, activeDockWidgetId, &EditorDockWidgetRequests::GetGraphId);
+
+        GraphId newGraphId;
+        if (dockWidget)
+        {
+            newGraphId = dockWidget->GetGraphId();
+        }
+
+        if (activeGraphId == newGraphId)
+        {
+            return;
+        }
+
+        AssetEditorNotificationBus::Event(m_editorId, &AssetEditorNotifications::PreOnActiveGraphChanged);
+
+        if (dockWidget)
+        {
+            dockWidget->SignalActiveEditor();
+        }
+
+        AssetEditorNotificationBus::Event(m_editorId, &AssetEditorNotifications::OnActiveGraphChanged, newGraphId);
+        AssetEditorNotificationBus::Event(m_editorId, &AssetEditorNotifications::PostOnActiveGraphChanged);
+    }
+
+    bool AssetEditorCentralDockWindow::IsDockedInMainWindow(QDockWidget* dockWidget)
+    {
+        if (!dockWidget)
+        {
+            return false;
+        }
+
+        // Find which main window this dock widget is parented to, which will either be this
+        // CentralDockWindow instance, or a floating main window container
+        QMainWindow* parentMainWindow = nullptr;
+        QWidget* parent = dockWidget->parentWidget();
+        while (parent)
+        {
+            parentMainWindow = qobject_cast<QMainWindow*>(parent);
+            if (parentMainWindow)
+            {
+                break;
+            }
+
+            parent = parent->parentWidget();
+        }
+
+        if (parentMainWindow && parentMainWindow == this)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    void AssetEditorCentralDockWindow::HandleTabWidgetCurrentChanged(int index)
+    {
+        // This method is invoked in the scenario when the active graph is about to close and it belongs to a tab widget.
+        // The new tab widget index is the graph that was switched to after the active tab was closed, so we will set
+        // it as the new active graph.
+        AzQtComponents::DockTabWidget* tabWidget = qobject_cast<AzQtComponents::DockTabWidget*>(sender());
+        AZ_Assert(tabWidget, "Received tab widget changed signal from unknown sender");
+
+        QObject::disconnect(tabWidget, &QTabWidget::currentChanged, this, &AssetEditorCentralDockWindow::HandleTabWidgetCurrentChanged);
+
+        EditorDockWidget* newDockWidget = qobject_cast<EditorDockWidget*>(tabWidget->widget(index));
+        ActiveGraphChanged(newDockWidget);
     }
     
 #include <StaticLib/GraphCanvas/Widgets/GraphCanvasEditor/GraphCanvasEditorCentralWidget.moc>

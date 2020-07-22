@@ -13,7 +13,7 @@
 #pragma once
 
 #include <QBoxLayout>
-#include <QPushButton>
+#include <QToolButton>
 #include <QComboBox>
 #include <QEvent>
 
@@ -29,13 +29,13 @@ namespace PhysX
             explicit ComboBoxEditButtonPair(QWidget* parent);
 
             QComboBox* GetComboBox();
-            QPushButton* GetEditButton();
+            QToolButton* GetEditButton();
 
         private:
             bool eventFilter(QObject *object, QEvent *event) override;
 
             QComboBox* m_comboBox = nullptr;
-            QPushButton* m_editButton = nullptr;
+            QToolButton* m_editButton = nullptr;
         };
     }
 }

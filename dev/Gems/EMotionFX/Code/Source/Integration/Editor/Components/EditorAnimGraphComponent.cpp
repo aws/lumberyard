@@ -72,7 +72,7 @@ namespace EMotionFX
                             ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-animgraph.html")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAnimGraphComponent::m_motionSetAsset,
                             "Motion set asset", "EMotion FX motion set asset to be loaded for this actor.")
-                            ->Attribute("EditButton", "Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32")
+                            ->Attribute("EditButton", "")
                             ->Attribute("EditDescription", "Open in Animation Editor")
                             ->Attribute("EditCallback", &EditorAnimGraphComponent::LaunchAnimationEditor)
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorAnimGraphComponent::OnMotionSetAssetSelected)
@@ -82,7 +82,7 @@ namespace EMotionFX
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAnimGraphComponent::m_animGraphAsset,
                             "Anim graph", "EMotion FX anim graph to be assigned to this actor.")
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorAnimGraphComponent::OnAnimGraphAssetSelected)
-                            ->Attribute("EditButton", "Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32")
+                            ->Attribute("EditButton", "")
                             ->Attribute("EditDescription", "Open in Animation Editor")
                             ->Attribute("EditCallback", &EditorAnimGraphComponent::LaunchAnimationEditor)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAnimGraphComponent::m_parameterDefaults,
@@ -313,7 +313,7 @@ namespace EMotionFX
                     }
                     else
                     {
-                        AZ_Assert(!IsSupportedScriptPropertyType(param), "This value parameter of this type ('%s') should not be supported. Please update the IsSupportedScriptPropertyType() method.", param->GetTypeDisplayName().c_str());
+                        AZ_Assert(!IsSupportedScriptPropertyType(param), "This value parameter of this type ('%s') should not be supported. Please update the IsSupportedScriptPropertyType() method.", param->GetTypeDisplayName());
                     }
                 }
             }

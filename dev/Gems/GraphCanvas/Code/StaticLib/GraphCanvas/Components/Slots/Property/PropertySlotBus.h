@@ -21,14 +21,14 @@ namespace GraphCanvas
     class PropertySlotRequests
         : public AZ::EBusTraits
     {
-    public:        
+    public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
         
         virtual const AZ::Crc32& GetPropertyId() const = 0;
     };
 
-    using PropertySlotBus = AZ::EBus<PropertySlotRequests>;    
+    using PropertySlotRequestBus = AZ::EBus<PropertySlotRequests>;    
     
     class PropertySlotNotifications
         : public AZ::EBusTraits

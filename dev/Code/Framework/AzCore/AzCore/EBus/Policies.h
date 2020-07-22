@@ -238,7 +238,7 @@ namespace AZ
 
         void Execute()
         {
-            AZ_Warning("System", m_isActive, "You are calling execute queued functions on a bus, which has not activate it's function queuing! Call YouBus::AllowFunctionQueuing(true)!");
+            AZ_Warning("System", m_isActive, "You are calling execute queued functions on a bus which has not activated its function queuing! Call YourBus::AllowFunctionQueuing(true)!");
             while (true)
             {
                 BusMessageCall invoke;

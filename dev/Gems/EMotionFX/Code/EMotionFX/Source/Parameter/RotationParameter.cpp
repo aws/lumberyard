@@ -55,11 +55,9 @@ namespace EMotionFX
         ;
     }
 
-
-    const AZStd::string& RotationParameter::GetTypeDisplayName() const
+    const char* RotationParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Rotation";
-        return typeDisplayName;
+        return "Rotation";
     }
 
     MCore::Attribute* RotationParameter::ConstructDefaultValueAsAttribute() const

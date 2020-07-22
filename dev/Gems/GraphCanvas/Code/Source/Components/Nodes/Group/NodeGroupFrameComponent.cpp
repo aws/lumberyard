@@ -269,6 +269,12 @@ namespace GraphCanvas
 
         QRectF titleSize = m_titleWidget->boundingRect();
 
+        if (titleSize.isEmpty())
+        {
+            m_titleWidget->adjustSize();
+            titleSize = m_titleWidget->boundingRect();
+        }
+
         m_saveData.m_displayHeight = aznumeric_cast<float>(blockRectangle.height() + titleSize.height());
         m_saveData.m_displayWidth = aznumeric_cast<float>(AZ::GetMax(m_frameWidget->m_minimumSize.width(), blockRectangle.width()));
         m_saveData.SignalDirty();
@@ -284,7 +290,7 @@ namespace GraphCanvas
     }
 
     QRectF NodeGroupFrameComponent::GetGroupBoundingBox() const
-    {        
+    {
         return m_blockWidget->sceneBoundingRect();
     }
 
@@ -729,7 +735,10 @@ namespace GraphCanvas
 
     QColor NodeGroupFrameComponent::GetBookmarkColor() const
     {
-        return GraphCanvas::ConversionUtils::AZToQColor(m_saveData.m_color);
+        AZ::Color backgroundColor;
+        CommentRequestBus::EventResult(backgroundColor, GetEntityId(), &CommentRequests::GetBackgroundColor);
+
+        return GraphCanvas::ConversionUtils::AZToQColor(backgroundColor);
     }
 
     void NodeGroupFrameComponent::OnBookmarkTriggered()
@@ -820,7 +829,7 @@ namespace GraphCanvas
         m_frameWidget->SetUseTitleShape(false);
     }
 
-    void NodeGroupFrameComponent::OnEntitiesDeserializationComplete()
+    void NodeGroupFrameComponent::OnEntitiesDeserializationComplete(const GraphSerialization&)
     {
         RestoreCollapsedState();
     }
@@ -1891,7 +1900,7 @@ namespace GraphCanvas
         {
             QPen border;
             border.setWidth(3);
-            border.setColor("#f3811d");
+            border.setColor("#17A3CD");
             border.setStyle(Qt::PenStyle::DashLine);
             painter->setPen(border);
 
@@ -1914,6 +1923,16 @@ namespace GraphCanvas
                 QPen border;
                 border.setWidth(3);
                 border.setColor("#4285f4");
+                border.setStyle(Qt::PenStyle::DashLine);
+                painter->setPen(border);
+
+                painter->drawRect(boundingRect());
+            }
+            else
+            {
+                QPen border;
+                border.setWidth(3);
+                border.setColor("#000000");
                 border.setStyle(Qt::PenStyle::DashLine);
                 painter->setPen(border);
 

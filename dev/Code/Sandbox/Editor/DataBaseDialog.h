@@ -23,7 +23,10 @@
 #define DATABASE_VIEW_VER "1.00"
 
 class CEntityProtLibDialog;
-class QTabWidget;
+namespace AzQtComponents
+{
+    class TabWidget;
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Pages of the data base dialog.
@@ -91,7 +94,7 @@ protected:
     // Database View is just open
     bool m_isReady = false;
 
-    QTabWidget* m_tabCtrl;
+    AzQtComponents::TabWidget* m_tabCtrl;
 
     //////////////////////////////////////////////////////////////////////////
     // Database dialogs.

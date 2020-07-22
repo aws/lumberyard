@@ -19,7 +19,7 @@
 // 4800: 'uint': forcing value to bool 'true' or 'false'
 AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QBoxLayout>
-#include <QPushButton>
+#include <QToolButton>
 #include <QComboBox>
 #include <QEvent>
 AZ_POP_DISABLE_WARNING
@@ -36,7 +36,7 @@ namespace NvCloth
             explicit ComboBoxEditButtonPair(QWidget* parent);
 
             QComboBox* GetComboBox();
-            QPushButton* GetEditButton();
+            QToolButton* GetEditButton();
 
             void SetEntityId(AZ::EntityId entityId);
             AZ::EntityId GetEntityId() const;
@@ -45,7 +45,7 @@ namespace NvCloth
             bool eventFilter(QObject *object, QEvent *event) override;
 
             QComboBox* m_comboBox = nullptr;
-            QPushButton* m_editButton = nullptr;
+            QToolButton* m_editButton = nullptr;
 
             AZ::EntityId m_entityId;
         };

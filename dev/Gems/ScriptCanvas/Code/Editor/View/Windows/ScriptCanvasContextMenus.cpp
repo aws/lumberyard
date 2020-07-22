@@ -40,10 +40,19 @@
 #include <GraphCanvas/Utils/ConversionUtils.h>
 
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
+#include <Editor/Nodes/NodeUtils.h>
 #include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
 
 #include "ScriptCanvasContextMenus.h"
-
+#include <ScriptCanvas/Core/NodeBus.h>
+#include <ScriptCanvas/Core/Slot.h>
+#include <GraphCanvas/Editor/EditorTypes.h>
+#include <ScriptCanvas/Libraries/Core/ExecutionNode.h>
+#include <GraphCanvas/Types/Endpoint.h>
+#include <ScriptCanvas/Core/ScriptCanvasBus.h>
+#include <ScriptCanvas/Core/Node.h>
+#include <ScriptCanvas/GraphCanvas/MappingBus.h>
+#include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 namespace ScriptCanvasEditor
 {
     //////////////////////////////
@@ -348,39 +357,7 @@ namespace ScriptCanvasEditor
 
             if (otherEndpoint.IsValid())
             {
-                QPointF jutDirection;
-                GraphCanvas::SlotUIRequestBus::EventResult(jutDirection, endpoint.GetSlotId(), &GraphCanvas::SlotUIRequests::GetJutDirection);
-
-                AZ::EntityId gridId;
-                GraphCanvas::SceneRequestBus::EventResult(gridId, graphId, &GraphCanvas::SceneRequests::GetGrid);
-
-                AZ::Vector2 minorStep(0,0);
-                GraphCanvas::GridRequestBus::EventResult(minorStep, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
-
-                jutDirection.setX(jutDirection.x() * minorStep.GetX() * 3.0f);
-                jutDirection.setY(jutDirection.y() * minorStep.GetY() * 3.0f);
-
-                QPointF finalPosition;
-                GraphCanvas::SlotUIRequestBus::EventResult(finalPosition, endpoint.GetSlotId(), &GraphCanvas::SlotUIRequests::GetConnectionPoint);
-
-                finalPosition += jutDirection;
-
-                // To deal with resizing. Move it back an extra half step so it'll grow into dead space rather then node space.
-                if (jutDirection.x() < 0)
-                {
-                    finalPosition.setX(finalPosition.x() - minorStep.GetX() * 0.5f);
-                }
-
-                QPointF originalPosition;
-                GraphCanvas::SlotUIRequestBus::EventResult(originalPosition, otherEndpoint.GetSlotId(), &GraphCanvas::SlotUIRequests::GetConnectionPoint);
-
-                AZ::Vector2 difference = GraphCanvas::ConversionUtils::QPointToVector(finalPosition - originalPosition);
-
-                AZ::Vector2 originalCorner;
-                GraphCanvas::GeometryRequestBus::EventResult(originalCorner, otherEndpoint.GetNodeId(), &GraphCanvas::GeometryRequests::GetPosition);
-
-                AZ::Vector2 finalCorner = originalCorner + difference;
-                GraphCanvas::GeometryRequestBus::Event(otherEndpoint.GetNodeId(), &GraphCanvas::GeometryRequests::SetPosition, finalCorner);
+                GraphCanvas::GraphUtils::AlignSlotForConnection(otherEndpoint, endpoint);
             }
         }
 
@@ -453,6 +430,200 @@ namespace ScriptCanvasEditor
 
         return SceneReaction::PostUndo;
     }
+
+    //////////////////////////////////
+    // ExposeExecutionSlotMenuAction
+    //////////////////////////////////
+
+    ExposeSlotMenuAction::ExposeSlotMenuAction(QObject* parent)
+        : GraphCanvas::SlotContextMenuAction("Expose", parent)
+    {
+
+    }
+
+    void ExposeSlotMenuAction::RefreshAction(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetId)
+    {
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphId);
+
+        bool isEnabled = false;
+        EditorGraphRequestBus::EventResult(isEnabled, scriptCanvasId, &EditorGraphRequests::IsFunctionGraph);
+
+        GraphCanvas::NodeId nodeId;
+        GraphCanvas::SlotRequestBus::EventResult(nodeId, targetId, &GraphCanvas::SlotRequests::GetNode);
+
+        GraphCanvas::SlotType slotType;
+        GraphCanvas::SlotRequestBus::EventResult(slotType, targetId, &GraphCanvas::SlotRequests::GetSlotType);
+
+        if (slotType == GraphCanvas::SlotTypes::DataSlot)
+        {
+            GraphCanvas::DataSlotType dataSlotType = GraphCanvas::DataSlotType::Unknown;
+            GraphCanvas::DataSlotRequestBus::EventResult(dataSlotType, targetId, &GraphCanvas::DataSlotRequests::GetDataSlotType);
+
+            if (dataSlotType != GraphCanvas::DataSlotType::Value)
+            {
+                isEnabled = false;
+            }
+
+            bool hasConnections = false;
+            GraphCanvas::SlotRequestBus::EventResult(hasConnections, targetId, &GraphCanvas::SlotRequests::HasConnections);
+
+            if (hasConnections)
+            {
+                isEnabled = false;
+            }
+        }
+
+        bool isNodeling = false;
+        NodeDescriptorRequestBus::EventResult(isNodeling, nodeId, &NodeDescriptorRequests::IsType, NodeDescriptorType::ExecutionNodeling);
+
+        setEnabled(isEnabled && !isNodeling);
+    }
+
+    void ExposeSlotMenuAction::CreateNodeling(const GraphCanvas::GraphId& graphId, AZ::EntityId scriptCanvasGraphId, GraphCanvas::GraphId slotId, const AZ::Vector2& scenePos, GraphCanvas::ConnectionType connectionType)
+    {
+        GraphCanvas::NodeId nodeId;
+        GraphCanvas::SlotRequestBus::EventResult(nodeId, slotId, &GraphCanvas::SlotRequests::GetNode);
+
+        NodeIdPair nodePair = ScriptCanvasEditor::Nodes::CreateExecutionNodeling(scriptCanvasGraphId);
+
+        GraphCanvas::SceneRequestBus::Event(graphId, &GraphCanvas::SceneRequests::AddNode, nodePair.m_graphCanvasId, scenePos);
+
+        GraphCanvas::Endpoint graphCanvasEndpoint;
+        GraphCanvas::SlotRequestBus::EventResult(graphCanvasEndpoint, slotId, &GraphCanvas::SlotRequests::GetEndpoint);
+
+        // Find the execution "nodeling"
+        ScriptCanvas::Nodes::Core::ExecutionNodeling* nodeling = ScriptCanvasEditor::Nodes::GetNode<ScriptCanvas::Nodes::Core::ExecutionNodeling>(scriptCanvasGraphId, nodePair);
+
+        // Configure the Execution node
+        AZStd::string nodeTitle;
+        GraphCanvas::NodeTitleRequestBus::EventResult(nodeTitle, nodeId, &GraphCanvas::NodeTitleRequests::GetTitle);
+
+        AZStd::string name;
+        GraphCanvas::SlotRequestBus::EventResult(name, slotId, &GraphCanvas::SlotRequests::GetName);
+
+        AZStd::string fullTitle = AZStd::string::format("%s : %s", nodeTitle.c_str(), name.c_str());
+
+        nodeling->SetDisplayName(fullTitle);
+
+        // Set the node title, subtitle, tooltip
+        GraphCanvas::NodeTitleRequestBus::Event(nodePair.m_graphCanvasId, &GraphCanvas::NodeTitleRequests::SetTitle, fullTitle);
+        GraphCanvas::NodeTitleRequestBus::Event(nodePair.m_graphCanvasId, &GraphCanvas::NodeTitleRequests::SetSubTitle, "Function");
+        GraphCanvas::NodeRequestBus::Event(nodePair.m_graphCanvasId, &GraphCanvas::NodeRequests::SetTooltip, name);
+
+        // Set the connection type for the node opposite of what it actually is because we're interested in the connection type of the node we're 
+        // exposing, not the type of the slot we just created
+        ScriptCanvas::ConnectionType scriptCanvasConnectionType = (connectionType == GraphCanvas::CT_Input) ? ScriptCanvas::ConnectionType::Input : ScriptCanvas::ConnectionType::Output;
+
+        ScriptCanvas::SlotDescriptor descriptor;
+        descriptor.m_slotType = ScriptCanvas::SlotTypeDescriptor::Execution;
+        descriptor.m_connectionType = scriptCanvasConnectionType;
+
+        auto descriptorSlots = nodeling->GetAllSlotsByDescriptor(descriptor);
+
+        // There should only be a single slot
+        AZ_Assert(descriptorSlots.size() == 1, "Nodeling should only create one of each execution slot type.");
+
+        const ScriptCanvas::Slot* slot = descriptorSlots.front();
+
+        GraphCanvas::SlotId graphCanvasSlotId;
+        SlotMappingRequestBus::EventResult(graphCanvasSlotId, nodePair.m_graphCanvasId, &SlotMappingRequests::MapToGraphCanvasId, slot->GetId());
+
+        GraphCanvas::Endpoint fixedEndpoint(nodeId, slotId);
+
+        // Automatically connect to the slot that was exposed
+        AZ::EntityId connectionId;
+        GraphCanvas::SlotRequestBus::EventResult(connectionId, graphCanvasSlotId, &GraphCanvas::SlotRequests::CreateConnectionWithEndpoint, fixedEndpoint);
+
+        if (connectionId.IsValid())
+        {
+            GraphCanvas::Endpoint executionEndpoint(nodePair.m_graphCanvasId, graphCanvasSlotId);
+
+            GraphCanvas::GraphUtils::AlignSlotForConnection(executionEndpoint, fixedEndpoint);
+        }
+        else
+        {
+            AZStd::unordered_set<AZ::EntityId> deletionSet = { nodePair.m_graphCanvasId };
+            GraphCanvas::SceneRequestBus::Event(graphId, &GraphCanvas::SceneRequests::Delete, deletionSet);
+        }
+    }
+
+    GraphCanvas::ContextMenuAction::SceneReaction ExposeSlotMenuAction::TriggerAction(const GraphCanvas::GraphId& graphId, const AZ::Vector2& scenePos)
+    {
+        // Go to Execution node and allow it to be renamed
+        // Make sure this stuff is restored on serialization
+
+        ScriptCanvas::ScriptCanvasId scriptCanvasGraphId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasId, graphId);
+
+        const GraphCanvas::SlotId& slotId = GetTargetId();
+
+        GraphCanvas::ConnectionType connectionType;
+        GraphCanvas::SlotRequestBus::EventResult(connectionType, slotId, &GraphCanvas::SlotRequests::GetConnectionType);
+
+        GraphCanvas::SlotType slotType;
+        GraphCanvas::SlotRequestBus::EventResult(slotType, slotId, &GraphCanvas::SlotRequests::GetSlotType);
+
+        // Will create an Execution node and connect it to this slot, nothing if the slot is already connected (the option shouldn't show)
+        if (slotType == GraphCanvas::SlotTypes::ExecutionSlot && connectionType == GraphCanvas::CT_Input)
+        {
+            AZ::Vector2 spawnPosition = scenePos + AZ::Vector2(-200, 0);
+            CreateNodeling(graphId, scriptCanvasGraphId, slotId, spawnPosition, GraphCanvas::CT_Output);
+        }
+        else if (slotType == GraphCanvas::SlotTypes::ExecutionSlot && connectionType == GraphCanvas::CT_Output)
+        {
+            AZ::Vector2 spawnPosition = scenePos + AZ::Vector2(200, 0);
+            CreateNodeling(graphId, scriptCanvasGraphId, slotId, spawnPosition, GraphCanvas::CT_Input);
+        }
+        else if (slotType == GraphCanvas::SlotTypes::DataSlot)
+        {
+            const AZ::EntityId& slotId = GetTargetId();
+            const GraphCanvas::GraphId& graphId = GetGraphId();
+
+            GraphCanvas::Endpoint endpoint;
+            GraphCanvas::SlotRequestBus::EventResult(endpoint, slotId, &GraphCanvas::SlotRequests::GetEndpoint);
+
+            bool promotedElement = false;
+            GraphCanvas::GraphModelRequestBus::EventResult(promotedElement, graphId, &GraphCanvas::GraphModelRequests::PromoteToVariableAction, endpoint);
+
+            if (promotedElement)
+            {
+                ScriptCanvas::Endpoint scEndpoint;
+                EditorGraphRequestBus::EventResult(scEndpoint, scriptCanvasGraphId, &EditorGraphRequests::ConvertToScriptCanvasEndpoint, endpoint);
+
+                if (scEndpoint.IsValid())
+                {
+                    ScriptCanvas::Slot* slot = nullptr;
+                    ScriptCanvas::GraphRequestBus::EventResult(slot, scriptCanvasGraphId, &ScriptCanvas::GraphRequests::FindSlot, scEndpoint);
+
+                    if (slot && slot->IsVariableReference())
+                    {
+                        ScriptCanvas::GraphVariable* variable = slot->GetVariable();
+
+                        if (variable)
+                        {
+                            if (connectionType == GraphCanvas::CT_Input)
+                            {
+                                if (!variable->IsInScope(ScriptCanvas::VariableFlags::Scope::Input))
+                                {
+                                    variable->SetScope(ScriptCanvas::VariableFlags::Scope::Input);
+                                }
+                            }
+                            else if (connectionType == GraphCanvas::CT_Output)
+                            {
+                                if (!variable->IsInScope(ScriptCanvas::VariableFlags::Scope::Output))
+                                {
+                                    variable->SetScope(ScriptCanvas::VariableFlags::Scope::Output);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return GraphCanvas::ContextMenuAction::SceneReaction::PostUndo;
+    }
     
     /////////////////////
     // SceneContextMenu
@@ -461,39 +632,25 @@ namespace ScriptCanvasEditor
     SceneContextMenu::SceneContextMenu(const NodePaletteModel& paletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel)
         : GraphCanvas::SceneContextMenu(ScriptCanvasEditor::AssetEditorId)
     {
-        QWidgetAction* actionWidget = new QWidgetAction(this);
-
         const bool inContextMenu = true;
         Widget::ScriptCanvasNodePaletteConfig paletteConfig(paletteModel, assetModel, inContextMenu);
 
-        m_palette = aznew Widget::NodePaletteDockWidget(tr("Node Palette"), this, paletteConfig);
-
-        actionWidget->setDefaultWidget(m_palette);
-
-        GraphCanvas::ContextMenuAction* menuAction = aznew AddSelectedEntitiesAction(this);
+        m_addSelectedEntitiesAction = aznew AddSelectedEntitiesAction(this);
         
-        AddActionGroup(menuAction->GetActionGroupId());
-        AddMenuAction(menuAction);
+        AddActionGroup(m_addSelectedEntitiesAction->GetActionGroupId());
+        AddMenuAction(m_addSelectedEntitiesAction);
 
-        AddMenuAction(actionWidget);
-
-        connect(this, &QMenu::aboutToShow, this, &SceneContextMenu::SetupDisplay);
-        connect(m_palette, &Widget::NodePaletteDockWidget::OnContextMenuSelection, this, &SceneContextMenu::HandleContextMenuSelection);
+        AddNodePaletteMenuAction(paletteConfig);
     }
 
     void SceneContextMenu::ResetSourceSlotFilter()
     {
-        m_palette->ResetSourceSlotFilter();
+        m_nodePalette->ResetSourceSlotFilter();
     }
 
     void SceneContextMenu::FilterForSourceSlot(const AZ::EntityId& scriptCanvasGraphId, const AZ::EntityId& sourceSlotId)
     {
-        m_palette->FilterForSourceSlot(scriptCanvasGraphId, sourceSlotId);
-    }
-
-    const Widget::NodePaletteDockWidget* SceneContextMenu::GetNodePalette() const
-    {
-        return m_palette;
+        m_nodePalette->FilterForSourceSlot(scriptCanvasGraphId, sourceSlotId);
     }
 
     void SceneContextMenu::OnRefreshActions(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetMemberId)
@@ -507,23 +664,23 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void SceneContextMenu::HandleContextMenuSelection()
+    void SceneContextMenu::SetupDisplayForProposal()
     {
-        close();
-    }
+        // Disabling all of the actions here for the proposal.
+        // Allows a certain 'visual consistency' in using the same menu while
+        // not providing any unusable options.
+        m_editorActionsGroup.SetCutEnabled(false);
+        m_editorActionsGroup.SetCopyEnabled(false);
+        m_editorActionsGroup.SetPasteEnabled(false);
+        m_editorActionsGroup.SetDeleteEnabled(false);
+        m_editorActionsGroup.SetDuplicateEnabled(false);
 
-    void SceneContextMenu::SetupDisplay()
-    {
-        m_palette->ResetDisplay();
-        m_palette->FocusOnSearchFilter();
-    }
+        m_graphCanvasConstructGroups.SetAddBookmarkEnabled(false);
+        m_graphCanvasConstructGroups.SetCommentsEnabled(false);
+        m_nodeGroupPresets.SetEnabled(false);
+        m_alignmentActionsGroups.SetEnabled(false);
 
-    void SceneContextMenu::keyPressEvent(QKeyEvent* keyEvent)
-    {
-        if (!m_palette->hasFocus())
-        {
-            QMenu::keyPressEvent(keyEvent);
-        }
+        m_addSelectedEntitiesAction->setEnabled(false);
     }
 
     //////////////////////////
@@ -533,53 +690,19 @@ namespace ScriptCanvasEditor
     ConnectionContextMenu::ConnectionContextMenu(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel)
         : GraphCanvas::ConnectionContextMenu(ScriptCanvasEditor::AssetEditorId)
     {
-        QWidgetAction* actionWidget = new QWidgetAction(this);
-
         const bool inContextMenu = true;
         Widget::ScriptCanvasNodePaletteConfig paletteConfig(nodePaletteModel, assetModel, inContextMenu);
-        m_palette = aznew Widget::NodePaletteDockWidget(tr("Node Palette"), this, paletteConfig);
 
-        actionWidget->setDefaultWidget(m_palette);
-
-        AddMenuAction(actionWidget);
-
-        connect(this, &QMenu::aboutToShow, this, &ConnectionContextMenu::SetupDisplay);
-        connect(m_palette, &Widget::NodePaletteDockWidget::OnContextMenuSelection, this, &ConnectionContextMenu::HandleContextMenuSelection);
-    }
-
-    const Widget::NodePaletteDockWidget* ConnectionContextMenu::GetNodePalette() const
-    {
-        return m_palette;
+        AddNodePaletteMenuAction(paletteConfig);
     }
 
     void ConnectionContextMenu::OnRefreshActions(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetMemberId)
     {
         GraphCanvas::ConnectionContextMenu::OnRefreshActions(graphId, targetMemberId);
 
-        m_palette->ResetSourceSlotFilter();
-
         m_connectionId = targetMemberId;
         
         // TODO: Filter nodes.
-    }
-
-    void ConnectionContextMenu::HandleContextMenuSelection()
-    {
-        close();
-    }
-
-    void ConnectionContextMenu::SetupDisplay()
-    {
-        m_palette->ResetDisplay();
-        m_palette->FocusOnSearchFilter();
-    }
-
-    void ConnectionContextMenu::keyPressEvent(QKeyEvent* keyEvent)
-    {
-        if (!m_palette->hasFocus())
-        {
-            QMenu::keyPressEvent(keyEvent);
-        }
     }
 
     #include "Editor/View/Windows/ScriptCanvasContextMenus.moc"

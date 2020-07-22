@@ -14,10 +14,21 @@
             "_comment": "AudioAnimationEvents"
         },
         {
+            "Path": "Gems/GraphModel",
+            "Uuid": "0844f64a3acf4f5abf3a535dc9b63bc9",
+            "Version": "0.1.0",
+            "_comment": "GraphModel"
+        },
+        {
             "Path": "Gems/StartingPointInput",
             "Uuid": "09f4bedeee614358bc36788e77f97e51",
             "Version": "0.1.0",
             "_comment": "StartingPointInput"
+        },
+        {
+            "Path": "StarterGame/Gem",
+            "Uuid": "0c2c51b1d69d4700a3c078f9d52dd37f",
+            "Version": "0.2.0"
         },
         {
             "Path": "Gems/LyShine",
@@ -26,16 +37,52 @@
             "_comment": "LyShine"
         },
         {
+            "Path": "Gems/LandscapeCanvas",
+            "Uuid": "19c2b2d5018940108baf252934b8e6bf",
+            "Version": "0.1.0",
+            "_comment": "LandscapeCanvas"
+        },
+        {
+            "Path": "Gems/GameState",
+            "Uuid": "1a557ac19dc34f5697fe03f30be5b6e4",
+            "Version": "0.1.0",
+            "_comment": "GameState"
+        },
+        {
+            "Path": "Gems/StarterGame/Environment",
+            "Uuid": "1af0299b94754bd7b35e81ce354207c6",
+            "Version": "0.1.0",
+            "_comment": "Environment"
+        },
+        {
             "Path": "Gems/SliceFavorites",
             "Uuid": "1bfc7270d4a1490daac8aa8b072c4489",
             "Version": "0.1.0",
             "_comment": "SliceFavorites"
         },
         {
+            "Path": "Gems/ScriptCanvasPhysics",
+            "Uuid": "1c27519a4dda4ffaaeebf91514e5b1e8",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasPhysics"
+        },
+        {
+            "Path": "Gems/StarterGame/Characters",
+            "Uuid": "252cfd66dcfc49ba8ea540e6cd5ac485",
+            "Version": "0.1.0",
+            "_comment": "Characters"
+        },
+        {
             "Path": "Gems/Footsteps",
             "Uuid": "257393f09006498ab706cc4d4c8d4721",
             "Version": "0.1.0",
             "_comment": "Footsteps"
+        },
+        {
+            "Path": "Gems/LegacyGameInterface",
+            "Uuid": "3108b261962e44b6a0c1c036c693bca2",
+            "Version": "1.0.0",
+            "_comment": "LegacyGameInterface"
         },
         {
             "Path": "Gems/ScriptEvents",
@@ -48,6 +95,12 @@
             "Uuid": "352fef7706634c92814c587e84d7165a",
             "Version": "0.1.0",
             "_comment": "CryLegacy"
+        },
+        {
+            "Path": "Gems/ScriptCanvasTesting",
+            "Uuid": "387b1b2d39ce45fbbfbb6faa5f902cac",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasTesting"
         },
         {
             "Path": "Gems/Visibility",
@@ -74,10 +127,28 @@
             "_comment": "ExpressionEvaluation"
         },
         {
+            "Path": "Gems/PhysX",
+            "Uuid": "4e08125824434932a0fe3717259caa47",
+            "Version": "0.1.0",
+            "_comment": "PhysX"
+        },
+        {
             "Path": "Gems/Clouds",
             "Uuid": "4f293a6f11ab4cd7b9db3017d12b5eda",
             "Version": "0.1.0",
             "_comment": "Clouds"
+        },
+        {
+            "Path": "Gems/PhysXCharacters",
+            "Uuid": "50f9ae1e09ac471bbd9d86ca8063ddf9",
+            "Version": "0.1.0",
+            "_comment": "PhysXCharacters"
+        },
+        {
+            "Path": "Gems/PhysXDebug",
+            "Uuid": "516145e2d9904b13813f1b54605e26a6",
+            "Version": "0.1.0",
+            "_comment": "PhysXDebug"
         },
         {
             "Path": "Gems/InputManagementFramework",
@@ -92,28 +163,16 @@
             "_comment": "TextureAtlas"
         },
         {
-            "Path": "Gems/AssetValidation",
-            "Uuid": "5a5c3c10b91d4b4ea8baef474c5b5d49",
-            "Version": "0.1.0",
-            "_comment": "AssetValidation"
-        },
-        {
-            "Path": "Gems/StarterGameGem",
-            "Uuid": "5c539192ddda40aaa2e92eb71f8e3170",
-            "Version": "1.12.0",
-            "_comment": "StarterGameGem"
-        },
-        {
             "Path": "Gems/SurfaceData",
             "Uuid": "5de82d29d6094bfe97c1a4d35fcd5fbe",
             "Version": "0.1.0",
             "_comment": "SurfaceData"
         },
         {
-            "Path": "Gems/Gestures",
-            "Uuid": "6056556b6088413984309c4a413593ad",
-            "Version": "1.0.0",
-            "_comment": "Gestures"
+            "Path": "Gems/DebugDraw",
+            "Uuid": "66239f50bf754354b514c850c8b841fb",
+            "Version": "0.1.0",
+            "_comment": "DebugDraw"
         },
         {
             "Path": "Gems/AudioEngineWwise",
@@ -128,16 +187,40 @@
             "_comment": "UiBasics"
         },
         {
+            "Path": "Gems/StarterGame/UserInterface",
+            "Uuid": "6c51dff662f64b4dbe98f6d66ab19be3",
+            "Version": "0.1.0",
+            "_comment": "UserInterface"
+        },
+        {
             "Path": "Gems/AudioSystem",
             "Uuid": "6f63f2b6d07f4b89b4b7c86ebee7feb8",
             "Version": "0.1.0",
             "_comment": "AudioSystem"
         },
         {
+            "Path": "Gems/Achievements",
+            "Uuid": "6f8d953dd4fc4bb6ad34c9118a7b789f",
+            "Version": "0.1.0",
+            "_comment": "Achievements"
+        },
+        {
+            "Path": "Gems/GameStateSamples",
+            "Uuid": "76db0b1bcff84224a92cbceb373f4a85",
+            "Version": "0.1.0",
+            "_comment": "GameStateSamples"
+        },
+        {
             "Path": "Gems/SceneProcessing",
             "Uuid": "7c2578f634df4345aca98d671e39b8ab",
             "Version": "0.1.0",
             "_comment": "SceneProcessing"
+        },
+        {
+            "Path": "Gems/GraphicsReflectContext",
+            "Uuid": "81d5967d0b9b41d89754cce68a20882e",
+            "Version": "0.1.0",
+            "_comment": "GraphicsReflectContext"
         },
         {
             "Path": "Gems/ScriptCanvas",
@@ -164,10 +247,28 @@
             "_comment": "Snow"
         },
         {
+            "Path": "Gems/MessagePopup",
+            "Uuid": "89225422672547deaca9e7a22b883973",
+            "Version": "0.1.0",
+            "_comment": "MessagePopup"
+        },
+        {
             "Path": "Gems/VirtualGamepad",
             "Uuid": "8aa9a66015804d6d9c809ce306e7d913",
             "Version": "0.1.0",
             "_comment": "VirtualGamepad"
+        },
+        {
+            "Path": "Gems/Presence",
+            "Uuid": "903ce283760647049efaef70d9368eeb",
+            "Version": "0.1.0",
+            "_comment": "Presence"
+        },
+        {
+            "Path": "Gems/LocalUser",
+            "Uuid": "93ccb44a96b142f7942a3fb6b9ca36e1",
+            "Version": "0.1.0",
+            "_comment": "LocalUser"
         },
         {
             "Path": "Gems/PhysicsEntities",
@@ -182,16 +283,40 @@
             "_comment": "RoadsAndRivers"
         },
         {
+            "Path": "Gems/ImGui",
+            "Uuid": "bab8807a1bc646b3909f3cc200ffeedf",
+            "Version": "0.1.0",
+            "_comment": "ImGui"
+        },
+        {
             "Path": "Gems/Water",
             "Uuid": "c5083fcf89b24ab68fb0611c01a07b1d",
             "Version": "0.1.0",
             "_comment": "Water"
         },
         {
+            "Path": "Gems/StarterGame/Weapons",
+            "Uuid": "c5838c1f73ec4122925d3d1f9f1ccd85",
+            "Version": "0.1.0",
+            "_comment": "Weapons"
+        },
+        {
+            "Path": "Gems/TouchBending",
+            "Uuid": "c58d2057f3724b22ae0df0be68a4e316",
+            "Version": "0.1.0",
+            "_comment": "TouchBending"
+        },
+        {
             "Path": "Gems/FastNoise",
             "Uuid": "c5f23032407f49ca8d8de1733423565c",
             "Version": "0.1.0",
             "_comment": "FastNoise"
+        },
+        {
+            "Path": "Gems/LyShineExamples",
+            "Uuid": "c7935ecf5e8047fe8ca947b34b11cadb",
+            "Version": "0.1.0",
+            "_comment": "LyShineExamples"
         },
         {
             "Path": "Gems/LegacyTerrain",
@@ -234,6 +359,18 @@
             "Uuid": "f394e7cf54424bba89615381bba9511b",
             "Version": "0.1.0",
             "_comment": "Vegetation"
+        },
+        {
+            "Path": "Gems/CryEntityRemoval",
+            "Uuid": "f3ae24a1635e4f849535f37ef9f4b4da",
+            "Version": "0.1.0",
+            "_comment": "CryEntityRemoval"
+        },
+        {
+            "Path": "Gems/StarterGame/Audio",
+            "Uuid": "f3fba4e10ff04a378c46376401a1ebe9",
+            "Version": "0.1.0",
+            "_comment": "Audio"
         },
         {
             "Path": "Gems/Camera",

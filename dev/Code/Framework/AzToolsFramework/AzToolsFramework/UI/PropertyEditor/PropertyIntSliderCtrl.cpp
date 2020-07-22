@@ -11,721 +11,152 @@
 */
 #include "StdAfx.h"
 #include "PropertyIntSliderCtrl.hxx"
-#include "DHQSpinbox.hxx"
 #include "DHQSlider.hxx"
 #include "PropertyQTConstants.h"
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
+
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QtWidgets/QHBoxLayout>
+#include <QSignalBlocker>
 AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
     DHPropertyIntSlider::DHPropertyIntSlider(QWidget* pParent)
+        : AzQtComponents::SliderCombo(pParent)
+    {
+    }
+
+    PropertyIntSliderCtrl::PropertyIntSliderCtrl(QWidget* pParent)
         : QWidget(pParent)
-        , m_multiplier(1)
-        , m_softMinimum(0)
-        , m_softMaximum(0)
-        , m_useSoftMinimum(false)
-        , m_useSoftMaximum(false)
-        , m_pSlider(NULL)
-        , m_pSpinBox(NULL)
     {
         QHBoxLayout* pLayout = new QHBoxLayout(this);
-        m_pSlider = aznew DHQSlider(Qt::Horizontal, this);
-        m_pSpinBox = aznew DHQSpinbox(this);
-        m_pSpinBox->setKeyboardTracking(false);  // do not send valueChanged every time a character is typed
-        pLayout->setSpacing(4);
-        pLayout->setContentsMargins(1, 0, 1, 0);
-        pLayout->addWidget(m_pSpinBox);
-        pLayout->addWidget(m_pSlider);
-        setLayout(pLayout);
+        pLayout->setContentsMargins(0, 0, 0, 0);
+        m_sliderCombo = new AzQtComponents::SliderCombo(this);
+        pLayout->addWidget(m_sliderCombo);
+        setFocusProxy(m_sliderCombo);
 
-        InitializeSliderPropertyWidgets(m_pSlider, m_pSpinBox);
-        setFocusPolicy(Qt::StrongFocus);
-        setFocusProxy(m_pSpinBox);
-
-        connect(m_pSlider, SIGNAL(valueChanged(int)), this, SLOT(onChildSliderValueChange(int)));
-        connect(m_pSpinBox, SIGNAL(valueChanged(int)), this, SLOT(onChildSpinboxValueChange(int)));
-        connect(m_pSlider, &QSlider::sliderReleased, this, &DHPropertyIntSlider::sliderReleased);
+        connect(m_sliderCombo, &AzQtComponents::SliderCombo::valueChanged, this, &PropertyIntSliderCtrl::onValueChange);
+        connect(m_sliderCombo, &AzQtComponents::SliderCombo::editingFinished, this, &PropertyIntSliderCtrl::editingFinished);
     }
 
-    DHPropertyIntSlider::~DHPropertyIntSlider()
+    PropertyIntSliderCtrl::~PropertyIntSliderCtrl()
     {
     }
 
-    void DHPropertyIntSlider::focusInEvent(QFocusEvent* e)
+    void PropertyIntSliderCtrl::onValueChange()
     {
-        QWidget::focusInEvent(e);
-        m_pSpinBox->setFocus();
-        m_pSpinBox->selectAll();
+        emit valueChanged(value());
     }
 
-    void DHPropertyIntSlider::onChildSliderValueChange(int newValue)
+    void PropertyIntSliderCtrl::setMinimum(AZ::s64 min)
     {
-        m_pSpinBox->setValue((int)(newValue));
-        m_pSpinBox->selectAll();
+        QSignalBlocker block(m_sliderCombo);
+        m_sliderCombo->setMinimum((int)min);
     }
 
-    void DHPropertyIntSlider::onChildSpinboxValueChange(int newValue)
+    void PropertyIntSliderCtrl::setMaximum(AZ::s64 max)
     {
-        m_pSlider->blockSignals(true);
-
-        m_pSlider->setValue(newValue);
-
-        m_pSlider->blockSignals(false);
-        emit valueChanged((AZ::u64)newValue * m_multiplier);
+        QSignalBlocker block(m_sliderCombo);
+        m_sliderCombo->setMaximum((int)max);
     }
 
-    void DHPropertyIntSlider::setMinimum(AZ::s64 min)
+    void PropertyIntSliderCtrl::setStep(AZ::s64 val)
     {
-        m_pSpinBox->blockSignals(true);
-        m_pSlider->blockSignals(true);
-
-        m_pSpinBox->setMinimum((int)(min / m_multiplier));
-        AZ::s64 sliderMin = m_useSoftMinimum ? m_softMinimum : min;
-        m_pSlider->setMinimum((int)(sliderMin / m_multiplier));
-
-        m_pSlider->blockSignals(false);
-        m_pSpinBox->blockSignals(false);
+        QSignalBlocker block(m_sliderCombo);
+        m_sliderCombo->spinbox()->setSingleStep((int)val);
     }
 
-    void DHPropertyIntSlider::setMaximum(AZ::s64 max)
+    void PropertyIntSliderCtrl::setValue(AZ::s64 val)
     {
-        m_pSpinBox->blockSignals(true);
-        m_pSlider->blockSignals(true);
-
-        m_pSpinBox->setMaximum((int)(max / m_multiplier));
-        AZ::s64 sliderMax = m_useSoftMaximum ? m_softMaximum : max;
-        m_pSlider->setMaximum((int)(sliderMax / m_multiplier));
-
-        m_pSlider->blockSignals(false);
-        m_pSpinBox->blockSignals(false);
+        QSignalBlocker block(m_sliderCombo);
+        m_sliderCombo->setValue((int)val);
     }
 
-    void DHPropertyIntSlider::setStep(AZ::s64 val)
+    void PropertyIntSliderCtrl::setMultiplier(AZ::s64 val)
     {
-        m_pSpinBox->blockSignals(true);
-        m_pSlider->blockSignals(true);
-
-        if ((val / m_multiplier) < 1)
-        {
-            val = m_multiplier;
-        }
-
-        m_pSpinBox->setSingleStep((int)(val / m_multiplier));
-        m_pSlider->setSingleStep((int)(val / m_multiplier));
-
-        m_pSpinBox->blockSignals(false);
-        m_pSlider->blockSignals(false);
-    }
-
-    void DHPropertyIntSlider::setValue(AZ::s64 val)
-    {
-        m_pSpinBox->blockSignals(true);
-        m_pSlider->blockSignals(true);
-
-        m_pSpinBox->setValue((int)(val / m_multiplier));
-        m_pSlider->setValue((int)(val / m_multiplier));
-
-        m_pSpinBox->blockSignals(false);
-        m_pSlider->blockSignals(false);
-    }
-
-    void DHPropertyIntSlider::setMultiplier(AZ::s64 val)
-    {
-        m_pSpinBox->blockSignals(true);
-        m_pSlider->blockSignals(true);
-
-        AZ::s64 currentVal = value();
-        AZ::s64 currentMax = maximum();
-        AZ::s64 currentMin = minimum();
-        AZ::s64 currentStep = step();
-
         m_multiplier = val;
-
-        if ((currentStep / m_multiplier) < 1)
-        {
-            currentStep = m_multiplier;
-        }
-
-        m_pSpinBox->setMinimum((int)(currentMin / m_multiplier));
-        m_pSpinBox->setMaximum((int)(currentMax / m_multiplier));
-        m_pSpinBox->setSingleStep((int)(currentStep / m_multiplier));
-        m_pSpinBox->setValue((int)(currentVal / m_multiplier));
-
-        if (m_useSoftMaximum)
-        {
-            currentMax = m_softMaximum;
-        }
-        if (m_useSoftMinimum)
-        {
-            currentMin = m_softMinimum;
-        }
-
-        m_pSlider->setMinimum((int)(currentMin / m_multiplier));
-        m_pSlider->setMaximum((int)(currentMax / m_multiplier));
-        m_pSlider->setSingleStep((int)(currentStep / m_multiplier));
-        m_pSlider->setValue((int)(currentVal / m_multiplier));
-
-        m_pSpinBox->blockSignals(false);
-        m_pSlider->blockSignals(false);
     }
 
-    void DHPropertyIntSlider::setSoftMinimum(AZ::s64 val)
+    void PropertyIntSliderCtrl::setSoftMinimum(AZ::s64 val)
     {
-        if (val != m_softMinimum || !m_useSoftMinimum)
-        {
-            m_useSoftMinimum = true;
-            m_softMinimum = val;
-
-            m_pSpinBox->blockSignals(true);
-            m_pSlider->blockSignals(true);
-
-            m_pSlider->setMinimum((int)(m_softMinimum / m_multiplier));
-
-            m_pSpinBox->blockSignals(false);
-            m_pSlider->blockSignals(false);
-        }
+        m_sliderCombo->setSoftMinimum((int)val);
     }
 
-    void DHPropertyIntSlider::setSoftMaximum(AZ::s64 val)
+    void PropertyIntSliderCtrl::setSoftMaximum(AZ::s64 val)
     {
-        if (val != m_softMaximum || !m_useSoftMaximum)
-        {
-            m_useSoftMaximum = true;
-            m_softMaximum = val;
-
-            m_pSpinBox->blockSignals(true);
-            m_pSlider->blockSignals(true);
-
-            m_pSlider->setMaximum((int)(m_softMaximum / m_multiplier));
-
-            m_pSpinBox->blockSignals(false);
-            m_pSlider->blockSignals(false);
-        }
+        m_sliderCombo->setSoftMaximum((int)val);
     }
 
-    void DHPropertyIntSlider::setPrefix(QString val)
+    void PropertyIntSliderCtrl::setPrefix(QString val)
     {
-        m_pSpinBox->setPrefix(val);
+        m_sliderCombo->spinbox()->setPrefix(val);
     }
 
-    void DHPropertyIntSlider::setSuffix(QString val)
+    void PropertyIntSliderCtrl::setSuffix(QString val)
     {
-        m_pSpinBox->setSuffix(val);
+        m_sliderCombo->spinbox()->setSuffix(val);
     }
 
-    AZ::s64 DHPropertyIntSlider::value() const
+    AZ::s64 PropertyIntSliderCtrl::value() const
     {
-        return (AZ::s64)m_pSpinBox->value() * m_multiplier;
+        return (AZ::s64)m_sliderCombo->value();
     }
 
-    AZ::s64 DHPropertyIntSlider::softMinimum() const
+    AZ::s64 PropertyIntSliderCtrl::softMinimum() const
     {
-        return m_softMaximum * m_multiplier;
+        return m_sliderCombo->softMinimum();
     }
 
-    AZ::s64 DHPropertyIntSlider::softMaximum() const
+    AZ::s64 PropertyIntSliderCtrl::softMaximum() const
     {
-        return m_softMaximum * m_multiplier;
+        return m_sliderCombo->softMaximum();
     }
 
-    AZ::s64 DHPropertyIntSlider::minimum() const
+    AZ::s64 PropertyIntSliderCtrl::minimum() const
     {
-        return (AZ::s64)m_pSpinBox->minimum() * m_multiplier;
+        return (AZ::s64)m_sliderCombo->minimum();
     }
 
-    AZ::s64 DHPropertyIntSlider::maximum() const
+    AZ::s64 PropertyIntSliderCtrl::maximum() const
     {
-        return (AZ::s64)m_pSpinBox->maximum() * m_multiplier;
+        return (AZ::s64)m_sliderCombo->maximum();
     }
 
-    AZ::s64 DHPropertyIntSlider::step() const
+    AZ::s64 PropertyIntSliderCtrl::step() const
     {
-        return (AZ::s64)m_pSpinBox->singleStep() * m_multiplier;
+        return (AZ::s64)m_sliderCombo->spinbox()->singleStep();
     }
 
-    QWidget* DHPropertyIntSlider::GetFirstInTabOrder()
+    AZ::s64 PropertyIntSliderCtrl::multiplier() const
     {
-        return m_pSpinBox;
-    }
-    QWidget* DHPropertyIntSlider::GetLastInTabOrder()
-    {
-        return m_pSlider;
+        return m_multiplier;
     }
 
-    void DHPropertyIntSlider::UpdateTabOrder()
+    QWidget* PropertyIntSliderCtrl::GetFirstInTabOrder()
     {
-        setTabOrder(m_pSpinBox, m_pSlider);
+        return m_sliderCombo->spinbox();
+    }
+    QWidget* PropertyIntSliderCtrl::GetLastInTabOrder()
+    {
+        return m_sliderCombo->slider();
     }
 
-    // a common function to eat attribs, for all int handlers:
-    static void ConsumeAttributeCommon(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
+    void PropertyIntSliderCtrl::UpdateTabOrder()
     {
-        (void)debugName;
-        AZ::s64 value;
-        if (attrib == AZ::Edit::Attributes::Min)
-        {
-            if (attrValue->Read<AZ::s64>(value))
-            {
-                GUI->setMinimum(value);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Min' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ::Edit::Attributes::Max)
-        {
-            if (attrValue->Read<AZ::s64>(value))
-            {
-                GUI->setMaximum(value);
-            }
-            else
-            {
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Max' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ::Edit::Attributes::SoftMin)
-        {
-            if (attrValue->Read<AZ::s64>(value))
-            {
-                GUI->setSoftMinimum(value);
-            }
-            else
-            {
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'SoftMin' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ::Edit::Attributes::SoftMax)
-        {
-            if (attrValue->Read<AZ::s64>(value))
-            {
-                GUI->setSoftMaximum(value);
-            }
-            else
-            {
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'SoftMax' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ::Edit::Attributes::Step)
-        {
-            if (attrValue->Read<AZ::s64>(value))
-            {
-                GUI->setStep(value);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Step' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ_CRC("Multiplier", 0xa49aa95b))
-        {
-            if (attrValue->Read<AZ::s64>(value))
-            {
-                GUI->setMultiplier(value);
-            }
-            else
-            {
-                // emit a warning!
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Multiplier' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ::Edit::Attributes::Suffix)
-        {
-            AZStd::string result;
-            if (attrValue->Read<AZStd::string>(result))
-            {
-                GUI->setSuffix(result.c_str());
-            }
-            else
-            {
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Suffix' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-        else if (attrib == AZ_CRC("Prefix", 0x93b1868e))
-        {
-            AZStd::string result;
-            if (attrValue->Read<AZStd::string>(result))
-            {
-                GUI->setPrefix(result.c_str());
-            }
-            else
-            {
-                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Prefix' attribute from property '%s' into Spin Box", debugName);
-            }
-            return;
-        }
-    }
-
-    QWidget* s16PropertySliderHandler::CreateGUI(QWidget* pParent)
-    {
-        DHPropertyIntSlider* newCtrl = aznew DHPropertyIntSlider(pParent);
-        connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
-        {
-            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-        });
-        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-        });
-        // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
-
-        // set defaults:
-        newCtrl->setMinimum(std::numeric_limits<AZ::s16>::min());
-        newCtrl->setMaximum(std::numeric_limits<AZ::s16>::max());
-
-        return newCtrl;
-    }
-
-    QWidget* u16PropertySliderHandler::CreateGUI(QWidget* pParent)
-    {
-        DHPropertyIntSlider* newCtrl = aznew DHPropertyIntSlider(pParent);
-        connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
-        {
-            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-        });
-        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-        });
-        // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
-
-        // set defaults:
-        newCtrl->setMinimum(std::numeric_limits<AZ::u16>::min());
-        newCtrl->setMaximum(std::numeric_limits<AZ::u16>::max());
-
-        return newCtrl;
-    }
-
-    QWidget* s32PropertySliderHandler::CreateGUI(QWidget* pParent)
-    {
-        DHPropertyIntSlider* newCtrl = aznew DHPropertyIntSlider(pParent);
-        connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
-            {
-                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-            });
-        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-        });
-        // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
-
-        // set defaults:
-        newCtrl->setMinimum(std::numeric_limits<AZ::s32>::min());
-        newCtrl->setMaximum(std::numeric_limits<AZ::s32>::max());
-
-        return newCtrl;
-    }
-
-    QWidget* u32PropertySliderHandler::CreateGUI(QWidget* pParent)
-    {
-        DHPropertyIntSlider* newCtrl = aznew DHPropertyIntSlider(pParent);
-        connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
-            {
-                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-            });
-        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-        });
-        // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
-
-        // set defaults:
-        newCtrl->setMinimum(std::numeric_limits<AZ::u32>::min());
-        newCtrl->setMaximum(std::numeric_limits<AZ::u32>::max());
-
-        return newCtrl;
-    }
-
-    QWidget* s64PropertySliderHandler::CreateGUI(QWidget* pParent)
-    {
-        DHPropertyIntSlider* newCtrl = aznew DHPropertyIntSlider(pParent);
-        connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
-        {
-            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-        });
-        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-        });
-        // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
-
-        // set defaults:
-        newCtrl->setMinimum(std::numeric_limits<AZ::s64>::min());
-        newCtrl->setMaximum(std::numeric_limits<AZ::s64>::max());
-
-        return newCtrl;
-    }
-
-    QWidget* u64PropertySliderHandler::CreateGUI(QWidget* pParent)
-    {
-        DHPropertyIntSlider* newCtrl = aznew DHPropertyIntSlider(pParent);
-        connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
-            {
-                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-            });
-        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-        });
-        // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
-
-        // set defaults:
-        newCtrl->setMinimum(std::numeric_limits<AZ::u64>::min());
-        // here intentionally use AZ::s64
-        newCtrl->setMaximum(std::numeric_limits<AZ::s64>::max());
-
-        return newCtrl;
-    }
-
-    void s16PropertySliderHandler::ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
-    {
-        ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
-
-        const auto c_intMin = std::numeric_limits<AZ::s16>::min();
-        const auto c_intMax = std::numeric_limits<AZ::s16>::max();
-
-        if ((GUI->maximum() > c_intMax) || (GUI->maximum() < c_intMin) || (GUI->minimum() > c_intMax) || (GUI->minimum() < c_intMin))
-        {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in s16 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
-        }
-    }
-
-    void u16PropertySliderHandler::ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
-    {
-        ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
-
-        const auto c_uintMin = std::numeric_limits<AZ::u16>::min();
-        const auto c_uintMax = std::numeric_limits<AZ::u16>::max();
-
-        if ((GUI->maximum() > c_uintMax) || (GUI->maximum() < c_uintMin) || (GUI->minimum() > c_uintMax) || (GUI->minimum() < c_uintMin))
-        {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u16 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
-        }
-    }
-
-    void s32PropertySliderHandler::ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
-    {
-        ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
-
-        const auto c_intMin = std::numeric_limits<AZ::s32>::min();
-        const auto c_intMax = std::numeric_limits<AZ::s32>::max();
-
-        if ((GUI->maximum() > c_intMax) || (GUI->maximum() < c_intMin) || (GUI->minimum() > c_intMax) || (GUI->minimum() < c_intMin))
-        {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in s32 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
-        }
-    }
-
-    void u32PropertySliderHandler::ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
-    {
-        ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
-
-        const auto c_uintMin = std::numeric_limits<AZ::u32>::min();
-        const auto c_uintMax = std::numeric_limits<AZ::u32>::max();
-
-        if ((GUI->maximum() > c_uintMax) || (GUI->maximum() < c_uintMin) || (GUI->minimum() > c_uintMax) || (GUI->minimum() < c_uintMin))
-        {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u32 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
-        }
-    }
-
-    void s64PropertySliderHandler::ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
-    {
-        ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
-    }
-
-    void u64PropertySliderHandler::ConsumeAttribute(DHPropertyIntSlider* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
-    {
-        ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
-        if ((GUI->maximum() < 0) || (GUI->minimum() < 0))
-        {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u64 Slider Box has a negative min or max attribute", debugName, attrib);
-        }
-    }
-
-    void s16PropertySliderHandler::WriteGUIValuesIntoProperty(size_t /*index*/, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* /*node*/)
-    {
-        AZ::s64 val = GUI->value();
-        instance = static_cast<property_t>(val);
-    }
-
-    void u16PropertySliderHandler::WriteGUIValuesIntoProperty(size_t /*index*/, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* /*node*/)
-    {
-        AZ::s64 val = GUI->value();
-        instance = static_cast<property_t>(val);
-    }
-
-    void s32PropertySliderHandler::WriteGUIValuesIntoProperty(size_t /*index*/, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* /*node*/)
-    {
-        AZ::s64 val = GUI->value();
-        instance = static_cast<property_t>(val);
-    }
-
-    void u32PropertySliderHandler::WriteGUIValuesIntoProperty(size_t /*index*/, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* /*node*/)
-    {
-        AZ::s64 val = GUI->value();
-        instance = static_cast<property_t>(val);
-    }
-
-    void s64PropertySliderHandler::WriteGUIValuesIntoProperty(size_t /*index*/, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* /*node*/)
-    {
-        AZ::s64 val = GUI->value();
-        instance = static_cast<property_t>(val);
-    }
-
-    void u64PropertySliderHandler::WriteGUIValuesIntoProperty(size_t /*index*/, DHPropertyIntSlider* GUI, property_t& instance, InstanceDataNode* /*node*/)
-    {
-        AZ::s64 val = GUI->value();
-        instance = static_cast<property_t>(val);
-    }
-
-    bool s16PropertySliderHandler::ReadValuesIntoGUI(size_t /*index*/, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* /*node*/)
-    {
-        GUI->setValue(instance);
-        return false;
-    }
-
-    bool u16PropertySliderHandler::ReadValuesIntoGUI(size_t /*index*/, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* /*node*/)
-    {
-        GUI->setValue(instance);
-        return false;
-    }
-
-    bool s32PropertySliderHandler::ReadValuesIntoGUI(size_t /*index*/, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* /*node*/)
-    {
-        GUI->setValue(instance);
-        return false;
-    }
-
-    bool u32PropertySliderHandler::ReadValuesIntoGUI(size_t /*index*/, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* /*node*/)
-    {
-        GUI->setValue(instance);
-        return false;
-    }
-
-    bool s64PropertySliderHandler::ReadValuesIntoGUI(size_t /*index*/, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* /*node*/)
-    {
-        GUI->setValue(instance);
-        return false;
-    }
-
-    bool u64PropertySliderHandler::ReadValuesIntoGUI(size_t /*index*/, DHPropertyIntSlider* GUI, const property_t& instance, InstanceDataNode* /*node*/)
-    {
-        GUI->setValue(instance);
-        return false;
-    }
-
-    template<typename T>
-    bool ModifyTooltipCommonSigned(QWidget* widget, QString& toolTipString)
-    {
-        DHPropertyIntSlider* propertyControl = qobject_cast<DHPropertyIntSlider*>(widget);
-        AZ_Assert(propertyControl, "Invalid class cast - this is not the right kind of widget!");
-        if (propertyControl)
-        {
-            if (!toolTipString.isEmpty())
-            {
-                toolTipString += "\n";
-            }
-            toolTipString += "[";
-            if (propertyControl->minimum() <= std::numeric_limits<T>::min())
-            {
-                toolTipString += "-" + QString::fromUtf8(PropertyQTConstant_InfinityString);
-            }
-            else
-            {
-                toolTipString += QString::number(propertyControl->minimum());
-            }
-            toolTipString += ", ";
-            if (propertyControl->maximum() >= std::numeric_limits<T>::max())
-            {
-                toolTipString += QString::fromUtf8(PropertyQTConstant_InfinityString);
-            }
-            else
-            {
-                toolTipString += QString::number(propertyControl->maximum());
-            }
-            toolTipString += "]";
-            return true;
-        }
-        return false;
-    }
-
-    template<typename T>
-    bool ModifyTooltipCommonUnsigned(QWidget* widget, QString& toolTipString)
-    {
-        DHPropertyIntSlider* propertyControl = qobject_cast<DHPropertyIntSlider*>(widget);
-        AZ_Assert(propertyControl, "Invalid class cast - this is not the right kind of widget!");
-        if (propertyControl)
-        {
-            if (!toolTipString.isEmpty())
-            {
-                toolTipString += "\n";
-            }
-            toolTipString += "[" + QString::number(propertyControl->minimum()) + ", ";
-            if (propertyControl->maximum() >= std::numeric_limits<T>::max())
-            {
-                toolTipString += QString::fromUtf8(PropertyQTConstant_InfinityString);
-            }
-            else
-            {
-                toolTipString += QString::number(propertyControl->maximum());
-            }
-            toolTipString += "]";
-            return true;
-        }
-        return false;
-    }
-
-    bool s16PropertySliderHandler::ModifyTooltip(QWidget* widget, QString& toolTipString)
-    {
-        return ModifyTooltipCommonSigned<AZ::s16>(widget, toolTipString);
-    }
-
-    bool u16PropertySliderHandler::ModifyTooltip(QWidget* widget, QString& toolTipString)
-    {
-        return ModifyTooltipCommonUnsigned<AZ::u16>(widget, toolTipString);
-    }
-
-    bool s32PropertySliderHandler::ModifyTooltip(QWidget* widget, QString& toolTipString)
-    {
-        return ModifyTooltipCommonSigned<AZ::s32>(widget, toolTipString);
-    }
-
-    bool u32PropertySliderHandler::ModifyTooltip(QWidget* widget, QString& toolTipString)
-    {
-        return ModifyTooltipCommonUnsigned<AZ::u32>(widget, toolTipString);
-    }
-
-    bool s64PropertySliderHandler::ModifyTooltip(QWidget* widget, QString& toolTipString)
-    {
-        return ModifyTooltipCommonSigned<AZ::s64>(widget, toolTipString);
-    }
-
-    bool u64PropertySliderHandler::ModifyTooltip(QWidget* widget, QString& toolTipString)
-    {
-        // Although it is a u64 handler, the control is based on s64.
-        return ModifyTooltipCommonUnsigned<AZ::s64>(widget, toolTipString);
+        setTabOrder(GetFirstInTabOrder(), GetLastInTabOrder());
     }
 
     void RegisterIntSliderHandlers()
     {
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew s16PropertySliderHandler());
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew u16PropertySliderHandler());
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew s32PropertySliderHandler());
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew u32PropertySliderHandler());
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew s64PropertySliderHandler());
-        EBUS_EVENT(PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew u64PropertySliderHandler());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::s8>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::u8>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::s16>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::u16>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::s32>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::u32>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::s64>());
+        PropertyTypeRegistrationMessages::Bus::Broadcast(&PropertyTypeRegistrationMessages::Bus::Events::RegisterPropertyType, aznew IntSliderHandler<AZ::u64>());
     }
 }
 

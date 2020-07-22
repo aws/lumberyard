@@ -53,7 +53,7 @@ namespace EMStudio
         const char* GetCompileDate() const override     { return MCORE_DATE; }
         const char* GetName() const override            { return "Motions"; }
         uint32 GetClassID() const override              { return MotionWindowPlugin::CLASS_ID; }
-        const char* GetCreatorName() const override     { return "MysticGD"; }
+        const char* GetCreatorName() const override     { return "Amazon"; }
         float GetVersion() const override               { return 1.0f;  }
         bool GetIsClosable() const override             { return true;  }
         bool GetIsFloatable() const override            { return true;  }
@@ -102,12 +102,14 @@ namespace EMStudio
         void UpdateInterface();
         void UpdateMotions();
         void VisibilityChanged(bool visible);
+        void OnAddMotions();
+        void OnClearMotions();
+        void OnRemoveMotions();
+        void OnSave();
+
 
     private:
         void ClearMotionEntries();
-        #ifdef _DEBUG
-        bool VerifyMotions();
-        #endif
 
         // declare the callbacks
         MCORE_DEFINECOMMANDCALLBACK(CommandImportMotionCallback);
@@ -132,6 +134,11 @@ namespace EMStudio
         MotionRetargetingWindow*                        mMotionRetargetingWindow;
 
         SaveDirtyMotionFilesCallback*                   mDirtyFilesCallback;
+
+        QAction*                                        mAddMotionsAction;
+        QAction*                                        mSaveAction;
+
+        QLabel*                                         mMotionNameLabel;
 
         static AZStd::vector<EMotionFX::MotionInstance*> mInternalMotionInstanceSelection;
     };

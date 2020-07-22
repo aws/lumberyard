@@ -77,9 +77,6 @@ namespace EMotionFX
         // create the parameter value objects
         CreateParameterValues();
 
-        // recursively create the unique datas for all nodes
-        mAnimGraph->GetRootStateMachine()->RecursiveOnUpdateUniqueData(this);
-
         mAnimGraph->Unlock();
         GetEventManager().OnCreateAnimGraphInstance(this);
     }
@@ -522,18 +519,28 @@ namespace EMotionFX
         ReInitParameterValue(index);
     }
 
-
-    void AnimGraphInstance::ResetUniqueData()
+    void AnimGraphInstance::ResetUniqueDatas()
     {
-        GetRootNode()->RecursiveResetUniqueData(this);
+        GetRootNode()->RecursiveResetUniqueDatas(this);
     }
 
-
-    void AnimGraphInstance::UpdateUniqueData()
+    void AnimGraphInstance::RecursiveInvalidateUniqueDatas()
     {
-        GetRootNode()->RecursiveOnUpdateUniqueData(this);
+        GetRootNode()->RecursiveInvalidateUniqueDatas(this);
     }
 
+    size_t AnimGraphInstance::CalcNumAllocatedUniqueDatas() const
+    {
+        size_t result = 0;
+        for (const AnimGraphObjectData* uniqueData : m_uniqueDatas)
+        {
+            if (uniqueData)
+            {
+                result++;
+            }
+        }
+        return result;
+    }
 
     // set a new motion set to the anim graph instance
     void AnimGraphInstance::SetMotionSet(MotionSet* motionSet)
@@ -624,19 +631,11 @@ namespace EMotionFX
         return nullptr;
     }
 
-
-    void AnimGraphInstance::RegisterUniqueObjectData(AnimGraphObjectData* data)
-    {
-        m_uniqueDatas[data->GetObject()->GetObjectIndex()] = data;
-    }
-
-
     void AnimGraphInstance::AddUniqueObjectData()
     {
         m_uniqueDatas.emplace_back(nullptr);
         mObjectFlags.Add(0);
     }
-
 
     // remove the given unique data object
     void AnimGraphInstance::RemoveUniqueObjectData(AnimGraphObjectData* uniqueData, bool delFromMem)
@@ -822,7 +821,7 @@ namespace EMotionFX
         }
 
         // get the root node's trajectory delta
-        AnimGraphRefCountedData* rootData = mAnimGraph->GetRootStateMachine()->FindUniqueNodeData(this)->GetRefCountedData();
+        AnimGraphRefCountedData* rootData = mAnimGraph->GetRootStateMachine()->FindOrCreateUniqueNodeData(this)->GetRefCountedData();
         trajectoryDelta = rootData->GetTrajectoryDelta();
         trajectoryDelta.mRotation.NormalizeExact();
 
@@ -868,7 +867,7 @@ namespace EMotionFX
         rootNode->PerformUpdate(this, timePassedInSeconds);
 
         // perform a top-down update, starting from the root and going downwards to the leaf nodes
-        AnimGraphNodeData* rootNodeUniqueData = rootNode->FindUniqueNodeData(this);
+        AnimGraphNodeData* rootNodeUniqueData = rootNode->FindOrCreateUniqueNodeData(this);
         rootNodeUniqueData->SetGlobalWeight(1.0f); // start with a global weight of 1 at the root
         rootNodeUniqueData->SetLocalWeight(1.0f); // start with a local weight of 1 at the root
         rootNode->PerformTopDownUpdate(this, timePassedInSeconds);
@@ -979,7 +978,7 @@ namespace EMotionFX
     void AnimGraphInstance::OutputEvents()
     {
         AnimGraphNode* rootNode = GetRootNode();
-        AnimGraphRefCountedData* rootData = rootNode->FindUniqueNodeData(this)->GetRefCountedData();
+        AnimGraphRefCountedData* rootData = rootNode->FindOrCreateUniqueNodeData(this)->GetRefCountedData();
         AnimGraphEventBuffer& eventBuffer = rootData->GetEventBuffer();
         eventBuffer.UpdateWeights(this);
         eventBuffer.TriggerEvents();
@@ -1001,13 +1000,34 @@ namespace EMotionFX
         mAnimGraph->GetRootStateMachine()->RecursiveCollectActiveNetTimeSyncNodes(this, outNodes);
     }
 
-
-    // find the unique node data
-    AnimGraphNodeData* AnimGraphInstance::FindUniqueNodeData(const AnimGraphNode* node) const
+    AnimGraphObjectData* AnimGraphInstance::FindOrCreateUniqueObjectData(const AnimGraphObject* object)
     {
-        AnimGraphObjectData* result = m_uniqueDatas[node->GetObjectIndex()];
-        //MCORE_ASSERT(result->GetObject()->GetBaseType() == AnimGraphNode::BASETYPE_ID);
-        return reinterpret_cast<AnimGraphNodeData*>(result);
+        const AZ::u32 objectIndex = object->GetObjectIndex();
+        AnimGraphObjectData* uniqueData = m_uniqueDatas[objectIndex];
+        if (uniqueData)
+        {
+            // The unique data already existed, it might be invalidated.
+            if (uniqueData->IsInvalidated())
+            {
+                uniqueData->Update();
+                uniqueData->Validate();
+            }
+            return uniqueData;
+        }
+
+        // Create the unique data and register it at the array. This needs to happen before calling Update() on it.
+        uniqueData = const_cast<AnimGraphObject*>(object)->CreateUniqueData(const_cast<AnimGraphInstance*>(this));
+        AZ_Assert(uniqueData, "CreateUniqueData() not implemented for %s. nullptr was returned.", object->GetPaletteName());
+        m_uniqueDatas[objectIndex] = uniqueData;
+
+        uniqueData->Update();
+        uniqueData->Validate();
+        return uniqueData;
+    }
+
+    AnimGraphNodeData* AnimGraphInstance::FindOrCreateUniqueNodeData(const AnimGraphNode* node)
+    {
+        return reinterpret_cast<AnimGraphNodeData*>(FindOrCreateUniqueObjectData(node));
     }
 
     // find the parameter index
@@ -1062,13 +1082,6 @@ namespace EMotionFX
     {
         mRetarget = enabled;
     }
-
-
-    void AnimGraphInstance::SetUniqueObjectData(size_t index, AnimGraphObjectData* data)
-    {
-        m_uniqueDatas[index] = data;
-    }
-
 
     const AnimGraphInstance::InitSettings& AnimGraphInstance::GetInitSettings() const
     {
@@ -1228,11 +1241,14 @@ namespace EMotionFX
         {
             const AnimGraphNode* node = mAnimGraph->GetNode(i);
             AnimGraphNodeData* nodeData = static_cast<AnimGraphNodeData*>(m_uniqueDatas[node->GetObjectIndex()]);
-            AnimGraphRefCountedData* refData = nodeData->GetRefCountedData();
-            if (refData)
+            if (nodeData)
             {
-                refDataPool.Free(refData);
-                nodeData->SetRefCountedData(nullptr);
+                AnimGraphRefCountedData* refData = nodeData->GetRefCountedData();
+                if (refData)
+                {
+                    refDataPool.Free(refData);
+                    nodeData->SetRefCountedData(nullptr);
+                }
             }
         }
     }

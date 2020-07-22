@@ -214,7 +214,7 @@ private:
         {
             row[ChangeImpactColumn]->setText(tr("Security"));
             row[ChangeImpactColumn]->setData(AWSUtil::MakePrettyPendingReasonTooltip(resource["PendingReason"].toString()), Qt::ToolTipRole);
-            row[ChangeImpactColumn]->setData(GetIEditor()->GetColorByName("TextErrorColor"), Qt::TextColorRole);
+            row[ChangeImpactColumn]->setData(AWSUtil::MakePrettyColor("Default"), Qt::TextColorRole);
             m_containsSecurityChanges = true;
         }
         else

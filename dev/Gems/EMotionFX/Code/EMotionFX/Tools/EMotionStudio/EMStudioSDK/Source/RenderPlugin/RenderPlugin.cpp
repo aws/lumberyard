@@ -27,13 +27,10 @@
 
 namespace EMStudio
 {
-    // constructor
     RenderPlugin::RenderPlugin()
         : DockWidgetPlugin()
     {
         mActors.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-        mLayouts.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-        mViewWidgets.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
 
         mIsVisible                      = true;
         mRenderUtil                     = nullptr;
@@ -51,23 +48,12 @@ namespace EMStudio
 
         mZoomInCursor                   = nullptr;
         mZoomOutCursor                  = nullptr;
-        mTranslateCursor                = nullptr;
-        mRotateCursor                   = nullptr;
-        mNotAllowedCursor               = nullptr;
-
-        mSelectionModeButton            = nullptr;
-        mTranslationModeButton          = nullptr;
-        mRotationModeButton             = nullptr;
-        mScaleModeButton                = nullptr;
 
         mBaseLayout                     = nullptr;
-        mToolbarLayout                  = nullptr;
-        mToolbarWidget                  = nullptr;
         mRenderLayoutWidget             = nullptr;
         mActiveViewWidget               = nullptr;
-        mSignalMapper                   = nullptr;
         mCurrentSelection               = nullptr;
-        mCurrentLayout                  = nullptr;
+        m_currentLayout                 = nullptr;
         mFocusViewWidget                = nullptr;
         mMode                           = MODE_SELECTION;
         mFirstFrameAfterReInit          = false;
@@ -88,19 +74,16 @@ namespace EMStudio
         // Get rid of the OpenGL view widgets.
         // Don't delete them directly as there might be still paint events in the Qt message queue which will cause a crash.
         // deleteLater will make sure all events will be processed before actually destructing the object.
-        const uint32 numViewWidgets = mViewWidgets.GetLength();
-        for (uint32 i = 0; i < numViewWidgets; ++i)
+        for (RenderViewWidget* viewWidget : m_viewWidgets)
         {
-            mViewWidgets[i]->deleteLater();
+            viewWidget->deleteLater();
         }
 
-        // get rid of the layouts
-        const uint32 numLayouts = mLayouts.GetLength();
-        for (uint32 i = 0; i < numLayouts; ++i)
+        for (Layout* layout : m_layouts)
         {
-            delete mLayouts[i];
+            delete layout;
         }
-        mLayouts.Clear();
+        m_layouts.clear();
 
         // delete the gizmos
         GetManager()->RemoveTransformationManipulator(mTranslateManipulator);
@@ -111,15 +94,9 @@ namespace EMStudio
         delete mRotateManipulator;
         delete mScaleManipulator;
 
-        // get rid of the signal mapper
-        delete mSignalMapper;
-
         // get rid of the cursors
         delete mZoomInCursor;
         delete mZoomOutCursor;
-        delete mTranslateCursor;
-        delete mRotateCursor;
-        delete mNotAllowedCursor;
 
         // unregister the command callbacks and get rid of the memory
         GetCommandManager()->RemoveCommandCallback(mUpdateRenderActorsCallback, false);
@@ -142,13 +119,11 @@ namespace EMStudio
         delete mResetToBindPoseCallback;
         delete mAdjustActorInstanceCallback;
 
-        // get rid of the trace paths
-        const uint32 numPaths = mTrajectoryTracePaths.GetLength();
-        for (uint32 i = 0; i < numPaths; ++i)
+        for (MCommon::RenderUtil::TrajectoryTracePath* trajectoryPath : m_trajectoryTracePaths)
         {
-            delete mTrajectoryTracePaths[i];
+            delete trajectoryPath;
         }
-        mTrajectoryTracePaths.Clear();
+        m_trajectoryTracePaths.clear();
     }
 
 
@@ -328,13 +303,11 @@ namespace EMStudio
             aabb.Widen(aabb.CalcRadius());
 
             bool isFollowModeActive = false;
-            const uint32 numViewWidgets = mViewWidgets.GetLength();
-            for (AZ::u32 i = 0; i < numViewWidgets; ++i)
+            for (const RenderViewWidget* viewWidget : m_viewWidgets)
             {
-                const RenderViewWidget* renderViewWidget = mViewWidgets[i];
-                RenderWidget* current = renderViewWidget->GetRenderWidget();
+                RenderWidget* current = viewWidget->GetRenderWidget();
 
-                if (renderViewWidget->GetIsCharacterFollowModeActive())
+                if (viewWidget->GetIsCharacterFollowModeActive())
                 {
                     isFollowModeActive = true;
                 }
@@ -430,15 +403,11 @@ namespace EMStudio
 
     void RegisterRenderPluginLayouts(RenderPlugin* renderPlugin)
     {
-        // add the available render template layouts
         renderPlugin->AddLayout(new SingleRenderWidget());
-        renderPlugin->AddLayout(new HorizontalDoubleRenderWidget());
         renderPlugin->AddLayout(new VerticalDoubleRenderWidget());
+        renderPlugin->AddLayout(new HorizontalDoubleRenderWidget());
+        renderPlugin->AddLayout(new TripleBigTopRenderWidget());
         renderPlugin->AddLayout(new QuadrupleRenderWidget());
-        renderPlugin->AddLayout(new TripleBigLeft());
-        renderPlugin->AddLayout(new TripleBigRight());
-        renderPlugin->AddLayout(new TripleBigTop());
-        renderPlugin->AddLayout(new TripleBigBottom());
     }
 
 
@@ -679,19 +648,16 @@ namespace EMStudio
     // zoom to characters
     void RenderPlugin::ViewCloseup(bool selectedInstancesOnly, RenderWidget* renderWidget, float flightTime)
     {
-        uint32 i;
-
-        MCore::AABB sceneAABB = GetSceneAABB(selectedInstancesOnly);
+        const MCore::AABB sceneAABB = GetSceneAABB(selectedInstancesOnly);
 
         if (sceneAABB.CheckIfIsValid())
         {
             // in case the given view widget parameter is nullptr apply it on all view widgets
-            if (renderWidget == nullptr)
+            if (!renderWidget)
             {
-                const uint32 numViewWidgets = mViewWidgets.GetLength();
-                for (i = 0; i < numViewWidgets; ++i)
+                for (RenderViewWidget* viewWidget : m_viewWidgets)
                 {
-                    RenderWidget* current = mViewWidgets[i]->GetRenderWidget();
+                    RenderWidget* current = viewWidget->GetRenderWidget();
                     current->ViewCloseup(sceneAABB, flightTime);
                 }
             }
@@ -703,49 +669,23 @@ namespace EMStudio
         }
     }
 
-
-    // skip follow calcs
     void RenderPlugin::SetSkipFollowCalcs(bool skipFollowCalcs)
     {
-        const uint32 numViewWidgets = mViewWidgets.GetLength();
-        for (uint32 i = 0; i < numViewWidgets; ++i)
+        for (RenderViewWidget* viewWidget : m_viewWidgets)
         {
-            RenderWidget* current = mViewWidgets[i]->GetRenderWidget();
-            current->SetSkipFollowCalcs(skipFollowCalcs);
+            RenderWidget* renderWidget = viewWidget->GetRenderWidget();
+            renderWidget->SetSkipFollowCalcs(skipFollowCalcs);
         }
     }
 
-
-    // remove the given view widget
     void RenderPlugin::RemoveViewWidget(RenderViewWidget* viewWidget)
     {
-        mViewWidgets.RemoveByValue(viewWidget);
+        m_viewWidgets.erase(AZStd::remove(m_viewWidgets.begin(), m_viewWidgets.end(), viewWidget), m_viewWidgets.end());
     }
 
-
-    // remove all view widgets
     void RenderPlugin::ClearViewWidgets()
     {
-        mViewWidgets.Clear();
-    }
-
-
-    // add a layout button
-    QPushButton* RenderPlugin::AddLayoutButton(const char* imageFileName)
-    {
-        // create the button and add it to the layout
-        QPushButton* button = new QPushButton(mToolbarWidget);
-
-        button->setIcon(MysticQt::GetMysticQt()->FindIcon(imageFileName));
-        button->setIconSize(QSize(32, 32)); // HACK REMOVE AND FIX ME
-        button->setStyleSheet("border: 0px; border-radius: 0px");
-
-        //button->setWhatsThis( layout->GetName() );
-        button->setMinimumSize(36, 36); // HACK REMOVE AND FIX ME
-        button->setMaximumSize(36, 36);
-
-        mToolbarLayout->addWidget(button);
-        return button;
+        m_viewWidgets.clear();
     }
 
     void RenderPlugin::Reflect(AZ::ReflectContext* context)
@@ -755,71 +695,27 @@ namespace EMStudio
 
     bool RenderPlugin::Init()
     {
-        //mDock->setAllowedAreas(Qt::NoDockWidgetArea);
-
         // load the cursors
         mZoomInCursor       = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").c_str()).scaled(32, 32));
         mZoomOutCursor      = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomOutCursor.png").c_str()).scaled(32, 32));
-        //mTranslateCursor  = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/TranslateCursor.png").c_str()) );
-        //mRotateCursor     = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/RotateCursor.png").c_str()) );
-        //mNotAllowedCursor = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/NotAllowedCursor.png").c_str()) );
 
-        LoadRenderOptions();
-
-        mSignalMapper       = new QSignalMapper(this);
         mCurrentSelection   = &GetCommandManager()->GetCurrentSelection();
 
-        connect(mSignalMapper, static_cast<void (QSignalMapper::*)(const QString&)>(&QSignalMapper::mapped), this, &RenderPlugin::LayoutButtonPressed);
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &RenderPlugin::VisibilityChanged);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &RenderPlugin::VisibilityChanged);
 
         // add the available render template layouts
         RegisterRenderPluginLayouts(this);
 
         // create the inner widget which contains the base layout
         mInnerWidget = new QWidget();
-        mDock->SetContents(mInnerWidget);
+        mDock->setWidget(mInnerWidget);
 
         // the base layout contains the render layout templates on the left and the render views on the right
         mBaseLayout = new QHBoxLayout(mInnerWidget);
         mBaseLayout->setContentsMargins(0, 2, 2, 2);
         mBaseLayout->setSpacing(0);
 
-        // the render template widget contains a vertical layout in which all the template buttons are
-        mToolbarWidget = new QWidget(mInnerWidget);
-        mToolbarLayout = new QVBoxLayout(mToolbarWidget);
-
-        // make sure it does not use more space than required by the buttons
-        mToolbarLayout->setSizeConstraint(QLayout::SetMaximumSize);
-        mToolbarLayout->setSpacing(1);
-        mToolbarLayout->setMargin(5);
-
-        mSelectionModeButton = AddLayoutButton("Images/Rendering/Select.png");
-        connect(mSelectionModeButton, &QPushButton::clicked, this, &RenderPlugin::SetSelectionMode);
-        mTranslationModeButton = AddLayoutButton("Images/Rendering/Translate.png");
-        connect(mTranslationModeButton, &QPushButton::clicked, this, &RenderPlugin::SetTranslationMode);
-        mRotationModeButton = AddLayoutButton("Images/Rendering/Rotate.png");
-        connect(mRotationModeButton, &QPushButton::clicked, this, &RenderPlugin::SetRotationMode);
-        mScaleModeButton = AddLayoutButton("Images/Rendering/Scale.png");
-        connect(mScaleModeButton, &QPushButton::clicked, this, &RenderPlugin::SetScaleMode);
-
-        // get the render layout templates and iterate through them
-        const uint32 numLayouts = mLayouts.GetLength();
-        for (uint32 i = 0; i < numLayouts; ++i)
-        {
-            // get the current layout
-            Layout* layout = mLayouts[i];
-
-            // create the button and connect it to the signal mapper
-            QPushButton* button = AddLayoutButton(layout->GetImageFileName());
-            connect(button, &QPushButton::clicked, mSignalMapper, static_cast<void (QSignalMapper::*)()>(&QSignalMapper::map));
-            mSignalMapper->setMapping(button, layout->GetName());
-        }
-
-        // add the render template widget to the base layout
-        mBaseLayout->addWidget(mToolbarWidget);
-
         SetSelectionMode();
-
 
         // create and register the command callbacks only (only execute this code once for all plugins)
         mUpdateRenderActorsCallback     = new UpdateRenderActorsCallback(false);
@@ -846,7 +742,8 @@ namespace EMStudio
         mScaleManipulator       = (MCommon::ScaleManipulator*)GetManager()->AddTransformationManipulator(new MCommon::ScaleManipulator(70.0f, false));
         mRotateManipulator      = (MCommon::RotateManipulator*)GetManager()->AddTransformationManipulator(new MCommon::RotateManipulator(70.0f, false));
 
-        // set the default rendering layout
+        // Load the render options and set the last used layout.
+        LoadRenderOptions();
         LayoutButtonPressed(mRenderOptions.GetLastUsedLayout().c_str());
 
         EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
@@ -864,15 +761,14 @@ namespace EMStudio
         mRenderOptions.Save(&settings);
 
         AZStd::string groupName;
-        if (mCurrentLayout)
+        if (m_currentLayout)
         {
-            // get the number of render views and iterate through them
-            const uint32 numRenderViews = mViewWidgets.GetLength();
-            for (uint32 i = 0; i < numRenderViews; ++i)
+            const size_t numRenderViews = m_viewWidgets.size();
+            for (size_t i = 0; i < numRenderViews; ++i)
             {
-                RenderViewWidget* renderView = mViewWidgets[i];
+                RenderViewWidget* renderView = m_viewWidgets[i];
 
-                groupName = AZStd::string::format("%s_%i", mCurrentLayout->GetName(), i);
+                groupName = AZStd::string::format("%s_%d", m_currentLayout->GetName(), i);
 
                 settings.beginGroup(groupName.c_str());
                 renderView->SaveOptions(&settings);
@@ -890,15 +786,14 @@ namespace EMStudio
         mRenderOptions = RenderOptions::Load(&settings);
 
         AZStd::string groupName;
-        if (mCurrentLayout)
+        if (m_currentLayout)
         {
-            // get the number of render views and iterate through them
-            const uint32 numRenderViews = mViewWidgets.GetLength();
-            for (uint32 i = 0; i < numRenderViews; ++i)
+            const size_t numRenderViews = m_viewWidgets.size();
+            for (size_t i = 0; i < numRenderViews; ++i)
             {
-                RenderViewWidget* renderView = mViewWidgets[i];
+                RenderViewWidget* renderView = m_viewWidgets[i];
 
-                groupName = AZStd::string::format("%s_%i", mCurrentLayout->GetName(), i);
+                groupName = AZStd::string::format("%s_%d", m_currentLayout->GetName(), i);
 
                 settings.beginGroup(groupName.c_str());
                 renderView->LoadOptions(&settings);
@@ -913,10 +808,6 @@ namespace EMStudio
     void RenderPlugin::SetSelectionMode()
     {
         mMode = MODE_SELECTION;
-        mSelectionModeButton->setStyleSheet("border-radius: 0px; border: 1px solid rgb(244, 156, 28);");
-        mTranslationModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mRotationModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mScaleModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
 
         if (mTranslateManipulator)
         {
@@ -938,10 +829,6 @@ namespace EMStudio
     void RenderPlugin::SetTranslationMode()
     {
         mMode = MODE_TRANSLATIONMANIPULATOR;
-        mSelectionModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mTranslationModeButton->setStyleSheet("border-radius: 0px; border: 1px solid rgb(244, 156, 28);");
-        mRotationModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mScaleModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
         ReInitTransformationManipulators();
     }
 
@@ -949,10 +836,6 @@ namespace EMStudio
     void RenderPlugin::SetRotationMode()
     {
         mMode = MODE_ROTATIONMANIPULATOR;
-        mSelectionModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mTranslationModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mRotationModeButton->setStyleSheet("border-radius: 0px; border: 1px solid rgb(244, 156, 28);");
-        mScaleModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
         ReInitTransformationManipulators();
     }
 
@@ -960,10 +843,6 @@ namespace EMStudio
     void RenderPlugin::SetScaleMode()
     {
         mMode = MODE_SCALEMANIPULATOR;
-        mSelectionModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mTranslationModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mRotationModeButton->setStyleSheet("border-radius: 0px; border: 0px;");
-        mScaleModeButton->setStyleSheet("border-radius: 0px; border: 1px solid rgb(244, 156, 28);");
         ReInitTransformationManipulators();
     }
 
@@ -1010,12 +889,11 @@ namespace EMStudio
         // update EMotion FX, but don't render
         UpdateActorInstances(timePassedInSeconds);
 
-        const uint32 numViewWidgets = mViewWidgets.GetLength();
-        for (uint32 i = 0; i < numViewWidgets; ++i)
+        for (RenderViewWidget* viewWidget : m_viewWidgets)
         {
-            RenderWidget* renderWidget = mViewWidgets[i]->GetRenderWidget();
+            RenderWidget* renderWidget = viewWidget->GetRenderWidget();
 
-            if (mFirstFrameAfterReInit == false)
+            if (!mFirstFrameAfterReInit)
             {
                 renderWidget->GetCamera()->Update(timePassedInSeconds);
             }
@@ -1105,16 +983,10 @@ namespace EMStudio
         ViewCloseup(false);
     }
 
-    RenderPlugin::Layout* RenderPlugin::FindLayoutByName(const AZStd::string& layoutName)
+    RenderPlugin::Layout* RenderPlugin::FindLayoutByName(const AZStd::string& layoutName) const
     {
-        // get the render layout templates and iterate through them
-        const uint32 numLayouts = mLayouts.GetLength();
-        for (uint32 i = 0; i < numLayouts; ++i)
+        for (Layout* layout : m_layouts)
         {
-            // get the current layout
-            Layout* layout = mLayouts[i];
-
-            // check if the this is the layout
             if (AzFramework::StringFunc::Equal(layoutName.c_str(), layout->GetName(), false /* no case */))
             {
                 return layout;
@@ -1122,9 +994,9 @@ namespace EMStudio
         }
 
         // return the first layout in case it wasn't found
-        if (mLayouts.GetIsEmpty() == false)
+        if (!m_layouts.empty())
         {
-            return mLayouts[0];
+            return m_layouts[0];
         }
 
         return nullptr;
@@ -1145,7 +1017,7 @@ namespace EMStudio
         ClearViewWidgets();
         VisibilityChanged(false);
 
-        mCurrentLayout = layout;
+        m_currentLayout = layout;
 
         QWidget* oldLayoutWidget = mRenderLayoutWidget;
         QWidget* newLayoutWidget = layout->Create(this, mInnerWidget);
@@ -1178,9 +1050,8 @@ namespace EMStudio
 
     RenderViewWidget* RenderPlugin::CreateViewWidget(QWidget* parent)
     {
-        // create a new OpenGL widget
         RenderViewWidget* viewWidget = new RenderViewWidget(this, parent);
-        mViewWidgets.Add(viewWidget);
+        m_viewWidgets.emplace_back(viewWidget);
         return viewWidget;
     }
 
@@ -1199,13 +1070,11 @@ namespace EMStudio
     // find the trajectory path for a given actor instance
     MCommon::RenderUtil::TrajectoryTracePath* RenderPlugin::FindTracePath(EMotionFX::ActorInstance* actorInstance)
     {
-        // get the number of trace paths, iterate through them and find the one for the given actor instance
-        const uint32 numPaths = mTrajectoryTracePaths.GetLength();
-        for (uint32 i = 0; i < numPaths; ++i)
+        for (MCommon::RenderUtil::TrajectoryTracePath* trajectoryPath : m_trajectoryTracePaths)
         {
-            if (mTrajectoryTracePaths[i]->mActorInstance == actorInstance)
+            if (trajectoryPath->mActorInstance == actorInstance)
             {
-                return mTrajectoryTracePaths[i];
+                return trajectoryPath;
             }
         }
 
@@ -1215,7 +1084,7 @@ namespace EMStudio
         tracePath->mActorInstance = actorInstance;
         tracePath->mTraceParticles.Reserve(512);
 
-        mTrajectoryTracePaths.Add(tracePath);
+        m_trajectoryTracePaths.emplace_back(tracePath);
         return tracePath;
     }
 
@@ -1465,13 +1334,9 @@ namespace EMStudio
 
     void RenderPlugin::ResetCameras()
     {
-        const uint32 numViews = GetNumViewWidgets();
-        for (uint32 i = 0; i < numViews; ++i)
+        for (RenderViewWidget* viewWidget : m_viewWidgets)
         {
-            RenderViewWidget* viewWidget = GetViewWidget(i);
             viewWidget->OnResetCamera();
         }
     }
-}   // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderPlugin.moc>
+} // namespace EMStudio

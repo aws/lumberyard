@@ -120,7 +120,6 @@ namespace EMotionFX
         AnimGraphRefCountedData*   mRefCountedData;
         AnimGraphSyncTrack*        mSyncTrack;
 
-
         void Delete() override;
     };
 

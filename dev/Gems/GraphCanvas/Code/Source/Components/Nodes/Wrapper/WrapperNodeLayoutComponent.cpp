@@ -30,6 +30,7 @@
 #include <Components/StylingComponent.h>
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/tools.h>
@@ -586,7 +587,9 @@ namespace GraphCanvas
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
 
-        SceneUIRequestBus::Event(sceneId, &SceneUIRequests::OnWrapperNodeActionWidgetClicked, GetEntityId(), m_wrapperNodeActionWidget->boundingRect().toRect(), scenePoint, screenPoint);
+        EditorId editorId;
+        SceneRequestBus::EventResult(editorId, sceneId, &SceneRequests::GetEditorId);
+        AssetEditorRequestBus::Event(editorId, &AssetEditorRequests::OnWrapperNodeActionWidgetClicked, GetEntityId(), m_wrapperNodeActionWidget->boundingRect().toRect(), scenePoint, screenPoint);
     }
     
     void WrapperNodeLayoutComponent::ClearLayout()

@@ -173,7 +173,7 @@ namespace LmbrCentral
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             // RayCast return type
-            behaviorContext->Class<RayCastHit>()
+            behaviorContext->Class<RayCastHit>("LegacyRayCastHit")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Property("distance", BehaviorValueGetter(&RayCastHit::m_distance), nullptr)
                 ->Property("position", BehaviorValueGetter(&RayCastHit::m_position), nullptr)
@@ -183,7 +183,7 @@ namespace LmbrCentral
                 ;
 
             // RayCastConfiguration
-            behaviorContext->Class<RayCastConfiguration>()
+            behaviorContext->Class<RayCastConfiguration>("LegacyRayCastConfiguration")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Property("origin", BehaviorValueProperty(&RayCastConfiguration::m_origin))
@@ -196,7 +196,7 @@ namespace LmbrCentral
                 ;
 
             // RayCastResult
-            behaviorContext->Class<RayCastResult>()
+            behaviorContext->Class<RayCastResult>("LegacyRayCastResult")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("GetHitCount", &RayCastResult::GetHitCount)

@@ -64,6 +64,7 @@ namespace GraphCanvas
         , public ConnectionVisualNotificationBus::Handler
         , public GeometryNotificationBus::Handler
         , public AZ::TickBus::Handler
+        , public AZ::SystemTickBus::Handler
         , public GraphCanvas::ViewNotificationBus::Handler
         , public AssetEditorSettingsNotificationBus::Handler
     {
@@ -73,10 +74,14 @@ namespace GraphCanvas
         GlowOutlineGraphicsItem(const FixedGlowOutlineConfiguration& configuration);
         GlowOutlineGraphicsItem(const SceneMemberGlowOutlineConfiguration& configuration);
 
-        ~GlowOutlineGraphicsItem() override = default;
+        ~GlowOutlineGraphicsItem() override;
 
         // ConnectionVisualNotificationBus
         void OnConnectionPathUpdated() override;
+        ////
+
+        // SystemTick
+        void OnSystemTick();
         ////
 
         // TickBus

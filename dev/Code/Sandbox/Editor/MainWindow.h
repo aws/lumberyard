@@ -26,6 +26,7 @@
 
 #include "Include/SandboxAPI.h"
 #include <AzQtComponents/Components/ToolButtonComboBox.h>
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <QAbstractNativeEventFilter>
 
@@ -51,6 +52,11 @@ class ToolbarCustomizationDialog;
 class QWidgetAction;
 class ActionManager;
 class ShortcutDispatcher;
+
+namespace AzQtComponents
+{
+    class DockMainWindow;
+}
 
 namespace AzToolsFramework
 {
@@ -161,7 +167,7 @@ public:
     CLayoutViewPane* GetActiveView() const;
     QtViewport* GetActiveViewport() const;
 
-    void AdjustToolBarIconSize();
+    void AdjustToolBarIconSize(AzQtComponents::ToolBar::ToolBarIconSize size);
     void InvalidateControls();
     void OnCustomizeToolbar();
     void SaveConfig();
@@ -228,7 +234,6 @@ private:
     // AzToolsFramework::SourceControlNotificationBus::Handler:
     void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;
 
-    QToolButton* CreateLayerSelectButton();
     QWidget* CreateSnapToGridWidget();
     QWidget* CreateSnapToAngleWidget();
 
@@ -298,7 +303,7 @@ private:
 
     bool m_enableLegacyCryEntities;
 
-    QMainWindow* m_viewPaneHost;
+    AzQtComponents::DockMainWindow* m_viewPaneHost;
 
     QTimer* m_autoSaveTimer;
     QTimer* m_autoRemindTimer;

@@ -223,7 +223,7 @@ namespace Path
         strReturnValue = strDriveLetter;
         strReturnValue += strDirectory;
 
-        static const char EditorBundleName[] = "/Editor.app/Contents/MacOS/";
+        static const char EditorBundleName[] = "/Editor/Contents/MacOS/";
         if (strReturnValue.endsWith(EditorBundleName))
         {
             // We are inside a bundle but the rest of the code is not setup to

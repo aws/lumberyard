@@ -14,8 +14,11 @@
 
 #include "SystemComponentFixture.h"
 #include <EMotionFX/Source/MotionSet.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Debug/TraceMessageBus.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/string/string.h>
+#include <MCore/Source/Attribute.h>
 #include <Tests/TestAssetCode/AnimGraphFactory.h>
 
 namespace EMotionFX
@@ -52,6 +55,16 @@ namespace EMotionFX
         const Transform& GetOutputTransform(uint32 nodeIndex = 0);
 
         void AddValueParameter(const AZ::TypeId& typeId, const AZStd::string& name);
+
+        template <class ParamType, class InputType>
+        void ParamSetValue(const AZStd::string& paramName, const InputType& value)
+        {
+            const AZ::Outcome<size_t> parameterIndex = m_animGraphInstance->FindParameterIndex(paramName);
+            const AZ::u32 paramIndex = static_cast<AZ::u32>(parameterIndex.GetValue());
+            MCore::Attribute* param = m_animGraphInstance->GetParameterValue(paramIndex);
+            ParamType* typeParam = static_cast<ParamType*>(param);
+            typeParam->SetValue(value);
+        }
 
         // Helper functions for state machine construction (Works on m_rootStateMachine).
         AnimGraphStateTransition* AddTransition(AnimGraphNode* source, AnimGraphNode* target, float time);

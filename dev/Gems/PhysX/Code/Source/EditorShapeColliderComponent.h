@@ -16,6 +16,7 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <PhysX/ConfigurationBus.h>
@@ -34,19 +35,19 @@ namespace PhysX
         Capsule,
         Sphere,
         PolygonPrism,
+        Cylinder,
         Unsupported
     };
 
     //! Cached data for generating sample points inside the attached shape.
     struct GeometryCache
     {
-        float m_height = 1.0f; //!< Caches height for capsule and polygon prism shapes.
-        float m_radius = 1.0f; //!< Caches radius for capsule and sphere shapes.
+        float m_height = 1.0f; //!< Caches height for capsule, cylinder and polygon prism shapes.
+        float m_radius = 1.0f; //!< Caches radius for capsule, cylinder and sphere shapes.
         AZ::Vector3 m_boxDimensions = AZ::Vector3::CreateOne(); //!< Caches dimensions for box shapes.
         AZStd::vector<AZ::Vector3> m_cachedSamplePoints; //!< Stores a cache of points sampled from the shape interior.
         bool m_cachedSamplePointsDirty = true; //!< Marks whether the cached sample points need to be recalculated.
     };
-
     //! Editor PhysX Shape Collider Component.
     //! This component is used together with a shape component, and uses the shape information contained in that
     //! component to create geometry in the PhysX simulation.
@@ -59,6 +60,7 @@ namespace PhysX
         , protected DebugDraw::DisplayCallback
         , protected LmbrCentral::ShapeComponentNotificationsBus::Handler
         , private PhysX::ColliderShapeRequestBus::Handler
+        , protected Physics::WorldBodyRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorShapeColliderComponent, "{2389DDC7-871B-42C6-9C95-2A679DDA0158}",
@@ -82,12 +84,16 @@ namespace PhysX
         void UpdateCachedSamplePoints() const;
         void CreateStaticEditorCollider();
         AZ::u32 OnConfigurationChanged();
-        void UpdateShapeConfigs();
+        void UpdateShapeConfigs(bool refreshPropertyTree);
         void UpdateBoxConfig(const AZ::Vector3& scale);
         void UpdateCapsuleConfig(const AZ::Vector3& scale);
         void UpdateSphereConfig(const AZ::Vector3& scale);
         void UpdatePolygonPrismDecomposition();
         void UpdatePolygonPrismDecomposition(const AZ::PolygonPrismPtr polygonPrismPtr);
+        void UpdateCylinderConfig(const AZ::Vector3& scale);
+
+        AZ::u32 OnSubdivisionCountChange();
+        AZ::Crc32 SubdivisionCountVisibility();
 
         // AZ::Component
         void Activate() override;
@@ -103,6 +109,14 @@ namespace PhysX
         // PhysX::ConfigurationNotificationBus
         void OnPhysXConfigurationRefreshed(const PhysXConfiguration& configuration) override;
         void OnDefaultMaterialLibraryChanged(const AZ::Data::AssetId& defaultMaterialLibrary) override;
+
+        // WorldBodyRequestBus
+        void EnablePhysics() override;
+        void DisablePhysics() override;
+        bool IsPhysicsEnabled() const override;
+        AZ::Aabb GetAabb() const override;
+        Physics::WorldBody* GetWorldBody() override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
 
         // LmbrCentral::ShapeComponentNotificationBus
         void OnShapeChanged(LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons changeReason) override;
@@ -122,7 +136,9 @@ namespace PhysX
         AZStd::vector<AZStd::shared_ptr<Physics::ShapeConfiguration>> m_shapeConfigs; //!< Stores the physics shape configuration(s).
         bool m_simplePolygonErrorIssued = false; //!< Records whether an error about invalid polygon prisms has been previously raised.
         ShapeType m_shapeType = ShapeType::None; //!< Caches the current type of shape.
-
+        //! Default number of subdivisions in the PhysX geometry representation.
+        //! @note 16 is the number of subdivisions in the debug cylinder that is loaded as a mesh (not generated procedurally)
+        AZ::u8 m_subdivisionCount = 16; 
         mutable GeometryCache m_geometryCache; //!< Cached data for generating sample points inside the attached shape.
     };
 } // namespace PhysX

@@ -353,6 +353,26 @@
          </property>
         </widget>
        </item>
+       <item row="2" column="3">
+        <widget class="QToolButton" name="toolButtonMenuSelected">
+         <property name="icon">
+          <iconset>
+           <normaloff>:/stylesheet/img/logging/add-filter.svg</normaloff>:/stylesheet/img/logging/add-filter.svg</iconset>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+         <property name="popupMode">
+          <enum>QToolButton::MenuButtonPopup</enum>
+         </property>
+         <property name="autoRaise">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>

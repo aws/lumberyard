@@ -43,7 +43,9 @@ def run_pytest(known_args, extra_args):
     try:
         return_code = subprocess_with_timeout(argument_call, timeout_sec)
     except SubprocessTimeoutException:
+        print("")  # force a newline after pytest output
         log.error("Pytest execution timed out after {} seconds".format(timeout_sec))
+        sys.exit(1)  # exit on failure instead of raising, to avoid creating a confusing stacktrace
     else:
         if return_code != 0:
             log.error("Pytest reported failure with exit code: {}".format(return_code))

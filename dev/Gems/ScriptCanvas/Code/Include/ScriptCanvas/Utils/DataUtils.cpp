@@ -49,11 +49,11 @@ namespace ScriptCanvas
         
         if (dynamicDataType == DynamicDataType::Container)
         {
-            return AZ::Failure(AZStd::string::format("%s is not a Container type.", ScriptCanvas::Data::GetName(dataType)));
+            return AZ::Failure(AZStd::string::format("%s is not a Container type.", ScriptCanvas::Data::GetName(dataType).c_str()));
         }
         else if (dynamicDataType == DynamicDataType::Value)
         {
-            return AZ::Failure(AZStd::string::format("%s is a Container type and cannot be pushed as a value.", ScriptCanvas::Data::GetName(dataType)));
+            return AZ::Failure(AZStd::string::format("%s is a Container type and cannot be pushed as a value.", ScriptCanvas::Data::GetName(dataType).c_str()));
         }
 
         return AZ::Failure(AZStd::string("Unknown failure condition found"));

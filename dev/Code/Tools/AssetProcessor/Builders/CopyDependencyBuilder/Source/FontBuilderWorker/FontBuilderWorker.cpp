@@ -33,7 +33,7 @@ namespace CopyDependencyBuilder
         fontBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.font", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         fontBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.fontfamily", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         fontBuilderDescriptor.m_busId = azrtti_typeid<FontBuilderWorker>();
-        fontBuilderDescriptor.m_version = 1;
+        fontBuilderDescriptor.m_version = 2;
         fontBuilderDescriptor.m_createJobFunction =
             AZStd::bind(&FontBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         fontBuilderDescriptor.m_processJobFunction =

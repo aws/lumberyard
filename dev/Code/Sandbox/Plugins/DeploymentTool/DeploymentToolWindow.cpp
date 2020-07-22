@@ -127,8 +127,9 @@ namespace
 }
 
 
-DeploymentToolWindow::DeploymentToolWindow()
-    : m_ui(new Ui::DeploymentToolWindow())
+DeploymentToolWindow::DeploymentToolWindow(QWidget* parent)
+    : QMainWindow(parent)
+    , m_ui(new Ui::DeploymentToolWindow())
     , m_animatedSpinningIcon("://spinner_2x_V1.gif")
 
     , m_connectedIcon("://status_connected.png")

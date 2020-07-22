@@ -235,6 +235,10 @@ namespace GraphCanvas
                         {
                             delete treeItem;
                         }
+                        else
+                        {
+                            item->RemoveParent(this);
+                        }
                     }
                     
                     break;

@@ -10,8 +10,11 @@
 *
 */
 
+#include <AzCore/Casting/numeric_cast.h>
+
 #include <AzQtComponents/Components/Widgets/ToolButton.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <AzQtComponents/Components/Style.h>
 
 #include <QPainter>
@@ -31,7 +34,8 @@ ToolButton::Config ToolButton::loadConfig(QSettings& settings)
     ConfigHelpers::read<int>(settings, QStringLiteral("DefaultButtonMargin"), config.defaultButtonMargin);
     ConfigHelpers::read<int>(settings, QStringLiteral("MenuIndicatorWidth"), config.menuIndicatorWidth);
     ConfigHelpers::read<QColor>(settings, QStringLiteral("CheckedStateBackgroundColor"), config.checkedStateBackgroundColor);
-    ConfigHelpers::read<QPixmap>(settings, QStringLiteral("MenuIndicatorIcon"), config.menuIndicatorIcon);
+    ConfigHelpers::read<QString>(settings, QStringLiteral("MenuIndicatorIcon"), config.menuIndicatorIcon);
+    ConfigHelpers::read<QSize>(settings, QStringLiteral("MenuIndicatorIconSize"), config.menuIndicatorIconSize);
 
     return config;
 }
@@ -41,10 +45,11 @@ ToolButton::Config ToolButton::defaultConfig()
     Config config;
 
     config.buttonIconSize = 16;
-    config.defaultButtonMargin = 0;
-    config.menuIndicatorWidth = 6;
+    config.defaultButtonMargin = 1;
+    config.menuIndicatorWidth = 10;
     config.checkedStateBackgroundColor = QStringLiteral("#00A1C9");
-    config.menuIndicatorIcon = Style::cachedPixmap(QStringLiteral(":/stylesheet/img/UI20/menu-indicator.svg"));
+    config.menuIndicatorIcon = QStringLiteral(":/stylesheet/img/UI20/menu-indicator.svg");
+    config.menuIndicatorIconSize = QSize(6, 3);
 
     return config;
 }
@@ -82,6 +87,10 @@ int ToolButton::buttonMargin(const Style* style, const QStyleOption* option, con
     int size = -1;
     if (auto toolButton = qobject_cast<const QToolButton*>(widget))
     {
+        if (Style::hasClass(toolButton, NoMargins))
+        {
+            return 0;
+        }
         size = config.defaultButtonMargin;
     }
     return size;
@@ -122,9 +131,15 @@ QSize ToolButton::sizeFromContents(const Style* style, QStyle::ContentsType type
     {
         size.rwidth() += menuIndicatorWidth;
     }
+    else
+    {
+        // If we have a menu indicator, don't add the right margin
+        size.rwidth() += margin;
+    }
 
+    // Always add the left and vertical margins
     size.rwidth() += margin;
-    size.rheight() += margin;
+    size.rheight() += margin * 2;
 
     return size;
 }
@@ -139,7 +154,7 @@ QRect ToolButton::subControlRect(const Style* style, const QStyleOptionComplex* 
         rect = buttonOption->rect;
 
         const int bm = style->pixelMetric(QStyle::PM_ButtonMargin, option, widget);
-        rect.adjust(bm, bm, -bm, -bm);
+        rect.adjust(0, bm, 0, -bm);
 
         const int menuIndicatorWidth = style->pixelMetric(QStyle::PM_MenuButtonIndicator, option, widget);
 
@@ -148,7 +163,11 @@ QRect ToolButton::subControlRect(const Style* style, const QStyleOptionComplex* 
         case QStyle::SC_ToolButton:
             if (buttonOption->features & QStyleOptionToolButton::HasMenu)
             {
-                rect.adjust(0, 0, -menuIndicatorWidth, 0);
+                rect.adjust(bm, 0, -(menuIndicatorWidth + bm), 0);
+            }
+            else
+            {
+                rect.adjust(bm, 0, -bm, 0);
             }
             break;
 
@@ -176,7 +195,6 @@ bool ToolButton::drawToolButton(const Style* style, const QStyleOptionComplex* o
     QRect menuRect = style->subControlRect(QStyle::CC_ToolButton, option, QStyle::SC_ToolButtonMenu, widget);
 
     painter->save();
-    painter->setPen(Qt::NoPen);
 
     QStyleOptionToolButton label = *buttonOption;
 
@@ -184,7 +202,9 @@ bool ToolButton::drawToolButton(const Style* style, const QStyleOptionComplex* o
     {
         painter->setPen(Qt::NoPen);
         painter->setBrush(config.checkedStateBackgroundColor);
-        painter->drawRect(buttonRect);
+
+        const QRect highlightRect = buttonOption->rect;
+        painter->drawRect(highlightRect);
 
         if (buttonOption->state & QStyle::State_MouseOver)
         {
@@ -211,7 +231,7 @@ bool ToolButton::drawToolButton(const Style* style, const QStyleOptionComplex* o
 bool ToolButton::drawIndicatorArrowDown(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config)
 {
     auto toolButton = qobject_cast<const QToolButton*>(widget);
-    if (!toolButton)
+    if (!toolButton || !toolButton->menu())
     {
         return false;
     }
@@ -222,12 +242,28 @@ bool ToolButton::drawIndicatorArrowDown(const Style* style, const QStyleOption* 
                             : QIcon::Normal)
                         : QIcon::Disabled;
 
-    const auto pixmap = style->generatedIconPixmap(mode, config.menuIndicatorIcon, option);
+    const QSize size = config.menuIndicatorIconSize;
+    const int arrowWidth = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(size.width(), AzQStyleHelper::dpi(option)));
+    const int arrowHeight = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(size.height(), AzQStyleHelper::dpi(option)));
+
+    const QIcon icon = QIcon(config.menuIndicatorIcon);
+    const QSize requestedSize = QSize(arrowWidth, arrowHeight);
+    QPixmap originalPixmap;
+
+    if (QWindow* window = widget->window()->windowHandle())
+    {
+        originalPixmap = icon.pixmap(window, requestedSize);
+    }
+    else
+    {
+        originalPixmap = icon.pixmap(requestedSize);
+    }
+
+    const auto pixmap = style->generatedIconPixmap(mode, originalPixmap, option);
 
     const QRect source = pixmap.rect();
-    QRect target = source;
+    QRect target = QRect(QPoint(0,0), source.size() / pixmap.devicePixelRatio());
     target.moveCenter(option->rect.center());
-    target.moveBottom(option->rect.bottom());
 
     painter->drawPixmap(target, pixmap, source);
 

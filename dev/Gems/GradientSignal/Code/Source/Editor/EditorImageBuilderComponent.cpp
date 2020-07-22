@@ -12,6 +12,8 @@
 
 #include "GradientSignal_precompiled.h"
 #include "EditorImageBuilderComponent.h"
+
+#include <AssetBuilderSDK/SerializationDependencies.h>
 #include <GradientSignal/ImageAsset.h>
 #include <GradientSignal/ImageSettings.h>
 #include <AzCore/IO/SystemFile.h>
@@ -54,6 +56,7 @@ namespace GradientSignal
         // Since we want to register our builder, we do that here:
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Gradient Image Builder";
+        builderDescriptor.m_version = 1;
 
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.tif", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.tiff", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
@@ -202,7 +205,6 @@ namespace GradientSignal
         if (!imageAsset)
         {
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed gradient image conversion job for %s.\nFailed loading source image %s.\n", request.m_fullPath.data(), request.m_fullPath.data());
-            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             return;
         }
 
@@ -235,14 +237,17 @@ namespace GradientSignal
         if (!AZ::Utils::SaveObjectToFile(outputPath, AZ::DataStream::ST_XML, imageAsset.get()))
         {
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Failed gradient image conversion job for %s.\nFailed saving output file %s.\n", request.m_fullPath.data(), outputPath.data());
-            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             return;
         }
 
         // Report the image-import result
-        AssetBuilderSDK::JobProduct jobProduct(outputPath);
-        jobProduct.m_productAssetType = azrtti_typeid<ImageAsset>();
-        jobProduct.m_productSubID = 2;
+        AssetBuilderSDK::JobProduct jobProduct;
+        if(!AssetBuilderSDK::OutputObject(&imageAsset, outputPath, azrtti_typeid<ImageAsset>(), 2, jobProduct))
+        {
+            AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Failed to output product dependencies.");
+            return;
+        }
+        
         response.m_outputProducts.push_back(jobProduct);
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Completed gradient image conversion job for %s.\nSucceeded saving output file %s.\n", request.m_fullPath.data(), outputPath.data());

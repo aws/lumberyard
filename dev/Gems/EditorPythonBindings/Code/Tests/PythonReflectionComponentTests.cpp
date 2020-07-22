@@ -89,6 +89,23 @@ namespace UnitTest
             AZ_TracePrintf("python", "PythonReflectionAnotherModule_DoWork");
         }
 
+        static const AZ::VectorFloat& GetValue(const PythonReflectionAnotherModule& module)
+        {
+            return module.m_vectorFloat;
+        }
+
+        static void SetValue(PythonReflectionAnotherModule& module, const AZ::VectorFloat& value)
+        {
+            module.m_vectorFloat = value;
+        }
+
+        bool CompareWithValue(const AZ::VectorFloat& value) const
+        {
+            return (m_vectorFloat.IsClose(value));
+        }
+
+        AZ::VectorFloat m_vectorFloat = { 0.0 };
+
         void Reflect(AZ::ReflectContext* context)
         {
             if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -96,7 +113,12 @@ namespace UnitTest
                 behaviorContext->Class<PythonReflectionAnotherModule>()
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                     ->Attribute(AZ::Script::Attributes::Module, "legacy.test.subtest")
-                    ->Method("do_work", DoWork, nullptr, "Test do work.")
+                    // static globals
+                    ->Method("do_work", &PythonReflectionAnotherModule::DoWork, nullptr, "Test do work.")
+                    ->Method("get_value", &PythonReflectionAnotherModule::GetValue, nullptr, "")
+                    ->Method("set_value", &PythonReflectionAnotherModule::SetValue, nullptr, "")
+                    // instance
+                    ->Method("compare_with_value", &PythonReflectionAnotherModule::CompareWithValue, nullptr, "")
                     ;
             }
         }
@@ -1399,12 +1421,13 @@ namespace UnitTest
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::PythonReflectStringTypes_EmptyStringIn)]);
     }
 
-    TEST_F(PythonReflectionComponentTests, ColorTests)
+    TEST_F(PythonReflectionComponentTests, MathReflectionTests)
     {
         enum class LogTypes
         {
             Skip = 0,
-            MathColor
+            MathColor,
+            MathStaticMembers
         };
 
         m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
@@ -1415,9 +1438,16 @@ namespace UnitTest
                 {
                     return static_cast<int>(LogTypes::MathColor);
                 }
+                else if (AzFramework::StringFunc::Equal(message, "MathStaticMembers"))
+                {
+                    return static_cast<int>(LogTypes::MathStaticMembers);
+                }
             }
             return static_cast<int>(LogTypes::Skip);
         };
+
+        PythonReflectionAnotherModule pythonReflectionAnotherModule;
+        pythonReflectionAnotherModule.Reflect(m_app.GetBehaviorContext());
 
         AZ::Entity e;
         Activate(e);
@@ -1429,6 +1459,7 @@ namespace UnitTest
             pybind11::exec(R"(
                 import azlmbr.math as math
                 import azlmbr.object
+                # testing math type Color
                 color = azlmbr.object.create('Color')
                 if( color is not None ):
                     print ('MathColor')
@@ -1455,20 +1486,37 @@ namespace UnitTest
                     print ('MathColor')
                 if( math.Math_IsClose(color.a, 0.54) == True):
                     print ('MathColor')
+                # testing a math type member like function set
+                import azlmbr.legacy.test.subtest as subtest
+                tester = subtest.PythonReflectionAnotherModule()
+                vectorFloatLhs = tester.get_value() + 1.0
+                tester.set_value(vectorFloatLhs)
+                if( tester.compare_with_value(vectorFloatLhs) ):
+                    print ('MathStaticMembers')
+                # testing the Vector3 math type member like functions
+                vec3 = azlmbr.object.create('Vector3')
+                vec3.x = 0.0
+                vec3.y = 0.0
+                vec3.z = 0.0
+                if( vec3.ToString() == '(x=0.0000000,y=0.0000000,z=0.0000000)'):
+                    print ('MathStaticMembers')
+                # testing the Uuid math type member like functions
+                uuidString = '{E866B520-D667-48A2-82F6-6AEBE1EC9C58}'
+                uuid = azlmbr.math.Uuid_CreateString(uuidString, 0)
+                if( uuid.ToString() == uuidString):
+                    print ('MathStaticMembers')
             )");
         }
         catch (const std::exception& e)
         {
             AZStd::string failReason = AZStd::string::format("Failed on DefaultModule with %s", e.what());
-            //AZ_Warning("UnitTest", false, );
             GTEST_FATAL_FAILURE_(failReason.c_str());
-            /*AZ_Warning("UnitTest", false, );
-            FAIL();*/
         }
 
         e.Deactivate();
 
         EXPECT_EQ(10, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::MathColor)]);
+        EXPECT_EQ(3, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::MathStaticMembers)]);
     }
 
     TEST_F(PythonReflectionComponentTests, ComplexContainers)

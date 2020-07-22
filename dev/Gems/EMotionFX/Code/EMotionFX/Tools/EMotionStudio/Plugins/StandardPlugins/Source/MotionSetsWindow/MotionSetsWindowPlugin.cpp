@@ -21,13 +21,14 @@
 #include <QMessageBox>
 #include <QContextMenuEvent>
 #include <QTableWidget>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Commands.h>
 #include "../../../../EMStudioSDK/Source/EMStudioCore.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 #include "../../../../EMStudioSDK/Source/SaveChangedFilesManager.h"
-#include <MysticQt/Source/ButtonGroup.h>
 #include "../../../../EMStudioSDK/Source/FileManager.h"
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/IDGenerator.h>
+#include <Editor/AnimGraphEditorBus.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/MotionSet.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
@@ -37,7 +38,6 @@
 #include <AzFramework/API/ApplicationAPI.h>
 
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
-
 
 namespace EMStudio
 {
@@ -204,10 +204,10 @@ namespace EMStudio
         // create the dialog stack
         assert(mDialogStack == nullptr);
         mDialogStack = new MysticQt::DialogStack(mDock);
-        mDock->SetContents(mDialogStack);
+        mDock->setWidget(mDialogStack);
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MotionSetsWindowPlugin::WindowReInit);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &MotionSetsWindowPlugin::WindowReInit);
 
         // create the set management window
         mMotionSetManagementWindow = new MotionSetManagementWindow(this, mDialogStack);
@@ -455,6 +455,61 @@ namespace EMStudio
     }
 
 
+    EMotionFX::MotionSet::MotionEntry* MotionSetsWindowPlugin::FindBestMatchMotionEntryById(const AZStd::string& motionId)
+    {
+        // Find motion entry by motionId through motion sets, return nullptr if not found.
+        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        EMotionFX::MotionSet* motionSet = nullptr;
+        EMotionFX::MotionSet::MotionEntry* motionEntry = nullptr;
+
+        // Look for motion entry in animgraph instance of the selected actor instance.
+        EMotionFX::ActorInstance* actorInstance = selectionList.GetSingleActorInstance();
+        if (actorInstance)
+        {
+            EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
+            if (animGraphInstance)
+            {
+                EMotionFX::MotionSet* animGraphInstanceMotionSet = animGraphInstance->GetMotionSet();
+                if (animGraphInstanceMotionSet)
+                {
+                    motionEntry = animGraphInstanceMotionSet->RecursiveFindMotionEntryById(motionId);
+                    if (motionEntry)
+                    {
+                        return motionEntry;
+                    }
+                }
+            }
+        }
+        
+        // If motion entry not found, look in MotionSet combo box of the AnimGraph Editor, find the motion entry by motionId.
+        EMotionFX::AnimGraphEditorRequestBus::BroadcastResult(motionSet, &EMotionFX::AnimGraphEditorRequests::GetSelectedMotionSet);
+        if (motionSet)
+        {
+            motionEntry = motionSet->RecursiveFindMotionEntryById(motionId);
+            if (motionEntry)
+            {
+                return motionEntry;
+            }
+        }
+
+        // If motion entry is still not found, look through all motion sets not owned by runtime.
+        const EMotionFX::MotionManager& motionManager = EMotionFX::GetMotionManager();
+        for(AZ::u32 i = 0; i < motionManager.GetNumMotionSets(); ++i)
+        {
+            motionSet = motionManager.GetMotionSet(i);
+            if (motionSet->GetIsOwnedByRuntime())
+            {
+                continue;
+            }
+            motionEntry = motionSet->RecursiveFindMotionEntryById(motionId);
+            if (motionEntry)
+            {
+                return motionEntry;
+            }
+        }
+        return nullptr;
+    }
+
 
     bool MotionSetsWindowPlugin::CommandCreateMotionSetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
@@ -614,6 +669,8 @@ namespace EMStudio
         commandLine.GetValue("filename", command, filename);
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
+        CommandEditorLoadAnimGraph::RelocateFilename(filename);
+
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByFileName(filename.c_str());
         if (motionSet == nullptr)
         {
@@ -675,6 +732,11 @@ namespace EMStudio
     int MotionSetsWindowPlugin::OnSaveDirtyMotionSets()
     {
         return GetMainWindow()->GetDirtyFileManager()->SaveDirtyFiles(SaveDirtyMotionSetFilesCallback::TYPE_ID);
+    }
+
+    void MotionSetsWindowPlugin::OnAfterLoadProject()
+    {
+        ReInitMotionSetsPlugin();
     }
 } // namespace EMStudio
 

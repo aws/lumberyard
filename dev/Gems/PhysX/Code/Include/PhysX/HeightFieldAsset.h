@@ -45,6 +45,11 @@ namespace PhysX
                 return m_heightField;
             }
 
+            const physx::PxHeightField* GetHeightField() const
+            {
+                return m_heightField;
+            }
+
             void SetHeightField(physx::PxHeightField* heightField)
             {
                 ReleaseMemory();
@@ -53,8 +58,10 @@ namespace PhysX
                 m_status = static_cast<int>(AssetStatus::Ready);
             }
 
-        protected:
-            
+            float GetMinHeight() const { return m_minHeight; }
+            void SetMinHeight(float height) { m_minHeight = height; }
+            float GetMaxHeight() const { return m_maxHeight; }
+            void SetMaxHeight(float height) { m_maxHeight = height; }
 
         private:
             void ReleaseMemory()
@@ -67,6 +74,8 @@ namespace PhysX
             }
 
             physx::PxHeightField* m_heightField = nullptr;
+            float m_minHeight = 0.0f;
+            float m_maxHeight = 0.0f;
         };
     } // namespace Pipeline
 } // namespace PhysX

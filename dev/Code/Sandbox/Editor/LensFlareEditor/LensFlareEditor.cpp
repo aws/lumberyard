@@ -26,6 +26,7 @@
 #include "Clipboard.h"
 #include "StringDlg.h"
 #include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/FancyDocking.h>
 
 #include "QtViewPaneManager.h"
 
@@ -76,6 +77,8 @@ CLensFlareEditor::CLensFlareEditor(QWidget* pParent)
     setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
+    m_advancedDockManager = new AzQtComponents::FancyDocking(this, "lensFlareEditor");
+
     addDockWidget(Qt::LeftDockWidgetArea, m_LensFlareItemTree, tr("Lens Flare Tree"), false);
     addDockWidget(Qt::LeftDockWidgetArea, m_pLensFlareElementTree, tr("Element Tree"), false);
 
@@ -113,6 +116,11 @@ CLensFlareEditor::~CLensFlareEditor()
     s_pLensFlareEditor = NULL;
 }
 
+QMenu* CLensFlareEditor::createPopupMenu()
+{
+    return QMainWindow::createPopupMenu();
+}
+
 void CLensFlareEditor::OnInitDialog()
 {
     InitTreeCtrl();
@@ -133,7 +141,7 @@ void CLensFlareEditor::addDockWidget(Qt::DockWidgetArea area, QWidget* widget, c
     w->setWidget(widget);
     if (!closable)
     {
-        w->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
+        w->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
     }
     QMainWindow::addDockWidget(area, w);
 }
@@ -911,7 +919,7 @@ void CLensFlareEditor::OnRemoveItem()
         if (!fullLensFlareItemName.isEmpty())
         {
             QString deleteMsgStr = tr("Delete %1?").arg(fullLensFlareItemName);
-            if (QMessageBox::question(this, tr("Delete Confirmation"), deleteMsgStr) == QMessageBox::Yes)
+            if (QMessageBox::question(this, tr("Confirmation"), deleteMsgStr) == QMessageBox::Yes)
             {
                 CLensFlareLibrary* pLensFlareLibrary = GetCurrentLibrary();
                 if (pLensFlareLibrary)
@@ -951,7 +959,7 @@ void CLensFlareEditor::OnRemoveItem()
     {
         QString deleteMsgStr = tr("Delete %1?").arg(pSelectedLensFlareItem->GetName());
         // Remove prototype from prototype manager and library.
-        if (QMessageBox::question(this, tr("Delete Confirmation"), deleteMsgStr) == QMessageBox::Yes)
+        if (QMessageBox::question(this, tr("Confirmation"), deleteMsgStr) == QMessageBox::Yes)
         {
             m_pLensFlareLightEntityTree->OnLensFlareDeleteItem(pSelectedLensFlareItem);
 
@@ -976,7 +984,7 @@ void CLensFlareEditor::OnRemoveItem()
 
 void CLensFlareEditor::OnAddLibrary()
 {
-    StringDlg dlg(tr("New Library Name"), this);
+    StringDlg dlg(tr("Library Name"), this);
 
     dlg.SetCheckCallback([this](QString library) -> bool
     {

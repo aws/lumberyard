@@ -63,6 +63,11 @@ namespace EMotionFX
             m_isVisible = isVisible;
         }
 
+        bool RenderActorInstance::IsInCameraFrustum() const
+        {
+            return true;
+        }
+
         Actor* RenderActorInstance::GetActor() const
         {
             ActorAsset* actorAsset = m_actorAsset.Get();

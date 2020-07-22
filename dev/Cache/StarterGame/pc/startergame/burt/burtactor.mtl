@@ -1,0 +1,13 @@
+<Material MtlFlags="557312" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="BURTMat" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200A00000080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.79910284,0.79910284,0.79910284,1" Specular="0.49102089,0.49102089,0.49102089,1" Emittance="0.74540436,0,0,153.53535" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Emittance" File="burt/textures/burt_emis.tif"/>
+    <Texture Map="Specular" File="burt/textures/burt_spec.tif"/>
+    <Texture Map="Bumpmap" File="burt/textures/burt_ddn.dds"/>
+    <Texture Map="Diffuse" File="burt/textures/burt_diff.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+</Material>

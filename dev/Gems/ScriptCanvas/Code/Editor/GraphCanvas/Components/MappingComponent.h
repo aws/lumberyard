@@ -99,5 +99,7 @@ namespace ScriptCanvasEditor
 
         AZ::EntityId m_sourceId;
         AZStd::unordered_map< ScriptCanvas::SlotId, AZ::EntityId > m_slotMapping;
+
+        AZStd::unordered_set< ScriptCanvas::SlotId > m_ignoreRenameSlots;
     };    
 }

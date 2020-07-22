@@ -30,12 +30,17 @@ namespace EMotionFX
         Q_OBJECT //AUTOMOC
 
     public:
+        enum
+        {
+            CLASS_ID = 0x4c0b81e2
+        };
+
         RagdollNodeInspectorPlugin();
         ~RagdollNodeInspectorPlugin();
 
         // EMStudioPlugin overrides
         const char* GetName() const override                { return "Ragdoll"; }
-        uint32 GetClassID() const override                  { return AZ_CRC("RagdollNodeInspectorPlugin", 0x4c0b81e2); }
+        uint32 GetClassID() const override                  { return CLASS_ID; }
         bool GetIsClosable() const override                 { return true;  }
         bool GetIsFloatable() const override                { return true;  }
         bool GetIsVertical() const override                 { return false; }
@@ -47,6 +52,7 @@ namespace EMotionFX
 
         static void AddToRagdoll(const QModelIndexList& modelIndices);
         static void RemoveFromRagdoll(const QModelIndexList& modelIndices);
+        static bool IsNodeInRagdoll(const QModelIndex& index);
         static void AddCollider(const QModelIndexList& modelIndices, const AZ::TypeId& colliderType);
         static void CopyColliders(const QModelIndexList& modelIndices, PhysicsSetup::ColliderConfigType copyFrom);
 

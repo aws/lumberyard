@@ -38,7 +38,9 @@ namespace AZ
     AZ_CVAR(AZ::Vector3, testVec3, AZ::Vector3(0.0f), nullptr, ConsoleFunctorFlags::Null, "");
     AZ_CVAR(AZ::Vector4, testVec4, AZ::Vector4(0.0f), nullptr, ConsoleFunctorFlags::Null, "");
     AZ_CVAR(AZ::Quaternion, testQuat, AZ::Quaternion(0.0f), nullptr, ConsoleFunctorFlags::Null, "");
-    AZ_CVAR(AZ::Color, testColor, AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), nullptr, ConsoleFunctorFlags::Null, "");
+    AZ_CVAR(AZ::Color, testColorNormalized, AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), nullptr, ConsoleFunctorFlags::Null, "");
+    AZ_CVAR(AZ::Color, testColorNormalizedMixed, AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), nullptr, ConsoleFunctorFlags::Null, "");
+    AZ_CVAR(AZ::Color, testColorRgba, AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), nullptr, ConsoleFunctorFlags::Null, "");
 
     class ConsoleTests
         : public AllocatorsFixture
@@ -168,9 +170,25 @@ namespace AZ
         TestCVarHelper(testQuat, "testQuat", "testQuat 1 1 1 1", "testQuat asdf", AZ::Quaternion(100, 100, 100, 100), AZ::Quaternion(0, 0, 0, 0), AZ::Quaternion(1, 1, 1, 1));
     }
 
-    TEST_F(ConsoleTests, CVar_GetSetTest_Color)
+    TEST_F(ConsoleTests, CVar_GetSetTest_Color_Normalized)
     {
-        TestCVarHelper(testColor, "testColor", "testColor 1 1 1 1", "testColor asdf", AZ::Color(0.5f, 0.5f, 0.5f, 0.5f), AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), AZ::Color(1.0f, 1.0f, 1.0f, 1.0f));
+        TestCVarHelper(
+            testColorNormalized, "testColorNormalized", "testColorNormalized 1.0 1.0 1.0 1.0", "testColorNormalized asdf",
+            AZ::Color(0.5f, 0.5f, 0.5f, 0.5f), AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), AZ::Color(1.0f, 1.0f, 1.0f, 1.0f));
+    }
+
+    TEST_F(ConsoleTests, CVar_GetSetTest_Color_Normalized_Mixed)
+    {
+        TestCVarHelper(
+            testColorNormalizedMixed, "testColorNormalizedMixed", "testColorNormalizedMixed 1.0 0 1.0 1", "testColorNormalizedMixed asdf",
+            AZ::Color(0.5f, 0.5f, 0.5f, 0.5f), AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), AZ::Color(1.0f, 0.0f, 1.0f, 1.0f));
+    }
+
+    TEST_F(ConsoleTests, CVar_GetSetTest_Color_Rgba)
+    {
+        TestCVarHelper(
+            testColorRgba, "testColorRgba", "testColorRgba 255 255 255 255", "testColorRgba asdf",
+            AZ::Color(0.5f, 0.5f, 0.5f, 0.5f), AZ::Color(0.0f, 0.0f, 0.0f, 0.0f), AZ::Color(1.0f, 1.0f, 1.0f, 1.0f));
     }
 
     TEST_F(ConsoleTests, CVar_ConstructAfterDeferredInit)

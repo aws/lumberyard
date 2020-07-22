@@ -60,6 +60,7 @@
 #include <AzToolsFramework/AssetEditor/AssetEditorWidget.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemComponent.h>
+#include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 
 #include <QtWidgets/QMessageBox>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
@@ -69,6 +70,8 @@ AZ_POP_DISABLE_OVERRIDE_WARNING
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMap>
+
+
 // Not possible to use AZCore's operator new overrides until we address the overall problems
 // with allocators, or more likely convert AzToolsFramework to a DLL and restrict overloading to
 // within the DLL. Since this is currently linked as a lib, overriding new and delete would require
@@ -503,6 +506,7 @@ namespace AzToolsFramework
         AssetBrowser::SourceAssetBrowserEntry::Reflect(context);
         AssetBrowser::ProductAssetBrowserEntry::Reflect(context);
 
+        AssetEditor::AssetEditorWindowSettings::Reflect(context);
         AssetEditor::AssetEditorWidgetUserSettings::Reflect(context);
 
         QTreeViewWithStateSaving::Reflect(context);
@@ -522,6 +526,7 @@ namespace AzToolsFramework
                 ->Event("CreateNewEntity", &ToolsApplicationRequests::CreateNewEntity)
                 ->Event("CreateNewEntityAtPosition", &ToolsApplicationRequests::CreateNewEntityAtPosition)
                 ->Event("GetCurrentLevelEntityId", &ToolsApplicationRequests::GetCurrentLevelEntityId)
+                ->Event("GetExistingEntity", &ToolsApplicationRequests::GetExistingEntity)
                 ->Event("DeleteEntityById", &ToolsApplicationRequests::DeleteEntityById)
                 ->Event("DeleteEntities", &ToolsApplicationRequests::DeleteEntities)
                 ->Event("DeleteEntityAndAllDescendants", &ToolsApplicationRequests::DeleteEntityAndAllDescendants)
@@ -887,6 +892,11 @@ namespace AzToolsFramework
         EditorRequestBus::BroadcastResult(createdEntityId, &EditorRequests::CreateNewEntityAtPosition, pos, parentId);
 
         return createdEntityId;
+    }
+
+    AZ::EntityId ToolsApplication::GetExistingEntity(AZ::u64 id)
+    {
+        return AZ::EntityId{id};
     }
 
     void ToolsApplication::DeleteSelected()

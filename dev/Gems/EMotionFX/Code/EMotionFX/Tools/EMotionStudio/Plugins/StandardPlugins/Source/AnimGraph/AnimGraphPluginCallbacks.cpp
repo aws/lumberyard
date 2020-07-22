@@ -26,7 +26,6 @@
 #include "StateGraphNode.h"
 #include "ParameterWindow.h"
 #include "GraphNodeFactory.h"
-#include "RecorderWidget.h"
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QTreeWidgetItem>
@@ -61,6 +60,8 @@
 #include <EMotionFX/Source/MotionManager.h>
 #include <Editor/AnimGraphEditorBus.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewToolBar.h>
 
 
 namespace EMStudio
@@ -171,7 +172,11 @@ namespace EMStudio
         if (clearRecorderCommand->m_wasRecording || clearRecorderCommand->m_wasInPlayMode)
         {
             AnimGraphPlugin* animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
-            animGraphPlugin->GetRecorderWidget()->OnClearButton();
+            EMStudioPlugin* timeViewPlugin = EMStudio::GetPluginManager()->FindActivePlugin(TimeViewPlugin::CLASS_ID);
+            if (timeViewPlugin)
+            {
+                static_cast<TimeViewPlugin*>(timeViewPlugin)->GetTimeViewToolBar()->OnClearRecordButton();
+            }
             animGraphPlugin->GetParameterWindow()->Reinit();
         }
 

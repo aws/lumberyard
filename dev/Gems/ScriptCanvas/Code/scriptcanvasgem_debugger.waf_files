@@ -36,8 +36,11 @@
         "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation": [
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationEvents.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DynamicDataTypeEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/InvalidExpressionEvent.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/InvalidRandomSignalEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScopedDataConnectionEvent.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/SlotReferenceEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/UnknownEndpointEvent.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/ScriptEventVersionMismatch.h"
         ],
@@ -45,6 +48,12 @@
             "Include/ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/ExecutionValidationEvents.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/ExecutionValidationIds.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/UnusedNodeEvent.h"
+        ],
+        "Include/ScriptCanvas/Debugger/ValidationEvents/ValidationEffects":
+        [
+            "Include/ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/FocusOnEffect.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/HighlightEffect.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/ValidationEffects/GreyOutEffect.h"
         ]
     }
 }

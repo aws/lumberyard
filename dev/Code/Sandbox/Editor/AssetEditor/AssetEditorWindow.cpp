@@ -11,14 +11,36 @@
 */
 #include "StdAfx.h"
 
-#include "AssetEditor/ui_AssetEditorWindow.h"
-
 #include <Editor/AssetEditor/AssetEditorWindow.h>
+#include <AssetEditor/ui_AssetEditorWindow.h>
+
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/IO/FileIO.h>
+
 #include <AzToolsFramework/AssetEditor/AssetEditorWidget.h>
 
 #include <QPushButton>
 #include <QMessageBox>
+#include <AzCore/UserSettings/UserSettingsComponent.h>
+
+namespace AssetEditorUtils
+{
+    AssetEditorWindow* CreateAssetEditorWithAsset(const AZ::Data::Asset<AZ::Data::AssetData> assetRef)
+    {
+        AssetEditorWindow* assetEditorWindow = new AssetEditorWindow();
+        if (auto assetsWindowsToRestore = AZ::UserSettings::CreateFind<AzToolsFramework::AssetEditor::AssetEditorWindowSettings>(AZ::Crc32(AzToolsFramework::AssetEditor::AssetEditorWindowSettings::s_name), AZ::UserSettings::CT_GLOBAL))
+        {
+            assetsWindowsToRestore->m_openAssets.emplace(assetRef);
+        }
+
+        AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequestBus::Events::Save);
+
+        auto&& loadedAsset = AZ::Data::AssetManager::Instance().GetAsset(assetRef.GetId(), assetRef.GetType(), true, &AZ::ObjectStream::AssetFilterDefault, true);
+        assetEditorWindow->OpenAsset(loadedAsset);
+        return assetEditorWindow;
+    }
+}
+
 
 AssetEditorWindow::AssetEditorWindow(QWidget* parent)
     : QWidget(parent)
@@ -36,7 +58,18 @@ AssetEditorWindow::AssetEditorWindow(QWidget* parent)
 
 AssetEditorWindow::~AssetEditorWindow()
 {
+    using namespace AzToolsFramework::AssetEditor;
     BusDisconnect();
+}
+
+void AssetEditorWindow::RegisterViewClass(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+{
+    AzToolsFramework::ViewPaneOptions options;
+    options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    options.showInMenu = false;
+    auto& assetName = asset.GetHint();
+    const char* paneName = assetName.c_str();
+    AzToolsFramework::RegisterViewPane<AssetEditorWindow>(paneName, LyViewPane::CategoryTools, options, [asset](QWidget*) {return AssetEditorUtils::CreateAssetEditorWithAsset(asset); });
 }
 
 void AssetEditorWindow::CreateAsset(const AZ::Data::AssetType& assetType)
@@ -66,7 +99,10 @@ void AssetEditorWindow::OnAssetOpened(const AZ::Data::Asset<AZ::Data::AssetData>
         AZStd::string extension;
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, asset.GetId());
         AzFramework::StringFunc::Path::Split(assetPath.c_str(), nullptr, nullptr, &assetName, &extension);
-        AZStd::string windowTitle = AZStd::string::format("Edit Asset: %s", (assetName + extension).c_str());
+//        AZStd::string windowTitle = AZStd::string::format("Edit Asset: %s", (assetName + extension).c_str());
+
+        AZStd::string windowTitle = asset.GetHint();
+
         qobject_cast<QWidget*>(parent())->setWindowTitle(tr(windowTitle.c_str()));
     }
     else

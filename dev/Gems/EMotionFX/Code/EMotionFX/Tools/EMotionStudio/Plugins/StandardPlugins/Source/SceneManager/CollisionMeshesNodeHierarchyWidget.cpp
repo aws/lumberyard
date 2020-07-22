@@ -12,6 +12,7 @@
 
 // include the required headers
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include "CollisionMeshesNodeHierarchyWidget.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MCore/Source/StringConversions.h>
@@ -37,8 +38,8 @@ namespace EMStudio
     {
         mRootSelected = false;
 
-        mMeshIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").c_str());
-        mCharacterIcon  = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Character.png").c_str());
+        mMeshIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Mesh.svg").c_str());
+        mCharacterIcon  = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Character.svg").c_str());
 
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setMargin(0);
@@ -48,8 +49,8 @@ namespace EMStudio
 
         displayLayout->addWidget(new QLabel("LOD:"));
 
-        mLODSpinBox = new MysticQt::IntSpinBox();
-        connect(mLODSpinBox, static_cast<void (MysticQt::IntSpinBox::*)(int)>(&MysticQt::IntSpinBox::valueChanged), this, &CollisionMeshesNodeHierarchyWidget::LODSpinBoxValueChanged);
+        mLODSpinBox = new AzQtComponents::SpinBox();
+        connect(mLODSpinBox, static_cast<void (AzQtComponents::SpinBox::*)(int)>(&AzQtComponents::SpinBox::valueChanged), this, &CollisionMeshesNodeHierarchyWidget::LODSpinBoxValueChanged);
         displayLayout->addWidget(mLODSpinBox);
 
         QWidget* spacerWidget = new QWidget();

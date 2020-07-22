@@ -31,14 +31,16 @@ namespace GraphCanvas
     {
         if (m_hideSlots)
         {
-            setEnabled(true);
+            bool hasHideableSlots = true;
+            NodeRequestBus::EventResult(hasHideableSlots, targetId, &NodeRequests::HasHideableSlots);
+            setEnabled(hasHideableSlots);
         }
         else
         {
             setEnabled(false);
 
             AZStd::vector<AZ::EntityId> selectedNodes;
-            SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);            
+            SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);
 
             for (auto nodeId : selectedNodes)
             {
@@ -57,7 +59,7 @@ namespace GraphCanvas
     NodeContextMenuAction::SceneReaction ManageUnusedSlotsMenuAction::TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos)
     {
         AZStd::vector<AZ::EntityId> selectedNodes;
-        SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);        
+        SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);
 
         for (auto nodeId : selectedNodes)
         {

@@ -23,8 +23,9 @@
 
 #include <Util/PathUtil.h> // for getting game editing folder
 
-TreePanel::TreePanel()
-    : propertiesAttachedToDocument(false)
+TreePanel::TreePanel(QWidget* parent)
+    : QDockWidget(parent)
+    , propertiesAttachedToDocument(false)
 {
     m_propertyTree = new QPropertyTree(this);
     QPropertyTreeStyle treeStyle;

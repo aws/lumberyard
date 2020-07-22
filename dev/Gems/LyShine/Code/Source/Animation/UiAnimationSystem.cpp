@@ -471,6 +471,7 @@ void UiAnimationSystem::PlaySequence(IUiAnimSequence* pSequence, IUiAnimSequence
     NotifyListeners(pSequence, IUiAnimationListener::eUiAnimationEvent_Started);
 }
 
+//////////////////////////////////////////////////////////////////////////
 void UiAnimationSystem::NotifyListeners(IUiAnimSequence* pSequence, IUiAnimationListener::EUiAnimationEvent event)
 {
     TUiAnimationListenerMap::iterator found (m_animationListenerMap.find(pSequence));
@@ -498,6 +499,35 @@ void UiAnimationSystem::NotifyListeners(IUiAnimSequence* pSequence, IUiAnimation
                 (*iter)->OnUiAnimationEvent(event, pSequence);
                 ++iter;
             }
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void UiAnimationSystem::NotifyTrackEventListeners(const char* eventName, const char* valueName, IUiAnimSequence* pSequence)
+{
+    TUiAnimationListenerMap::iterator found(m_animationListenerMap.find(pSequence));
+    if (found != m_animationListenerMap.end())
+    {
+        TUiAnimationListenerVec listForSeq = (*found).second;
+        TUiAnimationListenerVec::iterator iter(listForSeq.begin());
+        while (iter != listForSeq.end())
+        {
+            (*iter)->OnUiTrackEvent(AZStd::string(eventName), AZStd::string(valueName), pSequence);
+            ++iter;
+        }
+    }
+
+    // 'NULL' ones are listeners interested in every sequence.
+    TUiAnimationListenerMap::iterator found2(m_animationListenerMap.find(static_cast<IUiAnimSequence*>(nullptr)));
+    if (found2 != m_animationListenerMap.end())
+    {
+        TUiAnimationListenerVec listForSeq = (*found2).second;
+        TUiAnimationListenerVec::iterator iter(listForSeq.begin());
+        while (iter != listForSeq.end())
+        {
+            (*iter)->OnUiTrackEvent(AZStd::string(eventName), AZStd::string(valueName), pSequence);
+            ++iter;
         }
     }
 }

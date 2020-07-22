@@ -10,10 +10,12 @@
 *
 */
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/Json/BaseJsonSerializer.h>
-#include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/Serialization/Json/JsonDeserializer.h>
+#include <AzCore/Serialization/Json/JsonMerger.h>
+#include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/Serialization/Json/JsonSerializer.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/Json/StackedString.h>
@@ -33,7 +35,7 @@ namespace AZ
         {
             using namespace JsonSerializationResult;
 
-            ResultCode result = ResultCode::Success(Tasks::RetrieveInfo);
+            ResultCode result = ResultCode(Tasks::RetrieveInfo, Outcomes::Success);
             serializeContext = settings.m_serializeContext;
             if (!serializeContext)
             {
@@ -59,7 +61,7 @@ namespace AZ
         {
             using namespace JsonSerializationResult;
 
-            ResultCode result = ResultCode::Success(Tasks::RetrieveInfo);
+            ResultCode result = ResultCode(Tasks::RetrieveInfo, Outcomes::Success);
             registrationContext = settings.m_registrationContext;
             if (!registrationContext)
             {
@@ -95,13 +97,108 @@ namespace AZ
         }
     } // namespace JsonSerializationInternal
 
+    JsonSerializationResult::ResultCode JsonSerialization::ApplyPatch(rapidjson::Value& target,
+        rapidjson::Document::AllocatorType& allocator, const rapidjson::Value& patch, JsonMergeApproach approach,
+        JsonApplyPatchSettings settings)
+    {
+        using namespace JsonSerializationResult;
+
+        AZStd::string scratchBuffer;
+        auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
+        {
+            return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
+        };
+        if (!settings.m_reporting)
+        {
+            settings.m_reporting = issueReportingCallback;
+        }
+
+        switch (approach)
+        {
+        case JsonMergeApproach::JsonPatch:
+            return JsonMerger::ApplyPatch(target, allocator, patch, settings);
+        case JsonMergeApproach::JsonMergePatch:
+            return JsonMerger::ApplyMergePatch(target, allocator, patch, settings);
+        default:
+            AZ_Assert(false, "Unsupported JsonMergeApproach (%i).", aznumeric_cast<int>(approach));
+            return settings.m_reporting("Unsupported JsonMergeApproach.", ResultCode(Tasks::Merge, Outcomes::Catastrophic),
+                StackedString(StackedString::Format::JsonPointer));
+        }
+    }
+
+    JsonSerializationResult::ResultCode JsonSerialization::ApplyPatch(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
+        const rapidjson::Value& source, const rapidjson::Value& patch, JsonMergeApproach approach, JsonApplyPatchSettings settings)
+    {
+        using namespace JsonSerializationResult;
+
+        AZStd::string scratchBuffer;
+        auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
+        {
+            return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
+        };
+        if (!settings.m_reporting)
+        {
+            settings.m_reporting = issueReportingCallback;
+        }
+
+        output.CopyFrom(source, allocator);
+
+        ResultCode result(Tasks::Merge);
+        switch (approach)
+        {
+        case JsonMergeApproach::JsonPatch:
+            result = JsonMerger::ApplyPatch(output, allocator, patch, settings);
+            break;
+        case JsonMergeApproach::JsonMergePatch:
+            result = JsonMerger::ApplyMergePatch(output, allocator, patch, settings);
+            break;
+        default:
+            AZ_Assert(false, "Unsupported JsonMergeApproach (%i).", aznumeric_cast<int>(approach));
+            result = settings.m_reporting("Unsupported JsonMergeApproach.", ResultCode(Tasks::Merge, Outcomes::Catastrophic),
+                StackedString(StackedString::Format::JsonPointer));
+            break;
+        }
+
+        if (result.GetProcessing() == Processing::Halted)
+        {
+            output.SetObject();
+        }
+        return result;
+    }
+
+
+    JsonSerializationResult::ResultCode JsonSerialization::CreatePatch(rapidjson::Value& patch, rapidjson::Document::AllocatorType& allocator,
+        const rapidjson::Value& source, const rapidjson::Value& target, JsonMergeApproach approach, JsonCreatePatchSettings settings)
+    {
+        using namespace JsonSerializationResult;
+
+        AZStd::string scratchBuffer;
+        auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
+        {
+            return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
+        };
+        if (!settings.m_reporting)
+        {
+            settings.m_reporting = issueReportingCallback;
+        }
+
+        switch (approach)
+        {
+        case JsonMergeApproach::JsonPatch:
+            return JsonMerger::CreatePatch(patch, allocator, source, target, settings);
+        case JsonMergeApproach::JsonMergePatch:
+            return JsonMerger::CreateMergePatch(patch, allocator, source, target, settings);
+        default:
+            AZ_Assert(false, "Unsupported JsonMergeApproach (%i).", aznumeric_cast<int>(approach));
+            return ResultCode(Tasks::CreatePatch, Outcomes::Catastrophic);
+        }
+    }
+
     JsonSerializationResult::ResultCode JsonSerialization::Load(void* object, const Uuid& objectType, const rapidjson::Value& root, JsonDeserializerSettings settings)
     {
         using namespace JsonSerializationResult;
 
-        AZ_Assert(object, "JsonSerializer requires a valid object to load into.");
-
-        AZ::OSString scratchBuffer;
+        AZStd::string scratchBuffer;
         auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
         {
             return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
@@ -115,7 +212,8 @@ namespace AZ
         if (result.GetOutcome() == Outcomes::Success)
         {
             StackedString path(StackedString::Format::JsonPointer);
-            result = JsonDeserializer::Load(object, objectType, root, path, settings);
+            JsonDeserializerContext context(AZStd::move(settings));
+            result = JsonDeserializer::Load(object, objectType, root, context);
         }
         return result;
     }
@@ -125,7 +223,7 @@ namespace AZ
     {
         using namespace JsonSerializationResult;
 
-        AZ::OSString scratchBuffer;
+        AZStd::string scratchBuffer;
         auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
         {
             return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
@@ -138,42 +236,10 @@ namespace AZ
         ResultCode result = JsonSerializationInternal::GetContexts(settings, settings.m_serializeContext, settings.m_registrationContext);
         if (result.GetOutcome() == Outcomes::Success)
         {
-            StackedString path(StackedString::Format::JsonPointer);
-            path.Push(jsonPath);
+            JsonDeserializerContext context(AZStd::move(settings));
+            context.PushPath(jsonPath);
 
-            SerializeContext::IRttiHelper* baseClassRtti = nullptr;
-            if (baseClassTypeId)
-            {
-                const SerializeContext::ClassData* baseClassData = settings.m_serializeContext->FindClassData(*baseClassTypeId);
-                baseClassRtti = baseClassData ? baseClassData->m_azRtti : nullptr;
-            }
-
-            JsonDeserializer::LoadTypeIdResult typeIdResult = JsonDeserializer::LoadTypeIdFromJsonString(input, baseClassRtti, settings);
-            switch (typeIdResult.m_determination)
-            {
-            case JsonDeserializer::TypeIdDetermination::ExplicitTypeId:
-                // fall through
-            case JsonDeserializer::TypeIdDetermination::ImplicitTypeId:
-                typeId = typeIdResult.m_typeId;
-                result = settings.m_reporting("Successfully read type id from json value.", 
-                    ResultCode::Success(Tasks::ReadField), path);
-                break;
-            case JsonDeserializer::TypeIdDetermination::FailedToDetermine:
-                typeId = Uuid::CreateNull();
-                result = settings.m_reporting("Unable to find type id with the provided string.", 
-                    ResultCode(Tasks::ReadField, Outcomes::Unknown), path);
-                break;
-            case JsonDeserializer::TypeIdDetermination::FailedDueToMultipleTypeIds:
-                typeId = Uuid::CreateNull();
-                result = settings.m_reporting("The provided string points to multiple type ids. Use the uuid of the intended class instead.", 
-                    ResultCode(Tasks::ReadField, Outcomes::Unknown), path);
-                break;
-            default:
-                typeId = Uuid::CreateNull();
-                result = settings.m_reporting("Unknown result returned while loading type id.", 
-                    ResultCode(Tasks::ReadField, Outcomes::Catastrophic), path);
-                break;
-            }
+            result = JsonDeserializer::LoadTypeId(typeId, input, context, baseClassTypeId);
         }
         return result;
     }
@@ -183,9 +249,7 @@ namespace AZ
     {
         using namespace JsonSerializationResult;
 
-        AZ_Assert(object, "JsonSerializer requires a valid object to retrieve information from for storing.");
-
-        AZ::OSString scratchBuffer;
+        AZStd::string scratchBuffer;
         auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
         {
             return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
@@ -194,7 +258,7 @@ namespace AZ
         {
             settings.m_reporting = issueReportingCallback;
         }
-        
+
         ResultCode result = JsonSerializationInternal::GetContexts(settings, settings.m_serializeContext, settings.m_registrationContext);
         if (result.GetOutcome() == Outcomes::Success)
         {
@@ -205,8 +269,9 @@ namespace AZ
                 settings.m_keepDefaults = false;
             }
 
+            JsonSerializerContext context(AZStd::move(settings), allocator);
             StackedString path(StackedString::Format::ContextPath);
-            result = JsonSerializer::Store(output, allocator, object, defaultObject, objectType, path, settings);
+            result = JsonSerializer::Store(output, object, defaultObject, objectType, context);
         }
         return result;
     }
@@ -216,7 +281,7 @@ namespace AZ
     {
         using namespace JsonSerializationResult;
 
-        AZ::OSString scratchBuffer;
+        AZStd::string scratchBuffer;
         auto issueReportingCallback = [&scratchBuffer](AZStd::string_view message, ResultCode result, AZStd::string_view target) -> ResultCode
         {
             return JsonSerialization::DefaultIssueReporter(scratchBuffer, message, result, target);
@@ -229,22 +294,9 @@ namespace AZ
         ResultCode result = JsonSerializationInternal::GetContexts(settings, settings.m_serializeContext, settings.m_registrationContext);
         if (result.GetOutcome() == Outcomes::Success)
         {
-            StackedString path(StackedString::Format::ContextPath);
-            path.Push(elementPath);
-
-            const SerializeContext::ClassData* data = settings.m_serializeContext->FindClassData(typeId);
-            if (data)
-            {
-                output = JsonSerializer::StoreTypeName(allocator, *data, settings);
-                return settings.m_reporting("Type id successfully stored to json value.", ResultCode::Success(Tasks::WriteValue), path);
-            }
-            else
-            {
-                JsonSerializer::SetExplicitDefault(output);
-                return settings.m_reporting(
-                    OSString::format("Unable to retrieve description for type %s.", typeId.ToString<OSString>().c_str()), 
-                    ResultCode(Tasks::RetrieveInfo, Outcomes::Unknown), path);
-            }
+            JsonSerializerContext context(AZStd::move(settings), allocator);
+            context.PushPath(elementPath);
+            result = JsonSerializer::StoreTypeName(output, typeId, context);
         }
         return result;
     }
@@ -282,7 +334,7 @@ namespace AZ
         }
     }
 
-    JsonSerializationResult::ResultCode JsonSerialization::DefaultIssueReporter(AZ::OSString& scratchBuffer,
+    JsonSerializationResult::ResultCode JsonSerialization::DefaultIssueReporter(AZStd::string& scratchBuffer,
         AZStd::string_view message, JsonSerializationResult::ResultCode result, AZStd::string_view path)
     {
         using namespace JsonSerializationResult;

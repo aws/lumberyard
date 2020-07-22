@@ -17,6 +17,8 @@
 #include <Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.generated.cpp>
 #include <Include/ScriptCanvas/Libraries/Math/MathNodeUtilities.h>
 
+#include <Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/InvalidRandomSignalEvent.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
@@ -54,7 +56,7 @@ namespace ScriptCanvas
                 // We always want at least one weighted transition state
                 if (m_weightedPairings.empty())
                 {
-                    AddWeightedPair();                    
+                    AddWeightedPair();
                 }
             }
 
@@ -85,7 +87,43 @@ namespace ScriptCanvas
 
                     RegisterExtension(visualExtension);
                 }
+            }
 
+            bool WeightedRandomSequencer::OnValidateNode(ValidationResults& validationResults)
+            {
+                bool isValid = false;
+
+                for (const Slot& slot : GetSlots())
+                {
+                    if (!slot.IsData())
+                    {
+                        continue;
+                    }
+
+                    if (slot.IsConnected())
+                    {
+                        isValid = true;
+                        break;
+                    }
+
+                    const Datum* datum = FindDatum(slot.GetId());
+
+                    const ScriptCanvas::Data::NumberType* numberType = datum->GetAs<ScriptCanvas::Data::NumberType>();
+
+                    if (numberType && !AZ::IsClose((*numberType), 0.0, DBL_EPSILON))
+                    {
+                        isValid = true;
+                        break;
+                    }
+                }
+
+                if (!isValid)
+                {
+                    InvalidRandomSignalEvent* invalidRandomSignalEvent = aznew InvalidRandomSignalEvent(GetEntityId());
+                    validationResults.AddValidationEvent(invalidRandomSignalEvent);
+                }
+
+                return isValid;
             }
             
             void WeightedRandomSequencer::OnInputSignal(const SlotId& slotId)
@@ -254,6 +292,7 @@ namespace ScriptCanvas
                 dataSlotConfiguration.m_toolTip = "The weight associated with the execution state.";
                 dataSlotConfiguration.m_addUniqueSlotByNameAndType = false;
                 dataSlotConfiguration.SetType(Data::Type::Number());
+                dataSlotConfiguration.SetDefaultValue(1.0f);
 
                 dataSlotConfiguration.m_displayGroup = GetDisplayGroup();
                 

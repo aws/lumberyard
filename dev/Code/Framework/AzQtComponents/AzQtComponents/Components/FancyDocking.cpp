@@ -13,7 +13,6 @@
 #include <AzQtComponents/Components/FancyDocking.h>
 #include <cmath>
 #include <AzQtComponents/Components/RepolishMinimizer.h>
-#include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
@@ -34,12 +33,13 @@
 #include <QScopedValueRollback>
 #include <QScreen>
 #include <QStyle>
+#include <QStackedWidget>
 #include <QStyleOptionToolButton>
 #include <QVBoxLayout>
 #include <QWindow>
 #include <AzQtComponents/Components/FancyDockingGhostWidget.h>
 #include <AzQtComponents/Components/FancyDockingDropZoneWidget.h>
-
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 
 static void opimizedSetParent(QWidget* widget, QWidget* parent)
 {
@@ -107,7 +107,7 @@ namespace AzQtComponents
     /**
      * Create our fancy docking widget
      */
-    FancyDocking::FancyDocking(QMainWindow* mainWindow, const char* identifierPrefix)
+    FancyDocking::FancyDocking(DockMainWindow* mainWindow, const char* identifierPrefix)
         : QWidget(mainWindow, Qt::WindowFlags(Qt::ToolTip | Qt::BypassWindowManagerHint | Qt::FramelessWindowHint))
         , m_mainWindow(mainWindow)
         , m_desktopWidget(QApplication::desktop())
@@ -124,7 +124,7 @@ namespace AzQtComponents
         // when reading/writing from/to data streams
         qRegisterMetaTypeStreamOperators<FancyDocking::TabContainerType>("FancyDocking::TabContainerType");
         mainWindow->installEventFilter(this);
-        mainWindow->setProperty("fancydocking_owner", QVariant::fromValue(this));
+        mainWindow->SetFancyDockingOwner(this);
         setAutoFillBackground(false);
         setAttribute(Qt::WA_TransparentForMouseEvents);
         setAttribute(Qt::WA_TranslucentBackground);
@@ -185,7 +185,7 @@ namespace AzQtComponents
         //connect(dockWidget, &QDockWidget::topLevelChanged, [dockWidget](bool fl)
         //    { if (!fl) dockWidget->setTitleBarWidget(new QWidget()); });
         DockMainWindow* mainWindow = new DockMainWindow(dockWidget);
-        mainWindow->setProperty("fancydocking_owner", QVariant::fromValue(this));
+        mainWindow->SetFancyDockingOwner(this);
         mainWindow->setWindowFlags(Qt::Widget);
         mainWindow->installEventFilter(this);
         dockWidget->setWidget(mainWindow);
@@ -259,12 +259,28 @@ namespace AzQtComponents
     {
         QRect totalScreenRect;
         int numScreens = m_desktopWidget->screenCount();
+
+#ifdef AZ_PLATFORM_WINDOWS
+        for (QWidget* w : m_perScreenFullScreenWidgets) {
+            delete w;
+        }
+        m_perScreenFullScreenWidgets.clear();
+#endif
+
         for (int i = 0; i < numScreens; ++i)
         {
+#ifdef AZ_PLATFORM_WINDOWS
+            QWidget* screenWidget = new QWidget(this);
+            screenWidget->setGeometry(m_desktopWidget->screenGeometry(i));
+            m_perScreenFullScreenWidgets.push_back(screenWidget);
+#else
             totalScreenRect = totalScreenRect.united(m_desktopWidget->screenGeometry(i));
+#endif
         }
 
+#ifndef AZ_PLATFORM_WINDOWS
         setGeometry(totalScreenRect);
+#endif
 
         // Update our list of screens whenever screens are added/removed so that we
         // don't have to query them every time
@@ -312,6 +328,28 @@ namespace AzQtComponents
         });
 
         return aznumeric_cast<int>(count);
+    }
+
+    /**
+     * Adjust mapFromGlobal to account for DPI scaling on multiple screens
+     */
+    QPoint FancyDocking::multiscreenMapFromGlobal(const QPoint& point)
+    {
+#ifdef AZ_PLATFORM_WINDOWS
+        for (int i = 0; i < m_desktopWidget->screenCount(); i++) {
+            QScreen* s = QGuiApplication::screens()[i];
+            if (s->geometry().contains(point)) {
+                qreal scaleFactor = QHighDpiScaling::factor(s);
+                return ((m_perScreenFullScreenWidgets[i]->mapFromGlobal(point) * scaleFactor) + m_perScreenFullScreenWidgets[i]->mapToGlobal({0, 0})) / scaleFactor;
+            }
+        }
+
+        // If the point isn't contained in any screen, return the regular mapFromGlobal() result for now
+        // TODO - may need to do some shenanigan like the above based to the closest screen?
+        return mapFromGlobal(point);
+#else
+        return mapFromGlobal(point);
+#endif
     }
 
     /**
@@ -388,7 +426,7 @@ namespace AzQtComponents
     QRect FancyDocking::getAbsoluteDropZone(QWidget* dock, Qt::DockWidgetArea& area, const QPoint& globalPos)
     {
         QRect absoluteDropZoneRect;
-        if (!dock)
+        if (!dock || ForceTabbedDocksEnabled())
         {
             return absoluteDropZoneRect;
         }
@@ -423,9 +461,9 @@ namespace AzQtComponents
 
         // Setup the possible absolute drop zones for the given main window
         QRect mainWindowRect(mainWindow->rect());
-        QPoint mainWindowTopLeft = mapFromGlobal(mainWindow->mapToGlobal(mainWindowRect.topLeft()));
-        QPoint mainWindowTopRight = mapFromGlobal(mainWindow->mapToGlobal(mainWindowRect.topRight()));
-        QPoint mainWindowBottomLeft = mapFromGlobal(mainWindow->mapToGlobal(mainWindowRect.bottomLeft()));
+        QPoint mainWindowTopLeft = multiscreenMapFromGlobal(mainWindow->mapToGlobal(mainWindowRect.topLeft()));
+        QPoint mainWindowTopRight = multiscreenMapFromGlobal(mainWindow->mapToGlobal(mainWindowRect.topRight()));
+        QPoint mainWindowBottomLeft = multiscreenMapFromGlobal(mainWindow->mapToGlobal(mainWindowRect.bottomLeft()));
         QSize absoluteLeftRightSize(g_FancyDockingConstants.absoluteDropZoneSizeInPixels, mainWindowRect.height());
         QRect absoluteLeftDropZone(mainWindowTopLeft, absoluteLeftRightSize);
         QRect absoluteRightDropZone(mainWindowTopRight - QPoint(g_FancyDockingConstants.absoluteDropZoneSizeInPixels, 0), absoluteLeftRightSize);
@@ -437,7 +475,7 @@ namespace AzQtComponents
         // drop zone if the cursor is in that zone already
         if (dropTargetIsMainWindow)
         {
-            QPoint localPos = mapFromGlobal(globalPos);
+            QPoint localPos = multiscreenMapFromGlobal(globalPos);
 
             if (absoluteLeftDropZone.contains(localPos))
             {
@@ -466,8 +504,8 @@ namespace AzQtComponents
         else
         {
             const QRect& dockRect = dock->rect();
-            QPoint dockTopLeft = mapFromGlobal(dock->mapToGlobal(dockRect.topLeft()));
-            QPoint dockBottomRight = mapFromGlobal(dock->mapToGlobal(dockRect.bottomRight()));
+            QPoint dockTopLeft = multiscreenMapFromGlobal(dock->mapToGlobal(dockRect.topLeft()));
+            QPoint dockBottomRight = multiscreenMapFromGlobal(dock->mapToGlobal(dockRect.bottomRight()));
             area = m_dropZoneState.dropArea();
 
             // If the hovered over drop zone shares a side with an absolute edge, then we need to setup
@@ -635,10 +673,10 @@ namespace AzQtComponents
 
         // Store our potentially adjusted outer dock widget rectangle and retrieve its corner points for later calculations
         m_dropZoneState.setDockDropZoneRect(dockRect);
-        const QPoint topLeft = mapFromGlobal(dock->mapToGlobal(dockRect.topLeft()));
-        const QPoint topRight = mapFromGlobal(dock->mapToGlobal(dockRect.topRight()));
-        const QPoint bottomLeft = mapFromGlobal(dock->mapToGlobal(dockRect.bottomLeft()));
-        const QPoint bottomRight = mapFromGlobal(dock->mapToGlobal(dockRect.bottomRight()));
+        const QPoint topLeft = multiscreenMapFromGlobal(dock->mapToGlobal(dockRect.topLeft()));
+        const QPoint topRight = multiscreenMapFromGlobal(dock->mapToGlobal(dockRect.topRight()));
+        const QPoint bottomLeft = multiscreenMapFromGlobal(dock->mapToGlobal(dockRect.bottomLeft()));
+        const QPoint bottomRight = multiscreenMapFromGlobal(dock->mapToGlobal(dockRect.bottomRight()));
 
         /*
             The normal drop zones for left/right/top/bottom of a dock widget are trapezoids with the longer
@@ -686,17 +724,24 @@ namespace AzQtComponents
         QPoint innerBottomRight(topRightX - dropZoneWidth, bottomLeftY - dropZoneHeight);
         m_dropZoneState.setInnerDropZoneRect(QRect(innerTopLeft, innerBottomRight));
 
-        // Setup the left/right/top/bottom drop zones using our calculated points
-        QPolygon leftDropZone, rightDropZone, topDropZone, bottomDropZone;
-        leftDropZone << topLeft << innerTopLeft << innerBottomLeft << bottomLeft;
-        rightDropZone << topRight << bottomRight << innerBottomRight << innerTopRight;
-        topDropZone << topLeft << topRight << innerTopRight << innerTopLeft;
-        bottomDropZone << bottomLeft << innerBottomLeft << innerBottomRight << bottomRight;
         auto dropZones = m_dropZoneState.dropZones();
-        dropZones[Qt::LeftDockWidgetArea] = leftDropZone;
-        dropZones[Qt::RightDockWidgetArea] = rightDropZone;
-        dropZones[Qt::TopDockWidgetArea] = topDropZone;
-        dropZones[Qt::BottomDockWidgetArea] = bottomDropZone;
+
+        // Only setup the left/right/top/bottom drop zones if our main window doesn't
+        // have the force tabbed docks only flag set.
+        if (!ForceTabbedDocksEnabled())
+        {
+            // Setup the left/right/top/bottom drop zones using our calculated points
+            QPolygon leftDropZone, rightDropZone, topDropZone, bottomDropZone;
+            leftDropZone << topLeft << innerTopLeft << innerBottomLeft << bottomLeft;
+            rightDropZone << topRight << bottomRight << innerBottomRight << innerTopRight;
+            topDropZone << topLeft << topRight << innerTopRight << innerTopLeft;
+            bottomDropZone << bottomLeft << innerBottomLeft << innerBottomRight << bottomRight;
+
+            dropZones[Qt::LeftDockWidgetArea] = leftDropZone;
+            dropZones[Qt::RightDockWidgetArea] = rightDropZone;
+            dropZones[Qt::TopDockWidgetArea] = topDropZone;
+            dropZones[Qt::BottomDockWidgetArea] = bottomDropZone;
+        }
 
         // Add the center drop zone for docking as a tab. The drop zone will be
         // stored as a polygon, although it will actually be drawn/evaluated
@@ -774,7 +819,7 @@ namespace AzQtComponents
         {
             return Qt::NoDockWidgetArea;
         }
-        const QPoint& pos = mapFromGlobal(globalPos);
+        const QPoint& pos = multiscreenMapFromGlobal(globalPos);
 
         // First, check if we are hovered over an absolute drop zone
         if (m_dropZoneState.absoluteDropZoneRect().isValid() && m_dropZoneState.absoluteDropZoneRect().contains(pos))
@@ -926,6 +971,12 @@ namespace AzQtComponents
             // is a single pane floating window that is the one being dragged
             // so it is currently hidden
             if (dockWidget->isHidden())
+            {
+                continue;
+            }
+
+            // Ignore this floating container it the window is minimized
+            if (dockWidget->isMinimized())
             {
                 continue;
             }
@@ -1126,6 +1177,7 @@ namespace AzQtComponents
             // it only has one tab.
             QDockWidget* singleFloatingDockWidget = nullptr;
             QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dock->parentWidget());
+
             if (mainWindow && mainWindow != m_mainWindow)
             {
                 QDockWidget* containerDockWidget = qobject_cast<QDockWidget*>(mainWindow->parentWidget());
@@ -1136,9 +1188,9 @@ namespace AzQtComponents
                     {
                         if (dockWidget->isVisible())
                         {
-                            // If this is a tab widget, then we need to count each
-                            // of the tabs
-                            if (dockWidget == dock && m_state.tabWidget)
+                            // If we're only dragging one tab out of a tabWidget, count all tabs separately
+                            // floatingDockContainer == dock means we're dragging the whole tabWidget, so we're leaving nothing behind.
+                            if (dockWidget == dock && m_state.tabWidget && m_state.floatingDockContainer != dock)
                             {
                                 numVisibleDockWidgets += m_state.tabWidget->count();
                             }
@@ -1176,30 +1228,38 @@ namespace AzQtComponents
 
         if (m_dropZoneState.dragging())
         {
-            // Setup the drop zones if there is a valid drop target under the mouse
-            QWidget* underMouse = dropWidgetUnderMouse(globalPos, dock);
-            setupDropZones(underMouse, globalPos);
-
-            // Store the previous flag for whether or not the cursor is currently
-            // over an absolute drop zone so we can compare it later
-            bool previousOnAbsoluteDropZone = m_dropZoneState.onAbsoluteDropZone();
-
-            // Check if the mouse is hovered over one of our drop zones
-            Qt::DockWidgetArea area = dockAreaForPos(globalPos);
-
-            // If we've hovered over a new drop zone, start our timer to fade in
-            // the opacity of the drop zone, which also makes it inactive until
-            // the max opacity has been reached
-            if (area != Qt::NoDockWidgetArea && (area != m_dropZoneState.dropArea() || previousOnAbsoluteDropZone != m_dropZoneState.onAbsoluteDropZone()))
+            // Don't show dropzones if the window is not dockable
+            if (dock->allowedAreas() != Qt::NoDockWidgetArea)
             {
-                m_dropZoneState.setDropZoneHoverOpacity(0);
-                m_dropZoneHoverFadeInTimer->start();
+                // Setup the drop zones if there is a valid drop target under the mouse
+                QWidget* underMouse = dropWidgetUnderMouse(globalPos, dock);
+                setupDropZones(underMouse, globalPos);
+
+                // Store the previous flag for whether or not the cursor is currently
+                // over an absolute drop zone so we can compare it later
+                bool previousOnAbsoluteDropZone = m_dropZoneState.onAbsoluteDropZone();
+
+                // Check if the mouse is hovered over one of our drop zones
+                Qt::DockWidgetArea area = dockAreaForPos(globalPos);
+
+                // If we've hovered over a new drop zone, start our timer to fade in
+                // the opacity of the drop zone, which also makes it inactive until
+                // the max opacity has been reached
+                if (area != Qt::NoDockWidgetArea && (area != m_dropZoneState.dropArea() || previousOnAbsoluteDropZone != m_dropZoneState.onAbsoluteDropZone()))
+                {
+                    m_dropZoneState.setDropZoneHoverOpacity(0);
+                    m_dropZoneHoverFadeInTimer->start();
+                }
+
+                SetFloatingPixmapClipping(m_dropZoneState.dropOnto(), area);
+
+                // Save the drop zone area in our drag state
+                m_dropZoneState.setDropArea(area);
             }
-
-            SetFloatingPixmapClipping(m_dropZoneState.dropOnto(), area);
-
-            // Save the drop zone area in our drag state
-            m_dropZoneState.setDropArea(area);
+            else
+            {
+                m_dropZoneState.setDropArea(Qt::NoDockWidgetArea);
+            }
 
             // Calculate the placeholder rectangle based on the drag position
             QRect dockGeometry = dock->geometry();
@@ -1489,6 +1549,8 @@ namespace AzQtComponents
             return;
         }
 
+        QPoint relativePressPos = pressPos;
+
         // If we are dragging a floating window, we need to grab a reference to its
         // actual single visible child dock widget to use as our target
         if (dock->isFloating())
@@ -1512,10 +1574,19 @@ namespace AzQtComponents
                 return;
             }
 
+            // Adjust pressPos so that the child widget to be dragged does not change its position.
+            relativePressPos = QPoint(pressPos.x(), -(titleBarOffset(dock) - pressPos.y()));
+
             // Use the visible child as our drag target going forward, and keep a
             // reference to the floating container for decision making later
             m_state.floatingDockContainer = dock;
             dock = childDockWidget;
+        }
+
+        if (tabIndex == -1 && m_state.tabWidget)
+        {
+            // If we're dragging a tab widget by the non tab area, set this so that it gets unpacked properly later.
+            m_state.floatingDockContainer = dock;
         }
 
         QDockWidget* draggedDockWidget = dock;
@@ -1547,7 +1618,7 @@ namespace AzQtComponents
             m_state.dockWidgetScreenGrab = { draggedDockWidget->grab(), draggedDockWidget->size() };
         }
 
-        m_state.pressPos = pressPos;
+        m_state.pressPos = relativePressPos;
         m_dropZoneState.setDragging(false);
         setupDropZones(nullptr);
     }
@@ -1601,11 +1672,6 @@ namespace AzQtComponents
      */
     void FancyDocking::onTabIndexPressed(int index)
     {
-        if (index == -1)
-        {
-            return;
-        }
-
         DockTabWidget* tabWidget = qobject_cast<DockTabWidget*>(sender());
         if (!tabWidget)
         {
@@ -1810,12 +1876,6 @@ namespace AzQtComponents
     bool FancyDocking::canDragDockWidget(QDockWidget* dock, QPoint mousePos)
     {
         if (!dock)
-        {
-            return false;
-        }
-
-        // Disable dragging a dock widget if it has no dockable areas allowed
-        if (dock->allowedAreas() == Qt::NoDockWidgetArea)
         {
             return false;
         }
@@ -2118,21 +2178,16 @@ namespace AzQtComponents
             return nullptr;
         }
 
-        // Let check if the target dock is already in a tabbed dock
-        // If yes, let forward the request to this dock instead.
+        // Check if the target dock is already in a tabbed dock
+        // If yes, then forward the request to this dock instead.
         {
-            QWidget* parent = dropTarget->parentWidget();
-            while (parent)
+            if (DockTabWidget::IsTabbed(dropTarget))
             {
-                if (DockTabWidget* tabWidget = qobject_cast<DockTabWidget*>(parent))
+                DockTabWidget* tabWidget = DockTabWidget::ParentTabWidget(dropTarget);
+                if (QDockWidget* dock = qobject_cast<QDockWidget*>(tabWidget->parentWidget()))
                 {
-                    if (QDockWidget* dock = qobject_cast<QDockWidget*>(tabWidget->parentWidget()))
-                    {
-                        return tabifyDockWidget(dock, dropped, mainWindow, droppedGrab);
-                    }
+                    return tabifyDockWidget(dock, dropped, mainWindow, droppedGrab);
                 }
-
-                parent = parent->parentWidget();
             }
         }
 
@@ -2193,7 +2248,14 @@ namespace AzQtComponents
             DockTabWidget* oldTabWidget = qobject_cast<DockTabWidget*>(dropped->widget());
             if (!oldTabWidget)
             {
-                return tabWidget;
+                if (m_state.tabWidget)
+                {
+                    oldTabWidget = m_state.tabWidget;
+                }
+                else
+                {
+                    return tabWidget;
+                }
             }
 
             // Calculate the new active tab index based on adding the tabs to our
@@ -2297,14 +2359,17 @@ namespace AzQtComponents
             case QEvent::ShortcutOverride:
                 if (m_dropZoneState.dragging())
                 {
-                    // Cancel the dragging state when any key but Ctrl is pressed
+                    // Cancel the dragging state when the Escape key is pressed
                     QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
-                    if (keyEvent->key() != Qt::Key_Control)
+                    if (keyEvent->key() == Qt::Key_Escape)
                     {
                         clearDraggingState();
                     }
-                    // always do a redraw
-                    RepaintFloatingIndicators();
+                    else
+                    {
+                        // modifier keys can affect things, so do a redraw
+                        RepaintFloatingIndicators();
+                    }
                 }
                 break;
             case QEvent::KeyRelease:
@@ -2618,6 +2683,11 @@ namespace AzQtComponents
         }
     }
 
+    bool FancyDocking::ForceTabbedDocksEnabled() const
+    {
+        return m_mainWindow->dockOptions() & QMainWindow::ForceTabbedDocks;
+    }
+
     template <typename T>
     T GetProperty(QObject* object, const char* propertyName, const T& returnIfPropertyNotFound)
     {
@@ -2776,6 +2846,19 @@ namespace AzQtComponents
                 }
             }
             delete dockWidget;
+        }
+
+        // Untab tabbed dock widgets before restoring, as the restore only works on dock widgets parented directly to the main window
+        const QList<QDockWidget*> dockWidgets = m_mainWindow->findChildren<QDockWidget*>();
+        for (QDockWidget* dockWidget : dockWidgets)
+        {
+            if (QStackedWidget* stackedWidget = qobject_cast<QStackedWidget*>(dockWidget->parentWidget()))
+            {
+                if (AzQtComponents::DockTabWidget* tabWidget = qobject_cast<AzQtComponents::DockTabWidget*>(stackedWidget->parentWidget()))
+                {
+                    tabWidget->removeTab(dockWidget);
+                }
+            }
         }
 
         // Restore the floating windows

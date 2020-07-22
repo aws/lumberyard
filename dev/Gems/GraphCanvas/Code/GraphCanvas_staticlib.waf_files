@@ -3,6 +3,20 @@
         "StaticLib/GraphCanvas/Widgets/Resources": [
             "StaticLib/GraphCanvas/Widgets/Resources/GraphCanvasEditorResources.qrc",
             "StaticLib/GraphCanvas/Widgets/Resources/Resources.h"
+        ],
+        "StaticLib/GraphCanvas/Widgets":
+        [
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeContainer.cpp",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeContainer.h",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeEvent.cpp",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeEvent.h",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeCategorizer.cpp",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeCategorizer.h",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeItem.cpp",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeItem.h",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeModel.cpp",
+            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeModel.h",
+            "StaticLib/GraphCanvas/Widgets/NodePropertyBus.h"
         ]
     },
     "auto": {        
@@ -35,7 +49,7 @@
             "StaticLib/GraphCanvas/GraphicsItems/Occluder.cpp",
             "StaticLib/GraphCanvas/GraphicsItems/Occluder.h",
             "StaticLib/GraphCanvas/GraphicsItems/ParticleGraphicsItem.cpp",
-            "StaticLib/GraphCanvas/GraphicsItems/ParticleGraphicsItem.h",            
+            "StaticLib/GraphCanvas/GraphicsItems/ParticleGraphicsItem.h",
             "StaticLib/GraphCanvas/GraphicsItems/PulseBus.h"
         ],
         "StaticLib/GraphCanvas/Components/Bookmarks":
@@ -144,22 +158,6 @@
         [
             "StaticLib/GraphCanvas/Widgets/Resources/default_style.json"
         ],
-        "StaticLib/GraphCanvas/Widgets":
-        [
-            "StaticLib/GraphCanvas/Widgets/AutoElidingLabel.cpp",
-            "StaticLib/GraphCanvas/Widgets/AutoElidingLabel.h",            
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeContainer.cpp",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeContainer.h",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeEvent.cpp",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeEvent.h",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeCategorizer.cpp",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeCategorizer.h",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeItem.cpp",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeItem.h",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeModel.cpp",
-            "StaticLib/GraphCanvas/Widgets/GraphCanvasTreeModel.h",
-            "StaticLib/GraphCanvas/Widgets/NodePropertyBus.h"
-        ],
         "StaticLib/GraphCanvas/Widgets/AssetEditorToolbar":
         [
             "StaticLib/GraphCanvas/Widgets/AssetEditorToolbar/AssetEditorToolbar.cpp",
@@ -258,6 +256,11 @@
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/EditMenuActions/EditContextMenuActions.cpp",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/EditMenuActions/EditContextMenuActions.h"
         ],
+        "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/GeneralMenuActions":
+        [
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/GeneralMenuActions/GeneralMenuActions.cpp",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/GeneralMenuActions/GeneralMenuActions.h"
+        ],
         "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeGroupMenuActions":
         [
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeGroupMenuActions/NodeGroupActionsMenuGroup.cpp",
@@ -339,6 +342,8 @@
         ],
         "StaticLib/GraphCanvas/Widgets/StyledItemDelegates":
         [
+            "StaticLib/GraphCanvas/Widgets/StyledItemDelegates/GenericComboBoxDelegate.cpp",
+            "StaticLib/GraphCanvas/Widgets/StyledItemDelegates/GenericComboBoxDelegate.h",
             "StaticLib/GraphCanvas/Widgets/StyledItemDelegates/IconDecoratedNameDelegate.cpp",
             "StaticLib/GraphCanvas/Widgets/StyledItemDelegates/IconDecoratedNameDelegate.h"
         ],

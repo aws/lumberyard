@@ -1,0 +1,30 @@
+<LensFlareLibrary Name="flashlight">
+ <FlareItem Name="Flashlight.small" Type="Root" Enable="1" Id="{AE3BD4DE-4863-4331-92B2-DDCE901BE900}" Library="flashlight">
+  <Params>
+   <Common Size="0.8" Perspectivefactor="1" DistanceFadingfactor="1" Brightness="0.1" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+   <Sensor Sensorimagesizevariationfactor="0.353535" Sensorimagebrightnessvariationfactor="0.363636"/>
+   <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+   <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+   <GlobalSettings EnableOcclusion="1" OcclusionSize="0.02,0.02" Flarefadetime="0.2" Shaftfadetime="1" Affectedbylightcolor="0" Affectedbylightradius="0" AffectedbylightFOV="1" MultiplyColor="1"/>
+   <Sensor CustomSensorVariationMap="0" EffectiveSensorSize="0.8"/>
+  </Params>
+  <FlareItem Name="small.glow" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="0.05" Perspectivefactor="0" DistanceFadingfactor="1" Brightness="0.5" Position="1,1" Tint="1,1,1" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+  <FlareItem Name="small.iris shafts" Type="IrisShafts" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="0" DistanceFadingfactor="1" Brightness="0.1" Position="1,1" Tint="1,1,1" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <IrisShafts Enablegradienttex="0" BaseTex="EngineAssets/Textures/flares/iris_shaft.dds" GradientTex="" Noiseseed="81" Complexity="32" Smoothness="2" Thickness="0.3" Thicknessnoise="0" Spread="0.2" Spreadnoise="0" Sizenoise="0.8" Spacingnoise="0.2"/>
+   </Params>
+  </FlareItem>
+ </FlareItem>
+</LensFlareLibrary>

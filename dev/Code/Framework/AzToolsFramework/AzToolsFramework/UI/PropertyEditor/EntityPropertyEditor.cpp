@@ -34,6 +34,8 @@ AZ_POP_DISABLE_WARNING
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/Widgets/DragAndDrop.h>
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
@@ -70,6 +72,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzQtComponents/Utilities/QtViewPaneEffects.h>
+#include <AzQtComponents/Components/Widgets/ComboBox.h>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
                                                                     // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
@@ -79,7 +82,6 @@ AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: con
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QGraphicsEffect>
-#include <QHeaderView>
 #include <QInputDialog>
 #include <QLabel>
 #include <QListView>
@@ -94,7 +96,6 @@ AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: con
 #include <QStandardItemModel>
 #include <QStringListModel>
 #include <QStylePainter>
-#include <QTableView>
 #include <QTimer>
 AZ_POP_DISABLE_WARNING
 
@@ -144,12 +145,7 @@ namespace AzToolsFramework
         EntityPropertyEditorOverlay(EntityPropertyEditor* editor, QWidget* parent)
             : QWidget(parent)
             , m_editor(editor)
-            , m_edgeRadius(3)
-            , m_dropIndicatorOffset(7)
-            , m_dropIndicatorColor("#999999")
-            , m_dragIndicatorColor("#E57829")
-            , m_selectIndicatorColor("#E57829")
-            , m_highlightColor("#64c8c8c8")
+            , m_dropIndicatorOffset(8)
         {
             setPalette(Qt::transparent);
             setWindowFlags(Qt::FramelessWindowHint);
@@ -161,6 +157,11 @@ namespace AzToolsFramework
     protected:
         void paintEvent(QPaintEvent* event) override
         {
+            const int TopMargin = 1;
+            const int RightMargin = 2;
+            const int BottomMargin = 5;
+            const int LeftMargin = 2;
+
             QWidget::paintEvent(event);
 
             QPainter painter(this);
@@ -179,31 +180,48 @@ namespace AzToolsFramework
 
                 QRect globalRect = m_editor->GetWidgetGlobalRect(componentEditor);
 
-                currRect = QRect(mapFromGlobal(globalRect.topLeft()), mapFromGlobal(globalRect.bottomRight()));
+                currRect = QRect(
+                    QPoint(mapFromGlobal(globalRect.topLeft()) + QPoint(LeftMargin, TopMargin)),
+                    QPoint(mapFromGlobal(globalRect.bottomRight()) - QPoint(RightMargin, BottomMargin))
+                );
+
                 currRect.setWidth(currRect.width() - 1);
                 currRect.setHeight(currRect.height() - 1);
 
                 if (componentEditor->IsDragged())
                 {
-                    drawDragIndicator(painter, currRect);
+                    QStyleOption opt;
+                    opt.init(this);
+                    opt.rect = currRect;
+                    static_cast<AzQtComponents::Style*>(style())->drawDragIndicator(&opt, &painter, this);
                     drag = true;
                 }
 
                 if (componentEditor->IsDropTarget())
                 {
-                    drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.top() - m_dropIndicatorOffset);
-                    drop = true;
-                }
+                    QRect dropRect = currRect;
+                    dropRect.setTop(currRect.top() - m_dropIndicatorOffset);
+                    dropRect.setHeight(0);
 
-                if (componentEditor->IsSelected())
-                {
-                    drawSelectIndicator(painter, currRect);
+                    QStyleOption opt;
+                    opt.init(this);
+                    opt.rect = dropRect;
+                    style()->drawPrimitive(QStyle::PE_IndicatorItemViewItemDrop, &opt, &painter, this);
+
+                    drop = true;
                 }
             }
 
             if (drag && !drop)
             {
-                drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.bottom() + m_dropIndicatorOffset);
+                QRect dropRect = currRect;
+                dropRect.setTop(currRect.top() - m_dropIndicatorOffset);
+                dropRect.setHeight(0);
+
+                QStyleOption opt;
+                opt.init(this);
+                opt.rect = dropRect;
+                style()->drawPrimitive(QStyle::PE_IndicatorItemViewItemDrop, &opt, &painter, this);
             }
         }
 
@@ -257,39 +275,8 @@ namespace AzToolsFramework
 
 
     private:
-        void drawDragIndicator(QPainter& painter, const QRect& currRect)
-        {
-            painter.save();
-            painter.setBrush(QBrush(m_dropIndicatorColor));
-            painter.drawRoundedRect(currRect, m_edgeRadius, m_edgeRadius);
-            painter.restore();
-        }
-
-        void drawDropIndicator(QPainter& painter, int x1, int x2, int y)
-        {
-            painter.save();
-            painter.setPen(QPen(m_dragIndicatorColor, 1));
-            painter.drawEllipse(QPoint(x1 + m_edgeRadius, y), m_edgeRadius, m_edgeRadius);
-            painter.drawLine(QPoint(x1 + m_edgeRadius * 2, y), QPoint(x2 - m_edgeRadius * 2, y));
-            painter.drawEllipse(QPoint(x2 - m_edgeRadius, y), m_edgeRadius, m_edgeRadius);
-            painter.restore();
-        }
-
-        void drawSelectIndicator(QPainter& painter, const QRect& currRect)
-        {
-            painter.save();
-            painter.setPen(QPen(m_selectIndicatorColor, 1));
-            painter.drawRoundedRect(currRect, m_edgeRadius, m_edgeRadius);
-            painter.restore();
-        }
-
-        EntityPropertyEditor* m_editor;
-        int m_edgeRadius;
+        EntityPropertyEditor* m_editor;        
         int m_dropIndicatorOffset;
-        QColor m_dragIndicatorColor;
-        QColor m_dropIndicatorColor;
-        QColor m_selectIndicatorColor;
-        QColor m_highlightColor;
     };
 
     EntityPropertyEditor::SharedComponentInfo::SharedComponentInfo(AZ::Component* component, AZ::Component* sliceReferenceComponent)
@@ -329,37 +316,27 @@ namespace AzToolsFramework
         m_componentEditors.clear();
         m_componentToEditorMap.clear();
 
-        m_checkmarkIcon = QIcon(":/Cards/img/UI20/Cards/checkmark.png");
-        m_rectangleIcon = QIcon(":/Cards/img/UI20/Cards/rectangle.png");
-        m_spacerIcon = QIcon(":/Cards/img/UI20/Cards/spacer.png");
-
         m_gui = aznew Ui::EntityPropertyEditorUI();
         m_gui->setupUi(this);
         m_gui->m_entityNameEditor->setReadOnly(false);
         m_gui->m_entityDetailsLabel->setObjectName("LabelEntityDetails");
         m_gui->m_entitySearchBox->setReadOnly(false);
         m_gui->m_entitySearchBox->setContextMenuPolicy(Qt::CustomContextMenu);
+        AzQtComponents::LineEdit::applySearchStyle(m_gui->m_entitySearchBox);
 
         QStandardItemModel*model = new QStandardItemModel(3, 1);
         for (int row = 0; row < 3; ++row)
         {
-            m_comboItems[row] = new QStandardItem(m_spacerIcon, m_itemNames[row]);
-
+            m_comboItems[row] = new QStandardItem(m_itemNames[row]);
+            m_comboItems[row]->setCheckable(true);
             model->setItem(row, 0, m_comboItems[row]);
         }
-        QTableView* table = new QTableView();
-        m_gui->m_statusComboBox->setView(table);
-        table->setModel(model);
-        table->verticalHeader()->setVisible(false);
-        table->horizontalHeader()->setVisible(false);
-        table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         m_gui->m_statusComboBox->setModel(model);
         m_gui->m_statusComboBox->setStyleSheet("QComboBox {border: 0px; border-radius:3px; background-color:#555555; color:white}"
-            "QComboBox[italic=true]{font-style: italic}"
             "QComboBox:on {background-color:#e9e9e9; color:black; border:0px}"
             "QComboBox::down-arrow:on {image: url(:/stylesheet/img/dropdowns/black_down_arrow.png)}"
-            "QComboBox::drop-down {border-radius: 3p}"
-            "QTableView {background-color:#333333; selection-background-color:#333333}");
+            "QComboBox::drop-down {border-radius: 3p}");
+        AzQtComponents::ComboBox::addCustomCheckStateStyle(m_gui->m_statusComboBox);
         EnableEditor(true);
         m_sceneIsNew = true;
 
@@ -367,8 +344,7 @@ namespace AzToolsFramework
         connect(m_gui->m_addComponentButton, &QPushButton::clicked, this, &EntityPropertyEditor::OnAddComponent);
         connect(m_gui->m_entitySearchBox, &QLineEdit::textChanged, this, &EntityPropertyEditor::OnSearchTextChanged);
         connect(m_gui->m_entitySearchBox, &QWidget::customContextMenuRequested, this, &EntityPropertyEditor::OnSearchContextMenu);
-        connect(m_gui->m_buttonClearFilter, &QPushButton::clicked, this, &EntityPropertyEditor::ClearSearchFilter);
-        connect(m_gui->m_pinButton, &QPushButton::clicked, this, &EntityPropertyEditor::OpenPinnedInspector);
+        connect(m_gui->m_pinButton, &QToolButton::clicked, this, &EntityPropertyEditor::OpenPinnedInspector);
 
         m_componentPalette = aznew ComponentPaletteWidget(this, true);
         connect(m_componentPalette, &ComponentPaletteWidget::OnAddComponentEnd, this, [this]()
@@ -502,7 +478,7 @@ namespace AzToolsFramework
         }
     }
 
-    void EntityPropertyEditor::SetOverrideEntityIds(const AzToolsFramework::EntityIdList& entities)
+    void EntityPropertyEditor::SetOverrideEntityIds(const AzToolsFramework::EntityIdSet& entities)
     {
         m_overrideSelectedEntityIds = entities;
 
@@ -684,7 +660,7 @@ namespace AzToolsFramework
                 }
             }
 
-            if (haveSameIcon)
+            if (haveSameIcon && !firstIconPath.empty())
             {
                 iconSourcePath = AZStd::move(firstIconPath);
             }
@@ -797,6 +773,37 @@ namespace AzToolsFramework
         return ComponentPaletteUtil::ContainsEditableComponents(m_serializeContext, m_componentFilter, serviceFilter);
     }
 
+    QString EntityPropertyEditor::GetEntityDetailsLabelText() const
+    {
+        QString entityDetailsLabelText("");
+        if (IsLockedToSpecificEntities())
+        {
+            entityDetailsLabelText = QObject::tr("The entity this inspector was pinned to has been deleted.");
+        }
+        else
+        {
+            entityDetailsLabelText = QObject::tr("Select an entity to show its properties in the inspector.");
+        }
+
+        if (IsLockedToSpecificEntities())
+        {
+            if (m_isLevelEntityEditor)
+            {
+                entityDetailsLabelText = tr("Create or load a level to enable the Level Inspector.");
+            }
+            else
+            {
+                entityDetailsLabelText = tr("The entity this inspector was pinned to has been deleted.");
+            }
+        }
+        else
+        {
+            entityDetailsLabelText = tr("Select an entity to show its properties in the inspector.");
+        }
+
+        return entityDetailsLabelText;
+    }
+
     void EntityPropertyEditor::UpdateContents()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -835,21 +842,7 @@ namespace AzToolsFramework
         if (!hasEntitiesDisplayed)
         {
             entityDetailsVisible = true;
-            if (IsLockedToSpecificEntities())
-            {
-                if (m_isLevelEntityEditor)
-                {
-                    entityDetailsLabelText = tr("Create or load a level to enable the Level Inspector.");
-                }
-                else
-                {
-                    entityDetailsLabelText = tr("The entity this inspector was pinned to has been deleted.");
-                }
-           }
-            else
-            {
-                entityDetailsLabelText = tr("Select an entity to show its properties in the inspector.");
-            }
+            entityDetailsLabelText = GetEntityDetailsLabelText();
         }
         else if (selectionEntityTypeInfo == SelectionEntityTypeInfo::OnlyLayerEntities)
         {
@@ -911,7 +904,6 @@ namespace AzToolsFramework
 
         m_gui->m_darkBox->setVisible(displayComponentSearchBox && !m_isSystemEntityEditor && !m_isLevelEntityEditor);
         m_gui->m_entitySearchBox->setVisible(displayComponentSearchBox);
-        m_gui->m_buttonClearFilter->setVisible(displayComponentSearchBox);
 
         bool displayAddComponentMenu = CanAddComponentsToSelection(selectionEntityTypeInfo);
         m_gui->m_addComponentButton->setVisible(displayAddComponentMenu);
@@ -1720,7 +1712,7 @@ namespace AzToolsFramework
             {
                 AZ::Entity* entity = GetSelectedEntityById(entityId);
 
-                if (entityName != entity->GetName())
+                if (entity && entityName != entity->GetName())
                 {
                     entityList.push_back(entity);
                 }
@@ -2459,7 +2451,7 @@ namespace AzToolsFramework
 
         for (auto& comboItem : m_comboItems)
         {
-            comboItem->setIcon(m_spacerIcon);
+            comboItem->setCheckState(Qt::Unchecked);
         }
 
         bool allActive = true;
@@ -2499,42 +2491,42 @@ namespace AzToolsFramework
             }
         }
 
-        m_gui->m_statusComboBox->setProperty("italic", false);
+        m_gui->m_statusComboBox->setItalic(false);
         if (allActive)
         {
             m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusStartActive]);
             m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusStartActive);
-            m_comboItems[StatusType::StatusStartActive]->setIcon(m_checkmarkIcon);
+            m_comboItems[StatusType::StatusStartActive]->setCheckState(Qt::Checked);
         }
         else
         if (allInactive)
         {
             m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusStartInactive]);
             m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusStartInactive);
-            m_comboItems[StatusType::StatusStartInactive]->setIcon(m_checkmarkIcon);
+            m_comboItems[StatusType::StatusStartInactive]->setCheckState(Qt::Checked);
         }
         else
         if (allEditorOnly)
         {
             m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusEditorOnly]);
             m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusEditorOnly);
-            m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_checkmarkIcon);
+            m_comboItems[StatusType::StatusEditorOnly]->setCheckState(Qt::Checked);
         }
         else // Some marked active, some not
         {
-            m_gui->m_statusComboBox->setProperty("italic", true);
+            m_gui->m_statusComboBox->setItalic(true);
             m_gui->m_statusComboBox->setHeaderOverride("- Multiple selected -");
             if (someActive)
             {
-                m_comboItems[StatusType::StatusStartActive]->setIcon(m_rectangleIcon);
+                m_comboItems[StatusType::StatusStartActive]->setCheckState(Qt::PartiallyChecked);
             }
             if (someInactive)
             {
-                m_comboItems[StatusType::StatusStartInactive]->setIcon(m_rectangleIcon);
+                m_comboItems[StatusType::StatusStartInactive]->setCheckState(Qt::PartiallyChecked);
             }
             if (someEditorOnly)
             {
-                m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_rectangleIcon);
+                m_comboItems[StatusType::StatusEditorOnly]->setCheckState(Qt::PartiallyChecked);
             }
         }
 
@@ -4615,9 +4607,6 @@ namespace AzToolsFramework
         }
 
         UpdateContents();
-        m_gui->m_buttonClearFilter->setIcon(m_filterString.size() == 0 ?
-            m_emptyIcon :
-            m_clearIcon);
     }
 
     void EntityPropertyEditor::ClearSearchFilter()
@@ -4630,7 +4619,8 @@ namespace AzToolsFramework
         AzToolsFramework::EntityIdList selectedEntities;
         GetSelectedEntities(selectedEntities);
 
-        EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, OpenPinnedInspector, selectedEntities);
+        AzToolsFramework::EntityIdSet pinnedEntities(selectedEntities.begin(), selectedEntities.end());
+        AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::OpenPinnedInspector, pinnedEntities);
     }
 
     void EntityPropertyEditor::OnContextReset()
@@ -4713,7 +4703,6 @@ namespace AzToolsFramework
         AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_addComponentButton, on);
 
         AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_entitySearchBox, on);
-        AzQtComponents::SetWidgetInteractEnabled(propertyEditorUi->m_buttonClearFilter, on);
     }
 
     AZ::Entity* EntityPropertyEditor::GetSelectedEntityById(AZ::EntityId& entityId) const
@@ -4816,10 +4805,15 @@ void StatusComboBox::paintEvent(QPaintEvent* event)
         this->initStyleOption(&opt);
 
         opt.currentText = m_headerOverride;
-        opt.iconSize = QSize(0, 0);
 
         painter.drawComplexControl(QStyle::CC_ComboBox, opt);
 
+        if (m_italic)
+        {
+            QFont fnt = painter.font();
+            fnt.setItalic(true);
+            painter.setFont(fnt);
+        }
         painter.drawControl(QStyle::CE_ComboBoxLabel, opt);
     }
     else
@@ -4831,6 +4825,11 @@ void StatusComboBox::paintEvent(QPaintEvent* event)
 void StatusComboBox::setHeaderOverride(QString overrideString)
 {
     m_headerOverride = overrideString;
+}
+
+void StatusComboBox::setItalic(bool italic)
+{
+    m_italic = italic;
 }
 
 void StatusComboBox::showPopup()

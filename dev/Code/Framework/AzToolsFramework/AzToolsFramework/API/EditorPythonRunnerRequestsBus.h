@@ -36,6 +36,9 @@ namespace AzToolsFramework
 
         //! executes a Python script using a filename and args
         virtual void ExecuteByFilenameWithArgs(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args) { AZ_UNUSED(filename); AZ_UNUSED(args);  }
+
+        //! executes a Python script as a test
+        virtual void ExecuteByFilenameAsTest(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args) { AZ_UNUSED(filename); AZ_UNUSED(args); }
     };
     using EditorPythonRunnerRequestBus = AZ::EBus<EditorPythonRunnerRequests>;
 

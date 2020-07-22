@@ -80,6 +80,7 @@ namespace AzQtComponents
         QSize m_swatchSize;
         bool m_gammaEnabled = false;
         qreal m_gamma = 1.0;
+        int m_paletteWidth = 276;
 
         QSet<QObject*> m_registeredPaletteCards;
         AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING

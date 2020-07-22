@@ -9,8 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QBitmap>
 #include <QPainter>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Asset/AssetManager.h>
@@ -348,10 +352,31 @@ namespace GraphCanvas
                     }
                     else
                     {
+                        m_widthStepHelper.clear();
+                        m_heightStepHelper.clear();
+
                         Styling::Parser::Parse((*this), styleSheet);
                         RefreshColorPalettes();
                         ClearCache();
                         StyleManagerNotificationBus::Event(m_editorId, &StyleManagerNotifications::OnStylesLoaded);
+
+                        {
+                            Styling::StyleHelper* helper = FindCreateStyleHelper("Sizing_WidthSteps");
+
+                            if (helper != nullptr)
+                            {
+                                m_widthStepHelper = helper->GetAttribute(Styling::Attribute::Steps, QList<QVariant>());
+                            }
+                        }
+
+                        {
+                            Styling::StyleHelper* helper = FindCreateStyleHelper("Sizing_HeightSteps");
+
+                            if (helper != nullptr)
+                            {
+                                m_heightStepHelper = helper->GetAttribute(Styling::Attribute::Steps, QList<QVariant>());
+                            }
+                        }
                     }
                 }
                 else
@@ -711,6 +736,42 @@ namespace GraphCanvas
         return styleHelper->GetAttribute(GraphCanvas::Styling::Attribute::ZValue, 0);
     }
 
+    int StyleManager::GetSteppedWidth(int gridSteps)
+    {
+        int result = gridSteps;
+
+        for (QVariant variantStep : m_widthStepHelper)
+        {
+            int currentStep = variantStep.toInt();
+
+            if (result < currentStep)
+            {
+                result = currentStep;
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    int StyleManager::GetSteppedHeight(int gridSteps)
+    {
+        int result = gridSteps;
+
+        for (QVariant variantStep : m_heightStepHelper)
+        {
+            int currentStep = variantStep.toInt();
+
+            if (result < currentStep)
+            {
+                result = currentStep;
+                break;
+            }
+        }
+
+        return result;
+    }
+
     QPixmap* StyleManager::CreateIcon(QBrush& brush, const AZStd::string& iconStyle)
     {
         Styling::StyleHelper* iconStyleHelper = FindCreateStyleHelper(iconStyle);
@@ -807,6 +868,7 @@ namespace GraphCanvas
         {
             delete style;
         }
+
         m_styles.clear();
     }
 

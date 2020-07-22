@@ -61,13 +61,6 @@ namespace AZ
         ScopedStackedString(StackedString& string, size_t value);
         ~ScopedStackedString();
 
-        StackedString& Get();
-        const StackedString& Get() const;
-
-        operator StackedString&();
-        operator const StackedString&() const;
-        operator AZStd::string_view() const;
-
     private:
         StackedString& m_string;
     };

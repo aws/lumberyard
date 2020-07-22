@@ -105,7 +105,7 @@ namespace ProjectSettingsTool
         // Loop through all errors then exit if the user chooses to abort or window is in invalid state
         void ShowAllErrorsThenExitIfInvalid();
 
-        // Resizes QTabWidget to size of current tab instead of largest tab
+        // Resizes TabWidget to size of current tab instead of largest tab
         void ResizeTabs(int index);
 
         // Add all platforms into the ui

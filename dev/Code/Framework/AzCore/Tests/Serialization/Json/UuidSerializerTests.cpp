@@ -12,9 +12,50 @@
 
 #include <AzCore/Math/UuidSerializer.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
+#include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
 
 namespace JsonSerializationTests
 {
+    class UuidSerializerTestDescription
+        : public JsonSerializerConformityTestDescriptor<AZ::Uuid>
+    {
+    public:
+        AZStd::shared_ptr<AZ::BaseJsonSerializer> CreateSerializer() override
+        {
+            return AZStd::make_shared<AZ::JsonUuidSerializer>();
+        }
+
+        AZStd::shared_ptr<AZ::Uuid> CreateDefaultInstance() override
+        {
+            return AZStd::make_shared<AZ::Uuid>(AZ::Uuid::CreateNull());
+        }
+
+        AZStd::shared_ptr<AZ::Uuid> CreateFullySetInstance() override
+        {
+            return AZStd::make_shared<AZ::Uuid>("{5E970016-0039-4454-8E0D-5EE58A390324}");
+        }
+
+        AZStd::string_view GetJsonForFullySetInstance() override
+        {
+            return R"("{5E970016-0039-4454-8E0D-5EE58A390324}")";
+        }
+
+        void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& features) override
+        {
+            features.EnableJsonType(rapidjson::kStringType);
+            features.m_supportsPartialInitialization = false;
+            features.m_supportsInjection = false;
+        }
+
+        bool AreEqual(const AZ::Uuid& lhs, const AZ::Uuid& rhs) override
+        {
+            return lhs == rhs;
+        }
+    };
+
+    using UuidSerializerConformityTestTypes = ::testing::Types<UuidSerializerTestDescription>;
+    INSTANTIATE_TYPED_TEST_CASE_P(JsonUuidSerializer, JsonSerializerConformityTests, UuidSerializerConformityTestTypes);
+
     class JsonUuidSerializerTests
         : public BaseJsonSerializerFixture
     {
@@ -37,99 +78,6 @@ namespace JsonSerializationTests
         AZ::Uuid m_testValueAlternative = AZ::Uuid("{01A6F1D2-BFCE-431A-B33A-D1C29672EDBC}");
     };
 
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfObjectType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kObjectType);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfkNullType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kNullType);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfArrayType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kArrayType);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfTrueBooleanType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetBool(true);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfFalseBooleanType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetBool(false);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfUnsignedIntegerType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetUint64(42);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfSignedIntegerType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetInt64(-42);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Load_InvalidTypeOfDoubleType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetDouble(42.0);
-        AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(m_testValue, convertedValue);
-    }
-
     TEST_F(JsonUuidSerializerTests, Load_ParseStringValueFormatWithDashes_ValidUuidReturned)
     {
         using namespace AZ::JsonSerializationResult;
@@ -137,7 +85,7 @@ namespace JsonSerializationTests
         rapidjson::Value testValue;
         testValue.SetString(m_testValue.ToString<AZStd::string>(true, true).c_str(), m_jsonDocument->GetAllocator());
         AZ::Uuid convertedValue = AZ::Uuid::CreateNull();
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
     }
@@ -149,7 +97,7 @@ namespace JsonSerializationTests
         rapidjson::Value testValue;
         testValue.SetString(m_testValue.ToString<AZStd::string>(true, false).c_str(), m_jsonDocument->GetAllocator());
         AZ::Uuid convertedValue = AZ::Uuid::CreateNull();
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
     }
@@ -163,7 +111,7 @@ namespace JsonSerializationTests
         uuidString += " hello world";
         testValue.SetString(uuidString.c_str(), m_jsonDocument->GetAllocator());
         AZ::Uuid convertedValue = AZ::Uuid::CreateNull();
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
     }
@@ -178,7 +126,7 @@ namespace JsonSerializationTests
         uuidString += "world";
         testValue.SetString(uuidString.c_str(), m_jsonDocument->GetAllocator());
         AZ::Uuid convertedValue = AZ::Uuid::CreateNull();
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
     }
@@ -190,7 +138,7 @@ namespace JsonSerializationTests
         rapidjson::Value testValue;
         testValue.SetString(rapidjson::StringRef("Hello world"));
         AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
     }
@@ -202,7 +150,19 @@ namespace JsonSerializationTests
         rapidjson::Value testValue;
         testValue.SetString(rapidjson::StringRef("{8651B6DA-9792-407C-A46D-AXXX39CA900}"));
         AZ::Uuid convertedValue = m_testValue;
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(m_testValue, convertedValue);
+    }
+
+    TEST_F(JsonUuidSerializerTests, Load_ParseWithMissingPart_ErrorReturnedAndUuidNotChanged)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Value testValue;
+        testValue.SetString(rapidjson::StringRef("{51CD2896-A963-4CA1-AE9039AEBDA72364}"));
+        AZ::Uuid convertedValue = m_testValue;
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
     }
@@ -216,46 +176,8 @@ namespace JsonSerializationTests
         uuidString += m_testValueAlternative.ToString<AZStd::string>();
         testValue.SetString(uuidString.c_str(), m_jsonDocument->GetAllocator());
         AZ::Uuid convertedValue = AZ::Uuid::CreateNull();
-        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&convertedValue, azrtti_typeid<AZ::Uuid>(), testValue, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_EQ(m_testValue, convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Store_StoreValue_ValueStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value convertedValue(rapidjson::kObjectType); // set to object to ensure we reset the value to expected type later
-
-        ResultCode result = m_serializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &m_testValue, nullptr,
-            azrtti_typeid<AZ::Uuid>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsString());
-        EXPECT_STREQ(m_testValue.ToString<AZStd::string>().c_str(), convertedValue.GetString());
-    }
-
-    TEST_F(JsonUuidSerializerTests, Store_StoreSameAsDefault_ValueIsIgnored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value convertedValue = CreateExplicitDefault();
-
-        ResultCode result = m_serializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &m_testValue, &m_testValue,
-            azrtti_typeid<AZ::Uuid>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        Expect_ExplicitDefault(convertedValue);
-    }
-
-    TEST_F(JsonUuidSerializerTests, Store_StoreDifferentFromDefault_ValueIsStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value convertedValue(rapidjson::kObjectType); // set to object to ensure we reset the value to expected type later
-
-        ResultCode result = m_serializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &m_testValue, &m_testValueAlternative,
-            azrtti_typeid<AZ::Uuid>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsString());
-        EXPECT_STREQ(m_testValue.ToString<AZStd::string>().c_str(), convertedValue.GetString());
     }
 } // namespace JsonSerializationTests

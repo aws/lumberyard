@@ -47,12 +47,13 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)     { mCurrentValue = 0.0f; mFrameDeltaTime = 0.0f; }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+
+            void Update() override;
 
         public:
-            float   mFrameDeltaTime;
-            float   mCurrentValue;
+            float mFrameDeltaTime = 0.0f;
+            float mCurrentValue = 0.0f;
         };
 
         BlendTreeSmoothingNode();
@@ -67,7 +68,7 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         void SetInterpolationSpeed(float interpolationSpeed);
         void SetStartVAlue(float startValue);

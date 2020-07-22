@@ -25,8 +25,8 @@ namespace PhysX
 
         QWidget* InertiaPropertyHandler::CreateGUI(QWidget* parent)
         {
-            AzToolsFramework::PropertyVectorCtrl* newCtrl = aznew AzToolsFramework::PropertyVectorCtrl(parent, 3, -1, "");
-            connect(newCtrl, &AzToolsFramework::PropertyVectorCtrl::valueChanged, newCtrl, [newCtrl]()
+            AzQtComponents::VectorInput* newCtrl = new AzQtComponents::VectorInput(parent, 3, -1, "");
+            connect(newCtrl, &AzQtComponents::VectorInput::valueChanged, newCtrl, [newCtrl]()
             {
                 AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, newCtrl);
             });
@@ -37,7 +37,7 @@ namespace PhysX
             return newCtrl;
         }
 
-        void InertiaPropertyHandler::ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib,
+        void InertiaPropertyHandler::ConsumeAttribute(AzQtComponents::VectorInput* GUI, AZ::u32 attrib,
             AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
         {
             if (attrib == AZ::Edit::Attributes::Suffix)
@@ -45,21 +45,21 @@ namespace PhysX
                 AZStd::string label;
                 if (attrValue->Read<AZStd::string>(label))
                 {
-                    GUI->setSuffix(label);
+                    GUI->setSuffix(label.c_str());
                 }
             }
         }
 
-        void InertiaPropertyHandler::WriteGUIValuesIntoProperty(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI,
+        void InertiaPropertyHandler::WriteGUIValuesIntoProperty(size_t index, AzQtComponents::VectorInput* GUI,
             AZ::Matrix3x3& instance, AzToolsFramework::InstanceDataNode* node)
         {
-            AzToolsFramework::VectorElement** elements = GUI->getElements();
+            AzQtComponents::VectorElement** elements = GUI->getElements();
 
-            AZ::Vector3 diagonalElements(aznumeric_cast<float>(elements[0]->GetValue()), aznumeric_cast<float>(elements[1]->GetValue()), aznumeric_cast<float>(elements[2]->GetValue()));
+            AZ::Vector3 diagonalElements(aznumeric_cast<float>(elements[0]->getValue()), aznumeric_cast<float>(elements[1]->getValue()), aznumeric_cast<float>(elements[2]->getValue()));
             instance = AZ::Matrix3x3::CreateDiagonal(diagonalElements);
         }
 
-        bool InertiaPropertyHandler::ReadValuesIntoGUI(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI,
+        bool InertiaPropertyHandler::ReadValuesIntoGUI(size_t index, AzQtComponents::VectorInput* GUI,
             const AZ::Matrix3x3& instance, AzToolsFramework::InstanceDataNode* node)
         {
             QSignalBlocker signalBlocker(GUI);

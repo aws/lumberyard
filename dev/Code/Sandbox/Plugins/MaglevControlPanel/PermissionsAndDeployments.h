@@ -13,7 +13,6 @@
 #include <QMainWindow>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QTabWidget>
 #include <QLabel>
 #include <QWidget>
 #include <QLineEdit>
@@ -25,6 +24,8 @@
 #include <QSettings>
 #include <QAWSCredentialsEditor.h>
 #include <RoleSelectionView.h>
+
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
 namespace LmbrAWS {
     class IClientManager;
@@ -59,7 +60,7 @@ public slots:
 private:
     LmbrAWS::IClientManager* m_clientManager;
     QWidget m_mainWidget;
-    QTabWidget m_tabWidget;
+    AzQtComponents::TabWidget m_tabWidget;
     QVBoxLayout m_mainVerticalLayout;
     QHBoxLayout m_buttonLayout;
     QAWSCredentialsEditor m_credentialsEditorTab;

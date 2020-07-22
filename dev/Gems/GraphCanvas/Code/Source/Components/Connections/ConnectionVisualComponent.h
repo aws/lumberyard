@@ -165,6 +165,8 @@ namespace GraphCanvas
 
         // ConnectionUIRequestBus
         void UpdateConnectionPath() override;
+
+        void SetAltDeletionEnabled(bool enabled) override;
         ////
 
         // SceneMemberNotifications
@@ -202,6 +204,8 @@ namespace GraphCanvas
         void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
+
+        void focusOutEvent(QFocusEvent* focusEvent) override;
         ////
 
         void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
@@ -222,7 +226,7 @@ namespace GraphCanvas
         AZStd::chrono::milliseconds m_lastUpdate;
         double m_offset;
 
-        AZ::EntityId m_connectionEntityId;        
+        AZ::EntityId m_connectionEntityId;
         EditorId     m_editorId;
     };
 }

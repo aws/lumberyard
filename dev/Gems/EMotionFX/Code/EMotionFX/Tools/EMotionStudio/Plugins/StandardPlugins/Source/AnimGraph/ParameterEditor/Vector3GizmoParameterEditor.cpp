@@ -133,7 +133,7 @@ namespace EMStudio
 
         if (m_transformationGizmo)
         {
-            m_transformationGizmo->SetRenderOffset(m_currentValue);
+            m_transformationGizmo->Init(m_currentValue);
         }
     }
 
@@ -179,7 +179,7 @@ namespace EMStudio
     {
         if (m_gizmoButton->isChecked())
         {
-            EMStudioManager::MakeTransparentButton(m_gizmoButton, "Images/Icons/Vector3Gizmo.png", "Show/Hide translation gizmo for visual manipulation");
+            EMStudioManager::MakeTransparentButton(m_gizmoButton, "Images/Icons/Vector3Gizmo.svg", "Show/Hide translation gizmo for visual manipulation");
         }
         else
         {

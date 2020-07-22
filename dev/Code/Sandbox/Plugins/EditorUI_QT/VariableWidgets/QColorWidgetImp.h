@@ -17,6 +17,11 @@
 #include "QMenu"
 #include <Controls/QToolTipWidget.h>
 
+namespace AzQtComponents
+{
+    class ColorPicker;
+} // namespace AzQtCpomponents
+
 class QColorWidgetImp
     : public QColorWidget
     , public CBaseVariableWidget
@@ -69,6 +74,7 @@ private:
 
     QColor m_OriginColor;       // Save color for m_Var and m_AlphaVar to undo
     QColor m_OriginColor1;      // Save color for m_Var1 and m_AlphaVar to undo
+    AzQtComponents::ColorPicker* m_colorPicker = nullptr;
 };
 
 #endif // QCOLORWIDGET_IMP_H

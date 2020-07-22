@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Debug/TraceMessagesDrillerBus.h>
+#include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 
 namespace UnitTest
 {
@@ -19,15 +20,18 @@ namespace UnitTest
     */
     struct PythonTraceMessageSink final
         : public AZ::Debug::TraceMessageDrillerBus::Handler
+        , public AzToolsFramework::EditorPythonConsoleNotificationBus::Handler
     {
         PythonTraceMessageSink()
         {
             AZ::Debug::TraceMessageDrillerBus::Handler::BusConnect();
+            AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusConnect();
         }
 
         ~PythonTraceMessageSink()
         {
             AZ::Debug::TraceMessageDrillerBus::Handler::BusDisconnect();
+            AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusDisconnect();
         }
 
         // returns an index-tag for a message type that will be counted inside of m_evaluationMap
@@ -63,5 +67,23 @@ namespace UnitTest
                 }
             }
         }
+
+        //////////////////////////////////////////////////////////////////////////
+        // AzToolsFramework::EditorPythonConsoleNotificationBus
+        void OnTraceMessage(AZStd::string_view message) override
+        {
+            AZ_TracePrintf("python", "%.*s", static_cast<int>(message.size()), message.data());
+        }
+
+        void OnErrorMessage(AZStd::string_view message) override
+        {
+            AZ_Error("python", false, "%.*s", static_cast<int>(message.size()), message.data());
+        }
+
+        void OnExceptionMessage(AZStd::string_view message) override
+        {
+            AZ_Error("python", false, "EXCEPTION: %.*s", static_cast<int>(message.size()), message.data());
+        }
+
     };
 }

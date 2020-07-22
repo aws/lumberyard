@@ -39,7 +39,6 @@ private:
     QWidget* m_statusInProgress;
     QWidget* m_statusSucceeded;
     QWidget* m_statusFailed;
-    QMovie* m_inProgressMovie;
 
     QWidget* CreateTitleBar();
 

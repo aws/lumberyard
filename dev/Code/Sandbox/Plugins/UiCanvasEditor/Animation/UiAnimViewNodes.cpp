@@ -20,6 +20,7 @@
 #include "UiAnimViewUndo.h"
 #include "StringDlg.h"
 #include "UiAnimViewDialog.h"
+#include "UiAVEventsDialog.h"
 
 #include "Clipboard.h"
 
@@ -43,10 +44,11 @@
 #include <QDebug>
 #include <QTreeWidget>
 #include <QCompleter>
-#include <QColorDialog>
 #include <QStyledItemDelegate>
 #include <QStyleOptionViewItem>
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 CUiAnimViewNodesCtrl::CRecord::CRecord(CUiAnimViewNode* pNode /*= nullptr*/)
     : m_pNode(pNode)
@@ -284,6 +286,7 @@ enum EMenuItem
     eMI_AddEnvironment = 514,
     eMI_AddScreenDropsSetup = 515,
     eMI_AddSelectedUiElements = 516,
+    eMI_EditEvents = 550,
     eMI_SetAsViewCamera = 13,
     eMI_SetAsActiveDirector = 15,
     eMI_Disable = 17,
@@ -929,6 +932,11 @@ void CUiAnimViewNodesCtrl::OnNMRclick(QPoint point)
             QString name = pGroupNode->GetAvailableNodeNameStartingWith("Director");
             pGroupNode->CreateSubNode(name, eUiAnimNodeType_Director);
         }
+        else if (cmd == eMI_AddEvent)
+        {
+            UiAnimUndo undo("Add UiAnimView Event Node");
+            pGroupNode->CreateSubNode("Events", eUiAnimNodeType_Event);
+        }
 #if UI_ANIMATION_REMOVED // CStringDlg unresolved
         else if (cmd == eMI_AddConsoleVariable)
         {
@@ -962,19 +970,14 @@ void CUiAnimViewNodesCtrl::OnNMRclick(QPoint point)
                 }
             }
         }
-        else if (cmd == eMI_AddEvent)
-        {
-            CStringDlg dlg(_T("Track Event Name"));
-            if (dlg.DoModal() == IDOK && !dlg.GetString().IsEmpty())
-            {
-                UiAnimUndo undo("Add UiAnimView Event Node");
-                pGroupNode->CreateSubNode(dlg.GetString(), eUiAnimNodeType_Event);
-            }
-        }
 #endif
     }
 
-    if (cmd == eMI_SetAsActiveDirector)
+    if (cmd == eMI_EditEvents)
+    {
+        EditEvents();
+    }
+    else if (cmd == eMI_SetAsActiveDirector)
     {
         if (pNode && pNode->GetNodeType() == eUiAVNT_AnimNode)
         {
@@ -1157,6 +1160,13 @@ void CUiAnimViewNodesCtrl::OnItemDblClick(QTreeWidgetItem* item, int)
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CUiAnimViewNodesCtrl::EditEvents()
+{
+    CUiAVEventsDialog dlg;
+    dlg.exec();
+}
+
+//////////////////////////////////////////////////////////////////////////
 struct UiAnimTrackMenuTreeNode
 {
     QMenu menu;
@@ -1181,17 +1191,18 @@ void CUiAnimViewNodesCtrl::AddGroupNodeAddItems(UiAnimContextMenu& contextMenu, 
     if (pAnimNode->GetNodeType() == eUiAVNT_Sequence)
     {
         contextMenu.main.addAction("Add Selected UI Element(s)")->setData(eMI_AddSelectedUiElements);
+        contextMenu.main.addAction("Add Event Node")->setData(eMI_AddEvent);
     }
 
     const bool bIsDirectorOrSequence = (pAnimNode->GetType() == eUiAnimNodeType_Director || pAnimNode->GetNodeType() == eUiAVNT_Sequence);
     CUiAnimViewAnimNode* pDirector = bIsDirectorOrSequence ? pAnimNode : pAnimNode->GetDirector();
+
 
 #if UI_ANIMATION_REMOVED
     contextMenu.main.addAction("Add Comment Node")->setData(eMI_AddCommentNode);
     contextMenu.main.addAction("Add Console Variable")->setData(eMI_AddConsoleVariable);
     contextMenu.main.addAction("Add Script Variable")->setData(eMI_AddScriptVariable);
     contextMenu.main.addAction("Add Material")->setData(eMI_AddMaterial);
-    contextMenu.main.addAction("Add Event")->setData(eMI_AddEvent);
 #endif
 }
 
@@ -1291,6 +1302,15 @@ int CUiAnimViewNodesCtrl::ShowPopupMenuSingleSelection(UiAnimContextMenu& contex
             bAppended = true;
         }
     }
+
+    // Events
+    if (bOnSequence || pNode->IsGroupNode() && !bIsLightAnimationSet)
+    {
+        AddMenuSeperatorConditional(contextMenu.main, bAppended);
+        contextMenu.main.addAction("Edit Events...")->setData(eMI_EditEvents);
+        bAppended = true;
+    }
+
 
     // Sub material menu
     if (bOnNode && pAnimNode->GetType() == eUiAnimNodeType_Material)
@@ -1623,19 +1643,20 @@ void CUiAnimViewNodesCtrl::CustomizeTrackColor(CUiAnimViewTrack* pTrack)
         return;
     }
 
-    QColor defaultColor;
+    AZ::Color defaultColor(0.0f, 0.0f, 0.0f, 1.0f);
     if (pTrack->HasCustomColor())
     {
         ColorB customColor = pTrack->GetCustomColor();
-        defaultColor = QColor(customColor.r, customColor.g, customColor.b);
+        defaultColor = AZ::Color(customColor.r, customColor.g, customColor.b, 255);
     }
-    QColor res = QColorDialog::getColor(defaultColor, this);
-    if (res.isValid())
+    const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, defaultColor, QObject::tr("Select Color"));
+
+    if (color != defaultColor)
     {
         UiAnimUndo undo("Customize Track Color");
         UiAnimUndo::Record(new CUndoTrackObject(pTrack, pSequence));
 
-        pTrack->SetCustomColor(ColorB(res.red(), res.green(), res.blue()));
+        pTrack->SetCustomColor(ColorB(color.GetR8(), color.GetG8(), color.GetB8()));
 
         UpdateDopeSheet();
     }

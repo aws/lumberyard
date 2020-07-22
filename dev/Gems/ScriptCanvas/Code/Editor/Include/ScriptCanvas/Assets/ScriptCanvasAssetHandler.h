@@ -61,17 +61,11 @@ namespace ScriptCanvasEditor
         const char* GetAssetTypeDisplayName() const override;
         void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
 
-        const char* GetGroup() const override;
-        const char* GetBrowserIcon() const override;
-
         AZ::Uuid GetComponentTypeId() const override;
 
         AZ::SerializeContext* GetSerializeContext() const;
 
         void SetSerializeContext(AZ::SerializeContext* context);
-
-        static const char* GetFileExtension() { return "scriptcanvas"; }
-        static const char* GetFileFilter() { return "*.scriptcanvas"; }
 
         static AZ::Data::AssetType GetAssetTypeStatic();
 

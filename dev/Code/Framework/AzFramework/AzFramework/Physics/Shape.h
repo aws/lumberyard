@@ -17,6 +17,11 @@
 #include <AzFramework/Physics/Material.h>
 #include <AzFramework/Physics/Collision.h>
 
+namespace AZ
+{
+    class Aabb;
+}
+
 namespace Physics
 {
     class Material;
@@ -66,6 +71,9 @@ namespace Physics
     using ShapeConfigurationPair = AZStd::pair<AZStd::shared_ptr<ColliderConfiguration>, AZStd::shared_ptr<ShapeConfiguration>>;
     using ShapeConfigurationList = AZStd::vector<ShapeConfigurationPair>;
 
+    struct RayCastRequest;
+    struct RayCastHit;
+
     class Shape
     {
     public:
@@ -85,6 +93,7 @@ namespace Physics
         virtual void SetName(const char* name) = 0;
 
         virtual void SetLocalPose(const AZ::Vector3& offset, const AZ::Quaternion& rotation) = 0;
+        virtual AZStd::pair<AZ::Vector3, AZ::Quaternion> GetLocalPose() const = 0;
 
         virtual void* GetNativePointer() = 0;
 
@@ -92,5 +101,23 @@ namespace Physics
 
         virtual void AttachedToActor(void* actor) = 0;
         virtual void DetachedFromActor() = 0;
+
+        //! Raycast against this shape.
+        //! @param request Ray parameters in world space.
+        //! @param worldTransform World transform of this shape.
+        virtual Physics::RayCastHit RayCast(const Physics::RayCastRequest& worldSpaceRequest, const AZ::Transform& worldTransform) = 0;
+
+        //! Raycast against this shape using local coordinates.
+        //! @param request Ray parameters in local space.
+        virtual Physics::RayCastHit RayCastLocal(const Physics::RayCastRequest& localSpaceRequest) = 0;
+
+        //! Fills in the vertices and indices buffers representing this shape.
+        //! If vertices are returned but not indices you may assume the vertices are in triangle list format.
+        //! @param vertices A buffer to be filled with vertices
+        //! @param indices A buffer to be filled with indices
+        //! @param optionalBounds Optional AABB that, if provided, will limit the mesh returned to that AABB.  
+        //!                       Currently only supported by the heightfield shape.
+        virtual void GetGeometry(AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, AZ::Aabb* optionalBounds = nullptr) = 0;
+
     };
 } // namespace Physics

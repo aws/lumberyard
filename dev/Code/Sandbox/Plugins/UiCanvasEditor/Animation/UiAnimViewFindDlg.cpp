@@ -149,7 +149,7 @@ void CUiAnimViewFindDlg::ProcessSel()
         {
             CUiAnimationContext* pAnimationContext = nullptr;
             EBUS_EVENT_RESULT(pAnimationContext, UiEditorAnimationBus, GetAnimationContext);
-            pAnimationContext->SetSequence(pSequence, false, false);
+            pAnimationContext->SetSequence(pSequence, false, false, true);
 
             CUiAnimViewAnimNode* pParentDirector = pSequence;
             CUiAnimViewAnimNodeBundle foundDirectorNodes = pSequence->GetAnimNodesByName(object.m_directorName.toUtf8().data());

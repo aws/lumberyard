@@ -47,7 +47,7 @@ namespace EMotionFX
 
         static void Reflect(AZ::ReflectContext* context);
 
-        const AZStd::string& GetTypeDisplayName() const override;
+        const char* GetTypeDisplayName() const override;
         
         /**
         * Get the total number of parameters inside this group. This will be the number of parameters from all child group parameters

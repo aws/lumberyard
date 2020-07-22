@@ -10,26 +10,27 @@
 *
 */
 #include "stdafx.h"
-
 #include "StackEventsWidget.h"
 
 #include "IEditor.h"
 
-#include <QTableView>
-#include <QLabel>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QToolButton>
-#include <QTimer>
-#include <QScrollArea>
-#include <QDebug>
-#include <QTextEdit>
-#include <QHeaderView>
-#include <QMovie>
-#include <QMenu>
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
+#include <QDebug>
+#include <QHBoxLayout>
+#include <QHeaderView>
+#include <QLabel>
+#include <QMenu>
+#include <QMovie>
+#include <QScrollArea>
+#include <QTableView>
+#include <QTextEdit>
+#include <QTimer>
+#include <QToolButton>
+#include <QVBoxLayout>
+
+#include <AzQtComponents/Components/StyledBusyLabel.h>
 
 #include <DetailWidget/StackEventsWidget.moc>
 
@@ -107,16 +108,10 @@ QWidget* StackEventsWidget::CreateTitleBar()
     statusInProgressLayout->setSizeConstraint(QLayout::SizeConstraint::SetDefaultConstraint);
     m_statusInProgress->setLayout(statusInProgressLayout);
 
-    auto statusInProgressImage = new QLabel {};
-    statusInProgressImage->setObjectName("Image");
-    m_inProgressMovie = new QMovie {
-        "Editor/Icons/CloudCanvas/in_progress.gif"
-    };
-    m_inProgressMovie->setScaledSize(QSize(16, 16));
-    statusInProgressImage->setMovie(m_inProgressMovie);
-    statusInProgressImage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    statusInProgressImage->setFixedSize(16, 16);
-    statusInProgressLayout->addWidget(statusInProgressImage);
+    auto statusInProgressLabel = new AzQtComponents::StyledBusyLabel();
+    statusInProgressLabel->SetIsBusy(true);
+    statusInProgressLabel->SetBusyIconSize(14);
+    statusInProgressLayout->addWidget(statusInProgressLabel);
 
     auto statusInProgressText = new QLabel {
         tr("Operation in progress")
@@ -152,15 +147,6 @@ void StackEventsWidget::OnCommandStatusChanged(IStackEventsModel::CommandStatus 
     m_statusInProgress->setVisible(commandStatus == IStackEventsModel::CommandStatus::CommandInProgress);
     m_statusSucceeded->setVisible(commandStatus == IStackEventsModel::CommandStatus::CommandSucceeded);
     m_statusFailed->setVisible(commandStatus == IStackEventsModel::CommandStatus::CommandFailed);
-
-    if (m_statusInProgress->isVisible())
-    {
-        m_inProgressMovie->start();
-    }
-    else
-    {
-        m_inProgressMovie->stop();
-    }
 }
 
 void StackEventsWidget::OnRowsInserted(const QModelIndex& parent, int first, int last)

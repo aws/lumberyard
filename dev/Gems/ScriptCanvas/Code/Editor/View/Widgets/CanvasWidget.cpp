@@ -22,6 +22,8 @@ AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QPushButton>
 AZ_POP_DISABLE_WARNING
 
+#include <AzCore/Casting/numeric_cast.h>
+
 #include "Editor/View/Widgets/ui_CanvasWidget.h"
 
 #include <GraphCanvas/Widgets/GraphCanvasGraphicsView/GraphCanvasGraphicsView.h>
@@ -38,10 +40,11 @@ namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        CanvasWidget::CanvasWidget(QWidget* parent)
+        CanvasWidget::CanvasWidget(const AZ::Data::AssetId& assetId, QWidget* parent)
             : QWidget(parent)
             , ui(new Ui::CanvasWidget())
             , m_attached(false)
+            , m_assetId(assetId)
             , m_graphicsView(nullptr)
             , m_miniMapView(nullptr)
         {
@@ -58,19 +61,68 @@ namespace ScriptCanvasEditor
             hide();
         }
 
+        void CanvasWidget::SetDefaultBorderColor(AZ::Color defaultBorderColor)
+        {
+            m_defaultBorderColor = defaultBorderColor;
+
+            QString styleSheet = QString("QFrame#graphicsViewFrame { background-color: rgb(%1,%2,%3) }").arg(defaultBorderColor.GetR8()).arg(defaultBorderColor.GetG8()).arg(defaultBorderColor.GetB8());
+
+            ui->graphicsViewFrame->setStyleSheet(styleSheet);
+        }
+
         void CanvasWidget::ShowScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId)
         {
-            EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::CreateGraphCanvasScene);
+            EditorGraphRequests* editorGraphRequests = EditorGraphRequestBus::FindFirstHandler(scriptCanvasId);
 
-            AZ::EntityId graphCanvasSceneId;
-            EditorGraphRequestBus::EventResult(graphCanvasSceneId, scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
+            editorGraphRequests->SetAssetId(m_assetId);
+            editorGraphRequests->CreateGraphCanvasScene();
+
+            AZ::EntityId graphCanvasSceneId = editorGraphRequests->GetGraphCanvasGraphId();
 
             m_graphicsView->SetScene(graphCanvasSceneId);
+
+            m_scriptCanvasId = scriptCanvasId;
         }
 
         const GraphCanvas::ViewId& CanvasWidget::GetViewId() const
         {
             return m_graphicsView->GetViewId();
+        }
+
+        void CanvasWidget::EnableView()
+        {
+            if (!isEnabled())
+            {
+                setDisabled(false);
+
+                if (m_disabledOverlay.IsValid() && m_graphicsView)
+                {
+                    GraphCanvas::SceneRequestBus::Event(m_graphicsView->GetScene(), &GraphCanvas::SceneRequests::CancelGraphicsEffect, m_disabledOverlay);
+                    m_disabledOverlay = GraphCanvas::GraphicsEffectId();
+                }
+            }
+        }
+
+        void CanvasWidget::DisableView()
+        {
+            if (isEnabled())
+            {
+                setDisabled(true);
+
+                if (m_graphicsView)
+                {
+                    AZ::EntityId graphCanvasSceneId = m_graphicsView->GetScene();
+
+                    GraphCanvas::OccluderConfiguration occluderConfiguration;
+
+                    occluderConfiguration.m_bounds = m_graphicsView->sceneRect();
+                    occluderConfiguration.m_opacity = 0.5f;
+                    occluderConfiguration.m_renderColor = QColor(0, 0, 0);
+                    occluderConfiguration.m_zValue = 100000;
+
+                    GraphCanvas::SceneRequestBus::EventResult(m_disabledOverlay, graphCanvasSceneId, &GraphCanvas::SceneRequests::CreateOccluder, occluderConfiguration);
+                }
+            }
         }
 
         void CanvasWidget::SetupGraphicsView()
@@ -81,7 +133,8 @@ namespace ScriptCanvasEditor
             AZ_Assert(m_graphicsView, "Could Canvas Widget unable to create CanvasGraphicsView object.");
             if (m_graphicsView)
             {
-                ui->verticalLayout->addWidget(m_graphicsView);
+                ui->graphicsViewFrame->layout()->addWidget(m_graphicsView);
+
                 m_graphicsView->show();                
                 m_graphicsView->SetEditorId(ScriptCanvasEditor::AssetEditorId);
 
@@ -123,6 +176,8 @@ namespace ScriptCanvasEditor
         void CanvasWidget::showEvent(QShowEvent* /*event*/)
         {
             ui->m_debugAttach->setText(m_attached ? "Debugging: On" : "Debugging: Off");
+
+            EditorGraphRequestBus::Event(m_scriptCanvasId, &EditorGraphRequests::OnGraphCanvasSceneVisible);
         }
 
         void CanvasWidget::PositionMiniMap()

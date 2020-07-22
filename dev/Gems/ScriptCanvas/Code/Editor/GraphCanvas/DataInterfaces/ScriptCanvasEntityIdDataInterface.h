@@ -96,7 +96,7 @@ namespace ScriptCanvasEditor
             ScriptCanvas::ModifiableDatumView datumView;
             ModifySlotObject(datumView);
 
-            if (datumView.IsValid())
+            if (datumView.IsValid() && datumView.IsType(ScriptCanvas::Data::Type::EntityID()))
             {
                 datumView.SetAs(entityId);
 

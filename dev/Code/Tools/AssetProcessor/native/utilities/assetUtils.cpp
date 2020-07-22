@@ -183,6 +183,12 @@ namespace AssetUtilities
     char s_assetRoot[AZ_MAX_PATH_LEN] = { 0 };
     char s_assetServerAddress[AZ_MAX_PATH_LEN] = { 0 };
     char s_cachedEngineRoot[AZ_MAX_PATH_LEN] = { 0 };
+    int s_truncateFingerprintTimestampPrecision{ 1 };
+
+    void SetTruncateFingerprintTimestamp(int precision)
+    {
+        s_truncateFingerprintTimestampPrecision = precision;
+    }
 
     void ResetAssetRoot()
     {
@@ -629,6 +635,37 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         }
 
         return QString();
+    }
+
+    // Should we expect our modification times to differ by the offset from the installer
+    int AllowedTimeZoneOffset()
+    {
+        const char PackageMarkfileName[] = "package_mark.txt";
+        QDir projectCacheRoot;
+        ComputeProjectCacheRoot(projectCacheRoot);
+
+        if (!QFile::exists(projectCacheRoot.absoluteFilePath(PackageMarkfileName)))
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "No mark file found at %s\n", projectCacheRoot.absoluteFilePath(PackageMarkfileName).toUtf8().constData());
+            return 0;
+        }
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "Mark file found at %s\n", projectCacheRoot.absoluteFilePath(PackageMarkfileName).toUtf8().constData());
+        QDir engineRoot;
+        ComputeEngineRoot(engineRoot);
+        QString rootConfigFile = engineRoot.absoluteFilePath("AssetProcessorPlatformConfig.ini");
+
+        if (QFile::exists(rootConfigFile))
+        {
+            QString curValue;
+            QSettings loader(rootConfigFile, QSettings::IniFormat);
+            loader.beginGroup("Install");
+            curValue = loader.value("TimeZoneOffset", QString()).toString();
+            loader.endGroup();
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Using TimeZoneOffset %s\n", curValue.toUtf8().constData());
+            return curValue.toInt();
+        }
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "No TimeZoneOffset setting found\n");
+        return 0;
     }
 
     QString ReadGameNameFromBootstrap(QString initialFolder /*= QString()*/)
@@ -1333,6 +1370,25 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         return digest[0]; // we only currently use 32-bit hashes.  This could be extended if collisions still occur.
     }
 
+    std::uint64_t AdjustTimestamp(QDateTime timestamp)
+    {
+        if (timestamp.isDaylightTime())
+        {
+            int offsetTimeinSecs = timestamp.timeZone().daylightTimeOffset(timestamp);
+            timestamp = timestamp.addSecs(-1 * offsetTimeinSecs);
+        }
+        
+        timestamp = timestamp.toUTC();
+
+        auto timeMilliseconds = timestamp.toMSecsSinceEpoch();
+
+        // Reduce the precision from milliseconds to the specified precision (default is 1, so no change)
+        timeMilliseconds /= s_truncateFingerprintTimestampPrecision;
+        timeMilliseconds *= s_truncateFingerprintTimestampPrecision;
+
+        return timeMilliseconds;
+    }
+
     AZStd::string GetFileFingerprint(const AZStd::string& absolutePath, const AZStd::string& nameToUse)
     {
         bool fileFound = false;
@@ -1349,17 +1405,13 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         }
         else
         {
-            if (lastModifiedTime.isDaylightTime())
-            {
-                int offsetTimeinSecs = lastModifiedTime.timeZone().daylightTimeOffset(lastModifiedTime);
-                lastModifiedTime = lastModifiedTime.addSecs(-1 * offsetTimeinSecs);
-            }
-            lastModifiedTime.setTimeSpec(Qt::UTC);
+            std::uint64_t lastModifiedTimeMilliseconds = AdjustTimestamp(lastModifiedTime);
+
             // its possible that the dependency has moved to a different file with the same modtime
             // so we add the size of it too.
             // its also possible that it moved to a different file with the same modtime AND size,
             // but with a different name.  So we add that too.
-            return AZStd::string::format("%llX:%llu:%s", lastModifiedTime.toMSecsSinceEpoch(), fileStateInfo.m_fileSize, nameToUse.c_str());
+            return AZStd::string::format("%" PRIX64 ":%" PRIu64 ":%s", lastModifiedTimeMilliseconds, aznumeric_cast<uint64_t>(fileStateInfo.m_fileSize), nameToUse.c_str());
         }
     }
 
@@ -1784,4 +1836,13 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         return m_warningCount;
     }
 
+    void JobLogTraceListener::AddError()
+    {
+        ++m_errorCount;
+    }
+
+    void JobLogTraceListener::AddWarning()
+    {
+        ++m_warningCount;
+    }
 } // namespace AssetUtilities

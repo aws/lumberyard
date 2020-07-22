@@ -16,12 +16,13 @@
 #include "ViewPane.h"
 #include "QtViewPaneManager.h"
 #include "CryEditDoc.h"
-
 #include "MainWindow.h"
+
+#include <AzQtComponents/Components/Style.h>
+
 #include <QApplication>
 #include <QSettings>
 #include <QMessageBox>
-
 #include <QToolBar>
 
 class CLayoutSplitterHandle
@@ -105,6 +106,8 @@ CLayoutWnd::CLayoutWnd(QSettings* settings, QWidget* parent)
                                             Qt::BottomToolBarArea,
                                             QStringLiteral("Info Panel"));
     m_infoToolBar->setMovable(false);
+    m_infoToolBar->setObjectName("InfoBar");
+    AzQtComponents::Style::addClass(m_infoToolBar, "DefaultSpacing");
 
     setContextMenuPolicy(Qt::NoContextMenu);
 }

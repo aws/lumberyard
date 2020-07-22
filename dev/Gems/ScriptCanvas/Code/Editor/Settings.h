@@ -64,7 +64,13 @@ namespace ScriptCanvasEditor
             AZStd::vector< AZ::Data::AssetId > GetActiveAssetIds() const;
 
             void Init(const QByteArray& windowState, const QByteArray& windowGeometry);
-            void Restore(QMainWindow* window);            
+            void Restore(QMainWindow* window);
+
+            void Clear()
+            {
+                m_focusedAssetId.SetInvalid();
+                m_activeAssetIds.clear();
+            }
 
         private:
 

@@ -47,7 +47,6 @@ namespace AzQtComponents
         struct Data;
 
     public:
-
         enum
         {
             CORNER_RECTANGLE = -1
@@ -55,8 +54,6 @@ namespace AzQtComponents
 
         explicit Style(QStyle* style = nullptr);
         ~Style() override;
-
-
 
         /*!
          * Tracks this widget so that when *Config.ini files change, this widget will get repolished.
@@ -68,7 +65,7 @@ namespace AzQtComponents
         /*!
          * Returns true if the widget parameter has the css className applied
          */
-        bool hasClass(const QWidget* widget, const QString& className) const;
+        static bool hasClass(const QWidget* widget, const QString& className);
 
         /*!
          * Adds the css className to the input widget
@@ -114,14 +111,19 @@ namespace AzQtComponents
          */
         static void removeFlagToIgnore(QWidget* widget);
 
-
-
+        /*!
+         * Call this to check whether the widget should use the UI 2.0 styling
+         */
+        static bool hasStyle(const QWidget* widget);
+        
         QSize sizeFromContents(QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget) const override;
 
         void drawControl(QStyle::ControlElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override;
         void drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override;
         void drawComplexControl(QStyle::ComplexControl element, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget) const override;
         void drawItemText(QPainter* painter, const QRect& rectangle, int alignment, const QPalette& palette, bool enabled, const QString& text, QPalette::ColorRole textRole) const override;
+
+        void drawDragIndicator(const QStyleOption* option, QPainter* painter, const QWidget* widget) const;
 
         QPixmap generatedIconPixmap(QIcon::Mode iconMode, const QPixmap& pixmap, const QStyleOption* option) const override;
 
@@ -169,7 +171,6 @@ namespace AzQtComponents
 
     private:
         void repolishWidgetDestroyed(QObject* obj);
-        bool hasStyle(const QWidget* widget) const;
 
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // needs to have dll-interface to be used by clients of class 'AzQtComponents::LineEdit'
         QScopedPointer<Data> m_data;

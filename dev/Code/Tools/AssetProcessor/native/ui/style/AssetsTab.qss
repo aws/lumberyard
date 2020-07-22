@@ -125,7 +125,7 @@ QFrame#jobContextLogLabel {
     margin-top: 12px;
 }
 
-QSplitter {
+QSplitter:handle {
     background-color: #222222;
 }
 

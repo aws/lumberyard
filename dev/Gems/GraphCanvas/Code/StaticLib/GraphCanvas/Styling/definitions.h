@@ -186,6 +186,8 @@ namespace GraphCanvas
             const char* const ZValue = "z-value";
             const char* const Opacity = "opacity";
 
+            const char* const Steps = "steps";
+
         } // namespace Attributes
 
         enum class Attribute : AZ::u32
@@ -263,6 +265,9 @@ namespace GraphCanvas
             ZValue,
 
             Opacity,
+
+            // Steps are a series if number to be dealt with in 'order'
+            Steps,
 
             // The selectors are an array "attribute" in the same JSON scope as the rest
             Selectors = 0x80fffffe,

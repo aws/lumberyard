@@ -172,7 +172,7 @@ namespace EMotionFX
         if (mDisabled)
         {
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -186,10 +186,10 @@ namespace EMotionFX
             finalNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
-            AnimGraphNodeData* finalNodeUniqueData = finalNode->FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* finalNodeUniqueData = finalNode->FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* sourceData = finalNodeUniqueData->GetRefCountedData();
 
             // TODO: this happens somehow for 1 frame when transitioning towards a blend tree (the nullptr)
@@ -205,7 +205,7 @@ namespace EMotionFX
         else
         {
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ZeroTrajectoryDelta();
             data->ClearEventBuffer();
@@ -219,7 +219,7 @@ namespace EMotionFX
         // if this node is disabled, output the bind pose
         if (mDisabled)
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
             return;
         }
@@ -233,12 +233,12 @@ namespace EMotionFX
             finalNode->IncreasePoseRefCount(animGraphInstance);
             finalNode->IncreaseRefDataRefCount(animGraphInstance);
             finalNode->PerformUpdate(animGraphInstance, timePassedInSeconds);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Init(animGraphInstance, finalNode);
         }
         else
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
         }
     }
@@ -267,7 +267,7 @@ namespace EMotionFX
         if (finalNode)
         {
             // hierarhical sync update
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             HierarchicalSyncInputNode(animGraphInstance, finalNode, uniqueData);
 
             // pass the global weight along to the child nodes

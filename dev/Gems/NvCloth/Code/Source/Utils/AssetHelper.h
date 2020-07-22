@@ -12,21 +12,13 @@
 
 #pragma once
 
-#include <ProjectDefines.h>
-
-#include <AzCore/Math/Vector2.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>
 
-#include <foundation/PxVec4.h>
+#include <System/DataTypes.h>
 
 namespace NvCloth
 {
-    using MeshNodeList = AZStd::vector<AZStd::string>;
-    using SimParticleType = physx::PxVec4;
-    using SimIndexType = vtx_idx;
-    using SimUVType = AZ::Vector2;
-
     extern const int InvalidIndex;
 
     //! Structure holding information about the submeshes of a render mesh node.
@@ -76,8 +68,7 @@ namespace NvCloth
             MeshNodeInfo& meshNodeInfo,
             AZStd::vector<SimParticleType>& meshParticles,
             AZStd::vector<SimIndexType>& meshIndices,
-            AZStd::vector<SimUVType>& meshUVs,
-            bool& simParticlesFullyStatic) = 0;
+            AZStd::vector<SimUVType>& meshUVs) = 0;
 
         //! Returns whether the asset has support for skinned animation or not.
         virtual bool DoesSupportSkinnedAnimation() const = 0;

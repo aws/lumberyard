@@ -30,7 +30,7 @@ namespace EMotionFX
             animGraphBuilderDescriptor.m_name = "AnimGraphBuilderWorker";
             animGraphBuilderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.animgraph", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             animGraphBuilderDescriptor.m_busId = azrtti_typeid<AnimGraphBuilderWorker>();
-            animGraphBuilderDescriptor.m_version = 1;
+            animGraphBuilderDescriptor.m_version = 2;
             animGraphBuilderDescriptor.m_createJobFunction =
                 AZStd::bind(&AnimGraphBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
             animGraphBuilderDescriptor.m_processJobFunction =
@@ -91,6 +91,7 @@ namespace EMotionFX
                 AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Error during outputing product dependencies for asset %s.\n", fileName.c_str());
             }
 
+            jobProduct.m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             response.m_outputProducts.push_back(jobProduct);
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         }

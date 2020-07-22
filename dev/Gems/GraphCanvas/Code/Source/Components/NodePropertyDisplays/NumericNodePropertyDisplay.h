@@ -13,7 +13,7 @@
 
 #include <QLineEdit>
 
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
@@ -31,7 +31,7 @@ namespace GraphCanvas
         // widget still has focus. Qt does not expose focus events in any
         // signal way, so this exposes that functionality for me.
         class FocusableDoubleSpinBox
-            : public AzToolsFramework::DHQDoubleSpinbox
+            : public AzQtComponents::DoubleSpinBox
         {
             Q_OBJECT
         public:
@@ -53,13 +53,13 @@ namespace GraphCanvas
 
             void focusInEvent(QFocusEvent* focusEvent) override
             {
-                AzToolsFramework::DHQDoubleSpinbox::focusInEvent(focusEvent);
+                AzQtComponents::DoubleSpinBox::focusInEvent(focusEvent);
                 emit OnFocusIn();
             }
 
             void focusOutEvent(QFocusEvent* focusEvent) override
             {
-                AzToolsFramework::DHQDoubleSpinbox::focusOutEvent(focusEvent);
+                AzQtComponents::DoubleSpinBox::focusOutEvent(focusEvent);
                 emit OnFocusOut();
             }
         };

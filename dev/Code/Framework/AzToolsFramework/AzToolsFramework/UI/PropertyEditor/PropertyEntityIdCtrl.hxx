@@ -19,7 +19,6 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <QtWidgets/QWidget>
-#include <QtWidgets/QPushButton>
 #include "PropertyEditorAPI.h"
 
 #pragma once
@@ -27,11 +26,11 @@
 class QCheckBox;
 class QLineEdit;
 class QMimeData;
-class QPushButton;
+class QToolButton;
 
 namespace AzToolsFramework
 {
-    class EntityIdQLabel;
+    class EntityIdQLineEdit;
     class EditorEntityIdContainer;
 
     //just a test to see how it would work to pop a dialog
@@ -82,6 +81,7 @@ namespace AzToolsFramework
 
     public slots:
         void SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride);
+        void ClearEntityId();
 
     protected:
         bool IsCorrectMimeData(const QMimeData* mimeData) const;
@@ -93,9 +93,8 @@ namespace AzToolsFramework
 
         QString BuildTooltip();
 
-        EntityIdQLabel* m_entityIdLabel;
-        QPushButton* m_pickButton;
-        QPushButton* m_clearButton;
+        EntityIdQLineEdit* m_entityIdLineEdit;
+        QToolButton* m_pickButton;
         AZStd::vector<AZ::ComponentServiceType> m_requiredServices;
         AZStd::vector<AZ::ComponentServiceType> m_incompatibleServices;
         AzFramework::EntityContextId m_acceptedEntityContextId;

@@ -410,7 +410,6 @@
             "Module/Internal/ModuleManagerSearchPathTool.h",
             "Module/Internal/ModuleManagerSearchPathTool.cpp"
         ],
-
         "NativeUI":
         [
             "NativeUI/NativeUISystemComponent.cpp",
@@ -520,7 +519,10 @@
             "Serialization/DataPatchUpgradeManager.h",
             "Serialization/DataPatchUpgradeManager.cpp"
         ],
-        "Serialization/Json": [
+        "Serialization/Json": 
+        [
+            "Serialization/Json/ArraySerializer.h",
+            "Serialization/Json/ArraySerializer.cpp",
             "Serialization/Json/BaseJsonSerializer.h",
             "Serialization/Json/BaseJsonSerializer.cpp",
             "Serialization/Json/BasicContainerSerializer.h",
@@ -530,16 +532,19 @@
             "Serialization/Json/CastingHelpers.h",
             "Serialization/Json/DoubleSerializer.h",
             "Serialization/Json/DoubleSerializer.cpp",
-            "Serialization/Json/EnumSerializer.h",
-            "Serialization/Json/EnumSerializer.cpp",
             "Serialization/Json/IntSerializer.h",
             "Serialization/Json/IntSerializer.cpp",
             "Serialization/Json/JsonDeserializer.h",
             "Serialization/Json/JsonDeserializer.cpp",
+            "Serialization/Json/JsonMerger.h",
+            "Serialization/Json/JsonMerger.cpp",
             "Serialization/Json/JsonSerialization.h",
             "Serialization/Json/JsonSerialization.cpp",
+            "Serialization/Json/JsonSerializationMetadata.h",
+            "Serialization/Json/JsonSerializationMetadata.inl",
             "Serialization/Json/JsonSerializationResult.h",
             "Serialization/Json/JsonSerializationResult.cpp",
+            "Serialization/Json/JsonSerializationSettings.h",
             "Serialization/Json/JsonSerializer.h",
             "Serialization/Json/JsonSerializer.cpp",
             "Serialization/Json/JsonStringConversionUtils.h",
@@ -549,6 +554,8 @@
             "Serialization/Json/MapSerializer.cpp",
             "Serialization/Json/RegistrationContext.h",
             "Serialization/Json/RegistrationContext.cpp",
+            "Serialization/Json/SmartPointerSerializer.h",
+            "Serialization/Json/SmartPointerSerializer.cpp",
             "Serialization/Json/StackedString.h",
             "Serialization/Json/StackedString.cpp",
             "Serialization/Json/StringSerializer.h",
@@ -558,7 +565,7 @@
             "Serialization/Json/UnorderedSetSerializer.h",
             "Serialization/Json/UnorderedSetSerializer.cpp"
         ],
-        "Serialization/std":
+        "Serialization/std": 
         [
             "Serialization/std/VariantReflection.inl"
         ],
@@ -590,17 +597,24 @@
         ],
         "JSON":
         [
+            "JSON/allocators.h",
+            "JSON/cursorstreamwrapper.h",
             "JSON/document.h",
             "JSON/encodedstream.h",
             "JSON/encodings.h",
             "JSON/filereadstream.h",
             "JSON/filewritestream.h",
+            "JSON/fwd.h",
+            "JSON/istreamwrapper.h",
             "JSON/memorybuffer.h",
             "JSON/memorystream.h",
+            "JSON/ostreamwrapper.h",
             "JSON/pointer.h",
             "JSON/prettywriter.h",
             "JSON/rapidjson.h",
             "JSON/reader.h",
+            "JSON/schema.h",
+            "JSON/stream.h",
             "JSON/stringbuffer.h",
             "JSON/writer.h"
         ],

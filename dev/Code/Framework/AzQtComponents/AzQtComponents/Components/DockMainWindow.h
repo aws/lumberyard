@@ -24,7 +24,12 @@ namespace AzQtComponents
     {
         Q_OBJECT
     public:
-        explicit DockMainWindow(QWidget* parent = nullptr);
+        explicit DockMainWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
         QMenu* createPopupMenu() override;
+
+        /// Set if this main window is owned by a fancy docking instance
+        void SetFancyDockingOwner(QWidget* instance);
+        /// Return whether or not this main window is configured with fancy docking
+        bool HasFancyDocking();
     };
 } // namespace AzQtComponents

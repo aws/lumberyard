@@ -240,7 +240,10 @@ def query_vswhere_versions(ctx, vswhere_args):
         return None
 
     # If we detected a viable installed visual studio, then read in the entire value based on the exact installation version
-    command = [vswhere_path, '-version', '[{}]'.format(detected_install_version), '-products', detected_product_id, '-nologo']
+    # Added the vswhere_args before the using the found version and product id to query the vswhere properties
+    # This allows the found -version and -products values to override the ones within the vswhere_args array, while
+    # still allowing the other vswhere_args to be used
+    command = [vswhere_path] + vswhere_args + ['-version', '[{}]'.format(detected_install_version), '-products', detected_product_id, '-nologo']
     results = execute_vs_query_into_map(command)
 
     return results

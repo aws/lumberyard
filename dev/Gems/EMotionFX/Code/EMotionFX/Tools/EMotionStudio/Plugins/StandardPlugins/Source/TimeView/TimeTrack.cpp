@@ -37,7 +37,7 @@ namespace EMStudio
         // init brushes and pens
         mBrushDataBG            = QColor(60, 65, 70);
         //mBrushDataBG          = QColor(50, 50, 50);
-        mBrushDataDisabledBG    = QColor(38, 38, 38);// use the same color //QBrush( QColor(33, 33, 33) );
+        mBrushDataDisabledBG    = QColor(50, 50, 50);// use the same color //QBrush( QColor(33, 33, 33) );
         mBrushHeaderBG          = QBrush(QColor(30, 30, 30));
         mPenText                = QPen(QColor(255, 255, 255));
     }

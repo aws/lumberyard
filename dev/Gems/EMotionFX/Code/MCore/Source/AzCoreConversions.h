@@ -65,10 +65,7 @@ namespace MCore
 
     AZ_FORCE_INLINE EMotionFX::Transform AzTransformToEmfxTransform(const AZ::Transform& azTransform)
     {
-        return EMotionFX::Transform(
-            azTransform.GetTranslation(),
-            AZ::Quaternion::CreateFromTransform(azTransform),
-            azTransform.RetrieveScale());
+        return EMotionFX::Transform(azTransform);
     }
 
     // AZ::Quaternion::CreateFromAxisAngle does not yield to the same results because it's using right handed system.
@@ -409,7 +406,7 @@ namespace MCore
     {
         const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(scale);
         const AZ::Transform rotationMatrix = AZ::Transform::CreateFromQuaternion(rotation);
-        AZ::Transform result = scaleMatrix * rotationMatrix;
+        AZ::Transform result = rotationMatrix * scaleMatrix;
         result.SetTranslation(translation);
         return result;
     }

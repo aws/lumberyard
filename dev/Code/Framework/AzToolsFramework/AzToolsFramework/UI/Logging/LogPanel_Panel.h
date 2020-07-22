@@ -34,7 +34,6 @@ AZ_POP_DISABLE_WARNING
 
 #include <memory>
 
-class QTabWidget;
 class QTableView;
 class QLabel;
 class QModelIndex;

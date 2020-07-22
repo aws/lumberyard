@@ -21,8 +21,6 @@ class QLabel;
 namespace AzQtComponents
 {
 
-    class Swatch;
-
     class AZ_QT_COMPONENTS_API ColorWarning
         : public QWidget
     {
@@ -63,7 +61,6 @@ namespace AzQtComponents
         QString m_message;
 
         QLabel* m_iconLabel;
-        Swatch* m_swatch;
         QLabel* m_messageLabel;
     };
 

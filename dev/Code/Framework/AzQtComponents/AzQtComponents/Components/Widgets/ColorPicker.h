@@ -142,6 +142,7 @@ namespace AzQtComponents
 
     protected:
         bool eventFilter(QObject* o, QEvent* e) override;
+        void hideEvent(QHideEvent* event) override;
         void done(int result) override;
 
         void contextMenuEvent(QContextMenuEvent* e) override;
@@ -158,6 +159,7 @@ namespace AzQtComponents
         class PaletteRemovedCommand;
 
         friend class Style;
+        friend class EditorProxyStyle;
         friend class CurrentColorChangedCommand;
         friend class PaletteAddedCommand;
         friend class PaletteRemovedCommand;
@@ -171,6 +173,7 @@ namespace AzQtComponents
         void applyConfigurationRGB();
         void applyConfigurationHueSaturation();
         void polish(const Config& config);
+        void refreshCardMargins();
 
         void setColorGridMode(ColorGrid::Mode mode);
         void initContextMenu(Configuration configuration);

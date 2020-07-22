@@ -61,7 +61,7 @@ namespace PhysXCharacters
         AZ::Vector3 GetPosition() const override;
         AZ::Quaternion GetOrientation() const override;
         AZ::Aabb GetAabb() const override;
-        void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
         void AddToWorld(Physics::World&) override;

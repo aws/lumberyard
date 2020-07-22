@@ -19,6 +19,7 @@
 #include <QEvent>
 #include <QAction>
 #include <QMenu>
+#include <QDebug>
 
 template<typename Spinbox, typename ValueType>
 class SpinBoxChangedCommand : public QUndoCommand
@@ -72,6 +73,7 @@ SpinBoxPage::SpinBoxPage(QWidget* parent)
     ui->setupUi(this);
     ui->focusSpinBox->setFocus();
     ui->filledInDoubleSpinBox->setDecimals(40);
+    ui->filledInDoubleSpinBox->setDisplayDecimals(2);
     ui->filledInDoubleSpinBox->setValue(3.1415926535897932384626433832795028841971);
     setFocusProxy(ui->focusSpinBox);
 
@@ -79,16 +81,33 @@ SpinBoxPage::SpinBoxPage(QWidget* parent)
     ui->focusDoubleSpinBox->setSingleStep(0.01);
     ui->focusDoubleSpinBox->setValue(0.07);
 
-    ui->vectorInputX->setCoordinate(AzQtComponents::VectorInput::Coordinate::X);
-    ui->vectorInputY->setCoordinate(AzQtComponents::VectorInput::Coordinate::Y);
-    ui->vectorInputZ->setCoordinate(AzQtComponents::VectorInput::Coordinate::Z);
+    AzQtComponents::SpinBox::setHasError(ui->hasErrorSpinBox, true);
+    AzQtComponents::SpinBox::setHasError(ui->hasErrorDoubleSpinBox, true);
 
-    ui->metersVectorInputX->setSuffix(" m");
-    ui->metersVectorInputX->setCoordinate(AzQtComponents::VectorInput::Coordinate::X);
-    ui->metersVectorInputY->setSuffix(" m");
-    ui->metersVectorInputY->setCoordinate(AzQtComponents::VectorInput::Coordinate::Y);
-    ui->metersVectorInputZ->setSuffix(" m");
-    ui->metersVectorInputZ->setCoordinate(AzQtComponents::VectorInput::Coordinate::Z);
+    ui->metersVectorInput->setSuffix(" m");
+
+    {
+        const QStringList labels = {"Top", "Right", "Bottom", "Left"};
+        const int size = ui->labelsVectorInput->getSize();
+        for (int i = 0; i < size; ++i)
+        {
+            ui->labelsVectorInput->setLabel(i, labels[i % labels.size()]);
+        }
+    }
+
+    {
+        const QStringList styles =
+        {
+            "font: bold; color: rgb(184,51,51);",
+            "font: bold; color: rgb(48,208,120);",
+            "font: bold; color: rgb(66,133,244);"
+        };
+        const int size = ui->styleVectorInput->getSize();
+        for (int i = 0; i < size; ++i)
+        {
+            ui->styleVectorInput->setLabelStyle(i, styles[i % styles.size()]);
+        }
+    }
 
     ui->horizontalLayout->setStretch(0, 3);
     ui->horizontalLayout->setStretch(1, 1);
@@ -109,6 +128,12 @@ AzQtComponents::DoubleSpinBox* doubleSpinBox;
 // To set the range to 0 - 1 and step by 0.01:
 doubleSpinBox->setRange(0.0, 1.0);
 doubleSpinBox->setSingleStep(0.01);
+
+// By default, QAbstractSpinBox::hasAcceptableInput is used to display the error state.
+// The developer can set the QAbstractSpinBox::CorrectionMode to control this behavior.
+// In addition, the developer can use AzQtComponents::SpinBox::setHasError to manually
+// override the error state of a SpinBox or DoubleSpinBox.
+AzQtComponents::SpinBox::setHasError(doubleSpinBox, true);
 )";
 
     ui->exampleText->setHtml(exampleText);
@@ -121,6 +146,25 @@ doubleSpinBox->setSingleStep(0.01);
     track<AzQtComponents::DoubleSpinBox, double>(ui->filledInDoubleSpinBox);
     track<AzQtComponents::SpinBox, int>(ui->focusSpinBox);
     track<AzQtComponents::DoubleSpinBox, double>(ui->focusDoubleSpinBox);
+
+    {
+        QAction* action = new QAction("Up", this);
+        action->setShortcut(QKeySequence(Qt::Key_Up));
+        connect(action, &QAction::triggered, [this]()
+        {
+            qDebug() << "Up pressed";
+        });
+        addAction(action);
+    }
+    {
+        QAction* action = new QAction("Down", this);
+        action->setShortcut(QKeySequence(Qt::Key_Down));
+        connect(action, &QAction::triggered, [this]()
+        {
+            qDebug() << "Down pressed";
+        });
+        addAction(action);
+    }
 }
 
 SpinBoxPage::~SpinBoxPage()

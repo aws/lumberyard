@@ -112,6 +112,7 @@ namespace PhysXCharacters
             }
             if (m_shape)
             {
+                PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
                 m_shape->AttachedToActor(actor);
                 m_shape->SetCollisionLayer(characterConfig.m_collisionLayer);
                 m_shape->SetCollisionGroup(collisionGroup);
@@ -158,10 +159,10 @@ namespace PhysXCharacters
 
     CharacterController::~CharacterController()
     {
-        m_shape = nullptr; //shape has to go before m_pxController 
         if (m_pxController)
         {
             PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
+            m_shape = nullptr; //shape has to go before m_pxController 
             m_pxController->release();
         }
         m_pxController = nullptr;
@@ -458,9 +459,17 @@ namespace PhysXCharacters
         return PxMathConvert(m_pxController->getActor()->getWorldBounds(inflationFactor));
     }
 
-    void CharacterController::RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const
+    Physics::RayCastHit CharacterController::RayCast(const Physics::RayCastRequest& request)
     {
-        AZ_Warning("PhysX Character Controller", false, "Not yet supported.");
+        if (m_pxController)
+        {
+            if (physx::PxRigidDynamic* actor = m_pxController->getActor())
+            {
+                return PhysX::Utils::RayCast::ClosestRayHitAgainstPxRigidActor(request, actor);
+            }
+        }
+
+        return Physics::RayCastHit();
     }
 
     AZ::Crc32 CharacterController::GetNativeType() const
@@ -563,21 +572,31 @@ namespace PhysXCharacters
             return;
         }
 
+        // height needs to be adjusted due to differences between LY and PhysX definitions of capsule and box dimensions
+        float adjustedHeight = height;
         {
             PHYSX_SCENE_READ_LOCK(m_pxController->getScene());
             if (m_pxController->getType() == physx::PxControllerShapeType::eCAPSULE)
             {
                 auto capsuleController = static_cast<physx::PxCapsuleController*>(m_pxController);
-                if (height <= 2.0f * capsuleController->getRadius())
+                const float radius = capsuleController->getRadius();
+                if (height <= 2.0f * radius)
                 {
                     AZ_Error("PhysX Character Controller", false, "Capsule height must exceed twice its radius.");
                     return;
                 }
+                // LY defines capsule height to include the end caps, but PhysX does not
+                adjustedHeight = height - 2.0f * radius;
+            }
+            else
+            {
+                // the PhysX box controller resize function actually treats the height argument as half-height
+                adjustedHeight = 0.5f * height;
             }
         }
 
         PHYSX_SCENE_WRITE_LOCK(m_pxController->getScene());
-        m_pxController->resize(height);
+        m_pxController->resize(adjustedHeight);
     }
 
     float CharacterController::GetHeight() const

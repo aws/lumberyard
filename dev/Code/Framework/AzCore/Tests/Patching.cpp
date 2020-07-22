@@ -1438,7 +1438,7 @@ namespace UnitTest
             // apply the patch despite it containing deprecated things with no deprecation tag, expect 1 error per unknown instance:
             AZ_TEST_START_TRACE_SUPPRESSION;
             ObjectWithVectorOfBaseClasses* patchedTargetObj = patch.Apply(&sourceObject, m_serializeContext.get());
-            AZ_TEST_STOP_TRACE_SUPPRESSION(3);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(0);
 
             // at this point, the patched target object should only have ObjectDerivedClass1s on it.
             // two of them exactly.  There should be no other types and there should be no null holes in it.
@@ -2203,9 +2203,9 @@ namespace UnitTest
 
             // Apply the patch, conversion will not complete during this stage
             // Since AddressType is invalid, the underlying data will not be requested during apply and will not be fully converted
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             AZStd::unique_ptr<ObjectToPatch> generatedObj(patch.Apply(&source, m_serializeContext.get()));
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(0);
             // We expect the value 39 to not be patched during apply and m_intValue to remain at 0
             EXPECT_TRUE(generatedObj);
             EXPECT_EQ(generatedObj->m_intValue, 0);
@@ -2250,9 +2250,9 @@ namespace UnitTest
             ObjectToPatch source;
 
             // Verify address deserializes with no errors
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             LoadPatchFromXML(patchXML, patch);
-            AZ_TEST_STOP_ASSERTTEST(0);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(0);
 
             AZStd::unique_ptr<ObjectToPatch> generatedObj(patch.Apply(&source, m_serializeContext.get()));
 

@@ -13,6 +13,7 @@
 #include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/DockBar.h>
 #include <AzQtComponents/Components/DockBarButton.h>
+#include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 
@@ -68,7 +69,7 @@ namespace AzQtComponents
 
         // Otherwise, use the variable width based on the title length
         const auto tabOption = qstyleoption_cast<const QStyleOptionTab*>(option);
-        const int width = DockBar::getTitleMinWidth(tabOption->text) + DockTabBar::closeButtonOffsetForIndex(tabOption);
+        const int width = DockBar::GetTabTitleMinWidth(tabOption->text) + DockTabBar::closeButtonOffsetForIndex(tabOption);
         return QSize(width, DockBar::Height);
     }
 
@@ -169,14 +170,35 @@ namespace AzQtComponents
         emit singleTabFillsWidthChanged(m_singleTabFillsWidth);
     }
 
+    QString DockTabBar::tabText(int index) const
+    {
+        QString title = QTabBar::tabText(index);
+
+        int titleWidth;
+        return DockBar::GetTabTitleElided(title, titleWidth);
+    }
+
     /**
-     * Any time the tab layout changes (e.g. tabs are added/removed/resized),
+     * Any time the tab layout changes (e.g. tabs are added/removed/resized or active tab changed),
      * we need to check if we need to add our tab indicator underlay, and
-     * update our tab close button position
+     * update which tab close button is visible
      */
     void DockTabBar::tabLayoutChange()
     {
         TabBar::tabLayoutChange();
+
+        // Only the active tab's close button should be shown
+        const ButtonPosition closeSide = (ButtonPosition)style()->styleHint(QStyle::SH_TabBar_CloseButtonPosition, 0, this);
+        const int numTabs = count();
+        const int activeTabIndex = currentIndex();
+        for (int i = 0; i < numTabs; ++i)
+        {
+            if (auto button = tabButton(i, closeSide))
+            {
+                button->setVisible(i == activeTabIndex);
+            }
+        }
+
         // If the tab indicators are showing, then we need to show our underlay
         if (m_leftButton->isVisible())
         {
@@ -201,9 +223,14 @@ namespace AzQtComponents
     void DockTabBar::tabInserted(int index)
     {
         auto closeButton = new DockBarButton(DockBarButton::CloseButton);
-        connect(closeButton, &DockBarButton::clicked, this, [=]{
-            emit tabCloseRequested(index);
+        connect(closeButton, &DockBarButton::clicked, this, [=] {
+            int widgetIndex = tabAt(closeButton->pos());
+            if (widgetIndex >= 0)
+            {
+                emit tabCloseRequested(widgetIndex);
+            }
         });
+
         const ButtonPosition closeSide = (ButtonPosition) style()->styleHint(QStyle::SH_TabBar_CloseButtonPosition, 0, this);
         setTabButton(index, closeSide, closeButton);
     }
@@ -262,16 +289,27 @@ namespace AzQtComponents
         bool enableGroupActions = (count() > 1);
         m_closeTabGroupMenuAction->setEnabled(enableGroupActions);
 
-        // Disable the undock group action if our tab widget
-        // container is the only dock widget in a floating window
+        // Don't enable the undock action if this dock widget is the only pane
+        // in a floating window or if it isn't docked in one of our dock main windows
         QWidget* tabWidget = parentWidget();
         bool enableUndock = true;
         if (tabWidget)
         {
-            StyledDockWidget* tabWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidget->parentWidget());
-            if (tabWidgetContainer)
+            // The main case is when we have a tab bar for a tab widget
+            QWidget* tabWidgetParent = tabWidget->parentWidget();
+            StyledDockWidget* dockWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidgetParent);
+            if (!dockWidgetContainer)
             {
-                enableUndock = !tabWidgetContainer->isSingleFloatingChild();
+                // The other case is when this tab bar is being used for a solo dock widget by the TitleBar
+                // so that it looks like a tab, so we need to look one level up
+                dockWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidgetParent->parentWidget());
+            }
+
+            if (dockWidgetContainer)
+            {
+                DockMainWindow* dockMainWindow = qobject_cast<DockMainWindow*>(dockWidgetContainer->parentWidget());
+
+                enableUndock = dockMainWindow && !dockWidgetContainer->isSingleFloatingChild();
             }
         }
         m_undockTabGroupMenuAction->setEnabled(enableGroupActions && enableUndock);
@@ -304,17 +342,9 @@ namespace AzQtComponents
      */
     void DockTabBar::currentIndexChanged(int current)
     {
-        resizeEvent(nullptr);
+        Q_UNUSED(current);
 
-        const ButtonPosition closeSide = (ButtonPosition) style()->styleHint(QStyle::SH_TabBar_CloseButtonPosition, 0, this);
-        const int numTabs = count();
-        for (int i = 0; i < numTabs; ++i)
-        {
-            if (auto button = tabButton(i, closeSide))
-            {
-                button->setVisible(i == current);
-            }
-        }
+        resizeEvent(nullptr);
     }
 
     /**

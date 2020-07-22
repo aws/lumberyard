@@ -44,7 +44,7 @@ namespace ScriptCanvas
 
         void Init() override;
         void Activate() override;
-        void Deactivate() override;        
+        void Deactivate() override;
 
         // GraphConfigurationNotificationBus
         void ConfigureScriptCanvasId(const ScriptCanvasId& scriptCanvasId) override;
@@ -66,7 +66,7 @@ namespace ScriptCanvas
         AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view name, const Datum& value) override;
         AZ::Outcome<VariableId, AZStd::string> AddVariablePair(const AZStd::pair<AZStd::string_view, Datum>& nameValuePair) override;
 
-        bool IsNameAvailable(AZStd::string_view key) override;
+        VariableValidationOutcome IsNameValid(AZStd::string_view key) override;
 
         bool RemoveVariable(const VariableId& variableId) override;
         AZStd::size_t RemoveVariableByName(AZStd::string_view variableName) override;
@@ -77,9 +77,11 @@ namespace ScriptCanvas
 
         Data::Type GetVariableType(const VariableId& variableId) override;
         
-        const GraphVariableMapping* GetVariables() const override;        
+        const GraphVariableMapping* GetVariables() const override;
         AZStd::string_view GetVariableName(const VariableId&) const override;
         AZ::Outcome<void, AZStd::string> RenameVariable(const VariableId&, AZStd::string_view) override;
+
+        bool IsRemappedId(const VariableId& remappedId) const override;
         ////
 
         GraphVariableMapping* GetVariables();

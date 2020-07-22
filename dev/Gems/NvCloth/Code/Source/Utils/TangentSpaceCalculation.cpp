@@ -12,20 +12,78 @@
 
 #include <NvCloth_precompiled.h>
 
+#include <AzCore/std/containers/array.h>
+
 #include <Utils/TangentSpaceCalculation.h>
+#include <Utils/MathConversion.h>
 
 namespace NvCloth
 {
-    TangentSpaceCalculation::Error TangentSpaceCalculation::CalculateTangentSpace(const TriangleInputProxy& input, AZStd::string& errorMessage)
+    void TangentSpaceCalculation::Calculate(
+        const AZStd::vector<SimParticleType>& vertices,
+        const AZStd::vector<SimIndexType>& indices,
+        const AZStd::vector<SimUVType>& uvs)
     {
-        AZ::u32 triCount = input.GetTriangleCount();
-        AZ::u32 vertexCount = input.GetVertexCount();
+        AZ_Error("TangentSpaceCalculation", (indices.size() % 3) == 0,
+            "Size of list of indices (%d) is not a multiple of 3.",
+            indices.size());
 
-        // Reset results
+        AZ::u32 triangleCount = indices.size() / 3;
+        AZ::u32 vertexCount = vertices.size();
+
+        // Reset results with the right number of elements
         m_baseVectors = AZStd::vector<Base33>(vertexCount);
+
+        using TriangleIndices = AZStd::array<SimIndexType, 3>;
+        using TrianglePositions = AZStd::array<Vec3, 3>;
+        using TriangleUVs = AZStd::array<Vec3, 3>;
+        using TriangleEdges = AZStd::array<Vec3, 2>;
+
+        AZStd::vector<TriangleIndices> trianglesIndices;
+        AZStd::vector<TrianglePositions> trianglesPositions;
+        AZStd::vector<TriangleUVs> trianglesUVs;
+        AZStd::vector<TriangleEdges> trianglesEdges;
+
+        trianglesIndices.reserve(triangleCount);
+        trianglesPositions.reserve(triangleCount);
+        trianglesUVs.reserve(triangleCount);
+        trianglesEdges.reserve(triangleCount);
+
+        // Precalculate triangles' indices, positions, UVs and edges.
+        for (AZ::u32 i = 0; i < triangleCount; ++i)
+        {
+            const TriangleIndices triangleIndices =
+            {{
+                indices[i * 3 + 0],
+                indices[i * 3 + 1],
+                indices[i * 3 + 2]
+            }};
+            const TrianglePositions trianglePositions =
+            {{
+                PxMathConvert(vertices[triangleIndices[0]]),
+                PxMathConvert(vertices[triangleIndices[1]]),
+                PxMathConvert(vertices[triangleIndices[2]])
+            }};
+            const TriangleUVs triangleUVs =
+            {{
+                PxMathConvert(uvs[triangleIndices[0]]),
+                PxMathConvert(uvs[triangleIndices[1]]),
+                PxMathConvert(uvs[triangleIndices[2]])
+            }};
+            const TriangleEdges triangleEdges =
+            {{
+                trianglePositions[1] - trianglePositions[0],
+                trianglePositions[2] - trianglePositions[0]
+            }};
+            trianglesIndices.push_back(AZStd::move(triangleIndices));
+            trianglesPositions.push_back(AZStd::move(trianglePositions));
+            trianglesUVs.push_back(AZStd::move(triangleUVs));
+            trianglesEdges.push_back(AZStd::move(triangleEdges));
+        }
 
         // base vectors per triangle
         AZStd::vector<Base33> triangleBases;
+        triangleBases.reserve(triangleCount);
 
         // calculate the base vectors per triangle
         {
@@ -35,25 +93,13 @@ namespace NvCloth
                 Vec3(0.0f, identityInfluence, 0.0f),
                 Vec3(0.0f, 0.0f, identityInfluence));
 
-            for (AZ::u32 i = 0; i < triCount; ++i)
+            for (AZ::u32 i = 0; i < triangleCount; ++i)
             {
-                TriangleIndices triangleIndices = input.GetTriangleIndices(i);
-
-                AZStd::array<Vec3, 3> trianglePos;
-                AZStd::array<Vec2, 3> triangleUVs;
-                for (AZ::u32 e = 0; e < 3; ++e)
-                {
-                    trianglePos[e] = input.GetPosition(triangleIndices[e]);
-                    triangleUVs[e] = input.GetUV(triangleIndices[e]);
-                }
+                const auto& trianglePositions = trianglesPositions[i];
+                const auto& triangleUVs = trianglesUVs[i];
+                const auto& triangleEdges = trianglesEdges[i];
 
                 // calculate tangent vectors
-
-                AZStd::array<Vec3, 2> triangleEdges =
-                {{
-                    trianglePos[1] - trianglePos[0],
-                    trianglePos[2] - trianglePos[0]
-                }};
 
                 Vec3 normal = triangleEdges[0].cross(triangleEdges[1]);
 
@@ -70,21 +116,21 @@ namespace NvCloth
 
                 normal.normalize();
 
-                float deltaU1 = triangleUVs[1].x - triangleUVs[0].x;
-                float deltaU2 = triangleUVs[2].x - triangleUVs[0].x;
-                float deltaV1 = triangleUVs[1].y - triangleUVs[0].y;
-                float deltaV2 = triangleUVs[2].y - triangleUVs[0].y;
+                const float deltaU1 = triangleUVs[1].x - triangleUVs[0].x;
+                const float deltaU2 = triangleUVs[2].x - triangleUVs[0].x;
+                const float deltaV1 = triangleUVs[1].y - triangleUVs[0].y;
+                const float deltaV2 = triangleUVs[2].y - triangleUVs[0].y;
 
-                float div = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
+                const float div = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
 
                 if (_isnan(div))
                 {
-                    errorMessage = AZStd::string::format(
-                        "Vertices 0,1,2 have broken texture coordinates v0:(%f : %f : %f) v1:(%f : %f : %f) v2:(%f : %f : %f)\n",
-                        trianglePos[0].x, trianglePos[0].y, trianglePos[0].z,
-                        trianglePos[1].x, trianglePos[1].y, trianglePos[1].z,
-                        trianglePos[2].x, trianglePos[2].y, trianglePos[2].z);
-                    return Error::BrokenTextureCoordinates;
+                    AZ_Error("TangentSpaceCalculation", false,
+                        "Vertices 0,1,2 have broken texture coordinates v0:(%f : %f : %f) v1:(%f : %f : %f) v2:(%f : %f : %f)",
+                        trianglePositions[0].x, trianglePositions[0].y, trianglePositions[0].z,
+                        trianglePositions[1].x, trianglePositions[1].y, trianglePositions[1].z,
+                        trianglePositions[2].x, trianglePositions[2].y, trianglePositions[2].z);
+                    return;
                 }
 
                 Vec3 tangent, bitangent;
@@ -92,10 +138,10 @@ namespace NvCloth
                 if (div != 0.0f)
                 {
                     // 2D triangle area = (u1*v2-u2*v1)/2
-                    float a = deltaV2; // /div was removed - no required because of normalize()
-                    float b = -deltaV1;
-                    float c = -deltaU2;
-                    float d = deltaU1;
+                    const float a = deltaV2; // /div was removed - no required because of normalize()
+                    const float b = -deltaV1;
+                    const float c = -deltaU2;
+                    const float d = deltaU1;
 
                     // /fAreaMul2*fAreaMul2 was optimized away -> small triangles in UV should contribute less and
                     // less artifacts (no divide and multiply)
@@ -116,25 +162,20 @@ namespace NvCloth
         {
             // we create a new tangent base for every vertex index that has a different normal (later we split further for mirrored use)
             // and sum the base vectors (weighted by angle and mirrored if necessary)
-            for (AZ::u32 i = 0; i < triCount; ++i)
+            for (AZ::u32 i = 0; i < triangleCount; ++i)
             {
-                TriangleIndices triangleIndices = input.GetTriangleIndices(i);
+                const auto& triangleIndices = trianglesIndices[i];
+                const auto& trianglePositions = trianglesPositions[i];
 
-                Base33 triBase = triangleBases[i];
-
-                AZStd::array<Vec3, 3> trianglePos;
-                for (AZ::u32 e = 0; e < 3; ++e)
-                {
-                    trianglePos[e] = input.GetPosition(triangleIndices[e]);
-                }
+                Base33& triBase = triangleBases[i];
 
                 // for each triangle vertex
                 for (AZ::u32 e = 0; e < 3; ++e)
                 {
                     // weight by angle to fix the L-Shape problem
-                    float weight = CalcAngleBetween(
-                        trianglePos[(e + 2) % 3] - trianglePos[e],
-                        trianglePos[(e + 1) % 3] - trianglePos[e]);
+                    const float weight = CalcAngleBetween(
+                        trianglePositions[(e + 2) % 3] - trianglePositions[e],
+                        trianglePositions[(e + 1) % 3] - trianglePositions[e]);
 
                     triBase.m_normal *= AZStd::max(weight, 0.0001f);
                     triBase.m_tangent *= weight;
@@ -151,15 +192,14 @@ namespace NvCloth
             for (auto& ref : m_baseVectors)
             {
                 // rotate u and v in n plane
-                Vec3 uOut, vOut, nOut;
 
-                nOut = ref.m_normal;
+                Vec3 nOut = ref.m_normal;
                 nOut.normalize();
 
                 // project u in n plane
                 // project v in n plane
-                uOut = ref.m_tangent - nOut * (nOut.Dot(ref.m_tangent));
-                vOut = ref.m_bitangent - nOut * (nOut.Dot(ref.m_bitangent));
+                Vec3 uOut = ref.m_tangent - nOut * (nOut.Dot(ref.m_tangent));
+                Vec3 vOut = ref.m_bitangent - nOut * (nOut.Dot(ref.m_bitangent));
 
                 ref.m_tangent = uOut;
                 ref.m_tangent.normalize();
@@ -171,7 +211,9 @@ namespace NvCloth
             }
         }
 
-        return Error::NoErrors;
+        AZ_Error("TangentSpaceCalculation", GetBaseCount() == vertices.size(),
+            "Number of tangent spaces (%d) doesn't match with the number of input vertices (%d).",
+            GetBaseCount(), vertices.size());
     }
 
     size_t TangentSpaceCalculation::GetBaseCount() const
@@ -231,5 +273,4 @@ namespace NvCloth
         , m_normal(normal)
     {
     }
-
 } // namespace NvCloth

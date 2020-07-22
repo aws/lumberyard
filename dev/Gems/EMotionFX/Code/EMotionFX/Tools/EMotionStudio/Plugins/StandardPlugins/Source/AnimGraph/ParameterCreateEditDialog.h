@@ -16,16 +16,13 @@
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <MCore/Source/StandardHeaders.h>
 #include <QDialog>
+#include <QComboBox>
 
+QT_FORWARD_DECLARE_CLASS(QComboBox)
 
 namespace EMotionFX
 {
     class Parameter;
-}
-
-namespace MysticQt
-{
-    class ComboBox;
 }
 
 namespace EMStudio
@@ -56,6 +53,8 @@ namespace EMStudio
 
         const AZStd::unique_ptr<EMotionFX::Parameter>& GetParameter() const { return m_parameter; }
 
+        QComboBox* GetValueTypeComboBox() const { return m_valueTypeCombo; }
+
     protected slots:
         void OnValueTypeChange(int valueType);
         void OnValidate();
@@ -72,7 +71,7 @@ namespace EMStudio
 
     private:
         AnimGraphPlugin*                    m_plugin;
-        MysticQt::ComboBox*                 m_valueTypeCombo;
+        QComboBox*                          m_valueTypeCombo;
         QFrame*                             m_previewFrame;
         AzToolsFramework::ReflectedPropertyEditor* m_previewWidget;
         ValueParameterEditor*               m_valueParameterEditor;

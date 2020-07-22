@@ -29,6 +29,7 @@
 #include <native/utilities/assetUtils.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <QFileInfo>
+#include <sqlite3.h>
 
 namespace AssetProcessor
 {
@@ -234,6 +235,14 @@ namespace AssetProcessor
         static const char* CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK = "AssetProcessor::CreateIndexProductDependenciesProductPK";
         static const char* CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK_STATEMENT =
             "CREATE INDEX IF NOT EXISTS ProductDependencies_ProductPK ON ProductDependencies (ProductPK);";
+
+        static const char* CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH = "AssetProccessor::CreateIndexProductDependenciesUnresolvedPath";
+        static const char* CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS ProductDependencies_UnresolvedPath ON ProductDependencies (UnresolvedPath);";
+
+        static const char* CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_WILDCARD = "AssetProccessor::CreateIndexProductDependenciesUnresolvedPathWildcard";
+        static const char* CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_WILDCARD_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS ProductDependencies_UnresolvedPathWildcard ON ProductDependencies (UnresolvedPath) WHERE UnresolvedPath LIKE \"%*%\"";
 
         static const char* CREATEINDEX_FILE_NAME = "AssetProcessor::CreateIndexFilesName";
         static const char* CREATEINDEX_FILE_NAME_STATEMENT =
@@ -990,6 +999,16 @@ namespace AssetProcessor
             }
         }
 
+        if (foundVersion == DatabaseVersion::AddedFromAssetIdField)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH) &&
+                m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_WILDCARD))
+            {
+                foundVersion = DatabaseVersion::AddedProductDependencyIndexes;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedProductDependencyIndexes)\n", foundVersion)
+            }
+        }
+
         if (foundVersion == CurrentDatabaseVersion())
         {
             dropAllTables = false;
@@ -1248,6 +1267,12 @@ namespace AssetProcessor
 
         m_databaseConnection->AddStatement(CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK, CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK_STATEMENT);
         m_createStatements.push_back(CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK);
+
+        m_databaseConnection->AddStatement(CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH, CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_STATEMENT);
+        m_createStatements.push_back(CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH);
+
+        m_databaseConnection->AddStatement(CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_WILDCARD, CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_WILDCARD_STATEMENT);
+        m_createStatements.push_back(CREATEINDEX_PRODUCTDEPENDENCIES_UNRESOLVEDPATH_WILDCARD);
 
         m_databaseConnection->AddStatement(CREATEINDEX_FILE_NAME, CREATEINDEX_FILE_NAME_STATEMENT);
         m_createStatements.push_back(CREATEINDEX_FILE_NAME);

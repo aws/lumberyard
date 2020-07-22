@@ -21,12 +21,12 @@
 #include <QIcon>
 #include <QCheckBox>
 #include <MCore/Source/LogManager.h>
-#include <MysticQt/Source/ButtonGroup.h>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MotionManager.h>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 
 
 namespace EMStudio
@@ -41,6 +41,7 @@ namespace EMStudio
         mClearSelectionCallback             = nullptr;
         mWarningWidget                      = nullptr;
         mMainVerticalLayout                 = nullptr;
+        mChildVerticalLayout                = nullptr;
         mMotionExtractionNodeSelectionWindow= nullptr;
         mWarningSelectNodeLink              = nullptr;
         mAdjustActorCallback                = nullptr;
@@ -69,20 +70,20 @@ namespace EMStudio
     void MotionExtractionWindow::CreateFlagsWidget()
     {
         mFlagsWidget = new QWidget();
-        mFlagsWidget->setMinimumHeight(MOTIONEXTRACTIONWINDOW_HEIGHT);
-        mFlagsWidget->setMaximumHeight(MOTIONEXTRACTIONWINDOW_HEIGHT);
 
-        mCaptureHeight = new QCheckBox("Capture Height Changes");
+        mCaptureHeight = new QCheckBox();
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(mCaptureHeight);
         connect(mCaptureHeight, &QCheckBox::clicked, this, &MotionExtractionWindow::OnMotionExtractionFlagsUpdated);
 
-        QVBoxLayout* layout = new QVBoxLayout();
+        QGridLayout* layout = new QGridLayout();
         layout->setAlignment(Qt::AlignTop);
-        layout->setMargin(0);
         layout->setSpacing(3);
-        layout->addWidget(mCaptureHeight);
+        layout->addWidget(new QLabel(tr("Capture Height Changes")), 0, 0);
+        layout->addWidget(mCaptureHeight, 0, 1);
+        layout->setContentsMargins(0, 0, 0, 0);
         mFlagsWidget->setLayout(layout);
 
-        mMainVerticalLayout->addWidget(mFlagsWidget);
+        mChildVerticalLayout->addWidget(mFlagsWidget);
     }
 
 
@@ -98,14 +99,15 @@ namespace EMStudio
         warningLabel->setWordWrap(true);
         warningLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
-        mWarningSelectNodeLink = new MysticQt::LinkWidget("Click here to setup the Motion Extraction node", mWarningWidget);
-        connect(mWarningSelectNodeLink, &MysticQt::LinkWidget::clicked, this, &MotionExtractionWindow::OnSelectMotionExtractionNode);
+        mWarningSelectNodeLink = new AzQtComponents::BrowseEdit(mWarningWidget);
+        mWarningSelectNodeLink->setPlaceholderText("Click here to setup the Motion Extraction node");
+        connect(mWarningSelectNodeLink, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &MotionExtractionWindow::OnSelectMotionExtractionNode);
 
         // create and fill the layout
         QVBoxLayout* layout = new QVBoxLayout();
 
-        layout->setMargin(0);
         layout->setAlignment(Qt::AlignTop);
+        layout->setContentsMargins(0, 0, 0, 0);
 
         layout->addWidget(warningLabel);
         layout->addWidget(mWarningSelectNodeLink);
@@ -113,7 +115,7 @@ namespace EMStudio
         mWarningWidget->setLayout(layout);
 
         // add it to our main layout
-        mMainVerticalLayout->addWidget(mWarningWidget);
+        mChildVerticalLayout->addWidget(mWarningWidget);
     }
 
 
@@ -136,9 +138,39 @@ namespace EMStudio
 
         // set some layout for our window
         mMainVerticalLayout = new QVBoxLayout();
-        mMainVerticalLayout->setMargin(0);
         mMainVerticalLayout->setSpacing(0);
         setLayout(mMainVerticalLayout);
+
+        QCheckBox* checkBox = new QCheckBox(tr("Motion extraction"));
+        checkBox->setChecked(true);
+        checkBox->setStyleSheet("QCheckBox::indicator\
+                {\
+                    width: 16px;\
+                    height: 16px;\
+                    border: none;\
+                    margin: 0px;\
+                }\
+                \
+                QCheckBox::indicator:checked,\
+                QCheckBox::indicator:checked:disabled,\
+                QCheckBox::indicator:checked:focus\
+                {\
+                    image: url(:/Cards/img/UI20/Cards/caret-down.svg);\
+                }\
+                \
+                QCheckBox::indicator:unchecked,\
+                QCheckBox::indicator:unchecked:disabled,\
+                QCheckBox::indicator:unchecked:focus\
+                {\
+                    image: url(:/Cards/img/UI20/Cards/caret-right.svg);\
+                }");
+        mMainVerticalLayout->addWidget(checkBox);
+        QWidget* childWidget = new QWidget(this);
+        mMainVerticalLayout->addWidget(childWidget);
+
+        mChildVerticalLayout = new QVBoxLayout(childWidget);
+        mChildVerticalLayout->setContentsMargins(28,0,0,0);
+        connect(checkBox, &QCheckBox::toggled, childWidget, &QWidget::setVisible);
 
         // default create the warning widget (this is needed else we're getting a crash when switching layouts as the widget and the flag might be out of sync)
         CreateWarningWidget();
@@ -335,7 +367,7 @@ namespace EMStudio
             }
 
             // Prepare the command and add it to the command group.
-            command = AZStd::string::format("AdjustMotion -motionID %i -motionExtractionFlags %i", motion->GetID(), extractionFlags);
+            command = AZStd::string::format("AdjustMotion -motionID %i -motionExtractionFlags %i", motion->GetID(), static_cast<uint8>(extractionFlags));
             commandGroup.AddCommandString(command.c_str());
         }
 

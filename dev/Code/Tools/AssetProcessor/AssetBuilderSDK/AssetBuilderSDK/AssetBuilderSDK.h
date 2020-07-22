@@ -670,6 +670,11 @@ namespace AssetBuilderSDK
         /// Paths should only be used in legacy systems, put ProductDependency objects in m_dependencies wherever possible.
         ProductPathDependencySet m_pathDependencies;
 
+        /// Indicate to Asset Processor that the builder has output any possible dependencies (including if there are none).
+        /// This should only be set if the builder really does take care of outputting its dependencies OR the output product never has dependencies.
+        /// When false, AP will emit a warning that dependencies have not been handled.
+        bool m_dependenciesHandled{ false };
+
         JobProduct() = default;
         JobProduct(const AZStd::string& productName, AZ::Data::AssetType productAssetType = AZ::Data::AssetType::CreateNull(), AZ::u32 productSubID = 0);
         JobProduct(AZStd::string&& productName, AZ::Data::AssetType productAssetType = AZ::Data::AssetType::CreateNull(), AZ::u32 productSubID = 0);

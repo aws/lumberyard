@@ -47,9 +47,8 @@ namespace EMotionFX
         ;
     }
 
-    const AZStd::string& FloatSliderParameter::GetTypeDisplayName() const
+    const char* FloatSliderParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Float (slider)";
-        return typeDisplayName;
+        return "Float (slider)";
     }
 }

@@ -64,8 +64,7 @@ namespace NvCloth
         MeshNodeInfo& meshNodeInfo,
         AZStd::vector<SimParticleType>& meshParticles,
         AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs,
-        bool& simParticlesFullyStatic)
+        AZStd::vector<SimUVType>& meshUVs)
     {
         AZ::Data::Asset<LmbrCentral::MeshAsset> meshAsset;
         LmbrCentral::MeshComponentRequestBus::EventResult(
@@ -113,7 +112,7 @@ namespace NvCloth
         {
             bool dataCopied = CopyDataFromRenderMesh(
                 *selectedStatObj->GetRenderMesh(), selectedStatObj->GetClothInverseMasses(),
-                meshParticles, meshIndices, meshUVs, simParticlesFullyStatic);
+                meshParticles, meshIndices, meshUVs);
 
             if (dataCopied)
             {
@@ -146,8 +145,7 @@ namespace NvCloth
         const AZStd::vector<float>& clothInverseMasses,
         AZStd::vector<SimParticleType>& meshParticles,
         AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs,
-        bool& simParticlesFullyStatic)
+        AZStd::vector<SimUVType>& meshUVs)
     {
         const int numVertices = renderMesh.GetNumVerts();
         const int numIndices = renderMesh.GetNumInds();
@@ -176,7 +174,6 @@ namespace NvCloth
             renderMeshUVs.data = reinterpret_cast<Vec2*>(renderMesh.GetUVPtr(renderMeshUVs.iStride, FSL_READ, 0)); // first UV set
 
             const SimUVType uvZero(0.0f, 0.0f);
-            simParticlesFullyStatic = true;
 
             meshParticles.resize(numVertices);
             meshUVs.resize(numVertices);
@@ -188,9 +185,6 @@ namespace NvCloth
                 meshParticles[index].w = clothInverseMasses[index];
 
                 meshUVs[index] = (renderMeshUVs.data) ? SimUVType(renderMeshUVs[index].x, renderMeshUVs[index].y) : uvZero;
-
-                // The moment one particle has inverse mass different than 0 it's not a fully static cloth
-                simParticlesFullyStatic = simParticlesFullyStatic && (clothInverseMasses[index] == 0.0f);
             }
 
             meshIndices.resize(numIndices);

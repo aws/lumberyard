@@ -24,6 +24,7 @@
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
+#include <GraphCanvas/GraphicsItems/GraphCanvasSceneEventFilter.h>
 
 #include <GraphCanvas/Utils/ConversionUtils.h>
 
@@ -130,15 +131,8 @@ namespace GraphCanvas
                 addAction(selectAllOutputAction);
             }
 
-            {
-                QAction* clearSelectionAction = new QAction(this);
-                clearSelectionAction->setShortcut(QKeySequence(Qt::Key_Escape));
-
-                connect(clearSelectionAction, &QAction::triggered, [this]()
-                {
-                    ClearSelection();
-                });
-            }
+            // Hook up to escape handling
+            AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
 
             {
                 QAction* gotoStartAction = new QAction(this);
@@ -296,6 +290,12 @@ namespace GraphCanvas
 
     GraphCanvasGraphicsView::~GraphCanvasGraphicsView()
     {
+        ViewRequestBus::Handler::BusDisconnect();
+        SceneNotificationBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
+        AssetEditorSettingsNotificationBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+
         ClearScene();
     }
 
@@ -871,6 +871,11 @@ namespace GraphCanvas
         return toastId;
     }
 
+    bool GraphCanvasGraphicsView::IsShowing() const
+    {
+        return isVisible();
+    }
+
     void GraphCanvasGraphicsView::OnTick(float tick, AZ::ScriptTimePoint timePoint)
     {
         if (m_panCountdown)
@@ -903,8 +908,6 @@ namespace GraphCanvas
     
     QRectF GraphCanvasGraphicsView::GetCompleteArea()
     {
-        QRectF completeArea;
-
         // Get the grid.
         AZ::EntityId gridId;
         SceneRequestBus::EventResult(gridId, m_sceneId, &SceneRequests::GetGrid);
@@ -913,9 +916,29 @@ namespace GraphCanvas
         VisualRequestBus::EventResult(gridItem, gridId, &VisualRequests::AsGraphicsItem);
 
         QGraphicsScene* theScene = scene();
-        theScene->removeItem(gridItem);
-        completeArea = theScene->itemsBoundingRect();
-        theScene->addItem(gridItem);
+        auto itemList = theScene->items();
+
+        QRectF completeArea = QRectF();
+
+        for (QGraphicsItem* item : itemList)
+        {
+            if (!item->data(DataIdentifiers::SceneEventFilter).isNull()
+                || item == gridItem)
+            {
+                continue;
+            }
+
+            QRectF sceneBoundingRect = item->sceneBoundingRect();
+
+            if (completeArea.isEmpty())
+            {
+                completeArea = sceneBoundingRect;
+            }
+            else
+            {
+                completeArea = completeArea | sceneBoundingRect;
+            }
+        }
         
         return completeArea;
     }
@@ -995,6 +1018,11 @@ namespace GraphCanvas
         {
             static const bool enabled = false;
             ViewSceneNotificationBus::Event(GetScene(), &ViewSceneNotifications::OnAltModifier, enabled);
+            break;
+        }
+        case Qt::Key_Escape:
+        {
+            ViewNotificationBus::Event(m_viewId, &ViewNotifications::OnEscape);
             break;
         }
         default:
@@ -1187,6 +1215,8 @@ namespace GraphCanvas
     void GraphCanvasGraphicsView::focusOutEvent(QFocusEvent* event)
     {
         QGraphicsView::focusOutEvent(event);
+
+        ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnFocusLost);
     }
 
     void GraphCanvasGraphicsView::resizeEvent(QResizeEvent* event)
@@ -1202,6 +1232,15 @@ namespace GraphCanvas
         }
 
         CalculateInternalRectangle();
+
+        UpdateToastPosition();
+    }
+
+    void GraphCanvasGraphicsView::moveEvent(QMoveEvent* event)
+    {
+        QGraphicsView::moveEvent(event);
+
+        UpdateToastPosition();
     }
 
     void GraphCanvasGraphicsView::scrollContentsBy(int dx, int dy)
@@ -1209,6 +1248,31 @@ namespace GraphCanvas
         ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnViewScrolled);
 
         QGraphicsView::scrollContentsBy(dx, dy);
+    }
+
+    void GraphCanvasGraphicsView::showEvent(QShowEvent* showEvent)
+    {
+        QGraphicsView::showEvent(showEvent);
+
+        if (m_activeNotification.IsValid())
+        {
+            DisplayQueuedNotification();
+        }
+    }
+
+    void GraphCanvasGraphicsView::hideEvent(QHideEvent* hideEvent)
+    {
+        QGraphicsView::hideEvent(hideEvent);
+
+        if (m_activeNotification.IsValid())
+        {
+            auto notificationIter = m_notifications.find(m_activeNotification);
+
+            if (notificationIter != m_notifications.end())
+            {
+                notificationIter->second->hide();
+            }
+        }
     }
 
     void GraphCanvasGraphicsView::OnSettingsChanged()
@@ -1223,6 +1287,11 @@ namespace GraphCanvas
             ClampScaleBounds();
             CalculateInternalRectangle();
         }
+    }
+
+    void GraphCanvasGraphicsView::OnEscape()
+    {
+        ClearSelection();
     }
 
     void GraphCanvasGraphicsView::CreateBookmark(int bookmarkShortcut)
@@ -1295,6 +1364,25 @@ namespace GraphCanvas
     {
         AZ::EntityId sceneId = GetScene();
         BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::ActivateShortcut, bookmarkShortcut);
+    }
+
+    void GraphCanvasGraphicsView::UpdateToastPosition()
+    {
+        if (m_activeNotification.IsValid())
+        {
+            auto notificationIter = m_notifications.find(m_activeNotification);
+
+            if (notificationIter != m_notifications.end())
+            {
+                // Want this to be roughly in the top right corner of the graphics view.
+                QPoint globalPoint = mapToGlobal(QPoint(width() - 10, 10));
+
+                // Anchor point will be top right
+                QPointF anchorPoint = QPointF(1, 0);
+
+                notificationIter->second->UpdatePosition(globalPoint, anchorPoint);
+            }
+        }
     }
 
     void GraphCanvasGraphicsView::CenterOnSceneMembers(const AZStd::vector<AZ::EntityId>& memberIds)
@@ -1556,7 +1644,7 @@ namespace GraphCanvas
 
     void GraphCanvasGraphicsView::DisplayQueuedNotification()
     {        
-        if (m_queuedNotifications.empty())
+        if (m_queuedNotifications.empty() && isVisible())
         {
             return;
         }

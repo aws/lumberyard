@@ -45,7 +45,7 @@ namespace GradientSignal
         //////////////////////////////////////////////////////////////////////////
         // GradientPreviewRequestBus::Handler
         void Refresh() override;
-        void CancelRefresh() override;
+        AZ::EntityId CancelRefresh() override;
 
     private:
         GradientPreviewWidget::SampleFilterFunc m_sampleFilterFunc;

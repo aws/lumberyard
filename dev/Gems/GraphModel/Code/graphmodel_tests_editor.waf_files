@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/MockGraphCanvas.cpp",
+            "Tests/MockGraphCanvas.h",
+            "Tests/TestEnvironment.cpp",
+            "Tests/TestEnvironment.h",
+            "Tests/GraphModelIntegrationTest.cpp",
+            "Tests/GraphModelPythonBindingsTest.cpp"
+        ]
+    }
+}

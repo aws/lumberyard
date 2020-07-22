@@ -22,6 +22,8 @@
 #include <IAWSResourceManager.h>
 #include <MaglevControlPanelPlugin.h>
 
+#include <AzQtComponents/Components/StyleManager.h>
+
 using namespace AZStd;
 
 // The URL embedded here isn't expected to be used.  See ActiveDeployment::OnSetupDeploymentClicked.
@@ -36,6 +38,7 @@ ActiveDeployment::ActiveDeployment(QWidget* parent)
     : ScrollSelectionDialog(parent)
     , m_model(GetIEditor()->GetAWSResourceManager()->GetDeploymentModel())
 {
+    AzQtComponents::StyleManager::setStyleSheet(this, "style:CloudCanvas.qss");
     InitializeWindow();
 }
 

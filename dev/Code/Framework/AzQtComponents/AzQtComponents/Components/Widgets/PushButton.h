@@ -130,13 +130,6 @@ namespace AzQtComponents
         static void applySmallIconStyle(QToolButton* button);
 
         /*!
-        * Applies the attached button styling to a QToolButton.
-        * Same as
-        *   AzQtComponents::Style::addClass(button, "AttachedButton");
-        */
-        static void applyAttachedStyle(QToolButton* button);
-
-        /*!
         * Loads the button config data from a settings object.
         */
         static Config loadConfig(QSettings& settings);

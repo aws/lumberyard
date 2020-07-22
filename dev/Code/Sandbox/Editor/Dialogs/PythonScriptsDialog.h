@@ -28,7 +28,7 @@ class CPythonScriptsDialog
 {
     Q_OBJECT
 public:
-    CPythonScriptsDialog();
+    explicit CPythonScriptsDialog(QWidget* parent = nullptr);
     ~CPythonScriptsDialog();
 
     static const GUID& GetClassID()

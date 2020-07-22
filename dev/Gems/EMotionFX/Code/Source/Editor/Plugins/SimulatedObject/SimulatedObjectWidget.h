@@ -98,7 +98,7 @@ namespace EMotionFX
         AZStd::unique_ptr<SimulatedObjectModel> m_simulatedObjectModel = nullptr;
         AZStd::unique_ptr<EMStudio::SimulatedObjectActionManager> m_actionManager;
         QWidget* m_contentsWidget = nullptr;
-        MysticQt::DockWidget* m_simulatedObjectInspectorDock = nullptr;
+        QDockWidget* m_simulatedObjectInspectorDock = nullptr;
         SimulatedJointWidget* m_simulatedJointWidget = nullptr;
         QPushButton* m_addSimulatedObjectButton = nullptr;
 

@@ -73,6 +73,8 @@ namespace ScriptCanvas
                 void OnVariableRemoved() override;
                 ////
 
+                AnnotateNodeSignal CreateAnnotationData();
+
                 // Adds/Remove Property Slots from the GetVariable node
                 void AddPropertySlots(const Data::Type& type);
                 void ClearPropertySlots();
@@ -92,6 +94,9 @@ namespace ScriptCanvas
                 ScriptCanvas_SerializeProperty(SlotId, m_variableDataOutSlotId);
 
                 ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertyAccounts);
+
+                AZStd::string_view m_variableName;
+                ModifiableDatumView m_variableView;
             };
         }
     }

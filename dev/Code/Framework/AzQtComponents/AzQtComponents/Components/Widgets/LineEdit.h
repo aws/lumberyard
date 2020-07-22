@@ -16,11 +16,13 @@
 #include <QPointer>
 #include <QColor>
 #include <QSize>
+#include <QStyleOption>
 
 class QLineEdit;
 class QSettings;
 class QPainter;
-class QStyleOption;
+class QProxyStyle;
+class QToolButton;
 
 namespace AzQtComponents
 {
@@ -49,17 +51,19 @@ namespace AzQtComponents
             QColor errorBorderColor;
             int errorLineWidth;
             QColor placeHolderTextColor;
-            bool clearButtonAutoEnabled;
             QString clearImage;
             QSize clearImageSize;
             QString errorImage;
             QSize errorImageSize;
             int iconSpacing;
             int iconMargin;
+            bool autoSelectAllOnClickFocus;
+            int dropFrameOffset;
+            int dropFrameRadius;
 
-            int getLineWidth(const QStyleOption* option, bool hasError) const;
-            QColor getBorderColor(const QStyleOption* option, bool hasError) const;
-            QColor getBackgroundColor(const QStyleOption* option, bool hasError, const QWidget* widget) const;
+            int getLineWidth(const QStyleOption* option, bool hasError, bool dropTarget) const;
+            QColor getBorderColor(const QStyleOption* option, bool hasError, bool dropTarget) const;
+            QColor getBackgroundColor(const QStyleOption* option, bool hasError, bool isDropTarget, const QWidget* widget) const;
         };
 
         /*!
@@ -73,9 +77,15 @@ namespace AzQtComponents
         static void removeSearchStyle(QLineEdit* lineEdit);
 
         /*!
-        * Uses only the stylesheet file values, does not draw borders
-        */
-        static void applyDefaultStyle(QLineEdit* lineEdit);
+         * Displays the line edit as a drop target. The valid argument indicates
+         * whether the line edit is a valid drop target or not.
+         */
+        static void applyDropTargetStyle(QLineEdit* lineEdit, bool valid);
+
+        /*!
+         * Removes the drop target style from the QLineEdit.
+         */
+        static void removeDropTargetStyle(QLineEdit* lineEdit);
 
         /*!
         * Loads the config data from a settings object.
@@ -94,13 +104,32 @@ namespace AzQtComponents
         static void setErrorMessage(QLineEdit* lineEdit, const QString& error);
 
         /*!
-         * Side buttons (clear/error buttons) are enabled by default. Allow the
-         * developer to disable them.
+         * Set external error state in addition to validator and inputMask.
+         * This value is OR'ed with validators.
          */
-        static void setSideButtonsEnabled(QLineEdit* lineEdit, bool enabled);
+        static void setExternalError(QLineEdit* lineEdit, bool hasExternalError);
+
+        /*!
+         * Error indicator is enabled by default. Allow the developer to disable it.
+         */
+        static void setErrorIconEnabled(QLineEdit* lineEdit, bool enabled);
+        static bool errorIconEnabled(QLineEdit* lineEdit);
+
+        /*!
+         * Get the QLineEdit QToolButton created when QLineEdit::setClearButtonEnabled(true) is
+         * called. Returns nullptr if the clear button has not been created yet.
+         */
+        static QToolButton* getClearButton(const QLineEdit* lineEdit);
+
+        /*!
+         * The clear button on readonly line edits is not enabled by default. This function allows
+         * the developer to override this option.
+         */
+        static void setEnableClearButtonWhenReadOnly(QLineEdit* lineEdit, bool enabled);
 
     private:
         friend class Style;
+        friend class EditorProxyStyle;
         friend class BrowseEdit;
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // needs to have dll-interface to be used by clients of class 'AzQtComponents::LineEdit'
         static QPointer<LineEditWatcher> s_lineEditWatcher;
@@ -112,15 +141,15 @@ namespace AzQtComponents
 
         static bool drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
 
-        static bool polish(Style* style, QWidget* widget, const Config& config);
-        static bool unpolish(Style* style, QWidget* widget, const Config& config);
+        static bool polish(QProxyStyle* style, QWidget* widget, const Config& config);
+        static bool unpolish(QProxyStyle* style, QWidget* widget, const Config& config);
 
-        static void applyClearButtonStyle(QLineEdit* lineEdit, const Config& config);
         static void applyErrorStyle(QLineEdit* lineEdit, const Config& config);
+        static void removeErrorStyle(QLineEdit* lineEdit);
 
         static QIcon clearButtonIcon(const QStyleOption* option, const QWidget* widget, const Config& config);
 
-        static bool sideButtonsEnabled(QLineEdit* lineEdit);
+        static QRect lineEditContentsRect(const Style* style, QStyle::SubElement element, const QStyleOption* option, const QWidget* widget, const Config& config);
     };
 
 } // namespace AzQtComponents

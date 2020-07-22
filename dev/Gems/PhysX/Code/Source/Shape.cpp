@@ -16,11 +16,20 @@
 #include <Source/Shape.h>
 #include <Source/Material.h>
 #include <Source/Collision.h>
+#include <AzFramework/Physics/Casts.h>
 #include <AzFramework/Physics/Material.h>
 #include <PhysX/PhysXLocks.h>
 
 namespace PhysX
 {
+    namespace ShapeConstants
+    {
+        // 48 is the number of stacks/slices used when generating mesh geo for spheres in legacy physics
+        // we default to these values for consistency
+        constexpr size_t NumStacks = 48;
+        constexpr size_t NumSlices = 48;
+    }
+
     Shape::Shape(Shape&& shape)
         : m_pxShape(AZStd::move(shape.m_pxShape))
         , m_materials(AZStd::move(shape.m_materials))
@@ -225,6 +234,8 @@ namespace PhysX
 
     void Shape::SetLocalPose(const AZ::Vector3& offset, const AZ::Quaternion& rotation)
     {
+        PHYSX_SCENE_WRITE_LOCK(GetScene());
+
         physx::PxTransform pxShapeTransform = PxMathConvert(offset, rotation);
         AZ_Warning("Physics::Shape", m_pxShape->isExclusive(), "Non-exclusive shapes are not mutable after they're attached to a body.");
         if (m_pxShape->getGeometryType() == physx::PxGeometryType::eCAPSULE)
@@ -233,6 +244,14 @@ namespace PhysX
             pxShapeTransform.q *= lyToPxRotation;
         }
         m_pxShape->setLocalPose(pxShapeTransform);
+    }
+
+    AZStd::pair<AZ::Vector3, AZ::Quaternion> Shape::GetLocalPose() const
+    {
+        PHYSX_SCENE_READ_LOCK(GetScene());
+
+        physx::PxTransform pose = m_pxShape->getLocalPose();
+        return { PxMathConvert(pose.p), PxMathConvert(pose.q) };
     }
 
     void* Shape::GetNativePointer()
@@ -268,6 +287,47 @@ namespace PhysX
         m_attachedActor = nullptr;
     }
 
+    Physics::RayCastHit Shape::RayCastInternal(const Physics::RayCastRequest& worldSpaceRequest, const physx::PxTransform& pose)
+    {
+        const physx::PxVec3 start = PxMathConvert(worldSpaceRequest.m_start);
+        const physx::PxVec3 unitDir = PxMathConvert(worldSpaceRequest.m_direction);
+        const physx::PxU32 maxHits = 1;
+        const physx::PxHitFlags hitFlags = Utils::RayCast::GetPxHitFlags(worldSpaceRequest.m_hitFlags);
+
+        physx::PxRaycastHit hitInfo;
+        const bool hit = physx::PxGeometryQuery::raycast(start, unitDir, m_pxShape->getGeometry().any(), pose,
+                                                         worldSpaceRequest.m_distance, hitFlags, maxHits, &hitInfo);
+
+        if (hit)
+        {
+            // Fill actor and shape, as they won't be filled from PxGeometryQuery
+            hitInfo.actor = static_cast<physx::PxRigidActor*>(m_attachedActor); // This cast is safe since GetHitFromPxHit() only uses PxActor:: functions
+            hitInfo.shape = GetPxShape();
+            return Utils::RayCast::GetHitFromPxHit(hitInfo);
+        }
+        return Physics::RayCastHit();
+    }
+
+    Physics::RayCastHit Shape::RayCast(const Physics::RayCastRequest& worldSpaceRequest, const AZ::Transform& worldTransform)
+    {
+        physx::PxTransform localPose;
+        {
+            PHYSX_SCENE_READ_LOCK(GetScene());
+            localPose = m_pxShape->getLocalPose();
+        }
+        return RayCastInternal(worldSpaceRequest, PxMathConvert(worldTransform) * localPose);
+    }
+
+    Physics::RayCastHit Shape::RayCastLocal(const Physics::RayCastRequest& localSpaceRequest)
+    {
+        physx::PxTransform localPose;
+        {
+            PHYSX_SCENE_READ_LOCK(GetScene());
+            localPose = m_pxShape->getLocalPose();
+        }
+        return RayCastInternal(localSpaceRequest, localPose);
+    }
+
     physx::PxScene* Shape::GetScene() const
     {
         if (m_attachedActor != nullptr)
@@ -275,5 +335,68 @@ namespace PhysX
             return m_attachedActor->getScene();
         }
         return nullptr;
+    }
+
+    void Shape::GetGeometry(AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, AZ::Aabb* optionalBounds)
+    {
+        if (!m_pxShape)
+        {
+            return;
+        }
+
+        PHYSX_SCENE_READ_LOCK(GetScene());
+
+        if (m_pxShape->getGeometryType() == physx::PxGeometryType::eTRIANGLEMESH)
+        {
+            physx::PxTriangleMeshGeometry geometry{};
+            if (m_pxShape->getTriangleMeshGeometry(geometry) && geometry.triangleMesh && geometry.isValid())
+            {
+                Utils::Geometry::GetTriangleMeshGeometry(geometry, vertices, indices);
+            }
+        }
+        else if (m_pxShape->getGeometryType() == physx::PxGeometryType::eCONVEXMESH)
+        {
+            physx::PxConvexMeshGeometry geometry{};
+            if (m_pxShape->getConvexMeshGeometry(geometry) && geometry.convexMesh && geometry.isValid())
+            {
+                Utils::Geometry::GetConvexMeshGeometry(geometry, vertices, indices);
+            }
+        }
+        else if (m_pxShape->getGeometryType() == physx::PxGeometryType::eHEIGHTFIELD)
+        { 
+            physx::PxHeightFieldGeometry geometry{};
+            if (m_pxShape->getHeightFieldGeometry(geometry) && geometry.heightField && geometry.isValid())
+            {
+                Utils::Geometry::GetHeightFieldGeometry(geometry, vertices, indices, optionalBounds);
+            }
+        }
+        else if (m_pxShape->getGeometryType() == physx::PxGeometryType::eBOX)
+        {
+            physx::PxBoxGeometry geometry{};
+            if (m_pxShape->getBoxGeometry(geometry) && geometry.isValid())
+            {
+                Utils::Geometry::GetBoxGeometry(geometry, vertices, indices);
+            }
+        }
+        else if (m_pxShape->getGeometryType() == physx::PxGeometryType::eSPHERE)
+        {
+            physx::PxSphereGeometry geometry{};
+            if (m_pxShape->getSphereGeometry(geometry) && geometry.isValid())
+            {
+                Utils::Geometry::GetSphereGeometry(geometry, vertices, indices, ShapeConstants::NumStacks, ShapeConstants::NumSlices);
+            }
+        }
+        else if (m_pxShape->getGeometryType() == physx::PxGeometryType::eCAPSULE)
+        {
+            physx::PxCapsuleGeometry geometry{};
+            if (m_pxShape->getCapsuleGeometry(geometry) && geometry.isValid())
+            {
+                Utils::Geometry::GetCapsuleGeometry(geometry, vertices, indices, ShapeConstants::NumStacks, ShapeConstants::NumSlices);
+            }
+        }
+        else
+        {
+            AZ_TracePrintf("Shape", "GetGeometry for PxGeometryType %d is not supported", static_cast<int>(m_pxShape->getGeometryType()));
+        }
     }
 }

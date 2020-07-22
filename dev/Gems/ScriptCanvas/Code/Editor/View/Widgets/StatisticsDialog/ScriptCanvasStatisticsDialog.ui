@@ -30,7 +30,7 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QTabWidget" name="tabWidget">
+    <widget class="AzQtComponents::TabWidget" name="tabWidget">
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -563,6 +563,12 @@
    <class>AzQtComponents::FilteredSearchWidget</class>
    <extends>QWidget</extends>
    <header location="global">AzQtComponents/Components/FilteredSearchWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::TabWidget</class>
+   <extends>QTabWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/TabWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

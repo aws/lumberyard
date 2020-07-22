@@ -12,9 +12,11 @@
 #pragma once
 
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
-class AssetEditorRequestsHandler :
-    public AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Handler
+class AssetEditorRequestsHandler 
+    : public AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Handler
+    , public AzToolsFramework::EditorEvents::Bus::Handler
 {
 public:
     AZ_CLASS_ALLOCATOR(AssetEditorRequestsHandler, AZ::SystemAllocator, 0);
@@ -27,4 +29,9 @@ public:
     //////////////////////////////////////////////////////////////////////////
     void CreateNewAsset(const AZ::Data::AssetType& assetType) override;
     void OpenAssetEditor(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
+
+    //////////////////////////////////////////////////////////////////////////
+    // AzToolsFramework::EditorEvents::Bus::Handler
+    //////////////////////////////////////////////////////////////////////////
+    void NotifyRegisterViews() override;
 };

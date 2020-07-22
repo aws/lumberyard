@@ -50,7 +50,7 @@ namespace AzFramework
         struct EntityScriptContext
         {
         public:
-            EntityScriptContext();            
+            EntityScriptContext();
 
             void Unload();
 
@@ -66,7 +66,7 @@ namespace AzFramework
 
             bool SanityCheckContext() const;
 
-            AZ::ScriptContext* m_scriptContext;            
+            AZ::ScriptContext* m_scriptContext;
             int m_entityTableRegistryIndex;
         };
 

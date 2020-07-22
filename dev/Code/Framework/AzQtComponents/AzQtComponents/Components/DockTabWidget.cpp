@@ -17,6 +17,7 @@
 
 #include <QContextMenuEvent>
 #include <QDockWidget>
+#include <QStackedWidget>
 #include <QString>
 
 
@@ -32,10 +33,10 @@ namespace AzQtComponents
     {
         // Replace the default tab bar with our custom DockTabBar to override the styling and docking behaviors.
         // Setting the custom tab bar parents it to ourself, so it will get cleaned up whenever our DockTabWidget is destroyed.
-        setTabBar(m_tabBar);
+        setCustomTabBar(m_tabBar);
 
-        // Emit press events for our tabs
-        QObject::connect(m_tabBar, &DockTabBar::tabBarClicked, this, &DockTabWidget::tabIndexPressed);
+        // Listen for selected tab changes
+        QObject::connect(m_tabBar, &DockTabBar::tabBarClicked, this, &DockTabWidget::handleTabIndexPressed);
 
         // Listen for close requests from our tabs
         QObject::connect(m_tabBar, &DockTabBar::closeTab, this, &DockTabWidget::handleTabCloseRequested);
@@ -62,6 +63,15 @@ namespace AzQtComponents
         // Let the QTabWidget handle the rest
         AzQtComponents::RepolishMinimizer minimizer;
         int tab = TabWidget::addTab(page, page->windowTitle());
+
+        // If a tabbed dock widget is about to close, we need to remove it from
+        // our tab widget ourselves, otherwise it won't know to recreate its
+        // createCustomTitleBar() that we set to empty when adding to a tab widget
+        auto dockWidget = qobject_cast<AzQtComponents::StyledDockWidget*>(page);
+        if (dockWidget)
+        {
+            QObject::connect(dockWidget, &StyledDockWidget::aboutToClose, this, &DockTabWidget::handleTabAboutToClose);
+        }
 
         // Make sure that changes to the window title get reflected by the tab too
         m_titleBarChangedConnections[page] = connect(page, &QWidget::windowTitleChanged, this, [this, page]() {
@@ -184,6 +194,7 @@ namespace AzQtComponents
      */
     void DockTabWidget::tabInserted(int index)
     {
+        TabWidget::tabInserted(index);
         emit tabWidgetInserted(widget(index));
     }
 
@@ -192,7 +203,7 @@ namespace AzQtComponents
      */
     void DockTabWidget::tabRemoved(int index)
     {
-        Q_UNUSED(index);
+        TabWidget::tabRemoved(index);
         emit tabCountChanged(count());
     }
 
@@ -204,24 +215,52 @@ namespace AzQtComponents
         AzQtComponents::StyledDockWidget* dockWidget = qobject_cast<AzQtComponents::StyledDockWidget*>(widget(index));
         if (dockWidget)
         {
-            QWidget* pageWidget = dockWidget->widget();
-            bool deleteOnClose = pageWidget->testAttribute(Qt::WA_DeleteOnClose);
-
             // Send the close event to the widget, so it has the opportunity to reject or save its state.
             // If the DeleteOnClose attribute is set, then the tab will be removed automatically if the
-            // close is successful when the widget is deleted.
-            bool closed = dockWidget->close();
-            if (closed && !deleteOnClose)
-            {
-                // If the widget accepted the close but the DeleteOnClose attribute isn't set, then we
-                // need to remove the tab manually
-                removeTab(index);
-            }
-
-            return closed;
+            // close is successful when the widget is deleted. Otherwise, it will get removed since we
+            // are listening to the aboutToClose signal from our tabbed dock widgets.
+            return dockWidget->close();
         }
 
         return false;
+    }
+
+    void DockTabWidget::handleTabAboutToClose()
+    {
+        auto dockWidget = qobject_cast<AzQtComponents::StyledDockWidget*>(sender());
+        if (dockWidget)
+        {
+            removeTab(dockWidget);
+        }
+    }
+
+    void DockTabWidget::handleTabIndexPressed(int index)
+    {
+        // Give the dock widget for the selected tab focus, since the user is explicitly switching
+        // to that tab
+        QDockWidget* dockWidget = qobject_cast<QDockWidget*>(widget(index));
+        if (dockWidget)
+        {
+            dockWidget->setFocus();
+        }
+
+        // Pass along our signal that the tab index was pressed
+        Q_EMIT tabIndexPressed(index);
+    }
+
+    /**
+     * Handle clicks in the tab bar. Will only pick up clicks in the black, unoccupied area.
+     */
+    void DockTabWidget::mousePressEvent(QMouseEvent *event)
+    {
+        if (event->button() == Qt::MouseButton::LeftButton && event->pos().y() <= m_tabBar->height())
+        {
+            emit tabIndexPressed(-1);
+        }
+        else
+        {
+            TabWidget::mousePressEvent(event);
+        }
     }
 
     /**
@@ -246,6 +285,35 @@ namespace AzQtComponents
     void DockTabWidget::finishDrag()
     {
         m_tabBar->finishDrag();
+    }
+
+    /**
+     * Check if this dock widget is tabbed in our custom dock tab widget
+     */
+    bool DockTabWidget::IsTabbed(QDockWidget* dockWidget)
+    {
+        // If our dock widget is tabbed, it will have a valid tab widget parent
+        return ParentTabWidget(dockWidget);
+    }
+
+    /**
+     * Return the tab widget holding this dock widget if it is a tab, otherwise nullptr
+     */
+    AzQtComponents::DockTabWidget* DockTabWidget::ParentTabWidget(QDockWidget* dockWidget)
+    {
+        if (dockWidget)
+        {
+            // If our dock widget is tabbed, it will be parented to a QStackedWidget that is parented to
+            // our dock tab widget
+            QStackedWidget* stackedWidget = qobject_cast<QStackedWidget*>(dockWidget->parentWidget());
+            if (stackedWidget)
+            {
+                AzQtComponents::DockTabWidget* tabWidget = qobject_cast<AzQtComponents::DockTabWidget*>(stackedWidget->parentWidget());
+                return tabWidget;
+            }
+        }
+
+        return nullptr;
     }
 
 #include <Components/DockTabWidget.moc>

@@ -1,0 +1,7 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file alias="Editor/Style/Editor.qss">Editor.qss</file>
+    <file alias="Editor/Style/CloudCanvas.qss">CloudCanvas.qss</file>
+    <file alias="Editor/Style/LayoutConfigDialog.qss">LayoutConfigDialog.qss</file>
+</qresource>
+</RCC>

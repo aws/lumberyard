@@ -1564,8 +1564,9 @@ const GUID& CSmartObjectsEditorDialog::GetClassID()
 }
 
 //////////////////////////////////////////////////////////////////////////
-CSmartObjectsEditorDialog::CSmartObjectsEditorDialog()
-    : m_bIgnoreNotifications(false)
+CSmartObjectsEditorDialog::CSmartObjectsEditorDialog(QWidget* parent)
+    : QMainWindow(parent)
+    , m_bIgnoreNotifications(false)
     , m_View(new QTreeView(this))
     , m_topLabel(new SmartObjectsEditorDialogLabel)
     , m_Tree(new QTreeView(this))

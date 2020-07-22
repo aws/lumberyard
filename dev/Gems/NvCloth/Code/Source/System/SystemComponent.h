@@ -13,46 +13,21 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/TickBus.h>
 
-#include <NvCloth/SystemBus.h>
 #include <CrySystemBus.h>
 
-#ifdef NVCLOTH_EDITOR
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#endif //NVCLOTH_EDITOR
+#include <NvCloth/SystemBus.h>
 
-namespace nv
-{
-    namespace cloth
-    {
-        class Factory;
-        class Solver;
-        class Fabric;
-        class Cloth;
-    }
-}
+#include <System/DataTypes.h>
 
 namespace NvCloth
 {
-    // Defines deleters for NvCloth types to destroy them appropriately,
-    // allowing to handle them with unique pointers.
-    struct NvClothTypesDeleter
-    {
-        void operator()(nv::cloth::Factory* factory) const;
-        void operator()(nv::cloth::Solver* factory) const;
-        void operator()(nv::cloth::Fabric* fabric) const;
-        void operator()(nv::cloth::Cloth* cloth) const;
-    };
-
-    using FactoryUniquePtr = AZStd::unique_ptr<nv::cloth::Factory, NvClothTypesDeleter>;
-    using SolverUniquePtr = AZStd::unique_ptr<nv::cloth::Solver, NvClothTypesDeleter>;
-    using FabricUniquePtr = AZStd::unique_ptr<nv::cloth::Fabric, NvClothTypesDeleter>;
-    using ClothUniquePtr = AZStd::unique_ptr<nv::cloth::Cloth, NvClothTypesDeleter>;
-
     class SystemComponent
         : public AZ::Component
-        , public SystemRequestBus::Handler
         , protected CrySystemEventBus::Handler
+        , public SystemRequestBus::Handler
+        , public AZ::TickBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{89DF5C48-64AC-4B8E-9E61-0D4C7A7B5491}");
@@ -65,26 +40,33 @@ namespace NvCloth
 
     protected:
         // AZ::Component overrides
-        void Init() override;
         void Activate() override;
         void Deactivate() override;
 
-        // CrySystemEventBus::Handler overrides
+        // CrySystemEventBus overrides
         void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams) override;
         void OnCrySystemShutdown(ISystem& system) override;
 
         // NvCloth::SystemRequestBus::Handler overrides
         nv::cloth::Factory* GetClothFactory() override;
+        void AddCloth(nv::cloth::Cloth* cloth) override;
+        void RemoveCloth(nv::cloth::Cloth* cloth) override;
+
+        // AZ::TickBus::Handler overrides
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        int GetTickOrder() override;
 
     private:
         void InitializeNvClothLibrary();
         void TearDownNvClothLibrary();
 
+        void CreateNvClothFactory();
+        void DestroyNvClothFactory();
+
         // Cloth Factory that creates all other objects
         FactoryUniquePtr m_factory;
 
-#ifdef NVCLOTH_EDITOR
-        AZStd::vector<AzToolsFramework::PropertyHandlerBase*> m_propertyHandlers;
-#endif //NVCLOTH_EDITOR
+        // Cloth Solver that contains all cloths
+        SolverUniquePtr m_solver;
     };
 } // namespace NvCloth

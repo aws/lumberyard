@@ -20,6 +20,7 @@
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
+#include <AzFramework/Physics/CharacterBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #ifdef LMBR_CENTRAL_EDITOR
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -31,8 +32,13 @@ namespace LmbrCentral
     class BehaviorNavigationComponentNotificationBusHandler : public NavigationComponentNotificationBus::Handler, public AZ::BehaviorEBusHandler
     {
     public:
-        AZ_EBUS_BEHAVIOR_BINDER(BehaviorNavigationComponentNotificationBusHandler,"{6D060202-06BA-470E-8F6B-E1982360C752}",AZ::SystemAllocator,
-            OnSearchingForPath, OnTraversalStarted, OnTraversalInProgress, OnTraversalComplete, OnTraversalCancelled);
+        AZ_EBUS_BEHAVIOR_BINDER_WITH_DOC(BehaviorNavigationComponentNotificationBusHandler,"{6D060202-06BA-470E-8F6B-E1982360C752}",AZ::SystemAllocator
+            , OnSearchingForPath, ({"RequestId","Navigation request Id"})
+            , OnTraversalStarted, ({"RequestId","Navigation request Id"})
+            , OnTraversalPathUpdate, ({"RequestId","Navigation request Id"},{"NextPathPosition","Next path position"},{"InflectionPosition","Next inflection position"})
+            , OnTraversalInProgress, ({"RequestId","Navigation request Id"},{"Distance","Distance remaining"})
+            , OnTraversalComplete, ({"RequestId","Navigation request Id"})
+            , OnTraversalCancelled, ({"RequestId","Navigation request Id"}));
 
         void OnSearchingForPath(PathfindRequest::NavigationRequestId requestId) override
         {
@@ -42,6 +48,11 @@ namespace LmbrCentral
         void OnTraversalStarted(PathfindRequest::NavigationRequestId requestId) override
         {
             Call(FN_OnTraversalStarted, requestId);
+        }
+
+        void OnTraversalPathUpdate(PathfindRequest::NavigationRequestId requestId, const AZ::Vector3& nextPathPosition, const AZ::Vector3& inflectionPosition) override 
+        {
+            Call(FN_OnTraversalPathUpdate, requestId, nextPathPosition, inflectionPosition);
         }
 
         void OnTraversalInProgress(PathfindRequest::NavigationRequestId requestId, float distanceRemaining) override
@@ -65,64 +76,114 @@ namespace LmbrCentral
 
     //////////////////////////////////////////////////////////////////////////
 
+    //=========================================================================
+    bool NavigationComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() < 4)
+        {
+            // "Move Physically" changed to "Movement Method"
+            constexpr const char* movePhysicallyName = "Move Physically";
+            constexpr const char* movementMethodName = "Movement Method";
+            int movePhysicallyIndex = classElement.FindElement(AZ_CRC(movePhysicallyName));
+            if (movePhysicallyIndex != -1)
+            {
+                bool movePhysically = false;
+                classElement.GetSubElement(movePhysicallyIndex).GetData(movePhysically);
+                classElement.RemoveElement(movePhysicallyIndex);
+
+                if (movePhysically)
+                {
+                    classElement.AddElementWithData(context, movementMethodName, NavigationComponentRequests::MovementMethod::Physics);
+                }
+                else
+                {
+                    classElement.AddElementWithData(context, movementMethodName, NavigationComponentRequests::MovementMethod::Transform);
+                }
+            }
+        }
+
+        return true;
+    }
+
     void NavigationComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<NavigationComponent, AZ::Component>()
-                ->Version(2)
+                ->Version(4, &NavigationComponentVersionConverter)
                 ->Field("Agent Type", &NavigationComponent::m_agentType)
                 ->Field("Agent Speed", &NavigationComponent::m_agentSpeed)
                 ->Field("Agent Radius", &NavigationComponent::m_agentRadius)
                 ->Field("Arrival Distance Threshold", &NavigationComponent::m_arrivalDistanceThreshold)
                 ->Field("Repath Threshold", &NavigationComponent::m_repathThreshold)
-                ->Field("Move Physically", &NavigationComponent::m_movesPhysically);
+                ->Field("Movement Method", &NavigationComponent::m_movementMethod)
+                ->Field("Allow Vertical Navigation", &NavigationComponent::m_allowVerticalNavigation);
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<NavigationComponent>(
                     "Navigation", "The Navigation component provides basic pathfinding and pathfollowing services to an entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Navigation.svg")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Navigation.png")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-navigation.html")
+                    ->Attribute(AZ::Edit::Attributes::Category, "AI")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Navigation.svg")
+                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Navigation.png")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-navigation.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_agentSpeed, "Agent Speed",
                         "The speed of the agent while navigating ")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &NavigationComponent::m_agentType, "Agent Type",
                         "Describes the type of the Entity for navigation purposes. ")
 #ifdef LMBR_CENTRAL_EDITOR
-                        ->Attribute(AZ::Edit::Attributes::StringList, &NavigationComponent::PopulateAgentTypeList)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NavigationComponent::HandleAgentTypeChanged)
+                    ->Attribute(AZ::Edit::Attributes::StringList, &NavigationComponent::PopulateAgentTypeList)
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NavigationComponent::HandleAgentTypeChanged)
 #endif
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_agentRadius, "Agent Radius",
                         "Radius of this Navigation Agent")
-                        ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
-                        ->Attribute("Suffix", " m")
+                    ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                    ->Attribute("Suffix", " m")
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_arrivalDistanceThreshold,
                         "Arrival Distance Threshold", "Describes the distance from the end point that an entity needs to be before its movement is to be stopped and considered complete")
-                        ->Attribute("Suffix", " m")
+                    ->Attribute("Suffix", " m")
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_repathThreshold,
                         "Repath Threshold", "Describes the distance from its previously known location that a target entity needs to move before a new path is calculated")
-                        ->Attribute("Suffix", " m")
+                    ->Attribute("Suffix", " m")
 
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &NavigationComponent::m_movesPhysically,
-                        "Move Physically", "Indicates whether the entity moves under physics or by modifying the Entity Transform");
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &NavigationComponent::m_movementMethod,
+                        "Movement Method", "Indicates the method used to move the entity, the default 'Transform' method will modify the position using the TransformBus")
+                    ->Attribute(AZ::Edit::Attributes::EnumValues,
+                        AZStd::vector<AZ::Edit::EnumConstant<NavigationComponentRequests::MovementMethod>>
+                        {
+                            AZ::Edit::EnumConstant<NavigationComponentRequests::MovementMethod>(NavigationComponentRequests::MovementMethod::Transform,
+                                "Transform"),
+                                AZ::Edit::EnumConstant<NavigationComponentRequests::MovementMethod>(NavigationComponentRequests::MovementMethod::Physics,
+                                "Physics"),
+                                AZ::Edit::EnumConstant<NavigationComponentRequests::MovementMethod>(NavigationComponentRequests::MovementMethod::Custom,
+                                "Custom")
+                        })
+
+                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &NavigationComponent::m_allowVerticalNavigation,
+                        "Allow Vertical Navigation", "Indicates whether vertical navigation is allowed or if navigation is constrained to the X and Y plane");
+
             }
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<NavigationComponentRequestBus>("NavigationComponentRequestBus")
-                ->Event("FindPathToEntity", &NavigationComponentRequestBus::Events::FindPathToEntity)
-                ->Event("Stop", &NavigationComponentRequestBus::Events::Stop)
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Category, "Navigation")
+                ->Attribute(AZ::Script::Attributes::Module, "navigation")
+                ->Event("FindPathToEntity", &NavigationComponentRequestBus::Events::FindPathToEntity, { { {"EntityId","The entity to follow"} } })
+                ->Event("FindPathToPosition", &NavigationComponentRequestBus::Events::FindPathToPosition, { { {"Position","The position to navigate to"} } })
+                ->Event("Stop", &NavigationComponentRequestBus::Events::Stop, { { {"RequestId","The request Id of the navigation process to stop"} } })
                 ->Event("GetAgentSpeed", &NavigationComponentRequestBus::Events::GetAgentSpeed)
-                ->Event("SetAgentSpeed", &NavigationComponentRequestBus::Events::SetAgentSpeed);
+                ->Event("SetAgentSpeed", &NavigationComponentRequestBus::Events::SetAgentSpeed, { { {"Speed","The agent speed in meters per second"} } })
+                ->Event("GetAgentMovementMethod", &NavigationComponentRequestBus::Events::GetAgentMovementMethod)
+                ->Event("SetAgentMovementMethod", &NavigationComponentRequestBus::Events::SetAgentMovementMethod, { { {"Method","The movement method: Transform, Physics or Custom"} } });
 
             behaviorContext->EBus<NavigationComponentNotificationBus>("NavigationComponentNotificationBus")
                 ->Handler<BehaviorNavigationComponentNotificationBusHandler>();
@@ -141,6 +202,8 @@ namespace LmbrCentral
         , m_navigationComponent(nullptr)
         , m_previousAgentVelocity(AZ::Vector3::CreateZero())
         , m_pathFollower(nullptr)
+        , m_nextPathPosition(AZ::Vector3::CreateZero())
+        , m_inflectionPosition(AZ::Vector3::CreateZero())
     {
     }
 
@@ -166,6 +229,7 @@ namespace LmbrCentral
         params.minSpeed = params.normalSpeed * 0.8f;
         params.maxSpeed = params.normalSpeed * 1.2f;
         params.stopAtEnd = true;
+        params.use2D = !m_navigationComponent->GetAllowVerticalNavigation();
         m_pathFollower = gEnv->pAISystem ? gEnv->pAISystem->CreateAndReturnNewDefaultPathFollower(params, m_pathObstacles) : nullptr;
 
         // Disconnect from any notifications from earlier requests
@@ -328,6 +392,26 @@ namespace LmbrCentral
         m_previousAgentVelocity = newVelocity;
     }
 
+    const AZ::Vector3& PathfindResponse::GetNextPathPosition() const
+    {
+        return m_nextPathPosition;
+    }
+
+    void PathfindResponse::SetNextPathPosition(const AZ::Vector3& newPosition)
+    {
+        m_nextPathPosition = newPosition;
+    }
+
+    const AZ::Vector3& PathfindResponse::GetInflectionPosition() const
+    {
+        return m_inflectionPosition;
+    }
+
+    void PathfindResponse::SetInflectionPosition(const AZ::Vector3& newPosition)
+    {
+        m_inflectionPosition = newPosition;
+    }
+
     IPathFollowerPtr PathfindResponse::GetPathFollower()
     {
         return m_pathFollower;
@@ -340,9 +424,10 @@ namespace LmbrCentral
         , m_agentRadius(4.f)
         , m_arrivalDistanceThreshold(0.25f)
         , m_repathThreshold(1.f)
-        , m_movesPhysically(true)
+        , m_movementMethod(NavigationComponentRequests::MovementMethod::Physics)
         , m_usesLegacyPhysics(false)
         , m_usesCharacterPhysics(false)
+        , m_allowVerticalNavigation(false)
     {
     }
 
@@ -364,14 +449,16 @@ namespace LmbrCentral
         NavigationComponentRequestBus::Handler::BusConnect(entityId);
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
 
-        if (m_movesPhysically)
+        if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
         {
-            m_usesCharacterPhysics = CryCharacterPhysicsRequestBus::FindFirstHandler(entityId) != nullptr;
-            m_usesLegacyPhysics = m_usesCharacterPhysics || CryPhysicsComponentRequestBus::FindFirstHandler(entityId);
+            const bool usesLegacyCharacterPhysics = CryCharacterPhysicsRequestBus::FindFirstHandler(entityId) != nullptr;
+            const bool usesAZCharacterPhysics = Physics::CharacterRequestBus::FindFirstHandler(entityId) != nullptr;
+            m_usesCharacterPhysics = usesLegacyCharacterPhysics || usesAZCharacterPhysics;
+            m_usesLegacyPhysics = usesLegacyCharacterPhysics || CryPhysicsComponentRequestBus::FindFirstHandler(entityId);
 
             AZ_Warning("NavigationComponent",
-                m_usesLegacyPhysics || Physics::RigidBodyRequestBus::FindFirstHandler(entityId),
-                "Entity %s cannot be moved physically - no physics component", GetEntity()->GetName().c_str());
+                m_usesLegacyPhysics || usesAZCharacterPhysics || Physics::RigidBodyRequestBus::FindFirstHandler(entityId),
+                "Entity %s cannot be moved physically because it is missing a physics component", GetEntity()->GetName().c_str());
         }
 
         AZ::TransformBus::EventResult(m_entityTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
@@ -529,7 +616,7 @@ namespace LmbrCentral
                     if (shouldPathBeTraversed)
                     {
                         // Connect to physics bus if appropriate, else tick bus
-                        if (m_movesPhysically && !m_usesLegacyPhysics)
+                        if ((m_movementMethod == NavigationComponentRequests::MovementMethod::Physics) && !m_usesLegacyPhysics)
                         {
                             Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
                         }
@@ -602,6 +689,16 @@ namespace LmbrCentral
         }
     }
 
+    NavigationComponentRequests::MovementMethod NavigationComponent::GetAgentMovementMethod()
+    {
+        return m_movementMethod;
+    }
+
+    void NavigationComponent::SetAgentMovementMethod(NavigationComponentRequests::MovementMethod movementMethod)
+    {
+        m_movementMethod = movementMethod;
+    }
+
     void NavigationComponent::MoveEntity(float deltaTime)
     {
         // If there isn't a valid path
@@ -614,7 +711,7 @@ namespace LmbrCentral
         AZ::Vector3 currentVelocity = AZ::Vector3::CreateZero();
         float mass = 0.f;
 
-        if (m_movesPhysically)
+        if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
         {
             if (m_usesLegacyPhysics)
             {
@@ -625,6 +722,11 @@ namespace LmbrCentral
 
                 currentVelocity = LYVec3ToAZVec3(dynamics.v);
                 mass = dynamics.mass;
+            }
+            else if (m_usesCharacterPhysics)
+            {
+                Physics::CharacterRequestBus::EventResult(currentVelocity, GetEntityId(),
+                    &Physics::CharacterRequestBus::Events::GetVelocity);
             }
             else
             {
@@ -639,8 +741,11 @@ namespace LmbrCentral
         }
 
         // Update path-following and extract desired velocity.
+        AZ::Vector3 nextPathPosition = AZ::Vector3::CreateZero();
+        AZ::Vector3 inflectionPosition = AZ::Vector3::CreateZero();
         AZ::Vector3 targetVelocity = AZ::Vector3::CreateZero();
         float distanceToEnd = 0.f;
+
         auto pathFollower = m_lastResponseCache.GetPathFollower();
         if (pathFollower)
         {
@@ -655,13 +760,15 @@ namespace LmbrCentral
                 AZVec3ToLYVec3(agentVelocity),
                 deltaTime);
 
+            nextPathPosition = LYVec3ToAZVec3(result.followTargetPos);
+            inflectionPosition = LYVec3ToAZVec3(result.inflectionPoint);
             targetVelocity = LYVec3ToAZVec3(result.velocityOut);
             distanceToEnd = result.distanceToEnd;
         }
 
         if (targetVelocity == AZ::Vector3::CreateZero())
         {
-            if (m_movesPhysically)
+            if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
             {
                 if (m_usesLegacyPhysics)
                 {
@@ -681,8 +788,16 @@ namespace LmbrCentral
                 }
                 else
                 {
-                    Physics::RigidBodyRequestBus::Event(GetEntityId(),
-                        &Physics::RigidBodyRequestBus::Events::SetLinearVelocity, AZ::Vector3::CreateZero());
+                    if (m_usesCharacterPhysics)
+                    {
+                        Physics::CharacterRequestBus::Event(GetEntityId(), 
+                            &Physics::CharacterRequestBus::Events::TryRelativeMove, AZ::Vector3::CreateZero(), deltaTime);
+                    }
+                    else
+                    {
+                        Physics::RigidBodyRequestBus::Event(GetEntityId(),
+                            &Physics::RigidBodyRequestBus::Events::SetLinearVelocity, AZ::Vector3::CreateZero());
+                    }
                 }
             }
 
@@ -698,7 +813,24 @@ namespace LmbrCentral
         }
         else
         {
-            if (m_movesPhysically)
+            if (m_movementMethod == NavigationComponentRequests::MovementMethod::Custom)
+            {
+                if (!nextPathPosition.IsClose(m_lastResponseCache.GetNextPathPosition()) ||
+                    !inflectionPosition.IsClose(m_lastResponseCache.GetInflectionPosition()))
+                {
+                    m_lastResponseCache.SetNextPathPosition(nextPathPosition);
+                    m_lastResponseCache.SetInflectionPosition(inflectionPosition);
+
+                    // when using the custom movement method we just update the path and rely on 
+                    // the user to move the entity
+                    NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                        &NavigationComponentNotificationBus::Events::OnTraversalPathUpdate, 
+                        m_lastResponseCache.GetRequestId(),
+                        nextPathPosition, inflectionPosition);
+
+                }
+            }
+            else if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
             {
                 if (m_usesLegacyPhysics && m_usesCharacterPhysics)
                 {
@@ -716,6 +848,11 @@ namespace LmbrCentral
                         applyImpulse.impulse = AZVec3ToLYVec3(forceRequired);
                         CryPhysicsComponentRequestBus::Event(GetEntityId(),
                             &CryPhysicsComponentRequestBus::Events::ApplyPhysicsAction, applyImpulse, false);
+                    }
+                    else if (m_usesCharacterPhysics)
+                    {
+                        Physics::CharacterRequestBus::Event(GetEntityId(), 
+                            &Physics::CharacterRequestBus::Events::TryRelativeMove, targetVelocity * deltaTime, deltaTime);
                     }
                     else
                     {
@@ -739,7 +876,6 @@ namespace LmbrCentral
 
             m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalInProgress);
 
-            // Inform every listener on this entity that the path has been finished
             NavigationComponentNotificationBus::Event(m_entity->GetId(),
                 &NavigationComponentNotificationBus::Events::OnTraversalInProgress, m_lastResponseCache.GetRequestId(),
                 distanceToEnd);
@@ -786,6 +922,13 @@ namespace LmbrCentral
     {
         PathfindRequest request;
         request.SetTargetEntityId(targetEntityId);
+        return FindPath(request);
+    }
+
+    PathfindRequest::NavigationRequestId NavigationComponent::FindPathToPosition(const AZ::Vector3& destination)
+    {
+        PathfindRequest request;
+        request.SetDestinationLocation(destination);
         return FindPath(request);
     }
 } // namespace LmbrCentral

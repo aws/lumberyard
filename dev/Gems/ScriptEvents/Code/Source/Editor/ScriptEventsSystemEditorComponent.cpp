@@ -47,7 +47,6 @@ namespace ScriptEventsEditor
 
         AZ::Data::AssetPtr assetPtr = AzFramework::GenericAssetHandler<ScriptEvents::ScriptEventsAsset>::CreateAsset(id, type);
 
-        AZ_Assert(id.IsValid(), "Script Event asset must have a valid ID to be created.");
         if (!AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::MultiHandler::BusIsConnectedId(id))
         {
             AzToolsFramework::AssetEditor::AssetEditorValidationRequestBus::MultiHandler::BusConnect(id);

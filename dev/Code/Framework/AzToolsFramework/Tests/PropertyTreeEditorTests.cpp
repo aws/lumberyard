@@ -16,6 +16,7 @@
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/PropertyTreeEditor/PropertyTreeEditor.h>
 
@@ -28,6 +29,12 @@ namespace UnitTest
 {
     using namespace AzToolsFramework;
 
+    struct PropertyTreeEditorSubBlockTester
+    {
+        AZ_TYPE_INFO(PropertyTreeEditorTester, "{E9497A1E-9B41-4A33-8F05-92CE41A0ABD9}");
+        AZ::s16 m_myNegativeShort = -42;
+    };
+
     //! Test class
     struct PropertyTreeEditorTester
     {
@@ -39,6 +46,9 @@ namespace UnitTest
         float m_myFloat = 42.0f;
         AZStd::string m_myString = "StringValue";
         AZStd::string m_myGroupedString = "GroupedStringValue";
+        PropertyTreeEditorSubBlockTester m_mySubBlock;
+        double m_myHiddenDouble = 42.0;
+        AZ::u16 m_myReadOnlyShort = 42;
 
         struct PropertyTreeEditorNestedTester
         {
@@ -47,12 +57,20 @@ namespace UnitTest
             AZStd::string m_myNestedString = "NestedString";
         };
 
+        AZStd::vector<PropertyTreeEditorNestedTester> m_myList;
+        AZStd::unordered_map<AZStd::string, PropertyTreeEditorNestedTester> m_myMap;
+
         PropertyTreeEditorNestedTester m_nestedTester;
+        PropertyTreeEditorNestedTester m_nestedTesterHiddenChildren;
 
         void Reflect(AZ::ReflectContext* context)
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
+                serializeContext->Class<PropertyTreeEditorSubBlockTester>()
+                    ->Version(0)
+                    ->Field("myNegativeShort", &PropertyTreeEditorSubBlockTester::m_myNegativeShort);
+
                 serializeContext->Class<PropertyTreeEditorTester>()
                     ->Version(1)
                     ->Field("myInt", &PropertyTreeEditorTester::m_myInt)
@@ -62,6 +80,12 @@ namespace UnitTest
                     ->Field("NestedTester", &PropertyTreeEditorTester::m_nestedTester)
                     ->Field("myNewInt", &PropertyTreeEditorTester::m_myNewInt)
                     ->Field("myGroupedString", &PropertyTreeEditorTester::m_myGroupedString)
+                    ->Field("myList", &PropertyTreeEditorTester::m_myList)
+                    ->Field("myMap", &PropertyTreeEditorTester::m_myMap)
+                    ->Field("mySubBlock", &PropertyTreeEditorTester::m_mySubBlock)
+                    ->Field("myHiddenDouble", &PropertyTreeEditorTester::m_myHiddenDouble)
+                    ->Field("myReadOnlyShort", &PropertyTreeEditorTester::m_myReadOnlyShort)                    
+                    ->Field("nestedTesterHiddenChildren", &PropertyTreeEditorTester::m_nestedTesterHiddenChildren)
                     ;
 
                 serializeContext->Class<PropertyTreeEditorNestedTester>()
@@ -71,6 +95,12 @@ namespace UnitTest
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
+                    editContext->Class<PropertyTreeEditorSubBlockTester>(
+                        "PropertyTreeEditorSubBlock Tester", "Tester sub block for the PropertyTreeEditor test")
+
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorSubBlockTester::m_myNegativeShort, "My Negative Short", "A test short int.")
+                        ;
+
                     editContext->Class<PropertyTreeEditorTester>(
                         "PropertyTreeEditor Tester", "Tester for the PropertyTreeEditor")
 
@@ -80,6 +110,17 @@ namespace UnitTest
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myString, "My String", "A test string.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_nestedTester, "Nested", "A nested class.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myNewInt, "My New Int", "A test int.", "My Old Int")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myList, "My New List", "A test vector<>.", "My Old List")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myMap, "My Map", "A test unordered_map<>.", "My Old Map")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myHiddenDouble, "My Hidden Double", "A test hidden node.", "My Old Double")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_nestedTesterHiddenChildren, "Nested Hidden Children", "A test node with hidden children.")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myReadOnlyShort, "My Read Only", "A test read only node.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+                        ->DataElement(0, &PropertyTreeEditorTester::m_mySubBlock, "My Sub Block", "sub block test")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)                            
                         ->ClassElement(AZ::Edit::ClassElements::Group, "Grouped")
                             ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myGroupedString, "My Grouped String", "A test grouped string.")
                         ;
@@ -287,6 +328,313 @@ namespace UnitTest
         {
             PropertyTreeEditor::PropertyAccessOutcome groupedOutcome = propertyTree.SetProperty("Grouped|My Grouped String", AZStd::any(42.0f));
             EXPECT_FALSE(groupedOutcome.IsSuccess());
+        }
+    }
+
+    TEST_F(PropertyTreeEditorTests, PropertyTreeVectorContainerSupport)
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        PropertyTreeEditorTester propertyTreeEditorTester;
+        propertyTreeEditorTester.Reflect(m_serializeContext);
+
+        PropertyTreeEditor propertyTree = PropertyTreeEditor(&propertyTreeEditorTester, AZ::AzTypeInfo<PropertyTreeEditorTester>::Uuid());
+
+        // IsContainer
+        {
+            EXPECT_FALSE(propertyTree.IsContainer("My New Int"));
+            EXPECT_TRUE(propertyTree.IsContainer("My New List"));
+        }
+
+        // AddContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZ::s32>(0);
+            AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>();
+
+            PropertyTreeEditor::PropertyAccessOutcome outcomeAdd0 = propertyTree.AddContainerItem("My New Int", key, value);
+            EXPECT_FALSE(outcomeAdd0.IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome outcomeAdd1 = propertyTree.AddContainerItem("My New List", key, value);
+            EXPECT_TRUE(outcomeAdd1.IsSuccess());
+        }
+
+        // GetContainerCount
+        {
+            EXPECT_FALSE(propertyTree.GetContainerCount("My New Int").IsSuccess());
+            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+        }
+
+        // GetContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZ::s32>(0);
+            AZStd::any keyString = AZStd::make_any<AZStd::string_view>("0");
+
+            EXPECT_FALSE(propertyTree.GetContainerItem("My New Int", key).IsSuccess());
+            EXPECT_FALSE(propertyTree.GetContainerItem("My New List", keyString).IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My New List", key);
+            EXPECT_TRUE(outcome.IsSuccess());
+            if (outcome.IsSuccess())
+            {
+                auto&& testerValue = AZStd::any_cast<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(&outcome.GetValue());
+                EXPECT_STREQ("NestedString", testerValue->m_myNestedString.c_str());
+            }
+        }
+
+        // UpdateContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZ::s32>(0);
+            AZStd::any keyString = AZStd::make_any<AZStd::string_view>("0");
+            PropertyTreeEditorTester::PropertyTreeEditorNestedTester testUpdate;
+            testUpdate.m_myNestedString = "a new value";
+            AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(testUpdate);
+
+            EXPECT_FALSE(propertyTree.UpdateContainerItem("My New Int", key, value).IsSuccess());
+            EXPECT_FALSE(propertyTree.UpdateContainerItem("My New List", keyString, value).IsSuccess());
+            EXPECT_TRUE(propertyTree.UpdateContainerItem("My New List", key, value).IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My New List", key);
+            EXPECT_TRUE(outcome.IsSuccess());
+            if (outcome.IsSuccess())
+            {
+                auto&& testerValue = AZStd::any_cast<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(&outcome.GetValue());
+                EXPECT_STREQ(testUpdate.m_myNestedString.c_str(), testerValue->m_myNestedString.c_str());
+            }
+        }
+
+        // RemoveContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZ::s32>(0);
+            AZStd::any keyString = AZStd::make_any<AZStd::string_view>("0");
+
+            EXPECT_FALSE(propertyTree.RemoveContainerItem("My New Int", key).IsSuccess());
+            EXPECT_FALSE(propertyTree.RemoveContainerItem("My New List", keyString).IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome outcomeAdd1 = propertyTree.RemoveContainerItem("My New List", key);
+            EXPECT_TRUE(outcomeAdd1.IsSuccess());
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+        }
+
+        // ResetContainer
+        {
+            AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>();
+
+            propertyTree.AddContainerItem("My New List", AZStd::make_any<AZ::s32>(0), value);
+            propertyTree.AddContainerItem("My New List", AZStd::make_any<AZ::s32>(1), value);
+            propertyTree.AddContainerItem("My New List", AZStd::make_any<AZ::s32>(2), value);
+
+            EXPECT_EQ(3, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            propertyTree.ResetContainer("My New List");
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+        }
+
+        // AppendContainerItem
+        {
+            AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>();
+
+            EXPECT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
+            EXPECT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
+            EXPECT_TRUE(propertyTree.AppendContainerItem("My New List", value).IsSuccess());
+
+            EXPECT_EQ(3, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My New List").GetValue()));
+            propertyTree.ResetContainer("My New List");
+        }
+    }
+
+    TEST_F(PropertyTreeEditorTests, PropertyTreeUnorderedMapContainerSupport)
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        using TestData = PropertyTreeEditorTester::PropertyTreeEditorNestedTester;
+        PropertyTreeEditorTester propertyTreeEditorTester;
+        propertyTreeEditorTester.Reflect(m_serializeContext);
+        propertyTreeEditorTester.m_myMap.emplace(AZStd::make_pair("one", TestData()));
+        const char* testDataString = "a test string";
+
+        PropertyTreeEditor propertyTree = PropertyTreeEditor(&propertyTreeEditorTester, AZ::AzTypeInfo<PropertyTreeEditorTester>::Uuid());
+
+        // AddContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZStd::string>("two");
+            TestData testItem;
+            testItem.m_myNestedString = testDataString;
+            AZStd::any value = AZStd::make_any<TestData>(testItem);
+            EXPECT_TRUE(propertyTree.AddContainerItem("My Map", key, value).IsSuccess());
+        }
+
+        // GetContainerCount
+        {
+            EXPECT_EQ(2, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+        }
+
+        // GetContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZStd::string>("two");
+
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My Map", key);
+            EXPECT_TRUE(outcome.IsSuccess());
+            if (outcome.IsSuccess())
+            {
+                auto&& testerValue = AZStd::any_cast<TestData>(&outcome.GetValue());
+                EXPECT_STREQ(testDataString, testerValue->m_myNestedString.c_str());
+            }
+        }
+
+        // UpdateContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZStd::string>("two");
+            TestData testUpdate;
+            testUpdate.m_myNestedString = "a new value";
+            AZStd::any value = AZStd::make_any<TestData>(testUpdate);
+
+            EXPECT_TRUE(propertyTree.UpdateContainerItem("My Map", key, value).IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome outcome = propertyTree.GetContainerItem("My Map", key);
+            if (outcome.IsSuccess())
+            {
+                auto&& testerValue = AZStd::any_cast<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>(&outcome.GetValue());
+                EXPECT_STREQ(testUpdate.m_myNestedString.c_str(), testerValue->m_myNestedString.c_str());
+            }
+        }
+
+        // RemoveContainerItem
+        {
+            AZStd::any key = AZStd::make_any<AZStd::string>("two");
+
+            EXPECT_TRUE(propertyTree.RemoveContainerItem("My Map", key).IsSuccess());
+            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+        }
+
+        // ResetContainer
+        {
+            EXPECT_EQ(1, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+            propertyTree.ResetContainer("My Map");
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+        }
+
+        // AppendContainerItem
+        {
+            AZStd::any value = AZStd::make_any<PropertyTreeEditorTester::PropertyTreeEditorNestedTester>();
+            EXPECT_FALSE(propertyTree.AppendContainerItem("My Map", value).IsSuccess());
+            EXPECT_EQ(0, AZStd::any_cast<AZ::u64>(propertyTree.GetContainerCount("My Map").GetValue()));
+        }
+    }
+
+    TEST_F(PropertyTreeEditorTests, PropertyTreeInspection)
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        PropertyTreeEditorTester propertyTreeEditorTester;
+        propertyTreeEditorTester.Reflect(m_serializeContext);
+
+        PropertyTreeEditor propertyTree = PropertyTreeEditor(&propertyTreeEditorTester, AZ::AzTypeInfo<PropertyTreeEditorTester>::Uuid());
+
+        // BuildPathsList
+        {
+            auto&& pathList = propertyTree.BuildPathsList();
+            EXPECT_TRUE(!pathList.empty());
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Map"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My New List"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "Nested|My Nested String"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "Grouped|My Grouped String"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Hidden Double"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Sub Block|My Negative Short"; }));
+        }
+
+        // BuildPathsListWithTypes
+        {
+            static auto stringContains = [](const AZStd::string& data, const char* subString) -> bool
+            {
+                return data.find(subString) != AZStd::string::npos;
+            };
+            auto&& pathList = propertyTree.BuildPathsListWithTypes();
+            EXPECT_TRUE(!pathList.empty());
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return stringContains(path,"NotVisible"); }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return stringContains(path,"Visible"); }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return stringContains(path,"ShowChildrenOnly"); }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return stringContains(path,"HideChildren"); }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return stringContains(path,"ReadOnly"); }));
+        }
+
+        // GetPropertyType
+        {
+            EXPECT_STREQ("AZStd::unordered_map", propertyTree.GetPropertyType("My Map").c_str());
+            EXPECT_STREQ("AZStd::vector", propertyTree.GetPropertyType("My New List").c_str());
+            EXPECT_STREQ("AZStd::string", propertyTree.GetPropertyType("Nested|My Nested String").c_str());
+            EXPECT_STREQ("double", propertyTree.GetPropertyType("My Hidden Double").c_str());
+            EXPECT_STREQ("PropertyTreeEditorTester", propertyTree.GetPropertyType("Nested").c_str());
+        }
+
+        // BuildPathsList after enforcement removes the "show children only" nodes from the paths
+        {
+            propertyTree.SetVisibleEnforcement(true);
+
+            auto&& pathList = propertyTree.BuildPathsList();
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Map"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My New List"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "Nested|My Nested String"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "Grouped|My Grouped String"; }));
+            EXPECT_FALSE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Hidden Double"; }));
+            EXPECT_FALSE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Sub Block|My Negative Short"; }));
+            EXPECT_TRUE(AZStd::any_of(pathList.begin(), pathList.end(), [](auto&& path) { return path == "My Negative Short"; }));
+        }
+    }
+
+    TEST_F(PropertyTreeEditorTests, PropertyTreeAttributeInspection)
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        PropertyTreeEditorTester propertyTreeEditorTester;
+        propertyTreeEditorTester.Reflect(m_serializeContext);
+
+        PropertyTreeEditor propertyTree = PropertyTreeEditor(&propertyTreeEditorTester, AZ::AzTypeInfo<PropertyTreeEditorTester>::Uuid());
+
+        // HasAttribute
+        {
+            EXPECT_TRUE(propertyTree.HasAttribute("My Read Only", "ReadOnly"));
+            EXPECT_TRUE(propertyTree.HasAttribute("My Hidden Double", "Visibility"));
+            EXPECT_TRUE(propertyTree.HasAttribute("My Sub Block", "AutoExpand"));
+        }
+    }
+
+    TEST_F(PropertyTreeEditorTests, HandlesVisibleEnforcement)
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        PropertyTreeEditorTester propertyTreeEditorTester;
+        propertyTreeEditorTester.Reflect(m_serializeContext);
+
+        PropertyTreeEditor propertyTree = PropertyTreeEditor(&propertyTreeEditorTester, AZ::AzTypeInfo<PropertyTreeEditorTester>::Uuid());
+
+        // can access a hidden value with 'visible enforcement' set to false
+        {
+            PropertyTreeEditor::PropertyAccessOutcome outcomeGet = propertyTree.GetProperty("My Hidden Double");
+            EXPECT_TRUE(outcomeGet.IsSuccess());
+            EXPECT_EQ(42.0, AZStd::any_cast<double>(outcomeGet.GetValue()));
+        }
+
+        // can mutate a hidden value with 'visible enforcement' set to false
+        {
+            PropertyTreeEditor::PropertyAccessOutcome outcomeSet = propertyTree.SetProperty("My Hidden Double", AZStd::any(12.0));
+            EXPECT_TRUE(outcomeSet.IsSuccess());
+
+            PropertyTreeEditor::PropertyAccessOutcome outcomeGet = propertyTree.GetProperty("My Hidden Double");
+            EXPECT_TRUE(outcomeGet.IsSuccess());
+            EXPECT_EQ(12.0, AZStd::any_cast<double>(outcomeGet.GetValue()));
+        }
+
+        propertyTree.SetVisibleEnforcement(true);
+
+        // can NOT access hidden value with 'visible enforcement' set to true
+        {
+            PropertyTreeEditor::PropertyAccessOutcome outcomeGet = propertyTree.GetProperty("My Hidden Double");
+            EXPECT_FALSE(outcomeGet.IsSuccess());
+        }
+
+        // can NOT mutate a hidden value with 'visible enforcement' set to false
+        {
+            PropertyTreeEditor::PropertyAccessOutcome outcomeSet = propertyTree.SetProperty("My Hidden Double", AZStd::any(42.0));
+            EXPECT_FALSE(outcomeSet.IsSuccess());
         }
     }
 

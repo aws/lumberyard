@@ -135,7 +135,7 @@ namespace ScriptCanvas
                     // Must be a number
                     slotConfiguration.m_name = slotName;
                     slotConfiguration.SetConnectionType(ConnectionType::Input);
-                    slotConfiguration.SetDefaultValue(0.0);
+                    slotConfiguration.SetDefaultValue(1.0);
 
                     m_timeSlotId = AddSlot(slotConfiguration);
                 }

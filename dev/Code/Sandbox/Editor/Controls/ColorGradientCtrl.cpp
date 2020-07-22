@@ -21,7 +21,8 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QToolTip>
-#include <QColorDialog>
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
 
 #define MIN_TIME_EPSILON 0.01f
 
@@ -118,11 +119,11 @@ QPoint CColorGradientCtrl::TimeToPoint(float time)
 }
 
 //////////////////////////////////////////////////////////////////////////
-QColor CColorGradientCtrl::TimeToColor(float time)
+AZ::Color CColorGradientCtrl::TimeToColor(float time)
 {
     ISplineInterpolator::ValueType val;
     m_pSpline->Interpolate(time, val);
-    const QColor col = ValueToColor(val);
+    const AZ::Color col = ValueToColor(val);
     return col;
 }
 
@@ -150,7 +151,7 @@ QPoint CColorGradientCtrl::XOfsToPoint(int x)
 }
 
 //////////////////////////////////////////////////////////////////////////
-QColor CColorGradientCtrl::XOfsToColor(int x)
+AZ::Color CColorGradientCtrl::XOfsToColor(int x)
 {
     return TimeToColor(XOfsToTime(x));
 }
@@ -206,8 +207,8 @@ void CColorGradientCtrl::DrawGradient(QPaintEvent* e, QPainter* painter)
     const int right = rcClip.left() + rcClip.width();
     for (int x = rcClip.left(); x < right; x++)
     {
-        const QColor col = XOfsToColor(x);
-        QPen pen(col, 1, Qt::SolidLine);
+        const AZ::Color col = XOfsToColor(x);
+        QPen pen(QColor(col.GetR8(), col.GetG8(), col.GetR8(), col.GetA8()), 1, Qt::SolidLine);
         painter->setPen(pen);
         painter->drawLine(x, m_rcGradient.top(), x, m_rcGradient.top() + m_rcGradient.height());
     }
@@ -239,8 +240,8 @@ void CColorGradientCtrl::DrawKeys(QPaintEvent* e, QPainter* painter)
             continue;
         }
 
-        const QColor clr = TimeToColor(time);
-        QBrush brush(clr);
+        const AZ::Color clr = TimeToColor(time);
+        QBrush brush(QColor(clr.GetR8(), clr.GetG8(), clr.GetB8(), clr.GetA8()));
         painter->setBrush(brush);
 
         // Find the midpoints of the top, right, left, and bottom
@@ -281,11 +282,11 @@ void CColorGradientCtrl::UpdateTooltip(QPoint pos)
         ISplineInterpolator::ValueType val;
         m_pSpline->GetKeyValue(m_nHitKeyIndex, val);
 
-        QColor col = TimeToColor(time);
+        AZ::Color col = TimeToColor(time);
         int cont_s = (m_pSpline->GetKeyFlags(m_nHitKeyIndex) >> SPLINE_KEY_TANGENT_IN_SHIFT) & SPLINE_KEY_TANGENT_LINEAR ? 1 : 2;
         int cont_d = (m_pSpline->GetKeyFlags(m_nHitKeyIndex) >> SPLINE_KEY_TANGENT_OUT_SHIFT) & SPLINE_KEY_TANGENT_LINEAR ? 1 : 2;
 
-        QString tipText(tr("%1 : %2,%3,%4 [%5,%6]").arg(time * m_fTooltipScaleX, 0, 'f', 2).arg(col.red()).arg(col.green()).arg(col.blue()).arg(cont_s).arg(cont_d));
+        QString tipText(tr("%1 : %2,%3,%4 [%5,%6]").arg(time * m_fTooltipScaleX, 0, 'f', 2).arg(col.GetR8()).arg(col.GetG8()).arg(col.GetB8()).arg(cont_s).arg(cont_d));
         const QPoint globalPos = mapToGlobal(pos);
         QToolTip::showText(mapToGlobal(pos), tipText, this, QRect(globalPos, QSize(1, 1)));
     }
@@ -726,8 +727,10 @@ void CColorGradientCtrl::EditKey(int nKey)
 
     SendNotifyEvent(CLRGRDN_BEFORE_CHANGE);
 
-    QColorDialog dlg(ValueToColor(val));
-    connect(&dlg, &QColorDialog::currentColorChanged, this, &CColorGradientCtrl::OnKeyColorChanged);
+    AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB);
+    dlg.setCurrentColor(ValueToColor(val));
+    dlg.setSelectedColor(ValueToColor(val));
+    connect(&dlg, &AzQtComponents::ColorPicker::currentColorChanged, this, &CColorGradientCtrl::OnKeyColorChanged);
     if (dlg.exec() == QDialog::Accepted)
     {
         CUndo undo("Modify Gradient Color");
@@ -740,7 +743,7 @@ void CColorGradientCtrl::EditKey(int nKey)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CColorGradientCtrl::OnKeyColorChanged(const QColor& color)
+void CColorGradientCtrl::OnKeyColorChanged(const AZ::Color& color)
 {
     int nKey = m_nActiveKey;
     if (!m_pSpline)
@@ -917,18 +920,19 @@ void CColorGradientCtrl::SendNotifyEvent(int nEvent)
 }
 
 //////////////////////////////////////////////////////////////////////////
-QColor CColorGradientCtrl::ValueToColor(ISplineInterpolator::ValueType val)
+AZ::Color CColorGradientCtrl::ValueToColor(ISplineInterpolator::ValueType val)
 {
-    return ColorLinearToGamma(ColorF(val[0], val[1], val[2]));
+    const AZ::Color color(val[0], val[1], val[2], 1.0);
+    return color.LinearToGamma();
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CColorGradientCtrl::ColorToValue(const QColor& col, ISplineInterpolator::ValueType& val)
+void CColorGradientCtrl::ColorToValue(const AZ::Color& col, ISplineInterpolator::ValueType& val)
 {
-    ColorF colLin = ColorGammaToLinear(col);
-    val[0] = colLin.r;
-    val[1] = colLin.g;
-    val[2] = colLin.b;
+    const AZ::Color colLin = col.GammaToLinear();
+    val[0] = colLin.GetR();
+    val[1] = colLin.GetG();
+    val[2] = colLin.GetB();
     val[3] = 0;
 }
 

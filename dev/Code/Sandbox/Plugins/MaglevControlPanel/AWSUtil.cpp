@@ -17,6 +17,40 @@
 
 namespace AWSUtil
 {
+    namespace TextColor
+    {
+        static QColor s_default = "#FFFFFF";
+        static QColor s_error = "#F44642";
+        static QColor s_highlight = "#D9822E";
+        static QColor s_positive = "#43D96A";
+        static QColor s_warning = "#F0C32D";
+    }
+
+    QColor MakePrettyColor(const QString& colorName)
+    {
+        if (colorName == "Default")
+        {
+            return TextColor::s_default;
+        }
+        else if (colorName == "Error")
+        {
+            return TextColor::s_error;
+        }
+        else if (colorName == "Highlight")
+        {
+            return TextColor::s_highlight;
+        }
+        else if (colorName == "Positive")
+        {
+            return TextColor::s_positive;
+        }
+        else if (colorName == "Warning")
+        {
+            return TextColor::s_warning;
+        }
+        return QColor();
+    }
+
     QString MakePrettyResourceStatusText(const QString& origionalStatus)
     {
         // Cloud Formation's documented status codes are:
@@ -70,20 +104,20 @@ namespace AWSUtil
         QColor statusColor;
         if (status.contains("FAILED") || status.contains("ROLLBACK"))
         {
-            statusColor = GetIEditor()->GetColorByName("TextErrorColor");
+            statusColor = TextColor::s_error;
         }
         else if (status.contains("COMPLETE"))
         {
-            statusColor = GetIEditor()->GetColorByName("TextPositiveColor");
+            statusColor = TextColor::s_positive;
         }
         else if (status.contains("IN_PROGRESS"))
         {
-            statusColor = GetIEditor()->GetColorByName("TextWarningColor");
+            statusColor = TextColor::s_warning;
         }
         else
         {
             // unknown/unexpected
-            statusColor = GetIEditor()->GetColorByName("TextColor");
+            statusColor = TextColor::s_default;
         }
         return statusColor;
     }
@@ -105,12 +139,12 @@ namespace AWSUtil
         QColor statusColor;
         if (!action.isEmpty())
         {
-            statusColor = GetIEditor()->GetColorByName("TextWarningColor");
+            statusColor = TextColor::s_warning;
         }
         else
         {
-            // uneeded (no text)
-            statusColor = GetIEditor()->GetColorByName("TextColor");
+            // unneeded (no text)
+            statusColor = TextColor::s_default;
         }
         return statusColor;
     }

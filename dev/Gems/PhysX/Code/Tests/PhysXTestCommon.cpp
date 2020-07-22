@@ -185,6 +185,38 @@ namespace PhysX
             return entity;
         }
 
+        AZStd::unique_ptr<Physics::RigidBodyStatic> CreateStaticTriangleMeshCube(float halfExtent)
+        {
+            // Create static rigid body
+            Physics::RigidBodyConfiguration rigidBodyConfiguration;
+            AZStd::unique_ptr<Physics::RigidBodyStatic> rigidBody = AZ::Interface<Physics::System>::Get()->CreateStaticRigidBody(rigidBodyConfiguration);
+            AZ_Assert(rigidBody != nullptr, "Failed to create a rigid body");
+
+            // Generate input data
+            VertexIndexData cubeMeshData = GenerateCubeMeshData(halfExtent);
+            AZStd::vector<AZ::u8> cookedData;
+            bool cookingResult = false;
+            PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookTriangleMeshToMemory,
+                cubeMeshData.first.data(), static_cast<AZ::u32>(cubeMeshData.first.size()),
+                cubeMeshData.second.data(), static_cast<AZ::u32>(cubeMeshData.second.size()),
+                cookedData);
+            AZ_Assert(cookingResult, "Failed to cook the cube mesh.");
+
+            // Setup shape & collider configurations
+            Physics::CookedMeshShapeConfiguration shapeConfig;
+            shapeConfig.SetCookedMeshData(cookedData.data(), cookedData.size(),
+                Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh);
+
+            Physics::ColliderConfiguration colliderConfig;
+
+            // Create the first shape
+            AZStd::shared_ptr<Physics::Shape> firstShape = AZ::Interface<Physics::System>::Get()->CreateShape(colliderConfig, shapeConfig);
+            AZ_Assert(firstShape != nullptr, "Failed to create a shape from cooked data");
+
+            rigidBody->AddShape(firstShape);
+            return rigidBody;
+        }
+
         void SetCollisionLayer(EntityPtr& entity, const AZStd::string& layerName, const AZStd::string& colliderTag)
         {
             Physics::CollisionFilteringRequestBus::Event(entity->GetId(), &Physics::CollisionFilteringRequests::SetCollisionLayer, layerName, AZ::Crc32(colliderTag.c_str()));
@@ -251,5 +283,47 @@ namespace PhysX
 
             return entity;
         }
+
+        PhysX::PointList GeneratePyramidPoints(float length)
+        {
+            const PointList points
+            {
+                AZ::Vector3(length, 0.0f, 0.0f),
+                AZ::Vector3(-length, 0.0f, 0.0f),
+                AZ::Vector3(0.0f, length, 0.0f),
+                AZ::Vector3(0.0f, -length, 0.0f),
+                AZ::Vector3(0.0f, 0.0f, length)
+            };
+
+            return points;
+        }
+
+        PhysX::VertexIndexData GenerateCubeMeshData(float halfExtent)
+        {
+            const PointList points
+            {
+                AZ::Vector3(-halfExtent, -halfExtent,  halfExtent),
+                AZ::Vector3(halfExtent, -halfExtent,  halfExtent),
+                AZ::Vector3(-halfExtent,  halfExtent,  halfExtent),
+                AZ::Vector3(halfExtent,  halfExtent,  halfExtent),
+                AZ::Vector3(-halfExtent, -halfExtent, -halfExtent),
+                AZ::Vector3(halfExtent, -halfExtent, -halfExtent),
+                AZ::Vector3(-halfExtent,  halfExtent, -halfExtent),
+                AZ::Vector3(halfExtent,  halfExtent, -halfExtent)
+            };
+
+            const AZStd::vector<AZ::u32> indices =
+            {
+                0, 1, 2, 2, 1, 3,
+                2, 3, 7, 2, 7, 6,
+                7, 3, 1, 1, 5, 7,
+                0, 2, 4, 2, 6, 4,
+                0, 4, 1, 1, 4, 5,
+                4, 6, 5, 5, 6, 7
+            };
+
+            return AZStd::make_pair(points, indices);
+        }
+
     }
 }

@@ -104,7 +104,14 @@ void AZRequestReadStream::Abort()
 
         if (m_isFileRequestComplete || m_isError)
         {
-            return;
+            // It is possible the file I/O request to be completed by AZ::IO::Streamer,
+            // but if the completion callback is deferred for the main thread then
+            // the stream is not finished. So, only if it is finished then
+            // it is safe to do nothing.
+            if (m_isFinished)
+            {
+                return;
+            }
         }
 
         m_isError = true;
@@ -138,8 +145,15 @@ bool AZRequestReadStream::TryAbort()
 
     if (m_isFileRequestComplete || m_isError)
     {
-        m_callbackLock.Unlock();
-        return false;
+        // It is possible the file I/O request to be completed by AZ::IO::Streamer,
+        // but if the completion callback is deferred for the main thread then
+        // the stream is not finished. So, only if it is finished then
+        // it is safe to do nothing.
+        if (m_isFinished)
+        {
+            m_callbackLock.Unlock();
+            return false;
+        }
     }
 
     m_isError = true;

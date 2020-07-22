@@ -25,9 +25,13 @@
 class QDoubleSpinBox;
 class QLineEdit;
 class QPushButton;
-class QColorDialog;
 class QToolButton;
 class QLabel;
+
+namespace AzQtComponents
+{
+    class ColorPicker;
+}
 
 namespace AzToolsFramework
 {
@@ -52,6 +56,7 @@ namespace AzToolsFramework
         void currentColorChanged(const QColor& color);
         void colorSelected(const QColor& color);
         void rejected();
+        void editingFinished();
 
     public slots:
         void setValue(QColor val);
@@ -68,7 +73,7 @@ namespace AzToolsFramework
         QColor convertFromString(const QString& string);
 
         QToolButton* m_pDefaultButton;
-        QColorDialog* m_pColorDialog;
+        AzQtComponents::ColorPicker* m_pColorDialog;
 
         QColor m_originalColor;
         QColor m_lastSetColor;

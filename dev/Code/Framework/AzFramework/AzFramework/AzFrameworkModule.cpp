@@ -27,6 +27,7 @@
 #include <AzFramework/Scene/SceneSystemComponent.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
+#include <AzFramework/StreamingInstall/StreamingInstall.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzFramework/Debug/StatisticalProfilerProxySystemComponent.h>
 
@@ -57,6 +58,7 @@ namespace AzFramework
             AzFramework::ScriptComponent::CreateDescriptor(),
     #endif
             AzFramework::SceneSystemComponent::CreateDescriptor(),
+            AzFramework::StreamingInstall::StreamingInstallSystemComponent::CreateDescriptor(),
             AzFramework::AzFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
     }

@@ -272,7 +272,8 @@ namespace Vegetation
     template<typename TComponent, typename TConfiguration>
     void EditorAreaComponentBase<TComponent, TConfiguration>::UpdatePreviewSettings() const
     {
-        GradientSignal::GradientPreviewRequestBus::Broadcast(&GradientSignal::GradientPreviewRequestBus::Events::Refresh);
+        // Trigger an update just for our specific preview (this means there was a preview-specific change, not an actual configuration change)
+        GradientSignal::GradientPreviewRequestBus::Event(GetEntityId(), &GradientSignal::GradientPreviewRequestBus::Events::Refresh);
     }
 
 } //namespace Vegetation

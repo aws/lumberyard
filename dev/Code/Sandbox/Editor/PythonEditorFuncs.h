@@ -16,8 +16,7 @@
 
 namespace AzToolsFramework
 {
-    /** An component to reflect scriptable Editor commands
-      */
+    //! A component to reflect scriptable commands for the Editor
     class PythonEditorFuncsHandler
         : public AZ::Component
     {
@@ -26,8 +25,7 @@ namespace AzToolsFramework
 
         static void Reflect(AZ::ReflectContext* context);
 
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Component overrides
+        // AZ::Component ...
         void Activate() override {}
         void Deactivate() override {}
     };

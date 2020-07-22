@@ -1702,6 +1702,14 @@ namespace AZ
                 smartPtr->reset();
             }
 
+            void    FreeReservedElement(void* instance, void* element, SerializeContext* deletePointerDataContext) override
+            {
+                // First store the target to properly set all counters required by the smart pointer swap later on.
+                StoreElement(instance, element);
+                // With all the counters set it's now safe to reset.
+                RemoveElement(instance, element, deletePointerDataContext);
+            }
+
             SerializeContext::ClassElement m_classElement;  ///< Generic class element covering as must as possible of the element (offset, and some other fields are invalid)
         };
 

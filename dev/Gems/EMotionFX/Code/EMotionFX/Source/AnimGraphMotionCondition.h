@@ -60,11 +60,11 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance, MotionInstance* motionInstance);
+            UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance, MotionInstance* motionInstance = nullptr);
             ~UniqueData() = default;
 
         public:
-            MotionInstance*                             mMotionInstance;
+            MotionInstance* mMotionInstance = nullptr;
         };
 
         AnimGraphMotionCondition();
@@ -74,7 +74,7 @@ namespace EMotionFX
         void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
         void GetSummary(AZStd::string* outResult) const override;
@@ -105,7 +105,6 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-
         AZ::Crc32 GetNumLoopsVisibility() const;
         AZ::Crc32 GetPlayTimeVisibility() const;
         AZ::Crc32 GetEventPropertiesVisibility() const;

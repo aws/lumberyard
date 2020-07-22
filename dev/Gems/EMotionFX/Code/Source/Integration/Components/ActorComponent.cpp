@@ -55,6 +55,7 @@ namespace EMotionFX
                     ->Field("AttachmentTarget", &Configuration::m_attachmentTarget)
                     ->Field("SkinningMethod", &Configuration::m_skinningMethod)
                     ->Field("LODLevel", &Configuration::m_lodLevel)
+                    ->Field("ForceJointsUpdateOOV", &Configuration::m_forceUpdateJointsOOV)
                 ;
             }
         }
@@ -116,6 +117,7 @@ namespace EMotionFX
             , m_skinningMethod(SkinningMethod::DualQuat)
             , m_lodLevel(0)
             , m_actorAsset(AZ::Data::AssetLoadBehavior::NoLoad)
+            , m_forceUpdateJointsOOV(false)
         {
         }
 
@@ -358,7 +360,7 @@ namespace EMotionFX
                 // Create the attachment.
                 AZ_Assert(m_configuration.m_attachmentType == AttachmentType::SkinAttachment, "Expected a skin attachment.");
                 Attachment* attachment = AttachmentSkin::Create(m_attachmentTargetActor.get(), m_actorInstance.get());
-                m_actorInstance->SetLocalSpaceTransform(Transform());
+                m_actorInstance->SetLocalSpaceTransform(Transform::CreateIdentity());
                 m_attachmentTargetActor->AddAttachment(attachment);
                 AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetParent, m_attachmentTargetActor->GetEntityId());
                 AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetLocalTM, AZ::Transform::CreateIdentity());
@@ -403,13 +405,16 @@ namespace EMotionFX
                 // If we're not attached to another actor, keep the EMFX root in sync with any external changes to the entity's transform.
                 if (m_actorInstance)
                 {
-                    const Transform localTransform = m_actorInstance->GetParentWorldSpaceTransform().Inversed() * MCore::AzTransformToEmfxTransform(world);
+                    const Transform localTransform = m_actorInstance->GetParentWorldSpaceTransform().Inversed() * Transform(world);
                     m_actorInstance->SetLocalSpacePosition(localTransform.mPosition);
                     m_actorInstance->SetLocalSpaceRotation(localTransform.mRotation);
 
                     // Disable updating the scale to prevent feedback from adding up.
                     // We need to find a better way to handle this or to prevent this feedback loop.
-                    //m_actorInstance->SetLocalSpaceScale(localTransform.mScale);
+                    EMFX_SCALECODE
+                    (
+                        m_actorInstance->SetLocalSpaceScale(localTransform.mScale);
+                    )
                 }
             }
         }
@@ -426,6 +431,14 @@ namespace EMotionFX
             {
                 m_renderActorInstance->OnTick(deltaTime);
                 m_renderActorInstance->UpdateBounds();
+
+                // Optimization: Set the actor instance invisible when character is out of camera view. This will stop the joint transforms update, except the root joint.
+                // Calling it after the bounds on the render actor updated.
+                if (!m_configuration.m_forceUpdateJointsOOV)
+                {
+                    const bool isInCameraFrustum = m_renderActorInstance->IsInCameraFrustum();
+                    m_actorInstance->SetIsVisible(isInCameraFrustum);
+                }
 
                 RenderActorInstance::DebugOptions debugOptions;
                 debugOptions.m_drawAABB = m_configuration.m_renderBounds;

@@ -1,0 +1,22 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FloorMAT" MtlFlags="524416" Shader="Illum" GenMask="4000010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.017641956,0.017641956,0.017641956,1" Specular="0.1301365,0.12743771,0.1470273,1" Emittance="0,0,0,0" Opacity="1" Shininess="240" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="engineassets/textures/white.dds"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_floor_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="FloorGlassMAT" MtlFlags="2621568" Shader="Illum" GenMask="4000010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.21952623,0.28744087,0.22322798,1" Specular="0.13843164,0.13843164,0.13843164,1" Emittance="0,0,0,0" Opacity="1" Shininess="250" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_floorglass_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_floorglass_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Collision2" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

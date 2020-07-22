@@ -1,0 +1,21 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Airship_monitor" MtlFlags="524416" Shader="Illum" GenMask="4000010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_monitor_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_monitor_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Monitor_Screen" MtlFlags="526464" Shader="Monitor" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.033104774,0.033104774,0.033104774,1" Emittance="0.1301365,0.60382748,0.20507877,71" Opacity="1" Shininess="174" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/fx_hologrammapmoon_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.059999999" TexMod_UOscillatorAmplitude="-1"/>
+    </Texture>
+    <Texture Map="Emittance" File="textures/effects/fx_hologrammapmoon_01.dds"/>
+   </Textures>
+   <PublicParams GrainAmount="0.1" DeformAmount="0" DeformTillingY="1" GrainTilling="1" ResolutionX="512" ResolutionY="512" InterlacingTilling="0.25" Contrast="1" Saturation="1" DeformTillingX="1" GrainSaturation="1" FresnelScale="1" InterlacingAmount="0" VSyncFreq="0" PixelVisibility="0.5" FresnelBias="1" ChromaShift="0" ViewAngle="155" DeformFreq="0"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -58,6 +58,8 @@ namespace GraphCanvas
         void SanitizeDirection(AZ::Vector2& movementVector, const QPointF& directionSanitization) const;
         
         void DirtyPositioning();
+
+        void UpdateBoundingBox(QRectF& moveableBoundingBox, const QRectF& staticBoundingBox, QPointF& transitionDirection, const QPointF& incitingMovement, float halfWidth, float halfHeight, const AZ::Vector2& gridStep);
         
         GraphId m_graphId;
         AZStd::unordered_set< NodeId > m_rootElements;

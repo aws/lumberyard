@@ -15,7 +15,6 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/IdUtils.h>
 #include <Editor/Assets/ScriptCanvasAssetInstance.h>
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -49,12 +48,12 @@ namespace ScriptCanvasEditor
         return m_assetRef;
     }
 
-    ScriptCanvasData& ScriptCanvasAssetInstance::GetScriptCanvasData()
+    ScriptCanvas::ScriptCanvasData& ScriptCanvasAssetInstance::GetScriptCanvasData()
     {
         return m_scriptCanvasData;
     }
 
-    const ScriptCanvasData& ScriptCanvasAssetInstance::GetScriptCanvasData() const
+    const ScriptCanvas::ScriptCanvasData& ScriptCanvasAssetInstance::GetScriptCanvasData() const
     {
         return m_scriptCanvasData;
     }
@@ -66,7 +65,7 @@ namespace ScriptCanvasEditor
             return;
         }
 
-        ScriptCanvasData& baseData = m_assetRef.GetAsset().Get()->GetScriptCanvasData();
+        ScriptCanvas::ScriptCanvasData& baseData = m_assetRef.GetAsset().Get()->GetScriptCanvasData();
 
         AZ::SerializeContext* serializeContext{};
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
@@ -102,7 +101,7 @@ namespace ScriptCanvasEditor
             return;
         }
 
-        ScriptCanvasData& baseData = m_assetRef.GetAsset().Get()->GetScriptCanvasData();
+        ScriptCanvas::ScriptCanvasData& baseData = m_assetRef.GetAsset().Get()->GetScriptCanvasData();
 
         AZ::SerializeContext* serializeContext{};
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
@@ -118,7 +117,7 @@ namespace ScriptCanvasEditor
         {
             // Clone entities while applying any data patches.
             AZ_Assert(m_dataPatch.IsValid(), "Data patch is not valid for existing scene slice instance!");
-            ScriptCanvasData* patchedSceneData = m_dataPatch.Apply(&baseData, serializeContext);
+            ScriptCanvas::ScriptCanvasData* patchedSceneData = m_dataPatch.Apply(&baseData, serializeContext);
 
             // Remap Ids & references.
             AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(patchedSceneData, m_baseToInstanceMap);

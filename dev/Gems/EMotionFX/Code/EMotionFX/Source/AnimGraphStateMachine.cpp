@@ -108,14 +108,13 @@ namespace EMotionFX
             return;
         }
 
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, false);
+            SetHasError(uniqueData, false);
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         const bool isTransitioning = IsTransitioning(uniqueData);
-
         const AZStd::vector<AnimGraphNode*>& activeStates = uniqueData->GetActiveStates();
 
         // Single active state, no active transition.
@@ -465,7 +464,7 @@ namespace EMotionFX
 
     void AnimGraphStateMachine::EndAllActiveTransitions(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         EndAllActiveTransitions(animGraphInstance, uniqueData);
     }
 
@@ -483,7 +482,7 @@ namespace EMotionFX
 
     void AnimGraphStateMachine::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         // Defer switch to entry state.
         if (uniqueData->mSwitchToEntryState)
@@ -588,7 +587,7 @@ namespace EMotionFX
                         }
                         else
                         {
-                            const AnimGraphNodeData* servantUniqueData = targetState->FindUniqueNodeData(animGraphInstance);
+                            const AnimGraphNodeData* servantUniqueData = targetState->FindOrCreateUniqueNodeData(animGraphInstance);
 
                             // Interpolate the in-between factor from the previous iteration with the interpolated factor from the given transition.
                             newFactor = AZ::Lerp(newFactor, masterFactor, transitionWeight);
@@ -630,7 +629,7 @@ namespace EMotionFX
     void AnimGraphStateMachine::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         RequestRefDatas(animGraphInstance);
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
         const AZStd::vector<EMotionFX::AnimGraphNode*>& activeStates = GetActiveStates(animGraphInstance);
@@ -655,7 +654,7 @@ namespace EMotionFX
                 if (activeState)
                 {
                     // Single active state, no active transition.
-                    AnimGraphRefCountedData* activeStateData = activeState->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                    AnimGraphRefCountedData* activeStateData = activeState->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
                     if (activeStateData)
                     {
                         data->SetEventBuffer(activeStateData->GetEventBuffer());
@@ -677,7 +676,7 @@ namespace EMotionFX
                 const AnimGraphNode* startSourceNode = startTransition->GetSourceNode(animGraphInstance);
                 if (startSourceNode)
                 {
-                    const AnimGraphNodeData* startSourceNodeData = startSourceNode->FindUniqueNodeData(animGraphInstance);
+                    const AnimGraphNodeData* startSourceNodeData = startSourceNode->FindOrCreateUniqueNodeData(animGraphInstance);
                     if (startSourceNodeData)
                     {
                         const AnimGraphRefCountedData* startSourceData = startSourceNodeData->GetRefCountedData();
@@ -724,7 +723,7 @@ namespace EMotionFX
     void AnimGraphStateMachine::SwitchToState(AnimGraphInstance* animGraphInstance, AnimGraphNode* targetState)
     {
         // get the unique data for this state machine in a given anim graph instance
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
 
         // rewind the target state and reset all outgoing transitions of it
         if (targetState)
@@ -767,7 +766,7 @@ namespace EMotionFX
         AnimGraphNode* currentState = GetCurrentState(animGraphInstance);
 
         // check if there is a transition between the current and the desired target state
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         AnimGraphStateTransition* transition = FindTransition(animGraphInstance, currentState, targetState);
         if (transition && currentState)
         {
@@ -779,13 +778,13 @@ namespace EMotionFX
         }
     }
 
-    bool AnimGraphStateMachine::IsTransitioning(const AnimGraphInstance* animGraphInstance) const
+    bool AnimGraphStateMachine::IsTransitioning(AnimGraphInstance* animGraphInstance) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         return IsTransitioning(uniqueData);
     }
 
-    bool AnimGraphStateMachine::IsLatestActiveTransitionDone(const AnimGraphInstance* animGraphInstance, const UniqueData* uniqueData) const
+    bool AnimGraphStateMachine::IsLatestActiveTransitionDone(AnimGraphInstance* animGraphInstance, const UniqueData* uniqueData) const
     {
         const AnimGraphStateTransition* transition = GetLatestActiveTransition(uniqueData);
         if (transition && transition->GetIsDone(animGraphInstance))
@@ -801,21 +800,21 @@ namespace EMotionFX
         return !uniqueData->m_activeTransitions.empty();
     }
 
-    bool AnimGraphStateMachine::IsTransitionActive(const AnimGraphStateTransition* transition, const AnimGraphInstance* animGraphInstance) const
+    bool AnimGraphStateMachine::IsTransitionActive(const AnimGraphStateTransition* transition, AnimGraphInstance* animGraphInstance) const
     {
         const AZStd::vector<AnimGraphStateTransition*>& activeTransitions = GetActiveTransitions(animGraphInstance);
         return AZStd::find(activeTransitions.begin(), activeTransitions.end(), transition) != activeTransitions.end();
     }
 
-    AnimGraphStateTransition* AnimGraphStateMachine::GetLatestActiveTransition(const AnimGraphInstance* animGraphInstance) const
+    AnimGraphStateTransition* AnimGraphStateMachine::GetLatestActiveTransition(AnimGraphInstance* animGraphInstance) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         return GetLatestActiveTransition(uniqueData);
     }
 
-    const AZStd::vector<AnimGraphStateTransition*>& AnimGraphStateMachine::GetActiveTransitions(const AnimGraphInstance* animGraphInstance) const
+    const AZStd::vector<AnimGraphStateTransition*>& AnimGraphStateMachine::GetActiveTransitions(AnimGraphInstance* animGraphInstance) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         return uniqueData->m_activeTransitions;
     }
 
@@ -1011,21 +1010,14 @@ namespace EMotionFX
 
     AnimGraphNode* AnimGraphStateMachine::GetCurrentState(AnimGraphInstance* animGraphInstance)
     {
-        // get the unique data for this state machine in a given anim graph instance
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            uniqueData->mCurrentState = mEntryState;
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         return uniqueData->mCurrentState;
     }
 
     bool AnimGraphStateMachine::GetExitStateReached(AnimGraphInstance* animGraphInstance) const
     {
         // get the unique data for this state machine in a given anim graph instance
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         return uniqueData->mReachedExitState;
     }
 
@@ -1053,95 +1045,40 @@ namespace EMotionFX
             transition->OnRemoveNode(animGraph, nodeToRemove);
         }
 
+        bool childNodeRemoved = false;
         for (AnimGraphNode* childNode : mChildNodes)
         {
+            if (childNode == nodeToRemove)
+            {
+                childNodeRemoved = true;
+            }
+
             childNode->OnRemoveNode(animGraph, nodeToRemove);
+        }
+
+        if (childNodeRemoved)
+        {
+            InvalidateUniqueDatas();
         }
     }
 
-    void AnimGraphStateMachine::RecursiveResetUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphStateMachine::RecursiveResetUniqueDatas(AnimGraphInstance* animGraphInstance)
     {
         ResetUniqueData(animGraphInstance);
 
         for (AnimGraphNode* childNode : mChildNodes)
         {
-            childNode->RecursiveResetUniqueData(animGraphInstance);
+            childNode->RecursiveResetUniqueDatas(animGraphInstance);
         }
     }
 
-    void AnimGraphStateMachine::RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphStateMachine::RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance)
     {
-        OnUpdateUniqueData(animGraphInstance);
-
-        for (AnimGraphNode* childNode : mChildNodes)
-        {
-            childNode->RecursiveOnUpdateUniqueData(animGraphInstance);
-        }
+        AnimGraphNode::RecursiveInvalidateUniqueDatas(animGraphInstance);
 
         for (AnimGraphStateTransition* transition : mTransitions)
         {
-            transition->OnUpdateUniqueData(animGraphInstance);
-        }
-    }
-
-    void AnimGraphStateMachine::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // get the unique data for this node, or create it
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            uniqueData->mCurrentState = mEntryState;
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        OnUpdateTriggerActionsUniqueData(animGraphInstance);
-
-        // check if any of the active states are invalid and reset them if they are
-        if (uniqueData->mCurrentState && FindChildNodeIndex(uniqueData->mCurrentState) == MCORE_INVALIDINDEX32)
-        {
-            uniqueData->mCurrentState = nullptr;
-        }
-        if (uniqueData->mPreviousState && FindChildNodeIndex(uniqueData->mPreviousState) == MCORE_INVALIDINDEX32)
-        {
-            uniqueData->mPreviousState = nullptr;
-        }
-
-        // Check if the currently active transitions are valid and remove them from the transition stack if not.
-        const size_t numActiveTransitions = uniqueData->m_activeTransitions.size();
-        for (size_t i = 0; i < numActiveTransitions; ++i)
-        {
-            const size_t transitionIndex = numActiveTransitions - i - 1;
-            AnimGraphStateTransition* transition = uniqueData->m_activeTransitions[transitionIndex];
-
-            const bool isTransitionValid = transition &&
-                FindTransitionIndex(transition).IsSuccess() &&
-                FindChildNodeIndex(transition->GetSourceNode(animGraphInstance)) != MCORE_INVALIDINDEX32 &&
-                FindChildNodeIndex(transition->GetTargetNode()) != MCORE_INVALIDINDEX32;
-
-            if (!isTransitionValid)
-            {
-                uniqueData->m_activeTransitions.erase(uniqueData->m_activeTransitions.begin() + transitionIndex);
-            }
-        }
-
-        for (AnimGraphStateTransition* transition : mTransitions)
-        {
-            transition->OnUpdateUniqueData(animGraphInstance);
-
-            const size_t numConditions = transition->GetNumConditions();
-            for (size_t c = 0; c < numConditions; ++c)
-            {
-                AnimGraphTransitionCondition* condition = transition->GetCondition(c);
-                condition->OnUpdateUniqueData(animGraphInstance);
-            }
-
-            const size_t numActions = transition->GetTriggerActionSetup().GetNumActions();
-            for (size_t a = 0; a < numActions; ++a)
-            {
-                AnimGraphTriggerAction* action = transition->GetTriggerActionSetup().GetAction(a);
-                action->OnUpdateUniqueData(animGraphInstance);
-            }
+            transition->RecursiveInvalidateUniqueDatas(animGraphInstance);
         }
     }
 
@@ -1154,6 +1091,40 @@ namespace EMotionFX
         mPreviousState = nullptr;
         mReachedExitState = false;
         mSwitchToEntryState = true;
+    }
+
+    void AnimGraphStateMachine::UniqueData::Update()
+    {
+        AnimGraphStateMachine* stateMachine = azdynamic_cast<AnimGraphStateMachine*>(mObject);
+        AZ_Assert(stateMachine, "Unique data linked to incorrect node type.");
+
+        // check if any of the active states are invalid and reset them if they are
+        if (mCurrentState && stateMachine->FindChildNodeIndex(mCurrentState) == MCORE_INVALIDINDEX32)
+        {
+            mCurrentState = nullptr;
+        }
+        if (mPreviousState && stateMachine->FindChildNodeIndex(mPreviousState) == MCORE_INVALIDINDEX32)
+        {
+            mPreviousState = nullptr;
+        }
+
+        // Check if the currently active transitions are valid and remove them from the transition stack if not.
+        const size_t numActiveTransitions = m_activeTransitions.size();
+        for (size_t i = 0; i < numActiveTransitions; ++i)
+        {
+            const size_t transitionIndex = numActiveTransitions - i - 1;
+            AnimGraphStateTransition* transition = m_activeTransitions[transitionIndex];
+
+            const bool isTransitionValid = transition &&
+                stateMachine->FindTransitionIndex(transition).IsSuccess() &&
+                stateMachine->FindChildNodeIndex(transition->GetSourceNode(GetAnimGraphInstance())) != MCORE_INVALIDINDEX32 &&
+                stateMachine->FindChildNodeIndex(transition->GetTargetNode()) != MCORE_INVALIDINDEX32;
+
+            if (!isTransitionValid)
+            {
+                m_activeTransitions.erase(m_activeTransitions.begin() + transitionIndex);
+            }
+        }
     }
 
     const AZStd::vector<AnimGraphNode*>& AnimGraphStateMachine::UniqueData::GetActiveStates()
@@ -1181,7 +1152,7 @@ namespace EMotionFX
     void AnimGraphStateMachine::Rewind(AnimGraphInstance* animGraphInstance)
     {
         // get the unique data for this state machine in a given anim graph instance
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // get the entry state, this function call is needed as we have to update the pointer based on the node number
         AnimGraphNode* entryState = GetEntryState();
@@ -1373,13 +1344,13 @@ namespace EMotionFX
 
     const AZStd::vector<AnimGraphNode*>& AnimGraphStateMachine::GetActiveStates(AnimGraphInstance* animGraphInstance) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         return uniqueData->GetActiveStates();
     }
 
     void AnimGraphStateMachine::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         if (!IsTransitioning(uniqueData))
         {
@@ -1424,13 +1395,13 @@ namespace EMotionFX
                         targetNode->AutoSync(animGraphInstance, sourceNode, weight, syncMode, false);
                     }
 
-                    sourceNode->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - weight));
-                    sourceNode->FindUniqueNodeData(animGraphInstance)->SetLocalWeight(1.0f - weight);
+                    sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - weight));
+                    sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->SetLocalWeight(1.0f - weight);
                     sourceNode->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
 
                     // update both top-down
-                    targetNode->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * weight);
-                    targetNode->FindUniqueNodeData(animGraphInstance)->SetLocalWeight(weight);
+                    targetNode->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * weight);
+                    targetNode->FindOrCreateUniqueNodeData(animGraphInstance)->SetLocalWeight(weight);
                     targetNode->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
                 }
             }
@@ -1439,13 +1410,13 @@ namespace EMotionFX
 
     void AnimGraphStateMachine::SkipPostUpdate(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         uniqueData->DecreaseDataRefCounts(animGraphInstance);
     }
 
     void AnimGraphStateMachine::SkipOutput(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
         uniqueData->DecreasePoseRefCounts(animGraphInstance);
     }
 
@@ -1454,6 +1425,10 @@ namespace EMotionFX
         , NodeDataAutoRefCountMixin()
     {
         Reset();
+
+        AnimGraphStateMachine* stateMachine = azdynamic_cast<AnimGraphStateMachine*>(mObject);
+        AZ_Assert(stateMachine, "Unique data linked to incorrect node type.");
+        mCurrentState = stateMachine->GetEntryState();
     }
 
     uint32 AnimGraphStateMachine::UniqueData::Save(uint8* outputBuffer) const

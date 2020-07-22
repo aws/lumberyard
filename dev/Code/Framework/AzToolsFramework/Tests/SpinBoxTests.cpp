@@ -11,7 +11,7 @@
 */
 
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 #include <QApplication>
 #include <QLineEdit>
@@ -22,7 +22,7 @@ namespace UnitTest
 
     // Expose the LineEdit functionality so selection behavior can be more easily tested.
     class DoubleSpinBoxWithLineEdit
-        : public DHQDoubleSpinbox
+        : public AzQtComponents::DoubleSpinBox
     {
     public:
         // const required as lineEdit() is const
@@ -39,15 +39,19 @@ namespace UnitTest
             // note: must set a widget as the active window and add widgets
             // as children to ensure focus in/out events fire correctly
             m_dummyWidget = AZStd::make_unique<QWidget>();
+            // Give the test window a valid windowHandle. SpinBox code uses this to access the QScreen
+            m_dummyWidget->winId();
             QApplication::setActiveWindow(m_dummyWidget.get());
 
-            m_intSpinBox = AZStd::make_unique<DHQSpinbox>();
-            m_doubleSpinBox = AZStd::make_unique<DHQDoubleSpinbox>();
+            m_intSpinBox = AZStd::make_unique<AzQtComponents::SpinBox>();
+            m_doubleSpinBox = AZStd::make_unique<AzQtComponents::DoubleSpinBox>();
             m_doubleSpinBoxWithLineEdit = AZStd::make_unique<DoubleSpinBoxWithLineEdit>();
 
             m_spinBoxes = { m_intSpinBox.get(), m_doubleSpinBox.get(), m_doubleSpinBoxWithLineEdit.get() };
             for (auto spinBox : m_spinBoxes)
             {
+                // Polish is required to set up the SpinBoxWatcher event filter
+                spinBox->ensurePolished();
                 spinBox->setParent(m_dummyWidget.get());
                 spinBox->setKeyboardTracking(false);
                 spinBox->setFocusPolicy(Qt::StrongFocus);
@@ -71,8 +75,8 @@ namespace UnitTest
         }
 
         AZStd::unique_ptr<QWidget> m_dummyWidget;
-        AZStd::unique_ptr<DHQSpinbox> m_intSpinBox;
-        AZStd::unique_ptr<DHQDoubleSpinbox> m_doubleSpinBox;
+        AZStd::unique_ptr<AzQtComponents::SpinBox> m_intSpinBox;
+        AZStd::unique_ptr<AzQtComponents::DoubleSpinBox> m_doubleSpinBox;
         AZStd::unique_ptr<DoubleSpinBoxWithLineEdit> m_doubleSpinBoxWithLineEdit;
 
         AZStd::vector<QAbstractSpinBox*> m_spinBoxes;
@@ -112,30 +116,38 @@ namespace UnitTest
         QApplication::sendEvent(widget, &mouseMoveEvent);
     }
 
-    TEST_F(SpinBoxFixture, SpinBoxMousePressAndMoveDownScrollsValue)
+    TEST_F(SpinBoxFixture, DISABLED_SpinBoxMousePressAndMoveRightScrollsValue)
     {
         m_doubleSpinBox->setValue(10.0);
 
         const int halfWidgetHeight = m_doubleSpinBox->height() / 2;
         const QPoint widgetCenterLeftBorder = m_doubleSpinBox->pos() + QPoint(1, halfWidgetHeight);
 
-        // down in screen space
-        MousePressAndMove(m_doubleSpinBox.get(), widgetCenterLeftBorder, QPoint(0, 10));
+        // Check we have a valid window setup before moving the cursor
+        EXPECT_TRUE(m_doubleSpinBox->window()->windowHandle() != nullptr);
 
-        EXPECT_NEAR(m_doubleSpinBox->value(), 0.0, 0.001);
+        // Right in screen space
+        MousePressAndMove(m_doubleSpinBox.get(), widgetCenterLeftBorder, QPoint(11, 0));
+
+        // AzQtComponents::SpinBox::Config.pixelsPerStep is 10
+        EXPECT_NEAR(m_doubleSpinBox->value(), 11.0, 0.001);
     }
 
-    TEST_F(SpinBoxFixture, SpinBoxMousePressAndMoveUpScrollsValue)
+    TEST_F(SpinBoxFixture, DISABLED_SpinBoxMousePressAndMoveLeftScrollsValue)
     {
         m_doubleSpinBox->setValue(10.0);
 
         const int halfWidgetHeight = m_doubleSpinBox->height() / 2;
         const QPoint widgetCenterLeftBorder = m_doubleSpinBox->pos() + QPoint(1, halfWidgetHeight);
 
-        // up in screen space
-        MousePressAndMove(m_doubleSpinBox.get(), widgetCenterLeftBorder, QPoint(0, -10));
+        // Check we have a valid window setup before moving the cursor
+        EXPECT_TRUE(m_doubleSpinBox->window()->windowHandle() != nullptr);
 
-        EXPECT_NEAR(m_doubleSpinBox->value(), 20.0, 0.001);
+        // Left in screen space
+        MousePressAndMove(m_doubleSpinBox.get(), widgetCenterLeftBorder, QPoint(-11, 0));
+
+        // AzQtComponents::SpinBox::Config.pixelsPerStep is 10
+        EXPECT_NEAR(m_doubleSpinBox->value(), 9.0, 0.001);
     }
 
     TEST_F(SpinBoxFixture, SpinBoxKeyboardUpAndDownArrowsChangeValue)
@@ -186,7 +198,7 @@ namespace UnitTest
         EXPECT_NEAR(m_doubleSpinBoxWithLineEdit->value(), 10.0, 0.001);
     }
 
-    TEST_F(SpinBoxFixture, SpinBoxChangeContentsAndEscapeReturnsToPreviousValue)
+    TEST_F(SpinBoxFixture, DISABLED_SpinBoxChangeContentsAndEscapeReturnsToPreviousValue)
     {
         m_doubleSpinBoxWithLineEdit->setValue(10.0);
         m_doubleSpinBoxWithLineEdit->setFocus();
@@ -198,7 +210,7 @@ namespace UnitTest
         EXPECT_TRUE(m_doubleSpinBoxWithLineEdit->GetLineEdit()->hasSelectedText());
     }
 
-    TEST_F(SpinBoxFixture, SpinBoxSelectContentsAndEscapeClearsFocus)
+    TEST_F(SpinBoxFixture, SpinBoxSelectContentsAndEscapeKeepsFocus)
     {
         m_doubleSpinBox->setValue(10.0);
         m_doubleSpinBox->setFocus();
@@ -206,7 +218,11 @@ namespace UnitTest
 
         QTest::keyClick(m_doubleSpinBox.get(), Qt::Key_Escape, Qt::NoModifier);
 
-        EXPECT_FALSE(m_doubleSpinBox->hasFocus());
+        EXPECT_TRUE(m_doubleSpinBox->hasFocus());
+
+        QTest::keyClick(m_doubleSpinBox.get(), Qt::Key_Escape, Qt::NoModifier);
+
+        EXPECT_TRUE(m_doubleSpinBox->hasFocus());
     }
 
     TEST_F(SpinBoxFixture, SpinBoxSuffixRemovedAndAppliedWithFocusChange)

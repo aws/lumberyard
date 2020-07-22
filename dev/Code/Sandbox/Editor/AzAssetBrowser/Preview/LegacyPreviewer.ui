@@ -106,13 +106,6 @@
     </widget>
    </item>
    <item>
-    <widget class="Line" name="m_line">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QLabel" name="m_fileInfoCtrl">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Ignored" vsizetype="Preferred">

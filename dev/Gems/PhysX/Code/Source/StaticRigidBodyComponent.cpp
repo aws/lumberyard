@@ -41,6 +41,7 @@ namespace PhysX
 
     void StaticRigidBodyComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
+        provided.push_back(AZ_CRC("PhysicsWorldBodyService", 0x944da0cc));
         provided.push_back(AZ_CRC("PhysXStaticRigidBodyService", 0xaae8973b));
     }
 
@@ -102,12 +103,16 @@ namespace PhysX
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
 
         InitStaticRigidBody();
+
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
+        Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsEnabled);
     }
 
     void StaticRigidBodyComponent::Deactivate()
     {
         Physics::Utils::DeferDelete(AZStd::move(m_staticRigidBody));
 
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
     }
 
@@ -115,4 +120,47 @@ namespace PhysX
     {
         m_staticRigidBody->SetTransform(world);
     }
+
+    void StaticRigidBodyComponent::EnablePhysics()
+    {
+        if (IsPhysicsEnabled())
+        {
+            return;
+        }
+        World* world = Utils::GetDefaultWorld();
+        world->AddBody(*m_staticRigidBody);
+
+        Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsEnabled);
+    }
+
+    void StaticRigidBodyComponent::DisablePhysics()
+    {
+        if (Physics::World* world = m_staticRigidBody->GetWorld())
+        {
+            world->RemoveBody(*m_staticRigidBody);
+        }
+
+        Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsDisabled);
+    }
+
+    bool StaticRigidBodyComponent::IsPhysicsEnabled() const
+    {
+        return m_staticRigidBody != nullptr && m_staticRigidBody->GetWorld() != nullptr;
+    }
+
+    AZ::Aabb StaticRigidBodyComponent::GetAabb() const
+    {
+        return m_staticRigidBody->GetAabb();
+    }
+
+    Physics::WorldBody* StaticRigidBodyComponent::GetWorldBody()
+    {
+        return m_staticRigidBody.get();
+    }
+
+    Physics::RayCastHit StaticRigidBodyComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        return m_staticRigidBody->RayCast(request);
+    }
+
 } // namespace PhysX

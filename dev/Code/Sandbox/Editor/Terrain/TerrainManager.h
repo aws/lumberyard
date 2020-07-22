@@ -127,6 +127,7 @@ public:
     bool CreateTerrainSystemFromEditorData() override;
     void DestroyTerrainSystem() override;
     void RefreshEngineMacroTexture() override;
+    int GetTerrainSurfaceIdFromSurfaceTag(AZ::Crc32 tag) override;
     //////////////////////////////////////////////////////////////////////////
 
 protected:

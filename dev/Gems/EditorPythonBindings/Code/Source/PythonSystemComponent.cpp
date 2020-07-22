@@ -190,18 +190,18 @@ namespace RedirectOutput
 
     void Intialize(PyObject* module)
     {
+        using namespace AzToolsFramework;
+
         s_RedirectModule = module;
 
         SetRedirection("stdout", g_redirect_stdout_saved, g_redirect_stdout, [](const char* msg) 
         {
-            AzToolsFramework::EditorPythonConsoleNotificationBus::Broadcast(&AzToolsFramework::EditorPythonConsoleNotificationBus::Events::OnTraceMessage, msg);
-            AZ_TracePrintf("python", "%s", msg);
+            EditorPythonConsoleNotificationBus::Broadcast(&EditorPythonConsoleNotificationBus::Events::OnTraceMessage, msg);
         });
 
         SetRedirection("stderr", g_redirect_stderr_saved, g_redirect_stderr, [](const char* msg)
         {
-            AzToolsFramework::EditorPythonConsoleNotificationBus::Broadcast(&AzToolsFramework::EditorPythonConsoleNotificationBus::Events::OnErrorMessage, msg);
-            AZ_Warning("python", false, "%s", msg);
+            EditorPythonConsoleNotificationBus::Broadcast(&EditorPythonConsoleNotificationBus::Events::OnErrorMessage, msg);
         });
 
         PySys_WriteStdout("RedirectOutput installed");
@@ -315,8 +315,6 @@ namespace EditorPythonBindings
         EditorPythonBindingsNotificationBus::Broadcast(&EditorPythonBindingsNotificationBus::Events::OnPreInitialize);
         if (StartPythonInterpreter(pythonPathStack))
         {
-            ExecuteBoostrapScripts(pythonPathStack);
-
             using namespace AzFramework;
             bool result = false;
             CommandRegistrationBus::BroadcastResult(result, &CommandRegistrationBus::Events::RegisterCommand, "pyRunFile", "Runs the Python script from the project.", CommandFlags::Development, Command_ExecuteByFilename);
@@ -324,8 +322,9 @@ namespace EditorPythonBindings
 
             EditorPythonBindingsNotificationBus::Broadcast(&EditorPythonBindingsNotificationBus::Events::OnPostInitialize);
 
-            // initialize internal module
+            // initialize internal base module and bootstrap scripts
             ExecuteByString("import azlmbr");
+            ExecuteBoostrapScripts(pythonPathStack);
             return true;
         }
         return false;
@@ -567,18 +566,38 @@ namespace EditorPythonBindings
         ExecuteByFilenameWithArgs(filename, args);
     }
 
+    void PythonSystemComponent::ExecuteByFilenameAsTest(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args)
+    {
+        const Result evalResult = EvaluateFile(filename, args);
+        if (evalResult == Result::Okay)
+        {
+            // all good, the test script will need to exit the application now
+            return;
+        }
+        else
+        {
+            // something when wrong with executing the test script
+            AZ::Debug::Trace::Terminate(1);
+        }
+    }
+
     void PythonSystemComponent::ExecuteByFilenameWithArgs(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args)
+    {
+        EvaluateFile(filename, args);
+    }
+
+    PythonSystemComponent::Result PythonSystemComponent::EvaluateFile(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args)
     {
         if (!Py_IsInitialized())
         {
-            AZ_Error("python", false, "Can not ExecuteByString() since the embeded Python VM is not ready.");
-            return;
+            AZ_Error("python", false, "Can not evaluate file since the embedded Python VM is not ready.");
+            return Result::Error_IsNotInitialized;
         }
 
         if (filename.empty())
         {
             AZ_Error("python", false, "Invalid empty filename detected.");
-            return;
+            return Result::Error_InvalidFilename;
         }
 
         // support the alias version of a script such as @devroot@/Editor/Scripts/select_story_anim_objects.py
@@ -589,52 +608,72 @@ namespace EditorPythonBindings
             theFilename = resolvedPath;
         }
 
-        if (AZ::IO::FileIOBase::GetInstance()->Exists(theFilename.data()))
+        if (!AZ::IO::FileIOBase::GetInstance()->Exists(theFilename.c_str()))
         {
-            FILE* file = _Py_fopen(theFilename.data(), "rb");
-            if (file)
-            {
-                // Acquire GIL before calling Python code
-                pybind11::gil_scoped_acquire acquire;
-
-                // Create standard "argc" / "argv" command-line parameters to pass in to the Python script via sys.argv.
-                // argc = number of parameters.  This will always be at least 1, since the first parameter is the script name.
-                // argv = the list of parameters, in wchar format.
-                // Our expectation is that the args passed into this function does *not* already contain the script name.
-                int argc = static_cast<int>(args.size()) + 1;
-
-                // Note:  This allocates from PyMem to ensure that Python has access to the memory.
-                wchar_t** argv = static_cast<wchar_t**>(PyMem_Malloc(argc * sizeof(wchar_t*)));
-
-                // Python 3.x is expecting wchar* strings for the command-line args.
-                argv[0] = Py_DecodeLocale(theFilename.data(), nullptr);
-
-                for (int arg = 0; arg < args.size(); arg++)
-                {
-                    argv[arg + 1] = Py_DecodeLocale(args[arg].data(), nullptr);
-                }
-
-                // Tell Python the command-line args.
-                // Note that this has a side effect of adding the script's path to the set of directories checked for "import" commands.
-                PySys_SetArgv(argc, argv);
-
-                PyCompilerFlags flags;
-                flags.cf_flags = 0;
-                const int bAutoCloseFile = true;
-                const int returnCode = PyRun_SimpleFileExFlags(file, theFilename.data(), bAutoCloseFile, &flags);
-                if (returnCode != 0)
-                {
-                    AZ_Warning("python", false, "Detected script failure in Python script %s; return code %d!", theFilename.data(), returnCode);
-                }
-
-                // Free any memory allocated for the command-line args.
-                for (int arg = 0; arg < argc; arg++)
-                {
-                    PyMem_RawFree(argv[arg]);
-                }
-                PyMem_Free(argv);
-            }
+            AZ_Error("python", false, "Missing Python file named (%s)", theFilename.c_str());
+            return Result::Error_MissingFile;
         }
+
+        FILE* file = _Py_fopen(theFilename.data(), "rb");
+        if (!file)
+        {
+            AZ_Error("python", false, "Missing Python file named (%s)", theFilename.c_str());
+            return Result::Error_FileOpenValidation;
+        }
+
+        Result pythonScriptResult = Result::Okay;
+        try
+        {
+            // Acquire GIL before calling Python code
+            pybind11::gil_scoped_acquire acquire;
+        
+            // Create standard "argc" / "argv" command-line parameters to pass in to the Python script via sys.argv.
+            // argc = number of parameters.  This will always be at least 1, since the first parameter is the script name.
+            // argv = the list of parameters, in wchar format.
+            // Our expectation is that the args passed into this function does *not* already contain the script name.
+            int argc = aznumeric_cast<int>(args.size()) + 1;
+
+            // Note:  This allocates from PyMem to ensure that Python has access to the memory.
+            wchar_t** argv = static_cast<wchar_t**>(PyMem_Malloc(argc * sizeof(wchar_t*)));
+
+            // Python 3.x is expecting wchar* strings for the command-line args.
+            argv[0] = Py_DecodeLocale(theFilename.c_str(), nullptr);
+
+            for (int arg = 0; arg < args.size(); arg++)
+            {
+                argv[arg + 1] = Py_DecodeLocale(args[arg].data(), nullptr);
+            }
+
+            // Tell Python the command-line args.
+            // Note that this has a side effect of adding the script's path to the set of directories checked for "import" commands.
+            PySys_SetArgv(argc, argv);
+
+            PyCompilerFlags flags;
+            flags.cf_flags = 0;
+            const int bAutoCloseFile = true;
+            const int returnCode = PyRun_SimpleFileExFlags(file, theFilename.c_str(), bAutoCloseFile, &flags);
+            if (returnCode != 0)
+            {
+                AZStd::string message = AZStd::string::format("Detected script failure in Python script(%s); return code %d!", theFilename.c_str(), returnCode);
+                AZ_Warning("python", false, message.c_str());
+                using namespace AzToolsFramework;
+                EditorPythonConsoleNotificationBus::Broadcast(&EditorPythonConsoleNotificationBus::Events::OnExceptionMessage, message.c_str());
+                pythonScriptResult = Result::Error_PythonException;
+            }
+
+            // Free any memory allocated for the command-line args.
+            for (int arg = 0; arg < argc; arg++)
+            {
+                PyMem_RawFree(argv[arg]);
+            }
+            PyMem_Free(argv);
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("python", false, "Detected an internal exception %s while running script (%s)!", e.what(), theFilename.c_str());
+            return Result::Error_InternalException;
+        }
+        return pythonScriptResult;
     }
 
 } // namespace EditorPythonBindings

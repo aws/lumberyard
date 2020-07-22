@@ -28,9 +28,11 @@
 #include <Maestro/Types/AssetBlendKey.h>
 #include <AzCore/std/sort.h>
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include "Clipboard.h"
 
-#include <QColorDialog>
 #include <QMenu>
 #include <QPainter>
 #include <QPaintEvent>
@@ -136,10 +138,8 @@ CTrackViewDopeSheetBase::CTrackViewDopeSheetBase(QWidget* parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
 
-    m_colorDialog = new QColorDialog(this);
     m_colorUpdateTrack = nullptr;
     m_colorUpdateKeyTime = 0;
-    QObject::connect(m_colorDialog, &QColorDialog::currentColorChanged, this, &CTrackViewDopeSheetBase::OnCurrentColorChange);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -147,12 +147,6 @@ CTrackViewDopeSheetBase::~CTrackViewDopeSheetBase()
 {
     HideKeyPropertyCtrlOnSpot();
     GetIEditor()->GetAnimation()->RemoveListener(this);
-
-    if (m_colorDialog)
-    {
-        delete m_colorDialog;
-        m_colorDialog = nullptr;
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2018,14 +2012,18 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
     Vec3 vColor(0, 0, 0);
     pTrack->GetValue(keyTime, vColor);
 
-    const QColor defaultColor(clamp_tpl(FloatToIntRet(vColor.x), 0, 255),
-        clamp_tpl(FloatToIntRet(vColor.y), 0, 255),
-        clamp_tpl(FloatToIntRet(vColor.z), 0, 255));
-    QColorDialog dlg(defaultColor, this);
+    const AZ::Color defaultColor(clamp_tpl<AZ::u8>(FloatToIntRet(vColor.x), 0, 255),
+        clamp_tpl<AZ::u8>(FloatToIntRet(vColor.y), 0, 255),
+        clamp_tpl<AZ::u8>(FloatToIntRet(vColor.z), 0, 255),
+        255);
+    AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, QString(), this);
+    dlg.setWindowTitle(tr("Select Color"));
+    dlg.setCurrentColor(defaultColor);
+    dlg.setSelectedColor(defaultColor);
     if (dlg.exec() == QDialog::Accepted)
     {
-        const QColor col = dlg.selectedColor();
-        ColorF colArray(col.red(), col.green(), col.blue(), col.alpha());
+        const AZ::Color col = dlg.currentColor();
+        ColorF colArray(col.GetR8(), col.GetG8(), col.GetB8(), col.GetA8());
 
         CTrackViewSequence* sequence = pTrack->GetSequence();
         if (nullptr != sequence)
@@ -2056,11 +2054,11 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
     return keyCreated;
 }
 
-void CTrackViewDopeSheetBase::OnCurrentColorChange(const QColor& color)
+void CTrackViewDopeSheetBase::OnCurrentColorChange(const AZ::Color& color)
 {
     // This is while the color picker is up 
     // so we want to update the property but not store an undo
-    UpdateColorKey(color, false);
+    UpdateColorKey(AzQtComponents::toQColor(color), false);
 }
 
 void CTrackViewDopeSheetBase::UpdateColorKey(const QColor& color, bool addToUndo)
@@ -2130,23 +2128,28 @@ void CTrackViewDopeSheetBase::EditSelectedColorKey(CTrackViewTrack* pTrack)
             Vec3  color;
             pTrack->GetValue(m_colorUpdateKeyTime, color);
 
-            const QColor defaultColor(clamp_tpl(FloatToIntRet(color.x), 0, 255),
-                clamp_tpl(FloatToIntRet(color.y), 0, 255),
-                clamp_tpl(FloatToIntRet(color.z), 0, 255));
+            const AZ::Color defaultColor(clamp_tpl<AZ::u8>(FloatToIntRet(color.x), 0, 255),
+                clamp_tpl<AZ::u8>(FloatToIntRet(color.y), 0, 255),
+                clamp_tpl<AZ::u8>(FloatToIntRet(color.z), 0, 255), 
+                255);
 
-            m_colorDialog->setCurrentColor(defaultColor);
-
-            if (m_colorDialog->exec() == QDialog::Accepted)
+            AzQtComponents::ColorPicker picker(AzQtComponents::ColorPicker::Configuration::RGB);
+            picker.setWindowTitle(tr("Select Color"));
+            picker.setCurrentColor(defaultColor);
+            picker.setSelectedColor(defaultColor);
+            QObject::connect(&picker, &AzQtComponents::ColorPicker::currentColorChanged, this, &CTrackViewDopeSheetBase::OnCurrentColorChange);
+    
+            if (picker.exec() == QDialog::Accepted)
             {
-                const QColor col = m_colorDialog->selectedColor();
+                const AZ::Color col = picker.currentColor();
 
                 // Moved bulk of method into helper to handle matching logic in QT callback and undo redo cases
-                UpdateColorKey(col, true);
+                UpdateColorKey(AzQtComponents::toQColor(col), true);
             }
             else
             {
                 // We canceled out of the color picker, revert to color held before opening it
-                UpdateColorKey(defaultColor, false);
+                UpdateColorKey(AzQtComponents::toQColor(defaultColor), false);
             }
         }      
     }

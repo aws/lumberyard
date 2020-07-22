@@ -17,8 +17,10 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Casting/lossy_cast.h>
 
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
+
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
-#include <AzToolsFramework/UI/PropertyEditor/EntityIdQLabel.hxx>
+#include <AzToolsFramework/UI/PropertyEditor/EntityIdQLineEdit.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextPickingBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
@@ -36,6 +38,7 @@ AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversi
 #include <QDragEnterEvent>
 AZ_POP_DISABLE_WARNING
 #include <QDropEvent>
+#include <QToolButton>
 
 //just a test to see how it would work to pop a dialog
 
@@ -50,50 +53,31 @@ namespace AzToolsFramework
         QHBoxLayout* pLayout = new QHBoxLayout(this);
 
         pLayout->setContentsMargins(0, 0, 0, 0);
-        pLayout->setSpacing(0);
+        pLayout->setSpacing(2);
 
-        m_entityIdLabel = aznew EntityIdQLabel(this);
-        m_entityIdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-        m_entityIdLabel->setMinimumWidth(PropertyQTConstant_MinimumWidth);
-        m_entityIdLabel->setFixedHeight(PropertyQTConstant_DefaultHeight);
-        m_entityIdLabel->setFrameShape(QFrame::Panel);
-        m_entityIdLabel->setFrameShadow(QFrame::Sunken);
-        m_entityIdLabel->setTextInteractionFlags(Qt::NoTextInteraction);
-        m_entityIdLabel->setFocusPolicy(Qt::StrongFocus);
+        m_entityIdLineEdit = aznew EntityIdQLineEdit(this);
+        m_entityIdLineEdit->setFocusPolicy(Qt::StrongFocus);
 
-        m_pickButton = aznew QPushButton(this);
+        m_pickButton = aznew QToolButton(this);
         m_pickButton->setCheckable(true);
         m_pickButton->setChecked(false);
-        m_pickButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_pickButton->setFixedSize(QSize(18, 18));
+        m_pickButton->setAutoRaise(true);
         m_pickButton->setContentsMargins(0, 0, 0, 0);
-        m_pickButton->setIcon(QIcon(":/PropertyEditor/Resources/EntityPicker"));
+        m_pickButton->setIcon(QIcon(":/stylesheet/img/UI20/picker.svg"));
         m_pickButton->setToolTip("Pick an object in the viewport");
         m_pickButton->setMouseTracking(true);
 
-        m_clearButton = aznew QPushButton(this);
-        m_clearButton->setFlat(true);
-        m_clearButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_clearButton->setFixedSize(QSize(18, 18));
-        m_clearButton->setStyleSheet("border: none; padding: 0ex;");
-        m_clearButton->setIcon(QIcon(":/PropertyEditor/Resources/cross-small"));
-        m_clearButton->setToolTip("Clear entity reference");
-        m_clearButton->setMouseTracking(true);
-
-        pLayout->addWidget(m_entityIdLabel);
+        pLayout->addWidget(m_entityIdLineEdit);
         pLayout->addWidget(m_pickButton);
-        pLayout->addWidget(m_clearButton);
 
-        setStyleSheet("QToolTip { padding: 5px; }");
-
-        setFocusProxy(m_entityIdLabel);
-        setFocusPolicy(m_entityIdLabel->focusPolicy());
+        setFocusProxy(m_entityIdLineEdit);
+        setFocusPolicy(m_entityIdLineEdit->focusPolicy());
 
         setLayout(pLayout);
 
         setAcceptDrops(true);
 
-        connect(m_entityIdLabel, &EntityIdQLabel::RequestPickObject, this, [this]()
+        connect(m_entityIdLineEdit, &EntityIdQLineEdit::RequestPickObject, this, [this]()
         {
             if (!m_pickButton->isChecked())
             {
@@ -105,7 +89,7 @@ namespace AzToolsFramework
             }
         });
 
-        connect(m_pickButton, &QPushButton::clicked, this, [this]()
+        connect(m_pickButton, &QToolButton::clicked, this, [this]()
         {
             if (m_pickButton->isChecked())
             {
@@ -117,10 +101,9 @@ namespace AzToolsFramework
             }
         });
 
-        connect(m_clearButton, &QPushButton::clicked, this, [this]()
-        {
-            SetCurrentEntityId(AZ::EntityId(), true, "");
-        });
+        QToolButton* clearButton = AzQtComponents::LineEdit::getClearButton(m_entityIdLineEdit);
+        assert(clearButton);
+        connect(clearButton, &QToolButton::clicked, this, &PropertyEntityIdCtrl::ClearEntityId);
     }
 
     void PropertyEntityIdCtrl::StartEntityPickMode()
@@ -202,30 +185,30 @@ namespace AzToolsFramework
     void PropertyEntityIdCtrl::dragLeaveEvent(QDragLeaveEvent* event)
     {
         (void)event;
-        m_entityIdLabel->setProperty("DropHighlight", QVariant());
-        m_entityIdLabel->style()->unpolish(m_entityIdLabel);
-        m_entityIdLabel->style()->polish(m_entityIdLabel);
+        AzQtComponents::LineEdit::removeDropTargetStyle(m_entityIdLineEdit);
     }
 
     void PropertyEntityIdCtrl::dragEnterEvent(QDragEnterEvent* event)
     {
-        if (event != nullptr &&
-            IsCorrectMimeData(event->mimeData()) &&
-            EntityIdsFromMimeData(*event->mimeData()))
+        if (event == nullptr)
         {
-            m_entityIdLabel->setProperty("DropHighlight", true);
-            m_entityIdLabel->style()->unpolish(m_entityIdLabel);
-            m_entityIdLabel->style()->polish(m_entityIdLabel);
+            return;
+        }
 
+        const bool isValidDropTarget = IsCorrectMimeData(event->mimeData()) &&
+            EntityIdsFromMimeData(*event->mimeData());
+
+        AzQtComponents::LineEdit::applyDropTargetStyle(m_entityIdLineEdit, isValidDropTarget);
+
+        if (isValidDropTarget)
+        {
             event->acceptProposedAction();
         }
     }
 
     void PropertyEntityIdCtrl::dropEvent(QDropEvent* event)
     {
-        m_entityIdLabel->setProperty("DropHighlight", QVariant());
-        m_entityIdLabel->style()->unpolish(m_entityIdLabel);
-        m_entityIdLabel->style()->polish(m_entityIdLabel);
+        AzQtComponents::LineEdit::removeDropTargetStyle(m_entityIdLineEdit);
 
         if (event == nullptr)
         {
@@ -321,7 +304,7 @@ namespace AzToolsFramework
 
     AZ::EntityId PropertyEntityIdCtrl::GetEntityId() const
     {
-        return m_entityIdLabel->GetEntityId();
+        return m_entityIdLineEdit->GetEntityId();
     }
 
     PropertyEntityIdCtrl::~PropertyEntityIdCtrl()
@@ -331,11 +314,11 @@ namespace AzToolsFramework
 
     QWidget* PropertyEntityIdCtrl::GetFirstInTabOrder()
     {
-        return m_entityIdLabel;
+        return m_entityIdLineEdit;
     }
     QWidget* PropertyEntityIdCtrl::GetLastInTabOrder()
     {
-        return m_entityIdLabel;
+        return m_entityIdLineEdit;
     }
 
     void PropertyEntityIdCtrl::UpdateTabOrder()
@@ -345,16 +328,15 @@ namespace AzToolsFramework
 
     bool PropertyEntityIdCtrl::SetChildWidgetsProperty(const char* name, const QVariant& variant)
     {
-        bool success = m_entityIdLabel->setProperty(name, variant);
+        bool success = m_entityIdLineEdit->setProperty(name, variant);
         success = m_pickButton->setProperty(name, variant) && success;
-        success = m_clearButton->setProperty(name, variant) && success;
 
         return success;
     }
 
     void PropertyEntityIdCtrl::SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride)
     {
-        m_entityIdLabel->SetEntityId(newEntityId, nameOverride);
+        m_entityIdLineEdit->SetEntityId(newEntityId, nameOverride);
         m_componentsSatisfyingServices.clear();
 
         if (!m_requiredServices.empty() || !m_incompatibleServices.empty())
@@ -409,7 +391,7 @@ namespace AzToolsFramework
         QString tip = BuildTooltip();
         if (!tip.isEmpty())
         {
-            m_entityIdLabel->setToolTip(tip);
+            m_entityIdLineEdit->setToolTip(tip);
         }
 
         if (emitChange)
@@ -418,10 +400,15 @@ namespace AzToolsFramework
         }
     }
 
+    void PropertyEntityIdCtrl::ClearEntityId()
+    {
+        SetCurrentEntityId(AZ::EntityId(), true, "");
+    }
+
     QString PropertyEntityIdCtrl::BuildTooltip()
     {
         AZ::Entity* entity = nullptr;
-        EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, m_entityIdLabel->GetEntityId());
+        EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, m_entityIdLineEdit->GetEntityId());
 
         if (!entity)
         {
@@ -470,9 +457,9 @@ namespace AzToolsFramework
             style()->polish(this);
             update();
 
-            m_entityIdLabel->style()->unpolish(m_entityIdLabel);
-            m_entityIdLabel->style()->polish(m_entityIdLabel);
-            m_entityIdLabel->update();
+            m_entityIdLineEdit->style()->unpolish(m_entityIdLineEdit);
+            m_entityIdLineEdit->style()->polish(m_entityIdLineEdit);
+            m_entityIdLineEdit->update();
         }
     }
 

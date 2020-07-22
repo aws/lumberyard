@@ -88,30 +88,30 @@ namespace EMStudio
 
         // add the node hierarchy
         mHierarchyWidget = new NodeHierarchyWidget(mDock, false);
+        mHierarchyWidget->setObjectName("EMFX.NodeWindowPlugin.NodeHierarchyWidget.HierArchyWidget");
         mHierarchyWidget->GetTreeWidget()->setMinimumWidth(100);
         mDialogStack->Add(mHierarchyWidget, "Hierarchy", false, true);
 
         // add the node attributes widget
         m_propertyWidget = aznew AzToolsFramework::ReflectedPropertyEditor(mDialogStack);
+        m_propertyWidget->setObjectName("EMFX.NodeWindowPlugin.ReflectedPropertyEditor.PropertyWidget");
         m_propertyWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
         m_propertyWidget->SetAutoResizeLabels(true);
         mDialogStack->Add(m_propertyWidget, "Node Attributes", false, true, true, false);
 
         // prepare the dock window
-        mDock->SetContents(mDialogStack);
+        mDock->setWidget(mDialogStack);
         mDock->setMinimumWidth(100);
         mDock->setMinimumHeight(100);
 
         // add functionality to the controls
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &NodeWindowPlugin::VisibilityChanged);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &NodeWindowPlugin::VisibilityChanged);
         connect(mHierarchyWidget->GetTreeWidget(), &QTreeWidget::itemSelectionChanged, this, &NodeWindowPlugin::OnNodeChanged);
 
         const AzQtComponents::FilteredSearchWidget* searchWidget = mHierarchyWidget->GetSearchWidget();
         connect(searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NodeWindowPlugin::OnTextFilterChanged);
 
-        connect(mHierarchyWidget->GetDisplayNodesButton(), &QPushButton::clicked, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
-        connect(mHierarchyWidget->GetDisplayBonesButton(), &QPushButton::clicked, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
-        connect(mHierarchyWidget->GetDisplayMeshesButton(), &QPushButton::clicked, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
+        connect(mHierarchyWidget, &NodeHierarchyWidget::FilterStateChanged, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
 
         // reinit the dialog
         ReInit();
@@ -344,7 +344,7 @@ namespace EMStudio
         NodeWindowPlugin* nodeWindow = (NodeWindowPlugin*)plugin;
 
         // is the plugin visible? only update it if it is visible
-        if (nodeWindow->GetDockWidget()->visibleRegion().isEmpty() == false)
+        if (GetManager()->GetIgnoreVisibility() || !nodeWindow->GetDockWidget()->visibleRegion().isEmpty())
         {
             nodeWindow->ReInit();
         }

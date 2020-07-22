@@ -1,0 +1,2 @@
+StarterGame environment assets slices and scripts.  Most environment slices (rocks etc) will have PhysX static object components, so you 
+need to enable the PhysX gem in your project to use them.  Enjoy!

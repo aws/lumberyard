@@ -43,10 +43,20 @@
         <property name="clearButtonEnabled">
          <bool>true</bool>
         </property>
+        <property name="acceptDrops">
+         <bool>false</bool>
+        </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="assetTypeSelector"/>
+       <widget class="QToolButton" name="assetTypeSelector">
+        <property name="popupMode">
+         <enum>QToolButton::InstantPopup</enum>
+        </property>
+        <property name="autoRaise">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
       <item>
        <spacer name="horizontalSpacer">

@@ -55,18 +55,20 @@ GenericPopupPropertyEditor::GenericPopupPropertyEditor(QWidget *pParent, bool sh
     m_valueLabel = new QLabel;
 
     QToolButton *mainButton = new QToolButton;
-    mainButton->setText("..");
+    mainButton->setAutoRaise(true);
+    mainButton->setIcon(QIcon(QStringLiteral(":/stylesheet/img/UI20/browse-edit.svg")));
     connect(mainButton, &QToolButton::clicked, this, &GenericPopupPropertyEditor::onEditClicked);
 
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->addWidget(m_valueLabel, 1);
     mainLayout->addWidget(mainButton);
-    mainLayout->setContentsMargins(1,1,1,1);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
 
     if (showTwoButtons)
     {
         QToolButton *button2 = new QToolButton;
-        button2->setText("<");
+        button2->setAutoRaise(true);
+        button2->setIcon(QIcon(QStringLiteral(":/stylesheet/img/UI20/more.svg")));
         connect(button2, &QToolButton::clicked, this, &GenericPopupPropertyEditor::onButton2Clicked);
         mainLayout->insertWidget(1, button2);
     }
@@ -295,12 +297,14 @@ void SequenceIdPropertyEditor::onEditClicked()
     {
         pSeq = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(gtDlg.GetSelectedItem().toUtf8().data());
         assert(pSeq);
-        if (pSeq->GetId() > 0)	// This sequence is a new one with a valid ID.
+        if (pSeq->GetId() > 0)
         {
+            // This sequence is a new one with a valid ID.
             SetValue(QString::number(pSeq->GetId()));
         }
-        else										// This sequence is an old one without an ID.
+        else
         {
+            // This sequence is an old one without an ID.
             QMessageBox::warning(this, tr("Old Sequence"), tr("This is an old sequence without an ID.\nSo it cannot be used with the new ID-based linking."));
         }
     }

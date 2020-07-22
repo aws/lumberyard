@@ -32,7 +32,7 @@ namespace ScriptCanvasEditor
         virtual void GetEditorCreatableTypes(AZStd::unordered_set<ScriptCanvas::Data::Type>& outCreatableTypes) = 0;
 
         // Creates all editor components needed to associate the script canvas engine with an entity
-        virtual void CreateEditorComponentsOnEntity(AZ::Entity* entity) = 0;
+        virtual void CreateEditorComponentsOnEntity(AZ::Entity* entity, const AZ::Data::AssetType& assetType) = 0;
     };
 
     using SystemRequestBus = AZ::EBus<SystemRequests>;

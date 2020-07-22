@@ -19,14 +19,14 @@
 #include <QtWidgets>
 #include <QtWidgets/QWidget>
 
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 #include <LyShine/Bus/UiTransform2dBus.h>
 #include <LyShine/Bus/UiLayoutFitterBus.h>
 
 Q_DECLARE_METATYPE(UiTransform2dInterface::Anchors);
 
-void PropertyHandlerOffset::ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
+void PropertyHandlerOffset::ConsumeAttribute(AzQtComponents::VectorInput* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
 {
     UIVectorPropertyHandlerBase::ConsumeAttribute(GUI, attrib, attrValue, debugName);
 
@@ -38,10 +38,10 @@ void PropertyHandlerOffset::ConsumeAttribute(AzToolsFramework::PropertyVectorCtr
             bool horizFit = (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical || fitType == UiLayoutFitterInterface::FitType::HorizontalOnly);
             bool vertFit = (fitType == UiLayoutFitterInterface::FitType::HorizontalAndVertical || fitType == UiLayoutFitterInterface::FitType::VerticalOnly);
 
-            AzToolsFramework::VectorElement** elements = GUI->getElements();
+            AzQtComponents::VectorElement** elements = GUI->getElements();
 
-            elements[2]->GetSpinBox()->setEnabled(!horizFit);
-            elements[3]->GetSpinBox()->setEnabled(!vertFit);
+            elements[2]->getSpinBox()->setEnabled(!horizFit);
+            elements[3]->getSpinBox()->setEnabled(!vertFit);
         }
         else
         {
@@ -51,7 +51,7 @@ void PropertyHandlerOffset::ConsumeAttribute(AzToolsFramework::PropertyVectorCtr
     }
 }
 
-void PropertyHandlerOffset::WriteGUIValuesIntoProperty(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI, UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)
+void PropertyHandlerOffset::WriteGUIValuesIntoProperty(size_t index, AzQtComponents::VectorInput* GUI, UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)
 {
     AZ::EntityId id = GetParentEntityId(node, index);
 
@@ -64,43 +64,43 @@ void PropertyHandlerOffset::WriteGUIValuesIntoProperty(size_t index, AzToolsFram
     AZStd::string labels[4];
     GetLabels(anchors, labels);
 
-    AzToolsFramework::VectorElement** elements = GUI->getElements();
+    AzQtComponents::VectorElement** elements = GUI->getElements();
 
     UiTransform2dInterface::Offsets guiDisplayedOffset = ExtractValuesFromGUI(GUI);
 
     // Set the new display offsets for the element being edited
     UiTransform2dInterface::Offsets newDisplayedOffset = InternalOffsetToDisplayedOffset(instance, anchors, pivot);
     int idx = 0;
-    if (elements[idx]->WasValueEditedByUser())
+    if (elements[idx]->wasValueEditedByUser())
     {
-        QLabel* label = elements[idx]->GetLabel();
+        QLabel* label = elements[idx]->getLabelWidget();
         if (label && (label->text() == labels[idx].c_str()))
         {
             newDisplayedOffset.m_left = guiDisplayedOffset.m_left;
         }
     }
     idx++;
-    if (elements[idx]->WasValueEditedByUser())
+    if (elements[idx]->wasValueEditedByUser())
     {
-        QLabel* label = elements[idx]->GetLabel();
+        QLabel* label = elements[idx]->getLabelWidget();
         if (label && (label->text() == labels[idx].c_str()))
         {
             newDisplayedOffset.m_top = guiDisplayedOffset.m_top;
         }
     }
     idx++;
-    if (elements[idx]->WasValueEditedByUser())
+    if (elements[idx]->wasValueEditedByUser())
     {
-        QLabel* label = elements[idx]->GetLabel();
+        QLabel* label = elements[idx]->getLabelWidget();
         if (label && (label->text() == labels[idx].c_str()))
         {
             newDisplayedOffset.m_right = guiDisplayedOffset.m_right;
         }
     }
     idx++;
-    if (elements[idx]->WasValueEditedByUser())
+    if (elements[idx]->wasValueEditedByUser())
     {
-        QLabel* label = elements[idx]->GetLabel();
+        QLabel* label = elements[idx]->getLabelWidget();
         if (label && (label->text() == labels[idx].c_str()))
         {
             newDisplayedOffset.m_bottom = guiDisplayedOffset.m_bottom;
@@ -114,7 +114,7 @@ void PropertyHandlerOffset::WriteGUIValuesIntoProperty(size_t index, AzToolsFram
     EBUS_EVENT_ID(id, UiTransform2dBus, SetOffsets, newInternalOffset);
 }
 
-bool PropertyHandlerOffset::ReadValuesIntoGUI(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI, const UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)
+bool PropertyHandlerOffset::ReadValuesIntoGUI(size_t index, AzQtComponents::VectorInput* GUI, const UiTransform2dInterface::Offsets& instance, AzToolsFramework::InstanceDataNode* node)
 {
     (int)index;
 
@@ -166,7 +166,7 @@ void PropertyHandlerOffset::GetLabels(UiTransform2dInterface::Anchors& anchors, 
     }
 }
 
-void PropertyHandlerOffset::SetLabels(AzToolsFramework::PropertyVectorCtrl* ctrl,
+void PropertyHandlerOffset::SetLabels(AzQtComponents::VectorInput* ctrl,
     UiTransform2dInterface::Anchors& anchors)
 {
     AZStd::string labels[4];
@@ -174,7 +174,7 @@ void PropertyHandlerOffset::SetLabels(AzToolsFramework::PropertyVectorCtrl* ctrl
 
     for (int i = 0; i < 4; i++)
     {
-        ctrl->setLabel(i, labels[i]);
+        ctrl->setLabel(i, labels[i].c_str());
     }
 }
 

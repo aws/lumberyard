@@ -13,6 +13,8 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/Color.h>
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
+#include <AzQtComponents/Components/Widgets/ColorLabel.h>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 #include "NodeGroupWindow.h"
 #include "AnimGraphPlugin.h"
 #include "GraphNode.h"
@@ -25,14 +27,13 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QHeaderView>
-#include <QCheckBox>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QToolBar>
 
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include <MysticQt/Source/ColorLabel.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/ActorInstance.h>
@@ -160,7 +161,7 @@ namespace EMStudio
     {
         mPlugin             = plugin;
         mTableWidget        = nullptr;
-        mAddButton          = nullptr;
+        mAddAction          = nullptr;
 
         mWidgetTable.SetMemoryCategory(MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
@@ -173,35 +174,19 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustNodeGroup", mAdjustCallback);
 
         // add the add button
-        mAddButton = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mAddButton, "/Images/Icons/Plus.png", "Add new node group");
-        connect(mAddButton, &QPushButton::clicked, this, &NodeGroupWindow::OnAddNodeGroup);
-
-        // add the remove button
-        mRemoveButton = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mRemoveButton, "/Images/Icons/Minus.png", "Remove selected node group");
-        connect(mRemoveButton, &QPushButton::clicked, this, &NodeGroupWindow::OnRemoveSelectedGroups);
-
-        // add the clear button
-        mClearButton = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mClearButton, "/Images/Icons/Clear.png", "Remove all node groups");
-        connect(mClearButton, &QPushButton::clicked, this, &NodeGroupWindow::OnClearNodeGroups);
+        mAddAction = new QAction(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.svg"), tr("Add new node group"), this);
+        connect(mAddAction, &QAction::triggered, this, &NodeGroupWindow::OnAddNodeGroup);
 
         // add the buttons to add, remove and clear the motions
-        QHBoxLayout* buttonsLayout = new QHBoxLayout();
-        buttonsLayout->setSpacing(0);
-        buttonsLayout->setAlignment(Qt::AlignLeft);
-        buttonsLayout->addWidget(mAddButton);
-        buttonsLayout->addWidget(mRemoveButton);
-        buttonsLayout->addWidget(mClearButton);
+        QToolBar* toolBar = new QToolBar();
+        toolBar->addAction(mAddAction);
 
-        QWidget* spacerWidget = new QWidget();
-        spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        buttonsLayout->addWidget(spacerWidget);
+        toolBar->addSeparator();
 
         m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
+        m_searchWidget->setEnabledFiltersVisible(false);
         connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NodeGroupWindow::OnTextFilterChanged);
-        buttonsLayout->addWidget(m_searchWidget);
+        toolBar->addWidget(m_searchWidget);
 
         // create the table widget
         mTableWidget = new QTableWidget();
@@ -234,6 +219,12 @@ namespace EMStudio
         mTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
         mTableWidget->setColumnWidth(0, 25);
         mTableWidget->setColumnWidth(1, 41);
+        mTableWidget->horizontalHeader()->setVisible(false);
+
+        mTableWidget->setShowGrid(false);
+
+        AzQtComponents::CheckBox::setVisibilityMode(mTableWidget, true);
+        connect(mTableWidget, &QTableWidget::itemChanged, this, &NodeGroupWindow::OnItemChanged);
 
         // ser the horizontal header params
         QHeaderView* horizontalHeader = mTableWidget->horizontalHeader();
@@ -249,7 +240,7 @@ namespace EMStudio
         mVerticalLayout->setSpacing(2);
         mVerticalLayout->setMargin(3);
         mVerticalLayout->setAlignment(Qt::AlignTop);
-        mVerticalLayout->addLayout(buttonsLayout);
+        mVerticalLayout->addWidget(toolBar);
         mVerticalLayout->addWidget(mTableWidget);
 
         // set the object name
@@ -348,34 +339,24 @@ namespace EMStudio
             // get the color and convert to Qt color
             AZ::Color color;
             color.FromU32(nodeGroup->GetColor());
-            const QColor backgroundColor(aznumeric_cast<int>(static_cast<float>(color.GetR()) * 100.0f), aznumeric_cast<int>(static_cast<float>(color.GetG()) * 100.0f), aznumeric_cast<int>(static_cast<float>(color.GetB()) * 100.0f), 50);
 
             // create the visibility checkbox item
             QTableWidgetItem* visibilityCheckboxItem = new QTableWidgetItem();
-            visibilityCheckboxItem->setBackgroundColor(backgroundColor);
+            visibilityCheckboxItem->setFlags(visibilityCheckboxItem->flags() | Qt::ItemIsUserCheckable);
+            visibilityCheckboxItem->setData(Qt::CheckStateRole, nodeGroup->GetIsVisible() ? Qt::Checked : Qt::Unchecked);
 
             // add the item, it's needed to have the background color + the widget
             mTableWidget->setItem(i, 0, visibilityCheckboxItem);
 
-            // create the visibility checkbox
-            QCheckBox* visibilityCheckbox = new QCheckBox();
-            visibilityCheckbox->setStyleSheet("background: transparent; padding-left: 5px; max-width: 13px;");
-            visibilityCheckbox->setChecked(nodeGroup->GetIsVisible());
-            mWidgetTable.Add(WidgetLookup(visibilityCheckbox, i));
-            connect(visibilityCheckbox, &QCheckBox::stateChanged, this, &NodeGroupWindow::OnIsVisible);
-
-            // add the visibility checkbox in the table
-            mTableWidget->setCellWidget(i, 0, visibilityCheckbox);
-
             // create the color item
             QTableWidgetItem* colorItem = new QTableWidgetItem();
-            colorItem->setBackgroundColor(backgroundColor);
 
             // add the item, it's needed to have the background color + the widget
             mTableWidget->setItem(i, 1, colorItem);
 
             // create the color widget
-            MysticQt::ColorLabel* colorWidget = new MysticQt::ColorLabel(MCore::RGBAColor(static_cast<float>(color.GetR()), static_cast<float>(color.GetG()), static_cast<float>(color.GetB()), static_cast<float>(color.GetA())), nodeGroup);
+            AzQtComponents::ColorLabel* colorWidget = new AzQtComponents::ColorLabel(color);
+            colorWidget->setTextInputVisible(false);
 
             QWidget* colorLayoutWidget = new QWidget();
             colorLayoutWidget->setObjectName("colorlayoutWidget");
@@ -388,14 +369,13 @@ namespace EMStudio
             colorLayoutWidget->setLayout(colorLayout);
 
             mWidgetTable.Add(WidgetLookup(colorWidget, i));
-            connect(colorWidget, static_cast<void (MysticQt::ColorLabel::*)(const QColor&)>(&MysticQt::ColorLabel::ColorChangeEvent), this, &NodeGroupWindow::OnColorChanged);
+            connect(colorWidget, &AzQtComponents::ColorLabel::colorChanged, this, &NodeGroupWindow::OnColorChanged);
 
             // add the color label in the table
             mTableWidget->setCellWidget(i, 1, colorLayoutWidget);
 
             // create the node group name label
             QTableWidgetItem* nameItem = new QTableWidgetItem(nodeGroup->GetName());
-            nameItem->setBackgroundColor(backgroundColor);
             mTableWidget->setItem(i, 2, nameItem);
 
             // set the item selected
@@ -427,6 +407,13 @@ namespace EMStudio
         UpdateInterface();
     }
 
+    void NodeGroupWindow::OnItemChanged(QTableWidgetItem* item)
+    {
+        if (item->column() == 0)
+        {
+            OnIsVisible(item->data(Qt::CheckStateRole).toInt(), item->row());
+        }
+    }
 
     // add a new node group
     void NodeGroupWindow::OnAddNodeGroup()
@@ -485,7 +472,7 @@ namespace EMStudio
     }
 
 
-    void NodeGroupWindow::OnIsVisible(int state)
+    void NodeGroupWindow::OnIsVisible(int state, int row)
     {
         // get the anim graph
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
@@ -495,7 +482,7 @@ namespace EMStudio
         }
 
         // get the node group index by checking the widget lookup table
-        const uint32 groupIndex = FindGroupIndexByWidget(sender());
+        const uint32 groupIndex = row;
         assert(groupIndex != MCORE_INVALIDINDEX32);
 
         // get a pointer to the node group
@@ -520,7 +507,7 @@ namespace EMStudio
 
 
     // node group color changed
-    void NodeGroupWindow::OnColorChanged(const QColor& color)
+    void NodeGroupWindow::OnColorChanged(const AZ::Color& color)
     {
         // get the anim graph
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
@@ -537,9 +524,7 @@ namespace EMStudio
         EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(groupIndex);
 
         // get the color
-        int r, g, b;
-        color.getRgb(&r, &g, &b);
-        AZ::Vector4 finalColor(r / 255.0f, g / 255.0f, b / 255.0f, 1.0f);
+        AZ::Vector4 finalColor = color.GetAsVector4();
 
         // construct the command
         AZStd::string commandString;
@@ -563,18 +548,11 @@ namespace EMStudio
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         if (animGraph == nullptr)
         {
-            mAddButton->setEnabled(false);
-            mRemoveButton->setEnabled(false);
-            mClearButton->setEnabled(false);
+            mAddAction->setEnabled(false);
             return;
         }
 
-        mAddButton->setEnabled(true);
-
-        const QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
-        mRemoveButton->setEnabled(selectedItems.count() > 0);
-
-        mClearButton->setEnabled(mTableWidget->rowCount() > 0);
+        mAddAction->setEnabled(true);
     }
 
 
@@ -762,19 +740,19 @@ namespace EMStudio
         // create the context menu
         QMenu menu(this);
 
-        // at least one selected, remove action is possible
-        if (rowIndices.GetLength() > 0)
-        {
-            QAction* removeAction = menu.addAction("Remove Selected Node Groups");
-            removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Minus.png"));
-            connect(removeAction, &QAction::triggered, this, &NodeGroupWindow::OnRemoveSelectedGroups);
-        }
-
         // add rename if only one selected
         if (rowIndices.GetLength() == 1)
         {
             QAction* renameAction = menu.addAction("Rename Selected Node Group");
             connect(renameAction, &QAction::triggered, this, &NodeGroupWindow::OnRenameSelectedNodeGroup);
+        }
+
+        // at least one selected, remove action is possible
+        if (rowIndices.GetLength() > 0)
+        {
+            menu.addSeparator();
+            QAction* removeAction = menu.addAction("Remove Selected Node Groups");
+            connect(removeAction, &QAction::triggered, this, &NodeGroupWindow::OnRemoveSelectedGroups);
         }
 
         // show the menu at the given position

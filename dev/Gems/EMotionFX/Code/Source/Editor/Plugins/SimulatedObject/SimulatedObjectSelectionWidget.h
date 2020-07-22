@@ -16,7 +16,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
-#include <MysticQt/Source/ButtonGroup.h>
 #include <QDialog>
 
 

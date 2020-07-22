@@ -34,7 +34,8 @@ namespace GraphCanvas
     class GeneralNodeTitleComponent
         : public AZ::Component
         , public NodeTitleRequestBus::Handler
-        , public SceneMemberNotificationBus::Handler        
+        , public SceneMemberNotificationBus::Handler
+        , public VisualNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(GeneralNodeTitleComponent, "{67D54B26-A924-4028-8544-5684B16BF04A}");

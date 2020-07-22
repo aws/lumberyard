@@ -30,6 +30,26 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMaskLegacyNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMaskLegacyNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendTreeMaskLegacyNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeMaskLegacyNode::UniqueData::Update()
+    {
+        BlendTreeMaskLegacyNode* maskNode = azdynamic_cast<BlendTreeMaskLegacyNode*>(mObject);
+        AZ_Assert(maskNode, "Unique data linked to incorrect node type.");
+
+        Actor* actor = mAnimGraphInstance->GetActorInstance()->GetActor();
+
+        const size_t numMasks = BlendTreeMaskLegacyNode::GetNumMasks();
+        mMasks.resize(numMasks);
+        AnimGraphPropertyUtils::ReinitJointIndices(actor, maskNode->GetMask0(), mMasks[0]);
+        AnimGraphPropertyUtils::ReinitJointIndices(actor, maskNode->GetMask1(), mMasks[1]);
+        AnimGraphPropertyUtils::ReinitJointIndices(actor, maskNode->GetMask2(), mMasks[2]);
+        AnimGraphPropertyUtils::ReinitJointIndices(actor, maskNode->GetMask3(), mMasks[3]);
+    }
+
     BlendTreeMaskLegacyNode::BlendTreeMaskLegacyNode()
         : AnimGraphNode()
         , m_outputEvents0(true)
@@ -53,27 +73,6 @@ namespace EMotionFX
     BlendTreeMaskLegacyNode::~BlendTreeMaskLegacyNode()
     {
     }
-
-
-    void BlendTreeMaskLegacyNode::Reinit()
-    {
-        AnimGraphNode::Reinit();
-
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = reinterpret_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-            if (uniqueData)
-            {
-                uniqueData->mMustUpdate = true;
-            }
-        }
-
-        UpdateUniqueDatas();
-    }
-
 
     bool BlendTreeMaskLegacyNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -102,32 +101,11 @@ namespace EMotionFX
         return AnimGraphObject::CATEGORY_BLENDING;
     }
 
-
-    // precreate the unique data object
-    void BlendTreeMaskLegacyNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // find the unique data for this node, if it doesn't exist yet, create it
-        UniqueData* uniqueData = static_cast<BlendTreeMaskLegacyNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        uniqueData->mMasks.resize(m_numMasks);
-        uniqueData->mMustUpdate = true;
-        UpdateUniqueData(animGraphInstance, uniqueData);
-    }
-
-
     // perform the calculations / actions
     void BlendTreeMaskLegacyNode::Output(AnimGraphInstance* animGraphInstance)
     {
         AnimGraphPose* outputPose;
-
-        // update the unique data if needed
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         // for all input ports
         for (uint32 i = 0; i < m_numMasks; ++i)
@@ -192,7 +170,7 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // init the sync track etc to the first input
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         AnimGraphNode* inputNode = GetInputNode(INPUTPORT_POSE_0);
         if (inputNode)
         {
@@ -224,7 +202,7 @@ namespace EMotionFX
 
         // request the reference counted data inside the unique data
         RequestRefDatas(animGraphInstance);
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();
@@ -248,7 +226,7 @@ namespace EMotionFX
                     const uint32 nodeIndex = uniqueData->mMasks[i][n];
                     if (nodeIndex == animGraphInstance->GetActorInstance()->GetActor()->GetMotionExtractionNodeIndex())
                     {
-                        AnimGraphRefCountedData* sourceData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                        AnimGraphRefCountedData* sourceData = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
 
                         data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
                         data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
@@ -258,7 +236,7 @@ namespace EMotionFX
             }
             else
             {
-                AnimGraphRefCountedData* sourceData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                AnimGraphRefCountedData* sourceData = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
                 data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
                 data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
             }
@@ -268,7 +246,7 @@ namespace EMotionFX
             if (GetOutputEvents(i))
             {
                 // get the input event buffer
-                const AnimGraphEventBuffer& inputEventBuffer = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData()->GetEventBuffer();
+                const AnimGraphEventBuffer& inputEventBuffer = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData()->GetEventBuffer();
                 AnimGraphEventBuffer& outputEventBuffer = data->GetEventBuffer();
                 const uint32 startIndex = outputEventBuffer.GetNumEvents();
 
@@ -302,25 +280,6 @@ namespace EMotionFX
 
         return true;
     }
-
-
-    void BlendTreeMaskLegacyNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        // Update only if needed.
-        if (uniqueData->mMustUpdate)
-        {
-            Actor* actor = animGraphInstance->GetActorInstance()->GetActor();
-
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask0, uniqueData->mMasks[0]);
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask1, uniqueData->mMasks[1]);
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask2, uniqueData->mMasks[2]);
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask3, uniqueData->mMasks[3]);
-
-            // Don't update the next time again.
-            uniqueData->mMustUpdate = false;
-        }
-    }
-
 
     AZStd::string BlendTreeMaskLegacyNode::GetMask0JointName(int index) const
     {

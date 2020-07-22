@@ -62,6 +62,7 @@ namespace EMotionFX
 
             bool IsVisible() const;
             virtual void SetIsVisible(bool isVisible);
+            virtual bool IsInCameraFrustum() const;
 
             virtual void SetMaterials(const ActorAsset::MaterialList& materialsPerLOD) = 0;
             typedef AZStd::function<void(const AZStd::string& materialName)> MaterialChangedFunction;

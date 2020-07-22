@@ -22,9 +22,15 @@ namespace CloudCanvas
     class IPresignedURLRequest
     {
     public:
+        // void(receivedDelta, totalLength)
+        typedef AZStd::function< void(uint32_t, uint32_t) > DataReceivedEventHandler;
+
+    public:
+        virtual void RequestDownloadSignedURLReceivedHandler(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id, DataReceivedEventHandler&& dataReceivedHandler) {}
+        virtual AZ::Job* RequestDownloadSignedURLJobReceivedHandler(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id, DataReceivedEventHandler&& dataReceivedHandler) { return nullptr; }
+
         virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) = 0;
         virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) = 0;
-
         virtual AZStd::unordered_map<AZStd::string, AZStd::string> GetQueryParameters(const AZStd::string& signedURL) = 0;
     };
 

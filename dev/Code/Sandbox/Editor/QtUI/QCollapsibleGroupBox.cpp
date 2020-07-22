@@ -24,7 +24,7 @@ QCollapsibleGroupBox::QCollapsibleGroupBox(QWidget* parent)
 {
     m_toggleButton = new QToolButton(this);
     m_toggleButton->setFixedSize(16, 16);
-    m_toggleButton->setArrowType(Qt::UpArrow);
+    m_toggleButton->setArrowType(Qt::DownArrow);
     connect(m_toggleButton, &QToolButton::clicked, this, [&]()
         {
             setCollapsed(!m_collapsed);
@@ -70,7 +70,7 @@ void QCollapsibleGroupBox::setCollapsed(bool v)
             }
         }
     }
-    m_toggleButton->setArrowType(v ? Qt::DownArrow : Qt::UpArrow);
+    m_toggleButton->setArrowType(v ? Qt::LeftArrow : Qt::DownArrow);
     adaptSize(v);
     Q_EMIT collapsed(v);
 }

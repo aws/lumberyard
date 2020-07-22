@@ -14,6 +14,7 @@
 
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
+#include <PhysX/PhysXLocks.h>
 #include <Source/EditorColliderComponent.h>
 #include <Source/EditorShapeColliderComponent.h>
 #include <Source/EditorRigidBodyComponent.h>
@@ -30,7 +31,9 @@ namespace PhysXEditorTests
         AZStd::shared_ptr<Physics::World> world;
         Physics::EditorWorldBus::BroadcastResult(world, &Physics::EditorWorldRequests::GetEditorWorld);
 
-        auto scene = static_cast<const physx::PxScene*>(world->GetNativePointer());
+        auto* scene = static_cast<physx::PxScene*>(world->GetNativePointer());
+        PHYSX_SCENE_READ_LOCK(scene);
+
         return scene->getNbActors(physx::PxActorTypeFlag::eRIGID_STATIC);
     }
 

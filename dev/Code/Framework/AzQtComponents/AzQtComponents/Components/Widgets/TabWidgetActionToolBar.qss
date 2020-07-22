@@ -1,12 +1,20 @@
+AzQtComponents--TabWidget > AzQtComponents--TabWidgetActionToolBarContainer
+{
+    background: #111111;
+    min-height: 28px;
+    margin: 0;
+    margin-bottom: 3px;
+}
+
+AzQtComponents--TabWidget.Secondary > AzQtComponents--TabWidgetActionToolBarContainer
+{
+    background: transparent;
+}
+
 AzQtComponents--TabWidgetActionToolBar QPushButton,
 AzQtComponents--TabWidgetActionToolBar QPushButton:hover,
 AzQtComponents--TabWidgetActionToolBar QPushButton:pressed
 {
     qproperty-flat: true;
-    background-color: #111111;
-}
-
-AzQtComponents--TabWidgetActionToolBar
-{
-    background-color: #111111;
+    background: transparent;
 }

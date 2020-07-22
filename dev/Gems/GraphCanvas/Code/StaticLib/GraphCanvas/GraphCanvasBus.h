@@ -49,6 +49,7 @@ namespace GraphCanvas
     struct Endpoint;
 
     static const AZ::Crc32 GraphCanvasRequestsServiceId = AZ_CRC("GraphCanvasService", 0x138a9c46);
+    static constexpr const char* EditorGraphModuleName = "editor.graph";
 
     //! GraphCanvasRequests
     //! Factory methods that allow default configurations of the Graph Canvas entities to be created, ready for

@@ -302,9 +302,11 @@ namespace EMotionFX
     void ActorManager::UnregisterActor(const AZStd::shared_ptr<Actor>& actor)
     {
         LockActors();
-
-        m_actors.erase(AZStd::find(m_actors.begin(), m_actors.end(), actor));
-
+        auto result = AZStd::find(m_actors.begin(), m_actors.end(), actor);
+        if (result != m_actors.end())
+        {
+            m_actors.erase(result);
+        }
         UnlockActors();
     }
 

@@ -36,7 +36,7 @@ namespace EMotionFX
 
     RagdollJointLimitWidget::RagdollJointLimitWidget(QWidget* parent)
         : AzQtComponents::Card(parent)
-        , m_cardHeaderIcon(":/EMotionFX/RagdollJointLimit_White.png")
+        , m_cardHeaderIcon(":/EMotionFX/JointLimit.svg")
     {
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);

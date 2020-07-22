@@ -46,20 +46,23 @@ namespace ScriptCanvas
 
                 OperatorClear() = default;
 
+                void OnInit() override;
+
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", ""));
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", ""));
                 
                 // Because the slots are grouped. Only one needs to be configured with the data restrictions and the others will all get them.
                 ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Container,
-                                             ScriptCanvas::ConnectionType::Input,                                             
+                                             ScriptCanvas::ConnectionType::Input,
                                              ScriptCanvas_DynamicDataSlot::Name("Source", "The container to be cleared from the node.")
                                              ScriptCanvas_DynamicDataSlot::DynamicGroup("ContainerGroup")
-                                             ScriptCanvas::SupportsMethodContract("Clear")                                             
+                                             ScriptCanvas::SupportsMethodContract("Clear")
                                             );
 
                 ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Container,
                                              ScriptCanvas::ConnectionType::Output,
                                              ScriptCanvas_DynamicDataSlot::Name("Container", "The container, now cleared of elements.")
+                                             ScriptCanvas_DynamicDataSlot::DynamicGroup("ContainerGroup")
                                              ScriptCanvas::SupportsMethodContract("Clear")
                                             );
 

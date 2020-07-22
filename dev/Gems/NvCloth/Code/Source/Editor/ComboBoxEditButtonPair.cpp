@@ -28,9 +28,10 @@ namespace NvCloth
             m_comboBox = new QComboBox();
             m_comboBox->installEventFilter(this);
 
-            m_editButton = new QPushButton();
-            m_editButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            m_editButton->setFixedSize(QSize(24, 16));
+            m_editButton = new QToolButton();
+            m_editButton->setAutoRaise(true);
+            m_editButton->setToolTip(QString("Edit"));
+            m_editButton->setIcon(QIcon(":/stylesheet/img/UI20/open-in-internal-app.svg"));
 
             layout->addWidget(m_comboBox);
             layout->addWidget(m_editButton);
@@ -47,7 +48,7 @@ namespace NvCloth
             return m_comboBox; 
         }
 
-        QPushButton* ComboBoxEditButtonPair::GetEditButton()
+        QToolButton* ComboBoxEditButtonPair::GetEditButton()
         { 
             return m_editButton; 
         }

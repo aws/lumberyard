@@ -43,7 +43,7 @@ namespace PhysX
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
             });
 
-            connect(picker->GetEditButton(), &QPushButton::clicked, this, &CollisionGroupWidget::OnEditButtonClicked);
+            connect(picker->GetEditButton(), &QToolButton::clicked, this, &CollisionGroupWidget::OnEditButtonClicked);
 
             return picker;
         }

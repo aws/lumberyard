@@ -55,56 +55,6 @@ namespace EMotionFX
         virtual MotionInstance* PlayMotion(Motion * motion, class PlayBackInfo * info = nullptr);
 
         /**
-         * Play a motion group.
-         * All motion inside the group will be blend together, and the output of that is blended inside the motion layer system.
-         * @param motionList The array of motions to play.
-         * @param playInfoList The array of playback info structs for each of the motions.
-         * @param numMotions The number of motions and array items inside the arrays of the first two parameters.
-         * @param mainPlayInfo The main motion playback info, of the group itself.
-         * @result A pointer to the motion instance that controls this group.
-         */
-        virtual MotionInstance* PlayMotionGroup(Motion** motionList, PlayBackInfo** playInfoList, uint32 numMotions, PlayBackInfo* mainPlayInfo = nullptr);
-
-        /**
-         * Play a motion group that contains two motions.
-         * @param motionA The first motion.
-         * @param motionB The second motion.
-         * @param playInfoA The playback info of the first motion.
-         * @param playInfoB The playback info of the second motion.
-         * @param mainPlayInfo The playback info of the whole group itself.
-         * @result A pointer to the motion instance that controls this group.
-         */
-        virtual MotionInstance* PlayMotionGroup(Motion* motionA, Motion* motionB, PlayBackInfo* playInfoA = nullptr, PlayBackInfo* playInfoB = nullptr, PlayBackInfo* mainPlayInfo = nullptr);
-
-        /**
-         * Play a motion group that contains three motions.
-         * @param motionA The first motion.
-         * @param motionB The second motion.
-         * @param motionC The third motion.
-         * @param playInfoA The playback info of the first motion.
-         * @param playInfoB The playback info of the second motion.
-         * @param playInfoC The playback info of the second motion.
-         * @param mainPlayInfo The playback info of the whole group itself.
-         * @result A pointer to the motion instance that controls this group.
-         */
-        virtual MotionInstance* PlayMotionGroup(Motion* motionA, Motion* motionB, Motion* motionC, PlayBackInfo* playInfoA = nullptr, PlayBackInfo* playInfoB = nullptr, PlayBackInfo* playInfoC = nullptr, PlayBackInfo* mainPlayInfo = nullptr);
-
-        /**
-         * Play a motion group that contains four motions.
-         * @param motionA The first motion.
-         * @param motionB The second motion.
-         * @param motionC The third motion.
-         * @param motionD The fourth motion.
-         * @param playInfoA The playback info of the first motion.
-         * @param playInfoB The playback info of the second motion.
-         * @param playInfoC The playback info of the second motion.
-         * @param playInfoD The playback info of the fourth motion.
-         * @param mainPlayInfo The playback info of the whole group itself.
-         * @result A pointer to the motion instance that controls this group.
-         */
-        virtual MotionInstance* PlayMotionGroup(Motion* motionA, Motion* motionB, Motion* motionC, Motion* motionD, PlayBackInfo* playInfoA = nullptr, PlayBackInfo* playInfoB = nullptr, PlayBackInfo* playInfoC = nullptr, PlayBackInfo* playInfoD = nullptr, PlayBackInfo* mainPlayInfo = nullptr);
-
-        /**
          * Get the unique motion system type ID.
          * @result The motion system type identification number.
          */
@@ -218,9 +168,10 @@ namespace EMotionFX
          * This can be used to check if for example there currently is playing a 'walk' motion on a given actor.
          * @param motion A pointer to the motion we want to check. So this method will answer the question
          *               "Is there still an Actor::PlayMotion( motion ) active?"
+         * @param ignorePausedMotions Ignore paused motions and make sure to only return true in case there is an actually playing motion.
          * @result Returns true when there still is a motion instance active, which uses the specified motion, otherwise false is returned.
          */
-        bool CheckIfIsPlayingMotion(Motion* motion) const;
+        bool CheckIfIsPlayingMotion(Motion* motion, bool ignorePausedMotions = false) const;
 
         /**
          * Set a new motion queue. Old one will be deleted.

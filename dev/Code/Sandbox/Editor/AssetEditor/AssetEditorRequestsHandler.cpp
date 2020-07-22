@@ -11,18 +11,39 @@
 */
 #include "StdAfx.h"
 
+#include "AssetEditorWindow.h"
+
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/UserSettings/UserSettingsComponent.h>
+#include <AzToolsFramework/AssetEditor/AssetEditorWidget.h>
 
 #include <Editor/AssetEditor/AssetEditorRequestsHandler.h>
 
 AssetEditorRequestsHandler::AssetEditorRequestsHandler()
 {
-    BusConnect();
+    AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Handler::BusConnect();
+    AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
 }
 
 AssetEditorRequestsHandler::~AssetEditorRequestsHandler()
 {
-    BusDisconnect();
+    AzToolsFramework::AssetEditor::AssetEditorRequestsBus::Handler::BusDisconnect();
+    AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+}
+
+void AssetEditorRequestsHandler::NotifyRegisterViews()
+{
+    using namespace AzToolsFramework::AssetEditor;
+    if (auto assetsWindowsToRestore = AZ::UserSettings::CreateFind<AssetEditorWindowSettings>(AZ::Crc32(AssetEditorWindowSettings::s_name), AZ::UserSettings::CT_GLOBAL))
+    {
+        //copy the current list and clear it since they will be re-added as we request to open them
+        auto windowsToOpen = assetsWindowsToRestore->m_openAssets;
+        assetsWindowsToRestore->m_openAssets.clear();
+        for (auto&& assetRef : windowsToOpen)
+        {
+            AssetEditorWindow::RegisterViewClass(assetRef);
+        }
+    }
 }
 
 void AssetEditorRequestsHandler::CreateNewAsset(const AZ::Data::AssetType& assetType)
@@ -37,6 +58,10 @@ void AssetEditorRequestsHandler::OpenAssetEditor(const AZ::Data::Asset<AZ::Data:
 {
     using namespace AzToolsFramework::AssetEditor;
 
-    AzToolsFramework::OpenViewPane(LyViewPane::AssetEditor);
-    AssetEditorWidgetRequestsBus::Broadcast(&AssetEditorWidgetRequests::OpenAsset, asset);
+    AssetEditorWindow::RegisterViewClass(asset);
+
+    auto& assetName = asset.GetHint();
+    const char* paneName = assetName.c_str();
+    auto&& pane = QtViewPaneManager::instance()->OpenPane(paneName, QtViewPane::OpenMode::RestoreLayout);
+
 }

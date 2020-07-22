@@ -66,7 +66,6 @@ namespace ScriptCanvas
                 ScriptCanvas_Property(AZStd::string,
                     ScriptCanvas_Property::Name("Text", "The text to display on screen.")
                     ScriptCanvas_Property::Input
-                    ScriptCanvas_Property::Untyped
                 );
 
                 ScriptCanvas_PropertyWithDefaults(AZ::Vector2, AZ::Vector2(20.f, 20.f), 

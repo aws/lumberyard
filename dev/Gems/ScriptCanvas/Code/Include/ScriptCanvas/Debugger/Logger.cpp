@@ -38,7 +38,7 @@ namespace ScriptCanvas
 
         void Logger::ClearLog()
         {
-
+            m_logAsset.GetData().Clear();
         }
 
         void Logger::ClearLogExecutionOverride()
@@ -81,9 +81,6 @@ namespace ScriptCanvas
         
         void Logger::SaveToRelativePath(AZStd::string_view path)
         {
-            ExecutionLogAsset asset;
-            asset.SetData(m_log);
-
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
             AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
@@ -92,7 +89,7 @@ namespace ScriptCanvas
             fullpath += ExecutionLogAsset::GetDefaultDirectoryPath();
             fullpath += path;
 
-            AZ_VerifyError("ScriptCanvas", AZ::Utils::SaveObjectToFile(fullpath, AZ::DataStream::ST_XML, &asset), "File failed to save: %s", fullpath.data());
+            AZ_VerifyError("ScriptCanvas", AZ::Utils::SaveObjectToFile(fullpath, AZ::DataStream::ST_XML, &m_logAsset), "File failed to save: %s", fullpath.data());
         }
 
         void Logger::SetLogExecutionOverride(bool value)

@@ -47,26 +47,21 @@ namespace AzQtComponents
             CloseButtonRightMargin = 2,
             ButtonsSpacing = 5,
             ResizeTopMargin = 4,
+            MaxTabTitleWidth = 200
         };
 
         static void drawFrame(QPainter* painter, const QRect& area, bool drawSideBorders, const DockBarColors& colors);
-        static void drawSolidFrame(QPainter* painter, const QRect& area, const QColor& backgroundColor);
         static void drawTabContents(QPainter* painter, const QRect& area, const DockBarColors& colors, const QString& title);
-        static int getTitleMinWidth(const QString& title, bool enableTear = true);
+        static QString GetTabTitleElided(const QString& title, int& textWidth);
+        static int GetTabTitleMinWidth(const QString& title, bool enableTear = true);
         static DockBarColors getColors(bool active);
 
         explicit DockBar(QObject* parent = nullptr);
         DockBarColors GetColors(bool active) { return DockBar::getColors(active); }
-        int GetTitleMinWidth(const QString& title, bool enableTear = true) { return DockBar::getTitleMinWidth(title, enableTear); }
-        void DrawSegment(QPainter& painter, const QRect& area,
-            int buttonsX, bool enableTear, bool drawSideBorders, const DockBarColors& colors,
-            const QString& title = QString());
-        void DrawSolidBackgroundSegment(QPainter& painter, const QRect& area,
-            int buttonsX, bool drawAppIcon, const QColor& backgroundColor, const QColor& textColor, const QString& title = QString());
 
     private:
         static int drawIcon(QPainter* painter, int x, const QPixmap& icon);
-        static void drawTitle(QPainter* painter, int leftContentWidth, const QRect& area,
+        static void drawTabTitle(QPainter* painter, int leftContentWidth, const QRect& area,
             int buttonsX, const QColor& color, const QString& title);
         QPixmap m_tearIcon;
         QPixmap m_applicationIcon;

@@ -13,11 +13,13 @@
 #pragma once
 
 #include <AzCore/JSON/document.h>
+#include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/Json/JsonSystemComponent.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/Serialization/Json/StackedString.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -28,10 +30,18 @@ namespace JsonSerializationTests
         : public UnitTest::AllocatorsTestFixture
     {
     public:
+        using ComponentContainer = AZStd::vector<AZ::ComponentDescriptor*>;
+
         void SetUp() override;
         void TearDown() override;
 
+        //! Add one or more system component descriptors to the list of system components that are
+        //! are reflected to the Serialize Context and Json Registration Context. By default the
+        //! JsonSystemComponent will be added.
+        virtual void AddSystemComponentDescriptors(ComponentContainer& systemComponents);
+        //! Used to register additional reflected classes unique for tests.
         virtual void RegisterAdditional(AZStd::unique_ptr<AZ::SerializeContext>& serializeContext);
+        //! Used to register additional serializers unique for tests.
         virtual void RegisterAdditional(AZStd::unique_ptr<AZ::JsonRegistrationContext>& serializeContext);
 
         virtual rapidjson::Value CreateExplicitDefault();
@@ -39,6 +49,9 @@ namespace JsonSerializationTests
 
         virtual void Expect_DocStrEq(AZStd::string_view testString);
         virtual void Expect_DocStrEq(AZStd::string_view testString, bool stripWhitespace);
+        virtual void Expect_DocStrEq(rapidjson::Value& lhs, rapidjson::Value& rhs);
+
+        virtual void ResetJsonContexts();
 
         virtual rapidjson::Value TypeToInjectionValue(rapidjson::Type type);
         //! Injects a new value before every field/value in an Object/Array. This is recursively called.
@@ -52,13 +65,16 @@ namespace JsonSerializationTests
         //! @param typeToInject The type of the RapidJSON that will be inject in the place of the original value.
         virtual void CorruptFields(rapidjson::Value& value, rapidjson::Type typeToInject);
 
+        AZStd::vector<AZ::ComponentDescriptor*> m_systemComponents;
         AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
         AZStd::unique_ptr<AZ::JsonRegistrationContext> m_jsonRegistrationContext;
-        AZStd::unique_ptr<AZ::JsonSystemComponent> m_jsonSystemComponent;
         AZStd::unique_ptr<rapidjson::Document> m_jsonDocument;
 
-        AZ::JsonSerializerSettings m_serializationSettings;
-        AZ::JsonDeserializerSettings m_deserializationSettings;
-        AZ::StackedString m_path{ AZ::StackedString::Format::ContextPath };
+        AZStd::unique_ptr<AZ::JsonSerializerSettings> m_serializationSettings;
+        AZStd::unique_ptr<AZ::JsonDeserializerSettings> m_deserializationSettings;
+        AZStd::unique_ptr<AZ::JsonSerializerContext> m_jsonSerializationContext;
+        AZStd::unique_ptr<AZ::JsonDeserializerContext> m_jsonDeserializationContext;
     };
-} // namespace UnitTest
+} // namespace JsonSerializationTests
+
+#include <Tests/Serialization/Json/BaseJsonSerializerFixture.cpp>

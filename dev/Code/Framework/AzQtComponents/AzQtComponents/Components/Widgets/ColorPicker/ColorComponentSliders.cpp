@@ -85,7 +85,6 @@ ColorComponentEdit::ColorComponentEdit(const QString& labelText, int softMaximum
 
     m_spinBox->setRange(0, hardMaximum);
     m_spinBox->setFixedWidth(32);
-    m_spinBox->setAlignment(Qt::AlignHCenter);
     connect(m_spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &ColorComponentEdit::spinValueChanged);
     connect(m_spinBox, &SpinBox::valueChangeBegan, this, &ColorComponentEdit::valueChangeBegan);
     connect(m_spinBox, &SpinBox::valueChangeEnded, this, &ColorComponentEdit::valueChangeEnded);

@@ -42,6 +42,7 @@ public:
     void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
 
     static void RegisterViewClass();
+    static void RegisterViewClass(const AZ::Data::Asset<AZ::Data::AssetData>& asset);
 
 protected Q_SLOTS:
     void OnAssetSaveFailed(const AZStd::string& error);

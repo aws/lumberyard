@@ -1,0 +1,45 @@
+<Material MtlFlags="557312" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Proxy_COL" MtlFlags="525440" DccMaterialHash="0" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="0.40000001,0.40000001,0.40000001,1" Specular="0.5,0.5,0.5,1" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="Airship_Hull_Tile_02" MtlFlags="524416" Shader="Illum" GenMask="4000010000041" StringGenMask="%ALLOW_SILHOUETTE_POM%DETAIL_MAPPING%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.40724024,0.56471163,0.44520122,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_wall_03_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_wall_01_ddna.tif"/>
+    <Texture Map="Detail" File="objects/rocks/rock03_detail.tif">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" RotateU="32.997437"/>
+    </Texture>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" DetailDiffuseScale="1" SSSIndex="0" DetailBumpScale="0" DetailGlossScale="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Hull_Struts" MtlFlags="524416" Shader="Illum" GenMask="4000010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.3185468,0.3185468,0.3185468,1" Specular="0.12743771,0.12743771,0.12743771,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_strut_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_strut_01_ddna.tif"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Details_01" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0.49693301,0.49693301,0.49693301,0.078431375" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_details_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_details_01_ddna.tif"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Hull_Tile_01" MtlFlags="524416" Shader="Illum" GenMask="400001A000041" StringGenMask="%ALLOW_SILHOUETTE_POM%DETAIL_MAPPING%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.91309881,0.84687334,0.76052463,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_tiles_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_tiles_02_ddna.tif"/>
+    <Texture Map="Detail" File="objects/rocks/rock03_detail.tif">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" RotateV="45"/>
+    </Texture>
+    <Texture Map="Heightmap" File="objects/airship/airship_tiles_01_displ.tif"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" PomDisplacement="0.0060000001" DetailDiffuseScale="0.75" SSSIndex="0" DetailBumpScale="0" SelfShadowStrength="3" ObmDisplacement="0.0040000002" HeightBias="1" DetailGlossScale="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

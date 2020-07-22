@@ -34,6 +34,8 @@ namespace AzQtComponents
 {
     const int g_errorBorderWidth = 1;
 
+    static const QString g_customCheckStateClass = QStringLiteral("CustomCheckState");
+
     class ComboBoxWatcher : public QObject
     {
     public:
@@ -192,7 +194,17 @@ namespace AzQtComponents
             if (option && m_combo && m_combo->view()->selectionMode() == QAbstractItemView::SingleSelection)
             {
                 option->features |= QStyleOptionViewItem::HasCheckIndicator;
-                option->checkState = m_combo->currentIndex() == index.row() ? Qt::Checked : Qt::Unchecked;
+                auto *style = qobject_cast<Style *>(m_combo->style());
+                Qt::CheckState checkState;
+                if (style && style->hasClass(m_combo, g_customCheckStateClass))
+                {
+                    checkState = index.data(Qt::CheckStateRole).value<Qt::CheckState>();
+                }
+                else
+                {
+                    checkState = m_combo->currentIndex() == index.row() ? Qt::Checked : Qt::Unchecked;
+                }
+                option->checkState = checkState;
             }
         }
 
@@ -209,6 +221,7 @@ namespace AzQtComponents
         ConfigHelpers::read<QString>(settings, QStringLiteral("ErrorImage"), config.errorImage);
         ConfigHelpers::read<QSize>(settings, QStringLiteral("ErrorImageSize"), config.errorImageSize);
         ConfigHelpers::read<int>(settings, QStringLiteral("ErrorImageSpacing"), config.errorImageSpacing);
+        ConfigHelpers::read<int>(settings, QStringLiteral("ItemPadding"), config.itemPadding);
 
         return config;
     }
@@ -222,6 +235,7 @@ namespace AzQtComponents
         config.errorImage = QStringLiteral(":/stylesheet/img/UI20/lineedit-error.svg");
         config.errorImageSize = {16, 16};
         config.errorImageSpacing = 4;
+        config.itemPadding = 2 + 22 + 24; // padding left + checkmark width + padding right
 
         return config;
     }
@@ -340,6 +354,13 @@ namespace AzQtComponents
         return comboBoxSize;
     }
 
+    QRect ComboBox::comboBoxListBoxPopupRect(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config)
+    {
+        QRect r = style->QCommonStyle::subControlRect(QStyle::CC_ComboBox, static_cast<const QStyleOptionComplex*>(option), QStyle::SC_ComboBoxListBoxPopup, widget);
+        r.setWidth(r.width() + config.itemPadding);
+        return r;
+    }
+
     bool ComboBox::drawComboBox(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config)
     {
         Q_UNUSED(config);
@@ -401,7 +422,7 @@ namespace AzQtComponents
             return false;
         }
 
-        if (opt->checkState == Qt::Checked)
+        if (opt->checkState != Qt::Unchecked)
         {
             style->QProxyStyle::drawPrimitive(QStyle::PE_IndicatorViewItemCheck, opt, painter, widget);
         }
@@ -422,6 +443,11 @@ namespace AzQtComponents
             toolButton->resize(config.errorImageSize.width(), config.errorImageSize.height());
             toolButton->hide();
         }
+    }
+
+    void ComboBox::addCustomCheckStateStyle(QComboBox* cb)
+    {
+        Style::addClass(cb, g_customCheckStateClass);
     }
 
 } // namespace AzQtComponents

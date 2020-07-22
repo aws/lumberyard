@@ -58,38 +58,26 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-            {
-                mNodeIndexA             = MCORE_INVALIDINDEX32;
-                mNodeIndexB             = MCORE_INVALIDINDEX32;
-                mNodeIndexC             = MCORE_INVALIDINDEX32;
-                mEndEffectorNodeIndex   = MCORE_INVALIDINDEX32;
-                mAlignNodeIndex         = MCORE_INVALIDINDEX32;
-                mBendDirNodeIndex       = MCORE_INVALIDINDEX32;
-                mMustUpdate             = true;
-                mIsValid                = false;
-            }
-            ~UniqueData() {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
+
+            void Update() override;
 
         public:
-            uint32  mNodeIndexA;
-            uint32  mNodeIndexB;
-            uint32  mNodeIndexC;
-            uint32  mEndEffectorNodeIndex;
-            uint32  mAlignNodeIndex;
-            uint32  mBendDirNodeIndex;
-            bool    mMustUpdate;
-            bool    mIsValid;
+            uint32 mNodeIndexA = InvalidIndex32;
+            uint32 mNodeIndexB = InvalidIndex32;
+            uint32 mNodeIndexC = InvalidIndex32;
+            uint32 mEndEffectorNodeIndex = InvalidIndex32;
+            uint32 mAlignNodeIndex = InvalidIndex32;
+            uint32 mBendDirNodeIndex = InvalidIndex32;
         };
 
         BlendTreeTwoLinkIKNode();
         ~BlendTreeTwoLinkIKNode();
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         bool GetSupportsVisualization() const override          { return true; }
         bool GetHasOutputPose() const override                  { return true; }
         bool GetSupportsDisable() const override                { return true; }
@@ -107,10 +95,14 @@ namespace EMotionFX
         void SetRelativeBendDir(bool relativeBendDir);
         void SetExtractBendDir(bool extractBendDir);
 
+        const AZStd::string& GetEndJointName() const { return m_endNodeName; }
+        const AZStd::string& GetEndEffectorJointName() const { return m_endEffectorNodeName; }
+        const AZStd::string& GetBendDirJointName() const { return m_bendDirNodeName; }
+        const NodeAlignmentData& GetAlignToJointData() const { return m_alignToNode; }
+
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
 
         static void CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Matrix3x3* outForward);

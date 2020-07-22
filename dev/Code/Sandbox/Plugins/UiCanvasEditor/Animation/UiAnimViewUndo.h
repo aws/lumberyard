@@ -150,6 +150,26 @@ protected:
     virtual void Redo() override;
 };
 
+/** Undo for changing current sequence
+*/
+class CUndoSequenceChange
+    : public UiAnimUndoObject
+{
+public:
+    CUndoSequenceChange(CUiAnimViewSequence* oldSequence, CUiAnimViewSequence* newSequence);
+
+protected:
+    int GetSize() override { return sizeof(*this); }
+    const char* GetDescription() override { return "Undo Change Sequence"; }
+
+    virtual void ChangeSequence(CUiAnimViewSequence* sequence);
+    void Undo(bool undo) override;
+    void Redo() override;
+
+    CUiAnimViewSequence* m_oldSequence;
+    CUiAnimViewSequence* m_newSequence;
+};
+
 /** Base class for anim node add/remove
 */
 class CAbstractUndoAnimNodeTransaction
@@ -297,4 +317,118 @@ private:
     CUiAnimViewAnimNode* m_pNode;
     string m_newName;
     string m_oldName;
+};
+
+/** Base class for track event transactions
+*/
+class CAbstractUndoTrackEventTransaction
+    : public UiAnimUndoObject
+{
+public:
+    CAbstractUndoTrackEventTransaction(CUiAnimViewSequence* pSequence, const QString& eventName);
+
+protected:
+    CUiAnimViewSequence* m_pSequence;
+    QString m_eventName;
+};
+
+/** Undo for adding a track event
+*/
+class CUndoTrackEventAdd
+    : public CAbstractUndoTrackEventTransaction
+{
+public:
+    CUndoTrackEventAdd(CUiAnimViewSequence* pSequence, const QString& eventName)
+        : CAbstractUndoTrackEventTransaction(pSequence, eventName) {}
+
+protected:
+    int GetSize() override { return sizeof(*this); };
+    const char* GetDescription() override { return "Undo Add Track Event"; };
+
+    void Undo(bool bUndo) override;
+    void Redo() override;
+};
+
+/** Undo for removing a track event
+*/
+class CUndoTrackEventRemove
+    : public CAbstractUndoTrackEventTransaction
+{
+public:
+    CUndoTrackEventRemove(CUiAnimViewSequence* pSequence, const QString& eventName);
+
+protected:
+    int GetSize() override { return sizeof(*this); };
+    const char* GetDescription() override { return "Undo Remove Track Event"; };
+
+    void Undo(bool bUndo) override;
+    void Redo() override;
+
+    CUiAnimViewKeyBundle m_changedKeys;
+};
+
+/** Undo for renaming a track event
+*/
+class CUndoTrackEventRename
+    : public CAbstractUndoTrackEventTransaction
+{
+public:
+    CUndoTrackEventRename(CUiAnimViewSequence* pSequence, const QString& eventName, const QString& newEventName);
+
+protected:
+    int GetSize() override { return sizeof(*this); };
+    const char* GetDescription() override { return "Undo Rename Track Event"; };
+
+    void Undo(bool bUndo) override;
+    void Redo() override;
+
+    QString m_newEventName;
+};
+
+/** Base class for undoing moving a track event
+*/
+class CAbstractUndoTrackEventMove
+    : public CAbstractUndoTrackEventTransaction
+{
+public:
+    CAbstractUndoTrackEventMove(CUiAnimViewSequence* pSequence, const QString& eventName)
+        : CAbstractUndoTrackEventTransaction(pSequence, eventName) {}
+
+protected:
+    void MoveUp();
+    void MoveDown();
+};
+
+/** Undo for moving up a track event
+*/
+class CUndoTrackEventMoveUp
+    : public CAbstractUndoTrackEventMove
+{
+public:
+    CUndoTrackEventMoveUp(CUiAnimViewSequence* pSequence, const QString& eventName)
+        : CAbstractUndoTrackEventMove(pSequence, eventName) {}
+
+protected:
+    int GetSize() override { return sizeof(*this); };
+    const char* GetDescription() override { return "Undo Move Up Track Event"; };
+
+    void Undo(bool bUndo) override;
+    void Redo() override;
+};
+
+/** Undo for moving down a track event
+*/
+class CUndoTrackEventMoveDown
+    : public CAbstractUndoTrackEventMove
+{
+public:
+    CUndoTrackEventMoveDown(CUiAnimViewSequence* pSequence, const QString& eventName)
+        : CAbstractUndoTrackEventMove(pSequence, eventName) {}
+
+protected:
+    int GetSize() override { return sizeof(*this); };
+    const char* GetDescription() override { return "Undo Move Down Track Event"; };
+
+    void Undo(bool bUndo) override;
+    void Redo() override;
 };

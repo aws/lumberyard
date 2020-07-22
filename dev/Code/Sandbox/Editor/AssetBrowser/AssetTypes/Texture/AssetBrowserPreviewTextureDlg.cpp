@@ -19,7 +19,9 @@
 #include "AssetTextureItem.h"
 
 #include <AssetBrowser/AssetTypes/Texture/ui_AssetBrowserPreviewTextureDlg.h>
-#include <QColorDialog>
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 const int kExpandedTexturePreviewPanelHeight = 111;
 const int kCollapsedTexturePreviewPanelHeight = 25;
@@ -192,12 +194,8 @@ void CAssetBrowserPreviewTextureDlg::OnCbnSelendokComboTexturePreviewBackcolor()
 
     case 3:
     {
-        QColor color = QColorDialog::getColor(m_customBackColor);
-        if (color.isValid())
-        {
-            m_pTexture->m_previewBackColor = m_customBackColor = color;
-        }
-
+        const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, AzQtComponents::fromQColor(m_customBackColor), tr("Select Color"));
+        m_pTexture->m_previewBackColor = m_customBackColor = AzQtComponents::toQColor(color);
         break;
     }
     }

@@ -33,7 +33,7 @@ namespace AzQtComponents
         : public SearchTypeSelector
     {
     public:
-        OutlinerSearchTypeSelector(QPushButton* parent = nullptr);
+        OutlinerSearchTypeSelector(QWidget* parent = nullptr);
 
     protected:
         // can be used to override the logic when adding items in RepopulateDataModel

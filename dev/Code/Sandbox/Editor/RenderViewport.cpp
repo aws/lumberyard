@@ -99,6 +99,8 @@
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
+
 CRenderViewport* CRenderViewport::m_pPrimaryViewport = nullptr;
 
 #if AZ_TRAIT_OS_PLATFORM_APPLE
@@ -2160,6 +2162,11 @@ float CRenderViewport::GridSize()
     return grid->scale * grid->size;
 }
 
+bool CRenderViewport::ShowGrid()
+{
+    return gSettings.viewports.bShowGridGuide;
+}
+
 bool CRenderViewport::AngleSnappingEnabled()
 {
     return GetViewManager()->GetGrid()->IsAngleSnapEnabled();
@@ -3224,6 +3231,8 @@ Vec3 CRenderViewport::WorldToView3D(const Vec3& wp, int nFlags) const
     {
         out.x = (x / 100) * m_rcClient.width();
         out.y = (y / 100) * m_rcClient.height();
+        out.x /= QHighDpiScaling::factor(windowHandle()->screen());
+        out.y /= QHighDpiScaling::factor(windowHandle()->screen());
         out.z = z;
     }
     return out;

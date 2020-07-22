@@ -499,13 +499,18 @@ QVariant OutlinerListModel::dataForVisibility(const QModelIndex& index, int role
 
     switch (role)
     {
-    case Qt::CheckStateRole:
-    {
-        return AzToolsFramework::IsEntitySetToBeVisible(id) ? Qt::Checked : Qt::Unchecked;
-    }
-
-    case Qt::ToolTipRole:
-        return QString("Show/Hide Entity");
+        case Qt::CheckStateRole:
+        {
+            return AzToolsFramework::IsEntitySetToBeVisible(id) ? Qt::Checked : Qt::Unchecked;
+        }
+        case Qt::ToolTipRole:
+        {
+            return QString("Show/Hide Entity");
+        }
+        case Qt::SizeHintRole:
+        {
+            return QSize(20, 20);
+        }
     }
 
     return dataForAll(index, role);
@@ -517,23 +522,28 @@ QVariant OutlinerListModel::dataForLock(const QModelIndex& index, int role) cons
 
     switch (role)
     {
-    case Qt::CheckStateRole:
-    {
-        bool isLocked = false;
-        // Lock state is tracked in 3 places:
-        // EditorLockComponent, EditorEntityModel, and ComponentEntityObject.
-        // In addition to that, entities that are in layers can have the layer's lock state override their own.
-        // Retrieving the lock state from the lock component is ideal for drawing the lock icon in the outliner because
-        // the outliner needs to show that specific entity's lock state, and not the actual final lock state including the layer behavior.
-        // The EditorLockComponent only knows about the specific entity's lock state and not the hierarchy.
-        AzToolsFramework::EditorLockComponentRequestBus::EventResult(
-            isLocked, id, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
+        case Qt::CheckStateRole:
+        {
+            bool isLocked = false;
+            // Lock state is tracked in 3 places:
+            // EditorLockComponent, EditorEntityModel, and ComponentEntityObject.
+            // In addition to that, entities that are in layers can have the layer's lock state override their own.
+            // Retrieving the lock state from the lock component is ideal for drawing the lock icon in the outliner because
+            // the outliner needs to show that specific entity's lock state, and not the actual final lock state including the layer behavior.
+            // The EditorLockComponent only knows about the specific entity's lock state and not the hierarchy.
+            AzToolsFramework::EditorLockComponentRequestBus::EventResult(
+                isLocked, id, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
 
-        return isLocked ? Qt::Checked : Qt::Unchecked;
-    }
-
-    case Qt::ToolTipRole:
-        return QString("Lock/Unlock Entity (Locked means the entity cannot be moved in the viewport)");
+            return isLocked ? Qt::Checked : Qt::Unchecked;
+        }
+        case Qt::ToolTipRole:
+        {
+            return QString("Lock/Unlock Entity (Locked means the entity cannot be moved in the viewport)");
+        }
+        case Qt::SizeHintRole:
+        {
+            return QSize(20, 20);
+        }
     }
 
     return dataForAll(index, role);
@@ -1073,7 +1083,7 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
     for (const AZ::EntityId& entityId : selectedEntityIds)
     {
         bool isEditorEntity = false;
-        EBUS_EVENT_RESULT(isEditorEntity, AzToolsFramework::EditorEntityContextRequestBus, IsEditorEntity, entityId);
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(isEditorEntity, &AzToolsFramework::EditorEntityContextRequests::IsEditorEntity, entityId);
         if (!isEditorEntity)
         {
             return false;
@@ -1385,7 +1395,7 @@ void OutlinerListModel::ProcessEntityUpdates()
 
         if (firstChangeIndex.isValid())
         {
-            // expand to cover all columns:
+            // expand to cover all visible columns:
             lastChangeIndex = createIndex(lastChangeIndex.row(), VisibleColumnCount - 1, lastChangeIndex.internalPointer());
             emit dataChanged(firstChangeIndex, lastChangeIndex);
         }
@@ -2014,8 +2024,15 @@ bool OutlinerListModel::IsInLayerWithProperty(AZ::EntityId entityId, const Layer
     return false;
 }
 
-void OutlinerListModel::OnEntityInitialized(const AZ::EntityId& /*entityId*/)
+void OutlinerListModel::OnEntityInitialized(const AZ::EntityId& entityId)
 {
+    bool isEditorEntity = false;
+    AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(isEditorEntity, &AzToolsFramework::EditorEntityContextRequests::IsEditorEntity, entityId);
+    if (!isEditorEntity)
+    {
+        return;
+    }
+
     if (!m_beginStartPlayInEditor && (m_filterString.size() > 0 || m_componentFilters.size() > 0))
     {
         m_isFilterDirty = true;
@@ -2056,16 +2073,9 @@ void OutlinerListModel::OnStartPlayInEditor()
 ////////////////////////////////////////////////////////////////////////////
 OutlinerItemDelegate::OutlinerItemDelegate(QWidget* parent)
     : QStyledItemDelegate(parent)
-    , m_visibilityCheckBox(parent)
-    , m_lockCheckBox(parent)
-    , m_visibilityCheckBoxWithBorder(parent)
-    , m_lockCheckBoxWithBorder(parent)
-    , m_outlinerSelectionColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"))
+    , m_visibilityCheckBoxes(parent, "Visibility", OutlinerListModel::PartiallyVisibleRole, OutlinerListModel::InInvisibleLayerRole)
+    , m_lockCheckBoxes(parent, "Lock", OutlinerListModel::PartiallyLockedRole, OutlinerListModel::InLockedLayerRole)
 {
-    m_visibilityCheckBoxWithBorder.setObjectName("bordered");
-    m_lockCheckBoxWithBorder.setObjectName("bordered");
-    m_visibilityCheckBoxLayerOverride.setObjectName("visibilityLayerOverride");
-    m_lockCheckBoxLayerOverride.setObjectName("lockLayerOverride");
 }
 
 void OutlinerItemDelegate::DrawLayerStripeAndBorder(QPainter* painter, int stripeX, int top, int bottom, QColor layerBorderColor, QColor layerColor) const
@@ -2093,26 +2103,13 @@ void OutlinerItemDelegate::DrawLayerStripeAndBorder(QPainter* painter, int strip
     painter->restore();
 }
 
-void OutlinerItemDelegate::DrawLayerUI(
-    QPainter* painter,
-    const QStyleOptionViewItem& option,
-    const QModelIndex& index,
-    const AZ::EntityId& entityId,
-    bool isSelected) const
+void OutlinerItemDelegate::DrawLayerUI(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index,
+const AZ::EntityId& entityId, bool isSelected, bool isHovered) const
 {
     if (!painter)
     {
         return;
     }
-
-    static const QColor layerBGColor(GetIEditor()->GetColorByName("LayerBackgroundColor"));
-    static const QColor layerChildBGColor(GetIEditor()->GetColorByName("LayerChildBackgroundColor"));
-
-    static const QColor layerBorderTopColor(GetIEditor()->GetColorByName("LayerBorderTop"));
-    static const QColor layerBorderBottomColor(GetIEditor()->GetColorByName("LayerBorderBottom"));
-
-    static const QColor selectedLayerBGColor(GetIEditor()->GetColorByName("LayerBGSelectionColor"));
-    static const QColor selectedLayerChildBGColor(GetIEditor()->GetColorByName("LayerChildBGSelectionColor"));
 
     bool isLayerEntity = false;
     AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
@@ -2130,15 +2127,15 @@ void OutlinerItemDelegate::DrawLayerUI(
 
     bool isFirstColumn = index.column() == OutlinerListModel::ColumnName;
     bool hasVisibleChildren = index.data(OutlinerListModel::ExpandedRole).value<bool>() && index.model()->hasChildren(index);
-    if (isLayerEntity &&
-        isFirstColumn)
+
+    if (isLayerEntity && isFirstColumn)
     {
         DrawLayerStripeAndBorder(
             painter,
             option.rect.left(),
             option.rect.top(),
             option.rect.bottom(),
-            layerBorderBottomColor,
+            m_outlinerConfig.layerBorderBottomColor,
             layerColor);
     }
 
@@ -2149,10 +2146,11 @@ void OutlinerItemDelegate::DrawLayerUI(
     QModelIndex lastInLayerIndex(index);
     int indentationIfLastInLayer = 0;
 
+    QModelIndex nameColumn = index.sibling(index.row(), OutlinerListModel::Column::ColumnName);
     QModelIndex sibling = index.sibling(index.row() + 1, index.column());
+
     // This row can't be the last in a layer if it has children and is expanded.
-    if (index.data(OutlinerListModel::ExpandedRole).value<bool>() &&
-        index.model()->hasChildren(index))
+    if (index.model()->hasChildren(nameColumn) && nameColumn.data(OutlinerListModel::ExpandedRole).value<bool>())
     {
         continueCheckingLastInLayer = false;
         lastInLayerIndex = QModelIndex();
@@ -2184,12 +2182,17 @@ void OutlinerItemDelegate::DrawLayerUI(
         if (continueCheckingLastInLayer && ancestorEntryType == OutlinerListModel::LayerType)
         {
             // If this ancestor is a layer, and our previous ancestor does not have a sibling, then the index is the last in the layer.
-            indentationIfLastInLayer = ancestorIndentation + indentation;
+            indentationIfLastInLayer = ancestorIndentation;
             QModelIndex previousAncestorSibling = previousAncestor.sibling(previousAncestor.row() + 1, previousAncestor.column());
             if (previousAncestorSibling.isValid())
             {
-                continueCheckingLastInLayer = false;
+                lastInLayerIndex = QModelIndex();
             }
+        }
+
+        if (isInLayer)
+        {
+            continueCheckingLastInLayer = false;
         }
 
         if (ancestorEntryType == OutlinerListModel::LayerType && isFirstColumn)
@@ -2201,7 +2204,7 @@ void OutlinerItemDelegate::DrawLayerUI(
                 stripeX,
                 option.rect.top() - m_layerDividerLineHeight,
                 option.rect.bottom(),
-                layerBorderBottomColor,
+                m_outlinerConfig.layerBorderBottomColor,
                 ancestorLayerColor);
         }
 
@@ -2228,10 +2231,14 @@ void OutlinerItemDelegate::DrawLayerUI(
             layerBGRect.setLeft(layerBGRect.left() + indentation + OutlinerListModel::GetLayerStripeWidth());
         }
         layerBGPath.addRect(layerBGRect);
-        QColor layerBG = isLayerEntity ? layerBGColor : layerChildBGColor;
+        QColor layerBG = isLayerEntity ? m_outlinerConfig.layerBGColor : m_outlinerConfig.layerChildBGColor;
         if (isSelected)
         {
-            layerBG = isLayerEntity ? selectedLayerBGColor : selectedLayerChildBGColor;
+            layerBG = m_outlinerConfig.selectedLayerBGColor;
+        }
+        else if (isHovered)
+        {
+            layerBG = m_outlinerConfig.hoveredLayerBGColor;
         }
         painter->fillPath(layerBGPath, layerBG);
 
@@ -2244,7 +2251,7 @@ void OutlinerItemDelegate::DrawLayerUI(
             {
                 lineTopLeft.setX(lineTopLeft.x() + OutlinerListModel::GetLayerStripeWidth());
             }
-            QPen topLinePen(layerBorderTopColor, m_layerDividerLineHeight);
+            QPen topLinePen(m_outlinerConfig.layerBorderTopColor, m_layerDividerLineHeight);
             painter->setPen(topLinePen);
             painter->drawLine(lineTopLeft, option.rect.topRight());
         }
@@ -2261,7 +2268,7 @@ void OutlinerItemDelegate::DrawLayerUI(
                 }
             }
             int dividerLineHeight = m_layerDividerLineHeight;
-            QPen bottomLinePen(layerBorderBottomColor, dividerLineHeight);
+            QPen bottomLinePen(m_outlinerConfig.layerBorderBottomColor, dividerLineHeight);
             painter->setPen(bottomLinePen);
             painter->drawLine(lineBottomLeft, option.rect.bottomRight());
         }
@@ -2326,52 +2333,64 @@ int OutlinerItemDelegate::GetEntityNameVerticalOffset(const AZ::EntityId& entity
     return -m_layerDividerLineHeight + entityNameOffset;
 }
 
-QString OutlinerItemDelegate::GetColumnHighlightedStylesheet(int column, bool highlighted) const
+OutlinerItemDelegate::CheckboxGroup::CheckboxGroup(QWidget* parent, AZStd::string prefix, const OutlinerListModel::Roles mixedRole, const OutlinerListModel::Roles layerRole)
+    : m_default(parent)
+    , m_mixed(parent)
+    , m_layerOverride(parent)
+    , m_defaultHover(parent)
+    , m_mixedHover(parent)
+    , m_layerOverrideHover(parent)
+    , m_mixedRole(mixedRole)
+    , m_layerRole(layerRole)
 {
-    QString stylesheet;
-    QString color;
-    QString checkBoxName;
+    m_default.setObjectName(prefix.data());
+    m_mixed.setObjectName((prefix + "Mixed").data());
+    m_layerOverride.setObjectName((prefix + "LayerOverride").data());
 
-    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
+    m_defaultHover.setObjectName((prefix + "Hover").data());
+    m_mixedHover.setObjectName((prefix + "MixedHover").data());
+    m_layerOverrideHover.setObjectName((prefix + "LayerOverrideHover").data());
+}
 
-    if (column == OutlinerListModel::ColumnVisibilityToggle)
+OutlinerCheckBox* OutlinerItemDelegate::CheckboxGroup::SelectCheckboxToRender(const QModelIndex& index, bool isHovered)
+{
+    // LayerOverride
+    if (index.data(m_layerRole).value<bool>())
     {
-        checkBoxName = "OutlinerVisibilityCheckBox";
+        if (isHovered)
+        {
+            return &m_layerOverrideHover;
+        }
+        else
+        {
+            return &m_layerOverride;
+        }
     }
-    else if (column == OutlinerListModel::ColumnLockToggle)
+    // Mixed
+    else if (index.data(m_mixedRole).value<bool>())
     {
-        checkBoxName = "OutlinerLockCheckBox";
+        if (isHovered)
+        {
+            return &m_mixedHover;
+        }
+        else
+        {
+            return &m_mixed;
+        }
+    }
+    //Default
+    if (isHovered)
+    {
+        return &m_defaultHover;
     }
     else
     {
-        return "";
+        return &m_default;
     }
-
-    if (highlighted)
-    {
-        color = outlinerHighlightColor.name();
-    }
-    else
-    {
-        color = "transparent";
-    }
-
-    stylesheet = QString("%1{background-color: %2} %1::indicator{background-color: %2}").arg(checkBoxName).arg(color);
-
-    return stylesheet;
 }
 
 void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
-    static const QColor sliceRootBackgroundColor(GetIEditor()->GetColorByName("SliceRootBackgroundColor"));
-    static const QColor sliceRootBorderColor(GetIEditor()->GetColorByName("SliceRootBorderColor"));
-
-    static const QColor selectedSliceRootBackgroundColor(GetIEditor()->GetColorByName("SelectedSliceRootBackgroundColor"));
-    static const QColor selectedSliceRootBorderColor(GetIEditor()->GetColorByName("SelectedSliceRootBorderColor"));
-
-    static const QColor sliceEntityColor(GetIEditor()->GetColorByName("SliceEntityColor"));
-    static const QColor sliceOverrideColor(GetIEditor()->GetColorByName("SliceOverrideColor"));
-
     bool entityHasOverrides = false, childrenHaveOverrides = false, isSliceEntity = false, isLayerEntity = false;
 
     AZ::EntityId entityId(index.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
@@ -2386,10 +2405,9 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
     const bool sliceHasOverrides = (entityHasOverrides || childrenHaveOverrides);
 
-    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
-
     const bool isSelected = (option.state & QStyle::State_Selected);
-    if (isSelected)
+    const bool isHovered = (option.state & QStyle::State_MouseOver);
+    if (isSelected || isHovered)
     {
         bool isLayerEntity = false;
         AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
@@ -2402,21 +2420,27 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         {
             selectionRect.setLeft(selectionRect.left() + OutlinerTreeView::GetLayerSquareSize());
         }
+
         QPainterPath path;
-        path.addRect(selectionRect);
-        painter->fillPath(path, outlinerHighlightColor);
+        path.addRect(option.rect);
+        if (isSelected)
+        {
+            painter->fillPath(path, m_outlinerConfig.outlinerSelectionColor);
+        }
+        else
+        {
+            painter->fillPath(path, m_outlinerConfig.outlinerHoverColor);
+        }
     }
 
-    DrawLayerUI(painter, option, index, entityId, isSelected);
+    DrawLayerUI(painter, option, index, entityId, isSelected, isHovered);
 
     QPalette checkboxPalette;
     QColor transparentColor(0, 0, 0, 0);
     checkboxPalette.setColor(QPalette::ColorRole::Background, transparentColor);
 
     const bool isSliceRoot = index.data(OutlinerListModel::SliceBackgroundRole).value<bool>();
-
     const int slicePillCornerRadius = 4;
-
 
     // We're only using these check boxes as renderers so their actual state doesn't matter.
     // We can set it right before we draw using information from the model data.
@@ -2425,25 +2449,12 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         painter->save();
         painter->translate(option.rect.topLeft());
 
-        OutlinerVisibilityCheckBox* checkboxToRender = &m_visibilityCheckBox;
-
-        if (index.data(OutlinerListModel::InInvisibleLayerRole).value<bool>())
-        {
-            m_visibilityCheckBoxLayerOverride.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
-            checkboxToRender = &m_visibilityCheckBoxLayerOverride;
-        }
-        else if (index.data(OutlinerListModel::PartiallyVisibleRole).value<bool>())
-        {
-            m_visibilityCheckBoxWithBorder.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
-            checkboxToRender = &m_visibilityCheckBoxWithBorder;
-        }
-        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
-        checkboxToRender->setChecked(checked);
+        OutlinerCheckBox* checkboxToRender = m_visibilityCheckBoxes.SelectCheckboxToRender(index, isHovered);
+        checkboxToRender->setChecked(index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked);
         checkboxToRender->setPalette(checkboxPalette);
         checkboxToRender->render(painter);
 
         painter->restore();
-
         return;
     }
 
@@ -2452,20 +2463,8 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         painter->save();
         painter->translate(option.rect.topLeft());
 
-        OutlinerLockCheckBox* checkboxToRender = &m_lockCheckBox;
-
-        if (index.data(OutlinerListModel::InLockedLayerRole).value<bool>())
-        {
-            m_lockCheckBoxLayerOverride.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
-            checkboxToRender = &m_lockCheckBoxLayerOverride;
-        }
-        else if (index.data(OutlinerListModel::PartiallyLockedRole).value<bool>())
-        {
-            m_lockCheckBoxWithBorder.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
-            checkboxToRender = &m_lockCheckBoxWithBorder;
-        }
-        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
-        checkboxToRender->setChecked(checked);
+        OutlinerCheckBox* checkboxToRender = m_lockCheckBoxes.SelectCheckboxToRender(index, isHovered);
+        checkboxToRender->setChecked(index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked);
         checkboxToRender->setPalette(checkboxPalette);
         checkboxToRender->render(painter);
 
@@ -2499,9 +2498,9 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             painter->setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
             path.addRoundedRect(backgroundBoxRect, slicePillCornerRadius, slicePillCornerRadius);
-            QPen pen(sliceRootBorderColor, 1);
+            QPen pen(m_outlinerConfig.sliceRootBorderColor, 1);
             painter->setPen(pen);
-            painter->fillPath(path, sliceRootBackgroundColor);
+            painter->fillPath(path, m_outlinerConfig.sliceRootBackgroundColor);
             painter->restore();
         }
 
@@ -2511,19 +2510,29 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             && index.data(OutlinerListModel::ChildSelectedRole).template value<bool>())
         {
             QPainterPath path;
-            path.addRoundedRect(backgroundBoxRect, slicePillCornerRadius, slicePillCornerRadius);
+
+            if (isSliceRoot)
+            {
+                path.addRoundedRect(backgroundBoxRect, slicePillCornerRadius, slicePillCornerRadius);
+            }
+            else
+            {
+                auto newRect = option.rect;
+                newRect.setHeight(newRect.height() - 1.0);
+                path.addRect(newRect);
+            }
 
             // Get the foreground color of the current object to draw our sub-object-selected box
             auto targetColor = index.data(Qt::ForegroundRole).value<QBrush>().color();
             if (isSliceEntity)
             {
-                targetColor = (sliceHasOverrides ? sliceOverrideColor : sliceEntityColor);
+                targetColor = (sliceHasOverrides ? m_outlinerConfig.sliceOverrideColor : m_outlinerConfig.sliceEntityColor);
             }
-            QPen pen(targetColor, 2);
+            QPen pen(targetColor, 1);
 
             // Alter the dash pattern available for better visual appeal
             QVector<qreal> dashes;
-            dashes << 3 << 5;
+            dashes << 8 << 2;
             pen.setStyle(Qt::PenStyle::DashLine);
             pen.setDashPattern(dashes);
 
@@ -2543,9 +2552,9 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             painter->setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
             path.addRoundedRect(backgroundBoxRect, 4, 4);
-            QPen pen(selectedSliceRootBorderColor, sliceBorderHeight);
+            QPen pen(m_outlinerConfig.selectedSliceRootBorderColor, sliceBorderHeight);
             painter->setPen(pen);
-            painter->fillPath(path, selectedSliceRootBackgroundColor);
+            painter->fillPath(path, m_outlinerConfig.selectedSliceRootBackgroundColor);
             painter->drawPath(path);
             painter->restore();
         }
@@ -2648,57 +2657,23 @@ QSize OutlinerItemDelegate::sizeHint(const QStyleOptionViewItem& option, const Q
 
     if (index.column() == OutlinerListModel::ColumnVisibilityToggle || index.column() == OutlinerListModel::ColumnLockToggle)
     {
-        sh.setWidth(sh.height());
+        sh.setWidth(m_toggleColumnWidth);
     }
 
     return sh;
 }
 
-OutlinerCheckBox* OutlinerItemDelegate::setupCheckBox(const QStyleOptionViewItem& option, const QModelIndex& index, const QColor& backgroundColor, const bool isLayerEntity) const
+bool OutlinerItemDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index)
 {
-    bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
-    OutlinerCheckBox* usedBox = nullptr;
-
-    QPalette checkboxPalette;
-
-    checkboxPalette.setColor(QPalette::ColorRole::Background, backgroundColor);
-
-    if (index.column() == OutlinerListModel::ColumnVisibilityToggle)
+    if (event->type() == QEvent::MouseButtonPress &&
+        (index.column() == OutlinerListModel::Column::ColumnVisibilityToggle || index.column() == OutlinerListModel::Column::ColumnLockToggle))
     {
-        if (index.data(OutlinerListModel::InInvisibleLayerRole).value<bool>())
-        {
-            usedBox = &m_visibilityCheckBoxLayerOverride;
-        }
-        else if (index.data(OutlinerListModel::PartiallyVisibleRole).value<bool>() && !isLayerEntity)
-        {
-            usedBox = &m_visibilityCheckBoxWithBorder;
-        }
-        else
-        {
-            usedBox = &m_visibilityCheckBox;
-        }
-    }
-    else if (index.column() == OutlinerListModel::ColumnLockToggle)
-    {
-        if (index.data(OutlinerListModel::InLockedLayerRole).value<bool>())
-        {
-            usedBox = &m_lockCheckBoxLayerOverride;
-        }
-        else if (index.data(OutlinerListModel::PartiallyLockedRole).value<bool>() && !isLayerEntity)
-        {
-            usedBox = &m_lockCheckBoxWithBorder;
-        }
-        else
-        {
-            usedBox = &m_lockCheckBox;
-        }
+        // Do not propagate click to TreeView if the user clicks the visibility or lock toggles
+        // This prevents selection from changing if a toggle is clicked
+        return true;
     }
 
-    usedBox->resize(option.rect.size());
-    usedBox->setChecked(checked);
-    usedBox->setPalette(checkboxPalette);
-
-    return usedBox;
+    return QStyledItemDelegate::editorEvent(event, model, option, index);
 }
 
 OutlinerCheckBox::OutlinerCheckBox(QWidget* parent)
@@ -2712,17 +2687,8 @@ void OutlinerCheckBox::draw(QPainter* painter)
 {
     QStyleOptionButton opt;
     initStyleOption(&opt);
+    opt.rect.setWidth(m_toggleColumnWidth);
     style()->drawControl(QStyle::CE_CheckBox, &opt, painter, this);
-}
-
-OutlinerVisibilityCheckBox::OutlinerVisibilityCheckBox(QWidget* parent)
-    : OutlinerCheckBox(parent)
-{
-}
-
-OutlinerLockCheckBox::OutlinerLockCheckBox(QWidget* parent)
-    : OutlinerCheckBox(parent)
-{
 }
 
 #include <UI/Outliner/OutlinerListModel.moc>

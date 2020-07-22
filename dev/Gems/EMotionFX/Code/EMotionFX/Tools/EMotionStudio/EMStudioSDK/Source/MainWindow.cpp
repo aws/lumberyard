@@ -30,8 +30,11 @@
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <AzQtComponents/Components/FancyDocking.h>
+
 // include Qt related
 #include <QAbstractEventDispatcher>
+#include <QComboBox>
 #include <QDesktopServices>
 #include <QDir>
 #include <QLabel>
@@ -64,7 +67,6 @@ AZ_PUSH_DISABLE_WARNING(4267, "-Wconversion")
 #include <ISystem.h>
 AZ_POP_DISABLE_WARNING
 #include <LyViewPaneNames.h>
-#include <MysticQt/Source/ComboBox.h>
 
 namespace EMStudio
 {
@@ -176,10 +178,11 @@ namespace EMStudio
 
 
     MainWindow::MainWindow(QWidget* parent, Qt::WindowFlags flags)
-        : QMainWindow(parent, flags)
+        : AzQtComponents::DockMainWindow(parent, flags)
         , m_prevSelectedActor(nullptr)
         , m_prevSelectedActorInstance(nullptr)
         , m_undoMenuCallback(nullptr)
+        , m_fancyDockingManager(new AzQtComponents::FancyDocking(this, "emotionstudiosdk"))
     {
         mLoadingOptions                 = false;
         mAutosaveTimer                  = nullptr;
@@ -298,15 +301,21 @@ namespace EMStudio
 
         // create the menu bar
         QWidget* menuWidget = new QWidget();
-        QHBoxLayout* menuLayout = new QHBoxLayout(menuWidget);
+        menuWidget->setObjectName("EMFX_Menu");
 
-        QMenuBar* menuBar = new QMenuBar(menuWidget);
-        menuBar->setStyleSheet("QMenuBar { min-height: 10px;}"); // menu fix (to get it working with the Ly style)
+        // Give our custom menu widget the same size policy and minimum height as the default menu bar,
+        // otherwise it will get shrunk
+        menuWidget->setMinimumHeight(menuBar()->height());
+        menuWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+
+        QHBoxLayout* menuLayout = new QHBoxLayout(menuWidget);
         menuLayout->setMargin(0);
         menuLayout->setSpacing(0);
+
+        QMenuBar* menuBar = new QMenuBar(menuWidget);
         menuLayout->addWidget(menuBar);
 
-        mApplicationMode = new MysticQt::ComboBox();
+        mApplicationMode = new QComboBox();
         menuLayout->addWidget(mApplicationMode);
 
         setMenuWidget(menuWidget);
@@ -316,11 +325,9 @@ namespace EMStudio
 
         // reset action
         mResetAction = menu->addAction(tr("&Reset"), this, &MainWindow::OnReset, QKeySequence::New);
-        mResetAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Refresh.png"));
 
         // save all
         mSaveAllAction = menu->addAction(tr("Save All..."), this, &MainWindow::OnSaveAll, QKeySequence::Save);
-        mSaveAllAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSave.png"));
 
         // disable the reset and save all menus until one thing is loaded
         mResetAction->setDisabled(true);
@@ -330,11 +337,8 @@ namespace EMStudio
 
         // actor file actions
         QAction* openAction = menu->addAction(tr("&Open Actor"), this, &MainWindow::OnFileOpenActor, QKeySequence::Open);
-        openAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
         mMergeActorAction = menu->addAction(tr("&Merge Actor"), this, &MainWindow::OnFileMergeActor, Qt::CTRL + Qt::Key_I);
-        mMergeActorAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
         mSaveSelectedActorsAction = menu->addAction(tr("&Save Selected Actors"), this, &MainWindow::OnFileSaveSelectedActors);
-        mSaveSelectedActorsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSave.png"));
 
         // disable the merge actor menu until one actor is in the scene
         DisableMergeActorMenu();
@@ -349,13 +353,9 @@ namespace EMStudio
         // workspace file actions
         menu->addSeparator();
         QAction* newWorkspaceAction = menu->addAction(tr("New Workspace"), this, &MainWindow::OnFileNewWorkspace);
-        newWorkspaceAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
         QAction* openWorkspaceAction = menu->addAction(tr("Open Workspace"), this, &MainWindow::OnFileOpenWorkspace);
-        openWorkspaceAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
         QAction* saveWorkspaceAction = menu->addAction(tr("Save Workspace"), this, &MainWindow::OnFileSaveWorkspace);
-        saveWorkspaceAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSave.png"));
         QAction* saveWorkspaceAsAction = menu->addAction(tr("Save Workspace As"), this, &MainWindow::OnFileSaveWorkspaceAs);
-        saveWorkspaceAsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSaveAs.png"));
 
         // recent workspace submenu
         mRecentWorkspaces.Init(menu, mOptions.GetMaxRecentFiles(), "Recent Workspaces", "recentWorkspaces");
@@ -363,44 +363,58 @@ namespace EMStudio
 
         // edit menu
         menu = menuBar->addMenu(tr("&Edit"));
+        menu->setObjectName("EMFX.MainWindow.EditMenu");
         m_undoAction = menu->addAction(
-            MysticQt::GetMysticQt()->FindIcon("Images/Menu/Undo.png"),
             tr("Undo"),
             this,
             &MainWindow::OnUndo,
             QKeySequence::Undo
         );
+        m_undoAction->setObjectName("EMFX.MainWindow.UndoAction");
         m_redoAction = menu->addAction(
-            MysticQt::GetMysticQt()->FindIcon("Images/Menu/Redo.png"),
             tr("Redo"),
             this,
             &MainWindow::OnRedo,
             QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z)
         );
+        m_redoAction->setObjectName("EMFX.MainWindow.RedoAction");
         m_undoAction->setDisabled(true);
         m_redoAction->setDisabled(true);
         menu->addSeparator();
         QAction* preferencesAction = menu->addAction(tr("&Preferences"), this, &MainWindow::OnPreferences);
-        preferencesAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Preferences.png"));
+        preferencesAction->setObjectName("EMFX.MainWindow.PrefsAction");
 
         // layouts item
         mLayoutsMenu = menuBar->addMenu(tr("&Layouts"));
+        mLayoutsMenu->setObjectName("LayoutsMenu");
         UpdateLayoutsMenu();
 
         // reset the application mode selection and connect it
         mApplicationMode->setCurrentIndex(-1);
-        connect(mApplicationMode, static_cast<void (MysticQt::ComboBox::*)(const QString&)>(&MysticQt::ComboBox::currentIndexChanged), this, &MainWindow::ApplicationModeChanged);
+        connect(mApplicationMode, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::currentIndexChanged), this, &MainWindow::ApplicationModeChanged);
         mLayoutLoaded = false;
 
         // view item
         menu = menuBar->addMenu(tr("&View"));
         mCreateWindowMenu = menu;
+        mCreateWindowMenu->setObjectName("ViewMenu");
 
         // help menu
         menu = menuBar->addMenu(tr("&Help"));
 
+        menu->addAction("Documentation", this, []
+        {
+            QDesktopServices::openUrl(QUrl("https://docs.aws.amazon.com/lumberyard/"));
+        });        
+
+        menu->addAction("Forums", this, []
+        {
+            QDesktopServices::openUrl(QUrl("https://forums.awsgametech.com/"));
+        });
+
+        menu->addSeparator();
+
         QMenu* folders = menu->addMenu("Folders");
-        folders->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
         folders->addAction("Open autosave folder", this, &MainWindow::OnOpenAutosaveFolder);
         folders->addAction("Open settings folder", this, &MainWindow::OnOpenSettingsFolder);
 
@@ -486,15 +500,42 @@ namespace EMStudio
         QAbstractEventDispatcher::instance()->installNativeEventFilter(mNativeEventFilter);
     }
 
+    MainWindow::MainWindowCommandManagerCallback::MainWindowCommandManagerCallback()
+    {
+        m_skipClearRecorderCommands =
+        {
+            CommandSystem::CommandRecorderClear::s_RecorderClearCmdName,
+            CommandSystem::CommandStopAllMotionInstances::s_stopAllMotionInstancesCmdName,
+            CommandSystem::CommandSelect::s_SelectCmdName,
+            CommandSystem::CommandUnselect::s_unselectCmdName,
+            CommandSystem::CommandClearSelection::s_clearSelectionCmdName,
+            CommandSystem::CommandToggleLockSelection::s_toggleLockSelectionCmdName,
+        };
+    }
+
+    bool MainWindow::MainWindowCommandManagerCallback::NeedToClearRecorder(MCore::Command* command, const MCore::CommandLine& commandLine) const
+    {
+        if (AZStd::find(m_skipClearRecorderCommands.begin(), m_skipClearRecorderCommands.end(), command->GetNameString()) != m_skipClearRecorderCommands.end())
+        {
+            return false;
+        }
+
+        if (command->GetNameString() == "AnimGraphAdjustNode")
+        {
+            if (!commandLine.CheckIfHasParameter("newName") &&
+                !commandLine.CheckIfHasParameter("enabled") &&
+                !commandLine.CheckIfHasParameter("attributesString"))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void MainWindow::MainWindowCommandManagerCallback::OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        if (!AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, true) &&
-            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandStopAllMotionInstances::s_stopAllMotionInstancesCmdName, true) &&
-            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandSelect::s_SelectCmdName, true) &&
-            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandUnselect::s_unselectCmdName, true) &&
-            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandClearSelection::s_clearSelectionCmdName, true) &&
-            !AzFramework::StringFunc::Equal(command->GetName(), CommandSystem::CommandToggleLockSelection::s_toggleLockSelectionCmdName, true) 
-            )
+        if (NeedToClearRecorder(command, commandLine))
         {
             AZStd::string commandResult;
             if (!GetCommandManager()->ExecuteCommandInsideCommand(CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, commandResult))
@@ -1042,9 +1083,10 @@ namespace EMStudio
             if (newPlugin->GetPluginType() == EMStudioPlugin::PLUGINTYPE_DOCKWIDGET)
             {
                 DockWidgetPlugin* dockPlugin = static_cast<DockWidgetPlugin*>(newPlugin);
-                dockPlugin->GetDockWidget()->setFloating(true);
-                const QSize s = dockPlugin->GetInitialWindowSize();
-                dockPlugin->GetDockWidget()->resize(s.width(), s.height());
+                QRect dockRect;
+                dockRect.setSize(dockPlugin->GetInitialWindowSize());
+                dockRect.moveCenter(geometry().center());
+                m_fancyDockingManager->makeDockWidgetFloating(dockPlugin->GetDockWidget(), dockRect);
             }
         }
         else // (checked == false)
@@ -1081,7 +1123,7 @@ namespace EMStudio
             mPreferencesWindow = new PreferencesWindow(this);
             mPreferencesWindow->Init();
 
-            AzToolsFramework::ReflectedPropertyEditor* generalPropertyWidget = mPreferencesWindow->AddCategory("General", "Images/Preferences/General.png", false);
+            AzToolsFramework::ReflectedPropertyEditor* generalPropertyWidget = mPreferencesWindow->AddCategory("General");
             generalPropertyWidget->ClearInstances();
             generalPropertyWidget->InvalidateAll();
 
@@ -1114,7 +1156,7 @@ namespace EMStudio
 
             // Keyboard shortcuts
             KeyboardShortcutsWindow* shortcutsWindow = new KeyboardShortcutsWindow(mPreferencesWindow);
-            mPreferencesWindow->AddCategory(shortcutsWindow, "Keyboard\nShortcuts", "Images/Preferences/KeyboardShortcuts.png", false);
+            mPreferencesWindow->AddCategory(shortcutsWindow, "Keyboard shortcuts");
         }
 
         mPreferencesWindow->exec();
@@ -1336,6 +1378,8 @@ namespace EMStudio
 
             // set the window title to not saved yet
             SetWindowTitleFromFileName("<not saved yet>");
+
+            GetCommandManager()->SetUserOpenedWorkspaceFlag(true);
         }
         else
         {
@@ -1507,16 +1551,24 @@ namespace EMStudio
             return;
         }
 
-        ResetSettingsDialog resetDialog(this);
-        if (resetDialog.exec() == QDialog::Accepted)
+        ResetSettingsDialog* resetDialog = new ResetSettingsDialog(this);
+        resetDialog->setObjectName("EMFX.MainWindow.ResetSettingsDialog");
+        EMStudio::ResetSettingsDialog::connect(resetDialog, &QDialog::finished, [=](int resultCode)
         {
-            Reset(
-                resetDialog.IsActorsChecked(),
-                resetDialog.IsMotionSetsChecked(),
-                resetDialog.IsMotionsChecked(),
-                resetDialog.IsAnimGraphsChecked()
-            );
+            resetDialog->deleteLater();
+
+            if (resultCode == QDialog::Accepted)
+            {
+                Reset(
+                    resetDialog->IsActorsChecked(),
+                    resetDialog->IsMotionSetsChecked(),
+                    resetDialog->IsMotionsChecked(),
+                    resetDialog->IsAnimGraphsChecked()
+                );
+            }
         }
+        );
+        resetDialog->open();
     }
 
     void MainWindow::OnOptionChanged(const AZStd::string& optionChanged)
@@ -1736,6 +1788,7 @@ namespace EMStudio
         {
             // add the remove menu
             QMenu* removeMenu = mLayoutsMenu->addMenu("Remove");
+            removeMenu->setObjectName("RemoveMenu");
 
             // add each layout in the remove menu
             for (uint32 i = 0; i < numLayoutNames; ++i)
@@ -1790,51 +1843,71 @@ namespace EMStudio
         }
     }
 
+    void MainWindow::OnRemoveLayoutButtonClicked(QAbstractButton* button)
+    {
+        if (!m_reallyRemoveLayoutDialog)
+        {
+            return;
+        }
+
+        if (m_reallyRemoveLayoutDialog->buttonRole(m_reallyRemoveLayoutDialog->clickedButton()) == QMessageBox::YesRole)
+        {
+            // try to remove the file
+            QFile file(m_layoutFileBeingRemoved);
+            if (file.remove() == false)
+            {
+                MCore::LogError("Failed to remove layout file '%s'", FromQtString(m_layoutFileBeingRemoved).c_str());
+                m_reallyRemoveLayoutDialog->close();
+                m_reallyRemoveLayoutDialog = nullptr;
+                return;
+            }
+            else
+            {
+                MCore::LogInfo("Successfullly removed layout file '%s'", FromQtString(m_layoutFileBeingRemoved).c_str());
+            }
+
+            // check if the layout removed is the current used
+            if (QString(mOptions.GetApplicationMode().c_str()) == m_removeLayoutNameText)
+            {
+                // find the layout index on the application mode combo box
+                const int layoutIndex = mApplicationMode->findText(m_removeLayoutNameText);
+
+                // set the new layout index, take the previous if the last layout is removed, the next is taken otherwise
+                const int newLayoutIndex = (layoutIndex == (mApplicationMode->count() - 1)) ? layoutIndex - 1 : layoutIndex + 1;
+
+                // select the layout, it also keeps it and saves to config
+                mApplicationMode->setCurrentIndex(newLayoutIndex);
+            }
+
+            // update the layouts menu
+            UpdateLayoutsMenu();
+        }
+
+        m_reallyRemoveLayoutDialog->close();
+        m_reallyRemoveLayoutDialog = nullptr;
+    }
 
     // remove a given layout
     void MainWindow::OnRemoveLayout()
     {
-        // make sure we really want to remove it
-        QMessageBox msgBox(QMessageBox::Warning, "Remove The Selected Layout?", "Are you sure you want to remove the selected layout?<br>Note: This cannot be undone.", QMessageBox::Yes | QMessageBox::No, this);
-        msgBox.setTextFormat(Qt::RichText);
-        if (msgBox.exec() != QMessageBox::Yes)
-        {
-            return;
-        }
-
         // generate the filename
         QAction* action = qobject_cast<QAction*>(sender());
-        const QString filename = QString(MysticQt::GetDataDir().c_str()) + "Layouts/" + action->text() + ".layout";
+        m_layoutFileBeingRemoved = QString(MysticQt::GetDataDir().c_str()) + "Layouts/" + action->text() + ".layout";
+        m_removeLayoutNameText = action->text();
 
-        // try to remove the file
-        QFile file(filename);
-        if (file.remove() == false)
-        {
-            MCore::LogError("Failed to remove layout file '%s'", FromQtString(filename).c_str());
-            return;
-        }
-        else
-        {
-            MCore::LogInfo("Successfullly removed layout file '%s'", FromQtString(filename).c_str());
-        }
+        // make sure we really want to remove it
+        m_reallyRemoveLayoutDialog = new QMessageBox(QMessageBox::Warning, "Remove The Selected Layout?", "Are you sure you want to remove the selected layout?<br>Note: This cannot be undone.", QMessageBox::Yes | QMessageBox::No, this);
+        m_reallyRemoveLayoutDialog->setTextFormat(Qt::RichText);
+        m_reallyRemoveLayoutDialog->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_reallyRemoveLayoutDialog, &QMessageBox::buttonClicked, this, &MainWindow::OnRemoveLayoutButtonClicked);
 
-        // check if the layout removed is the current used
-        if (QString(mOptions.GetApplicationMode().c_str()) == action->text())
-        {
-            // find the layout index on the application mode combo box
-            const int layoutIndex = mApplicationMode->findText(action->text());
-
-            // set the new layout index, take the previous if the last layout is removed, the next is taken otherwise
-            const int newLayoutIndex = (layoutIndex == (mApplicationMode->count() - 1)) ? layoutIndex - 1 : layoutIndex + 1;
-
-            // select the layout, it also keeps it and saves to config
-            mApplicationMode->setCurrentIndex(newLayoutIndex);
-        }
-
-        // update the layouts menu
-        UpdateLayoutsMenu();
+        m_reallyRemoveLayoutDialog->open();
     }
 
+    QMessageBox* MainWindow::GetRemoveLayoutDialog()
+    {
+        return m_reallyRemoveLayoutDialog;
+    }
 
     // load a given layout
     void MainWindow::OnLoadLayout()
@@ -2111,6 +2184,8 @@ namespace EMStudio
 
                         // set the window title using the workspace filename
                         SetWindowTitleFromFileName(workspaceFilenames[0].c_str());
+
+                        GetCommandManager()->SetUserOpenedWorkspaceFlag(true);
                     }
                     else
                     {
@@ -2189,8 +2264,8 @@ namespace EMStudio
 
     void MainWindow::RaiseFloatingWidgets()
     {
-        const QList<MysticQt::DockWidget*> dockWidgetList = findChildren<MysticQt::DockWidget*>();
-        for (MysticQt::DockWidget* dockWidget : dockWidgetList)
+        const QList<QDockWidget*> dockWidgetList = findChildren<QDockWidget*>();
+        for (QDockWidget* dockWidget : dockWidgetList)
         {
             if (dockWidget->isFloating())
             {
@@ -2292,6 +2367,15 @@ namespace EMStudio
         }
     }
 
+    void MainWindow::OnSaveLayoutDialogAccept()
+    {
+        EMStudio::GetLayoutManager()->SaveDialogAccepted();
+    }
+
+    void MainWindow::OnSaveLayoutDialogReject()
+    {
+        EMStudio::GetLayoutManager()->SaveDialogRejected();
+    }
 
     // accept drops
     void MainWindow::dragEnterEvent(QDragEnterEvent* event)
@@ -2357,8 +2441,8 @@ namespace EMStudio
             PluginManager* pluginManager = GetPluginManager();
 
             // The close event does not hide floating widgets, so we are doing that manually here
-            const QList<MysticQt::DockWidget*> dockWidgetList = findChildren<MysticQt::DockWidget*>();
-            for (MysticQt::DockWidget* dockWidget : dockWidgetList)
+            const QList<QDockWidget*> dockWidgetList = findChildren<QDockWidget*>();
+            for (QDockWidget* dockWidget : dockWidgetList)
             {
                 if (dockWidget->isFloating())
                 {

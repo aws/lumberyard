@@ -1,8 +1,13 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/stylesheet">
     <file>img/in_progress.gif</file>
+    <file>img/loading.svg</file>
     <file>img/WindowShadow.png</file>
     <file>img/close.svg</file>
+    <file>img/lock_off.svg</file>
+    <file>img/lock_on.svg</file>
+    <file>img/tag_visibility_off.svg</file>
+    <file>img/tag_visibility_on.svg</file>
     <file>img/double_triangles.png</file>
     <file>img/dockWidgetSeparatorDots_horiz.png</file>
     <file>img/dockWidgetSeparatorDots_vert.png</file>
@@ -52,6 +57,7 @@
     <file>img/triangle2.png</file>
     <file>img/triangle3.png</file>
     <file>img/vertical_arrows.png</file>
+    <file>img/hidden-icons.svg</file>
     <file>img/horizontal_arrows.png</file>
     <file>img/16x16/lineedit-clear.png</file>
     <file>img/16x16/lineedit-clear@2x.png</file>
@@ -329,10 +335,53 @@
     <file>img/UI20/checkbox/partial-selected-focus.svg</file>
     <file>img/UI20/checkbox/partial-selected.svg</file>
     <file>img/UI20/checkmark.svg</file>
+    <file>img/UI20/indeterminate.svg</file>
+    <file>img/UI20/Helpers.svg</file>
+    <file>img/UI20/Info.svg</file>
     <file>img/UI20/checkmark-menu.svg</file>
-</qresource>
-<qresource prefix="/docking">
-    <file alias="tabs_icon.png">img/docking/tabs_icon.png</file>
+    <file>img/UI20/toolbar/add_link.svg</file>
+    <file>img/UI20/toolbar/Align_object_to_surface.svg</file>
+    <file>img/UI20/toolbar/Align_to_grid.svg</file>
+    <file>img/UI20/toolbar/Align_to_Object.svg</file>
+    <file>img/UI20/toolbar/Angle.svg</file>
+    <file>img/UI20/toolbar/Audio.svg</file>
+    <file>img/UI20/toolbar/Database_view.svg</file>
+    <file>img/UI20/toolbar/Deploy.svg</file>
+    <file>img/UI20/toolbar/Flowgraph.svg</file>
+    <file>img/UI20/toolbar/Follow_terrain.svg</file>
+    <file>img/UI20/toolbar/Get_physics_state.svg</file>
+    <file>img/UI20/toolbar/Grid.svg</file>
+    <file>img/UI20/toolbar/Lighting.svg</file>
+    <file>img/UI20/toolbar/Load.svg</file>
+    <file>img/UI20/toolbar/Locked.svg</file>
+    <file>img/UI20/toolbar/LUA.svg</file>
+    <file>img/UI20/toolbar/Material.svg</file>
+    <file>img/UI20/toolbar/Measure.svg</file>
+    <file>img/UI20/toolbar/Move.svg</file>
+    <file>img/UI20/toolbar/Object_follow_terrain.svg</file>
+    <file>img/UI20/toolbar/Object_height.svg</file>
+    <file>img/UI20/toolbar/Object_list.svg</file>
+    <file>img/UI20/toolbar/particle.svg</file>
+    <file>img/UI20/toolbar/Play.svg</file>
+    <file>img/UI20/toolbar/Redo.svg</file>
+    <file>img/UI20/toolbar/remove_link.svg</file>
+    <file>img/UI20/toolbar/Reset_physics_state.svg</file>
+    <file>img/UI20/toolbar/Save.svg</file>
+    <file>img/UI20/toolbar/Scale.svg</file>
+    <file>img/UI20/toolbar/Select.svg</file>
+    <file>img/UI20/toolbar/select_object.svg</file>
+    <file>img/UI20/toolbar/Select_terrain.svg</file>
+    <file>img/UI20/toolbar/Simulate_Physics_on_selected_objects.svg</file>
+    <file>img/UI20/toolbar/Terrain.svg</file>
+    <file>img/UI20/toolbar/Terrain_Texture.svg</file>
+    <file>img/UI20/toolbar/Translate.svg</file>
+    <file>img/UI20/toolbar/undo.svg</file>
+    <file>img/UI20/toolbar/Unlocked.svg</file>
+    <file>img/UI20/toolbar/Vertex_snapping.svg</file>
+    <file>img/UI20/toolbar/X_axis.svg</file>
+    <file>img/UI20/toolbar/Y_axis.svg</file>
+    <file>img/UI20/toolbar/Z_axis.svg</file>
+    <file>img/UI20/toolbar/XY2_copy.svg</file>
 </qresource>
 <qresource>
     <file alias="Editor/Style/EditorStylesheetVariables_Dark.json">../../../../Sandbox/Editor/Style/EditorStylesheetVariables_Dark.json</file>
@@ -345,7 +394,10 @@
     <file>img/UI20/Cards/list-add-small.png</file>
     <file>img/UI20/Cards/group_closed.png</file>
     <file>img/UI20/Cards/group_open.png</file>
-    <file>img/UI20/Cards/caret_down.svg</file>
+    <file>img/UI20/Cards/caret-right.svg</file>
+    <file>img/UI20/Cards/caret-right-disabled.svg</file>
+    <file>img/UI20/Cards/caret-down.svg</file>
+    <file>img/UI20/Cards/caret-down-disabled.svg</file>
     <file>img/UI20/Cards/tool_cancel.png</file>
     <file>img/UI20/Cards/tool_cancel_highlight.png</file>
     <file>img/UI20/Cards/tool_cancel_hover.png</file>
@@ -361,6 +413,7 @@
     <file>img/UI20/Cards/menu_ico.png</file>
     <file>img/UI20/Cards/error_icon.png</file>
     <file>img/UI20/Cards/warning.png</file>
+    <file>img/UI20/Cards/warning.svg</file>
     <file>img/UI20/Cards/search.png</file>
     <file>img/UI20/Cards/close.png</file>
     <file>img/UI20/Cards/error-conclict-state.svg</file>
@@ -373,8 +426,10 @@
     <file>img/UI20/Cards/spacer.png</file>
     <file>img/UI20/Cards/eye_dropper.png</file>
     <file>img/UI20/Cards/trash-small.png</file>
+    <file>img/UI20/Cards/shadow.png</file>
 </qresource>
 <qresource prefix="/AzQtComponents">
+    <file>DockBarButtonConfig.ini</file>
     <file>Widgets/BaseStyleSheet.qss</file>
     <file>Widgets/BreadCrumbs.qss</file>
     <file>Widgets/BreadCrumbsConfig.ini</file>
@@ -382,6 +437,7 @@
     <file>Widgets/CardConfig.ini</file>
     <file>Widgets/CheckBox.qss</file>
     <file>Widgets/CheckBoxConfig.ini</file>
+    <file>Widgets/ColorLabel.qss</file>
     <file>Widgets/ColorPicker.qss</file>
     <file>Widgets/ColorPickerConfig.ini</file>
     <file>Widgets/ColorPicker/PaletteViewConfig.ini</file>
@@ -391,10 +447,12 @@
     <file>Widgets/ComboBox.qss</file>
     <file>Widgets/ComboBoxConfig.ini</file>
     <file>Widgets/Menu.qss</file>
+    <file>Widgets/MenuBar.qss</file>
     <file>Widgets/ProgressBarConfig.ini</file>
     <file>Widgets/ProgressBar.qss</file>
     <file>Widgets/PushButton.qss</file>
     <file>Widgets/PushButtonConfig.ini</file>
+    <file>Widgets/QDockWidget.qss</file>
     <file>Widgets/RadioButton.qss</file>
     <file>Widgets/RadioButtonConfig.ini</file>
     <file>Widgets/SegmentControl.qss</file>
@@ -406,16 +464,49 @@
     <file>Widgets/Text.qss</file>
     <file>Widgets/TitleBar.qss</file>
     <file>Widgets/TitleBarConfig.ini</file>
+    <file>Widgets/ToolBar.qss</file>
+    <file>Widgets/ToolBarConfig.ini</file>
     <file>Widgets/ToolTip.qss</file>
     <file>Widgets/WindowDecorationWrapper.qss</file>
+    <file>Widgets/AssetFolderListView.qss</file>
+    <file>Widgets/AssetFolderThumbnailViewConfig.ini</file>
+    <file>Widgets/BrowseEdit.qss</file>
+    <file>Widgets/BrowseEditConfig.ini</file>
+    <file>Widgets/DragAndDropConfig.ini</file>
+    <file>Widgets/FilteredSearchWidget.qss</file>
+    <file>Widgets/FilteredSearchWidgetConfig.ini</file>
+    <file>Widgets/MenuConfig.ini</file>
+    <file>Widgets/ScrollBar.qss</file>
+    <file>Widgets/ScrollBarConfig.ini</file>
+    <file>Widgets/SpinBox.qss</file>
+    <file>Widgets/SpinBoxConfig.ini</file>
+    <file>Widgets/Splitter.qss</file>
+    <file>Widgets/StatusBarConfig.ini</file>
+    <file>Widgets/TableView.qss</file>
+    <file>Widgets/TableViewConfig.ini</file>
+    <file>Widgets/TabWidgetActionToolBar.qss</file>
+    <file>Widgets/TextConfig.ini</file>
+    <file>Widgets/ToolButtonConfig.ini</file>
+    <file>Widgets/VectorInput.qss</file>
+    <file>Widgets/TreeViewConfig.ini</file>
 </qresource>
 <qresource prefix="/stylesheet">
+    <file>img/UI20/add-16.svg</file>
+    <file>img/UI20/browse-edit.svg</file>
+    <file>img/UI20/browse-edit-select-files.svg</file>
     <file>img/UI20/combobox-arrow.svg</file>
     <file>img/UI20/combobox-arrow-disabled.svg</file>
+    <file>img/UI20/delete-16.svg</file>
+    <file>img/UI20/docking/tabs_icon.svg</file>
     <file>img/UI20/dropdown-button-arrow.svg</file>
+    <file>img/UI20/filter.svg</file>
     <file>img/UI20/lineedit-error.svg</file>
     <file>img/UI20/lineedit-close.svg</file>
+    <file>img/UI20/menu-centered.svg</file>
     <file>img/UI20/menu-indicator.svg</file>
+    <file>img/UI20/picker.svg</file>
+    <file>img/UI20/more.svg</file>
+    <file>img/UI20/open-in-internal-app.svg</file>
     <file>img/UI20/radiobutton/checked.svg</file>
     <file>img/UI20/radiobutton/checked-disabled.svg</file>
     <file>img/UI20/radiobutton/checked-focus.svg</file>
@@ -425,14 +516,13 @@
     <file>img/UI20/shadows/menu-shadow.png</file>
     <file>img/UI20/shadows/menu-shadow@2x.png</file>
     <file>img/UI20/tear.svg</file>
-    <file>img/UI20/titlebar-close-hover.svg</file>
+    <file>img/UI20/tear-vertical.svg</file>
     <file>img/UI20/titlebar-close.svg</file>
-    <file>img/UI20/titlebar-maximize-hover.svg</file>
     <file>img/UI20/titlebar-maximize.svg</file>
-    <file>img/UI20/titlebar-minimize-hover.svg</file>
     <file>img/UI20/titlebar-minimize.svg</file>
     <file>img/UI20/titlebar-popout-hover.svg</file>
     <file>img/UI20/titlebar-popout.svg</file>
+    <file>img/UI20/titlebar-popout-small.svg</file>
     <file>img/UI20/titlebar-restore-hover.svg</file>
     <file>img/UI20/titlebar-restore.svg</file>
     <file>img/UI20/toggleswitch/checked.svg</file>
@@ -459,8 +549,8 @@
   </qresource>
 <qresource prefix="/ColorPickerDialog">
     <file alias="Palette/add-normal.png">img/UI20/colorpicker/palette-add-normal.png</file>
-    <file alias="ColorGrid/eyedropper-normal.png">img/UI20/colorpicker/colorgrid-eyedropper-normal.png</file>
-    <file alias="ColorGrid/toggle-normal-on.png">img/UI20/colorpicker/colorgrid-toggle-normal-on.png</file>
+    <file alias="ColorGrid/eyedropper-normal.svg">img/UI20/colorpicker/colorgrid-eyedropper-normal.svg</file>
+    <file alias="ColorGrid/toggle-normal-on.svg">img/UI20/colorpicker/colorgrid-toggle-normal-on.svg</file>
     <file alias="PaletteCard/open.png">img/UI20/colorpicker/library-open.png</file>
     <file alias="PaletteCard/closed.png">img/UI20/colorpicker/library-closed.png</file>
 </qresource>
@@ -477,21 +567,56 @@
     <file>Fonts/Open_Sans/OpenSans-Bold.ttf</file>
 </qresource>
 <qresource prefix="/SpinBox">
-    <file alias="arrowLeftDefault.svg">img/UI20/SpinBox/arrow_left_default.svg</file>
-    <file alias="arrowLeftIncreasing.svg">img/UI20/SpinBox/arrow_left_increasing.svg</file>
-    <file alias="arrowLeftMaxed.svg">img/UI20/SpinBox/arrow_left_maxed_reached.svg</file>
-    <file alias="arrowRightDefault.svg">img/UI20/SpinBox/arrow_right_default.svg</file>
-    <file alias="arrowRightIncreasing.svg">img/UI20/SpinBox/arrow_right_increasing.svg</file>
-    <file alias="arrowRightMaxed.svg">img/UI20/SpinBox/arrow_right_maxed_reached.svg</file>
-    <file alias="groupedDefault.svg">img/UI20/SpinBox/groupped-default.svg</file>
-    <file alias="groupedLeftArrowActive.svg">img/UI20/SpinBox/groupped-left-arrow-active.svg</file>
-    <file alias="groupedLeftArrowMaxed.svg">img/UI20/SpinBox/groupped-left-arrow-maxed.svg</file>
-    <file alias="groupedRightArrowActive.svg">img/UI20/SpinBox/groupped-right-arrow-active.svg</file>
-    <file alias="groupedRightArrowMaxed.svg">img/UI20/SpinBox/groupped-right-arrow-maxed.svg</file>
+    <file alias="arrowLeftIncreasing.svg">img/UI20/SpinBox/increase-leftarrow.svg</file>
+    <file alias="arrowLeftDecreasing.svg">img/UI20/SpinBox/decrease-leftarrow.svg</file>
+    <file alias="arrowLeftMaxReached.svg">img/UI20/SpinBox/MaxReached-leftarrow.svg</file>
+    <file alias="arrowLeftMinReached.svg">img/UI20/SpinBox/MinReached-leftarrow.svg</file>
+    <file alias="arrowLeftHover.svg">img/UI20/SpinBox/hover-leftarrow.svg</file>
+    <file alias="arrowLeftDragging.svg">img/UI20/SpinBox/buttonPressActive-hover-leftarrow.svg</file>
+    <file alias="arrowLeftFocused.svg">img/UI20/SpinBox/focused-leftarrow.svg</file>
+
+    <file alias="arrowRightIncreasing.svg">img/UI20/SpinBox/increase-rightarrow.svg</file>
+    <file alias="arrowRightDecreasing.svg">img/UI20/SpinBox/decrease-rightarrow.svg</file>
+    <file alias="arrowRightMaxReached.svg">img/UI20/SpinBox/MaxReached-rightarrow.svg</file>
+    <file alias="arrowRightMinReached.svg">img/UI20/SpinBox/MinReached-rightarrow.svg</file>
+    <file alias="arrowRightHover.svg">img/UI20/SpinBox/hover-rightarrow.svg</file>
+    <file alias="arrowRightDragging.svg">img/UI20/SpinBox/buttonPressActive-hover-rightarrow.svg</file>
+    <file alias="arrowRightFocused.svg">img/UI20/SpinBox/focused-rightarrow.svg</file>
+
+    <file alias="hoverBackground.svg">img/UI20/SpinBox/SB-hover-BG.svg</file>
+    <file alias="increaseBackground.svg">img/UI20/SpinBox/SB-increase-BG.svg</file>
+    <file alias="decreaseBackground.svg">img/UI20/SpinBox/SB-decrease-BG.svg</file>
+    <file alias="focusedBackground.svg">img/UI20/SpinBox/SB-focused-BG.svg</file>
+    <file alias="maxReachedBackground.svg">img/UI20/SpinBox/SB-MaxReached-BG.svg</file>
+    <file alias="minReachedBackground.svg">img/UI20/SpinBox/SB-MinReached-BG.svg</file>
+    <file alias="draggingBackground.svg">img/UI20/SpinBox/SB-buttonPressActive-hover-BG.svg</file>
+
     <file alias="scrollIconDefault.svg">img/UI20/SpinBox/NumberEdit_center.svg</file>
     <file alias="scrollIconLeft.svg">img/UI20/SpinBox/NumberEdit_scroll_left.svg</file>
     <file alias="scrollIconLeftMaxed.svg">img/UI20/SpinBox/NumberEdit_scroll_left_stopped.svg</file>
     <file alias="scrollIconRight.svg">img/UI20/SpinBox/NumberEdit_scroll_right.svg</file>
     <file alias="scrollIconRightMaxed.svg">img/UI20/SpinBox/NumberEdit_scroll_right_stopped.svg</file>
+</qresource>
+<qresource prefix="/TreeView">
+    <file alias="open.svg">img/UI20/TreeView/open.svg</file>
+    <file alias="closed.svg">img/UI20/TreeView/closed.svg</file>
+    <file alias="default-icon.svg">img/UI20/TreeView/default-icon.svg</file>
+    <file alias="folder-icon.svg">img/UI20/TreeView/folder-icon.svg</file>
+</qresource>
+<qresource prefix="/Gallery">
+    <file alias="Add.svg">img/UI20/Add.svg</file>
+    <file alias="Audio.svg">img/UI20/Audio.svg</file>
+    <file alias="Camera.svg">img/UI20/Camera.svg</file>
+    <file alias="Delete.svg">img/UI20/Delete.svg</file>
+    <file alias="Folder.svg">img/UI20/Folder.svg</file>
+    <file alias="Folder-small.svg">img/UI20/Folder-small.svg</file>
+    <file alias="Grid-large.svg">img/UI20/Grid-large.svg</file>
+    <file alias="Grid-small.svg">img/UI20/Grid-small.svg</file>
+    <file alias="Move.svg">img/UI20/Move.svg</file>
+    <file alias="Rotate.svg">img/UI20/Rotate.svg</file>
+    <file alias="Save.svg">img/UI20/Save.svg</file>
+    <file alias="Scale.svg">img/UI20/Scale.svg</file>
+    <file alias="Select-Files.svg">img/UI20/Select-Files.svg</file>
+    <file alias="Settings.svg">img/UI20/Settings.svg</file>
 </qresource>
 </RCC>

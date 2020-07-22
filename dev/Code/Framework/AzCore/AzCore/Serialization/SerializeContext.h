@@ -759,6 +759,12 @@ namespace AZ
             static inline const char*   GetDefaultElementName()     { return "element"; }
             /// Return default element generic name crc (used by most containers).
             static inline u32 GetDefaultElementNameCrc()            { return AZ_CRC("element", 0x41405e39); }
+
+            // Returns default element generic name unless overridden by an IDataContainer
+            virtual const char* GetElementName([[maybe_unused]] int index = 0) { return GetDefaultElementName(); }
+            // Returns default element generic name crc unless overridden by an IDataContainer
+            virtual u32 GetElementNameCrC([[maybe_unused]] int index = 0) { return GetDefaultElementNameCrc(); }
+
             /// Returns the generic element (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
             virtual const ClassElement* GetElement(u32 elementNameCrc) const = 0;
             /// Populates the supplied classElement by looking up the name in the DataElement. Returns true if the classElement was populated successfully

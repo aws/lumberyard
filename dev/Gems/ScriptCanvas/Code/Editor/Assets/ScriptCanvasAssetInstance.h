@@ -30,8 +30,8 @@ namespace ScriptCanvasEditor
         ScriptCanvasAssetReference& GetReference();
         const ScriptCanvasAssetReference& GetReference() const;
 
-        ScriptCanvasData& GetScriptCanvasData();
-        const ScriptCanvasData& GetScriptCanvasData() const;
+        ScriptCanvas::ScriptCanvasData& GetScriptCanvasData();
+        const ScriptCanvas::ScriptCanvasData& GetScriptCanvasData() const;
 
         void ComputeDataPatch();
         void ApplyDataPatch();
@@ -40,7 +40,7 @@ namespace ScriptCanvasEditor
         ScriptCanvasAssetInstance(const ScriptCanvasAssetInstance&) = delete;
         AZ::DataPatch::FlagsMap GetDataFlagsForPatching() const;
 
-        ScriptCanvasData m_scriptCanvasData;
+        ScriptCanvas::ScriptCanvasData m_scriptCanvasData;
         ScriptCanvasAssetReference m_assetRef;
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_baseToInstanceMap;
         AZStd::unordered_map<AZ::EntityId, AZ::DataPatch::FlagsMap> m_entityToDataFlags;

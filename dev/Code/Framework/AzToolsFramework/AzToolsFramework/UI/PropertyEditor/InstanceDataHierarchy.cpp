@@ -27,8 +27,6 @@
 #include "ComponentEditor.hxx"
 #include "PropertyEditorAPI.h"
 
-#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
-
 namespace
 {
     AZ::Edit::Attribute* FindAttributeInNode(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
@@ -212,33 +210,6 @@ namespace
 namespace AzToolsFramework
 {
     //-----------------------------------------------------------------------------
-    void* ResolvePointer(void* ptr, const AZ::SerializeContext::ClassElement& classElement, const AZ::SerializeContext& context)
-    {
-        if (classElement.m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
-        {
-            // In the case of pointer-to-pointer, we'll deference.
-            ptr = *(void**)(ptr);
-
-            // Pointer-to-pointer fields may be base class / polymorphic, so cast pointer to actual type,
-            // safe for passing as 'this' to member functions.
-            if (ptr && classElement.m_azRtti)
-            {
-                AZ::Uuid actualClassId = classElement.m_azRtti->GetActualUuid(ptr);
-                if (actualClassId != classElement.m_typeId)
-                {
-                    const AZ::SerializeContext::ClassData* classData = context.FindClassData(actualClassId);
-                    if (classData)
-                    {
-                        ptr = classElement.m_azRtti->Cast(ptr, classData->m_azRtti->GetTypeId());
-                    }
-                }
-            }
-        }
-
-        return ptr;
-    }
-
-    //-----------------------------------------------------------------------------
     // InstanceDataNode
     //-----------------------------------------------------------------------------
 
@@ -301,7 +272,7 @@ namespace AzToolsFramework
         void* ptr = m_instances[idx];
         if (m_classElement)
         {
-            ptr = ResolvePointer(ptr, *m_classElement, *m_context);
+            ptr = AZ::Utils::ResolvePointer(ptr, *m_classElement, *m_context);
         }
         return ptr;
     }
@@ -468,11 +439,6 @@ namespace AzToolsFramework
     //-----------------------------------------------------------------------------
     void InstanceDataNode::MarkDifferentVersusComparison()
     {
-        if (ShouldComparisonBeIgnored())
-        {
-            return;
-        }
-
         m_comparisonFlags =  static_cast<AZ::u32>(ComparisonFlags::Differs);
     }
     
@@ -488,12 +454,6 @@ namespace AzToolsFramework
     {
         m_comparisonFlags = static_cast<AZ::u32>(ComparisonFlags::None);
         m_comparisonNode = nullptr;
-    }
-
-    //-----------------------------------------------------------------------------
-    void InstanceDataNode::SetIgnoreComparisonResult(bool ignoreResult)
-    {
-        m_ignoreComparisonResult = ignoreResult;
     }
 
     //-----------------------------------------------------------------------------
@@ -539,12 +499,6 @@ namespace AzToolsFramework
         }
 
         return false;
-    }
-
-    //-----------------------------------------------------------------------------
-    bool InstanceDataNode::ShouldComparisonBeIgnored() const
-    {
-        return m_ignoreComparisonResult;
     }
 
     //-----------------------------------------------------------------------------
@@ -753,8 +707,7 @@ namespace AzToolsFramework
         EnumerateUIElements(this, dynamicEditDataProvider);
 
         // Fixup our container edit data first, as we may specifically affect comparison data
-        bool foundRootParent = false;
-        FixupEditData(this, 0, foundRootParent);
+        FixupEditData(this, 0);
         bool dataIdentical = RefreshComparisonData(accessFlags, dynamicEditDataProvider);
 
         if (editorParent)
@@ -850,43 +803,14 @@ namespace AzToolsFramework
         }
     }
 
-    void InstanceDataHierarchy::FixupComparisonData(InstanceDataNode* node, bool& foundRootParent)
-    {
-        if (!foundRootParent)
-        {
-            bool isRootParentId = false;
-            if (node->GetClassMetadata() && node->GetClassMetadata()->m_typeId == AZ::AzTypeInfo<AZ::EntityId>::Uuid())
-            {
-                if (node->GetElementMetadata()->m_nameCrc == AzToolsFramework::Components::TransformComponent::GetParentEntityCRC())
-                {
-                    isRootParentId = true;
-                }
-            }
-
-            if (isRootParentId && !ShouldComparisonBeIgnored())
-            {
-                node->SetIgnoreComparisonResult(true);
-                foundRootParent = true;
-            }
-        }
-        else if (node->GetParent() && node->GetParent()->ShouldComparisonBeIgnored())
-        {
-            node->SetIgnoreComparisonResult(true);
-        }
-    }
-
     //-----------------------------------------------------------------------------
     //-----------------------------------------------------------------------------
-    void InstanceDataHierarchy::FixupEditData(InstanceDataNode* node, int siblingIdx, bool& foundRootParent)
+    void InstanceDataHierarchy::FixupEditData(InstanceDataNode* node, int siblingIdx)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
         bool mergeElementEditData = node->m_classElement && node->m_classElement->m_editData && node->GetElementEditMetadata() != node->m_classElement->m_editData;
         bool mergeContainerEditData = node->m_parent && node->m_parent->m_classData->m_container && node->m_parent->GetElementEditMetadata() && (node->m_classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) == 0;
-
-        node->SetIgnoreComparisonResult(false);
-
-        FixupComparisonData(node, foundRootParent);
 
         bool showAsKeyValue = false;
         if (!(m_buildFlags & Flags::IgnoreKeyValuePairs))
@@ -998,7 +922,7 @@ namespace AzToolsFramework
         int childIdx = 0;
         for (NodeContainer::iterator it = node->m_children.begin(); it != node->m_children.end(); ++it)
         {
-            FixupEditData(&(*it), childIdx++, foundRootParent);
+            FixupEditData(&(*it), childIdx++);
         }
     }
 
@@ -1015,7 +939,7 @@ namespace AzToolsFramework
             elementEditData = classElement->m_editData;
             if (dynamicEditDataProvider)
             {
-                void* objectPtr = ResolvePointer(ptr, *classElement, *m_context);
+                void* objectPtr = AZ::Utils::ResolvePointer(ptr, *classElement, *m_context);
                 const AZ::Edit::ElementData* labelData = dynamicEditDataProvider(objectPtr, classData);
                 if (labelData)
                 {
@@ -1026,13 +950,13 @@ namespace AzToolsFramework
             {
                 const EditDataOverride& editDataOverride = m_editDataOverrides.back();
 
-                void* objectPtr = ResolvePointer(ptr, *classElement, *m_context);
+                void* objectPtr = AZ::Utils::ResolvePointer(ptr, *classElement, *m_context);
                 void* overridingInstance = editDataOverride.m_overridingInstance;
 
                 const AZ::SerializeContext::ClassElement* overridingElementData = editDataOverride.m_overridingNode->GetElementMetadata();
                 if (overridingElementData)
                 {
-                    overridingInstance = ResolvePointer(overridingInstance, *overridingElementData, *m_context);
+                    overridingInstance = AZ::Utils::ResolvePointer(overridingInstance, *overridingElementData, *m_context);
                 }
 
                 if (classData)
@@ -1151,7 +1075,7 @@ namespace AzToolsFramework
                         AZ::SerializeContext::ClassPersistentId persistentId = classData->GetPersistentId(*m_context);
                         if (persistentId)
                         {
-                            node->m_identifier = static_cast<Identifier>(persistentId(ResolvePointer(ptr, *classElement, *m_context)));
+                            node->m_identifier = static_cast<Identifier>(persistentId(AZ::Utils::ResolvePointer(ptr, *classElement, *m_context)));
                         }
                         else
                         {
@@ -1663,11 +1587,6 @@ namespace AzToolsFramework
             const InstanceDataNode::Address& filterElementAddress)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        if (sourceNode->ShouldComparisonBeIgnored())
-        {
-            return true;
-        }
 
         if (!context)
         {

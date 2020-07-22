@@ -108,9 +108,22 @@ namespace EMotionFX
          * but the runtime uses a cached parameter index to prevent runtime lookups. These cached values need to be updated on given events like when e.g. a parameter gets removed or changed or the whole
          * anim graph object gets constructed by a copy and paste operation.
          */
-        virtual void Reinit() {}
+        virtual void Reinit();
 
-        virtual void RecursiveReinit() { Reinit(); }
+        virtual void RecursiveReinit();
+
+        virtual AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) { return aznew AnimGraphObjectData(this, animGraphInstance); }
+
+        /// Calls InvalidateUniqueData() for the given object for all anim graph instances. (Used by reflection context)
+        void InvalidateUniqueDatas();
+
+        // Invalidates given object including all owned objects that do not represent a hierarchy, e.g. transition invalidate conditions, nodes invalidate actions.
+        // This will only invalidate already created unique datas and skip e.g. to invalidate unique datas for non yet reached nodes.
+        virtual void InvalidateUniqueData(AnimGraphInstance* animGraphInstance);
+        virtual void RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance) { InvalidateUniqueData(animGraphInstance); }
+
+        void ResetUniqueDatas();
+        void ResetUniqueData(AnimGraphInstance* animGraphInstance);
 
         virtual bool InitAfterLoading(AnimGraph* animGraph) = 0;
 
@@ -128,12 +141,7 @@ namespace EMotionFX
         virtual void DecreaseInternalAttributeIndices(uint32 decreaseEverythingHigherThan);
 
         virtual void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
-        virtual void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance);
 
-        /**
-         * Update unique data for all anim graph instances the given anim graph object belongs to.
-         */
-        void UpdateUniqueDatas();
 
         virtual void OnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)            { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(newMotionSet); }
         virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)                             { MCORE_UNUSED(animGraph);         MCORE_UNUSED(nodeToRemove); }
@@ -146,14 +154,10 @@ namespace EMotionFX
         MCORE_INLINE AnimGraph* GetAnimGraph() const                                    { return mAnimGraph; }
         MCORE_INLINE void SetAnimGraph(AnimGraph* animGraph)                            { mAnimGraph = animGraph; }
 
-        virtual uint32 GetAnimGraphSaveVersion() const        { return 1; }
-
-        uint32 SaveUniqueData(const AnimGraphInstance* animGraphInstance, uint8* outputBuffer) const;  // save and return number of bytes written, when outputBuffer is nullptr only return num bytes it would write
-        uint32 LoadUniqueData(const AnimGraphInstance* animGraphInstance, const uint8* dataBuffer);    // load and return number of bytes read, when dataBuffer is nullptr, 0 should be returned
+        uint32 SaveUniqueData(AnimGraphInstance* animGraphInstance, uint8* outputBuffer) const;  // save and return number of bytes written, when outputBuffer is nullptr only return num bytes it would write
+        uint32 LoadUniqueData(AnimGraphInstance* animGraphInstance, const uint8* dataBuffer);    // load and return number of bytes read, when dataBuffer is nullptr, 0 should be returned
 
         virtual void RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const;
-
-        void ResetUniqueData(AnimGraphInstance* animGraphInstance);
 
         bool GetHasErrorFlag(AnimGraphInstance* animGraphInstance) const;
         void SetHasErrorFlag(AnimGraphInstance* animGraphInstance, bool hasError);

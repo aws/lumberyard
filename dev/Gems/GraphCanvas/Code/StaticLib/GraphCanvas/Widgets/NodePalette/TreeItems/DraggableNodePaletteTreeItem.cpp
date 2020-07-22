@@ -25,6 +25,11 @@ namespace GraphCanvas
 
     Qt::ItemFlags DraggableNodePaletteTreeItem::OnFlags() const
     {
-        return Qt::ItemIsDragEnabled;
+        if (IsEnabled())
+        {
+            return Qt::ItemIsDragEnabled;
+        }
+
+        return Qt::ItemFlags();
     }
 }

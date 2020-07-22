@@ -64,6 +64,8 @@ def load_win_x64_common_settings(ctx, vs_version):
 
     ctx.load_windows_common_settings()
 
+    ctx.register_win_x64_external_optional_cuda(vs_platform)
+
 
 # Required load_<PLATFORM>_configuration_settings(ctx, platform_configuration)
 @conf

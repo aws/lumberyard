@@ -33,6 +33,32 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFootIKNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeFootIKNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    void BlendTreeFootIKNode::UniqueData::Update()
+    {
+        BlendTreeFootIKNode* footIKNode = azdynamic_cast<BlendTreeFootIKNode*>(mObject);
+        AZ_Assert(footIKNode, "Unique data linked to incorrect node type.");
+
+        const ActorInstance* actorInstance = mAnimGraphInstance->GetActorInstance();
+        const Actor* actor = actorInstance->GetActor();
+        const Skeleton* skeleton = actor->GetSkeleton();
+        SetHasError(false);
+
+        // Initialize the legs.
+        if (!footIKNode->InitLegs(mAnimGraphInstance, this))
+        {
+            SetHasError(true);
+        }
+
+        // Try to find the hip joint.
+        const AZStd::string& hipJointName = footIKNode->GetHipJointName();
+        if ((hipJointName.empty() || !skeleton->FindNodeAndIndexByName(hipJointName, m_hipJointIndex)) && !GetEMotionFX().GetEnableServerOptimization())
+        {
+            BlendTreeFootIKNode* footIKNode = azdynamic_cast<BlendTreeFootIKNode*>(mObject);
+            AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find hip joint named '%s'", footIKNode->GetName(), hipJointName.c_str());
+            SetHasError(true);
+        }
+    }
+
     BlendTreeFootIKNode::BlendTreeFootIKNode()
         : AnimGraphNode()
     {
@@ -53,30 +79,6 @@ namespace EMotionFX
         // Setup the output ports.
         InitOutputPorts(1);
         SetupOutputPortAsPose("Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
-    }
-
-    void BlendTreeFootIKNode::Reinit()
-    {
-        if (!mAnimGraph)
-        {
-            return;
-        }
-
-        AnimGraphNode::Reinit();
-
-        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
-            if (!uniqueData)
-            {
-                continue;
-            }
-
-            uniqueData->m_mustUpdate = true;
-            animGraphInstance->UpdateUniqueData();
-        }
     }
 
     bool BlendTreeFootIKNode::InitAfterLoading(AnimGraph* animGraph)
@@ -165,6 +167,12 @@ namespace EMotionFX
         return HasConnectionAtInputPort(INPUTPORT_FOOTLOCK) ? GetInputNumberAsBool(animGraphInstance, INPUTPORT_FOOTLOCK) : m_footLock;
     }
 
+    bool BlendTreeFootIKNode::InitLegs(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
+    {
+        return (InitLeg(LegId::Left, m_leftFootJointName, m_leftToeJointName, animGraphInstance, uniqueData) &&
+            InitLeg(LegId::Right, m_rightFootJointName, m_rightToeJointName, animGraphInstance, uniqueData));
+    }
+
     // Inititalize the leg by looking up joint indices from their names etc.
     bool BlendTreeFootIKNode::InitLeg(LegId legId, const AZStd::string& footJointName, const AZStd::string& toeJointName, AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
@@ -217,37 +225,6 @@ namespace EMotionFX
         leg.DisableFlag(LegFlags::ToeDown);
 
         return true;
-    }
-
-    // Lookup some joint indices and check if our configuration is valid.
-    void BlendTreeFootIKNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        if (uniqueData->m_mustUpdate)
-        {
-            const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            const Actor* actor = actorInstance->GetActor();
-            const Skeleton* skeleton = actor->GetSkeleton();
-
-            uniqueData->m_mustUpdate = false;
-            uniqueData->m_isValid = false;
-            uniqueData->m_mustUpdate = true;
-
-            // Initialize the legs.
-            if (!InitLeg(LegId::Left, m_leftFootJointName, m_leftToeJointName, animGraphInstance, uniqueData) || !InitLeg(LegId::Right, m_rightFootJointName, m_rightToeJointName, animGraphInstance, uniqueData))
-            {
-                return;
-            }
-
-            // Try to find the hip joint.
-            if ( (m_hipJointName.empty() || !skeleton->FindNodeAndIndexByName(m_hipJointName, uniqueData->m_hipJointIndex)) && !GetEMotionFX().GetEnableServerOptimization())
-            {
-                AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find hip joint named '%s'", GetName(), m_hipJointName.c_str());
-                return;
-            }
-
-            uniqueData->m_isValid = true;
-            uniqueData->m_mustUpdate = false;
-        }
     }
 
     // Solve the two joint IK by calculating the new knee position (outMidPos).
@@ -821,7 +798,7 @@ namespace EMotionFX
     {
         AnimGraphNode::PostUpdate(animGraphInstance, timePassedInSeconds);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         if (data)
         {
@@ -834,13 +811,10 @@ namespace EMotionFX
     {
         AnimGraphNode::Update(animGraphInstance, timePassedInSeconds);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        if (uniqueData)
-        {
-            uniqueData->m_timeDelta = timePassedInSeconds;
-        }
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
+        uniqueData->m_timeDelta = timePassedInSeconds;
 
-        if (uniqueData && uniqueData->m_isValid)
+        if (!uniqueData->GetHasError())
         {
             const float ikBlendSpeed = GetIKBlendSpeed(animGraphInstance);
             InterpolateWeight(LegId::Left, uniqueData, timePassedInSeconds, ikBlendSpeed);
@@ -892,20 +866,19 @@ namespace EMotionFX
         *outputPose = *inputPose;
 
         // Check if we have a valid configuration.
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
-        if (!uniqueData->m_isValid)
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
+        if (uniqueData->GetHasError())
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                SetHasError(uniqueData, true);
             }
             return;
         }
 
         if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, false);
+            SetHasError(uniqueData, false);
         }
 
         //-----------------------------------
@@ -1073,7 +1046,7 @@ namespace EMotionFX
     {
         AnimGraphNode::Rewind(animGraphInstance);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         Leg& leftLeg = uniqueData->m_legs[LegId::Left];
         leftLeg.m_flags = static_cast<AZ::u8>(LegFlags::FirstUpdate);
         leftLeg.m_weight = 0.0f;
@@ -1085,21 +1058,6 @@ namespace EMotionFX
         rightLeg.m_weight = 0.0f;
         rightLeg.m_targetWeight = 0.0f;
         rightLeg.m_unlockBlendT = 0.0f;
-    }
-
-    // update the parameter contents, such as combobox values.
-    void BlendTreeFootIKNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // find our unique data
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        uniqueData->m_mustUpdate = true;
-        UpdateUniqueData(animGraphInstance, uniqueData);
     }
 
     void BlendTreeFootIKNode::Reflect(AZ::ReflectContext* context)

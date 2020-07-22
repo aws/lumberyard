@@ -713,6 +713,9 @@ void CUiAnimViewSequence::DeleteSelectedKeys()
         CUiAnimViewKeyHandle skey = selectedKeys.GetKey(k);
         skey.Delete();
     }
+
+    // The selected keys are deleted, so notify the selection was just changed.
+    OnKeySelectionChanged();
 }
 
 //////////////////////////////////////////////////////////////////////////

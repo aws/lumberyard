@@ -24,7 +24,9 @@ AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
+#include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/GraphicsItems/GraphCanvasSceneEventFilter.h>
 #include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 namespace GraphCanvas
@@ -35,8 +37,10 @@ namespace GraphCanvas
         : public AZ::Component
         , public ConnectionRequestBus::Handler
         , public SceneMemberRequestBus::Handler
-        , public AzToolsFramework::EditorEvents::Bus::Handler
         , public AZ::TickBus::Handler
+        , public ViewNotificationBus::Handler
+        , public NodeNotificationBus::Handler
+        , public SceneNotificationBus::Handler
     {
     private:
         friend class ConnectionEventFilter;
@@ -123,6 +127,10 @@ namespace GraphCanvas
         void Deactivate() override;
         ////
 
+        // NodeNotificationBus
+        void OnSlotRemovedFromNode(const AZ::EntityId& slotId) override;
+        ////
+
         // ConnectionRequestBus
         AZ::EntityId GetSourceSlotId() const override;
         AZ::EntityId GetSourceNodeId() const override;
@@ -143,10 +151,6 @@ namespace GraphCanvas
         bool ContainsEndpoint(const Endpoint& endpoint) const override;
 
         void ChainProposalCreation(const QPointF& scenePos, const QPoint& screenPos) override;
-        ////
-
-        // AzToolsFramework::EditorEvents::Bus
-        void OnEscape() override;
         ////
 
         // SceneMemberRequestBus
@@ -172,6 +176,15 @@ namespace GraphCanvas
         void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;
         ////
 
+        // ViewNotificationBus
+        void OnEscape() override;
+        void OnFocusLost() override;
+        ////
+
+        // SceneNotificationBus
+        void OnNodeIsBeingEdited(bool isBeingEditeed) override;
+        ////
+
     protected:
         ConnectionComponent(const ConnectionComponent&) = delete;
         const ConnectionComponent& operator=(const ConnectionComponent&) = delete;
@@ -183,6 +196,8 @@ namespace GraphCanvas
         virtual ConnectionMoveResult OnConnectionMoveComplete(const QPointF& scenePos, const QPoint& screenPos);
 
         virtual bool AllowNodeCreation() const;
+
+        void CleanupToast();
 
         void StartMove();
         void StopMove();
@@ -219,7 +234,7 @@ namespace GraphCanvas
 
         AZStd::string m_tooltip;
 
-        ConnectionEventFilter* m_eventFilter;
+        ConnectionEventFilter* m_eventFilter = nullptr;
 
         AZ::EntityId m_lockingSceneMember;
 
@@ -228,15 +243,15 @@ namespace GraphCanvas
 
         StateSetter<RootGraphicsItemDisplayState> m_nodeDisplayStateStateSetter;
         StateSetter<RootGraphicsItemDisplayState> m_connectionStateStateSetter;        
-    };
+    }; 
 
     class ConnectionEventFilter
-        : public QGraphicsWidget
+        : public SceneEventFilter
     {
     public:
         AZ_CLASS_ALLOCATOR(ConnectionEventFilter, AZ::SystemAllocator, 0);
         ConnectionEventFilter(ConnectionComponent& connection)
-            : QGraphicsWidget(nullptr)
+            : SceneEventFilter(nullptr)
             , m_connection(connection)
         {
         }

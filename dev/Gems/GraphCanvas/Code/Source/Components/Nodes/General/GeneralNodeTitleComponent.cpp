@@ -26,6 +26,7 @@
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
 #include <GraphCanvas/Utils/QtDrawingUtils.h>
+#include <GraphCanvas/Components/VisualBus.h>
 
 
 namespace GraphCanvas
@@ -65,10 +66,12 @@ namespace GraphCanvas
 
     void GeneralNodeTitleComponent::Activate()
     {
-        m_saveData.Activate(GetEntityId());
-        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
-        NodeTitleRequestBus::Handler::BusConnect(GetEntityId());        
-        
+        AZ::EntityId entityId = GetEntityId();
+        m_saveData.Activate(entityId);
+        SceneMemberNotificationBus::Handler::BusConnect(entityId);
+        NodeTitleRequestBus::Handler::BusConnect(entityId);
+        VisualNotificationBus::Handler::BusConnect(entityId);
+
         if (m_generalNodeTitleWidget)
         {
             m_generalNodeTitleWidget->SetTitle(m_title);
@@ -89,6 +92,8 @@ namespace GraphCanvas
 
         SceneMemberNotificationBus::Handler::BusDisconnect();
         NodeTitleRequestBus::Handler::BusDisconnect();
+        VisualNotificationBus::Handler::BusDisconnect();
+
     }
 
     void GeneralNodeTitleComponent::SetTitle(const AZStd::string& title)
@@ -238,7 +243,7 @@ namespace GraphCanvas
         m_linearLayout = new QGraphicsLinearLayout(Qt::Vertical);
         m_linearLayout->setSpacing(0);
         setLayout(m_linearLayout);
-        setData(GraphicsItemName, QStringLiteral("Title/%1").arg(static_cast<AZ::u64>(GetEntityId()), 16, 16, QChar('0')));
+        setData(GraphicsItemName, QStringLiteral("Title/%1").arg(static_cast<AZ::u64>(entityId), 16, 16, QChar('0')));
     }
 
     GeneralNodeTitleGraphicsWidget::~GeneralNodeTitleGraphicsWidget()
@@ -248,12 +253,13 @@ namespace GraphCanvas
 
     void GeneralNodeTitleGraphicsWidget::Activate()
     {
-        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
-        NodeNotificationBus::Handler::BusConnect(GetEntityId());
-        RootGraphicsItemNotificationBus::Handler::BusConnect(GetEntityId());
+        AZ::EntityId entityId = GetEntityId();
+        SceneMemberNotificationBus::Handler::BusConnect(entityId);
+        NodeNotificationBus::Handler::BusConnect(entityId);
+        RootGraphicsItemNotificationBus::Handler::BusConnect(entityId);
 
         AZ::EntityId scene;
-        SceneMemberRequestBus::EventResult(scene, GetEntityId(), &SceneMemberRequests::GetScene);
+        SceneMemberRequestBus::EventResult(scene, entityId, &SceneMemberRequests::GetScene);
         if (scene.IsValid())
         {
             SceneNotificationBus::Handler::BusConnect(scene);
@@ -402,6 +408,7 @@ namespace GraphCanvas
 
         RefreshDisplay();
         NodeTitleNotificationsBus::Event(GetEntityId(), &NodeTitleNotifications::OnTitleChanged);
+        NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
     }
 
     void GeneralNodeTitleGraphicsWidget::UpdateStyles()

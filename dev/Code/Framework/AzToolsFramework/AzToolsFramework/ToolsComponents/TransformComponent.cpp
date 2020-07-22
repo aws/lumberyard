@@ -1318,10 +1318,5 @@ namespace AzToolsFramework
                 });
             }
         }
-
-        AZ::u32 TransformComponent::GetParentEntityCRC()
-        {
-            return Internal::ParentEntityCRC;
-        }
     }
 } // namespace AzToolsFramework

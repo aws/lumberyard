@@ -17,12 +17,17 @@
 
 #include <QMenu>
 #include <QCheckBox>
+#include <QButtonGroup>
 
 RadioButtonPage::RadioButtonPage(QWidget* parent)
 : QWidget(parent)
 , ui(new Ui::RadioButtonPage)
 {
     ui->setupUi(this);
+    auto buttonGroup = new QButtonGroup(this);
+    buttonGroup->addButton(ui->radioButton);
+    buttonGroup->addButton(ui->radioButton_2);
+    ui->radioButton->setChecked(true);
 
     QString exampleText = R"(
 
@@ -39,7 +44,7 @@ QRadioButton* radioButton;
 radioButton->setEnabled(false);
 
 // To set the radio button to the "on" state
-radioButton->setChecked(false);
+radioButton->setChecked(true);
 
 // disabling a radio button and setting it to "on" can be done in Qt Designer and Creator as well.
 

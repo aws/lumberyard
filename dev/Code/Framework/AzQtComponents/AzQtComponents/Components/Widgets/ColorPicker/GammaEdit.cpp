@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/Widgets/ColorPicker/GammaEdit.h>
 #include <AzQtComponents/Components/Widgets/CheckBox.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <QDoubleValidator>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -31,11 +32,14 @@ GammaEdit::GammaEdit(QWidget* parent)
     auto label = new QLabel(tr("Gamma"), this);
     layout->addWidget(label);
 
-    m_edit = new QLineEdit(QStringLiteral("1.00"), this);
-    m_edit->setValidator(new QDoubleValidator(this));
+    m_edit = new DoubleSpinBox(this);
+    m_edit->setDisplayDecimals(2);
+    m_edit->setRange(0, 1);
+    m_edit->setSingleStep(0.1);
+    m_edit->setValue(1.0);
     m_edit->setFixedWidth(50);
     m_edit->setEnabled(false);
-    connect(m_edit, &QLineEdit::textChanged, this, &GammaEdit::textChanged);
+    connect(m_edit, static_cast<void(DoubleSpinBox::*)(double)>(&DoubleSpinBox::valueChanged), this, &GammaEdit::valueChanged);
     layout->addWidget(m_edit);
 
     m_toggleSwitch = new QCheckBox(this);
@@ -77,14 +81,13 @@ void GammaEdit::setGamma(qreal gamma)
     m_gamma = gamma;
 
     const QSignalBlocker b(m_edit);
-    m_edit->setText(QString::number(m_gamma, 'f', 2));
+    m_edit->setValue(m_gamma);
 
     emit gammaChanged(gamma);
 }
 
-void GammaEdit::textChanged(const QString& text)
+void GammaEdit::valueChanged(double gamma)
 {
-    const auto gamma = text.toDouble();
     if (qFuzzyCompare(gamma, m_gamma))
     {
         return;

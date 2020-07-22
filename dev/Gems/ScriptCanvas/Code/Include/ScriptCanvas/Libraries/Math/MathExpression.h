@@ -29,11 +29,6 @@ namespace ScriptCanvas
 
         namespace Math
         {
-            struct ReflectorClass
-            {
-                static void Reflect(AZ::ReflectContext* reflectContext);
-                int m_reflector;
-            };
             class MathExpression
                 : public Internal::ExpressionNodeBase
             {        
@@ -44,9 +39,8 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::EditAttributes(AZ::Edit::Attributes::CategoryStyle(".math"), ScriptCanvas::Attributes::Node::TitlePaletteOverride("MathNodeTitlePalette"))
                     ScriptCanvas_Node::DynamicSlotOrdering(true)
                     ScriptCanvas_Node::Version(0)
-                    ScriptCanvas_Node::DependentReflections(ReflectorClass)
                 );
-            public:                    
+            public:
 
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Output signal"));
 

@@ -14,47 +14,39 @@
 #pragma once
 
 
-#include "afxcmn.h"
-#include "Resource.h"
 #include <LyShine/Animation/IUiAnimation.h>
 
-// CUiAVEventsDialog dialog
+#include <QDialog>
 
-class CUiAVEventsDialog
-    : public CDialog
+namespace Ui
 {
-    DECLARE_DYNAMIC(CUiAVEventsDialog)
+    class UiAVEventsDialog;
+}
 
+// CUiAVEventsDialog dialog
+class CUiAVEventsDialog
+    : public QDialog
+{
+    Q_OBJECT
 public:
-    CUiAVEventsDialog(CWnd* pParent = NULL);   // standard constructor
+    CUiAVEventsDialog(QWidget* pParent = nullptr);   // standard constructor
     virtual ~CUiAVEventsDialog();
 
-    // Dialog Data
-    enum
-    {
-        IDD = IDD_TV_EVENTS
-    };
+    void OnBnClickedButtonAddEvent();
+    void OnBnClickedButtonRemoveEvent();
+    void OnBnClickedButtonRenameEvent();
+    void OnBnClickedButtonUpEvent();
+    void OnBnClickedButtonDownEvent();
+    void OnListItemChanged();
+
+    const QString& GetLastAddedEvent();
 
 protected:
-    virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-
-    DECLARE_MESSAGE_MAP()
-public:
-    afx_msg void OnBnClickedButtonAddEvent();
-    afx_msg void OnBnClickedButtonRemoveEvent();
-    afx_msg void OnBnClickedButtonRenameEvent();
-    afx_msg void OnBnClickedButtonUpEvent();
-    afx_msg void OnBnClickedButtonDownEvent();
-    afx_msg void OnListItemChanged(NMHDR* pNMHDR, LRESULT* pResult);
-
-protected:
-    virtual BOOL OnInitDialog();
+    void OnInitDialog();
 
     void UpdateButtons();
 
 private:
-    // list of events
-    CListCtrl m_List;
-
-    int GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float& timeFirstUsed) const;
+    QScopedPointer<Ui::UiAVEventsDialog> m_ui;
+    QString m_lastAddedEvent;
 };

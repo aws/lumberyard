@@ -499,6 +499,7 @@ namespace GraphCanvas
         ////
 
         // ViewNotificationBus
+        void OnEscape() override;
         void OnViewParamsChanged(const ViewParams& viewParams) override;
         ////
 

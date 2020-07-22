@@ -226,7 +226,7 @@ namespace EMotionFX
 
         void SimpleMotionComponent::PlayMotion()
         {
-            m_motionInstance = PlayMotionInternal(m_actorInstance.get(), m_configuration, true);
+            m_motionInstance = PlayMotionInternal(m_actorInstance.get(), m_configuration, /*deleteOnZeroWeight*/true, /*inPlace*/false);
         }
 
         void SimpleMotionComponent::RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance)
@@ -416,7 +416,7 @@ namespace EMotionFX
             return m_configuration.m_blendOutTime;
         }
 
-        EMotionFX::MotionInstance* SimpleMotionComponent::PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight)
+        EMotionFX::MotionInstance* SimpleMotionComponent::PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight, bool inPlace)
         {
             if (!actorInstance || !cfg.m_motionAsset.IsReady())
             {
@@ -447,6 +447,7 @@ namespace EMotionFX
             info.mCanOverwrite = false;
             info.mBlendInTime = cfg.m_blendInTime;
             info.mBlendOutTime = cfg.m_blendOutTime;
+            info.mInPlace = inPlace;
             return actorInstance->GetMotionSystem()->PlayMotion(motionAsset->m_emfxMotion.get(), &info);
         }
 

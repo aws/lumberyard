@@ -55,7 +55,7 @@ namespace EMotionFX
         static bool RemoveCollider(AZ::u32 actorId, const AZStd::string& jointName,
             const PhysicsSetup::ColliderConfigType& configType,
             size_t colliderIndex,
-            MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
+            MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false, bool firstLastCommand = true);
 
         static bool ClearColliders(AZ::u32 actorId, const AZStd::string& jointName,
             const PhysicsSetup::ColliderConfigType& configType,

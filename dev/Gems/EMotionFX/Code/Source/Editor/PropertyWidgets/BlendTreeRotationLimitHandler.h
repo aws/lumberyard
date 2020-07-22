@@ -17,9 +17,8 @@
 #include <QPushButton>
 #include <QGridLayout>
 #include <QLabel>
-#include <QDoubleSpinBox>
 #include <EMotionFX/Source/BlendTreeRotationLimitNode.h>
-#include <MysticQt/Source/DoubleSpinbox.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <AzCore/std/containers/array.h>
 
 namespace EMotionFX
@@ -45,8 +44,8 @@ namespace EMotionFX
     private:
         static const int s_decimalPlaces;
         QString m_tooltipText;
-        MysticQt::DoubleSpinBox* m_spinBoxMin = nullptr;
-        MysticQt::DoubleSpinBox* m_spinBoxMax = nullptr;
+        AzQtComponents::DoubleSpinBox* m_spinBoxMin = nullptr;
+        AzQtComponents::DoubleSpinBox* m_spinBoxMax = nullptr;
         const BlendTreeRotationLimitNode::RotationLimit* m_rotationLimit = nullptr;
     };
 

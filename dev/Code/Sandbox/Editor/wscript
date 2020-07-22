@@ -73,6 +73,7 @@ def build(bld):
         darwin_includes         = additional_qt_includes,
         darwin_enable_rtti      = True,
         linux_enable_rtti       = True,
+        win_enable_rtti         = True,
 
         win_features            = ['crcfix'],
         linux_rpath             = ['$ORIGIN/qtlibs/lib'],

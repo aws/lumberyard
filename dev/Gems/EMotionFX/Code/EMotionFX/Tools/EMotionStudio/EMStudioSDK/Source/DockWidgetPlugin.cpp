@@ -14,7 +14,6 @@
 #include "MainWindow.h"
 #include "DockWidgetPlugin.h"
 #include "RemovePluginOnCloseDockWidget.h"
-#include <MysticQt/Source/DockHeader.h>
 #include <MCore/Source/LogManager.h>
 #include <QHBoxLayout>
 
@@ -86,7 +85,7 @@ namespace EMStudio
         }
     }
 
-    MysticQt::DockWidget* DockWidgetPlugin::GetDockWidget() 
+    QDockWidget* DockWidgetPlugin::GetDockWidget()
     { 
         if (!mDock.isNull())
         {
@@ -99,10 +98,6 @@ namespace EMStudio
         // create a window for the plugin
         mDock = new RemovePluginOnCloseDockWidget(mainWindow, GetName(), this);
         mDock->setAllowedAreas(Qt::AllDockWidgetAreas);
-
-        // set the custom dock widget header
-        MysticQt::DockHeader* titleBar = new MysticQt::DockHeader(mDock);
-        mDock->setTitleBarWidget(titleBar);
 
         QDockWidget::DockWidgetFeatures features = QDockWidget::NoDockWidgetFeatures;
         if (GetIsClosable())
@@ -127,8 +122,6 @@ namespace EMStudio
         //  mDock->setFloating( true );
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mDock);
         mainWindow->setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North); // put tabs on top?
-
-        titleBar->UpdateIcons();
 
         return mDock;
     }

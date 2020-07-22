@@ -104,7 +104,7 @@ namespace WwiseBuilder
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.bnk", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.wem", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = WwiseBuilderWorker::GetUUID();
-        builderDescriptor.m_version = 1;
+        builderDescriptor.m_version = 2;
         builderDescriptor.m_createJobFunction = AZStd::bind(&WwiseBuilderWorker::CreateJobs, &m_wwiseBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&WwiseBuilderWorker::ProcessJob, &m_wwiseBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
 
@@ -212,6 +212,8 @@ namespace WwiseBuilder
                 }
                 
             }
+
+            jobProduct.m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             response.m_outputProducts.push_back(jobProduct);
         }
     }

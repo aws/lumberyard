@@ -10,22 +10,18 @@
 *
 */
 
-#ifndef PROPERTY_INTSPINBOX_CTRL
-#define PROPERTY_INTSPINBOX_CTRL
-
-#include <AzCore/base.h>
-#include <AzCore/Memory/SystemAllocator.h>
-#include <QtWidgets/QWidget>
-
-#include "PropertyEditorAPI.h"
-
 #pragma once
 
-class QSpinBox;
-class QPushButton;
+#include <AzToolsFramework/UI/PropertyEditor/PropertyIntCtrlCommon.h>
+
+
+namespace AzQtComponents
+{
+    class SpinBox;
+}
 
 namespace AzToolsFramework
-{
+{   
     class PropertyIntSpinCtrl
         : public QWidget
     {
@@ -33,21 +29,8 @@ namespace AzToolsFramework
     public:
         AZ_CLASS_ALLOCATOR(PropertyIntSpinCtrl, AZ::SystemAllocator, 0);
 
-        PropertyIntSpinCtrl(QWidget* pParent = NULL);
+        PropertyIntSpinCtrl(QWidget* parent = NULL);
         virtual ~PropertyIntSpinCtrl();
-
-        AZ::s64 value() const;
-        AZ::s64 minimum() const;
-        AZ::s64 maximum() const;
-        AZ::s64 step() const;
-
-        QWidget* GetFirstInTabOrder();
-        QWidget* GetLastInTabOrder();
-        void UpdateTabOrder();
-
-    signals:
-        void valueChanged(AZ::s64 newValue);
-        void editingFinished();
 
     public slots:
         void setValue(AZ::s64 val);
@@ -58,97 +41,73 @@ namespace AzToolsFramework
         void setPrefix(QString val);
         void setSuffix(QString val);
 
+        AZ::s64 value() const;
+        AZ::s64 minimum() const;
+        AZ::s64 maximum() const;
+        AZ::s64 step() const;
+
+        QWidget* GetFirstInTabOrder();
+        QWidget* GetLastInTabOrder();
+        void UpdateTabOrder();
+
     protected slots:
         void onChildSpinboxValueChange(int value);
+    signals:
+        void valueChanged(AZ::s64 newValue);
+        void editingFinished();
 
     private:
-        QSpinBox* m_pSpinBox;
+        AzQtComponents::SpinBox* m_pSpinBox;
         AZ::s64 m_multiplier;
 
     protected:
         virtual void focusInEvent(QFocusEvent* e);
     };
 
-    // note:  QT Objects cannot themselves be templates, else I would templatize creategui as well.
+    // Base class to allow QObject inheritance and definitions for IntSpinBoxHandlerCommon class template
+    class IntSpinBoxHandlerQObject
+        : public QObject
+    {
+        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
+        Q_OBJECT
+    };
+
     template <class ValueType>
-    class IntSpinBoxHandlerCommon
-        : public PropertyHandler<ValueType, PropertyIntSpinCtrl>
+    class IntSpinBoxHandler
+        : public IntWidgetHandler<ValueType, PropertyIntSpinCtrl, IntSpinBoxHandlerQObject>
     {
-        AZ::u32 GetHandlerName(void) const override  { return AZ::Edit::UIHandlers::SpinBox; }
-        bool IsDefaultHandler() const override { return true; }
-        QWidget* GetFirstInTabOrder(PropertyIntSpinCtrl* widget) override { return widget->GetFirstInTabOrder(); }
-        QWidget* GetLastInTabOrder(PropertyIntSpinCtrl* widget) override { return widget->GetLastInTabOrder(); }
-        void UpdateWidgetInternalTabbing(PropertyIntSpinCtrl* widget) override { widget->UpdateTabOrder(); }
-    };
-
-
-    class s32PropertySpinboxHandler
-        : QObject
-        , public IntSpinBoxHandlerCommon<AZ::s32>
-    {
-        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
-        Q_OBJECT
+        using BaseHandler = IntWidgetHandler<ValueType, PropertyIntSpinCtrl, IntSpinBoxHandlerQObject>;
     public:
-        AZ_CLASS_ALLOCATOR(s32PropertySpinboxHandler, AZ::SystemAllocator, 0);
-
-        // common to all int spinners
-        static void ConsumeAttributeCommon(PropertyIntSpinCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName);
+        AZ_CLASS_ALLOCATOR(IntSpinBoxHandler, AZ::SystemAllocator, 0);
+    protected:
+        bool IsDefaultHandler() const override;
+        AZ::u32 GetHandlerName(void) const override;
         QWidget* CreateGUI(QWidget* pParent) override;
-        void ConsumeAttribute(PropertyIntSpinCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
-        void WriteGUIValuesIntoProperty(size_t index, PropertyIntSpinCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
-        bool ReadValuesIntoGUI(size_t index, PropertyIntSpinCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
-        bool ModifyTooltip(QWidget* widget, QString& toolTipString) override;
     };
 
-    class u32PropertySpinboxHandler
-        : QObject
-        , public IntSpinBoxHandlerCommon<AZ::u32>
+    template <class ValueType>
+    bool IntSpinBoxHandler<ValueType>::IsDefaultHandler() const
     {
-        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(u32PropertySpinboxHandler, AZ::SystemAllocator, 0);
+        return true;
+    }
 
-        QWidget* CreateGUI(QWidget* pParent) override;
-        void ConsumeAttribute(PropertyIntSpinCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
-        void WriteGUIValuesIntoProperty(size_t index, PropertyIntSpinCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
-        bool ReadValuesIntoGUI(size_t index, PropertyIntSpinCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
-        bool ModifyTooltip(QWidget* widget, QString& toolTipString) override;
-    };
-
-    class s64PropertySpinboxHandler
-        : QObject
-        , public IntSpinBoxHandlerCommon<AZ::s64>
+    template <class ValueType>
+    AZ::u32 IntSpinBoxHandler<ValueType>::GetHandlerName(void) const
     {
-        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(u32PropertySpinboxHandler, AZ::SystemAllocator, 0);
+        return AZ::Edit::UIHandlers::SpinBox;
+    }
 
-        QWidget* CreateGUI(QWidget* pParent) override;
-        void ConsumeAttribute(PropertyIntSpinCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
-        void WriteGUIValuesIntoProperty(size_t index, PropertyIntSpinCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
-        bool ReadValuesIntoGUI(size_t index, PropertyIntSpinCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
-        bool ModifyTooltip(QWidget* widget, QString& toolTipString) override;
-    };
-
-    class u64PropertySpinboxHandler
-        : QObject
-        , public IntSpinBoxHandlerCommon<AZ::u64>
+    template <class ValueType>
+    QWidget* IntSpinBoxHandler<ValueType>::CreateGUI(QWidget* parent)
     {
-        // this is a Qt Object purely so it can connect to slots with context.  This is the only reason its in this header.
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(u32PropertySpinboxHandler, AZ::SystemAllocator, 0);
+        PropertyIntSpinCtrl* newCtrl = static_cast<PropertyIntSpinCtrl*>(BaseHandler::CreateGUI(parent));
+        this->connect(newCtrl, &PropertyIntSpinCtrl::valueChanged, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::RequestWrite, newCtrl);
+        });
 
-        QWidget* CreateGUI(QWidget* pParent) override;
-        void ConsumeAttribute(PropertyIntSpinCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
-        void WriteGUIValuesIntoProperty(size_t index, PropertyIntSpinCtrl* GUI, property_t& instance, InstanceDataNode* node) override;
-        bool ReadValuesIntoGUI(size_t index, PropertyIntSpinCtrl* GUI, const property_t& instance, InstanceDataNode* node)  override;
-        bool ModifyTooltip(QWidget* widget, QString& toolTipString) override;
-    };
+        return newCtrl;
+    }
 
     void RegisterIntSpinBoxHandlers();
 };
-
-#endif

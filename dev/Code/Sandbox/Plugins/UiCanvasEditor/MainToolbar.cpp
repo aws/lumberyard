@@ -18,7 +18,7 @@ MainToolbar::MainToolbar(EditorWindow* parent)
     , m_newElementToolbarSection(new NewElementToolbarSection(this, true))
     , m_coordinateSystemToolbarSection(new CoordinateSystemToolbarSection(this, true))
     , m_canvasSizeToolbarSection(new ReferenceCanvasSizeToolbarSection(this, false))
-    , m_zoomFactorSpinBox(new AzToolsFramework::DHQDoubleSpinbox(parent))
+    , m_zoomFactorSpinBox(new AzQtComponents::DoubleSpinBox(parent))
 {
     setObjectName("MainToolbar");    // needed to save state
     setFloatable(false);
@@ -35,7 +35,7 @@ MainToolbar::MainToolbar(EditorWindow* parent)
     m_zoomFactorSpinBox->setButtonSymbols(QDoubleSpinBox::ButtonSymbols::UpDownArrows);
 
     QObject::connect(m_zoomFactorSpinBox,
-        static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+        QOverload<double>::of(&AzQtComponents::DoubleSpinBox::valueChanged),
         [this, parent](double value)
         {
             parent->GetViewport()->GetViewportInteraction()->SetCanvasZoomPercent(static_cast<float>(value));

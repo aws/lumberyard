@@ -15,7 +15,6 @@
 #include <QPushButton>
 #include <QLabel>
 #include "../../../../EMStudioSDK/Source/EMStudioCore.h"
-#include <MysticQt/Source/ButtonGroup.h>
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/Source/MorphSetup.h>
@@ -75,7 +74,7 @@ namespace EMStudio
         mDialogStack = new MysticQt::DialogStack();
         mDock->setMinimumWidth(300);
         mDock->setMinimumHeight(100);
-        mDock->SetContents(mStaticTextWidget);
+        mDock->setWidget(mStaticTextWidget);
 
         GetCommandManager()->RegisterCommandCallback<CommandSelectCallback>("Select", m_callbacks, false);
         GetCommandManager()->RegisterCommandCallback<CommandUnselectCallback>("Unselect", m_callbacks, false);
@@ -87,7 +86,7 @@ namespace EMStudio
         ReInit();
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MorphTargetsWindowPlugin::WindowReInit);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &MorphTargetsWindowPlugin::WindowReInit);
 
         // done
         return true;
@@ -99,7 +98,7 @@ namespace EMStudio
     {
         if (mDock)
         {
-            mDock->SetContents(mStaticTextWidget);
+            mDock->setWidget(mStaticTextWidget);
         }
 
         // clear the dialog stack
@@ -123,7 +122,7 @@ namespace EMStudio
         if (actorInstance == nullptr)
         {
             // set the dock contents
-            mDock->SetContents(mStaticTextWidget);
+            mDock->setWidget(mStaticTextWidget);
 
             // clear dialog and reset the current actor instance as we cleared the window
             if (mCurrentActorInstance)
@@ -155,7 +154,7 @@ namespace EMStudio
             EMotionFX::MorphSetup* morphSetup = actor->GetMorphSetup(actorInstance->GetLODLevel());
             if (morphSetup == nullptr)
             {
-                mDock->SetContents(mStaticTextWidget);
+                mDock->setWidget(mStaticTextWidget);
                 return;
             }
 
@@ -163,7 +162,7 @@ namespace EMStudio
             EMotionFX::MorphSetupInstance* morphSetupInstance = actorInstance->GetMorphSetupInstance();
             if (morphSetupInstance == nullptr)
             {
-                mDock->SetContents(mStaticTextWidget);
+                mDock->setWidget(mStaticTextWidget);
                 return;
             }
 
@@ -222,11 +221,11 @@ namespace EMStudio
             // create static text if no morph targets are available
             if (defaultMorphTargets.empty() && phonemes.empty())
             {
-                mDock->SetContents(mStaticTextWidget);
+                mDock->setWidget(mStaticTextWidget);
             }
             else
             {
-                mDock->SetContents(mDialogStack);
+                mDock->setWidget(mDialogStack);
             }
 
             // adjust the slider values to the correct weights of the selected actor instance

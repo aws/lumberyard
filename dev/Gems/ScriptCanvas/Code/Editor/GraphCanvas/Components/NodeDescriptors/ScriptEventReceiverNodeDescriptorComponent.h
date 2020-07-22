@@ -20,7 +20,7 @@
 
 #include <Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h>
 #include <ScriptEvents/ScriptEventsAsset.h>
-#include <ScriptCanvas/GraphCanvas/VersionControlledNodeBus.h>
+#include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -34,7 +34,7 @@ namespace ScriptCanvasEditor
         , public GraphCanvas::EntitySaveDataRequestBus::Handler
         , public GraphCanvas::SceneMemberNotificationBus::Handler
         , public AZ::Data::AssetBus::Handler
-        , public VersionControlledNodeInterface
+        , public EditorNodeNotificationBus::Handler
     {
     public:
         class ScriptEventReceiverHandlerNodeDescriptorSaveData
@@ -73,7 +73,7 @@ namespace ScriptCanvasEditor
         void Deactivate() override;
 
         // NodeNotifications
-        void OnNodeActivated() override;        
+        void OnNodeActivated() override;
         ////
 
         // SceneMemberNotifications
@@ -121,10 +121,9 @@ namespace ScriptCanvasEditor
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         ////
 
-        // VersionControlledNodeInterface
-        bool IsOutOfDate() const override;
-
-        void UpdateNodeVersion() override;
+        // EditorNodeNotificationBus::Handler
+        void OnVersionConversionBegin() override;
+        void OnVersionConversionEnd() override;
         ////
 
     protected:

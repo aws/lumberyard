@@ -1,0 +1,40 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Airship_HologramMonitor" MtlFlags="524416" Shader="Illum" GenMask="4000010020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.83879912,0.95597351,1,1" Specular="0.027320893,0.027320893,0.027320893,1" Emittance="0.068478175,0.85499275,0.50888133,50" Opacity="1" Shininess="219" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_hologrammonitor_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_hologrammonitor_01_ddna.dds"/>
+    <Texture Map="Emittance" File="objects/airship/airship_hologrammonitor_01_emis.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Proxy_COL4" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+  <Material Name="Airship_Monitor_HologramScreen" MtlFlags="526502" Shader="Monitor" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Emittance="0.099898733,1,0.78353792,30" Opacity="0.80000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/fx_screenart_03.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="0.015" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+   </Textures>
+   <PublicParams GrainAmount="0.55900002" DeformAmount="0" DeformTillingY="1" GrainTilling="1.71" ResolutionX="512" ResolutionY="512" InterlacingTilling="0" Contrast="1" Saturation="1" DeformTillingX="1" GrainSaturation="1" FresnelScale="0" InterlacingAmount="0" VSyncFreq="0" PixelVisibility="0" FresnelBias="0" ChromaShift="0.00030000001" ViewAngle="180" DeformFreq="0"/>
+  </Material>
+  <Material Name="Airship_Monitor_HologramScreenGrid" MtlFlags="526502" Shader="Monitor" GenMask="0" StringGenMask="" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Emittance="0.03189604,1,0.75294232,30" Opacity="0.99000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/fx_screenartgrid_01.dds"/>
+   </Textures>
+   <PublicParams GrainAmount="0.55900002" DeformAmount="0" DeformTillingY="1" GrainTilling="1.71" ResolutionX="512" ResolutionY="512" InterlacingTilling="0" Contrast="1" Saturation="1" DeformTillingX="1" GrainSaturation="1" FresnelScale="0" InterlacingAmount="0" VSyncFreq="0" PixelVisibility="0" FresnelBias="0" ChromaShift="0.029999999" ViewAngle="180" DeformFreq="0"/>
+  </Material>
+  <Material Name="Airship_Monitor_HoloScreenOverlay1" MtlFlags="524454" Shader="Illum" GenMask="4000000020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="0,0,0,1" Specular="0,0,0,1" Emittance="0.1559265,1,0.57758057,25" Opacity="0.99000001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/fx_screenartoverlay_01.dds"/>
+    <Texture Map="Decal" File="textures/effects/fx_gradientfade_04.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.0078130001" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="12" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Emittance" File="textures/effects/fx_screenartoverlay_01.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

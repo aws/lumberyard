@@ -2,10 +2,10 @@
     "platform": {
         "linux_x64": {
             "libpath_debug": [
-                "build/linux/clang-3.7/debug"
+                "build/linux/clang-3.8/debug"
             ],
             "libpath_release": [
-                "build/linux/clang-3.7/release"
+                "build/linux/clang-3.8/release"
             ],
             "lib": [
                 "libsqlite.a"

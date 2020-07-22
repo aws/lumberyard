@@ -817,4 +817,17 @@ void CTerrainManager::DestroyTerrainSystem()
         m_heightmap.SetUseTerrain(false);
     }
 }
+
+int CTerrainManager::GetTerrainSurfaceIdFromSurfaceTag(AZ::Crc32 tag)
+{
+    for (int i = 0; i < m_surfaceTypes.size(); i++)
+    {
+        const AZ::Crc32 surfaceNameTag = AZ::Crc32(m_surfaceTypes[i]->GetName().toUtf8().constData());
+        if (surfaceNameTag == tag)
+        {
+            return m_surfaceTypes[i]->GetSurfaceTypeID();
+        }
+    }
+    return 0;
+}
 //////////////////////////////////////////////////////////////////////////

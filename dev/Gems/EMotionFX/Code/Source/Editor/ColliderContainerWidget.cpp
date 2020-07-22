@@ -358,19 +358,24 @@ namespace EMotionFX
 
     void AddColliderButton::OnCreateContextMenuAddCollider()
     {
-        QMenu contextMenu;
+        QMenu* contextMenu = new QMenu(this);
+        contextMenu->setObjectName("EMFX.AddColliderButton.ContextMenu");
 
         AZStd::string actionName;
         for (const AZ::TypeId& typeId : m_supportedColliderTypes)
         {
             actionName = AZStd::string::format("Add %s", GetNameForColliderType(typeId).c_str());
-            QAction* addBoxAction = contextMenu.addAction(actionName.c_str());
+            QAction* addBoxAction = contextMenu->addAction(actionName.c_str());
             addBoxAction->setProperty("typeId", typeId.ToString<AZStd::string>().c_str());
             connect(addBoxAction, &QAction::triggered, this, &AddColliderButton::OnAddColliderActionTriggered);
         }
 
-        contextMenu.setFixedWidth(width());
-        contextMenu.exec(mapToGlobal(QPoint(0, height())));
+        contextMenu->setFixedWidth(width());
+        if (!contextMenu->isEmpty())
+        {
+            contextMenu->popup(mapToGlobal(QPoint(0, height())));
+        }
+        connect(contextMenu, &QMenu::triggered, contextMenu, &QMenu::deleteLater);
     }
 
     void AddColliderButton::OnAddColliderActionTriggered(bool checked)

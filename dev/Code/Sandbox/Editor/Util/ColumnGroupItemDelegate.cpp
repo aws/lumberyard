@@ -13,7 +13,9 @@
 
 #include "ColumnGroupItemDelegate.h"
 
+#include <QHeaderView>
 #include <QPainter>
+#include <QTreeView>
 
 ColumnGroupItemDelegate::ColumnGroupItemDelegate(QObject* parent)
     : QStyledItemDelegate(parent)
@@ -22,22 +24,18 @@ ColumnGroupItemDelegate::ColumnGroupItemDelegate(QObject* parent)
 
 QSize ColumnGroupItemDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
-    QSize s = QStyledItemDelegate::sizeHint(option, index);
-    if (index.model()->hasChildren(index))
+    // group title indexes have no own width, their text is drawn over all columns
+    if (index.model()->hasChildren(index) && index.column() == 0)
     {
-        s.setHeight(s.height() * 2);
+        return QSize(32, QStyledItemDelegate::sizeHint(option, index).height());
     }
-    return s;
+    return QStyledItemDelegate::sizeHint(option, index);
 }
 
 void ColumnGroupItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     if (index.model()->hasChildren(index))
     {
-        if (index.column() > 0)
-        {
-            return;
-        }
         painter->setClipping(false);
         painter->setPen(option.palette.text().color());
         if (option.state & QStyle::State_Selected)
@@ -46,7 +44,7 @@ void ColumnGroupItemDelegate::paint(QPainter* painter, const QStyleOptionViewIte
         }
         QRect textRect = option.rect;
         textRect.setRight(qobject_cast<QWidget*>(parent())->width());
-        if (option.state & QStyle::State_Selected)
+        if (option.state & QStyle::State_Selected && index.column() == 0)
         {
             painter->fillRect(textRect, option.palette.highlight());
         }
@@ -57,7 +55,23 @@ void ColumnGroupItemDelegate::paint(QPainter* painter, const QStyleOptionViewIte
         {
             content += index.sibling(index.row(), column).data().toString();
         }
-        painter->drawText(textRect, Qt::AlignLeft | Qt::AlignBottom | Qt::ElideRight, content);
+        int alignment = index.data(Qt::TextAlignmentRole).toInt();
+        if (index.column() == 0)
+        {
+            painter->drawText(textRect, (alignment == 0 ? Qt::AlignLeft | Qt::AlignVCenter : alignment) | Qt::ElideRight, content);
+        }
+
+        if (!index.parent().isValid() && index.row() > 0)
+        {
+            QTreeView* tv = qobject_cast<QTreeView*>(option.styleObject);
+            if (tv)
+            {
+                // draw a line in the same color as the table header for separation between groups
+                QStyleOptionHeader header;
+                header.rect = QRect(QPoint(1, textRect.top()), textRect.topRight() - QPoint(1,0));
+                tv->style()->drawControl(QStyle::CE_HeaderSection, &header, painter, tv->header());
+            }
+        }
     }
     else
     {

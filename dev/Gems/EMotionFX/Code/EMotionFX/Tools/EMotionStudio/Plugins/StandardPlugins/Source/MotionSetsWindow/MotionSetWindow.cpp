@@ -13,6 +13,8 @@
 #include "MotionSetsWindowPlugin.h"
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <AzCore/IO/FileIO.h>
+#include <QAction>
+#include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QWidget>
@@ -27,9 +29,9 @@
 #include <QClipboard>
 #include <QApplication>
 #include <QDesktopWidget>
+#include <QToolBar>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include "../../../../EMStudioSDK/Source/EMStudioCore.h"
-#include <MysticQt/Source/ButtonGroup.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/IDGenerator.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
@@ -72,7 +74,7 @@ namespace EMStudio
         tableWidget->setColumnCount(2);
         QStringList headerLabels;
         headerLabels.append("Name");
-        headerLabels.append("FileName");
+        headerLabels.append("Filename");
         tableWidget->setHorizontalHeaderLabels(headerLabels);
         tableWidget->horizontalHeader()->setStretchLastSection(true);
         tableWidget->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
@@ -144,15 +146,9 @@ namespace EMStudio
         mLineEdit->setText(m_motionId.c_str());
         mLineEdit->selectAll();
 
-        // create add the error message
-        /*mErrorMsg = new QLabel("<font color='red'>Error: Duplicate ID found</font>");
-        mErrorMsg->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        mErrorMsg->setVisible(false);*/
-
         QHBoxLayout* buttonLayout   = new QHBoxLayout();
         mOKButton                   = new QPushButton("OK");
         QPushButton* cancelButton   = new QPushButton("Cancel");
-        //buttonLayout->addWidget(mErrorMsg);
         buttonLayout->addWidget(mOKButton);
         buttonLayout->addWidget(cancelButton);
 
@@ -189,26 +185,10 @@ namespace EMStudio
 
     void RenameMotionEntryWindow::Accepted()
     {
-        // Shall we also update all references inside the anim graph?
-        bool remapReferences;
-        if (QMessageBox::question(this, "Remap References?", "Would you like to automatically change all references to the new ids inside the anim graphs?", QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) == QMessageBox::Yes)
-        {
-            remapReferences = true;
-        }
-        else
-        {
-            remapReferences = false;
-        }
-
-        AZStd::string commandString = AZStd::string::format("MotionSetAdjustMotion -motionSetID %i -idString \"%s\" -newIDString \"%s\"",
+        AZStd::string commandString = AZStd::string::format("MotionSetAdjustMotion -motionSetID %i -idString \"%s\" -newIDString \"%s\" -updateMotionNodeStringIDs true",
                 mMotionSet->GetID(),
                 m_motionId.c_str(),
                 mLineEdit->text().toUtf8().data());
-
-        if (remapReferences)
-        {
-            commandString += " -updateMotionNodeStringIDs true";
-        }
 
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommand(commandString, result))
@@ -224,16 +204,13 @@ namespace EMStudio
     MotionSetWindow::MotionSetWindow(MotionSetsWindowPlugin* parentPlugin, QWidget* parent)
         : QWidget(parent)
     {
-        //mStringIDWindow       = nullptr;
         mPlugin             = parentPlugin;
-        //mRightSelectedSet = nullptr;
     }
 
 
     // destructor
     MotionSetWindow::~MotionSetWindow()
     {
-        //delete mStringIDWindow;
     }
 
 
@@ -250,61 +227,32 @@ namespace EMStudio
         tableLayout->setMargin(0);
         tableLayout->setSpacing(2);
 
-        // add the buttons to add, remove and clear the motions
-        QHBoxLayout* buttonsLayout = new QHBoxLayout();
-        buttonsLayout->setSpacing(0);
-        buttonsLayout->setAlignment(Qt::AlignLeft);
-        tableLayout->addLayout(buttonsLayout);
+        QToolBar* toolBar = new QToolBar(this);
+        toolBar->setObjectName("MotionSetWindow.ToolBar");
 
-        mAddButton         = new QPushButton();
-        mLoadButton        = new QPushButton();
-        //mMoveUpButton    = new QPushButton();
-        //mMoveDownButton  = new QPushButton();
-        mEditButton        = new QPushButton();
-        mRemoveButton      = new QPushButton();
-        mClearButton       = new QPushButton();
+        m_addAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.svg"),
+            tr("Add a new entry"),
+            this, &MotionSetWindow::OnAddNewEntry);
+        m_addAction->setObjectName("MotionSetWindow.ToolBar.AddANewEntry");
 
-        EMStudioManager::MakeTransparentButton(mAddButton,          "/Images/Icons/Plus.png",       "Add a new entry.");
-        EMStudioManager::MakeTransparentButton(mLoadButton,         "/Images/Icons/Open.png",       "Add entries by selecting motions.");
-        //EMStudioManager::MakeTransparentButton( mMoveUpButton,    "/Images/Icons/UpArrow.png",    "Moves the selected motion up" );
-        //EMStudioManager::MakeTransparentButton( mMoveDownButton,  "/Images/Icons/DownArrow.png",  "Moves the selected motion down" );
+        m_loadAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Open.svg"),
+            tr("Add entries by selecting motions."),
+            this, &MotionSetWindow::OnLoadEntries);
 
-        EMStudioManager::MakeTransparentButton(mRemoveButton,       "/Images/Icons/Minus.png",      "Remove selected entries.");
-        EMStudioManager::MakeTransparentButton(mClearButton,        "/Images/Icons/Clear.png",      "Remove all entries.");
-        EMStudioManager::MakeTransparentButton(mEditButton,         "/Images/Icons/Edit.png",       "Batch edit selected motion IDs");
-
-        buttonsLayout->addWidget(mAddButton);
-        buttonsLayout->addWidget(mLoadButton);
-        buttonsLayout->addWidget(mRemoveButton);
-        buttonsLayout->addWidget(mClearButton);
-        buttonsLayout->addWidget(mEditButton);
-        //buttonsLayout->addWidget(mMoveUpButton);
-        //buttonsLayout->addWidget(mMoveDownButton);
-
-        QWidget* buttonSpacerWidget = new QWidget();
-        buttonSpacerWidget->setFixedWidth(40);
-        buttonSpacerWidget->setFixedHeight(0);
-        buttonsLayout->addWidget(buttonSpacerWidget);
+        m_editAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Edit.svg"),
+            tr("Batch edit selected motion IDs"),
+            this, &MotionSetWindow::OnEditButton);
 
         QWidget* spacerWidget = new QWidget();
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        buttonsLayout->addWidget(spacerWidget);
+        toolBar->addWidget(spacerWidget);
 
         m_searchWidget = new AzQtComponents::FilteredSearchWidget(this);
         connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &MotionSetWindow::OnTextFilterChanged);
-        buttonsLayout->addWidget(m_searchWidget);
+        toolBar->addWidget(m_searchWidget);
 
-        connect(mAddButton,     &QPushButton::clicked, this, &MotionSetWindow::OnAddNewEntry);
-        connect(mLoadButton,    &QPushButton::clicked, this, &MotionSetWindow::OnLoadEntries);
-        //connect(mMoveUpButton,    SIGNAL(clicked()), this, SLOT(OnUpButton()));
-        //connect(mMoveDownButton,  SIGNAL(clicked()), this, SLOT(OnDownButton()));
-        connect(mEditButton,        &QPushButton::clicked, this, &MotionSetWindow::OnEditButton);
-        connect(mClearButton, &QPushButton::clicked, this, &MotionSetWindow::OnClearMotions);
-        connect(mRemoveButton, &QPushButton::clicked, this, &MotionSetWindow::OnRemoveMotions);
+        layout->addWidget(toolBar);
 
-        //QSplitter* splitterWidget = new QSplitter();
-        //splitterWidget->setOrientation(Qt::Horizontal);
-        //tableLayout->addWidget(splitterWidget);
 
         // left side
         m_tableWidget = new MotionSetTableWidget(mPlugin, this);
@@ -332,25 +280,25 @@ namespace EMStudio
         headerItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
         m_tableWidget->setHorizontalHeaderItem(1, headerItem);
 
-        headerItem = new QTableWidgetItem("Length");
+        headerItem = new QTableWidgetItem("Duration");
         headerItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
         m_tableWidget->setHorizontalHeaderItem(2, headerItem);
 
-        headerItem = new QTableWidgetItem("Sub");
+        headerItem = new QTableWidgetItem("Joints");
         headerItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        headerItem->setToolTip("Number of submotions");
+        headerItem->setToolTip("The number of joints inside the motion");
         m_tableWidget->setHorizontalHeaderItem(3, headerItem);
 
-        headerItem = new QTableWidgetItem("MSub");
+        headerItem = new QTableWidgetItem("Morphs");
         headerItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        headerItem->setToolTip("Number of morph submotions");
+        headerItem->setToolTip("The number of morph targets inside the motion.");
         m_tableWidget->setHorizontalHeaderItem(4, headerItem);
 
         headerItem = new QTableWidgetItem("Type");
         headerItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
         m_tableWidget->setHorizontalHeaderItem(5, headerItem);
 
-        headerItem = new QTableWidgetItem("FileName");
+        headerItem = new QTableWidgetItem("Filename");
         headerItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
         m_tableWidget->setHorizontalHeaderItem(6, headerItem);
 
@@ -369,9 +317,9 @@ namespace EMStudio
         m_tableWidget->setColumnWidth(0, 23);
         m_tableWidget->setColumnWidth(1, 300);
         m_tableWidget->setColumnWidth(2, 55);
-        m_tableWidget->setColumnWidth(3, 35);
-        m_tableWidget->setColumnWidth(4, 42);
-        m_tableWidget->setColumnWidth(5, 86);
+        m_tableWidget->setColumnWidth(3, 45);
+        m_tableWidget->setColumnWidth(4, 50);
+        m_tableWidget->setColumnWidth(5, 100);
 
         layout->addLayout(tableLayout);
 
@@ -471,6 +419,7 @@ namespace EMStudio
             // Don't blend in and out of the for previewing animations. We might only see a short bit of it for animations smaller than the blend in/out time.
             defaultPlayBackInfo->mBlendInTime = 0.0f;
             defaultPlayBackInfo->mBlendOutTime = 0.0f;
+            defaultPlayBackInfo->mFreezeAtLastFrame = (defaultPlayBackInfo->mNumLoops != EMFX_LOOPFOREVER);
             commandParameters = CommandSystem::CommandPlayMotion::PlayBackInfoToCommandParameters(defaultPlayBackInfo);
         }
 
@@ -608,7 +557,7 @@ namespace EMStudio
 
             QTableWidgetItem* exclamationTableItem = new QTableWidgetItem("");
             exclamationTableItem->setFlags(Qt::NoItemFlags);
-            exclamationTableItem->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/ExclamationMark.png"));
+            exclamationTableItem->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/ExclamationMark.svg"));
             exclamationTableItem->setToolTip(tooltipText.c_str());
             tableWidget->setItem(rowIndex, 0, exclamationTableItem);
         }
@@ -839,7 +788,7 @@ namespace EMStudio
 
                 QTableWidgetItem* exclamationTableItem = new QTableWidgetItem("");
                 exclamationTableItem->setFlags(Qt::NoItemFlags);
-                exclamationTableItem->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/ExclamationMark.png"));
+                exclamationTableItem->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/ExclamationMark.svg"));
                 exclamationTableItem->setToolTip(tooltipText.c_str());
                 tableWidget->setItem(row, 0, exclamationTableItem);
             }
@@ -874,46 +823,32 @@ namespace EMStudio
 
     void MotionSetWindow::UpdateInterface()
     {
-        // get the selected motion set
         EMotionFX::MotionSet* motionSet = mPlugin->GetSelectedSet();
 
-        // check if no one motion set is selected, disable all actions on this case
+        const bool isEnabled = (motionSet != nullptr);
+        m_addAction->setEnabled(isEnabled);
+        m_loadAction->setEnabled(isEnabled);
+        m_editAction->setEnabled(isEnabled);
+        m_tableWidget->setEnabled(isEnabled);
+
         if (!motionSet)
         {
-            mAddButton->setEnabled(false);
-            mLoadButton->setEnabled(false);
-            mRemoveButton->setEnabled(false);
-            mClearButton->setEnabled(false);
-            mEditButton->setEnabled(false);
-            m_tableWidget->setEnabled(false);
             return;
         }
 
-        // one motion set is selected, enable common actions which are always enabled
-        m_tableWidget->setEnabled(true);
-        mAddButton->setEnabled(true);
-        mLoadButton->setEnabled(true);
-
-        // get the current selection
         const QList<QTableWidgetItem*> selectedItems = m_tableWidget->selectedItems();
-
-        // get the number of selected items
         const uint32 numSelectedItems = selectedItems.count();
 
         // Get the row indices from the selected items.
         AZStd::vector<int> rowIndices;
         GetRowIndices(selectedItems, rowIndices);
 
-        // action which need at least one selected
-        const bool hasSelectedRows = rowIndices.size() > 0;
-        mRemoveButton->setEnabled(hasSelectedRows);
-
         // actions which need at least one motion
         const bool hasMotions = m_tableWidget->rowCount() > 0;
-        mClearButton->setEnabled(hasMotions);
-        mEditButton->setEnabled(hasMotions);
+        m_editAction->setEnabled(hasMotions);
 
         // Inform the time view plugin about the motion selection change.
+        const bool hasSelectedRows = rowIndices.size() > 0;
         if (hasSelectedRows)
         {
             QTableWidgetItem* firstSelectedItem = selectedItems[0];
@@ -1617,11 +1552,6 @@ namespace EMStudio
         // create the menu
         QMenu menu(this);
 
-        // add the remove action
-        QAction* removeSelectedMotionsAction = menu.addAction("Remove Selected Motions");
-        removeSelectedMotionsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
-        connect(removeSelectedMotionsAction, &QAction::triggered, this, &MotionSetWindow::OnRemoveMotions);
-
         // add the rename action if only one selected
         if (rowIndices.size() == 1)
         {
@@ -1643,6 +1573,11 @@ namespace EMStudio
             QAction* unassignMotionAction = menu.addAction("Unassign Motions");
             connect(unassignMotionAction, &QAction::triggered, this, &MotionSetWindow::OnUnassignMotions);
         }
+
+        menu.addSeparator();
+
+        QAction* removeSelectedMotionsAction = menu.addAction("Remove Selected Motions");
+        connect(removeSelectedMotionsAction, &QAction::triggered, this, &MotionSetWindow::OnRemoveMotions);
 
         // execute the menu
         menu.exec(event->globalPos());
@@ -1753,13 +1688,13 @@ namespace EMStudio
         spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
         // create the combobox
-        mComboBox = new MysticQt::ComboBox();
+        mComboBox = new QComboBox();
         mComboBox->addItem("Replace All");
         mComboBox->addItem("Replace First");
         mComboBox->addItem("Replace Last");
 
         // connect the combobox
-        connect(mComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &MotionEditStringIDWindow::CurrentIndexChanged);
+        connect(mComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &MotionEditStringIDWindow::CurrentIndexChanged);
 
         // create the string line edits
         mStringALineEdit = new QLineEdit();
@@ -1870,17 +1805,6 @@ namespace EMStudio
 
     void MotionEditStringIDWindow::Accepted()
     {
-        // ask to update references
-        bool remapReferences;
-        if (QMessageBox::question(this, "Remap References?", "Would you like to automatically change all references to the new ids inside the anim graphs?", QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) == QMessageBox::Yes)
-        {
-            remapReferences = true;
-        }
-        else
-        {
-            remapReferences = false;
-        }
-
         // create the command group
         MCore::CommandGroup group("Motion set edit IDs");
 
@@ -1889,23 +1813,11 @@ namespace EMStudio
         const size_t numValid = mValids.size();
         for (size_t i = 0; i < numValid; ++i)
         {
-            // 0=Replace All, 1=Replace First, 2=Replace Last
-            //const int operationMode = mComboBox->currentIndex();
-
             // get the motion ID and the modified ID
             AZStd::string& motionID = mMotionIDs[mValids[i]];
             const AZStd::string& modifiedID = mModifiedMotionIDs[mMotionToModifiedMap[mValids[i]]];
 
-            // set the command
-            commandString = AZStd::string::format("MotionSetAdjustMotion -motionSetID %i -idString \"%s\" -newIDString \"%s\"", mMotionSet->GetID(), motionID.c_str(), modifiedID.c_str());
-
-            // remap or not
-            if (remapReferences)
-            {
-                commandString += " -updateMotionNodeStringIDs true";
-            }
-
-            // update the motion ID
+            commandString = AZStd::string::format("MotionSetAdjustMotion -motionSetID %i -idString \"%s\" -newIDString \"%s\" -updateMotionNodeStringIDs true", mMotionSet->GetID(), motionID.c_str(), modifiedID.c_str());
             motionID = modifiedID;
 
             // add the command in the group

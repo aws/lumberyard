@@ -18,6 +18,7 @@
 
 namespace EMotionFX
 {
+    class AnimGraphInstance;
 
     class EMFX_API AnimGraphHubNode
         : public AnimGraphNode
@@ -52,11 +53,12 @@ namespace EMotionFX
             AnimGraphNode*  m_sourceNode;
         };
 
-
         AnimGraphHubNode();
         ~AnimGraphHubNode();
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
+
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         AZ::Color GetVisualColor() const override                   { return AZ::Color(0.2f, 0.78f, 0.59f, 1.0f); }
         bool GetCanActAsState() const override                      { return true; }
@@ -69,12 +71,9 @@ namespace EMotionFX
         bool GetCanHaveOnlyOneInsideParent() const override         { return false; }
         void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* previousState, AnimGraphStateTransition* usedTransition) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
-        AnimGraphNode* GetSourceNode(const AnimGraphInstance* animGraphInstance) const;
+        AnimGraphNode* GetSourceNode(AnimGraphInstance* animGraphInstance) const;
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
-
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
 
         static void Reflect(AZ::ReflectContext* context);
 

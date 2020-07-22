@@ -19,7 +19,7 @@
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ValueParameterEditor.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
-#include <MysticQt/Source/ComboBox.h>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -37,19 +37,21 @@ namespace EMStudio
         , m_valueTypeCombo(nullptr)
         , m_valueParameterEditor(nullptr)
     {
+        setObjectName("ParameterCreateEditDialog");
+
         if (!editParameter)
         {
             setWindowTitle("Create Parameter");
-            m_createButton = new QPushButton("Create");
+            m_createButton = new QPushButton("Create", this);
         }
         else
         {
             m_parameter.reset(MCore::ReflectionSerializer::Clone(editParameter));
             setWindowTitle("Edit Parameter");
-            m_createButton = new QPushButton("Apply");
+            m_createButton = new QPushButton("Apply", this);
             m_originalName = editParameter->GetName();
         }
-        QVBoxLayout* mainLayout = new QVBoxLayout();
+        QVBoxLayout* mainLayout = new QVBoxLayout(this);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
         // Value Type
@@ -57,14 +59,14 @@ namespace EMStudio
             (editParameter && editParameter->RTTI_IsTypeOf(azrtti_typeid<EMotionFX::ValueParameter>())))
         {
             QHBoxLayout* valueTypeLayout = new QHBoxLayout();
-            QLabel* valueTypeLabel = new QLabel("Value type");
+            QLabel* valueTypeLabel = new QLabel("Value type", this);
             valueTypeLabel->setFixedWidth(100);
             valueTypeLayout->addWidget(valueTypeLabel);
-            m_valueTypeCombo = new MysticQt::ComboBox();
+            m_valueTypeCombo = new QComboBox(this);
             m_valueTypeCombo->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             valueTypeLayout->addWidget(m_valueTypeCombo);
             valueTypeLayout->addItem(new QSpacerItem(2, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
-            connect(m_valueTypeCombo, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &ParameterCreateEditDialog::OnValueTypeChange);
+            connect(m_valueTypeCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &ParameterCreateEditDialog::OnValueTypeChange);
             mainLayout->addItem(valueTypeLayout);
         }
 
@@ -100,7 +102,7 @@ namespace EMStudio
 
         // create the create or apply button and the cancel button
         QHBoxLayout* buttonLayout = new QHBoxLayout();
-        QPushButton* cancelButton = new QPushButton("Cancel");
+        QPushButton* cancelButton = new QPushButton("Cancel", this);
         buttonLayout->addWidget(m_createButton);
         buttonLayout->addWidget(cancelButton);
         mainLayout->addItem(buttonLayout);
@@ -112,10 +114,21 @@ namespace EMStudio
 
     ParameterCreateEditDialog::~ParameterCreateEditDialog()
     {
-        m_previewWidget->ClearInstances();
+        if (m_previewWidget)
+        {
+            m_previewWidget->ClearInstances();
+            delete m_previewWidget;
+        }
+
         if (m_valueParameterEditor)
         {
             delete m_valueParameterEditor;
+        }
+
+        if (m_parameterEditorWidget)
+        {
+            m_parameterEditorWidget->ClearInstances();
+            delete m_parameterEditorWidget;
         }
     }
 
@@ -132,17 +145,17 @@ namespace EMStudio
             for (const AZ::TypeId& parameterType : parameterTypes)
             {
                 AZStd::unique_ptr<EMotionFX::Parameter> param(EMotionFX::ParameterFactory::Create(parameterType));
-                m_valueTypeCombo->addItem(QString(param->GetTypeDisplayName().c_str()), QString(parameterType.ToString<AZStd::string>().c_str()));
+                m_valueTypeCombo->addItem(QString(param->GetTypeDisplayName()), QString(parameterType.ToString<AZStd::string>().c_str()));
             }
 
             if (m_parameter)
             {
-                m_valueTypeCombo->setCurrentText(m_parameter->GetTypeDisplayName().c_str());
+                m_valueTypeCombo->setCurrentText(m_parameter->GetTypeDisplayName());
             }
 
             m_valueTypeCombo->blockSignals(false);
         }
-
+        
         if (!m_parameter)
         {
             OnValueTypeChange(0);

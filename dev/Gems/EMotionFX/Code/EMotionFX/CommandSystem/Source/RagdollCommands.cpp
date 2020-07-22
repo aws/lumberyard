@@ -93,7 +93,7 @@ namespace EMotionFX
         const Transform& nodeBindTransform = bindPose->GetModelSpaceTransform(node->GetNodeIndex());
         const Transform& parentBindTransform = node->GetParentNode()
             ? bindPose->GetModelSpaceTransform(node->GetParentIndex())
-            : Transform();
+            : Transform::CreateIdentity();
         const AZ::Quaternion& nodeBindRotationWorld = nodeBindTransform.mRotation;
         const AZ::Quaternion& parentBindRotationWorld = parentBindTransform.mRotation;
 

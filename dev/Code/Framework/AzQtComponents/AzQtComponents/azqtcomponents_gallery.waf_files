@@ -29,6 +29,10 @@
             "Gallery/CheckBoxPage.cpp",
             "Gallery/CheckBoxPage.h",
 
+            "Gallery/ColorLabelPage.ui",
+            "Gallery/ColorLabelPage.cpp",
+            "Gallery/ColorLabelPage.h",
+
             "Gallery/ColorPickerPage.ui",
             "Gallery/ColorPickerPage.cpp",
             "Gallery/ColorPickerPage.h",
@@ -40,6 +44,10 @@
             "Gallery/ComponentDemoWidget.ui",
             "Gallery/ComponentDemoWidget.cpp",
             "Gallery/ComponentDemoWidget.h",
+
+            "Gallery/DragAndDropPage.ui",
+            "Gallery/DragAndDropPage.cpp",
+            "Gallery/DragAndDropPage.h",
 
             "Gallery/ExampleWidget.qss",
 
@@ -53,6 +61,10 @@
             "Gallery/GradientSliderPage.ui",
             "Gallery/GradientSliderPage.cpp",
             "Gallery/GradientSliderPage.h",
+
+            "Gallery/HyperlinkPage.ui",
+            "Gallery/HyperlinkPage.cpp",
+            "Gallery/HyperlinkPage.h",
 
             "Gallery/LineEditPage.ui",
             "Gallery/LineEditPage.cpp",
@@ -71,6 +83,10 @@
             "Gallery/RadioButtonPage.ui",
             "Gallery/RadioButtonPage.cpp",
             "Gallery/RadioButtonPage.h",
+
+            "Gallery/ReflectedPropertyEditorPage.ui",
+            "Gallery/ReflectedPropertyEditorPage.cpp",
+            "Gallery/ReflectedPropertyEditorPage.h",
 
             "Gallery/resources.qrc",
 
@@ -93,6 +109,10 @@
             "Gallery/SpinBoxPage.ui",
             "Gallery/SpinBoxPage.cpp",
             "Gallery/SpinBoxPage.h",
+
+            "Gallery/SplitterPage.ui",
+            "Gallery/SplitterPage.cpp",
+            "Gallery/SplitterPage.h",
 
             "Gallery/StyledDockWidgetPage.ui",
             "Gallery/StyledDockWidgetPage.cpp",
@@ -127,9 +147,17 @@
             "Gallery/ToggleSwitchPage.cpp",
             "Gallery/ToggleSwitchPage.h",
 
+            "Gallery/ToolBarPage.ui",
+            "Gallery/ToolBarPage.cpp",
+            "Gallery/ToolBarPage.h",
+
             "Gallery/TypographyPage.ui",
             "Gallery/TypographyPage.cpp",
-            "Gallery/TypographyPage.h"
+            "Gallery/TypographyPage.h",
+
+            "Gallery/TreeViewPage.ui",
+            "Gallery/TreeViewPage.cpp",
+            "Gallery/TreeViewPage.h"
         ]
     }
 }

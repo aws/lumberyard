@@ -12,6 +12,8 @@
 #include "StdAfx.h"
 #include "PropertyColorCtrl.hxx"
 #include "PropertyQTConstants.h"
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QLineEdit>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
@@ -108,7 +110,7 @@ namespace AzToolsFramework
             m_pDefaultButton->setIcon(newIcon);
             if (m_pColorDialog && updateDialogColor)
             {
-                m_pColorDialog->setCurrentColor(m_color);
+                m_pColorDialog->setCurrentColor(AzQtComponents::fromQColor(m_color));
             }
 
             int R, G, B;
@@ -131,8 +133,10 @@ namespace AzToolsFramework
 
         if (m_pColorDialog != nullptr)
         {
-            m_pColorDialog->setCurrentColor(m_color);
-            m_pColorDialog->exec();
+            const AZ::Color color = AzQtComponents::fromQColor(m_originalColor);
+            m_pColorDialog->setCurrentColor(color);
+            m_pColorDialog->setSelectedColor(color);
+            m_pColorDialog->show();
         }
     }
 
@@ -144,14 +148,28 @@ namespace AzToolsFramework
             return;
         }
 
-        m_pColorDialog = new QColorDialog(m_color, this);
-        m_pColorDialog->setOption(QColorDialog::DontUseNativeDialog);
-        connect(m_pColorDialog, SIGNAL(currentColorChanged(QColor)), this, SLOT(onSelected(QColor)));
+        m_pColorDialog = new AzQtComponents::ColorPicker(AzQtComponents::ColorPicker::Configuration::RGB, QString(), this);
+        m_pColorDialog->setWindowTitle(tr("Select Color"));
+        m_pColorDialog->setWindowModality(Qt::ApplicationModal);
+        m_pColorDialog->setAttribute(Qt::WA_DeleteOnClose);
+
+        connect(m_pColorDialog, &AzQtComponents::ColorPicker::currentColorChanged, this, 
+            [=](AZ::Color color)
+        {
+            onSelected(AzQtComponents::toQColor(color));
+        });
 
         connect(m_pColorDialog, &QDialog::rejected, this,
             [this]()
         {
             onSelected(m_originalColor);
+        });
+
+        connect(m_pColorDialog, &QDialog::finished, this,
+            [this]()
+        {
+            emit editingFinished();
+            m_pColorDialog = nullptr;
         });
 
 
@@ -190,7 +208,13 @@ namespace AzToolsFramework
         PropertyColorCtrl* newCtrl = aznew PropertyColorCtrl(pParent);
         connect(newCtrl, &PropertyColorCtrl::valueChanged, this, [newCtrl]()
         {
-            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+                &PropertyEditorGUIMessages::RequestWrite, newCtrl);
+        });
+        connect(newCtrl, &PropertyColorCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+                &PropertyEditorGUIMessages::OnEditingFinished, newCtrl);
         });
         return newCtrl;
     }
@@ -217,6 +241,8 @@ namespace AzToolsFramework
             //If the text is not valid, set back to old value
             setValue(m_color);
         }
+
+        emit editingFinished();
     }
 
     // called each time when a new character has been entered or removed, this doesn't update the value yet

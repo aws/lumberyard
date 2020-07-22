@@ -90,13 +90,13 @@ namespace EMotionFX
         setLayout(hLayout);
         m_sourceNodeNameLabel = new QLabel("element A", this);
         layout()->addWidget(m_sourceNodeNameLabel);
-        m_weightField = new MysticQt::DoubleSpinBox(this);
+        m_weightField = new AzQtComponents::DoubleSpinBox(this);
         m_weightField->setRange(-FLT_MAX, FLT_MAX);
         m_weightField->setDecimals(s_decimalPlaces);
         layout()->addWidget(m_weightField);
 
         connect(m_weightField
-            , static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged)
+            , qOverload<double>(&QDoubleSpinBox::valueChanged)
             , this, &BlendNParamWeightElementWidget::OnWeightRangeEdited);
     }
 
@@ -130,12 +130,12 @@ namespace EMotionFX
         m_weightField->setValue(m_paramWeight->GetWeightRange());
         if (m_paramWeight->IsValid())
         {
-            m_weightField->GetLineEdit()->setStyleSheet("");
+            AzQtComponents::SpinBox::setHasError(m_weightField, false);
             m_weightField->setToolTip("");
         }
         else
         {
-            m_weightField->GetLineEdit()->setStyleSheet("color: red;");
+            AzQtComponents::SpinBox::setHasError(m_weightField, true);
             m_weightField->setToolTip(m_paramWeight->GetTooltipText().c_str());
         }
     }
@@ -199,10 +199,10 @@ namespace EMotionFX
     {
         if (!m_paramWeights.empty())
         {
-            float first = m_paramWeights.front().GetWeightRange();
-            float last = m_paramWeights.back().GetWeightRange();
-            float min = first < last ? first : last;
-            float max = first < last ? last : first;
+            const float first = m_paramWeights.front().GetWeightRange();
+            const float last = m_paramWeights.back().GetWeightRange();
+            const float min = first < last ? first : last;
+            const float max = first < last ? last : first;
             EqualizeWeightRanges(min, max);
         }
     }
@@ -214,9 +214,15 @@ namespace EMotionFX
             return;
         }
 
+        if (AZ::IsClose(min, max, AZ::g_fltEps))
+        {
+            min = 0.0f;
+            max = 1.0f;
+        }
+
         float weightRange = min;
         const size_t paramWeightsSize = m_paramWeights.size();
-        float weightStep = (max - min) / (paramWeightsSize - 1);
+        const float weightStep = (max - min) / (paramWeightsSize - 1);
         m_paramWeights.back().SetWeightRange(max);
         for (size_t i = 0; i < paramWeightsSize - 1; ++i)
         {

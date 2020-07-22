@@ -39,7 +39,7 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
         ForceRegionComponent() = default;
-        ForceRegionComponent(const ForceRegion& forceRegion, bool debug);
+        ForceRegionComponent(ForceRegion&& forceRegion, bool debug);
         ~ForceRegionComponent() = default;
 
     protected:

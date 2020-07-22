@@ -47,6 +47,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{64A97CC3-2BEA-4B47-809B-6C7DA34FD00F}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Bus.png")
                     ScriptCanvas_Node::Version(4)
+                    ScriptCanvas_Node::DynamicSlotOrdering(true)
                     ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                 );
 
@@ -55,6 +56,9 @@ namespace ScriptCanvas
                 ScriptCanvas_SerializeProperty(ScriptCanvas::EBusEventId, m_eventId);
 
                 ~SendScriptEvent() override;
+
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", "Fires the specified ScriptEvent when signaled"));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Trigged after the ScriptEvent has been signaled and returns"));
 
                 const AZStd::string& GetEventName() const { return m_eventName; }
 
@@ -66,9 +70,13 @@ namespace ScriptCanvas
 
                 SlotId GetBusSlotId() const;
 
-                void ConfigureNode(const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);                
+                void ConfigureNode(const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);
 
-                void UpdateScriptEventAsset() override;
+                // NodeVersioning
+                bool IsOutOfDate() const override;
+                UpdateResult OnUpdateNode() override;
+                AZStd::string GetUpdateString() const override;
+                ////
 
             protected:
 
@@ -87,7 +95,7 @@ namespace ScriptCanvas
                 bool FindEvent(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view methodName);
                 void OnInputSignal(const SlotId&) override;
 
-                void AddInputSlot(size_t argIndex, const AZStd::string_view argName, const AZStd::string_view tooltip, AZ::BehaviorMethod* method, const AZ::BehaviorParameter* argument, AZ::Uuid slotKey, SlotIdMapping& populationMapping);
+                void AddInputSlot(size_t slotIndex, size_t argIndex, const AZStd::string_view argName, const AZStd::string_view tooltip, AZ::BehaviorMethod* method, const AZ::BehaviorParameter* argument, AZ::Uuid slotKey, SlotIdMapping& populationMapping);
 
                 void OnRegistered(const ScriptEvents::ScriptEvent&) override;
 

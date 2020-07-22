@@ -24,7 +24,7 @@ namespace EMStudio
         : public QTableWidget
         , public MCore::LogCallback
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
                  MCORE_MEMORYOBJECTCATEGORY(LogWindowCallback, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:

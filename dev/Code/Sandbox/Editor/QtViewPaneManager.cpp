@@ -30,22 +30,24 @@
 #include <QRubberBand>
 #include <QCursor>
 #include <QTimer>
-#include <QStackedWidget>
 #include <QGraphicsOpacityEffect>
 #include "MainWindow.h"
 
 #include <algorithm>
 #include <QScopedValueRollback>
 
-#include "DockWidgetUtils.h"
-
 #include <AzAssetBrowser/AzAssetBrowserWindow.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzQtComponents/Utilities/AutoSettingsGroup.h>
+#include <AzToolsFramework/UI/Docking/DockWidgetUtils.h>
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzQtComponents/Buses/ShortcutDispatch.h>
 #include <AzQtComponents/Utilities/QtViewPaneEffects.h>
+#include <AzQtComponents/Components/StyleManager.h>
+
+#include <AzCore/UserSettings/UserSettingsComponent.h>
 
 #include "ShortcutDispatcher.h"
 
@@ -120,35 +122,6 @@ protected:
 Q_GLOBAL_STATIC(QtViewPaneManager, s_instance)
 
 
-/**
- * Check if this dock widget is tabbed in our custom dock tab widget
- */
-bool QtViewPane::IsTabbed(QDockWidget* dockWidget)
-{
-    // If our dock widget is tabbed, it will have a valid tab widget parent
-    return ParentTabWidget(dockWidget);
-}
-
-/**
- * Return the tab widget holding this dock widget if it is a tab, otherwise nullptr
- */
-AzQtComponents::DockTabWidget* QtViewPane::ParentTabWidget(QDockWidget* dockWidget)
-{
-    if (dockWidget)
-    {
-        // If our dock widget is tabbed, it will be parented to a QStackedWidget that is parented to
-        // our dock tab widget
-        QStackedWidget* stackedWidget = qobject_cast<QStackedWidget*>(dockWidget->parentWidget());
-        if (stackedWidget)
-        {
-            AzQtComponents::DockTabWidget* tabWidget = qobject_cast<AzQtComponents::DockTabWidget*>(stackedWidget->parentWidget());
-            return tabWidget;
-        }
-    }
-
-    return nullptr;
-}
-
 bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
 {
     if (!IsConstructed())
@@ -221,7 +194,7 @@ bool QtViewPane::CloseInstance(QDockWidget* dockWidget, CloseModes closeModes)
         else
         {
             // If the dock widget is tabbed, then just remove it from the tab widget
-            AzQtComponents::DockTabWidget* tabWidget = ParentTabWidget(dockWidget);
+            AzQtComponents::DockTabWidget* tabWidget = AzQtComponents::DockTabWidget::ParentTabWidget(dockWidget);
             if (tabWidget)
             {
                 tabWidget->removeTab(dockWidget);
@@ -255,7 +228,7 @@ DockWidget::DockWidget(QWidget* widget, QtViewPane* pane, QSettings* settings, Q
     , m_advancedDockManager(advancedDockManager)
 {
     // keyboard shortcuts from any other context shouldn't trigger actions under this dock widget
-    ShortcutDispatcher::MarkAsShortcutSearchBreak(this);
+    AzQtComponents::MarkAsShortcutSearchBreak(this);
 
     if (pane->m_options.isDeletable)
     {
@@ -292,7 +265,7 @@ bool DockWidget::event(QEvent* qtEvent)
 
 void DockWidget::reparentToMainWindowFix()
 {
-    if (!isFloating() || !DockWidgetUtils::isDockWidgetWindowGroup(parentWidget()))
+    if (!isFloating() || !AzToolsFramework::DockWidgetUtils::isDockWidgetWindowGroup(parentWidget()))
     {
         return;
     }
@@ -365,7 +338,7 @@ void DockWidget::RestoreState(bool forceDefault)
 
         if (restored)
         {
-            DockWidgetUtils::correctVisibility(this);
+            AzToolsFramework::DockWidgetUtils::correctVisibility(this);
             return;
         }
     }
@@ -589,6 +562,10 @@ void QtViewPaneManager::RegisterPane(const QString& name, const QString& categor
     {
         return;
     }
+    else if (IsPaneRegistered(name))
+    {
+        return;
+    }
 
     QtViewPane view = { NextAvailableId(), name, category, factory, nullptr, options };
 
@@ -626,7 +603,7 @@ bool QtViewPaneManager::exists()
     return s_instance.exists();
 }
 
-void QtViewPaneManager::SetMainWindow(QMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities)
+void QtViewPaneManager::SetMainWindow(AzQtComponents::DockMainWindow* mainWindow, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities)
 {
     Q_ASSERT(mainWindow && !m_mainWindow && settings && !m_settings);
     m_mainWindow = mainWindow;
@@ -659,9 +636,16 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
     {
         if (!pane->IsConstructed() || isMultiPane)
         {
-            QWidget* w = pane->m_factoryFunc();
+            // Although all the factory lambdas do have a default nullptr argument, this information
+            // doesn't get retained when they are converted to std::function<QWidget*(QWidget*)>,
+            // thus we need to set the parent explicitly.
+            // At the same time, adding a default argument to the lambdas will allow for them to be
+            // called exactly as before in all other places where they are not converted, so we get
+            // to explicitly pass an argument only if strictly necessary.
+            QWidget* w = pane->m_factoryFunc(nullptr);
             w->setProperty("restored", (modes & QtViewPane::OpenMode::RestoreLayout) != 0);
             newDockWidget = new DockWidget(w, pane, m_settings, m_mainWindow, m_advancedDockManager);
+            AzQtComponents::StyleManager::repolishStyleSheet(newDockWidget);
 
             // track every new dock widget instance that we created
             pane->m_dockWidgetInstances.push_back(newDockWidget);
@@ -703,7 +687,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
             }
 #endif
         }
-        else if (!QtViewPane::IsTabbed(newDockWidget))
+        else if (!AzQtComponents::DockTabWidget::IsTabbed(newDockWidget))
         {
             newDockWidget->setVisible(true);
 #if AZ_TRAIT_OS_PLATFORM_APPLE
@@ -719,7 +703,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
             const bool forceToDefault = true;
             newDockWidget->RestoreState(forceToDefault);
         }
-        else if (!QtViewPane::IsTabbed(newDockWidget) && !(modes & QtViewPane::OpenMode::OnlyOpen))
+        else if (!AzQtComponents::DockTabWidget::IsTabbed(newDockWidget) && !(modes & QtViewPane::OpenMode::OnlyOpen))
         {
             newDockWidget->RestoreState();
         }
@@ -733,6 +717,13 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
         newDockWidget->RestoreState(forceToDefault);
     }
 
+    // If the widget's window is minimized, show it.
+    QWidget* window = newDockWidget->window();
+    if (window->isMinimized())
+    {
+        window->setWindowState(window->windowState() & ~Qt::WindowMinimized | Qt::WindowActive);
+    }
+
     if (pane->IsVisible())
     {
         if (!modes.testFlag(QtViewPane::OpenMode::RestoreLayout))
@@ -743,7 +734,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
     else
     {
         // If the dock widget is tabbed, then set it as the active tab
-        AzQtComponents::DockTabWidget* tabWidget = QtViewPane::ParentTabWidget(newDockWidget);
+        AzQtComponents::DockTabWidget* tabWidget = AzQtComponents::DockTabWidget::ParentTabWidget(newDockWidget);
         if (tabWidget)
         {
             int index = tabWidget->indexOf(newDockWidget);
@@ -766,7 +757,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
             // If the parent of our dock widgets isn't a QMainWindow, then it
             // might be tabbed, so try to find the tab container dock widget
             // and then get the QMainWindow from that.
-            AzQtComponents::DockTabWidget* tabWidget = QtViewPane::ParentTabWidget(newDockWidget);
+            AzQtComponents::DockTabWidget* tabWidget = AzQtComponents::DockTabWidget::ParentTabWidget(newDockWidget);
             if (tabWidget)
             {
                 QDockWidget* tabDockContainer = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
@@ -893,7 +884,7 @@ QWidget* QtViewPaneManager::CreateWidget(const QString& paneName)
         return nullptr;
     }
 
-    QWidget* w = pane->m_factoryFunc();
+    QWidget* w = pane->m_factoryFunc(nullptr);
     w->setWindowTitle(paneName);
 
     return w;
@@ -929,7 +920,7 @@ bool QtViewPaneManager::ClosePanesWithRollback(const QVector<QString>& panesToKe
         // Only close the panes that aren't remaining open and are currently
         // visible (which has to include a check if the pane is tabbed since
         // it could be hidden if its not the active tab)
-        if (panesToKeepOpen.contains(p.m_name) || (!p.IsVisible() && !QtViewPane::IsTabbed(p.m_dockWidget)))
+        if (panesToKeepOpen.contains(p.m_name) || (!p.IsVisible() && !AzQtComponents::DockTabWidget::IsTabbed(p.m_dockWidget)))
         {
             continue;
         }
@@ -1213,7 +1204,7 @@ void QtViewPaneManager::SaveLayout(QString layoutName)
         // Include all visible and tabbed panes in our layout, since tabbed panes
         // won't be visible if they aren't the active tab, but still need to be
         // retained in the layout
-        if (pane.IsVisible() || QtViewPane::IsTabbed(pane.m_dockWidget))
+        if (pane.IsVisible() || AzQtComponents::DockTabWidget::IsTabbed(pane.m_dockWidget))
         {
             state.viewPanes.push_back(pane.m_dockWidget->PaneName());
         }
@@ -1224,6 +1215,9 @@ void QtViewPaneManager::SaveLayout(QString layoutName)
     state.fakeDockWidgetGeometries = m_fakeDockWidgetGeometries;
 
     SaveStateToLayout(state, layoutName);
+
+    AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequestBus::Events::Save);
+
 }
 
 void QtViewPaneManager::SaveStateToLayout(const ViewLayoutState& state, const QString& layoutName)
@@ -1332,7 +1326,7 @@ ViewLayoutState QtViewPaneManager::GetLayout() const
         // Include all visible and tabbed panes in our layout, since tabbed panes
         // won't be visible if they aren't the active tab, but still need to be
         // retained in the layout
-        if (pane.IsVisible() || QtViewPane::IsTabbed(pane.m_dockWidget))
+        if (pane.IsVisible() || AzQtComponents::DockTabWidget::IsTabbed(pane.m_dockWidget))
         {
             state.viewPanes.push_back(pane.m_dockWidget->PaneName());
         }
@@ -1427,20 +1421,6 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
     for (const QString& paneName : state.viewPanes)
     {
         const QtViewPane* pane = OpenPane(paneName, QtViewPane::OpenMode::OnlyOpen);
-
-        // Currently opened panes don't get closed when restoring a layout,
-        // so if one of those panes is currently tabbed, it won't be restored
-        // properly when using the new docking since it is parented to our
-        // custom tab widget instead of the main editor window, so remove the
-        // pane as a tab before proceeding with the restore
-        if (pane && QtViewPane::IsTabbed(pane->m_dockWidget))
-        {
-            AzQtComponents::DockTabWidget* tabWidget = QtViewPane::ParentTabWidget(pane->m_dockWidget);
-            if (tabWidget)
-            {
-                tabWidget->removeTab(pane->m_dockWidget);
-            }
-        }
     }
 
     // must do this after opening all of the panes!
@@ -1453,7 +1433,7 @@ bool QtViewPaneManager::RestoreLayout(QString layoutName)
     // didn't know how to restore.
     // Check if that happened and return false indicating the restore failed and giving caller
     // a chance to restore the default layout.
-    if (DockWidgetUtils::hasInvalidDockWidgets(m_mainWindow))
+    if (AzToolsFramework::DockWidgetUtils::hasInvalidDockWidgets(m_mainWindow))
     {
         return false;
     }
@@ -1649,6 +1629,14 @@ bool QtViewPaneManager::IsVisible(const QString& name)
 {
     QtViewPane* view = GetPane(name);
     return view && view->IsVisible();
+}
+
+bool QtViewPaneManager::IsPaneRegistered(const QString& name) const
+{
+    auto it = std::find_if(m_registeredPanes.begin(), m_registeredPanes.end(),
+        [name](const QtViewPane& pane) { return name == pane.m_name; });
+
+    return it != m_registeredPanes.end();
 }
 
 #include <QtViewPaneManager.moc>

@@ -248,18 +248,28 @@ OutlinerWidget QLineEdit
     background: #FFFFFFFF;
 }
 
+OutlinerWidget #m_display_options
+{
+    qproperty-icon: url(:/stylesheet/img/UI20/menu-centered.svg);
+    qproperty-iconSize: 18px 18px;
+    qproperty-flat: true;
+}
+
+AzToolsFramework--EntityIdQLineEdit
+{
+    max-height: 16px;
+    min-height: 16px;
+}
+
 /* Style for highlighting valid drag-drops (entity references, etc) */
 AzToolsFramework--PropertyEntityIdCtrl AzToolsFramework--EntityIdQLabel[DropHighlight="true"]
 {
     background-color: @MenuItemSelectedColor;
 }
-AzToolsFramework--PropertyAssetCtrl QLabel[DropHighlight="true"]
-{
-    background-color: @MenuItemSelectedColor;
-}
 
 /* Style for properties that fail validation */
-AzToolsFramework--PropertyEntityIdCtrl[MismatchedServices="true"] AzToolsFramework--EntityIdQLabel
+AzToolsFramework--PropertyEntityIdCtrl[MismatchedServices="true"] AzToolsFramework--EntityIdQLabel,
+AzToolsFramework--PropertyEntityIdCtrl[MismatchedServices="true"] AzToolsFramework--EntityIdQLineEdit
 {
     font-family: "Open Sans Extrabold";
     font-weight: bold;
@@ -273,6 +283,12 @@ AzToolsFramework--ReflectedPropertyEditor[ComponentBlock="true"]
     padding: 0 0 0 5;
     border-radius: 0px;
     background-color: @ComponentPanelFrameColor;
+}
+
+/* Style for setting internal padding on PropertyRowWidget */
+AzToolsFramework--PropertyRowWidget
+{
+    padding: 0px 2px 0px 2px;
 }
 
 /* Style for visualizing property values overridden from their prefab values */
@@ -289,7 +305,7 @@ AzToolsFramework--PropertyRowWidget QWidget
 }
 
 /* Style for visualizing property values overridden from their prefab values */
-AzToolsFramework--PropertyRowWidget[IsOverridden="true"] QLabel#Name
+AzToolsFramework--PropertyRowWidget[IsOverridden="true"] AzQtComponents--ElidingLabel#Name
 {
     font-family: "Open Sans Extrabold";
     font-weight: bold;
@@ -332,10 +348,16 @@ AzToolsFramework--EntityPropertyEditor #LabelEntityDetails
 }
 
 /* Style for slice push UI */
+
 AzToolsFramework--SlicePushWidget QLabel[Title="true"]
 {
     font-family: "Open Sans Extrabold";
     font-weight: bold;
+}
+
+AzToolsFramework--SlicePushWidget QWidget#WarningLine
+{
+    background-color:#F5A623
 }
 
 AzToolsFramework--NoChangesOverlay
@@ -353,7 +375,6 @@ AzToolsFramework--NoChangesOverlay QLabel
 
 AzToolsFramework--SlicePushWidget QRadioButton
 {
-    background-color: @PanelBackgroundColor;
     color: @MenuItemSelectedColor;
 }
 
@@ -1196,25 +1217,25 @@ QPushButton#m_display_options:focus
     image : url(:/stylesheet/img/menu_selected.png);
 }
 
-QPushButton#assetTypeSelector
+QToolButton#assetTypeSelector
 {
     border: none;
     image : url(:/stylesheet/img/filter.png);
     padding: 0 0 0 2;
 }
 
-QPushButton#assetTypeSelector::menu-indicator
+QToolButton#assetTypeSelector::menu-indicator
 {
     image : url(none.jpg);
 }
 
-QPushButton#assetTypeSelector:hover
+QToolButton#assetTypeSelector:hover
 {
     border: none;
     image : url(:/stylesheet/img/filter_selected.png);
 }
 
-QPushButton#assetTypeSelector:focus
+QToolButton#assetTypeSelector:focus
 {
     border: none;
     image : url(:/stylesheet/img/filter_selected.png);
@@ -1738,7 +1759,7 @@ QHeaderView::section::horizontal:last, QHeaderView::section:horizontal:only-one 
 * TitleBar is a QFrame with a QHBoxLayout that contains the following children.
 * qproperty-windowTitleOverride can be used to override the title.
 * #icon: a QLabel displaying an icon. The icon is set using qproperty-pixmap.
-* #title: an AzQtComponents::TitleBarLabel displaying text.
+* #title: an AzQtComponents::ElidingLabel displaying text.
 * #buttons: a QFrame containing the DockBarButtons in a QHBoxLayout.
 */
 
@@ -1770,7 +1791,7 @@ AzQtComponents--TitleBar[drawSimple="false"][tearEnabled="true"] QLabel#icon {
     qproperty-pixmap: url(:/stylesheet/img/titlebar_tear.png);
 }
 
-AzQtComponents--TitleBar AzQtComponents--TitleBarLabel#title {
+AzQtComponents--TitleBar AzQtComponents--ElidingLabel#title {
     font-family: "Open Sans";
     font-size: 8pt;
 
@@ -1779,7 +1800,7 @@ AzQtComponents--TitleBar AzQtComponents--TitleBarLabel#title {
     margin-bottom: 1px /* Hardcoded in DockBar::drawTitle */
 }
 
-AzQtComponents--TitleBar[drawSimple="true"] AzQtComponents--TitleBarLabel#title {
+AzQtComponents--TitleBar[drawSimple="true"] AzQtComponents--ElidingLabel#title {
     color: rgb(0, 0, 0);
 }
 
@@ -1863,6 +1884,14 @@ AzQtComponents--ButtonDivider {
     max-width: 2px;
     min-height: 14px;
     max-height: 14px;
+}
+
+AzQtComponents--SearchLineEdit[HasExternalError="true"] {
+    color: rgb(224, 83, 72);
+}
+
+AzQtComponents--SearchLineEdit[HasExternalError="false"] {
+    color: rgb(192, 192, 192);
 }
 
 AzQtComponents--StyledDetailsTableView {
@@ -2329,14 +2358,14 @@ AzQtComponents--FilteredSearchWidget #filteredParent
     margin-left: -4px;
 }
 
-AzQtComponents--FilteredSearchWidget QPushButton#assetTypeSelector
+AzQtComponents--FilteredSearchWidget QToolButton#assetTypeSelector
 {
     icon-size: 16px 14px;
     max-height: 24px;
     max-width: 24px;
 }
 
-AzQtComponents--FilteredSearchWidget QPushButton#assetTypeSelector::menu-indicator
+AzQtComponents--FilteredSearchWidget QToolButton#assetTypeSelector::menu-indicator
 {
     image: url(none.jpg);
     subcontrol-position: right center;
@@ -2373,11 +2402,32 @@ AzQtComponents--FilterCriteriaButton QPushButton
     background-color: transparent;
 }
 
+AzQtComponents--FilterCriteriaButton #tagIcon
+{
+    margin-right: 4px;
+}
+
 AzQtComponents--FilterCriteriaButton QPushButton
 {
     qproperty-icon: url(:/stylesheet/img/titlebar/titlebar_close.png);
     max-height: 18px;
     min-height: 18px;
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+AzQtComponents--BrowseEdit QLineEdit
+{
+    max-height: 16px;
+    min-height: 16px;
+}
+
+AzQtComponents--BrowseEdit #attached-button
+{
+    max-width: 16px;
+    min-width: 16px;
+    max-height: 16px;
+    min-height: 16px;
 }
 
 
@@ -2453,11 +2503,19 @@ QTreeView#m_objectTree::branch::closed:has-children
     image: url(:/Icons/Default_closed.svg);
 }
 
+OutlinerWidget QTreeView::branch:selected
+, OutlinerWidget QTreeView::item:selected
+, OutlinerWidget QTreeView::branch:selected:active
+, OutlinerWidget QTreeView::item:selected:active
+{
+    background: rgba(255, 255, 255, 45);
+}
+
 /* ============================================================= */
 /* Style specific to the outliner visibility and lock icons      */
 /* ============================================================= */
 
-OutlinerVisibilityCheckBox
+OutlinerCheckBox
 {
     border: 0px solid transparent;
     border-radius: 0px;
@@ -2465,110 +2523,99 @@ OutlinerVisibilityCheckBox
     padding: 0px;
     line-height: 0px;
     font-size: 0px;
-    margin: 2px;
+    margin: 2px 2px 0 2px;
     background-color: none;
+    max-height: 20px;
 }
 
-OutlinerVisibilityCheckBox::indicator:checked
-, OutlinerVisibilityCheckBox::indicator:unchecked
-, OutlinerVisibilityCheckBox::indicator:indeterminate
+OutlinerCheckBox#VisibilityMixed::indicator:checked
+, OutlinerCheckBox#VisibilityMixed::indicator:unchecked
+, OutlinerCheckBox#VisibilityMixed::indicator:indeterminate
+, OutlinerCheckBox#VisibilityMixedHover::indicator:checked
+, OutlinerCheckBox#VisibilityMixedHover::indicator:unchecked
+, OutlinerCheckBox#VisibilityMixedHover::indicator:indeterminate
+, OutlinerCheckBox#LockMixed::indicator:checked
+, OutlinerCheckBox#LockMixed::indicator:unchecked
+, OutlinerCheckBox#LockMixed::indicator:indeterminate
+, OutlinerCheckBox#LockMixedHover::indicator:checked
+, OutlinerCheckBox#LockMixedHover::indicator:unchecked
+, OutlinerCheckBox#LockMixedHover::indicator:indeterminate
 {
-    width: 14px;
-    height: 14px;
+    border: 1px solid rgb(240, 195, 45);
+    border-radius: 3px;
+}
+
+OutlinerCheckBox::indicator:checked
+, OutlinerCheckBox::indicator:unchecked
+, OutlinerCheckBox::indicator:indeterminate
+{
+    width: 16px;
+    height: 16px;
     image-position:center;
 
-    border: none;
+    border: 1px solid transparent;
     image: none;
     spacing: 0px;
-    padding: 2px;
+    padding: 0px;
     line-height: 0px;
     font-size: 0px;
     margin: 0px;
 }
 
-OutlinerVisibilityCheckBox::indicator:checked
+OutlinerCheckBox#Visibility::indicator:checked,
+OutlinerCheckBox#VisibilityHover::indicator:checked,
+OutlinerCheckBox#VisibilityMixed::indicator:checked,
+OutlinerCheckBox#VisibilityMixedHover::indicator:checked
 {
     image: url(:/Icons/vis_circle_default.svg);
 }
 
-OutlinerVisibilityCheckBox::indicator:unchecked
+OutlinerCheckBox#Visibility::indicator:unchecked,
+OutlinerCheckBox#VisibilityHover::indicator:unchecked,
+OutlinerCheckBox#VisibilityMixed::indicator:unchecked,
+OutlinerCheckBox#VisibilityMixedHover::indicator:unchecked
 {
     image: url(:/Icons/vis_on_NotTransparent.svg);
 }
 
-OutlinerVisibilityCheckBox#visibilityLayerOverride::indicator:checked
+OutlinerCheckBox#VisibilityLayerOverride::indicator:checked,
+OutlinerCheckBox#VisibilityLayerOverrideHover::indicator:checked
 {
     image: url(:/Icons/vis_circle_transparent.svg);
 }
 
-OutlinerVisibilityCheckBox#visibilityLayerOverride::indicator:unchecked
+OutlinerCheckBox#VisibilityLayerOverride::indicator:unchecked,
+OutlinerCheckBox#VisibilityLayerOverrideHover::indicator:unchecked
 {
     image: url(:/Icons/vis_on_transparent.svg);
 }
 
-OutlinerVisibilityCheckBox#bordered::indicator:checked
-, OutlinerVisibilityCheckBox#bordered::indicator:unchecked 
-, OutlinerVisibilityCheckBox#bordered::indicator:indeterminate
-{
-    border: 1px solid rgb(240, 195, 45);
-    border-radius: 3px;
-}
-
-OutlinerLockCheckBox
-{
-    border: 0px solid transparent;
-    border-radius: 0px;
-    spacing: 0px;
-    padding: 0px;
-    line-height: 0px;
-    font-size: 0px;
-    margin: 2px;
-    background-color: none;
-}
-
-OutlinerLockCheckBox::indicator:checked
-, OutlinerLockCheckBox::indicator:unchecked
-, OutlinerLockCheckBox::indicator:indeterminate
-{
-    width: 14px;
-    height: 14px;
-    image-position:center;
-
-    border: none;
-    image: none;
-    spacing: 0px;
-    padding: 2px;
-    line-height: 0px;
-    font-size: 0px;
-    margin: 0px;
-}
-
-OutlinerLockCheckBox::indicator:unchecked
+OutlinerCheckBox#Lock::indicator:unchecked,
+OutlinerCheckBox#LockHover::indicator:unchecked,
+OutlinerCheckBox#LockMixed::indicator:unchecked,
+OutlinerCheckBox#LockMixedHover::indicator:unchecked
 {
     image: url(:/Icons/lock_circle_default.svg);
 }
 
-OutlinerLockCheckBox::indicator:checked
+OutlinerCheckBox#Lock::indicator:checked,
+OutlinerCheckBox#LockHover::indicator:checked,
+OutlinerCheckBox#LockMixed::indicator:checked,
+OutlinerCheckBox#LockMixedHover::indicator:checked
 {
     image: url(:/Icons/lock_on_NotTransparent.svg);
 }
 
-OutlinerLockCheckBox#lockLayerOverride::indicator:unchecked
+OutlinerCheckBox#LockLayerOverride::indicator:unchecked,
+OutlinerCheckBox#LockLayerOverrideHover::indicator:unchecked
 {
     image: url(:/Icons/lock_circle_transparent.svg);
 }
 
-OutlinerLockCheckBox#lockLayerOverride::indicator:checked
+OutlinerCheckBox#LockLayerOverride::indicator:checked,
+OutlinerCheckBox#LockLayerOverrideHover::indicator:checked
 {
     image: url(:/Icons/lock_on_transparent.svg);
-}
-
-OutlinerLockCheckBox#bordered::indicator:checked
-, OutlinerLockCheckBox#bordered::indicator:unchecked
-, OutlinerLockCheckBox#bordered::indicator:indeterminate
-{
-    border: 1px solid rgb(240, 195, 45);
-    border-radius: 3px;
 }
 
 
@@ -2590,7 +2637,7 @@ OutlinerLockCheckBox#bordered::indicator:checked
 
 AzQtComponents--Card
 {
-    margin: 0px;
+    margin: 0 0 10px 0;
     padding: 0px;
     border: 1px solid rgb(33, 34, 35);
     border-radius: 2px;
@@ -2605,8 +2652,14 @@ AzQtComponents--CardNotification
 {
     background-color: #1AFDC32D;
     margin: 2px;
+    padding: 5px;
     border: 1px solid #FDC32D;
     border-radius: 2px;
+}
+
+AzQtComponents--CardNotification #HeaderFrame
+{
+    margin: 5px;
 }
 
 AzQtComponents--CardNotification #HeaderFrame,
@@ -2634,8 +2687,8 @@ AzQtComponents--CardHeader
 
 AzQtComponents--CardHeader #Background
 {
-    margin: 2px;
-    padding: 0px;
+    margin: 0px;
+    padding: 2px;
     border: none;
     background-image: none;
     background-color: transparent;
@@ -2651,13 +2704,13 @@ AzQtComponents--CardHeader #Background
     background-color: transparent;
 }
 
-AzQtComponents--CardHeader #Background[readOnly=true]
+AzQtComponents--CardHeader[readOnly=true] #Background
 {
 
     background-repeat: repeat-xy;
 }
 
-AzQtComponents--CardHeader #Background[readOnly=false]
+AzQtComponents--CardHeader[readOnly=false] #Background
 {
     background-image: none;
 }
@@ -2668,25 +2721,42 @@ AzQtComponents--CardHeader #Title
     background-color: transparent;
 }
 
-AzQtComponents--CardHeader #Expander
+AzQtComponents--CardHeader #Title QLabel
+{
+    background-color: transparent;
+    margin: 0 2px;
+}
+
+QCheckBox.Expander
+{
+    background-color: transparent;
+    spacing: 0px;
+    margin: 0px;
+    padding: 0px;
+    min-height: 16px;
+    max-height: 16px;
+    min-width: 16px;
+    max-width: 16px;
+}
+
+QCheckBox.Expander::indicator
 {
     width: 16px;
     height: 16px;
-    qproperty-flat: true;
     border: none;
-    color: transparent;
-    background-color: transparent;
-    selection-color: transparent;
-    selection-background-color: transparent;
-    image: none;
+    margin: 0px;
 }
 
-AzQtComponents--CardHeader #Expander:enabled:checked
+QCheckBox.Expander::indicator:checked,
+QCheckBox.Expander::indicator:checked:disabled,
+QCheckBox.Expander::indicator:checked:focus
 {
     image: url(:/Cards/img/UI20/Cards/group_open.png);
 }
 
-AzQtComponents--CardHeader #Expander:enabled:!checked
+QCheckBox.Expander::indicator:unchecked,
+QCheckBox.Expander::indicator:unchecked:disabled,
+QCheckBox.Expander::indicator:unchecked:focus
 {
     image: url(:/Cards/img/UI20/Cards/group_closed.png);
 }
@@ -2709,6 +2779,7 @@ AzQtComponents--CardHeader #ContextMenu
     selection-color: transparent;
     selection-background-color: transparent;
     image: url(:/Cards/img/UI20/Cards/menu_ico.png);
+    qproperty-icon: none;
 }
 
 AzQtComponents--CardHeader #Help
@@ -2720,6 +2791,7 @@ AzQtComponents--CardHeader #Help
     selection-color: transparent;
     selection-background-color: transparent;
     image: url(:/Cards/img/UI20/Cards/help.png);
+    qproperty-icon: none;
 }
 
 AzQtComponents--CardHeader #Help:hover
@@ -2734,58 +2806,16 @@ AzQtComponents--CardHeader #Help:hover
 
 AzQtComponents--Card #SeparatorContainer
 {
-    margin-left: 2px;
-    margin-right: 2px;
+    margin-left: 7px;
+    margin-right: 7px;
+    margin-top: 5px;
+    margin-bottom: 5px;
     border: none;
 }
 
-
-/* Some new UI 2.0 style spinboxes, put in here so that we can use the new SpinBoxes with the old style */
-
-AzQtComponents--SpinBox::up-button:disabled,
-AzQtComponents--DoubleSpinBox::up-button:disabled,
-AzQtComponents--SpinBox::down-button:disabled,
-AzQtComponents--DoubleSpinBox::down-button:disabled
+AzQtComponents--Card[selected="true"]
 {
-    image: none;
-    border-color: rgba(0, 0, 0, 0);
-    background-color: rgba(0, 0, 0, 0);
-}
-
-AzQtComponents--SpinBox::up-button,
-AzQtComponents--DoubleSpinBox::up-button,
-AzQtComponents--SpinBox::down-button,
-AzQtComponents--DoubleSpinBox::down-button
-{
-    width: 14px;
-    height: 6px;
-    border-width: 1px;
-
-    image: none;
-    border-color: rgba(0, 0, 0, 0);
-    background-color: rgba(0, 0, 0, 0);
-}
-
-AzQtComponents--SpinBox::up-button[hovered=true],
-AzQtComponents--DoubleSpinBox::up-button[hovered=true],
-AzQtComponents--SpinBox::down-button[hovered=true],
-AzQtComponents--DoubleSpinBox::down-button[hovered=true]
-{
-    border-color: #222222;
-    border-style: solid;
-    background-color: #333333;
-}
-
-AzQtComponents--SpinBox::up-button[hovered=true],
-AzQtComponents--DoubleSpinBox::up-button[hovered=true]
-{
-    image: url(:/stylesheet/img/UI20/spinbox-up-arrow.png);
-}
-
-AzQtComponents--SpinBox::down-button:hovered[hovered=true],
-AzQtComponents--DoubleSpinBox::down-button:hovered[hovered=true]
-{
-    image: url(:/stylesheet/img/UI20/spinbox-down-arrow.png);
+    border-color: #E57829;
 }
 
 /** 
@@ -2896,4 +2926,15 @@ AzToolsFramework--AssetCompleterListView
 {
     color: #fff;
     background: #000;
+}
+
+QLineEdit#m_entitySearchBox
+{
+    border: none;
+    selection-background-color: rgb(233, 99, 0);
+    background: #6e7071;
+    background-repeat: no-repeat;
+    background-position: left;
+    padding: 2 2 2 24;
+    color: rgb(255, 255, 255);
 }

@@ -1,0 +1,74 @@
+{
+    "auto": {
+        "Include": [
+            "Include/WhiteBox/EditorWhiteBoxBus.h",
+            "Include/WhiteBox/EditorWhiteBoxComponentBus.h",
+            "Include/WhiteBox/WhiteBoxToolApi.h",
+            "Include/WhiteBox/EditorWhiteBoxColliderBus.h"
+        ],
+        "Source": [
+            "Source/EditorWhiteBoxComponent.cpp",
+            "Source/EditorWhiteBoxComponent.h",
+            "Source/EditorWhiteBoxComponentMode.cpp",
+            "Source/EditorWhiteBoxComponentMode.h",
+            "Source/EditorWhiteBoxComponentModeBus.h",
+            "Source/EditorWhiteBoxComponentModeTypes.cpp",
+            "Source/EditorWhiteBoxComponentModeTypes.h",
+            "Source/EditorWhiteBoxEdgeModifierBus.h",
+            "Source/EditorWhiteBoxPolygonModifierBus.h",
+            "Source/EditorWhiteBoxDefaultShapeTypes.h",
+            "Source/WhiteBoxEditorModule.cpp",
+            "Source/WhiteBoxEditorModule.h",
+            "Source/WhiteBoxToolApiReflection.cpp",
+            "Source/WhiteBoxToolApiReflection.h"
+        ],
+        "Source/Core": [
+            "Source/Core/WhiteBoxToolApi.cpp"
+        ],
+        "Source/Components": [
+            "Source/Components/EditorWhiteBoxColliderComponent.cpp",
+            "Source/Components/EditorWhiteBoxColliderComponent.h"
+        ],
+        "Source/Util": [
+            "Source/Util/WhiteBoxTextureUtil.cpp",
+            "Source/Util/WhiteBoxTextureUtil.h",
+            "Source/Util/WhiteBoxMathUtil.h",
+            "Source/Util/WhiteBoxMathUtil.cpp"
+        ],
+        "Source/Viewport": [
+            "Source/Viewport/WhiteBoxEdgeScaleModifier.cpp",
+            "Source/Viewport/WhiteBoxEdgeScaleModifier.h",
+            "Source/Viewport/WhiteBoxEdgeTranslationModifier.cpp",
+            "Source/Viewport/WhiteBoxEdgeTranslationModifier.h",
+            "Source/Viewport/WhiteBoxPolygonScaleModifier.cpp",
+            "Source/Viewport/WhiteBoxPolygonScaleModifier.h",
+            "Source/Viewport/WhiteBoxPolygonTranslationModifier.cpp",
+            "Source/Viewport/WhiteBoxPolygonTranslationModifier.h",
+            "Source/Viewport/WhiteBoxManipulatorViews.cpp",
+            "Source/Viewport/WhiteBoxManipulatorViews.h",
+            "Source/Viewport/WhiteBoxManipulatorBounds.cpp",
+            "Source/Viewport/WhiteBoxManipulatorBounds.h",
+            "Source/Viewport/WhiteBoxModifierUtil.cpp",
+            "Source/Viewport/WhiteBoxModifierUtil.h",
+            "Source/Viewport/WhiteBoxViewportConstants.cpp",
+            "Source/Viewport/WhiteBoxViewportConstants.h",
+            "Source/Viewport/WhiteBoxVertexSelectionModifier.cpp",
+            "Source/Viewport/WhiteBoxVertexSelectionModifier.h"
+        ],
+        "Source/Asset": [
+            "Source/Asset/WhiteBoxMeshAsset.h",
+            "Source/Asset/WhiteBoxMeshAssetHandler.h",
+            "Source/Asset/WhiteBoxMeshAssetHandler.cpp",
+            "Source/Asset/WhiteBoxMeshAssetUndoCommand.h",
+            "Source/Asset/WhiteBoxMeshAssetUndoCommand.cpp",
+            "Source/Asset/WhiteBoxMeshAssetBus.h"
+        ],
+        "Source/SubComponentModes": [
+            "Source/SubComponentModes/EditorWhiteBoxEdgeRestoreMode.cpp",
+            "Source/SubComponentModes/EditorWhiteBoxEdgeRestoreMode.h",
+            "Source/SubComponentModes/EditorWhiteBoxDefaultMode.cpp",
+            "Source/SubComponentModes/EditorWhiteBoxDefaultMode.h",
+            "Source/SubComponentModes/EditorWhiteBoxDefaultModeBus.h"
+        ]
+    }
+}

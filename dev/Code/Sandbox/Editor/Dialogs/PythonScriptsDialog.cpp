@@ -47,8 +47,8 @@ void CPythonScriptsDialog::RegisterViewClass()
 }
 
 //////////////////////////////////////////////////////////////////////////
-CPythonScriptsDialog::CPythonScriptsDialog()
-    : QWidget()
+CPythonScriptsDialog::CPythonScriptsDialog(QWidget* parent)
+    : QWidget(parent)
     , ui(new Ui::CPythonScriptsDialog)
 {
     ui->setupUi(this);

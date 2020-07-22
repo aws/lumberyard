@@ -34,7 +34,6 @@
 #include <Tests/TestAssetCode/SimpleActors.h>
 #include <Tests/TestAssetCode/ActorFactory.h>
 
-
 namespace EMotionFX
 {
     class PoseTests
@@ -143,7 +142,7 @@ namespace EMotionFX
         }
 
     public:
-        AZStd::unique_ptr<Actor> m_actor{};
+        AZStd::unique_ptr<Actor> m_actor;
         ActorInstance* m_actorInstance = nullptr;
         const AZ::u32 m_numMorphTargets = 5;
 
@@ -648,9 +647,7 @@ namespace EMotionFX
         Pose pose;
 
         // If there is no actor instance linked, expect the identity transform.
-        Transform identityTransform;
-        identityTransform.Identity();
-        EXPECT_EQ(pose.GetMeshNodeWorldSpaceTransform(lodLevel, jointIndex), identityTransform);
+        EXPECT_EQ(pose.GetMeshNodeWorldSpaceTransform(lodLevel, jointIndex), Transform::CreateIdentity());
 
         // Link the actor instance and move it so that the model and world space transforms differ.
         pose.LinkToActorInstance(m_actorInstance);
@@ -741,6 +738,35 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////
 
+    TEST_F(PoseTests, Scaling)
+    {
+        EMFX_SCALECODE
+        (
+            Pose pose;
+            pose.LinkToActorInstance(m_actorInstance);
+            pose.InitFromBindPose(m_actor.get());
+
+            AZ::u32 jointIndex = InvalidIndex32;
+            Node* joint = m_actor->GetSkeleton()->FindNodeAndIndexByName("joint4", jointIndex);
+            ASSERT_NE(joint, nullptr) << "Can't find the joint named 'joint4'.";
+
+            const Transform jointTransform = pose.GetWorldSpaceTransform(jointIndex);
+            EXPECT_THAT(jointTransform.mScale, IsClose(AZ::Vector3::CreateOne()));
+
+            AZ::Vector3 scale(2.0f);
+            m_actorInstance->SetLocalSpaceScale(scale);
+            m_actorInstance->UpdateWorldTransform();
+            const Transform jointTransform2 = pose.GetWorldSpaceTransform(jointIndex);
+            EXPECT_THAT(jointTransform2.mScale, IsClose(scale));
+
+            const float distToOrigin = jointTransform.mPosition.GetLengthExact();
+            const float distToOrigin2= jointTransform2.mPosition.GetLengthExact();
+            EXPECT_FLOAT_EQ(distToOrigin2 / distToOrigin, 2.0f) << "Expecting the scaled joint to be twice as far from the origin as the unscaled joint.";
+        )
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    
     class PoseTestsBlendWeightParam
         : public PoseTests
         , public ::testing::WithParamInterface<float>

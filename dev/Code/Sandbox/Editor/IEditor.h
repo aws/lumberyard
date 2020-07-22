@@ -525,6 +525,8 @@ struct IEditor
     virtual void SetDocument(CCryEditDoc* pDoc) = 0;
     //! Get active document
     virtual CCryEditDoc* GetDocument() const = 0;
+    //! Check if there is a level loaded
+    virtual bool IsLevelLoaded() const = 0;
     //! Set document modified flag.
     virtual void SetModifiedFlag(bool modified = true) = 0;
     virtual void SetModifiedModule(EModifiedModule eModifiedModule, bool boSet = true) = 0;

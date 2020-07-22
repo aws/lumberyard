@@ -313,11 +313,12 @@ namespace PhysX
         UpdateShapeConfigurationScale();
         CreateStaticEditorCollider();
 
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
     }
 
     void EditorColliderComponent::Deactivate()
     {
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         m_colliderDebugDraw.Disconnect();
         AZ::Data::AssetBus::MultiHandler::BusDisconnect();
         LmbrCentral::MeshComponentNotificationBus::Handler::BusDisconnect();
@@ -359,7 +360,7 @@ namespace PhysX
 
         m_colliderDebugDraw.ClearCachedGeometry();
 
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
         Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
 
         return AZ::Edit::PropertyRefreshLevels::None;
@@ -495,6 +496,8 @@ namespace PhysX
         }
 
         m_colliderDebugDraw.ClearCachedGeometry();
+
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     AZ::Data::Asset<Pipeline::MeshAsset> EditorColliderComponent::GetMeshAsset() const
@@ -636,7 +639,7 @@ namespace PhysX
             m_colliderDebugDraw.ClearCachedGeometry();
 
             // Notify about the data update of the collider
-            ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+            Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
         }
         else
         {
@@ -849,6 +852,47 @@ namespace PhysX
         auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
         shapeConfiguration.m_scale = GetWorldTM().ExtractScale();
         m_colliderDebugDraw.ClearCachedGeometry();
+    }
+
+    void EditorColliderComponent::EnablePhysics()
+    {
+        if (!IsPhysicsEnabled())
+        {
+            CreateStaticEditorCollider();
+        }
+    }
+
+    void EditorColliderComponent::DisablePhysics()
+    {
+        m_editorBody.reset();
+    }
+
+    bool EditorColliderComponent::IsPhysicsEnabled() const
+    {
+        return m_editorBody && m_editorBody->GetWorld();
+    }
+
+    AZ::Aabb EditorColliderComponent::GetAabb() const
+    {
+        if (m_editorBody)
+        {
+            return m_editorBody->GetAabb();
+        }
+        return AZ::Aabb::CreateNull();
+    }
+
+    Physics::WorldBody* EditorColliderComponent::GetWorldBody()
+    {
+        return m_editorBody.get();
+    }
+
+    Physics::RayCastHit EditorColliderComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        if (m_editorBody)
+        {
+            return m_editorBody->RayCast(request);
+        }
+        return Physics::RayCastHit();
     }
 
     bool EditorColliderComponent::IsTrigger()

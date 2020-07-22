@@ -71,10 +71,10 @@ namespace GraphCanvas
 
     private:
 
-        void OnQuickFilterChanged();
+        void OnQuickFilterChanged(const QString &text);
         void UpdateFilter();
         void ClearFilter();
-        
+
         AZStd::unique_ptr<Ui::BookmarkDockWidget> m_ui;
 
         QTimer m_filterTimer;

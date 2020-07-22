@@ -32,7 +32,7 @@ namespace ScriptCanvas
         AZStd::string errorMessage = AZStd::string::format("Connection cannot be created between source slot \"%s\" and target slot \"%s\", slot does not support type: %s."
             , sourceSlot.GetName().data()
             , targetSlot.GetName().data()
-            , Data::GetName(targetType)
+            , Data::GetName(targetType).c_str()
         );
 
         return AZ::Failure(errorMessage);

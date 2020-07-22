@@ -1,0 +1,17 @@
+<Material MtlFlags="557312" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Airship_projector_01_mat" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800080080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0.03189604,0.03189604,0.03189604,1" Emittance="0.066625945,1,0.87136728,21.049999" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_projector_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_projector_01_ddna.tif"/>
+    <Texture Map="Emittance" File="objects/airship/airship_projector_01_emis.dds"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="collide_proxy" MtlFlags="525440" DccMaterialHash="0" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="0.40000001,0.40000001,0.40000001,1" Specular="0.036889456,0.036889456,0.036889456,1" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

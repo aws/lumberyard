@@ -86,8 +86,9 @@ namespace
 
 /////////////////////////////////////////////////////////////////////////////
 // CTerrainDialog dialog
-CTerrainDialog::CTerrainDialog()
-    : m_ui(new Ui::TerrainDialog)
+CTerrainDialog::CTerrainDialog(QWidget* parent)
+    : QMainWindow(parent)
+    , m_ui(new Ui::TerrainDialog)
 {
     m_ui->setupUi(this);
 

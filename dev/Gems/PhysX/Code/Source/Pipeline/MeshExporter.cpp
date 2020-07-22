@@ -160,7 +160,7 @@ namespace PhysX
         namespace Utils
         {
             // Utility function doing look-up in fbxMaterialNames and inserting the name if it's not found
-            AZ::u16 GetMaterialIndexByName(const AZStd::string& materialName, AssetMaterialsData& materials)
+            AZ::u16 InsertMaterialIndexByName(const AZStd::string& materialName, AssetMaterialsData& materials)
             {
                 AZStd::vector<AZStd::string>& fbxMaterialNames = materials.m_fbxMaterialNames;
                 AZStd::unordered_map<AZStd::string, size_t>& materialIndexByName = materials.m_materialIndexByName;
@@ -235,10 +235,6 @@ namespace PhysX
                     {
                         AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "No SubMaterial node in the .mtl file: %s", materialFilename.c_str());
                     }
-                }
-                else
-                {
-                    AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to open .mtl file: %s", materialFilename.c_str());
                 }
             }
 
@@ -346,7 +342,7 @@ namespace PhysX
             if (uniqueFaceMaterials.size() > 1)
             {
                 AZ_TracePrintf(AZ::SceneAPI::Utilities::WarningWindow,
-                    "Should only have 1 material assigned to a convex mesh. Assigned: %d", uniqueFaceMaterials.size());
+                    "Should only have 1 material assigned to a non-triangle mesh. Assigned: %d", uniqueFaceMaterials.size());
             }
         }
 
@@ -578,6 +574,11 @@ namespace PhysX
                         "WritePxMeshAsset: m_perFaceMaterialIndices must be not empty! Please make sure you have a material assigned to the geometry. Node: %s",
                         subMesh.m_nodeName.c_str()
                     );
+                    AZ_Assert(
+                        subMesh.m_perFaceMaterialIndices[0] != MeshAssetData::TriangleMeshMaterialIndex,
+                        "WritePxMeshAsset: m_perFaceMaterialIndices has invalid material index! Node: %s",
+                        subMesh.m_nodeName.c_str()
+                    );
 
                     assetData.m_materialIndexPerShape.push_back(subMesh.m_perFaceMaterialIndices[0]);
                 }
@@ -785,15 +786,31 @@ namespace PhysX
                     nodeExportData.m_indices.resize(faceCount * 3);
                     nodeExportData.m_perFaceMaterialIndices.resize(faceCount);
 
+                    if (localFbxMaterialsList.empty())
+                    {
+                        AZ_TracePrintf(
+                            AZ::SceneAPI::Utilities::WarningWindow,
+                            "Node '%s' does not have any material assigned to it. Material '%s' will be used.",
+                            nodeExportData.m_nodeName.c_str(), DefaultMaterialName
+                        );
+                    }
+
                     for (AZ::u32 faceIndex = 0; faceIndex < faceCount; ++faceIndex)
                     {
-                        int materialId = nodeMesh->GetFaceMaterialId(faceIndex);
-                        if (materialId >= localFbxMaterialsList.size())
+                        AZStd::string materialName = DefaultMaterialName;
+                        if (!localFbxMaterialsList.empty())
                         {
-                            AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow,
-                                "materialId %d for face %d is out of bound for localFbxMaterialsList (size %d).",
-                                materialId, faceIndex, localFbxMaterialsList.size());
-                            continue;
+                            int materialId = nodeMesh->GetFaceMaterialId(faceIndex);
+                            if (materialId >= localFbxMaterialsList.size())
+                            {
+                                AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow,
+                                    "materialId %d for face %d is out of bound for localFbxMaterialsList (size %d).",
+                                    materialId, faceIndex, localFbxMaterialsList.size());
+
+                                return SceneEvents::ProcessingResult::Failure;
+                            }
+
+                            materialName = localFbxMaterialsList[materialId];
                         }
 
                         const AZ::SceneAPI::DataTypes::IMeshData::Face& face = nodeMesh->GetFaceInfo(faceIndex);
@@ -801,9 +818,7 @@ namespace PhysX
                         nodeExportData.m_indices[faceIndex * 3 + 1] = face.vertexIndex[1];
                         nodeExportData.m_indices[faceIndex * 3 + 2] = face.vertexIndex[2];
 
-                        const AZStd::string& materialName = localFbxMaterialsList[materialId];
-
-                        AZ::u16 materialIndex = Utils::GetMaterialIndexByName(materialName, assetMaterialData);
+                        AZ::u16 materialIndex = Utils::InsertMaterialIndexByName(materialName, assetMaterialData);
                         nodeExportData.m_perFaceMaterialIndices[faceIndex] = materialIndex;
                     }
 

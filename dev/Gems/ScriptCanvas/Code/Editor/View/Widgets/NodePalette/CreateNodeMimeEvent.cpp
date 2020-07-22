@@ -58,6 +58,8 @@ namespace ScriptCanvasEditor
 
         if (m_nodeIdPair.m_graphCanvasId.IsValid() && m_nodeIdPair.m_scriptCanvasId.IsValid())
         {
+            m_createdNodeId = m_nodeIdPair.m_graphCanvasId;
+
             GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, m_nodeIdPair.m_graphCanvasId, sceneDropPosition);
             GraphCanvas::SceneMemberUIRequestBus::Event(m_nodeIdPair.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
 
@@ -65,6 +67,8 @@ namespace ScriptCanvasEditor
 
             AZ::EntityId gridId;
             GraphCanvas::SceneRequestBus::EventResult(gridId, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGrid);
+
+            AZ_Assert(gridId.IsValid(), "Grid must be valid, graphCanvasGraphId is likely incorrect");
 
             AZ::Vector2 offset;
             GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);

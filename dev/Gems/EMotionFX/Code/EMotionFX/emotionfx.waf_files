@@ -84,8 +84,6 @@
             "Source/MorphTargetStandard.h",
             "Source/Motion.cpp",
             "Source/Motion.h",
-            "Source/MotionGroup.cpp",
-            "Source/MotionGroup.h",
             "Source/MotionInstance.cpp",
             "Source/MotionInstance.h",
             "Source/MotionInstancePool.cpp",

@@ -134,7 +134,7 @@ namespace GraphCanvas
         return !m_mimeType.isEmpty();
     }
     
-    bool MimeDelegateSceneHelper::IsInterestedInMimeData(const AZ::EntityId&, const QMimeData* mimeData)
+    bool MimeDelegateSceneHelper::IsInterestedInMimeData(const AZ::EntityId& graphId, const QMimeData* mimeData)
     {
         bool isInterested = HasMimeType() && mimeData->hasFormat(GetMimeType());
         m_enableConnectionSplicing = false;
@@ -146,27 +146,49 @@ namespace GraphCanvas
             m_splicingData = mimeData->data(GetMimeType());
 
             GraphCanvasMimeContainer mimeContainer;
-
-            // Splicing only makes sense when we have a single node.
-            if (mimeContainer.FromBuffer(m_splicingData.constData(), m_splicingData.size()) 
-                && mimeContainer.m_mimeEvents.size() == 1
-                && azrtti_istypeof<CreateSplicingNodeMimeEvent>(mimeContainer.m_mimeEvents.front()))
+            if (mimeContainer.FromBuffer(m_splicingData.constData(), m_splicingData.size()))
             {
-                m_enableConnectionSplicing = true;
+                isInterested = !mimeContainer.m_mimeEvents.empty();
 
-                AZ_Error("GraphCanvas", !m_splicingNode.IsValid(), "Splicing node not properly invalidated in between interest calls.");
-                m_splicingNode.SetInvalid();
+                for (GraphCanvas::GraphCanvasMimeEvent* mimeEvent : mimeContainer.m_mimeEvents)
+                {
+                    if (!mimeEvent->CanGraphHandleEvent(graphId))
+                    {
+                        isInterested = false;
+                        break;
+                    }
+                }
 
-                m_splicingPath = QPainterPath();
+                // Splicing only makes sense when we have a single node.
+                if (isInterested
+                    && mimeContainer.m_mimeEvents.size() == 1
+                    && azrtti_istypeof<CreateSplicingNodeMimeEvent>(mimeContainer.m_mimeEvents.front()))
+                {
+                    m_enableConnectionSplicing = true;
+
+                    AZ_Error("GraphCanvas", !m_splicingNode.IsValid(), "Splicing node not properly invalidated in between interest calls.");
+                    m_splicingNode.SetInvalid();
+
+                    m_splicingPath = QPainterPath();
+                }
+                else
+                {
+                    m_splicingData.clear();
+                }
             }
             else
             {
-                m_splicingData.clear();
+                isInterested = false;
             }
+
+            if (!isInterested)
+            {
+                m_splicingData.clear();
+            }            
         }
 
         return isInterested;
-    }    
+    }
 
     void MimeDelegateSceneHelper::HandleMove(const AZ::EntityId& sceneId, const QPointF& dragPoint, const QMimeData* mimeData)
     {
@@ -284,7 +306,7 @@ namespace GraphCanvas
 
             m_targetConnection.SetInvalid();
 
-            m_splicingPath = QPainterPath();           
+            m_splicingPath = QPainterPath();
 
             return;
         }
@@ -699,6 +721,8 @@ namespace GraphCanvas
 
     void GestureSceneHelper::HandleDesplice()
     {
+        ScopedGraphUndoBlocker undoBlocker(GetSceneId());
+
         bool despliced = false;
 
         AZStd::vector< AZ::EntityId > selectedItems;
@@ -1048,18 +1072,20 @@ namespace GraphCanvas
         GraphCanvasPropertyComponent::Activate();
 
         // Need to register this before activating saved nodes. Otherwise data is not properly setup.
-        SceneRequestBus::Handler::BusConnect(GetEntityId());
-        SceneMimeDelegateRequestBus::Handler::BusConnect(GetEntityId());
-        SceneBookmarkActionBus::Handler::BusConnect(GetEntityId());
+        const AZ::EntityId& entityId = GetEntityId();
+
+        SceneRequestBus::Handler::BusConnect(entityId);
+        SceneMimeDelegateRequestBus::Handler::BusConnect(entityId);
+        SceneBookmarkActionBus::Handler::BusConnect(entityId);
         
         // Only want to activate the scene if we have something to activate
         // Otherwise elements may be repeatedly activated/registered to the scene.
         m_activateScene = !m_graphData.m_nodes.empty() || !m_graphData.m_bookmarkAnchors.empty();
 
-        m_mimeDelegateSceneHelper.SetSceneId(GetEntityId());
-        m_gestureSceneHelper.SetSceneId(GetEntityId());
+        m_mimeDelegateSceneHelper.SetSceneId(entityId);
+        m_gestureSceneHelper.SetSceneId(entityId);
 
-        m_nudgingController.SetGraphId(GetEntityId());
+        m_nudgingController.SetGraphId(entityId);
         
         m_mimeDelegateSceneHelper.Activate();
         m_gestureSceneHelper.Activate();
@@ -1588,7 +1614,9 @@ namespace GraphCanvas
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         if (node.IsValid())
         {
-            GraphModelRequestBus::Event(GetEntityId(), &GraphModelRequests::RequestPushPreventUndoStateUpdate);
+            const AZ::EntityId& entityId = GetEntityId();
+
+            GraphModelRequestBus::Event(entityId, &GraphModelRequests::RequestPushPreventUndoStateUpdate);
 
             float explosionDensity = 0.6f;
 
@@ -1601,8 +1629,8 @@ namespace GraphCanvas
             GraphUtils::DetachNodeAndStitchConnections(node);
             Delete({ node });
 
-            GraphModelRequestBus::Event(GetEntityId(), &GraphModelRequests::RequestPopPreventUndoStateUpdate);
-            GraphModelRequestBus::Event(GetEntityId(), &GraphModelRequests::RequestUndoPoint);
+            GraphModelRequestBus::Event(entityId, &GraphModelRequests::RequestPopPreventUndoStateUpdate);
+            GraphModelRequestBus::Event(entityId, &GraphModelRequests::RequestUndoPoint);
         }
     }
 
@@ -2425,6 +2453,7 @@ namespace GraphCanvas
         if (!clipboard->mimeData()->hasFormat(m_copyMimeType.c_str()))
         {
             SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnUnknownPaste, scenePos);
+            SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnPasteEnd);
             return;
         }
 
@@ -2442,6 +2471,8 @@ namespace GraphCanvas
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnPasteEnd);
 
         OnSelectionChanged();
+
+        ViewRequestBus::Event(m_viewId, &ViewRequests::RefreshView);
     }
 
     void SceneComponent::SerializeEntities(const AZStd::unordered_set<AZ::EntityId>& itemIds, GraphSerialization& serializationTarget) const
@@ -2578,7 +2609,7 @@ namespace GraphCanvas
         }
 
         PersistentIdNotificationBus::Event(GetEditorId(), &PersistentIdNotifications::OnPersistentIdsRemapped, persistentGraphMemberRemapping);
-        SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnEntitiesDeserializationComplete);
+        SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnEntitiesDeserializationComplete, serializationSource);
     }
 
     void SceneComponent::DuplicateSelection()
@@ -2633,6 +2664,7 @@ namespace GraphCanvas
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnDuplicateEnd);
 
         OnSelectionChanged();
+        ViewRequestBus::Event(m_viewId, &ViewRequests::RefreshView);
     }
 
     void SceneComponent::DeleteSelection()
@@ -3475,6 +3507,11 @@ namespace GraphCanvas
         }
     }
 
+    void SceneComponent::OnEscape()
+    {
+        ClearSelection();
+    }
+
     void SceneComponent::OnViewParamsChanged(const ViewParams& viewParams)
     {
         m_genericAddOffset.setX(0);
@@ -3822,7 +3859,7 @@ namespace GraphCanvas
         AZStd::unordered_map< AZ::EntityId, AZ::EntityId > displayMapping;
 
         for (auto spliceSource : { m_pressedEntity, m_inputCouplingTarget, m_outputCouplingTarget })
-        {            
+        {
             QGraphicsItem* graphicsItem = nullptr;
             SceneMemberUIRequestBus::EventResult(graphicsItem, spliceSource, &SceneMemberUIRequests::GetRootGraphicsItem);
 
@@ -4189,7 +4226,7 @@ namespace GraphCanvas
             QPointF cursorPoint = QCursor::pos();
             QPointF viewPoint = graphicsView->mapFromGlobal(cursorPoint.toPoint());
             scenePoint = graphicsView->mapToScene(viewPoint.toPoint());
-        }        
+        }
 
         for (const ConnectionId& connectionId : connectionIds)
         {
@@ -4204,7 +4241,7 @@ namespace GraphCanvas
             }
 
             if (containsCursor)
-            {                
+            {
                 m_spliceTarget = connectionId;
 
                 StateController<RootGraphicsItemDisplayState>* stateController;
@@ -4358,8 +4395,11 @@ namespace GraphCanvas
 
                                 if (isSlotContextMenu)
                                 {
-                                    targetSlotId = slotId;
-                                    break;
+                                    if (GraphUtils::IsSlotVisible(slotId))
+                                    {
+                                        targetSlotId = slotId;
+                                        break;
+                                    }
                                 }
                             }
 

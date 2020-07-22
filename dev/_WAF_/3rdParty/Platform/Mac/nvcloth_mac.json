@@ -1,18 +1,18 @@
 {
     "platform": {
         "darwin_x64": {
-            "importlibpath": ["${lib_paths}/osx64-cmake"],
+            "nvcloth_lib/importlibpath": ["${lib_paths}/osx64-cmake"],
             
-            "import_debug": [
+            "nvcloth_lib/import_debug": [
                 "lib${lib_names}DEBUG.a"
             ],
-            "import_profile": [
+            "nvcloth_lib/import_profile": [
                 "lib${lib_names}PROFILE.a"
             ],
-            "import_performance": [
+            "nvcloth_lib/import_performance": [
                 "lib${lib_names}.a"
             ],
-            "import_release": [
+            "nvcloth_lib/import_release": [
                 "lib${lib_names}.a"
             ]
         }

@@ -106,11 +106,11 @@ void DisplayContext::DrawCylinder(const Vec3& p1, const Vec3& p2, float radius, 
 }
 
 //////////////////////////////////////////////////////////////////////////
-void DisplayContext::DrawCone(const Vec3& pos, const Vec3& dir, float radius, float height)
+void DisplayContext::DrawCone(const Vec3& pos, const Vec3& dir, float radius, float height, bool drawShaded /*= true*/)
 {
     const Vec3 worldPos = ToWorldSpacePosition(pos);
     const Vec3 worldDir = ToWorldSpaceVector(dir);
-    pRenderAuxGeom->DrawCone(worldPos, worldDir, radius, height, m_color4b);
+    pRenderAuxGeom->DrawCone(worldPos, worldDir, radius, height, m_color4b, drawShaded);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -146,7 +146,7 @@ void DisplayContext::DrawWireCylinder(const Vec3& center, const Vec3& axis, floa
 }
 
 //////////////////////////////////////////////////////////////////////////
-void DisplayContext::DrawSolidCylinder(const Vec3& center, const Vec3& axis, float radius, float height)
+void DisplayContext::DrawSolidCylinder(const Vec3& center, const Vec3& axis, float radius, float height, bool drawShaded)
 {
     if (radius > FLT_EPSILON && height > FLT_EPSILON && axis.GetLengthSquared() > FLT_EPSILON)
     {
@@ -166,7 +166,7 @@ void DisplayContext::DrawSolidCylinder(const Vec3& center, const Vec3& axis, flo
         float wsRadiusDirLen = wsRadiusDir.GetLength();
         float wsRadius = radius * wsRadiusDirLen;
 
-        pRenderAuxGeom->DrawCylinder(wsCenter, wsAxis, wsRadius, wsHeight, m_color4b);
+        pRenderAuxGeom->DrawCylinder(wsCenter, wsAxis, wsRadius, wsHeight, m_color4b, drawShaded);
     }
 }
 

@@ -64,6 +64,7 @@ namespace AzQtComponents
         friend class Style;
         friend class AssetFolderThumbnailView;
         friend class TableView;
+        friend class TreeView;
 
         static void initializeWatcher();
         static void uninitializeWatcher();

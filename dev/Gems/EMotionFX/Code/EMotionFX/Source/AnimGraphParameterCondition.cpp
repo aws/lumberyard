@@ -104,16 +104,6 @@ namespace EMotionFX
     {
         return "Parameter Condition";
     }
-
-    void AnimGraphParameterCondition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-    }
     
     void AnimGraphParameterCondition::SetTestString(const AZStd::string& testString)
     {
@@ -187,20 +177,20 @@ namespace EMotionFX
 
     void AnimGraphParameterCondition::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         uniqueData->m_timer += timePassedInSeconds;
     }
 
     void AnimGraphParameterCondition::Reset(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         uniqueData->m_timer = 0.0f;
     }
 
     // test the condition
     bool AnimGraphParameterCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // allow the transition in case we don't have a valid parameter to test against
         if (!m_parameterIndex.IsSuccess())

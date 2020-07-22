@@ -62,6 +62,7 @@ namespace GraphCanvas
         
         void setMimeType(const char* mimeType);
         const GraphCanvas::GraphCanvasTreeItem* GetTreeRoot() const;
+        GraphCanvas::GraphCanvasTreeItem* ModTreeRoot();
 
         QModelIndex CreateIndex(GraphCanvasTreeItem* treeItem, int column = 0);
         QModelIndex CreateParentIndex(GraphCanvasTreeItem* treeItem, int column = 0);

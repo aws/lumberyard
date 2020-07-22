@@ -28,7 +28,7 @@ class CMissingAssetDialog
 {
     Q_OBJECT
 public:
-    CMissingAssetDialog();   // standard constructor
+    explicit CMissingAssetDialog(QWidget* parent = nullptr);   // standard constructor
     virtual ~CMissingAssetDialog();
 
     static void RegisterViewClass();

@@ -9,10 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <qgraphicsscene.h>
-#include <qtimer.h>
-#include <qpainter.h>
-#include <qpainterpath.h>
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
+#include <QGraphicsScene>
+#include <QTimer>
+#include <QPainter>
+#include <QPainterPath>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/Entity.h>
 
@@ -107,6 +111,21 @@ namespace GraphCanvas
         m_boundingRect.moveTo(-m_boundingRect.width() * 0.5f, -m_boundingRect.height() * 0.5f);
     }
 
+    AnimatedPulse::~AnimatedPulse()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+    }
+
+    void AnimatedPulse::OnSystemTick()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+
+        PulseNotificationBus::Event(GetEffectId(), &PulseNotifications::OnPulseComplete);
+        QGraphicsScene* graphicsScene = this->scene();
+        graphicsScene->removeItem(this);
+        delete this;
+    }
+
     void AnimatedPulse::OnTick(float deltaTime, AZ::ScriptTimePoint timePoint)
     {
         m_elapsedDuration += deltaTime;
@@ -114,14 +133,7 @@ namespace GraphCanvas
         if (m_elapsedDuration >= m_configuration.m_durationSec)
         {
             AZ::TickBus::Handler::BusDisconnect();
-
-            QTimer::singleShot(0, [this]()
-            {
-                PulseNotificationBus::Event(GetEffectId(), &PulseNotifications::OnPulseComplete);
-                QGraphicsScene* graphicsScene = this->scene();
-                graphicsScene->removeItem(this);
-                delete this;
-            });
+            AZ::SystemTickBus::Handler::BusConnect();
         }
 
         update();

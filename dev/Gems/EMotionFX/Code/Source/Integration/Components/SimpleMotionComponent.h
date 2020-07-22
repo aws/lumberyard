@@ -118,7 +118,7 @@ namespace EMotionFX
 
             void RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance);
 
-            static EMotionFX::MotionInstance* PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight);
+            static EMotionFX::MotionInstance* PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight, bool inPlace);
 
             Configuration                               m_configuration;        ///< Component configuration.
             EMotionFXPtr<EMotionFX::ActorInstance>      m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).

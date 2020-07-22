@@ -59,17 +59,11 @@ namespace ScriptCanvasEditor
         : public AZ::EBusTraits
     {
     public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = ScriptCanvas::ScriptCanvasId;
 
-        /*!
-        * Retrieves the undo cache for storing Script Canvas data
-        */
-        virtual UndoCache* GetActiveSceneUndoCache() = 0;
-
-        /*!
-        * Retrieves the undo cache for specific Script Canvas entity
-        */
-        virtual UndoCache* GetSceneUndoCache(ScriptCanvas::ScriptCanvasId scriptCanvasId) = 0;
+        virtual UndoCache* GetSceneUndoCache() = 0;
+        virtual UndoData CreateUndoData() = 0;
 
         /*!
         * Start batch undo so we can add multiple undo to one undo step.
@@ -86,15 +80,19 @@ namespace ScriptCanvasEditor
         */
         virtual void AddUndo(AzToolsFramework::UndoSystem::URSequencePoint* seqPoint) = 0;
 
-        virtual void AddGraphItemChangeUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel) = 0;
-        virtual void AddGraphItemAdditionUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel) = 0;
-        virtual void AddGraphItemRemovalUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel)  = 0;
+        virtual void AddGraphItemChangeUndo(AZStd::string_view undoLabel) = 0;
+        virtual void AddGraphItemAdditionUndo(AZStd::string_view undoLabel) = 0;
+        virtual void AddGraphItemRemovalUndo(AZStd::string_view undoLabel)  = 0;
 
         virtual void Undo() = 0;
         virtual void Redo() = 0;
         virtual void Reset() = 0;
 
-        virtual UndoData CreateUndoData(ScriptCanvas::ScriptCanvasId scriptCanvasId) = 0;
+        virtual bool IsIdle() = 0;
+        virtual bool IsActive() = 0;
+
+        virtual bool CanUndo() const = 0;
+        virtual bool CanRedo() const = 0;
     };
     using UndoRequestBus = AZ::EBus<UndoRequests>;
 

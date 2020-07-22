@@ -16,6 +16,7 @@
 #include <QDebug>
 #include <QStyle>
 #include <QToolButton>
+#include <QToolBar>
 #include <QPushButton>
 #include <QFileDialog>
 #include <AzQtComponents/Components/Widgets/BreadCrumbs.h>
@@ -33,8 +34,7 @@ BreadCrumbsPage::BreadCrumbsPage(QWidget* parent)
     breadCrumbs->pushPath("C:/Documents/SubDirectory1/SubDirectory2/SubDirectory3");
 
     // Have the bread crumb widget create the right buttons for us and we just lay them out
-    ui->horizontalLayout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Back));
-    ui->horizontalLayout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Forward));
+    ui->horizontalLayout->addWidget(breadCrumbs->createBackForwardToolBar());
 
     ui->horizontalLayout->addWidget(breadCrumbs->createSeparator());
 
@@ -60,13 +60,12 @@ BreadCrumbsPage::BreadCrumbsPage(QWidget* parent)
 
     QString exampleText = R"(
 
-The BreadCrumbs widget is a Lumberyard specific container widget. Use it to show paths, file and otherwise, and provide functionality to click on pieces of the path and jump to them.<br/><br/>
+The BreadCrumbs widget can be used to show paths, and provide functionality to click on pieces of the path and jump to them.<br/><br/>
 
 Some sample code:<br/><br/>
 
 <pre>
 #include &lt;AzQtComponents/Components/Widgets/BreadCrumbs.h&gt;
-#include &lt;QDebug&gt;
 
 // Create a new BreadCrumbs widget:
 AzQtComponents::BreadCrumbs* breadCrumbs = new AzQtComponents::BreadCrumbs(this);
@@ -81,7 +80,7 @@ breadCrumbs->forward();
 
 // Listen for path changes
 connect(breadCrumbs, &AzQtComponents::BreadCrumbs::pathChanged, this, [](const QString& newPath){
-    qDebug() &lt;&lt; QString("New path: %1").arg(newPath);
+    // Handle path change
 });
 
 // To get the current path:
@@ -93,8 +92,7 @@ QHBoxLayout* groupLayout = new QHBoxLayout(group);
 
 AzQtComponents::BreadCrumbs* breadCrumbs = new AzQtComponents::BreadCrumbs(group);
 
-layout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Back));
-layout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Forward));
+layout->addWidget(breadCrumbs->createBackForwardToolBar());
 
 layout->addWidget(breadCrumbs);
 

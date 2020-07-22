@@ -23,6 +23,7 @@
 #define CRYINCLUDE_EDITOR_DATABASEFRAMEWND_H
 
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzQtComponents/Components/DockMainWindow.h>
 #include "Undo/IUndoManagerListener.h"
 
 #include <QMainWindow>
@@ -45,7 +46,7 @@ namespace Ui {
 }
 
 class CDatabaseFrameWnd
-    : public QMainWindow
+    : public AzQtComponents::DockMainWindow
     , public IEditorNotifyListener
     , public IUndoManagerListener
 {

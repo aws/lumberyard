@@ -342,6 +342,12 @@ namespace ScriptCanvasTags
         BaseClass(AZStd::initializer_list<const char*>) {}
     };
 
+    // Provided a hook for reflecting dependent classes from a node.
+    struct DependentReflections
+    {
+        DependentReflections(AZStd::initializer_list<const char*>) {}
+    };
+
     struct Deprecated
     {
         Deprecated(const char* details) {}
@@ -373,7 +379,8 @@ namespace ScriptCanvas_Node
     using ScriptCanvasTags::EventHandler;
     using ScriptCanvasTags::EditAttributes;
     using ScriptCanvasTags::Category;
-    using ScriptCanvasTags::Deprecated;    
+    using ScriptCanvasTags::Deprecated;
+    using ScriptCanvasTags::DependentReflections;
     
     struct GraphEntryPoint
     {

@@ -17,6 +17,7 @@
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 
+#include <Components/ClothComponent.h>
 #include <Components/EditorClothComponent.h>
 #include <Utils/Allocators.h>
 

@@ -623,6 +623,27 @@ namespace AssetProcessor
 
         if(result.m_resultCode == AssetBuilderSDK::ProcessJobResult_Success)
         {
+            bool handledDependencies = true; // True in case there are no outputs
+
+            for (const AssetBuilderSDK::JobProduct& jobProduct : result.m_outputProducts)
+            {
+                handledDependencies = false; // False by default since there are outputs
+
+                if(jobProduct.m_dependenciesHandled)
+                {
+                    handledDependencies = true;
+                    break;
+                }
+            }
+
+            if(!handledDependencies)
+            {
+                AZ_Warning(AssetBuilderSDK::WarningWindow, false, "The builder has not indicated it handled outputting product dependencies.  This is a programmer error.");
+                AZ_Warning(AssetBuilderSDK::WarningWindow, false, "For builders that output AZ serialized types, it is recommended to use AssetBuilderSDK::OutputObject which will handle outputting product depenedencies and creating the JobProduct.  This is fine to use even if your builder never has product dependencies.");
+                AZ_Warning(AssetBuilderSDK::WarningWindow, false, "For builders that need custom depenedency parsing that cannot be handled by AssetBuilderSDK::OutputObject or ones that output non-AZ serialized types, add the dependencies to m_dependencies and m_pathDependencies on the JobProduct and then set m_dependenciesHandled to true.");
+                jobLogTraceListener.AddWarning();
+            }
+
             WarningLevel warningLevel = WarningLevel::Default;
             JobDiagnosticRequestBus::BroadcastResult(warningLevel, &JobDiagnosticRequestBus::Events::GetWarningLevel);
             const bool hasErrors = jobLogTraceListener.GetErrorCount() > 0;

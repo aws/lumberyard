@@ -41,31 +41,6 @@ CErrorReportDialog* CErrorReportDialog::m_instance = 0;
 
 // CErrorReportDialog dialog
 
-static int __stdcall CompareErrorRecordItems(LPARAM p1, LPARAM p2, LPARAM sort)
-{
-    CErrorRecord* err1 = (CErrorRecord*)p1;
-    CErrorRecord* err2 = (CErrorRecord*)p2;
-    if (err1->severity < err2->severity)
-    {
-        return -1;
-    }
-    else if (err1->severity > err2->severity)
-    {
-        return 1;
-    }
-    else
-    {
-        if (err1->module == err2->module)
-        {
-            return QString::compare(err1->error, err2->error, Qt::CaseInsensitive);
-        }
-        else
-        {
-            return err1->module < err2->module;
-        }
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 void CErrorReportDialog::RegisterViewClass()
 {
@@ -75,10 +50,12 @@ void CErrorReportDialog::RegisterViewClass()
     AzToolsFramework::RegisterViewPane<CErrorReportDialog>(LyViewPane::ErrorReport, LyViewPane::CategoryOther, options);
 }
 
-CErrorReportDialog::CErrorReportDialog()
-    : QWidget()
+CErrorReportDialog::CErrorReportDialog(QWidget* parent)
+    : QWidget(parent)
     , ui(new Ui::CErrorReportDialog)
     , m_errorReportModel(new CErrorReportTableModel(this))
+    , m_sortIndicatorColumn(-1)
+    , m_sortIndicatorOrder(Qt::AscendingOrder)
 {
     ui->setupUi(this);
     ui->treeView->setModel(m_errorReportModel);
@@ -101,8 +78,11 @@ CErrorReportDialog::CErrorReportDialog()
     connect(ui->treeView, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(OnReportItemDblClick(QModelIndex)));
     connect(ui->treeView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(OnReportItemRClick()));
     connect(ui->treeView->header(), SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(OnReportColumnRClick()));
+    connect(ui->treeView->header(), SIGNAL(sortIndicatorChanged(int,Qt::SortOrder)), this, SLOT(OnSortIndicatorChanged(int,Qt::SortOrder)));
 
     ui->treeView->AddGroup(CErrorReportTableModel::ColumnModule);
+
+    ui->treeView->header()->setSortIndicator(-1, Qt::AscendingOrder);
 
     m_instance = this;
     //CErrorReport *report,
@@ -568,6 +548,19 @@ void CErrorReportDialog::OnReportItemDblClick(const QModelIndex& index)
         }
     }
     */
+}
+
+void CErrorReportDialog::OnSortIndicatorChanged(int logicalIndex, Qt::SortOrder order)
+{
+    if (logicalIndex == 0)
+    {
+        ui->treeView->header()->setSortIndicator(m_sortIndicatorColumn, m_sortIndicatorOrder);
+    }
+    else
+    {
+        m_sortIndicatorColumn = logicalIndex;
+        m_sortIndicatorOrder = order;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

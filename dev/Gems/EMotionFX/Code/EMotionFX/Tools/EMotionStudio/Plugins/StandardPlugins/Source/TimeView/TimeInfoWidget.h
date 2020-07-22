@@ -52,13 +52,13 @@ namespace EMStudio
         QBrush          mBrushBackground;
         QPen            mPenText;
         QPen            mPenTextFocus;
-        QLinearGradient mHeaderGradient;
         AZStd::string   mCurTimeString;
         AZStd::string   mOverwriteTimeString;
         TimeViewPlugin* mPlugin;
         double          mOverwriteStartTime;
         double          mOverwriteEndTime;
         bool            mOverwriteMode;
+        bool            mShowOverwriteStartTime = false;
 
         void keyPressEvent(QKeyEvent* event);
         void keyReleaseEvent(QKeyEvent* event);

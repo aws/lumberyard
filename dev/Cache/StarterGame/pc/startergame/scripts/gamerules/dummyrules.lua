@@ -1,4 +1,5 @@
---[[
+----------------------------------------------------------------------------------------------------
+--
 -- All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 -- its licensors.
 --
@@ -7,9 +8,9 @@
 -- or, if provided, by the license below or the license accompanying this file. Do not
 -- remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
---]]
-
-
+--
+--
+----------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------
 -- This is just a stub until the game rules in CryAction is removed.
 -- All the real game rules are now in the GameRules prototypes.
@@ -21,5 +22,5 @@ DummyRules = {
 }
 
 function DummyRules.Server:OnStartLevel()
-	CryAction.SendGameplayEvent(NULL_ENTITY, eGE_GameStarted);
+	
 end

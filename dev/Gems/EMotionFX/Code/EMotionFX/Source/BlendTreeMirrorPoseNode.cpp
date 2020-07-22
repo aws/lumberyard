@@ -98,7 +98,7 @@ namespace EMotionFX
         AnimGraphNode* sourceNode = GetInputNode(INPUTPORT_POSE);
         if (sourceNode == nullptr)
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
             return;
         }
@@ -107,13 +107,13 @@ namespace EMotionFX
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
         // init the unique data
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         uniqueData->Init(animGraphInstance, sourceNode);
 
         // apply mirroring to the sync track
         if (GetIsMirroringEnabled(animGraphInstance) && !mDisabled)
         {
-            EMotionFX::AnimGraphNodeData* sourceNodeData = sourceNode->FindUniqueNodeData(animGraphInstance);
+            EMotionFX::AnimGraphNodeData* sourceNodeData = sourceNode->FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->SetSyncTrack(sourceNodeData->GetSyncTrack());
             uniqueData->SetIsMirrorMotion(sourceNodeData->GetIsMirrorMotion());
         }
@@ -203,7 +203,7 @@ namespace EMotionFX
         if (mConnections.size() == 0 || mInputPorts[INPUTPORT_POSE].mConnection == nullptr)
         {
             RequestRefDatas(animGraphInstance);
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -215,10 +215,10 @@ namespace EMotionFX
         inputNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
         RequestRefDatas(animGraphInstance);
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
-        AnimGraphRefCountedData* sourceData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* sourceData = inputNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
         data->SetEventBuffer(sourceData->GetEventBuffer());
         if (GetIsMirroringEnabled(animGraphInstance) && mDisabled == false)
         {

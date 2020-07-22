@@ -168,33 +168,37 @@ void OutlinerTreeView::dropEvent(QDropEvent* event)
     m_draggingUnselectedItem = false;
 }
 
-QColor GetHierarchyLineColor(bool isSliceEntity, bool isSelected)
+QColor OutlinerTreeView::GetHierarchyLineColor(bool isSliceEntity, bool isSelected) const
 {
-    if (isSliceEntity && isSelected)
+    if (isSliceEntity)
     {
-        return GetIEditor()->GetColorByName("HierarchyLinesSlicesSelected");
-    }
-    else if(isSliceEntity)
-    {
-        return GetIEditor()->GetColorByName("HierarchyLinesSlices");
-    }
-    else if (isSelected)
-    {
-        return GetIEditor()->GetColorByName("HierarchyLinesNonSliceEntitiesSelected");
+        if (isSelected)
+        {
+            return m_colorConfig.hierarchyLinesSlicesSelected;
+        }
+        else
+        {
+            return m_colorConfig.hierarchyLinesSlices;
+        }
     }
     else
     {
-        return GetIEditor()->GetColorByName("HierarchyLinesNonSliceEntities");
+        if (isSelected)
+        {
+            return m_colorConfig.hierarchyLinesNonSliceEntitiesSelected;
+        }
+        else
+        {
+            return m_colorConfig.hierarchyLinesNonSliceEntities;
+        }
     }
 }
 
 void OutlinerTreeView::DrawLayerUI(QPainter* painter, const QRect& rect, const QModelIndex& index) const
 {
-    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("LayerChildBGSelectionColor"));
-    static const QColor layerChildBGColor(GetIEditor()->GetColorByName("LayerChildBackgroundColor"));
     bool isSelected = selectionModel()->isSelected(index);
 
-    QColor layerBranchesBGColor = isSelected ? outlinerHighlightColor : layerChildBGColor;
+    QColor layerBranchesBGColor = isSelected ? m_colorConfig.layerChildBGSelectionColor : m_colorConfig.layerChildBackgroundColor;
 
     painter->save();
     painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);

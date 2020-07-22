@@ -65,7 +65,7 @@ namespace EMStudio
             return splitterWidget;
         }
 
-        const char* GetName() override                      { return "HDouble"; }
+        const char* GetName() override                      { return "Horizontal Split"; }
         const char* GetImageFileName() override             { return "Images/Rendering/LayoutHDouble.png"; }
     };
 
@@ -96,8 +96,42 @@ namespace EMStudio
             return splitterWidget;
         }
 
-        const char* GetName() override                      { return "VDouble"; }
+        const char* GetName() override                      { return "Vertical Split"; }
         const char* GetImageFileName() override             { return "Images/Rendering/LayoutVDouble.png"; }
+    };
+
+
+    class EMSTUDIO_API TripleBigTopRenderWidget
+        : public RenderPlugin::Layout
+    {
+        MCORE_MEMORYOBJECTCATEGORY(TripleBigTopRenderWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
+
+    public:
+        QWidget* Create(RenderPlugin* renderPlugin, QWidget* parent) override
+        {
+            // create the widgets
+            QSplitter* splitterWidget = new QSplitter(parent);
+            splitterWidget->setOrientation(Qt::Vertical);
+
+            splitterWidget->addWidget(renderPlugin->CreateViewWidget(splitterWidget));
+            splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
+
+            QSplitter* sideSplitter = new QSplitter(splitterWidget);
+            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
+            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
+            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
+            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
+
+            // switch the camera modes
+            renderPlugin->GetViewWidget(0)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_ORBIT);
+            renderPlugin->GetViewWidget(1)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_TOP);
+            renderPlugin->GetViewWidget(2)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_LEFT);
+
+            return splitterWidget;
+        }
+
+        const char* GetName() override                      { return "Triple"; }
+        const char* GetImageFileName() override             { return "Images/Rendering/LayoutTripleBigTop.png"; }
     };
 
 
@@ -140,142 +174,6 @@ namespace EMStudio
 
         const char* GetName() override                      { return "Quad"; }
         const char* GetImageFileName() override             { return "Images/Rendering/LayoutQuad.png"; }
-    };
-
-
-    class EMSTUDIO_API TripleBigLeft
-        : public RenderPlugin::Layout
-    {
-        MCORE_MEMORYOBJECTCATEGORY(TripleBigLeft, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-
-    public:
-        QWidget* Create(RenderPlugin* renderPlugin, QWidget* parent) override
-        {
-            // create the widgets
-            QSplitter* splitterWidget = new QSplitter(parent);
-
-            splitterWidget->addWidget(renderPlugin->CreateViewWidget(splitterWidget));
-            splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
-
-            QSplitter* sideSplitter = new QSplitter(splitterWidget);
-            sideSplitter->setOrientation(Qt::Vertical);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-
-            // switch the camera modes
-            renderPlugin->GetViewWidget(0)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_ORBIT);
-            renderPlugin->GetViewWidget(1)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_TOP);
-            renderPlugin->GetViewWidget(2)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_LEFT);
-
-            return splitterWidget;
-        }
-
-        const char* GetName() override                      { return "TripleBigLeft"; }
-        const char* GetImageFileName() override             { return "Images/Rendering/LayoutTripleBigLeft.png"; }
-    };
-
-
-    class EMSTUDIO_API TripleBigRight
-        : public RenderPlugin::Layout
-    {
-        MCORE_MEMORYOBJECTCATEGORY(TripleBigRight, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-
-    public:
-        QWidget* Create(RenderPlugin* renderPlugin, QWidget* parent) override
-        {
-            // create the widgets
-            QSplitter* splitterWidget = new QSplitter(parent);
-
-            QSplitter* sideSplitter = new QSplitter(splitterWidget);
-            sideSplitter->setOrientation(Qt::Vertical);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-
-            splitterWidget->addWidget(renderPlugin->CreateViewWidget(splitterWidget));
-            splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
-
-            // switch the camera modes
-            renderPlugin->GetViewWidget(0)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_TOP);
-            renderPlugin->GetViewWidget(1)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_LEFT);
-            renderPlugin->GetViewWidget(2)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_ORBIT);
-
-            return splitterWidget;
-        }
-
-        const char* GetName() override                      { return "TripleBigRight"; }
-        const char* GetImageFileName() override             { return "Images/Rendering/LayoutTripleBigRight.png"; }
-    };
-
-
-    class EMSTUDIO_API TripleBigTop
-        : public RenderPlugin::Layout
-    {
-        MCORE_MEMORYOBJECTCATEGORY(TripleBigTop, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-
-    public:
-        QWidget* Create(RenderPlugin* renderPlugin, QWidget* parent) override
-        {
-            // create the widgets
-            QSplitter* splitterWidget = new QSplitter(parent);
-            splitterWidget->setOrientation(Qt::Vertical);
-
-            splitterWidget->addWidget(renderPlugin->CreateViewWidget(splitterWidget));
-            splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
-
-            QSplitter* sideSplitter = new QSplitter(splitterWidget);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-
-            // switch the camera modes
-            renderPlugin->GetViewWidget(0)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_ORBIT);
-            renderPlugin->GetViewWidget(1)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_TOP);
-            renderPlugin->GetViewWidget(2)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_LEFT);
-
-            return splitterWidget;
-        }
-
-        const char* GetName() override                      { return "TripleBigTop"; }
-        const char* GetImageFileName() override             { return "Images/Rendering/LayoutTripleBigTop.png"; }
-    };
-
-
-    class EMSTUDIO_API TripleBigBottom
-        : public RenderPlugin::Layout
-    {
-        MCORE_MEMORYOBJECTCATEGORY(QuadrupleRenderWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-
-    public:
-        QWidget* Create(RenderPlugin* renderPlugin, QWidget* parent) override
-        {
-            // create the widgets
-            QSplitter* splitterWidget = new QSplitter(parent);
-            splitterWidget->setOrientation(Qt::Vertical);
-
-            QSplitter* sideSplitter = new QSplitter(splitterWidget);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-            sideSplitter->addWidget(renderPlugin->CreateViewWidget(sideSplitter));
-            sideSplitter->setCollapsible(sideSplitter->count() - 1, false);
-
-            splitterWidget->addWidget(renderPlugin->CreateViewWidget(splitterWidget));
-            splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
-
-            // switch the camera modes
-            renderPlugin->GetViewWidget(0)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_TOP);
-            renderPlugin->GetViewWidget(1)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_LEFT);
-            renderPlugin->GetViewWidget(2)->GetRenderWidget()->SwitchCamera(RenderWidget::CAMMODE_ORBIT);
-
-            return splitterWidget;
-        }
-
-        const char* GetName() override                      { return "TripleBigBottom"; }
-        const char* GetImageFileName() override             { return "Images/Rendering/LayoutTripleBigBottom.png"; }
     };
 
 

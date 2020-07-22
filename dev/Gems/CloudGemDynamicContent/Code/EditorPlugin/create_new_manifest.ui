@@ -46,8 +46,8 @@
     <rect>
      <x>20</x>
      <y>10</y>
-     <width>351</width>
-     <height>16</height>
+     <width>400</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
@@ -62,8 +62,8 @@
     <rect>
      <x>20</x>
      <y>40</y>
-     <width>81</width>
-     <height>16</height>
+     <width>90</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
@@ -82,6 +82,9 @@
      <height>20</height>
     </rect>
    </property>
+   <property name="placeholderText">
+    <string>Type a name...</string>
+   </property>
   </widget>
   <widget class="QLabel" name="json">
    <property name="geometry">
@@ -89,7 +92,7 @@
      <x>410</x>
      <y>40</y>
      <width>31</width>
-     <height>16</height>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
@@ -116,9 +119,9 @@
    <property name="geometry">
     <rect>
      <x>120</x>
-     <y>140</y>
+     <y>130</y>
      <width>461</width>
-     <height>16</height>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
@@ -130,8 +133,8 @@
     <rect>
      <x>20</x>
      <y>80</y>
-     <width>89</width>
-     <height>17</height>
+     <width>100</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">

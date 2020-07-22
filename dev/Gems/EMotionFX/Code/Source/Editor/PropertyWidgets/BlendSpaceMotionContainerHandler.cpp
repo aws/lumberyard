@@ -54,7 +54,7 @@ namespace EMotionFX
         labelX->setStyleSheet("QLabel { font-weight: bold; color : red; }");
         layoutX->addWidget(labelX);
 
-        m_spinboxX = new MysticQt::DoubleSpinBox();
+        m_spinboxX = new AzQtComponents::DoubleSpinBox();
         m_spinboxX->setSingleStep(0.1);
         m_spinboxX->setDecimals(4);
         m_spinboxX->setRange(-FLT_MAX, FLT_MAX);
@@ -75,7 +75,7 @@ namespace EMotionFX
             labelY->setStyleSheet("QLabel { font-weight: bold; color : green; }");
             layoutY->addWidget(labelY);
 
-            m_spinboxY = new MysticQt::DoubleSpinBox();
+            m_spinboxY = new AzQtComponents::DoubleSpinBox();
             m_spinboxY->setSingleStep(0.1);
             m_spinboxY->setDecimals(4);
             m_spinboxY->setRange(-FLT_MAX, FLT_MAX);
@@ -96,7 +96,7 @@ namespace EMotionFX
         m_restoreButton->setToolTip("Restore value to automatically computed one");
         m_restoreButton->setMinimumSize(iconSize, iconSize);
         m_restoreButton->setMaximumSize(iconSize, iconSize);
-        m_restoreButton->setIcon(QIcon(":/EMotionFX/Restore.png"));
+        m_restoreButton->setIcon(QIcon(":/EMotionFX/Restore.svg"));
         m_restoreButton->setProperty("motionId", motionId.c_str());
         layout->addWidget(m_restoreButton, row, column);
         column++;
@@ -106,7 +106,7 @@ namespace EMotionFX
         m_removeButton->setToolTip("Remove motion from blend space");
         m_removeButton->setMinimumSize(iconSize, iconSize);
         m_removeButton->setMaximumSize(iconSize, iconSize);
-        m_removeButton->setIcon(QIcon(":/EMotionFX/Trash.png"));
+        m_removeButton->setIcon(QIcon(":/EMotionFX/Trash.svg"));
         layout->addWidget(m_removeButton, row, column);
     }
 
@@ -497,7 +497,7 @@ namespace EMotionFX
 
         // Add motions button.
         QPushButton* addMotionsButton = new QPushButton();
-        EMStudio::EMStudioManager::MakeTransparentButton(addMotionsButton, "/Images/Icons/Plus.png", "Add motions to blend space");
+        EMStudio::EMStudioManager::MakeTransparentButton(addMotionsButton, "/Images/Icons/Plus.svg", "Add motions to blend space");
         connect(addMotionsButton, &QPushButton::clicked, this, &BlendSpaceMotionContainerWidget::OnAddMotion);
         topRowLayout->addWidget(addMotionsButton, 0, Qt::AlignRight);
 
@@ -516,10 +516,10 @@ namespace EMotionFX
                 BlendSpaceNode::BlendSpaceMotion* blendSpaceMotion = &m_motions[i];
                 BlendSpaceMotionWidget* motionWidget = new BlendSpaceMotionWidget(blendSpaceMotion, motionsLayout, static_cast<int>(i));
 
-                connect(motionWidget->m_spinboxX, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &EMotionFX::BlendSpaceMotionContainerWidget::OnPositionXChanged);
+                connect(motionWidget->m_spinboxX, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &EMotionFX::BlendSpaceMotionContainerWidget::OnPositionXChanged);
                 if (motionWidget->m_spinboxY)
                 {
-                    connect(motionWidget->m_spinboxY, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &EMotionFX::BlendSpaceMotionContainerWidget::OnPositionYChanged);
+                    connect(motionWidget->m_spinboxY, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &EMotionFX::BlendSpaceMotionContainerWidget::OnPositionYChanged);
                 }
                 connect(motionWidget->m_restoreButton, &QPushButton::clicked, this, &BlendSpaceMotionContainerWidget::OnRestorePosition);
                 connect(motionWidget->m_removeButton, &QPushButton::clicked, [this, blendSpaceMotion]()

@@ -9,14 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#pragma once
 
-#include <qdockwidget.h>
+#pragma once
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+
+#include <AzQtComponents/Components/StyledDockWidget.h>
 
 #include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Editor/EditorDockWidgetBus.h>
@@ -31,7 +32,7 @@ namespace GraphCanvas
     class GraphCanvasGraphicsView;
 
     class EditorDockWidget
-        : public QDockWidget
+        : public AzQtComponents::StyledDockWidget
         , public ActiveEditorDockWidgetRequestBus::Handler
         , public AssetEditorNotificationBus::Handler
         , public EditorDockWidgetRequestBus::Handler
@@ -41,9 +42,9 @@ namespace GraphCanvas
         friend class AssetEditorCentralDockWindow;
     public:    
         AZ_CLASS_ALLOCATOR(EditorDockWidget,AZ::SystemAllocator,0);
-        EditorDockWidget(const EditorId& editorId, QWidget* parent);
+        EditorDockWidget(const EditorId& editorId, const QString& title, QWidget* parent);
         ~EditorDockWidget();
-        
+
         // ActiveEditorDockWidgetRequestBus
         DockWidgetId GetDockWidgetId() const override;
 
@@ -51,33 +52,31 @@ namespace GraphCanvas
         ////
 
         const EditorId& GetEditorId() const;
-        
+
         // GraphCanvasEditorDockWidgetBus
         AZ::EntityId GetViewId() const override;
         GraphCanvas::GraphId GetGraphId() const override;
-
         EditorDockWidget* AsEditorDockWidget() override;
-        ////        
-        
+        void SetTitle(const AZStd::string& title) override;
+        ////
+
     signals:
         void OnEditorClosed(EditorDockWidget*);
 
-    protected:        
-
+    protected:
         GraphCanvasGraphicsView* GetGraphicsView() const;
-        
-    private:
 
+    private:
         void closeEvent(QCloseEvent* closeEvent) override;
         void SignalActiveEditor();
 
-        DockWidgetId m_dockWidgetId;;
-        EditorId     m_editorId;
+        DockWidgetId m_dockWidgetId;
+        EditorId m_editorId;
+        GraphId m_graphId;
+        AZ::Entity* m_sceneEntity = nullptr;
 
         AZ::EntityId m_assetId;
 
         AZStd::unique_ptr<Ui::GraphCanvasEditorDockWidget> m_ui;
-
-        int windowId = 0;
     };
 }

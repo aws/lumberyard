@@ -149,7 +149,7 @@ namespace ScriptCanvasEditor
         void UpdateSearchFilter();
 
         void OnReturnPressed();
-        void OnQuickFilterChanged();
+        void OnQuickFilterChanged(const QString &text);
 
         void OnStartTestsButton();
         void OnCloseResultsButton();

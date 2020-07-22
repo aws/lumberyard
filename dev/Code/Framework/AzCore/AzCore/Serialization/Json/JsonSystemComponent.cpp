@@ -11,18 +11,21 @@
 */
 
 #include <AzCore/Math/MathReflection.h>
+#include <AzCore/Serialization/Json/ArraySerializer.h>
 #include <AzCore/Serialization/Json/BasicContainerSerializer.h>
 #include <AzCore/Serialization/Json/BoolSerializer.h>
 #include <AzCore/Serialization/Json/DoubleSerializer.h>
-#include <AzCore/Serialization/Json/EnumSerializer.h>
 #include <AzCore/Serialization/Json/IntSerializer.h>
 #include <AzCore/Serialization/Json/JsonSystemComponent.h>
 #include <AzCore/Serialization/Json/MapSerializer.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
+#include <AzCore/Serialization/Json/SmartPointerSerializer.h>
 #include <AzCore/Serialization/Json/StringSerializer.h>
 #include <AzCore/Serialization/Json/TupleSerializer.h>
 #include <AzCore/Serialization/Json/UnorderedSetSerializer.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/containers/forward_list.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/map.h>
@@ -30,6 +33,9 @@
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/tuple.h>
 #include <AzCore/std/utils.h>
 
@@ -59,18 +65,20 @@ namespace AZ
             jsonContext->Serializer<JsonUnsignedLongSerializer>()->HandlesType<unsigned long>();
             jsonContext->Serializer<JsonUnsignedLongLongSerializer>()->HandlesType<unsigned long long>();
 
-            jsonContext->Serializer<JsonEnumSerializer>();
-            
             jsonContext->Serializer<JsonStringSerializer>()->HandlesType<AZStd::string>();
             jsonContext->Serializer<JsonOSStringSerializer>()->HandlesType<OSString>();
+
             jsonContext->Serializer<JsonBasicContainerSerializer>()
+                ->HandlesType<AZStd::fixed_vector>()
                 ->HandlesType<AZStd::forward_list>()
                 ->HandlesType<AZStd::list>()
                 ->HandlesType<AZStd::set>()
                 ->HandlesType<AZStd::vector>();
-            jsonContext->Serializer<JsonMapSerializer>()->HandlesType<AZStd::map>();
+            jsonContext->Serializer<JsonMapSerializer>()
+                ->HandlesType<AZStd::map>();
             jsonContext->Serializer<JsonUnorderedMapSerializer>()
-                ->HandlesType<AZStd::unordered_map>()
+                ->HandlesType<AZStd::unordered_map>();
+            jsonContext->Serializer<JsonUnorderedMultiMapSerializer>()
                 ->HandlesType<AZStd::unordered_multimap>();
             jsonContext->Serializer<JsonUnorderedSetContainerSerializer>()
                 ->HandlesType<AZStd::unordered_set>()
@@ -78,6 +86,14 @@ namespace AZ
             jsonContext->Serializer<JsonTupleSerializer>()
                 ->HandlesType<AZStd::pair>()
                 ->HandlesType<AZStd::tuple>();
+
+            jsonContext->Serializer<JsonSmartPointerSerializer>()
+                ->HandlesType<AZStd::unique_ptr>()
+                ->HandlesType<AZStd::shared_ptr>()
+                ->HandlesType<AZStd::intrusive_ptr>();
+
+            jsonContext->Serializer<JsonArraySerializer>()
+                ->HandlesType<AZStd::array>();
 
             MathReflect(jsonContext);
         }

@@ -17,13 +17,14 @@
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
-#include <MysticQt/Source/LinkWidget.h>
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 #include <EMotionFX/Source/PlayBackInfo.h>
 #include <QWidget>
 
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
+QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 
 namespace MysticQt
 {
@@ -77,12 +78,13 @@ namespace EMStudio
 
         //
         QVBoxLayout*                    mMainVerticalLayout;
+        QVBoxLayout*                    mChildVerticalLayout;
         QWidget*                        mWarningWidget;
         bool                            mWarningShowed;
 
         // motion extraction node selection
         NodeSelectionWindow*            mMotionExtractionNodeSelectionWindow;
-        MysticQt::LinkWidget*           mWarningSelectNodeLink;
+        AzQtComponents::BrowseEdit*     mWarningSelectNodeLink;
 
         // helper functions
         void CreateFlagsWidget();

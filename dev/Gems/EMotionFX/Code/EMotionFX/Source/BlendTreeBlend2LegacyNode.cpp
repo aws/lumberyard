@@ -52,7 +52,7 @@ namespace EMotionFX
     {
         if (mDisabled)
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
             return;
         }
@@ -70,7 +70,7 @@ namespace EMotionFX
 
         if (!nodeA)
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
             return;
         }
@@ -78,7 +78,7 @@ namespace EMotionFX
         animGraphInstance->SetObjectFlags(nodeA->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCMASTER, true);
         UpdateIncomingNode(animGraphInstance, nodeA, timePassedInSeconds);
 
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         uniqueData->Init(animGraphInstance, nodeA);
 
         if (nodeB && nodeA != nodeB)
@@ -108,8 +108,7 @@ namespace EMotionFX
             return;
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraphNode* weightNode = GetInputNode(INPUTPORT_WEIGHT);
         if (weightNode)
@@ -272,8 +271,8 @@ namespace EMotionFX
 
         const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         const Actor* actor = actorInstance->GetActor();
-        AnimGraphRefCountedData* nodeAData = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-        AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
+        AnimGraphRefCountedData* nodeAData = nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
 
         Transform delta;
         Transform deltaMirrored;
@@ -301,11 +300,11 @@ namespace EMotionFX
             return;
         }
 
-        UniqueData* uniqueData = static_cast<BlendTreeBlend2LegacyNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<BlendTreeBlend2LegacyNode::UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         const BlendTreeConnection* con = GetInputPort(INPUTPORT_WEIGHT).mConnection;
         if (con)
         {
-            AnimGraphNodeData* sourceNodeUniqueData = con->GetSourceNode()->FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* sourceNodeUniqueData = con->GetSourceNode()->FindOrCreateUniqueNodeData(animGraphInstance);
             sourceNodeUniqueData->SetGlobalWeight(uniqueData->GetGlobalWeight());
             sourceNodeUniqueData->SetLocalWeight(1.0f);
             con->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
@@ -383,7 +382,7 @@ namespace EMotionFX
             }
         }
 
-        AnimGraphNodeData* uniqueDataNodeA = nodeWeightUpdateA->FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueDataNodeA = nodeWeightUpdateA->FindOrCreateUniqueNodeData(animGraphInstance);
         if (!nodeWeightUpdateB)
         {
             uniqueDataNodeA->SetGlobalWeight(uniqueData->GetGlobalWeight());
@@ -404,7 +403,7 @@ namespace EMotionFX
 
             if (nodeWeightUpdateB)
             {
-                AnimGraphNodeData* uniqueDataNodeB = nodeWeightUpdateB->FindUniqueNodeData(animGraphInstance);
+                AnimGraphNodeData* uniqueDataNodeB = nodeWeightUpdateB->FindOrCreateUniqueNodeData(animGraphInstance);
                 uniqueDataNodeB->SetGlobalWeight(uniqueData->GetGlobalWeight() * weight);
                 uniqueDataNodeB->SetLocalWeight(weight);
                 nodeWeightUpdateB->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
@@ -420,7 +419,7 @@ namespace EMotionFX
         if (mDisabled)
         {
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -441,7 +440,7 @@ namespace EMotionFX
         if (!nodeA)
         {
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -455,7 +454,7 @@ namespace EMotionFX
         }
 
         RequestRefDatas(animGraphInstance);
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();

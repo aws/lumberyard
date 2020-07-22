@@ -101,6 +101,11 @@ namespace GraphCanvas
         show();
         updateGeometry();
 
+        UpdatePosition(screenPosition, anchorPoint);
+    }
+
+    void ToastNotification::UpdatePosition(const QPoint& screenPosition, const QPointF& anchorPoint)
+    {
         QRect dialogGeometry = geometry();
 
         QPoint finalPosition;

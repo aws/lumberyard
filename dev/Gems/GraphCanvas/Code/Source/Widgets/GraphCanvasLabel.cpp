@@ -37,6 +37,7 @@ namespace GraphCanvas
         , m_defaultAlignment(Qt::AlignVCenter | Qt::AlignHCenter)
         , m_elide(true)
         , m_wrap(false)
+        , m_allowNewlines(false)
         , m_maximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
         , m_minimumSize(0,0)
         , m_wrapMode(WrapMode::MaximumWidth)
@@ -155,6 +156,17 @@ namespace GraphCanvas
         }
     }
 
+    void GraphCanvasLabel::SetAllowNewlines(bool allow)
+    {
+        if (m_allowNewlines != allow)
+        {
+            m_allowNewlines = allow;
+
+            UpdateDisplayText();
+            RefreshDisplay();
+        }
+    }
+
     void GraphCanvasLabel::SetDefaultAlignment(Qt::Alignment defaultAlignment)
     {
         m_defaultAlignment = defaultAlignment;
@@ -179,9 +191,11 @@ namespace GraphCanvas
         QRectF innerBounds = boundingRect();
         innerBounds = innerBounds.adjusted(padding, padding, -padding, -padding);
 
+        QString labelText = m_allowNewlines ? m_labelText : m_labelText.simplified();
+
         if (m_elide)
         {
-            QStringList newlines = m_labelText.split('\n');
+            QStringList newlines = labelText.split('\n');
 
             m_displayText.clear();
 
@@ -200,7 +214,7 @@ namespace GraphCanvas
         }
         else
         {
-            m_displayText = m_labelText;
+            m_displayText = labelText;
         }
     }
 
@@ -225,7 +239,7 @@ namespace GraphCanvas
         
         if (m_wrapMode == WrapMode::ResizeToContent)
         {
-            fontRectangle = metrics.boundingRect(m_labelText);
+            fontRectangle = metrics.boundingRect((m_allowNewlines) ? m_labelText : m_labelText.simplified());
         }
         else
         {
@@ -239,7 +253,7 @@ namespace GraphCanvas
             QRectF maxInnerBounds(rect().topLeft(), sizeClamp);
             maxInnerBounds = maxInnerBounds.adjusted(padding, padding, -padding, -padding);
             
-            fontRectangle = metrics.boundingRect(maxInnerBounds, flags, m_labelText);
+            fontRectangle = metrics.boundingRect(maxInnerBounds, flags, (m_allowNewlines) ? m_labelText : m_labelText.simplified());
         }
 
         // Horizontal Padding:

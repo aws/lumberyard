@@ -91,7 +91,8 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
 
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Reset(AnimGraphInstance* animGraphInstance) override;
 

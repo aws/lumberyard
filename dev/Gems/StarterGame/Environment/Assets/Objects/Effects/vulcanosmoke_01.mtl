@@ -1,0 +1,14 @@
+<Material MtlFlags="524544" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="VulcanoSmokeMAT" MtlFlags="557216" DccMaterialHash="0" Shader="Illum" GenMask="200802000000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%NORMAL_MAP%SUBSURFACE_SCATTERING%VERTCOLORS" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,1" Emittance="0,0,0,0" Opacity="0.66000003" Shininess="2.0078743" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/vulcanosmoke_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="-0.015" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Bumpmap" File="objects/effects/vulcanosmoke_01_ddn.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.21952623,0.21952623,0.21952623"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

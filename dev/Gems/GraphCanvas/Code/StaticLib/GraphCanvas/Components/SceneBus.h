@@ -161,7 +161,7 @@ namespace GraphCanvas
         //! Finds a connection using the specified endpoints
         //! A reference to the found connection is returned in the connectionEntity parameter
         virtual bool FindConnection(AZ::Entity*& connectionEntity, const Endpoint& firstEndpoint, const Endpoint& otherEndpoint) const = 0;
-
+        
         //! Adds a Bookmark Anchor
         virtual bool AddBookmarkAnchor(const AZ::EntityId& bookmarkAnchorId, const AZ::Vector2& position) = 0;
 
@@ -389,6 +389,8 @@ namespace GraphCanvas
         virtual void OnNodeAdded(const AZ::EntityId& /*nodeId*/) {}
         //! A node has been removed from the scene.
         virtual void OnNodeRemoved(const AZ::EntityId& /*nodeId*/) {}
+        //! A node is about to be removed from the scene.
+        virtual void PreOnNodeRemoved(const AZ::EntityId& /*nodeId*/) {}
         //! A node in the scene has been selected
         virtual void OnNodeSelected(const AZ::EntityId& /*nodeId*/, bool /*selected*/) {}
 
@@ -439,7 +441,7 @@ namespace GraphCanvas
         virtual void OnEntitiesDeserialized(const GraphSerialization&) {}
 
         //! Signalled once everything that was deserialized in a batch is complete
-        virtual void OnEntitiesDeserializationComplete() {}
+        virtual void OnEntitiesDeserializationComplete(const GraphSerialization&) {}
 
         //! Signalled when a paste event is received, and it does not contain the CopyMimeType.
         virtual void OnUnknownPaste(const QPointF& scenePos) {}
@@ -499,25 +501,6 @@ namespace GraphCanvas
     };
 
     using SceneNotificationBus = AZ::EBus<SceneNotifications>;
-
-    //! SceneNotifications
-    //! Notifications about changes to the state of scenes.
-    class SceneUIRequests
-        : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
-
-        //! This is sent when a Connection has no target.
-        //! Returns the EntityId of the node create, if any.
-        virtual Endpoint CreateNodeForProposal(const AZ::EntityId& connectionId, const Endpoint& endpoint, const QPointF& scenePosition, const QPoint& screenPosition) = 0;
-
-        //! Callback for the Wrapper node action widgets
-       virtual void OnWrapperNodeActionWidgetClicked(const AZ::EntityId& wrapperNode, const QRect& actionWidgetBoundingRect, const QPointF& scenePosition, const QPoint& screenPosition) = 0;
-    };
-
-    using SceneUIRequestBus = AZ::EBus<SceneUIRequests>;
 
     //! SceneMemberRequests
     //! An interface that allows generic retrieval of the scene entities belong to.

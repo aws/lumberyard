@@ -535,15 +535,6 @@ DockableLibraryPanel > #dwLibraryTreeViewCentralWidget
   background: @CWindowBackground;
 }
 
-DockableLibraryPanel #AddLibraryButton
-{
-  width: 24px;
-  height: 24px;
-  background-image: url(:/particleQT/icons/libraries_icon.png);
-  background-repeat: none;
-  background-position: center;
-}
-
 DockableLibraryTreeView > RenameableTitleBar #RenameableTitle[Selected="true"]
 {
   color: @CHelperText;

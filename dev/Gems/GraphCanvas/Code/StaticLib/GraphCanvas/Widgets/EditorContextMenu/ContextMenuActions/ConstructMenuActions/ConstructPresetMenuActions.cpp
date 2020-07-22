@@ -30,12 +30,26 @@ namespace GraphCanvas
     // AddPresetMenuAction
     ////////////////////////
 
+    static const size_t s_maximumDisplaySize = 150;
+
     AddPresetMenuAction::AddPresetMenuAction(EditorContextMenu* contextMenu, AZStd::shared_ptr<ConstructPreset> preset, AZStd::string_view subMenuPath)
         : ConstructContextMenuAction("Add Preset", contextMenu)
         , m_subMenuPath(subMenuPath)
         , m_preset(preset)
     {
-        setText(preset->GetDisplayName().c_str());
+        if (preset->GetDisplayName().size() > s_maximumDisplaySize)
+        {
+            AZStd::string substring = preset->GetDisplayName();
+            substring = substring.substr(0, s_maximumDisplaySize - 3);
+
+            substring.append("...");
+
+            setText(substring.c_str());
+        }
+        else
+        {
+            setText(preset->GetDisplayName().c_str());
+        }
 
         QPixmap* pixmap = preset->GetDisplayIcon(contextMenu->GetEditorId());
 
@@ -72,7 +86,7 @@ namespace GraphCanvas
                 m_preset->ApplyPreset(graphCanvasEntity->GetId());
             }
 
-            AddEntityToGraph(graphId, graphCanvasEntity, scenePos);                        
+            AddEntityToGraph(graphId, graphCanvasEntity, scenePos);
         }
 
         if (graphCanvasEntity != nullptr)
@@ -159,7 +173,7 @@ namespace GraphCanvas
         : m_contextMenu(nullptr)
         , m_constructType(constructType)
         , m_isDirty(false)
-    {        
+    {
     }
 
     PresetsMenuActionGroup::~PresetsMenuActionGroup()
@@ -226,6 +240,8 @@ namespace GraphCanvas
                         {
                             QMenu* menu = m_contextMenu->FindSubMenu(menuAction->GetSubMenuPath());
                             menu->addAction(menuAction);
+
+                            m_menus.insert(menu);
                         }
                     }
                     else
@@ -250,6 +266,27 @@ namespace GraphCanvas
         if (m_constructType == constructType)
         {
             m_isDirty = true;
+        }
+    }
+
+    void PresetsMenuActionGroup::SetEnabled(bool enabled)
+    {
+        if (m_contextMenu->IsToolBarMenu())
+        {
+            m_contextMenu->setEnabled(false);
+        }
+        else
+        {
+            for (QMenu* menu : m_menus)
+            {
+                menu->setEnabled(enabled);
+            }
+
+            for (AZStd::string subMenu : m_subMenus)
+            {
+                QMenu* menu = m_contextMenu->FindSubMenu(subMenu);
+                menu->setEnabled(enabled);
+            }
         }
     }
 
@@ -325,40 +362,11 @@ namespace GraphCanvas
         AZStd::vector< AZ::EntityId > selectedNodes;
         SceneRequestBus::EventResult(selectedNodes, graphId, &SceneRequests::GetSelectedNodes);
 
-        if (!selectedNodes.empty())
-        {
-            QGraphicsItem* rootItem = nullptr;
-            QRectF boundingArea;
-
-            for (const AZ::EntityId& selectedNode : selectedNodes)
-            {
-                SceneMemberUIRequestBus::EventResult(rootItem, selectedNode, &SceneMemberUIRequests::GetRootGraphicsItem);
-
-                if (rootItem)
-                {
-                    if (boundingArea.isEmpty())
-                    {
-                        boundingArea = rootItem->sceneBoundingRect();
-                    }
-                    else
-                    {
-                        boundingArea = boundingArea.united(rootItem->sceneBoundingRect());
-                    }
-                }
-            }
-
-            AZ::Vector2 gridStep;
-            AZ::EntityId grid;
-            SceneRequestBus::EventResult(grid, graphId, &SceneRequests::GetGrid);
-
-            GridRequestBus::EventResult(gridStep, grid, &GridRequests::GetMinorPitch);
-
-            boundingArea.adjust(-gridStep.GetX(), -gridStep.GetY(), gridStep.GetX(), gridStep.GetY());
-
-            NodeGroupRequestBus::Event(graphCanvasEntity->GetId(), &NodeGroupRequests::SetGroupSize, boundingArea);
-        }
+        GraphCanvas::GraphUtils::ResizeGroupToElements(graphCanvasEntity->GetId(), selectedNodes);
 
         SceneRequestBus::Event(graphId, &SceneRequests::ClearSelection);
+
+        CommentRequestBus::Event(graphCanvasEntity->GetId(), &CommentRequests::SetComment, "New Group");
 
         if (IsInSubMenu())
         {
@@ -366,7 +374,6 @@ namespace GraphCanvas
         }
         else
         {
-            CommentRequestBus::Event(graphCanvasEntity->GetId(), &CommentRequests::SetComment, "New Group");
             SceneMemberUIRequestBus::Event(graphCanvasEntity->GetId(), &SceneMemberUIRequests::SetSelected, true);
         }
     }

@@ -18,7 +18,6 @@
 #include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
 #include <MysticQt/Source/MysticQtConfig.h>
 #include <MysticQt/Source/DialogStack.h>
-#include <MysticQt/Source/ComboBox.h>
 #include "../StandardPluginsConfig.h"
 #include <QWidget>
 #include <QPen>
@@ -26,9 +25,11 @@
 
 QT_FORWARD_DECLARE_CLASS(QBrush)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
+QT_FORWARD_DECLARE_CLASS(QLabel)
 QT_FORWARD_DECLARE_CLASS(QLineEdit)
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
 QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
+QT_FORWARD_DECLARE_CLASS(QComboBox)
 
 
 namespace EMStudio
@@ -43,13 +44,14 @@ namespace EMStudio
     class HeaderTrackWidget
         : public QWidget
     {
-        Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(HeaderTrackWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        Q_OBJECT // AUTOMOC
+        MCORE_MEMORYOBJECTCATEGORY(HeaderTrackWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
         HeaderTrackWidget(QWidget* parent, TimeViewPlugin* parentPlugin, TrackHeaderWidget* trackHeaderWidget, TimeTrack* timeTrack, uint32 trackIndex);
 
         QCheckBox*              mEnabledCheckbox;
+        QLabel*                 mNameLabel;
         QLineEdit*              mNameEdit;
         QPushButton*            mRemoveButton;
         TimeTrack*              mTrack;
@@ -59,13 +61,13 @@ namespace EMStudio
 
         bool ValidateName();
 
+        bool eventFilter(QObject* object, QEvent* event) override;
+
     signals:
-        void RemoveTrackButtonClicked(int trackNr);
         void TrackNameChanged(const QString& text, int trackNr);
         void EnabledStateChanged(bool checked, int trackNr);
 
     public slots:
-        void RemoveButtonClicked();
         void NameChanged();
         void NameEdited(const QString& text);
         void EnabledCheckBoxChanged(int state);
@@ -80,8 +82,8 @@ namespace EMStudio
     class TrackHeaderWidget
         : public QWidget
     {
-        Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(TrackHeaderWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        Q_OBJECT // AUTOMOC
+        MCORE_MEMORYOBJECTCATEGORY(TrackHeaderWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
         friend class TrackDataHeaderWidget;
         friend class TrackDataWidget;
@@ -93,11 +95,10 @@ namespace EMStudio
         void ReInit();
         void UpdateDataContents();
 
-        QPushButton* GetAddTrackButton()                                                                    { return mAddTrackButton; }
+        QWidget* GetAddTrackWidget()                                                                        { return mAddTrackWidget; }
 
     public slots:
         void OnAddTrackButtonClicked()                                                                      { CommandSystem::CommandAddEventTrack(); }
-        void OnRemoveTrackButtonClicked(int eventTrackNr)                                                   { CommandSystem::CommandRemoveEventTrack(eventTrackNr); }
         void OnTrackNameChanged(const QString& text, int trackNr)                                           { CommandSystem::CommandRenameEventTrack(trackNr, FromQtString(text).c_str()); }
         void OnTrackEnabledStateChanged(bool enabled, int trackNr)                                          { CommandSystem::CommandEnableEventTrack(trackNr, enabled); }
         void OnDetailedNodesCheckBox(int state);
@@ -109,21 +110,15 @@ namespace EMStudio
         QVBoxLayout*                        mMainLayout;
         QWidget*                            mTrackWidget;
         QVBoxLayout*                        mTrackLayout;
+        QWidget*                            mAddTrackWidget;
         QPushButton*                        mAddTrackButton;
         MysticQt::DialogStack*              mStackWidget;
-        QCheckBox*                          mNodeActivityCheckBox;
-        QCheckBox*                          mEventsCheckBox;
-        QCheckBox*                          mRelativeGraphCheckBox;
-        QCheckBox*                          mSortNodeActivityCheckBox;
-        QCheckBox*                          mNodeTypeColorsCheckBox;
-        QCheckBox*                          mDetailedNodesCheckBox;
-        QCheckBox*                          mLimitGraphHeightCheckBox;
-        MysticQt::ComboBox*                 mGraphContentsComboBox;
-        MysticQt::ComboBox*                 mNodeContentsComboBox;
+        QComboBox*                          mGraphContentsComboBox;
+        QComboBox*                          mNodeContentsComboBox;
         QCheckBox*                          mNodeNamesCheckBox;
         QCheckBox*                          mMotionFilesCheckBox;
 
         void keyPressEvent(QKeyEvent* event);
         void keyReleaseEvent(QKeyEvent* event);
     };
-}   // namespace EMStudio
+} // namespace EMStudio

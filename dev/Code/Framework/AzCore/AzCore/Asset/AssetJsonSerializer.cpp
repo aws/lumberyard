@@ -23,72 +23,76 @@ namespace AZ
         AZ_CLASS_ALLOCATOR_IMPL(AssetJsonSerializer, SystemAllocator, 0);
 
         JsonSerializationResult::Result AssetJsonSerializer::Load(void* outputValue, const Uuid& /*outputValueTypeId*/,
-            const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+            const rapidjson::Value& inputValue, JsonDeserializerContext& context)
         {
             namespace JSR = JsonSerializationResult;
 
             switch (inputValue.GetType())
             {
             case rapidjson::kObjectType:
-                return LoadAsset(outputValue, inputValue, path, settings);
+                return LoadAsset(outputValue, inputValue, context);
             case rapidjson::kArrayType: // fall through
             case rapidjson::kNullType: // fall through
             case rapidjson::kStringType: // fall through
             case rapidjson::kFalseType: // fall through
             case rapidjson::kTrueType: // fall through
             case rapidjson::kNumberType:
-                return JSR::Result(settings, "Unsupported type. Asset<T> can only be read from an object.",
-                    JSR::Tasks::ReadField, JSR::Outcomes::Unsupported, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                    "Unsupported type. Asset<T> can only be read from an object.");
 
             default:
-                return JSR::Result(settings, "Unknown json type encountered for Asset<T>.",
-                    JSR::Tasks::ReadField, JSR::Outcomes::Unknown, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unknown, "Unknown json type encountered for Asset<T>.");
             }
         }
 
-        JsonSerializationResult::Result AssetJsonSerializer::Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& /*valueTypeId*/, StackedString& path, const JsonSerializerSettings& settings)
+        JsonSerializationResult::Result AssetJsonSerializer::Store(rapidjson::Value& outputValue, const void* inputValue,
+            const void* defaultValue, const Uuid& /*valueTypeId*/, JsonSerializerContext& context)
         {
             namespace JSR = JsonSerializationResult;
 
             const Asset<AssetData>* instance = reinterpret_cast<const Asset<AssetData>*>(inputValue);
             const Asset<AssetData>* defaultInstance = reinterpret_cast<const Asset<AssetData>*>(defaultValue);
 
-            ScopedStackedString subPathId(path, "m_assetId");
-            const auto* id = &instance->GetId();
-            const auto* defaultId = defaultInstance ? &defaultInstance->GetId() : nullptr;
-            rapidjson::Value assetIdValue;
-            JSR::ResultCode result = ContinueStoring(assetIdValue, allocator, id, defaultId, azrtti_typeid<AssetId>(), subPathId, settings);
-            if (result.GetOutcome() == JSR::Outcomes::Success || result.GetOutcome() == JSR::Outcomes::PartialDefaults)
+            JSR::ResultCode result(JSR::Tasks::WriteValue);
             {
-                if (!outputValue.IsObject())
+                ScopedContextPath subPathId(context, "m_assetId");
+                const auto* id = &instance->GetId();
+                const auto* defaultId = defaultInstance ? &defaultInstance->GetId() : nullptr;
+                rapidjson::Value assetIdValue;
+                result = ContinueStoring(assetIdValue, id, defaultId, azrtti_typeid<AssetId>(), context);
+                if (result.GetOutcome() == JSR::Outcomes::Success || result.GetOutcome() == JSR::Outcomes::PartialDefaults)
                 {
-                    outputValue.SetObject();
+                    if (!outputValue.IsObject())
+                    {
+                        outputValue.SetObject();
+                    }
+                    outputValue.AddMember(rapidjson::StringRef("assetId"), AZStd::move(assetIdValue), context.GetJsonAllocator());
                 }
-                outputValue.AddMember(rapidjson::StringRef("assetId"), AZStd::move(assetIdValue), allocator);
             }
 
-            ScopedStackedString subPathHint(path, "m_assetHint");
-            const AZStd::string* hint = &instance->GetHint();
-            const AZStd::string defaultHint;
-            rapidjson::Value assetHintValue;
-            JSR::ResultCode resultHint = ContinueStoring(assetHintValue, allocator, hint, &defaultHint, azrtti_typeid<AZStd::string>(), subPathHint, settings);
-            if (resultHint.GetOutcome() == JSR::Outcomes::Success || resultHint.GetOutcome() == JSR::Outcomes::PartialDefaults)
             {
-                if (!outputValue.IsObject())
+                ScopedContextPath subPathHint(context, "m_assetHint");
+                const AZStd::string* hint = &instance->GetHint();
+                const AZStd::string defaultHint;
+                rapidjson::Value assetHintValue;
+                JSR::ResultCode resultHint = ContinueStoring(assetHintValue, hint, &defaultHint, azrtti_typeid<AZStd::string>(), context);
+                if (resultHint.GetOutcome() == JSR::Outcomes::Success || resultHint.GetOutcome() == JSR::Outcomes::PartialDefaults)
                 {
-                    outputValue.SetObject();
+                    if (!outputValue.IsObject())
+                    {
+                        outputValue.SetObject();
+                    }
+                    outputValue.AddMember(rapidjson::StringRef("assetHint"), AZStd::move(assetHintValue), context.GetJsonAllocator());
                 }
-                outputValue.AddMember(rapidjson::StringRef("assetHint"), AZStd::move(assetHintValue), allocator);
+                result.Combine(resultHint);
             }
-            result.Combine(resultHint);
 
-            return JSR::Result(settings,
-                result.GetProcessing() == JSR::Processing::Completed ? "Successfully stored Asset<T>." : "Failed to store Asset<T>.", result, path);
+            return context.Report(result,
+                result.GetProcessing() == JSR::Processing::Completed ? "Successfully stored Asset<T>." : "Failed to store Asset<T>.");
         }
 
-        JsonSerializationResult::Result AssetJsonSerializer::LoadAsset(void* outputValue, const rapidjson::Value& inputValue, StackedString& path,
-            const JsonDeserializerSettings& settings)
+        JsonSerializationResult::Result AssetJsonSerializer::LoadAsset(void* outputValue, const rapidjson::Value& inputValue,
+            JsonDeserializerContext& context)
         {
             namespace JSR = JsonSerializationResult;
 
@@ -99,47 +103,48 @@ namespace AZ
             auto it = inputValue.FindMember("assetId");
             if (it != inputValue.MemberEnd())
             {
-                ScopedStackedString subPath(path, "assetId");
-                result = ContinueLoading(&id, azrtti_typeid<AssetId>(), it->value, subPath, settings);
+                ScopedContextPath subPath(context, "assetId");
+                result = ContinueLoading(&id, azrtti_typeid<AssetId>(), it->value, context);
                 if (!id.m_guid.IsNull())
                 {
                     if (instance->Create(id))
                     {
-                        result.Combine(JSR::Result(settings, "Successfully created Asset<T>.", result, path));
+                        result.Combine(context.Report(result, "Successfully created Asset<T>."));
                     }
                     else
                     {
-                        result.Combine(JSR::Result(settings, "The asset id was successfully read, but creating an Asset<T> instance from it failed.",
-                            JSR::Tasks::Convert, JSR::Outcomes::Unknown, path));
+                        result.Combine(context.Report(JSR::Tasks::Convert, JSR::Outcomes::Unknown,
+                            "The asset id was successfully read, but creating an Asset<T> instance from it failed."));
                     }
                 }
                 else if (result.GetProcessing() == JSR::Processing::Completed)
                 {
-                    result.Combine(JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed));
+                    result.Combine(context.Report(JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed,
+                        "Null Asset<T> created."));
                 }
                 else
                 {
-                    result.Combine(JSR::Result(settings, "Failed to retrieve asset id for Asset<T>.", result, path));
+                    result.Combine(context.Report(result, "Failed to retrieve asset id for Asset<T>."));
                 }
             }
             else
             {
-                result.Combine(JSR::Result(settings, "The asset id is missing, so there's not enough information to create an Asset<T>.",
-                    JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed, path));
+                result.Combine(context.Report(JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed,
+                    "The asset id is missing, so there's not enough information to create an Asset<T>."));
             }
 
             it = inputValue.FindMember("assetHint");
             if (it != inputValue.MemberEnd())
             {
-                ScopedStackedString subPath(path, "assetHint");
+                ScopedContextPath subPath(context, "assetHint");
                 AZStd::string hint;
-                result.Combine(ContinueLoading(&hint, azrtti_typeid<AZStd::string>(), it->value, subPath, settings));
+                result.Combine(ContinueLoading(&hint, azrtti_typeid<AZStd::string>(), it->value, context));
                 instance->SetHint(AZStd::move(hint));
             }
             else
             {
-                result.Combine(JSR::Result(settings, "The asset hint is missing for Asset<T>, so it will be left empty.",
-                    JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed, path));
+                result.Combine(context.Report(JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed,
+                    "The asset hint is missing for Asset<T>, so it will be left empty."));
             }
 
             bool success = result.GetOutcome() <= JSR::Outcomes::PartialSkip;
@@ -148,7 +153,7 @@ namespace AZ
                 success ? "Successfully loaded information and created instance of Asset<T>." :
                 defaulted ? "A default id was provided for Asset<T>, so no instance could be created." :
                 "Not enough information was available to create an instance of Asset<T> or data was corrupted.";
-            return JSR::Result(settings, message, result, path);
+            return context.Report(result, message);
         }
     } // namespace Data
 } // namespace AZ

@@ -47,14 +47,22 @@ namespace ScriptCanvasEditor
         MainWindow* GetMainWindow() const;
         QProgressDialog* GetProgressDialog() const;
 
+        virtual void OnOperationCancelled();
+
     private:
+
+        void CancelOperation();
 
         void IterateOverDirectory(QDir directory);
         void TickIterator();
 
+        void OnBatchComplete();
+
         AZStd::vector< QDirIterator* > m_directoryIterators;
 
         MainWindow* m_mainWindow;
+
+        bool m_cancelled = false;
 
         // This is for the CVar editor setting
         int m_originalActive;        
@@ -63,5 +71,7 @@ namespace ScriptCanvasEditor
         int m_originalActiveTab;
         
         QProgressDialog* m_progressDialog;
+
+        QMetaObject::Connection m_connection;
     };
 }

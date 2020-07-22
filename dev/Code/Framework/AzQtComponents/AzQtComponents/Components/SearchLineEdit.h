@@ -42,7 +42,6 @@ signals:
 
 private slots:
     void displayMenu();
-    void adaptColorText();
 
 private:
     bool m_errorState = false;

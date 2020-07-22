@@ -1,0 +1,10 @@
+<Material MtlFlags="524544" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PickupWeaponMat" MtlFlags="559236" DccMaterialHash="0" Shader="Monitor" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,1" Emittance="1,1,1,37" Opacity="0.99000001" Shininess="2.0078743" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/pickups/pickups_weapon_diff.dds"/>
+   </Textures>
+   <PublicParams GrainAmount="2.47" DeformAmount="0" DeformTillingY="0.30000001" GrainTilling="3.1400001" ResolutionX="512" ResolutionY="512" InterlacingTilling="0" Contrast="1" Saturation="1" DeformTillingX="0" GrainSaturation="0" FresnelScale="0" InterlacingAmount="0" VSyncFreq="0" PixelVisibility="0" FresnelBias="0" ChromaShift="0" ViewAngle="180" DeformFreq="0"/>
+  </Material>
+ </SubMaterials>
+</Material>

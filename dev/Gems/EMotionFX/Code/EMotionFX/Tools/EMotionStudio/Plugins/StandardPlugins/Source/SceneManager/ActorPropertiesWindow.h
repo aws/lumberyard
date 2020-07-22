@@ -15,16 +15,16 @@
 #include "../StandardPluginsConfig.h"
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/StandardHeaders.h>
+#include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/PlayBackInfo.h>
+#include <Editor/ActorJointBrowseEdit.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
 #include "CollisionMeshesSetupWindow.h"
-#include <MysticQt/Source/LinkWidget.h>
 #include <QWidget>
 #include <QLabel>
 #include <QPushButton>
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)
-
 
 namespace EMStudio
 {
@@ -36,7 +36,7 @@ namespace EMStudio
     class ActorPropertiesWindow
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(ActorPropertiesWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
@@ -46,12 +46,13 @@ namespace EMStudio
         };
 
         ActorPropertiesWindow(QWidget* parent, SceneManagerPlugin* plugin);
-        ~ActorPropertiesWindow();
+        ~ActorPropertiesWindow() = default;
 
         void Init();
 
         // helper functions
         static void GetNodeName(const MCore::Array<SelectionItem>& selection, AZStd::string* outNodeName, uint32* outActorID);
+        static void GetNodeName(const AZStd::vector<SelectionItem>& joints, AZStd::string* outNodeName, uint32* outActorID);
 
     public slots:
         void UpdateInterface();
@@ -59,70 +60,41 @@ namespace EMStudio
         // actor name
         void NameEditChanged();
 
-        // motion extraction node slots
-        void OnSelectMotionExtractionNode();
-        void OnMotionExtractionNodeSelected(MCore::Array<SelectionItem> selection);
-        void ResetMotionExtractionNode();
-        void OnSelectRetargetRootNode();
-        void OnRetargetRootNodeSelected(MCore::Array<SelectionItem> selection);
-        void ResetRetargetRootNode();
+        void OnMotionExtractionJointSelected(const AZStd::vector<SelectionItem>& selectedJoints);
         void OnFindBestMatchingNode();
+
+        void OnRetargetRootJointSelected(const AZStd::vector<SelectionItem>& selectedJoints);
+
         void OnMirrorSetup();
         //void OnRetargetSetup();
         void OnCollisionMeshesSetup();
 
         // nodes excluded from bounding volume calculations
-        void OnSelectExcludedNodes();
-        void OnSelectExcludedNodes(MCore::Array<SelectionItem> selection);
-        void OnCancelExcludedNodes();
-        void OnExcludeNodeSelectionChanged();
-        void ResetExcludedNodes();
+        void OnExcludedJointsFromBoundsSelectionDone(const AZStd::vector<SelectionItem>& selectedJoints);
+        void OnExcludedJointsFromBoundsSelectionChanged(const AZStd::vector<SelectionItem>& selectedJoints);
 
     private:
-        // helper functions
-        EMotionFX::Node* GetNode(NodeHierarchyWidget* hierarchyWidget);
-        void ResetNode(const char* parameterNodeType);
-        void SetToOldExcludeNodeSelection();
+        ActorJointBrowseEdit* m_motionExtractionJointBrowseEdit = nullptr;
+        QPushButton* m_findBestMatchButton = nullptr;
 
-        static void PrepareExcludedNodeSelectionList(EMotionFX::Actor* actor, CommandSystem::SelectionList* outSelectionList);
+        ActorJointBrowseEdit* m_retargetRootJointBrowseEdit = nullptr;
 
-        MCORE_INLINE const char* GetDefaultNodeSelectionLabelText()                             { return "Click to select node"; }
-        MCORE_INLINE const char* GetDefaultExcludeBoundNodesLabelText()                         { return "Click to select nodes"; }
-        MCORE_INLINE const char* GetDefaultCollisionMeshesLabelText()                           { return "Click to setup"; }
+        ActorJointBrowseEdit* m_excludeFromBoundsBrowseEdit = nullptr;
 
-        uint32 CalcNumExcludedNodesFromBounds(EMotionFX::Actor* actor);
+        AzQtComponents::BrowseEdit*     mCollisionMeshesSetupLink = nullptr;
+        CollisionMeshesSetupWindow*     mCollisionMeshesSetupWindow = nullptr;
 
-        // motion extraction node
-        QPushButton*                    mResetMotionExtractionNodeButton;
-        MysticQt::LinkWidget*           mMotionExtractionNode;
-        QPushButton*                    mFindBestMatchButton;
+        AzQtComponents::BrowseEdit*     mMirrorSetupLink = nullptr;
+        MirrorSetupWindow*              mMirrorSetupWindow = nullptr;
 
-        // retarget root node
-        QPushButton*                    mResetRetargetRootNodeButton;
-        MysticQt::LinkWidget*           mRetargetRootNode;
-
-        // nodes excluded from bounding volume calculations
-        MysticQt::LinkWidget*           mExcludedNodesLink;
-        QPushButton*                    mResetExcludedNodesButton;
-        NodeSelectionWindow*            mExcludedNodesSelectionWindow;
-        CommandSystem::SelectionList    mExcludedNodeSelectionList;
-        MCore::Array<uint32>            mOldExcludedNodeSelection;
-
-        MysticQt::LinkWidget*           mCollisionMeshesSetupLink;
-        CollisionMeshesSetupWindow*     mCollisionMeshesSetupWindow;
-
-        MysticQt::LinkWidget*           mMirrorSetupLink;
-        MirrorSetupWindow*              mMirrorSetupWindow;
-
-        //MysticQt::LinkWidget*         mRetargetSetupLink;
-        //RetargetSetupWindow*          mRetargetSetupWindow;
+        //MysticQt::LinkWidget*         mRetargetSetupLink = nullptr;
+        //RetargetSetupWindow*          mRetargetSetupWindow = nullptr;
 
         // actor name
-        QLineEdit*                      mNameEdit;
+        QLineEdit*                      mNameEdit = nullptr;
 
-        SceneManagerPlugin*             mPlugin;
-        EMotionFX::Actor*               mActor;
-        EMotionFX::ActorInstance*       mActorInstance;
-        CommandSystem::SelectionList*   mSelectionList;
+        SceneManagerPlugin*             mPlugin = nullptr;
+        EMotionFX::Actor*               mActor = nullptr;
+        EMotionFX::ActorInstance*       mActorInstance = nullptr;
     };
 } // namespace EMStudio

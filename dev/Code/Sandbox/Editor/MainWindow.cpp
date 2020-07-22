@@ -45,9 +45,10 @@
 #include "Plugins/MaglevControlPanel/IAWSResourceManager.h"
 #include "Commands/CommandManager.h"
 
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
+
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
 
 #include <QWidgetAction>
 #include <QInputDialog>
@@ -125,6 +126,7 @@ AZ_POP_DISABLE_WARNING
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzQtComponents/Buses/ShortcutDispatch.h>
 #include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
@@ -437,7 +439,7 @@ public:
         m_toolButton->setCheckable(false);
         m_toolButton->setDefaultAction(defaultAction);
 
-        m_spinBox = new AzToolsFramework::DHQDoubleSpinbox();
+        m_spinBox = new AzQtComponents::DoubleSpinBox();
 
         layout->addWidget(m_toolButton);
         layout->addWidget(m_spinBox);
@@ -447,7 +449,7 @@ public:
 
         OnGridValuesUpdated();
 
-        QObject::connect(m_spinBox, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &SnapToWidget::OnValueChanged);
+        QObject::connect(m_spinBox, QOverload<double>::of(&AzQtComponents::DoubleSpinBox::valueChanged), this, &SnapToWidget::OnValueChanged);
         QObject::connect(defaultAction, &QAction::changed, this, &SnapToWidget::OnActionChanged);
 
         CGridSettingsDialog::NotificationBus::Handler::BusConnect();
@@ -481,7 +483,7 @@ protected:
 private:
 
     QToolButton* m_toolButton = nullptr;
-    AzToolsFramework::DHQDoubleSpinbox* m_spinBox = nullptr;
+    AzQtComponents::DoubleSpinBox* m_spinBox = nullptr;
 
     SetValueCallback m_setValueCallback;
     GetValueCallback m_getValueCallback;
@@ -1095,7 +1097,7 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "Undo")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateUndo);
     am->AddAction(ID_REDO, tr("&Redo"))
-        .SetShortcut(tr("Ctrl+Shift+Z"))
+        .SetShortcut(AzQtComponents::RedoKeySequence)
         .SetReserved()
         //.SetMenu(new QMenu("FIXME"))
         .SetIcon(EditorProxyStyle::icon("Redo"))
@@ -1218,11 +1220,11 @@ void MainWindow::InitActions()
             .SetShortcut(tr("L"))
             .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditFreeze)
             .SetMetricsIdentifier("MainEditor", "FreezeSelectedObjects")
-            .SetIcon(EditorProxyStyle::icon("Freeze"))
+            .SetIcon(EditorProxyStyle::icon("Locked"))
             .SetApplyHoverEffect();
         am->AddAction(ID_EDIT_UNFREEZEALL, tr("Unlock all"))
             .SetShortcut(tr("Ctrl+L"))
-            .SetIcon(EditorProxyStyle::icon("Unfreeze_all"))
+            .SetIcon(EditorProxyStyle::icon("Unlocked"))
             .SetApplyHoverEffect()
             .SetMetricsIdentifier("MainEditor", "UnfreezeAllObjects");
     }
@@ -1645,20 +1647,20 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "ToggleGameMode")
         .SetCheckable(true)
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdatePlayGame);
-    am->AddAction(ID_SWITCH_PHYSICS, tr("Enable Physics/AI"))
+    am->AddAction(ID_SWITCH_PHYSICS, tr("Simulate"))
         .SetShortcut(tr("Ctrl+P"))
         .SetCheckable(true)
         .SetStatusTip(tr("Enable processing of Physics and AI."))
         .SetMetricsIdentifier("MainEditor", "TogglePhysicsAndAI")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnSwitchPhysicsUpdate);
 #ifdef LY_TERRAIN_EDITOR
-    am->AddAction(ID_TERRAIN_COLLISION, tr("Terrain Collision")).SetCheckable(true)
+    am->AddAction(ID_TERRAIN_COLLISION, tr("Enable Camera Terrain Collision")).SetCheckable(true)
         .SetStatusTip(tr("Enable collision of camera with terrain."))
         .SetMetricsIdentifier("MainEditor", "ToggleTerrainCameraCollision")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnTerrainCollisionUpdate);
 #endif //#ifdef LY_TERRAIN_EDITOR
-    am->AddAction(ID_GAME_SYNCPLAYER, tr("Synchronize Player with Camera")).SetCheckable(true)
-        .SetStatusTip(tr("Synchronize Player with Camera\nSynchronize Player with Camera"))
+    am->AddAction(ID_GAME_SYNCPLAYER, tr("Move Player and Camera Separately")).SetCheckable(true)
+        .SetStatusTip(tr("Move Player and Camera Separately\nMove Player and Camera Separately"))
         .SetMetricsIdentifier("MainEditor", "SynchronizePlayerWithCamear")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnSyncPlayerUpdate);
     am->AddAction(ID_TOOLS_EQUIPPACKSEDIT, tr("&Edit Equipment-Packs..."))
@@ -1728,7 +1730,7 @@ void MainWindow::InitActions()
         am->AddAction(ID_TERRAIN_TEXTURE_EXPORT, tr("Export/Import Megaterrain Texture"))
             .SetMetricsIdentifier("MainEditor", "TerrainExportOrImportMegaterrainTexture");
         am->AddAction(ID_GENERATORS_LIGHTING, tr("&Sun Trajectory Tool"))
-            .SetIcon(EditorProxyStyle::icon("LIghting"))
+            .SetIcon(EditorProxyStyle::icon("Lighting"))
             .SetApplyHoverEffect()
             .SetMetricsIdentifier("MainEditor", "SunTrajectoryToolDialog")
             .SetStatusTip(tr("Bring up the terrain lighting dialog"));
@@ -1951,14 +1953,12 @@ void MainWindow::InitActions()
     // Editors Toolbar actions
     am->AddAction(ID_OPEN_ASSET_BROWSER, tr("Asset browser"))
         .SetToolTip(tr("Open Asset Browser"))
-        .SetIcon(EditorProxyStyle::icon("Asset_Browser"))
         .SetApplyHoverEffect();
 
     if (m_enableLegacyCryEntities)
     {
         am->AddAction(ID_OPEN_LAYER_EDITOR, tr(LyViewPane::LegacyLayerEditor))
             .SetToolTip(tr("Open Layer Editor"))
-        .SetIcon(EditorProxyStyle::icon("layer_editor"))
         .SetApplyHoverEffect();
     }
 
@@ -2006,7 +2006,6 @@ void MainWindow::InitActions()
     {
         am->AddAction(ID_OPEN_TRACKVIEW, tr("TrackView"))
             .SetToolTip(tr("Open Track View"))
-            .SetIcon(EditorProxyStyle::icon("Trackview"))
             .SetApplyHoverEffect();
     }
 
@@ -2041,7 +2040,6 @@ void MainWindow::InitActions()
     {
         am->AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, tr("Time of Day Editor"))
             .SetToolTip(tr("Open Time of Day"))
-            .SetIcon(EditorProxyStyle::icon("Time_of_Day"))
             .SetApplyHoverEffect();
     }
 
@@ -2054,13 +2052,13 @@ void MainWindow::InitActions()
     }
     am->AddAction(ID_OPEN_UICANVASEDITOR, tr("UI Editor"))
         .SetToolTip(tr("Open UI Editor"))
-        .SetIcon(EditorProxyStyle::icon("UI_editor"))
         .SetApplyHoverEffect();
 
     // Edit Mode Toolbar Actions
     am->AddAction(ID_EDITTOOL_LINK, tr("Link an object to parent"))
         .SetIcon(EditorProxyStyle::icon("add_link"))
         .SetApplyHoverEffect()
+        .SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToolLinkObjectToParent")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditToolLink);
     am->AddAction(ID_EDITTOOL_UNLINK, tr("Unlink all selected objects"))
@@ -2080,14 +2078,13 @@ void MainWindow::InitActions()
     if (m_enableLegacyCryEntities)
     {
         am->AddAction(ID_SELECTION_DELETE, tr("Delete named selection"))
-            .SetIcon(EditorProxyStyle::icon("Delete_named_selection"))
+            .SetIcon(EditorProxyStyle::icon("Select"))
         .SetApplyHoverEffect()
             .SetMetricsIdentifier("MainEditor", "DeleteNamedSelection")
             .Connect(&QAction::triggered, this, &MainWindow::DeleteSelection);
 
         am->AddAction(ID_LAYER_SELECT, tr(""))
             .SetToolTip(tr("Select current layer"))
-            .SetIcon(EditorProxyStyle::icon("layers"))
             .SetApplyHoverEffect()
             .SetMetricsIdentifier("MainEditor", "LayerSelect")
             .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateCurrentLayer);
@@ -2117,7 +2114,6 @@ void MainWindow::InitActions()
     // Misc Toolbar Actions
     am->AddAction(ID_OPEN_SUBSTANCE_EDITOR, tr("Open Substance Editor"))
         .SetMetricsIdentifier("MainEditor", "OpenSubstanceEditor")
-        .SetIcon(EditorProxyStyle::icon("Substance"))
         .SetApplyHoverEffect();
 }
 
@@ -2178,7 +2174,7 @@ void MainWindow::OnEscapeAction()
 void MainWindow::InitToolBars()
 {
     m_toolbarManager->LoadToolbars();
-    AdjustToolBarIconSize();
+    AdjustToolBarIconSize(static_cast<AzQtComponents::ToolBar::ToolBarIconSize>(gSettings.gui.nToolbarIconSize));
 }
 
 QComboBox* MainWindow::CreateSelectionMaskComboBox()
@@ -2340,15 +2336,6 @@ void UndoRedoToolButton::Update(int count)
     setEnabled(count > 0);
 }
 
-QToolButton* MainWindow::CreateLayerSelectButton()
-{
-    auto button = new QToolButton(this);
-    button->setAutoRaise(true);
-    button->setDefaultAction(m_actionManager->GetAction(ID_LAYER_SELECT));
-    button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    return button;
-}
-
 QWidget* MainWindow::CreateSnapToGridWidget()
 {
     SnapToWidget::SetValueCallback setCallback = [](double snapStep)
@@ -2504,39 +2491,19 @@ void MainWindow::OpenViewPane(QtViewPane* pane)
     }
 }
 
-void MainWindow::AdjustToolBarIconSize()
+void MainWindow::AdjustToolBarIconSize(AzQtComponents::ToolBar::ToolBarIconSize size)
 {
     const QList<QToolBar*> toolbars = findChildren<QToolBar*>();
 
-    int iconWidth = gSettings.gui.nToolbarIconSize != 0
-        ? gSettings.gui.nToolbarIconSize
-        : style()->pixelMetric(QStyle::PM_ToolBarIconSize);
-
-    // make sure that the loaded icon width, which could be stored from older settings
-    // fits into one of the three sizes we currently support
-    if (iconWidth <= static_cast<int>(CEditorPreferencesPage_General::ToolBarIconSize::ToolBarIconSize_16))
-    {
-        iconWidth = static_cast<int>(CEditorPreferencesPage_General::ToolBarIconSize::ToolBarIconSize_16);
-    }
-    else if (iconWidth <= static_cast<int>(CEditorPreferencesPage_General::ToolBarIconSize::ToolBarIconSize_24))
-    {
-        iconWidth = static_cast<int>(CEditorPreferencesPage_General::ToolBarIconSize::ToolBarIconSize_24);
-    }
-    else
-    {
-        iconWidth = static_cast<int>(CEditorPreferencesPage_General::ToolBarIconSize::ToolBarIconSize_32);
-    }
-
     // make sure to set this back, so that the general settings page matches up with what the size is too
-    if (gSettings.gui.nToolbarIconSize != iconWidth)
+    if (gSettings.gui.nToolbarIconSize != static_cast<int>(size))
     {
-        gSettings.gui.nToolbarIconSize = iconWidth;
+        gSettings.gui.nToolbarIconSize = static_cast<int>(size);
     }
-
 
     for (auto toolbar : toolbars)
     {
-        toolbar->setIconSize(QSize(iconWidth, iconWidth));
+        AzQtComponents::ToolBar::setToolBarIconSize(toolbar, size);
     }
 }
 
@@ -3207,13 +3174,20 @@ void MainWindow::ToggleRollupBar()
 
 void MainWindow::OnViewPaneCreated(const QtViewPane* pane)
 {
-    // The main window doesn't know how to create view panes
-    // so wait for the rollup or console do get created and wire up the menu action check/uncheck logic.
+    QAction* action = nullptr;
+    int id = pane->m_id;
 
-    QAction* action = pane->m_options.builtInActionId != -1 ? m_actionManager->GetAction(pane->m_options.builtInActionId) : nullptr;
-
-    if (action)
+    // Use built-in action id if available
+    if (pane->m_options.builtInActionId != -1)
     {
+        id = pane->m_options.builtInActionId;
+    }
+
+    if (m_actionManager->HasAction(id))
+    {
+        action = m_actionManager->GetAction(id);
+        action->setChecked(true);
+
         connect(pane->m_dockWidget->toggleViewAction(), &QAction::toggled,
             action, &QAction::setChecked, Qt::UniqueConnection);
     }
@@ -3320,9 +3294,6 @@ QWidget* MainWindow::CreateToolbarWidget(int actionId)
         break;
     case ID_TOOLBAR_WIDGET_SELECT_OBJECT:
         w = CreateSelectObjectComboBox();
-        break;
-    case ID_TOOLBAR_WIDGET_LAYER_SELECT:
-        w = CreateLayerSelectButton();
         break;
     default:
         qWarning() << Q_FUNC_INFO << "Unknown id " << actionId;

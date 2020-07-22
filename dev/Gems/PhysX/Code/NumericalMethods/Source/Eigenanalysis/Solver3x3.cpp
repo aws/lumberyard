@@ -128,9 +128,9 @@ namespace NumericalMethods::Eigenanalysis
         return SolverResult<Real, 3>{
             SolverOutcome::Success,
             {
-                Eigenpair<Real, 3>{alpha0, {vec0[0], vec0[1], vec0[2]}},
-                Eigenpair<Real, 3>{alpha1, {vec1[0], vec1[1], vec1[2]}},
-                Eigenpair<Real, 3>{alpha2, {vec2[0], vec2[1], vec2[2]}}
+                Eigenpair<Real, 3>{alpha0, {{vec0[0], vec0[1], vec0[2]}}},
+                Eigenpair<Real, 3>{alpha1, {{vec1[0], vec1[1], vec1[2]}}},
+                Eigenpair<Real, 3>{alpha2, {{vec2[0], vec2[1], vec2[2]}}}
             }
         };
     }

@@ -77,14 +77,19 @@ namespace GradientSignal
             CancelAndWait();
         }
 
-        void CancelAndWait()
+        bool CancelAndWait()
         {
+            // Return whether or not this actually cancelled a job that had started, or if this job was already idle
+            bool jobHadStarted = m_started;
+
             // To cancel, we start by notifying the Process() loop that it should cancel itself on the next iteration if
             // it's currently running.  (Note that this is an atomic bool)
             m_shouldCancel = true;
 
             // Then we synchronously block until the job has completed.
             Wait();
+
+            return jobHadStarted;
         }
 
         void Wait()
@@ -428,9 +433,9 @@ namespace GradientSignal
             m_refreshUpdateJob = true;
         }
 
-        void CancelRefresh()
+        bool OnCancelRefresh()
         {
-            m_updateJob->CancelAndWait();
+            return m_updateJob->CancelAndWait();
         }
 
     protected:

@@ -743,7 +743,7 @@ namespace EMStudio
         painter.drawRect(m_warningBoundRect);
 
         // Draw warning icon
-        const QIcon& warningIcon = MysticQt::GetMysticQt()->FindIcon("Images/Icons/warning_25.png");
+        const QIcon& warningIcon = MysticQt::GetMysticQt()->FindIcon("Images/Icons/Warning.svg");
         const QPoint iconPosition(m_warningBoundRect.x() + 5,
                                   m_warningBoundRect.center().y() - 8);
         painter.drawPixmap(iconPosition, warningIcon.pixmap(16, 16));
@@ -854,7 +854,7 @@ namespace EMStudio
             return nullptr;
         }
 
-        const EMotionFX::AnimGraphInstance* animGraphInstance = m_modelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
+        EMotionFX::AnimGraphInstance* animGraphInstance = m_modelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
         if (!animGraphInstance)
         {
             return nullptr;
@@ -867,6 +867,6 @@ namespace EMStudio
             return nullptr;
         }
 
-        return static_cast<EMotionFX::BlendSpace2DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(blendSpaceNode));
+        return static_cast<EMotionFX::BlendSpace2DNode::UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(blendSpaceNode));
     }
 } // namespace EMStudio

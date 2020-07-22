@@ -25,11 +25,14 @@ namespace CloudCanvas
         PresignedURLManager();
         virtual ~PresignedURLManager();
 
-        virtual void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
-        virtual AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
+        void RequestDownloadSignedURLReceivedHandler(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id, DataReceivedEventHandler&& dataReceivedHandler) override;
+        AZ::Job* RequestDownloadSignedURLJobReceivedHandler(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id, DataReceivedEventHandler&& dataReceivedHandler) override;
+
+        void RequestDownloadSignedURL(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
+        AZ::Job* RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) override;
         AZStd::unordered_map<AZStd::string, AZStd::string> GetQueryParameters(const AZStd::string& signedURL) override;
 
-        AZ::Job* CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id) const;
+        AZ::Job* CreateDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id, DataReceivedEventHandler&& dataReceivedHandler) const;
     };
 } // namespace CloudCanvas
 

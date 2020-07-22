@@ -95,7 +95,7 @@ namespace EMotionFX
 
         const char* ActorAssetHandler::GetBrowserIcon() const
         {
-            return "Editor/Images/AssetBrowser/Actor_16.png";
+            return "Editor/Images/AssetBrowser/Actor_16.svg";
         }
     } //namespace Integration
 } // namespace EMotionFX

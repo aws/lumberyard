@@ -13,7 +13,7 @@
 
 #include <QDialog>
 
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 class QGridLayout;
 class QLabel;
@@ -208,8 +208,8 @@ private:
     {
         QVector<QLabel*> m_platformLabels;
         QVector<QLabel*> m_cvarLabels;
-        QVector<AzToolsFramework::DHQSpinbox*> m_cvarSpinBoxes;
-        QVector<AzToolsFramework::DHQDoubleSpinbox*> m_cvarDoubleSpinBoxes;
+        QVector<AzQtComponents::SpinBox*> m_cvarSpinBoxes;
+        QVector<AzQtComponents::DoubleSpinBox*> m_cvarDoubleSpinBoxes;
         QVector<QLineEdit*> m_cvarLineEdits;
         QVector<QPushButton*> m_customSpecUnloadButtons;
         QVector<QPushButton*> m_specFileArea;

@@ -12,9 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
-#include "EditorDefs.h"
-#include "UiEditorAnimationBus.h"
 #include "UiAVEventsDialog.h"
+#include <Animation/ui_UiAVEventsDialog.h>
+#include "UiAnimViewUndo.h"
 #include "StringDlg.h"
 #include "UiAnimViewSequence.h"
 #include "AnimationContext.h"
@@ -29,260 +29,321 @@ namespace
     const int kTimeSubItemIndex = 2;
 }
 
-IMPLEMENT_DYNAMIC(CUiAVEventsDialog, CDialog)
-
-CUiAVEventsDialog::CUiAVEventsDialog(CWnd* pParent /*=NULL*/)
-    : CDialog(CUiAVEventsDialog::IDD, pParent)
+class UiAVEventsModel
+    : public QAbstractTableModel
 {
+public:
+    UiAVEventsModel(QObject* parent = nullptr)
+        : QAbstractTableModel(parent)
+    {
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override
+    {
+        if (parent.isValid())
+        {
+            return 0;
+        }
+        CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
+        assert(sequence);
+        return sequence->GetTrackEventsCount();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override
+    {
+        return parent.isValid() ? 0 : 3;
+    }
+
+    bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override
+    {
+        if (parent.isValid())
+        {
+            return false;
+        }
+
+        bool result = true;
+
+        CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
+        assert(sequence);
+
+        UiAnimUndo undo("Remove Track Event");
+        for (int r = row; r < row + count; ++r)
+        {
+            const QString eventName = index(r, 0).data().toString();
+            UiAnimUndo::Record(new CUndoTrackEventRemove(sequence, eventName));
+
+            beginRemoveRows(QModelIndex(), r, r);
+            result &= sequence->RemoveTrackEvent(eventName.toUtf8().data());
+            endRemoveRows();
+        }
+
+        return result;
+    }
+
+    bool addRow(const QString& name)
+    {
+        CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
+        assert(sequence);
+        const int index = rowCount();
+        beginInsertRows(QModelIndex(), index, index);
+        bool result = false;
+
+        UiAnimUndo undo("Add Track Event");
+        UiAnimUndo::Record(new CUndoTrackEventAdd(sequence, name));
+        result = sequence->AddTrackEvent(name.toUtf8().data());
+
+        endInsertRows();
+        if (!result)
+        {
+            beginRemoveRows(QModelIndex(), index, index);
+            endRemoveRows();
+        }
+        return result;
+    }
+
+    bool moveRow(const QModelIndex& index, bool up)
+    {
+        CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
+        assert(sequence);
+        if (!index.isValid() || (up && index.row() == 0) || (!up && index.row() == rowCount() - 1))
+        {
+            return false;
+        }
+
+        bool result = false;
+
+        UiAnimUndo undo("Move Track Event");
+        const QString name = index.sibling(index.row(), 0).data().toString();
+        if (up)
+        {
+            UiAnimUndo::Record(new CUndoTrackEventMoveUp(sequence, name));
+            beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
+            result = sequence->MoveUpTrackEvent(name.toUtf8().data());
+        }
+        else
+        {
+            UiAnimUndo::Record(new CUndoTrackEventMoveDown(sequence, name));
+            beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
+            result = sequence->MoveDownTrackEvent(name.toUtf8().data());
+        }
+
+        endMoveRows();
+
+        return result;
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override
+    {
+        CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
+        assert(sequence);
+        if (role != Qt::DisplayRole)
+        {
+            return QVariant();
+        }
+
+        float timeFirstUsed;
+        int usageCount = GetNumberOfUsageAndFirstTimeUsed(sequence->GetTrackEvent(index.row()), timeFirstUsed);
+
+        switch (index.column())
+        {
+        case 0:
+            return QString::fromLatin1(sequence->GetTrackEvent(index.row()));
+        case 1:
+            return usageCount;
+        case 2:
+            return usageCount > 0 ? QString::number(timeFirstUsed, 'f', 3) : QString();
+        default:
+            return QVariant();
+        }
+    }
+
+    bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override
+    {
+        CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
+        assert(sequence);
+        if (role != Qt::DisplayRole && role != Qt::EditRole)
+        {
+            return false;
+        }
+        if (index.column() != 0 || value.toString().isEmpty())
+        {
+            return false;
+        }
+
+        bool result = false;
+
+        const QString oldName = index.data().toString();
+        const QString newName = value.toString();
+
+        UiAnimUndo undo("Rename Track Event");
+        UiAnimUndo::Record(new CUndoTrackEventRename(sequence, oldName, newName));
+        result = sequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
+
+        emit dataChanged(index, index);
+        return result;
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override
+    {
+        if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
+        {
+            return QVariant();
+        }
+
+        switch (section)
+        {
+        case 0:
+            return tr("Event");
+        case 1:
+            return tr("# of use");
+        case 2:
+            return tr("Time of first usage");
+        default:
+            return QVariant();
+        }
+    }
+
+    int GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float& timeFirstUsed) const;
+};
+
+CUiAVEventsDialog::CUiAVEventsDialog(QWidget* pParent /*=nullptr*/)
+    : QDialog(pParent)
+    , m_ui(new Ui::UiAVEventsDialog)
+{
+    m_ui->setupUi(this);
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    OnInitDialog();
+
+    connect(m_ui->buttonAddEvent, &QPushButton::clicked, this, &CUiAVEventsDialog::OnBnClickedButtonAddEvent);
+    connect(m_ui->buttonRemoveEvent, &QPushButton::clicked, this, &CUiAVEventsDialog::OnBnClickedButtonRemoveEvent);
+    connect(m_ui->buttonRenameEvent, &QPushButton::clicked, this, &CUiAVEventsDialog::OnBnClickedButtonRenameEvent);
+    connect(m_ui->buttonUpEvent, &QPushButton::clicked, this, &CUiAVEventsDialog::OnBnClickedButtonUpEvent);
+    connect(m_ui->buttonDownEvent, &QPushButton::clicked, this, &CUiAVEventsDialog::OnBnClickedButtonDownEvent);
+    connect(m_ui->m_List->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CUiAVEventsDialog::OnListItemChanged);
 }
 
 CUiAVEventsDialog::~CUiAVEventsDialog()
 {
 }
 
-void CUiAVEventsDialog::DoDataExchange(CDataExchange* pDX)
-{
-    CDialog::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_EVENTS_LIST, m_List);
-}
-
-
-BEGIN_MESSAGE_MAP(CUiAVEventsDialog, CDialog)
-ON_BN_CLICKED(IDC_BUTTON_ADDEVENT, &CUiAVEventsDialog::OnBnClickedButtonAddEvent)
-ON_BN_CLICKED(IDC_BUTTON_REMOVEEVENT, &CUiAVEventsDialog::OnBnClickedButtonRemoveEvent)
-ON_BN_CLICKED(IDC_BUTTON_RENAMEEVENT, &CUiAVEventsDialog::OnBnClickedButtonRenameEvent)
-ON_BN_CLICKED(IDC_BUTTON_UPEVENT, &CUiAVEventsDialog::OnBnClickedButtonUpEvent)
-ON_BN_CLICKED(IDC_BUTTON_DOWNEVENT, &CUiAVEventsDialog::OnBnClickedButtonDownEvent)
-ON_NOTIFY(LVN_ITEMCHANGED, IDC_EVENTS_LIST, OnListItemChanged)
-END_MESSAGE_MAP()
-
-
-// CUiAVEventsDialog message handlers
+// CTVEventsDialog message handlers
 
 void CUiAVEventsDialog::OnBnClickedButtonAddEvent()
 {
-#if UI_ANIMATION_REMOVED    // UI_ANIMATION_REVISIT do we need this file at all?
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
-
-    CStringDlg dlg(_T("Track Event Name"));
-    if (dlg.DoModal() == IDOK && !dlg.GetString().IsEmpty())
+    const QString add = QInputDialog::getText(this, tr("Track Event Name"), QString());
+    if (!add.isEmpty() && static_cast<UiAVEventsModel*>(m_ui->m_List->model())->addRow(add))
     {
-        CString add = dlg.GetString();
-
-        // Make sure it doesn't already exist
-        LVFINDINFO find;
-        find.flags = LVFI_STRING | LVFI_WRAP;
-        find.psz = add;
-        if (-1 == m_List.FindItem(&find))
-        {
-            for (int k = 0; k < m_List.GetItemCount(); ++k)
-            {
-                m_List.SetItemState(k, 0, LVIS_SELECTED);
-            }
-            m_List.InsertItem(m_List.GetItemCount(), add);
-            m_List.SetItemText(m_List.GetItemCount() - 1, kCountSubItemIndex, "0");
-            m_List.SetItemText(m_List.GetItemCount() - 1, kTimeSubItemIndex, "");
-            m_List.SetItemState(m_List.GetItemCount() - 1, LVIS_SELECTED, LVIS_SELECTED);
-            pSequence->AddTrackEvent(add);
-        }
+        m_lastAddedEvent = add;
+        m_ui->m_List->setCurrentIndex(m_ui->m_List->model()->index(m_ui->m_List->model()->rowCount() - 1, 0));
     }
-    m_List.SetFocus();
-#endif
+    m_ui->m_List->setFocus();
 }
 
 void CUiAVEventsDialog::OnBnClickedButtonRemoveEvent()
 {
-#if UI_ANIMATION_REMOVED
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
-
-    POSITION pos = m_List.GetFirstSelectedItemPosition();
-    while (pos)
+    QList<QPersistentModelIndex> indexes;
+    for (auto index : m_ui->m_List->selectionModel()->selectedRows())
     {
-        int index = m_List.GetNextSelectedItem(pos);
-        if (MessageBox("This removal might cause some link breakages in Flow Graph.\nStill continue?", "Remove Event", MB_YESNO | MB_ICONWARNING) == IDYES)
+        indexes.push_back(index);
+    }
+
+    for (auto index : indexes)
+    {
+        if (QMessageBox::warning(this, tr("Remove Event"), tr("This removal will remove all uses of this event.\nAll listeners will fail to trigger.\nStill continue?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
         {
-            CString eventName = m_List.GetItemText(index, 0);
-            m_List.DeleteItem(index);
-            pSequence->RemoveTrackEvent(eventName);
-            pos = m_List.GetFirstSelectedItemPosition();
+            m_ui->m_List->model()->removeRow(index.row());
         }
     }
-    m_List.SetFocus();
-#endif
+    m_ui->m_List->setFocus();
 }
 
 void CUiAVEventsDialog::OnBnClickedButtonRenameEvent()
 {
-#if UI_ANIMATION_REMOVED
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
+    const QModelIndex index = m_ui->m_List->currentIndex();
 
-    POSITION pos = m_List.GetFirstSelectedItemPosition();
-    if (pos)
+    if (index.isValid())
     {
-        int index = m_List.GetNextSelectedItem(pos);
-        CStringDlg dlg(_T("Track Event Name"));
-        if (dlg.DoModal() == IDOK && !dlg.GetString().IsEmpty())
+        const QString newName = QInputDialog::getText(this, tr("Track Event Name"), QString());
+        if (!newName.isEmpty())
         {
-            CString oldName = m_List.GetItemText(index, 0);
-            CString newName = dlg.GetString();
-            if (oldName != newName)
-            {
-                // Make sure it doesn't already exist
-                LVFINDINFO find;
-                find.flags = LVFI_STRING | LVFI_WRAP;
-                find.psz = newName;
-                if (-1 == m_List.FindItem(&find))
-                {
-                    m_List.SetItemText(index, 0, newName);
-                    pSequence->RenameTrackEvent(oldName, newName);
-                }
-            }
+            m_lastAddedEvent = newName;
+            m_ui->m_List->model()->setData(index.sibling(index.row(), 0), newName);
         }
     }
-    m_List.SetFocus();
-#endif
+    m_ui->m_List->setFocus();
 }
 
 void CUiAVEventsDialog::OnBnClickedButtonUpEvent()
 {
-#if UI_ANIMATION_REMOVED
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
-
-    POSITION pos = m_List.GetFirstSelectedItemPosition();
-    if (pos)
-    {
-        int index = m_List.GetNextSelectedItem(pos);
-        if (index > 0)
-        {
-            CString up = m_List.GetItemText(index - 1, 0);
-            CString down = m_List.GetItemText(index, 0);
-            m_List.SetItemText(index - 1, 0, down);
-            m_List.SetItemText(index, 0, up);
-            m_List.SetItemState(index - 1, LVIS_SELECTED, LVIS_SELECTED);
-            m_List.SetItemState(index, 0, LVIS_SELECTED);
-            pSequence->MoveUpTrackEvent(down);
-        }
-    }
-    m_List.SetFocus();
-#endif
+    static_cast<UiAVEventsModel*>(m_ui->m_List->model())->moveRow(m_ui->m_List->currentIndex(), true);
+    UpdateButtons();
+    m_ui->m_List->setFocus();
 }
 
 void CUiAVEventsDialog::OnBnClickedButtonDownEvent()
 {
-#if UI_ANIMATION_REMOVED
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
-
-    POSITION pos = m_List.GetFirstSelectedItemPosition();
-    if (pos)
-    {
-        int index = m_List.GetNextSelectedItem(pos);
-        if (index < m_List.GetItemCount() - 1)
-        {
-            CString up = m_List.GetItemText(index, 0);
-            CString down = m_List.GetItemText(index + 1, 0);
-            m_List.SetItemText(index, 0, down);
-            m_List.SetItemText(index + 1, 0, up);
-            m_List.SetItemState(index, 0, LVIS_SELECTED);
-            m_List.SetItemState(index + 1, LVIS_SELECTED, LVIS_SELECTED);
-            pSequence->MoveDownTrackEvent(up);
-        }
-    }
-    m_List.SetFocus();
-#endif
+    static_cast<UiAVEventsModel*>(m_ui->m_List->model())->moveRow(m_ui->m_List->currentIndex(), false);
+    UpdateButtons();
+    m_ui->m_List->setFocus();
 }
 
-BOOL CUiAVEventsDialog::OnInitDialog()
+void CUiAVEventsDialog::OnInitDialog()
 {
-#if UI_ANIMATION_REMOVED
-    CDialog::OnInitDialog();
-
-    m_List.InsertColumn(0, "Event", LVCFMT_LEFT, 100);
-    m_List.InsertColumn(1, "# of use", LVCFMT_RIGHT, 30, kCountSubItemIndex);
-    m_List.InsertColumn(2, "Time of first usage", LVCFMT_RIGHT, 50, kTimeSubItemIndex);
-
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
-    assert(pSequence);
-
-    // Push existing items into list
-    const int iCount = pSequence->GetTrackEventsCount();
-    for (int i = 0; i < iCount; ++i)
-    {
-        m_List.InsertItem(i, pSequence->GetTrackEvent(i));
-        float timeFirstUsed = 0;
-        int usageCount = GetNumberOfUsageAndFirstTimeUsed(pSequence->GetTrackEvent(i), timeFirstUsed);
-        CString countText, timeText;
-        countText.Format("%d", usageCount);
-        timeText.Format("%.3f", timeFirstUsed);
-        m_List.SetItemText(i, kCountSubItemIndex, countText);
-        m_List.SetItemText(i, kTimeSubItemIndex, usageCount > 0 ? timeText : "");
-    }
+    m_ui->m_List->setModel(new UiAVEventsModel(this));
+    m_ui->m_List->header()->resizeSections(QHeaderView::ResizeToContents);
 
     UpdateButtons();
-#endif
-
-    return TRUE;  // return TRUE unless you set the focus to a control
-    // EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CUiAVEventsDialog::OnListItemChanged(NMHDR* pNMHDR, LRESULT* pResult)
+void CUiAVEventsDialog::OnListItemChanged()
 {
-    NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
-
-    // if( pNMListView->uNewState & LVIS_SELECTED )
-    {
-        // int selectedItem = pNMListView->iItem;
-        UpdateButtons();
-    }
-
-    *pResult = 0;
+    UpdateButtons();
 }
+
 void CUiAVEventsDialog::UpdateButtons()
 {
-    BOOL bRemove = FALSE, bRename = FALSE, bUp = FALSE, bDown = FALSE;
+    bool bRemove = false, bRename = false, bUp = false, bDown = false;
 
-    UINT nSelected = m_List.GetSelectedCount();
+    int nSelected = m_ui->m_List->selectionModel()->selectedRows().count();
     if (nSelected > 1)
     {
-        bRemove = TRUE;
-        bRename = FALSE;
+        bRemove = true;
+        bRename = false;
     }
     else if (nSelected > 0)
     {
-        bRemove = bRename = TRUE;
+        bRemove = bRename = true;
 
-        POSITION pos = m_List.GetFirstSelectedItemPosition();
-        int index = m_List.GetNextSelectedItem(pos);
-        if (index > 0)
+        const QModelIndex index = m_ui->m_List->selectionModel()->selectedRows().first();
+        if (index.row() > 0)
         {
-            bUp = TRUE;
+            bUp = true;
         }
-        if (index < m_List.GetItemCount() - 1)
+        if (index.row() < m_ui->m_List->model()->rowCount() - 1)
         {
-            bDown = TRUE;
+            bDown = true;
         }
     }
 
-    GetDlgItem(IDC_BUTTON_REMOVEEVENT)->EnableWindow(bRemove);
-    GetDlgItem(IDC_BUTTON_RENAMEEVENT)->EnableWindow(bRename);
-    GetDlgItem(IDC_BUTTON_UPEVENT)->EnableWindow(bUp);
-    GetDlgItem(IDC_BUTTON_DOWNEVENT)->EnableWindow(bDown);
+    m_ui->buttonRemoveEvent->setEnabled(bRemove);
+    m_ui->buttonRenameEvent->setEnabled(bRename);
+    m_ui->buttonUpEvent->setEnabled(bUp);
+    m_ui->buttonDownEvent->setEnabled(bDown);
 }
 
-int CUiAVEventsDialog::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float& timeFirstUsed) const
+const QString& CUiAVEventsDialog::GetLastAddedEvent()
 {
-    CUiAnimViewSequence* pSequence = nullptr;
-    EBUS_EVENT_RESULT(pSequence, UiEditorAnimationBus, GetCurrentSequence);
+    return m_lastAddedEvent;
+}
+
+int UiAVEventsModel::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float& timeFirstUsed) const
+{
+    CUiAnimViewSequence* sequence = CUiAnimViewSequenceManager::GetSequenceManager()->GetCurrentSequence();
 
     int usageCount = 0;
     float firstTime = std::numeric_limits<float>::max();
 
-    CUiAnimViewAnimNodeBundle nodeBundle = pSequence->GetAnimNodesByType(eUiAnimNodeType_Event);
+    CUiAnimViewAnimNodeBundle nodeBundle = sequence->GetAnimNodesByType(eUiAnimNodeType_Event);
     const unsigned int numNodes = nodeBundle.GetCount();
 
     for (unsigned int currentNode = 0; currentNode < numNodes; ++currentNode)
@@ -303,7 +364,7 @@ int CUiAVEventsDialog::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, f
                 IEventKey key;
                 keyHandle.GetKey(&key);
 
-                if (strcmp(key.event, eventName) == 0) // If it has a key with the specified event set
+                if (strcmp(key.event.c_str(), eventName) == 0) // If it has a key with the specified event set
                 {
                     ++usageCount;
                     if (key.time < firstTime)
@@ -321,3 +382,6 @@ int CUiAVEventsDialog::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, f
     }
     return usageCount;
 }
+
+#include <Animation/UiAVEventsDialog.moc>
+

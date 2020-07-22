@@ -15,7 +15,7 @@
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
 #include <Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Components/EditorGraph.h>
@@ -55,7 +55,8 @@ namespace ScriptCanvasEditor
         auto assetData = aznew ScriptCanvasAsset(id);
 
         AZ::Entity* scriptCanvasEntity = aznew AZ::Entity("Script Canvas Graph");
-        SystemRequestBus::Broadcast(&SystemRequests::CreateEditorComponentsOnEntity, scriptCanvasEntity);
+        SystemRequestBus::Broadcast(&SystemRequests::CreateEditorComponentsOnEntity, scriptCanvasEntity, azrtti_typeid<ScriptCanvas::RuntimeAsset>());
+
         assetData->SetScriptCanvasEntity(scriptCanvasEntity);
 
         return assetData;
@@ -124,10 +125,10 @@ namespace ScriptCanvasEditor
             AZStd::vector<char> byteBuffer;
             AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
             AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&byteStream, *m_serializeContext, streamType);
-            bool sliceSaved = objStream->WriteClass(&assetData->GetScriptCanvasData());
+            bool scriptCanvasAssetSaved = objStream->WriteClass(&assetData->GetScriptCanvasData());
             objStream->Finalize();
-            sliceSaved = stream->Write(byteBuffer.size(), byteBuffer.data()) == byteBuffer.size() && sliceSaved;
-            return sliceSaved;
+            scriptCanvasAssetSaved = stream->Write(byteBuffer.size(), byteBuffer.data()) == byteBuffer.size() && scriptCanvasAssetSaved;
+            return scriptCanvasAssetSaved;
         }
 
         return false;
@@ -195,17 +196,8 @@ namespace ScriptCanvasEditor
     //=========================================================================.
     void ScriptCanvasAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
     {
-        extensions.push_back(GetFileExtension());
-    }
-
-    const char* ScriptCanvasAssetHandler::GetGroup() const
-    {
-        return "Script";
-    }
-
-    const char* ScriptCanvasAssetHandler::GetBrowserIcon() const
-    {
-        return "Editor/Icons/ScriptCanvas/Viewport/ScriptCanvas.svg";
+        ScriptCanvasAsset::Description description;
+        extensions.push_back(description.GetExtensionImpl());
     }
 
     AZ::Uuid ScriptCanvasAssetHandler::GetComponentTypeId() const

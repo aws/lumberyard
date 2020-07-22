@@ -24,7 +24,7 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(JsonTupleSerializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result JsonTupleSerializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
         namespace JSR = JsonSerializationResult; // Used to remove name conflicts in AzCore in uber builds.
         
@@ -34,7 +34,7 @@ namespace AZ
         switch (inputValue.GetType())
         {
         case rapidjson::kArrayType:
-            return LoadContainer(outputValue, outputValueTypeId, inputValue, path, settings);
+            return LoadContainer(outputValue, outputValueTypeId, inputValue, context);
         
         case rapidjson::kObjectType: // fall through
         case rapidjson::kNullType: // fall through
@@ -42,32 +42,32 @@ namespace AZ
         case rapidjson::kFalseType: // fall through
         case rapidjson::kTrueType: // fall through
         case rapidjson::kNumberType:
-            return JSR::Result(settings, "Unsupported type. AZStd::pair or AZStd::tuple can only be read from an array.",
-                JSR::Tasks::ReadField, JSR::Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Unsupported type. AZStd::pair or AZStd::tuple can only be read from an array.");
 
         default:
-            return JSR::Result(settings, "Unknown json type encountered for AZStd::pair or AZStd::tuple.", 
-                JSR::Tasks::ReadField, JSR::Outcomes::Unknown, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unknown,
+                "Unknown json type encountered for AZStd::pair or AZStd::tuple.");
         }
     }
 
-    JsonSerializationResult::Result JsonTupleSerializer::Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-        const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, StackedString& path,  const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonTupleSerializer::Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+        const Uuid& valueTypeId, JsonSerializerContext& context)
     {
         namespace JSR = JsonSerializationResult; // Used to remove name conflicts in AzCore in uber builds.
 
-        const SerializeContext::ClassData* containerClass = settings.m_serializeContext->FindClassData(valueTypeId);
+        const SerializeContext::ClassData* containerClass = context.GetSerializeContext()->FindClassData(valueTypeId);
         if (!containerClass)
         {
-            return JSR::Result(settings, "Unable to retrieve information for definition of the AZStd::pair or AZStd::tuple instance.",
-                JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported,
+                "Unable to retrieve information for definition of the AZStd::pair or AZStd::tuple instance.");
         }
 
         SerializeContext::IDataContainer* container = containerClass->m_container;
         if (!container)
         {
-            return JSR::Result(settings, "Unable to retrieve information for container representation of the AZStd::pair or AZStd::tuple instance.",
-                JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported,
+                "Unable to retrieve information for container representation of the AZStd::pair or AZStd::tuple instance.");
         }
 
         size_t typeCount = 0;
@@ -97,52 +97,52 @@ namespace AZ
             const void* defaultElementAddress =
                 defaultValue ? container->GetElementByIndex(const_cast<void*>(defaultValue), nullptr, i) : nullptr;
 
-            ScopedStackedString subPath(path, i);
+            ScopedContextPath subPath(context, i);
 
             Flags flags = classElements[i]->m_flags & SerializeContext::ClassElement::Flags::FLG_POINTER ?
                 Flags::ResolvePointer : Flags::None;
 
-            JSR::ResultCode result = ContinueStoring(elementValues[i], allocator, elementAddress, defaultElementAddress,
-                classElements[i]->m_typeId, subPath, settings, flags);
+            JSR::ResultCode result = ContinueStoring(elementValues[i], elementAddress, defaultElementAddress,
+                classElements[i]->m_typeId, context, flags);
             if (result.GetProcessing() == JSR::Processing::Halted)
             {
-                return JSR::Result(settings, "Failed to store data for AZStd::pair or AZStd::tuple element.", result, path);
+                return context.Report(result, "Failed to store data for AZStd::pair or AZStd::tuple element.");
             }
             retVal.Combine(result);
         }
 
-        if (settings.m_keepDefaults || retVal.GetOutcome() != JSR::Outcomes::DefaultsUsed)
+        if (context.ShouldKeepDefaults() || retVal.GetOutcome() != JSR::Outcomes::DefaultsUsed)
         {
             outputValue.SetArray();
             for (size_t i = 0; i < typeCount; ++i)
             {
-                outputValue.PushBack(AZStd::move(elementValues[i]), allocator);
+                outputValue.PushBack(AZStd::move(elementValues[i]), context.GetJsonAllocator());
             }
-            return JSR::Result(settings, "AZStd::pair or AZStd::tuple written.", retVal, path);
+            return context.Report(retVal, "AZStd::pair or AZStd::tuple written.");
         }
         else
         {
-            return JSR::Result(settings, "AZStd::pair or AZStd::tuple not written because only defaults were found.", retVal, path);
+            return context.Report(retVal, "AZStd::pair or AZStd::tuple not written because only defaults were found.");
         }
     }
 
-    JsonSerializationResult::Result JsonTupleSerializer::LoadContainer(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-        StackedString& path, const JsonDeserializerSettings& settings)
+    JsonSerializationResult::Result JsonTupleSerializer::LoadContainer(void* outputValue, const Uuid& outputValueTypeId,
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
         namespace JSR = JsonSerializationResult; // Used to remove name conflicts in AzCore in uber builds.
 
-        const SerializeContext::ClassData* containerClass = settings.m_serializeContext->FindClassData(outputValueTypeId);
+        const SerializeContext::ClassData* containerClass = context.GetSerializeContext()->FindClassData(outputValueTypeId);
         if (!containerClass)
         {
-            return JSR::Result(settings, "Unable to retrieve information for definition of the AZStd::pair instance.",
-                JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported,
+                "Unable to retrieve information for definition of the AZStd::pair instance.");
         }
 
         SerializeContext::IDataContainer* container = containerClass->m_container;
         if (!container)
         {
-            return JSR::Result(settings, "Unable to retrieve information for container representation of the AZStd::pair instance.",
-                JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::RetrieveInfo, JSR::Outcomes::Unsupported,
+                "Unable to retrieve information for container representation of the AZStd::pair instance.");
         }
 
         size_t typeCount = 0;
@@ -156,8 +156,8 @@ namespace AZ
         rapidjson::SizeType arraySize = inputValue.Size();
         if (arraySize < typeCount)
         {
-            return JSR::Result(settings, "Not enough entries in array to load an AZStd::pair or AZStd::tuple from.",
-                JSR::Tasks::ReadField, JSR::Outcomes::Unsupported, path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                "Not enough entries in array to load an AZStd::pair or AZStd::tuple from.");
         }
 
         AZStd::vector<const SerializeContext::ClassElement*> classElements;
@@ -174,7 +174,7 @@ namespace AZ
         size_t numElementsWritten = 0;
         for (size_t i = 0; i < typeCount; ++i)
         {
-            ScopedStackedString subPath(path, i);
+            ScopedContextPath subPath(context, i);
             
             void* elementAddress = container->GetElementByIndex(outputValue, nullptr, i);
             AZ_Assert(elementAddress, "Address of AZStd::pair or AZStd::tuple element %zu could not be retrieved.", i);
@@ -184,12 +184,12 @@ namespace AZ
 
             while (arrayIndex < inputValue.Size())
             {
-                JSR::ResultCode result = ContinueLoading(elementAddress, classElements[i]->m_typeId, inputValue[arrayIndex], subPath, settings, flags);
+                JSR::ResultCode result = ContinueLoading(elementAddress, classElements[i]->m_typeId, inputValue[arrayIndex], context, flags);
                 retVal.Combine(result);
                 arrayIndex++;
                 if (result.GetProcessing() == JSR::Processing::Halted)
                 {
-                    return JSR::Result(settings, "Failed to read element for AZStd::pair or AZStd::tuple.", retVal, subPath);
+                    return context.Report(retVal, "Failed to read element for AZStd::pair or AZStd::tuple.");
                 }
                 else if (result.GetProcessing() != JSR::Processing::Altered)
                 {
@@ -204,11 +204,11 @@ namespace AZ
             AZStd::string_view message = numElementsWritten == 0 ?
                 "Unable to read data for AZStd::pair or AZStd::tuple." :
                 "Partially read data for AZStd::pair or AZStd::tuple.";
-            return JSR::Result(settings, message, retVal, path);
+            return context.Report(retVal, message);
         }
         else
         {
-            return JSR::Result(settings, "Successfully read AZStd::pair or AZStd::tuple.", retVal, path);
+            return context.Report(retVal, "Successfully read AZStd::pair or AZStd::tuple.");
         }
     }
 } // namespace AZ

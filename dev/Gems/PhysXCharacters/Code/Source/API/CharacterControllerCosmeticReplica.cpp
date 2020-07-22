@@ -345,9 +345,10 @@ namespace PhysXCharacters
         return m_rigidBody ? m_rigidBody->GetAabb() : AZ::Aabb::CreateNull();
     }
 
-    void CharacterControllerCosmeticReplica::RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const
+    Physics::RayCastHit CharacterControllerCosmeticReplica::RayCast(const Physics::RayCastRequest& request)
     {
         AZ_WarningOnce("PhysX Character Controller Cosmetic Replica", false, "RayCast - not yet supported.");
+        return Physics::RayCastHit();
     }
 
     AZ::Crc32 CharacterControllerCosmeticReplica::GetNativeType() const

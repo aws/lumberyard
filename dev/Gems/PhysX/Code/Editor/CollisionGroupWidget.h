@@ -16,6 +16,7 @@
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzFramework/Physics/Collision.h>
 #include <Editor/ComboBoxEditButtonPair.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEnumComboBoxCtrl.hxx>
 
 namespace PhysX
 {
@@ -47,5 +48,13 @@ namespace PhysX
             AZStd::vector<AZStd::string> GetGroupNames();
             void OnEditButtonClicked();
         };
+
+        class CollisionGroupEnumPropertyComboBoxHandler
+            : public AzToolsFramework::GenericEnumPropertyComboBoxHandler<Physics::CollisionGroup>
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(CollisionGroupEnumPropertyComboBoxHandler, AZ::SystemAllocator, 0);
+        };
+
     } // namespace Editor
 } // namespace PhysX

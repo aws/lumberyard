@@ -22,20 +22,9 @@ AzQtComponents--FilteredSearchWidget QPushButton
     border: none;
 }
 
-AzQtComponents--FilteredSearchWidget QPushButton#assetTypeSelector
+AzQtComponents--FilteredSearchWidget #assetTypeSelector
 {
-    min-height: 16px;
-    max-height: 16px;
-
-    qproperty-icon: url(:/stylesheet/img/filter.svg);
-
-    padding-right: 10px; /* To accomodate the ::menu-indicator */
-}
-
-AzQtComponents--FilteredSearchWidget QPushButton#assetTypeSelector::menu-indicator {
-    image: url(:/stylesheet/img/indicator-arrow-down.svg);
-    subcontrol-position: right center;
-    subcontrol-origin: padding;
+    qproperty-icon: url(:/stylesheet/img/UI20/filter.svg);
 }
 
 AzQtComponents--FilterCriteriaButton
@@ -44,80 +33,52 @@ AzQtComponents--FilterCriteriaButton
     border-radius: 2px;
     border: 1px solid #808080;
     background-color: rgb(46, 46, 46);
+    /* 22 + 2 * 1 = 24 */
+    min-height: 22px;
+    max-height: 22px;
 }
 
 AzQtComponents--FilterCriteriaButton QPushButton#closeTag
 {
     qproperty-icon: url(:/stylesheet/img/close.svg);
     qproperty-iconSize: 16px 16px;
+    qproperty-flat: true;
     background-color: transparent;
-    padding-right: 0px;
-    padding-Left: 2px;
-    max-height: 24px;
-}
-
-AzQtComponents--FilterCriteriaButton QPushButton#unlocked
-{
-    qproperty-icon: url(:/stylesheet/img/close.svg);
-    qproperty-iconSize: 16px 16px;
-    background-color: transparent;
-    padding-right: 0px;
-    padding-Left: 4px;
-    max-height: 24px;
-}
-
-AzQtComponents--FilterCriteriaButton QPushButton#locked
-{
-    qproperty-icon: url(:/stylesheet/img/close.svg);
-    qproperty-iconSize: 16px 16px;
-    background-color: transparent;
-    padding-right: 0px;
-    padding-Left: 4px;
-    max-height: 24px;
-}
-
-AzQtComponents--FilterCriteriaButton QPushButton#visible
-{
-    qproperty-icon: url(:/stylesheet/img/close.svg);
-    qproperty-iconSize: 16px 16px;
-    background-color: transparent;
-    padding-right: 0px;
-    padding-Left: 4px;
-    max-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    max-height: 16px;
+    max-width: 16px;
+    min-width: 16px;
 }
 
 AzQtComponents--FilterCriteriaButton QLabel
 {
-    padding-left: 8px;
-    padding-right: 2px;
     background-color: transparent;
+    padding: 0px;
+    margin: 0px;
+}
+
+AzQtComponents--FilterCriteriaButton #tagIcon
+{
+    margin-right: 4px;
+}
+
+AzQtComponents--FilterCriteriaButton #tagText
+{
+    margin-left: 4px;
+    margin-right: 4px;
 }
 
 AzQtComponents--SearchTypeSelector QTreeView
 {
-    selection-background-color: rgb(101, 101, 101);
-    selection-color: #ffffff;
-
     border: none;
     outline-style: none;
 
     show-decoration-selected: 1;
+    background-color: transparent;
 }
 
 AzQtComponents--SearchTypeSelector QTreeView::item
 {
     height: 24px;
 }
-
-AzQtComponents--SearchTypeSelector QTreeView::branch:hover,
-AzQtComponents--SearchTypeSelector QTreeView::item:hover
-{
-    background: rgb(90, 90, 90);
-}
-
-
-
-
-
-
-

@@ -332,12 +332,10 @@ namespace EMotionFX
         // Update unique datas for all anim graph instances that use the given motion set.
         for (EMotionFX::AnimGraphInstance* animGraphInstance : mAnimGraphInstances)
         {
-            if (animGraphInstance->GetMotionSet() != motionSet)
+            if (animGraphInstance->GetMotionSet() == motionSet)
             {
-                continue;
+                animGraphInstance->RecursiveInvalidateUniqueDatas();
             }
-
-            animGraphInstance->UpdateUniqueData();
         }
     }
 } // namespace EMotionFX

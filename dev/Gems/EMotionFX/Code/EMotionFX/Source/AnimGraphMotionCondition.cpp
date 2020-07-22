@@ -27,7 +27,6 @@
 #include <EMotionFX/Source/MotionEvent.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
 
-
 namespace EMotionFX
 {
     const char* AnimGraphMotionCondition::s_functionMotionEvent = "Motion Event";
@@ -142,14 +141,7 @@ namespace EMotionFX
             return true;
         }
 
-        // Add the unique data for the condition to the anim graph.
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(const_cast<AnimGraphMotionCondition*>(this), animGraphInstance, nullptr);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         MotionInstance* motionInstance = m_motionNode->FindMotionInstance(animGraphInstance);
         if (!motionInstance)
         {
@@ -205,7 +197,7 @@ namespace EMotionFX
             {
                 // Get the play time and the animation length.
                 const float currentTime = m_motionNode->GetCurrentPlayTime(animGraphInstance);
-                const float maxTime     = motionInstance->GetMaxTime();
+                const float maxTime     = motionInstance->GetDuration();
 
                 // Differentiate between the play modes.
                 const EPlayMode playMode = motionInstance->GetPlayMode();
@@ -230,7 +222,7 @@ namespace EMotionFX
         // Less than a given amount of play time left.
         case FUNCTION_PLAYTIMELEFT:
         {
-            const float timeLeft = motionInstance->GetMaxTime() - m_motionNode->GetCurrentPlayTime(animGraphInstance);
+            const float timeLeft = motionInstance->GetDuration() - m_motionNode->GetCurrentPlayTime(animGraphInstance);
             return timeLeft <= m_playTime || AZ::IsClose(timeLeft, m_playTime, 0.0001f);
         }
         break;
@@ -258,18 +250,6 @@ namespace EMotionFX
         // No event got triggered, continue playing the state and don't autostart the transition.
         return false;
     }
-
-    void AnimGraphMotionCondition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // Add the unique data for the condition to the anim graph.
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance, nullptr);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-    }
-
 
     void AnimGraphMotionCondition::SetTestFunction(TestFunction testFunction)
     {

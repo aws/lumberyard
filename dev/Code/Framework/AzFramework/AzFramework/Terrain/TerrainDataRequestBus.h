@@ -15,6 +15,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Aabb.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace AzFramework
 {
@@ -22,8 +23,13 @@ namespace AzFramework
     {
         struct SurfaceTagWeight
         {
+            AZ_TYPE_INFO(SurfaceTagWeight, "{EA14018E-E853-4BF5-8E13-D83BB99A54CC}");
+
             AZ::Crc32 m_surfaceType;
             float m_weight; //! A Value in the range [0.0f .. 1.0f]
+
+            //! Don't call this directly. TerrainDataRequests::Reflect is doing it already.
+            static void Reflect(AZ::ReflectContext* context);
         };
     } //namespace SurfaceData
 
@@ -35,6 +41,8 @@ namespace AzFramework
             : public AZ::EBusTraits
         {
         public:
+            static void Reflect(AZ::ReflectContext* context);
+
             //////////////////////////////////////////////////////////////////////////
             // EBusTraits overrides
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
@@ -69,6 +77,11 @@ namespace AzFramework
             //!                  otherwise *terrainExistsPtr will be set to true.
             virtual SurfaceData::SurfaceTagWeight GetMaxSurfaceWeight(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const = 0;
             virtual SurfaceData::SurfaceTagWeight GetMaxSurfaceWeightFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const = 0;
+
+            //! Convenience function for  low level systems that can't do a reverse lookup from Crc to string. Everyone else should use GetMaxSurfaceWeight or GetMaxSurfaceWeightFromFloats.
+            //! Not available in the behavior context.
+            //! Returns nullptr if the position is inside a hole or outside of the terrain boundaries.
+            virtual const char * GetMaxSurfaceName(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const = 0;
 
             //! Returns true if there's a hole at location x,y.
             //! Also returns true if there's no terrain data at location x,y.

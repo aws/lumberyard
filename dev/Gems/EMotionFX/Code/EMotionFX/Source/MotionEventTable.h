@@ -68,7 +68,7 @@ namespace EMotionFX
          * @param motionInstance The motion instance which triggers the event.
          * @note The end time is also allowed to be smaller than the start time.
          */
-        void ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const;
+        void ProcessEvents(float startTime, float endTime, const MotionInstance* motionInstance) const;
 
         /**
          * Extract all events within a given time range, and output them to an event buffer.
@@ -78,7 +78,7 @@ namespace EMotionFX
          * @param outEventBuffer The output event buffer.
          * @note The end time is also allowed to be smaller than the start time.
          */
-        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const;
+        void ExtractEvents(float startTime, float endTime, const MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const;
 
         /**
          * Remove all motion event tracks.

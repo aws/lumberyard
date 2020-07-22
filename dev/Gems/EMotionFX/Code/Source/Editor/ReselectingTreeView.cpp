@@ -20,4 +20,14 @@ namespace EMotionFX
         emit selectionModel()->selectionChanged({}, {});
         QTreeView::focusInEvent(event);
     }
+
+    void ReselectingTreeView::RecursiveGetAllChildren(const QModelIndex& index, QModelIndexList& outIndicies)
+    {
+        outIndicies.push_back(index);
+        for (int i = 0; i < model()->rowCount(index); ++i)
+        {
+            RecursiveGetAllChildren(index.child(i, 0), outIndicies);
+        }
+    }
+
 } // namespace EMotionFX

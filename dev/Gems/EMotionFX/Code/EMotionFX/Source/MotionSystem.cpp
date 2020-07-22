@@ -125,91 +125,6 @@ namespace EMotionFX
     }
 
 
-    // play a group of motions
-    MotionInstance* MotionSystem::PlayMotionGroup(Motion** motionList, PlayBackInfo** playInfoList, uint32 numMotions, PlayBackInfo* mainPlayInfo)
-    {
-        MCORE_ASSERT(numMotions > 0);
-        if (numMotions == 0)
-        {
-            return nullptr;
-        }
-
-        PlayBackInfo tempInfo;
-        if (mainPlayInfo == nullptr)
-        {
-            mainPlayInfo = &tempInfo;
-        }
-
-        // trigger the OnPlayMotion event
-        //GetEventManager().GetEventHandler()->OnPlayMotion( motion, info );    // TODO: make some OnPlayMotionGroup ?
-
-        // make sure we always mix when using additive blending
-        if (mainPlayInfo->mBlendMode == BLENDMODE_ADDITIVE && mainPlayInfo->mMix == false)
-        {
-            MCORE_ASSERT(false); // this shouldn't happen actually, please make sure you always mix additive motions
-            mainPlayInfo->mMix = true;
-        }
-
-        // create the motion instance and add the motion info the this actor
-        MotionInstance* motionInst = CreateMotionInstance(nullptr, mainPlayInfo);
-
-        // add the motions to the group
-        for (uint32 i = 0; i < numMotions; ++i)
-        {
-            MCORE_ASSERT(motionList[i]); // motion cannot be nullptr
-            motionInst->GetMotionGroup()->AddMotion(motionList[i], playInfoList[i]);
-        }
-
-        // if we want to play it immediately (so if we do NOT want to schedule it for later on)
-        if (mainPlayInfo->mPlayNow)
-        {
-            // start the motion for real
-            StartMotion(motionInst, mainPlayInfo);
-        }
-        else
-        {
-            // schedule the motion, by adding it to the back of the motion queue
-            mMotionQueue->AddEntry(MotionQueue::QueueEntry(motionInst, mainPlayInfo));
-            motionInst->Pause();
-            motionInst->SetIsActive(false);
-            GetEventManager().OnQueueMotionInstance(motionInst, mainPlayInfo);
-        }
-
-        // return the pointer to the motion info
-        return motionInst;
-    }
-
-
-    // play a group of 2 motions
-    MotionInstance* MotionSystem::PlayMotionGroup(Motion* motionA, Motion* motionB, PlayBackInfo* playInfoA, PlayBackInfo* playInfoB, PlayBackInfo* mainPlayInfo)
-    {
-        // create the motion and playinfo list and play
-        Motion*         motionList[2]   = { motionA, motionB };
-        PlayBackInfo*   playInfoList[2] = { playInfoA, playInfoB };
-        return PlayMotionGroup(motionList, playInfoList, 2, mainPlayInfo);
-    }
-
-
-    // play a group of 3 motions
-    MotionInstance* MotionSystem::PlayMotionGroup(Motion* motionA, Motion* motionB, Motion* motionC, PlayBackInfo* playInfoA, PlayBackInfo* playInfoB, PlayBackInfo* playInfoC, PlayBackInfo* mainPlayInfo)
-    {
-        // create the motion and playinfo list and play
-        Motion*         motionList[3]   = { motionA, motionB, motionC };
-        PlayBackInfo*   playInfoList[3] = { playInfoA, playInfoB, playInfoC };
-        return PlayMotionGroup(motionList, playInfoList, 3, mainPlayInfo);
-    }
-
-
-    // play a group of 4 motions
-    MotionInstance* MotionSystem::PlayMotionGroup(Motion* motionA, Motion* motionB, Motion* motionC, Motion* motionD, PlayBackInfo* playInfoA, PlayBackInfo* playInfoB, PlayBackInfo* playInfoC, PlayBackInfo* playInfoD, PlayBackInfo* mainPlayInfo)
-    {
-        // create the motion and playinfo list and play
-        Motion*         motionList[4]   = { motionA, motionB, motionC, motionD };
-        PlayBackInfo*   playInfoList[4] = { playInfoA, playInfoB, playInfoC, playInfoD };
-        return PlayMotionGroup(motionList, playInfoList, 4, mainPlayInfo);
-    }
-
-
     // create the motion instance and add the motion info the this actor
     MotionInstance* MotionSystem::CreateMotionInstance(Motion* motion, PlayBackInfo* info)
     {
@@ -351,10 +266,9 @@ namespace EMotionFX
 
 
     // check if there is a motion instance playing, which is an instance of a specified motion
-    bool MotionSystem::CheckIfIsPlayingMotion(Motion* motion) const
+    bool MotionSystem::CheckIfIsPlayingMotion(Motion* motion, bool ignorePausedMotions) const
     {
-        // if the motion is nullptr, return false
-        if (motion == nullptr)
+        if (!motion)
         {
             return false;
         }
@@ -363,8 +277,15 @@ namespace EMotionFX
         const uint32 numInstances = mMotionInstances.GetLength();
         for (uint32 i = 0; i < numInstances; ++i)
         {
+            const MotionInstance* motionInstance = mMotionInstances[i];
+
+            if (ignorePausedMotions && motionInstance->GetIsPaused())
+            {
+                continue;
+            }
+
             // check if the motion instance is an instance of the motion we are searching for
-            if (mMotionInstances[i]->GetMotion()->GetID() == motion->GetID())
+            if (motionInstance->GetMotion()->GetID() == motion->GetID())
             {
                 return true;
             }

@@ -45,10 +45,10 @@ LegacyPreviewer::LegacyPreviewer(QWidget* parent)
     m_ui->m_previewCtrl->SetAspectRatio(4.0f / 3.0f);
     connect(m_ui->m_comboBoxRGB, static_cast<void(QComboBox::*)(int)>(&QComboBox::activated), this,
         [=](int index)
-        {
-            m_textureType = static_cast<TextureType>(index);
-            UpdateTextureType();
-        });
+    {
+        m_textureType = static_cast<TextureType>(index);
+        UpdateTextureType();
+    });
     Clear();
 }
 
@@ -76,17 +76,17 @@ void LegacyPreviewer::Display(const AzToolsFramework::AssetBrowser::AssetBrowser
 
     switch (entry->GetEntryType())
     {
-    case AssetBrowserEntry::AssetEntryType::Source:
-    {
-        const SourceAssetBrowserEntry* sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
-        DisplaySource(sourceEntry);
-        break;
-    }
-    case AssetBrowserEntry::AssetEntryType::Product:
-        DisplayProduct(static_cast<const ProductAssetBrowserEntry*>(entry));
-        break;
-    default:
-        Clear();
+        case AssetBrowserEntry::AssetEntryType::Source:
+        {
+            const SourceAssetBrowserEntry* sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
+            DisplaySource(sourceEntry);
+            break;
+        }
+        case AssetBrowserEntry::AssetEntryType::Product:
+            DisplayProduct(static_cast<const ProductAssetBrowserEntry*>(entry));
+            break;
+        default:
+            Clear();
     }
 }
 
@@ -149,7 +149,7 @@ bool LegacyPreviewer::DisplayProduct(const AzToolsFramework::AssetBrowser::Produ
             return foundPixmap ? foundPixmap : DisplayTextureLegacy(productFullPath.c_str());
         }
         else
-        {   
+        {
             // If we cannot find the product file, means it's not treated as an asset, display its source
             return DisplayTextureLegacy(product->GetFullPath().c_str());
         }
@@ -165,7 +165,7 @@ void LegacyPreviewer::DisplaySource(const AzToolsFramework::AssetBrowser::Source
 
     EBusFindAssetTypeByName textureAssetType("Texture");
     AZ::AssetTypeInfoBus::BroadcastResult(textureAssetType, &AZ::AssetTypeInfo::GetAssetType);
-    
+
     if (source->GetPrimaryAssetType() == textureAssetType.GetAssetType())
     {
         m_ui->m_fileInfoCtrl->show();
@@ -266,7 +266,7 @@ bool LegacyPreviewer::DisplayTextureLegacy(const char* fullImagePath)
                 .arg(m_previewImageSource.GetWidth())
                 .arg(m_previewImageSource.GetHeight())
                 .arg(m_previewImageSource.GetFormatDescription());
-            
+
             m_fileinfoAlphaTexture = m_fileinfo;
             UpdateTextureType();
             foundPixmap = true;
@@ -308,10 +308,10 @@ bool LegacyPreviewer::DisplayTextureProductModern(const char* fullProductImagePa
             .arg(m_previewImageSource.GetFormatDescription());
 
         m_fileinfoAlphaTexture = m_fileinfo;
-        
+
         m_fileinfo += QString(productInfo.c_str());
         if (productAlphaInfo.empty())
-        {   
+        {
             // If there is no separate info for alpha, use the image info
             m_fileinfoAlphaTexture += QString(productInfo.c_str());
         }
@@ -319,7 +319,7 @@ bool LegacyPreviewer::DisplayTextureProductModern(const char* fullProductImagePa
         {
             m_fileinfoAlphaTexture += QString(productAlphaInfo.c_str());
         }
-        
+
 
         UpdateTextureType();
     }
@@ -339,33 +339,33 @@ void LegacyPreviewer::UpdateTextureType()
 
     switch (m_textureType)
     {
-    case TextureType::RGB:
-    {
-        m_previewImageUpdated.SwapRedAndBlue();
-        m_previewImageUpdated.FillAlpha();
-        break;
-    }
-    case TextureType::RGBA:
-    {
-        m_previewImageUpdated.SwapRedAndBlue();
-        break;
-    }
-    case TextureType::Alpha:
-    {
-        for (int h = 0; h < m_previewImageUpdated.GetHeight(); h++)
+        case TextureType::RGB:
         {
-            for (int w = 0; w < m_previewImageUpdated.GetWidth(); w++)
-            {
-                int a = m_previewImageUpdated.ValueAt(w, h) >> 24;
-                m_previewImageUpdated.ValueAt(w, h) = RGB(a, a, a) | 0xFF000000;
-            }
+            m_previewImageUpdated.SwapRedAndBlue();
+            m_previewImageUpdated.FillAlpha();
+            break;
         }
-        break;
-    }
+        case TextureType::RGBA:
+        {
+            m_previewImageUpdated.SwapRedAndBlue();
+            break;
+        }
+        case TextureType::Alpha:
+        {
+            for (int h = 0; h < m_previewImageUpdated.GetHeight(); h++)
+            {
+                for (int w = 0; w < m_previewImageUpdated.GetWidth(); w++)
+                {
+                    int a = m_previewImageUpdated.ValueAt(w, h) >> 24;
+                    m_previewImageUpdated.ValueAt(w, h) = RGB(a, a, a) | 0xFF000000;
+                }
+            }
+            break;
+        }
     }
     // note that Qt will not deep copy the data, so WE MUST KEEP THE IMAGE DATA AROUND!
     QPixmap qtPixmap = QPixmap::fromImage(
-            QImage(reinterpret_cast<uchar*>(m_previewImageUpdated.GetData()), m_previewImageUpdated.GetWidth(), m_previewImageUpdated.GetHeight(), QImage::Format_ARGB32));
+        QImage(reinterpret_cast<uchar*>(m_previewImageUpdated.GetData()), m_previewImageUpdated.GetWidth(), m_previewImageUpdated.GetHeight(), QImage::Format_ARGB32));
     m_ui->m_previewImageCtrl->setPixmap(qtPixmap);
     m_ui->m_fileInfoCtrl->setText(WordWrap(m_textureType == TextureType::Alpha? m_fileinfoAlphaTexture: m_fileinfo, m_ui->m_fileInfoCtrl->width() / s_CharWidth));
     m_ui->m_previewImageCtrl->updateGeometry();

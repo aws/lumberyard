@@ -1,0 +1,15 @@
+<Material MtlFlags="524544" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PickupsProjectorMAT" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800000080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.63075727,0.63075727,0.63075727,1" Specular="0.11443538,0.11443538,0.11443538,1" Emittance="0.090841718,1,1,148" Opacity="1" Shininess="120.00001" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/pickups/pickups_projector_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/pickups/pickups_projector_ddna.dds"/>
+    <Texture Map="Emittance" File="objects/pickups/pickups_projector_emis.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Collision" MtlFlags="558208" DccMaterialHash="0" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="1,0,0,1" Specular="0,0,0,0.0078740167" Opacity="1" Shininess="2.0078743" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+</Material>

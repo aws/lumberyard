@@ -66,7 +66,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         const char* MotionAssetHandler::GetBrowserIcon() const
         {
-            return "Editor/Images/AssetBrowser/Motion_16.png";
+            return "Editor/Images/AssetBrowser/Motion_16.svg";
         }
 
     } // namespace Integration

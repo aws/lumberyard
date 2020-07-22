@@ -81,6 +81,21 @@ private:
     QBasicTimer m_expandTimer;
     
     const int m_branchLineWidth = 1;
+
+    QColor GetHierarchyLineColor(bool isSliceEntity, bool isSelected) const;
+
+    struct OutlinerTreeViewColorConfig
+    {
+        QColor hierarchyLinesSlices = "#7B7B7B";
+        QColor hierarchyLinesSlicesSelected = "#7B7B7B";
+        QColor hierarchyLinesNonSliceEntities = "transparent";
+        QColor hierarchyLinesNonSliceEntitiesSelected = "transparent";
+
+        QColor layerChildBGSelectionColor = "#464747";
+        QColor layerChildBackgroundColor = "#333333";
+    };
+
+    OutlinerTreeViewColorConfig m_colorConfig;
 };
 
 #endif

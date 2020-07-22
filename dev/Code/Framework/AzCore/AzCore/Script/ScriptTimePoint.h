@@ -40,7 +40,7 @@ namespace AZ
 
         AZStd::string ToString() const
         {
-            return AZStd::string::format("Time %llu", m_timePoint.time_since_epoch());
+            return AZStd::string::format("Time %llu", m_timePoint.time_since_epoch().count());
         }
 
         const AZStd::chrono::system_clock::time_point& Get() { return m_timePoint; }

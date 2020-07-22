@@ -259,15 +259,7 @@ namespace GraphCanvas
 
     void NodePaletteSortFilterProxyModel::SetFilter(const QString& filter)
     {
-        if (filter.size() == 1)
-        {
-            m_filter = QRegExp::escape(filter);
-        }
-        else
-        {
-            m_filter = filter;
-        }
-
+        m_filter = QRegExp::escape(filter);
         m_filterRegex = QRegExp(m_filter, Qt::CaseInsensitive);
     }
 

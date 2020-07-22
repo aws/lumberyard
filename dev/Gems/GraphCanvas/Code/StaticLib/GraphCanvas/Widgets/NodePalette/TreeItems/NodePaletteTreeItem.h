@@ -66,6 +66,9 @@ namespace GraphCanvas
         void SetSelected(bool selected);
         bool IsSelected() const;
 
+        void SetEnabled(bool enabled);
+        bool IsEnabled() const;
+
         void SetHighlight(const AZStd::pair<int, int>& highlight);
         bool HasHighlight() const;
 
@@ -73,6 +76,7 @@ namespace GraphCanvas
         void ClearHighlight();
 
         void SignalClicked(int row);
+        bool SignalDoubleClicked(int row);
 
     protected:
 
@@ -92,8 +96,10 @@ namespace GraphCanvas
 
         virtual void OnHoverStateChanged();
         virtual void OnSelectionStateChanged();
+        virtual void OnEnabledStateChanged();
 
         virtual void OnClicked(int row);
+        virtual bool OnDoubleClicked(int row);
         ////
 
     private:
@@ -104,10 +110,11 @@ namespace GraphCanvas
         EditorId m_editorId;
 
         QString m_name;
-        QString m_toolTip;        
+        QString m_toolTip;
 
         bool m_selected;
         bool m_hovered;
+        bool m_enabled;
 
         AZStd::pair<int, int> m_highlight;
 

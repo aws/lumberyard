@@ -16,7 +16,6 @@
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <MysticQt/Source/IntSpinbox.h>
 #include <QDialog>
 #include <QLineEdit>
 #include <QPushButton>
@@ -31,6 +30,7 @@ QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 namespace AzQtComponents
 {
     class FilteredSearchWidget;
+    class SpinBox;
 }
 
 namespace EMStudio
@@ -69,7 +69,7 @@ namespace EMStudio
 
     private:
         QTreeWidget*                                mHierarchy;
-        MysticQt::IntSpinBox*                       mLODSpinBox;
+        AzQtComponents::SpinBox*                    mLODSpinBox;
         AzQtComponents::FilteredSearchWidget*       m_searchWidget;
         AZStd::string                               m_searchWidgetText;
         QIcon*                                      mMeshIcon;

@@ -125,6 +125,9 @@ AZ_POP_DISABLE_WARNING
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include <Editor/AssetDatabase/AssetDatabaseLocationListener.h>
 #include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
 #include <Editor/Thumbnails/TextureThumbnailRenderer.h>
@@ -158,7 +161,6 @@ AZ_POP_DISABLE_WARNING
 
 static CCryEditDoc * theDocument;
 #include <QMimeData>
-#include <QColorDialog>
 #include <QMessageBox>
 #include <QProcess>
 
@@ -356,6 +358,7 @@ void CEditorImpl::Initialize()
     // Must be set before QApplication is initialized, so that we support HighDpi monitors, like the Retina displays
     // on Windows 10
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     // Prevents (native) sibling widgets from causing problems with docked QOpenGLWidgets on Windows
     // The problem is due to native widgets ending up with pixel formats that are incompatible with the GL pixel format
@@ -731,6 +734,11 @@ IEditorClassFactory* CEditorImpl::GetClassFactory()
 CCryEditDoc* CEditorImpl::GetDocument() const
 {
     return theDocument;
+}
+
+bool CEditorImpl::IsLevelLoaded() const
+{
+    return GetDocument() && GetDocument()->IsDocumentReady();
 }
 
 void CEditorImpl::SetDocument(CCryEditDoc* pDoc)
@@ -1684,10 +1692,13 @@ CBaseLibraryDialog* CEditorImpl::OpenDataBaseLibrary(EDataBaseItemType type, IDa
 
 bool CEditorImpl::SelectColor(QColor& color, QWidget* parent)
 {
-    QColorDialog dlg(color, parent);
+    const AZ::Color c = AzQtComponents::fromQColor(color);
+    AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, tr("Select Color"), parent);
+    dlg.setCurrentColor(c);
+    dlg.setSelectedColor(c);
     if (dlg.exec() == QDialog::Accepted)
     {
-        color = dlg.currentColor();
+        color = AzQtComponents::toQColor(dlg.currentColor());
         return true;
     }
     return false;

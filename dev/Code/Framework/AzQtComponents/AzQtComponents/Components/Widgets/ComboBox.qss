@@ -17,15 +17,15 @@
 QComboBox
 {
     height: 16px;
-    padding-left: 8px;
-    margin: 2px;
+    padding-left: 4px;
+    margin: 1px;
     font-size: 12px;
     background-color: #CCCCCC;
 }
 
 QComboBox:hover
 {
-    margin: 1px;
+    margin: 0px;
     border-width: 1px;
     border-style: solid;
     border-radius: 3px;
@@ -36,7 +36,7 @@ QComboBox:focus,
 QComboBox[HasPopupOpen=true],
 QComboBox[HasPopupOpen=true][HasPopupOpen=true]
 {
-    margin: 1px;
+    margin: 0px;
     border-width: 1px;
     border-style: solid;
     border-radius: 3px;
@@ -83,7 +83,7 @@ QComboBox::down-arrow:disabled
 QComboBox QAbstractItemView
 {
     background-color: #222222;
-    padding: 4px 0px 4px 0px;
+    padding: 0px;
     outline: none; /* Disable focus rect */
     show-decoration-selected: 1;
 }
@@ -91,8 +91,6 @@ QComboBox QAbstractItemView
 QComboBox QAbstractItemView::item
 {
     color: #FFFFFF;
-    padding-top: 6px;
-    padding-bottom: 6px;
     padding-right: 24px;
     padding-left: 2px; /* There is already 22px from the check mark */
 
@@ -132,4 +130,9 @@ QComboBox QAbstractItemView::indicator
 QComboBox QAbstractItemView::indicator:checked
 {
     image: url(:/stylesheet/img/UI20/checkmark.svg);
+}
+
+QComboBox QAbstractItemView::indicator:indeterminate
+{
+    image: url(:/stylesheet/img/UI20/indeterminate.svg);
 }

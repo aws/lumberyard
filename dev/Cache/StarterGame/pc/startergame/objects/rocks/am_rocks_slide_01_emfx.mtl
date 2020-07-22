@@ -1,0 +1,23 @@
+<Material MtlFlags="557312" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="AM_Rock_Square_01_mat" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,0.64062792" Opacity="1" Shininess="163.36012" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/rocks/am_rock_square_01_diff.dds"/>
+    <Texture Map="Detail" File="objects/rocks/rock03_detail.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="8" TileV="8"/>
+    </Texture>
+    <Texture Map="Bumpmap" File="objects/rocks/am_rock_square_01_ddna.dds"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="AM_Rock_Square_02_mat" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="1" Shininess="151.41006" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/rocks/am_rock_square_02_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/rocks/am_rock_square_02_ddna.dds"/>
+    <Texture Map="Detail" File="objects/rocks/rock03_detail.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="8" TileV="8"/>
+    </Texture>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

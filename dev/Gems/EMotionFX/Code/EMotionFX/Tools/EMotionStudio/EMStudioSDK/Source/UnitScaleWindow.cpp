@@ -51,7 +51,7 @@ namespace EMStudio
 
         scaleLayout->addWidget(new QLabel("Scale Factor:"));
 
-        mScaleSpinBox = new MysticQt::DoubleSpinBox();
+        mScaleSpinBox = new AzQtComponents::DoubleSpinBox();
         mScaleSpinBox->setRange(0.00001, 100000.0f);
         mScaleSpinBox->setSingleStep(0.01);
         mScaleSpinBox->setDecimals(7);

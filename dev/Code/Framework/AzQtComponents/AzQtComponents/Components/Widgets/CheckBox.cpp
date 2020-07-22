@@ -15,6 +15,7 @@
 
 #include <QStyleFactory>
 
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QPainter>
 #include <QStyleOption>
@@ -25,10 +26,29 @@ namespace AzQtComponents
 {
 
 static QString g_toggleSwitchClass = QStringLiteral("ToggleSwitch");
+static QString g_expanderClass = QStringLiteral("Expander");
+static QString g_visibilityModeClass = QStringLiteral("VisibilityMode");
 
 void CheckBox::applyToggleSwitchStyle(QCheckBox* checkBox)
 {
     Style::addClass(checkBox, g_toggleSwitchClass);
+}
+
+void CheckBox::applyExpanderStyle(QCheckBox* checkBox)
+{
+    Style::addClass(checkBox, g_expanderClass);
+}
+
+void CheckBox::setVisibilityMode(QAbstractItemView* view, bool enabled)
+{
+    if (enabled)
+    {
+        Style::addClass(view, g_visibilityModeClass);
+    }
+    else
+    {
+        Style::removeClass(view, g_visibilityModeClass);
+    }
 }
 
 bool CheckBox::polish(Style* style, QWidget* widget, const CheckBox::Config& config)

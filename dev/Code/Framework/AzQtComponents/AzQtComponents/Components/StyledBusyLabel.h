@@ -16,9 +16,10 @@
 #include <QWidget>
 
 class QLabel;
-
+class QSvgWidget;
 namespace AzQtComponents
 {
+    class Style;
     // Widget to display an animated progress GIF
     class AZ_QT_COMPONENTS_API StyledBusyLabel
         : public QWidget
@@ -42,12 +43,20 @@ namespace AzQtComponents
 
         QSize sizeHint() const override;
 
+        void SetUseNewWidget(bool usenew);
     private:
+        friend class Style;
         void updateMovie();
+        void loadDefaultIcon();
+        static bool polish(Style* style, QWidget* widget);
+        static bool unpolish(Style* style, QWidget* widget);
 
-        bool m_isBusy = 0;
+        bool m_isBusy = false;
         int m_busyIconSize = 32;
-        QLabel* m_busyIcon;
+        QString m_fileName;
+        QSvgWidget* m_busyIcon = nullptr;
+        QLabel* m_oldBusyIcon = nullptr;
         QLabel* m_text;
+        bool m_useNewWidget = false;
     };
 } // namespace AzQtComponents

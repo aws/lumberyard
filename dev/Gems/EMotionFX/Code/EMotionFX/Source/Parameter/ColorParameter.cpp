@@ -54,10 +54,9 @@ namespace EMotionFX
         ;
     }
 
-    const AZStd::string& ColorParameter::GetTypeDisplayName() const
+    const char* ColorParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Color";
-        return typeDisplayName;
+        return "Color";
     }
 
     MCore::Attribute* ColorParameter::ConstructDefaultValueAsAttribute() const

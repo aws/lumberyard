@@ -139,7 +139,7 @@ namespace EMotionFX
         // if the decision port has no incomming connection, there is nothing we can do
         if (mInputPorts[INPUTPORT_DECISIONVALUE].mConnection == nullptr)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             uniqueData->Clear();
             return;
         }
@@ -153,7 +153,7 @@ namespace EMotionFX
         // check if there is an incoming connection from this port
         if (mInputPorts[INPUTPORT_POSE_0 + decisionValue].mConnection == nullptr)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             uniqueData->Clear();
             return;
         }
@@ -163,7 +163,7 @@ namespace EMotionFX
 
         // if our decision value changed since last time, specify that we want to resync
         // this basically means that the motion extraction delta will be zero for one frame
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         if (uniqueData->mDecisionIndex != decisionValue)
         {
             uniqueData->mDecisionIndex = decisionValue;
@@ -183,7 +183,7 @@ namespace EMotionFX
         if (mInputPorts[INPUTPORT_DECISIONVALUE].mConnection == nullptr)
         {
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -200,7 +200,7 @@ namespace EMotionFX
         if (mInputPorts[INPUTPORT_POSE_0 + decisionValue].mConnection == nullptr)
         {
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -213,9 +213,9 @@ namespace EMotionFX
 
         // output the events of the source node we picked
         RequestRefDatas(animGraphInstance);
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
-        AnimGraphRefCountedData* sourceData = sourceNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* sourceData = sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
         data->SetEventBuffer(sourceData->GetEventBuffer());
         data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
         data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
@@ -242,7 +242,7 @@ namespace EMotionFX
         }
 
         // sync all the incoming connections
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         HierarchicalSyncAllInputNodes(animGraphInstance, uniqueData);
 
         // top down update all incoming connections
@@ -251,20 +251,6 @@ namespace EMotionFX
             connection->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
         }
     }
-
-
-    // update the unique data
-    void BlendTreePoseSwitchNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // get the unique data and if it doesn't exist create it
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance, MCORE_INVALIDINDEX32);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-    }
-
 
     void BlendTreePoseSwitchNode::Reflect(AZ::ReflectContext* context)
     {

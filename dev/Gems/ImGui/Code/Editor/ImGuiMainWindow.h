@@ -41,7 +41,7 @@ namespace ImGui
             return guid;
         }
 
-        ImGuiMainWindow();
+        explicit ImGuiMainWindow(QWidget* parent = nullptr);
 
     private:
         QScopedPointer<Ui::ImGuiMainWindow> m_ui;

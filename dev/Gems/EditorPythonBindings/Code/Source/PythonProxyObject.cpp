@@ -218,18 +218,33 @@ namespace EditorPythonBindings
         }
         return AZStd::nullopt;
     }
-
+    
     void PythonProxyObject::PrepareWrappedObject(const AZ::BehaviorClass& behaviorClass)
     {
         m_ownership = Ownership::Owned;
         m_wrappedObjectTypeName = behaviorClass.m_name;
-        AZStd::string baseName;
 
         // is this Behavior Class flagged to usage for Editor.exe bindings?
         if (!Scope::IsBehaviorFlaggedForEditor(behaviorClass.m_attributes))
         {
             return;
         }
+
+        PopulateMethodsAndProperties(behaviorClass);
+
+        for (auto&& baseClassId : behaviorClass.m_baseClasses)
+        {
+            const AZ::BehaviorClass* baseClass = AZ::BehaviorContextHelper::GetClass(baseClassId);
+            if (baseClass)
+            {
+                PopulateMethodsAndProperties(*baseClass);
+            }
+        }
+    }
+
+    void PythonProxyObject::PopulateMethodsAndProperties(const AZ::BehaviorClass& behaviorClass)
+    {
+        AZStd::string baseName;
 
         // cache all the methods for this behavior class
         for (const auto& methodEntry : behaviorClass.m_methods)
@@ -240,7 +255,15 @@ namespace EditorPythonBindings
             {
                 baseName = methodEntry.first;
                 Scope::FetchScriptName(method->m_attributes, baseName);
-                m_methods[AZ::Crc32(baseName)] = method;
+                AZ::Crc32 namedKey(baseName);
+                if (m_methods.find(namedKey) == m_methods.end())
+                {
+                    m_methods[namedKey] = method;
+                }
+                else
+                {
+                    AZ_TracePrintf("python", "Skipping duplicate method named %s\n", baseName.c_str());
+                }
             }
         }
 
@@ -253,7 +276,15 @@ namespace EditorPythonBindings
             {
                 baseName = behaviorProperty.first;
                 Scope::FetchScriptName(property->m_attributes, baseName);
-                m_properties[AZ::Crc32(baseName)] = property;
+                AZ::Crc32 namedKey(baseName);
+                if (m_properties.find(namedKey) == m_properties.end())
+                {
+                    m_properties[namedKey] = property;
+                }
+                else
+                {
+                    AZ_TracePrintf("python", "Skipping duplicate property named %s\n", baseName.c_str());
+                }
             }
         }
     }

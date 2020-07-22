@@ -179,18 +179,18 @@ namespace EMotionFX
     };
 
     // process all events within a given time range
-    void MotionEventTrack::ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const
+    void MotionEventTrack::ProcessEvents(float startTime, float endTime, const MotionInstance* motionInstance) const
     {
         ExtractEvents(startTime, endTime, motionInstance, EventManagerOnEventFunctor());
     }
 
-    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const
+    void MotionEventTrack::ExtractEvents(float startTime, float endTime, const MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const
     {
         ExtractEvents(startTime, endTime, motionInstance, AnimGraphEventBufferAddEventsFunctor(outEventBuffer));
     }
 
     template <typename Functor>
-    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops) const
+    void MotionEventTrack::ExtractEvents(float startTime, float endTime, const MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops) const
     {
         const float duration = motionInstance->GetDuration();
         startTime = AZ::GetClamp(startTime, 0.0f, duration);

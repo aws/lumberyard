@@ -63,6 +63,7 @@ namespace ExpressionEvaluation
         AZ::Outcome<void, ParsingError> ReportUnexpectedValue(const AZStd::string& parseString, size_t offset, size_t charactersConsumed) const;
         AZ::Outcome<void, ParsingError> ReportUnexpectedSymbol(const AZStd::string& parseString, size_t offset, size_t charactersConsumed) const;
         AZ::Outcome<void, ParsingError> ReportUnknownCharacter(const AZStd::string& parseString, size_t offset) const;
+        AZ::Outcome<void, ParsingError> ReportUnbalancedParen(size_t offset, const AZStd::string& offsetsString) const;
 
         AZStd::vector<ExpressionElementParser*> m_internalParsers;
     

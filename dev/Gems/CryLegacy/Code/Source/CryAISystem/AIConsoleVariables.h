@@ -32,6 +32,7 @@ struct AIConsoleVars
     DeclareConstIntCVar(DebugDrawNavigationWorldMonitor, 0);
     DeclareConstIntCVar(NavigationSystemMT, 1);
     DeclareConstIntCVar(NavGenThreadJobs, 1);
+    DeclareConstIntCVar(NavPhysicsMode, 1);
     DeclareConstIntCVar(DebugDrawCoverPlanes, 0);
     DeclareConstIntCVar(DebugDrawCoverLocations, 0);
     DeclareConstIntCVar(DebugDrawCoverSampler, 0);

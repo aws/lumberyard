@@ -36,6 +36,7 @@
 
 
 class QToolButton;
+namespace ScriptCanvasEditor { class FunctionPaletteTreeItem; }
 
 namespace Ui
 {
@@ -45,14 +46,19 @@ namespace Ui
 namespace ScriptCanvasEditor
 {
     class ScriptEventsPaletteTreeItem;
-    class DynamicEBusPaletteTreeItem;
     class NodePaletteModel;
 
     namespace Widget
     {
+        struct NodePaletteWidget
+        {
+            static GraphCanvas::NodePaletteTreeItem* ExternalCreateNodePaletteRoot(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel);
+        };
+
         class ScriptCanvasRootPaletteTreeItem
             : public GraphCanvas::NodePaletteTreeItem
             , AzFramework::AssetCatalogEventBus::Handler
+            , AZ::Data::AssetBus::MultiHandler
         {
         public:
             AZ_CLASS_ALLOCATOR(ScriptCanvasRootPaletteTreeItem, AZ::SystemAllocator, 0);
@@ -63,6 +69,8 @@ namespace ScriptCanvasEditor
             GraphCanvas::NodePaletteTreeItem* GetCategoryNode(const char* categoryPath, GraphCanvas::NodePaletteTreeItem* parentRoot = nullptr);
             void PruneEmptyNodes();
 
+            void SetActiveScriptCanvasId(const ScriptCanvas::ScriptCanvasId& assetId);
+
         private:
 
             void OnRowsInserted(const QModelIndex& parentIndex, int first, int last);
@@ -72,19 +80,31 @@ namespace ScriptCanvasEditor
 
             void ProcessAsset(AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry);
 
-            //! Called by the AssetCatalog when an asset has been modified
-            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
-
-            //! Called by the AssetProcessor when an asset in the cache has been removed.
-            void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+            // AssetCatalogEventBus
+            void OnCatalogAssetChanged(const AZ::Data::AssetId& /*assetId*/) override;
+            void OnCatalogAssetAdded(const AZ::Data::AssetId& /*assetId*/) override;
+            void OnCatalogAssetRemoved(const AZ::Data::AssetId& /*assetId*/) override;
+            ////
 
             const NodePaletteModel& m_nodePaletteModel;
             AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_assetModel;
 
             GraphCanvas::GraphCanvasTreeCategorizer m_categorizer;
 
+            bool m_isFunctionGraphActive;
+            AZ::Data::AssetId m_previousAssetId;
+
             AZStd::unordered_map< AZ::Data::AssetId, ScriptEventsPaletteTreeItem* > m_scriptEventElementTreeItems;
-            AZStd::unordered_map< AZ::Data::AssetId, DynamicEBusPaletteTreeItem* > m_dynamicEbusElementTreeItems;
+            AZStd::unordered_map< AZ::Data::AssetId, FunctionPaletteTreeItem* > m_globalFunctionTreeItems;
+
+            // RequestAssetLoad uses this set to track assets being asynchronously loaded
+            AZStd::unordered_set<AZStd::pair<AZ::Data::AssetId, AZ::Data::AssetType>> m_pendingAssets;
+
+            // Requests an async load of a given asset of a type
+            void RequestAssetLoad(AZ::Data::AssetId assetId, AZ::Data::AssetType assetType);
+
+            // When the asset loading is ready, this allows to use the asset in some meaningful way
+            void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             AZStd::vector< QMetaObject::Connection > m_lambdaConnections;
         };
@@ -133,13 +153,12 @@ namespace ScriptCanvasEditor
             AZ_CLASS_ALLOCATOR(NodePaletteDockWidget, AZ::SystemAllocator, 0);
 
             static const char* GetMimeType() { return "scriptcanvas/node-palette-mime-event"; }
-            
+
             NodePaletteDockWidget(const QString& windowLabel, QWidget* parent, const ScriptCanvasNodePaletteConfig& paletteConfig);
             ~NodePaletteDockWidget();
 
             void OnNewCustomEvent();
-
-            void HandleTreeItemDoubleClicked(GraphCanvas::GraphCanvasTreeItem* treeItem);
+            void OnNewFunctionEvent();
 
             // GraphCanvas::AssetEditorNotificationBus::Handler
             void OnActiveGraphChanged(const GraphCanvas::GraphId& graphCanvasGraphId) override;
@@ -162,13 +181,13 @@ namespace ScriptCanvasEditor
 
         private:
 
+            void HandleTreeItemDoubleClicked(GraphCanvas::GraphCanvasTreeItem* treeItem);
+
             void ConfigureHelper();
             void ParseCycleTargets(GraphCanvas::GraphCanvasTreeItem* treeItem);
 
             AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_assetModel;
             const NodePaletteModel& m_nodePaletteModel;
-
-            ScriptCanvasRootPaletteTreeItem* m_paletteRoot;
 
             QToolButton* m_newCustomEvent;
 

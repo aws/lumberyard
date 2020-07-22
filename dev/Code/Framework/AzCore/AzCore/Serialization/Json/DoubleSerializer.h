@@ -25,10 +25,9 @@ namespace AZ
         AZ_RTTI(JsonDoubleSerializer, "{1B504DA9-733C-45C8-BB08-7026430FD57F}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue,  const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
     };
 
     class JsonFloatSerializer
@@ -38,9 +37,8 @@ namespace AZ
         AZ_RTTI(JsonFloatSerializer, "{A6AB9CE5-B613-49F1-AC58-C16A6850731E}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
     };
 } // namespace AZ

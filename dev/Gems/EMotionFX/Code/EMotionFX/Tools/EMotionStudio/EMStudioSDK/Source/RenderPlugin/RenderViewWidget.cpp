@@ -18,12 +18,11 @@
 #include <EMotionFX/CommandSystem/Source/SelectionList.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 
-#include <QMenuBar>
+#include <QToolBar>
 
 
 namespace EMStudio
 {
-    // constructor
     RenderViewWidget::RenderViewWidget(RenderPlugin* parentPlugin, QWidget* parentWidget)
         : QWidget(parentWidget)
     {
@@ -42,103 +41,150 @@ namespace EMStudio
         verticalLayout->setSpacing(1);
         verticalLayout->setMargin(0);
 
-        // create the top widget with the menu and the toolbar
-        QWidget* topWidget = new QWidget();
-        topWidget->setMinimumHeight(23); // menu fix (to get it working with the Ly style)
-        QHBoxLayout* horizontalLayout = new QHBoxLayout();
-        horizontalLayout->setSizeConstraint(QLayout::SetMaximumSize);
-        horizontalLayout->setSpacing(0);
-        horizontalLayout->setMargin(0);
-        topWidget->setLayout(horizontalLayout);
+        // create toolbar
+        mToolBar = new QToolBar(this);
+        mToolBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-        // create menu
-        mMenu = new QMenuBar(this);
-        mMenu->setStyleSheet("QMenuBar { min-height: 5px;}"); // menu fix (to get it working with the Ly style)
-        mMenu->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        mMenu->setNativeMenuBar(false);
-        horizontalLayout->addWidget(mMenu);
-
-        // create the toolbar
-        QWidget* toolbarWidget = new QWidget();
-        mToolbarLayout = new QHBoxLayout();
-        mToolbarLayout->setSizeConstraint(QLayout::SetFixedSize);
-        mToolbarLayout->setSpacing(0);
-        mToolbarLayout->setMargin(0);
-        toolbarWidget->setLayout(mToolbarLayout);
-
-        horizontalLayout->addWidget(toolbarWidget);
-
-        // add the top widget with the menu and toolbar and the gl widget to the vertical layout
-        verticalLayout->addWidget(topWidget);
+        // add the toolbar to the vertical layout
+        verticalLayout->addWidget(mToolBar);
 
         QWidget* renderWidget = nullptr;
         mPlugin->CreateRenderWidget(this, &mRenderWidget, &renderWidget);
         verticalLayout->addWidget(renderWidget);
 
-        QMenu* viewMenu = mMenu->addMenu(tr("&View"));
+        auto sliderGroup = new QActionGroup(this);
 
-        CreateEntry(viewMenu, "Solid",                  "Solid.png",            RENDER_SOLID);
-        CreateEntry(viewMenu, "Wireframe",              "Wireframe.png",        RENDER_WIREFRAME);
-        viewMenu->addSeparator();
-        CreateEntry(viewMenu, "Texturing",              "Texturing.png",        RENDER_TEXTURING, false);
-        CreateEntry(viewMenu, "Lighting",               "Lighting.png",         RENDER_LIGHTING);
-        CreateEntry(viewMenu, "Shadows",                "Shadows.png",          RENDER_SHADOWS, false);
-        CreateEntry(viewMenu, "Backface Culling",       "BackfaceCulling.png",  RENDER_BACKFACECULLING);
-        viewMenu->addSeparator();
-        CreateEntry(viewMenu, "Vertex Normals",         "VertexNormals.png",    RENDER_VERTEXNORMALS);
-        CreateEntry(viewMenu, "Face Normals",           "FaceNormals.png",      RENDER_FACENORMALS);
-        CreateEntry(viewMenu, "Tangents",               "Tangents.png",         RENDER_TANGENTS);
-        viewMenu->addSeparator();
-        CreateEntry(viewMenu, "Actor Bounding Boxes",   "BoundingBoxes.png",    RENDER_AABB);
-        CreateEntry(viewMenu, "Node OBBs",              "OBBs.png",             RENDER_OBB, false);
-        CreateEntry(viewMenu, "Collision Meshes",       "CollisionMeshes.png",  RENDER_COLLISIONMESHES, false);
-        CreateEntry(viewMenu, "Ragdoll Colliders",      QIcon(":/EMotionFX/RagdollCollider_Orange.png"), true,      RENDER_RAGDOLL_COLLIDERS);
-        CreateEntry(viewMenu, "Ragdoll Joint Limits",   QIcon(":/EMotionFX/RagdollJointLimit_Orange.png"), true,    RENDER_RAGDOLL_JOINTLIMITS);
-        CreateEntry(viewMenu, "Hit Detection Colliders",QIcon(":/EMotionFX/HitDetection_Blue.png"), true,           RENDER_HITDETECTION_COLLIDERS);
-        CreateEntry(viewMenu, "Simulated Object Colliders", QIcon(":/EMotionFX/SimulatedObjectCollider.png"), true, RENDER_SIMULATEDOBJECT_COLLIDERS);
-        CreateEntry(viewMenu, "Simulated Joints",       QIcon(":/EMotionFX/SimulatedObject.png"), true, RENDER_SIMULATEJOINTS);
-        CreateEntry(viewMenu, "Cloth Colliders",        QIcon(":/EMotionFX/ClothCollider_Purple.png"), true,        RENDER_CLOTH_COLLIDERS);
-        viewMenu->addSeparator();
-        CreateEntry(viewMenu, "Skeleton",               "Skeleton.png",         RENDER_SKELETON);
-        CreateEntry(viewMenu, "Line Skeleton",          "SkeletonLines.png",    RENDER_LINESKELETON);
-        CreateEntry(viewMenu, "Node Orientations",      "NodeOrientations.png", RENDER_NODEORIENTATION);
-        CreateEntry(viewMenu, "Node Names",             "NodeNames.png",        RENDER_NODENAMES);
-        CreateEntry(viewMenu, "Actor Bind Pose",        "",                     RENDER_ACTORBINDPOSE);  // don't add to the toolbar
-        CreateEntry(viewMenu, "Motion Extraction",      "",                     RENDER_MOTIONEXTRACTION);// don't add to the toolbar
-        viewMenu->addSeparator();
-        CreateEntry(viewMenu, "Grid",                   "Grid.png",             RENDER_GRID);
-        CreateEntry(viewMenu, "Gradient Background",    "",                     RENDER_USE_GRADIENTBACKGROUND);// don't add to the toolbar
+        QActionGroup* group = new QActionGroup(this);
+        group->setExclusive(true);
 
-        viewMenu->addSeparator();
-        viewMenu->addAction("Reset", this, &RenderViewWidget::OnReset);
+        QAction* selectAction = AddToolBarAction("Select", "Select.svg");
+        QAction* translateAction = AddToolBarAction("Translate", "Translate.svg");
+        QAction* rotateAction = AddToolBarAction("Rotate", "Rotate.svg");
+        QAction* scaleAction = AddToolBarAction("Scale", "Scale.svg");
 
-        viewMenu->addSeparator();
-        viewMenu->addAction("Render Options", this, &RenderViewWidget::OnOptions);
+        for (auto action : {selectAction, translateAction, rotateAction, scaleAction})
+        {
+            action->setCheckable(true);
+            group->addAction(action);
+        }
 
-        // the cameras menu
-        QMenu* cameraMenu = mMenu->addMenu(tr("&Camera"));
-        mCameraMenu = cameraMenu;
+        selectAction->setChecked(true);
 
-        cameraMenu->addAction("Perspective",       this, &RenderViewWidget::OnOrbitCamera);
-        cameraMenu->addAction("Front",             this, &RenderViewWidget::OnOrthoFrontCamera);
-        cameraMenu->addAction("Back",              this, &RenderViewWidget::OnOrthoBackCamera);
-        cameraMenu->addAction("Left",              this, &RenderViewWidget::OnOrthoLeftCamera);
-        cameraMenu->addAction("Right",             this, &RenderViewWidget::OnOrthoRightCamera);
-        cameraMenu->addAction("Top",               this, &RenderViewWidget::OnOrthoTopCamera);
-        cameraMenu->addAction("Bottom",            this, &RenderViewWidget::OnOrthoBottomCamera);
-        cameraMenu->addSeparator();
-        cameraMenu->addAction("Reset Camera",      [this]() { this->OnResetCamera(); });
-        cameraMenu->addAction("Show Selected",     this, &RenderViewWidget::OnShowSelected);
-        cameraMenu->addAction("Show Entire Scene", this, &RenderViewWidget::OnShowEntireScene);
-        cameraMenu->addSeparator();
+        mToolBar->addSeparator();
 
-        mFollowCharacterAction = cameraMenu->addAction(tr("Follow Character"));
-        mFollowCharacterAction->setCheckable(true);
-        mFollowCharacterAction->setChecked(true);
-        //mFollowCharacterAction->setChecked(IsCharacterFollowModeActive());
-        connect(mFollowCharacterAction, &QAction::triggered, this, &RenderViewWidget::OnFollowCharacter);
+        QAction* layoutsAction = AddToolBarAction("Layouts", "Layout_category.svg");
+        {
+            QMenu* contextMenu = new QMenu(this);
+
+            const AZStd::vector<RenderPlugin::Layout*>& layouts = mPlugin->GetLayouts();
+            const RenderPlugin::Layout* currentLayout = mPlugin->GetCurrentLayout();
+            for (RenderPlugin::Layout* layout : layouts)
+            {
+                QAction* layoutAction = contextMenu->addAction(layout->GetName());
+
+                layoutAction->setCheckable(true);
+                layoutAction->setChecked(layout == currentLayout);
+
+                connect(layoutAction, &QAction::triggered, mPlugin, [this, layout](){
+                    mPlugin->LayoutButtonPressed(layout->GetName());
+                });
+            }
+
+            connect(layoutsAction, &QAction::toggled, contextMenu, &QMenu::show);
+            layoutsAction->setMenu(contextMenu);
+
+            auto widgetForAction = qobject_cast<QToolButton*>(mToolBar->widgetForAction(layoutsAction));
+            if (widgetForAction)
+            {
+                connect(layoutsAction, &QAction::triggered, widgetForAction, &QToolButton::showMenu);
+            }
+        }
+
+        QAction* viewOptionsAction = AddToolBarAction("View options", "../Icons/Visualization.svg");
+        {
+            QMenu* contextMenu = new QMenu(this);
+
+            CreateViewOptionEntry(contextMenu, "Solid", RENDER_SOLID);
+            CreateViewOptionEntry(contextMenu, "Wireframe", RENDER_WIREFRAME);
+            CreateViewOptionEntry(contextMenu, "Lighting", RENDER_LIGHTING);
+            CreateViewOptionEntry(contextMenu, "Backface Culling", RENDER_BACKFACECULLING);
+            contextMenu->addSeparator();
+            CreateViewOptionEntry(contextMenu, "Vertex Normals", RENDER_VERTEXNORMALS);
+            CreateViewOptionEntry(contextMenu, "Face Normals", RENDER_FACENORMALS);
+            CreateViewOptionEntry(contextMenu, "Tangents", RENDER_TANGENTS);
+            CreateViewOptionEntry(contextMenu, "Actor Bounding Boxes", RENDER_AABB);
+            CreateViewOptionEntry(contextMenu, "Joint OBBs", RENDER_OBB, false);
+            CreateViewOptionEntry(contextMenu, "Collision Meshes", RENDER_COLLISIONMESHES, false);
+            contextMenu->addSeparator();
+            CreateViewOptionEntry(contextMenu, "Line Skeleton", RENDER_LINESKELETON);
+            CreateViewOptionEntry(contextMenu, "Solid Skeleton", RENDER_SKELETON);
+            CreateViewOptionEntry(contextMenu, "Joint Names", RENDER_NODENAMES);
+            CreateViewOptionEntry(contextMenu, "Joint Orientations", RENDER_NODEORIENTATION);
+            CreateViewOptionEntry(contextMenu, "Actor Bind Pose", RENDER_ACTORBINDPOSE);
+            contextMenu->addSeparator();
+            CreateViewOptionEntry(contextMenu, "Hit Detection Colliders", RENDER_HITDETECTION_COLLIDERS);
+            CreateViewOptionEntry(contextMenu, "Ragdoll Colliders", RENDER_RAGDOLL_COLLIDERS);
+            CreateViewOptionEntry(contextMenu, "Ragdoll Joint Limits", RENDER_RAGDOLL_JOINTLIMITS);
+            CreateViewOptionEntry(contextMenu, "Cloth Colliders", RENDER_CLOTH_COLLIDERS);
+            CreateViewOptionEntry(contextMenu, "Simulated Object Colliders", RENDER_SIMULATEDOBJECT_COLLIDERS);
+            CreateViewOptionEntry(contextMenu, "Simulated Joints", RENDER_SIMULATEJOINTS);
+            contextMenu->addSeparator();
+            CreateViewOptionEntry(contextMenu, "Motion Extraction", RENDER_MOTIONEXTRACTION);
+            contextMenu->addSeparator();
+            CreateViewOptionEntry(contextMenu, "Grid", RENDER_GRID);
+            CreateViewOptionEntry(contextMenu, "Gradient Background", RENDER_USE_GRADIENTBACKGROUND);
+
+            viewOptionsAction->setMenu(contextMenu);
+
+            auto widgetForAction = qobject_cast<QToolButton*>(mToolBar->widgetForAction(viewOptionsAction));
+            if (widgetForAction)
+            {
+                connect(viewOptionsAction, &QAction::triggered, widgetForAction, &QToolButton::showMenu);
+            }
+        }
+
+        QAction* cameraOptionsAction = AddToolBarAction("Camera options", "Camera_category.svg");
+        {
+            QMenu* cameraMenu = new QMenu(this);
+
+            m_cameraModeActions.reserve(7);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Perspective", this, &RenderViewWidget::OnOrbitCamera), RenderWidget::CAMMODE_ORBIT);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Front", this, &RenderViewWidget::OnOrthoFrontCamera), RenderWidget::CAMMODE_FRONT);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Back", this, &RenderViewWidget::OnOrthoBackCamera), RenderWidget::CAMMODE_BACK);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Left", this, &RenderViewWidget::OnOrthoLeftCamera), RenderWidget::CAMMODE_LEFT);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Right", this, &RenderViewWidget::OnOrthoRightCamera), RenderWidget::CAMMODE_RIGHT);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Top", this, &RenderViewWidget::OnOrthoTopCamera), RenderWidget::CAMMODE_TOP);
+            m_cameraModeActions.emplace_back(cameraMenu->addAction("Bottom", this, &RenderViewWidget::OnOrthoBottomCamera), RenderWidget::CAMMODE_BOTTOM);
+            cameraMenu->addSeparator();
+
+            cameraMenu->addAction("Reset Camera",      [this]() { this->OnResetCamera(); });
+            cameraMenu->addAction("Show Selected",     this, &RenderViewWidget::OnShowSelected);
+            cameraMenu->addAction("Show Entire Scene", this, &RenderViewWidget::OnShowEntireScene);
+            cameraMenu->addSeparator();
+
+            mFollowCharacterAction = cameraMenu->addAction(tr("Follow Character"));
+            mFollowCharacterAction->setCheckable(true);
+            mFollowCharacterAction->setChecked(true);
+            connect(mFollowCharacterAction, &QAction::triggered, this, &RenderViewWidget::OnFollowCharacter);
+
+            cameraOptionsAction->setMenu(cameraMenu);
+            
+            mCameraMenu = cameraMenu;
+
+            auto widgetForAction = qobject_cast<QToolButton*>(mToolBar->widgetForAction(cameraOptionsAction));
+            if (widgetForAction)
+            {
+                connect(cameraOptionsAction, &QAction::triggered, widgetForAction, &QToolButton::showMenu);
+            }
+        }
+
+        connect(selectAction, &QAction::triggered, mPlugin, &RenderPlugin::SetSelectionMode);
+        connect(translateAction, &QAction::triggered, mPlugin, &RenderPlugin::SetTranslationMode);
+        connect(rotateAction, &QAction::triggered, mPlugin, &RenderPlugin::SetRotationMode);
+        connect(scaleAction, &QAction::triggered, mPlugin, &RenderPlugin::SetScaleMode);
 
         Reset();
+        UpdateInterface();
     }
 
 
@@ -192,54 +238,26 @@ namespace EMStudio
         }
     }
 
-
-    void RenderViewWidget::CreateEntry(QMenu* menu, const char* menuEntryName, const char* toolbarIconFileName, int32 actionIndex, bool visible)
+    void RenderViewWidget::CreateViewOptionEntry(QMenu* menu, const char* menuEntryName, int32 actionIndex, bool visible)
     {
-        AZStd::string iconFileName = "Images/Rendering/";
-        iconFileName += toolbarIconFileName;
-        const QIcon& icon = MysticQt::GetMysticQt()->FindIcon(iconFileName.c_str());
-
-        const bool addToToolbar = strcmp(toolbarIconFileName, "") != 0;
-        CreateEntry(menu, menuEntryName, icon, addToToolbar, actionIndex, visible);
+        QAction* action = menu->addAction(menuEntryName);
+        action->setCheckable(true);
+        action->setVisible(visible);
+        if (actionIndex >= 0)
+        {
+            mActions[actionIndex] = action;
+        }
     }
 
-
-    void RenderViewWidget::CreateEntry(QMenu* menu, const char* menuEntryName, const QIcon& icon, bool addToToolbar, int32 actionIndex, bool visible)
+    QAction* RenderViewWidget::AddToolBarAction(const char* entryName, const char* iconName)
     {
-        // menu entry
-        mActions[actionIndex] = menu->addAction(menuEntryName);
-        mActions[actionIndex]->setCheckable(true);
-        if (visible == false)
-        {
-            mActions[actionIndex]->setVisible(visible);
-        }
+        AZStd::string iconFileName = "Images/Rendering/";
+        iconFileName += iconName;
+        const QIcon& icon = MysticQt::GetMysticQt()->FindIcon(iconFileName.c_str());
 
-        if (addToToolbar)
-        {
-            // toolbar button
-            QPushButton* toolbarButton = new QPushButton();
-            mToolbarButtons[actionIndex] = toolbarButton;
-            toolbarButton->setIcon(icon);
-            toolbarButton->setCheckable(true);
-            toolbarButton->setToolTip(menuEntryName);
+        QAction* action = mToolBar->addAction(icon, entryName);
 
-            if (visible == false)
-            {
-                toolbarButton->setVisible(visible);
-            }
-
-            QSize buttonSize = QSize(20, 20);
-            toolbarButton->setMinimumSize(buttonSize);
-            toolbarButton->setMaximumSize(buttonSize);
-            toolbarButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-
-            mToolbarLayout->addWidget(toolbarButton);
-            toolbarButton->setIconSize(buttonSize - QSize(2, 2));
-
-            // connect the menu entry with the toolbar button
-            connect(toolbarButton, &QPushButton::clicked, mActions[actionIndex], &QAction::trigger);
-            connect(mActions[actionIndex], &QAction::toggled, this, &RenderViewWidget::UpdateToolBarButton);
-        }
+        return action;
     }
 
 
@@ -261,7 +279,7 @@ namespace EMStudio
             AzToolsFramework::ReflectedPropertyEditor* generalPropertyWidget = mRenderOptionsWindow->FindPropertyWidgetByName("General");
             if (!generalPropertyWidget)
             {
-                generalPropertyWidget = mRenderOptionsWindow->AddCategory("General", "Images/Preferences/General.png", false);
+                generalPropertyWidget = mRenderOptionsWindow->AddCategory("General");
                 generalPropertyWidget->ClearInstances();
                 generalPropertyWidget->InvalidateAll();
             }
@@ -319,6 +337,16 @@ namespace EMStudio
         }
     }
 
+    void RenderViewWidget::UpdateInterface()
+    {
+        // Update the checkmarks for the camera mode.
+        for (const auto& actionModePair : m_cameraModeActions)
+        {
+            QAction* action = actionModePair.first;
+            action->setCheckable(true);
+            action->setChecked(mRenderWidget->GetCameraMode() == actionModePair.second);
+        }
+    }
 
     void RenderViewWidget::SaveOptions(QSettings* settings)
     {
@@ -326,7 +354,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numRenderOptions; ++i)
         {
             QString name = QString(i);
-            settings->setValue(name, mActions[i]->isChecked());
+            settings->setValue(name, mActions[i] ? mActions[i]->isChecked() : false);
         }
 
         settings->setValue("CameraMode", (int32)mRenderWidget->GetCameraMode());
@@ -340,7 +368,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numRenderOptions; ++i)
         {
             QString name = QString(i);
-            const bool isEnabled = settings->value(name, mActions[i]->isChecked()).toBool();
+            const bool isEnabled = settings->value(name, mActions[i] ? mActions[i]->isChecked() : false).toBool();
             SetRenderFlag((ERenderFlag)i, isEnabled);
         }
 
@@ -354,6 +382,8 @@ namespace EMStudio
 
         const bool followMode = settings->value("CharacterFollowMode", GetIsCharacterFollowModeActive()).toBool();
         SetCharacterFollowModeActive(followMode);
+
+        UpdateInterface();
     }
 
 
@@ -371,18 +401,4 @@ namespace EMStudio
         return MCORE_INVALIDINDEX32;
     }
 
-
-    void RenderViewWidget::UpdateToolBarButton(bool checked)
-    {
-        assert(sender()->inherits("QAction"));
-        QAction* action = qobject_cast<QAction*>(sender());
-
-        const uint32 actionIndex = FindActionIndex(action);
-        if (actionIndex != MCORE_INVALIDINDEX32)
-        {
-            mToolbarButtons[actionIndex]->setChecked(checked);
-        }
-    }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderViewWidget.moc>

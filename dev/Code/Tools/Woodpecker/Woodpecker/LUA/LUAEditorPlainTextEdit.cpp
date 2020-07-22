@@ -18,6 +18,7 @@
 #include <Woodpecker/LUA/CodeCompletion/LUACompleter.hxx>
 
 #include <Woodpecker/LUA/LUAEditorPlainTextEdit.moc>
+#include <Woodpecker/LUA/LUAEditorView.hxx>
 #include "LUAEditorContextMessages.h"
 
 namespace LUAEditor
@@ -187,9 +188,10 @@ namespace LUAEditor
                 if (0 == (event->modifiers() & (Qt::KeyboardModifier::ControlModifier | Qt::KeyboardModifier::MetaModifier)))
                 {
                     // don't proceed into this block and pop up the completer if a hotkey like CTRL+C / CTRL+V is being used.
+                    LUAViewWidget* parentWidget = qobject_cast<LUAViewWidget*>(parent());
 
                     auto luaName = m_getLUAName(textCursor());
-                    if (!luaName.isEmpty())
+                    if (!luaName.isEmpty() && parentWidget && parentWidget->IsAutoCompletionEnabled())
                     {
                         m_completer->setCompletionPrefix(luaName);
                         if ((event->key() >= Qt::Key::Key_0 && event->key() <= Qt::Key::Key_9) ||

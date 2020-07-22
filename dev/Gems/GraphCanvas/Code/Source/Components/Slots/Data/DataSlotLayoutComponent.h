@@ -20,6 +20,7 @@
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/GraphicsItems/GraphCanvasSceneEventFilter.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
 #include <Widgets/GraphCanvasLabel.h>
 #include <Widgets/NodePropertyDisplayWidget.h>
@@ -59,6 +60,43 @@ namespace GraphCanvas
 
             SlotId m_slotId;
         };
+
+        class DoubleClickSceneEventFilter
+            : public SceneEventFilter
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(DoubleClickSceneEventFilter, AZ::SystemAllocator, 0);
+
+            DoubleClickSceneEventFilter(DataSlotLayout& dataSlotLayout)
+                : SceneEventFilter(nullptr)
+                , m_owner(dataSlotLayout)
+            {
+            }
+
+            bool sceneEventFilter(QGraphicsItem*, QEvent* sceneEvent) override
+            {
+                switch (sceneEvent->type())
+                {
+                case QEvent::GraphicsSceneMousePress:
+                {
+                    return true;
+                }
+                case QEvent::GraphicsSceneMouseDoubleClick:
+                {
+                    m_owner.OnSlotTextDoubleClicked();
+                    return true;
+                }
+                }
+
+                return false;
+            }
+
+        private:
+
+            DataSlotLayout& m_owner;
+        };
+
+        friend class DoubleClickSceneEventFilter;
 
     public:
         AZ_CLASS_ALLOCATOR(DataSlotLayout, AZ::SystemAllocator, 0);
@@ -123,7 +161,9 @@ namespace GraphCanvas
 
         void CreateDataDisplay();
         void UpdateLayout();
-        void UpdateGeometry();        
+        void UpdateGeometry();
+
+        void OnSlotTextDoubleClicked();
 
         AZStd::unordered_set< DataSlotDragDropInterface* >  m_dragDropInterfaces;
         DataSlotDragDropInterface*                          m_activeHandler;
@@ -143,6 +183,7 @@ namespace GraphCanvas
         NodePropertyDisplayWidget*                      m_nodePropertyDisplay;
         DataSlotConnectionPin*                          m_slotConnectionPin;
         GraphCanvasLabel*                               m_slotText;
+        DoubleClickSceneEventFilter*                    m_doubleClickFilter;
 
         // track the last seen values of some members to prevent UpdateLayout doing unnecessary work
         struct

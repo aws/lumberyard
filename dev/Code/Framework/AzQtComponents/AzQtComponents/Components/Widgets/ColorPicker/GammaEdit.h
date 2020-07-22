@@ -19,6 +19,7 @@ class QCheckBox;
 
 namespace AzQtComponents
 {
+    class DoubleSpinBox;
     class AZ_QT_COMPONENTS_API GammaEdit
         : public QWidget
     {
@@ -42,12 +43,11 @@ namespace AzQtComponents
         void setGamma(qreal gamma);
 
     private Q_SLOTS:
-        void textChanged(const QString& text);
+        void valueChanged(double gamma);
 
     private:
         qreal m_gamma;
-
-        QLineEdit* m_edit;
+        DoubleSpinBox* m_edit;
         QCheckBox* m_toggleSwitch;
     };
 } // namespace AzQtComponents

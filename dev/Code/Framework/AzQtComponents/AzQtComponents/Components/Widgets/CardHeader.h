@@ -12,10 +12,13 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+#include <AzQtComponents/Components/Widgets/ElidingLabel.h>
+
 #include <QFrame>
 #include <QIcon>
 #include <QString>
 
+class QCheckBox;
 class QHBoxLayout;
 class QVBoxLayout;
 class QPushButton;
@@ -36,16 +39,25 @@ namespace AzQtComponents
         : public QFrame
     {
         Q_OBJECT //AUTOMOC
-
+        Q_PROPERTY(bool warning READ isWarning WRITE setWarning NOTIFY warningChanged)
+        Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly NOTIFY readOnlyChanged)
+        Q_PROPERTY(bool contentModified READ isContentModified WRITE setContentModified NOTIFY contentModifiedChanged)
     public:
+        enum ContextMenuIcon
+        {
+            Standard,
+            Plus
+        };
+
         CardHeader(QWidget* parent = nullptr);
 
         /// Set a title. Passing an empty string will hide the widget.
         void setTitle(const QString& title);
+        void setFilter(const QString& filterString);
         void refreshTitle();
         void setTitleProperty(const char *name, const QVariant &value);
         QString title() const;
-        QLabel* titleLabel() const;
+        AzQtComponents::ElidingLabel* titleLabel() const;
 
         /// Set an icon. Passing a null icon will hide the icon.
         void setIcon(const QIcon& icon);
@@ -67,6 +79,9 @@ namespace AzQtComponents
         void setReadOnly(bool readOnly);
         bool isReadOnly() const;
 
+        void setContentModified(bool modified);
+        bool isContentModified() const;
+
         /// Set whether the header has a context menu widget - determines whether or not the contextMenuRequested signal fires on right-mouse-button click / when the context menu button is pressed.
         void setHasContextMenu(bool showContextMenu);
 
@@ -76,32 +91,44 @@ namespace AzQtComponents
 
         void configSettingsChanged();
 
+        void mockDisabledState(bool disabled);
+
         static void setIconSize(int iconSize);
         static int defaultIconSize();
 
+        /// Set the icon to be displayed for the context menu.
+        void setContextMenuIcon(ContextMenuIcon iconType);
     Q_SIGNALS:
         void contextMenuRequested(const QPoint& position);
         void expanderChanged(bool expanded);
+        void warningChanged(bool warning);
+        void readOnlyChanged(bool readOnly);
+        void contentModifiedChanged(bool modified);
 
     protected:
+        friend class Card;
+
         void mouseDoubleClickEvent(QMouseEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
         void triggerContextMenuUnderButton();
-        void updateStyleSheets();
         void triggerHelpButton();
+
+        static bool isCardHeaderIcon(const QWidget* widget);
+        static bool isCardHeaderMenuButton(const QWidget* widget);
 
         // Widgets in header
         QVBoxLayout* m_mainLayout = nullptr;
         QHBoxLayout* m_backgroundLayout = nullptr;
         QFrame* m_backgroundFrame = nullptr;
-        QPushButton* m_expanderButton = nullptr;
+        QCheckBox* m_expanderButton = nullptr;
         QLabel* m_iconLabel = nullptr;
-        QLabel* m_titleLabel = nullptr;
+        AzQtComponents::ElidingLabel* m_titleLabel = nullptr;
         QLabel* m_warningLabel = nullptr;
         QPushButton* m_contextMenuButton = nullptr;
         QPushButton* m_helpButton = nullptr;
         bool m_warning = false;
         bool m_readOnly = false;
+        bool m_modified = false;
 
         QIcon m_warningIcon;
         QIcon m_icon;

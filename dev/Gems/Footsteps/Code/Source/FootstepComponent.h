@@ -15,12 +15,17 @@
 #include <AzCore/Component/Component.h>
 
 #include <LmbrCentral/Animation/CharacterAnimationBus.h>
+#include <Integration/AnimationBus.h>
+
+struct SMFXRunTimeEffectParams;
+using TMFXEffectId = AZ::u16;
 
 namespace Footsteps
 {
     class FootstepComponent
         : public AZ::Component
         , protected LmbrCentral::CharacterAnimationNotificationBus::Handler
+        , protected EMotionFX::Integration::ActorNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(FootstepComponent, "{C5635496-0A46-4D2C-8CE3-D7F642E54FC5}");
@@ -34,10 +39,23 @@ namespace Footsteps
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
+        // ActorNotificationBus interface implementation
+        void OnMotionEvent(EMotionFX::Integration::MotionEvent motionEvent) override;
+        ////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
-        void Init() override;
         void Activate() override;
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
+
+        TMFXEffectId CheckForWaterEffect(const AZStd::string& fxLibName, const AZ::Vector3& position, const AZ::Transform& entityTransform, float relativeSpeed = 0.f);
+        TMFXEffectId CheckForLegacySurfaceEffect(const AZStd::string& fxLibName);
+        TMFXEffectId CheckForSurfaceEffect(const AZStd::string& fxLibName, const AZ::Transform& entityTransform);
+
+        AZStd::string m_leftFootEventName = "LeftFoot";
+        AZStd::string m_rightFootEventName = "RightFoot";
+        AZStd::string m_defaultFXLib = "footstep";
+
     };
 }

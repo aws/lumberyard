@@ -1,9 +1,0 @@
-<EngineDependencies versionnumber="1.0.0">
-    <Dependency path="materials/decals/*.mtl" optional="false" />
-    <Dependency path="objects/natural/vegetation/*.cgf" optional="false" />
-    <Dependency path="levels/startergame/LevelParticles.xml" optional="true" />
-    <Dependency path="levels/startergame/auto_resourcelist.txt" optional="true" />
-    <Dependency path="levels/startergame/preloadlibs.txt" optional="true" />
-    <Dependency path="levels/startergame/occluder.ocm" optional="true" />
-    <Dependency path="levels/startergame/terrain/merged_meshes_sectors/mmrm_used_meshes.lst" optional="true" />
-</EngineDependencies>

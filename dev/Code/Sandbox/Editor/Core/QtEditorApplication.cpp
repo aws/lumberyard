@@ -21,6 +21,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include <QScopedValueRollback>
 
 #ifdef DEPRECATED_QML_SUPPORT
 #include <QQmlEngine>
@@ -28,6 +29,7 @@
 
 #include <QDebug>
 #include "../Plugins/EditorUI_QT/UIFactory.h"
+#include <AzQtComponents/Components/GlobalEventFilter.h>
 #include <AzQtComponents/Components/LumberyardStylesheet.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
@@ -78,50 +80,23 @@ Q_LOGGING_CATEGORY(InputDebugging, "lumberyard.editor.input")
 // internal, private namespace:
 namespace
 {
-    class RecursionGuard
+    class EditorGlobalEventFilter
+        : public AzQtComponents::GlobalEventFilter
     {
     public:
-        RecursionGuard(bool& value)
-            : m_refValue(value)
-        {
-            m_reset = !value;
-            m_refValue = true;
-        }
-
-        ~RecursionGuard()
-        {
-            if (m_reset)
-            {
-                m_refValue = false;
-            }
-        }
-
-        bool areWeRecursing()
-        {
-            return !m_reset;
-        }
-
-    private:
-        bool& m_refValue;
-        bool m_reset;
-    };
-
-    class GlobalEventFilter
-        : public QObject
-    {
-    public:
-        explicit GlobalEventFilter(QObject* watch)
-            : QObject(watch) {}
+        explicit EditorGlobalEventFilter(QObject* watch)
+            : AzQtComponents::GlobalEventFilter(watch) {}
 
         bool eventFilter(QObject* obj, QEvent* e) override
         {
-            static bool recursionChecker = false;
-            RecursionGuard guard(recursionChecker);
+            static bool isRecursing = false;
 
-            if (guard.areWeRecursing())
+            if (isRecursing)
             {
                 return false;
             }
+
+            QScopedValueRollback<bool> guard(isRecursing, true);
 
             // Detect Widget move
             // We're doing this before the events are actually consumed to avoid confusion
@@ -135,6 +110,7 @@ namespace
                         break;
                     }
                     case QEvent::Move:
+                    case QEvent::MouseMove:
                     {
                         if (m_widgetDraggedState == WidgetDraggedState::Clicked)
                         {
@@ -142,35 +118,16 @@ namespace
                         }
                         break;
                     }
-                    case QEvent::MouseButtonRelease:
-                    {
-                        m_widgetDraggedState = WidgetDraggedState::None;
-                        break;
-                    }
                 }
+            }
+
+            if (e->type() == QEvent::MouseButtonRelease)
+            {
+                m_widgetDraggedState = WidgetDraggedState::None;
             }
 
             switch (e->type())
             {
-                case QEvent::Wheel:
-                {
-                    auto wheelEvent = static_cast<QWheelEvent*>(e);
-
-                    // make the wheel event fall through to windows underneath the mouse, even if they don't have focus
-                    QWidget* widget = QApplication::widgetAt(wheelEvent->globalPos());
-                    if (widget && obj != widget)
-                    {
-                        QPoint mappedPos = widget->mapFromGlobal(wheelEvent->globalPos());
-
-                        QWheelEvent wheelEventCopy(mappedPos, wheelEvent->globalPos(), wheelEvent->pixelDelta(),
-                            wheelEvent->angleDelta(), wheelEvent->delta(), wheelEvent->orientation(), wheelEvent->buttons(),
-                            wheelEvent->modifiers(), wheelEvent->phase(), wheelEvent->source());
-
-                        return QApplication::instance()->sendEvent(widget, &wheelEventCopy);
-                    }
-                }
-                break;
-
                 case QEvent::KeyPress:
                 case QEvent::KeyRelease:
                 {
@@ -222,7 +179,7 @@ namespace
                 break;
             }
 
-            return false;
+            return GlobalEventFilter::eventFilter(obj, e);
         }
 
     private:
@@ -257,11 +214,11 @@ namespace
             }
         }
 
-        //! Detect if the event's target is a Widget we want to guard from shortcuts while it's being dragged
-        //! We're guarding toolbars only right now but this can be extended to more QWidgets
+        //! Detect if the event's target is a Widget we want to guard from shortcuts while it's being dragged.
+        //! This function can be easily expanded to handle exceptions.
         bool IsDragGuardedWidget(const QObject* obj)
         {
-            return qobject_cast<const QToolBar*>(obj) != nullptr;
+            return qobject_cast<const QWidget*>(obj) != nullptr;
         }
 
         //! Enum to keep track of Widget dragged state
@@ -354,7 +311,7 @@ namespace Editor
 #endif // #ifdef DEPRECATED_QML_SUPPORT
 
         // install this filter. It will be a parent of the application and cleaned up when it is cleaned up automically
-        auto globalEventFilter = new GlobalEventFilter(this);
+        auto globalEventFilter = new EditorGlobalEventFilter(this);
         installEventFilter(globalEventFilter);
 
         //Setup reusable dialogs

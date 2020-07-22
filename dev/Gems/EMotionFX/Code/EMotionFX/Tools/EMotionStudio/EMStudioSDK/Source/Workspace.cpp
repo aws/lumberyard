@@ -418,7 +418,12 @@ namespace EMStudio
 
     bool Workspace::GetDirtyFlag() const
     {
-        if (mDirtyFlag || GetCommandManager()->GetWorkspaceDirtyFlag())
+        if (mDirtyFlag)
+        {
+            return true;
+        }
+
+        if (GetCommandManager()->GetWorkspaceDirtyFlag() && GetCommandManager()->GetUserOpenedWorkspaceFlag())
         {
             return true;
         }

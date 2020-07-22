@@ -17,6 +17,7 @@
 #include "UiAnimViewNode.h"
 #include "Plugin.h"
 #include "UiAnimViewDopeSheetBase.h"
+#include "QtViewPane.h"
 
 #include <QScopedPointer>
 #include <Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h>
@@ -156,7 +157,7 @@ public:
         }
     }
 
-    void OnSequenceChanged();
+    void OnSequenceChanged(CUiAnimViewSequence* sequence);
 
     void PopulateVariables();
     void PopulateVariables(ReflectedPropertyControl& propCtrl);
@@ -177,9 +178,8 @@ protected:
 
     _smart_ptr<CVarBlock> m_pVarBlock;
 
-#if UI_ANIMATION_REMOVED
     ReflectedPropertyControl* m_wndProps;
-#endif
+
     CUiAnimViewTrackPropsDlg* m_wndTrackProps;
 
     CUiAnimViewDopeSheetBase* m_keysCtrl;

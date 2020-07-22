@@ -15,7 +15,6 @@
 #include <AzCore/UnitTest/TestTypes.h>
 #include <Tests/Serialization/Json/TestCases_Base.h>
 #include <Tests/Serialization/Json/TestCases_Classes.h>
-#include <Tests/Serialization/Json/TestCases_Containers.h>
 #include <Tests/Serialization/Json/TestCases_Pointers.h>
 
 namespace JsonSerializationTests
@@ -23,11 +22,8 @@ namespace JsonSerializationTests
     using JsonSerializationTestCases = ::testing::Types<
         // Structures
         SimpleClass, SimpleInheritence, MultipleInheritence, SimpleNested, SimpleEnumWrapper,
-        // Containers
-        SimpleContainer_FixedVector, SimpleContainer_Array,
-        ComplexContainer_FixedVector, ComplexContainer_Array,
         // Pointers
         SimpleNullPointer, SimpleAssignedPointer, ComplexAssignedPointer, ComplexNullInheritedPointer,
         ComplexAssignedDifferentInheritedPointer, ComplexAssignedSameInheritedPointer,
-        PrimitivePointerInContainer, SimplePointerInContainer, InheritedPointerInContainer, SharedPointer>;
+        PrimitivePointerInContainer, SimplePointerInContainer, InheritedPointerInContainer>;
 } // namespace JsonSerializationTests

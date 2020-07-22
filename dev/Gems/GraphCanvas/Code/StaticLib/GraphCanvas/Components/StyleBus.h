@@ -172,6 +172,10 @@ namespace GraphCanvas
 
         // Layering
         virtual int FindLayerZValue(AZStd::string_view layer) = 0;
+
+        // Size Stepping
+        virtual int GetSteppedWidth(int gridSteps) = 0;
+        virtual int GetSteppedHeight(int gridSteps) = 0;
     };
 
     using StyleManagerRequestBus = AZ::EBus<StyleManagerRequests>;

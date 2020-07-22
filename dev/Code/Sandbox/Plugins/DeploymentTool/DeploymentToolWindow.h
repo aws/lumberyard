@@ -55,7 +55,7 @@ public:
         return guid;
     }
 
-    DeploymentToolWindow();
+    explicit DeploymentToolWindow(QWidget* parent = nullptr);
     ~DeploymentToolWindow();
 
 private slots:

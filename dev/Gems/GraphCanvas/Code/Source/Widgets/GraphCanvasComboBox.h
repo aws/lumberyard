@@ -159,7 +159,8 @@ namespace GraphCanvas
         
     Q_SIGNALS:
        
-        void SelectedIndexChanged(const QModelIndex& index);        
+        void SelectedIndexChanged(const QModelIndex& index);
+        void OnUserActionComplete();
 
         void OnMenuAboutToDisplay();
 
@@ -168,7 +169,7 @@ namespace GraphCanvas
         
     protected:
 
-        void OnIndexSelected(QModelIndex proxyIndex);
+        void UserSelectedIndex(const QModelIndex& proxyIndex);
         
         void OnTextChanged();
         void OnOptionsClicked();

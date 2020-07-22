@@ -11,8 +11,8 @@
 */
 #pragma once
 
+#include <AzQtComponents/Components/Widgets/VectorInput.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyVectorCtrl.hxx>
 #include <AzCore/Math/Matrix3x3.h>
 
 namespace PhysX
@@ -23,7 +23,7 @@ namespace PhysX
 
         class InertiaPropertyHandler
             : public QObject
-            , public AzToolsFramework::PropertyHandler<AZ::Matrix3x3, AzToolsFramework::PropertyVectorCtrl>
+            , public AzToolsFramework::PropertyHandler<AZ::Matrix3x3, AzQtComponents::VectorInput>
         {
             Q_OBJECT //AUTOMOC
         public:
@@ -31,11 +31,11 @@ namespace PhysX
 
             AZ::u32 GetHandlerName(void) const override;
             QWidget* CreateGUI(QWidget* parent) override;
-            void ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib,
+            void ConsumeAttribute(AzQtComponents::VectorInput* GUI, AZ::u32 attrib,
                 AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
-            void WriteGUIValuesIntoProperty(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI,
+            void WriteGUIValuesIntoProperty(size_t index, AzQtComponents::VectorInput* GUI,
                 AZ::Matrix3x3& instance, AzToolsFramework::InstanceDataNode* node) override;
-            bool ReadValuesIntoGUI(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI,
+            bool ReadValuesIntoGUI(size_t index, AzQtComponents::VectorInput* GUI,
                 const AZ::Matrix3x3& instance, AzToolsFramework::InstanceDataNode* node) override;
         };
     } // namespace Editor

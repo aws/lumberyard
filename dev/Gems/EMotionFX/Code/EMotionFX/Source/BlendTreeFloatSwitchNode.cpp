@@ -95,7 +95,6 @@ namespace EMotionFX
         const int32 decisionValue = MCore::Clamp<int32>(GetInputNumberAsInt32(animGraphInstance, INPUTPORT_DECISION), 0, 4); // max 5 cases
 
         // return the value for that port
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
         if (mInputPorts[INPUTPORT_0 + decisionValue].mConnection)
         {
             //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_0 + decisionValue) );

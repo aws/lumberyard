@@ -14,6 +14,7 @@
 
 #include <QVariant>
 #include <QPushButton>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -40,7 +41,7 @@ void HeadingWidget::CreateUI()
     textLayout->setSpacing(0);
     rootLayout->addLayout(textLayout);
 
-    m_refreshButton = new QPushButton {};
+    m_refreshButton = new QToolButton();
     m_refreshButton->setObjectName("RefreshButton");
     m_refreshButton->setIcon(QIcon("Editor/Icons/CloudCanvas/refresh.png"));
     m_refreshButton->setIconSize(QSize(16, 16));

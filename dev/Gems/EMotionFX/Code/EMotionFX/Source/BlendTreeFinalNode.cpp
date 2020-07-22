@@ -99,7 +99,7 @@ namespace EMotionFX
         // if there are no connections, output nothing
         if (mConnections.empty())
         {
-            AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+            AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
             uniqueData->Clear();
             return;
         }
@@ -109,7 +109,7 @@ namespace EMotionFX
         UpdateIncomingNode(animGraphInstance, sourceNode, timePassedInSeconds);
 
         // update the sync track
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
         uniqueData->Init(animGraphInstance, sourceNode);
     }
 

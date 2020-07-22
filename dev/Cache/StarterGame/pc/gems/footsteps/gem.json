@@ -6,6 +6,11 @@
                 "~>0.1"
             ],
             "_comment": "LmbrCentral"
+        },
+        {
+          "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+          "VersionConstraints": [ ">=0.1.0" ],
+          "_comment": "EmotionFX"
         }
     ],
     "GemFormatVersion": 3,

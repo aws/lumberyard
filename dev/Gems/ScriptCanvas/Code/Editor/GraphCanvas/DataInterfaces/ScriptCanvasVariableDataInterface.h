@@ -227,7 +227,7 @@ namespace ScriptCanvasEditor
 
     class ScriptCanvasGraphScopedVariableDataInterface
         : public ScriptCanvasDataInterface<GraphCanvas::ComboBoxDataInterface>
-        , public ScriptCanvas::VariableNotificationBus::Handler
+        , public ScriptCanvas::VariableNotificationBus::Handler        
         , public AZ::SystemTickBus::Handler
     {
     public:
@@ -244,6 +244,7 @@ namespace ScriptCanvasEditor
         ~ScriptCanvasGraphScopedVariableDataInterface()
         {
             AZ::SystemTickBus::Handler::BusDisconnect();
+            ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
         }
 
         // SystemTickBus
@@ -265,6 +266,18 @@ namespace ScriptCanvasEditor
         {
             // Delay this since its possible the model hasn't updated yet
             AZ::SystemTickBus::Handler::BusConnect();
+        }
+        ////
+
+        // ScriptCanvas::NodeNotificationsBus::Handler
+        void OnInputChanged(const ScriptCanvas::SlotId& slotId)
+        {
+            if (slotId == GetSlotId())
+            {
+                RegisterBus();
+            }
+
+            ScriptCanvasDataInterface<GraphCanvas::ComboBoxDataInterface>::OnInputChanged(slotId);
         }
         ////
 
@@ -390,6 +403,7 @@ namespace ScriptCanvasEditor
     class ScriptCanvasVariableReferenceDataInterface
         : public ScriptCanvasDataInterface<GraphCanvas::ComboBoxDataInterface>
         , public ScriptCanvas::VariableNotificationBus::Handler
+        , public ScriptCanvas::EndpointNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ScriptCanvasVariableReferenceDataInterface, AZ::SystemAllocator, 0);
@@ -403,7 +417,6 @@ namespace ScriptCanvasEditor
 
             if (slot)
             {
-                ScriptCanvas::Data::Type dataType = slot->GetDataType();
                 m_variableTypeModel.SetSlotFilter(slot);
 
                 ScriptCanvas::VariableId variableId = slot->GetVariableReference();
@@ -413,10 +426,14 @@ namespace ScriptCanvasEditor
                     ScriptCanvas::VariableNotificationBus::Handler::BusConnect(ScriptCanvas::GraphScopedVariableId(m_scriptCanvasGraphId, variableId));
                 }
             }
+
+            ScriptCanvas::EndpointNotificationBus::Handler::BusConnect(ScriptCanvas::Endpoint(scriptCanvasNodeId, scriptCanvasSlotId));
         }
 
         ~ScriptCanvasVariableReferenceDataInterface()
         {
+            ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
+            ScriptCanvas::EndpointNotificationBus::Handler::BusDisconnect();
         }
 
         // NodeNotificationBus
@@ -424,7 +441,7 @@ namespace ScriptCanvasEditor
         {
             if (slotId == GetSlotId())
             {
-                m_variableTypeModel.RefreshFilter();                
+                m_variableTypeModel.RefreshFilter();
             }
         }
         ////
@@ -433,6 +450,26 @@ namespace ScriptCanvasEditor
         void OnVariableRenamed(AZStd::string_view newName) override
         {
             SignalValueChanged();
+        }
+        ////
+
+        // EndpointNotificationBus
+        void OnEndpointReferenceChanged(const ScriptCanvas::VariableId& variableId)
+        {
+            ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
+            ScriptCanvas::VariableNotificationBus::Handler::BusConnect(ScriptCanvas::GraphScopedVariableId(GetScriptCanvasId(), variableId));
+
+            SignalValueChanged();
+        }
+
+        void OnSlotRecreated()
+        {
+            ScriptCanvas::Slot* slot = GetSlot();
+
+            if (slot)
+            {
+                m_variableTypeModel.SetSlotFilter(slot);
+            }
         }
         ////
 
@@ -450,17 +487,10 @@ namespace ScriptCanvasEditor
             {
                 if (slot->IsVariableReference())
                 {
+                    // This will trigger an ebus call regarding the modification, which will trigger the value changed.
                     ScriptCanvas::VariableId variableId = m_variableTypeModel.GetValueForIndex(index);
                     slot->SetVariableReference(variableId);
 
-                    if (ScriptCanvas::VariableNotificationBus::Handler::BusIsConnected())
-                    {
-                        ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
-                    }
-
-                    ScriptCanvas::VariableNotificationBus::Handler::BusConnect(ScriptCanvas::GraphScopedVariableId(GetScriptCanvasId(), variableId));
-
-                    SignalValueChanged();
                     PostUndoPoint();
                 }
             }
@@ -514,6 +544,7 @@ namespace ScriptCanvasEditor
 
         VariableTypeComboBoxFilterModel m_variableTypeModel;
 
+        ScriptCanvas::Data::Type m_displayType = ScriptCanvas::Data::Type::Invalid();
         AZ::EntityId m_scriptCanvasGraphId;
     };
 }

@@ -124,10 +124,12 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CylinderShapeConfig::m_height, "Height", "Height of cylinder")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 1000000.f)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CylinderShapeConfig::m_radius, "Radius", "Radius of cylinder")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 1000000.f)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
                     ;

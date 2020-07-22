@@ -299,6 +299,7 @@ void CCryEditDoc::DeleteContents()
     SetDocumentReady(false);
 
     GetIEditor()->Notify(eNotify_OnCloseScene);
+    CrySystemEventBus::Broadcast(&CrySystemEventBus::Events::OnCryEditorCloseScene);
 
     EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, ResetEditorContext);
 
@@ -362,7 +363,8 @@ void CCryEditDoc::DeleteContents()
     oAudioRequestData.pData = &oAMData3;
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
 
-    GetIEditor()->Notify(eNotify_OnSceneClosed);    
+    GetIEditor()->Notify(eNotify_OnSceneClosed);
+    CrySystemEventBus::Broadcast(&CrySystemEventBus::Events::OnCryEditorSceneClosed);
 }
 
 
@@ -1853,6 +1855,7 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
     // Load next level resource list.
     pIPak->GetResourceList(ICryPak::RFOM_NextLevel)->Load(Path::Make(folderPath, "resourcelist.txt").toUtf8().data());
     GetIEditor()->Notify(eNotify_OnBeginLoad);
+    CrySystemEventBus::Broadcast(&CrySystemEventBus::Events::OnCryEditorBeginLoad);
     //GetISystem()->GetISystemEventDispatcher()->OnSystemEvent( ESYSTEM_EVENT_LEVEL_LOAD_START,0,0 );
     DeleteContents();
 
@@ -1870,6 +1873,7 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
     SetModifiedModules(eModifiedNothing);
     SetDocumentReady(true);
     GetIEditor()->Notify(eNotify_OnEndLoad);
+    CrySystemEventBus::Broadcast(&CrySystemEventBus::Events::OnCryEditorEndLoad);
 
     GetIEditor()->SetStatusText("Ready");
 

@@ -55,10 +55,11 @@ namespace EMotionFX
 
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
 
+            void Update() override;
+
         public:
             AZStd::vector<uint32>   mMask;
             AnimGraphNode*          mSyncTrackNode;
-            bool                    mMustUpdate;
         };
 
         BlendTreeBlend2NodeBase();
@@ -69,13 +70,14 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override          { return true; }
         AZ::Color GetVisualColor() const override               { return AZ::Color(0.62f, 0.32f, 1.0f, 1.0f); }
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         AnimGraphObject::ECategory GetPaletteCategory() const override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
         void SetWeightedNodeMask(const AZStd::vector<WeightedMaskEntry>& weightedNodeMask);
+        const AZStd::vector<WeightedMaskEntry>& GetWeightedNodeMask() const { return m_weightedNodeMask; }
         void FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outBlendNodeA, AnimGraphNode** outBlendNodeB, float* outWeight, bool isAdditive, bool optimizeByWeight);
 
         void SetSyncMode(ESyncMode syncMode);
@@ -90,8 +92,6 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     protected:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
-
         AZStd::vector<WeightedMaskEntry>    m_weightedNodeMask;     /**< Node mask stores pairs of node name and the blend weight for the node. */
         ESyncMode                           m_syncMode;
         EEventMode                          m_eventMode;

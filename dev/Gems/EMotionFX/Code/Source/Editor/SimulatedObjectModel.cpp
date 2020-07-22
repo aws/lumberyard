@@ -26,7 +26,7 @@ namespace EMotionFX
 
     SimulatedObjectModel::SimulatedObjectModel()
         : m_selectionModel(new QItemSelectionModel(this))
-        , m_objectIcon(":/EMotionFX/SimulatedObject_White.png")
+        , m_objectIcon(":/EMotionFX/SimulatedObject.svg")
     {
         m_selectionModel->setModel(this);
 

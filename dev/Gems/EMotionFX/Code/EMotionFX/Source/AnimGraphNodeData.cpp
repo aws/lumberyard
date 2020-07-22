@@ -67,7 +67,7 @@ namespace EMotionFX
     // init the play related settings from a given node
     void AnimGraphNodeData::Init(AnimGraphInstance* animGraphInstance, AnimGraphNode* node)
     {
-        Init(reinterpret_cast<AnimGraphNodeData*>(animGraphInstance->FindUniqueObjectData(reinterpret_cast<AnimGraphObject*>(node))));
+        Init(node->FindOrCreateUniqueNodeData(animGraphInstance));
     }
 
 

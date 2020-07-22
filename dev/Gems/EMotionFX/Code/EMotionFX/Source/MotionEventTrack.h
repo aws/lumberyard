@@ -65,7 +65,6 @@ namespace EMotionFX
          * @param motion The motion object this track belongs to.
          */
         MotionEventTrack(const char* name, Motion* motion);
-
         MotionEventTrack(const MotionEventTrack& other);
 
         MotionEventTrack& operator=(const MotionEventTrack& other);
@@ -130,9 +129,8 @@ namespace EMotionFX
          * @param motionInstance The motion instance which triggers the event.
          * @note The end time is also allowed to be smaller than the start time.
          */
-        void ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const;
-
-        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const;
+        void ProcessEvents(float startTime, float endTime, const MotionInstance* motionInstance) const;
+        void ExtractEvents(float startTime, float endTime, const MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const;
 
         /**
          * Get the number of events stored inside the table.
@@ -203,9 +201,9 @@ namespace EMotionFX
         bool mDeletable;
 
     private:
-        void ProcessEventsImpl(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance, const AZStd::function<void(EMotionFX::EventInfo&)>& processFunc);
+        void ProcessEventsImpl(float startTime, float endTime, ActorInstance* actorInstance, const MotionInstance* motionInstance, const AZStd::function<void(EMotionFX::EventInfo&)>& processFunc);
 
         template <typename Functor>
-        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops = true) const;
+        void ExtractEvents(float startTime, float endTime, const MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops = true) const;
     };
 } // namespace EMotionFX

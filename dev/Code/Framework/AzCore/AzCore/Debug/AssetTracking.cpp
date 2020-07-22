@@ -24,17 +24,6 @@ namespace AZ
     {
         namespace
         {
-            static EnvironmentVariable<AssetTrackingImpl*> s_AssetTrackingImpl;
-        }
-    }
-}
-
-namespace AZ
-{
-    namespace Debug
-    {
-        namespace
-        {
             struct AssetTreeNode;
             
             // Per-thread data that needs to be stored.
@@ -70,6 +59,7 @@ namespace AZ
             ThreadData& GetThreadData() override;
 
         private:
+            static EnvironmentVariable<AssetTrackingImpl*>& GetEnvironmentVariable();
             static AssetTrackingImpl* GetSharedInstance();
             static ThreadData& GetSharedThreadData();
 
@@ -103,20 +93,16 @@ namespace AZ
             m_assetRoot(&assetTree->GetRoot()),
             m_allocationTable(allocationTable)
         {
-            if (!s_AssetTrackingImpl)
-            {
-                s_AssetTrackingImpl = Environment::CreateVariable<AssetTrackingImpl*>(AzTypeInfo<AssetTrackingImpl*>::Name());
-            }
+            AZ_Assert(!GetSharedInstance(), "Only one AssetTrackingImpl can exist!");
 
-            AZ_Assert(!*s_AssetTrackingImpl, "Only one AssetTrackingImpl can exist!");
-            s_AssetTrackingImpl.Set(this);
+            GetEnvironmentVariable().Set(this);
             AllocatorManager::Instance().EnterProfilingMode();
         }
 
         AssetTrackingImpl::~AssetTrackingImpl()
         {
             AllocatorManager::Instance().ExitProfilingMode();
-            s_AssetTrackingImpl.Reset();
+            GetEnvironmentVariable().Reset();
         }
 
         void AssetTrackingImpl::AssetBegin(const char* id, const char* file, int line)
@@ -184,18 +170,14 @@ namespace AZ
 
         AssetTrackingImpl* AssetTrackingImpl::GetSharedInstance()
         {
-            AssetTrackingImpl* result = nullptr;
+            auto environmentVariable = GetEnvironmentVariable();
 
-            if (s_AssetTrackingImpl)
+            if(environmentVariable)
             {
-                result = *s_AssetTrackingImpl;
-            }
-            else if (Environment::IsReady())
-            {
-                s_AssetTrackingImpl = Environment::CreateVariable<AssetTrackingImpl*>(AzTypeInfo<AssetTrackingImpl*>::Name());
+                return *environmentVariable;
             }
 
-            return *s_AssetTrackingImpl;
+            return nullptr;
         }
 
         ThreadData& AssetTrackingImpl::GetSharedThreadData()
@@ -215,6 +197,13 @@ namespace AZ
             }
 
             return *data;
+        }
+
+        EnvironmentVariable<AssetTrackingImpl*>& AssetTrackingImpl::GetEnvironmentVariable()
+        {
+            static EnvironmentVariable<AssetTrackingImpl*> assetTrackingImpl = Environment::CreateVariable<AssetTrackingImpl*>(AzTypeInfo<AssetTrackingImpl*>::Name());
+
+            return assetTrackingImpl;
         }
 
         ///////////////////////////////////////////////////////////////////////////////

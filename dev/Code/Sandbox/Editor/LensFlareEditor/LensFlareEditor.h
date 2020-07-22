@@ -21,6 +21,8 @@
 #include "LensFlareItemTree.h"
 #include "UserMessageDefines.h"
 
+#include <AzQtComponents/Components/DockMainWindow.h>
+
 class CLensFlareView;
 class CLensFlareElementTree;
 class CLensFlareAtomicList;
@@ -43,6 +45,8 @@ public:
 
     CLensFlareEditor(QWidget* pParent = nullptr);
     ~CLensFlareEditor();
+
+    QMenu* createPopupMenu() override;
 
     // CDatabaseFrameWnd overrides...
     virtual void SelectItem(CBaseLibraryItem* item, bool bForceReload = false) override;
@@ -200,6 +204,7 @@ private:
     CLensFlareItemTree* m_LensFlareItemTree;
 
     std::vector<ILensFlareChangeItemListener*> m_LensFlareChangeItemListenerList;
+    AzQtComponents::FancyDocking* m_advancedDockManager = nullptr;
 };
 
 class LensFlareItemTreeModel

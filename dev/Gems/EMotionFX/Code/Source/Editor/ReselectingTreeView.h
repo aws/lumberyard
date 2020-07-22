@@ -22,5 +22,7 @@ namespace EMotionFX
     {
     public:
         void focusInEvent(QFocusEvent* event) override;
+
+        void RecursiveGetAllChildren(const QModelIndex& index, QModelIndexList& outIndicies);
     };
 } // namespace EMotionFX

@@ -33,7 +33,7 @@ class TreePanel
     Q_OBJECT
 
 public:
-    TreePanel();
+    explicit TreePanel(QWidget* parent = nullptr);
 
     void Reset();
 

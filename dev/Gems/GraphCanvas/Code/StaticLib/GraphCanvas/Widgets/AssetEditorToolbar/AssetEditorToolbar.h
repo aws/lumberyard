@@ -17,6 +17,8 @@
 #include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Editor/EditorTypes.h>
 
+class QToolButton;
+
 namespace Ui
 {
     class AssetEditorToolbar;
@@ -41,6 +43,8 @@ namespace GraphCanvas
         ~AssetEditorToolbar() = default;
 
         void AddCustomAction(QToolButton* toolButton);
+
+        void AddCreationAction(QToolButton* toolButton);
         
         // AssetEditorNotificationBus
         void OnActiveGraphChanged(const GraphId& graphId) override;
@@ -49,6 +53,9 @@ namespace GraphCanvas
         // SceneNotificationBus
         void OnSelectionChanged() override;
         ////
+
+        void OnViewDisabled();
+        void OnViewEnabled();
 
     public Q_SLOTS:
 
@@ -81,7 +88,7 @@ namespace GraphCanvas
 
         void OnCommentMenuAboutToShow();
         void OnNodeGroupMenuAboutToShow();
-        void OnPresetActionTriggered(QAction* action);        
+        void OnPresetActionTriggered(QAction* action);
 
         EditorContextMenu*              m_commentPresetsMenu;
         CommentPresetsMenuActionGroup*  m_commentPresetActionGroup;
@@ -91,6 +98,8 @@ namespace GraphCanvas
         
         EditorId m_editorId;
         GraphId m_activeGraphId;
+
+        bool m_viewDisabled;
     
         AZStd::unique_ptr<Ui::AssetEditorToolbar> m_ui;
     };

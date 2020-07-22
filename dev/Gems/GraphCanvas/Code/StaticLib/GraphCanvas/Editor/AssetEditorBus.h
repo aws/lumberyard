@@ -16,6 +16,7 @@
 #include <AzCore/std/chrono/chrono.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
+#include <GraphCanvas/Types/Endpoint.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.h>
 #include <GraphCanvas/Types/Types.h>
 
@@ -136,6 +137,12 @@ namespace GraphCanvas
         //! Request to create a new Graph. Returns the GraphId that represents the newly created Graph.
         virtual GraphId CreateNewGraph() = 0;
 
+        //! Returns whether or not this Asset Editor has an opened graph with the specified GraphId.
+        virtual bool ContainsGraph(const GraphId& graphId) const = 0;
+
+        //! Close a specified graph. Returns if the graph was closed.
+        virtual bool CloseGraph(const GraphId& graphId) = 0;
+
         virtual void CustomizeConnectionEntity(AZ::Entity* connectionEntity)
         {
             AZ_UNUSED(connectionEntity);
@@ -160,6 +167,13 @@ namespace GraphCanvas
         virtual ContextMenuAction::SceneReaction ShowConnectionContextMenu(const AZ::EntityId& connectionId, const QPoint& screenPoint, const QPointF& scenePoint) = 0;
 
         virtual ContextMenuAction::SceneReaction ShowSlotContextMenu(const AZ::EntityId& slotId, const QPoint& screenPoint, const QPointF& scenePoint) = 0;
+
+        //! This is sent when a Connection has no target.
+        //! Returns the EntityId of the node create, if any.
+        virtual Endpoint CreateNodeForProposal(const AZ::EntityId& connectionId, const Endpoint& endpoint, const QPointF& scenePosition, const QPoint& screenPosition) = 0;
+
+        //! Callback for the Wrapper node action widgets
+        virtual void OnWrapperNodeActionWidgetClicked(const AZ::EntityId& wrapperNode, const QRect& actionWidgetBoundingRect, const QPointF& scenePosition, const QPoint& screenPosition) = 0;
     };
 
     using AssetEditorRequestBus = AZ::EBus< AssetEditorRequests >;

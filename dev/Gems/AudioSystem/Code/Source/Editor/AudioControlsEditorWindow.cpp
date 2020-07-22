@@ -42,7 +42,8 @@ namespace AudioControls
     bool CAudioControlsEditorWindow::m_wasClosed = false;
 
     //-------------------------------------------------------------------------------------------//
-    CAudioControlsEditorWindow::CAudioControlsEditorWindow()
+    CAudioControlsEditorWindow::CAudioControlsEditorWindow(QWidget* parent)
+        : QMainWindow(parent)
     {
         setupUi(this);
 

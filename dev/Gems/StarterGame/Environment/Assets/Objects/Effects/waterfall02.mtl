@@ -1,0 +1,23 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FX_WaterfallMAT" MtlFlags="524448" Shader="Illum" GenMask="2081000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING%VERTCOLORS" SurfaceType="mat_water" Diffuse="1,1,1" Specular="0.23455061,0.23455061,0.23455061" Opacity="1" Shininess="111" AlphaTest="0.47999999" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/waterfalls_01.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_VOscillatorType="2" TexMod_VOscillatorRate="0.40000001" TexMod_VOscillatorAmplitude="-1"/>
+    </Texture>
+    <Texture Map="Bumpmap" File="objects/effects/waterfalls_01_ddn.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="FX_Waterfall2MAT" MtlFlags="524448" Shader="Illum" GenMask="2081000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING%VERTCOLORS" SurfaceType="mat_water" Diffuse="1,1,1" Specular="0,0,0" Emittance="0.0097212186,0.0097212186,0.0097212186,0" Opacity="0.77999997" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/effects/waterfalls_02.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_VOscillatorType="2" TexMod_VOscillatorRate="0.2" TexMod_VOscillatorAmplitude="-1"/>
+    </Texture>
+    <Texture Map="Bumpmap" File="objects/effects/waterfalls_01_ddn.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

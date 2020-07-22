@@ -24,6 +24,7 @@
 #include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 
 #include <ScriptCanvas/Bus/RequestBus.h>
+#include <ScriptCanvas/GraphCanvas/DynamicSlotBus.h>
 #include <ScriptCanvas/Libraries/Core/ScriptEventBase.h>
 
 namespace ScriptCanvasEditor
@@ -61,7 +62,6 @@ namespace ScriptCanvasEditor
     {
         NodeDescriptorComponent::Activate();
 
-        SetVersionedNodeId(GetEntityId());
         AZ::Data::AssetBus::Handler::BusConnect(m_assetId);
     }
 
@@ -72,82 +72,31 @@ namespace ScriptCanvasEditor
         AZ::Data::AssetBus::Handler::BusDisconnect();
     }
 
+    void ScriptEventSenderNodeDescriptorComponent::OnAssetUnloaded(const AZ::Data::AssetId assetId, const AZ::Data::AssetType assetType)
+    {
+        SignalNeedsVersionConversion();
+    }
+
     void ScriptEventSenderNodeDescriptorComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        AZ::EntityId graphCanvasGraphId;
-        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
-
-        ScriptCanvas::ScriptCanvasId scriptCanvasId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
-
-        EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::QueueVersionUpdate, GetEntityId());
+        SignalNeedsVersionConversion();
     }
 
-    bool ScriptEventSenderNodeDescriptorComponent::IsOutOfDate() const
+    void ScriptEventSenderNodeDescriptorComponent::OnVersionConversionBegin()
     {
-        bool isOutOfDate = false;
-             
-        if (auto scriptEventNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::Internal::ScriptEventBase>(m_scriptCanvasId))
-        {
-            AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(scriptEventNode->GetAssetId());
-
-            if (assetData)
-            {
-                ScriptEvents::ScriptEvent& definition = assetData.Get()->m_definition;
-
-                if (scriptEventNode->GetVersion() != definition.GetVersion())
-                {
-                    isOutOfDate = true;
-                }
-            }
-        }
-
-        return isOutOfDate;
+        DynamicSlotRequestBus::Event(GetEntityId(), &DynamicSlotRequests::StartQueueSlotUpdates);
     }
 
-    void ScriptEventSenderNodeDescriptorComponent::UpdateNodeVersion()
+    void ScriptEventSenderNodeDescriptorComponent::OnVersionConversionEnd()
     {
-        AZ::EntityId graphCanvasGraphId;
-        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
-
-        ScriptCanvas::ScriptCanvasId scriptCanvasId;
-        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
-
-        VersionControlledNodeNotificationBus::Event(GetEntityId(), &VersionControlledNodeNotifications::OnVersionConversionBegin);
-
-        AZ::Entity* entity = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, m_scriptCanvasId);
-
-        if (entity)
-        {
-            ScriptCanvas::Nodes::Core::Internal::ScriptEventBase* scriptEvent = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::Internal::ScriptEventBase>(entity);
-
-            if (scriptEvent)
-            {
-                scriptEvent->UpdateScriptEventAsset();
-            }
-        }
-
         UpdateTitles();
-
-        VersionControlledNodeNotificationBus::Event(GetEntityId(), &VersionControlledNodeNotifications::OnVersionConversionEnd);
-
-        AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_assetId, true, nullptr, true);
-
-        if (asset.IsReady())
-        {
-            if (!asset.Get()->m_definition.HasMethod(m_eventId))
-            {
-                AZStd::unordered_set< AZ::EntityId > deleteNodes = { GetEntityId() };
-                GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::Delete, deleteNodes);
-            }
-        }
+        DynamicSlotRequestBus::Event(GetEntityId(), &DynamicSlotRequests::StopQueueSlotUpdates);
     }
-
 
     void ScriptEventSenderNodeDescriptorComponent::OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& scriptCanvasNodeId)
     {
         m_scriptCanvasId = scriptCanvasNodeId;
+        EditorNodeNotificationBus::Handler::BusConnect(scriptCanvasNodeId);
 
         ScriptCanvas::Nodes::Core::Method* method = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::Method>(m_scriptCanvasId);
 
@@ -207,5 +156,16 @@ namespace ScriptCanvasEditor
                 }
             }
         }
+    }
+
+    void ScriptEventSenderNodeDescriptorComponent::SignalNeedsVersionConversion()
+    {
+        AZ::EntityId graphCanvasGraphId;
+        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+
+        ScriptCanvas::ScriptCanvasId scriptCanvasId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasId, &GeneralRequests::GetScriptCanvasId, graphCanvasGraphId);
+
+        EditorGraphRequestBus::Event(scriptCanvasId, &EditorGraphRequests::QueueVersionUpdate, GetEntityId());
     }
 }

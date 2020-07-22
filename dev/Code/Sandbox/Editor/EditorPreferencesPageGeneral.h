@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 
 class CEditorPreferencesPage_General
     : public IPreferencesPage
@@ -34,13 +35,6 @@ public:
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
 
-    enum class ToolBarIconSize
-    {
-        ToolBarIconSize_16 = 16,
-        ToolBarIconSize_24 = 24,
-        ToolBarIconSize_32 = 32
-    };
-
 private:
     void InitializeSettings();
 
@@ -58,7 +52,7 @@ private:
         SEditorSettings::ConsoleColorTheme m_consoleBackgroundColorTheme;
         bool m_autoLoadLastLevel;
         bool m_bShowTimeInConsole;
-        int m_toolbarIconSize;
+        AzQtComponents::ToolBar::ToolBarIconSize m_toolbarIconSize;
         bool m_stylusMode;
         bool m_restoreViewportCamera;
         bool m_bLayerDoubleClicking;
@@ -71,6 +65,8 @@ private:
         // Only used to tell if the user has changed this value since it requires a restart
         bool m_enableLegacyUIInitialValue;
         bool m_enableNewViewportInteractionModelInitialValue;
+        bool m_enableUI2InitialValue;
+
 
         // Callbacks when either m_enableNewViewportInteractionModel or m_enableLegacyUI
         // change to ensure they both cannot be enabled at the same time

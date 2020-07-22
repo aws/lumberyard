@@ -187,7 +187,7 @@ namespace EMotionFX
 
     TEST_F(AnimGraphMotionNodeFixture, NoInputAndZeroEffectOutputsCorrectMotionAndPose)
     {
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         
         // Check position of root and pelvis to ensure actor's motion movement is correct.
         // Follow-through during the duration(~1.06666672 seconds) of the motion.
@@ -209,10 +209,10 @@ namespace EMotionFX
 
     TEST_F(AnimGraphMotionNodeFixture, NoInputAndLoopOutputsCorrectMotionAndPose)
     {
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         uniqueData->mReload = true;
         m_motionNode->SetLoop(true);
-        m_motionNode->OnUpdateUniqueData(m_animGraphInstance);
+        m_motionNode->InvalidateUniqueData(m_animGraphInstance);
         m_actorInstance->SetMotionExtractionEnabled(false);
         EXPECT_TRUE(m_motionNode->GetIsLooping()) << "Loop effect should be on.";
         GetEMotionFX().Update(0.0f); // Needed to trigger a refresh of motion node internals.
@@ -243,7 +243,7 @@ namespace EMotionFX
     TEST_F(AnimGraphMotionNodeFixture, NoInputAndReverseOutputsCorrectMotionAndPose)
     {
         m_motionNode->SetReverse(true);
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         uniqueData->mReload = true;
         GetEMotionFX().Update(1.1f);
 
@@ -269,7 +269,7 @@ namespace EMotionFX
 
     TEST_F(AnimGraphMotionNodeFixture, NoInputAndMirrorMotionOutputsCorrectMotionAndPose)
     {
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         uniqueData->mReload = true;
         GetEMotionFX().Update(1.0f);
 
@@ -312,7 +312,7 @@ namespace EMotionFX
     {
         m_motionNode->AddConnection(m_paramNode, m_paramNode->FindOutputPortByName("InPlace")->mPortID, AnimGraphMotionNode::INPUTPORT_INPLACE);
         ParamSetValue<MCore::AttributeBool, bool>("InPlace", true);
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         
         GetEMotionFX().Update(1.0f / 60.0f);
 
@@ -346,7 +346,7 @@ namespace EMotionFX
         BlendTreeConnection* playSpeedConnection = m_motionNode->AddConnection(m_fltConstNode,
             BlendTreeFloatConstantNode::OUTPUTPORT_RESULT, AnimGraphMotionNode::INPUTPORT_PLAYSPEED);
 
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Root node's initial position under the first speed factor.
@@ -419,8 +419,9 @@ namespace EMotionFX
         AddMotionData("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"
             , "jack_death_fall_back_zup");
         m_motionNode->AddMotionId("jack_death_fall_back_zup");
-        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_motionNode));
+        AnimGraphMotionNode::UniqueData* uniqueData = static_cast<AnimGraphMotionNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_motionNode));
         uniqueData->mReload = true;
+        m_motionNode->Reinit();
 
         m_motionNode->SetIndexMode(AnimGraphMotionNode::INDEXMODE_RANDOMIZE);
         m_motionNode->SetNextMotionAfterLoop(true);
@@ -463,6 +464,7 @@ namespace EMotionFX
         m_motionNode->SetIndexMode(AnimGraphMotionNode::INDEXMODE_RANDOMIZE_NOREPEAT);
         uniqueData->Reset();
         m_motionNode->Reinit();
+        uniqueData->Update();
         uint32 currentMotionIndex = uniqueData->mActiveMotionIndex;
 
         // In randomized no repeat index mode, motions should change in each loop.
@@ -470,6 +472,10 @@ namespace EMotionFX
         {
             uniqueData->mReload = true;
             m_motionNode->Reinit();
+
+            // As we keep and use the cached version of the unique data, we need to manually update it.
+            uniqueData->Update();
+
             const AZ::u32 updatedMotionIndex = uniqueData->mActiveMotionIndex;
             EXPECT_TRUE(updatedMotionIndex != currentMotionIndex) << "Updated motion index should be different from its previous motion index.";
             currentMotionIndex = updatedMotionIndex;
@@ -482,6 +488,7 @@ namespace EMotionFX
         {
             uniqueData->mReload = true;
             m_motionNode->Reinit();
+            uniqueData->Update();
             EXPECT_NE(currentMotionIndex, uniqueData->mActiveMotionIndex) << "Updated motion index should match the expected motion index.";
             currentMotionIndex = uniqueData->mActiveMotionIndex;
         }

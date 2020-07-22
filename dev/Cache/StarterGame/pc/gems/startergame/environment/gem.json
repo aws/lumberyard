@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "1af0299b94754bd7b35e81ce354207c6",
+    "Name": "Environment",
+    "DisplayName": "Starter Game Environment",
+    "Version": "0.1.0",
+    "LinkType": "NoCode",
+    "Summary": "StarterGame environment assets and scripts",
+    "Tags": ["Asset","StarterGame", "Environment", "World"],
+    "IconPath": "preview.png"
+}

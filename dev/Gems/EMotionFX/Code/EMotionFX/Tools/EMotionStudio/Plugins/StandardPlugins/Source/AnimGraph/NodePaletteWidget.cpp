@@ -21,55 +21,290 @@
 #include <EMotionFX/Source/BlendTreeFinalNode.h>
 #include "AnimGraphPlugin.h"
 #include <QVBoxLayout>
-#include <QListWidget>
-#include <QTabBar>
 #include <QIcon>
 #include <QAction>
 #include <QMimeData>
 #include <QLabel>
 #include <QTextEdit>
+#include <QTreeView>
 
 
 namespace EMStudio
 {
     AZ_CLASS_ALLOCATOR_IMPL(NodePaletteWidget::EventHandler, EMotionFX::EventHandlerAllocator, 0)
 
-    // return the mime data
-    QMimeData* NodePaletteList::mimeData(const QList<QListWidgetItem*> items) const
+    namespace
     {
-        if (items.count() != 1)
+        const auto& CategoryNames()
+        {
+            static const AZStd::unordered_map<EMotionFX::AnimGraphNode::ECategory, QString> categories =
+            {
+                { EMotionFX::AnimGraphNode::CATEGORY_SOURCES, NodePaletteWidget::tr("Sources") },
+                { EMotionFX::AnimGraphNode::CATEGORY_BLENDING, NodePaletteWidget::tr("Blending") },
+                { EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS, NodePaletteWidget::tr("Controllers") },
+                { EMotionFX::AnimGraphNode::CATEGORY_PHYSICS, NodePaletteWidget::tr("Physics") },
+                { EMotionFX::AnimGraphNode::CATEGORY_LOGIC, NodePaletteWidget::tr("Logic") },
+                { EMotionFX::AnimGraphNode::CATEGORY_MATH, NodePaletteWidget::tr("Math") },
+                { EMotionFX::AnimGraphNode::CATEGORY_MISC, NodePaletteWidget::tr("Misc") },
+            };
+            return categories;
+        }
+    }
+
+    class NodePaletteModel
+        : public QAbstractItemModel
+    {
+    public:
+        explicit NodePaletteModel(AnimGraphPlugin* plugin, QObject* parent = nullptr);
+
+        QModelIndex index(int row, int column, const QModelIndex& parent = {}) const override;
+        QModelIndex parent(const QModelIndex& index) const override;
+
+        int columnCount(const QModelIndex& parent = {}) const override;
+        int rowCount(const QModelIndex& parent = {}) const override;
+
+        QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+
+        Qt::ItemFlags flags(const QModelIndex& index) const override;
+
+        QStringList mimeTypes() const override;
+        QMimeData* mimeData(const QModelIndexList& indexes) const override;
+
+        void setNode(EMotionFX::AnimGraphNode* node);
+
+    private:
+        void initializeGroups();
+
+        struct CategoryGroup
+        {
+            EMotionFX::AnimGraphNode::ECategory m_category;
+            AZStd::vector<AZStd::pair<EMotionFX::AnimGraphObject*, /*enabled=*/bool>> m_nodes;
+            bool m_enabled = true;
+        };
+
+        AnimGraphPlugin* m_plugin;
+        EMotionFX::AnimGraphNode* m_node = nullptr;
+        AZStd::vector<AZStd::unique_ptr<CategoryGroup>> m_groups;
+    };
+
+    NodePaletteModel::NodePaletteModel(AnimGraphPlugin* plugin, QObject* parent)
+        : QAbstractItemModel(parent)
+        , m_plugin(plugin)
+    {
+    }
+
+    QModelIndex NodePaletteModel::index(int row, int column, const QModelIndex& parent) const
+    {
+        if (!parent.isValid())
+        {
+            if (row >= 0 && row < static_cast<int>(m_groups.size()))
+            {
+                return createIndex(row, column, nullptr);
+            }
+        }
+        else
+        {
+            if (parent.row() >= 0 && parent.row() < static_cast<int>(m_groups.size()))
+            {
+                const auto& group = m_groups[parent.row()];
+                if (row >= 0 && row < static_cast<int>(group->m_nodes.size()))
+                {
+                    return createIndex(row, column, const_cast<CategoryGroup*>(group.get()));
+                }
+            }
+        }
+        return {};
+    }
+
+    QModelIndex NodePaletteModel::parent(const QModelIndex& index) const
+    {
+        if (!index.isValid())
+        {
+            return {};
+        }
+        if (const auto* group = static_cast<CategoryGroup*>(index.internalPointer()))
+        {
+            auto it = std::find_if(m_groups.begin(), m_groups.end(),
+                    [category = group->m_category](const auto& group) { return group->m_category == category; });
+            if (it != m_groups.end())
+            {
+                return createIndex(aznumeric_cast<int>(std::distance(m_groups.begin(), it)), 0, nullptr);
+            }
+        }
+        return {};
+    }
+
+    int NodePaletteModel::columnCount(const QModelIndex&) const
+    {
+        return 1;
+    }
+
+    int NodePaletteModel::rowCount(const QModelIndex& parent) const
+    {
+        if (!parent.isValid())
+        {
+            return static_cast<int>(m_groups.size());
+        }
+        else if (parent.internalPointer() == nullptr && parent.row() >= 0 && parent.row() < static_cast<int>(m_groups.size()))
+        {
+            const auto& group = m_groups[parent.row()];
+            return static_cast<int>(group->m_nodes.size());
+        }
+        return 0;
+    }
+
+    QVariant NodePaletteModel::data(const QModelIndex& index, int role) const
+    {
+        if (!hasIndex(index.row(), index.column(), index.parent()))
+        {
+            return {};
+        }
+
+        if (const auto* group = static_cast<CategoryGroup*>(index.internalPointer()))
+        {
+            const auto& nodePair = group->m_nodes[index.row()];
+            EMotionFX::AnimGraphObject* node = nodePair.first;
+            switch (role)
+            {
+            case Qt::DisplayRole:
+            {
+                return node->GetPaletteName();
+            }
+            case Qt::DecorationRole:
+            {
+                return NodePaletteWidget::GetNodeIcon(static_cast<const EMotionFX::AnimGraphNode*>(node));
+            }
+            case Qt::UserRole:
+            {
+                return azrtti_typeid(node).ToString<AZStd::string>().c_str();
+            }
+            default:
+                break;
+            }
+        }
+        else
+        {
+            switch (role)
+            {
+            case Qt::DisplayRole:
+            {
+                const EMotionFX::AnimGraphNode::ECategory category = m_groups[index.row()]->m_category;
+
+                const auto& categoryNames = CategoryNames();
+                auto it = categoryNames.find(category);
+                if (it != categoryNames.end())
+                {
+                    return it->second;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        }
+        return {};
+    }
+
+    Qt::ItemFlags NodePaletteModel::flags(const QModelIndex& index) const
+    {
+        Qt::ItemFlags flags = QAbstractItemModel::flags(index);
+
+        if (const auto* group = static_cast<CategoryGroup*>(index.internalPointer()))
+        {
+            const auto& nodePair = group->m_nodes[index.row()];
+
+            // Node item in the tree view is disabled.
+            if (!nodePair.second)
+            {
+                flags.setFlag(Qt::ItemIsEnabled, false);
+            }
+            // Node item in the tree view is enabled.
+            else
+            {
+                flags.setFlag(Qt::ItemIsDragEnabled, true);
+            }
+        }
+
+        return flags;
+    }
+
+    QStringList NodePaletteModel::mimeTypes() const
+    {
+        return {QStringLiteral("text/plain")};
+    }
+
+    QMimeData* NodePaletteModel::mimeData(const QModelIndexList& indexes) const
+    {
+        if (indexes.isEmpty())
         {
             return nullptr;
         }
 
-        const QListWidgetItem* item = items.at(0);
+        const auto& index = indexes.first();
 
-        // create the data and set the text
-        QMimeData* mimeData = new QMimeData();
-        QString textData = "EMotionFX::AnimGraphNode;";
-        textData += item->data(Qt::UserRole).toString().toUtf8().data();
-        textData += ";" + item->text(); // add the palette name as generated name prefix (spaces will be removed from it
+        auto* mimeData = new QMimeData;
+        QString textData = QStringLiteral("EMotionFX::AnimGraphNode;");
+        textData += index.data(Qt::UserRole).toString();
+        textData += ";" + index.data(Qt::DisplayRole).toString(); // add the palette name as generated name prefix (spaces will be removed from it
         mimeData->setText(textData);
 
         return mimeData;
     }
 
-
-    // return the supported mime types
-    QStringList NodePaletteList::mimeTypes() const
+    void NodePaletteModel::setNode(EMotionFX::AnimGraphNode* node)
     {
-        QStringList result;
-        result.append("text/plain");
-        return result;
+        if (node == m_node)
+        {
+            return;
+        }
+
+        beginResetModel();
+
+        m_node = node;
+        initializeGroups();
+
+        endResetModel();
     }
 
-
-    // get the allowed drop actions
-    Qt::DropActions NodePaletteList::supportedDropActions() const
+    void NodePaletteModel::initializeGroups()
     {
-        return Qt::CopyAction;
-    }
+        static const auto categories =
+        {
+            EMotionFX::AnimGraphNode::CATEGORY_SOURCES,
+            EMotionFX::AnimGraphNode::CATEGORY_BLENDING,
+            EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS,
+            EMotionFX::AnimGraphNode::CATEGORY_PHYSICS,
+            EMotionFX::AnimGraphNode::CATEGORY_LOGIC,
+            EMotionFX::AnimGraphNode::CATEGORY_MATH,
+            EMotionFX::AnimGraphNode::CATEGORY_MISC,
+        };
 
+        m_groups.clear();
+        m_groups.reserve(categories.size());
+
+        const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = m_plugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
+        AZStd::vector<AZStd::pair<EMotionFX::AnimGraphObject*, bool>> nodes;
+        for (const auto category : categories)
+        {
+            nodes.clear();
+            for (EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
+            {
+                if (objectPrototype->GetPaletteCategory() == category)
+                {
+                    const bool isEnabled = m_plugin->CheckIfCanCreateObject(m_node, objectPrototype, category);
+                    nodes.emplace_back(objectPrototype, isEnabled);
+                }
+            }
+
+            if (!nodes.empty())
+            {
+                auto group = AZStd::make_unique<CategoryGroup>();
+                group->m_category = category;
+                group->m_nodes = AZStd::move(nodes);
+                m_groups.emplace_back(std::move(group));
+            }
+        }
+    }
 
     NodePaletteWidget::EventHandler::EventHandler(NodePaletteWidget* widget)
         : mWidget(widget)
@@ -97,19 +332,9 @@ namespace EMStudio
     NodePaletteWidget::NodePaletteWidget(AnimGraphPlugin* plugin)
         : QWidget()
         , mPlugin(plugin)
+        , mModel(new NodePaletteModel(plugin, this))
     {
         mNode   = nullptr;
-        mTabBar = nullptr;
-        mList   = nullptr;
-
-        m_categories.reserve(7);
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_SOURCES, "Sources");
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_BLENDING, "Blending");
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS, "Controllers");
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_PHYSICS, "Physics");
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_LOGIC, "Logic");
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_MATH, "Math");
-        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_MISC, "Misc");
 
         // create the default layout
         mLayout = new QVBoxLayout();
@@ -127,36 +352,14 @@ namespace EMStudio
         // add the initial text in the layout
         mLayout->addWidget(mInitialText);
 
-        // create the tabbar
-        mTabBar = new QTabBar();
-        for (const auto& categoryPair : m_categories)
-        {
-            mTabBar->addTab(categoryPair.second);
-        }
-        mTabBar->setVisible(false);
-        connect(mTabBar, &QTabBar::currentChanged, this, &NodePaletteWidget::OnChangeCategoryTab);
+        // create the tree view
+        mTreeView = new QTreeView(this);
+        mTreeView->setHeaderHidden(true);
+        mTreeView->setModel(mModel);
+        mTreeView->setDragDropMode(QAbstractItemView::DragOnly);
 
-        // add the tabbar in the layout
-        mLayout->addWidget(mTabBar);
-
-        // create the list
-        mList = new NodePaletteList();
-        mList->setViewMode(QListView::IconMode);
-        mList->setUniformItemSizes(false);
-        mList->setSelectionMode(QAbstractItemView::SingleSelection);
-        mList->setMovement(QListView::Static);
-        mList->setWrapping(true);
-        mList->setTextElideMode(Qt::ElideRight);
-        mList->setDragEnabled(true);
-        mList->setWordWrap(true);
-        mList->setFlow(QListView::LeftToRight);
-        mList->setResizeMode(QListView::Adjust);
-        mList->setDragDropMode(QAbstractItemView::DragOnly);
-        mList->setIconSize(QSize(48, 48));
-        mList->setVisible(false);
-
-        // add the list in the layout
-        mLayout->addWidget(mList);
+        // add the tree view in the layout
+        mLayout->addWidget(mTreeView);
 
         // set the default layout
         setLayout(mLayout);
@@ -193,8 +396,7 @@ namespace EMStudio
 
             // set the widget visible or not
             mInitialText->setVisible(true);
-            mTabBar->setVisible(false);
-            mList->setVisible(false);
+            mTreeView->setVisible(false);
         }
         else
         {
@@ -204,53 +406,24 @@ namespace EMStudio
 
             // set the widget visible or not
             mInitialText->setVisible(false);
-            mTabBar->setVisible(true);
-            mList->setVisible(true);
-
-            // update the current tab
-            OnChangeCategoryTab(mTabBar->currentIndex());
-        }
-    }
-
-
-    AZStd::string NodePaletteWidget::GetNodeIconFileName(const EMotionFX::AnimGraphNode* node)
-    {
-        AZStd::string filename      = AZStd::string::format("/Images/AnimGraphPlugin/%s.png", node->RTTI_GetTypeName());
-        AZStd::string fullFilename  = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().c_str(), node->RTTI_GetTypeName());
-
-        if (QFile::exists(fullFilename.c_str()) == false)
-        {
-            return "/Images/AnimGraphPlugin/UnknownNode.png";
+            mTreeView->setVisible(true);
         }
 
-        return filename;
+        mModel->setNode(mNode);
     }
 
 
-    // register list widget icons
-    void NodePaletteWidget::RegisterItems(EMotionFX::AnimGraphObject* object, EMotionFX::AnimGraphObject::ECategory category)
+    QIcon NodePaletteWidget::GetNodeIcon(const EMotionFX::AnimGraphNode* node)
     {
-        mList->clear();
-
-        const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = mPlugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
-        for (const EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
-        {
-            if (mPlugin->CheckIfCanCreateObject(object, objectPrototype, category))
-            {
-                const EMotionFX::AnimGraphNode* curNode = static_cast<const EMotionFX::AnimGraphNode*>(objectPrototype);
-                QListWidgetItem* item = new QListWidgetItem(MysticQt::GetMysticQt()->FindIcon(GetNodeIconFileName(curNode).c_str()), curNode->GetPaletteName(), mList, NodePaletteList::NODETYPE_BLENDNODE);
-                item->setToolTip(curNode->RTTI_GetTypeName());
-                item->setData(Qt::UserRole, azrtti_typeid(curNode).ToString<AZStd::string>().c_str());
-            }
-        }
+        QPixmap pixmap(QSize(12, 8));
+        QColor nodeColor;
+        nodeColor.setRgbF(node->GetVisualColor().GetR(), node->GetVisualColor().GetG(), node->GetVisualColor().GetB(), 1.0f);
+        pixmap.fill(nodeColor);
+        QIcon icon(pixmap);
+        icon.addPixmap(pixmap, QIcon::Selected);
+        return icon;
     }
 
-
-    void NodePaletteWidget::OnChangeCategoryTab(int index)
-    {
-        AZ_Assert(index >= 0 && index < m_categories.size(), "Unsupported category tab.");
-        RegisterItems(mNode, static_cast<EMotionFX::AnimGraphNode::ECategory>(index));
-    }
 
     void NodePaletteWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {

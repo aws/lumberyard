@@ -66,6 +66,9 @@ namespace Physics
         bool IsSet(CollisionLayer layer) const;
         AZ::u64 GetMask() const;
 
+        bool operator==(const CollisionGroup& collisionGroup) const;
+        bool operator!=(const CollisionGroup& collisionGroup) const;
+
     private:
         AZ::u64 m_mask;
     };

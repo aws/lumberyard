@@ -67,8 +67,8 @@ public:
             connectUntilDeleted(deleteDirectory, &QAction::triggered, this, &CodeDirectoryDetailWidget::OnDeleteRequested);
         }
 
-        menu->addSeparator(); 
-        
+        menu->addSeparator();
+
         //Add right click menu option to code directory node in tree
         auto openPathInExplorer = menu->addAction("View in Explorer");
         openPathInExplorer->setToolTip(tr("View the directory in Windows Explorer."));
@@ -163,6 +163,10 @@ private:
             box.exec();
             return;
         }
+
+        // Ensure directory path exists
+        auto dirPath = QDir::toNativeSeparators(dir.absolutePath());
+        QDir().mkpath(dirPath);
 
         auto filePath = QDir::toNativeSeparators(dir.absoluteFilePath(fileName));
 

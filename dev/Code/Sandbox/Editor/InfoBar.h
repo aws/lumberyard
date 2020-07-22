@@ -58,11 +58,6 @@ protected:
 
     void OnVectorUpdate(bool followTerrain);
 
-    // these get called by drag/spinner style updates
-    void OnVectorUpdateX();
-    void OnVectorUpdateY();
-    void OnVectorUpdateZ();
-
     // this gets called by stepper or text edit changes
     void OnVectorChanged();
 
@@ -75,16 +70,12 @@ protected:
 
     void OnBnClickedSyncplayer();
     void OnBnClickedGotoPosition();
-    void OnBnClickedSpeed01();
-    void OnBnClickedSpeed1();
-    void OnBnClickedSpeed10();
-    void OnBeginVectorUpdate();
-    void OnEndVectorUpdate();
 
     void OnVectorLock();
     void OnLockSelection();
     void OnBnClickedSetVector();
-    void OnUpdateMoveSpeed();
+    void OnSpeedComboBoxEnter();
+    void OnUpdateMoveSpeedText(const QString&);
     void OnBnClickedTerrainCollision();
     void OnBnClickedPhysics();
     void OnBnClickedSingleStepPhys();
@@ -92,9 +83,6 @@ protected:
     void OnBnClickedMuteAudio();
     void OnBnClickedEnableVR();
     void OnInitDialog();
-
-    void OnEnableIdleUpdate();
-    void OnDisableIdleUpdate();
 
     //////////////////////////////////////////////////////////////////////////
     /// VR Event Bus Implementation
@@ -111,10 +99,20 @@ protected:
 
     float m_width, m_height;
     //int m_heightMapX,m_heightMapY;
+    double m_fieldWidthMultiplier = 1.8;
 
     int m_prevEditMode;
     int m_numSelected;
     float m_prevMoveSpeed;
+
+    // Speed combobox/lineEdit settings
+    double m_minSpeed = 0.1;
+    double m_maxSpeed = 100.0;
+    double m_speedStep = 0.1;
+    int m_numDecimals = 1;
+
+    // Speed presets
+    float m_speedPresetValues[3] = { 0.1f, 1.0f, 10.0f };
 
     bool m_bVectorLock;
     bool m_bSelectionLocked;
@@ -136,6 +134,9 @@ protected:
     QScopedPointer<Ui::CInfoBar> ui;
 
     bool m_idleUpdateEnabled = true;
+
+private:
+    void SetSpeedComboBox(double value);
 };
 
 #endif // CRYINCLUDE_EDITOR_INFOBAR_H

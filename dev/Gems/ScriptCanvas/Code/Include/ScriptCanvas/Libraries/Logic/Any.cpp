@@ -62,7 +62,7 @@ namespace ScriptCanvas
             {
                 const SlotId outSlotId = AnyProperty::GetOutSlotId(this);
                 SignalOutput(outSlotId);
-            }            
+            }
 
             SlotId Any::HandleExtension(AZ::Crc32 extensionId)
             {
@@ -76,8 +76,15 @@ namespace ScriptCanvas
 
             bool Any::CanDeleteSlot(const SlotId& slotId) const
             {
-                auto slots = GetAllSlotsByDescriptor(SlotDescriptors::ExecutionIn());
-                return slots.size() > 1;
+                const Slot* slot = GetSlot(slotId);
+
+                if (slot && slot->IsInput())
+                {
+                    auto slots = GetAllSlotsByDescriptor(SlotDescriptors::ExecutionIn());
+                    return slots.size() > 1;
+                }
+
+                return false;
             }
 
             void Any::OnSlotRemoved(const SlotId& slotId)

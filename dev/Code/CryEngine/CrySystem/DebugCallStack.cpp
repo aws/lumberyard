@@ -219,8 +219,6 @@ int DebugCallStack::handleException(EXCEPTION_POINTERS* exception_pointer)
         return EXCEPTION_EXECUTE_HANDLER;
     }
 
-    gEnv->pLog->FlushAndClose();
-
     ResetFPU(exception_pointer);
 
     prev_sys_float_exceptions = 0;
@@ -230,6 +228,7 @@ int DebugCallStack::handleException(EXCEPTION_POINTERS* exception_pointer)
 
     if (g_cvars.sys_WER)
     {
+        gEnv->pLog->FlushAndClose();
         return CryEngineExceptionFilterWER(exception_pointer);
     }
 
@@ -266,6 +265,7 @@ int DebugCallStack::handleException(EXCEPTION_POINTERS* exception_pointer)
     if (!firstTime)
     {
         WriteLineToLog("Critical Exception! Called Multiple Times!");
+        gEnv->pLog->FlushAndClose();
         // Exception called more then once.
         return EXCEPTION_EXECUTE_HANDLER;
     }
@@ -322,6 +322,8 @@ int DebugCallStack::handleException(EXCEPTION_POINTERS* exception_pointer)
     {
         CryEngineExceptionFilterWER(exception_pointer);
     }
+
+    gEnv->pLog->FlushAndClose();
 
     if (exception_pointer->ExceptionRecord->ExceptionFlags & EXCEPTION_NONCONTINUABLE)
     {

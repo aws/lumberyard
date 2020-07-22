@@ -150,7 +150,7 @@ private:
     void GenerateNavigationArea(const AZStd::string& name, const AZ::Vector3& position, const AZ::Vector3* points, size_t numPoints, float height) override;
     const char* GetDefaultAgentNavigationTypeName() override;
     float CalculateAgentNavigationRadius(const char* agentTypeName) override;
-    void OpenPinnedInspector(const AzToolsFramework::EntityIdList& entities) override;
+    void OpenPinnedInspector(const AzToolsFramework::EntityIdSet& entities) override;
     void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* editor) override;
     AZStd::vector<AZStd::string> GetAgentTypes() override;
     void GoToSelectedOrHighlightedEntitiesInViewports() override;
@@ -207,11 +207,11 @@ private:
     void DrawTerrainCircle(const AZ::Vector3& center, float radius, float angle1, float angle2, float height) override;
     void DrawArc(const AZ::Vector3& pos, float radius, float startAngleDegrees, float sweepAngleDegrees, float angularStepDegrees, int referenceAxis) override;
     void DrawArc(const AZ::Vector3& pos, float radius, float startAngleDegrees, float sweepAngleDegrees, float angularStepDegrees, const AZ::Vector3& fixedAxis) override;
-    void DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height) override;
+    void DrawCone(const AZ::Vector3& pos, const AZ::Vector3& dir, float radius, float height, bool drawShaded = true) override;
     void DrawCircle(const AZ::Vector3& pos, float radius, int nUnchangedAxis) override;
     void DrawHalfDottedCircle(const AZ::Vector3& pos, float radius, const AZ::Vector3& viewPos, int nUnchangedAxis) override;
     void DrawWireCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) override;
-    void DrawSolidCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) override;
+    void DrawSolidCylinder(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height, bool drawShaded = true) override;
     void DrawWireCapsule(const AZ::Vector3& center, const AZ::Vector3& axis, float radius, float height) override;
     void DrawTerrainRect(float x1, float y1, float x2, float y2, float height) override;
     void DrawTerrainLine(AZ::Vector3 worldPos1, AZ::Vector3 worldPos2) override;

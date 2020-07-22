@@ -79,7 +79,6 @@ namespace AzToolsFramework
         QRegExp m_searchRegExp;
         QFrame* m_searchFrame = nullptr;
         QLineEdit* m_searchText = nullptr;
-        QPushButton* m_searchClearButton = nullptr;
         QTreeView* m_componentTree = nullptr;
         ComponentPaletteModel* m_componentModel = nullptr;
         AZ::SerializeContext* m_serializeContext = nullptr;

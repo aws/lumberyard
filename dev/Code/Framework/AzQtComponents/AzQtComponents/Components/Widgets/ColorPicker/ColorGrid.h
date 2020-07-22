@@ -42,6 +42,8 @@ namespace AzQtComponents
         void setMode(Mode mode);
         Mode mode() const;
 
+        void StopSelection();
+
     public Q_SLOTS:
         void setHue(qreal hue);
         void setSaturation(qreal saturation);
@@ -82,6 +84,8 @@ namespace AzQtComponents
         qreal m_saturation;
         qreal m_value;
         qreal m_defaultVForHsMode;
+
+        bool m_userIsSelecting = false;
 
         QPixmap m_pixmap;
     };

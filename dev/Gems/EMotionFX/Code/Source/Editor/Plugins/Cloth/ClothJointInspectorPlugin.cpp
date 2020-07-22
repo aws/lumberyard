@@ -69,13 +69,13 @@ namespace EMotionFX
             scrollArea->setWidget(m_jointWidget);
             scrollArea->setWidgetResizable(true);
 
-            mDock->SetContents(scrollArea);
+            mDock->setWidget(scrollArea);
 
             EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
         }
         else
         {
-            mDock->SetContents(CreateErrorContentWidget("Cloth collider editor depends on NVIDIA Cloth gem. Please enable it in the project configurator."));
+            mDock->setWidget(CreateErrorContentWidget("Cloth collider editor depends on the NVIDIA Cloth gem. Please enable it in the project configurator."));
         }
 
         return true;
@@ -129,6 +129,11 @@ namespace EMotionFX
             QAction* removeCollidersAction = contextMenu->addAction("Remove colliders");
             connect(removeCollidersAction, &QAction::triggered, this, &ClothJointInspectorPlugin::OnClearColliders);
         }
+    }
+
+    bool ClothJointInspectorPlugin::IsJointInCloth(const QModelIndex& index)
+    {
+        return index.data(SkeletonModel::ROLE_CLOTH).toBool();
     }
 
     void ClothJointInspectorPlugin::OnAddCollider()

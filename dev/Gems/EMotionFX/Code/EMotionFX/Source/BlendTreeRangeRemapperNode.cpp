@@ -73,10 +73,8 @@ namespace EMotionFX
     // the update function
     void BlendTreeRangeRemapperNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
         // if there are no incoming connections, there is nothing to do
         const size_t numConnections = mConnections.size();
         if (numConnections == 0 || mDisabled)

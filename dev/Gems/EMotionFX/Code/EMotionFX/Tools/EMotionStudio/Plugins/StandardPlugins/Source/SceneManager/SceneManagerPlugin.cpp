@@ -268,10 +268,10 @@ namespace EMStudio
         dialogStack->Add(mActorPropsWindow, "Actor Properties", false, false, true);
 
         // set dialog stack as main widget of the dock
-        mDock->SetContents(dialogStack);
+        mDock->setWidget(dialogStack);
 
         // connect
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &SceneManagerPlugin::WindowReInit);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &SceneManagerPlugin::WindowReInit);
 
         // reinit the dialog
         ReInit();

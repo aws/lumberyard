@@ -16,8 +16,8 @@
 #include "UiAnimViewSequenceManager.h"
 #include "UiAnimViewSequence.h"
 #include "UiAnimViewTrack.h"
-//#include "Objects/SequenceObject.h"
-//#include "Objects/EntityObject.h"
+#include "UiAnimViewEventNode.h"
+#include "AnimationContext.h"
 
 #include "UiEditorAnimationBus.h"
 
@@ -298,6 +298,43 @@ void CUndoSequenceRemove::Redo()
 }
 
 //////////////////////////////////////////////////////////////////////////
+CUndoSequenceChange::CUndoSequenceChange(CUiAnimViewSequence* oldSequence, CUiAnimViewSequence* newSequence)
+    : m_oldSequence(oldSequence)
+    , m_newSequence(newSequence)
+{
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoSequenceChange::ChangeSequence(CUiAnimViewSequence* sequence)
+{
+    CUiAnimationContext* animContext = nullptr;
+    UiEditorAnimationBus::BroadcastResult(animContext, &UiEditorAnimationBus::Events::GetAnimationContext);
+
+    if (animContext)
+    {
+        animContext->SetSequence(sequence, false, false);
+    }
+    else
+    {
+        AZ_Assert(false, "Active UI animation sequence failed to be changed.");
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoSequenceChange::Undo(bool undo)
+{
+    AZ_UNUSED(undo);
+    ChangeSequence(m_oldSequence);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoSequenceChange::Redo()
+{
+    ChangeSequence(m_newSequence);
+}
+
+//////////////////////////////////////////////////////////////////////////
 CAbstractUndoAnimNodeTransaction::CAbstractUndoAnimNodeTransaction(CUiAnimViewAnimNode* pNode)
     : m_pParentNode(static_cast<CUiAnimViewAnimNode*>(pNode->GetParentNode()))
     , m_pNode(pNode)
@@ -528,4 +565,116 @@ void CUndoAnimNodeRename::Undo(bool bUndo)
 void CUndoAnimNodeRename::Redo()
 {
     m_pNode->SetName(m_newName);
+}
+
+//////////////////////////////////////////////////////////////////////////
+CAbstractUndoTrackEventTransaction::CAbstractUndoTrackEventTransaction(CUiAnimViewSequence* pSequence, const QString& eventName)
+    : m_pSequence(pSequence)
+    , m_eventName(eventName)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventAdd::Undo(bool bUndo)
+{
+    AZ_UNUSED(bUndo);
+    m_pSequence->RemoveTrackEvent(m_eventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventAdd::Redo()
+{
+    m_pSequence->AddTrackEvent(m_eventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+CUndoTrackEventRemove::CUndoTrackEventRemove(CUiAnimViewSequence* pSequence, const QString& eventName)
+    : CAbstractUndoTrackEventTransaction(pSequence, eventName)
+    , m_changedKeys(CUiAnimViewEventNode::GetTrackEventKeys(pSequence, eventName.toUtf8().data()))
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventRemove::Undo(bool bUndo)
+{
+    AZ_UNUSED(bUndo);
+    const char* rawName = m_eventName.toUtf8().data();
+
+    m_pSequence->AddTrackEvent(rawName);
+
+    const uint numKeys = m_changedKeys.GetKeyCount();
+    for (uint keyIndex = 0; keyIndex < numKeys; ++keyIndex)
+    {
+        CUiAnimViewKeyHandle keyHandle = m_changedKeys.GetKey(keyIndex);
+        IEventKey eventKey;
+
+        keyHandle.GetKey(&eventKey);
+        // re-set the eventKey with the m_eventName
+        eventKey.event = rawName;
+        keyHandle.SetKey(&eventKey);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventRemove::Redo()
+{
+    m_pSequence->RemoveTrackEvent(m_eventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+CUndoTrackEventRename::CUndoTrackEventRename(CUiAnimViewSequence* pSequence, const QString& eventName, const QString& newEventName)
+    : CAbstractUndoTrackEventTransaction(pSequence, eventName)
+    , m_newEventName(newEventName)
+{
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventRename::Undo(bool bUndo)
+{
+    AZ_UNUSED(bUndo);
+    m_pSequence->RenameTrackEvent(m_newEventName.toUtf8().data(), m_eventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventRename::Redo()
+{
+    m_pSequence->RenameTrackEvent(m_eventName.toUtf8().data(), m_newEventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAbstractUndoTrackEventMove::MoveUp()
+{
+    m_pSequence->MoveUpTrackEvent(m_eventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAbstractUndoTrackEventMove::MoveDown()
+{
+    m_pSequence->MoveDownTrackEvent(m_eventName.toUtf8().data());
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventMoveUp::Undo(bool bUndo)
+{
+    AZ_UNUSED(bUndo);
+    MoveDown();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventMoveUp::Redo()
+{
+    MoveUp();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventMoveDown::Undo(bool bUndo)
+{
+    AZ_UNUSED(bUndo);
+    MoveUp();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CUndoTrackEventMoveDown::Redo()
+{
+    MoveDown();
 }

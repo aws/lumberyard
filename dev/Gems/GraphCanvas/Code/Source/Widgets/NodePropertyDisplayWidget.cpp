@@ -53,6 +53,8 @@ namespace GraphCanvas
     {
         ClearLayout();
         delete m_nodePropertyDisplay;
+
+        AZ::SystemTickBus::Handler::BusDisconnect();
     }
 
     void NodePropertyDisplayWidget::RefreshStyle()
@@ -60,6 +62,14 @@ namespace GraphCanvas
         if (m_nodePropertyDisplay)
         {
             m_nodePropertyDisplay->RefreshStyle();
+        }
+    }
+
+    void NodePropertyDisplayWidget::OnSystemTick()
+    {
+        if (m_nodePropertyDisplay)
+        {
+            NodeUIRequestBus::Event(m_nodePropertyDisplay->GetNodeId(), &NodeUIRequests::AdjustSize);
         }
     }
 
@@ -122,6 +132,11 @@ namespace GraphCanvas
             NodePropertiesRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetNodeId());
             NodePropertyRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetSlotId());
         }
+
+        RootGraphicsItemDisplayState displayState = RootGraphicsItemDisplayState::Neutral;
+        RootGraphicsItemRequestBus::EventResult(displayState, m_nodePropertyDisplay->GetNodeId(), &RootGraphicsItemRequests::GetDisplayState);
+
+        OnDisplayStateChanged(RootGraphicsItemDisplayState::Neutral, displayState);
         
         UpdateLayout();
     }
@@ -246,5 +261,7 @@ namespace GraphCanvas
     {
         m_layoutItem->updateGeometry();
         m_layout->invalidate();
+
+        AZ::SystemTickBus::Handler::BusConnect();
     }
 }

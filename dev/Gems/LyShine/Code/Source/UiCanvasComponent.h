@@ -207,6 +207,7 @@ public: // member functions
 
     // IUiAnimationListener
     void OnUiAnimationEvent(EUiAnimationEvent uiAnimationEvent, IUiAnimSequence* pAnimSequence) override;
+    void OnUiTrackEvent(AZStd::string eventName, AZStd::string valueName, IUiAnimSequence* pAnimSequence) override;
     // ~IUiAnimationListener
 
     // UiEditorCanvasInterface

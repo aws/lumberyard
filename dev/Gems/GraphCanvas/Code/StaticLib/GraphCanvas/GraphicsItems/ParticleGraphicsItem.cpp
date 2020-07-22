@@ -9,10 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <AzCore/PlatformDef.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QTimer>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/GraphicsItems/ParticleGraphicsItem.h>
 #include <GraphCanvas/Styling/StyleHelper.h>

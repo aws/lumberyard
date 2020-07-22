@@ -49,6 +49,7 @@ namespace PhysX
     RigidBody::~RigidBody()
     {
         //clean up the attached shapes
+        if(m_pxRigidActor)
         {
             PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             for (auto shape : m_shapes)
@@ -115,7 +116,7 @@ namespace PhysX
             return;
         }
 
-        if (pxShape->GetPxShape()->getGeometryType() == physx::PxGeometryType::eTRIANGLEMESH)
+        if (pxShape->GetPxShape()->getGeometryType() == physx::PxGeometryType::eTRIANGLEMESH && !IsKinematic())
         {
             AZ_Error("PhysX", false, "Cannot use triangle mesh geometry on a dynamic object: %s", GetName().c_str());
             return;
@@ -125,6 +126,7 @@ namespace PhysX
             PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
             m_pxRigidActor->attachShape(*pxShape->GetPxShape());
         }
+
         pxShape->AttachedToActor(m_pxRigidActor.get());
         m_shapes.push_back(pxShape);
     }
@@ -275,7 +277,7 @@ namespace PhysX
         if (m_pxRigidActor)
         {
             PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
-            m_pxRigidActor->setCMassLocalPose(physx::PxTransform(PxMathConvert(comOffset)));
+            m_pxRigidActor->setCMassLocalPose(physx::PxTransform(PxMathConvert(Utils::Sanitize(comOffset))));
         }
     }
 
@@ -361,7 +363,7 @@ namespace PhysX
         if (m_pxRigidActor)
         {
             PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
-            m_pxRigidActor->setLinearVelocity(PxMathConvert(velocity));
+            m_pxRigidActor->setLinearVelocity(PxMathConvert(Utils::Sanitize(velocity)));
         }
     }
 
@@ -380,7 +382,7 @@ namespace PhysX
         if (m_pxRigidActor)
         {
             PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
-            m_pxRigidActor->setAngularVelocity(PxMathConvert(angularVelocity));
+            m_pxRigidActor->setAngularVelocity(PxMathConvert(Utils::Sanitize(angularVelocity)));
         }
     }
 
@@ -408,7 +410,7 @@ namespace PhysX
                 return;
             }
             PHYSX_SCENE_WRITE_LOCK(scene);
-            m_pxRigidActor->addForce(PxMathConvert(impulse), physx::PxForceMode::eIMPULSE);
+            m_pxRigidActor->addForce(PxMathConvert(Utils::Sanitize(impulse)), physx::PxForceMode::eIMPULSE);
         }
     }
 
@@ -422,7 +424,8 @@ namespace PhysX
                 return;
             }
             PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
-            physx::PxRigidBodyExt::addForceAtPos(*m_pxRigidActor, PxMathConvert(impulse), PxMathConvert(worldPoint), physx::PxForceMode::eIMPULSE);
+            physx::PxRigidBodyExt::addForceAtPos(*m_pxRigidActor, PxMathConvert(Utils::Sanitize(impulse)),
+                PxMathConvert(Utils::Sanitize(worldPoint)), physx::PxForceMode::eIMPULSE);
         }
     }
 
@@ -444,7 +447,7 @@ namespace PhysX
             }
 
             PHYSX_SCENE_WRITE_LOCK(scene);
-            m_pxRigidActor->addTorque(PxMathConvert(angularImpulse), physx::PxForceMode::eIMPULSE);
+            m_pxRigidActor->addTorque(PxMathConvert(Utils::Sanitize(angularImpulse)), physx::PxForceMode::eIMPULSE);
         }
     }
 
@@ -578,9 +581,9 @@ namespace PhysX
         return m_actorUserData.GetEntityId();
     }
 
-    void RigidBody::RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const
+    Physics::RayCastHit RigidBody::RayCast(const Physics::RayCastRequest& request)
     {
-        AZ_Warning("PhysX Rigid Body", false, "RayCast not implemented.");
+        return PhysX::Utils::RayCast::ClosestRayHitAgainstShapes(request, m_shapes, GetTransform());
     }
 
     // Physics::ReferenceBase

@@ -12,15 +12,14 @@
 
 #pragma once
 
-AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
-#include <QTabBar>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
+
 #include <QMetaType>
-AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>
 
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
+#include <Editor/Assets/ScriptCanvasAssetTracker.h>
 
 class QGraphicsView;
 class QVBoxLayout;
@@ -34,12 +33,11 @@ namespace ScriptCanvasEditor
             AZ::Data::AssetId m_assetId;
             QWidget* m_hostWidget = nullptr;
             QString m_tabName;
-            ScriptCanvasFileState m_fileState = ScriptCanvasFileState::INVALID;
+            Tracker::ScriptCanvasFileState m_fileState = Tracker::ScriptCanvasFileState::INVALID;
         };
 
         class GraphTabBar
-            : public QTabBar
-            , protected DocumentContextNotificationBus::MultiHandler
+            : public AzQtComponents::TabBar
         {
             Q_OBJECT
 
@@ -48,8 +46,8 @@ namespace ScriptCanvasEditor
             GraphTabBar(QWidget* parent = nullptr);
 
             // Adds a new tab to the bar
-            void AddGraphTab(const AZ::Data::AssetId& assetId, AZStd::string_view tabName = {});
-            void InsertGraphTab(int tabIndex, const AZ::Data::AssetId& assetId, AZStd::string_view tabName = {});
+            void AddGraphTab(const AZ::Data::AssetId& assetId);
+            int InsertGraphTab(int tabIndex, const AZ::Data::AssetId& assetId);
             bool SelectTab(const AZ::Data::AssetId& assetId);
 
             int FindTab(const AZ::Data::AssetId& assetId) const;
@@ -60,8 +58,7 @@ namespace ScriptCanvasEditor
 
             // Updates the tab at the supplied index with the GraphTabMetadata
             // The host widget field of the tabMetadata is not used and will not overwrite the tab data
-            bool SetGraphTabData(int tabIndex, GraphTabMetadata tabMetadata);
-            void SetTabText(int tabIndex, const QString& path, ScriptCanvasFileState fileState = ScriptCanvasFileState::INVALID);
+            void SetTabText(int tabIndex, const QString& path, Tracker::ScriptCanvasFileState fileState = Tracker::ScriptCanvasFileState::INVALID);
 
             // Closes a tab and cleans up Metadata
             void CloseTab(int index);
@@ -69,6 +66,8 @@ namespace ScriptCanvasEditor
             void OnContextMenu(const QPoint& point);
 
             void mouseReleaseEvent(QMouseEvent* event) override;
+
+            void SetFileState(AZ::Data::AssetId assetId, Tracker::ScriptCanvasFileState fileState);
 
         Q_SIGNALS:
             void TabInserted(int index);
@@ -86,12 +85,10 @@ namespace ScriptCanvasEditor
         protected:
             void tabInserted(int index) override;
             void tabRemoved(int index) override;
-            void OnAssetModificationStateChanged(ScriptCanvasFileState fileState) override;
 
         private:
             // Called when the selected tab changes
             void currentChangedTab(int index);
-
         };
     }
 }

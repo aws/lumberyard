@@ -21,7 +21,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphObjectData, AnimGraphObjectDataAllocator, 0)
 
-    // constructor
     AnimGraphObjectData::AnimGraphObjectData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
         : BaseObject()
     {
@@ -30,21 +29,10 @@ namespace EMotionFX
         mObjectFlags        = 0;
     }
 
-
-    // destructor
     AnimGraphObjectData::~AnimGraphObjectData()
     {
     }
 
-
-    // static create
-    AnimGraphObjectData* AnimGraphObjectData::Create(AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
-    {
-        return aznew AnimGraphObjectData(object, animGraphInstance);
-    }
-
-
-    // save the object data
     uint32 AnimGraphObjectData::Save(uint8* outputBuffer) const
     {
         if (outputBuffer)
@@ -54,7 +42,6 @@ namespace EMotionFX
 
         return sizeof(*this);
     }
-
 
     // load from a given data buffer
     uint32 AnimGraphObjectData::Load(const uint8* dataBuffer)

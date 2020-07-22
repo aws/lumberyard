@@ -32,6 +32,8 @@ private:
     void addNotification();
 
     void toggleWarning(bool checked);
+    void toggleContentChanged(bool checked);
+    void toggleSelectedChanged(bool selected);
     void showContextMenu(const QPoint& point);
 
     QScopedPointer<Ui::CardPage> ui;
@@ -39,6 +41,8 @@ private:
     QAction* m_addNotification = nullptr;
     QAction* m_clearNotification = nullptr;
     QAction* m_warningAction = nullptr;
+    QAction* m_contentChangedAction = nullptr;
+    QAction* m_selectedChangedAction = nullptr;
 };
 
 

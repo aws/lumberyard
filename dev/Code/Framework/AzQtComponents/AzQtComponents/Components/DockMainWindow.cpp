@@ -10,17 +10,21 @@
 *
 */
 
+#include <QVariant>
+
 #include <AzQtComponents/Components/DockMainWindow.h>
 
 
 namespace AzQtComponents
 {
+    static const char* FancyDockingOwnerPropertyName = "fancydocking_owner";
+
     /**
      * Create a dock main window that extends the QMainWindow so we can construct
      * our own custom context popup menu
      */
-    DockMainWindow::DockMainWindow(QWidget* parent)
-        : QMainWindow(parent)
+    DockMainWindow::DockMainWindow(QWidget* parent, Qt::WindowFlags flags)
+        : QMainWindow(parent, flags)
     {
     }
 
@@ -31,6 +35,16 @@ namespace AzQtComponents
     QMenu* DockMainWindow::createPopupMenu()
     {
         return nullptr;
+    }
+
+    void DockMainWindow::SetFancyDockingOwner(QWidget* instance)
+    {
+        setProperty(FancyDockingOwnerPropertyName, QVariant::fromValue(instance));
+    }
+
+    bool DockMainWindow::HasFancyDocking()
+    {
+        return property(FancyDockingOwnerPropertyName).isValid();
     }
 
 #include <Components/DockMainWindow.moc>

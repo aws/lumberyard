@@ -1,0 +1,23 @@
+<Material MtlFlags="557312" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Buildings_Panels_02_mat" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800080080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0,0,0,1" Emittance="0.090841718,1,1,143.42" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/buildings/buildings_panels_02_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/buildings/buildings_panels_02_ddna.dds"/>
+    <Texture Map="Emittance" File="objects/buildings/buildings_panels_02_emis.dds"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Buildings_Panels_01_mat" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.80000001,0.80000001,0.80000001,1" Specular="0,0,0,0.078431375" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/buildings/buildings_panels_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/buildings/buildings_panels_01_ddna.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="Proxy_Col" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="800080000002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.40000001,0.40000001,0.40000001,1" Specular="0.5,0.5,0.5,0.078431375" Opacity="1" Shininess="20" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

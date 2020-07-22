@@ -26,8 +26,17 @@ namespace EMotionFX
 
     BlendTreeRagdollStrenghModifierNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
         : AnimGraphNodeData(node, animGraphInstance)
-        , m_mustUpdate(true)
     {
+    }
+
+    void BlendTreeRagdollStrenghModifierNode::UniqueData::Update()
+    {
+        BlendTreeRagdollStrenghModifierNode* ragdollModifierNode = azdynamic_cast<BlendTreeRagdollStrenghModifierNode*>(mObject);
+        AZ_Assert(ragdollModifierNode, "Unique data linked to incorrect node type.");
+
+        const AZStd::vector<AZStd::string>& modifiedJointNames = ragdollModifierNode->GetModifiedJointNames();
+        const Actor* actor = mAnimGraphInstance->GetActorInstance()->GetActor();
+        AnimGraphPropertyUtils::ReinitJointIndices(actor, modifiedJointNames, m_modifiedJointIndices);
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -48,24 +57,6 @@ namespace EMotionFX
         SetupOutputPortAsPose("Output Pose", PORTID_OUTPUT_POSE, OUTPUTPORT_POSE);
     }
 
-    void BlendTreeRagdollStrenghModifierNode::Reinit()
-    {
-        AnimGraphNode::Reinit();
-
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = reinterpret_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-            if (uniqueData)
-            {
-                uniqueData->m_mustUpdate = true;
-                OnUpdateUniqueData(animGraphInstance);
-            }
-        }
-    }
-
     bool BlendTreeRagdollStrenghModifierNode::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphNode::InitAfterLoading(animGraph))
@@ -77,23 +68,6 @@ namespace EMotionFX
 
         Reinit();
         return true;
-    }
-
-    void BlendTreeRagdollStrenghModifierNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        if (uniqueData->m_mustUpdate)
-        {
-            const Actor* actor = animGraphInstance->GetActorInstance()->GetActor();
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_modifiedJointNames, uniqueData->m_modifiedJointIndices);
-            uniqueData->m_mustUpdate = false;
-        }
     }
 
     void BlendTreeRagdollStrenghModifierNode::Output(AnimGraphInstance* animGraphInstance)
@@ -128,25 +102,24 @@ namespace EMotionFX
             actorInstance->DrawSkeleton(outputPose, mVisualizeColor);
         }
 
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         if (GetEMotionFX().GetIsInEditorMode())
         {
             // We have a connection plugged in while we expect to just forward the strengths or the damping ratios from the input pose.
             if ((HasConnectionAtInputPort(INPUTPORT_STRENGTH) && m_strengthInputType == STRENGTHINPUTTYPE_NONE) ||
                 (HasConnectionAtInputPort(INPUTPORT_DAMPINGRATIO) && m_dampingRatioInputType == DAMPINGRATIOINPUTTYPE_NONE))
             {
-                SetHasError(animGraphInstance, true);
+                SetHasError(uniqueData, true);
             }
             else
             {
-                SetHasError(animGraphInstance, false);
+                SetHasError(uniqueData, false);
             }
         }
 
         RagdollInstance* ragdollInstance = actorInstance->GetRagdollInstance();
         if (ragdollInstance && !m_modifiedJointNames.empty())
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-
             // Make sure the output pose contains a ragdoll pose data linked to our actor instance (assures enough space for the ragdoll node state array).
             PoseDataRagdoll* outputPoseData = outputPose.GetAndPreparePoseData<PoseDataRagdoll>(actorInstance);
 

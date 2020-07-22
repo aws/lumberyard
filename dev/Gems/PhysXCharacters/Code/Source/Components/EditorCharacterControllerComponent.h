@@ -56,6 +56,7 @@ namespace PhysXCharacters
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
+            provided.push_back(AZ_CRC("PhysicsWorldBodyService", 0x944da0cc));
             provided.push_back(AZ_CRC("PhysXCharacterControllerService", 0x428de4fa));
         }
 

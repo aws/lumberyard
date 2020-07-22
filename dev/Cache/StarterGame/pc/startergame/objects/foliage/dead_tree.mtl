@@ -1,0 +1,16 @@
+<Material MtlFlags="557312" DccMaterialHash="3274570726" vertModifType="0">
+ <SubMaterials>
+  <Material Name="PhysicsNoDraw" MtlFlags="558208" DccMaterialHash="2870446454" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,0.0078740185" Opacity="1" Shininess="2.0078747" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="EngineAssets/Textures/white.dds"/>
+   </Textures>
+  </Material>
+  <Material Name="AM_Dead_Tree_bark" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="800000000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0.0047769537,0.0047769537,0.0047769537,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/foliage/textures/dead_tree.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0"/>
+    </Texture>
+   </Textures>
+  </Material>
+ </SubMaterials>
+</Material>

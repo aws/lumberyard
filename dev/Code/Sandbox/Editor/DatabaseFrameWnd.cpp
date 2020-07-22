@@ -86,7 +86,7 @@ private:
 static const int LIBRARY_CB_WIDTH(150);
 
 CDatabaseFrameWnd::CDatabaseFrameWnd(CBaseLibraryManager* pItemManager, QWidget* pParent)
-    : QMainWindow(pParent)
+    : AzQtComponents::DockMainWindow(pParent)
     , m_pItemManager(pItemManager)
     , ui(new Ui::DatabaseFrameWnd)
     , m_initialized(false)

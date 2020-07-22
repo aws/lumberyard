@@ -26,6 +26,8 @@
         ],
         "Source/Editor": [
             "Source/Editor/ActorEditorBus.h",
+            "Source/Editor/ActorJointBrowseEdit.h",
+            "Source/Editor/ActorJointBrowseEdit.cpp",
             "Source/Editor/AnimGraphEditorBus.h",
             "Source/Editor/ColliderContainerWidget.h",
             "Source/Editor/ColliderContainerWidget.cpp",

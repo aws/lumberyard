@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/Json/CastingHelpers.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
+#include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
 
 #pragma push_macro("AZ_NUMERICCAST_ENABLED") // pushing macro for uber file protection
 #undef AZ_NUMERICCAST_ENABLED
@@ -23,6 +24,53 @@
 
 namespace JsonSerializationTests
 {
+    template<typename FloatingPointType, typename Serializer>
+    class DoubleSerializerTestDescription :
+        public JsonSerializerConformityTestDescriptor<FloatingPointType>
+    {
+    public:
+        AZStd::shared_ptr<AZ::BaseJsonSerializer> CreateSerializer() override
+        {
+            return AZStd::make_shared<Serializer>();
+        }
+
+        AZStd::shared_ptr<FloatingPointType> CreateDefaultInstance() override
+        {
+            return AZStd::make_shared<FloatingPointType>(-2.0f);
+        }
+
+        AZStd::shared_ptr<FloatingPointType> CreateFullySetInstance() override
+        {
+            return AZStd::make_shared<FloatingPointType>(4.0f);
+        }
+
+        AZStd::string_view GetJsonForFullySetInstance() override
+        {
+            return "4.0";
+        }
+
+        void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& features) override
+        {
+            features.EnableJsonType(rapidjson::kStringType);
+            features.EnableJsonType(rapidjson::kFalseType);
+            features.EnableJsonType(rapidjson::kTrueType);
+            features.EnableJsonType(rapidjson::kNumberType);
+            features.m_supportsInjection = false;
+            features.m_supportsPartialInitialization = false;
+        }
+
+        bool AreEqual(const FloatingPointType& lhs, const FloatingPointType& rhs) override
+        {
+            return lhs == rhs;
+        }
+    };
+
+    using DoubleSerializerConformityTestTypes = ::testing::Types<
+        DoubleSerializerTestDescription<double, AZ::JsonDoubleSerializer>,
+        DoubleSerializerTestDescription<float, AZ::JsonFloatSerializer>
+    >;
+    INSTANTIATE_TYPED_TEST_CASE_P(JsonDoubleSerializer, JsonSerializerConformityTests, DoubleSerializerConformityTestTypes);
+
     class JsonDoubleSerializerTests
         : public BaseJsonSerializerFixture
     {
@@ -45,8 +93,9 @@ namespace JsonSerializationTests
         {
             using namespace AZ::JsonSerializationResult;
 
+            AZ::StackedString path(AZ::StackedString::Format::JsonPointer);
             float value;
-            ASSERT_EQ(Outcomes::Success, AZ::JsonNumericCast(value, expectedValue, m_path, m_deserializationSettings.m_reporting).GetOutcome());
+            ASSERT_EQ(Outcomes::Success, AZ::JsonNumericCast(value, expectedValue, path, m_deserializationSettings->m_reporting).GetOutcome());
             TestSerializers(testVal, expectedValue, value, expectedOutcome);
         }
 
@@ -57,13 +106,13 @@ namespace JsonSerializationTests
 
             // double
             double testDouble = DEFAULT_DOUBLE;
-            ResultCode doubleResult = m_doubleSerializer->Load(&testDouble, azrtti_typeid<double>(), testVal, m_path, m_deserializationSettings);
+            ResultCode doubleResult = m_doubleSerializer->Load(&testDouble, azrtti_typeid<double>(), testVal, *m_jsonDeserializationContext);
             EXPECT_EQ(expectedOutcome, doubleResult.GetOutcome());
             EXPECT_DOUBLE_EQ(testDouble, expectedDouble);
 
             // float
             float testFloat = DEFAULT_FLOAT;
-            ResultCode floatResult = m_floatSerializer->Load(&testFloat, azrtti_typeid <float>(), testVal, m_path, m_deserializationSettings);
+            ResultCode floatResult = m_floatSerializer->Load(&testFloat, azrtti_typeid <float>(), testVal, *m_jsonDeserializationContext);
             EXPECT_EQ(expectedOutcome, floatResult.GetOutcome());
             EXPECT_FLOAT_EQ(testFloat, expectedFloat);
         }
@@ -71,22 +120,17 @@ namespace JsonSerializationTests
         void TestString(const char* testString, double expectedDouble, float expectedFloat, 
             AZ::JsonSerializationResult::Outcomes expectedOutcome)
         {
-            rapidjson::Value testVal;
-            testVal.SetString(rapidjson::GenericStringRef<char>(testString));
-            EXPECT_STREQ(testString, testVal.GetString());
-
-            TestSerializers(testVal, expectedDouble, expectedFloat, expectedOutcome);
+            TestSerializers(rapidjson::Value().SetString(rapidjson::StringRef(testString)), expectedDouble, expectedFloat, expectedOutcome);
         }
 
-        void TestInt(int64_t testInt, double expectedValue)
+        void TestInt(int64_t testInt, double expectedDouble, float expectedFloat, AZ::JsonSerializationResult::Outcomes expectedOutcome)
         {
-            using namespace AZ::JsonSerializationResult;
+            TestSerializers(rapidjson::Value().SetInt64(testInt), expectedFloat, expectedOutcome);
+        }
 
-            rapidjson::Value testVal;
-            testVal.SetInt64(testInt);
-            EXPECT_EQ(testVal.GetInt64(), testInt);
-
-            TestSerializers(testVal, expectedValue, Outcomes::Success);
+        void TestUint(uint64_t testInt, double expectedDouble, float expectedFloat, AZ::JsonSerializationResult::Outcomes expectedOutcome)
+        {
+            TestSerializers(rapidjson::Value().SetUint64(testInt), expectedFloat, expectedOutcome);
         }
 
         void TestDouble(double testDouble, double expectedValue)
@@ -100,25 +144,9 @@ namespace JsonSerializationTests
             TestSerializers(testVal, expectedValue, Outcomes::Success);
         }
 
-        void TestBool(bool testBool, double expectedValue)
+        void TestBool(bool testBool, double expectedDouble, float expectedFloat, AZ::JsonSerializationResult::Outcomes expectedOutcome)
         {
-            using namespace AZ::JsonSerializationResult;
-
-            rapidjson::Value testVal;
-            testVal.SetBool(testBool);
-            EXPECT_EQ(testVal.GetBool(), testBool);
-
-            TestSerializers(testVal, expectedValue, Outcomes::Success);
-        }
-
-        void TestInvalidType(rapidjson::Type testType)
-        {
-            using namespace AZ::JsonSerializationResult;
-
-            rapidjson::Value testVal(testType);
-            EXPECT_EQ(testVal.GetType(), testType);
-
-            TestSerializers(testVal, DEFAULT_DOUBLE, DEFAULT_FLOAT, Outcomes::Unsupported);
+            TestSerializers(rapidjson::Value().SetBool(testBool), expectedDouble, expectedFloat, expectedOutcome);
         }
 
     protected:
@@ -129,168 +157,127 @@ namespace JsonSerializationTests
         constexpr static double DEFAULT_DOUBLE = -9.87654321;
     };
 
-    TEST_F(JsonDoubleSerializerTests, ValidStringToFloatingPoint)
+    // Strings
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithDouble_SuccessAndExpectedValueLoaded)
+    {
+        TestString("12.5", 12.5, 12.5f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithFloat_SuccessAndExpectedValueLoaded)
+    {
+        // The f isn't processed as the interpretation is a double.
+        TestString("12.5f", 12.5, 12.5f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithInteger_SuccessAndExpectedValueLoaded)
+    {
+        TestString("42", 42.0, 42.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithNegativeNumber_SuccessAndExpectedValueLoaded)
+    {
+        TestString("-12.5", -12.5, -12.5f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithZero_SuccessAndExpectedValueLoaded)
+    {
+        TestString("0", 0.0, 0.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithAdditionalText_SuccessAndExpectedValueLoaded)
+    {
+        TestString("2.4 hello", 2.4, 2.4f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithMultipleNumbers_SuccessAndFirstNumberLoaded)
+    {
+        TestString("2.4 42.0", 2.4, 2.4f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_EmptyString_UnsupportedAndValueNotTouched)
+    {
+        TestString("", DEFAULT_DOUBLE, DEFAULT_FLOAT, AZ::JsonSerializationResult::Outcomes::Unsupported);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithNoNumericValues_UnsupportedAndValueNotTouched)
+    {
+        TestString("hello", DEFAULT_DOUBLE, DEFAULT_FLOAT, AZ::JsonSerializationResult::Outcomes::Unsupported);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringDoesNotStartWithNumericValues_UnsupportedAndValueNotTouched)
+    {
+        TestString("hello 2.4", DEFAULT_DOUBLE, DEFAULT_FLOAT, AZ::JsonSerializationResult::Outcomes::Unsupported);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_StringWithNumberThatIsTooBig_UnsupportedAndValueNotTouched)
+    {
+        constexpr char bigNumberText[] =
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999"
+            "99999999999999999999999999999999999999999999999999.0";
+        TestString(bigNumberText, DEFAULT_DOUBLE, DEFAULT_FLOAT, AZ::JsonSerializationResult::Outcomes::Unsupported);
+    }
+
+    // Booleans
+
+    TEST_F(JsonDoubleSerializerTests, Load_BooleanWithTrue_SuccessAndValueIsOne)
+    {
+        TestBool(true, 1.0, 1.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_BooleanWithFalse_SuccessAndValueIsZero)
+    {
+        TestBool(false, 0.0, 0.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    // Integers
+
+    TEST_F(JsonDoubleSerializerTests, Load_IntegerWithPositiveValue_SuccessAndExpectedValue)
+    {
+        TestInt(34, 34.0, 34.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_IntegerWithZero_SuccessAndExpectedValue)
+    {
+        TestInt(0, 0.0, 0.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_IntegerNegativeValue_SuccessAndExpectedValue)
+    {
+        TestInt(-1, -1.0, -1.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_UnsignedIntegerWithPositiveValue_SuccessAndExpectedValue)
+    {
+        TestUint(34, 34.0, 34.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    TEST_F(JsonDoubleSerializerTests, Load_UnsignedIntegerWithZero_SuccessAndExpectedValue)
+    {
+        TestUint(0, 0.0, 0.0f, AZ::JsonSerializationResult::Outcomes::Success);
+    }
+
+    // Floating point
+
+    TEST_F(JsonDoubleSerializerTests, Load_DoubleValueTooBigToFitInFloat_UnsupportedAndValueNotTouched)
     {
         using namespace AZ::JsonSerializationResult;
 
-        TestString("-1", -1.0, -1.0f, Outcomes::Success);
-        TestString("34", 34.0, 34.0f, Outcomes::Success);
-        TestString("0", 0.0, 0.0f, Outcomes::Success);
-        TestString("345", 345.0, 345.0f, Outcomes::Success);
-        TestString("12.5", 12.5, 12.5f, Outcomes::Success);
-        TestString("-1.5f", -1.5, -1.5f, Outcomes::Success); // The f isn't processed as the interpretation is a double.
-        TestString("2.4 hello", 2.4, 2.4f, Outcomes::Success);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, InvalidStringToFloatingPoint)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        TestString("", DEFAULT_DOUBLE, DEFAULT_FLOAT, Outcomes::Unsupported);
-        TestString("hello", DEFAULT_DOUBLE, DEFAULT_FLOAT, Outcomes::Unsupported);
-        TestString("hello 2.4", DEFAULT_DOUBLE, DEFAULT_FLOAT, Outcomes::Unsupported);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, IntToFloatingPoint)
-    {
-        TestInt(-1, -1.0);
-        TestInt(34, 34.0);
-        TestInt(0, 0.0);
-        TestInt(19, 19.0);
-        TestInt(120, 120.0);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, IntToFloatingPointLimits)
-    {
-        int64_t maxLongDoubleAsInt = azlossy_caster(std::numeric_limits<long double>::max());
-        int64_t minLongDoubleAsInt = azlossy_caster(std::numeric_limits<long double>::lowest());
-
-        TestInt(maxLongDoubleAsInt, azlossy_caster(maxLongDoubleAsInt));
-        TestInt(minLongDoubleAsInt, azlossy_caster(minLongDoubleAsInt));
-    }
-
-    TEST_F(JsonDoubleSerializerTests, DoubleToFloatingPoint)
-    {
-        TestDouble(-1.0, -1.0);
-        TestDouble(34.0, 34.0);
-        TestDouble(0.0, 0.0);
-        TestDouble(19.0, 19.0);
-        TestDouble(120.0, 120.0);
-        TestDouble(123456.89, 123456.89);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, DoubleToFloatingPointLimits)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        constexpr double maxDouble = std::numeric_limits<double>::max();
         rapidjson::Value testVal;
-        testVal.SetDouble(maxDouble);
-        EXPECT_EQ(maxDouble, testVal.GetDouble());
-
-        float value;
-        ResultCode result = m_floatSerializer->Load(&value, azrtti_typeid<float>(), testVal, m_path, m_deserializationSettings);
+        testVal.SetDouble(std::numeric_limits<double>::max());
+        
+        float value = 42.0f;
+        ResultCode result = m_floatSerializer->Load(&value, azrtti_typeid<float>(), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-    }
-
-    TEST_F(JsonDoubleSerializerTests, BoolToFloatingPoint)
-    {
-        TestBool(false, 0.0);
-        TestBool(true, 1.0);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, InvalidToFloatingPoint)
-    {
-        TestInvalidType(rapidjson::kNullType);
-        TestInvalidType(rapidjson::kArrayType);
-        TestInvalidType(rapidjson::kObjectType);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, Store_StoreFloatValue_ValueStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        float value = 1.0f;
-        rapidjson::Value convertedValue;
-
-        ResultCode result = m_floatSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &value, nullptr,
-            azrtti_typeid<float>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsDouble());
-        EXPECT_DOUBLE_EQ(value, convertedValue.GetDouble());
-    }
-
-    TEST_F(JsonDoubleSerializerTests, Store_StoreSameFloatAsDefault_ValueIsIgnored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        float value = 1.0f;
-        float defaultValue = 1.0f;
-        rapidjson::Value convertedValue = CreateExplicitDefault();
-
-        ResultCode result = m_floatSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<float>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        Expect_ExplicitDefault(convertedValue);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, Store_StoreDifferentFloatFromDefault_ValueIsStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        float value = 1.0f;
-        float defaultValue = 2.0f;
-        rapidjson::Value convertedValue;
-
-        ResultCode result = m_floatSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<float>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsDouble());
-        EXPECT_DOUBLE_EQ(value, convertedValue.GetDouble());
-    }
-
-    TEST_F(JsonDoubleSerializerTests, Store_StoreDoubleValue_ValueStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        double value = 1.0;
-        rapidjson::Value convertedValue;
-
-        ResultCode result = m_doubleSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &value, nullptr,
-            azrtti_typeid<double>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsDouble());
-        EXPECT_DOUBLE_EQ(value, convertedValue.GetDouble());
-    }
-
-    TEST_F(JsonDoubleSerializerTests, Store_StoreSameDoubleAsDefault_ValueIsIgnored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        double value = 1.0;
-        double defaultValue = 1.0;
-        rapidjson::Value convertedValue = CreateExplicitDefault();
-
-        ResultCode result = m_doubleSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<double>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        ASSERT_TRUE(convertedValue.IsObject());
-        Expect_ExplicitDefault(convertedValue);
-    }
-
-    TEST_F(JsonDoubleSerializerTests, Store_StoreDifferentDoubleFromDefault_ValueIsStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        double value = 1.0;
-        double defaultValue = 2.0;
-        rapidjson::Value convertedValue;
-
-        ResultCode result = m_doubleSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<double>(), m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsDouble());
-        EXPECT_DOUBLE_EQ(value, convertedValue.GetDouble());
+        EXPECT_EQ(42.0f, value);
     }
 } // namespace JsonSerializationTests
 

@@ -96,30 +96,8 @@ namespace ScriptCanvas
 
             void ExtractProperty::AddPropertySlots(const Data::Type& type)
             {
-                Data::GetterContainer getterFunctions = Data::ExplodeToGetters(type);
-                for (const auto& getterWrapperPair : getterFunctions)
-                {
-                    const AZStd::string& propertyName = getterWrapperPair.first;
-                    const Data::GetterWrapper& getterWrapper = getterWrapperPair.second;
-                    Data::PropertyMetadata propertyAccount;
-                    propertyAccount.m_propertyType = getterWrapper.m_propertyType;
-                    propertyAccount.m_propertyName = propertyName;
-
-                    DataSlotConfiguration config;
-
-                    AZStd::string slotName = AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data());
-
-                    config.m_name = slotName;
-                    config.m_toolTip = "";
-
-                    config.SetType(getterWrapper.m_propertyType);
-                    config.SetConnectionType(ConnectionType::Output);
-                    
-                    propertyAccount.m_propertySlotId = AddSlot(config);
-                    
-                    propertyAccount.m_getterFunction = getterWrapper.m_getterFunction;
-                    m_propertyAccounts.push_back(propertyAccount);
-                }
+                AZStd::unordered_map<AZStd::string, SlotId> versionedInfo;
+                AddPropertySlots(type, versionedInfo);
             }
 
             void ExtractProperty::ClearPropertySlots()
@@ -140,6 +118,34 @@ namespace ScriptCanvas
                 }
 
                 return propertyFields;
+            }
+
+            bool ExtractProperty::IsOutOfDate() const
+            {
+                bool isOutOfDate = false;
+                for (auto propertyAccount : m_propertyAccounts)
+                {
+                    if (!propertyAccount.m_getterFunction)
+                    {
+                        isOutOfDate = true;
+                        break;
+                    }
+                }
+
+                return isOutOfDate;
+            }
+
+            UpdateResult ExtractProperty::OnUpdateNode()
+            {
+                for (auto propertyAccount : m_propertyAccounts)
+                {
+                    if (!propertyAccount.m_getterFunction)
+                    {
+                        RemoveSlot(propertyAccount.m_propertySlotId);
+                    }
+                }
+
+                return UpdateResult::DirtyGraph;
             }
 
             void ExtractProperty::RefreshGetterFunctions()
@@ -163,10 +169,64 @@ namespace ScriptCanvas
                         }
                         else
                         {
-                            AZ_Error("Script Canvas", false, "Property (%s : %s) getter method could not be found in Data::PropertyTraits or the property type has changed."
+                            AZ_Error("Script Canvas", GetExecutionType() == ExecutionType::Editor, "Property (%s : %s) getter method could not be found in Data::PropertyTraits or the property type has changed."
                                 " Output will not be pushed on the property's slot.",
                                 propertyAccount.m_propertyName.c_str(), Data::GetName(propertyAccount.m_propertyType).data());
                         }
+                    }
+                }
+
+                if (GetExecutionType() == ExecutionType::Editor)
+                {
+                    UpdatePropertyVersion();
+                }
+            }
+
+            void ExtractProperty::UpdatePropertyVersion()
+            {
+                AZStd::unordered_map<AZStd::string, SlotId> previousSlots;
+
+                {
+                    auto outputSlots = GetAllSlotsByDescriptor(SlotDescriptors::DataOut());
+
+                    for (const Slot* slot : outputSlots)
+                    {
+                        previousSlots[slot->GetName()] = slot->GetId();
+                    }
+                }
+
+                AddPropertySlots(GetSourceSlotDataType(), previousSlots);
+            }
+
+            void ExtractProperty::AddPropertySlots(const Data::Type& dataType, const AZStd::unordered_map<AZStd::string, SlotId>& existingSlots)
+            {
+                Data::GetterContainer getterFunctions = Data::ExplodeToGetters(dataType);
+
+                for (const auto& getterWrapperPair : getterFunctions)
+                {
+                    const AZStd::string& propertyName = getterWrapperPair.first;
+                    const Data::GetterWrapper& getterWrapper = getterWrapperPair.second;
+
+                    DataSlotConfiguration config;
+
+                    AZStd::string slotName = AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data());
+
+                    if (existingSlots.find(slotName) == existingSlots.end())
+                    {
+                        Data::PropertyMetadata propertyAccount;
+                        propertyAccount.m_propertyType = getterWrapper.m_propertyType;
+                        propertyAccount.m_propertyName = propertyName;
+
+                        config.m_name = slotName;
+                        config.m_toolTip = "";
+
+                        config.SetType(getterWrapper.m_propertyType);
+                        config.SetConnectionType(ConnectionType::Output);
+
+                        propertyAccount.m_propertySlotId = AddSlot(config);
+
+                        propertyAccount.m_getterFunction = getterWrapper.m_getterFunction;
+                        m_propertyAccounts.push_back(propertyAccount);
                     }
                 }
             }

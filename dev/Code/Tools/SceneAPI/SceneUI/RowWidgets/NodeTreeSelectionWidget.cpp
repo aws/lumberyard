@@ -11,6 +11,7 @@
 */
 
 #include <QLabel>
+#include <QToolButton>
 #include <AzCore/std/bind/bind.h>
 #include <RowWidgets/ui_NodeTreeSelectionWidget.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
@@ -39,7 +40,7 @@ namespace AZ
                 ui->setupUi(this);
 
                 ui->m_selectButton->setIcon(QIcon(":/SceneUI/Manifest/TreeIcon.png"));
-                connect(ui->m_selectButton, &QPushButton::clicked, this, &NodeTreeSelectionWidget::SelectButtonClicked);
+                connect(ui->m_selectButton, &QToolButton::clicked, this, &NodeTreeSelectionWidget::SelectButtonClicked);
             }
 
             NodeTreeSelectionWidget::~NodeTreeSelectionWidget() = default;

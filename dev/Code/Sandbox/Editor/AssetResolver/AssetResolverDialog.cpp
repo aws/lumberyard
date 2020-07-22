@@ -255,8 +255,8 @@ private:
 CMissingAssetDialog* CMissingAssetDialog::m_instance = 0;
 
 //////////////////////////////////////////////////////////////////////////
-CMissingAssetDialog::CMissingAssetDialog()
-    : QWidget()
+CMissingAssetDialog::CMissingAssetDialog(QWidget* parent)
+    : QWidget(parent)
     , m_treeView(new QTreeView(this))
     , m_model(new MissingAssetModel(this))
 {

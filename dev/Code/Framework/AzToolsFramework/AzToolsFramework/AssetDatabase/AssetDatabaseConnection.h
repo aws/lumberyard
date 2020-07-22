@@ -63,6 +63,7 @@ namespace AzToolsFramework
             AddedMissingProductDependencyTable = 23,
             AddedWarningAndErrorCountToJobs = 24,
             AddedFromAssetIdField = 25,
+            AddedProductDependencyIndexes = 26,
             //Add all new versions before this
             DatabaseVersionCount,
             LatestVersion = DatabaseVersionCount - 1
@@ -456,6 +457,7 @@ namespace AzToolsFramework
             using sourceFileDependencyHandler = AZStd::function<bool(SourceFileDependencyEntry& entry)>;
             using legacySubIDsHandler = AZStd::function<bool(LegacySubIDsEntry& entry)>;
             using productDependencyHandler = AZStd::function<bool(ProductDependencyDatabaseEntry& entry)>;
+            using productDependencyAndPathHandler = AZStd::function<bool(ProductDependencyDatabaseEntry& entry, const AZStd::string& path)>;
             using missingProductDependencyHandler = AZStd::function<bool(MissingProductDependencyDatabaseEntry& entry)>;
             using combinedProductDependencyHandler = AZStd::function<bool(AZ::Data::AssetId& asset, ProductDependencyDatabaseEntry& entry)>;
             // note that AZStd::function cannot handle rvalue-refs at the time of writing this.
@@ -602,7 +604,13 @@ namespace AzToolsFramework
             //! Similar to QueryDirectProductDependencies, this query deals with product dependencies but retrieves rows from Products, not ProductDependencies.
             bool QueryDirectReverseProductDependenciesBySourceGuidSubId(AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubId, productHandler handler);
             bool QueryAllProductDependencies(AZ::s64 productID, productHandler handler);
+
             bool QueryUnresolvedProductDependencies(productDependencyHandler handler);
+            bool QueryProductDependencyExclusions(productDependencyHandler handler);
+
+            //! Returns any unresolved dependencies which match (by exact or wildcard match) the input searchPaths
+            //! The extra path returned for each row is the searchPath entry that was matched with the returned dependency entry
+            bool QueryProductDependenciesUnresolvedAdvanced(const AZStd::vector<AZStd::string>& searchPaths, productDependencyAndPathHandler handler);
 
             bool QueryMissingProductDependencyByProductId(AZ::s64 productId, missingProductDependencyHandler handler);
             bool QueryMissingProductDependencyByMissingProductDependencyId(AZ::s64 productDependencyId, missingProductDependencyHandler handler);

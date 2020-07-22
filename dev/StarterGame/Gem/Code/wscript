@@ -1,0 +1,52 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+    bld.DefineGem(
+        # General
+        includes                = ['.',
+                                   bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon'),
+                                  ],
+        use                     = ['AzGameFramework'],
+        disable_pch             = True,
+
+        # Platform Specific
+
+        # ==============================
+        # iOS
+        # 'ios_output_file_name' must match both
+        # 'executable_name' in 'project.json' and
+        # 'Executable file' in '../Resources/IOSLauncher/Info.plist'
+        # ==============================
+        ios_output_file_name    = 'StarterGameLauncher',
+        ios_file_list           = ['startergame_ios.waf_files'],
+
+        # ==============================
+        # AppleTV
+        # 'appletv_output_file_name' must match both
+        # 'executable_name' in 'project.json' and
+        # 'Executable file' in '../Resources/AppleTVLauncher/Info.plist'
+        # ==============================
+        appletv_output_file_name = 'StarterGameLauncher',
+        appletv_file_list       = ['startergame_appletv.waf_files'],
+
+        darwin_file_list        = ['startergame_mac.waf_files'],
+
+        restricted_script       = 'update_restricted_parameters',
+
+        # Testing
+        test_all_file_list      = ['startergame_tests.waf_files'],
+
+        # Add additional custom build options here
+
+    )

@@ -121,7 +121,6 @@
 #include "MotionEvent.h"
 #include "MotionEventTable.h"
 #include "MotionEventTrack.h"
-#include "MotionGroup.h"
 #include "MotionInstance.h"
 #include "MotionInstancePool.h"
 #include "MotionLayerSystem.h"

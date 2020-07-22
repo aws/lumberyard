@@ -36,19 +36,18 @@ namespace AZ
 
         JsonUuidSerializer();
 
-        JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+        JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId,
+            const rapidjson::Value& inputValue, JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
 
         //! Does the same as load, but doesn't report through the provided callback in the settings. Instead the final
         //! ResultCode and message are returned and it's up to the caller to report if need needed.
         MessageResult UnreportedLoad(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue);
         //! Does the same as store, but doesn't report through the provided callback in the settings. Instead the final
         //! ResultCode and message are returned and it's up to the caller to report if need needed.
-        MessageResult UnreportedStore(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, const JsonSerializerSettings& settings);
+        MessageResult UnreportedStore(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context);
 
     private:
         AZStd::regex m_uuidFormat;

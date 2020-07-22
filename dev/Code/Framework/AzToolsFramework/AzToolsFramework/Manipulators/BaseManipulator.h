@@ -14,6 +14,7 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Console/IConsole.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Transform.h>
@@ -30,6 +31,8 @@ namespace AzFramework
 
 namespace AzToolsFramework
 {
+    AZ_CVAR_EXTERNED(bool, cl_manipulatorDrawDebug);
+
     namespace UndoSystem
     {
         class URSequencePoint;

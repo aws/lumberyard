@@ -29,11 +29,6 @@ namespace ScriptCanvasEditor
 {
     class NodePaletteModel;
 
-    namespace Widget
-    {
-        class NodePaletteDockWidget;
-    }
-
     //////////////////
     // CustomActions
     //////////////////
@@ -139,6 +134,23 @@ namespace ScriptCanvasEditor
         AZ::EntityId m_targetId;
     };
 
+    class ExposeSlotMenuAction
+        : public GraphCanvas::SlotContextMenuAction
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(ExposeSlotMenuAction, AZ::SystemAllocator, 0);
+
+        ExposeSlotMenuAction(QObject* parent);
+        virtual ~ExposeSlotMenuAction() = default;
+
+        void RefreshAction(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetId) override;
+        GraphCanvas::ContextMenuAction::SceneReaction TriggerAction(const GraphCanvas::GraphId& graphId, const AZ::Vector2& scenePos) override;
+
+    protected:
+
+        void CreateNodeling(const GraphCanvas::GraphId& graphId, AZ::EntityId scriptCanvasGraphId, GraphCanvas::GraphId slotId, const AZ::Vector2& scenePos, GraphCanvas::ConnectionType connectionType);
+    };
+
     /////////////////
     // ContextMenus
     /////////////////
@@ -155,22 +167,18 @@ namespace ScriptCanvasEditor
 
         void ResetSourceSlotFilter();
         void FilterForSourceSlot(const AZ::EntityId& scriptCanvasGraphId, const AZ::EntityId& sourceSlotId);
-        const Widget::NodePaletteDockWidget* GetNodePalette() const;
 
         // EditConstructContextMenu
         void OnRefreshActions(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetMemberId) override;
         ////
 
-    public slots:
-
-        void HandleContextMenuSelection();
-        void SetupDisplay();
+        void SetupDisplayForProposal();
 
     protected:
-        void keyPressEvent(QKeyEvent* keyEvent) override;
-        
+
         AZ::EntityId                      m_sourceSlotId;
-        Widget::NodePaletteDockWidget*    m_palette;
+
+        AddSelectedEntitiesAction* m_addSelectedEntitiesAction;
     };
 
     class ConnectionContextMenu
@@ -183,31 +191,12 @@ namespace ScriptCanvasEditor
         ConnectionContextMenu(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel);
         ~ConnectionContextMenu() = default;
 
-        const Widget::NodePaletteDockWidget* GetNodePalette() const;
-
     protected:
 
         void OnRefreshActions(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetMemberId);
 
-    public slots:
-
-        void HandleContextMenuSelection();
-        void SetupDisplay();
-
-    protected:
-        void keyPressEvent(QKeyEvent* keyEvent) override;
-
     private:
 
         AZ::EntityId                      m_connectionId;
-        Widget::NodePaletteDockWidget*    m_palette;
-    };
-
-    class SlotContextMenu
-        : public GraphCanvas::SlotContextMenu
-    {
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(SlotContextMenu, AZ::SystemAllocator, 0);
     };
 }

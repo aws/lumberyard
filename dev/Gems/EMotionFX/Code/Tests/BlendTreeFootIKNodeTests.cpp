@@ -145,7 +145,7 @@ namespace EMotionFX
             skeleton->FindNodeAndIndexByName(jointName, footIndex);
             ASSERT_NE(footIndex, MCORE_INVALIDINDEX32);
             EMotionFX::Transform transform = m_actorInstance->GetTransformData()->GetCurrentPose()->GetWorldSpaceTransform(footIndex);
-            const BlendTreeFootIKNode::UniqueData* uniqueData = static_cast<const BlendTreeFootIKNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_ikNode));
+            const BlendTreeFootIKNode::UniqueData* uniqueData = static_cast<const BlendTreeFootIKNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_ikNode));
             const float correction = (m_actorInstance->GetWorldSpaceTransform().mRotation * AZ::Vector3(0.0f, 0.0f, uniqueData->m_legs[legId].m_footHeight)).GetZ();
             const float pos = transform.mPosition.GetZ() - correction;
             EXPECT_NEAR(pos, height, tolerance);
@@ -210,9 +210,9 @@ namespace EMotionFX
         SimulateFrames();
 
         // Do some integrity checks.
-        BlendTreeFootIKNode::UniqueData* uniqueData = static_cast<BlendTreeFootIKNode::UniqueData*>(m_animGraphInstance->FindUniqueNodeData(m_ikNode));
+        BlendTreeFootIKNode::UniqueData* uniqueData = static_cast<BlendTreeFootIKNode::UniqueData*>(m_animGraphInstance->FindOrCreateUniqueNodeData(m_ikNode));
         ASSERT_TRUE(uniqueData != nullptr);
-        ASSERT_TRUE(uniqueData->m_isValid);
+        ASSERT_TRUE(!uniqueData->GetHasError());
         ASSERT_NE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_jointIndices[BlendTreeFootIKNode::LegJointId::UpperLeg], MCORE_INVALIDINDEX32);
         ASSERT_NE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_jointIndices[BlendTreeFootIKNode::LegJointId::Knee], MCORE_INVALIDINDEX32);
         ASSERT_NE(uniqueData->m_legs[BlendTreeFootIKNode::LegId::Left].m_jointIndices[BlendTreeFootIKNode::LegJointId::Foot], MCORE_INVALIDINDEX32);

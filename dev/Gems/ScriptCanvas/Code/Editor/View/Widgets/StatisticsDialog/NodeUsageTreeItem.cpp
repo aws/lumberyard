@@ -15,9 +15,9 @@
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
-#include <Editor/View/Widgets/StatisticsDialog/NodeUsageTreeItem.h>
-
+#include <Editor/Assets/ScriptCanvasAssetTrackerBus.h>
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
+#include <Editor/View/Widgets/StatisticsDialog/NodeUsageTreeItem.h>
 
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Components/EditorGraph.h>
@@ -158,7 +158,9 @@ namespace ScriptCanvasEditor
         AZ::Data::Asset<ScriptCanvasAsset> newAsset;
 
         const bool loadBlocking = false;
-        DocumentContextRequestBus::BroadcastResult(newAsset, &DocumentContextRequests::LoadScriptCanvasAssetById, m_assetId, loadBlocking);
+
+        auto onAssetReady = [](ScriptCanvasMemoryAsset&) {};
+        AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::Load, m_assetId, azrtti_typeid<ScriptCanvasAsset>(), onAssetReady);
 
         ProcessAsset(newAsset);
     }

@@ -13,6 +13,7 @@
 
 #include <Range.h>
 #include <AnimKey.h>
+
 #include <ICryAnimation.h>
 #include <CryName.h>
 #include <LyShine/ILyShine.h>
@@ -43,7 +44,8 @@ namespace AZ
 #define UI_ANIMATION_SYSTEM_SUPPORT_EDITING
 #endif
 
-typedef std::vector<IUiAnimSequence*> UiAnimSequences;
+typedef AZStd::vector<IUiAnimSequence*> UiAnimSequences;
+typedef AZStd::vector<AZStd::string> UiTrackEvents;
 
 //////////////////////////////////////////////////////////////////////////
 //! Node-Types
@@ -57,20 +59,20 @@ enum EUiAnimNodeType
     eUiAnimNodeType_Entity                  = 0x01,
     eUiAnimNodeType_Director                = 0x02,
     eUiAnimNodeType_Camera                  = 0x03,
-    eUiAnimNodeType_CVar                        = 0x04,
+    eUiAnimNodeType_CVar                    = 0x04,
     eUiAnimNodeType_ScriptVar               = 0x05,
     eUiAnimNodeType_Material                = 0x06,
-    eUiAnimNodeType_Event                       = 0x07,
-    eUiAnimNodeType_Group                       = 0x08,
-    eUiAnimNodeType_Layer                       = 0x09,
+    eUiAnimNodeType_Event                   = 0x07,
+    eUiAnimNodeType_Group                   = 0x08,
+    eUiAnimNodeType_Layer                   = 0x09,
     eUiAnimNodeType_Comment                 = 0x10,
-    eUiAnimNodeType_RadialBlur          = 0x11,
-    eUiAnimNodeType_ColorCorrection = 0x12,
-    eUiAnimNodeType_DepthOfField        = 0x13,
-    eUiAnimNodeType_ScreenFader         = 0x14,
+    eUiAnimNodeType_RadialBlur              = 0x11,
+    eUiAnimNodeType_ColorCorrection         = 0x12,
+    eUiAnimNodeType_DepthOfField            = 0x13,
+    eUiAnimNodeType_ScreenFader             = 0x14,
     eUiAnimNodeType_Light                   = 0x15,
     eUiAnimNodeType_HDRSetup                = 0x16,
-    eUiAnimNodeType_ShadowSetup         = 0x17,
+    eUiAnimNodeType_ShadowSetup             = 0x17,
     eUiAnimNodeType_Alembic                 = 0x18, // Used in cinebox, added so nobody uses that number
     eUiAnimNodeType_GeomCache               = 0x19,
     eUiAnimNodeType_Environment,
@@ -83,8 +85,8 @@ enum EUiAnimNodeType
 enum EUiAnimNodeFlags
 {
     eUiAnimNodeFlags_Expanded               = BIT(0), //!< Deprecated, handled by sandbox now
-    eUiAnimNodeFlags_EntitySelected = BIT(1), //!< Set if the referenced entity is selected in the editor
-    eUiAnimNodeFlags_CanChangeName  = BIT(2), //!< Set if this node allow changing of its name.
+    eUiAnimNodeFlags_EntitySelected         = BIT(1), //!< Set if the referenced entity is selected in the editor
+    eUiAnimNodeFlags_CanChangeName          = BIT(2), //!< Set if this node allow changing of its name.
     eUiAnimNodeFlags_Disabled               = BIT(3), //!< Disable this node.
 };
 
@@ -143,6 +145,11 @@ public:
         m_name = name;
     }
 
+    void operator =(const AZStd::string& name)
+    {
+        m_type = eUiAnimParamType_ByString;
+        m_name = name.c_str();
+    }
     // Convert to enum. This needs to be explicit,
     // otherwise operator== will be ambiguous
     EUiAnimParamType GetType() const { return m_type; }
@@ -296,9 +303,9 @@ private:
 enum EUiAnimCurveType
 {
     eUiAnimCurveType_TCBFloat           = 1,
-    eUiAnimCurveType_TCBVector      = 2,
+    eUiAnimCurveType_TCBVector          = 2,
     eUiAnimCurveType_TCBQuat            = 3,
-    eUiAnimCurveType_BezierFloat    = 4,
+    eUiAnimCurveType_BezierFloat        = 4,
 
     eUiAnimCurveType_Unknown            = 0xFFFFFFFF
 };
@@ -314,19 +321,19 @@ enum EUiAnimCurveType
 //
 enum EUiAnimValue
 {
-    eUiAnimValue_Float = 0,
-    eUiAnimValue_Vector = 1,
-    eUiAnimValue_Quat = 2,
-    eUiAnimValue_Bool = 3,
-    eUiAnimValue_Select = 5,
-    eUiAnimValue_Vector2 = 13,
-    eUiAnimValue_Vector3 = 14,
-    eUiAnimValue_Vector4 = 15,
-    eUiAnimValue_DiscreteFloat = 16,
-    eUiAnimValue_RGB = 20,
-    eUiAnimValue_CharacterAnim = 21,
+    eUiAnimValue_Float          = 0,
+    eUiAnimValue_Vector         = 1,
+    eUiAnimValue_Quat           = 2,
+    eUiAnimValue_Bool           = 3,
+    eUiAnimValue_Select         = 5,
+    eUiAnimValue_Vector2        = 13,
+    eUiAnimValue_Vector3        = 14,
+    eUiAnimValue_Vector4        = 15,
+    eUiAnimValue_DiscreteFloat  = 16,
+    eUiAnimValue_RGB            = 20,
+    eUiAnimValue_CharacterAnim  = 21,
 
-    eUiAnimValue_Unknown = 0xFFFFFFFF
+    eUiAnimValue_Unknown        = 0xFFFFFFFF
 };
 
 enum EUiTrackMask
@@ -352,20 +359,20 @@ struct SUiAnimContext
         m_activeCameraEntity = INVALID_ENTITYID;
     }
 
-    float time;                 //!< Current time in seconds.
+    float time;                     //!< Current time in seconds.
     float   dt;                     //!< Delta of time from previous animation frame in seconds.
     float   fps;                    //!< Last calculated frames per second value.
-    bool bSingleFrame;  //!< This is not a playing animation, more a single-frame update
-    bool bForcePlay;        //!< Set when force playing animation
-    bool bResetting;        //!< Set when animation sequence is resetted.
+    bool bSingleFrame;              //!< This is not a playing animation, more a single-frame update
+    bool bForcePlay;                //!< Set when force playing animation
+    bool bResetting;                //!< Set when animation sequence is resetted.
 
-    IUiAnimSequence* pSequence; //!< Sequence in which animation performed.
-    EntityId m_activeCameraEntity; //!< Used for editor to pass viewport camera to UI Animation system
+    IUiAnimSequence* pSequence;     //!< Sequence in which animation performed.
+    EntityId m_activeCameraEntity;  //!< Used for editor to pass viewport camera to UI Animation system
 
     // TODO: Replace trackMask with something more type safe
     // TODO: Mask should be stored with dynamic length
-    uint32 trackMask;       //!< To update certain types of tracks only
-    float startTime;        //!< The start time of this playing sequence
+    uint32 trackMask;               //!< To update certain types of tracks only
+    float startTime;                //!< The start time of this playing sequence
 
     void Serialize(IUiAnimationSystem* animationSystem, XmlNodeRef& xmlNode, bool bLoading);
 };
@@ -431,12 +438,13 @@ struct IUiAnimTrack
 
     // Return what parameter of the node, this track is attached to.
     virtual const CUiAnimParamType& GetParameterType() const = 0;
+
     // Assign node parameter ID for this track.
     virtual void SetParameterType(CUiAnimParamType type) = 0;
 
     virtual const UiAnimParamData& GetParamData() const = 0;
-    virtual void SetParamData(const UiAnimParamData& param) = 0;
 
+    virtual void SetParamData(const UiAnimParamData& param) = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // Animation track can contain sub-tracks (Position XYZ anim track have sub-tracks for x,y,z)
@@ -556,8 +564,9 @@ struct IUiAnimTrack
 
     // Serialize this animation track to XML.
     virtual bool Serialize(IUiAnimationSystem* uiAnimationSystem, XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true) = 0;
-
     virtual bool SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected = false, float fTimeOffset = 0) = 0;
+
+    virtual void InitPostLoad(IUiAnimSequence* /*sequence*/) {};
 
     //! For custom track animate parameters.
     virtual void Animate(SUiAnimContext& ec) {};
@@ -603,6 +612,7 @@ struct IUiAnimNodeOwner
     virtual void OnNodeUiAnimated(IUiAnimNode* pNode) = 0;
     virtual void OnNodeVisibilityChanged(IUiAnimNode* pNode, const bool bHidden) = 0;
     virtual void OnNodeReset(IUiAnimNode* pNode) {}
+
     // </interfuscator:shuffle>
 };
 
@@ -623,8 +633,6 @@ public:
         eSupportedParamFlags_MultipleTracks = 0x01, // Set if parameter can be assigned multiple tracks.
     };
 
-public:
-
     // <interfuscator:shuffle>
     virtual ~IUiAnimNode() {};
 
@@ -642,7 +650,10 @@ public:
     virtual EUiAnimNodeType GetType() const = 0;
 
     // Return Animation Sequence that owns this node.
-    virtual IUiAnimSequence* GetSequence() = 0;
+    virtual IUiAnimSequence* GetSequence() const = 0;
+
+    // Set the Animation Sequence that owns this node.
+    virtual void SetSequence(IUiAnimSequence* sequence) = 0;
 
     // Called when sequence is activated / deactivated
     virtual void Activate(bool bActivate) = 0;
@@ -725,6 +736,9 @@ public:
     //      Returns the params value type
     virtual ESupportedParamFlags GetParamFlags(const CUiAnimParamType& paramType) const = 0;
 
+    // Called node data is re-initialized, such as when changing the entity associated with it.
+    virtual void OnReset() = 0;
+
     //////////////////////////////////////////////////////////////////////////
     // Working with Tracks.
     //////////////////////////////////////////////////////////////////////////
@@ -779,7 +793,10 @@ public:
     virtual IUiAnimNodeOwner* GetNodeOwner() = 0;
 
     // Serialize this animation node to XML.
+    virtual void SerializeUiAnims(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) = 0;
     virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) = 0;
+
+    // Sets up internal pointers post load from Sequence Component
     virtual void InitPostLoad(IUiAnimSequence* pSequence, bool remapIds, LyShine::EntityIdMap* entityIdMap) = 0;
 
     //////////////////////////////////////////////////////////////////////////
@@ -798,11 +815,6 @@ public:
     // Called from editor if dynamic params need updating
     virtual void UpdateDynamicParams() = 0;
     // </interfuscator:shuffle>
-
-    // Used by AnimCameraNode
-    virtual bool GetShakeRotation(const float& time, Quat& rot){return false; }
-
-    virtual void SetCameraShakeSeed(const uint shakeSeed){};
 };
 
 //! Track event listener
@@ -840,6 +852,18 @@ struct IUiAnimSequenceOwner
     // </interfuscator:shuffle>
 };
 
+struct IUiAnimStringTable
+{
+    AZ_RTTI(IUiAnimStringTable, "{5B60054D-0D67-4DB5-B867-9869DAB95B83}")
+    virtual ~IUiAnimStringTable() {}
+
+    // for intrusive_ptr support
+    virtual void add_ref() = 0;
+    virtual void release() = 0;
+
+    virtual const char* Add(const char* p) = 0;
+};
+
 /** Animation sequence, operates on animation nodes contained in it.
  */
 struct IUiAnimSequence
@@ -859,13 +883,13 @@ struct IUiAnimSequence
         eSeqFlags_NoPlayer             = BIT(5),   //!< Disable input and drawing of player
         eSeqFlags_16To9                = BIT(8),   //!< 16:9 bars in sequence
         eSeqFlags_NoGameSounds         = BIT(9),   //!< Suppress all game sounds.
-        eSeqFlags_NoSeek               = BIT(10), //!< Cannot seek in sequence.
-        eSeqFlags_NoAbort              = BIT(11), //!< Cutscene can not be aborted
-        eSeqFlags_NoSpeed              = BIT(13), //!< Cannot modify sequence speed - TODO: add interface control if required
-     // eSeqFlags_CanWarpInFixedTime   = BIT(14), //!< @deprecated - Timewarp by scaling a fixed time step - removed July 2017
-        eSeqFlags_EarlyAnimationUpdate = BIT(15), //!< Turn the 'sys_earlyUiAnimationUpdate' on during the sequence.
-        eSeqFlags_LightAnimationSet    = BIT(16), //!< A special unique sequence for light animations
-        eSeqFlags_NoMPSyncingNeeded    = BIT(17), //!< this sequence doesn't require MP net syncing
+        eSeqFlags_NoSeek               = BIT(10),  //!< Cannot seek in sequence.
+        eSeqFlags_NoAbort              = BIT(11),  //!< Cutscene can not be aborted
+        eSeqFlags_NoSpeed              = BIT(13),  //!< Cannot modify sequence speed - TODO: add interface control if required
+     // eSeqFlags_CanWarpInFixedTime   = BIT(14),  //!< @deprecated - Timewarp by scaling a fixed time step - removed July 2017
+        eSeqFlags_EarlyAnimationUpdate = BIT(15),  //!< Turn the 'sys_earlyUiAnimationUpdate' on during the sequence.
+        eSeqFlags_LightAnimationSet    = BIT(16),  //!< A special unique sequence for light animations
+        eSeqFlags_NoMPSyncingNeeded    = BIT(17),  //!< this sequence doesn't require MP net syncing
     };
 
     virtual ~IUiAnimSequence() {};
@@ -903,7 +927,7 @@ struct IUiAnimSequence
     //! Get parent animation sequence
     virtual const IUiAnimSequence* GetParentSequence() const = 0;
     //! Check whether this sequence has the given sequence as a descendant through one of its sequence tracks.
-    virtual bool IsAncestorOf(const IUiAnimSequence* pSequence) const = 0;
+    virtual bool IsAncestorOf(const IUiAnimSequence* sequence) const = 0;
 
     //! Return number of animation nodes in sequence.
     virtual int GetNodeCount() const = 0;
@@ -1005,6 +1029,32 @@ struct IUiAnimSequence
     // Paste nodes given by the XML to this sequence.
     virtual void PasteNodes(const XmlNodeRef& xmlNode, IUiAnimNode* pParent) = 0;
 
+    // Summary:
+    //  Adds/removes track events in sequence.
+    virtual bool AddTrackEvent(const char* szEvent) = 0;
+    virtual bool RemoveTrackEvent(const char* szEvent) = 0;
+    virtual bool RenameTrackEvent(const char* szEvent, const char* szNewEvent) = 0;
+    virtual bool MoveUpTrackEvent(const char* szEvent) = 0;
+    virtual bool MoveDownTrackEvent(const char* szEvent) = 0;
+    virtual void ClearTrackEvents() = 0;
+
+    // Summary:
+    //  Gets the track events in the sequence.
+    virtual int GetTrackEventsCount() const = 0;
+    // Summary:
+    //  Gets the specified track event in the sequence.
+    virtual char const* GetTrackEvent(int iIndex) const = 0;
+
+    virtual IUiAnimStringTable* GetTrackEventStringTable() = 0;
+
+    // Summary:
+    //   Called to trigger a track event.
+    virtual void TriggerTrackEvent(const char* event, const char* param = NULL) = 0;
+
+    //! Track event listener
+    virtual void AddTrackEventListener(IUiTrackEventListener* pListener) = 0;
+    virtual void RemoveTrackEventListener(IUiTrackEventListener* pListener) = 0;
+
     // </interfuscator:shuffle>
 };
 
@@ -1025,6 +1075,7 @@ struct IUiAnimationListener
     virtual ~IUiAnimationListener(){}
     //! callback on UI animation events
     virtual void OnUiAnimationEvent(EUiAnimationEvent uiAnimationEvent, IUiAnimSequence* pAnimSequence) = 0;
+    virtual void OnUiTrackEvent(AZStd::string eventName, AZStd::string valueName, IUiAnimSequence* pAnimSequence) {}
     // </interfuscator:shuffle>
 };
 
@@ -1070,7 +1121,6 @@ struct IUiAnimationSystem
     virtual bool IsCutScenePlaying() const = 0;
 
     virtual uint32 GrabNextSequenceId() = 0;
-
     //////////////////////////////////////////////////////////////////////////
     //
     // If the name of a sequence changes, the keys that refer it in the
@@ -1223,6 +1273,9 @@ struct IUiAnimationSystem
 
     // Should only be called from UiAnimParamData
     virtual void SerializeParamData(UiAnimParamData& animParamData, XmlNodeRef& xmlNode, bool bLoading) = 0;
+
+    // Called by a sequence whenever a track event is triggered
+    virtual void NotifyTrackEventListeners(const char* eventName, const char* valueName, IUiAnimSequence* pSequence) = 0;
 
 #ifdef UI_ANIMATION_SYSTEM_SUPPORT_EDITING
     virtual EUiAnimNodeType GetNodeTypeFromString(const char* pString) const = 0;

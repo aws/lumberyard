@@ -14,6 +14,7 @@
 #include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 
@@ -24,10 +25,15 @@
 #include <QMouseEvent>
 #include <QObject>
 #include <QPainter>
+#include <QScreen>
 #include <QSettings>
 #include <QStyle>
 #include <QStyleOptionSpinBox>
 #include <QMenu>
+#include <QTimer>
+#include <QWindow>
+
+#include <QtWidgets/private/qstylesheetstyle_p.h>
 
 namespace AzQtComponents
 {
@@ -41,6 +47,11 @@ static const char* g_spinBoxValueDecreasingName = "SpinBoxValueDecreasing";
 static const char* g_spinBoxScrollIncreasingName = "SpinBoxScrollIncreasing";
 static const char* g_spinBoxScrollDecreasingName = "SpinBoxScrollDecreasing";
 static const char* g_spinBoxIntializedValueName = "SpinBoxInitializedValue";
+static const char* g_spinBoxMinReachedName = "SpinBoxMinReached";
+static const char* g_spinBoxMaxReachedName = "SpinBoxMaxReached";
+static const char* g_spinBoxFocusedName = "SpinBoxFocused";
+static const char* g_spinBoxDraggingName = "SpinBoxDragging";
+static const char* g_spinBoxInitPropertyFlagName = "PropertyInitFlag";
 
 // Decimal precision parameters
 static const int g_decimalPrecisonDefault = 7;
@@ -67,6 +78,8 @@ private:
     int m_xPos = 0;
     QPointer<QAbstractSpinBox> m_spinBoxChanging;
     State m_state = Inactive;
+    QAbstractSpinBox* m_mouseFocusedSpinBox = nullptr;
+    QAbstractSpinBox* m_mouseFocusedSpinBoxSingleClicked = nullptr;
 
     bool filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* event);
     bool filterLineEditEvents(QLineEdit* lineEdit, QEvent* event);
@@ -118,7 +131,15 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
         case QEvent::HoverLeave:
         case QEvent::HoverMove:
         {
-            resetCursor(spinBox);
+            bool buttonUpPressed = spinBox->property(g_spinBoxUpPressedPropertyName).toBool();
+            bool buttonDownPressed = spinBox->property(g_spinBoxDownPressedPropertyName).toBool();
+
+            // We don't want the scroll icon to show up while clicking and dragging
+            // on an arrow button
+            if (!buttonUpPressed && !buttonDownPressed)
+            {
+                resetCursor(spinBox);
+            }
             break;
         }
 
@@ -162,7 +183,25 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
 
             if (m_state == Inactive)
             {
-                resetCursor(spinBox);
+                const QPoint pos = spinBox->mapFromGlobal(QCursor::pos());
+                if (spinBox->rect().contains(pos))
+                {
+                    resetCursor(spinBox);
+                }
+            }
+            break;
+        }
+
+        case QEvent::FocusIn:
+        {
+            spinBox->setProperty(g_spinBoxFocusedName, true);
+            if (m_config.autoSelectAllOnClickFocus)
+            {
+                QFocusEvent* fe = static_cast<QFocusEvent*>(event);
+                if (fe->reason() == Qt::MouseFocusReason)
+                {
+                    m_mouseFocusedSpinBox = spinBox;
+                }
             }
             break;
         }
@@ -173,7 +212,7 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
             // required. This handles the case where a new value has been typed without pressing
             // return or enter, or after a wheel event.
             emitValueChangeEnded(spinBox);
-
+            spinBox->setProperty(g_spinBoxFocusedName, false);
             break;
         }
 
@@ -204,6 +243,37 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
                     {
                         spinBox->setProperty(g_spinBoxValueIncreasingName, false);
                         spinBox->setProperty(g_spinBoxValueDecreasingName, true);
+                    }
+                    break;
+
+                case Qt::Key_Escape:
+                    if (!spinBox->keyboardTracking())
+                    {
+                        // If we're not keyboard tracking, then changes to the text field
+                        // aren't 'committed' until the user hits Enter, Return, tabs out of
+                        // the field, or the spinbox is hidden.
+                        // We want to stop the commit from happening if the user hits escape.
+                        if (spinBox->hasFocus())
+                        {
+                            // Big logic jump here; if the current value has been committed already,
+                            // then everything listening on the signals knows about it already.
+                            // If the current value has NOT been committed, nothing knows about it
+                            // but we don't want to trigger any further updates, because we're resetting
+                            // it.
+                            // So we disable signals here
+                            if (auto azSpinBox = qobject_cast<SpinBox*>(spinBox))
+                            {
+                                QSignalBlocker blocker(azSpinBox);
+                                azSpinBox->setValue(azSpinBox->m_lastValue);
+                            }
+                            else if (auto azDoubleSpinBox = qobject_cast<DoubleSpinBox*>(spinBox))
+                            {
+                                QSignalBlocker blocker(azDoubleSpinBox);
+                                azDoubleSpinBox->setValue(azDoubleSpinBox->m_lastValue);
+                            }
+
+                            spinBox->selectAll();
+                        }
                     }
                     break;
             }
@@ -266,6 +336,7 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
                     // emitValueChangeEnded is called in SpinBoxWatcher::handleMouseDragStepping
 
                     m_state = ProcessingArrowButtons;
+                    spinBox->setProperty(g_spinBoxDraggingName, false);
 
                     if (control == QStyle::SC_SpinBoxUp)
                     {
@@ -291,9 +362,38 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
 
         case QEvent::Wheel:
         {
-            setInializeSpinboxValue(spinBox, true);
+            if (!spinBox->hasFocus())
+            {
+                // To prevent the event being turned into a focus event, be sure to install an
+                // AzQtComponents::GlobalEventFilter on your QApplication instance.
+                event->ignore();
+                return true;
+            }
 
             auto wheelEvent = static_cast<QWheelEvent*>(event);
+
+            // Emulates Qt::ScrollEnd
+            static QMap<QWidget*, QTimer*> wheelTimeout;
+
+            if (wheelEvent->source() != Qt::MouseEventSynthesizedBySystem)
+            {
+                if (!wheelTimeout.contains(spinBox))
+                {
+                    auto timer = new QTimer();
+                    timer->setSingleShot(true);
+                    timer->setInterval(100);
+                    timer->callOnTimeout([this, timer, spinBox](){
+                        emitValueChangeEnded(spinBox);
+                        wheelTimeout.remove(spinBox);
+                        timer->deleteLater();
+                    });
+                    wheelTimeout.insert(spinBox, timer);
+                }
+
+                wheelTimeout[spinBox]->start();
+            }
+
+            setInializeSpinboxValue(spinBox, true);
 
             // Qt::ScrollEnd is only supported on macOS and only applies to trackpads, not scroll
             // wheels.
@@ -316,7 +416,43 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
                 {
                     emitValueChangeBegan(spinBox);
                     // emitValueChangeEnded is called in QEvent::FocusOut
+                    if (angleDelta.y() < 0)
+                    {
+                        spinBox->setProperty(g_spinBoxValueDecreasingName, true);
+                        spinBox->setProperty(g_spinBoxValueIncreasingName, false);
+                    }
+                    else
+                    {
+                        spinBox->setProperty(g_spinBoxValueDecreasingName, false);
+                        spinBox->setProperty(g_spinBoxValueIncreasingName, true);
+                    }
                 }
+            }
+            break;
+        }
+
+        case QEvent::DynamicPropertyChange:
+        {
+            auto styleSheet = StyleManager::styleSheetStyle(spinBox);
+            styleSheet->repolish(spinBox);
+            break;
+        }
+
+        case QEvent::ShortcutOverride:
+        {
+            // This should be handled in the base class, but since that's part of Qt, do it here.
+            // The Up and Down keys have a function while this widget is in focus, so prevent those shortcuts from firing
+            auto keyEvent = static_cast<QKeyEvent*>(event);
+            switch (keyEvent->key())
+            {
+            case (Qt::Key_Up):
+            case (Qt::Key_Down):
+                event->accept();
+                return true;
+                break;
+
+            default:
+                break;
             }
             break;
         }
@@ -350,6 +486,17 @@ bool SpinBoxWatcher::filterLineEditEvents(QLineEdit* lineEdit, QEvent* event)
                 // Update cursor without waiting for an Hover event
                 resetCursor(spinBox);
             }
+            else if (m_config.autoSelectAllOnClickFocus)
+            {
+                if (mouseEvent->button() == Qt::LeftButton && m_mouseFocusedSpinBox == spinBox)
+                {
+                    lineEdit->selectAll();
+                    m_mouseFocusedSpinBox = nullptr;
+                    m_mouseFocusedSpinBoxSingleClicked = spinBox;
+                    return true;
+                }
+                m_mouseFocusedSpinBox = nullptr;
+            }
             break;
         }
         case QEvent::MouseMove:
@@ -378,6 +525,18 @@ bool SpinBoxWatcher::filterLineEditEvents(QLineEdit* lineEdit, QEvent* event)
         case QEvent::MouseButtonDblClick:
         {
             auto mouseEvent = static_cast<QMouseEvent*>(event);
+            if (m_config.autoSelectAllOnClickFocus)
+            {
+                if (mouseEvent->button() == Qt::LeftButton && m_mouseFocusedSpinBoxSingleClicked == spinBox)
+                {
+                    // fake a single click event to place the mouse button
+                    QMouseEvent fake(QEvent::MouseButtonPress, mouseEvent->localPos(), mouseEvent->button(), mouseEvent->buttons(), mouseEvent->modifiers());
+                    QCoreApplication::sendEvent(lineEdit, &fake);
+                    m_mouseFocusedSpinBoxSingleClicked = nullptr;
+                    return true;
+                }
+                m_mouseFocusedSpinBoxSingleClicked = nullptr;
+            }
             // Select whole number only on double click
             if ((mouseEvent->button() & Qt::LeftButton) && qobject_cast<QDoubleSpinBox*>(spinBox))
             {
@@ -421,13 +580,16 @@ bool SpinBoxWatcher::handleMouseDragStepping(QAbstractSpinBox* spinBox, QEvent* 
         case QEvent::MouseButtonPress:
         {
             auto mouseEvent = static_cast<QMouseEvent*>(event);
+            bool buttonUpPressed = spinBox->property(g_spinBoxUpPressedPropertyName).toBool();
+            bool buttonDownPressed = spinBox->property(g_spinBoxDownPressedPropertyName).toBool();
 
-            if (((mouseEvent->button() & Qt::LeftButton) && (m_state == Inactive)) ||
+            if (((mouseEvent->button() & Qt::LeftButton) && (m_state == Inactive) && !buttonDownPressed && !buttonUpPressed) ||
                 (mouseEvent->button() & Qt::MiddleButton))
             {
                 m_xPos = mouseEvent->x();
                 emitValueChangeBegan(spinBox);
                 m_state = Dragging;
+                spinBox->setProperty(g_spinBoxDraggingName, true);
             }
             setInializeSpinboxValue(spinBox);
             break;
@@ -473,6 +635,37 @@ bool SpinBoxWatcher::handleMouseDragStepping(QAbstractSpinBox* spinBox, QEvent* 
                 }
 
                 spinBox->stepBy(step);
+
+                // Check if we need to move the mouse cursor away from the edge of the screen. A
+                // native window may not exist.
+                if (QWindow* windowHandle = spinBox->window()->windowHandle())
+                {
+                    QScreen* screen = windowHandle->screen();
+                    const QPoint hotspot = spinBox->cursor().hotSpot();
+                    const QRect screenRect = screen->geometry().adjusted(hotspot.x(), hotspot.y(), -hotspot.x(), -hotspot.y());
+                    QPoint screenPos = mouseEvent->screenPos().toPoint();
+                    const int xPos = screenPos.x();
+                    int newXPos = xPos;
+                    if (xPos >= screenRect.right())
+                    {
+                        newXPos = screenRect.right() - 1;
+                    }
+                    else if (xPos <= screenRect.left())
+                    {
+                        newXPos = screenRect.left() + 1;
+                    }
+
+                    if (newXPos != xPos)
+                    {
+                        // Update our local x position so we can continue to step when the mouse moves
+                        const int screenDelta = xPos - newXPos;
+                        m_xPos -= screenDelta;
+
+                        // Move the mouse cursor away from the edge of the screen.
+                        screenPos.setX(newXPos);
+                        QCursor::setPos(screen, screenPos);
+                    }
+                }
             }
             setInializeSpinboxValue(spinBox);
             break;
@@ -482,8 +675,7 @@ bool SpinBoxWatcher::handleMouseDragStepping(QAbstractSpinBox* spinBox, QEvent* 
         {
             emitValueChangeEnded(spinBox);
             m_state = Inactive;
-            spinBox->setProperty(g_spinBoxScrollIncreasingName, false);
-            spinBox->setProperty(g_spinBoxScrollDecreasingName, false);
+            spinBox->setProperty(g_spinBoxDraggingName, false);
             spinBox->update();
             resetCursor(spinBox);
             break;
@@ -592,6 +784,9 @@ QAbstractSpinBox::StepEnabled SpinBoxWatcher::stepEnabled(QAbstractSpinBox* spin
         stepEnabled |= QAbstractSpinBox::StepDownEnabled;
     }
 
+    spinBox->setProperty(g_spinBoxMinReachedName, !(stepEnabled & QAbstractSpinBox::StepDownEnabled));
+    spinBox->setProperty(g_spinBoxMaxReachedName, !(stepEnabled & QAbstractSpinBox::StepUpEnabled));
+
     return stepEnabled;
 }
 
@@ -620,6 +815,14 @@ void SpinBoxWatcher::emitValueChangeEnded(QAbstractSpinBox* spinBox)
     if (m_spinBoxChanging.isNull())
     {
         return;
+    }
+
+    if (spinBox)
+    {
+        spinBox->setProperty(g_spinBoxValueIncreasingName, false);
+        spinBox->setProperty(g_spinBoxValueDecreasingName, false);
+        spinBox->setProperty(g_spinBoxScrollIncreasingName, false);
+        spinBox->setProperty(g_spinBoxScrollDecreasingName, false);
     }
 
     if (auto azSpinBox = qobject_cast<SpinBox*>(spinBox))
@@ -707,6 +910,7 @@ SpinBox::Config SpinBox::loadConfig(QSettings& settings)
     ConfigHelpers::read<QCursor>(settings, QStringLiteral("ScrollCursorRight"), config.scrollCursorRight);
     ConfigHelpers::read<QCursor>(settings, QStringLiteral("ScrollCursorRightMax"), config.scrollCursorRightMax);
     ConfigHelpers::read<int>(settings, QStringLiteral("LabelSize"), config.labelSize);
+    ConfigHelpers::read<bool>(settings, QStringLiteral("AutoSelectAllOnClickFocus"), config.autoSelectAllOnClickFocus);
 
     return config;
 }
@@ -721,8 +925,18 @@ SpinBox::Config SpinBox::defaultConfig()
     config.scrollCursorRight = QCursor(QPixmap(":/SpinBox/scrollIconRight.svg"));
     config.scrollCursorRightMax = QCursor(QPixmap(":/SpinBox/scrollIconRightMaxed.svg"));
     config.labelSize = 16;
+    config.autoSelectAllOnClickFocus = true;
 
     return config;
+}
+
+
+void SpinBox::setHasError(QAbstractSpinBox* spinbox, bool hasError)
+{
+    if (hasError != spinbox->property(HasError).toBool())
+    {
+        spinbox->setProperty(HasError, hasError);
+    }
 }
 
 QPointer<SpinBoxWatcher> SpinBox::s_spinBoxWatcher = nullptr;
@@ -846,12 +1060,29 @@ bool SpinBox::polish(QProxyStyle* style, QWidget* widget, const SpinBox::Config&
         }
 
         s_spinBoxWatcher->m_config = config;
+        // Initialize spinBox properties, and do it only once
+        if (!spinBox->property(g_spinBoxInitPropertyFlagName).toBool())
+        {
+            spinBox->setProperty(g_spinBoxUpPressedPropertyName, false);
+            spinBox->setProperty(g_spinBoxDownPressedPropertyName, false);
+            spinBox->setProperty(g_spinBoxValueIncreasingName, false);
+            spinBox->setProperty(g_spinBoxValueDecreasingName, false);
+            spinBox->setProperty(g_spinBoxScrollIncreasingName, false);
+            spinBox->setProperty(g_spinBoxScrollDecreasingName, false);
+            spinBox->setProperty(g_spinBoxIntializedValueName, false);
+            spinBox->setProperty(g_spinBoxMinReachedName, false);
+            spinBox->setProperty(g_spinBoxMaxReachedName, false);
+            spinBox->setProperty(g_spinBoxFocusedName, false);
+            spinBox->setProperty(g_spinBoxDraggingName, false);
+            spinBox->setProperty(g_spinBoxInitPropertyFlagName, true);
+        }
         spinBox->installEventFilter(s_spinBoxWatcher);
+        SpinBox::setButtonSymbolsForStyle(spinBox, StyleManager::isUi10());
 
         if (auto lineEdit = spinBox->findChild<QLineEdit*>(QString(), Qt::FindDirectChildrenOnly))
         {
             lineEdit->installEventFilter(s_spinBoxWatcher);
-            LineEdit::setSideButtonsEnabled(lineEdit, false);
+            LineEdit::setErrorIconEnabled(lineEdit, false);
         }
         return true;
     }
@@ -865,9 +1096,16 @@ bool SpinBox::unpolish(QProxyStyle* style, QWidget* widget, const SpinBox::Confi
 
     Q_ASSERT(!s_spinBoxWatcher.isNull());
 
+    if (!qobject_cast<QSpinBox*>(widget) && !qobject_cast<QDoubleSpinBox*>(widget))
+    {
+        // QDateTime inherits from QAbstractSpinBox and shouldn't be included here.
+        return false;
+    }
+
     if (auto spinBox = qobject_cast<QAbstractSpinBox*>(widget))
     {
         spinBox->removeEventFilter(s_spinBoxWatcher);
+        SpinBox::setButtonSymbolsForStyle(spinBox, StyleManager::isUi10());
 
         if (auto lineEdit = spinBox->findChild<QLineEdit*>(QString(), Qt::FindDirectChildrenOnly))
         {
@@ -876,6 +1114,23 @@ bool SpinBox::unpolish(QProxyStyle* style, QWidget* widget, const SpinBox::Confi
         return true;
     }
     return false;
+}
+
+void SpinBox::setButtonSymbolsForStyle(QAbstractSpinBox* spinBox, bool isUI10)
+{
+    if (!spinBox)
+    {
+        return;
+    }
+
+    if (isUI10)
+    {
+        spinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+    }
+    else
+    {
+        spinBox->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
+    }
 }
 
 SpinBox::SpinBox(QWidget* parent)
@@ -890,14 +1145,45 @@ SpinBox::SpinBox(QWidget* parent)
     m_lineEdit = new internal::SpinBoxLineEdit(this);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalUndoTriggered, this, &SpinBox::globalUndoTriggered);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalRedoTriggered, this, &SpinBox::globalRedoTriggered);
-    connect(this, &SpinBox::pasteTriggered, this, [this]() {
+    connect(this, &SpinBox::cutTriggered, this, [this]()
+    {
+        setInitialValueWasSetting(true);
+        m_lineEdit->cut();
+    });
+    connect(this, &SpinBox::copyTriggered, this, [this]()
+    {
+        m_lineEdit->copy();
+    });
+    connect(this, &SpinBox::pasteTriggered, this, [this]()
+    {
         setInitialValueWasSetting(true);
         m_lineEdit->setText(QString());
         m_lineEdit->paste();
     });
+    connect(this, &SpinBox::deleteTriggered, this, [this]()
+    {
+        setInitialValueWasSetting(true);
+        m_lineEdit->del();
+    });
+    connect(this, QOverload<int>::of(&SpinBox::valueChanged), this, &SpinBox::setLastValue);
     setLineEdit(m_lineEdit);
+    setButtonSymbolsForStyle(this, StyleManager::isUi10());
 
     setRange(0, 100);
+}
+
+void SpinBox::setValue(int value)
+{
+    QSpinBox::setValue(value);
+    setLastValue(value);
+}
+
+QSize SpinBox::minimumSizeHint() const
+{
+    //  This prevents the range from affecting the size, allowing the use of user-defined size hints.
+    QSize size = QSpinBox::sizeHint();
+    size.setWidth(minimumWidth());
+    return size;
 }
 
 bool SpinBox::isUndoAvailable() const
@@ -912,11 +1198,42 @@ bool SpinBox::isRedoAvailable() const
 
 void SpinBox::focusInEvent(QFocusEvent* event)
 {
+    // Remove the suffix while editing. Check focus reason so we don't clash
+    // with context menus
+    if (event->reason() != Qt::PopupFocusReason)
+    {
+        m_lastSuffix = suffix();
+    }
+
+    if (m_lastSuffix.length() > 0)
+    {
+        // Force the minimum size to the current size to prevent shrinkage when
+        // the suffix is removed.
+        m_lastMinimumSize = minimumSize();
+        setMinimumSize(size());
+        setSuffix(QString());
+    }
+
     QSpinBox::focusInEvent(event);
 
     if (event->reason() == Qt::MouseFocusReason)
     {
         lineEdit()->deselect();
+    }
+}
+
+void SpinBox::focusOutEvent(QFocusEvent* event)
+{
+    QSpinBox::focusOutEvent(event);
+
+    // restore the suffix now, if needed
+    if (event->reason() != Qt::PopupFocusReason && m_lastSuffix.length() > 0)
+    {
+        setSuffix(m_lastSuffix);
+        // Restore the original minimum size
+        setMinimumSize(m_lastMinimumSize);
+        m_lastSuffix.clear();
+        m_lastMinimumSize = {};
     }
 }
 
@@ -969,11 +1286,32 @@ void spinBoxContextMenuEvent(QContextMenuEvent* ev, SpinBoxType* spinBox, QLineE
             QObject::connect(selectAllAction, &QAction::triggered, spinBox, &QAbstractSpinBox::selectAll);
         }
 
+        QAction* cutAction = findAction(menuActions, QObject::tr("Cu&t"));
+        if (cutAction)
+        {
+            QObject::disconnect(cutAction, &QAction::triggered, nullptr, nullptr);
+            QObject::connect(cutAction, &QAction::triggered, spinBox, &SpinBoxType::cutTriggered);
+        }
+
+        QAction* copyAction = findAction(menuActions, QObject::tr("&Copy"));
+        if (copyAction)
+        {
+            QObject::disconnect(copyAction, &QAction::triggered, nullptr, nullptr);
+            QObject::connect(copyAction, &QAction::triggered, spinBox, &SpinBoxType::copyTriggered);
+        }
+
         QAction* pasteAction = findAction(menuActions, QObject::tr("&Paste"));
         if (pasteAction)
         {
             QObject::disconnect(pasteAction, &QAction::triggered, nullptr, nullptr);
             QObject::connect(pasteAction, &QAction::triggered, spinBox, &SpinBoxType::pasteTriggered);
+        }
+
+        QAction* deleteAction = findAction(menuActions, QObject::tr("Delete"));
+        if (deleteAction)
+        {
+            QObject::disconnect(deleteAction, &QAction::triggered, nullptr, nullptr);
+            QObject::connect(deleteAction, &QAction::triggered, spinBox, &SpinBoxType::deleteTriggered);
         }
 
         menu->addSeparator();
@@ -1009,15 +1347,14 @@ void SpinBox::setInitialValueWasSetting(bool b)
     lineEdit()->setProperty(g_spinBoxIntializedValueName, b);
 }
 
-void DoubleSpinBox::updateValue(double value)
-{
-    setValue(value);
-    updateToolTip(value);
-}
-
 void SpinBox::contextMenuEvent(QContextMenuEvent* ev)
 {
     spinBoxContextMenuEvent(ev, this, lineEdit(), stepEnabled(), m_lineEdit->overrideUndoRedo());
+}
+
+void SpinBox::setLastValue(int v)
+{
+    m_lastValue = v;
 }
 
 DoubleSpinBox::DoubleSpinBox(QWidget* parent)
@@ -1033,21 +1370,53 @@ DoubleSpinBox::DoubleSpinBox(QWidget* parent)
     m_lineEdit = new internal::SpinBoxLineEdit(this);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalUndoTriggered, this, &DoubleSpinBox::globalUndoTriggered);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalRedoTriggered, this, &DoubleSpinBox::globalRedoTriggered);
-    connect(this, &DoubleSpinBox::pasteTriggered, this, [this]() {
+    connect(this, &DoubleSpinBox::cutTriggered, this, [this]()
+    {
+        setInitialValueWasSetting(true);
+        m_lineEdit->cut();
+    });
+    connect(this, &DoubleSpinBox::copyTriggered, this, [this]()
+    {
+        m_lineEdit->copy();
+    });
+    connect(this, &DoubleSpinBox::pasteTriggered, this, [this]()
+    {
         setInitialValueWasSetting(true);
         m_lineEdit->setText(QString());
         m_lineEdit->paste();
     });
+    connect(this, &DoubleSpinBox::deleteTriggered, this, [this]()
+    {
+        setInitialValueWasSetting(true);
+        m_lineEdit->del();
+    });
 
     setLineEdit(m_lineEdit);
+    SpinBox::setButtonSymbolsForStyle(this, StyleManager::isUi10());
 
     setRange(0, 100);
     setDecimals(g_decimalPrecisonDefault);
 
     // Our tooltip will be the full decimal value, so keep it updated
     // whenever our value changes
-    QObject::connect(this, static_cast<void(DoubleSpinBox::*)(double)>(&DoubleSpinBox::valueChanged), this, &DoubleSpinBox::updateToolTip);
+    connect(this, QOverload<double>::of(&DoubleSpinBox::valueChanged), this, &DoubleSpinBox::updateToolTip);
+    connect(this, QOverload<double>::of(&DoubleSpinBox::valueChanged), this, &DoubleSpinBox::setLastValue);
     updateToolTip(value());
+}
+
+void DoubleSpinBox::setValue(double value)
+{
+    QDoubleSpinBox::setValue(value);
+    setLastValue(value);
+    updateToolTip(value);
+}
+
+QSize DoubleSpinBox::minimumSizeHint() const
+{
+    // This prevents the range from affecting the size, allowing the use of user-defined size hints.
+    QSize size = QDoubleSpinBox::sizeHint();
+    size.setWidth(minimumWidth());
+    return size;
 }
 
 bool DoubleSpinBox::isUndoAvailable() const
@@ -1092,6 +1461,11 @@ void DoubleSpinBox::updateToolTip(double value)
     setToolTip(stringValue(value));
 }
 
+void DoubleSpinBox::setLastValue(double v)
+{
+    m_lastValue = v;
+}
+
 void DoubleSpinBox::setInitialValueWasSetting(bool b)
 {
     lineEdit()->setProperty(g_spinBoxIntializedValueName, b);
@@ -1113,6 +1487,22 @@ void DoubleSpinBox::focusInEvent(QFocusEvent* event)
     // the truncated display value
     setSpecialValueText(QString());
 
+    // Remove the suffix while editing. Check focus reason so we don't clash
+    // with context menus
+    if (event->reason() != Qt::PopupFocusReason)
+    {
+        m_lastSuffix = suffix();
+    }
+
+    if (m_lastSuffix.length() > 0)
+    {
+        // Force the minimum size to the current size to prevent shrinkage when
+        // the suffix is removed.
+        m_lastMinimumSize = minimumSize();
+        setMinimumSize(size());
+        setSuffix(QString());
+    }
+
     QDoubleSpinBox::focusInEvent(event);
 
     if (event->reason() == Qt::MouseFocusReason)
@@ -1121,6 +1511,20 @@ void DoubleSpinBox::focusInEvent(QFocusEvent* event)
     }
 }
 
+void DoubleSpinBox::focusOutEvent(QFocusEvent* event)
+{
+    QDoubleSpinBox::focusOutEvent(event);
+
+    // restore the suffix now, if needed
+    if (event->reason() != Qt::PopupFocusReason && m_lastSuffix.length() > 0)
+    {
+        setSuffix(m_lastSuffix);
+        // Restore the original minimum size
+        setMinimumSize(m_lastMinimumSize);
+        m_lastSuffix.clear();
+        m_lastMinimumSize = {};
+    }
+}
 
 namespace internal
 {
@@ -1143,7 +1547,13 @@ namespace internal
             case QEvent::FocusOut:
             {
                 // Explicitly set the text again on focusOut, so that the undo/redo queue for the line edit clears and the global undo/redo can kick in
-                setText(text());
+                if (const auto focusEvent = static_cast<QFocusEvent*>(ev))
+                {
+                    if (focusEvent->reason() != Qt::PopupFocusReason)
+                    {
+                        setText(text());
+                    }
+                }
             }
             break;
         }
@@ -1177,8 +1587,21 @@ namespace internal
                 return;
             }
         }
-        if (ev->matches(QKeySequence::Paste)) {
+        if (ev->matches(QKeySequence::Cut))
+        {
+            Q_EMIT cutTriggered();
+        }
+        if (ev->matches(QKeySequence::Copy))
+        {
+            Q_EMIT copyTriggered();
+        }
+        if (ev->matches(QKeySequence::Paste))
+        {
             Q_EMIT pasteTriggered();
+        }
+        if (ev->matches(QKeySequence::Delete))
+        {
+            Q_EMIT deleteTriggered();
         }
         // fall through to the default
         QLineEdit::keyPressEvent(ev);

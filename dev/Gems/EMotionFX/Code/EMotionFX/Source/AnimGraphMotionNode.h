@@ -69,16 +69,17 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, uint32 motionSetID, MotionInstance* instance);
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             ~UniqueData() override;
 
             void Reset() override;
+            void Update() override;
 
         public:
-            uint32              mMotionSetID;
-            uint32              mActiveMotionIndex;
-            MotionInstance*     mMotionInstance;
-            bool                mReload;
+            uint32 mMotionSetID = InvalidIndex32;
+            uint32 mActiveMotionIndex = InvalidIndex32;
+            MotionInstance* mMotionInstance = nullptr;
+            bool mReload = false;
         };
 
         AnimGraphMotionNode();
@@ -87,14 +88,15 @@ namespace EMotionFX
         void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        bool GetHasOutputPose() const override              { return true; }
-        bool GetCanActAsState() const override              { return true; }
-        bool GetSupportsDisable() const override            { return true; }
-        bool GetSupportsVisualization() const override      { return true; }
-        bool GetNeedsNetTimeSync() const override           { return true; }
-        AZ::Color GetVisualColor() const override           { return AZ::Color(0.38f, 0.24f, 0.91f, 1.0f); }
+        bool GetHasOutputPose() const override { return true; }
+        bool GetCanActAsState() const override { return true; }
+        bool GetSupportsDisable() const override { return true; }
+        bool GetSupportsVisualization() const override { return true; }
+        bool GetSupportsPreviewMotion() const override { return true; }
+        bool GetNeedsNetTimeSync() const override { return true; }
+        AZ::Color GetVisualColor() const override { return AZ::Color(0.38f, 0.24f, 0.91f, 1.0f); }
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         void OnActorMotionExtractionNodeChanged() override;
         void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet) override;
 
@@ -164,17 +166,19 @@ namespace EMotionFX
         bool                                                m_rewindOnZeroWeight;
         bool                                                m_inPlace;
 
-        MotionInstance* CreateMotionInstance(ActorInstance* actorInstance, AnimGraphInstance* animGraphInstance);
+        void ReloadAndInvalidateUniqueDatas();
+        MotionInstance* CreateMotionInstance(ActorInstance* actorInstance, UniqueData* uniqueData);
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Output(AnimGraphInstance* animGraphInstance) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
         void OnMotionIdsChanged();
-        void OnMirrorMotionChanged();
 
         AZ::Crc32 GetRewindOnZeroWeightVisibility() const;
         AZ::Crc32 GetMultiMotionWidgetsVisibility() const;
         void SelectAnyRandomMotionIndex(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphMotionNode::UniqueData* uniqueData);
+
+        void UpdateNodeInfo();
     };
 } // namespace EMotionFX

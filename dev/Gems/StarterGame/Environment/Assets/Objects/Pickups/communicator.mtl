@@ -1,0 +1,13 @@
+<Material MtlFlags="524544" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="CommunicatorMAT" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800000080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.83077002,0.83077002,0.83077002,1" Specular="0.06124606,0.06124606,0.06124606,1" Emittance="0.021219011,1,0.51491767,250" Opacity="1" Shininess="209" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/pickups/pickups_communicator_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/pickups/pickups_communicator_ddna.dds"/>
+    <Texture Map="Emittance" File="objects/pickups/pickups_communicator_emis.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

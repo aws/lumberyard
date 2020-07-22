@@ -19,6 +19,8 @@
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/MemoryFile.h>
 
+#include <AzQtComponents/Components/FancyDocking.h>
+
 #include <QByteArray>
 #include <QFile>
 #include <QFileInfo>
@@ -35,19 +37,9 @@ namespace EMStudio
     {
     }
 
-    void LayoutManager::SaveLayoutAs()
+    void LayoutManager::SaveDialogAccepted()
     {
-        InputDialogValidatable inputDialog(GetMainWindow(), /*labelText=*/"Layout name:");
-        inputDialog.SetText(GetMainWindow()->GetCurrentLayoutName());
-        inputDialog.setWindowTitle("New layout name");
-        inputDialog.setMinimumWidth(300);
-
-        if (inputDialog.exec() == QDialog::Rejected)
-        {
-            return;
-        }
-
-        const AZStd::string filename = AZStd::string::format("%sLayouts/%s.layout", MysticQt::GetDataDir().c_str(), inputDialog.GetText().toUtf8().data());
+        const AZStd::string filename = AZStd::string::format("%sLayouts/%s.layout", MysticQt::GetDataDir().c_str(), m_inputDialog->GetText().toUtf8().data());
 
         // If the file already exists, ask to overwrite or not.
         if (QFile::exists(filename.c_str()))
@@ -56,6 +48,8 @@ namespace EMStudio
             msgBox.setTextFormat(Qt::RichText);
             if (msgBox.exec() != QMessageBox::Yes)
             {
+                m_inputDialog->close();
+                m_inputDialog = nullptr;
                 return;
             }
         }
@@ -63,7 +57,7 @@ namespace EMStudio
         // Try to save the layout to a file.
         if (SaveLayout(filename.c_str()))
         {
-            GetMainWindow()->GetOptions().SetApplicationMode(inputDialog.GetText().toUtf8().data());
+            GetMainWindow()->GetOptions().SetApplicationMode(m_inputDialog->GetText().toUtf8().data());
             GetMainWindow()->SavePreferences();
             GetMainWindow()->UpdateLayoutsMenu();
 
@@ -80,6 +74,33 @@ namespace EMStudio
 
             GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "Layout <font color=red>failed</font> to save");
         }
+
+        m_inputDialog->close();
+        m_inputDialog = nullptr;
+    }
+
+    void LayoutManager::SaveDialogRejected()
+    {
+        m_inputDialog->close();
+        m_inputDialog = nullptr;
+    }
+
+    void LayoutManager::SaveLayoutAs()
+    {
+        if (m_inputDialog)
+        {
+            return;
+        }
+
+        m_inputDialog = new InputDialogValidatable(GetMainWindow(), /*labelText=*/"Layout name:");
+        m_inputDialog->SetText(GetMainWindow()->GetCurrentLayoutName());
+        m_inputDialog->setWindowTitle("New layout name");
+        m_inputDialog->setMinimumWidth(300);
+        m_inputDialog->setAttribute(Qt::WA_DeleteOnClose);
+
+        QObject::connect(m_inputDialog, &QDialog::accepted, EMStudio::GetMainWindow(), &MainWindow::OnSaveLayoutDialogAccept);
+        QObject::connect(m_inputDialog, &QDialog::rejected, EMStudio::GetMainWindow(), &MainWindow::OnSaveLayoutDialogReject);
+        m_inputDialog->open();
     }
 
     bool LayoutManager::SaveLayout(const char* filename)
@@ -148,7 +169,7 @@ namespace EMStudio
             }
         }
 
-        const QByteArray windowLayout = GetMainWindow()->saveState();
+        const QByteArray windowLayout = GetMainWindow()->GetFancyDockingManager()->saveState();
 
         // Write the state data length.
         const uint32 stateLength = windowLayout.size();
@@ -168,6 +189,11 @@ namespace EMStudio
         // Make sure the file is saved.
         file.flush();
         return true;
+    }
+
+    InputDialogValidatable* LayoutManager::GetSaveLayoutNameDialog()
+    {
+        return m_inputDialog;
     }
 
     bool LayoutManager::LoadLayout(const char* filename)
@@ -313,7 +339,7 @@ namespace EMStudio
         }
 
         // Restore the state data.
-        GetMainWindow()->restoreState(layout);
+        GetMainWindow()->GetFancyDockingManager()->restoreState(layout);
         GetMainWindow()->UpdateCreateWindowMenu(); // update Window->Create menu
 
         // Trigger the OnAfterLoadLayout callbacks.

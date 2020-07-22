@@ -2655,7 +2655,9 @@ void SEfResTexture::UpdateWithModifier(int nTSlot)
 {
     CRenderer* rd = gRenDev;
     int nFrameID = rd->m_RP.m_TI[rd->m_RP.m_nProcessThreadID].m_nFrameID;
-    if (m_Ext.m_nFrameUpdated == nFrameID && m_Ext.m_nLastRecursionLevel == SRendItem::m_RecurseLevel[rd->m_RP.m_nProcessThreadID])
+
+    // Skip update if the modifier was updated (same frame id, except frame id with default value -1,  and same recursion level) 
+    if (m_Ext.m_nFrameUpdated != -1 && m_Ext.m_nFrameUpdated == nFrameID && m_Ext.m_nLastRecursionLevel == SRendItem::m_RecurseLevel[rd->m_RP.m_nProcessThreadID])
     {
         if (IsTextureModifierSupportedForTextureMap(static_cast<EEfResTextures>(nTSlot)))
         {

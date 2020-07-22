@@ -22,6 +22,22 @@ namespace ScriptCanvas
     {
         namespace Operators
         {
+            void OperatorErase::OnInit()
+            {
+                // Version Conversion away from Operator Base
+                if (HasSlots())
+                {
+                    const Slot* slot = GetSlot(OperatorEraseProperty::GetElementNotFoundSlotId(this));
+                    if (slot == nullptr)
+                    {
+                        ConfigureSlots();
+                    }
+                }
+                ////
+
+                OperatorBase::OnInit();
+            }
+
             void OperatorErase::ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs)
             {
                 if (sourceType == SourceType::SourceInput)
@@ -57,7 +73,7 @@ namespace ScriptCanvas
 
                     slotConfiguration.m_name = Data::GetName(type);
                     slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
-                    slotConfiguration.SetConnectionType(ConnectionType::Input);                    
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
                     slotConfiguration.SetType(type);
 
                     m_inputSlots.insert(AddSlot(slotConfiguration));
@@ -78,14 +94,19 @@ namespace ScriptCanvas
                     {
                         const Datum* inputKeyDatum = FindDatum(*m_inputSlots.begin());
                         AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Erase", *inputKeyDatum);
-                        if (!valueOutcome.IsSuccess())
-                        {
-                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to get key in container: %s", valueOutcome.GetError().c_str());
-                            return;
-                        }
 
-                        // Push the source container as an output to support chaining
-                        PushOutput(*containerDatum, (*outputSlot));
+                        if (valueOutcome.IsSuccess())
+                        {
+                            // Push the source container as an output to support chaining
+                            PushOutput(*containerDatum, (*outputSlot));
+
+                            auto outcomeInnerResult = valueOutcome.GetValue().GetAs< AZ::Outcome<void, void>>();
+                            if (outcomeInnerResult && !outcomeInnerResult->IsSuccess())
+                            {
+                                SignalOutput(GetSlotId("Element Not Found"));
+                                return;
+                            }
+                        }
                     }
                 }
 

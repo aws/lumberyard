@@ -20,6 +20,7 @@
 #include <EMotionFX/Source/Parameter/IntSliderParameter.h>
 #include <EMotionFX/Source/Parameter/IntSpinnerParameter.h>
 #include <EMotionFX/Source/Parameter/TagParameter.h>
+#include <EMotionFX/Source/Parameter/Vector2Parameter.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterSelectionWindow.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
@@ -51,14 +52,14 @@ namespace EMotionFX
         hLayout->addWidget(m_pickButton);
 
         m_resetButton = new QPushButton(this);
-        EMStudio::EMStudioManager::MakeTransparentButton(m_resetButton, "/Images/Icons/Clear.png", "Reset selection");
+        EMStudio::EMStudioManager::MakeTransparentButton(m_resetButton, "/Images/Icons/Clear.svg", "Reset selection");
         connect(m_resetButton, &QPushButton::clicked, this, &AnimGraphParameterPicker::OnResetClicked);
         hLayout->addWidget(m_resetButton);
 
         if (m_parameterMaskMode)
         {
             m_shrinkButton = new QPushButton();
-            EMStudio::EMStudioManager::MakeTransparentButton(m_shrinkButton, "/Images/Icons/Cut.png", "Shrink the parameter mask to the ports that are actually connected.");
+            EMStudio::EMStudioManager::MakeTransparentButton(m_shrinkButton, "/Images/Icons/Cut.svg", "Shrink the parameter mask to the ports that are actually connected.");
             connect(m_shrinkButton, &QPushButton::clicked, this, &AnimGraphParameterPicker::OnShrinkClicked);
             hLayout->addWidget(m_shrinkButton);
         }
@@ -322,6 +323,32 @@ namespace EMotionFX
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
             });
+
+        return picker;
+    }
+
+    //---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSingleVector2ParameterHandler, EditorAllocator, 0);
+
+    AnimGraphSingleVector2ParameterHandler::AnimGraphSingleVector2ParameterHandler()
+        : AnimGraphSingleParameterHandler()
+    {
+    }
+
+    AZ::u32 AnimGraphSingleVector2ParameterHandler::GetHandlerName() const
+    {
+        return AZ_CRC("AnimGraphVector2Parameter", 0x151dfae7);
+    }
+
+    QWidget* AnimGraphSingleVector2ParameterHandler::CreateGUI(QWidget* parent)
+    {
+        AnimGraphParameterPicker* picker = aznew AnimGraphParameterPicker(parent, true);
+        picker->SetFilterTypes({azrtti_typeid<Vector2Parameter>()});
+
+        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker](const AZStd::vector<AZStd::string>& newParameters) {
+            EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
+        });
 
         return picker;
     }

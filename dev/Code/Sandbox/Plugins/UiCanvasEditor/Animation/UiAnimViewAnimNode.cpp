@@ -625,24 +625,16 @@ bool CUiAnimViewAnimNode::IsBoundToEditorObjects() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-CUiAnimViewAnimNode* CUiAnimViewAnimNode::CreateSubNode(const QString& name, const EUiAnimNodeType animNodeType, CEntityObject* pOwner)
+CUiAnimViewAnimNode* CUiAnimViewAnimNode::CreateSubNode(const QString& name, const EUiAnimNodeType animNodeType, AZ::Entity* pEntity, bool listen)
 {
-    return nullptr;
-}
-
-//////////////////////////////////////////////////////////////////////////
-CUiAnimViewAnimNode* CUiAnimViewAnimNode::CreateSubNodeAz(const QString& name, const EUiAnimNodeType animNodeType, AZ::Entity* pEntity, bool listen)
-{
-    //assert(UiAnimUndo::IsRecording());
-
     const bool bIsGroupNode = IsGroupNode();
-    assert(bIsGroupNode);
+    AZ_Assert(bIsGroupNode, "bIsGroupNode is nullptr.");
     if (!bIsGroupNode)
     {
         return nullptr;
     }
 
-    // Create UI Animation system and UiAnimView node
+    // Create new node
     IUiAnimNode* pNewAnimNode = m_pAnimSequence->CreateNode(animNodeType);
     if (!pNewAnimNode)
     {
@@ -657,9 +649,15 @@ CUiAnimViewAnimNode* CUiAnimViewAnimNode::CreateSubNodeAz(const QString& name, c
     CUiAnimViewAnimNode* pNewNode = animNodeFactory.BuildAnimNode(m_pAnimSequence, pNewAnimNode, this);
     pNewNode->m_bExpanded = true;
 
-    assert(pEntity);
-
-    pNewNode->SetNodeEntityAz(pEntity);
+    //AzEntity type nodes should have a valid pEntity
+    if (animNodeType == eUiAnimNodeType_AzEntity)
+    {
+        AZ_Assert(pEntity, "AZ::Entity is nullptr.");
+        if (pEntity)
+        {
+            pNewNode->SetNodeEntityAz(pEntity);
+        }
+    }
     pNewAnimNode->SetNodeOwner(pNewNode);
 
     if (listen)
@@ -1365,7 +1363,7 @@ CUiAnimViewAnimNodeBundle CUiAnimViewAnimNode::AddSelectedUiElements()
         azsnprintf(suffix, 10, " (%d)", elementId);
         nodeName += suffix;
 
-        pAnimNode = CreateSubNodeAz(nodeName, eUiAnimNodeType_AzEntity, entity, true);
+        pAnimNode = CreateSubNode(nodeName, eUiAnimNodeType_AzEntity, entity, true);
 
         if (pAnimNode)
         {

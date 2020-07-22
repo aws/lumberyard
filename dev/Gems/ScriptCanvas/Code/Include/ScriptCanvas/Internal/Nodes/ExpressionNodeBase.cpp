@@ -105,6 +105,18 @@ namespace ScriptCanvas
             {
                 if (slotId == ExpressionNodeBaseProperty::GetInSlotId(this))
                 {
+                    for (const SlotId& slotId : m_dirtyInputs)
+                    {
+                        auto variableIter = m_slotToVariableMap.find(slotId);
+
+                        if (variableIter != m_slotToVariableMap.end())
+                        {
+                            PushVariable(variableIter->second, (*FindDatum(slotId)));
+                        }
+                    }
+
+                    m_dirtyInputs.clear();
+
                     if (m_parseError.IsValidExpression() && m_expressionTree.GetTreeSize() != 0)
                     {
                         ExpressionEvaluation::ExpressionResult expressionResult;
@@ -117,26 +129,12 @@ namespace ScriptCanvas
 
             void ExpressionNodeBase::OnInputChanged(const Datum& input, const SlotId& slotId)
             {
-                Slot* slot = GetSlot(slotId);
-
-                if (slot)
-                {
-                    PushVariable(slot->GetName(), input);
-                }
+                m_dirtyInputs.insert(slotId);
             }
 
             bool ExpressionNodeBase::CanDeleteSlot(const SlotId& slotId) const
             {
-                Slot* slot = GetSlot(slotId);
-
-                bool canDeleteSlot = false;
-
-                if (slot->IsData() && slot->IsInput())
-                {
-                    canDeleteSlot = (slot->GetDisplayGroup() == GetDisplayGroupId());
-                }
-
-                return canDeleteSlot;
+                return m_handlingExtension;
             }
 
             SlotId ExpressionNodeBase::HandleExtension(AZ::Crc32 extensionId)
@@ -170,7 +168,7 @@ namespace ScriptCanvas
 
                     if (slot)
                     {
-                        m_parseOnSlotRemoval = false;
+                        m_handlingExtension = true;
                         return slot->GetId();
                     }
                 }
@@ -181,7 +179,6 @@ namespace ScriptCanvas
             void ExpressionNodeBase::ExtensionCancelled(AZ::Crc32 extensionId)
             {
                 // Remove the seperator operator if we added it.
-
                 if (!m_format.empty())
                 {
                     AZStd::string seperator = GetExpressionSeparator();
@@ -190,12 +187,12 @@ namespace ScriptCanvas
                     m_stringInterface.SignalDataChanged();
                 }
 
-                m_parseOnSlotRemoval = true;
+                m_handlingExtension = false;
             }
 
             void ExpressionNodeBase::FinalizeExtension(AZ::Crc32 extensionId)
             {
-                m_parseOnSlotRemoval = true;
+                m_handlingExtension = false;
             }
 
             NodePropertyInterface* ExpressionNodeBase::GetPropertyInterface(AZ::Crc32 propertyId)
@@ -219,7 +216,7 @@ namespace ScriptCanvas
 
                 if (mapIter != m_slotToVariableMap.end())
                 {
-                    AZStd::string name = AZStd::string::format("{%s}", mapIter->second);
+                    AZStd::string name = AZStd::string::format("{%s}", mapIter->second.c_str());
                     AZStd::size_t firstInstance = m_format.find(name);
 
                     if (firstInstance == AZStd::string::npos)
@@ -229,14 +226,14 @@ namespace ScriptCanvas
 
                     m_format.erase(firstInstance, name.size());
 
-                    if (m_parseOnSlotRemoval)
+                    if (!m_handlingExtension)
                     {
                         m_stringInterface.SignalDataChanged();
                     }
                 }
             }
 
-            bool ExpressionNodeBase::ValidateNode(ValidationResults& validationResults)
+            bool ExpressionNodeBase::OnValidateNode(ValidationResults& validationResults)
             {
                 // This means we were loaded up with an error, but we haven't re-parsed so we
                 // don't know what the error is. Force a reparse here to ensure
@@ -306,7 +303,7 @@ namespace ScriptCanvas
 
                             if (datum)
                             {
-                                cacheSetup.m_defaultValue = (*datum);
+                                cacheSetup.m_defaultValue.ReconfigureDatumTo((*datum));
                             }
                         }
                     }
@@ -341,7 +338,7 @@ namespace ScriptCanvas
 
                         auto mappingIter = variableSlotMapping.find(variableName);
 
-                        bool signalAdd = (mappingIter == variableSlotMapping.end());
+                        bool isNewSlot = (mappingIter == variableSlotMapping.end());
 
                         SlotId slotId;
 
@@ -368,7 +365,7 @@ namespace ScriptCanvas
                                     dataSlotConfiguration.ConfigureDatum(AZStd::move(mappingIter->second.m_defaultValue));
                                 }
 
-                                slotId = InsertSlot(slotOrder, dataSlotConfiguration, signalAdd);
+                                slotId = InsertSlot(slotOrder, dataSlotConfiguration, isNewSlot);
                             }
                         }
                         // Otherwise if we can support multiple types make a dynamic slot.
@@ -400,7 +397,7 @@ namespace ScriptCanvas
                                 dynamicSlotConfiguration.m_displayType = mappingIter->second.m_displayType;
                             }
 
-                            slotId = InsertSlot(slotOrder, dynamicSlotConfiguration, signalAdd);
+                            slotId = InsertSlot(slotOrder, dynamicSlotConfiguration, isNewSlot);
                         }
 
                         Slot* slot = GetSlot(slotId);

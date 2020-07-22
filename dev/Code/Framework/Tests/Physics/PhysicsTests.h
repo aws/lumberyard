@@ -59,8 +59,71 @@ namespace Physics
         // These need to be implemented in the gem as they may require gem specific components etc.
         AZ::Entity* AddSphereEntity(const AZ::Vector3& position, const float radius, const CollisionLayer& layer = CollisionLayer::Default);
         AZ::Entity* AddBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer = CollisionLayer::Default);
-        AZ::Entity* AddStaticBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer = CollisionLayer::Default);
         AZ::Entity* AddCapsuleEntity(const AZ::Vector3& position, const float height, const float radius, const CollisionLayer& layer = CollisionLayer::Default);
+
+        AZ::Entity* AddStaticSphereEntity(const AZ::Vector3& position, const float radius, const CollisionLayer& layer = CollisionLayer::Default);
+        AZ::Entity* AddStaticBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer = CollisionLayer::Default);
+        AZ::Entity* AddStaticCapsuleEntity(const AZ::Vector3& position, const float height, const float radius, const CollisionLayer& layer = CollisionLayer::Default);
+
+        // Helper function for creating multishape entity
+        struct MultiShapeConfig
+        {
+            AZ::Vector3 m_position; // Position of entity
+            AZ::Vector3 m_rotation = AZ::Vector3(0.f, 0.f, 0.f); // Euler rotation of entity in radians
+            CollisionLayer m_layer = CollisionLayer::Default; // Collision layer
+
+            struct ShapeList
+            {
+                struct ShapeData
+                {
+                    struct Box
+                    {
+                        AZ::Vector3 m_extent;
+                    };
+                    struct Sphere
+                    {
+                        float m_radius;
+                    };
+                    struct Capsule
+                    {
+                        float m_height;
+                        float m_radius;
+                    };
+
+                    AZ::Vector3 m_offset;
+                    AZStd::variant<AZStd::monostate, Box, Sphere, Capsule> m_data;
+                };
+
+                void AddBox(AZ::Vector3 extent, AZ::Vector3 offset)
+                {
+                    ShapeData box;
+                    ShapeData::Box boxData { extent };
+                    box.m_data = boxData;
+                    box.m_offset = offset;
+                    m_shapesData.push_back(box);
+                }
+                void AddSphere(float radius, AZ::Vector3 offset)
+                {
+                    ShapeData sphere;
+                    ShapeData::Sphere sphereData{ radius };
+                    sphere.m_data = sphereData;
+                    sphere.m_offset = offset;
+                    m_shapesData.push_back(sphere);
+                }
+                void AddCapsule(float height, float radius, AZ::Vector3 offset)
+                {
+                    ShapeData capsule;
+                    ShapeData::Capsule capsuleData{ height, radius };
+                    capsule.m_data = capsuleData;
+                    capsule.m_offset = offset;
+                    m_shapesData.push_back(capsule);
+                }
+
+                AZStd::vector<ShapeData> m_shapesData;
+            };
+            ShapeList m_shapes;
+        };
+        AZStd::unique_ptr<AZ::Entity> AddMultiShapeEntity(const MultiShapeConfig& config);
 
     protected:
         // DefaultWorldBus

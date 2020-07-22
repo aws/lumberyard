@@ -14,7 +14,7 @@
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
-#include <AzCore/Serialization/Json/StackedString.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/std/string/osstring.h>
 
 namespace AZ
@@ -23,14 +23,15 @@ namespace AZ
     //! If a conversion from FromType to ToType will not cause overflow or underflow, the result is stored in result, and the function returns Success
     //! Otherwise, the target is left untouched.
     template <typename ToType, typename FromType>
-    JsonSerializationResult::ResultCode JsonNumericCast(ToType& result, FromType value, StackedString& path, const AZ::JsonIssueCallback& reporting)
+    JsonSerializationResult::ResultCode JsonNumericCast(ToType& result, FromType value, AZStd::string_view path,
+        const AZ::JsonSerializationResult::JsonIssueCallback& reporting)
     {
         using namespace JsonSerializationResult;
 
         if (NumericCastInternal::FitsInToType<ToType>(value))
         {
             result = aznumeric_cast<ToType>(value);
-            return reporting("Successfully cast number.", ResultCode::Success(Tasks::Convert), path);
+            return reporting("Successfully cast number.", ResultCode(Tasks::Convert, Outcomes::Success), path);
         }
         else
         {

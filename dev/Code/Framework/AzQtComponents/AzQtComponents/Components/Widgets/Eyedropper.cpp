@@ -68,8 +68,7 @@ namespace AzQtComponents
         , m_button(button)
     {
         setAttribute(Qt::WA_TranslucentBackground);
-
-        m_button->installEventFilter(this);
+        setMouseTracking(true);
     }
 
     Eyedropper::~Eyedropper()
@@ -105,6 +104,7 @@ namespace AzQtComponents
     {
         m_mouseHider.reset(new MouseHider(this));
         m_grabber.reset(new ScreenGrabber(QSize{ m_sampleSize, m_sampleSize }, this));
+        QCoreApplication::instance()->installEventFilter(this);
         QWidget::showEvent(event);
         handleMouseMove();
     }
@@ -203,6 +203,12 @@ namespace AzQtComponents
 
     void Eyedropper::handleMouseMove()
     {
+        // if the grabber is already released then we should do nothing here
+        if (!m_grabber)
+        {
+            return;
+        }
+
         MappedPoint position = MappedCursorPosition();
 
         m_sample = m_grabber->grab(position.native);
@@ -218,7 +224,7 @@ namespace AzQtComponents
     {
         if (event->matches(QKeySequence::Cancel))
         {
-            release(true);
+            release(false);
         }
         else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
         {
@@ -232,9 +238,10 @@ namespace AzQtComponents
         if (selected)
         {
             emit colorSelected(m_color);
-            hide();
         }
 
+        hide();
+        QCoreApplication::instance()->removeEventFilter(this);
         m_grabber.reset(nullptr);
         m_mouseHider.reset(nullptr);
     }

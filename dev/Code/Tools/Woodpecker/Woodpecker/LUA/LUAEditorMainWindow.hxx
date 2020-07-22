@@ -213,6 +213,8 @@ namespace LUAEditor
 
         void LogLineSelectionChanged(const AzToolsFramework::Logging::LogLine& logLine);
 
+        void OnOptionsMenuRequested();
+
     public:
 
         void SetupLuaFilesPanel();

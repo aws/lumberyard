@@ -22,6 +22,8 @@
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/AnimGraphNodeData.h>
 #include <EMotionFX/Source/BaseObject.h>
+#include <EMotionFX/Source/BlendSpace1DNode.h>
+#include <EMotionFX/Source/BlendSpace2DNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/MemoryCategories.h>
 #include <EMotionFX/Source/Motion.h>
@@ -455,18 +457,28 @@ namespace EMotionFX
             for (uint32 m = 0; m < numNodes; ++m)
             {
                 AnimGraphNode* node = animGraph->GetNode(m);
-                AnimGraphNodeData* uniqueData = node->FindUniqueNodeData(animGraphInstance);
-                if (motion->GetEventTable()->GetSyncTrack() == uniqueData->GetSyncTrack())
+                AnimGraphNodeData* uniqueData = static_cast<AnimGraphNodeData*>(animGraphInstance->GetUniqueObjectData(node->GetObjectIndex()));
+                if (uniqueData)
                 {
-                    uniqueData->SetSyncTrack(nullptr);
-                }
-                if (azrtti_istypeof<AnimGraphMotionNode>(node))
-                {
-                    AnimGraphMotionNode::UniqueData* motionNodeData = static_cast<AnimGraphMotionNode::UniqueData*>(uniqueData);
-                    const MotionInstance* motionInstance = motionNodeData->mMotionInstance;
-                    if (motionInstance && motionInstance->GetMotion() == motion)
+                    if (motion->GetEventTable()->GetSyncTrack() == uniqueData->GetSyncTrack())
                     {
-                        motionNodeData->Reset();
+                        uniqueData->SetSyncTrack(nullptr);
+                    }
+
+                    if (azrtti_istypeof<AnimGraphMotionNode>(node))
+                    {
+                        AnimGraphMotionNode::UniqueData* motionNodeData = static_cast<AnimGraphMotionNode::UniqueData*>(uniqueData);
+                        const MotionInstance* motionInstance = motionNodeData->mMotionInstance;
+                        if (motionInstance && motionInstance->GetMotion() == motion)
+                        {
+                            motionNodeData->Reset();
+                        }
+                    }
+
+                    if (azrtti_istypeof<BlendSpace1DNode>(node) ||
+                        azrtti_istypeof<BlendSpace2DNode>(node))
+                    {
+                        uniqueData->Reset();
                     }
                 }
             }

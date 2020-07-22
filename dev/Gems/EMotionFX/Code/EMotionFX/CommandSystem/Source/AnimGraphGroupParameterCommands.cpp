@@ -72,7 +72,7 @@ namespace CommandSystem
         }
 
         // Find the group parameter index and get a pointer to the group parameter.
-        const EMotionFX::GroupParameter* groupParameter = animGraph->FindGroupParameterByName(name);
+        EMotionFX::GroupParameter* groupParameter = animGraph->FindGroupParameterByName(name);
         if (!groupParameter)
         {
             outResult = AZStd::string::format("Cannot adjust group parameter '%s'. group parameter not found.", name.c_str());
@@ -84,12 +84,17 @@ namespace CommandSystem
         parameters.GetValue("newName", this, newName);
         if (!newName.empty())
         {
-            EMotionFX::GroupParameter* editableGroupParameter = const_cast<EMotionFX::GroupParameter*>(groupParameter);
-            if (!animGraph->RenameParameter(editableGroupParameter, newName))
+            if (!animGraph->RenameParameter(groupParameter, newName))
             {
                 outResult = AZStd::string::format("Cannot adjust group parameter '%s'. Newname already belongs to a different parameter.", name.c_str());
                 return false;
             }
+        }
+
+        m_oldDescription = groupParameter->GetDescription();
+        if (parameters.CheckIfHasParameter("description"))
+        {
+            groupParameter->SetDescription(parameters.GetValue("description", this));
         }
 
         if (parameters.CheckIfHasParameter("parameterNames"))
@@ -158,7 +163,7 @@ namespace CommandSystem
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
         return true;
     }
 
@@ -182,9 +187,16 @@ namespace CommandSystem
             AZStd::string newName;
             parameters.GetValue("newName", this, newName);
 
-            const AZStd::string command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i  -name \"%s\" -newName \"%s\"",
+            const AZStd::string command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i -name \"%s\" -newName \"%s\"",
                     animGraph->GetID(), newName.c_str(), mOldName.c_str());
 
+            commandGroup.AddCommandString(command);
+        }
+
+        if (parameters.CheckIfHasParameter("description"))
+        {
+            const AZStd::string command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i -name \"%s\" -description \"%s\"",
+                animGraph->GetID(), mOldName.c_str(), m_oldDescription.c_str());
             commandGroup.AddCommandString(command);
         }
 
@@ -259,12 +271,14 @@ namespace CommandSystem
 
     void CommandAnimGraphAdjustGroupParameter::InitSyntax()
     {
-        GetSyntax().ReserveParameters(5);
+        GetSyntax().ReserveParameters(6);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the blend set the group parameter belongs to.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("name",            "The name of the group parameter to adjust.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("newName",     "The new name of the group parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("parameterNames",  "A list of parameter names that should be added/removed to/from the group parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("action",          "The action to perform with the parameters passed to the command.", MCore::CommandSyntax::PARAMTYPE_STRING, "select");
+        GetSyntax().AddParameter("description", "The description of the parameter group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -341,7 +355,7 @@ namespace CommandSystem
         mOldName        = groupParameter->GetName();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
         return true;
     }
 
@@ -374,11 +388,12 @@ namespace CommandSystem
 
     void CommandAnimGraphAddGroupParameter::InitSyntax()
     {
-        GetSyntax().ReserveParameters(3);
+        GetSyntax().ReserveParameters(5);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the blend set the group parameter belongs to.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("name", "The name of the group parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "Unnamed group parameter");
         GetSyntax().AddParameter("index", "The index position where the new group parameter should be added to, relative to the parent.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
         GetSyntax().AddParameter("parent", "The parent group parameter where the new parameter should be added to.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -505,8 +520,7 @@ namespace CommandSystem
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->UpdateUniqueData();
-
+        animGraph->RecursiveInvalidateUniqueDatas();
         return true;
     }
 
@@ -525,20 +539,23 @@ namespace CommandSystem
         // Construct the command group.
         AZStd::string command;
         MCore::CommandGroup commandGroup;
+        const AZStd::string updateWindow = parameters.GetValue("updateUI", this);
 
-        command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\" -index %d -parent \"%s\"",
+        command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\" -index %d -parent \"%s\" -updateUI %s",
                 animGraph->GetID(),
                 mOldName.c_str(),
                 mOldIndex,
-                mOldParent.c_str());
+                mOldParent.c_str(),
+                updateWindow.c_str());
         commandGroup.AddCommandString(command);
 
         if (!mOldParameterNames.empty())
         {
-            command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i -name \"%s\" -parameterNames \"%s\" -action \"add\"",
+            command = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %i -name \"%s\" -parameterNames \"%s\" -action \"add\" -updateUI %s",
                 animGraph->GetID(),
                 mOldName.c_str(),
-                mOldParameterNames.c_str());
+                mOldParameterNames.c_str(),
+                updateWindow.c_str());
             commandGroup.AddCommandString(command);
         }
         
@@ -557,9 +574,10 @@ namespace CommandSystem
 
     void CommandAnimGraphRemoveGroupParameter::InitSyntax()
     {
-        GetSyntax().ReserveParameters(2);
+        GetSyntax().ReserveParameters(3);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the blend set the group parameter belongs to.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddRequiredParameter("name", "The name of the group parameter to remove.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -572,7 +590,7 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // Helper functions
     //--------------------------------------------------------------------------------
-    void RemoveGroupParameter(EMotionFX::AnimGraph* animGraph, const EMotionFX::GroupParameter* groupParameter, bool removeParameters, MCore::CommandGroup* commandGroup)
+    void RemoveGroupParameter(EMotionFX::AnimGraph* animGraph, const EMotionFX::GroupParameter* groupParameter, bool removeParameters, MCore::CommandGroup* commandGroup, bool updateUI)
     {
         // Create the command group and construct the remove group parameter command.
         MCore::CommandGroup internalCommandGroup("Remove group parameter");
@@ -593,7 +611,7 @@ namespace CommandSystem
             BuildRemoveParametersCommandGroup(animGraph, parameterNamesToBeRemoved, commandGroupToUse);
         }
 
-        const AZStd::string command = AZStd::string::format("AnimGraphRemoveGroupParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), groupParameter->GetName().c_str());
+        const AZStd::string command = AZStd::string::format("AnimGraphRemoveGroupParameter -animGraphID %i -name \"%s\" -updateUI %s", animGraph->GetID(), groupParameter->GetName().c_str(), updateUI ? "true" : "false");
         commandGroupToUse->AddCommandString(command.c_str());
 
         // Execute the internal command group.
@@ -615,9 +633,10 @@ namespace CommandSystem
 
         // Construct remove group parameter commands for all groups and add them to the command group.
         const EMotionFX::GroupParameterVector parameters = animGraph->RecursivelyGetGroupParameters();
-        for (const EMotionFX::GroupParameter* parameter : parameters)
+        for (uint32 i = 0; i < parameters.size(); ++i)
         {
-            RemoveGroupParameter(animGraph, parameter, false, commandGroupToUse);
+            const bool updateUi = (i == 0 || i == parameters.size() - 1);
+            RemoveGroupParameter(animGraph, parameters[i], false, commandGroupToUse, updateUi);
         }
 
         // Execute the command group.

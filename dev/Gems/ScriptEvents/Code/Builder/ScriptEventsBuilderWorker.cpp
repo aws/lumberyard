@@ -229,6 +229,7 @@ namespace ScriptEventsBuilder
         jobProduct.m_productFileName = runtimeScriptEventsOutputPath;
         jobProduct.m_productAssetType = azrtti_typeid<ScriptEvents::ScriptEventsAsset>();
         jobProduct.m_productSubID = 0;
+        jobProduct.m_dependenciesHandled = true; // This builder has no product dependencies.
         response.m_outputProducts.push_back(AZStd::move(jobProduct));
 
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;

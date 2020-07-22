@@ -30,7 +30,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Erase")
                     ScriptCanvas_Node::Uuid("{F1A891C9-81D4-4675-A57A-F11AB415F95F}")
                     ScriptCanvas_Node::Description("Erase the element at the specified Index or with the specified Key")
-                    ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Version(1)
                     ScriptCanvas_Node::Category("Containers")
                 );
 
@@ -39,12 +39,17 @@ namespace ScriptCanvas
                 {
                 }
 
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Element Not Found", "Triggered if the specified element was not found"));
+
             protected:
+
+                void OnInit() override;
 
                 void ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs) override;
                 void OnSourceTypeChanged() override;
                 void OnInputSignal(const SlotId& slotId) override;
                 void InvokeOperator();
+
             };
 
         }

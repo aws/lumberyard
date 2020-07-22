@@ -28,7 +28,7 @@ namespace AzQtComponents
     FancyDockingDropZoneConstants::FancyDockingDropZoneConstants()
     {
         draggingDockWidgetOpacity = 0.6;
-        dropZoneOpacity = 0.5;
+        dropZoneOpacity = 0.4;
         dropZoneSizeInPixels = 40;
         minDockSizeBeforeDropZoneScalingInPixels = dropZoneSizeInPixels * 3;
         dropZoneScaleFactor = 0.25;
@@ -41,7 +41,7 @@ namespace AzQtComponents
         dockingTargetDelayMS = 110;
         dropZoneHoverFadeUpdateIntervalMS = 20;
         dropZoneHoverFadeIncrement = dropZoneOpacity / (dockingTargetDelayMS / dropZoneHoverFadeUpdateIntervalMS);
-        centerDropZoneIconPath = QString(":/docking/tabs_icon.png");
+        centerDropZoneIconPath = QString(":/stylesheet/img/UI20/docking/tabs_icon.svg");
     }
 
     FancyDockingDropZoneWidget::FancyDockingDropZoneWidget(QMainWindow* mainWindow, QWidget* coordinatesRelativeTo, QScreen* screen, FancyDockingDropZoneState* dropZoneState)
@@ -204,6 +204,9 @@ namespace AzQtComponents
         // If this is the center tab drop zone, then we need to draw a circle and the tabs icon
         if (area == Qt::AllDockWidgetAreas)
         {
+            // Use antialiasing to make sure that ellipses aren't jagged
+            painter.setRenderHint(QPainter::Antialiasing);
+
             // If the center drop zone isn't currently hovered over, then draw the
             // circle first so that the tab icon is drawn on top
             const QRect& dropZoneRect = dropZoneShape.boundingRect();
@@ -213,17 +216,20 @@ namespace AzQtComponents
             }
 
             // Scale the tabs icon based on the drop zone size and our specified offset
+            // Doing this through QIcon to make sure that SVG is rendered already in desired resolution
             const QSize& dropZoneSize = dropZoneRect.size();
-            QPixmap tabsIcon(g_Constants.centerDropZoneIconPath);
-            tabsIcon = tabsIcon.scaled(dropZoneSize * g_Constants.centerTabIconScale, Qt::KeepAspectRatio);
+            const QSize requestedIconSize = dropZoneSize * g_Constants.centerTabIconScale;
+            const QIcon dropZoneIcon = QIcon(g_Constants.centerDropZoneIconPath);
+            const QPixmap dropZonePixmap = dropZoneIcon.pixmap(requestedIconSize);
+            const QSize receivedIconSize = dropZoneIcon.actualSize(requestedIconSize);
 
             // Draw the icon in the center of the drop zone with full opacity
             const QPoint& dropZoneCenter = dropZoneRect.center();
-            int tabsIconX = dropZoneCenter.x() - (tabsIcon.width() / 2);
-            int tabsIconY = dropZoneCenter.y() - (tabsIcon.height() / 2);
+            int tabsIconX = dropZoneCenter.x() - (receivedIconSize.width() / 2);
+            int tabsIconY = dropZoneCenter.y() - (receivedIconSize.height() / 2);
             qreal opacity = painter.opacity();
             painter.setOpacity(1);
-            painter.drawPixmap(tabsIconX, tabsIconY, tabsIcon);
+            painter.drawPixmap(tabsIconX, tabsIconY, dropZonePixmap);
 
             // If the center drop zone is currently hovered over, then draw the
             // circle for the drop zone after the tab icon so it gets drawn on
@@ -279,8 +285,9 @@ namespace AzQtComponents
     bool FancyDockingDropZoneWidget::shouldPaintDropBorderLines() const
     {
         // Don't draw the border lines if we don't have a valid drop target, or if
-        // there are no normal drop zones
-        return m_dropZoneState->dropOnto() && m_dropZoneState->hasDropZones();
+        // we don't have multiple drop zones to draw (if there's only one drop zone, it means
+        // we only have the center tab drop zone)
+        return m_dropZoneState->dropOnto() && m_dropZoneState->dropZones().size() > 1;
     }
 
     void FancyDockingDropZoneWidget::paintDropBorderLines(QPainter& painter)

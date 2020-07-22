@@ -777,11 +777,12 @@ namespace ScriptCanvas
 
             void EBusEventHandler::OnInputChanged(const Datum& input, const SlotId& slotId)
             {
-                if (m_autoConnectToGraphOwner && slotId == FindSlotIdForDescriptor(c_busIdName, SlotDescriptors::DataIn()))
+                if (GetExecutionType() == ExecutionType::Runtime 
+                    && m_autoConnectToGraphOwner 
+                    && slotId == FindSlotIdForDescriptor(c_busIdName, SlotDescriptors::DataIn()))
                 {
                     Disconnect();
                     Connect();
-                    return;
                 }
             }
 

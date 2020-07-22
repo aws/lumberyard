@@ -12,19 +12,18 @@
 
 #include "StdAfx.h"
 
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QTreeWidgetItemIterator::d_ptr': class 'QScopedPointer<QTreeWidgetItemIteratorPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTreeWidgetItemIterator'
-
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QTreeWidget>
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QHeaderView>
-#include <QtWidgets/QRadioButton>
-#include <QtWidgets/QSplitter>
-#include <QtWidgets/QMessageBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QHeaderView>
 #include <QKeyEvent>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QSplitter>
+#include <QTreeWidget>
+#include <QVBoxLayout>
 AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Math/Transform.h>
@@ -56,30 +55,6 @@ AZ_POP_DISABLE_WARNING
 namespace AzToolsFramework
 {
     using EditorEntitySortComponent = AzToolsFramework::Components::EditorEntitySortComponent;
-
-    /**
-     * Applies the style sheet loaded from the passed in QSS file to the passed in widget.
-     * \param widget The widget to apply the style sheet to.
-     * \param resourcePath The style sheet to load and apply to the widget.
-     */
-    void ApplyStyleSheet(QWidget* widget, QString resourcePath)
-    {
-        if (widget == nullptr)
-        {
-            return;
-        }
-        QFile file(resourcePath);
-        if (!file.open(QFile::ReadOnly))
-        {
-            AZ_Warning("Slice Push", 
-                false, 
-                "Could not apply style sheet at path '%s' to the Slice Push Widget.",
-                resourcePath.toLatin1().data());
-            return;
-        }
-        QString styleSheetContents = QLatin1String(file.readAll());
-        widget->setStyleSheet(styleSheetContents);
-    }
 
     /**
      * Simple overlay control for when no data changes are present.
@@ -701,8 +676,6 @@ namespace AzToolsFramework
         layout->setContentsMargins(0, 0, 0, 0);
         layout->setAlignment(Qt::AlignBottom);
 
-        ApplyStyleSheet(widget, ":/PropertyEditor/Resources/DarkBackgroundStyle.qss");
-
         widget->setLayout(layout);
 
         return widget;
@@ -740,10 +713,9 @@ namespace AzToolsFramework
 
         // The warning layout is separated from the rest of the slice push widget by a thin line on the top and bottom.
         QWidget* topHorizontalLine = new QWidget();
+        topHorizontalLine->setObjectName("WarningTopLine");
         topHorizontalLine->setFixedHeight(s_messageSeperatorLineHeight);
         topHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        // The top warning line is a brighter color to help draw the eye to the warning bar.
-        ApplyStyleSheet(topHorizontalLine, ":/PropertyEditor/Resources/WarningAccentColor.qss");
         QHBoxLayout* topLayout = new QHBoxLayout();
         topLayout->setContentsMargins(s_messageHeaderLeftMargin, s_messageHheaderMargins, s_messageHheaderMargins, s_messageHheaderMargins);
 
@@ -784,9 +756,9 @@ namespace AzToolsFramework
 
         // The warning layout header is separated on the bottom by a thin line from the rest of the window.
         QWidget* bottomHorizontalLine = new QWidget();
+        bottomHorizontalLine->setObjectName("WarningBottomLine");
         bottomHorizontalLine->setFixedHeight(s_messageSeperatorLineHeight);
         bottomHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        ApplyStyleSheet(bottomHorizontalLine, ":/PropertyEditor/Resources/LightBackgroundStyle.qss");
 
         // Add everything to the warning layout.
         layout->addWidget(topHorizontalLine);
@@ -831,6 +803,7 @@ namespace AzToolsFramework
         warningFoldoutLayout->setContentsMargins(0, 0, 0, 0);
 
         m_warningMessages = new QTreeWidget();
+        m_warningMessages->setObjectName("WarningTreeWidget");
         m_warningMessages->setUniformRowHeights(true);
         m_warningMessages->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
         // There are two columns for the warning list, the first is the slice file with an error, and the second is the message.
@@ -844,7 +817,6 @@ namespace AzToolsFramework
         // Have the warning message fill up the rest of the available view.
         m_warningMessages->header()->setSectionResizeMode(1, QHeaderView::Stretch);
 
-        ApplyStyleSheet(m_warningMessages, ":/PropertyEditor/Resources/WarningMessageHighlight.qss");
         QStringList headerLabels;
         headerLabels << tr("Slice file");
         headerLabels << tr("Description");

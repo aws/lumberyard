@@ -1,7 +1,6 @@
 {
     "auto": {
         "Source Files": [
-            "AutoDetectCPUTestSuit.cpp",
             "AutoDetectSpec.cpp",
             "AVI_Reader.cpp",
             "AZCrySystemInitLogSink.cpp",
@@ -54,12 +53,10 @@
             "WindowsConsole.cpp",
             "XConsole.cpp",
             "XConsoleVariable.cpp",
-            "AutoDetectCPUTestSuit.h",
             "AutoDetectSpec.h",
             "AVI_Reader.h",
             "ClientHandler.h",
             "CryArchive.h",
-            "DxDiag.h",
             "HandlerBase.h",
             "AsyncPakManager.h",
             "PhysRenderer.h",
@@ -83,7 +80,6 @@
             "Serialization/JSONIArchive.h",
             "Serialization/JSONOArchive.h",
             "Serialization/BinArchive.h",
-            "PlatformOS/PatternMatcher.h",
             "AZCrySystemInitLogSink.h",
             "AZCoreLogSink.h",
             "BudgetingSystem.h",

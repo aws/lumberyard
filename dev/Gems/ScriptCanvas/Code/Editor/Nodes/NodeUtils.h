@@ -11,18 +11,20 @@
 */
 
 #pragma once
+
 #include <AzCore/Component/EntityId.h>
 
-#include <ScriptCanvas/Bus/NodeIdPair.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 
-#include <ScriptCanvas/Variable/VariableCore.h>
-
 #include <ScriptCanvas/Core/Node.h>
-#include <Editor/Translation/TranslationHelper.h>
+#include <ScriptCanvas/Bus/NodeIdPair.h>
+#include <ScriptCanvas/Variable/VariableCore.h>
+#include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+#include <ScriptCanvas/Libraries/Core/FunctionNode.h>
+
 #include <ScriptEvents/ScriptEventsAsset.h>
 
-#include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+#include <Editor/Translation/TranslationHelper.h>
 
 namespace ScriptCanvas
 {
@@ -125,8 +127,15 @@ namespace ScriptCanvasEditor
         NodeIdPair CreateScriptEventReceiverNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::Data::AssetId& assetId);
         NodeIdPair CreateScriptEventSenderNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const AZ::Data::AssetId& assetId, const ScriptCanvas::EBusEventId& eventId);
 
-        NodeIdPair CreateGetVariableNode(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
-        NodeIdPair CreateSetVariableNode(const ScriptCanvas::VariableId& variableId, const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        NodeIdPair CreateGetVariableNode(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId);
+        NodeIdPair CreateSetVariableNode(const ScriptCanvas::VariableId& variableId, const AZ::EntityId& scriptCanvasGraphId);
+
+        NodeIdPair CreateFunctionNode(const ScriptCanvas::ScriptCanvasId& scriptCanvasGraphId, const AZ::Data::AssetId& assetId);
+        AZ::EntityId DisplayFunctionNode(const AZ::EntityId& graphCanvasGraphId, const ScriptCanvas::Nodes::Core::FunctionNode* functionNode);
+        AZ::EntityId DisplayFunctionNode(const AZ::EntityId& graphCanvasGraphId, ScriptCanvas::Nodes::Core::FunctionNode* functionNode);
+
+        AZ::EntityId DisplayNodeling(const AZ::EntityId& graphCanvasGraphId, const ScriptCanvas::Nodes::Core::Internal::Nodeling* nodeling);
+        NodeIdPair CreateExecutionNodeling(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, AZStd::string rootName = "New Nodeling");
 
         // SlotGroup will control how elements are grouped.
         // Invalid will cause the slots to put themselves into whatever category they belong to by default.
@@ -134,5 +143,25 @@ namespace ScriptCanvasEditor
         AZ::EntityId DisplayVisualExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::VisualExtensionSlotConfiguration& extenderConfiguration);
 
         void CopySlotTranslationKeyedNamesToDatums(AZ::EntityId graphCanvasNodeId);
+
+        template <typename NodeType>
+        NodeType* GetNode(AZ::EntityId scriptCanvasGraphId, NodeIdPair nodeIdPair)
+        { 
+            ScriptCanvas::Node* node = nullptr;
+
+            AZ::Entity* sourceEntity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(sourceEntity, &AZ::ComponentApplicationRequests::FindEntity, nodeIdPair.m_scriptCanvasId);
+            if (sourceEntity)
+            {
+                node = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(sourceEntity);
+
+                if (node == nullptr)
+                {
+                    ScriptCanvas::SystemRequestBus::BroadcastResult(node, &ScriptCanvas::SystemRequests::CreateNodeOnEntity, sourceEntity->GetId(), scriptCanvasGraphId, azrtti_typeid<NodeType>());
+                }
+            }
+
+            return azrtti_cast<NodeType*>(node);
+        }
     }
 }

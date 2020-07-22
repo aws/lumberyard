@@ -1,0 +1,31 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="Proxy_COL3" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+  <Material Name="Airship_monitor3" MtlFlags="524416" Shader="Illum" GenMask="4000010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.046665091,0.046665091,0.046665091,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_monitor_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_monitor_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Airship_Monitor_Screen_Circles" MtlFlags="526464" Shader="Monitor" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="0.00030352699,0.2383976,0.30054381,1" Specular="0.5,0.5,0.5,1" Emittance="0.052860651,0.63759702,0.97344542,113" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/fx_screenart_01.dds"/>
+   </Textures>
+   <PublicParams GrainAmount="0.204" DeformAmount="0" DeformTillingY="1" GrainTilling="2.4400001" ResolutionX="512" ResolutionY="512" InterlacingTilling="0.25" Contrast="1.01" Saturation="1" DeformTillingX="1" GrainSaturation="1" FresnelScale="1" InterlacingAmount="0" VSyncFreq="0" PixelVisibility="0.5" FresnelBias="1" ChromaShift="0.0099999998" ViewAngle="155" DeformFreq="0"/>
+  </Material>
+  <Material Name="Airship_Monitor_ScreenOverlay2" MtlFlags="524416" Shader="Illum" GenMask="4000000020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0,0,0,1" Specular="0,0,0,1" Emittance="1,0.21586053,0,600" Opacity="0.72000003" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/fx_screenartoverlay_01.dds"/>
+    <Texture Map="Decal" File="textures/effects/fx_gradientfade_04.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.0078130001" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="64" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Emittance" File="textures/effects/fx_screenartoverlay_01.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

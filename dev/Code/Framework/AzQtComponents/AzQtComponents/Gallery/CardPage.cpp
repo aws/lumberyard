@@ -25,6 +25,14 @@
 #include <QVBoxLayout>
 #include <QFrame>
 
+static void addContentWidget(AzQtComponents::Card* card, int widgetHeight)
+{
+    QWidget* testWidget = new QWidget(card);
+    testWidget->setMaximumHeight(widgetHeight);
+    testWidget->setMinimumHeight(widgetHeight);
+    card->setContentWidget(testWidget);
+}
+
 CardPage::CardPage(QWidget* parent)
 : QWidget(parent)
 , ui(new Ui::CardPage)
@@ -45,7 +53,7 @@ Example:<br/>
 // To use a Card:
 AzQtComponents::Card* card; // assume one is created, either in code or via a .ui file, done in Qt Designer
 
-card->setTitle("Basic Card");
+card->setTitle("Example Card");
 
 QWidget* mainCardContentWidget = createContentWidget();
 card->setContentWidget(mainCardContentWidget);
@@ -80,6 +88,10 @@ AzQtComponents::CardNotification* notification = card->addNotification("Warning 
 QPushButton* button = notification->addButtonFeature("Clear Warning");
 connect(button, &QPushButton::clicked, card, &AzQtComponents::Card::clearNotifications);
 
+// In most cases, you don't want to disable a Card.
+// Instead, use this function to show the Card as disabled, but keep basic functionality
+card->mockDisabledState(true);
+
 </pre>
 
 )";
@@ -87,18 +99,30 @@ connect(button, &QPushButton::clicked, card, &AzQtComponents::Card::clearNotific
     ui->exampleText->setHtml(exampleText);
 
     ui->basicCard->setTitle("Example Card");
+    addContentWidget(ui->basicCard, 30);
 
-    QWidget* testWidget = new QWidget(ui->functionalCard);
-    testWidget->setMaximumHeight(30);
-    testWidget->setMinimumHeight(30);
-    ui->basicCard->setContentWidget(testWidget);
+    ui->warningCard->setTitle("Card With Warning");
+    ui->warningCard->header()->setWarning(true);
+    addContentWidget(ui->warningCard, 30);
+
+    ui->disabledCard->setTitle("Actually Disabled Card");
+    ui->disabledCard->setContentWidget(new QWidget());
+    ui->disabledCard->header()->setIcon(QIcon(QStringLiteral(":/stylesheet/img/search.svg")));
+    ui->disabledCard->header()->setHelpURL("https://aws.amazon.com/documentation/lumberyard/");
+    ui->disabledCard->setSecondaryTitle("Secondary Title");
+    ui->disabledCard->setSecondaryContentWidget(new QWidget());
+    ui->disabledCard->setEnabled(false);
+    
+    ui->disabledCard2->setTitle("Mock Disabled Card");
+    ui->disabledCard2->setContentWidget(new QWidget());
+    ui->disabledCard2->header()->setIcon(QIcon(QStringLiteral(":/stylesheet/img/search.svg")));
+    ui->disabledCard2->header()->setHelpURL("https://aws.amazon.com/documentation/lumberyard/");
+    ui->disabledCard2->setSecondaryTitle("Secondary Title");
+    ui->disabledCard2->setSecondaryContentWidget(new QWidget());
+    ui->disabledCard2->mockDisabledState(true);
 
     ui->functionalCard->setTitle("Card With Secondary Section");
-
-    testWidget = new QWidget(ui->functionalCard);
-    testWidget->setMaximumHeight(60);
-    testWidget->setMinimumHeight(60);
-    ui->functionalCard->setContentWidget(testWidget);
+    addContentWidget(ui->functionalCard, 60);
 
     // put in an example icon
     AzQtComponents::CardHeader* header = ui->functionalCard->header();
@@ -110,6 +134,8 @@ connect(button, &QPushButton::clicked, card, &AzQtComponents::Card::clearNotific
     connect(ui->clearButton, &QPushButton::clicked, ui->functionalCard, &AzQtComponents::Card::clearNotifications);
 
     connect(ui->functionalCard, &AzQtComponents::Card::contextMenuRequested, this, &CardPage::showContextMenu);
+    connect(ui->disabledCard, &AzQtComponents::Card::contextMenuRequested, this, &CardPage::showContextMenu);
+    connect(ui->disabledCard2, &AzQtComponents::Card::contextMenuRequested, this, &CardPage::showContextMenu);
 
     m_addNotification = new QAction("Add Notification", this);
     addAction(m_addNotification);
@@ -124,6 +150,13 @@ connect(button, &QPushButton::clicked, card, &AzQtComponents::Card::clearNotific
     addAction(m_warningAction);
     connect(m_warningAction, &QAction::toggled, this, &CardPage::toggleWarning);
 
+    m_contentChangedAction = new QAction("Set content changed", this);
+    m_contentChangedAction->setCheckable(true);
+    connect(m_contentChangedAction, &QAction::toggled, this, &CardPage::toggleContentChanged);
+
+    m_selectedChangedAction = new QAction("Toggle selected", this);
+    m_selectedChangedAction->setCheckable(true);
+    connect(m_selectedChangedAction, &QAction::toggled, this, &CardPage::toggleSelectedChanged);
 
     auto card = ui->functionalCard;
     card->setSecondaryTitle("Advanced Options");
@@ -152,6 +185,19 @@ void CardPage::toggleWarning(bool checked)
     m_warningAction->setChecked(checked);
 }
 
+void CardPage::toggleContentChanged(bool changed)
+{
+    AzQtComponents::CardHeader* header = ui->functionalCard->header();
+    header->setContentModified(changed);
+    m_contentChangedAction->setChecked(changed);
+}
+
+void CardPage::toggleSelectedChanged(bool selected)
+{
+    ui->functionalCard->setSelected(selected);
+    m_selectedChangedAction->setChecked(selected);
+}
+
 void CardPage::showContextMenu(const QPoint& point)
 {
     QMenu menu;
@@ -160,6 +206,8 @@ void CardPage::showContextMenu(const QPoint& point)
     menu.addAction(m_clearNotification);
     menu.addSeparator();
     menu.addAction(m_warningAction);
+    menu.addAction(m_contentChangedAction);
+    menu.addAction(m_selectedChangedAction);
 
     if (!menu.actions().empty())
     {

@@ -22,10 +22,15 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
+// For ToolBarIconSize enum
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
+
 #define EDITORPREFS_EVENTNAME "EPGEvent"
 #define EDITORPREFS_EVENTVALTOGGLE "operation"
 #define UNDOSLICESAVE_VALON "UndoSliceSaveValueOn"
 #define UNDOSLICESAVE_VALOFF "UndoSliceSaveValueOff"
+#define EDITORUI10_ENABLED "EditorUI10On"
+#define EDITORUI10_DISABLED "EditorUI10Off"
 
 void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
 {
@@ -120,14 +125,13 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_autoLoadLastLevel, "Auto-load last level at startup", "Auto-load last level at startup")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bShowTimeInConsole, "Show Time In Console", "Show Time In Console")
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &GeneralSettings::m_toolbarIconSize, "Toolbar Icon Size", "Toolbar Icon Size")
-                ->EnumAttribute(ToolBarIconSize::ToolBarIconSize_16, "16")
-                ->EnumAttribute(ToolBarIconSize::ToolBarIconSize_24, "24")
-                ->EnumAttribute(ToolBarIconSize::ToolBarIconSize_32, "32")
+                ->EnumAttribute(AzQtComponents::ToolBar::ToolBarIconSize::IconNormal, "Default")
+                ->EnumAttribute(AzQtComponents::ToolBar::ToolBarIconSize::IconLarge, "Large")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_stylusMode, "Stylus Mode", "Stylus Mode for tablets and other pointing devices")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_restoreViewportCamera, EditorPreferencesGeneralRestoreViewportCameraSettingName, "Keep the original editor viewport transform when exiting game mode.")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bLayerDoubleClicking, "Enable Double Clicking in Layer Editor", "Enable Double Clicking in Layer Editor")
                 ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
-            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableUI2, "Enable UI 2.0 (EXPERIMENTAL)", "Enable this to switch the UI to the UI 2.0 styling")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableUI2, "Enable UI 2.0 (Preview)", "Enable this to switch the UI to the UI 2.0 styling")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSceneInspector, "Enable Scene Inspector (EXPERIMENTAL)", "Enable the option to inspect the internal data loaded from scene files like .fbx. This is an experimental feature. Restart the Scene Settings if the option is not visible under the Help menu.")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableLegacyUI, "Enable Legacy UI (DEPRECATED)", "Enable the deprecated legacy UI")
                 ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent)
@@ -220,14 +224,14 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
     gSettings.enableLegacyUI = m_generalSettings.m_enableLegacyUI;
     gSettings.newViewportInteractionModel = m_generalSettings.m_enableNewViewportInteractionModel;
-
     gSettings.bEnableUI2 = m_generalSettings.m_enableUI2;
+
     Editor::EditorQtApplication::instance()->EnableUI2(gSettings.bEnableUI2);
 
-    if (m_generalSettings.m_toolbarIconSize != gSettings.gui.nToolbarIconSize)
+    if (static_cast<int>(m_generalSettings.m_toolbarIconSize) != gSettings.gui.nToolbarIconSize)
     {
-        gSettings.gui.nToolbarIconSize = m_generalSettings.m_toolbarIconSize;
-        MainWindow::instance()->AdjustToolBarIconSize();
+        gSettings.gui.nToolbarIconSize = static_cast<int>(m_generalSettings.m_toolbarIconSize);
+        MainWindow::instance()->AdjustToolBarIconSize(m_generalSettings.m_toolbarIconSize);
     }
 
     //undo
@@ -266,11 +270,41 @@ void CEditorPreferencesPage_General::OnApply()
 
     // If the legacy UI toggle was changed, inform the user they need to restart
     // the Editor in order for the change to take effect
-    if (gSettings.enableLegacyUI != m_generalSettings.m_enableLegacyUIInitialValue)
+    const bool changedLegacyUI = gSettings.enableLegacyUI != m_generalSettings.m_enableLegacyUIInitialValue;
+    // If the UI2.0 settings were changed, request editor restart to make sure
+    // that the style can be fully reinitialized
+    const bool changedUI2 = gSettings.bEnableUI2 != m_generalSettings.m_enableUI2InitialValue;
+
+    if (changedLegacyUI && changedUI2)
+    {
+        QMessageBox::warning(
+            AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
+            QObject::tr("You must restart the Editor in order for Legacy UI and UI 2.0 changes to take effect."));
+    }
+    else if (changedLegacyUI)
     {
         QMessageBox::warning(
             AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
             QObject::tr("You must restart the Editor in order for your Legacy UI change to take effect."));
+    }
+    else if (changedUI2)
+    {
+        QMessageBox::warning(
+            AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
+            QObject::tr("Enabling or disabling UI 2.0 requires an editor restart to fully take effect. Please restart your editor."));
+    }
+
+    // If the UI 2.0 switch has been changed, send a Metrics event
+    if (changedUI2)
+    {
+        if (gSettings.bEnableUI2)
+        {
+            LyMetrics_SendEvent(EDITORPREFS_EVENTNAME, { { EDITORPREFS_EVENTVALTOGGLE, EDITORUI10_DISABLED } });
+        }
+        else
+        {
+            LyMetrics_SendEvent(EDITORPREFS_EVENTNAME, { { EDITORPREFS_EVENTVALTOGGLE, EDITORUI10_ENABLED } });
+        }
     }
 
     // if the user enabled/disabled the new viewport interaction model - notify them that a restart
@@ -310,13 +344,14 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_stylusMode = gSettings.stylusMode;
     m_generalSettings.m_restoreViewportCamera = gSettings.restoreViewportCamera;
     m_generalSettings.m_enableUI2 = gSettings.bEnableUI2;
+    m_generalSettings.m_enableUI2InitialValue = gSettings.bEnableUI2;
     m_generalSettings.m_enableSceneInspector = gSettings.enableSceneInspector;
     m_generalSettings.m_enableLegacyUI = gSettings.enableLegacyUI;
     m_generalSettings.m_enableLegacyUIInitialValue = gSettings.enableLegacyUI;
     m_generalSettings.m_enableNewViewportInteractionModel = gSettings.newViewportInteractionModel;
     m_generalSettings.m_enableNewViewportInteractionModelInitialValue = gSettings.newViewportInteractionModel;
 
-    m_generalSettings.m_toolbarIconSize = gSettings.gui.nToolbarIconSize;
+    m_generalSettings.m_toolbarIconSize = static_cast<AzQtComponents::ToolBar::ToolBarIconSize>(gSettings.gui.nToolbarIconSize);
 
     //Messaging
     m_messaging.m_showDashboard = gSettings.bShowDashboardAtStartup;

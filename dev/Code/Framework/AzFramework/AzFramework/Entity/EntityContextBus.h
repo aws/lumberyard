@@ -451,10 +451,9 @@ namespace AZStd
     {
         inline size_t operator()(const AzFramework::SliceInstantiationTicket& value) const
         {
-            AZ::Crc32 crc;
-            crc.Add(&value.m_contextId, sizeof(value.m_contextId));
-            crc.Add(&value.m_requestId, sizeof(value.m_requestId));
-            return static_cast<size_t>(static_cast<AZ::u32>(crc));
+            size_t result = value.m_contextId.GetHash();
+            AZStd::hash_combine(result, value.m_requestId);
+            return result;
         }
     };
 }

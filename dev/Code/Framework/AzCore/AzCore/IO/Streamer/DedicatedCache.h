@@ -18,6 +18,7 @@
 #include <AzCore/IO/Streamer/StreamStackEntry.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/parallel/mutex.h>
 
 namespace AZ
 {
@@ -52,6 +53,8 @@ namespace AZ
             void ReadFile(FileRequest* request); 
             size_t FindCache(const RequestPath& filename, FileRange range);
             size_t FindCache(const RequestPath& filename, u64 offset);
+            AZStd::string_view GetOrAddCachedName(size_t index, AZStd::string&& name);
+            void CleanupCachedNames();
 
             static constexpr size_t s_fileNotFound = static_cast<size_t>(-1);
 
@@ -59,6 +62,10 @@ namespace AZ
             AZStd::vector<FileRange> m_cachedFileRanges;
             AZStd::vector<AZStd::unique_ptr<BlockCache>> m_cachedFileCaches;
             AZStd::vector<size_t> m_cachedFileRefCounts;
+            AZStd::list<AZStd::pair<size_t, AZStd::string>> m_cachedStatNames;
+            AZStd::vector<size_t> m_cachedStatNamesToDelete;
+
+            mutable AZStd::recursive_mutex m_cacheMutex;
 
             u64 m_cacheSize;
             u32 m_blockSize;

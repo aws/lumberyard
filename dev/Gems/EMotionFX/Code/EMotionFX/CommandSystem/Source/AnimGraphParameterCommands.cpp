@@ -231,13 +231,14 @@ namespace CommandSystem
     void CommandAnimGraphCreateParameter::InitSyntax()
     {
         GetSyntax().ReserveParameters(9);
-        GetSyntax().AddRequiredParameter("animGraphID",     "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT);
-        GetSyntax().AddRequiredParameter("type",            "The type of this parameter (UUID).", MCore::CommandSyntax::PARAMTYPE_STRING);
-        GetSyntax().AddRequiredParameter("name",            "The name of the parameter, which has to be unique inside the currently selected anim graph.", MCore::CommandSyntax::PARAMTYPE_STRING);
-        GetSyntax().AddParameter("description",             "The description of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("index",                   "The position where the parameter should be added. If the parameter is not specified it will get added to the end. This index is relative to the \"parent\" parameter", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
-        GetSyntax().AddParameter("contents",                "The serialized contents of the parameter (in reflected XML).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("parent",                  "The parent group name into which the parameter should be added. If not specified it will get added to the root group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT);
+        GetSyntax().AddRequiredParameter("type", "The type of this parameter (UUID).", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddRequiredParameter("name", "The name of the parameter, which has to be unique inside the currently selected anim graph.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddParameter("description", "The description of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("index", "The position where the parameter should be added. If the parameter is not specified it will get added to the end. This index is relative to the \"parent\" parameter", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
+        GetSyntax().AddParameter("contents", "The serialized contents of the parameter (in reflected XML).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("parent", "The parent group name into which the parameter should be added. If not specified it will get added to the root group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -343,16 +344,19 @@ namespace CommandSystem
             return false;
         }
 
+        const AZStd::string updateUI = parameters.GetValue("updateUI", this);
+
         // Execute the command to create the parameter again.
         AZStd::string commandString;
 
-        commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -type \"%s\" -contents {%s} -parent \"%s\"",
+        commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -type \"%s\" -contents {%s} -parent \"%s\" -updateUI %s",
                 animGraph->GetID(),
                 mName.c_str(),
                 mIndex,
                 mType.ToString<AZStd::string>().c_str(),
                 mContents.c_str(),
-                mParent.c_str());
+                mParent.c_str(),
+                updateUI.c_str());
 
         // The parameter will be restored to the right parent group because the index is absolute
 
@@ -371,9 +375,10 @@ namespace CommandSystem
 
     void CommandAnimGraphRemoveParameter::InitSyntax()
     {
-        GetSyntax().ReserveParameters(2);
+        GetSyntax().ReserveParameters(3);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddRequiredParameter("name", "The name of the parameter inside the currently selected anim graph.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -652,16 +657,17 @@ namespace CommandSystem
 
     void CommandAnimGraphAdjustParameter::InitSyntax()
     {
-        GetSyntax().ReserveParameters(9);
-        GetSyntax().AddRequiredParameter("animGraphID",     "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT);
-        GetSyntax().AddRequiredParameter("name",            "The name of the parameter inside the currently selected anim graph to modify.", MCore::CommandSyntax::PARAMTYPE_STRING);
-        GetSyntax().AddParameter("type",                    "The new type (UUID).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("newName",                 "The new name of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("defaultValue",            "The new default value of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("minValue",                "The new minimum value of the parameter. In case of checkboxes or strings this parameter value will be ignored.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("maxValue",                "The new maximum value of the parameter. In case of checkboxes or strings this parameter value will be ignored.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("description",             "The new description of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("contents",                "The contents of the parameter (serialized reflected XML)", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().ReserveParameters(10);
+        GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT);
+        GetSyntax().AddRequiredParameter("name", "The name of the parameter inside the currently selected anim graph to modify.", MCore::CommandSyntax::PARAMTYPE_STRING);
+        GetSyntax().AddParameter("type", "The new type (UUID).", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("newName", "The new name of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("defaultValue", "The new default value of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("minValue", "The new minimum value of the parameter. In case of checkboxes or strings this parameter value will be ignored.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("maxValue", "The new maximum value of the parameter. In case of checkboxes or strings this parameter value will be ignored.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("description", "The new description of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("contents", "The contents of the parameter (serialized reflected XML)", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -831,11 +837,12 @@ namespace CommandSystem
 
     void CommandAnimGraphMoveParameter::InitSyntax()
     {
-        GetSyntax().ReserveParameters(3);
+        GetSyntax().ReserveParameters(5);
         GetSyntax().AddRequiredParameter("animGraphID", "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddRequiredParameter("name", "The name of the parameter to move.", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("index", "The new index of the parameter, relative to the new parent", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("parent", "The new parent of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        GetSyntax().AddParameter("updateUI", "Setting this to true will trigger a refresh of the parameter UI.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -920,12 +927,14 @@ namespace CommandSystem
         {
             const AZ::u32 sourcePortIndex = parameterNode->FindOutputPortIndex(parameterName);
             parameterNode->CollectOutgoingConnections(outgoingConnectionsFromThisPort, sourcePortIndex); // outgoingConnectionsFromThisPort will be cleared inside the function.
+            const size_t numConnections = outgoingConnectionsFromThisPort.size();
 
-            for (const auto& connectionPair : outgoingConnectionsFromThisPort)
+            for (uint32 i = 0; i < numConnections; ++i)
             {
-                const EMotionFX::AnimGraphNode* targetNode = connectionPair.second;
-                const EMotionFX::BlendTreeConnection* connection = connectionPair.first;
-                DeleteNodeConnection(&commandGroup, targetNode, connection);
+                const EMotionFX::AnimGraphNode* targetNode = outgoingConnectionsFromThisPort[i].second;
+                const EMotionFX::BlendTreeConnection* connection = outgoingConnectionsFromThisPort[i].first;
+                const bool updateUniqueData = (i == 0 || i == numConnections - 1);
+                DeleteNodeConnection(&commandGroup, targetNode, connection, updateUniqueData);
             }
         }
     }
@@ -994,12 +1003,18 @@ namespace CommandSystem
         }
 
         // 3. Remove the actual parameters.
-        for (const AZStd::string& parameterName : parameterNamesToRemove)
+        size_t numIterations = parameterNamesToRemove.size();
+        for (uint32 i = 0; i < numIterations; ++i)
         {
-            commandString = AZStd::string::format("AnimGraphRemoveParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), parameterName.c_str());
+            commandString = AZStd::string::format("AnimGraphRemoveParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), parameterNamesToRemove[i].c_str());
+            if (i != 0 && i != numIterations - 1)
+            {
+                commandString += " -updateUI false";
+            }
             usedCommandGroup->AddCommandString(commandString);
         }
 
+        
         if (!commandGroup)
         {
             if (!GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, outResult))
@@ -1011,5 +1026,4 @@ namespace CommandSystem
 
         return true;
     }
-
 } // namespace CommandSystem

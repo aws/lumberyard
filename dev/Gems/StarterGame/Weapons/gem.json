@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "c5838c1f73ec4122925d3d1f9f1ccd85",
+    "Name": "Weapons",
+    "DisplayName": "Starter Game Weapons",
+    "Version": "0.1.0",
+    "LinkType": "NoCode",
+    "Summary": "Holds the Weapon assets used by Starter Game",
+    "Tags": ["Asset", "Weapon","StarterGame"],
+    "IconPath": "preview.png"
+}

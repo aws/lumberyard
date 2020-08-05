@@ -44,11 +44,18 @@ namespace EMotionFX
             struct Configuration
             {
                 AZ_TYPE_INFO(Configuration, "{262470E5-57D8-4C45-8BB4-88EDFBC54D7E}");
-                Configuration();
+                Configuration() = default;
+                void Reset();
 
-                AZStd::vector<float> m_lodDistances;         // Lod distances that decide which lod the actor should choose.
+                // Generate the default value based on LOD level.
+                void GenerateDefaultValue(AZ::u32 numLODs);
+                bool GetEnableLodSampling();
 
                 static void Reflect(AZ::ReflectContext* context);
+
+                AZStd::vector<float> m_lodDistances;         // LOD distances that decide which lod the actor should choose.
+                AZStd::vector<float> m_lodSampleRates;       // Per LOD sample rate.
+                bool m_enableLodSampling = false;            // Enable per LOD sampling rate. This will allow animation to sample at a lower rate for performance improvement.
             };
 
             SimpleLODComponent(const Configuration* config = nullptr);
@@ -85,8 +92,8 @@ namespace EMotionFX
             // AZ::TickBus::Handler
             void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
-            static AZ::u32 GetLODByDistance(const AZStd::vector<float>& distances, float distance);
-            static void UpdateLODLevelByDistance(EMotionFX::ActorInstance* actorInstance, const AZStd::vector<float>& distances, AZ::EntityId entityId);
+            static AZ::u32 GetLodByDistance(const AZStd::vector<float>& distances, float distance);
+            static void UpdateLodLevelByDistance(EMotionFX::ActorInstance* actorInstance, const Configuration& configuration, AZ::EntityId entityId);
 
             Configuration                               m_configuration;        // Component configuration.
             EMotionFX::ActorInstance*                   m_actorInstance;        // Associated actor instance (retrieved from Actor Component).

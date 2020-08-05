@@ -10,20 +10,25 @@
 *
 */
 
-#include "TrackHeaderWidget.h"
-#include "TimeViewPlugin.h"
-#include "TimeTrack.h"
-#include "TrackDataWidget.h"
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TrackDataWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TrackHeaderWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewToolBar.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeTrack.h>
+#include <QComboBox>
 #include <QPaintEvent>
 #include <QPushButton>
+#include <QLabel>
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QToolButton>
 #include <MysticQt/Source/MysticQtConfig.h>
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/Recorder.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 
 
 namespace EMStudio
@@ -36,13 +41,6 @@ namespace EMStudio
         mTrackLayout                = nullptr;
         mTrackWidget                = nullptr;
         mStackWidget                = nullptr;
-        mNodeActivityCheckBox       = nullptr;
-        mEventsCheckBox             = nullptr;
-        mRelativeGraphCheckBox      = nullptr;
-        mSortNodeActivityCheckBox   = nullptr;
-        mLimitGraphHeightCheckBox   = nullptr;
-        mNodeTypeColorsCheckBox     = nullptr;
-        mDetailedNodesCheckBox      = nullptr;
         mNodeNamesCheckBox          = nullptr;
         mMotionFilesCheckBox        = nullptr;
 
@@ -51,84 +49,32 @@ namespace EMStudio
         mMainLayout->setMargin(2);
         mMainLayout->setSpacing(0);
         mMainLayout->setAlignment(Qt::AlignTop);
-        //mMainLayout->setSizeConstraint( QLayout::SizeConstraint::SetNoConstraint );
 
-        // create the add track button
-        mAddTrackButton = new QPushButton("Add Event Track");
-        mAddTrackButton->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.png"));
-        connect(mAddTrackButton, &QPushButton::clicked, this, &TrackHeaderWidget::OnAddTrackButtonClicked);
+        ////////////////////////////////
+        // Create the add event button
+        ////////////////////////////////
+        QWidget* mainAddWidget = new QWidget();
+        QHBoxLayout* mainAddWidgetLayout = new QHBoxLayout();
+        mainAddWidgetLayout->setContentsMargins(6, 0, 3, 0);
+        mainAddWidget->setLayout(mainAddWidgetLayout);
+        QLabel* label = new QLabel(tr("Add event track"));
+        label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        mainAddWidgetLayout->addWidget(label);
 
-        // add the button to the main layout
-        QHBoxLayout* buttonLayout = new QHBoxLayout();
-        buttonLayout->addWidget(mAddTrackButton);
-        buttonLayout->insertSpacing(0, 4);
-        buttonLayout->insertSpacing(2, 2);
-        mMainLayout->addLayout(buttonLayout);
-        mMainLayout->insertSpacing(0, 4);
+        QToolButton* addButton = new QToolButton();
+        addButton->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.svg"));
+        addButton->setToolTip("Add a new event track");
+        connect(addButton, &QToolButton::clicked, this, &TrackHeaderWidget::OnAddTrackButtonClicked);
+        mainAddWidgetLayout->addWidget(addButton);
+
+        mainAddWidget->setFixedSize(175, 40);
+        mainAddWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        mMainLayout->addWidget(mainAddWidget);
+        mAddTrackWidget = mainAddWidget;
+        ////////////////////////////////
 
         // recorder settings
         mStackWidget = new MysticQt::DialogStack();
-
-        //---------------
-        QWidget* displayWidget = new QWidget();
-        QVBoxLayout* recorderLayout = new QVBoxLayout();
-        recorderLayout->setSpacing(1);
-        recorderLayout->setMargin(0);
-        displayWidget->setLayout(recorderLayout);
-
-        mNodeActivityCheckBox = new QCheckBox("Node Activity");
-        mNodeActivityCheckBox->setChecked(true);
-        mNodeActivityCheckBox->setCheckable(true);
-        connect(mNodeActivityCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
-        recorderLayout->addWidget(mNodeActivityCheckBox);
-
-        mEventsCheckBox = new QCheckBox("Motion Events");
-        mEventsCheckBox->setChecked(true);
-        mEventsCheckBox->setCheckable(true);
-        connect(mEventsCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
-        recorderLayout->addWidget(mEventsCheckBox);
-
-        mRelativeGraphCheckBox = new QCheckBox("Relative Graph");
-        mRelativeGraphCheckBox->setChecked(true);
-        mRelativeGraphCheckBox->setCheckable(true);
-        connect(mRelativeGraphCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
-        recorderLayout->addWidget(mRelativeGraphCheckBox);
-
-        mStackWidget->Add(displayWidget, "Display", false, false, true);
-
-        //-----------
-
-        QWidget* vizWidget = new QWidget();
-        QVBoxLayout* vizLayout = new QVBoxLayout();
-        vizLayout->setSpacing(1);
-        vizLayout->setMargin(0);
-        vizWidget->setLayout(vizLayout);
-
-        mSortNodeActivityCheckBox = new QCheckBox("Sort Node Activity");
-        mSortNodeActivityCheckBox->setChecked(false);
-        mSortNodeActivityCheckBox->setCheckable(true);
-        connect(mSortNodeActivityCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
-        vizLayout->addWidget(mSortNodeActivityCheckBox);
-
-        mNodeTypeColorsCheckBox = new QCheckBox("Use Node Type Colors");
-        mNodeTypeColorsCheckBox->setChecked(false);
-        mNodeTypeColorsCheckBox->setCheckable(true);
-        connect(mNodeTypeColorsCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
-        vizLayout->addWidget(mNodeTypeColorsCheckBox);
-
-        mDetailedNodesCheckBox = new QCheckBox("Detailed Nodes");
-        mDetailedNodesCheckBox->setChecked(false);
-        mDetailedNodesCheckBox->setCheckable(true);
-        connect(mDetailedNodesCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnDetailedNodesCheckBox);
-        vizLayout->addWidget(mDetailedNodesCheckBox);
-
-        mLimitGraphHeightCheckBox = new QCheckBox("Limit Graph Height");
-        mLimitGraphHeightCheckBox->setChecked(true);
-        mLimitGraphHeightCheckBox->setCheckable(true);
-        connect(mLimitGraphHeightCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
-        vizLayout->addWidget(mLimitGraphHeightCheckBox);
-
-        mStackWidget->Add(vizWidget, "Visual Options", false, false, true);
 
         //-----------
 
@@ -141,36 +87,38 @@ namespace EMStudio
         mNodeNamesCheckBox = new QCheckBox("Show Node Names");
         mNodeNamesCheckBox->setChecked(true);
         mNodeNamesCheckBox->setCheckable(true);
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(mNodeNamesCheckBox);
         connect(mNodeNamesCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         contentsLayout->addWidget(mNodeNamesCheckBox);
 
         mMotionFilesCheckBox = new QCheckBox("Show Motion Files");
         mMotionFilesCheckBox->setChecked(false);
         mMotionFilesCheckBox->setCheckable(true);
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(mMotionFilesCheckBox);
         connect(mMotionFilesCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         contentsLayout->addWidget(mMotionFilesCheckBox);
 
         QHBoxLayout* comboLayout = new QHBoxLayout();
         comboLayout->addWidget(new QLabel("Nodes:"));
-        mNodeContentsComboBox = new MysticQt::ComboBox();
+        mNodeContentsComboBox = new QComboBox();
         mNodeContentsComboBox->setEditable(false);
         mNodeContentsComboBox->addItem("Global Weights");
         mNodeContentsComboBox->addItem("Local Weights");
         mNodeContentsComboBox->addItem("Local Time");
         mNodeContentsComboBox->setCurrentIndex(0);
-        connect(mNodeContentsComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &TrackHeaderWidget::OnComboBoxIndexChanged);
+        connect(mNodeContentsComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &TrackHeaderWidget::OnComboBoxIndexChanged);
         comboLayout->addWidget(mNodeContentsComboBox);
         contentsLayout->addLayout(comboLayout);
 
         comboLayout = new QHBoxLayout();
         comboLayout->addWidget(new QLabel("Graph:"));
-        mGraphContentsComboBox = new MysticQt::ComboBox();
+        mGraphContentsComboBox = new QComboBox();
         mGraphContentsComboBox->setEditable(false);
         mGraphContentsComboBox->addItem("Global Weights");
         mGraphContentsComboBox->addItem("Local Weights");
         mGraphContentsComboBox->addItem("Local Time");
         mGraphContentsComboBox->setCurrentIndex(0);
-        connect(mGraphContentsComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &TrackHeaderWidget::OnComboBoxIndexChanged);
+        connect(mGraphContentsComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &TrackHeaderWidget::OnComboBoxIndexChanged);
         comboLayout->addWidget(mGraphContentsComboBox);
         contentsLayout->addLayout(comboLayout);
 
@@ -198,17 +146,22 @@ namespace EMStudio
 
         if (mTrackWidget)
         {
+            mTrackWidget->hide();
             mMainLayout->removeWidget(mTrackWidget);
             mTrackWidget->deleteLater(); // TODO: this causes flickering, but normal deletion will make it crash
         }
 
         mTrackWidget = nullptr;
 
-        if (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon || mPlugin->mMotion == nullptr)
+        // If we are in anim graph mode and have a recording, don't init for the motions.
+        if ((mPlugin->GetMode() != TimeViewMode::Motion) &&
+            (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon || EMotionFX::GetRecorder().GetIsInPlayMode() || !mPlugin->mMotion))
         {
-            mAddTrackButton->setVisible(false);
+            mAddTrackWidget->setVisible(false);
+            setVisible(false);
 
-            if (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon)
+            if ((mPlugin->GetMode() != TimeViewMode::Motion) &&
+                (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon))
             {
                 mStackWidget->setVisible(true);
             }
@@ -220,7 +173,8 @@ namespace EMStudio
             return;
         }
 
-        mAddTrackButton->setVisible(true);
+        mAddTrackWidget->setVisible(true);
+        setVisible(true);
         mStackWidget->setVisible(false);
 
         const uint32 numTracks = mPlugin->mTracks.GetLength();
@@ -246,14 +200,13 @@ namespace EMStudio
             HeaderTrackWidget* widget = new HeaderTrackWidget(mTrackWidget, mPlugin, this, track, i);
 
             connect(widget, &HeaderTrackWidget::TrackNameChanged, this, &TrackHeaderWidget::OnTrackNameChanged);
-            connect(widget, &HeaderTrackWidget::RemoveTrackButtonClicked, this, &TrackHeaderWidget::OnRemoveTrackButtonClicked);
             connect(widget, &HeaderTrackWidget::EnabledStateChanged, this, &TrackHeaderWidget::OnTrackEnabledStateChanged);
 
             mTrackLayout->addWidget(widget);
         }
 
         mTrackWidget->setLayout(mTrackLayout);
-        mMainLayout->insertWidget(0, mTrackWidget);
+        mMainLayout->addWidget(mTrackWidget);
     }
 
 
@@ -268,10 +221,16 @@ namespace EMStudio
 
         mHeaderTrackWidget  = trackHeaderWidget;
         mEnabledCheckbox    = new QCheckBox();
+        mNameLabel          = new QLabel(timeTrack->GetName());
         mNameEdit           = new QLineEdit(timeTrack->GetName());
-        mRemoveButton       = new QPushButton();
         mTrack              = timeTrack;
         mTrackIndex         = trackIndex;
+
+        mNameEdit->setVisible(false);
+        mNameEdit->setFrame(false);
+
+        mEnabledCheckbox->setFixedWidth(36);
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(mEnabledCheckbox);
 
         if (timeTrack->GetIsEnabled())
         {
@@ -286,28 +245,36 @@ namespace EMStudio
         if (timeTrack->GetIsDeletable() == false)
         {
             mNameEdit->setReadOnly(true);
-            mRemoveButton->setEnabled(false);
             mEnabledCheckbox->setEnabled(false);
         }
-
-        mRemoveButton->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Remove.png"));
-        mRemoveButton->setMinimumWidth(20);
-        mRemoveButton->setMaximumWidth(20);
+        else
+        {
+            mNameLabel->installEventFilter(this);
+        }
 
         connect(mNameEdit, &QLineEdit::editingFinished, this, &HeaderTrackWidget::NameChanged);
         connect(mNameEdit, &QLineEdit::textEdited, this, &HeaderTrackWidget::NameEdited);
-        connect(mRemoveButton, &QPushButton::clicked, this, &HeaderTrackWidget::RemoveButtonClicked);
         connect(mEnabledCheckbox, &QCheckBox::stateChanged, this, &HeaderTrackWidget::EnabledCheckBoxChanged);
 
+        setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(this, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos)
+        {
+            QMenu m;
+            auto action = m.addAction(tr("Remove track"), this, [=]
+            {
+                mPlugin->GetTrackDataWidget()->RemoveTrack(mTrackIndex);
+            });
+            action->setEnabled(mTrack->GetIsDeletable());
+            m.exec(mapToGlobal(pos));
+        });
+
         mainLayout->insertSpacing(0, 4);
-        mainLayout->addWidget(mEnabledCheckbox);
+        mainLayout->addWidget(mNameLabel);
         mainLayout->addWidget(mNameEdit);
-        mainLayout->insertSpacing(3, 4);
-        mainLayout->addWidget(mRemoveButton);
+        mainLayout->addWidget(mEnabledCheckbox);
         mainLayout->insertSpacing(5, 2);
 
         //mainLayout->setAlignment(mEnabledCheckbox, Qt::AlignLeft);
-        //mainLayout->setAlignment(mRemoveButton, Qt::AlignRight);
 
         setLayout(mainLayout);
 
@@ -315,25 +282,31 @@ namespace EMStudio
         setMaximumHeight(20);
     }
 
-
-    void HeaderTrackWidget::RemoveButtonClicked()
+    bool HeaderTrackWidget::eventFilter(QObject* object, QEvent* event)
     {
-        mPlugin->SetRedrawFlag();
-        emit RemoveTrackButtonClicked(mTrackIndex);
+        if (object == mNameLabel && event->type() == QEvent::MouseButtonDblClick)
+        {
+            mNameLabel->setVisible(false);
+            mNameEdit->setVisible(true);
+            mNameEdit->selectAll();
+            mNameEdit->setFocus();
+        }
+        return QWidget::eventFilter(object, event);
     }
-
 
     void HeaderTrackWidget::NameChanged()
     {
         MCORE_ASSERT(sender()->inherits("QLineEdit"));
         mPlugin->SetRedrawFlag();
         QLineEdit* widget = qobject_cast<QLineEdit*>(sender());
+        mNameLabel->setVisible(true);
+        mNameEdit->setVisible(false);
         if (ValidateName())
         {
+            mNameLabel->setText(widget->text());
             emit TrackNameChanged(widget->text(), mTrackIndex);
         }
     }
-
 
     bool HeaderTrackWidget::ValidateName()
     {
@@ -434,7 +407,8 @@ namespace EMStudio
         MCORE_UNUSED(state);
         mPlugin->SetRedrawFlag();
 
-        if (mDetailedNodesCheckBox->isChecked() == false)
+        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+        if (!recorderGroup->GetDetailedNodes())
         {
             mPlugin->mTrackDataWidget->mNodeHistoryItemHeight = 20;
         }
@@ -460,5 +434,3 @@ namespace EMStudio
         mPlugin->SetRedrawFlag();
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TrackHeaderWidget.moc>

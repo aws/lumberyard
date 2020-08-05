@@ -394,6 +394,8 @@ namespace AZ
                     AZ::Data::AssetId productAssetId(request.m_sourceFileUUID, BuildSubId(exportProduct));
                     currentProduct.m_dependencies.push_back(AssetBuilderSDK::ProductDependency(productAssetId, 0));
                 }
+
+                currentProduct.m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             }
             ResolvePreSubIds(response, preSubIdFiles);
 

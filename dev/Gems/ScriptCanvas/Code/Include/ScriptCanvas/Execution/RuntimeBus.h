@@ -100,6 +100,8 @@ namespace ScriptCanvas
 
         virtual bool IsGraphObserved() const = 0;
         virtual void SetIsGraphObserved(bool isObserved) = 0;
+
+        virtual AZ::Data::AssetType GetAssetType() const = 0;
     };
 
     using RuntimeRequestBus = AZ::EBus<RuntimeRequests>;

@@ -639,7 +639,7 @@ namespace
 
         for (AZ::u32 i = 0, index = 0; i < inputData.size(); i += numChannels)
         {
-            constexpr auto terrarium = [](auto r)
+            auto terrarium = [](auto r)
             {
                 auto g = r + 1;
                 auto b = r + 2;
@@ -647,10 +647,10 @@ namespace
                 return (r * 256.0f + g + b / 256.0f) - 32768.0f;
             };
 
-            constexpr auto min = terrarium(0) + 3;
-            constexpr auto max = terrarium(396) + 399;
+            auto minValue = terrarium(0) + 3;
+            auto maxValue = terrarium(396) + 399;
 
-            expectedValues[index++] = (terrarium(i) + i + 3 - min) / (max - min);
+            expectedValues[index++] = (terrarium(i) + i + 3 - minValue) / (maxValue - minValue);
         }
 
         Detail::VerifyResult(*asset, expectedValues, [](auto a, auto b)

@@ -1,21 +1,21 @@
 {
     "platform": {
         "android_armv8_clang": {
-            "importlibpath_debug": ["${lib_paths}/android-arm64-v8a-debug-cmake"],
-            "importlibpath_profile": ["${lib_paths}/android-arm64-v8a-profile-cmake"],
-            "importlibpath_performance": ["${lib_paths}/android-arm64-v8a-release-cmake"],
-            "importlibpath_release": ["${lib_paths}/android-arm64-v8a-release-cmake"],
+            "nvcloth_lib/importlibpath_debug": ["${lib_paths}/android-arm64-v8a-debug-cmake"],
+            "nvcloth_lib/importlibpath_profile": ["${lib_paths}/android-arm64-v8a-profile-cmake"],
+            "nvcloth_lib/importlibpath_performance": ["${lib_paths}/android-arm64-v8a-release-cmake"],
+            "nvcloth_lib/importlibpath_release": ["${lib_paths}/android-arm64-v8a-release-cmake"],
             
-            "import_debug": [
+            "nvcloth_lib/import_debug": [
                 "lib${lib_names}DEBUG.a"
             ],
-            "import_profile": [
+            "nvcloth_lib/import_profile": [
                 "lib${lib_names}PROFILE.a"
             ],
-            "import_performance": [
+            "nvcloth_lib/import_performance": [
                 "lib${lib_names}.a"
             ],
-            "import_release": [
+            "nvcloth_lib/import_release": [
                 "lib${lib_names}.a"
             ]
         }

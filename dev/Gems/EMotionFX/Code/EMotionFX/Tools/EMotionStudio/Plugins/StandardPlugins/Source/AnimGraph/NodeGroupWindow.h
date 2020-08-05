@@ -15,6 +15,8 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 
+#include <AzCore/Math/Color.h>
+
 #include <EMotionFX/Source/NodeGroup.h>
 
 #include "../StandardPluginsConfig.h"
@@ -77,9 +79,10 @@ namespace EMStudio
         void OnRemoveSelectedGroups();
         void OnRenameSelectedNodeGroup();
         void OnClearNodeGroups();
-        void OnIsVisible(int state);
+        void OnIsVisible(int state, int row);
         //void OnNameEdited(QTableWidgetItem* item);
-        void OnColorChanged(const QColor& color);
+        void OnColorChanged(const AZ::Color& color);
+        void OnItemChanged(QTableWidgetItem* item);
         //void OnCellChanged(int row, int column);
         void OnTextFilterChanged(const QString& text);
         void UpdateInterface();
@@ -117,9 +120,7 @@ namespace EMStudio
         AnimGraphPlugin*               mPlugin;
         QTableWidget*                   mTableWidget;
         QVBoxLayout*                    mVerticalLayout;
-        QPushButton*                    mAddButton;
-        QPushButton*                    mRemoveButton;
-        QPushButton*                    mClearButton;
+        QAction*                        mAddAction;
         AzQtComponents::FilteredSearchWidget* m_searchWidget;
         AZStd::string                   m_searchWidgetText;
         MCore::Array<WidgetLookup>      mWidgetTable;

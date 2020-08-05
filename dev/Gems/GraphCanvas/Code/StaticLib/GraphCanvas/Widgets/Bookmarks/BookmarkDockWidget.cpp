@@ -86,10 +86,8 @@ namespace GraphCanvas
 
         m_ui->setupUi(this);
 
+        m_ui->m_quickFilter->setClearButtonEnabled(true);
         QObject::connect(m_ui->m_quickFilter, &QLineEdit::textChanged, this, &BookmarkDockWidget::OnQuickFilterChanged);
-
-        QAction* clearAction = m_ui->m_quickFilter->addAction(QIcon(":/GraphCanvasEditorResources/lineedit_clear.png"), QLineEdit::TrailingPosition);
-        QObject::connect(clearAction, &QAction::triggered, this, &BookmarkDockWidget::ClearFilter);
 
         m_ui->m_quickFilter->setEnabled(false);
 
@@ -242,8 +240,14 @@ namespace GraphCanvas
         SceneNotificationBus::Handler::BusConnect(m_activeGraphCanvasGraphId);
     }
 
-    void BookmarkDockWidget::OnQuickFilterChanged()
+    void BookmarkDockWidget::OnQuickFilterChanged(const QString &text)
     {
+        if(text.isEmpty())
+        {
+            //If filter was cleared, update immediately
+            UpdateFilter();
+            return;
+        }
         m_filterTimer.stop();
         m_filterTimer.start();
     }

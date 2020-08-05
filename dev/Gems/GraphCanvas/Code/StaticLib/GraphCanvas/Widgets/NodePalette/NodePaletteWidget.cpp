@@ -30,6 +30,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
+#include <AzQtComponents/Components/StyleManager.h>
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
@@ -142,17 +143,14 @@ namespace GraphCanvas
 
         m_ui->setupUi(this);
 
-        QObject::connect(m_ui->searchFilter, &QLineEdit::textChanged, this, &NodePaletteWidget::OnFilterTextChanged);        
-        QObject::connect(m_ui->treeView, &QTreeView::doubleClicked, this, &NodePaletteWidget::OnIndexDoubleClicked);
+        m_ui->searchFilter->setClearButtonEnabled(true);
+        QObject::connect(m_ui->searchFilter, &QLineEdit::textChanged, this, &NodePaletteWidget::OnFilterTextChanged);
         QObject::connect(m_model, &QAbstractItemModel::rowsAboutToBeRemoved, this, &NodePaletteWidget::OnRowsAboutToBeRemoved);
 
         if (paletteConfig.m_allowArrowKeyNavigation)
         {
             m_ui->searchFilter->installEventFilter(this);
         }
-
-        QAction* clearAction = m_ui->searchFilter->addAction(QIcon(":/GraphCanvasEditorResources/lineedit_clear.png"), QLineEdit::TrailingPosition);
-        QObject::connect(clearAction, &QAction::triggered, this, &NodePaletteWidget::ClearFilter);
 
         GraphCanvasTreeModel* sourceModel = aznew GraphCanvasTreeModel(paletteConfig.m_rootTreeItem, this);
         sourceModel->setMimeType(paletteConfig.m_mimeType);
@@ -163,6 +161,11 @@ namespace GraphCanvas
         m_model->PopulateUnfilteredModel();
 
         m_ui->treeView->setModel(m_model);
+
+        if (m_isInContextMenu)
+        {
+            m_ui->searchFilter->setCompleter(m_model->GetCompleter());
+        }
 
         SetItemDelegate(aznew NodePaletteTreeDelegate(this));
 
@@ -180,6 +183,9 @@ namespace GraphCanvas
         else
         {
             QObject::connect(m_ui->searchFilter, &QLineEdit::returnPressed, this, &NodePaletteWidget::TrySpawnItem);
+
+            // If the widget is in a context menu, reapply the Editor stylesheet
+            AzQtComponents::StyleManager::setStyleSheet(this, QStringLiteral("style:Editor.qss"));
         }
 
         QObject::connect(m_ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &NodePaletteWidget::OnSelectionChanged);
@@ -226,7 +232,7 @@ namespace GraphCanvas
         }
 
         m_ui->treeView->collapseAll();
-        m_ui->m_categoryLabel->setFullText("");        
+        m_ui->m_categoryLabel->setText("");
 
         setVisible(true);
     }
@@ -311,7 +317,7 @@ namespace GraphCanvas
         return static_cast<GraphCanvasTreeModel*>(m_model->sourceModel())->GetTreeRoot();
     }
 
-    QTreeView* NodePaletteWidget::GetTreeView() const
+    NodePaletteTreeView* NodePaletteWidget::GetTreeView() const
     {
         return m_ui->treeView;
     }
@@ -484,6 +490,11 @@ namespace GraphCanvas
         return false;
     }
 
+    GraphCanvasTreeItem* NodePaletteWidget::ModTreeRoot()
+    {
+        return static_cast<GraphCanvasTreeModel*>(m_model->sourceModel())->ModTreeRoot();
+    }
+
     GraphCanvasTreeItem* NodePaletteWidget::CreatePaletteRoot() const
     {
         return nullptr;
@@ -559,11 +570,17 @@ namespace GraphCanvas
             needsSeparator = true;
         }
 
-        m_ui->m_categoryLabel->setFullText(fullPathString);
+        m_ui->m_categoryLabel->setText(fullPathString);
     }
 
-    void NodePaletteWidget::OnFilterTextChanged()
+    void NodePaletteWidget::OnFilterTextChanged(const QString &text)
     {
+        if(text.isEmpty())
+        {
+            //If filter was cleared, update immediately
+            UpdateFilter();
+            return;
+        }
         if (!m_searchFieldSelectionChange)
         {
             m_filterTimer.stop();
@@ -607,13 +624,6 @@ namespace GraphCanvas
         }
 
         UpdateFilter();
-    }
-
-    void NodePaletteWidget::OnIndexDoubleClicked(const QModelIndex& index)
-    {
-        QModelIndex sourceIndex = m_model->mapToSource(index);
-        void* value = sourceIndex.internalPointer();
-        emit OnTreeItemDoubleClicked(static_cast<GraphCanvasTreeItem*>(value));
     }
 
     void NodePaletteWidget::OnRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last)

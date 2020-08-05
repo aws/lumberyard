@@ -222,6 +222,8 @@ namespace EMotionFX
         {
             mTargetNode = mAnimGraph->RecursiveFindNodeById(GetTargetNodeId());
         }
+
+        AnimGraphObject::Reinit();
     }
 
     void AnimGraphStateTransition::RecursiveReinit()
@@ -262,9 +264,9 @@ namespace EMotionFX
     }
 
     // calculate the transition output, this is the main function
-    void AnimGraphStateTransition::CalcTransitionOutput(const AnimGraphInstance* animGraphInstance, const AnimGraphPose& from, const AnimGraphPose& to, AnimGraphPose* outputPose) const
+    void AnimGraphStateTransition::CalcTransitionOutput(AnimGraphInstance* animGraphInstance, const AnimGraphPose& from, const AnimGraphPose& to, AnimGraphPose* outputPose) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // calculate the blend weight, based on the type of smoothing
         const float weight = uniqueData->mBlendWeight;
@@ -276,7 +278,7 @@ namespace EMotionFX
 
     void AnimGraphStateTransition::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         const bool gotInterrupted = GotInterrupted(animGraphInstance);
         const bool updateTimeAndProgress = (!gotInterrupted || !m_interruptionBlendBehavior);
 
@@ -311,17 +313,17 @@ namespace EMotionFX
 
     void AnimGraphStateTransition::ExtractMotion(AnimGraphInstance* animGraphInstance, AnimGraphRefCountedData* sourceData, Transform* outTransform, Transform* outTransformMirrored) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         const float weight = uniqueData->mBlendWeight;
 
-        AnimGraphRefCountedData* targetData = mTargetNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* targetData = mTargetNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
         CalculateMotionExtractionDelta(m_extractionMode, sourceData, targetData, weight, true, *outTransform, *outTransformMirrored);
     }
 
     void AnimGraphStateTransition::OnStartTransition(AnimGraphInstance* animGraphInstance)
     {
         // get the unique data
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         uniqueData->mBlendWeight    = 0.0f;
         uniqueData->mIsDone         = false;
@@ -341,24 +343,24 @@ namespace EMotionFX
     }
 
     // check and return if the transition is transitioning or already done
-    bool AnimGraphStateTransition::GetIsDone(const AnimGraphInstance* animGraphInstance) const
+    bool AnimGraphStateTransition::GetIsDone(AnimGraphInstance* animGraphInstance) const
     {
         // get the unique data and return the is done flag
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         return uniqueData->mIsDone;
     }
 
-    float AnimGraphStateTransition::GetBlendWeight(const AnimGraphInstance* animGraphInstance) const
+    float AnimGraphStateTransition::GetBlendWeight(AnimGraphInstance* animGraphInstance) const
     {
         // get the unique data and return the is done flag
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         return uniqueData->mBlendWeight;
     }
 
     void AnimGraphStateTransition::OnEndTransition(AnimGraphInstance* animGraphInstance)
     {
         // get the unique data
-        UniqueData* uniqueData      = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData      = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         uniqueData->mBlendWeight    = 1.0f;
         uniqueData->mBlendProgress  = 1.0f;
         uniqueData->mIsDone         = true;
@@ -462,7 +464,7 @@ namespace EMotionFX
 
     void AnimGraphStateTransition::SetSourceNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* sourceNode)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         uniqueData->mSourceNode = sourceNode;
     }
 
@@ -476,7 +478,7 @@ namespace EMotionFX
         }
 
         // wildcard transition special case handling
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         return uniqueData->mSourceNode;
     }
 
@@ -551,7 +553,7 @@ namespace EMotionFX
         return m_canInterruptOtherTransitions;
     }
 
-    bool AnimGraphStateTransition::GotInterrupted(const AnimGraphInstance* animGraphInstance) const
+    bool AnimGraphStateTransition::GotInterrupted(AnimGraphInstance* animGraphInstance) const
     {
         const AnimGraphStateMachine* stateMachine = GetStateMachine();
         if (stateMachine)
@@ -594,7 +596,7 @@ namespace EMotionFX
         }
     }
 
-    bool AnimGraphStateTransition::CanBeInterruptedBy(const AnimGraphStateTransition* transition, const AnimGraphInstance* animGraphInstance) const
+    bool AnimGraphStateTransition::CanBeInterruptedBy(const AnimGraphStateTransition* transition, AnimGraphInstance* animGraphInstance) const
     {
         if (m_canBeInterruptedByOthers &&
             transition != this &&
@@ -699,30 +701,25 @@ namespace EMotionFX
         return linearWeight;
     }
 
-    AnimGraphStateTransition::UniqueData::UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance, AnimGraphNode* sourceNode)
+    AnimGraphStateTransition::UniqueData::UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
         : AnimGraphObjectData(object, animGraphInstance)
     {
-        mIsDone             = false;
-        mBlendWeight        = 0.0f;
-        mTotalSeconds       = 0.0f;
-        mBlendProgress      = 0.0f;
-        mSourceNode         = sourceNode;
     }
 
-    // when attributes have changed their value
-    void AnimGraphStateTransition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphStateTransition::InvalidateUniqueData(AnimGraphInstance* animGraphInstance)
     {
-        // find the unique data in case it has already been created
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance, nullptr);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
+        AnimGraphObject::InvalidateUniqueData(animGraphInstance);
 
         for (AnimGraphTransitionCondition* condition : mConditions)
         {
-            condition->OnUpdateUniqueData(animGraphInstance);
+            condition->InvalidateUniqueData(animGraphInstance);
+        }
+
+        const size_t numActions = m_actionSetup.GetNumActions();
+        for (size_t a = 0; a < numActions; ++a)
+        {
+            AnimGraphTriggerAction* action = m_actionSetup.GetAction(a);
+            action->InvalidateUniqueData(animGraphInstance);
         }
     }
 

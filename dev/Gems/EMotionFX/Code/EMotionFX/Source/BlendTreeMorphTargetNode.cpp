@@ -24,6 +24,20 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMorphTargetNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMorphTargetNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendTreeMorphTargetNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeMorphTargetNode::UniqueData::Update()
+    {
+        BlendTreeMorphTargetNode* morphTargetNode = azdynamic_cast<BlendTreeMorphTargetNode*>(mObject);
+        AZ_Assert(morphTargetNode, "Unique data linked to incorrect node type.");
+
+        // Force update the morph target indices.
+        morphTargetNode->UpdateMorphIndices(mAnimGraphInstance->GetActorInstance(), this, true);
+    }
+
     BlendTreeMorphTargetNode::BlendTreeMorphTargetNode()
         : AnimGraphNode()
     {
@@ -51,8 +65,6 @@ namespace EMotionFX
         {
             SetNodeInfoNone();
         }
-
-        UpdateUniqueDatas();
     }
 
 
@@ -115,17 +127,17 @@ namespace EMotionFX
     {
         // Mark this node as having an error when the morph target cannot be found.
         // If there is none setup, we see that as a non-error state, otherwise you would see the node marked as error directly after creation.
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         if (GetEMotionFX().GetIsInEditorMode())
         {
             if (m_morphTargetNames.empty())
             {
-                SetHasError(animGraphInstance, false);
+                SetHasError(uniqueData, false);
             }
             else
             {
-                SetHasError(animGraphInstance, uniqueData->m_morphTargetIndex == MCORE_INVALIDINDEX32);
+                SetHasError(uniqueData, uniqueData->m_morphTargetIndex == MCORE_INVALIDINDEX32);
             }
         }
 
@@ -171,22 +183,6 @@ namespace EMotionFX
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
     }
-
-
-    void BlendTreeMorphTargetNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // Create the unique data object if it doesn't yet exist.
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        // Force update the morph target indices.
-        UpdateMorphIndices(animGraphInstance->GetActorInstance(), uniqueData, true);
-    }
-
 
     void BlendTreeMorphTargetNode::SetNodeInfoNone()
     {

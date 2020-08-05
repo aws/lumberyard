@@ -1245,7 +1245,14 @@ void CVegetationTool::ScaleObjects()
 
     bool ok = false;
     int fractionalDigitCount = 5;
-    fScale = aznumeric_caster(QInputDialog::getDouble(nullptr, QObject::tr("Scale Selected Object(s)"), QStringLiteral(""), fScale, 0.01, std::numeric_limits<float>::max(), fractionalDigitCount, &ok));
+
+    fScale = aznumeric_caster(
+        QInputDialog::getDouble(m_panel, QObject::tr("Scale"),
+            QStringLiteral("Scale Selected Object(s)"), fScale, 0.01,
+            std::numeric_limits<float>::max(), fractionalDigitCount, &ok
+        )
+    );
+
     if (!ok)
     {
         return;

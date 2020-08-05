@@ -38,7 +38,7 @@ class CScriptTermDialog
 {
     Q_OBJECT
 public:
-    CScriptTermDialog();
+    explicit CScriptTermDialog(QWidget* parent = nullptr);
     ~CScriptTermDialog();
 
     void AppendText(const char* pText);
@@ -50,6 +50,7 @@ protected:
     //! EditorPythonConsoleNotificationBus::Handler
     void OnTraceMessage(AZStd::string_view message) override;
     void OnErrorMessage(AZStd::string_view message) override;
+    void OnExceptionMessage(AZStd::string_view message) override;
 
 private slots:
     void OnScriptHelp();

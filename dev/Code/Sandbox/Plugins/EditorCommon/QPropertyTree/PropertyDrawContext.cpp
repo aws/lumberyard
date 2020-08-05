@@ -2,7 +2,7 @@
  *  wWidgets - Lightweight UI Toolkit.
  *  Copyright (C) 2009-2011 Evgeny Andreeshchev <eugene.andreeshchev@gmail.com>
  *                          Alexander Kotliar <alexander.kotliar@gmail.com>
- * 
+ *
  *  This code is distributed under the MIT License:
  *                          http://www.opensource.org/licenses/MIT
  */
@@ -22,6 +22,8 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QLineEdit>
+
+#include <AzQtComponents/Components/StyleManager.h>
 
 #ifndef _MSC_VER
 # define _stricmp strcasecmp
@@ -54,13 +56,13 @@ struct RGBAImage
     RGBAImage() : width_(0), height_(0) {}
 };
 
-bool IconXPMCache::parseXPM(RGBAImage* out, const Serialization::IconXPM& icon) 
+bool IconXPMCache::parseXPM(RGBAImage* out, const Serialization::IconXPM& icon)
 {
     if (icon.lineCount < 3) {
         return false;
     }
 
-	// parse values
+    // parse values
     std::vector<Color> pixels;
     int width = 0;
     int height = 0;
@@ -76,12 +78,12 @@ bool IconXPMCache::parseXPM(RGBAImage* out, const Serialization::IconXPM& icon)
     if (charsPerPixel > 4)
         return false;
 
-    if(icon.lineCount != 1 + colorCount + height) {
+    if (icon.lineCount != 1 + colorCount + height) {
         YASLI_ASSERT(0 && "Wrong line count");
         return false;
     }
 
-	// parse colors
+    // parse colors
     std::vector<std::pair<int, Color> > colors;
     colors.resize(colorCount);
 
@@ -116,28 +118,28 @@ bool IconXPMCache::parseXPM(RGBAImage* out, const Serialization::IconXPM& icon)
             ++p;
             if (strlen(p) == 6) {
                 int colorCode;
-                if(azsscanf(p, "%x", &colorCode) != 1)
+                if (azsscanf(p, "%x", &colorCode) != 1)
                     return false;
                 Color color((colorCode & 0xff0000) >> 16,
-                            (colorCode & 0xff00) >> 8,
-                            (colorCode & 0xff),
-                            255);
+                    (colorCode & 0xff00) >> 8,
+                    (colorCode & 0xff),
+                    255);
                 colors[colorIndex].second = color;
             }
         }
         else {
-            if(_stricmp(p, "None") == 0)
+            if (_stricmp(p, "None") == 0)
                 colors[colorIndex].second = Color(0, 0, 0, 0);
             else if (_stricmp(p, "Black") == 0)
                 colors[colorIndex].second = Color(0, 0, 0, 255);
             else {
-				// unknown color
+                // unknown color
                 colors[colorIndex].second = Color(255, 0, 0, 255);
             }
-    }
+        }
     }
 
-	// parse pixels
+    // parse pixels
     pixels.resize(width * height);
     int pi = 0;
     for (int y = 0; y < height; ++y) {
@@ -158,7 +160,7 @@ bool IconXPMCache::parseXPM(RGBAImage* out, const Serialization::IconXPM& icon)
             ++pi;
         }
     }
-	
+
     out->pixels_.swap(pixels);
     out->width_ = width;
     out->height_ = height;
@@ -174,7 +176,7 @@ QImage* IconXPMCache::getImageForIcon(const Serialization::IconXPM& icon)
 
     RGBAImage image;
     if (!parseXPM(&image, icon))
-    return 0;
+        return 0;
 
     BitmapCache& cache = iconToImageMap_[icon.source];
     cache.pixels.swap(image.pixels_);
@@ -187,7 +189,7 @@ QImage* IconXPMCache::getImageForIcon(const Serialization::IconXPM& icon)
 void drawRoundRectangle(QPainter& p, const QRect &_r, unsigned int color, int radius, int width)
 {
     QRect r = _r;
-    int dia = 2*radius;
+    int dia = 2 * radius;
 
     p.setPen(QColor(color));
     p.drawRoundedRect(r, dia, dia);
@@ -215,9 +217,9 @@ void PropertyDrawContext::drawIcon(const QRect& rect, const Serialization::IconX
     QImage* image = tree->_iconCache()->getImageForIcon(icon);
     if (!image)
         return;
-     int x = rect.left() + (rect.width() - image->width()) / 2;
-     int y = rect.top() + (rect.height() - image->height()) / 2;
-     painter->drawImage(x, y, *image);
+    int x = rect.left() + (rect.width() - image->width()) / 2;
+    int y = rect.top() + (rect.height() - image->height()) / 2;
+    painter->drawImage(x, y, *image);
 }
 
 void PropertyDrawContext::drawCheck(const QRect& rect, bool disabled, CheckState checked) const
@@ -225,10 +227,10 @@ void PropertyDrawContext::drawCheck(const QRect& rect, bool disabled, CheckState
     QStyleOptionButton option;
     if (!disabled)
         option.state |= QStyle::State_Enabled;
-	else {
-		option.state |= QStyle::State_ReadOnly;
-		option.palette.setCurrentColorGroup(QPalette::Disabled);
-	}
+    else {
+        option.state |= QStyle::State_ReadOnly;
+        option.palette.setCurrentColorGroup(QPalette::Disabled);
+    }
     if (checked == CHECK_SET)
         option.state |= QStyle::State_On;
     else if (checked == CHECK_IN_BETWEEN)
@@ -239,23 +241,26 @@ void PropertyDrawContext::drawCheck(const QRect& rect, bool disabled, CheckState
     // create a widget so that the style sheet has context for its draw calls
     QCheckBox forContext;
     QSize checkboxSize = tree->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &option, &forContext).size();
-	option.rect = QRect(rect.left(), rect.center().y() - checkboxSize.height() / 2, checkboxSize.width(), checkboxSize.height());
+    option.rect = QRect(rect.left(), rect.center().y() - checkboxSize.height() / 2, checkboxSize.width(), checkboxSize.height());
     tree->style()->drawPrimitive(QStyle::PE_IndicatorCheckBox, &option, painter, &forContext);
-	if (disabled) {
-		// With Fusion theme difference between disabled and enabled checkbox is very subtle, let's amplify it
-		QColor readOnlyOverlay = tree->backgroundColor();
-		readOnlyOverlay.setAlpha(128);
-		painter->fillRect(option.rect, QBrush(readOnlyOverlay));
-	}
+    if (disabled) {
+        // With Fusion theme difference between disabled and enabled checkbox is very subtle, let's amplify it
+        QColor readOnlyOverlay = tree->backgroundColor();
+        readOnlyOverlay.setAlpha(128);
+        painter->fillRect(option.rect, QBrush(readOnlyOverlay));
+    }
 }
 
 void PropertyDrawContext::drawButton(const QRect& rect, const wchar_t* text, int buttonFlags, const QFont* font, const Color* colorOverride) const
 {
+    QPushButton button;
+    button.ensurePolished();
     QStyleOptionButton option;
-	if (buttonFlags & BUTTON_DISABLED) {
+    option.initFrom(&button);
+    if (buttonFlags & BUTTON_DISABLED) {
         option.state |= QStyle::State_ReadOnly;
-		option.palette.setCurrentColorGroup(QPalette::Disabled);
-	}
+        option.palette.setCurrentColorGroup(QPalette::Disabled);
+    }
     else
         option.state |= QStyle::State_Enabled;
     if (buttonFlags & BUTTON_PRESSED) {
@@ -269,26 +274,32 @@ void PropertyDrawContext::drawButton(const QRect& rect, const wchar_t* text, int
         option.state |= QStyle::State_HasFocus;
     option.rect = rect.adjusted(0, 0, -1, -1);
 
-	if (colorOverride) {
-		QPalette& palette = option.palette;
-		palette.setCurrentColorGroup(QPalette::Normal);
-		QColor tintTarget(colorOverride->r, colorOverride->g, colorOverride->b, colorOverride->a);
+    QWidget* pseudoDrawWidget = &button;
+    if (AzQtComponents::StyleManager::isUi10())
+    {
+        pseudoDrawWidget = const_cast<QPropertyTree*>(tree);
+    }
 
-		QPalette::ColorRole groups[] = { QPalette::Button, QPalette::Light, QPalette::Dark, QPalette::Midlight, QPalette::Mid, QPalette::Shadow };
-		for (int i = 0; i < sizeof(groups) / sizeof(groups[0]); ++i)
-			palette.setColor(groups[i], interpolateColor(palette.color(groups[i]), tintTarget, 0.11f));
+    if (colorOverride) {
+        QPalette& palette = option.palette;
+        palette.setCurrentColorGroup(QPalette::Normal);
+        QColor tintTarget(colorOverride->r, colorOverride->g, colorOverride->b, colorOverride->a);
 
-		tree->style()->drawControl(QStyle::CE_PushButton, &option, painter, tree);
-	}
-	else
-	{
+        QPalette::ColorRole groups[] = { QPalette::Button, QPalette::Light, QPalette::Dark, QPalette::Midlight, QPalette::Mid, QPalette::Shadow };
+        for (int i = 0; i < sizeof(groups) / sizeof(groups[0]); ++i)
+            palette.setColor(groups[i], interpolateColor(palette.color(groups[i]), tintTarget, 0.11f));
+
+        tree->style()->drawControl(QStyle::CE_PushButtonBevel, &option, painter, pseudoDrawWidget);
+    }
+    else
+    {
         // Previously, a temporary QPushButton widget was used as the drawing aid
         // for this control.  However, our stylesheets didn't seem to affect the
         // QPushButton as intended, which left some of them with incorrect background
         // colors.  It seemed to work to let the tree be the drawing aid, but we should
         // probably revisit this in the future.
-        tree->style()->drawControl(QStyle::CE_PushButton, &option, painter, tree);
-	}
+        tree->style()->drawControl(QStyle::CE_PushButtonBevel, &option, painter, pseudoDrawWidget);
+    }
 
     QRect textRect;
     if ((buttonFlags & BUTTON_DISABLED) == 0 && buttonFlags & BUTTON_POPUP_ARROW)
@@ -310,12 +321,12 @@ void PropertyDrawContext::drawButton(const QRect& rect, const wchar_t* text, int
     if ((buttonFlags & BUTTON_CENTER) == 0)
         textRect.adjust(4, 0, -5, 0);
 
-	QColor textColor;
-	if (colorOverride && !(buttonFlags & BUTTON_DISABLED))
-		textColor = interpolateColor(tree->palette().color(QPalette::Normal, QPalette::ButtonText), 
-									 QColor(colorOverride->r, colorOverride->g, colorOverride->b, colorOverride->a), 0.4f);
-	else
-		textColor = tree->palette().color((buttonFlags & BUTTON_DISABLED) ? QPalette::Disabled : QPalette::Normal, QPalette::ButtonText);
+    QColor textColor;
+    if (colorOverride && !(buttonFlags & BUTTON_DISABLED))
+        textColor = interpolateColor(tree->palette().color(QPalette::Normal, QPalette::ButtonText),
+            QColor(colorOverride->r, colorOverride->g, colorOverride->b, colorOverride->a), 0.4f);
+    else
+        textColor = tree->palette().color((buttonFlags & BUTTON_DISABLED) ? QPalette::Disabled : QPalette::Normal, QPalette::ButtonText);
     tree->_drawRowValue(*painter, text, font, textRect, textColor, false, (buttonFlags & BUTTON_CENTER) != 0);
 }
 
@@ -368,7 +379,7 @@ void PropertyDrawContext::drawButtonWithIcon(const QIcon& icon, const QRect& rec
 
 void PropertyDrawContext::drawValueText(bool highlighted, const wchar_t* text) const
 {
-	QColor textColor = highlighted ? tree->palette().highlight().color() : tree->palette().buttonText().color();
+    QColor textColor = highlighted ? tree->palette().highlight().color() : tree->palette().buttonText().color();
     QRect textRect(widgetRect.left() + 3, widgetRect.top() + 2, widgetRect.width() - 6, widgetRect.height() - 4);
     tree->_drawRowValue(*painter, text, &tree->font(), textRect, textColor, false, false);
 }
@@ -376,7 +387,7 @@ void PropertyDrawContext::drawValueText(bool highlighted, const wchar_t* text) c
 void PropertyDrawContext::drawEntry(const wchar_t* text, bool pathEllipsis, bool grayBackground, int trailingOffset) const
 {
     QRect rt = widgetRect;
-	rt.adjust(0, 0, -trailingOffset, 0);
+    rt.adjust(0, 0, -trailingOffset, 0);
 
     // the drawing context requires context so that the style sheet can be used:
     QFrame frameForContext;
@@ -393,11 +404,11 @@ void PropertyDrawContext::drawEntry(const wchar_t* text, bool pathEllipsis, bool
     option.midLineWidth = 0;
     if (!grayBackground)
         option.state |= QStyle::State_Enabled;
-	else {
-		option.palette.setCurrentColorGroup(QPalette::Disabled);
-	}
+    else {
+        option.palette.setCurrentColorGroup(QPalette::Disabled);
+    }
     if (captured)
-      option.state |= QStyle::State_HasFocus;
+        option.state |= QStyle::State_HasFocus;
     option.rect = rt; // option.rect is the rectangle to be drawn on.
     QRect textRect = tree->style()->subElementRect(QStyle::SE_LineEditContents, &option, &forContext);
     if (!textRect.isValid())
@@ -408,16 +419,16 @@ void PropertyDrawContext::drawEntry(const wchar_t* text, bool pathEllipsis, bool
     else {
         textRect.adjust(2, 1, -2, -1);
     }
-    
+
     // make sure the context control is polished (ie, ready for rendering) since we need to use its color palette:
     forContext.ensurePolished();
 
-	// some styles rely on default pens
+    // some styles rely on default pens
     painter->setPen(QPen(forContext.palette().color(QPalette::Text)));
     painter->setBrush(QBrush(forContext.palette().color(QPalette::Base)));
 
     tree->style()->drawPrimitive(QStyle::PE_PanelLineEdit, &option, painter, &forContext);
-    tree->_drawRowValue(*painter, text, &tree->font(),  textRect,  forContext.palette().color(QPalette::Text), pathEllipsis, false);
+    tree->_drawRowValue(*painter, text, &tree->font(), textRect, forContext.palette().color(QPalette::Text), pathEllipsis, false);
     // end amazno changes
 }
 

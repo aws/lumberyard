@@ -17,10 +17,12 @@ AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // class '...' needs t
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzQtComponents/Components/Widgets/ElidingLabel.h>
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLayout>
-#include <QtWidgets/QPushButton>
+#include <QtWidgets/QToolButton>
+#include <QtWidgets/QCheckBox>
 #include <QtCore/QPointer>
 #include <QtCore/QElapsedTimer>
 AZ_POP_DISABLE_WARNING
@@ -126,8 +128,6 @@ namespace AzToolsFramework
         void UpdateIndicator(const char* imagePath);
 
         void SetFilterString(const AZStd::string& str);
-
-        static QString MakeFilterHighlightedName(const QString& name, const QString& filter);
     protected:
         int CalculateLabelWidth() const;
 
@@ -143,15 +143,16 @@ namespace AzToolsFramework
         QHBoxLayout* m_middleLayout;
         QHBoxLayout* m_rightHandSideLayout;
         
-        QPointer <QPushButton> m_dropDownArrow;
-        QPointer <QPushButton> m_containerClearButton;
-        QPointer <QPushButton> m_containerAddButton;
-        QPointer <QPushButton> m_elementRemoveButton;
+        QPointer <QCheckBox> m_dropDownArrow;
+        QPointer <QToolButton> m_containerClearButton;
+        QPointer <QToolButton> m_containerAddButton;
+        QPointer <QToolButton> m_elementRemoveButton;
 
         QWidget* m_leftAreaContainer;
+        QWidget* m_middleAreaContainer;
 
         QLabel* m_indicatorLabel;
-        QLabel* m_nameLabel;
+        AzQtComponents::ElidingLabel* m_nameLabel;
         QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
         InstanceDataNode* m_sourceNode;
 

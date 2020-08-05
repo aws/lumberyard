@@ -63,9 +63,11 @@
 #include <Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h>
+#include <Editor/GraphCanvas/Components/NodeDescriptors/NodelingDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/UserDefinedNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.h>
+#include <Editor/GraphCanvas/Components/NodeDescriptors/FunctionNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/MappingComponent.h>
 
 #include <Editor/View/Widgets/VariablePanel/VariableDockWidget.h>
@@ -117,6 +119,8 @@ namespace ScriptCanvas
             ScriptCanvasEditor::GetVariableNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::SetVariableNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::UserDefinedNodeDescriptorComponent::CreateDescriptor(),
+            ScriptCanvasEditor::FunctionNodeDescriptorComponent::CreateDescriptor(),
+            ScriptCanvasEditor::NodelingDescriptorComponent::CreateDescriptor()
             });
 
         auto libraryDescriptors = ScriptCanvasEditor::GetLibraryDescriptors();

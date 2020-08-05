@@ -131,6 +131,13 @@ namespace GraphCanvas
 
         virtual void ResetReference(const Endpoint& endpoint)
         {
+            AZ_UNUSED(endpoint);
+        }
+
+        virtual void ResetProperty(const NodeId& nodeId, const AZ::Crc32& propertyId)
+        {
+            AZ_UNUSED(nodeId);
+            AZ_UNUSED(propertyId);
         }
 
         virtual void RemoveSlot(const Endpoint& endpoint)

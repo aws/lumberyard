@@ -210,10 +210,15 @@ namespace ScriptCanvasEditor
         {
             return;
         }
-            
+
+        if (!report.empty())
+        {
+            Checkpoint(AZStd::string::format("MarkComplete: %s", report.data()));
+        }
+
         if (m_graphIsComplete)
         {
-            AddFailure(AZStd::string::format("MarkComplete was called twice. %s", report.data()));
+            AddFailure("MarkComplete was called twice!");
         }
         else
         {
@@ -240,7 +245,11 @@ namespace ScriptCanvasEditor
         }
 
         m_successes.push_back(report);
-        Checkpoint(AZStd::string::format("AddSuccess: %s", report.data()));
+
+        if (!report.empty())
+        {
+            Checkpoint(AZStd::string::format("AddSuccess: %s", report.data()));
+        }
     }
 
     inline void Reporter::ExpectFalse(const bool value, const Report& report)
@@ -249,7 +258,11 @@ namespace ScriptCanvasEditor
         {
             AddFailure(AZStd::string::format("Error | Expected false.\n%s", report.data()));
         }
-        Checkpoint(AZStd::string::format("ExpectFalse: %s", report.data()));
+
+        if (!report.empty())
+        {
+            Checkpoint(AZStd::string::format("ExpectFalse: %s", report.data()));
+        }
     }
 
     inline void Reporter::ExpectTrue(const bool value, const Report& report)
@@ -258,22 +271,34 @@ namespace ScriptCanvasEditor
         {
             AddFailure(AZStd::string::format("Error | Expected true.\n%s", report.data()));
         }
-        Checkpoint(AZStd::string::format("ExpectTrue: %s", report.data()));
+
+        if (!report.empty())
+        {
+            Checkpoint(AZStd::string::format("ExpectTrue: %s", report.data()));
+        }
     }
     
     inline void Reporter::ExpectEqualNumber(const Data::NumberType lhs, const Data::NumberType rhs, const Report& report)
     {
         if (!AZ::IsClose(lhs, rhs, 0.001))
-        { 
+        {
             AddFailure(AZStd::string::format("Error | Expected near value.\n%s", report.data()));
         }
-        Checkpoint(AZStd::string::format("ExpectEqualNumber: %s", report.data()));
+
+        if (!report.empty())
+        {
+            Checkpoint(AZStd::string::format("ExpectEqualNumber: %s", report.data()));
+        }
     }
     
     inline void Reporter::ExpectNotEqualNumber(const Data::NumberType lhs, const Data::NumberType rhs, const Report& report)
     {
         SCRIPT_CANVAS_UNIT_TEST_REPORTER_EXPECT_NE(lhs, rhs)
-        Checkpoint(AZStd::string::format("ExpectNotEqualNumber: %s", report.data()));
+
+        if (!report.empty())
+        {
+            Checkpoint(AZStd::string::format("ExpectNotEqualNumber: %s", report.data()));
+        }
     }
 
     SCRIPT_CANVAS_UNIT_TEST_EQUALITY_OVERLOAD_IMPLEMENTATIONS(Reporter, ExpectEqual, SCRIPT_CANVAS_UNIT_TEST_REPORTER_EXPECT_EQ)

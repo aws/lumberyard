@@ -196,6 +196,7 @@ private:
     CUiAnimViewDopeSheetBase*   m_wndDopeSheet;
     QDockWidget* m_wndCurveEditorDock;
     UiAnimViewCurveEditorDialog*    m_wndCurveEditor;
+    CUiAnimViewKeyPropertiesDlg* m_wndKeyProperties;
     CUiAnimViewFindDlg* m_findDlg;
     QToolBar* m_mainToolBar;
     QToolBar* m_keysToolBar;

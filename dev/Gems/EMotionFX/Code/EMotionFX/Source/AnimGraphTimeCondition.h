@@ -63,7 +63,7 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
         void Reset(AnimGraphInstance* animGraphInstance) override;
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         void SetCountDownTime(float countDownTime);
         float GetCountDownTime() const;

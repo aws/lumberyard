@@ -17,6 +17,7 @@
 
 #include <Utils/Allocators.h>
 #include <System/SystemComponent.h>
+#include <System/Cloth.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -28,19 +29,14 @@
 #include <NvCloth/Callbacks.h>
 #include <NvCloth/Factory.h>
 #include <NvCloth/Solver.h>
-#include <NvCloth/Fabric.h>
-#include <NvCloth/Cloth.h>
 
-#ifdef NVCLOTH_EDITOR
-#include <Editor/PropertyTypes.h>
-#endif //NVCLOTH_EDITOR
+#ifdef CUDA_ENABLED
+#include <cuda.h>
+#include <CryLibrary.h>
+#endif
 
 namespace NvCloth
 {
-    const char* g_clothDebugDrawCVAR = "cloth_DebugDraw";
-    const char* g_clothDebugDrawNormalsCVAR = "cloth_DebugDrawNormals";
-    const char* g_clothDebugDrawCollidersCVAR = "cloth_DebugDrawColliders";
-
     namespace
     {
         // Implementation of the memory allocation callback interface using nvcloth allocator.
@@ -84,9 +80,23 @@ namespace NvCloth
 
                 default:
                     AZ_Error("NvCloth", false, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
+                    m_lastError = code;
                     break;
                 }
             }
+
+            physx::PxErrorCode::Enum GetLastError() const
+            {
+                return m_lastError;
+            }
+
+            void ResetLastError()
+            {
+                m_lastError = physx::PxErrorCode::eNO_ERROR;
+            }
+
+        private:
+            physx::PxErrorCode::Enum m_lastError = physx::PxErrorCode::eNO_ERROR;
         };
 
         // Implementation of the assert handler interface directing nvcloth asserts to Lumberyard assertion system.
@@ -104,6 +114,81 @@ namespace NvCloth
         AZStd::unique_ptr<AzClothAllocatorCallback> ClothAllocatorCallback;
         AZStd::unique_ptr<AzClothErrorCallback> ClothErrorCallback;
         AZStd::unique_ptr<AzClothAssertHandler> ClothAssertHandler;
+
+#ifdef CUDA_ENABLED
+        class CudaContextManager
+        {
+        public:
+            static AZStd::unique_ptr<CudaContextManager> Create()
+            {
+                // CUDA requires nvcuda.dll to work, which is part of NVIDIA graphics card driver.
+                // Loading the library before any cuda call to determine if it's available.
+                HMODULE nvcudaLib = CryLoadLibrary("nvcuda.dll");
+                if (!nvcudaLib)
+                {
+                    AZ_Warning("Cloth", false, "Cannot load nvcuda.dll. CUDA requires an NVIDIA GPU with latest drivers.");
+                    return nullptr;
+                }
+
+                if (!NvClothCompiledWithCudaSupport())
+                {
+                    AZ_Warning("Cloth", false, "NvCloth library not built with CUDA support");
+                    return nullptr;
+                }
+
+                // Initialize CUDA and get context.
+                CUresult cudaResult = cuInit(0);
+                if (cudaResult != CUDA_SUCCESS)
+                {
+                    AZ_Warning("Cloth", false, "CUDA didn't initialize correctly. Error code: %d", cudaResult);
+                    return nullptr;
+                }
+
+                int cudaDeviceCount = 0;
+                cudaResult = cuDeviceGetCount(&cudaDeviceCount);
+                if (cudaResult != CUDA_SUCCESS || cudaDeviceCount <= 0)
+                {
+                    AZ_Warning("Cloth", false, "CUDA initialization didn't get any devices");
+                    return nullptr;
+                }
+
+                CUcontext cudaContext = NULL;
+                const int flags = 0;
+                const CUdevice device = 0; // Use first device to create cuda context on
+                cudaResult = cuCtxCreate(&cudaContext, flags, device);
+                if (cudaResult != CUDA_SUCCESS)
+                {
+                    AZ_Warning("Cloth", false, "CUDA didn't create context correctly. Error code: %d", cudaResult);
+                    return nullptr;
+                }
+
+                return AZStd::make_unique<CudaContextManager>(cudaContext);
+            }
+
+            CudaContextManager(CUcontext cudaContext)
+                : m_cudaContext(cudaContext)
+            {
+                AZ_Assert(m_cudaContext, "Invalid cuda context");
+            }
+
+            ~CudaContextManager()
+            {
+                cuCtxDestroy(m_cudaContext);
+            }
+
+            CUcontext GetContext()
+            {
+                return m_cudaContext;
+            }
+
+        private:
+            CUcontext m_cudaContext = NULL;
+        };
+
+        AZStd::unique_ptr<CudaContextManager> ClothCudaContextManager;
+
+        int32_t g_clothEnableCuda = 0;
+#endif //CUDA_ENABLED
     }
 
     void SystemComponent::Reflect(AZ::ReflectContext* context)
@@ -138,79 +223,105 @@ namespace NvCloth
     {
     }
 
-    void SystemComponent::Init()
-    {
-    }
-
     void SystemComponent::Activate()
     {
-        InitializeNvClothLibrary();
-
         CrySystemEventBus::Handler::BusConnect();
-        SystemRequestBus::Handler::BusConnect();
 
-#ifdef NVCLOTH_EDITOR
-        m_propertyHandlers = NvCloth::Editor::RegisterPropertyTypes();
-#endif //NVCLOTH_EDITOR
+        // Initialization of NvCloth Library delayed until OnCrySystemInitialized
+        // because that's when CVARs will be registered and available.
     }
 
     void SystemComponent::Deactivate()
     {
-#ifdef NVCLOTH_EDITOR
-        NvCloth::Editor::UnregisterPropertyTypes(m_propertyHandlers);
-#endif //NVCLOTH_EDITOR
-
-        SystemRequestBus::Handler::BusDisconnect();
         CrySystemEventBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
+        SystemRequestBus::Handler::BusDisconnect();
 
         TearDownNvClothLibrary();
     }
 
-    void SystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams)
+    void SystemComponent::OnCrySystemInitialized(ISystem& system,
+        [[maybe_unused]] const SSystemInitParams& systemInitParams)
     {
-        AZ_UNUSED(systemInitParams);
+        SSystemGlobalEnvironment* globalEnv = system.GetGlobalEnvironment();
+        if (globalEnv && globalEnv->pConsole)
+        {
+            // Can't use macros here because we have to use our pointer.
+            // Still using legacy console cvars because they read the values from cfg files.
+#ifdef CUDA_ENABLED
+            globalEnv->pConsole->Register("cloth_EnableCuda", &g_clothEnableCuda, 0, VF_READONLY | VF_INVISIBLE,
+                "If enabled, cloth simulation will run on GPU using CUDA on supported cards.");
+#endif //CUDA_ENABLED
+        }
 
-#if !defined(AZ_MONOLITHIC_BUILD)
-        // When module is linked dynamically, we must set our gEnv pointer.
-        // When module is linked statically, we'll share the application's gEnv pointer.
-        gEnv = system.GetGlobalEnvironment();
-#else
-        AZ_UNUSED(system);
-#endif
+        InitializeNvClothLibrary();
 
-        REGISTER_INT(g_clothDebugDrawCVAR, 0, VF_NULL,
-            "Draw cloth wireframe mesh:\n"
-            " 0 - Disabled\n"
-            " 1 - Cloth wireframe and particle weights");
-
-        REGISTER_INT(g_clothDebugDrawNormalsCVAR, 0, VF_NULL,
-            "Draw cloth normals:\n"
-            " 0 - Disabled\n"
-            " 1 - Cloth normals\n"
-            " 2 - Cloth normals, tangents and bitangents");
-
-        REGISTER_INT(g_clothDebugDrawCollidersCVAR, 0, VF_NULL,
-            "Draw cloth colliders:\n"
-            " 0 - Disabled\n"
-            " 1 - Cloth colliders");
+        SystemRequestBus::Handler::BusConnect();
+        AZ::TickBus::Handler::BusConnect();
     }
 
     void SystemComponent::OnCrySystemShutdown(ISystem& system)
     {
-        AZ_UNUSED(system);
-
-        UNREGISTER_CVAR(g_clothDebugDrawCVAR);
-        UNREGISTER_CVAR(g_clothDebugDrawNormalsCVAR);
-        UNREGISTER_CVAR(g_clothDebugDrawCollidersCVAR);
-
-#if !defined(AZ_MONOLITHIC_BUILD)
-        gEnv = nullptr;
-#endif
+        SSystemGlobalEnvironment* globalEnv = system.GetGlobalEnvironment();
+        if (globalEnv && globalEnv->pConsole)
+        {
+#ifdef CUDA_ENABLED
+            globalEnv->pConsole->UnregisterVariable("cloth_EnableCuda");
+#endif //CUDA_ENABLED
+        }
     }
 
     nv::cloth::Factory* SystemComponent::GetClothFactory()
     {
         return m_factory.get();
+    }
+
+    void SystemComponent::AddCloth(nv::cloth::Cloth* cloth)
+    {
+        if (cloth)
+        {
+            m_solver->addCloth(cloth);
+        }
+    }
+
+    void SystemComponent::RemoveCloth(nv::cloth::Cloth* cloth)
+    {
+        if (cloth)
+        {
+            m_solver->removeCloth(cloth);
+        }
+    }
+
+    void SystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    {
+        AZ_UNUSED(time);
+
+        if (m_solver->getNumCloths() > 0)
+        {
+            SystemNotificationsBus::Broadcast(&SystemNotificationsBus::Events::OnPreUpdateClothSimulation, deltaTime);
+
+            if (m_solver->beginSimulation(deltaTime))
+            {
+                const int simChunkCount = m_solver->getSimulationChunkCount();
+                for (int i = 0; i < simChunkCount; ++i)
+                {
+                    m_solver->simulateChunk(i);
+                }
+
+                m_solver->endSimulation(); // Cloth inter collisions are performed here (when applicable)
+            }
+
+            ClothInstanceNotificationsBus::Broadcast(&ClothInstanceNotificationsBus::Events::UpdateClothInstance, deltaTime);
+
+            SystemNotificationsBus::Broadcast(&SystemNotificationsBus::Events::OnPostUpdateClothSimulation, deltaTime);
+        }
+    }
+
+    int SystemComponent::GetTickOrder()
+    {
+        // Using Physics tick order which guarantees to happen after the animation tick,
+        // this is necessary for actor cloth colliders to be updated with the current pose.
+        return AZ::TICK_PHYSICS;
     }
 
     void SystemComponent::InitializeNvClothLibrary()
@@ -226,16 +337,23 @@ namespace NvCloth
             ClothErrorCallback.get(), 
             ClothAssertHandler.get(), 
             nullptr/*profilerCallback*/);
+        AZ_Assert(ClothErrorCallback->GetLastError() == physx::PxErrorCode::eNO_ERROR, "Failed to initialize NvCloth library");
 
-        // Create a CPU NvCloth Factory
-        m_factory = FactoryUniquePtr(NvClothCreateFactoryCPU());
-        AZ_Assert(m_factory, "Failed to create CPU cloth factory");
+        // Create Factory
+        CreateNvClothFactory();
+
+        // Create NvCloth Solver
+        m_solver = SolverUniquePtr(m_factory->createSolver());
+        AZ_Assert(m_solver, "Failed to create cloth solver");
     }
 
     void SystemComponent::TearDownNvClothLibrary()
     {
-        // Destroy NvCloth Factory
-        m_factory.reset();
+        // Destroy NvCloth Solver
+        m_solver.reset();
+
+        // Destroy Factory
+        DestroyNvClothFactory();
 
         // NvCloth library doesn't need any destruction
 
@@ -245,29 +363,58 @@ namespace NvCloth
 
         AZ::AllocatorInstance<AzClothAllocator>::Destroy();
     }
-
-    void NvClothTypesDeleter::operator()(nv::cloth::Factory* factory) const
+    void SystemComponent::CreateNvClothFactory()
     {
-        NvClothDestroyFactory(factory);
-    }
-
-    void NvClothTypesDeleter::operator()(nv::cloth::Solver* solver) const
-    {
-        // Any cloth instance remaining in the solver must be removed before deleting it.
-        while (solver->getNumCloths() > 0)
+#ifdef CUDA_ENABLED
+        // Try to create a GPU(CUDA) NvCloth Factory
+        if (g_clothEnableCuda)
         {
-            solver->removeCloth(*solver->getClothList());
+            ClothCudaContextManager = CudaContextManager::Create();
+            if (ClothCudaContextManager)
+            {
+                m_factory = FactoryUniquePtr(NvClothCreateFactoryCUDA(ClothCudaContextManager->GetContext()));
+                AZ_Assert(m_factory, "Failed to create CUDA cloth factory");
+
+                if (ClothErrorCallback->GetLastError() != physx::PxErrorCode::eNO_ERROR)
+                {
+                    m_factory.reset(); // Destroy this CUDA factory that was initialized with errors
+                    ClothCudaContextManager.reset(); // Destroy CUDA Context Manager
+                    ClothErrorCallback->ResetLastError(); // Reset error to give way to create a different type of factory
+                    AZ_Warning("Cloth", false,
+                        "NvCloth library failed to create CUDA factory. "
+                        "Please check CUDA is installed, the GPU has CUDA support and its drivers are up to date.");
+                }
+                else
+                {
+                    AZ_Printf("Cloth", "NVIDIA NvCloth Gem using GPU (CUDA) for cloth simulation.\n");
+                }
+            }
         }
-        NV_CLOTH_DELETE(solver);
+#endif //CUDA_ENABLED
+
+        // Create a CPU NvCloth Factory
+        if (!m_factory)
+        {
+            m_factory = FactoryUniquePtr(NvClothCreateFactoryCPU());
+            AZ_Assert(m_factory, "Failed to create CPU cloth factory");
+
+            if (ClothErrorCallback->GetLastError() != physx::PxErrorCode::eNO_ERROR)
+            {
+                AZ_Error("Cloth", false, "NvCloth library failed to create CPU factory.");
+            }
+            else
+            {
+                AZ_Printf("Cloth", "NVIDIA NvCloth Gem using CPU for cloth simulation.\n");
+            }
+        }
     }
 
-    void NvClothTypesDeleter::operator()(nv::cloth::Fabric* fabric) const
+    void SystemComponent::DestroyNvClothFactory()
     {
-        fabric->decRefCount();
-    }
+        m_factory.reset();
 
-    void NvClothTypesDeleter::operator()(nv::cloth::Cloth* cloth) const
-    {
-        NV_CLOTH_DELETE(cloth);
+#ifdef CUDA_ENABLED
+        ClothCudaContextManager.reset();
+#endif
     }
 } // namespace NvCloth

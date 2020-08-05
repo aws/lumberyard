@@ -445,6 +445,13 @@ void AIConsoleVars::Init()
         " Fast machine [10]\n"
         " Slow machine [4]\n"
         " Smooth [1]\n");
+    DefineConstIntCVarName("ai_NavPhysicsMode", NavPhysicsMode, 1, VF_CHEAT | VF_CHEAT_NOCHECK,
+        "Navigation physics integration mode which determines where collider and terrain data used in navigation mesh calculations comes from.\n"
+        "Usage: ai_NavPhysicsMode [0+]\n"
+        "Default is 1 (CryPhysics and AZ::Physics).\n"
+        " 0 - CryPhysics only\n"
+        " 1 - CryPhysics and AZ::Physics\n"
+        " 2 - AZ::Physics only\n");
     DefineConstIntCVarName("ai_DebugDrawNavigationWorldMonitor", DebugDrawNavigationWorldMonitor, 0, VF_CHEAT | VF_CHEAT_NOCHECK,
         "Enables displaying bounding boxes for world changes.\n"
         "Usage: ai_DebugDrawNavigationWorldMonitor [0/1]\n"
@@ -540,9 +547,9 @@ void AIConsoleVars::Init()
         "Usage: ai_AllTime [0/1]\n"
         "Default is 0 (off). Times all agents and displays the time used updating\n"
         "each of them. The name is colour coded to represent the update time.\n"
-        "	Green: less than 1 ms (ok)\n"
-        "	White: 1 ms to 5 ms\n"
-        "	Red: more than 5 ms\n"
+        "   Green: less than 1 ms (ok)\n"
+        "   White: 1 ms to 5 ms\n"
+        "   Red: more than 5 ms\n"
         "You must enable ai_DebugDraw before you can use this tool.");
     DefineConstIntCVarName("ai_ProfileGoals", ProfileGoals, 0, VF_CHEAT | VF_CHEAT_NOCHECK,
         "Toggles timing of AI goal execution.\n"

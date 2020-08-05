@@ -51,14 +51,14 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)             { mPreviousNode = nullptr; }
-            ~UniqueData() {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+            ~UniqueData() = default;
 
-            void Reset() override   { mPreviousNode = nullptr; }
+            void Reset() override { m_previousNode = nullptr; }
+            void Update() override;
 
         public:
-            AnimGraphNode* mPreviousNode;
+            AnimGraphNode* m_previousNode = nullptr;
         };
 
         AnimGraphExitNode();
@@ -66,7 +66,7 @@ namespace EMotionFX
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         AZ::Color GetVisualColor() const override                   { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
         bool GetCanActAsState() const override                      { return true; }

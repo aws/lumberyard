@@ -27,14 +27,15 @@ namespace GradientSignal
         ////////////////////////////////////////////////////////////////////////
         // EBusTraits
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
         virtual ~GradientPreviewRequests() = default;
 
         virtual void Refresh() = 0;
-        virtual void CancelRefresh() = 0;
+        virtual AZ::EntityId CancelRefresh() = 0;
     };
 
     using GradientPreviewRequestBus = AZ::EBus<GradientPreviewRequests>;

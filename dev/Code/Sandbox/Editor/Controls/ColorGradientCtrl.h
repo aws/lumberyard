@@ -19,6 +19,11 @@
 #include <ISplines.h>
 #include "Controls/WndGridHelper.h"
 
+namespace AZ
+{
+    class Color;
+}
+
 // Notify event sent when spline is being modified.
 #define CLRGRDN_CHANGE (0x0001)
 // Notify event sent just before when spline is modified.
@@ -110,19 +115,19 @@ protected:
     float  XOfsToTime(int x);
     QPoint XOfsToPoint(int x);
 
-    QColor XOfsToColor(int x);
-    QColor TimeToColor(float time);
+    AZ::Color XOfsToColor(int x);
+    AZ::Color TimeToColor(float time);
 
     void ClearSelection();
 
     void SendNotifyEvent(int nEvent);
 
-    QColor ValueToColor(ISplineInterpolator::ValueType val);
-    void ColorToValue(const QColor& col, ISplineInterpolator::ValueType& val);
+    AZ::Color ValueToColor(ISplineInterpolator::ValueType val);
+    void ColorToValue(const AZ::Color& col, ISplineInterpolator::ValueType& val);
 
 
 private:
-    void OnKeyColorChanged(const QColor& color);
+    void OnKeyColorChanged(const AZ::Color& color);
 
 private:
     ISplineInterpolator* m_pSpline;

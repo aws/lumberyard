@@ -15,11 +15,13 @@
 #include "BaseManipulator.h"
 
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
     class ManipulatorView;
+    struct GridSnapAction;
 
     /// PlanarManipulator serves as a visual tool for users to modify values
     /// in two dimension in a plane defined two non-collinear axes in 3D space.
@@ -42,6 +44,14 @@ namespace AzToolsFramework
         /// A Manipulator must only be created and managed through a shared_ptr.
         static AZStd::shared_ptr<PlanarManipulator> MakeShared(const AZ::Transform& worldFromLocal);
 
+        /// Unchanging data set once for the planar manipulator.
+        struct Fixed
+        {
+            AZ::Vector3 m_axis1 = AZ::Vector3::CreateAxisX(); ///< m_axis1 and m_axis2 have to be orthogonal, they together define a plane in 3d space.
+            AZ::Vector3 m_axis2 = AZ::Vector3::CreateAxisY();
+            AZ::Vector3 m_normal = AZ::Vector3::CreateAxisZ(); ///< m_normal is calculated automatically when setting the axes.
+        };
+
         /// The state of the manipulator at the start of an interaction.
         struct Start
         {
@@ -58,6 +68,7 @@ namespace AzToolsFramework
         /// Mouse action data used by MouseActionCallback (wraps Start and Current manipulator state).
         struct Action
         {
+            Fixed m_fixed;
             Start m_start;
             Current m_current;
             ViewportInteraction::KeyboardModifiers m_modifiers;
@@ -90,7 +101,14 @@ namespace AzToolsFramework
         const AZ::Vector3& GetAxis2() const { return m_fixed.m_axis2; }
         AZ::Vector3 GetPosition() const { return m_localTransform.GetTranslation(); }
 
+        // LUMBERYARD_DEPRECATED(LY-106737)
         void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
+
+        template<typename Views>
+        void SetViews(Views&& views)
+        {
+            m_manipulatorViews = AZStd::forward<Views>(views);
+        }
 
     private:
         void OnLeftMouseDownImpl(
@@ -102,14 +120,6 @@ namespace AzToolsFramework
 
         void InvalidateImpl() override;
         void SetBoundsDirtyImpl() override;
-
-        /// Unchanging data set once for the planar manipulator.
-        struct Fixed
-        {
-            AZ::Vector3 m_axis1 = AZ::Vector3::CreateAxisX(); ///< m_axis1 and m_axis2 have to be orthogonal, they together define a plane in 3d space.
-            AZ::Vector3 m_axis2 = AZ::Vector3::CreateAxisY();
-            AZ::Vector3 m_normal = AZ::Vector3::CreateAxisZ(); ///< m_normal is calculated automatically when setting the axes.
-        };
 
         /// Initial data recorded when a press first happens with a planar manipulator.
         struct StartInternal
@@ -129,15 +139,15 @@ namespace AzToolsFramework
         MouseActionCallback m_onLeftMouseUpCallback = nullptr;
         MouseActionCallback m_onMouseMoveCallback = nullptr;
 
-        AZStd::unique_ptr<ManipulatorView> m_manipulatorView = nullptr; ///< Look of manipulator.
+        ManipulatorViews m_manipulatorViews; ///< Look of manipulator.
 
         static StartInternal CalculateManipulationDataStart(
             const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
-            bool snapping, float gridSize, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection);
+            const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection);
 
         static Action CalculateManipulationDataAction(
             const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
-            const AZ::Transform& localTransform, bool snapping, float gridSize, const AZ::Vector3& rayOrigin,
+            const AZ::Transform& localTransform, const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin,
             const AZ::Vector3& rayDirection, ViewportInteraction::KeyboardModifiers keyboardModifiers);
     };
 } // namespace AzToolsFramework

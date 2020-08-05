@@ -30,12 +30,16 @@ namespace EMotionFX
         Q_OBJECT //AUTOMOC
 
     public:
+        enum
+        {
+            CLASS_ID = 0x8efd2bee
+        };
         ClothJointInspectorPlugin();
         ~ClothJointInspectorPlugin();
 
         // EMStudioPlugin overrides
         const char* GetName() const override                { return "Cloth Colliders"; }
-        uint32 GetClassID() const override                  { return AZ_CRC("ClothJointInspectorPlugin", 0x8efd2bee); }
+        uint32 GetClassID() const override                  { return CLASS_ID; }
         bool GetIsClosable() const override                 { return true;  }
         bool GetIsFloatable() const override                { return true;  }
         bool GetIsVertical() const override                 { return false; }
@@ -46,6 +50,7 @@ namespace EMotionFX
         void OnContextMenu(QMenu* menu, const QModelIndexList& selectedRowIndices) override;
 
         void Render(EMStudio::RenderPlugin* renderPlugin, RenderInfo* renderInfo) override;
+        static bool IsJointInCloth(const QModelIndex& index);
 
     public slots:
         void OnAddCollider();

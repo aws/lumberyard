@@ -15,7 +15,9 @@
 #include <AzQtComponents/Components/Style.h>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+#include <QHBoxLayout>
 #include <QToolButton>
+#include <QToolBar>
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QSettings>
@@ -28,7 +30,7 @@ namespace AzQtComponents
     const QChar g_separator = '/';
     const QChar g_windowsSeparator = '\\';
     const QString g_labelName = QStringLiteral("BreadCrumbLabel");
-    const QString g_TruncationLabel = "...";
+    const QString g_buttonName = QStringLiteral("MenuButton");
 
     BreadCrumbs::BreadCrumbs(QWidget* parent)
         : QWidget(parent)
@@ -37,6 +39,12 @@ namespace AzQtComponents
         // create the layout
         QHBoxLayout* boxLayout = new QHBoxLayout(this);
         boxLayout->setContentsMargins(0, 0, 0, 0);
+
+        m_menuButton = new QToolButton(this);
+        m_menuButton->setObjectName(g_buttonName);
+        m_menuButton->setAutoRaise(true);
+        boxLayout->addWidget(m_menuButton);
+        connect(m_menuButton, &QToolButton::clicked, this, &BreadCrumbs::showTruncatedPathsMenu);
 
         // create the label
         m_label = new QLabel(this);
@@ -80,6 +88,17 @@ namespace AzQtComponents
         line->setFrameShape(QFrame::VLine);
         line->setFrameShadow(QFrame::Sunken);
         return line;
+    }
+
+    QWidget* BreadCrumbs::createBackForwardToolBar()
+    {
+        QWidget* toolbar = new QWidget(this);
+        QHBoxLayout* lay = new QHBoxLayout(toolbar);
+        lay->setContentsMargins(10, 0, 10, 0);
+        lay->setSpacing(10);
+        lay->addWidget(createButton(NavigationButton::Back));
+        lay->addWidget(createButton(NavigationButton::Forward));
+        return toolbar;
     }
 
     QToolButton* BreadCrumbs::createButton(NavigationButton type)
@@ -195,6 +214,7 @@ namespace AzQtComponents
         const int availableWidth = static_cast<int>(width() * m_config.optimalPathWidth);
         const QFontMetricsF fm(m_label->font());
         QString plainTextPath = "";
+        m_menuButton->hide();
 
         auto formatLink = [this](const QString& fullPath, const QString& shortPath) -> QString {
             return QString("<a href=\"%1\" style=\"color: %2\">%3</a>").arg(fullPath, m_config.linkColor, shortPath);
@@ -220,7 +240,7 @@ namespace AzQtComponents
 
             if (fm.width(plainTextPath) > availableWidth)
             {
-                htmlString.prepend(QString("%1").arg(formatLink(g_TruncationLabel, g_TruncationLabel)));
+                m_menuButton->show();
                 break;
             }
 
@@ -301,22 +321,7 @@ namespace AzQtComponents
 
     void BreadCrumbs::onLinkActivated(const QString& link)
     {
-        if (link == g_TruncationLabel)
-        {
-            QMenu hiddenPaths;
-            for (int i = m_truncatedPaths.size() - 1; i >= 0; i--)
-            {
-                hiddenPaths.addAction(m_truncatedPaths.at(i), [this, i]() {
-                    Q_EMIT pathChanged(buildPathFromList(m_truncatedPaths, i + 1));
-                });
-            }
-
-            hiddenPaths.exec(QCursor::pos());
-        }
-        else
-        {
-            Q_EMIT pathChanged(link);
-        }
+        Q_EMIT pathChanged(link);
     }
 
     QString BreadCrumbs::buildPathFromList(const QStringList& fullPath, int pos)
@@ -333,5 +338,19 @@ namespace AzQtComponents
         }
 
         return path;
+    }
+
+    void BreadCrumbs::showTruncatedPathsMenu()
+    {
+        QMenu hiddenPaths;
+        for (int i = m_truncatedPaths.size() - 1; i >= 0; i--)
+        {
+            hiddenPaths.addAction(m_truncatedPaths.at(i), [this, i]() {
+                Q_EMIT pathChanged(buildPathFromList(m_truncatedPaths, i + 1));
+            });
+        }
+
+        const auto position = m_menuButton->mapToGlobal(m_menuButton->geometry().bottomLeft());
+        hiddenPaths.exec(position);
     }
 } // namespace AzQtComponents

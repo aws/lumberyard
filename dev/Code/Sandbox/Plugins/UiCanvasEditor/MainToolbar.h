@@ -12,7 +12,7 @@
 #pragma once
 
 #include <QToolBar>
-#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 class EditorWindow;
 class NewElementToolbarSection;
@@ -52,5 +52,5 @@ private:
     std::unique_ptr<CoordinateSystemToolbarSection> m_coordinateSystemToolbarSection;
     std::unique_ptr<CanvasSizeToolbarSection> m_canvasSizeToolbarSection;
 
-    AzToolsFramework::DHQDoubleSpinbox* m_zoomFactorSpinBox;
+    AzQtComponents::DoubleSpinBox* m_zoomFactorSpinBox;
 };

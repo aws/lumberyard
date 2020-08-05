@@ -388,7 +388,7 @@ namespace GraphCanvas
         m_focusTimer.setInterval(0);
         QObject::connect(&m_focusTimer, &QTimer::timeout, this, &GraphCanvasComboBox::HandleFocusState);
 
-        QObject::connect(&m_comboBoxMenu, &GraphCanvasComboBoxMenu::OnIndexSelected, this, &GraphCanvasComboBox::SetSelectedIndex);
+        QObject::connect(&m_comboBoxMenu, &GraphCanvasComboBoxMenu::OnIndexSelected, this, &GraphCanvasComboBox::UserSelectedIndex);
         QObject::connect(&m_comboBoxMenu, &GraphCanvasComboBoxMenu::OnFocusIn, this, &GraphCanvasComboBox::OnMenuFocusIn);
         QObject::connect(&m_comboBoxMenu, &GraphCanvasComboBoxMenu::OnFocusOut, this, &GraphCanvasComboBox::OnMenuFocusOut);
         QObject::connect(&m_comboBoxMenu, &GraphCanvasComboBoxMenu::CancelMenu, this, &GraphCanvasComboBox::ResetComboBox);
@@ -396,8 +396,6 @@ namespace GraphCanvas
         m_comboBoxMenu.accept();
 
         m_disableHidingStateSetter.AddStateController(m_comboBoxMenu.GetDisableHidingStateController());
-
-
     }
 
     GraphCanvasComboBox::~GraphCanvasComboBox()
@@ -435,7 +433,7 @@ namespace GraphCanvas
             }
         }
     }
-
+    
     QModelIndex GraphCanvasComboBox::GetSelectedIndex() const
     {
         return m_modelInterface->FindIndexForName(m_selectedName);
@@ -671,6 +669,18 @@ namespace GraphCanvas
 
     }
 
+    void GraphCanvasComboBox::UserSelectedIndex(const QModelIndex& selectedIndex)
+    {
+        QModelIndex previousIndex = m_modelInterface->FindIndexForName(m_selectedName);
+
+        if (previousIndex != selectedIndex)
+        {
+            SetSelectedIndex(selectedIndex);
+
+            Q_EMIT OnUserActionComplete();
+        }
+    }
+
     void GraphCanvasComboBox::OnTextChanged()
     {
         DisplayMenu();
@@ -702,6 +712,8 @@ namespace GraphCanvas
             setText("");
             UpdateFilter();
         }
+
+        Q_EMIT OnUserActionComplete();
 
         // When we press enter, we will also get an editing complete signal. We want to ignore that since we handled it here.
         m_ignoreNextComplete = true;

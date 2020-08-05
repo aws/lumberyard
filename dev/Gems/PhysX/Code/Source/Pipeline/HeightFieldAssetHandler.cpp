@@ -122,11 +122,26 @@ namespace PhysX
             HeightFieldAssetHeader header;
             readerStream.read(&header, sizeof(header));
 
-            // Parse version 1 (load from cooking).
-            if (header.m_assetVersion == 1)
+            // Parse the asset versions
+            if (header.m_assetVersion >= 1)
             {
                 if (header.m_assetDataSize > 0)
                 {
+                    // Version 1 doesn't have min/max heights, so only read this data for versions 2+.
+                    if (header.m_assetVersion >= 2)
+                    {
+                        readerStream.read(&physXHeightFieldAsset->m_minHeight, sizeof(float));
+                        readerStream.read(&physXHeightFieldAsset->m_maxHeight, sizeof(float));
+                    }
+                    else
+                    {
+                        // In versions 0 & 1, the data is cooked assuming the data starts at origin (min height = 0)
+                        // and has a max height of 1024.0f.
+                        const float v1HardCodedMaxHeight = 1024.0f;
+                        physXHeightFieldAsset->m_minHeight = 0.0f;
+                        physXHeightFieldAsset->m_maxHeight = v1HardCodedMaxHeight;
+                    }
+
                     // Create heightfield from cooked file
                     physx::PxPhysics& physx = PxGetPhysics();
                     physXHeightFieldAsset->SetHeightField(physx.createHeightField(readerStream));
@@ -164,7 +179,7 @@ namespace PhysX
             }
 
             HeightFieldAssetHeader header;
-            if (header.m_assetVersion == 1)
+            if (header.m_assetVersion == 2)
             {
                 physx::PxCooking* cooking = nullptr;
                 SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
@@ -185,11 +200,12 @@ namespace PhysX
                 // Cook description to file
                 physx::PxDefaultMemoryOutputStream writer;
                 bool success = cooking->cookHeightField(heightFieldDesc, writer);
-
-                header.m_assetDataSize = writer.getSize();
+                header.m_assetDataSize = writer.getSize() + 2 * sizeof(float);
 
                 PhysX::StreamWrapper writerStream(stream);
                 writerStream.write(&header, sizeof(header));
+                writerStream.write(&physXHeightFieldAsset->m_minHeight, sizeof(physXHeightFieldAsset->m_minHeight));
+                writerStream.write(&physXHeightFieldAsset->m_maxHeight, sizeof(physXHeightFieldAsset->m_maxHeight));
                 writerStream.write(writer.getData(), writer.getSize());
 
                 return success;

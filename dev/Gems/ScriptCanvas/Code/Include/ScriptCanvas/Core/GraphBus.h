@@ -15,6 +15,8 @@
 #include "Core.h"
 #include "Endpoint.h"
 
+#include <ScriptCanvas/Variable/VariableCore.h>
+
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Asset/AssetCommon.h>
@@ -168,6 +170,15 @@ namespace ScriptCanvas
         //! Notification when an endpoint has been disconnected.
         //! \param the target Endpoint. The source Endpoint can be obtained using EndpointNotificationBus::GetCurrentBusId().
         virtual void OnEndpointDisconnected(const Endpoint& targetEndpoint) {}
+
+        //! Notification when an endpoint has it's reference changed.
+        virtual void OnEndpointReferenceChanged(const VariableId& variableId) {}
+
+        virtual void OnEndpointConvertedToReference() {}
+
+        virtual void OnEndpointConvertedToValue() {}
+
+        virtual void OnSlotRecreated() {};
     };
 
     using EndpointNotificationBus = AZ::EBus<EndpointNotifications>;

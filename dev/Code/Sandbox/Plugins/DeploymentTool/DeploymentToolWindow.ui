@@ -400,7 +400,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QTabWidget" name="deployTargetsTabWidget">
+                 <widget class="AzQtComponents::TabWidget" name="deployTargetsTabWidget">
                   <property name="styleSheet">
                    <string notr="true"/>
                   </property>
@@ -1404,7 +1404,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QTabWidget" name="outputTabWidget">
+              <widget class="AzQtComponents::TabWidget" name="outputTabWidget">
                <property name="currentIndex">
                 <number>0</number>
                </property>
@@ -1523,6 +1523,14 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AzQtComponents::TabWidget</class>
+   <extends>QTabWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/TabWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

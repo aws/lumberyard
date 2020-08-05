@@ -1,0 +1,27 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                ">=0.1.0"
+            ],
+            "_comment": "LmbrCentral"
+        },
+        {
+            "Uuid": "869a0d0ec11a45c299917d45c81555e6",
+            "VersionConstraints": [
+                ">=0.1.0"
+            ],
+            "_comment": "ScriptCanvas"
+        }
+    ],
+    "GemFormatVersion": 3,
+    "Uuid": "81d5967d0b9b41d89754cce68a20882e",
+    "Name": "GraphicsReflectContext",
+    "DisplayName": "Graphics Scripting",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Exposes Graphics features to scripting systems like Script Canvas and Lua.",
+    "Tags": ["Scripting", "Rendering", "Effects"],
+    "IconPath": "preview.png"
+}

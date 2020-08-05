@@ -1,15 +1,14 @@
 {
-  "project_name": "StarterGame",
-  "project_id":  "{EFEEAD38-1D7A-5BA5-B0D5-3577272F7282}",
-    "product_name": "Starter Game",
+    "project_name": "StarterGame",
+    "product_name": "StarterGame",
     "executable_name": "StarterGameLauncher",
-    "code_folder": "Code/StarterGame",
-    "modules" : ["StarterGame"],
+    "modules" : [],
+    "project_id": "{2D414F84-4BC0-432D-8666-689F40F36F47}",
 
     "android_settings" : {
-        "package_name" : "com.amazon.lumberyard.startergame",
+        "package_name" : "com.lumberyard.startergame",
         "version_number" : 1,
-        "version_name" : "1.0.0",
+        "version_name" : "1.0.0.0",
         "orientation" : "landscape"
     }
 }

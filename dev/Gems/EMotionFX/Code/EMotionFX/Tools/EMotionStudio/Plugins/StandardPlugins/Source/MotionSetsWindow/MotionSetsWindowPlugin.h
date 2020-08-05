@@ -56,7 +56,7 @@ namespace EMStudio
         const char* GetCompileDate() const override     { return MCORE_DATE; }
         const char* GetName() const override            { return "Motion Sets"; }
         uint32 GetClassID() const override              { return MotionSetsWindowPlugin::CLASS_ID; }
-        const char* GetCreatorName() const override     { return "MysticGD"; }
+        const char* GetCreatorName() const override     { return "Amazon"; }
         float GetVersion() const override               { return 1.0f;  }
         bool GetIsClosable() const override             { return true;  }
         bool GetIsFloatable() const override            { return true;  }
@@ -65,6 +65,7 @@ namespace EMStudio
         // overloaded main init function
         bool Init() override;
         EMStudioPlugin* Clone() override;
+        void OnAfterLoadProject() override;
 
         void ReInit();
 
@@ -80,6 +81,7 @@ namespace EMStudio
         void LoadMotionSet(AZStd::string filename);
 
         static bool GetMotionSetCommandInfo(MCore::Command* command, const MCore::CommandLine& parameters,EMotionFX::MotionSet** outMotionSet, MotionSetsWindowPlugin** outPlugin);
+        static EMotionFX::MotionSet::MotionEntry* FindBestMatchMotionEntryById(const AZStd::string& motionId);
 
     public slots:
         void WindowReInit(bool visible);

@@ -30,6 +30,7 @@
 
 #include <IEditor.h>
 #include <I3DEngine.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
 
 namespace PhysX
 {
@@ -38,17 +39,16 @@ namespace PhysX
 
     namespace TerrainUtils
     {
-        static int GetMaterialIndexForSurfaceTag(const AZ::Crc32 surfaceTag, AZStd::vector<int>& mapping)
+        static int GetMaterialIndexForSurfaceId(int surfaceId, AZStd::vector<int>& mapping)
         {
-            const int surfaceTagAsInt = aznumeric_cast<int>((unsigned int)surfaceTag);
             for (int materialIndex = 0; materialIndex < mapping.size(); ++materialIndex)
             {
-                if (mapping[materialIndex] == surfaceTagAsInt)
+                if (mapping[materialIndex] == surfaceId)
                 {
                     return materialIndex;
                 }
             }
-            mapping.push_back(surfaceTagAsInt);
+            mapping.push_back(surfaceId);
             return static_cast<int>(mapping.size()) - 1;
         }
 
@@ -118,13 +118,17 @@ namespace PhysX
             return true;
         }
 
-        AZ::Vector3 GetScale()
+        AZ::Vector3 GetScale(const Pipeline::HeightFieldAsset* heightFieldAsset)
         {
             // Scale back up the height when instancing the heightfield into the world
             AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
             AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
 
-            const float heightScale = s_maxCryTerrainHeight / s_maxPhysxTerrainHeight;
+            const float minHeight = heightFieldAsset->GetMinHeight();
+            const float maxHeight = heightFieldAsset->GetMaxHeight();
+            const float deltaHeight = maxHeight - minHeight;
+
+            const float heightScale = AZ::IsClose(deltaHeight, 0.0f, AZ_FLT_EPSILON) ? 1.0f : deltaHeight / s_maxPhysxTerrainHeight;
             const float rowScale = gridResolution.GetX();
             const float colScale = gridResolution.GetY();
             return AZ::Vector3(rowScale, colScale, heightScale);
@@ -391,6 +395,29 @@ namespace PhysX
         m_configuration.m_terrainSurfaceIdIndexMapping.clear();
         m_configuration.m_terrainSurfaceIdIndexMapping.reserve(50);
 
+        // Calculate min & max heights
+        float minHeight = std::numeric_limits<float>::max();
+        float maxHeight = std::numeric_limits<float>::lowest();
+        for (int32_t y = 0; y < numTilesY - 1; ++y)
+        {
+            for (int32_t x = 0; x < numTilesX - 1; ++x)
+            {
+                int cryIndexX = x * tileSizeX;
+                int cryIndexY = y * tileSizeY;
+
+                const float locX = aznumeric_cast<float>(cryIndexX);
+                const float locY = aznumeric_cast<float>(cryIndexY);
+
+                const float terrainHeight = terrain->GetHeightFromFloats(locX, locY, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
+                minHeight = AZStd::min(terrainHeight, minHeight);
+                maxHeight = AZStd::max(terrainHeight, maxHeight);
+            }
+        }
+
+        // Used for scaling the sample heights
+        const float deltaHeight = maxHeight - minHeight;
+
+        AZStd::unordered_map<AZ::Crc32, int> surfaceCrcToIdCache;
         for (int32_t y = 0; y < numTilesY; ++y)
         {
             for (int32_t x = 0; x < numTilesX; ++x)
@@ -407,15 +434,34 @@ namespace PhysX
 
                 const AzFramework::SurfaceData::SurfaceTagWeight surfaceWeight = terrain->GetMaxSurfaceWeightFromFloats(locX, locY, AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
                 const AZ::Crc32 surfaceTag = surfaceWeight.m_surfaceType;
-                int materialIndex = TerrainUtils::GetMaterialIndexForSurfaceTag(surfaceTag, m_configuration.m_terrainSurfaceIdIndexMapping);
+                auto foundIt = surfaceCrcToIdCache.find(surfaceTag);
+                int surfaceId = 0;
+                if (foundIt != surfaceCrcToIdCache.end())
+                {
+                    surfaceId = foundIt->second;
+                }
+                else
+                {
+                    LegacyTerrain::LegacyTerrainEditorDataRequestBus::BroadcastResult(surfaceId, &LegacyTerrain::LegacyTerrainEditorDataRequests::GetTerrainSurfaceIdFromSurfaceTag, surfaceTag);
+                    surfaceCrcToIdCache[surfaceTag] = surfaceId;
+                }
+                
+                int materialIndex = TerrainUtils::GetMaterialIndexForSurfaceId(surfaceId, m_configuration.m_terrainSurfaceIdIndexMapping);
 
                 int32_t samplesIndex = y * numTilesX + x;
                 physx::PxHeightFieldSample& pxSample = pxSamples[samplesIndex];
 
                 AZ_Warning("EditorTerrainComponent", terrainHeight <= s_maxCryTerrainHeight, "Terrain height exceeds max values, there will be physics artifacts");
 
-                // Scale down the height into a 16bit value
-                pxSample.height = (physx::PxI16)(s_maxPhysxTerrainHeight / s_maxCryTerrainHeight * terrainHeight);
+                if (AZ::IsClose(deltaHeight, 0.0f, AZ_FLT_EPSILON))
+                {
+                    pxSample.height = 0;
+                }
+                else
+                {
+                    // Scale down the height into a 16bit value
+                    pxSample.height = physx::PxI16(s_maxPhysxTerrainHeight * ((terrainHeight - minHeight) / deltaHeight));
+                }
 
                 const bool isHole = !terrainExists;
                 if (isHole)
@@ -443,7 +489,10 @@ namespace PhysX
 
         physx::PxHeightField* heightField = cooking->createHeightField(pxHeightFieldDesc, PxGetPhysics().getPhysicsInsertionCallback());
 
-        m_configuration.m_heightFieldAsset.Get()->SetHeightField(heightField);
+        Pipeline::HeightFieldAsset* asset = m_configuration.m_heightFieldAsset.Get();
+        asset->SetMinHeight(minHeight);
+        asset->SetMaxHeight(maxHeight);
+        asset->SetHeightField(heightField);
         m_heightFieldDirty = true;
 
         CreateEditorTerrain();
@@ -467,7 +516,7 @@ namespace PhysX
         Physics::EditorWorldBus::BroadcastResult(editorWorld, &Physics::EditorWorldRequests::GetEditorWorld);
         if (editorWorld)
         {
-            m_configuration.m_scale = TerrainUtils::GetScale();
+            m_configuration.m_scale = TerrainUtils::GetScale(m_configuration.m_heightFieldAsset.Get());
             m_editorTerrain = nullptr;
             m_editorTerrain = Utils::CreateTerrain(m_configuration, GetEntityId(), GetEntity()->GetName().c_str());
             if (m_editorTerrain)
@@ -520,10 +569,12 @@ namespace PhysX
         {
             if (m_configuration.m_heightFieldAsset.GetStatus() == AZ::Data::AssetData::AssetStatus::Ready)
             {
-                physx::PxHeightField* heightfield = m_configuration.m_heightFieldAsset.Get()->GetHeightField();
+                const Pipeline::HeightFieldAsset* heightFieldAsset = m_configuration.m_heightFieldAsset.Get();
+                const physx::PxHeightField* heightfield = heightFieldAsset->GetHeightField();
 
                 int vertsCount = 0;
                 int triCount = 0;
+                const AZ::Vector3 scale = TerrainUtils::GetScale(heightFieldAsset);
 
                 for (int32_t y = 0; y < heightfield->getNbRows() - 1; ++y)
                 {
@@ -537,9 +588,6 @@ namespace PhysX
                         // TODO: Need to be able to properly map back from the physX index to our MaterialId
                         // Physics::MaterialId materialIndex0(heightfield->getTriangleMaterialIndex(triCount++));
                         // Physics::MaterialId materialIndex1(heightfield->getTriangleMaterialIndex(triCount++));
-
-                        AZ::Vector3 scale = TerrainUtils::GetScale();
-
                         verts.push_back(AZ::Vector3(float(y), float(x), terrainHeight00) * scale);
                         verts.push_back(AZ::Vector3(float(y + 1), float(x), terrainHeight01) * scale);
                         verts.push_back(AZ::Vector3(float(y), float(x + 1), terrainHeight01) * scale);

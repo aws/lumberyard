@@ -56,10 +56,10 @@ namespace EMStudio
 
         // load some icons
         const AZStd::string dataDir = MysticQt::GetDataDir().c_str();
-        mBoneIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Bone.png").c_str());
-        mNodeIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Node.png").c_str());
-        mMeshIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Mesh.png").c_str());
-        mMappedIcon = new QIcon(AZStd::string(dataDir + "Images/Icons/Confirm.png").c_str());
+        mBoneIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Bone.svg").c_str());
+        mNodeIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Node.svg").c_str());
+        mMeshIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Mesh.svg").c_str());
+        mMappedIcon = new QIcon(AZStd::string(dataDir + "Images/Icons/Confirm.svg").c_str());
 
         // create the main layout
         QVBoxLayout* mainLayout = new QVBoxLayout();
@@ -76,17 +76,17 @@ namespace EMStudio
         toolBarLayout->setSpacing(0);
         mainLayout->addLayout(toolBarLayout);
         mButtonOpen = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mButtonOpen,    "/Images/Icons/Open.png",       "Load and apply a mapping template.");
+        EMStudioManager::MakeTransparentButton(mButtonOpen,    "/Images/Icons/Open.svg",       "Load and apply a mapping template.");
         connect(mButtonOpen, &QPushButton::clicked, this, &MirrorSetupWindow::OnLoadMapping);
         mButtonSave = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mButtonSave,    "/Images/Menu/FileSave.png",    "Save the currently setup mapping as template.");
+        EMStudioManager::MakeTransparentButton(mButtonSave,    "/Images/Menu/FileSave.svg",    "Save the currently setup mapping as template.");
         connect(mButtonSave, &QPushButton::clicked, this, &MirrorSetupWindow::OnSaveMapping);
         mButtonClear = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mButtonClear,   "/Images/Icons/Clear.png",      "Clear the currently setup mapping entirely.");
+        EMStudioManager::MakeTransparentButton(mButtonClear,   "/Images/Icons/Clear.svg",      "Clear the currently setup mapping entirely.");
         connect(mButtonClear, &QPushButton::clicked, this, &MirrorSetupWindow::OnClearMapping);
 
         mButtonGuess = new QPushButton();
-        EMStudioManager::MakeTransparentButton(mButtonGuess,   "/Images/Icons/Character.png",  "Perform name based mapping.");
+        EMStudioManager::MakeTransparentButton(mButtonGuess,   "/Images/Icons/Character.svg",  "Perform name based mapping.");
         connect(mButtonGuess, &QPushButton::clicked, this, &MirrorSetupWindow::OnBestGuess);
 
         toolBarLayout->addWidget(mButtonOpen, 0, Qt::AlignLeft);
@@ -195,7 +195,7 @@ namespace EMStudio
         sourceLabel->setTextFormat(Qt::RichText);
         sourceSearchLayout->addWidget(sourceLabel);
         //QPushButton* loadSourceButton = new QPushButton();
-        //EMStudioManager::MakeTransparentButton( loadSourceButton, "/Images/Icons/Open.png",   "Load a source actor" );
+        //EMStudioManager::MakeTransparentButton( loadSourceButton, "/Images/Icons/Open.svg",   "Load a source actor" );
         //connect( loadSourceButton, SIGNAL(clicked()), this, SLOT(OnLoadSourceActor()) );
         //sourceSearchLayout->addWidget( loadSourceButton, 0, Qt::AlignLeft );
         spacerWidget = new QWidget();
@@ -248,7 +248,7 @@ namespace EMStudio
         lowerLayout->addLayout(mappingLayout);
         mappingLayout->addWidget(new QLabel("Mapping:"), 0, Qt::AlignLeft | Qt::AlignVCenter);
         //mButtonGuess = new QPushButton();
-        //EMStudioManager::MakeTransparentButton( mButtonGuess, "/Images/Icons/Character.png",  "Best guess mapping" );
+        //EMStudioManager::MakeTransparentButton( mButtonGuess, "/Images/Icons/Character.svg",  "Best guess mapping" );
         //connect( mButtonGuess, SIGNAL(clicked()), this, SLOT(OnBestGuessGeometrical()) );
         //mappingLayout->addWidget( mButtonGuess, 0, Qt::AlignLeft );
         spacerWidget = new QWidget();

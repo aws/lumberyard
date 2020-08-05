@@ -7,9 +7,19 @@
 
     "auto": {
         "Utilities": [
+            "../Platform/Windows/AzQtComponents/Utilities/HandleDpiAwareness_Windows.cpp",
             "Utilities/MouseHider_win.cpp",
             "Utilities/QtWindowUtilities_win.cpp",
             "Utilities/ScreenGrabber_win.cpp"
+        ],
+        "Components": [
+            "Components/TitleBarOverdrawHandler_win.h",
+            "Components/TitleBarOverdrawHandler_win.cpp",
+            "Components/TitleBarOverdrawScreenHandler_win.h",
+            "Components/TitleBarOverdrawScreenHandler_win.cpp"
+        ],
+        "AzQtComponents/Components": [
+            "../Platform/Windows/AzQtComponents/Components/StyledDockWidget_Windows.cpp"
         ]
     }
 }

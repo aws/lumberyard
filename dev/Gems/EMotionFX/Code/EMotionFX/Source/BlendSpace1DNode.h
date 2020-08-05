@@ -66,6 +66,7 @@ namespace EMotionFX
             float GetRangeMax() const;
 
             void Reset() override;
+            void Update() override;
 
         public:
             MotionInfos                     m_motionInfos;
@@ -95,7 +96,8 @@ namespace EMotionFX
         bool    GetHasOutputPose() const override { return true; }
         bool    GetNeedsNetTimeSync() const override { return true; }
         AZ::Color GetVisualColor() const override { return AZ::Color(0.23f, 0.71f, 0.78f, 1.0f); }
-        void    OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
         // AnimGraphObject overrides
@@ -149,13 +151,13 @@ namespace EMotionFX
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
     private:
-        bool    UpdateMotionInfos(AnimGraphInstance* animGraphInstance);
-        void    SortMotionInstances(UniqueData& uniqueData);
+        bool UpdateMotionInfos(UniqueData* uniqueData);
+        void SortMotionInstances(UniqueData& uniqueData);
 
-        float   GetCurrentSamplePosition(AnimGraphInstance* animGraphInstance, const UniqueData& uniqueData);
-        void    UpdateBlendingInfoForCurrentPoint(UniqueData& uniqueData);
-        bool    FindLineSegmentForCurrentPoint(UniqueData& uniqueData);
-        void    SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
+        float GetCurrentSamplePosition(AnimGraphInstance* animGraphInstance, UniqueData& uniqueData);
+        void UpdateBlendingInfoForCurrentPoint(UniqueData& uniqueData);
+        bool FindLineSegmentForCurrentPoint(UniqueData& uniqueData);
+        void SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
 
     private:
         AZ::Crc32 GetEvaluatorVisibility() const;
@@ -163,13 +165,11 @@ namespace EMotionFX
 
         AZStd::vector<BlendSpaceMotion> m_motions;
         AZStd::string                   m_syncMasterMotionId;
-        BlendSpaceParamEvaluator*       m_evaluator;
-        AZ::TypeId                      m_evaluatorType;
-        ECalculationMethod              m_calculationMethod;
-        ESyncMode                       m_syncMode;
-        EBlendSpaceEventMode            m_eventFilterMode;
-
-
-        float   m_currentPositionSetInteractively;
+        BlendSpaceParamEvaluator*       m_evaluator = nullptr;
+        AZ::TypeId                      m_evaluatorType = azrtti_typeid<BlendSpaceParamEvaluatorNone>();
+        ECalculationMethod              m_calculationMethod = ECalculationMethod::AUTO;
+        ESyncMode                       m_syncMode = ESyncMode::SYNCMODE_DISABLED;
+        EBlendSpaceEventMode            m_eventFilterMode = EBlendSpaceEventMode::BSEVENTMODE_MOST_ACTIVE_MOTION;
+        float                           m_currentPositionSetInteractively = 0.0f;
     };
 }   // namespace EMotionFX

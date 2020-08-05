@@ -16,5 +16,11 @@
     <file alias="Preload_Icon.png">Icons/Preload_Icon.png</file>
     <file alias="Load_Icon.png">Icons/Load_Icon.png</file>
     <file alias="Save_Icon.png">Icons/Save_Icon.png</file>
+    <file alias="folder blue.svg">Icons/folder blue.svg</file>
+    <file alias="folder green.svg">Icons/folder green.svg</file>
+    <file alias="folder purple.svg">Icons/folder purple.svg</file>
+    <file alias="folder red.svg">Icons/folder red.svg</file>
+    <file alias="folder yellow.svg">Icons/folder yellow.svg</file>
+    <file alias="folder white.svg">Icons/folder white.svg</file>
   </qresource>
 </RCC>

@@ -49,7 +49,7 @@ namespace PhysX
         AZ::Quaternion GetOrientation() const override;
 
         AZ::Aabb GetAabb() const override;
-        void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
 
         virtual AZ::Crc32 GetNativeType() const override;
         virtual void* GetNativePointer() const override;

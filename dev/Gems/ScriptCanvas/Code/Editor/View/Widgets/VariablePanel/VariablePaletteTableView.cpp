@@ -196,6 +196,45 @@ namespace ScriptCanvasEditor
         m_proxyModel->invalidate();
     }
 
+    const DataTypePaletteModel* VariablePaletteTableView::GetVariableTypePaletteModel() const
+    {
+        return m_model;
+    }
+
+    AZStd::vector< AZ::TypeId > VariablePaletteTableView::GetArrayTypes() const
+    {
+        AZStd::vector< AZ::TypeId > arrayTypes;
+
+        const auto& finalTypeMapping = m_containerWizard->GetFinalTypeMapping();
+
+        for (auto typePair : finalTypeMapping)
+        {            
+            if (ScriptCanvas::Data::IsVectorContainerType(ScriptCanvas::Data::FromAZType(typePair.second)))
+            {
+                arrayTypes.emplace_back(typePair.second);
+            }
+        }
+
+        return arrayTypes;
+    }
+
+    AZStd::vector< AZ::TypeId > VariablePaletteTableView::GetMapTypes() const
+    {
+        AZStd::vector< AZ::TypeId > mapTypes;
+
+        const auto& finalTypeMapping = m_containerWizard->GetFinalTypeMapping();
+
+        for (auto typePair : finalTypeMapping)
+        {
+            if (ScriptCanvas::Data::IsMapContainerType(ScriptCanvas::Data::FromAZType(typePair.second)))
+            {
+                mapTypes.emplace_back(typePair.second);
+            }
+        }
+
+        return mapTypes;
+    }
+
     void VariablePaletteTableView::OnClicked(const QModelIndex& index)
     {
         AZ::TypeId typeId;

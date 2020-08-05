@@ -13,7 +13,7 @@
 #pragma once
 
 #include <EMotionFX/Source/BlendSpaceNode.h>
-#include <MysticQt/Source/DoubleSpinbox.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <QComboBox>
 #include <QGridLayout>
@@ -36,8 +36,8 @@ namespace EMotionFX
 
         BlendSpaceNode::BlendSpaceMotion*       m_motion;
         QLabel*                                 m_labelMotion;
-        MysticQt::DoubleSpinBox*                m_spinboxX;
-        MysticQt::DoubleSpinBox*                m_spinboxY;
+        AzQtComponents::DoubleSpinBox*          m_spinboxX;
+        AzQtComponents::DoubleSpinBox*          m_spinboxY;
         QPushButton*                            m_restoreButton;
         QPushButton*                            m_removeButton;
     };

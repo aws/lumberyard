@@ -108,6 +108,19 @@ namespace EMotionFX
         QWidget* CreateGUI(QWidget* parent) override;
     };
 
+    class AnimGraphSingleVector2ParameterHandler
+        : public AnimGraphSingleParameterHandler
+    {
+        Q_OBJECT // AUTOMOC
+
+    public:
+        AZ_CLASS_ALLOCATOR_DECL
+        AnimGraphSingleVector2ParameterHandler();
+
+        AZ::u32 GetHandlerName() const override;
+        QWidget* CreateGUI(QWidget* parent) override;
+    };
+
     class AnimGraphMultipleParameterHandler
         : public QObject
         , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphParameterPicker>

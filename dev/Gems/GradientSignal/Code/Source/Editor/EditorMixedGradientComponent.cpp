@@ -20,9 +20,32 @@ namespace GradientSignal
         EditorGradientComponentBase::ReflectSubClass<EditorMixedGradientComponent, BaseClassType>(context);
     }
 
+    void EditorMixedGradientComponent::Init()
+    {
+        ForceOneEntry();
+        BaseClassType::Init();
+    }
+
+    void EditorMixedGradientComponent::Activate()
+    {
+        ForceOneEntry();
+        BaseClassType::Activate();
+    }
+
     AZ::u32 EditorMixedGradientComponent::ConfigurationChanged()
     {
+        ForceOneEntry();
         SetSamplerOwnerEntity(m_configuration, GetEntityId());
         return EditorGradientComponentBase::ConfigurationChanged();
+    }
+
+    void EditorMixedGradientComponent::ForceOneEntry()
+    {
+        if (m_configuration.m_layers.empty())
+        {
+            m_configuration.m_layers.push_back();
+            m_configuration.m_layers.front().m_operation = MixedGradientLayer::MixingOperation::Initialize;
+            SetDirty();
+        }
     }
 }

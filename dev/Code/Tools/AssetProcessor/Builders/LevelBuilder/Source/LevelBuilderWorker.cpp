@@ -142,6 +142,7 @@ namespace LevelBuilder
         AssetBuilderSDK::JobProduct jobProduct(request.m_fullPath);
         jobProduct.m_dependencies = AZStd::move(productDependencies);
         jobProduct.m_pathDependencies = AZStd::move(productPathDependencies);
+        jobProduct.m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
         response.m_outputProducts.push_back(jobProduct);
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
     }

@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/Titlebar.h>
@@ -19,7 +20,6 @@
 
 #include <QMainWindow>
 #include <QMouseEvent>
-#include <QDebug>
 #include <QPainter>
 #include <QGuiApplication>
 #include <QWindow>
@@ -32,6 +32,13 @@
 
 namespace AzQtComponents
 {
+    namespace Platform
+    {
+        // Forward declare these since they will be defined per platform
+        void HandleFloatingWindow(QWidget* floatingWindow);
+        bool FloatingWindowsSupportMinimize();
+    }
+
     static bool forceSkipTitleBarOverdraw()
     {
 #ifdef Q_OS_WIN
@@ -68,7 +75,7 @@ namespace AzQtComponents
 
     void StyledDockWidget::init()
     {
-        if (doesTitleBarOverdraw())
+        if (doesTitleBarOverdraw() && TitleBarOverdrawHandler::getInstance())
         {
             TitleBarOverdrawHandler::getInstance()->addTitleBarOverdrawWidget(this);
         }
@@ -89,20 +96,26 @@ namespace AzQtComponents
     {
         // Check if our parent is a fancy docking QMainWindow with no central
         // widget, which means it is one of the floating main windows
-        QMainWindow* parentMainWindow = qobject_cast<QMainWindow*>(parentWidget());
-        if (parentMainWindow && parentMainWindow->property("fancydocking_owner").isValid() && !parentMainWindow->centralWidget())
+        DockMainWindow* parentMainWindow = qobject_cast<DockMainWindow*>(parentWidget());
+        if (parentMainWindow && parentMainWindow->HasFancyDocking() && !parentMainWindow->centralWidget())
         {
-            bool singleFloating = true;
-            for (QDockWidget* dockWidget : parentMainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
+            // Make sure the parent dock widget of the main window is floating to handle
+            // cases where there are nested main windows
+            StyledDockWidget* parentDockWidget = qobject_cast<StyledDockWidget*>(parentMainWindow->parentWidget());
+            if (parentDockWidget && parentDockWidget->isFloating())
             {
-                if (dockWidget->isVisible() && dockWidget != this)
+                bool singleFloating = true;
+                for (QDockWidget* dockWidget : parentMainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
                 {
-                    singleFloating = false;
-                    break;
+                    if (dockWidget->isVisible() && dockWidget != this)
+                    {
+                        singleFloating = false;
+                        break;
+                    }
                 }
-            }
 
-            return singleFloating;
+                return singleFloating;
+            }
         }
 
         return false;
@@ -175,7 +188,7 @@ namespace AzQtComponents
                 // For these events, make sure FancyDocking is being used or it will disable
                 // Mouse events for the whole Widget
                 DockMainWindow* parentMainWindow = qobject_cast<DockMainWindow*>(parentWidget());
-                if (parentMainWindow && parentMainWindow->property("fancydocking_owner").isValid())
+                if (parentMainWindow && parentMainWindow->HasFancyDocking())
                 {
                     return true;
                 }
@@ -222,15 +235,16 @@ namespace AzQtComponents
         if (floating)
         {
             fixFramelessFlags();
+
+            // Perform platform-specific handling for floating windows (e.g. minimizing into the taskbar)
+            Platform::HandleFloatingWindow(window());
         }
 
         // If we have a custom title bar, then we need to enable the dragging
         // to reposition our dock widget if floating is enabled, change it
         // to be drawn in simple mode, and update the buttons
-        // @FIXME This should only be executed if fancy docking is enabled,
-        // this extra check can be removed once fancy docking is changed
-        // to the default, as opposed to being disabled by default
-        if (objectName().startsWith("_fancydocking_"))
+        DockMainWindow* parentMainWindow = qobject_cast<DockMainWindow*>(parentWidget());
+        if (parentMainWindow && parentMainWindow->HasFancyDocking())
         {
             TitleBar* titleBar = customTitleBar();
             if (titleBar)
@@ -239,7 +253,14 @@ namespace AzQtComponents
                 titleBar->setDrawSimple(floating);
                 if (floating)
                 {
-                    titleBar->setButtons({ DockBarButton::MaximizeButton, DockBarButton::CloseButton });
+                    TitleBar::WindowDecorationButtons buttons = { DockBarButton::MaximizeButton, DockBarButton::CloseButton };
+
+                    if (Platform::FloatingWindowsSupportMinimize())
+                    {
+                        buttons.prepend(DockBarButton::MinimizeButton);
+                    }
+
+                    titleBar->setButtons(buttons);
                 }
             }
         }
@@ -257,6 +278,7 @@ namespace AzQtComponents
         titleBar->setTearEnabled(true);
         titleBar->setDrawSideBorders(false);
         QObject::connect(titleBar, &TitleBar::undockAction, this, &StyledDockWidget::undock);
+        QObject::connect(this, &QDockWidget::windowTitleChanged, titleBar, &TitleBar::setWindowTitleOverride);
         setTitleBarWidget(titleBar);
     }
 

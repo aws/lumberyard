@@ -10,10 +10,10 @@
 *
 */
 #pragma once
-#include <QDoubleSpinBox>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 class CTrackViewDoubleSpinBox
-    : public QDoubleSpinBox
+    : public AzQtComponents::DoubleSpinBox
 {
     Q_OBJECT
 

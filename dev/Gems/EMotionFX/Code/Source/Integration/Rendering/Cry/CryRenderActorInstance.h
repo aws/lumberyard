@@ -160,6 +160,8 @@ namespace EMotionFX
             void UpdateWorldTransform(const AZ::Transform& entityTransform);
             SSkinningData* GetSkinningData();
 
+            bool IsInCameraFrustum() const override;
+
             // Determines if the morph target weights were updated since the last call.
             // It is used to avoid calling UpdateDynamicSkin if the weights have not been
             // updated.

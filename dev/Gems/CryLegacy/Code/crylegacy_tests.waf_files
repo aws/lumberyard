@@ -25,6 +25,7 @@
         ],
         "Source/CryAISystem/Tests":
         [
+            "Source/CryAISystem/Tests/NavigationTests.cpp",
             "Source/CryAISystem/Tests/test_Shape.cpp",
             "Source/CryAISystem/Tests/test_Main.cpp"
         ],

@@ -13,9 +13,57 @@
 #include <AzCore/Casting/lossy_cast.h>
 #include <AzCore/Serialization/Json/StringSerializer.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
+#include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
 
 namespace JsonSerializationTests
 {
+    template<typename String, typename Serializer>
+    class StringTestDescription :
+        public JsonSerializerConformityTestDescriptor<String>
+    {
+    public:
+        AZStd::shared_ptr<AZ::BaseJsonSerializer> CreateSerializer() override
+        {
+            return AZStd::make_shared<Serializer>();
+        }
+
+        AZStd::shared_ptr<String> CreateDefaultInstance() override
+        {
+            return AZStd::make_shared<String>();
+        }
+
+        AZStd::shared_ptr<String> CreateFullySetInstance() override
+        {
+            return AZStd::make_shared<String>("Hello");
+        }
+
+        AZStd::string_view GetJsonForFullySetInstance()
+        {
+            return R"("Hello")";
+        }
+
+        void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& features) override
+        {
+            features.EnableJsonType(rapidjson::kStringType);
+            features.EnableJsonType(rapidjson::kFalseType);
+            features.EnableJsonType(rapidjson::kTrueType);
+            features.EnableJsonType(rapidjson::kNumberType);
+            features.m_supportsPartialInitialization = false;
+            features.m_supportsInjection = false;
+        }
+
+        bool AreEqual(const String& lhs, const String& rhs)
+        {
+            return lhs.compare(rhs) == 0;
+        }
+    };
+
+    using StringConformityTestTypes = ::testing::Types<
+        StringTestDescription<AZStd::string, AZ::JsonStringSerializer>,
+        StringTestDescription<AZ::OSString, AZ::JsonOSStringSerializer>
+    >;
+    INSTANTIATE_TYPED_TEST_CASE_P(String, JsonSerializerConformityTests, StringConformityTestTypes);
+
     template<typename> struct SerializerInfo {};
 
     template<> struct SerializerInfo<AZ::JsonStringSerializer>
@@ -56,42 +104,6 @@ namespace JsonSerializationTests
         AZ::JsonOSStringSerializer >;
     TYPED_TEST_CASE(TypedJsonStringSerializerTests, StringSerializationTypes);
 
-    TYPED_TEST(TypedJsonStringSerializerTests, Load_InvalidTypeOfObjectType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kObjectType);
-        typename SerializerInfo<TypeParam>::DataType convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(typename SerializerInfo<TypeParam>::DataType(), convertedValue);
-    }
-
-    TYPED_TEST(TypedJsonStringSerializerTests, Load_InvalidTypeOfkNullType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kNullType);
-        typename SerializerInfo<TypeParam>::DataType convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(typename SerializerInfo<TypeParam>::DataType(), convertedValue);
-    }
-
-    TYPED_TEST(TypedJsonStringSerializerTests, Load_InvalidTypeOfArrayType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue(rapidjson::kArrayType);
-        typename SerializerInfo<TypeParam>::DataType convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(typename SerializerInfo<TypeParam>::DataType(), convertedValue);
-    }
-
     TYPED_TEST(TypedJsonStringSerializerTests, Load_FalseBoolean_FalseAsString)
     {
         using namespace AZ::JsonSerializationResult;
@@ -100,7 +112,7 @@ namespace JsonSerializationTests
         testValue.SetBool(false);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STRCASEEQ("False", convertedValue.c_str());
     }
@@ -113,22 +125,9 @@ namespace JsonSerializationTests
         testValue.SetBool(true);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STRCASEEQ("True", convertedValue.c_str());
-    }
-
-    TYPED_TEST(TypedJsonStringSerializerTests, Load_ParseStringValue_StringIsReturned)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testValue;
-        testValue.SetString(rapidjson::StringRef(this->m_testString));
-        typename SerializerInfo<TypeParam>::DataType convertedValue{};
-        ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_STREQ(this->m_testString, convertedValue.c_str());
     }
 
     TYPED_TEST(TypedJsonStringSerializerTests, Load_ParseUnsignedIntegerValue_NumberReturnedAsString)
@@ -139,7 +138,7 @@ namespace JsonSerializationTests
         testValue.SetUint(42);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("42", convertedValue.c_str());
     }
@@ -152,7 +151,7 @@ namespace JsonSerializationTests
         testValue.SetUint64(42);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("42", convertedValue.c_str());
     }
@@ -165,7 +164,7 @@ namespace JsonSerializationTests
         testValue.SetInt(-42);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("-42", convertedValue.c_str());
     }
@@ -178,7 +177,7 @@ namespace JsonSerializationTests
         testValue.SetInt64(-42);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("-42", convertedValue.c_str());
     }
@@ -191,51 +190,8 @@ namespace JsonSerializationTests
         testValue.SetDouble(3.1415);
         typename SerializerInfo<TypeParam>::DataType convertedValue{};
         ResultCode result = this->m_serializer->Load(&convertedValue, azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(),
-            testValue, this->m_path, this->m_deserializationSettings);
+            testValue, *this->m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         EXPECT_STREQ("3.141500", convertedValue.c_str());
-    }
-
-    TYPED_TEST(TypedJsonStringSerializerTests, Store_StoreValue_ValueStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        typename SerializerInfo<TypeParam>::DataType value = this->m_testString;
-        rapidjson::Value convertedValue(rapidjson::kObjectType); // set to object to ensure we reset the value to expected type later
-
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &value, nullptr,
-            azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsString());
-        EXPECT_STREQ(this->m_testString, convertedValue.GetString());
-    }
-
-    TYPED_TEST(TypedJsonStringSerializerTests, Store_StoreSameAsDefault_ValueIsIgnored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        typename SerializerInfo<TypeParam>::DataType value = this->m_testString;
-        typename SerializerInfo<TypeParam>::DataType defaultValue = this->m_testString;
-        rapidjson::Value convertedValue = this->CreateExplicitDefault();
-
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        this->Expect_ExplicitDefault(convertedValue);
-    }
-
-    TYPED_TEST(TypedJsonStringSerializerTests, Store_StoreDifferentFromDefault_ValueIsStored)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        typename SerializerInfo<TypeParam>::DataType value = this->m_testString;
-        typename SerializerInfo<TypeParam>::DataType defaultValue = this->m_testStringAlternative;
-        rapidjson::Value convertedValue(rapidjson::kObjectType);
-
-        ResultCode result = this->m_serializer->Store(convertedValue, this->m_jsonDocument->GetAllocator(), &value, &defaultValue,
-            azrtti_typeid<typename SerializerInfo<TypeParam>::DataType>(), this->m_path, this->m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        EXPECT_TRUE(convertedValue.IsString());
-        EXPECT_STREQ(this->m_testString, convertedValue.GetString());
     }
 } // namespace JsonSerializationTests

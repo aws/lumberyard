@@ -116,7 +116,7 @@ void DockableLibraryPanel::Init(const QString& panelName, CBaseLibraryManager* l
     m_dockableArea->setAcceptDrops(true);
 
     m_searchField->setObjectName("LibrarySearchField");
-    m_AddNewLibraryButton->setObjectName("AddLibraryButton");
+    m_AddNewLibraryButton->setIcon(QIcon(":/particleQT/icons/libraries_icon.png"));
     m_AddNewLibraryButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     //search area set up

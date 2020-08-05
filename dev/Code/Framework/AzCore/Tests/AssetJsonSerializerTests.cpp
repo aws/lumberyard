@@ -13,6 +13,7 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetJsonSerializer.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
@@ -138,14 +139,14 @@ namespace JsonSerializationTests
             features.m_typeToInject = rapidjson::kNullType;
         }
 
-        void Reflect(AZStd::unique_ptr<AZ::SerializeContext>& context) override
-        {
-            AZ::Data::AssetId::Reflect(context.get());
-        }
-
         bool AreEqual(const Asset& lhs, const Asset& rhs) override
         {
             return lhs == rhs;
+        }
+
+        void AddSystemComponentDescriptors(BaseJsonSerializerFixture::ComponentContainer& systemComponents) override
+        {
+            systemComponents.push_back(AZ::AssetManagerComponent::CreateDescriptor());
         }
 
     private:

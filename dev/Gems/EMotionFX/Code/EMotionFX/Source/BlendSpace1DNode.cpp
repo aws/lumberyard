@@ -24,7 +24,6 @@
 #include <EMotionFX/Source/MotionInstance.h>
 #include <EMotionFX/Source/MotionSet.h>
 
-
 namespace
 {
     class MotionSortComparer
@@ -49,13 +48,45 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendSpace1DNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendSpace1DNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendSpace1DNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+        , m_allMotionsHaveSyncTracks(false)
+        , m_currentPosition(0)
+        , m_masterMotionIdx(0)
+        , m_hasOverlappingCoordinates(false)
+    {
+    }
+
+    BlendSpace1DNode::UniqueData::~UniqueData()
+    {
+        BlendSpaceNode::ClearMotionInfos(m_motionInfos);
+    }
+
+    float BlendSpace1DNode::UniqueData::GetRangeMin() const
+    {
+        return m_sortedMotions.empty() ? 0.0f : m_motionCoordinates[m_sortedMotions.front()];
+    }
+
+    float BlendSpace1DNode::UniqueData::GetRangeMax() const
+    {
+        return m_sortedMotions.empty() ? 0.0f : m_motionCoordinates[m_sortedMotions.back()];
+    }
+
+    void BlendSpace1DNode::UniqueData::Reset()
+    {
+        Invalidate();
+    }
+
+    void BlendSpace1DNode::UniqueData::Update()
+    {
+        BlendSpace1DNode* blendSpaceNode = azdynamic_cast<BlendSpace1DNode*>(mObject);
+        AZ_Assert(blendSpaceNode, "Unique data linked to incorrect node type.");
+
+        blendSpaceNode->UpdateMotionInfos(this);
+    }
+
     BlendSpace1DNode::BlendSpace1DNode()
         : BlendSpaceNode()
-        , m_evaluator(nullptr)
-        , m_evaluatorType(azrtti_typeid<BlendSpaceParamEvaluatorNone>())
-        , m_calculationMethod(ECalculationMethod::AUTO)
-        , m_syncMode(SYNCMODE_DISABLED)
-        , m_currentPositionSetInteractively(false)
     {
         InitInputPorts(2);
         SetupInputPortAsNumber("X", INPUTPORT_VALUE, PORTID_INPUT_VALUE);
@@ -65,11 +96,9 @@ namespace EMotionFX
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
-
     BlendSpace1DNode::~BlendSpace1DNode()
     {
     }
-
 
     void BlendSpace1DNode::Reinit()
     {
@@ -82,15 +111,7 @@ namespace EMotionFX
         }
 
         AnimGraphNode::Reinit();
-
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            OnUpdateUniqueData(animGraphInstance);
-        }
     }
-
 
     bool BlendSpace1DNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -104,41 +125,6 @@ namespace EMotionFX
         Reinit();
         return true;
     }
-
-
-    BlendSpace1DNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-        : AnimGraphNodeData(node, animGraphInstance)
-        , m_allMotionsHaveSyncTracks(false)
-        , m_currentPosition(0)
-        , m_masterMotionIdx(0)
-        , m_hasOverlappingCoordinates(false)
-    {
-    }
-
-
-    BlendSpace1DNode::UniqueData::~UniqueData()
-    {
-        BlendSpaceNode::ClearMotionInfos(m_motionInfos);
-    }
-
-
-    float BlendSpace1DNode::UniqueData::GetRangeMin() const
-    {
-        return m_sortedMotions.empty() ? 0.0f : m_motionCoordinates[m_sortedMotions.front()];
-    }
-
-
-    float BlendSpace1DNode::UniqueData::GetRangeMax() const
-    {
-        return m_sortedMotions.empty() ? 0.0f : m_motionCoordinates[m_sortedMotions.back()];
-    }
-
-
-    void BlendSpace1DNode::UniqueData::Reset()
-    {
-        BlendSpaceNode::ClearMotionInfos(m_motionInfos);
-    }
-
 
     bool BlendSpace1DNode::GetValidCalculationMethodAndEvaluator() const
     {
@@ -164,21 +150,6 @@ namespace EMotionFX
         return m_evaluator->GetName();
     }
 
-
-    void BlendSpace1DNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // Find the unique data for this node, if it doesn't exist yet, create it.
-        UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        UpdateMotionInfos(animGraphInstance);
-    }
-
-
     const char* BlendSpace1DNode::GetPaletteName() const
     {
         return "Blend Space 1D";
@@ -203,7 +174,7 @@ namespace EMotionFX
         OutputAllIncomingNodes(animGraphInstance);
 
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         RequestPoses(animGraphInstance);
         AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
@@ -280,7 +251,7 @@ namespace EMotionFX
             return;
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         DoTopDownUpdate(animGraphInstance, m_syncMode, uniqueData->m_masterMotionIdx,
             uniqueData->m_motionInfos, uniqueData->m_allMotionsHaveSyncTracks);
 
@@ -309,7 +280,7 @@ namespace EMotionFX
             UpdateIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_INPLACE), timePassedInSeconds);
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "UniqueData not found for BlendSpace1DNode");
         uniqueData->Clear();
 
@@ -346,7 +317,7 @@ namespace EMotionFX
 
     void BlendSpace1DNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         if (mDisabled)
         {
@@ -381,15 +352,14 @@ namespace EMotionFX
         DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data, inPlace);
     }
 
-
-    bool BlendSpace1DNode::UpdateMotionInfos(AnimGraphInstance* animGraphInstance)
+    bool BlendSpace1DNode::UpdateMotionInfos(UniqueData* uniqueData)
     {
+        const AnimGraphInstance* animGraphInstance = uniqueData->GetAnimGraphInstance();
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         if (!actorInstance)
         {
             return false;
         }
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
 
         ClearMotionInfos(uniqueData->m_motionInfos);
 
@@ -515,7 +485,7 @@ namespace EMotionFX
 
     void BlendSpace1DNode::ComputeMotionCoordinates(const AZStd::string& motionId, AnimGraphInstance* animGraphInstance, AZ::Vector2& position)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "Unique data not found for blend space 1D node '%s'.", GetName());
 
         const MotionSet* activeMotionSet = animGraphInstance->GetMotionSet();
@@ -637,7 +607,7 @@ namespace EMotionFX
     }
 
 
-    float BlendSpace1DNode::GetCurrentSamplePosition(AnimGraphInstance* animGraphInstance, const UniqueData& uniqueData)
+    float BlendSpace1DNode::GetCurrentSamplePosition(AnimGraphInstance* animGraphInstance, UniqueData& uniqueData)
     {
         if (IsInInteractiveMode())
         {
@@ -650,7 +620,7 @@ namespace EMotionFX
             if (GetEMotionFX().GetIsInEditorMode())
             {
                 // We do require the user to make connections into the value port.
-                SetHasError(animGraphInstance, (paramConnection == nullptr));
+                SetHasError(&uniqueData, (paramConnection == nullptr));
             }
 
             float samplePoint;
@@ -743,7 +713,7 @@ namespace EMotionFX
 
     void BlendSpace1DNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
         RewindMotions(uniqueData->m_motionInfos);
     }
 

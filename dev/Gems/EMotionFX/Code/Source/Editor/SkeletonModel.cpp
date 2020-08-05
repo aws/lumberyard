@@ -25,12 +25,12 @@ namespace EMotionFX
         , m_skeleton(nullptr)
         , m_actor(nullptr)
         , m_actorInstance(nullptr)
-        , m_jointIcon(":/EMotionFX/Joint.png")
-        , m_clothColliderIcon(":/EMotionFX/ClothCollider_PurpleBG.png")
-        , m_hitDetectionColliderIcon(":/EMotionFX/HitDetection_BlueBG.png")
-        , m_ragdollColliderIcon(":/EMotionFX/RagdollCollider_OrangeBG.png")
-        , m_ragdollJointLimitIcon(":/EMotionFX/RagdollJointLimit_OrangeBG.png")
-        , m_simulatedColliderIcon(":/EMotionFX/SimulatedObjectCollider_BG.png")
+        , m_jointIcon(":/EMotionFX/Joint.svg")
+        , m_clothColliderIcon(":/EMotionFX/Cloth.svg")
+        , m_hitDetectionColliderIcon(":/EMotionFX/HitDetection.svg")
+        , m_ragdollColliderIcon(":/EMotionFX/Collider.svg")
+        , m_ragdollJointLimitIcon(":/EMotionFX/JointLimit.svg")
+        , m_simulatedColliderIcon(":/EMotionFX/Collider.svg")
     {
         m_selectionModel.setModel(this);
 
@@ -52,6 +52,9 @@ namespace EMotionFX
 
     SkeletonModel::~SkeletonModel()
     {
+        // Calling Reset will trigger the modelReset signal, thus notify other widgets to clear cached information about this model.
+        Reset();
+
         ActorEditorNotificationBus::Handler::BusDisconnect();
     }
 

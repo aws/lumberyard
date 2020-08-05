@@ -138,7 +138,7 @@ namespace EMStudio
         painter.drawRect(playRect);
 
         // draw the sync keys
-        const EMotionFX::AnimGraphNodeData* uniqueData = mEMFXNode->FindUniqueNodeData(animGraphInstance);
+        const EMotionFX::AnimGraphNodeData* uniqueData = mEMFXNode->FindOrCreateUniqueNodeData(animGraphInstance);
         const EMotionFX::AnimGraphSyncTrack* syncTrack = uniqueData->GetSyncTrack();
 
         const size_t numSyncPoints = syncTrack ? syncTrack->GetNumEvents() : 0;
@@ -206,12 +206,7 @@ namespace EMStudio
         }
 
         // return the error state of the emfx node
-        return mEMFXNode->HierarchicalHasError(animGraphInstance);
+        EMotionFX::AnimGraphObjectData* uniqueData = mEMFXNode->FindOrCreateUniqueNodeData(animGraphInstance);
+        return mEMFXNode->HierarchicalHasError(uniqueData);
     }
-
-    /*
-    // check if the emfx node is processed
-    bool AnimGraphVisualNode::IsProcessed() const
-    {}
-    */
 }   // namespace EMStudio

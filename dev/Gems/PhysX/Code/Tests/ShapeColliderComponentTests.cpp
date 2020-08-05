@@ -25,7 +25,9 @@
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
+#include <LmbrCentral/Shape/CompoundShapeComponentBus.h>
 #include <PhysX/ForceRegionComponentBus.h>
+#include <PhysX/PhysXLocks.h>
 #include <PhysX/SystemComponentBus.h>
 #include <Tests/PhysXTestCommon.h>
 
@@ -137,6 +139,8 @@ namespace PhysXEditorTests
         const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
 
+        PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
+
         // there should be a single shape on the rigid body and it should be a box
         EXPECT_EQ(pxRigidStatic->getNbShapes(), 1);
         physx::PxShape* shape = nullptr;
@@ -193,6 +197,8 @@ namespace PhysXEditorTests
         const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
 
+        PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
+
         // the input polygon prism was not convex, so should have been decomposed into multiple shapes
         const int numShapes = pxRigidStatic->getNbShapes();
         EXPECT_TRUE(numShapes > 1);
@@ -212,6 +218,94 @@ namespace PhysXEditorTests
         EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3::CreateZero()));
     }
 
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinder_CorrectRuntimeComponents)
+    {
+        // create an editor entity with a shape collider component and a cylinder shape component
+        EntityPtr editorEntity = CreateInactiveEditorEntity("ShapeColliderComponentEditorEntity");
+        editorEntity->CreateComponent<PhysX::EditorShapeColliderComponent>();
+        editorEntity->CreateComponent(LmbrCentral::EditorCylinderShapeComponentTypeId);
+        editorEntity->Activate();
+
+        EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
+
+        // check that the runtime entity has the expected components
+        EXPECT_TRUE(gameEntity->FindComponent<PhysX::ShapeColliderComponent>() != nullptr);
+        EXPECT_TRUE(gameEntity->FindComponent(LmbrCentral::CylinderShapeComponentTypeId) != nullptr);
+    }
+
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithValidRadiusAndValidHeight_CorrectRuntimeGeometry)
+    {
+        // create an editor entity with a shape collider component and a cylinder shape component
+        EntityPtr editorEntity = CreateInactiveEditorEntity("ShapeColliderComponentEditorEntity");
+        editorEntity->CreateComponent<PhysX::EditorShapeColliderComponent>();
+        editorEntity->CreateComponent(LmbrCentral::EditorCylinderShapeComponentTypeId);
+        editorEntity->Activate();
+        
+        const float validRadius = 1.0f;
+        const float validHeight = 1.0f;
+        
+        LmbrCentral::CylinderShapeComponentRequestsBus::Event(editorEntity->GetId(),
+            &LmbrCentral::CylinderShapeComponentRequests::SetRadius, validRadius);
+        
+        LmbrCentral::CylinderShapeComponentRequestsBus::Event(editorEntity->GetId(),
+            &LmbrCentral::CylinderShapeComponentRequests::SetHeight, validHeight);
+        
+        EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
+        
+        // since there was no editor rigid body component, the runtime entity should have a static rigid body
+        const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
+
+        PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
+        
+        // there should be a single shape on the rigid body and it should be a convex mesh
+        EXPECT_EQ(pxRigidStatic->getNbShapes(), 1);
+        physx::PxShape* shape = nullptr;
+        pxRigidStatic->getShapes(&shape, 1, 0);
+        EXPECT_EQ(shape->getGeometryType(), physx::PxGeometryType::eCONVEXMESH);
+        
+        // the bounding box of the rigid body should reflect the dimensions of the cylinder set above
+        AZ::Aabb aabb = staticBody->GetAabb();
+        const float validDiameter = validRadius * 2.0f;
+        
+        // Check that the z positions of the bounding box match that of the cylinder
+        EXPECT_TRUE(aabb.GetMin().GetZ().IsClose(-0.5f * validHeight));
+        EXPECT_TRUE(aabb.GetMax().GetZ().IsClose(0.5f * validHeight));
+        
+        // check that the xy points are not outside the radius of the cylinder
+        AZ::Vector2 vecMin(aabb.GetMin().GetX(), aabb.GetMin().GetY());
+        AZ::Vector2 vecMax(aabb.GetMax().GetX(), aabb.GetMax().GetY());
+        EXPECT_TRUE(AZ::GetAbs(vecMin.GetX()) <= validRadius);
+        EXPECT_TRUE(AZ::GetAbs(vecMin.GetY()) <= validRadius);
+        EXPECT_TRUE(AZ::GetAbs(vecMax.GetX()) <= validRadius);
+        EXPECT_TRUE(AZ::GetAbs(vecMax.GetX()) <= validRadius);        
+    }
+
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithNullRadius_HandledGracefully)
+    {
+        ValidateInvalidEditorShapeColliderComponentParams(0.f, 1.f);
+    }
+    
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithNullHeight_HandledGracefully)
+    {
+        ValidateInvalidEditorShapeColliderComponentParams(0.f, 1.f);
+    }
+    
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithNullRadiusAndNullHeight_HandledGracefully)
+    {
+        ValidateInvalidEditorShapeColliderComponentParams(0.f, 0.f);
+    }
+    
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithNegativeRadiusAndNullHeight_HandledGracefully)
+    {
+        ValidateInvalidEditorShapeColliderComponentParams(-1.f, 0.f);
+    }
+    
+    TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithNullRadiusAndNegativeHeight_HandledGracefully)
+    {
+        ValidateInvalidEditorShapeColliderComponentParams(0.f, -1.f);
+    }
+
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithUnsupportedShape_HandledGracefully)
     {
         Physics::ErrorHandler unsupportedShapeWarningHandler("Unsupported shape");
@@ -220,7 +314,7 @@ namespace PhysXEditorTests
         // the cylinder shape is not currently supported by the shape collider component
         EntityPtr editorEntity = CreateInactiveEditorEntity("ShapeColliderComponentEditorEntity");
         editorEntity->CreateComponent<PhysX::EditorShapeColliderComponent>();
-        editorEntity->CreateComponent(LmbrCentral::EditorCylinderShapeComponentTypeId);
+        editorEntity->CreateComponent(LmbrCentral::EditorCompoundShapeComponentTypeId);
         editorEntity->Activate();
 
         // check that a warning was raised for the unsupported shape
@@ -231,6 +325,8 @@ namespace PhysXEditorTests
         // since there was no editor rigid body component, the runtime entity should have a static rigid body
         const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
+
+        PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
 
         // there should be no shapes on the rigid body because the cylinder is not supported
         EXPECT_EQ(pxRigidStatic->getNbShapes(), 0);
@@ -271,6 +367,8 @@ namespace PhysXEditorTests
         // since there was an editor rigid body component, the runtime entity should have a dynamic rigid body
         const auto* rigidBody = gameEntity->FindComponent<PhysX::RigidBodyComponent>()->GetRigidBody();
         const auto* pxRigidDynamic = static_cast<const physx::PxRigidDynamic*>(rigidBody->GetNativePointer());
+
+        PHYSX_SCENE_READ_LOCK(pxRigidDynamic->getScene());
 
         // there should be a single shape on the rigid body and it should be a box
         EXPECT_EQ(pxRigidDynamic->getNbShapes(), 1);

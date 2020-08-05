@@ -27,7 +27,7 @@
     "Name": "Vegetation",
     "DisplayName": "Vegetation [PREVIEW]",
     "Version": "0.1.0",
-    "Summary": "A Lumberyard Gem for authoring Dynamic Procedural Vegetation (A real-time planting engine).",
+    "Summary": "A Lumberyard Gem for authoring Dynamic Procedural Vegetation (A real-time planting engine).<br/><b><u>NOTE:</u></b> The Landscape Canvas gem is an optional node-based Editor that provides the recommended workflows for authoring/editing Dynamic Vegetation content.",
     "Tags": ["Vegetation"],
     "IconPath": "preview.png",
     "Modules": [

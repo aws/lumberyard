@@ -1,0 +1,65 @@
+########################################################################################
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+# a third party where indicated.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+    bld.CryEngineStaticLibrary(
+        target          = 'GraphModelStatic',
+
+        platforms       = ['darwin', 'win'],
+        exclude_monolithic  = True,
+        client_only     = True,
+        file_list       = ['graphmodel_static.waf_files'],
+
+        includes        = ['Include'],
+        use             = ['AzCore', 'AzFramework', 'AzToolsFramework', 'GraphCanvasWidgets'],
+        win_features    = ['crcfix'],
+        features        = ['qt5'],
+        vs_filter       = 'Gems',
+        disable_pch     = True,
+        uselib          = ['QT5CORE',
+                           'QT5GUI',
+                           'QT5WIDGETS'],
+    )
+
+    bld.DefineGem(
+        includes          = [ '.', 'Include' ],
+        win_features      = ['crcfix'],
+        use_required_gems = True,
+        disable_pch       = True,
+        file_list         = ['graphmodel.waf_files'],
+
+        # Testing
+        test_all_file_list  = ['graphmodel_tests.waf_files'],
+
+        editor = dict(
+            platforms   = ['win', 'darwin'],
+            exclude_monolithic  = True,
+            client_only = True,
+            features    = ['qt5', 'az_code_gen'],
+            uselib      = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+            defines     = ['GRAPHMODEL_EDITOR'],
+            includes    = ['.', 
+                           'Include',
+                           bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                           bld.Path('Code/Sandbox/Editor'),
+                           bld.Path('Code/Sandbox/Editor/Include'),
+                           ],
+            use         = ['GraphModelStatic'],
+            use_required_gems = True,
+            disable_pch       = True,
+            file_list         = ['graphmodel_editor.waf_files'],
+
+            # Testing
+            test_all_file_list  = ['graphmodel_tests_editor.waf_files']
+        ),
+    )

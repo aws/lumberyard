@@ -14,6 +14,7 @@
 #include "Contracts/ConnectionLimitContract.h"
 #include "Contracts/ContractRTTI.h"
 #include "Contracts/DisallowReentrantExecutionContract.h"
+#include "Contracts/DisplayGroupConnectedSlotLimitContract.h"
 #include "Contracts/DynamicTypeContract.h"
 #include "Contracts/SlotTypeContract.h"
 #include "Contracts/TypeContract.h"

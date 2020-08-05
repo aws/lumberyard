@@ -13,11 +13,12 @@
 
 #include <Source/ForceRegion.h>
 
-#include <PhysX/MeshAsset.h>
 #include <PhysX/ColliderShapeBus.h>
+#include <PhysX/MeshAsset.h>
 #include <Source/Utils.h>
 
 #include <AzCore/Math/Color.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
 
 namespace PhysX
@@ -92,7 +93,7 @@ namespace PhysX
         AZ::TransformNotificationBus::MultiHandler::BusConnect(m_entityId);
         LmbrCentral::SplineComponentNotificationBus::Handler::BusConnect(m_entityId);
         ForceRegionRequestBus::Handler::BusConnect(m_entityId);
-        PhysX::ColliderComponentEventBus::Handler::BusConnect(m_entityId);
+        Physics::ColliderComponentEventBus::Handler::BusConnect(m_entityId);
         for (auto& force : m_forces)
         {
             force->Activate(m_entityId);
@@ -108,7 +109,7 @@ namespace PhysX
         {
             force->Deactivate();
         }
-        PhysX::ColliderComponentEventBus::Handler::BusDisconnect();
+        Physics::ColliderComponentEventBus::Handler::BusDisconnect();
         ForceRegionRequestBus::Handler::BusDisconnect();
         LmbrCentral::SplineComponentNotificationBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect();

@@ -158,7 +158,7 @@ namespace EMotionFX
             }
 
             AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(parent);
-            AnimGraphStateMachine::UniqueData* uniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(stateMachine->FindUniqueNodeData(&instance));
+            AnimGraphStateMachine::UniqueData* uniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(stateMachine->FindOrCreateUniqueNodeData(&instance));
             const AZStd::vector<AnimGraphNode*>& activeStates = stateMachine->GetActiveStates(&instance);
             if (AZStd::find(activeStates.begin(), activeStates.end(), node) == activeStates.end())
             {

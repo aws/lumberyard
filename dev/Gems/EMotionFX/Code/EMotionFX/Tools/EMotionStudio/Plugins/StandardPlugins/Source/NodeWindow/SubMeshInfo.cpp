@@ -62,10 +62,15 @@ namespace EMStudio
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                 ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &SubMeshInfo::m_materialName, "Material", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &SubMeshInfo::m_verticesCount, "Vertices", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &SubMeshInfo::m_indicesCount, "Indices", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &SubMeshInfo::m_polygonsCount, "Polygons", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &SubMeshInfo::m_bonesCount, "Bones", "")
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ;
     }
 

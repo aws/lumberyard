@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "3108b261962e44b6a0c1c036c693bca2",
+    "Name": "LegacyGameInterface",
+    "DisplayName": "LegacyGameInterface",
+    "Version": "1.0.0",
+    "LinkType": "Dynamic",
+    "Summary": "Projects created in Lumberyard 1.11 and later no longer contain legacy game interface code. This Gem must be enabled in those projects in order for your game to load in the Editor and Launcher unless you provide an equivalent implementation.",
+    "Tags": ["Legacy"],
+    "IconPath": "preview.png"
+}

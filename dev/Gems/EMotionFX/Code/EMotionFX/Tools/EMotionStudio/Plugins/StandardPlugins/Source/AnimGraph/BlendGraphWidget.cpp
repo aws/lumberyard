@@ -21,6 +21,7 @@
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/AnimGraphExitNode.h>
+#include <Editor/AnimGraphEditorBus.h>
 #include <EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
@@ -180,19 +181,31 @@ namespace EMStudio
                         event->ignore();
                         return;
                     }
+
+                    // Get the motion set from the anim graph instance.
                     EMotionFX::AnimGraphInstance* animGraphInstance = targetModelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
-                    if (!animGraphInstance)
+                    EMotionFX::MotionSet* motionSet = nullptr;
+                    if (animGraphInstance)
                     {
-                        QMessageBox::warning(this, "Cannot Complete Drop Operation", "Please activate an anim graph before dropping the motion.");
-                        event->ignore();
-                        return;
+                        motionSet = animGraphInstance->GetMotionSet();
+                    }
+                    else
+                    {
+                        // In case no anim graph is currently playing, use the selection from the node inspector.
+                        EMotionFX::AnimGraphEditorRequestBus::BroadcastResult(motionSet, &EMotionFX::AnimGraphEditorRequests::GetSelectedMotionSet);
+                        if (!motionSet)
+                        {
+                            // In case no motion set is selected and there is only one loaded, use that.
+                            if (EMotionFX::GetMotionManager().GetNumMotionSets() == 1)
+                            {
+                                motionSet = EMotionFX::GetMotionManager().GetMotionSet(0);
+                            }
+                        }
                     }
 
-                    // get the motion set from the anim graph instance and check if it is valid
-                    EMotionFX::MotionSet* motionSet = animGraphInstance->GetMotionSet();
-                    if (motionSet == nullptr)
+                    if (!motionSet)
                     {
-                        QMessageBox::warning(this, "No Active Motion Set", "Cannot drop the motion to the anim graph. Please assign a motion set to the anim graph before.");
+                        QMessageBox::warning(this, "No Motion Set Selected", "Cannot drop the motion to the anim graph. Please assign a motion set to the anim graph first.");
                         event->ignore();
                         return;
                     }
@@ -605,7 +618,6 @@ namespace EMStudio
                         if (transition->GetNumConditions() > 0)
                         {
                             QAction* copyAction = menu.addAction("Copy conditions");
-                            copyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
                             connect(copyAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnCopyConditions);
                         }
 
@@ -614,11 +626,9 @@ namespace EMStudio
                             !mPlugin->GetAttributesWindow()->GetCopyPasteConditionClipboard().empty())
                         {
                             QAction* pasteAction = menu.addAction("Paste conditions");
-                            pasteAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
                             connect(pasteAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnPasteConditions);
 
                             QAction* pasteSelectiveAction = menu.addAction("Paste conditions selective");
-                            pasteSelectiveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
                             connect(pasteSelectiveAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnPasteConditionsSelective);
                         }
                     }
@@ -634,7 +644,6 @@ namespace EMStudio
                 !mActiveGraph->IsInReferencedGraph())
             {
                 QAction* removeConnectionAction = menu.addAction(removeConnectionActionName);
-                removeConnectionAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
                 connect(removeConnectionAction, &QAction::triggered, this, static_cast<void (BlendGraphWidget::*)()>(&BlendGraphWidget::DeleteSelectedItems));
             }
 

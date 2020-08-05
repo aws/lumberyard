@@ -26,6 +26,8 @@
 #include <QLineEdit>
 #include <QDialog>
 
+QT_FORWARD_DECLARE_CLASS(QAction)
+
 namespace AzQtComponents
 {
     class FilteredSearchWidget;
@@ -50,8 +52,8 @@ namespace EMStudio
     class MotionSetManagementRenameWindow
         : public QDialog
     {
-        Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(MotionSetManagementRenameWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        Q_OBJECT // AUTOMOC
+        MCORE_MEMORYOBJECTCATEGORY(MotionSetManagementRenameWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
         MotionSetManagementRenameWindow(QWidget* parent, EMotionFX::MotionSet* motionSet);
@@ -71,7 +73,7 @@ namespace EMStudio
     class MotionSetManagementWindow
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(MotionSetManagementWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
@@ -113,16 +115,15 @@ namespace EMStudio
         void contextMenuEvent(QContextMenuEvent* event) override;
 
     private:
-        QVBoxLayout*            mVLayout;
-        QTreeWidget*            mMotionSetsTree;
-        QPushButton*            mAddSetButton;
-        QPushButton*            mRemoveSetsButton;
-        QPushButton*            mClearSetsButton;
-        QPushButton*            mOpenSetButton;
-        QPushButton*            mSaveSetButton;
-        QPushButton*            mSaveAsSetButton;
-        AzQtComponents::FilteredSearchWidget* m_searchWidget;
-        AZStd::string           m_searchWidgetText;
-        MotionSetsWindowPlugin* mPlugin;
+        QVBoxLayout* mVLayout = nullptr;
+        QTreeWidget* mMotionSetsTree = nullptr;
+        QAction* m_addAction = nullptr;
+        QAction* m_openAction = nullptr;
+        QAction* m_saveMenuAction = nullptr;
+        QAction* m_saveAction = nullptr;
+        QAction* m_saveAsAction = nullptr;
+        AzQtComponents::FilteredSearchWidget* m_searchWidget = nullptr;
+        AZStd::string m_searchWidgetText;
+        MotionSetsWindowPlugin* mPlugin = nullptr;
     };
 } // namespace EMStudio

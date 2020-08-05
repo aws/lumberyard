@@ -61,7 +61,7 @@ namespace ImageProcessing
         // Since we want to register our builder, we do that here:
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Image Worker Builder";
-        builderDescriptor.m_version = 1;
+        builderDescriptor.m_version = 2;
         builderDescriptor.m_analysisFingerprint = AZStd::string::format("%d", ImageProcessing::BuilderSettingManager::Instance()->BuilderSettingsVersion());
 
         for (int i = 0; i < s_TotalSupportedImageExtensions; i++)
@@ -255,6 +255,7 @@ namespace ImageProcessing
         for (const auto& product : productFilepaths)
         {
             AssetBuilderSDK::JobProduct jobProduct(product);
+            jobProduct.m_dependenciesHandled = true; // Dependencies are handled down below.  The base products will have dependencies, lod products won't
             jobProducts.push_back(jobProduct);
 
             AZ::u32 lodLevel = AssetBuilderSDK::GetSubID_LOD(jobProduct.m_productSubID);

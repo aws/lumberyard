@@ -16,6 +16,7 @@
 #include <AzCore/Module/Environment.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/std/algorithm.h>
+#include "AzCore/Interface/Interface.h"
 
 
 //This bit is defined in the TouchBending Gem wscript.
@@ -194,6 +195,16 @@ namespace Physics
     AZ::u64 CollisionGroup::GetMask() const
     {
         return m_mask;
+    }
+
+    bool CollisionGroup::operator!=(const CollisionGroup& collisionGroup) const
+    {
+        return collisionGroup.m_mask != m_mask;
+    }
+
+    bool CollisionGroup::operator==(const CollisionGroup& collisionGroup) const
+    {
+        return collisionGroup.m_mask == m_mask;
     }
 
     Physics::CollisionLayer CollisionLayers::GetLayer(const AZStd::string& layerName) const

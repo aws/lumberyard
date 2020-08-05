@@ -228,6 +228,7 @@ namespace EMStudio
 
         // show the dirty files settings window
         SaveDirtySettingsWindow settingsWindow((QWidget*)GetMainWindow(), dirtyFileNames, objects, buttons);
+        settingsWindow.setObjectName("EMFX.DirtyFileManager.SaveDirtySettingsWindow");
         if (settingsWindow.exec() == QDialog::Accepted)
         {
             SaveSettings();
@@ -314,7 +315,6 @@ namespace EMStudio
 
         return FINISHED;
     }
-
 
 
     // constructor
@@ -473,15 +473,21 @@ namespace EMStudio
         QDialogButtonBox* buttonBox = new QDialogButtonBox(buttons);
         if (buttons & QDialogButtonBox::Save)
         {
-            buttonBox->button(QDialogButtonBox::Save)->setText("&Save Selected");
+            QPushButton* saveButton = buttonBox->button(QDialogButtonBox::Save);
+            saveButton->setText("&Save Selected");
+            saveButton->setObjectName("EMFX.SaveDirtySettingsWindow.SaveButton");
         }
         if (buttons & QDialogButtonBox::Discard)
         {
-            buttonBox->button(QDialogButtonBox::Discard)->setText("&Discard Changes");
+            QPushButton* discardButton = buttonBox->button(QDialogButtonBox::Discard);
+            discardButton->setText("&Discard Changes");
+            discardButton->setObjectName("EMFX.SaveDirtySettingsWindow.DiscardButton");
         }
         if (buttons & QDialogButtonBox::Cancel)
         {
-            buttonBox->button(QDialogButtonBox::Cancel)->setText("&Cancel");
+            QPushButton* cancelButton = buttonBox->button(QDialogButtonBox::Cancel);
+            cancelButton->setText("&Cancel");
+            cancelButton->setObjectName("EMFX.SaveDirtySettingsWindow.CancelButton");
         }
         vLayout->addWidget(buttonBox);
 

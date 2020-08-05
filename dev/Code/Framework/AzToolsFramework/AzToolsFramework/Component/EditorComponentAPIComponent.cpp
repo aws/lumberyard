@@ -145,7 +145,7 @@ namespace AzToolsFramework
             size_t typesCount = componentTypeNames.size();
             size_t counter = 0;
 
-            foundTypeIds.resize(typesCount);
+            foundTypeIds.resize(typesCount, AZ::Uuid::CreateNull());
 
             m_serializeContext->EnumerateDerived<AZ::Component>(
                 [&counter, typesCount, componentTypeNames, &foundTypeIds, entityType](const AZ::SerializeContext::ClassData* componentClass, const AZ::Uuid& knownType) -> bool

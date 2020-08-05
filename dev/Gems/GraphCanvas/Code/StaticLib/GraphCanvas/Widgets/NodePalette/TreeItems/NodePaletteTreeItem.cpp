@@ -9,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <QColor>
+
 #include <GraphCanvas/Widgets/NodePalette/TreeItems/NodePaletteTreeItem.h>
 
 namespace GraphCanvas
@@ -25,6 +27,7 @@ namespace GraphCanvas
         , m_name(QString::fromUtf8(name.data(), static_cast<int>(name.size())))
         , m_selected(false)
         , m_hovered(false)
+        , m_enabled(true)
         , m_highlight(-1, 0)
         , m_ordering(k_defaultItemOrdering)
     {
@@ -45,7 +48,7 @@ namespace GraphCanvas
         if (index.column() == Column::Name)
         {
             switch (role)
-            {            
+            {
             case Qt::ToolTipRole:
                 // If we have a tooltip. Use it
                 // Otherwise fall through to use our name.
@@ -57,6 +60,26 @@ namespace GraphCanvas
                 return GetName();
             case Qt::EditRole:
                 return GetName();
+            case Qt::ForegroundRole:
+                if (!IsEnabled())
+                {
+                    QVariant variant = OnData(index, role);
+
+                    if (variant.type() == QVariant::Type::Color)
+                    {
+                        QColor fontColor = variant.value<QColor>();
+
+                        int fontAlpha = aznumeric_cast<int>(fontColor.alpha() * 0.5f);
+                        fontAlpha = AZStd::min(AZStd::min(fontAlpha, 127), fontColor.alpha());
+
+                        fontColor.setAlpha(fontAlpha);
+
+                        variant.setValue(fontColor);
+                    }
+
+                    return variant;
+                }
+                break;
             default:
                 break;
             }
@@ -127,7 +150,15 @@ namespace GraphCanvas
 
     const AZStd::string& NodePaletteTreeItem::GetTitlePalette() const
     {
-        return m_palette;
+        if (IsEnabled())
+        {
+            return m_palette;
+        }
+        else
+        {
+            static AZStd::string s_disabledPalette = "DisabledPalette";
+            return s_disabledPalette;
+        }
     }
 
     void NodePaletteTreeItem::SetHovered(bool hovered)
@@ -158,6 +189,22 @@ namespace GraphCanvas
         return m_selected;
     }
 
+    void NodePaletteTreeItem::SetEnabled(bool enabled)
+    {
+        if (m_enabled != enabled)
+        {
+            m_enabled = enabled;
+            OnTitlePaletteChanged();
+            OnEnabledStateChanged();
+            SignalDataChanged();
+        }
+    }
+
+    bool NodePaletteTreeItem::IsEnabled() const
+    {
+        return m_enabled;
+    }
+
     void NodePaletteTreeItem::SetHighlight(const AZStd::pair<int, int>& highlight)
     {
         m_highlight = highlight;
@@ -182,6 +229,11 @@ namespace GraphCanvas
     void NodePaletteTreeItem::SignalClicked(int row)
     {
         OnClicked(row);
+    }
+
+    bool NodePaletteTreeItem::SignalDoubleClicked(int row)
+    {
+        return OnDoubleClicked(row);
     }
 
     void NodePaletteTreeItem::PreOnChildAdded(GraphCanvasTreeItem* item)
@@ -249,8 +301,19 @@ namespace GraphCanvas
 
     }
 
+    void NodePaletteTreeItem::OnEnabledStateChanged()
+    {
+
+    }
+
     void NodePaletteTreeItem::OnClicked(int row)
     {
         AZ_UNUSED(row);
+    }
+
+    bool NodePaletteTreeItem::OnDoubleClicked(int row)
+    {
+        AZ_UNUSED(row);
+        return false;
     }
 }

@@ -82,9 +82,6 @@ namespace EMStudio
                 verticalLayout->addWidget(m_animGraphEditor);
                 m_animGraphEditor->setVisible(false);
 
-                // Align the layout spacing with the entity inspector.
-                verticalLayout->addSpacerItem(new QSpacerItem(0, 10, QSizePolicy::Fixed, QSizePolicy::Fixed));
-
                 // 2. Create object card
                 m_objectEditor = new EMotionFX::ObjectEditor(serializeContext, m_mainReflectedWidget);
 
@@ -107,7 +104,6 @@ namespace EMStudio
                 conditionsVerticalLayout->setAlignment(Qt::AlignTop);
                 conditionsVerticalLayout->setMargin(0);
                 conditionsVerticalLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
-                conditionsVerticalLayout->addSpacerItem(new QSpacerItem(0, 10, QSizePolicy::Fixed, QSizePolicy::Fixed));
 
                 m_conditionsLayout = new QVBoxLayout();
                 m_conditionsLayout->setAlignment(Qt::AlignTop);
@@ -133,7 +129,6 @@ namespace EMStudio
                 actionVerticalLayout->setAlignment(Qt::AlignTop);
                 actionVerticalLayout->setMargin(0);
                 actionVerticalLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
-                actionVerticalLayout->addSpacerItem(new QSpacerItem(0, 10, QSizePolicy::Fixed, QSizePolicy::Fixed));
 
                 m_actionsLayout = new QVBoxLayout();
                 m_actionsLayout->setAlignment(Qt::AlignTop);
@@ -182,19 +177,6 @@ namespace EMStudio
             delete m_mainReflectedWidget;
         }
     }
-
-    QIcon AttributesWindow::GetIconForObject(EMotionFX::AnimGraphObject* object)
-    {
-        AZStd::string filename = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().c_str(), object->RTTI_GetTypeName());
-
-        if (!QFile::exists(filename.c_str()))
-        {
-            filename = AZStd::string::format("%sImages/AnimGraphPlugin/AnimGraphStateMachine.png", MysticQt::GetDataDir().c_str());
-        }
-
-        return QIcon(filename.c_str());
-    }
-
 
     void AttributesWindow::Init(const QModelIndex& modelIndex, bool forceUpdate)
     {
@@ -478,17 +460,14 @@ namespace EMStudio
         connect(deleteAction, &QAction::triggered, this, &AttributesWindow::OnRemoveCondition);
 
         QAction* copyAction = contextMenu.addAction("Copy conditions");
-        copyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
         connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopyConditions);
 
         if (!m_copyPasteClipboard.empty())
         {
             QAction* pasteAction = contextMenu.addAction("Paste conditions");
-            pasteAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
             connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
 
             QAction* pasteSelectiveAction = contextMenu.addAction("Paste conditions selective");
-            pasteSelectiveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
             connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
         }
 
@@ -691,18 +670,15 @@ namespace EMStudio
         if (transition->GetNumConditions() > 0)
         {
             QAction* copyAction = menu.addAction("Copy conditions");
-            copyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
             connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopyConditions);
         }
 
         if (!m_copyPasteClipboard.empty())
         {
             QAction* pasteAction = menu.addAction("Paste conditions");
-            pasteAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
             connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
 
             QAction* pasteSelectiveAction = menu.addAction("Paste conditions selective");
-            pasteSelectiveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
             connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
         }
 

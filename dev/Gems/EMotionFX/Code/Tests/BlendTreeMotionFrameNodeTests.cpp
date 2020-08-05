@@ -66,7 +66,7 @@ namespace EMotionFX
             m_motionNode->AddMotionId(motionId);
 
             m_motionNode->RecursiveOnChangeMotionSet(m_animGraphInstance, m_motionSet);
-            m_motionNode->PickNewActiveMotion(m_animGraphInstance, static_cast<AnimGraphMotionNode::UniqueData*>(m_motionNode->FindUniqueNodeData(m_animGraphInstance)));
+            m_motionNode->PickNewActiveMotion(m_animGraphInstance, static_cast<AnimGraphMotionNode::UniqueData*>(m_motionNode->FindOrCreateUniqueNodeData(m_animGraphInstance)));
 
             // The motion node creates its motion instance in the Output() call, which means that at the first
             // evaluation of the motion frame node the duration is 0.0 (due to the missing motion instance) and
@@ -115,7 +115,7 @@ namespace EMotionFX
 
     TEST_F(BlendTreeMotionFrameTests, SetNormalizedTime)
     {
-        BlendTreeMotionFrameNode::UniqueData* uniqueData = static_cast<BlendTreeMotionFrameNode::UniqueData*>(m_motionFrameNode->FindUniqueNodeData(m_animGraphInstance));
+        BlendTreeMotionFrameNode::UniqueData* uniqueData = static_cast<BlendTreeMotionFrameNode::UniqueData*>(m_motionFrameNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         SetAndTestTimeValue(uniqueData, 0.2f);
         SetAndTestTimeValue(uniqueData, 0.4f);
         SetAndTestTimeValue(uniqueData, 0.3f);
@@ -125,14 +125,14 @@ namespace EMotionFX
 
     TEST_F(BlendTreeMotionFrameTests, RewindTest)
     {
-        BlendTreeMotionFrameNode::UniqueData* uniqueData = static_cast<BlendTreeMotionFrameNode::UniqueData*>(m_motionFrameNode->FindUniqueNodeData(m_animGraphInstance));
+        BlendTreeMotionFrameNode::UniqueData* uniqueData = static_cast<BlendTreeMotionFrameNode::UniqueData*>(m_motionFrameNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         SetAndTestTimeValue(uniqueData, 0.2f);
         SetAndTestTimeValue(uniqueData, 0.4f, true);
     }
 
     TEST_F(BlendTreeMotionFrameTests, RewindTest_SetEmitEventsFromStart)
     {
-        BlendTreeMotionFrameNode::UniqueData* uniqueData = static_cast<BlendTreeMotionFrameNode::UniqueData*>(m_motionFrameNode->FindUniqueNodeData(m_animGraphInstance));
+        BlendTreeMotionFrameNode::UniqueData* uniqueData = static_cast<BlendTreeMotionFrameNode::UniqueData*>(m_motionFrameNode->FindOrCreateUniqueNodeData(m_animGraphInstance));
         m_motionFrameNode->SetEmitEventsFromStart(true);
         SetAndTestTimeValue(uniqueData, 0.2f);
         SetAndTestTimeValue(uniqueData, 0.4f, true);

@@ -35,7 +35,7 @@ namespace EMotionFX
             mRotation = AZ::Quaternion::CreateIdentity();
             EMFX_SCALECODE
             (
-                mScale.Set(1.0f, 1.0f, 1.0f);
+                mScale = AZ::Vector3::CreateOne();
             );
         }
 
@@ -48,6 +48,8 @@ namespace EMotionFX
 
         void InitFromAZTransform(const AZ::Transform& transform);  // relatively slow as it decomposes the matrix
         AZ::Transform ToAZTransform() const;
+
+        static Transform CreateIdentity();
 
         void Identity();
         void Zero();

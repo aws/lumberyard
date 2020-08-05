@@ -216,6 +216,9 @@ namespace GraphCanvas
 
         if (m_createdSlot.IsValid())
         {
+            const bool isValidSlot = true;
+            OnMoveFinalized(isValidSlot);
+
             GraphId graphId;
             SceneMemberRequestBus::EventResult(graphId, GetNode(), &SceneMemberRequests::GetScene);
 

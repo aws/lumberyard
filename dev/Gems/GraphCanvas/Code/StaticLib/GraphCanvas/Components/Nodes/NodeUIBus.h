@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include <qglobal.h>
+
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
 
@@ -18,8 +20,8 @@ namespace GraphCanvas
 {
     //! NodeUIRequests
     //! Requests involving the visual state/behavior of a node.
-	//! Generally independent of any sort of logical underpinning and more related to the UX
-	//! of the node.
+    //! Generally independent of any sort of logical underpinning and more related to the UX
+    //! of the node.
     class NodeUIRequests
         : public AZ::EBusTraits
     {
@@ -32,6 +34,8 @@ namespace GraphCanvas
         virtual void SetSnapToGrid(bool enabled) = 0;
         virtual void SetResizeToGrid(bool enabled) = 0;
         virtual void SetGrid(AZ::EntityId gridId) = 0;
+
+        virtual void SetSteppedSizingEnabled(bool sizing) = 0;
 
         virtual qreal GetCornerRadius() const = 0;
     };

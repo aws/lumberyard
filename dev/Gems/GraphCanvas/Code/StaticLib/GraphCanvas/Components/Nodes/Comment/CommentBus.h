@@ -136,13 +136,13 @@ namespace GraphCanvas
 
         CommentNodeTextSaveData()
             : m_saveDataInterface(nullptr)
-            , m_backgroundColor(0.98f, 0.97f, 0.65f, 1.0f)
+            , m_backgroundColor(1.0f, 1.0f, 1.0f, 1.0f)
         {
         }
 
         CommentNodeTextSaveData(CommentNodeTextSaveDataInterface* saveDataInterface)
             : m_saveDataInterface(saveDataInterface)
-            , m_backgroundColor(0.98f, 0.97f, 0.65f, 1.0f)
+            , m_backgroundColor(1.0f, 1.0f, 1.0f, 1.0f)
         {
         }
 

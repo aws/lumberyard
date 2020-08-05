@@ -26,6 +26,8 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
@@ -42,6 +44,7 @@ namespace GraphCanvas
         , protected SceneNotificationBus::Handler
         , protected AZ::TickBus::Handler
         , protected AssetEditorSettingsNotificationBus::Handler
+        , public AzToolsFramework::EditorEvents::Bus::Handler
     {
     private:
         const int KEYBOARD_MOVE = 50;
@@ -60,6 +63,9 @@ namespace GraphCanvas
         };
 
     public:
+
+        const int IS_EVENT_HANDLER_ONLY = 100;
+
         AZ_CLASS_ALLOCATOR(GraphCanvasGraphicsView, AZ::SystemAllocator, 0);
 
         GraphCanvasGraphicsView(QWidget* parent = nullptr, bool registerShortcuts = true);
@@ -88,9 +94,8 @@ namespace GraphCanvas
 
         void CenterOn(const QPointF& posInSceneCoordinates) override;
         void CenterOnStartOfChain() override;
-        void CenterOnEndOfChain() override;        
-        void CenterOnSelection() override;        
-
+        void CenterOnEndOfChain() override;
+        void CenterOnSelection() override;
 
         QRectF GetCompleteArea() override;
         void WheelEvent(QWheelEvent* ev) override;
@@ -122,6 +127,8 @@ namespace GraphCanvas
         ToastId ShowToastNotification(const ToastConfiguration& toastConfiguration) override;
         ToastId ShowToastAtCursor(const ToastConfiguration& toastConfiguration) override;
         ToastId ShowToastAtPoint(const QPoint& screenPosition, const QPointF& anchorPoint, const ToastConfiguration& toastConfiguration) override;
+
+        bool IsShowing() const;
         ////
 
         // TickBus
@@ -154,11 +161,19 @@ namespace GraphCanvas
         void focusOutEvent(QFocusEvent* event);
 
         void resizeEvent(QResizeEvent* event) override;
+        void moveEvent(QMoveEvent* event) override;
         void scrollContentsBy(int dx, int dy) override;
+
+        void showEvent(QShowEvent* showEvent) override;
+        void hideEvent(QHideEvent* hideEvent) override;
         ////
         
         // AssetEditorSettingsNotificationBus
         void OnSettingsChanged() override;
+        ////
+
+        // AzToolsFramework::EditorEvents::Bus::Handler
+        void OnEscape() override;
         ////
 
         bool GetIsEditing(){ return m_isEditing; }
@@ -169,6 +184,8 @@ namespace GraphCanvas
         void JumpToBookmark(int bookmarkShortcut);
 
     private:
+
+        void UpdateToastPosition();
 
         void CenterOnSceneMembers(const AZStd::vector<AZ::EntityId>& memberIds);
 

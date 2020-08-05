@@ -30,4 +30,9 @@ namespace GraphCanvas
             ;
         }
     }
+
+    const NodeId& GraphCanvasMimeEvent::GetCreatedNodeId() const
+    {
+        return m_createdNodeId;
+    }
 }

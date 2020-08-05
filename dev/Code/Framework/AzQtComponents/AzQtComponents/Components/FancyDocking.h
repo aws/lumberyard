@@ -13,11 +13,11 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+#include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/DockTabWidget.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/FancyDockingDropZoneWidget.h>
 
-#include <QMainWindow>
 #include <QColor>
 #include <QMetaType>
 #include <QPixmap>
@@ -60,7 +60,7 @@ namespace AzQtComponents
         //! \param[in] identifierPrefix: prefix to use for properties on widgets/windows to flag them
         //!            as owned by this instance of the FancyDocking manager. Can be anything, as long
         //!            as it is unique
-        FancyDocking(QMainWindow* mainWindow, const char* identifierPrefix = "fancydocking");
+        FancyDocking(DockMainWindow* mainWindow, const char* identifierPrefix = "fancydocking");
         ~FancyDocking();
 
         struct TabContainerType
@@ -156,6 +156,7 @@ namespace AzQtComponents
 
         void StartDropZone(QWidget* dropZoneContainer, const QPoint& globalPos);
         void StopDropZone();
+        bool ForceTabbedDocksEnabled() const;
 
         void RepaintFloatingIndicators();
         void SetFloatingPixmapClipping(QWidget* dropOnto, Qt::DockWidgetArea area);
@@ -168,10 +169,16 @@ namespace AzQtComponents
 
         int titleBarOffset(const QDockWidget* dockWidget) const;
 
+        QPoint multiscreenMapFromGlobal(const QPoint& point);
+
         QMainWindow* m_mainWindow;
         QDesktopWidget* m_desktopWidget;
         AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QList<QScreen*> m_desktopScreens;
+
+#ifdef AZ_PLATFORM_WINDOWS
+        QList<QWidget*> m_perScreenFullScreenWidgets;
+#endif
 
         // An empty QWidget used as a placeholder when dragging a dock window
         // as opposed to creating a new one each time we start dragging a dock widget

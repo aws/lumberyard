@@ -1,8 +1,0 @@
-<Material MtlFlags="524292" Shader="Startergame_geometrybeamscaling" GenMask="0" StringGenMask="" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="1" vertModifType="0" LayerAct="1">
- <Textures>
-  <Texture Map="Diffuse" File="objects/effects/particleassets/fx_laserbeam_02.dds">
-   <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileV="0.050000001" TexMod_VOscillatorType="2" TexMod_VOscillatorRate="2" TexMod_VOscillatorAmplitude="1"/>
-  </Texture>
- </Textures>
- <PublicParams StartColor="0.98225069,0.00030352699,0.00030352699" EndColor="1,1,1" FinalMultiplier="4" SoftIntersectionFactor="1" viewDependencyFactor="10" AmbStrength="0.88" baseUVScaleV="1.176" age="0.61799997" baseUVScaleU="1" fadingFeaturing="5"/>
-</Material>

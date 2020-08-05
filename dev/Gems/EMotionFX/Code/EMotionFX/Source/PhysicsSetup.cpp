@@ -156,17 +156,6 @@ namespace EMotionFX
         AZ_Printf("EMotionFX", "------------------------------------------------------------------------\n");
     }
 
-    Physics::RagdollNodeConfiguration* PhysicsSetup::GetRagdollRootNodeConfig()
-    {
-        AZStd::vector<Physics::RagdollNodeConfiguration>& ragdollNodes = m_config.m_ragdollConfig.m_nodes;
-        if (!ragdollNodes.empty())
-        {
-            return &ragdollNodes[0];
-        }
-
-        return nullptr;
-    }
-
     const Node* PhysicsSetup::FindRagdollParentNode(const Node* node) const
     {
         if (!node)

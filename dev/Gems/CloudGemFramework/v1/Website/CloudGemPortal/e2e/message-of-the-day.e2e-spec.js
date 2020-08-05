@@ -60,18 +60,18 @@ describe('Message of the Day', function() {
 
             it('should be able to navigate to History tab and back to Overview', function() {
                 motdModel.facets.get(1).click();
-                browser.wait(until.elementToBeClickable(motdModel.history.messageContainer), 5000, "Cloud not determine if History page loaded");
+                browser.wait(until.elementToBeClickable(motdModel.history.messageContainer), 5000, "Could not determine if History page loaded");
 
                 motdModel.facets.get(0).click();
-                browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Cloud not determine if Overiew page re-loaded");
+                browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Could not determine if Overview page re-loaded");
             });
 
             it('should be able to navigate to REST Explorer tab and back to Overview', function() {
                 motdModel.facets.get(2).click();
-                browser.wait(until.elementToBeClickable(motdModel.restExplorer.path.obj), 5000, "Cloud not determine if REST Explorere page loaded");
+                browser.wait(until.elementToBeClickable(motdModel.restExplorer.path.obj), 5000, "Could not determine if REST Explorer page loaded");
 
                 motdModel.facets.get(0).click();
-                browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Cloud not determine if Overiew page re-loaded");
+                browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Could not determine if Overview page re-loaded");
             });
         });
         
@@ -89,7 +89,7 @@ describe('Message of the Day', function() {
                 
                 motdModel.overview.pageLinks.get(1).click();
 
-                browser.wait(motdModel.overview.pageLinks.get(1).isSelected(), 5000, "Cloud not determine if page is selected");
+                browser.wait(motdModel.overview.pageLinks.get(1).isSelected(), 5000, "Could not determine if page is selected");
                 
                 browser.wait(until.presenceOf(motdModel.overview.pageLinks), 5000, "Could not find pagination links");
                 browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Could not find entries of new page");
@@ -97,7 +97,7 @@ describe('Message of the Day', function() {
 
                 motdModel.overview.pageLinks.get(0).click();
                 
-                browser.wait(motdModel.overview.pageLinks.get(0).isSelected(), 5000, "Cloud not determine if page is selected");
+                browser.wait(motdModel.overview.pageLinks.get(0).isSelected(), 5000, "Could not determine if page is selected");
                 browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Could not find entries of first page");
                 
             });
@@ -121,13 +121,13 @@ describe('Message of the Day', function() {
                 });
                 
                 motdModel.overview.submit.click();
-                browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Cloud not determine if modal has closed");
+                browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Could not determine if modal has closed");
                 browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Could not find entered item");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(0)), 5000, "Could not determine if all messages were deleted");
                 
                 deleteFirstOverviewMessage();
 
-                browser.wait(until.not(until.visibilityOf(motdModel.overview.del.get(0))), 5000, "Entry still found after all elements hould have been deleted");
+                browser.wait(until.not(until.visibilityOf(motdModel.overview.del.get(0))), 5000, "Entry still found after all elements should have been deleted");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(0)), 5000, "Could not determine if all messages were deleted");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(1)), 5000, "Could not determine if all messages were deleted");
             });
@@ -148,22 +148,22 @@ describe('Message of the Day', function() {
                 browser.wait(until.elementToBeClickable(motdModel.overview.submit), 5000, "Could not click modals's submit button.");
                 
                 motdModel.overview.submit.click();
-                browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Cloud not determine if modal has closed");
-                browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Could not determine if mofified message loaded");
+                browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Could not determine if modal has closed");
+                browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Could not determine if modified message loaded");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(0)), 5000, "Could not determine if all Planned messages were deleted");
 
                 deleteFirstOverviewMessage();
                 
-                browser.wait(until.not(until.visibilityOf(motdModel.overview.del.get(0))), 5000, "Entry still found after all elements hould have been deleted");
+                browser.wait(until.not(until.visibilityOf(motdModel.overview.del.get(0))), 5000, "Entry still found after all elements should have been deleted");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(0)), 5000, "Could not determine if all messages were deleted");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(1)), 5000, "Could not determine if all messages were deleted");
             });
 
             it('should not allow an empty message', function() {
-                browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Cloud not determine if page is ready");
+                browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Could not determine if page is ready");
 
                 motdModel.overview.addButton.click();
-                browser.wait(until.elementToBeClickable(motdModel.overview.submit), 5000, "Cloud not determine if modal has closed");
+                browser.wait(until.elementToBeClickable(motdModel.overview.submit), 5000, "Could not determine if modal has closed");
 
                 motdModel.overview.submit.click();
                 browser.wait(until.presenceOf(motdModel.overview.formFeedback), 5000, "Could not find form error message");
@@ -173,7 +173,7 @@ describe('Message of the Day', function() {
                 });
 
                 motdModel.overview.closeModal.click();
-                browser.wait(until.not(until.visibilityOf(motdModel.overview.closeModal)), 5000, "Cloud not determine if modal has closed");
+                browser.wait(until.not(until.visibilityOf(motdModel.overview.closeModal)), 5000, "Could not determine if modal has closed");
             });
         });
 
@@ -186,12 +186,12 @@ describe('Message of the Day', function() {
                 browser.wait(until.elementToBeClickable(motdModel.facets.get(0)), 5000, "Could not click on Overview Tab");
                 motdModel.facets.get(0).click();
 
-                browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Clould not determine if Overview page was loaded");
+                browser.wait(until.elementToBeClickable(motdModel.overview.del.get(0)), 5000, "Could not determine if Overview page was loaded");
                 expect(motdModel.overview.messageEntries.count()).toEqual(1);
 
                 deleteFirstOverviewMessage();
                 
-                browser.wait(until.not(until.visibilityOf(motdModel.overview.del.get(0))), 5000, "Entry still found after all elements hould have been deleted");
+                browser.wait(until.not(until.visibilityOf(motdModel.overview.del.get(0))), 5000, "Entry still found after all elements should have been deleted");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(0)), 5000, "Could not determine if all messages were deleted");
                 browser.wait(until.visibilityOf(motdModel.overview.noMessages.get(1)), 5000, "Could not determine if all messages were deleted");
             });
@@ -201,12 +201,12 @@ describe('Message of the Day', function() {
                 addMessageFromREST('Test REST Message', 'Jan 1 2010 12:00', 'Dec 30 2010 12:00', 0); // Add message with a start and ent time in the past
 
                 motdModel.facets.get(1).click();
-                browser.wait(until.visibilityOf(motdModel.history.del.get(0)), 5000, "Cloud not determine if history page has loaded");
+                browser.wait(until.visibilityOf(motdModel.history.del.get(0)), 5000, "Could not determine if history page has loaded");
                 
                 expect(motdModel.history.messageEntries.count()).toEqual(1);
 
                 deleteFirstHistoryMessage();
-                browser.wait(until.not(until.visibilityOf(motdModel.history.del.get(0))), 5000, "Cloud not determine if message has deleted");
+                browser.wait(until.not(until.visibilityOf(motdModel.history.del.get(0))), 5000, "Could not determine if message has deleted");
                 browser.wait(until.visibilityOf(motdModel.history.noMessages), 5000, "Could not determine if all messages were deleted");
             });
         });
@@ -214,7 +214,7 @@ describe('Message of the Day', function() {
 
     function addMessageFromOverview(count) {
         for (let i = 0; i < count; i++) {                    
-            browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Cloud not determine if Overivew page is loaded");
+            browser.wait(until.elementToBeClickable(motdModel.overview.addButton), 5000, "Could not determine if Overview page is loaded");
             
             motdModel.overview.addButton.click();
             browser.wait(until.elementToBeClickable(motdModel.overview.submit), 5000, "Could not find add modal");
@@ -232,18 +232,18 @@ describe('Message of the Day', function() {
             });
             
             motdModel.overview.submit.click();
-            browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Cloud not determine if modal has closed");
+            browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Could not determine if modal has closed");
         }
     }
 
     function addMessageFromREST(message, startTime, endTime, priority) {
-        browser.wait(until.elementToBeClickable(motdModel.restExplorer.path.obj), 5000, "Cloud not determine if REST Explorere page loaded");
+        browser.wait(until.elementToBeClickable(motdModel.restExplorer.path.obj), 5000, "Could not determine if REST Explorer page loaded");
 
         motdModel.restExplorer.path.obj.click();
-        browser.wait(until.elementToBeClickable(motdModel.restExplorer.path.options.get(3)), 5000, "Cloud not find opened path dropdown menu");
+        browser.wait(until.elementToBeClickable(motdModel.restExplorer.path.options.get(3)), 5000, "Could not find opened path dropdown menu");
 
         motdModel.restExplorer.path.options.get(0).click();
-        browser.wait(until.elementToBeClickable(motdModel.restExplorer.verb.obj), 5000, "Cloud not find verb dropdown menu");
+        browser.wait(until.elementToBeClickable(motdModel.restExplorer.verb.obj), 5000, "Could not find verb dropdown menu");
 
         motdModel.restExplorer.verb.obj.click();
         browser.wait(until.elementToBeClickable(motdModel.restExplorer.verb.options.get(1)), 5000, "Could not find the verb dropdown options");
@@ -271,7 +271,7 @@ describe('Message of the Day', function() {
         browser.wait(until.elementToBeClickable(motdModel.overview.submit), 5000, "Could not confirm deletion of entry");
         motdModel.overview.submit.click();
 
-        browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Cloud not determine if modal has closed");
+        browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Could not determine if modal has closed");
         browser.wait(until.elementToBeClickable(motdModel.facets.get(0)), 5000, "Could not confirm deletion of entry");
     }
 
@@ -284,7 +284,7 @@ describe('Message of the Day', function() {
         browser.wait(until.elementToBeClickable(motdModel.overview.submit), 5000, "Could not confirm deletion of entry");
         motdModel.overview.submit.click();
 
-        browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Cloud not determine if modal has closed");
+        browser.wait(until.not(until.visibilityOf(motdModel.overview.submit)), 5000, "Could not determine if modal has closed");
         browser.wait(until.elementToBeClickable(motdModel.facets.get(0)), 5000, "Could not confirm deletion of entry");
     }
 });

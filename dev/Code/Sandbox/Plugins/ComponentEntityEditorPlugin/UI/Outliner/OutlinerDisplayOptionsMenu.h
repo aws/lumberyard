@@ -11,8 +11,9 @@
 */
 #pragma once
 
-#include <QScopedPointer>
-#include <QWidget>
+#include <QMenu>
+
+class QAction;
 
 namespace Ui
 {
@@ -37,7 +38,7 @@ namespace EntityOutliner
     class DisplayOptionsMenu 
         : public QMenu
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         DisplayOptionsMenu(QWidget* parent = nullptr);
@@ -48,12 +49,9 @@ namespace EntityOutliner
         void OnOptionToggled(DisplayOption option, bool enabled);
 
     private:
-        void OnSortModeSelected(int sortMode);
+        void OnSortModeSelected(QAction* action);
 
-        void OnAutoScrollToggle(int state);
-        void OnAutoExpandToggle(int state);
-
-
-        QScopedPointer<Ui::OutlinerDisplayOptions> m_ui;
+        void OnAutoScrollToggle(bool checked);
+        void OnAutoExpandToggle(bool checked);
     };
 }

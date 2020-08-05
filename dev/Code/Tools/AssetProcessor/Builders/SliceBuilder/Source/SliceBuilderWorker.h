@@ -60,7 +60,8 @@ namespace SliceBuilder
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response);
         void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const;
 
-        bool GetDynamicSliceAssetAndDependencies(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset, AZStd::vector<AssetBuilderSDK::ProductDependency>& outProductDependencies, AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet) const;
+        static bool GetDynamicSliceAsset(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset);
+        static bool OutputSliceJob(const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset, AZStd::string_view outputPath, AssetBuilderSDK::JobProduct& jobProduct);
         //////////////////////////////////////////////////////////////////////////
         //!AssetBuilderSDK::AssetBuilderCommandBus interface
         void ShutDown() override;

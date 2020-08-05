@@ -12,14 +12,14 @@
 
 #pragma once
 
-#include <MysticQt/Source/DockWidget.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
 
 namespace EMStudio
 {
     class EMStudioPlugin;
     
     class RemovePluginOnCloseDockWidget
-        : public MysticQt::DockWidget
+        : public AzQtComponents::StyledDockWidget
     {
         Q_OBJECT
 

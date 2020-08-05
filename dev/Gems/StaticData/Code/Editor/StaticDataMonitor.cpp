@@ -137,14 +137,16 @@ namespace CloudCanvas
             }
 
             const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
-            AZStd::string sanitizedName{ GetSanitizedName(fileName.c_str()) };
-            AZStd::string directoryPath = StaticDataManager::GetDirectoryFromFullPath(sanitizedName);
-
-            if (m_monitoredPaths.find(directoryPath) != m_monitoredPaths.end())
+            if (!fileName.empty())
             {
-                return true;
-            }
+                AZStd::string sanitizedName{ GetSanitizedName(fileName.c_str()) };
+                AZStd::string directoryPath = StaticDataManager::GetDirectoryFromFullPath(sanitizedName);
 
+                if (m_monitoredPaths.find(directoryPath) != m_monitoredPaths.end())
+                {
+                    return true;
+                }
+            }
 
             return false;
         }
@@ -161,7 +163,10 @@ namespace CloudCanvas
             }
 
             const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
-            OnFileChanged(fileName);
+            if (!fileName.empty())
+            {
+                OnFileChanged(fileName);
+            }
         }
 
         void StaticDataMonitor::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
@@ -177,14 +182,21 @@ namespace CloudCanvas
                 return;
             }
             const AZStd::string fileName = GetAssetFilenameFromAssetId(assetId);
-            OnFileChanged(fileName);
+            if (!fileName.empty())
+            {
+                OnFileChanged(fileName);
+            }
         }
 
         AZStd::string StaticDataMonitor::GetAssetFilenameFromAssetId(const AZ::Data::AssetId& assetId)
         {
+            const char* cachePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
+            if (!cachePath)
+            {
+                return {};
+            }
+            AZStd::string assetCachePath{ cachePath };
             AZStd::string filename;
-
-            AZStd::string assetCachePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
             AzFramework::StringFunc::AssetDatabasePath::Normalize(assetCachePath);
 
             AZStd::string relativePath;

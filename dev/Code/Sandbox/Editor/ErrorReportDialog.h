@@ -32,7 +32,7 @@ class CErrorReportDialog
 {
     Q_OBJECT
 public:
-    CErrorReportDialog();   // standard constructor
+    explicit CErrorReportDialog(QWidget* parent = nullptr);   // standard constructor
     virtual ~CErrorReportDialog();
 
     static void RegisterViewClass();
@@ -70,6 +70,7 @@ protected Q_SLOTS:
     void OnReportItemRClick();
     void OnReportColumnRClick();
     void OnReportItemDblClick(const QModelIndex& index);
+    void OnSortIndicatorChanged(int logicalIndex, Qt::SortOrder order);
 
 protected:
     void OnReportHyperlink(const QModelIndex& index);
@@ -83,6 +84,9 @@ protected:
 
     QScopedPointer<Ui::CErrorReportDialog> ui;
     CErrorReportTableModel* m_errorReportModel;
+
+    int m_sortIndicatorColumn;
+    Qt::SortOrder m_sortIndicatorOrder;
 };
 
 #endif // CRYINCLUDE_EDITOR_ERRORREPORTDIALOG_H

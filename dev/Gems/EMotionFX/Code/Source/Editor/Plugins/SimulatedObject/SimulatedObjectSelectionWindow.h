@@ -16,7 +16,6 @@
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <Editor/Plugins/SimulatedObject/SimulatedObjectSelectionWidget.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
-#include <MysticQt/Source/ButtonGroup.h>
 #include <QDialog>
 
 

@@ -273,6 +273,27 @@ namespace AZ
             return true;
         }
 
+        inline bool StringSetToRgbaValue(AZ::Color& outColor, const StringSet& arguments)
+        {
+            const uint32_t ArgumentCount = 4;
+
+            if (arguments.size() < ArgumentCount)
+            {
+                AZ_Warning("Az Console", false, "Not enough arguments provided to AZ::Color StringSetToValue()");
+                return false;
+            }
+
+            using ColorSetter = void (AZ::Color::*)(u8);
+            ColorSetter rgbaSetters[] = { &AZ::Color::SetR8, &AZ::Color::SetG8, &AZ::Color::SetB8, &AZ::Color::SetA8 };
+
+            for (uint32_t i = 0; i < ArgumentCount; ++i)
+            {
+                ((outColor).*(rgbaSetters[i]))((static_cast<u8>(strtoll(arguments[i].c_str(), nullptr, 0))));
+            }
+
+            return true;
+        }
+
         template <>
         inline bool StringSetToValue<AZ::Vector2>(AZ::Vector2& outValue, const StringSet& arguments)
         {
@@ -300,7 +321,20 @@ namespace AZ
         template <>
         inline bool StringSetToValue<AZ::Color>(AZ::Color& outValue, const StringSet& arguments)
         {
-            return StringSetToVectorValue<AZ::Color, 4>(outValue, arguments, "AZ::Color");
+            const bool decimal = AZStd::any_of(
+                AZStd::cbegin(arguments), AZStd::cend(arguments), [](const AZStd::string argument)
+                {
+                    return argument.find(".") != AZStd::string::npos;
+                });
+
+            if (decimal)
+            {
+                return StringSetToVectorValue<AZ::Color, 4>(outValue, arguments, "AZ::Color");
+            }
+            else
+            {
+                return StringSetToRgbaValue(outValue, arguments);
+            }
         }
 
         template <typename _TYPE>

@@ -59,13 +59,18 @@ namespace GraphCanvas
     class AnimatedPulse
         : public GraphicsEffect<QGraphicsItem>
         , public AZ::TickBus::Handler
+        , public AZ::SystemTickBus::Handler
         , public PulseRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(AnimatedPulse, AZ::SystemAllocator, 0);
 
         AnimatedPulse(const AnimatedPulseConfiguration& pulseConfiguration);
-        ~AnimatedPulse() = default;
+        ~AnimatedPulse() override;
+
+        // SystemTickBus
+        void OnSystemTick() override;
+        ////
         
         // TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;

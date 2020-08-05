@@ -25,8 +25,12 @@ namespace GraphCanvas
         ~AlignmentActionsMenuGroup() = default;
 
         void PopulateMenu(EditorContextMenu* contextMenu);
+
+        void SetEnabled(bool enabled);
         
     private:
+
+        EditorContextMenu* m_editorMenu;
     
         ContextMenuAction* m_alignTop;
         ContextMenuAction* m_alignBottom;

@@ -112,24 +112,24 @@ namespace ScriptEvents
         // If an address is not provided, this script event will be broadcast
         if (!parameter.m_address || parameter.m_address->m_typeId.IsNull())
         {
-            for (ScriptEventsHandler* eventHandler : m_broadcasts)
-            {
-                int functionIndex = eventHandler->GetFunctionIndex(parameter.m_eventName.data());
-                if (functionIndex >= 0 && functionIndex < eventHandler->GetEvents().size())
+                for (ScriptEventsHandler* eventHandler : m_broadcasts)
                 {
-                    const AZ::BehaviorEBusHandler::BusForwarderEvent& forwarderEvent = eventHandler->GetEvents()[functionIndex];
-                    if (!forwarderEvent.m_function)
+                    int functionIndex = eventHandler->GetFunctionIndex(parameter.m_eventName.data());
+                    if (functionIndex >= 0 && functionIndex < eventHandler->GetEvents().size())
                     {
-                        // Note, this may be OK if it happened in Script Canvas, we can't reasonably expect every event to be handled, I just need to be sure that
-                        // if there is a handler node that we don't get this.
-                        AZ_WarningOnce("Script Events", forwarderEvent.m_function, "Function %s not found for event: %s in script: %s - if needed, provide an implementation.", parameter.m_eventName.data(), m_scriptEventName.data(), eventHandler->GetScriptPath().c_str());
-                    }
-                    else
-                    {
-                        Call(forwarderEvent, functionIndex, parameter);
+                        const AZ::BehaviorEBusHandler::BusForwarderEvent& forwarderEvent = eventHandler->GetEvents()[functionIndex];
+                        if (!forwarderEvent.m_function)
+                        {
+                            // Note, this may be OK if it happened in Script Canvas, we can't reasonably expect every event to be handled, I just need to be sure that
+                            // if there is a handler node that we don't get this.
+                            AZ_WarningOnce("Script Events", forwarderEvent.m_function, "Function %s not found for event: %s in script: %s - if needed, provide an implementation.", parameter.m_eventName.data(), m_scriptEventName.data(), eventHandler->GetScriptPath().c_str());
+                        }
+                        else
+                        {
+                            Call(forwarderEvent, functionIndex, parameter);
+                        }
                     }
                 }
-            }
 
             // Broadcast event to all
             for (EventBindingEntry& handlerEntry : m_events)
@@ -249,8 +249,18 @@ namespace ScriptEvents
         if (address->m_value)
         {
             size_t addressHash = GetAddressHash(address);
-            m_events[addressHash].erase(handler);
-            m_events.erase(addressHash);
+
+            auto eventIter = m_events.find(addressHash);
+
+            if (eventIter != m_events.end())
+            {
+                eventIter->second.erase(handler);
+
+                if (eventIter->second.empty())
+                {
+                    m_events.erase(addressHash);
+                }
+            }
         }
         else
         {

@@ -392,7 +392,8 @@ void MacroTexture::StreamOnComplete(IReadStream* stream, unsigned error)
 
     if (stream->IsError())
     {
-        AZ_Assert(false, "Failed to stream MacroTexture tile");
+        // The only acceptable error is ERROR_USER_ABORT. Any other error should assert.
+        AZ_Assert(error == ERROR_USER_ABORT, "Failed to stream MacroTexture tile");
         node.streamingStatus = ecss_NotLoaded;
         node.readStream = nullptr;
         return;

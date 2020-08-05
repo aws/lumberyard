@@ -10,6 +10,8 @@
 *
 */
 
+#include <AzQtComponents/Components/StyleManager.h>
+
 #include <GraphCanvas/Widgets/StyledItemDelegates/IconDecoratedNameDelegate.h>
 
 namespace GraphCanvas
@@ -17,6 +19,10 @@ namespace GraphCanvas
     IconDecoratedNameDelegate::IconDecoratedNameDelegate(QWidget* parent)
     : QStyledItemDelegate(parent)
     {
+        if (AzQtComponents::StyleManager::isUi10())
+        {
+            m_paddingOffset = 7;
+        }
     }
     
     void IconDecoratedNameDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
@@ -32,7 +38,7 @@ namespace GraphCanvas
                 QPixmap icon = qvariant_cast<QPixmap>(iconData);
 
                 // Magic decorator width offset to make sure the overlaid pixmap is in the right place
-                int decoratorWidth = icon.width() + 7;
+                int decoratorWidth = icon.width() + m_paddingOffset;
 
                 QStyleOptionViewItem opt = option;
                 initStyleOption(&opt, index);

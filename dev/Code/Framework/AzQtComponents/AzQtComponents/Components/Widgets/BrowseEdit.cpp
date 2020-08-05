@@ -13,6 +13,7 @@
 #include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <QPushButton>
 #include <QHBoxLayout>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QTextFormat::d': class 'QSharedDataPointer<QTextFormatPrivate>' needs to have dll-interface to be used by clients of class 'QTextFormat'
@@ -61,7 +62,7 @@ namespace AzQtComponents
         setFocusProxy(m_data->m_lineEdit);
         m_data->m_lineEdit->setObjectName("line-edit");
         m_data->m_lineEdit->installEventFilter(this);
-        setClearButtonEnabled(true);
+        LineEdit::setEnableClearButtonWhenReadOnly(m_data->m_lineEdit, true);
         boxLayout->addWidget(m_data->m_lineEdit);
 
         connect(m_data->m_lineEdit, &QLineEdit::returnPressed, this, &BrowseEdit::returnPressed);
@@ -73,6 +74,7 @@ namespace AzQtComponents
         m_data->m_attachedButton->setObjectName("attached-button");
         boxLayout->addWidget(m_data->m_attachedButton);
         connect(m_data->m_attachedButton, &QPushButton::clicked, this, &BrowseEdit::attachedButtonTriggered);
+        setAttachedButtonIcon(QIcon(":/stylesheet/img/UI20/browse-edit.svg"));
     }
 
     BrowseEdit::~BrowseEdit()
@@ -116,11 +118,6 @@ namespace AzQtComponents
     void BrowseEdit::setLineEditReadOnly(bool readOnly)
     {
         m_data->m_lineEdit->setReadOnly(readOnly);
-        QAction* action = m_data->m_lineEdit->findChild<QAction*>(clearButtonActionNameC);
-        if (action)
-        {
-            action->setEnabled(true);
-        }
     }
 
     void BrowseEdit::setPlaceholderText(const QString& placeholderText)
@@ -186,6 +183,20 @@ namespace AzQtComponents
     BrowseEdit::Config BrowseEdit::defaultConfig()
     {
         return LineEdit::defaultConfig();
+    }
+
+    void BrowseEdit::applyDropTargetStyle(BrowseEdit* browseEdit, bool valid)
+    {
+        BrowseEdit::removeDropTargetStyle(browseEdit);
+        Style::addClass(browseEdit, valid ? ValidDropTarget : InvalidDropTarget);
+        StyleManager::repolishStyleSheet(browseEdit);
+    }
+
+    void BrowseEdit::removeDropTargetStyle(BrowseEdit* browseEdit)
+    {
+        Style::removeClass(browseEdit, ValidDropTarget);
+        Style::removeClass(browseEdit, InvalidDropTarget);
+        StyleManager::repolishStyleSheet(browseEdit);
     }
 
     bool BrowseEdit::eventFilter(QObject* watched, QEvent* event)
@@ -304,13 +315,18 @@ namespace AzQtComponents
             return false;
         }
 
+        const bool validDropTarget = Style::hasClass(browserEdit, ValidDropTarget);
+        const bool invalidDropTarget = Style::hasClass(browserEdit, InvalidDropTarget);
+        const bool dropTarget = validDropTarget || invalidDropTarget;
         const bool hasError = !browserEdit->hasAcceptableInput();
-        const int lineWidth = config.getLineWidth(option, hasError);
+        const int lineWidth = config.getLineWidth(option, hasError, dropTarget);
+
+        const QRect contentsRect = browserEdit->rect();
 
         if (lineWidth > 0)
         {
-            const QColor frameColor = config.getBorderColor(option, hasError);
-            const auto borderRect = style->borderLineEditRect(browserEdit->rect(), lineWidth, config.borderRadius);
+            const QColor frameColor = config.getBorderColor(option, hasError, dropTarget);
+            const QPainterPath borderRect = style->borderLineEditRect(browserEdit->rect(), lineWidth, config.borderRadius);
             Style::drawFrame(painter, borderRect, Qt::NoPen, frameColor);
         }
         else
@@ -319,17 +335,16 @@ namespace AzQtComponents
             const int borderRadius = config.borderRadius;
             const int borderWidth = 1;
 
-            const auto borderAdjustment = borderRadius - borderWidth;
-            const auto radius = borderRadius + borderWidth;
+            const int borderAdjustment = borderRadius - borderWidth;
+            const int radius = borderRadius + borderWidth;
 
-            auto contentsRect = browserEdit->rect();
-            auto buttonRect = browserEdit->m_data->m_attachedButton->rect();
+            QRect buttonRect = browserEdit->m_data->m_attachedButton->rect();
             buttonRect.moveCenter(contentsRect.center());
             buttonRect.moveRight(contentsRect.right() - borderRadius);
             buttonRect.adjust(0, -borderAdjustment, borderAdjustment, borderAdjustment);
 
-            const auto diameter = radius * 2;
-            const auto adjustedDiamter = diameter - borderAdjustment;
+            const int diameter = radius * 2;
+            const int adjustedDiamter = diameter - borderAdjustment;
             QRect tr(buttonRect.right() - adjustedDiamter, buttonRect.top(), diameter, diameter);
             QRect br(buttonRect.right() - adjustedDiamter, buttonRect.bottom() - adjustedDiamter, diameter, diameter);
 
@@ -342,6 +357,23 @@ namespace AzQtComponents
             pathRect.lineTo(buttonRect.left(), buttonRect.bottom() + borderWidth);
 
             Style::drawFrame(painter, pathRect, Qt::NoPen, config.hoverBorderColor);
+        }
+
+        if (validDropTarget)
+        {
+            QRect buttonRect = browserEdit->m_data->m_attachedButton->rect();
+            buttonRect.moveCenter(contentsRect.center());
+            buttonRect.moveRight(contentsRect.right() - config.borderRadius);
+            const int verticalAdjustment = 1;
+            buttonRect.adjust(0, verticalAdjustment, 0, 0);
+
+            const int offset = config.dropFrameOffset;
+            const QRect dropFrameRect = option->rect.adjusted(offset, offset, -offset, -offset);
+            QPainterPath dropFramePath = style->lineEditRect(dropFrameRect, lineWidth, config.dropFrameRadius);
+            dropFramePath.moveTo(buttonRect.topLeft());
+            dropFramePath.lineTo(buttonRect.bottomLeft());
+
+            Style::drawFrame(painter, dropFramePath, QPen(Qt::white), Qt::NoBrush);
         }
 
         return true;

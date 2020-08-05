@@ -14,7 +14,7 @@ var session = require('./session-helper.js');
 
 /**
  * Dynamic Content Integration Tests
- * For this to run correctly it assumes your dynamic content gem has at least one dynamic content item availible.
+ * For this to run correctly it assumes your dynamic content gem has at least one dynamic content item available.
  * This test will only run in Chrome currently.  The current version of gecko does not support mouseMove which means Firefox will not work.
  * https://github.com/angular/protractor/issues/4177
  */

@@ -17,7 +17,7 @@
 
 
 #include "DynamicSpanGrid.h"
-
+#include <AzFramework/Physics/Casts.h>
 
 namespace MNM
 {
@@ -73,6 +73,7 @@ namespace MNM
         Vec3i m_voxelSpaceSize;
 
         DynamicSpanGrid m_spanGrid;
+
     };
 
 
@@ -83,6 +84,13 @@ namespace MNM
         size_t ProcessGeometry(uint32 hashValueSeed = 0, uint32 hashTest = 0, uint32* hashValue = 0,
             NavigationMeshEntityCallback pEntityCallback = NULL);
         void CalculateWaterDepth();
+
+    protected:
+        /// Fills in the overlapHits will all colliders in the provided AABB 
+        void GetAZCollidersInAABB(const AABB& aabb, AZStd::vector<Physics::OverlapHit>& overlapHits);
+
+        /// Rasterize all the collider geometry in the provided bounding box
+        size_t RasterizeAZColliderGeometry(const AABB& aabb, const AZStd::vector<Physics::OverlapHit>& overlapHits);
 
     private:
         void VoxelizeGeometry(const Vec3* vertices, size_t triCount, const Matrix34& worldTM);

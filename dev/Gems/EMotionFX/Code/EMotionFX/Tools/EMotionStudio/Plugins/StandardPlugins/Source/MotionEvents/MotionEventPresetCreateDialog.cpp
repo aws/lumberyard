@@ -11,7 +11,6 @@
 */
 
 #include "MotionEventPresetCreateDialog.h"
-#include <MysticQt/Source/ColorLabel.h>
 #include <Source/Editor/ObjectEditor.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <QVBoxLayout>

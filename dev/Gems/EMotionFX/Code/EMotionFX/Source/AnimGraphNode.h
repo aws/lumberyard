@@ -157,17 +157,18 @@ namespace EMotionFX
         bool InitAfterLoading(AnimGraph* animGraph) override;
         void InitTriggerActions();
 
-        virtual bool GetSupportsVisualization() const           { return false; }
-        virtual bool GetSupportsDisable() const                 { return false; }
-        virtual bool GetHasVisualOutputPorts() const            { return true; }
-        virtual bool GetCanHaveOnlyOneInsideParent() const      { return false; }
-        virtual bool GetIsDeletable() const                     { return true; }
-        virtual bool GetIsLastInstanceDeletable() const         { return true; }
-        virtual bool GetCanActAsState() const                   { return false; }
-        virtual bool GetHasVisualGraph() const                  { return false; }
-        virtual bool GetCanHaveChildren() const                 { return false; }
-        virtual bool GetHasOutputPose() const                   { return false; }
-        virtual bool GetCanBeInsideStateMachineOnly() const     { return false; }
+        virtual bool GetSupportsVisualization() const { return false; }
+        virtual bool GetSupportsPreviewMotion() const { return false; }
+        virtual bool GetSupportsDisable() const { return false; }
+        virtual bool GetHasVisualOutputPorts() const { return true; }
+        virtual bool GetCanHaveOnlyOneInsideParent() const { return false; }
+        virtual bool GetIsDeletable() const { return true; }
+        virtual bool GetIsLastInstanceDeletable() const { return true; }
+        virtual bool GetCanActAsState() const { return false; }
+        virtual bool GetHasVisualGraph() const { return false; }
+        virtual bool GetCanHaveChildren() const { return false; }
+        virtual bool GetHasOutputPose() const { return false; }
+        virtual bool GetCanBeInsideStateMachineOnly() const { return false; }
         virtual bool GetCanBeInsideChildStateMachineOnly() const{ return false; }
         virtual bool GetNeedsNetTimeSync() const                { return false; }
         virtual bool GetCanBeEntryNode() const                  { return true; }
@@ -182,9 +183,13 @@ namespace EMotionFX
         void UpdateAllIncomingNodes(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
         void UpdateIncomingNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* node, float timePassedInSeconds);
 
-        virtual void RecursiveResetUniqueData(AnimGraphInstance* animGraphInstance);
-        virtual void RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance);
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew AnimGraphNodeData(this, animGraphInstance); }
+
+        virtual void RecursiveResetUniqueDatas(AnimGraphInstance* animGraphInstance);
+
+        void InvalidateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        void RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance) override;
+
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
         void PerformOutput(AnimGraphInstance* animGraphInstance);
@@ -212,15 +217,15 @@ namespace EMotionFX
          */
         virtual void SkipOutput(AnimGraphInstance* animGraphInstance) {}
 
-        MCORE_INLINE float GetDuration(AnimGraphInstance* animGraphInstance) const                 { return FindUniqueNodeData(animGraphInstance)->GetDuration(); }
-        virtual void SetCurrentPlayTime(AnimGraphInstance* animGraphInstance, float timeInSeconds) { FindUniqueNodeData(animGraphInstance)->SetCurrentPlayTime(timeInSeconds); }
-        virtual float GetCurrentPlayTime(const AnimGraphInstance* animGraphInstance) const         { return FindUniqueNodeData(animGraphInstance)->GetCurrentPlayTime(); }
+        MCORE_INLINE float GetDuration(AnimGraphInstance* animGraphInstance) const                 { return FindOrCreateUniqueNodeData(animGraphInstance)->GetDuration(); }
+        virtual void SetCurrentPlayTime(AnimGraphInstance* animGraphInstance, float timeInSeconds) { FindOrCreateUniqueNodeData(animGraphInstance)->SetCurrentPlayTime(timeInSeconds); }
+        virtual float GetCurrentPlayTime(AnimGraphInstance* animGraphInstance) const               { return FindOrCreateUniqueNodeData(animGraphInstance)->GetCurrentPlayTime(); }
 
-        MCORE_INLINE uint32 GetSyncIndex(AnimGraphInstance* animGraphInstance) const               { return FindUniqueNodeData(animGraphInstance)->GetSyncIndex(); }
-        MCORE_INLINE void SetSyncIndex(AnimGraphInstance* animGraphInstance, uint32 syncIndex)     { FindUniqueNodeData(animGraphInstance)->SetSyncIndex(syncIndex); }
+        MCORE_INLINE uint32 GetSyncIndex(AnimGraphInstance* animGraphInstance) const               { return FindOrCreateUniqueNodeData(animGraphInstance)->GetSyncIndex(); }
+        MCORE_INLINE void SetSyncIndex(AnimGraphInstance* animGraphInstance, uint32 syncIndex)     { FindOrCreateUniqueNodeData(animGraphInstance)->SetSyncIndex(syncIndex); }
 
-        virtual void SetPlaySpeed(AnimGraphInstance* animGraphInstance, float speedFactor)         { FindUniqueNodeData(animGraphInstance)->SetPlaySpeed(speedFactor); }
-        virtual float GetPlaySpeed(AnimGraphInstance* animGraphInstance) const                     { return FindUniqueNodeData(animGraphInstance)->GetPlaySpeed(); }
+        virtual void SetPlaySpeed(AnimGraphInstance* animGraphInstance, float speedFactor)         { FindOrCreateUniqueNodeData(animGraphInstance)->SetPlaySpeed(speedFactor); }
+        virtual float GetPlaySpeed(AnimGraphInstance* animGraphInstance) const                     { return FindOrCreateUniqueNodeData(animGraphInstance)->GetPlaySpeed(); }
         virtual void SetCurrentPlayTimeNormalized(AnimGraphInstance* animGraphInstance, float normalizedTime);
         virtual void Rewind(AnimGraphInstance* animGraphInstance);
 
@@ -233,7 +238,7 @@ namespace EMotionFX
         virtual void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode);
         void HierarchicalSyncAllInputNodes(AnimGraphInstance* animGraphInstance, AnimGraphNodeData* uniqueDataOfThisNode);
 
-        static void CalcSyncFactors(const AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
+        static void CalcSyncFactors(AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
         static void CalcSyncFactors(float masterPlaySpeed, const AnimGraphSyncTrack* masterSyncTrack, uint32 masterSyncTrackIndex, float masterDuration,
             float servantPlaySpeed, const AnimGraphSyncTrack* servantSyncTrack, uint32 servantSyncTrackIndex, float servantDuration,
             ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
@@ -897,7 +902,7 @@ namespace EMotionFX
         void MarkConnectionVisited(AnimGraphNode* sourceNode);
         void OutputIncomingNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeToOutput);
 
-        MCORE_INLINE AnimGraphNodeData* FindUniqueNodeData(const AnimGraphInstance* animGraphInstance) const            { return animGraphInstance->FindUniqueNodeData(this); }
+        MCORE_INLINE AnimGraphNodeData* FindOrCreateUniqueNodeData(AnimGraphInstance* animGraphInstance) const { return animGraphInstance->FindOrCreateUniqueNodeData(this); }
 
         bool GetIsEnabled() const;
         void SetIsEnabled(bool enabled);
@@ -911,8 +916,8 @@ namespace EMotionFX
         bool GetIsVisualizationEnabled() const;
         void SetVisualization(bool enabled);
 
-        bool HierarchicalHasError(AnimGraphInstance* animGraphInstance, bool onlyCheckChildNodes = false) const;
-        void SetHasError(AnimGraphInstance* animGraphInstance, bool hasError);
+        bool HierarchicalHasError(AnimGraphObjectData* uniqueData, bool onlyCheckChildNodes = false) const;
+        void SetHasError(AnimGraphObjectData* uniqueData, bool hasError);
 
         // collect internal objects
         void RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const override;
@@ -926,15 +931,15 @@ namespace EMotionFX
         MCORE_INLINE uint32 GetNodeIndex() const                                            { return mNodeIndex; }
         MCORE_INLINE void SetNodeIndex(uint32 index)                                        { mNodeIndex = index; }
 
-        MCORE_INLINE void ResetPoseRefCount(AnimGraphInstance* animGraphInstance)              { FindUniqueNodeData(animGraphInstance)->SetPoseRefCount(0); }
-        MCORE_INLINE void IncreasePoseRefCount(AnimGraphInstance* animGraphInstance)           { FindUniqueNodeData(animGraphInstance)->IncreasePoseRefCount(); }
-        MCORE_INLINE void DecreasePoseRefCount(AnimGraphInstance* animGraphInstance)           { FindUniqueNodeData(animGraphInstance)->DecreasePoseRefCount(); }
-        MCORE_INLINE uint32 GetPoseRefCount(AnimGraphInstance* animGraphInstance) const        { return FindUniqueNodeData(animGraphInstance)->GetPoseRefCount(); }
+        void ResetPoseRefCount(AnimGraphInstance* animGraphInstance);
+        MCORE_INLINE void IncreasePoseRefCount(AnimGraphInstance* animGraphInstance)           { FindOrCreateUniqueNodeData(animGraphInstance)->IncreasePoseRefCount(); }
+        MCORE_INLINE void DecreasePoseRefCount(AnimGraphInstance* animGraphInstance)           { FindOrCreateUniqueNodeData(animGraphInstance)->DecreasePoseRefCount(); }
+        MCORE_INLINE uint32 GetPoseRefCount(AnimGraphInstance* animGraphInstance) const        { return animGraphInstance->FindOrCreateUniqueNodeData(this)->GetPoseRefCount(); }
 
-        MCORE_INLINE void ResetRefDataRefCount(AnimGraphInstance* animGraphInstance)           { FindUniqueNodeData(animGraphInstance)->SetRefDataRefCount(0); }
-        MCORE_INLINE void IncreaseRefDataRefCount(AnimGraphInstance* animGraphInstance)        { FindUniqueNodeData(animGraphInstance)->IncreaseRefDataRefCount(); }
-        MCORE_INLINE void DecreaseRefDataRefCount(AnimGraphInstance* animGraphInstance)        { FindUniqueNodeData(animGraphInstance)->DecreaseRefDataRefCount(); }
-        MCORE_INLINE uint32 GetRefDataRefCount(AnimGraphInstance* animGraphInstance) const     { return FindUniqueNodeData(animGraphInstance)->GetRefDataRefCount(); }
+        void ResetRefDataRefCount(AnimGraphInstance* animGraphInstance);
+        MCORE_INLINE void IncreaseRefDataRefCount(AnimGraphInstance* animGraphInstance)        { FindOrCreateUniqueNodeData(animGraphInstance)->IncreaseRefDataRefCount(); }
+        MCORE_INLINE void DecreaseRefDataRefCount(AnimGraphInstance* animGraphInstance)        { FindOrCreateUniqueNodeData(animGraphInstance)->DecreaseRefDataRefCount(); }
+        MCORE_INLINE uint32 GetRefDataRefCount(AnimGraphInstance* animGraphInstance) const     { return FindOrCreateUniqueNodeData(animGraphInstance)->GetRefDataRefCount(); }
 
         // Returns an attribute string (MCore::CommandLine formatted) if this condition is affected by a convertion of
         // node ids. The method will return the attribute string that will be used to patch this condition on a command
@@ -965,7 +970,6 @@ namespace EMotionFX
         virtual void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
         virtual void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
-        void OnUpdateTriggerActionsUniqueData(AnimGraphInstance* animGraphInstance);
 
         void RecursiveCountChildNodes(uint32& numNodes) const;
         void RecursiveCountNodeConnections(uint32& numConnections) const;

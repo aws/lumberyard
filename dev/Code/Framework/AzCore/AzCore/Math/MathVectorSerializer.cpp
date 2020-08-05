@@ -27,9 +27,8 @@ namespace AZ
     {
         template<typename VectorType, size_t ElementCount>
         JsonSerializationResult::Result LoadArray(VectorType& output, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings)
+            JsonDeserializerContext& context)
         {
-            using namespace JsonSerializationResult;
             namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
             static_assert(ElementCount >= 2 && ElementCount <= 4, "MathVectorSerializer only support Vector2, Vector3 and Vector4.");
@@ -37,23 +36,23 @@ namespace AZ
             rapidjson::SizeType arraySize = inputValue.Size();
             if (arraySize < ElementCount)
             {
-                return JSR::Result(settings, "Not enough numbers in array to load math vector from.",
-                    Tasks::ReadField, Outcomes::Unsupported, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                    "Not enough numbers in array to load math vector from.");
             }
 
-            AZ::BaseJsonSerializer* floatSerializer = settings.m_registrationContext->GetSerializerForType(azrtti_typeid<float>());
+            AZ::BaseJsonSerializer* floatSerializer = context.GetRegistrationContext()->GetSerializerForType(azrtti_typeid<float>());
             if (!floatSerializer)
             {
-                return JSR::Result(settings, "Failed to find the json float serializer.", Tasks::ReadField, Outcomes::Catastrophic, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Catastrophic, "Failed to find the json float serializer.");
             }
 
             constexpr const char* names[4] = { "0", "1", "2", "3" };
             float values[ElementCount];
             for (int i = 0; i < ElementCount; ++i)
             {
-                ScopedStackedString subPath(path, names[i]);
-                JSR::Result intermediate = floatSerializer->Load(values + i, azrtti_typeid<float>(), inputValue[i], subPath, settings);
-                if (intermediate.GetResultCode().GetProcessing() != Processing::Completed)
+                ScopedContextPath subPath(context, names[i]);
+                JSR::Result intermediate = floatSerializer->Load(values + i, azrtti_typeid<float>(), inputValue[i], context);
+                if (intermediate.GetResultCode().GetProcessing() != JSR::Processing::Completed)
                 {
                     return intermediate;
                 }
@@ -64,29 +63,30 @@ namespace AZ
                 output.SetElement(i, values[i]);
             }
 
-            return JSR::Result(settings, "Successfully read math vector.", ResultCode::Success(Tasks::ReadField), path);
+            return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Success, "Successfully read math vector.");
         }
 
         template<typename VectorType, size_t ElementCount>
-        JsonSerializationResult::Result LoadObject(VectorType& output, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings)
+        JsonSerializationResult::Result LoadObject(VectorType& output, const rapidjson::Value& inputValue, JsonDeserializerContext& context)
         {
-            using namespace JsonSerializationResult;
             namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
             static_assert(ElementCount >= 2 && ElementCount <= 4, "MathVectorSerializer only support Vector2, Vector3 and Vector4.");
 
             constexpr const char* names[8] = { "X", "x", "Y", "y", "Z", "z", "W", "w" };
 
-            AZ::BaseJsonSerializer* floatSerializer = settings.m_registrationContext->GetSerializerForType(azrtti_typeid<float>());
+            AZ::BaseJsonSerializer* floatSerializer = context.GetRegistrationContext()->GetSerializerForType(azrtti_typeid<float>());
             if (!floatSerializer)
             {
-                return JSR::Result(settings, "Failed to find the json float serializer.", Tasks::ReadField, Outcomes::Catastrophic, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Catastrophic, "Failed to find the json float serializer.");
             }
 
+            JSR::ResultCode result(JSR::Tasks::ReadField);
             float values[ElementCount];
             for (int i = 0; i < ElementCount; ++i)
             {
+                values[i] = output.GetElement(i);
+
                 size_t nameIndex = i * 2;
                 auto iterator = inputValue.FindMember(rapidjson::StringRef(names[nameIndex]));
                 if (iterator == inputValue.MemberEnd())
@@ -95,18 +95,21 @@ namespace AZ
                     iterator = inputValue.FindMember(rapidjson::StringRef(names[nameIndex]));
                     if (iterator == inputValue.MemberEnd())
                     {
-                        // Technically the object could be initialized from a partial declaration and set the missing field to 0.0, but
-                        // this would create inconsistencies with the array version which wouldn't be able to offer this option.
-                        return JSR::Result(settings, OSString::format("Unable to find field for '%s'.", names[i * 2]),
-                            Tasks::ReadField, Outcomes::Unsupported, path);
+                        // Element not found so leave default value.
+                        result.Combine(JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::DefaultsUsed));
+                        continue;
                     }
                 }
 
-                ScopedStackedString subPath(path, names[nameIndex]);
-                JSR::Result intermediate = floatSerializer->Load(values + i, azrtti_typeid<float>(), iterator->value, subPath, settings);
-                if (intermediate.GetResultCode().GetProcessing() != Processing::Completed)
+                ScopedContextPath subPath(context, names[nameIndex]);
+                JSR::Result intermediate = floatSerializer->Load(values + i, azrtti_typeid<float>(), iterator->value, context);
+                if (intermediate.GetResultCode().GetProcessing() != JSR::Processing::Completed)
                 {
                     return intermediate;
+                }
+                else
+                {
+                    result.Combine(JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Success));
                 }
             }
 
@@ -115,14 +118,13 @@ namespace AZ
                 output.SetElement(i, values[i]);
             }
 
-            return JSR::Result(settings, "Successfully read math vector.", ResultCode::Success(Tasks::ReadField), path);
+            return context.Report(result, "Successfully read math vector.");
         }
 
         template<typename VectorType, size_t ElementCount>
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings)
+            JsonDeserializerContext& context)
         {
-            using namespace JsonSerializationResult;
             namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
             static_assert(ElementCount >= 2 && ElementCount <= 4, "MathVectorSerializer only support Vector2, Vector3 and Vector4.");
@@ -138,30 +140,28 @@ namespace AZ
             switch (inputValue.GetType())
             {
             case rapidjson::kArrayType:
-                return LoadArray<VectorType, ElementCount>(*vector, inputValue, path, settings);
+                return LoadArray<VectorType, ElementCount>(*vector, inputValue, context);
             case rapidjson::kObjectType:
-                return LoadObject<VectorType, ElementCount>(*vector, inputValue, path, settings);
+                return LoadObject<VectorType, ElementCount>(*vector, inputValue, context);
 
             case rapidjson::kStringType: // fall through
             case rapidjson::kNumberType: // fall through
             case rapidjson::kNullType:   // fall through
             case rapidjson::kFalseType:  // fall through
             case rapidjson::kTrueType:
-                return JSR::Result(settings, "Unsupported type. Math vectors can only be read from arrays or objects.",
-                    Tasks::ReadField, Outcomes::Unsupported, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported,
+                    "Unsupported type. Math vectors can only be read from arrays or objects.");
 
             default:
-                return JSR::Result(settings, "Unknown json type encountered in math vector.",
-                    Tasks::ReadField, Outcomes::Unknown, path);
+                return context.Report(JSR::Tasks::ReadField, JSR::Outcomes::Unknown,
+                    "Unknown json type encountered in math vector.");
             }
         }
         
         template<typename VectorType, size_t ElementCount>
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings)
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context)
         {
-            using namespace JsonSerializationResult;
             namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
             static_assert(ElementCount >= 2 && ElementCount <= 4, "MathVectorSerializer only support Vector2, Vector3 and Vector4.");
@@ -173,18 +173,18 @@ namespace AZ
             AZ_Assert(vector, "Input value for JsonVector%zuSerializer can't be null.", ElementCount);
             const VectorType* defaultVector = reinterpret_cast<const VectorType*>(defaultValue);
 
-            if (!settings.m_keepDefaults && defaultVector && *vector == *defaultVector)
+            if (!context.ShouldKeepDefaults() && defaultVector && *vector == *defaultVector)
             {
-                return JSR::Result(settings, "Default math Vector used.", ResultCode::Default(Tasks::WriteValue), path);
+                return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::DefaultsUsed, "Default math Vector used.");
             }
 
             outputValue.SetArray();
             for (int i = 0; i < ElementCount; ++i)
             {
-                outputValue.PushBack(vector->GetElement(i), allocator);
+                outputValue.PushBack(vector->GetElement(i), context.GetJsonAllocator());
             }
 
-            return JSR::Result(settings, "Math Vector successfully stored.", ResultCode::Success(Tasks::WriteValue), path);
+            return context.Report(JSR::Tasks::WriteValue, JSR::Outcomes::Success, "Math Vector successfully stored.");
         }
     }
 
@@ -194,18 +194,15 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(JsonVector2Serializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result JsonVector2Serializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
-        return JsonMathVectorSerializerInternal::Load<Vector2, 2>(outputValue, outputValueTypeId,
-            inputValue, path, settings);
+        return JsonMathVectorSerializerInternal::Load<Vector2, 2>(outputValue, outputValueTypeId, inputValue, context);
     }
 
-    JsonSerializationResult::Result JsonVector2Serializer::Store(rapidjson::Value& outputValue,
-        rapidjson::Document::AllocatorType& allocator, const void* inputValue, const void* defaultValue, 
-        const Uuid& valueTypeId, StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonVector2Serializer::Store(rapidjson::Value& outputValue, const void* inputValue,
+        const void* defaultValue, const Uuid& valueTypeId, JsonSerializerContext& context)
     {
-        return JsonMathVectorSerializerInternal::Store<Vector2, 2>(outputValue, allocator, inputValue, 
-            defaultValue, valueTypeId, path, settings);
+        return JsonMathVectorSerializerInternal::Store<Vector2, 2>(outputValue, inputValue, defaultValue, valueTypeId, context);
     }
 
 
@@ -214,18 +211,15 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(JsonVector3Serializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result JsonVector3Serializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
-        return JsonMathVectorSerializerInternal::Load<Vector3, 3>(outputValue, outputValueTypeId,
-            inputValue, path, settings);
+        return JsonMathVectorSerializerInternal::Load<Vector3, 3>(outputValue, outputValueTypeId, inputValue, context);
     }
 
-    JsonSerializationResult::Result JsonVector3Serializer::Store(rapidjson::Value& outputValue,
-        rapidjson::Document::AllocatorType& allocator, const void* inputValue, const void* defaultValue,
-        const Uuid& valueTypeId, StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonVector3Serializer::Store(rapidjson::Value& outputValue, const void* inputValue,
+        const void* defaultValue, const Uuid& valueTypeId, JsonSerializerContext& context)
     {
-        return JsonMathVectorSerializerInternal::Store<Vector3, 3>(outputValue, allocator, inputValue, 
-            defaultValue, valueTypeId, path, settings);
+        return JsonMathVectorSerializerInternal::Store<Vector3, 3>(outputValue, inputValue, defaultValue, valueTypeId, context);
     }
 
 
@@ -234,17 +228,14 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(JsonVector4Serializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result JsonVector4Serializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
-        return JsonMathVectorSerializerInternal::Load<Vector4, 4>(outputValue, outputValueTypeId,
-            inputValue, path, settings);
+        return JsonMathVectorSerializerInternal::Load<Vector4, 4>(outputValue, outputValueTypeId, inputValue, context);
     }
 
-    JsonSerializationResult::Result JsonVector4Serializer::Store(rapidjson::Value& outputValue,
-        rapidjson::Document::AllocatorType& allocator, const void* inputValue, const void* defaultValue,
-        const Uuid& valueTypeId, StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonVector4Serializer::Store(rapidjson::Value& outputValue, const void* inputValue,
+        const void* defaultValue, const Uuid& valueTypeId, JsonSerializerContext& context)
     {
-        return JsonMathVectorSerializerInternal::Store<Vector4, 4>(outputValue, allocator, inputValue, 
-            defaultValue, valueTypeId, path, settings);
+        return JsonMathVectorSerializerInternal::Store<Vector4, 4>(outputValue, inputValue, defaultValue, valueTypeId, context);
     }
 }

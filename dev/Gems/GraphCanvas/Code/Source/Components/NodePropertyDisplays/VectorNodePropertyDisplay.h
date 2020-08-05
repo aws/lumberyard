@@ -17,7 +17,7 @@ AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QObject>
 AZ_POP_DISABLE_WARNING
 
-#include <AzToolsFramework/UI/PropertyEditor/PropertyVectorCtrl.hxx>
+#include <AzQtComponents/Components/Widgets/VectorInput.h>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h>
@@ -113,7 +113,7 @@ namespace GraphCanvas
         VectorDataInterface*  m_dataInterface;
         
         GraphCanvasLabel*                           m_disabledLabel;
-        AzToolsFramework::PropertyVectorCtrl*       m_propertyVectorCtrl;
+        AzQtComponents::VectorInput*                m_propertyVectorCtrl;
         QGraphicsProxyWidget*                       m_proxyWidget;
         
         QGraphicsWidget*                            m_displayWidget;

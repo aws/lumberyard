@@ -227,6 +227,17 @@ namespace ScriptCanvasEditor
         }
     }
 
+    bool ScriptEventsPaletteTreeItem::OnDoubleClicked(int row)
+    {
+        if (row != NodePaletteTreeItem::Column::Customization)
+        {
+            AzToolsFramework::OpenGenericAssetEditor(azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), m_asset.GetId());
+            return true;
+        }
+
+        return false;
+    }
+
     void ScriptEventsPaletteTreeItem::PopulateEvents(AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset)
     {
         ClearChildren();
@@ -589,5 +600,16 @@ namespace ScriptCanvasEditor
         {
             AzToolsFramework::OpenGenericAssetEditor(azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), m_assetId);
         }
+    }
+
+    bool ScriptEventsEventNodePaletteTreeItem::OnDoubleClicked(int row)
+    {
+        if (row != NodePaletteTreeItem::Column::Customization)
+        {
+            AzToolsFramework::OpenGenericAssetEditor(azrtti_typeid<ScriptEvents::ScriptEventsAsset>(), m_asset.GetId());
+            return true;
+        }
+
+        return false;
     }
 }

@@ -59,7 +59,7 @@ namespace ScriptCanvasEditor
     class EditorGraphVariableManagerComponent
         : public ScriptCanvas::GraphVariableManagerComponent
         , public ScriptCanvas::GraphVariableManagerNotificationBus::Handler
-        , public EditorSceneVariableManagerRequestBus::Handler
+        , public EditorSceneVariableManagerRequestBus::Handler        
     {
     public:
         AZ_COMPONENT(EditorGraphVariableManagerComponent, "{86B7CC96-9830-4BD1-85C3-0C0BD0BFBEE7}", ScriptCanvas::GraphVariableManagerComponent);

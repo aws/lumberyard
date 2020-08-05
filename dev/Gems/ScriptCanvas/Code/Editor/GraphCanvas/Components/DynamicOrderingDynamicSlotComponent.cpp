@@ -51,14 +51,14 @@ namespace ScriptCanvasEditor
 
     void DynamicOrderingDynamicSlotComponent::OnSystemTick()
     {
-        if (m_nodeId.IsValid())
+        if (GetScriptCanvasNodeId().IsValid())
         {
             SlotMappingRequests* requestInterface = SlotMappingRequestBus::FindFirstHandler(GetEntityId());
 
             if (requestInterface)
             {
                 AZStd::vector< const ScriptCanvas::Slot* > scriptSlots;
-                ScriptCanvas::NodeRequestBus::EventResult(scriptSlots, m_nodeId, &ScriptCanvas::NodeRequests::GetAllSlots);
+                ScriptCanvas::NodeRequestBus::EventResult(scriptSlots, GetScriptCanvasNodeId(), &ScriptCanvas::NodeRequests::GetAllSlots);
 
                 for (int i = 0; i < scriptSlots.size(); ++i)
                 {
@@ -74,8 +74,6 @@ namespace ScriptCanvasEditor
                     }
                 }
             }
-
-            m_nodeId.SetInvalid();
         }
 
         AZ::SystemTickBus::Handler::BusDisconnect();
@@ -87,14 +85,6 @@ namespace ScriptCanvasEditor
 
         if (m_deserialized)
         {
-            AZStd::any* userData = nullptr;
-            GraphCanvas::NodeRequestBus::EventResult(userData, GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
-
-            if (userData && userData->is<AZ::EntityId>())
-            {
-                m_nodeId = (userData && userData->is<AZ::EntityId>()) ? *AZStd::any_cast<AZ::EntityId>(userData) : AZ::EntityId();
-            }
-            
             AZ::SystemTickBus::Handler::BusConnect();
         }
     }
@@ -105,11 +95,18 @@ namespace ScriptCanvasEditor
         m_deserialized = true;
     }
 
+    void DynamicOrderingDynamicSlotComponent::OnSlotsReordered()
+    {
+        DynamicSlotComponent::OnSlotsReordered();
+
+        AZ::SystemTickBus::Handler::BusConnect();
+    }
+
     void DynamicOrderingDynamicSlotComponent::StopQueueSlotUpdates()
     {
         DynamicSlotComponent::StopQueueSlotUpdates();
 
-        if (m_nodeId.IsValid())
+        if (GetScriptCanvasNodeId().IsValid())
         {
             OnSystemTick();
         }
@@ -117,11 +114,6 @@ namespace ScriptCanvasEditor
 
     void DynamicOrderingDynamicSlotComponent::ConfigureGraphCanvasSlot(const ScriptCanvas::Slot* slot, const GraphCanvas::SlotId& graphCanvasSlotId)
     {
-        if (!m_nodeId.IsValid())
-        {
-            m_nodeId = slot->GetNodeId();
-
-            AZ::SystemTickBus::Handler::BusConnect();
-        }
+        AZ::SystemTickBus::Handler::BusConnect();
     }
 }

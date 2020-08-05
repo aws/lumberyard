@@ -578,7 +578,7 @@ namespace ScriptCanvasEditor
                     {
                         ScriptCanvas::Slot* slot = eventHandler->GetSlot(slotId);
 
-                        if (eventHandler->IsConnected((*slot)))
+                        if (slot->IsExecution() && eventHandler->IsConnected((*slot)))
                         {
                             allowChange = false;
                             break;

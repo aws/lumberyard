@@ -330,7 +330,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QTabWidget" name="tabWidget">
+            <widget class="AzQtComponents::TabWidget" name="tabWidget">
              <property name="tabShape">
               <enum>QTabWidget::Rounded</enum>
              </property>
@@ -370,6 +370,12 @@
    <class>ScriptCanvasEditor::EntityPivotTreeWidget</class>
    <extends>QWidget</extends>
    <header>Editor/View/Widgets/LoggingPanel/PivotTree/EntityPivotTree/EntityPivotTree.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AzQtComponents::TabWidget</class>
+   <extends>QTabWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/TabWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

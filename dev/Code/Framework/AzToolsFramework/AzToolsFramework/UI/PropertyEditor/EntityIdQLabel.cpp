@@ -14,6 +14,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
@@ -38,24 +39,18 @@ namespace AzToolsFramework
         m_entityId = newId;
         if (!m_entityId.IsValid())
         {
-                setText(QString());
-            }
+            setText(QString());
+            return;
+        }
+
+        const AZStd::string entityName = AzToolsFramework::GetEntityName(m_entityId, nameOverride);
+        if (entityName.empty())
+        {
+            setText(tr("(Entity not found)"));
+        }
         else
         {
-            AZ::Entity* pEntity = NULL;
-            AZ::ComponentApplicationBus::BroadcastResult(pEntity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
-            if (pEntity && nameOverride.empty())
-            {
-                setText(pEntity->GetName().c_str());
-            }
-            else if (!nameOverride.empty())
-            {
-                setText(nameOverride.data());
-            }
-            else
-            {
-                setText(tr("(Entity not found)"));
-            }
+            setText(entityName.c_str());
         }
     }
 

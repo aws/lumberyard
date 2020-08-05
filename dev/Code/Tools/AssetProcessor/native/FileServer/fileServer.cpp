@@ -524,7 +524,7 @@ void FileServer::ProcessSeekRequest(unsigned int connId, unsigned int, unsigned 
     int64_t offset = request.m_offset;
 
     auto fileIO = m_fileIOs[connId];
-    AZStd::string moreInfo = AZStd::string::format("offset: %llu, mode: %d", offset, seekType);
+    AZStd::string moreInfo = AZStd::string::format("offset: %llu, mode: %d", offset, static_cast<AZ::u32>(seekType));
     RecordFileOp(fileIO.get(), "SEEK", fileHandle, moreInfo.c_str());
 
     AZ::IO::Result res = fileIO->Seek(fileHandle, offset, seekType);

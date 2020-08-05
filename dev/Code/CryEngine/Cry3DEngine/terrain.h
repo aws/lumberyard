@@ -145,6 +145,7 @@ public:
         , float y
         , AzFramework::Terrain::TerrainDataRequests::Sampler sampleFilter = AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
         , bool* terrainExistsPtr = nullptr) const override;
+    const char* GetMaxSurfaceName(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override;
 
     bool GetIsHoleFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR) const override;
     AZ::Vector3 GetNormal(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override;

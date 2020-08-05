@@ -1,0 +1,1 @@
+Each character folder in this gem is designed to be self contained so you can copy and paste them into your own project.  Enjoy!

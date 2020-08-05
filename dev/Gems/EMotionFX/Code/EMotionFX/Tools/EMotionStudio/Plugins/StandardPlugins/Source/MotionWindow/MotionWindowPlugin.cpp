@@ -25,14 +25,15 @@
 #include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionRetargetingWindow.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionWindowPlugin.h>
 #include <MCore/Source/LogManager.h>
-#include <MysticQt/Source/ButtonGroup.h>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <QApplication>
 #include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSplitter>
-
+#include <QToolBar>
+#include <QVBoxLayout>
 
 namespace EMStudio
 {
@@ -129,6 +130,9 @@ namespace EMStudio
         mMotionExtractionWindow             = nullptr;
         mMotionRetargetingWindow            = nullptr;
         mDirtyFilesCallback                 = nullptr;
+        mAddMotionsAction                   = nullptr;
+        mSaveAction                         = nullptr;
+        mMotionNameLabel                    = nullptr;
     }
 
 
@@ -182,18 +186,36 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback<CommandScaleMotionDataCallback>("ScaleMotionData", m_callbacks, false);
         GetCommandManager()->RegisterCommandCallback<CommandSelectCallback>("Select", m_callbacks, false);
 
-        QSplitter* splitterWidget = new QSplitter(mDock);
+        QWidget* container = new QWidget(mDock);
+        container->setLayout(new QVBoxLayout);
+        mDock->setWidget(container);
+
+        QToolBar* toolBar = new QToolBar(container);
+        container->layout()->addWidget(toolBar);
+
+        QSplitter* splitterWidget = new QSplitter(container);
         splitterWidget->setOrientation(Qt::Horizontal);
         splitterWidget->setChildrenCollapsible(false);
-        mDock->SetContents(splitterWidget);
+
+        container->layout()->addWidget(splitterWidget);
 
         // create the motion list stack window
         mMotionListWindow = new MotionListWindow(splitterWidget, this);
         mMotionListWindow->Init();
+        connect(mMotionListWindow, &MotionListWindow::SaveRequested, this, &MotionWindowPlugin::OnSave);
+        connect(mMotionListWindow, &MotionListWindow::RemoveMotionsRequested, this, &MotionWindowPlugin::OnRemoveMotions);
         splitterWidget->addWidget(mMotionListWindow);
 
         // reinitialize the motion table entries
         ReInit();
+
+        mAddMotionsAction    = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.svg"), tr("Load motions"), this, &MotionWindowPlugin::OnAddMotions);
+        mSaveAction          = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.svg"), tr("Save selected motions"), this, &MotionWindowPlugin::OnSave);
+
+        toolBar->addSeparator();
+        AzQtComponents::FilteredSearchWidget* searchWidget = new AzQtComponents::FilteredSearchWidget(toolBar);
+        connect(searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, mMotionListWindow, &MotionListWindow::OnTextFilterChanged);
+        toolBar->addWidget(searchWidget);
 
         // create the dialog stack
         assert(mDialogStack == nullptr);
@@ -204,20 +226,33 @@ namespace EMStudio
         // add the motion properties stack window
         mMotionPropertiesWindow = new MotionPropertiesWindow(mDialogStack, this);
         mMotionPropertiesWindow->Init();
-        mDialogStack->Add(mMotionPropertiesWindow, "Motion Properties");
+        mDialogStack->Add(mMotionPropertiesWindow, "Motion Properties", false, true);
+
+        // add the motion name label
+        QWidget* motionName = new QWidget();
+        QBoxLayout* motionNameLayout = new QHBoxLayout(motionName);
+        mMotionNameLabel = new QLabel();
+        QLabel* label = new QLabel(tr("Motion name"));
+        motionNameLayout->addWidget(label);
+        motionNameLayout->addWidget(mMotionNameLabel);
+        motionNameLayout->setStretchFactor(label, 3);
+        motionNameLayout->setStretchFactor(mMotionNameLabel, 2);
+        mMotionPropertiesWindow->layout()->addWidget(motionName);
 
         // add the motion extraction stack window
         mMotionExtractionWindow = new MotionExtractionWindow(mDialogStack, this);
         mMotionExtractionWindow->Init();
-        mDialogStack->Add(mMotionExtractionWindow, "Motion Extraction");
+        mMotionPropertiesWindow->AddSubProperties(mMotionExtractionWindow);
 
         // add the motion retargeting stack window
         mMotionRetargetingWindow = new MotionRetargetingWindow(mDialogStack, this);
         mMotionRetargetingWindow->Init();
-        mDialogStack->Add(mMotionRetargetingWindow, "Motion Retargeting");
+        mMotionPropertiesWindow->AddSubProperties(mMotionRetargetingWindow);
+
+        mMotionPropertiesWindow->FinalizeSubProperties();
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MotionWindowPlugin::VisibilityChanged);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &MotionWindowPlugin::VisibilityChanged);
 
         // update the new interface and return success
         UpdateInterface();
@@ -229,6 +264,164 @@ namespace EMStudio
         return true;
     }
 
+    void MotionWindowPlugin::OnAddMotions()
+    {
+        const AZStd::vector<AZStd::string> filenames = GetMainWindow()->GetFileManager()->LoadMotionsFileDialog(mMotionListWindow);
+        CommandSystem::LoadMotionsCommand(filenames);
+    }
+
+    void MotionWindowPlugin::OnClearMotions()
+    {
+        // show the save dirty files window before
+        if (OnSaveDirtyMotions() == DirtyFileManager::CANCELED)
+        {
+            return;
+        }
+
+        // iterate through the motions and put them into some array
+        const uint32 numMotions = EMotionFX::GetMotionManager().GetNumMotions();
+        AZStd::vector<EMotionFX::Motion*> motionsToRemove;
+        motionsToRemove.reserve(numMotions);
+
+        for (uint32 i = 0; i < numMotions; ++i)
+        {
+            EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
+            if (motion->GetIsOwnedByRuntime())
+            {
+                continue;
+            }
+            motionsToRemove.push_back(motion);
+        }
+
+        // construct the command group and remove the selected motions
+        AZStd::vector<EMotionFX::Motion*> failedRemoveMotions;
+        CommandSystem::RemoveMotions(motionsToRemove, &failedRemoveMotions);
+
+        // show the window if at least one failed remove motion
+        if (!failedRemoveMotions.empty())
+        {
+            MotionListRemoveMotionsFailedWindow removeMotionsFailedWindow(mMotionListWindow, failedRemoveMotions);
+            removeMotionsFailedWindow.exec();
+        }
+    }
+
+    void MotionWindowPlugin::OnRemoveMotions()
+    {
+        const CommandSystem::SelectionList& selection = GetCommandManager()->GetCurrentSelection();
+
+        // get the number of selected motions
+        const uint32 numMotions = selection.GetNumSelectedMotions();
+        if (numMotions == 0)
+        {
+            return;
+        }
+
+        AZStd::vector<EMotionFX::Motion*> motionsToRemove;
+        motionsToRemove.reserve(numMotions);
+
+        // Make a backup of the selected motion list, but store motion id's instead of pointers.
+        // We do this because motion's get reloaded when saving them, which might change the selection list pointers.
+        // We use this backup list because the SaveDirtyMotion function below will trigger a reload of the motion asset.
+        // Part of that reload is a RemoveMotion command. This RemoveMotion command also modifies the selection. We would
+        // get a crash if we do not store a backup and use that list as the size of the seleciton list will shrink with each
+        // call to the SaveDirtyMotion method.
+        AZStd::vector<AZ::u32> selectionBackup;
+        selectionBackup.reserve(numMotions);
+        for (AZ::u32 i = 0; i < numMotions; ++i)
+        {
+            selectionBackup.emplace_back(selection.GetMotion(i)->GetID());
+        }
+
+        // Save all dirty motion files.
+        EMotionFX::MotionManager& motionManager = EMotionFX::GetMotionManager();
+        for (uint32 i = 0; i < numMotions; ++i)
+        {
+            // Look up the motion by ID, using our backup seleciton list.
+            // So even if our selection list in EMotion FX gets modified, we still iterate over the original selection now.
+            EMotionFX::Motion* motion = motionManager.FindMotionByID(selectionBackup[i]);
+            AZ_Assert(motion, "Expected to find the motion, did the motion id change while saving one of the motions?");
+
+            // in case we modified the motion ask if the user wants to save changes it before removing it
+            SaveDirtyMotion(motion, nullptr, true, false);
+            motionsToRemove.push_back(motion);
+        }
+
+        // Make sure we restore the array of motions to removed with valid pointers.
+        // Because the motions get reloaded when saving (as the AP picks up changes), the pointers might also change.
+        // So we rebuild the array by looking up their new pointer values again using the motion ids, which don't change when reloading.
+        motionsToRemove.clear();
+        for (const AZ::u32 motionId : selectionBackup)
+        {
+            EMotionFX::Motion* motion = motionManager.FindMotionByID(motionId);
+            if (motion)
+            {
+                motionsToRemove.emplace_back(motion);
+            }
+        }
+
+        // find the lowest row selected
+        uint32 lowestRowSelected = MCORE_INVALIDINDEX32;
+        const QList<QTableWidgetItem*> selectedItems = mMotionListWindow->GetMotionTable()->selectedItems();
+        const int numSelectedItems = selectedItems.size();
+        for (int i = 0; i < numSelectedItems; ++i)
+        {
+            if ((uint32)selectedItems[i]->row() < lowestRowSelected)
+            {
+                lowestRowSelected = (uint32)selectedItems[i]->row();
+            }
+        }
+
+        // construct the command group and remove the selected motions
+        AZStd::vector<EMotionFX::Motion*> failedRemoveMotions;
+        CommandSystem::RemoveMotions(motionsToRemove, &failedRemoveMotions);
+
+        // selected the next row
+        if (lowestRowSelected > ((uint32)mMotionListWindow->GetMotionTable()->rowCount() - 1))
+        {
+            mMotionListWindow->GetMotionTable()->selectRow(lowestRowSelected - 1);
+        }
+        else
+        {
+            mMotionListWindow->GetMotionTable()->selectRow(lowestRowSelected);
+        }
+
+        // show the window if at least one failed remove motion
+        if (!failedRemoveMotions.empty())
+        {
+            MotionListRemoveMotionsFailedWindow removeMotionsFailedWindow(mMotionListWindow, failedRemoveMotions);
+            removeMotionsFailedWindow.exec();
+        }
+    }
+
+    void MotionWindowPlugin::OnSave()
+    {
+        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        const AZ::u32 numMotions = selectionList.GetNumSelectedMotions();
+        if (numMotions == 0)
+        {
+            return;
+        }
+
+        // Collect motion ids of the motion to be saved.
+        AZStd::vector<AZ::u32> motionIds;
+        motionIds.reserve(numMotions);
+        for (AZ::u32 i = 0; i < numMotions; ++i)
+        {
+            const EMotionFX::Motion* motion = selectionList.GetMotion(i);
+            motionIds.push_back(motion->GetID());
+        }
+
+        // Save all selected motions.
+        for (const AZ::u32 motionId : motionIds)
+        {
+            const EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionId);
+            AZ_Assert(motion, "Expected to find the motion pointer for motion with id %d.", motionId);
+            if (motion->GetDirtyFlag())
+            {
+                GetMainWindow()->GetFileManager()->SaveMotion(motionId);
+            }
+        }
+    }
 
     bool MotionWindowPlugin::AddMotion(uint32 motionID)
     {
@@ -274,49 +467,8 @@ namespace EMStudio
         return false;
     }
 
-
-#ifdef _DEBUG
-    bool MotionWindowPlugin::VerifyMotions()
-    {
-        // get the number of motions in the motion library and iterate through them
-        const uint32 numLibraryMotions = EMotionFX::GetMotionManager().GetNumMotions();
-        for (uint32 i = 0; i < numLibraryMotions; ++i)
-        {
-            EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
-
-            if (motion->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            // check if the motion table entry at the given index is pointing to the correct motion
-            MotionTableEntry* motionEntry = FindMotionEntryByID(motion->GetID());
-            if (motionEntry)
-            {
-                MCore::LogError("MotionWindowPlugin: Motion table entry motion '%s' was not found.", motionEntry->mMotion->GetFileName());
-                return false;
-            }
-
-            if (motionEntry && motionEntry->mMotion != motion)
-            {
-                MCore::LogError("MotionWindowPlugin: Motion table entry motion '%s' is not the same as the one in the motion manager '%s'.", motionEntry->mMotion->GetFileName(), motion->GetFileName());
-                return false;
-            }
-        }
-
-        // everything ok
-        return true;
-    }
-#endif
-
-
     void MotionWindowPlugin::ReInit()
     {
-        // verify if the shown motions in the table widget and the ones inside the motion manager are consistent
-    #ifdef _DEBUG
-        VerifyMotions();
-    #endif
-
         uint32 i;
 
         // get the number of motions in the motion library and iterate through them
@@ -359,7 +511,6 @@ namespace EMStudio
 
     void MotionWindowPlugin::UpdateMotions()
     {
-        mMotionPropertiesWindow->UpdateMotions();
         mMotionRetargetingWindow->UpdateMotions();
     }
 
@@ -383,10 +534,24 @@ namespace EMStudio
             }
         }
 
-        if (mMotionPropertiesWindow)
+        const CommandSystem::SelectionList& selection = GetCommandManager()->GetCurrentSelection();
+        const bool hasSelectedMotions = selection.GetNumSelectedMotions() > 0;
+
+        if (mMotionNameLabel)
         {
-            mMotionPropertiesWindow->UpdateInterface();
+            MotionTableEntry* entry = hasSelectedMotions ? FindMotionEntryByID(selection.GetMotion(0)->GetID()) : nullptr;
+            EMotionFX::Motion* motion = entry ? entry->mMotion : nullptr;
+            mMotionNameLabel->setText(motion ? motion->GetName() : nullptr);
         }
+
+        const uint32 numMotions = EMotionFX::GetMotionManager().GetNumMotions();
+
+        if (mSaveAction)
+        {
+            // related to the selected motions
+            mSaveAction->setEnabled(hasSelectedMotions);
+        }
+
         if (mMotionListWindow)
         {
             mMotionListWindow->UpdateInterface();
@@ -485,6 +650,7 @@ namespace EMStudio
             // Don't blend in and out of the for previewing animations. We might only see a short bit of it for animations smaller than the blend in/out time.
             defaultPlayBackInfo->mBlendInTime = 0.0f;
             defaultPlayBackInfo->mBlendOutTime = 0.0f;
+            defaultPlayBackInfo->mFreezeAtLastFrame = (defaultPlayBackInfo->mNumLoops != EMFX_LOOPFOREVER);
 
             commandParameters = CommandSystem::CommandPlayMotion::PlayBackInfoToCommandParameters(defaultPlayBackInfo);
 

@@ -148,6 +148,8 @@ namespace GraphCanvas
         virtual ToastId ShowToastNotification(const ToastConfiguration& toastConfiguration) = 0;
         virtual ToastId ShowToastAtCursor(const ToastConfiguration& toastConfiguration) = 0;
         virtual ToastId ShowToastAtPoint(const QPoint& screenPosition, const QPointF& anchorPoint, const ToastConfiguration&) = 0;
+
+        virtual bool IsShowing() const = 0;
     };
 
     using ViewRequestBus = AZ::EBus<ViewRequests>;
@@ -173,6 +175,12 @@ namespace GraphCanvas
 
         //! The view was zoomed
         virtual void OnZoomChanged(qreal zoomLevel) {};
+
+        //! The view got an escape pressed
+        virtual void OnEscape() {}
+
+        //! The view lost focus
+        virtual void OnFocusLost() {}
     };
 
     using ViewNotificationBus = AZ::EBus<ViewNotifications>;

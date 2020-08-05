@@ -63,26 +63,28 @@ namespace EMotionFX
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             ~UniqueData() override = default;
 
+            void Update() override;
+
         public:
             AZStd::vector<AZ::u32> m_modifiedJointIndices;
-            bool m_mustUpdate;
         };
 
         BlendTreeRagdollStrenghModifierNode();
         ~BlendTreeRagdollStrenghModifierNode() override = default;
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         AZ::Color GetVisualColor() const override                       { return AZ::Color(0.81f, 0.69f, 0.58f, 1.0f); }
         const char* GetPaletteName() const override                     { return "Ragdoll Strength Modifier"; }
         AnimGraphObject::ECategory GetPaletteCategory() const override  { return AnimGraphObject::CATEGORY_PHYSICS; }
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         void Output(AnimGraphInstance* animGraphInstance) override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
         bool GetHasOutputPose() const override                          { return true; }
+
+        const AZStd::vector<AZStd::string>& GetModifiedJointNames() const { return m_modifiedJointNames; }
 
         static void Reflect(AZ::ReflectContext* context);
 

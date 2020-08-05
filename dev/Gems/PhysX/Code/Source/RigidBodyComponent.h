@@ -17,6 +17,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Entity/EntityContextBus.h>
 
@@ -28,6 +29,7 @@ namespace PhysX
     class RigidBodyComponent
         : public AZ::Component
         , public Physics::RigidBodyRequestBus::Handler
+        , public Physics::WorldBodyRequestBus::Handler
         , public AZ::TickBus::Handler
         , public AzFramework::EntityContextEventBus::Handler
         , protected AZ::TransformNotificationBus::MultiHandler
@@ -63,11 +65,15 @@ namespace PhysX
             dependent.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
         }
 
-        // RigidBodyRequests
+        // RigidBodyRequests + WorldBodyRequests
         void EnablePhysics() override;
         void DisablePhysics() override;
         bool IsPhysicsEnabled() const override;
 
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
+        AZ::Aabb GetAabb() const override;
+
+        // RigidBodyRequests
         AZ::Vector3 GetCenterOfMassWorld() const override;
         virtual AZ::Vector3 GetCenterOfMassLocal() const override;
 
@@ -107,17 +113,19 @@ namespace PhysX
 
         float GetSleepThreshold() const override;
         void SetSleepThreshold(float threshold) override;
-        AZ::Aabb GetAabb() const override;
         Physics::RigidBody* GetRigidBody() override;
 
-        Physics::RigidBodyConfiguration& GetConfiguration() 
-        { 
-            return m_configuration; 
-        }
+        // WorldBodyRequestBus
+        Physics::WorldBody* GetWorldBody() override;
 
         // EntityContextEventBus
         void OnSliceInstantiated(const AZ::Data::AssetId&, const AZ::SliceComponent::SliceInstanceAddress&) override;
         void OnSliceInstantiationFailed(const AZ::Data::AssetId&) override;
+
+        Physics::RigidBodyConfiguration& GetConfiguration()
+        {
+            return m_configuration;
+        }
 
     protected:
 

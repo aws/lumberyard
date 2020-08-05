@@ -35,6 +35,7 @@
 #include <QTimer>
 #include <QUrlQuery>
 #include <QDesktopServices>
+#include <QHBoxLayout>
 
 using namespace AZ;
 using namespace AzToolsFramework;
@@ -1207,14 +1208,15 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     auto helpMenu = m_actionManager->AddMenu(tr("&Help"), s_helpMenuId);
 
     auto lineEditSearchAction = new QWidgetAction(m_mainWindow);
-    auto lineEdit = new QLineEdit(m_mainWindow);
+    auto containerWidget = new QWidget(m_mainWindow);
+    auto lineEdit = new AzQtComponents::SearchLineEdit(m_mainWindow);
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(lineEdit);
+    containerWidget->setLayout(layout);
+    containerWidget->setContentsMargins(2, 0, 2, 0);
     lineEdit->setPlaceholderText(tr("Search documentation"));
-    lineEditSearchAction->setDefaultWidget(lineEdit);
-
-    auto searchButtonAction = new QWidgetAction(m_mainWindow);
-    auto pushButton = new QPushButton(QIcon(":/stylesheet/img/16x16/Search.png"), "", m_mainWindow);
-    searchButtonAction->setDefaultWidget(pushButton);
-    lineEdit->addAction(searchButtonAction, QLineEdit::TrailingPosition);
+    lineEditSearchAction->setDefaultWidget(containerWidget);
 
     auto searchAction = [lineEdit]()
         {
@@ -1245,7 +1247,6 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
             lineEdit->clear();
         };
     connect(lineEdit, &QLineEdit::returnPressed, this, searchAction);
-    connect(pushButton, &QAbstractButton::clicked, this, searchAction);
     connect(helpMenu.Get(), &QMenu::aboutToHide, lineEdit, &QLineEdit::clear);
     connect(helpMenu.Get(), &QMenu::aboutToShow, lineEdit, &QLineEdit::clearFocus);
     helpMenu->addAction(lineEditSearchAction);
@@ -1314,7 +1315,7 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
 
         action = new QAction(menuText, this);
         action->setObjectName(view->m_name);
-        action->setCheckable(view->IsViewportPane());
+        action->setCheckable(true);
         m_actionManager->AddAction(view->m_id, action);
 
         if (!view->m_options.shortcut.isEmpty())
@@ -1351,7 +1352,7 @@ QAction* LevelEditorMenuHandler::CreateViewPaneMenuItem(
 
     menu->addAction(action);
 
-return action;
+    return action;
 }
 
 void LevelEditorMenuHandler::InitializeViewPaneMenu(

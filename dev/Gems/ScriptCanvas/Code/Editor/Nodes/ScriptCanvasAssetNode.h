@@ -18,7 +18,6 @@
 #include <ScriptCanvas/Bus/GraphBus.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <Editor/Assets/ScriptCanvasAssetInstance.h>
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -69,8 +68,8 @@ namespace ScriptCanvasEditor
         bool GetAssetDataStoredInternally() const;
         void SetAssetDataStoredInternally(bool storeInObjectStream);
 
-        ScriptCanvasData& GetScriptCanvasData();
-        const ScriptCanvasData& GetScriptCanvasData() const;
+        ScriptCanvas::ScriptCanvasData& GetScriptCanvasData();
+        const ScriptCanvas::ScriptCanvasData& GetScriptCanvasData() const;
 
         AZ::Entity* GetScriptCanvasEntity() const;
 

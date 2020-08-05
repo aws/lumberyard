@@ -333,6 +333,7 @@ namespace GraphCanvas
     {
         CommentNodeTextSaveData* saveData = presetData->FindCreateSaveData<CommentNodeTextSaveData>();
         saveData->m_fontConfiguration.InitializePixelSize();
+        saveData->m_backgroundColor = AZ::Color(0.98f, 0.97f, 0.65f, 1.0f);
     }
 
     void CommentPresetBucket::ConfigureAllowableSaveTypes(AZStd::unordered_set< AZ::Uuid >& allowableSaveTypes)
@@ -373,6 +374,7 @@ namespace GraphCanvas
     {
         auto saveData = presetData->FindCreateSaveData<CommentNodeTextSaveData>();
         saveData->m_fontConfiguration.InitializePixelSize();
+        saveData->m_backgroundColor = AZ::Color(0.98f, 0.97f, 0.65f, 1.0f);
     }
 
     void NodeGroupPresetBucket::ConfigureAllowableSaveTypes(AZStd::unordered_set< AZ::Uuid >& allowableSaveTypes)

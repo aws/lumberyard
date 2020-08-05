@@ -57,8 +57,8 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::Input
                 );
 
-                ScriptCanvas_Property(bool,
-                    ScriptCanvas_Property::Name("Ignore Case", "Ignores the case of the string when searching.")
+                ScriptCanvas_PropertyWithDefaults(bool, true,
+                    ScriptCanvas_Property::Name("Case Sensitive", "Take into account the case of the string when searching.")
                     ScriptCanvas_Property::Input
                 );
 
@@ -66,7 +66,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("False", "The string did not contain the provided pattern."));
                 
                 
-                ScriptCanvas_Property(AZStd::string,
+                ScriptCanvas_Property(int,
                     ScriptCanvas_Property::Name("Index", "The first index at which the substring was found.")
                     ScriptCanvas_Property::Output,
                     ScriptCanvas_Property::OutputStorageSpec

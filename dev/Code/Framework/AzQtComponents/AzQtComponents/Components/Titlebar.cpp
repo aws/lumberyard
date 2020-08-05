@@ -10,8 +10,6 @@
 *
 */
 
-#include <qglobal.h> // For Q_OS_WIN
-
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/ButtonDivider.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
@@ -20,6 +18,7 @@
 #include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/DockTabBar.h>
+#include <AzQtComponents/Components/Widgets/ElidingLabel.h>
 
 AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDpiScaling::m_logicalDpi': struct 'QPair<qreal,qreal>' needs to have dll-interface to be used by clients of class 'QHighDpiScaling'
                                                                // 4244: 'argument': conversion from 'qreal' to 'int', possible loss of data
@@ -28,7 +27,6 @@ AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDp
 #include <QHBoxLayout>
 #include <QMouseEvent>
 #include <QWindow>
-#include <QPainter>
 #include <QMenu>
 #include <QDesktopWidget>
 #include <QtGui/private/qhighdpiscaling_p.h>
@@ -60,22 +58,6 @@ namespace AzQtComponents
         }
 
         return actualTopLevelFor(w->parentWidget());
-    }
-
-    TitleBarLabel::TitleBarLabel(QWidget* parent)
-        : QLabel(parent)
-    {
-    }
-
-    TitleBarLabel::~TitleBarLabel()
-    {
-    }
-
-    QSize TitleBarLabel::minimumSizeHint() const
-    {
-        // Override the QLabel minimumSizeHint width to let other
-        // widgets know we can deal with less space.
-        return QFrame::minimumSizeHint().boundedTo({0, std::numeric_limits<int>::max()});
     }
 
     TitleBar::Config TitleBar::loadConfig(QSettings& settings)
@@ -127,7 +109,7 @@ namespace AzQtComponents
         config.title.visibleWhenSimple = false;
 
         config.buttons.showDividerButtons = false;
-        config.buttons.spacing = 8;
+        config.buttons.spacing = 0;
 
         return config;
     }
@@ -152,10 +134,10 @@ namespace AzQtComponents
         tabBarlayout->setSpacing(0);
 
         m_tabBar = new DockTabBar(tabBarContainer);
-        m_tabBar->setMovable(false);
         m_tabBar->installEventFilter(this);
         m_tabBar->addTab({});
-        connect(m_tabBar, &DockTabBar::tabCloseRequested, this, &TitleBar::handleClose);
+        connect(m_tabBar, &DockTabBar::closeTab, this, &TitleBar::handleClose);
+        connect(m_tabBar, &DockTabBar::undockTab, this, &TitleBar::undockAction);
         m_tabBar->setDrawBase(false);
 
         tabBarlayout->addWidget(m_tabBar);
@@ -174,12 +156,9 @@ namespace AzQtComponents
         m_icon->setObjectName(QStringLiteral("icon"));
         layout->addWidget(m_icon);
 
-        // Don't use AzQtComponenets::ElidingLabel because when used in combination with the
-        // stretch, its width is reduced to zero. ElidingLabel also displays an elipsis ('...')
-        // which was not present in the original TitleBar painting code.
-        m_label = new TitleBarLabel(container);
+        m_label = new ElidingLabel(container);
         m_label->setObjectName(QStringLiteral("title"));
-        layout->addWidget(m_label);
+        layout->addWidget(m_label, 1);
 
         layout->addStretch();
 
@@ -431,7 +410,10 @@ namespace AzQtComponents
 
     void TitleBar::updateTitle()
     {
-        const auto text = m_drawSimple ? QApplication::applicationName() : title();
+        // The configured title needs to be simplified since it could have line breaks or
+        // carriage returns that should be replaced with spaces so that all the text will
+        // be on a single line
+        const auto text = m_drawSimple ? QApplication::applicationName() : title().simplified();
         m_label->setText(text);
         m_tabBar->setTabText(0, text);
     }
@@ -514,7 +496,6 @@ namespace AzQtComponents
     bool TitleBar::unpolish(Style* style, QWidget* widget, const Config& config)
     {
         Q_UNUSED(style);
-        Q_UNUSED(config);
 
         auto titleBar = qobject_cast<TitleBar*>(widget);
         if (!titleBar)
@@ -527,7 +508,7 @@ namespace AzQtComponents
         titleBar->m_showLabelWhenSimple = true;
         titleBar->setDrawAsTabBar(false);
         titleBar->m_buttonsLayout->setSpacing(DockBar::ButtonsSpacing);
-        titleBar->setupButtons();
+        titleBar->setupButtons(config.buttons.showDividerButtons);
 
         titleBar->updateTitleBar();
 
@@ -715,7 +696,9 @@ namespace AzQtComponents
         }
 
         // Update the menu labels for the close/undock actions
-        QString titleLabel = title();
+        // We need to check where we should get the title text from based on whether
+        // or not the tab bar or the label are currently being shown
+        QString titleLabel = m_tabBar->isVisible() ? m_tabBar->tabText(0) : m_label->ElidedText();
         m_closeMenuAction->setText(tr("Close %1").arg(titleLabel));
         m_undockMenuAction->setText(tr("Undock %1").arg(titleLabel));
 
@@ -1238,7 +1221,7 @@ namespace AzQtComponents
         if (buttons != m_buttons)
         {
             m_buttons = buttons;
-            setupButtons();
+            setupButtons(false);
         }
     }
 

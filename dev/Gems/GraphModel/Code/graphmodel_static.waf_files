@@ -1,0 +1,40 @@
+{
+    "auto": {
+        "Include": [
+            "Include/GraphModel/Model/Common.h",
+            "Include/GraphModel/Model/Connection.h",
+            "Include/GraphModel/Model/DataType.h",
+            "Include/GraphModel/Model/Graph.h",
+            "Include/GraphModel/Model/GraphElement.h",
+            "Include/GraphModel/Model/IGraphContext.h",
+            "Include/GraphModel/Model/Node.h",
+            "Include/GraphModel/Model/Slot.h",
+            "Include/GraphModel/Model/Module/InputOutputNodes.h",
+            "Include/GraphModel/Model/Module/ModuleGraphManager.h",
+            "Include/GraphModel/Model/Module/ModuleNode.h",
+            "Include/GraphModel/Integration/EditorMainWindow.h",
+            "Include/GraphModel/Integration/ReadOnlyDataInterface.h",
+            "Include/GraphModel/Integration/ThumbnailItem.h",
+            "Include/GraphModel/Integration/ThumbnailImageItem.h"
+        ],
+        "Source/Model": [
+            "Source/Model/Connection.cpp",
+            "Source/Model/DataType.cpp",
+            "Source/Model/Graph.cpp",
+            "Source/Model/GraphElement.cpp",
+            "Source/Model/Node.cpp",
+            "Source/Model/Slot.cpp"
+        ],
+        "Source/Model/Module": [
+            "Source/Model/Module/InputOutputNodes.cpp",
+            "Source/Model/Module/ModuleGraphManager.cpp",
+            "Source/Model/Module/ModuleNode.cpp"
+        ],
+        "Source/Integration": [
+            "Source/Integration/EditorMainWindow.cpp",
+            "Source/Integration/ReadOnlyDataInterface.cpp",
+            "Source/Integration/ThumbnailItem.cpp",
+            "Source/Integration/ThumbnailImageItem.cpp"
+        ]
+    }
+}

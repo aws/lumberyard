@@ -32,6 +32,7 @@
 #include <EMotionFX/Source/Parameter/Vector2Parameter.h>
 #include <EMotionFX/Source/Parameter/Vector3Parameter.h>
 #include <AzFramework/Physics/Utils.h>
+#include <AzFramework/IO/LocalFileIO.h>
 
 
 namespace EMotionFX
@@ -82,13 +83,6 @@ namespace EMotionFX
         void SetUp() override
         {
             SampleGameFixture::SetUp();
-
-            AZ::SerializeContext* serializeContext = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            if (serializeContext)
-            {
-                Physics::ReflectionUtils::ReflectPhysicsApi(serializeContext);
-            }
 
             m_random = new AZ::SimpleLcgRandom();
             m_random->SetSeed(875960);
@@ -638,4 +632,70 @@ namespace EMotionFX
     INSTANTIATE_TEST_CASE_P(DISABLED_PerformanceTests,
         PerformanceTestFixture,
         ::testing::ValuesIn(performanceTestData));
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    TEST_F(PerformanceTestFixture, DISABLED_DeferredInitPerformanceTest)
+    {
+        const AZStd::string assetFolder = GetAssetFolder();
+        GetEMotionFX().SetMediaRootFolder(assetFolder.c_str());
+        GetEMotionFX().InitAssetFolderPaths();
+
+        // This path points to assets in the advance rin demo.
+        // To test different assets, change the path here.
+        const char* actorFilename     = "@assets@\\AnimationSamples\\Advanced_RinLocomotion\\Actor\\rinActor.actor";
+        const char* motionSetFilename = "@assets@\\AnimationSamples\\Advanced_RinLocomotion\\AnimationEditorFiles\\Advanced_RinLocomotion.motionset";
+        const char* animGraphFilename = "@assets@\\AnimationSamples\\Advanced_RinLocomotion\\AnimationEditorFiles\\Advanced_RinLocomotion.animgraph";
+
+        Importer* importer = GetEMotionFX().GetImporter();
+        importer->SetLoggingEnabled(false);
+
+        const AZStd::string resolvedActorFilename = ResolvePath(actorFilename);
+        EXPECT_TRUE(AZ::IO::LocalFileIO::GetInstance()->Exists(resolvedActorFilename.c_str()))
+            << AZStd::string::format("Actor file '%s' does not exist on local hard drive.", resolvedActorFilename.c_str()).c_str();
+        AZStd::unique_ptr<Actor> actor = importer->LoadActor(resolvedActorFilename);
+        ASSERT_NE(actor, nullptr) << "Actor failed to load.";
+        MotionSet* motionSet = importer->LoadMotionSet(ResolvePath(motionSetFilename));
+        ASSERT_NE(motionSet, nullptr) << "Motion set failed to load.";
+
+        AnimGraph* animGraph = importer->LoadAnimGraph(ResolvePath(animGraphFilename));
+        ASSERT_NE(animGraph, nullptr) << "Anim graph failed to load.";
+
+        // Create instances.
+        const size_t numInstances = 1000;
+        AZStd::vector<ActorInstance*> actorInstances;
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            ActorInstance* actorInstance = ActorInstance::Create(actor.get());
+            actorInstances.emplace_back(actorInstance);
+        }
+
+        // Preload motions and make sure they got loaded successfully.
+        motionSet->Preload();
+        const auto& motionEntries = motionSet->GetMotionEntries();
+        for (const auto& motionEntryPair : motionEntries)
+        {
+            const MotionSet::MotionEntry* motionEntry = motionEntryPair.second;
+            ASSERT_NE(motionEntry->GetMotion(), nullptr);
+        }
+
+        AZ::Debug::Timer timer;
+        timer.Stamp();
+        for (ActorInstance* actorInstance : actorInstances)
+        {
+            AnimGraphInstance* animGraphInstance = AnimGraphInstance::Create(animGraph, actorInstance, motionSet);
+            actorInstance->SetAnimGraphInstance(animGraphInstance);
+        }
+        const float activationTime = timer.GetDeltaTimeInSeconds();
+        AZ_Printf("EMotionFX", "Instantiating took = %.2f ms\n", activationTime * 1000.0f);
+        const AZStd::string test = AZStd::string::format("- Activation Time = %.2f ms                          -\n", activationTime * 1000.0f);
+        OutputDebugString(test.c_str());
+
+        for (ActorInstance* actorInstance : actorInstances)
+        {
+            actorInstance->Destroy();
+        }
+        delete animGraph;
+        delete motionSet;
+    }
 } // namespace EMotionFX

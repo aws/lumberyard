@@ -451,16 +451,20 @@ namespace CommandSystem
         
         MCore::CommandGroup commandGroup;
 
-        AZStd::string commandString = AZStd::string::format("AnimGraphAddNodeGroup -animGraphID %i -name \"%s\" -updateUI %s",animGraph->GetID(), mOldName.c_str(), updateWindow);
+        AZStd::string commandString = AZStd::string::format("AnimGraphAddNodeGroup -animGraphID %i -name \"%s\" -updateUI %s",animGraph->GetID(), mOldName.c_str(), updateWindow.c_str());
         commandGroup.AddCommandString(commandString);
 
         const AZStd::string nodeNamesString = CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(animGraph, mOldNodeIds);
 
         AZ::Color oldColor;
         oldColor.FromU32(mOldColor);
-        const AZStd::string oldColorString = AZStd::string::format("%.8f,%.8f,%.8f,%.8f", static_cast<float>(oldColor.GetR()), static_cast<float>(oldColor.GetG()), static_cast<float>(oldColor.GetB()), static_cast<float>(oldColor.GetA()));
+        const AZStd::string oldColorString = AZStd::string::format("%.8f,%.8f,%.8f,%.8f",
+            static_cast<float>(oldColor.GetR()), static_cast<float>(oldColor.GetG()), static_cast<float>(oldColor.GetB()), static_cast<float>(oldColor.GetA()));
 
-        commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %s -color \"%s\" -nodeNames \"%s\" -nodeAction \"add\" -updateUI %s", animGraph->GetID(), mOldName.c_str(), AZStd::to_string(mOldIsVisible).c_str(), oldColorString.c_str(), nodeNamesString.c_str(), updateWindow);
+        commandString = AZStd::string::format(
+            "AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %s -color \"%s\" -nodeNames \"%s\" -nodeAction \"add\" -updateUI %s",
+            animGraph->GetID(), mOldName.c_str(), AZStd::to_string(mOldIsVisible).c_str(), oldColorString.c_str(), nodeNamesString.c_str(), updateWindow.c_str());
+
         commandGroup.AddCommandString(commandString);
 
         AZStd::string result;

@@ -50,7 +50,6 @@
 #include <ScriptCanvas/Data/DataRegistry.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
-#include <ScriptCanvas/Assets/ScriptCanvasDocumentContext.h>
 #include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
 
 #include <ScriptCanvas/Bus/ScriptCanvasExecutionBus.h>
@@ -235,12 +234,10 @@ namespace ScriptCanvasEditor
 
         UnitTestWidgetNotificationBus::Handler::BusConnect();
 
+        m_ui->searchFilter->setClearButtonEnabled(true);
         QObject::connect(m_ui->searchFilter, &QLineEdit::textChanged, this, &UnitTestDockWidget::OnQuickFilterChanged);
         QObject::connect(m_ui->searchFilter, &QLineEdit::returnPressed, this, &UnitTestDockWidget::OnReturnPressed);
 
-        QAction* clearAction = m_ui->searchFilter->addAction(QIcon(":/ScriptCanvasEditorResources/Resources/lineedit_clear.png"), QLineEdit::TrailingPosition);
-        QObject::connect(clearAction, &QAction::triggered, this, &UnitTestDockWidget::ClearSearchFilter);
-        
         m_filterTimer.setInterval(250);
         m_filterTimer.setSingleShot(true);
         m_filterTimer.stop();
@@ -376,8 +373,15 @@ namespace ScriptCanvasEditor
         UpdateSearchFilter();
     }
 
-    void UnitTestDockWidget::OnQuickFilterChanged()
+    void UnitTestDockWidget::OnQuickFilterChanged(const QString& text)
     {
+        if(text.isEmpty())
+        {
+            //If filter was cleared, update immediately
+            UpdateSearchFilter();
+            return;
+        }
+
         m_filterTimer.stop();
         m_filterTimer.start();
     }
@@ -402,11 +406,8 @@ namespace ScriptCanvasEditor
         AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
         AZ::Data::AssetId sourceAssetId(sourceUuid, 0);
 
-        auto& assetManager = AZ::Data::AssetManager::Instance();
-        AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset = assetManager.GetAsset(sourceAssetId, azrtti_typeid<ScriptCanvasAsset>());
-
         AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
-        GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset, -1);
+        GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAssetId, sourceAssetId);
         if (!openOutcome)
         {
             AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());

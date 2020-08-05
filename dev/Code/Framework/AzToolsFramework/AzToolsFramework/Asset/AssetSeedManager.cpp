@@ -30,6 +30,8 @@ const char SeedFileExtension[] = "seed";
 const char AssetListFileExtension[] = "assetlist";
 const char ScriptCanvas[] = "scriptcanvas";
 const char ScriptCanvasCompiled[] = "scriptcanvas_compiled";
+const char ScriptCanvasFunction[] = "scriptcanvas_fn";
+const char ScriptCanvasFunctionCompiled[] = "scriptcanvas_fn_compiled";
 
 namespace AzToolsFramework
 {
@@ -317,6 +319,7 @@ namespace AzToolsFramework
 
         m_sourceAssetTypeToRuntimeAssetTypeMap[sliceFileExtension] = dynamicSliceFileExtension;
         m_sourceAssetTypeToRuntimeAssetTypeMap[ScriptCanvas] = ScriptCanvasCompiled;
+        m_sourceAssetTypeToRuntimeAssetTypeMap[ScriptCanvasFunction] = ScriptCanvasFunctionCompiled;
     }
 
     const AzFramework::AssetSeedList& AssetSeedManager::GetAssetSeedList() const

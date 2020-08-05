@@ -12,16 +12,51 @@
 
 #include "ManipulatorSnapping.h"
 
+#include <AzCore/Console/Console.h>
 #include <AzCore/Math/Internal/VectorConversions.inl>
-#include <AzCore/Math/Transform.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzToolsFramework/Maths/TransformUtils.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
+
+AZ_CVAR(
+    AZ::Color, cl_viewportGridMainColor, AZ::Color::CreateFromRgba(26, 26, 26, 127), nullptr,
+    AZ::ConsoleFunctorFlags::Null, "Main color for snapping grid");
+AZ_CVAR(
+    AZ::Color, cl_viewportGridFadeColor, AZ::Color::CreateFromRgba(127, 127, 127, 0), nullptr,
+    AZ::ConsoleFunctorFlags::Null, "Fade color for snapping grid");
+AZ_CVAR(
+    int, cl_viewportGridSquareCount, 20, nullptr, AZ::ConsoleFunctorFlags::Null,
+    "Number of grid squares for snapping grid");
+AZ_CVAR(
+    float, cl_viewportGridLineWidth, 1.0f, nullptr, AZ::ConsoleFunctorFlags::Null,
+    "Width of grid lines for snapping grid");
+AZ_CVAR(
+    float, cl_viewportFadeLineDistanceScale, 1.0f, nullptr, AZ::ConsoleFunctorFlags::Null,
+    "The scale to be applied to the line that fades out (scales the current gridSize)");
 
 namespace AzToolsFramework
 {
-    GridSnapParameters::GridSnapParameters(bool gridSnap, float gridSize):
-        m_gridSnap(gridSnap),
-        m_gridSize(gridSize)
+    GridSnapParameters::GridSnapParameters(const bool gridSnap, const float gridSize)
+        : m_gridSnap(gridSnap)
+        , m_gridSize(gridSize)
     {
+    }
+
+    GridSnapAction::GridSnapAction(const GridSnapParameters& gridSnapParameters, const bool localSnapping)
+        : m_gridSnapParams(gridSnapParameters)
+        , m_localSnapping(localSnapping)
+    {
+    }
+
+    ManipulatorInteraction BuildManipulatorInteraction(
+        const AZ::Transform& worldFromLocal, const AZ::Vector3& worldRayOrigin, const AZ::Vector3& worldRayDirection)
+    {
+        const AZ::Transform worldFromLocalUniform = AzToolsFramework::TransformUniformScale(worldFromLocal);
+        const AZ::Transform localFromWorldUniform = worldFromLocalUniform.GetInverseFull();
+
+        return {localFromWorldUniform * worldRayOrigin,
+                TransformDirectionNoScaling(localFromWorldUniform, worldRayDirection),
+                ScaleReciprocal(worldFromLocalUniform)};
     }
 
     AZ::Vector3 CalculateSnappedOffset(
@@ -39,7 +74,7 @@ namespace AzToolsFramework
         const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal,
         const int viewportId, const float gridSize)
     {
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFull();
         const AZ::Vector3 localSurfacePosition = localFromWorld * worldSurfacePosition;
 
         // snap in xy plane
@@ -77,10 +112,11 @@ namespace AzToolsFramework
         ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             gridSize, viewportId,
             &ViewportInteraction::ViewportInteractionRequestBus::Events::GridSize);
+
         return gridSize;
     }
 
-    GridSnapParameters GridSnapSettings(int viewportId)
+    GridSnapParameters GridSnapSettings(const int viewportId)
     {
         bool snapping = GridSnapping(viewportId);
         const float gridSize = GridSize(viewportId);
@@ -98,6 +134,7 @@ namespace AzToolsFramework
         ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             snapping, viewportId,
             &ViewportInteraction::ViewportInteractionRequestBus::Events::AngleSnappingEnabled);
+
         return snapping;
     }
 
@@ -107,6 +144,71 @@ namespace AzToolsFramework
         ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             angle, viewportId,
             &ViewportInteraction::ViewportInteractionRequestBus::Events::AngleStep);
+
         return angle;
     }
-}
+
+    bool ShowingGrid(const int viewportId)
+    {
+        bool show = false;
+        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
+            show, viewportId,
+            &ViewportInteraction::ViewportInteractionRequestBus::Events::ShowGrid);
+
+        return show;
+    }
+
+    void DrawSnappingGrid(
+        AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Transform& worldFromLocal, const float squareSize)
+    {
+        debugDisplay.PushMatrix(worldFromLocal);
+
+        debugDisplay.SetLineWidth(cl_viewportGridLineWidth);
+
+        const int gridSquareCount = cl_viewportGridSquareCount;
+        AZStd::vector<AZ::Vector3> lines;
+        lines.reserve((gridSquareCount + 1) * 2);
+
+        const AZ::Vector4 gridMainColor = static_cast<AZ::Color>(cl_viewportGridMainColor).GetAsVector4();
+        const AZ::Vector4 gridFadeColor = static_cast<AZ::Color>(cl_viewportGridFadeColor).GetAsVector4();
+
+        const float halfGridSquareCount = float(gridSquareCount) * 0.5f;
+        const float halfGridSize = halfGridSquareCount * squareSize;
+        const float fadeLineLength = cl_viewportFadeLineDistanceScale * squareSize;
+        for (size_t lineIndex = 0; lineIndex <= gridSquareCount; ++lineIndex)
+        {
+            const float lineOffset = -halfGridSize + (lineIndex * squareSize);
+
+            // draw the faded end parts of the grid lines
+            debugDisplay.DrawLine(
+                AZ::Vector3(lineOffset, -halfGridSize, 0.0f),
+                AZ::Vector3(lineOffset, -(halfGridSize + fadeLineLength), 0.0f),
+                gridMainColor, gridFadeColor);
+            debugDisplay.DrawLine(
+                AZ::Vector3(lineOffset, halfGridSize, 0.0f),
+                AZ::Vector3(lineOffset, (halfGridSize + fadeLineLength), 0.0f),
+                gridMainColor, gridFadeColor);
+            debugDisplay.DrawLine(
+                AZ::Vector3(-halfGridSize, lineOffset, 0.0f),
+                AZ::Vector3(-(halfGridSize + fadeLineLength), lineOffset, 0.0f),
+                gridMainColor, gridFadeColor);
+            debugDisplay.DrawLine(
+                AZ::Vector3(halfGridSize, lineOffset, 0.0f),
+                AZ::Vector3((halfGridSize + fadeLineLength), lineOffset, 0.0f),
+                gridMainColor, gridFadeColor);
+
+            // build a vector of the main grid lines to draw (start and end positions)
+            lines.push_back(AZ::Vector3(lineOffset, -halfGridSize, 0.0f));
+            lines.push_back(AZ::Vector3(lineOffset, halfGridSize, 0.0f));
+            lines.push_back(AZ::Vector3(-halfGridSize, lineOffset, 0.0f));
+            lines.push_back(AZ::Vector3(halfGridSize, lineOffset, 0.0f));
+        }
+
+        debugDisplay.DrawLines(lines, cl_viewportGridMainColor);
+
+        // restore original width
+        debugDisplay.SetLineWidth(1.0f);
+
+        debugDisplay.PopMatrix();
+    }
+} // namespace AzToolsFramework

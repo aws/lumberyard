@@ -119,11 +119,11 @@ namespace GraphCanvas
             int width = static_cast<int>(retVal.width());
             int height = static_cast<int>(retVal.height());
 
-            width = GrowToNextStep(width, GetGridXStep());
-            height = GrowToNextStep(height, GetGridYStep());
+            width = GrowToNextStep(width, GetGridXStep(), StepAxis::Width);
+            height = GrowToNextStep(height, GetGridYStep(), StepAxis::Height);
 
             retVal = QSizeF(width, height);
-        }
+        }        
 
         return retVal;
     }
@@ -168,7 +168,7 @@ namespace GraphCanvas
     {
     }
 
-    void NodeFrameGraphicsWidget::OnAddedToScene(const AZ::EntityId&)
+    void NodeFrameGraphicsWidget::OnAddedToScene(const AZ::EntityId& sceneId)
     {
         AZStd::string tooltip;
         NodeRequestBus::EventResult(tooltip, GetEntityId(), &NodeRequests::GetTooltip);
@@ -178,6 +178,8 @@ namespace GraphCanvas
         AZ::Vector2 position;
         GeometryRequestBus::EventResult(position, GetEntityId(), &GeometryRequests::GetPosition);
         setPos(ConversionUtils::AZToQPoint(position));
+
+        SceneRequestBus::EventResult(m_editorId, sceneId, &SceneRequests::GetEditorId);
     }
 
     void NodeFrameGraphicsWidget::OnNodeWrapped(const AZ::EntityId& wrappingNode)
@@ -187,12 +189,26 @@ namespace GraphCanvas
 
         SetSnapToGridEnabled(false);
         SetResizeToGridEnabled(false);
+        SetSteppedSizingEnabled(false);
+
+        m_wrapperNode = wrappingNode;
+
+        m_isWrapped = true;
     }
 
     void NodeFrameGraphicsWidget::AdjustSize()
     {
         QRectF originalSize = boundingRect();
-        adjustSize();
+
+        if (!m_isWrapped)
+        {
+            adjustSize();
+        }
+        else
+        {
+            NodeUIRequestBus::Event(m_wrapperNode, &NodeUIRequests::AdjustSize);
+        }
+
         QRectF newSize = boundingRect();
 
         if (originalSize != newSize)
@@ -224,18 +240,39 @@ namespace GraphCanvas
         return m_style.GetAttribute(Styling::Attribute::BorderRadius, 5.0);
     }
 
-    int NodeFrameGraphicsWidget::GrowToNextStep(int value, int step) const
+    void NodeFrameGraphicsWidget::SetSteppedSizingEnabled(bool enabled)
     {
-        int delta = value % step;        
+        if (enabled != m_enabledSteppedSizing)
+        {
+            m_enabledSteppedSizing = enabled;
+        }
+    }
 
-        if (delta == 0)
+    int NodeFrameGraphicsWidget::GrowToNextStep(int value, int step, StepAxis stepAxis) const
+    {
+        int finalSize = value;
+        int delta = value % step;
+
+        if (delta != 0)
         {
-            return value;
+            finalSize = value + (step - delta);
         }
-        else
+
+        int gridSteps = finalSize / step;
+
+        if (m_enabledSteppedSizing)
         {
-            return value + (step - delta);
+            if (stepAxis == StepAxis::Width)
+            {
+                StyleManagerRequestBus::EventResult(gridSteps, m_editorId, &StyleManagerRequests::GetSteppedWidth, gridSteps);
+            }
+            else if (stepAxis == StepAxis::Height)
+            {
+                StyleManagerRequestBus::EventResult(gridSteps, m_editorId, &StyleManagerRequests::GetSteppedHeight, gridSteps);
+            }
         }
+
+        return gridSteps * step;
     }
 
     int NodeFrameGraphicsWidget::RoundToClosestStep(int value, int step) const

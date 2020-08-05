@@ -22,6 +22,7 @@
 class QPoint;
 class QVBoxLayout;
 class QSettings;
+class QStyleOption;
 
 namespace AzQtComponents
 {
@@ -48,13 +49,17 @@ namespace AzQtComponents
         : public QFrame
     {
         Q_OBJECT //AUTOMOC
-
+        Q_PROPERTY(bool selected READ isSelected WRITE setSelected NOTIFY selectedChanged)
+        Q_PROPERTY(bool expanded READ isExpanded WRITE setExpanded NOTIFY expandStateChanged)
     public:
         struct Config
         {
             int toolTipPaddingInPixels;
             int headerIconSizeInPixels;
-            int mainLayoutSpacing;
+            int rootLayoutSpacing;
+            QString warningIcon;
+            QSize warningIconSize;
+            qreal disabledIconAlpha;
         };
 
         Card(QWidget* parent = nullptr);
@@ -94,6 +99,8 @@ namespace AzQtComponents
 
         void hideFrame();
 
+        void mockDisabledState(bool disable);
+
         /*!
         * Loads the Card config data from a settings object.
         */
@@ -105,6 +112,7 @@ namespace AzQtComponents
         static Config defaultConfig();
 
     Q_SIGNALS:
+        void selectedChanged(bool selected);
         void expandStateChanged(bool expanded);
         void secondaryContentExpandStateChanged(bool expanded);
 
@@ -121,7 +129,10 @@ namespace AzQtComponents
         // methods used by Style
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
+        static QPixmap generatedIconPixmap(QIcon::Mode iconMode, const QPixmap& pixmap, const QStyleOption* option, const QWidget* widget, const Config& config);
 
+        QVBoxLayout* m_rootLayout = nullptr;
+        QFrame* m_contentContainer = nullptr;
         QWidget* m_contentWidget = nullptr;
         QWidget* m_secondaryContentWidget = nullptr;
         QFrame* m_separator = nullptr;
@@ -136,6 +147,7 @@ namespace AzQtComponents
         QVector<CardNotification*> m_notifications;
         AZ_POP_DISABLE_WARNING
         QIcon m_warningIcon;
+        QSize m_warningIconSize;
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::Card::m_separatorMargins': class 'QMargins' needs to have dll-interface to be used by clients of class 'AzQtComponents::Card'
         QMargins m_separatorMargins;
         AZ_POP_DISABLE_WARNING

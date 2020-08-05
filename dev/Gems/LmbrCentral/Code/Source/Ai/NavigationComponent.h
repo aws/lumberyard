@@ -108,6 +108,12 @@ namespace LmbrCentral
         const AZ::Vector3& GetLastKnownAgentVelocity() const;
         void SetLastKnownAgentVelocity(const AZ::Vector3& newVelocity);
 
+        const AZ::Vector3& GetNextPathPosition() const;
+        void SetNextPathPosition(const AZ::Vector3& newPosition);
+        
+        const AZ::Vector3& GetInflectionPosition() const;
+        void SetInflectionPosition(const AZ::Vector3& newPosition);
+
         IPathFollowerPtr GetPathFollower();
         
         //! Invalid request id
@@ -150,6 +156,12 @@ namespace LmbrCentral
 
         //! Last known velocity of the agent
         AZ::Vector3 m_previousAgentVelocity;
+
+        //! Next position in path to travel to
+        AZ::Vector3 m_nextPathPosition;
+
+        //! Inflection position (where the path turns) past the next position
+        AZ::Vector3 m_inflectionPosition;
 
         IPathFollowerPtr m_pathFollower;
         INavPathPtr m_currentPath;
@@ -201,9 +213,12 @@ namespace LmbrCentral
         // NavigationComponentRequests::Bus::Handler interface implementation
         PathfindRequest::NavigationRequestId FindPath(const PathfindRequest& request) override;
         PathfindRequest::NavigationRequestId FindPathToEntity(AZ::EntityId targetEntityId) override;
+        PathfindRequest::NavigationRequestId FindPathToPosition(const AZ::Vector3& destination) override;
         void Stop(PathfindRequest::NavigationRequestId requestId) override;
         float GetAgentSpeed() override;
         void SetAgentSpeed(float agentSpeed) override;
+        NavigationComponentRequests::MovementMethod GetAgentMovementMethod() override;
+        void SetAgentMovementMethod(NavigationComponentRequests::MovementMethod movementMethod) override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -224,8 +239,9 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////////////
 
-        float GetArrivalDistance() const    { return m_arrivalDistanceThreshold; }
-        float GetAgentRadius() const        { return m_agentRadius; }
+        float GetArrivalDistance() const        { return m_arrivalDistanceThreshold; }
+        float GetAgentRadius() const            { return m_agentRadius; }
+        bool GetAllowVerticalNavigation() const { return m_allowVerticalNavigation;  }
 
     private:
 #ifdef LMBR_CENTRAL_EDITOR
@@ -265,6 +281,12 @@ namespace LmbrCentral
         //! Indicates whether the entity being moved is a character
         bool m_usesCharacterPhysics;
 
+        //! Indicates whether vertical navigation is allowed 
+        bool m_allowVerticalNavigation;
+
+        //! Indicates how the agent is moved
+        NavigationComponentRequests::MovementMethod m_movementMethod;
+
         // Runtime data
 
         //! Stores the transform of the entity this component is attached to
@@ -301,6 +323,7 @@ namespace LmbrCentral
         {
             dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
             dependent.push_back(AZ_CRC("PhysXRigidBodyService", 0x1d4c64a8));
+            dependent.push_back(AZ_CRC("PhysXCharacterControllerService", 0x428de4fa));
         }
 
         //////////////////////////////////////////////////////////////////////////

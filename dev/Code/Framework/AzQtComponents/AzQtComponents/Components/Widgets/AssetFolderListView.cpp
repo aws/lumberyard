@@ -11,7 +11,9 @@
 */
 #include <AzQtComponents/Components/Widgets/AssetFolderListView.h>
 
+AZ_PUSH_DISABLE_WARNING(4244, "-Wunknown-warning-option")
 #include <QHeaderView>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {

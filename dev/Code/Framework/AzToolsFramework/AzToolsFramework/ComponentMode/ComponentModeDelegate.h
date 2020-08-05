@@ -137,8 +137,6 @@ namespace AzToolsFramework
             /// ComponentMode Button
             void OnComponentModeEnterButtonPressed();
             void OnComponentModeLeaveButtonPressed();
-            bool m_componentModeEnterButton = false;
-            bool m_componentModeLeaveButton = false;
         };
 
         /// If this Entity had a Component supporting a ComponentMode, would

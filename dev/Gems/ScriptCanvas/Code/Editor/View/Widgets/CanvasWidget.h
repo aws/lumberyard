@@ -43,11 +43,15 @@ namespace ScriptCanvasEditor
             Q_OBJECT
         public:
             AZ_CLASS_ALLOCATOR(CanvasWidget, AZ::SystemAllocator, 0);
-            CanvasWidget(QWidget* parent = nullptr);
+            CanvasWidget(const AZ::Data::AssetId& assetId, QWidget* parent = nullptr);
             ~CanvasWidget() override;
 
+            void SetDefaultBorderColor(AZ::Color defaultBorderColor);
             void ShowScene(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
             const GraphCanvas::ViewId& GetViewId() const;
+
+            void EnableView();
+            void DisableView();
 
         protected:
 
@@ -80,9 +84,15 @@ namespace ScriptCanvasEditor
 
             void PositionMiniMap();
 
+            AZ::Color m_defaultBorderColor;
+
+            ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
+
             GraphCanvas::GraphCanvasGraphicsView* m_graphicsView;
             GraphCanvas::MiniMapGraphicsView* m_miniMapView;
             MiniMapPosition m_miniMapPosition = MM_Upper_Left;
+
+            GraphCanvas::GraphicsEffectId m_disabledOverlay;
         };
     }
 }

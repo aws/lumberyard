@@ -21,16 +21,17 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Asset/SimpleAsset.h>
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetReference.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QCompleter>
-#include <QLabel>
 #include <QMovie>
 #include <QStyledItemDelegate>
 #include <QLineEdit>
+#include <QToolButton>
 AZ_POP_DISABLE_WARNING
 
 class QPushButton;
@@ -41,36 +42,6 @@ namespace AzToolsFramework
 {
     class AssetCompleterModel;
     class AssetCompleterListView;
-
-    //! Subclasses the lineEdit to show loading animation
-    class LineEditLoading
-        : public QLineEdit
-        , private AZ::TickBus::Handler
-    {
-        Q_OBJECT
-
-    public:
-        explicit LineEditLoading(QWidget *parent = nullptr);
-        ~LineEditLoading();
-
-        void StartLoading();
-        void StopLoading();
-
-    signals:
-        void focused(bool hasFocus);
-
-    protected:
-        void paintEvent(QPaintEvent* event) override;
-        void focusInEvent(QFocusEvent* event) override;
-        void focusOutEvent(QFocusEvent* event) override;
-
-        // AZ::TickBus ...
-        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-
-    private:
-        QMovie m_loadIcon;
-        bool m_isLoading = false;
-    };
 
     //! Defines a property control for picking base assets.
     //! We can specialize individual asset types (texture) to show previews and such by making specialized handlers, but
@@ -86,12 +57,13 @@ namespace AzToolsFramework
 
         // This is meant to be used with the "EditCallback" Attribute
         using EditCallbackType = AZ::Edit::AttributeFunction<void(const AZ::Data::AssetId&, const AZ::Data::AssetType&)>;
+        using ClearCallbackType = AZ::Edit::AttributeFunction<void()>;
 
         PropertyAssetCtrl(QWidget *pParent = NULL, QString optionalValidDragDropExtensions = QString());
         virtual ~PropertyAssetCtrl();
 
-        QWidget* GetFirstInTabOrder() { return m_lineEdit; }
-        QWidget* GetLastInTabOrder() { return m_clearButton; }
+        QWidget* GetFirstInTabOrder() { return m_browseEdit->lineEdit(); }
+        QWidget* GetLastInTabOrder() { return m_editButton; }
         void UpdateTabOrder();
 
         // Resolved asset for this control, this is the user selection with a fallback to the default asset(if exists)
@@ -114,9 +86,7 @@ namespace AzToolsFramework
 
     protected:
         QPushButton* m_errorButton = nullptr;
-        QPushButton* m_editButton = nullptr;
-        QPushButton* m_clearButton = nullptr;
-        QPushButton* m_browseButton = nullptr;
+        QToolButton* m_editButton = nullptr;
 
         AZ::Data::AssetId m_selectedAssetID;
         AZStd::string m_currentAssetHint;
@@ -129,13 +99,13 @@ namespace AzToolsFramework
 
         AZ::Data::AssetType m_currentAssetType;
 
-        LineEditLoading* m_lineEdit = nullptr;
-        QLabel* m_label = nullptr;
+        AzQtComponents::BrowseEdit* m_browseEdit = nullptr;
 
         AZStd::string m_defaultAssetHint;
 
         void* m_editNotifyTarget = nullptr;
         EditCallbackType* m_editNotifyCallback = nullptr;
+        ClearCallbackType* m_clearNotifyCallback = nullptr;
         QString m_optionalValidDragDropExtensions;
 
         //! The number of characters after which the autocompleter dropdown will be shown.
@@ -155,6 +125,10 @@ namespace AzToolsFramework
         //! This flag is set to true whenever the user alters the value in the lineEdit
         //  At that point, new values can only be selected via the autocompleter or the browse button.
         bool m_incompleteFilename = false;
+
+        //! This flag is set to true when a value is selected from the autocompleter
+        //  to avoid the autocompleter to select it again and cancel it.
+        bool m_preventAutocomplete = false;
 
         //! If true, the field is used to reference folders.
         bool m_unnamedType = false;
@@ -194,10 +168,12 @@ namespace AzToolsFramework
     public slots:
         void SetEditNotifyTarget(void* editNotifyTarget);
         void SetEditNotifyCallback(EditCallbackType* editNotifyCallback); // This is meant to be used with the "EditCallback" Attribute
+        void SetClearNotifyCallback(ClearCallbackType* clearNotifyCallback); // This is meant to be used with the "ClearNotify" Attribute
         void SetEditButtonEnabled(bool enabled);
         void SetEditButtonVisible(bool visible);
         void SetEditButtonIcon(const QIcon& icon);
         void SetEditButtonTooltip(QString tooltip);
+        void SetBrowseButtonIcon(const QIcon& icon);
         void SetClearButtonEnabled(bool enable);
         void SetClearButtonVisible(bool visible);
         void SetSelectedAssetID(const AZ::Data::AssetId& newID);
@@ -206,7 +182,7 @@ namespace AzToolsFramework
         void SetCurrentAssetHint(const AZStd::string& hint);
         void SetDefaultAssetID(const AZ::Data::AssetId& defaultID);
         void PopupAssetPicker();
-        void ClearAsset();
+        void OnClearButtonClicked();
         void UpdateAssetDisplay();
         void OnLineEditFocus(bool focus);
         virtual void OnEditButtonClicked();

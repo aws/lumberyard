@@ -20,7 +20,7 @@
 #include <EMotionFX/Source/BlendTreeBlendNNode.h>
 #include <QLabel>
 #include <QLineEdit>
-#include <MysticQt/Source/DoubleSpinbox.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <QEvent>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -104,7 +104,7 @@ namespace EMotionFX
         BlendNParamWeightContainerWidget*   m_parentContainerWidget = nullptr;
         const BlendNParamWeightGuiEntry*    m_paramWeight           = nullptr;
         QLabel*                             m_sourceNodeNameLabel   = nullptr;
-        MysticQt::DoubleSpinBox*            m_weightField           = nullptr;
+        AzQtComponents::DoubleSpinBox*      m_weightField           = nullptr;
         size_t                              m_dataElementIndex      = MCORE_INVALIDINDEX32;
     };
 

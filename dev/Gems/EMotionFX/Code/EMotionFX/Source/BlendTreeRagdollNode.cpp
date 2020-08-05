@@ -29,8 +29,50 @@ namespace EMotionFX
     BlendTreeRagdollNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
         : AnimGraphNodeData(node, animGraphInstance)
         , m_isRagdollRootNodeSimulated(false)
-        , m_mustUpdate(true)
     {
+    }
+
+    void BlendTreeRagdollNode::UniqueData::Update()
+    {
+        BlendTreeRagdollNode* ragdollNode = azdynamic_cast<BlendTreeRagdollNode*>(mObject);
+        AZ_Assert(ragdollNode, "Unique data linked to incorrect node type.");
+
+        const Actor* actor = mAnimGraphInstance->GetActorInstance()->GetActor();
+        const Skeleton* skeleton = actor->GetSkeleton();
+        const size_t jointCount = skeleton->GetNumNodes();
+
+        // Fill in the flags to indicate which of the joints are added to the physics simulation by this node.
+        // This information prevents runtime searches as we need to update the target pose transforms only for the
+        // joints selected by this node and not for all dynamic ones.
+        m_simulatedJointStates.resize(jointCount);
+        m_simulatedJointStates.assign(m_simulatedJointStates.size(), false);
+
+        const AZStd::vector<AZStd::string>& simulatedJointNames = ragdollNode->GetSimulatedJointNames();
+        for (const AZStd::string& jointName : simulatedJointNames)
+        {
+            const Node* node = skeleton->FindNodeByName(jointName);
+            if (node)
+            {
+                m_simulatedJointStates[node->GetNodeIndex()] = true;
+            }
+        }
+
+        // Check if we selected the ragdoll root node to be added to the simulation.
+        const ActorInstance* actorInstance = mAnimGraphInstance->GetActorInstance();
+        const RagdollInstance* ragdollInstance = actorInstance->GetRagdollInstance();
+        m_isRagdollRootNodeSimulated = false;
+        if (ragdollInstance)
+        {
+            const Node* ragdollRootNode = ragdollInstance->GetRagdollRootNode();
+            if (ragdollRootNode)
+            {
+                if (AZStd::find(simulatedJointNames.begin(), simulatedJointNames.end(), ragdollRootNode->GetNameString()) != simulatedJointNames.end())
+                {
+                    m_isRagdollRootNodeSimulated = true;
+                }
+            }
+        }
+
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -46,24 +88,6 @@ namespace EMotionFX
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
-    void BlendTreeRagdollNode::Reinit()
-    {
-        AnimGraphNode::Reinit();
-
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = reinterpret_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-            if (uniqueData)
-            {
-                uniqueData->m_mustUpdate = true;
-                OnUpdateUniqueData(animGraphInstance);
-            }
-        }
-    }
-
     bool BlendTreeRagdollNode::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphNode::InitAfterLoading(animGraph))
@@ -77,54 +101,9 @@ namespace EMotionFX
         return true;
     }
 
-    void BlendTreeRagdollNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        if (uniqueData->m_mustUpdate)
-        {
-            const Actor* actor = animGraphInstance->GetActorInstance()->GetActor();
-            const Skeleton* skeleton = actor->GetSkeleton();
-            const size_t jointCount = skeleton->GetNumNodes();
-
-            // Fill in the flags to indicate which of the joints are added to the physics simulation by this node.
-            // This information prevents runtime searches as we need to update the target pose transforms only for the
-            // joints selected by this node and not for all dynamic ones.
-            uniqueData->m_simulatedJointStates.resize(jointCount);
-            uniqueData->m_simulatedJointStates.assign(uniqueData->m_simulatedJointStates.size(), false);
-
-            for (const AZStd::string& jointName : m_simulatedJointNames)
-            {
-                const Node* node = skeleton->FindNodeByName(jointName);
-                if (node)
-                {
-                    uniqueData->m_simulatedJointStates[node->GetNodeIndex()] = true;
-                }
-            }
-
-            // Check if we selected the ragdoll root node to be added to the simulation.
-            Physics::RagdollNodeConfiguration* ragdollRootNodeConfig = actor->GetPhysicsSetup()->GetRagdollRootNodeConfig();
-            uniqueData->m_isRagdollRootNodeSimulated = false;
-            if (ragdollRootNodeConfig)
-            {
-                if (AZStd::find(m_simulatedJointNames.begin(), m_simulatedJointNames.end(), ragdollRootNodeConfig->m_debugName) != m_simulatedJointNames.end())
-                {
-                    uniqueData->m_isRagdollRootNodeSimulated = true;
-                }
-            }
-
-            uniqueData->m_mustUpdate = false;
-        }
-    }
-
     void BlendTreeRagdollNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
 
         if (HasConnectionAtInputPort(INPUTPORT_TARGETPOSE))
         {
@@ -147,7 +126,7 @@ namespace EMotionFX
 
     void BlendTreeRagdollNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         RequestRefDatas(animGraphInstance);
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
@@ -169,7 +148,7 @@ namespace EMotionFX
             inputNodeTargetPose->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
             // Forward the event buffer from the target pose.
-            AnimGraphRefCountedData* sourceData = inputNodeTargetPose->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            AnimGraphRefCountedData* sourceData = inputNodeTargetPose->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
             data->SetEventBuffer(sourceData->GetEventBuffer());
             data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
             data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
@@ -180,32 +159,35 @@ namespace EMotionFX
             data->ZeroTrajectoryDelta();
         }
 
-        const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-        const RagdollInstance* ragdollInstance = actorInstance->GetRagdollInstance();
-
-        // Apply the motion extraction delta from the ragdoll only in case the ragdoll root node is simulated.
-        if (ragdollInstance && uniqueData->m_isRagdollRootNodeSimulated)
+        if (IsActivated(animGraphInstance))
         {
-            const Actor* actor = actorInstance->GetActor();
-            const Node* motionExtractionNode = actor->GetMotionExtractionNode();
+            const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
+            const RagdollInstance* ragdollInstance = actorInstance->GetRagdollInstance();
 
-            Transform trajectoryDelta;
-            trajectoryDelta.ZeroWithIdentityQuaternion();
-
-            if (ragdollInstance && motionExtractionNode)
+            // Apply the motion extraction delta from the ragdoll only in case the ragdoll root node is simulated.
+            if (ragdollInstance && uniqueData->m_isRagdollRootNodeSimulated)
             {
-                // Move the trajectory node based on the ragdoll's movement.
-                trajectoryDelta.mPosition = ragdollInstance->GetTrajectoryDeltaPos();
+                const Actor* actor = actorInstance->GetActor();
+                const Node* motionExtractionNode = actor->GetMotionExtractionNode();
 
-                // Do the same for rotation, but extract and apply z rotation only to the trajectory node.
-                trajectoryDelta.mRotation = ragdollInstance->GetTrajectoryDeltaRot();
-                trajectoryDelta.mRotation.SetX(0.0f);
-                trajectoryDelta.mRotation.SetY(0.0f);
-                trajectoryDelta.mRotation.NormalizeExact();
+                Transform trajectoryDelta;
+                trajectoryDelta.ZeroWithIdentityQuaternion();
+
+                if (ragdollInstance && motionExtractionNode)
+                {
+                    // Move the trajectory node based on the ragdoll's movement.
+                    trajectoryDelta.mPosition = ragdollInstance->GetTrajectoryDeltaPos();
+
+                    // Do the same for rotation, but extract and apply z rotation only to the trajectory node.
+                    trajectoryDelta.mRotation = ragdollInstance->GetTrajectoryDeltaRot();
+                    trajectoryDelta.mRotation.SetX(0.0f);
+                    trajectoryDelta.mRotation.SetY(0.0f);
+                    trajectoryDelta.mRotation.NormalizeExact();
+                }
+
+                data->SetTrajectoryDelta(trajectoryDelta);
+                data->SetTrajectoryDeltaMirrored(trajectoryDelta);
             }
-
-            data->SetTrajectoryDelta(trajectoryDelta);
-            data->SetTrajectoryDeltaMirrored(trajectoryDelta);
         }
     }
 
@@ -251,7 +233,7 @@ namespace EMotionFX
         RagdollInstance* ragdollInstance = actorInstance->GetRagdollInstance();
         if (isActivated && ragdollInstance && !m_simulatedJointNames.empty())
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
             // Make sure the output pose contains a ragdoll pose data linked to our actor instance (assures enough space for the ragdoll node state array).
             PoseDataRagdoll* outputPoseData = outputPose.GetAndPreparePoseData<PoseDataRagdoll>(actorInstance);

@@ -138,7 +138,7 @@ namespace ScriptCanvas
                 ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Out", "Signaled when the delay reaches zero."));
 
                 // Data
-                ScriptCanvas_Property(float,
+                ScriptCanvas_PropertyWithDefaults(float, 1.0f,
                     ScriptCanvas_Property::Name("Time", "Amount of time to delay, in seconds") 
                     ScriptCanvas_Property::Input);
 

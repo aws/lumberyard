@@ -56,51 +56,19 @@ ButtonPage::ButtonPage(QWidget* parent)
     ui->dropdownHover->setState(hoverState);
     ui->dropdownPressed->setState(pressedState);
 
-    const QList<QToolButton*> menuToolButtons = {ui->toolButtonMenu, ui->toolButtonMenuHover, ui->toolButtonMenuDisabled};
+    const QList<QToolButton*> menuToolButtons = {ui->toolButtonMenu, ui->toolButtonMenuHover, ui->toolButtonMenuDisabled, ui->toolButtonMenuSelected};
 
     for (auto button : menuToolButtons)
     {
         button->setMenu(menu);
     }
-/*
-    QIcon icon(":/stylesheet/img/question.png");
-
-    ui->buttonWithIconEnabled->setIcon(icon);
-    ui->buttonWithIconDisabled->setIcon(icon);
-    AzQtComponents::PushButton::applySmallIconStyle(ui->buttonWithIconEnabled);
-    AzQtComponents::PushButton::applySmallIconStyle(ui->buttonWithIconDisabled);
-
-    QMenu* menu = new QMenu(this);
-    menu->addAction("Option 1");
-    menu->addAction("Option 2");
-    menu->addSeparator();
-    menu->addAction("Option 3");
-    menu->addAction("Option 4");
-    menu->addAction("Option 5");
-    menu->addSeparator();
-    menu->addAction("Option 6");
-    menu->addAction("Option 7");
-    menu->addAction("Option 8");
-    menu->addAction("Option 9");
-    menu->addSeparator();
-    menu->addAction("A long string of characters");
-
-    ui->buttonWithDropDownEnabled->setMenu(menu);
-    ui->buttonWithDropDownDisabled->setMenu(menu);
-
-    ui->buttonWithDropDownAndIconEnabled->setMenu(menu);
-    ui->buttonWithDropDownAndIconEnabled->setIcon(icon);
-    AzQtComponents::PushButton::applySmallIconStyle(ui->buttonWithDropDownAndIconEnabled);
-
-    ui->buttonWithDropDownAndIconDisabled->setMenu(menu);
-    ui->buttonWithDropDownAndIconDisabled->setIcon(icon);
-    AzQtComponents::PushButton::applySmallIconStyle(ui->buttonWithDropDownAndIconDisabled);
-*/
 
     QString exampleText = R"(
 
 QPushButton docs: <a href="http://doc.qt.io/qt-5/qpushbutton.html">http://doc.qt.io/qt-5/qpushbutton.html</a><br/>
 QToolButton docs: <a href="http://doc.qt.io/qt-5/qpushbutton.html">http://doc.qt.io/qt-5/qtoolbutton.html</a><br/>
+
+Use Push Buttons for regular test buttons, and Tool Buttons for icons.
 
 <pre>
 #include &lt;QPushButton&gt;
@@ -122,7 +90,7 @@ pushButton->setMenu(menu);
 pushButton->setEnabled(false);
 
 // Assuming you've created a QToolButton already (either in code or via .ui file):
-QIcon icon(":/stylesheet/img/question.png");
+QIcon icon(":/stylesheet/img/logging/add-filter.svg");
 QToolButton* smallIconButton;
 smallIconButton->setIcon(icon);
 

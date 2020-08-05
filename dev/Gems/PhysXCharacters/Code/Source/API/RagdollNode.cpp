@@ -12,6 +12,7 @@
 
 #include <PhysXCharacters_precompiled.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Physics/Casts.h>
 #include <API/RagdollNode.h>
 #include <Include/PhysXCharacters/NativeTypeIdentifiers.h>
 
@@ -91,12 +92,13 @@ namespace PhysXCharacters
         return m_rigidBody ? m_rigidBody->GetAabb() : AZ::Aabb::CreateNull();
     }
 
-    void RagdollNode::RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const
+    Physics::RayCastHit RagdollNode::RayCast(const Physics::RayCastRequest& request)
     {
         if (m_rigidBody)
         {
-            m_rigidBody->RayCast(request, result);
+            return m_rigidBody->RayCast(request);
         }
+        return Physics::RayCastHit();
     }
 
     AZ::Crc32 RagdollNode::GetNativeType() const

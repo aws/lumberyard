@@ -21,7 +21,7 @@
 
 template <class TypeBeingHandled>
 class LegacyVectorPropertyHandlerBase
-    : public AzToolsFramework::PropertyHandler < TypeBeingHandled, AzToolsFramework::PropertyVectorCtrl >
+    : public AzToolsFramework::PropertyHandler < TypeBeingHandled, AzQtComponents::VectorInput >
 {
 protected:
     AzToolsFramework::VectorPropertyHandlerCommon m_common;
@@ -41,17 +41,17 @@ public:
         return true;
     }
 
-    QWidget* GetFirstInTabOrder(AzToolsFramework::PropertyVectorCtrl* widget) override
+    QWidget* GetFirstInTabOrder(AzQtComponents::VectorInput* widget) override
     {
         return widget->GetFirstInTabOrder();
     }
 
-    QWidget* GetLastInTabOrder(AzToolsFramework::PropertyVectorCtrl* widget) override
+    QWidget* GetLastInTabOrder(AzQtComponents::VectorInput* widget) override
     {
         return widget->GetLastInTabOrder();
     }
 
-    void UpdateWidgetInternalTabbing(AzToolsFramework::PropertyVectorCtrl* widget) override
+    void UpdateWidgetInternalTabbing(AzQtComponents::VectorInput* widget) override
     {
         widget->UpdateTabOrder();
     }
@@ -61,26 +61,26 @@ public:
         return m_common.ConstructGUI(pParent);
     }
 
-    void ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override
+    void ConsumeAttribute(AzQtComponents::VectorInput* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override
     {
         m_common.ConsumeAttributes(GUI, attrib, attrValue, debugName);
     }
 
-    void WriteGUIValuesIntoProperty(size_t, AzToolsFramework::PropertyVectorCtrl* GUI, TypeBeingHandled& instance, AzToolsFramework::InstanceDataNode*) override
+    void WriteGUIValuesIntoProperty(size_t, AzQtComponents::VectorInput* GUI, TypeBeingHandled& instance, AzToolsFramework::InstanceDataNode*) override
     {
-        AzToolsFramework::VectorElement** elements = GUI->getElements();
+        AzQtComponents::VectorElement** elements = GUI->getElements();
         TypeBeingHandled actualValue = instance;
         for (int idx = 0; idx < m_common.GetElementCount(); ++idx)
         {
-            if (elements[idx]->WasValueEditedByUser())
+            if (elements[idx]->wasValueEditedByUser())
             {
-                actualValue[idx] = aznumeric_cast<typename TypeBeingHandled::value_type>(elements[idx]->GetValue());
+                actualValue[idx] = aznumeric_cast<typename TypeBeingHandled::value_type>(elements[idx]->getValue());
             }
         }
         instance = actualValue;
     }
 
-    bool ReadValuesIntoGUI(size_t, AzToolsFramework::PropertyVectorCtrl* GUI, const TypeBeingHandled& instance, AzToolsFramework::InstanceDataNode*) override
+    bool ReadValuesIntoGUI(size_t, AzQtComponents::VectorInput* GUI, const TypeBeingHandled& instance, AzToolsFramework::InstanceDataNode*) override
     {
         GUI->blockSignals(true);
 

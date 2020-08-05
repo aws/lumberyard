@@ -35,9 +35,13 @@ namespace AzQtComponents
         void removeTab(QDockWidget* page);
         bool closeTabs();
         void moveTab(int from, int to);
+        void mousePressEvent(QMouseEvent *event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
         void finishDrag();
+
+        static bool IsTabbed(QDockWidget* dockWidget);
+        static DockTabWidget* ParentTabWidget(QDockWidget* dockWidget);
 
     Q_SIGNALS:
         void tabIndexPressed(int index);
@@ -53,6 +57,8 @@ namespace AzQtComponents
 
     protected Q_SLOTS:
         bool handleTabCloseRequested(int index);
+        void handleTabAboutToClose();
+        void handleTabIndexPressed(int index);
 
     private:
         DockTabBar* m_tabBar;

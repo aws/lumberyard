@@ -30,14 +30,12 @@ namespace AZ
             //! Note that the information for the Asset<T> will be loaded, but the asset data won't be loaded. After deserialization has
             //! completed it's up to the caller to queue the Asset<T> for loading with the AssetManager.
             JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-                StackedString& path, const JsonDeserializerSettings& settings) override;
-            JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-                const void* inputValue, const void* defaultValue, const Uuid& valueTypeId,
-                StackedString& path, const JsonSerializerSettings& settings) override;
+                JsonDeserializerContext& context) override;
+            JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+                const Uuid& valueTypeId, JsonSerializerContext& context) override;
 
         private:
-            JsonSerializationResult::Result LoadAsset(void* outputValue, const rapidjson::Value& inputValue, StackedString& path,
-                const JsonDeserializerSettings& settings);
+            JsonSerializationResult::Result LoadAsset(void* outputValue, const rapidjson::Value& inputValue, JsonDeserializerContext& context);
         };
     } // namespace Data
 } // namespace AZ

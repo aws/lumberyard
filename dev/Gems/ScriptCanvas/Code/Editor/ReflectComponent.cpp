@@ -20,22 +20,27 @@
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
 #include <Editor/Assets/ScriptCanvasAssetReference.h>
 #include <Editor/Assets/ScriptCanvasAssetInstance.h>
+
 #include <Editor/Nodes/EditorLibrary.h>
+
 #include <Editor/View/Dialogs/Settings.h>
 #include <Editor/View/Widgets/LoggingPanel/LiveWindowSession/LiveLoggingWindowSession.h>
+
 #include <Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.h>
 #include <Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
+#include <Editor/View/Widgets/NodePalette/FunctionNodePaletteTreeItemTypes.h>
+
 #include <ScriptCanvas/Bus/UndoBus.h>
 
 namespace ScriptCanvasEditor
 {
     void ReflectComponent::Reflect(AZ::ReflectContext* context)
     {
-        ScriptCanvasData::Reflect(context);
+        ScriptCanvas::ScriptCanvasData::Reflect(context);
         ScriptCanvasAssetReference::Reflect(context);
         ScriptCanvasAssetInstance::Reflect(context);
         ScriptCanvasAssetHolder::Reflect(context);
@@ -63,6 +68,7 @@ namespace ScriptCanvasEditor
         CreateSetVariableNodeMimeEvent::Reflect(context);
         CreateVariableChangedNodeMimeEvent::Reflect(context);
         CreateVariableSpecificNodeMimeEvent::Reflect(context);
+        CreateFunctionMimeEvent::Reflect(context);
 
         // Script Events
         CreateScriptEventsHandlerMimeEvent::Reflect(context);

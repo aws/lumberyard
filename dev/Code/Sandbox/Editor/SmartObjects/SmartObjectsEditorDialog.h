@@ -232,7 +232,7 @@ public:
     static void RegisterViewClass();
     static const GUID& GetClassID();
 
-    CSmartObjectsEditorDialog();
+    explicit CSmartObjectsEditorDialog(QWidget* parent = nullptr);
     ~CSmartObjectsEditorDialog();
 
     //void SetView(CString name);

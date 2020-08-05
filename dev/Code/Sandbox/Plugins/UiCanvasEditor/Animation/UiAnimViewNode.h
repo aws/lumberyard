@@ -117,6 +117,7 @@ class CUiAnimViewKeyBundle
 {
     friend class CUiAnimViewTrack;
     friend class CUiAnimViewAnimNode;
+    friend class CUiAnimViewEventNode;
 
 public:
     CUiAnimViewKeyBundle()

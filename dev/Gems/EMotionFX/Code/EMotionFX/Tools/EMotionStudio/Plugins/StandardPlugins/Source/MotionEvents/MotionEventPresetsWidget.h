@@ -12,14 +12,13 @@
 
 #pragma once
 
-#include "../StandardPluginsConfig.h"
-#include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
-#include "../../../../EMStudioSDK/Source/MotionEventPresetManager.h"
+#include <EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
+#include <EMotionStudio/EMStudioSDK/Source/MotionEventPresetManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionWindowPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionListWindow.h>
 #include <MysticQt/Source/DialogStack.h>
-#include <MysticQt/Source/ButtonGroup.h>
-#include "../TimeView/TimeViewPlugin.h"
-#include "../MotionWindow/MotionWindowPlugin.h"
-#include "../MotionWindow/MotionListWindow.h"
 #include <QLabel>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -27,19 +26,19 @@
 #include <QDragMoveEvent>
 #include <QDragLeaveEvent>
 
+QT_FORWARD_DECLARE_CLASS(QAction)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 QT_FORWARD_DECLARE_CLASS(QShortcut)
 
 
 namespace EMStudio
 {
-    // forward declaration
     class MotionEventsPlugin;
 
     class MotionEventPresetsWidget
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(MotionEventPresetsWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
@@ -54,7 +53,7 @@ namespace EMStudio
     public slots:
         void ReInit();
         void AddMotionEventPreset();
-        void RemoveMotionEventPresets();
+        void RemoveSelectedMotionEventPresets();
         void RemoveMotionEventPreset(uint32 index);
         void ClearMotionEventPresetsButton();
         void SavePresets(bool showSaveDialog = false);
@@ -96,14 +95,12 @@ namespace EMStudio
             }
         };
 
-        DragTableWidget*    mTableWidget;
-        QPushButton*        mAddButton;
-        QPushButton*        mRemoveButton;
-        QPushButton*        mClearButton;
-        QPushButton*        mSaveButton;
-        QPushButton*        mSaveAsButton;
-        QPushButton*        mLoadButton;
-
-        MotionEventsPlugin* mPlugin;
+        DragTableWidget* mTableWidget = nullptr;
+        QAction* m_addAction = nullptr;
+        QAction* m_saveMenuAction = nullptr;
+        QAction* m_saveAction = nullptr;
+        QAction* m_saveAsAction = nullptr;
+        QAction* m_loadAction = nullptr;
+        MotionEventsPlugin* mPlugin = nullptr;
     };
 } // namespace EMStudio

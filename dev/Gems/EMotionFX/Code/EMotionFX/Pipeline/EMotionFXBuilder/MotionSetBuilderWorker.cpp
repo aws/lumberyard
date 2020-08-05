@@ -28,7 +28,7 @@ namespace EMotionFX
             motionSetBuilderDescriptor.m_name = "MotionSetBuilderWorker";
             motionSetBuilderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.motionset", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             motionSetBuilderDescriptor.m_busId = azrtti_typeid<MotionSetBuilderWorker>();
-            motionSetBuilderDescriptor.m_version = 1;
+            motionSetBuilderDescriptor.m_version = 2;
             motionSetBuilderDescriptor.m_createJobFunction =
                 AZStd::bind(&MotionSetBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
             motionSetBuilderDescriptor.m_processJobFunction =
@@ -89,6 +89,7 @@ namespace EMotionFX
                 AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Error during outputing product dependencies for asset %s.\n", fileName.c_str());
             }
 
+            jobProduct.m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
             response.m_outputProducts.push_back(jobProduct);
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         }

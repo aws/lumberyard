@@ -11,13 +11,19 @@
 */
 
 #include <AzQtComponents/Components/Widgets/CardHeader.h>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QLabel>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
+#include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleHelpers.h>
+
+#include <QCheckBox>
 #include <QDesktopServices>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMenu>
-#include <QStyle>
 #include <QMouseEvent>
+#include <QPushButton>
+#include <QStyle>
+#include <QTimer>
 
 namespace AzQtComponents
 {
@@ -31,7 +37,11 @@ namespace AzQtComponents
         static const char* kWarningIconId = "WarningIcon";
         static const char* kTitleId = "Title";
         static const char* kContextMenuId = "ContextMenu";
+        static const char* kContextMenuPlusIconId = "ContextMenuPlusIcon";
         static const char* khelpButtonId = "Help";
+
+        static const char* kCardHeaderIconClassName = "CardHeaderIcon";
+        static const char* kCardHeaderMenuClassName = "CardHeaderMenu";
     }
 
     int CardHeader::s_iconSize = CardHeader::defaultIconSize();
@@ -47,10 +57,9 @@ namespace AzQtComponents
         m_backgroundFrame->setAutoFillBackground(true);
 
         // expander widget
-        m_expanderButton = new QPushButton(m_backgroundFrame);
+        m_expanderButton = new QCheckBox(m_backgroundFrame);
         m_expanderButton->setObjectName(HeaderBarConstants::kExpanderId);
-        m_expanderButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_expanderButton->setCheckable(true);
+        CheckBox::applyExpanderStyle(m_expanderButton);
         m_expanderButton->setChecked(true);
         m_expanderButton->show();
         connect(m_expanderButton, &QPushButton::toggled, this, &CardHeader::expanderChanged);
@@ -59,12 +68,13 @@ namespace AzQtComponents
         m_iconLabel = new QLabel(m_backgroundFrame);
         m_iconLabel->setObjectName(HeaderBarConstants::kIconId);
         m_iconLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        Style::addClass(m_iconLabel, HeaderBarConstants::kCardHeaderIconClassName);
         m_iconLabel->hide();
 
         // title widget
-        m_titleLabel = new QLabel(m_backgroundFrame);
+        m_titleLabel = new AzQtComponents::ElidingLabel(m_backgroundFrame);
         m_titleLabel->setObjectName(HeaderBarConstants::kTitleId);
-        m_titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        m_titleLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         m_titleLabel->hide();
 
         // warning widget
@@ -76,14 +86,15 @@ namespace AzQtComponents
         m_helpButton = new QPushButton(m_backgroundFrame);
         m_helpButton->setObjectName(HeaderBarConstants::khelpButtonId);
         m_helpButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        Style::addClass(m_helpButton, HeaderBarConstants::kCardHeaderMenuClassName);
         m_helpButton->hide();
         connect(m_helpButton, &QPushButton::clicked, this, &CardHeader::triggerHelpButton);
-
 
         // context menu widget
         m_contextMenuButton = new QPushButton(m_backgroundFrame);
         m_contextMenuButton->setObjectName(HeaderBarConstants::kContextMenuId);
         m_contextMenuButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        Style::addClass(m_contextMenuButton, HeaderBarConstants::kCardHeaderMenuClassName);
         m_contextMenuButton->hide();
         connect(m_contextMenuButton, &QPushButton::clicked, this, &CardHeader::triggerContextMenuUnderButton);
 
@@ -106,16 +117,25 @@ namespace AzQtComponents
         m_mainLayout->setContentsMargins(0, 0, 0, 0);
         m_mainLayout->addWidget(m_backgroundFrame);
 
+        StyleHelpers::repolishWhenPropertyChanges(this, &CardHeader::warningChanged);
+        StyleHelpers::repolishWhenPropertyChanges(this, &CardHeader::readOnlyChanged);
+        StyleHelpers::repolishWhenPropertyChanges(this, &CardHeader::contentModifiedChanged);
+
         setExpanded(true);
         setWarning(false);
         setReadOnly(false);
-        updateStyleSheets();
+        setContentModified(false);
     }
 
     void CardHeader::setTitle(const QString& title)
     {
         m_titleLabel->setText(title);
         m_titleLabel->setVisible(!title.isEmpty());
+    }
+
+    void CardHeader::setFilter(const QString& filter)
+    {
+        m_titleLabel->setFilter(filter);
     }
 
     void CardHeader::refreshTitle()
@@ -135,7 +155,7 @@ namespace AzQtComponents
         return m_titleLabel->text();
     }
 
-    QLabel* CardHeader::titleLabel() const
+    AzQtComponents::ElidingLabel* CardHeader::titleLabel() const
     {
         return m_titleLabel;
     }
@@ -163,6 +183,12 @@ namespace AzQtComponents
         {
             m_warningLabel->setPixmap(m_warningIcon.pixmap(s_iconSize, s_iconSize));
         }
+    }
+    
+    void CardHeader::mockDisabledState(bool disabled)
+    {
+        m_iconLabel->setDisabled(disabled);
+        m_titleLabel->setDisabled(disabled);
     }
 
     void CardHeader::setIconSize(int iconSize)
@@ -208,7 +234,7 @@ namespace AzQtComponents
         {
             m_warning = warning;
             m_warningLabel->setVisible(m_warning);
-            updateStyleSheets();
+            emit warningChanged(m_warning);
         }
     }
 
@@ -222,13 +248,27 @@ namespace AzQtComponents
         if (m_readOnly != readOnly)
         {
             m_readOnly = readOnly;
-            updateStyleSheets();
+            emit readOnlyChanged(m_readOnly);
         }
     }
 
     bool CardHeader::isReadOnly() const
     {
         return m_readOnly;
+    }
+
+    void CardHeader::setContentModified(bool modified)
+    {
+        if (m_modified != modified)
+        {
+            m_modified = modified;
+            emit contentModifiedChanged(m_modified);
+        }
+    }
+
+    bool CardHeader::isContentModified() const
+    {
+        return m_modified;
     }
 
     void CardHeader::setHasContextMenu(bool showContextMenu)
@@ -260,19 +300,6 @@ namespace AzQtComponents
         Q_EMIT contextMenuRequested(mapToGlobal(m_contextMenuButton->pos() + QPoint(0, m_contextMenuButton->height())));
     }
 
-    void CardHeader::updateStyleSheets()
-    {
-        setProperty("warning", m_warning);
-        setProperty("readOnly", m_readOnly);
-        style()->unpolish(this);
-        style()->polish(this);
-
-        m_backgroundFrame->setProperty("warning", m_warning);
-        m_backgroundFrame->setProperty("readOnly", m_readOnly);
-        m_backgroundFrame->style()->unpolish(m_backgroundFrame);
-        m_backgroundFrame->style()->polish(m_backgroundFrame);
-    }
-
     void CardHeader::triggerHelpButton()
     {
         QDesktopServices::openUrl(QUrl(m_helpUrl));
@@ -293,6 +320,45 @@ namespace AzQtComponents
     QString CardHeader::helpURL() const
     {
         return m_helpUrl;
+    }
+
+    bool CardHeader::isCardHeaderIcon(const QWidget* widget)
+    {
+        if (widget)
+        {
+            if (const Style* style = qobject_cast<Style*>(widget->style()))
+            {
+                return style->hasClass(widget, HeaderBarConstants::kCardHeaderIconClassName);
+            }
+        }
+        return false;
+    }
+
+    bool CardHeader::isCardHeaderMenuButton(const QWidget* widget)
+    {
+        if (widget)
+        {
+            if (const Style* style = qobject_cast<Style*>(widget->style()))
+            {
+                return style->hasClass(widget, HeaderBarConstants::kCardHeaderMenuClassName);
+            }
+        }
+        return false;
+    }
+
+    void CardHeader::setContextMenuIcon(ContextMenuIcon iconType)
+    {
+        switch (iconType)
+        {
+        case ContextMenuIcon::Plus:
+            // Object names defined in Card.qss.
+            m_contextMenuButton->setObjectName(HeaderBarConstants::kContextMenuPlusIconId);
+            break;
+        default:
+            m_contextMenuButton->setObjectName(HeaderBarConstants::kContextMenuId);
+            break;
+        }
+        Style::addClass(m_contextMenuButton, HeaderBarConstants::kCardHeaderMenuClassName);
     }
 
 } // namespace AzQtComponents

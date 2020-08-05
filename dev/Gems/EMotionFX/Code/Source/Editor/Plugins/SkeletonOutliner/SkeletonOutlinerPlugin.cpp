@@ -98,7 +98,7 @@ namespace EMotionFX
         connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged, this, &SkeletonOutlinerPlugin::OnTypeFilterChanged);
 
         mainLayout->addWidget(m_treeView);
-        mDock->SetContents(m_mainWidget);
+        mDock->setWidget(m_mainWidget);
 
         EMotionFX::SkeletonOutlinerRequestBus::Handler::BusConnect();
         Reinit();
@@ -120,7 +120,7 @@ namespace EMotionFX
 
     void SkeletonOutlinerPlugin::Reinit()
     {
-        ActorInstance* actorInstance = m_skeletonModel->GetActorInstance();
+        ActorInstance* actorInstance = m_skeletonModel ? m_skeletonModel->GetActorInstance() : nullptr;
         if (actorInstance)
         {
             m_treeView->setVisible(true);
@@ -225,7 +225,7 @@ namespace EMotionFX
         }
 
         QMenu* contextMenu = new QMenu(m_mainWidget);
-        contextMenu->setObjectName("contextMenu");
+        contextMenu->setObjectName("EMFX.SkeletonOutlinerPlugin.ContextMenu");
         contextMenu;
 
         // Allow all external places to plug into the context menu.
@@ -294,7 +294,8 @@ namespace EMotionFX
         AZ_UNUSED(commandLine);
         ParameterMixinActorId* actorIdMixin = azdynamic_cast<ParameterMixinActorId*>(command);
         ParameterMixinJointName* jointNameMixin = azdynamic_cast<ParameterMixinJointName*>(command);
-        if (actorIdMixin && jointNameMixin)
+        const bool firstLastCommand = commandLine.GetValueAsBool("updateUI", true);
+        if (actorIdMixin && jointNameMixin && firstLastCommand)
         {
             DataChanged(actorIdMixin->GetActorId(), jointNameMixin->GetJointName());
         }

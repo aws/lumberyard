@@ -34,7 +34,7 @@ namespace AzToolsFramework
                     "Its current state is %u", entity->GetState());
             }
 
-            ComponentModeRequestBus::Handler::BusConnect(m_entityComponentIdPair.GetEntityId());
+            ComponentModeRequestBus::Handler::BusConnect(m_entityComponentIdPair);
             ToolsApplicationNotificationBus::Handler::BusConnect();
         }
 

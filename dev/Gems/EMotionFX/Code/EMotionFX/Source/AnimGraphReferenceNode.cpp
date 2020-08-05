@@ -25,13 +25,17 @@
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/MotionSet.h>
 
-
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphReferenceNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphReferenceNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
     static const char* sMaskedParameterNamesMember = "maskedParameterNames";
+
+    AnimGraphReferenceNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* parentAnimGraphInstance)
+        : AnimGraphNodeData(node, parentAnimGraphInstance)
+    {
+    }
 
     AnimGraphReferenceNode::UniqueData::~UniqueData()
     {
@@ -45,6 +49,88 @@ namespace EMotionFX
                 m_referencedAnimGraphInstance->Destroy();
             }
             m_referencedAnimGraphInstance = nullptr;
+        }
+    }
+
+    void AnimGraphReferenceNode::UniqueData::Update()
+    {
+        AnimGraphReferenceNode* referenceNode = azdynamic_cast<AnimGraphReferenceNode*>(mObject);
+        AZ_Assert(referenceNode, "Unique data linked to incorrect node type.");
+
+        MotionSet* motionSet = referenceNode->GetMotionSet();
+        const AnimGraph* animGraph = referenceNode->GetAnimGraph();
+        AnimGraphInstance* animGraphInstance = GetAnimGraphInstance();
+        const AZ::Data::Asset<Integration::AnimGraphAsset> referenceAnimGraphAsset = referenceNode->GetReferencedAnimGraphAsset();
+
+        // Three cases:
+        // 1) we currently don't have a reference anim graph and the user add it (need to initialize)
+        // 2) we currently have a reference anim graph and the user removed it (need to clear)
+        // 3) we currently have a reference anim graph and the user changed it (need to re-initialize)
+
+        const bool hasCycles = referenceNode->GetHasCycles();
+        if (GetEMotionFX().GetIsInEditorMode())
+        {
+            SetHasError(hasCycles);
+        }
+
+        MotionSet* animGraphInstanceMotionSet = motionSet;
+        if (!animGraphInstanceMotionSet)
+        {
+            // Use the parent's motion set
+            animGraphInstanceMotionSet = animGraphInstance->GetMotionSet();
+        }
+
+        if (!m_referencedAnimGraphInstance)
+        {
+            if (referenceAnimGraphAsset && referenceAnimGraphAsset.IsReady())
+            {
+                // Case 1
+                if (!hasCycles)
+                {
+                    AnimGraph* referenceAnimGraph = referenceAnimGraphAsset.Get()->GetAnimGraph();
+
+                    m_referencedAnimGraphInstance = AnimGraphInstance::Create(referenceAnimGraph,
+                        animGraphInstance->GetActorInstance(),
+                        animGraphInstanceMotionSet);
+                    m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
+                }
+            }
+        }
+        else
+        {
+            // Case 2
+            // The reference anim graph asset got cleared while the unique data still points to a reference instance.
+            if (!referenceAnimGraphAsset)
+            {
+                // In case the asset already got destroyed (AnimGraphAssetHandler::DestroyAsset()), it removed all anim graph instances already.
+                if (GetAnimGraphManager().FindAnimGraphInstanceIndex(m_referencedAnimGraphInstance) != InvalidIndex32)
+                {
+                    m_referencedAnimGraphInstance->Destroy();
+                }
+                m_referencedAnimGraphInstance = nullptr;
+                Clear();
+            }
+            else
+            {
+                // Case 3
+                // Check if the reference anim graph is the same, if it is, no need to recreate the anim graph instance
+                if (m_referencedAnimGraphInstance->GetAnimGraph() != referenceAnimGraphAsset.Get()->GetAnimGraph())
+                {
+                    m_referencedAnimGraphInstance->Destroy();
+                    m_referencedAnimGraphInstance = nullptr;
+
+                    if (!hasCycles)
+                    {
+                        AZ_Assert(referenceAnimGraphAsset.IsReady(), "Expected anim graph asset to be ready at this point");
+                        AnimGraph* referenceAnimGraph = referenceAnimGraphAsset.Get()->GetAnimGraph();
+
+                        m_referencedAnimGraphInstance = AnimGraphInstance::Create(referenceAnimGraph,
+                            animGraphInstance->GetActorInstance(),
+                            animGraphInstanceMotionSet);
+                        m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
+                    }
+                }
+            }
         }
     }
 
@@ -181,7 +267,7 @@ namespace EMotionFX
     {
         AnimGraphNode::Output(animGraphInstance);
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         RequestPoses(animGraphInstance);
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
@@ -206,7 +292,7 @@ namespace EMotionFX
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             if (uniqueData->m_referencedAnimGraphInstance)
             {
                 referencedAnimGraph->GetRootStateMachine()->PerformTopDownUpdate(uniqueData->m_referencedAnimGraphInstance, timePassedInSeconds);
@@ -225,7 +311,7 @@ namespace EMotionFX
             return;
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
@@ -288,7 +374,7 @@ namespace EMotionFX
             return;
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
@@ -302,7 +388,7 @@ namespace EMotionFX
 
                 referenceStateMachine->PerformPostUpdate(referencedAnimGraphInstance, timePassedInSeconds);
 
-                AnimGraphStateMachine::UniqueData* referenceRootStateMachineUniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(referenceStateMachine->FindUniqueNodeData(referencedAnimGraphInstance));
+                AnimGraphStateMachine::UniqueData* referenceRootStateMachineUniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(referenceStateMachine->FindOrCreateUniqueNodeData(referencedAnimGraphInstance));
                 AnimGraphRefCountedData* referenceRootStateMachineData = referenceRootStateMachineUniqueData->GetRefCountedData();
 
                 if (referenceRootStateMachineData)
@@ -324,30 +410,19 @@ namespace EMotionFX
                 {
                     const AnimGraphNode* node = referencedAnimGraph->GetNode(i);
                     AnimGraphNodeData* nodeData = static_cast<AnimGraphNodeData*>(referencedAnimGraphInstance->GetUniqueObjectData(node->GetObjectIndex()));
-                    AnimGraphRefCountedData* refData = nodeData->GetRefCountedData();
-                    if (refData)
+                    if (nodeData)
                     {
-                        refDataPool.Free(refData);
-                        nodeData->SetRefCountedData(nullptr);
+                        AnimGraphRefCountedData* refData = nodeData->GetRefCountedData();
+                        if (refData)
+                        {
+                            refDataPool.Free(refData);
+                            nodeData->SetRefCountedData(nullptr);
+                        }
                     }
                 }
             }
         }
     }
-
-
-    void AnimGraphReferenceNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance, nullptr);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-
-            LoadAnimGraphAsset();  // this call will reinit motion sets
-        }
-    }
-
 
     void AnimGraphReferenceNode::RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)
     {
@@ -361,7 +436,7 @@ namespace EMotionFX
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             if (uniqueData->m_referencedAnimGraphInstance)
             {
                 referencedAnimGraph->GetRootStateMachine()->RecursiveOnChangeMotionSet(uniqueData->m_referencedAnimGraphInstance, motionSet);
@@ -377,7 +452,7 @@ namespace EMotionFX
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             if (uniqueData->m_referencedAnimGraphInstance)
             {
                 referencedAnimGraph->GetRootStateMachine()->Rewind(uniqueData->m_referencedAnimGraphInstance);
@@ -385,22 +460,20 @@ namespace EMotionFX
         }
     }
 
-
-    void AnimGraphReferenceNode::RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    void AnimGraphReferenceNode::RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance)
     {
-        AnimGraphNode::RecursiveOnUpdateUniqueData(animGraphInstance);
+        AnimGraphNode::RecursiveInvalidateUniqueDatas(animGraphInstance);
 
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-            if (uniqueData->m_referencedAnimGraphInstance)
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->GetUniqueObjectData(mObjectIndex));
+            if (uniqueData && uniqueData->m_referencedAnimGraphInstance)
             {
-                referencedAnimGraph->GetRootStateMachine()->RecursiveOnUpdateUniqueData(uniqueData->m_referencedAnimGraphInstance);
+                uniqueData->m_referencedAnimGraphInstance->RecursiveInvalidateUniqueDatas();
             }
         }
     }
-
 
     void AnimGraphReferenceNode::RecursiveResetFlags(AnimGraphInstance* animGraphInstance, uint32 flagsToDisable)
     {
@@ -409,7 +482,7 @@ namespace EMotionFX
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             if (uniqueData->m_referencedAnimGraphInstance)
             {
                 referencedAnimGraph->GetRootStateMachine()->RecursiveResetFlags(uniqueData->m_referencedAnimGraphInstance, flagsToDisable);
@@ -425,7 +498,7 @@ namespace EMotionFX
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             if (uniqueData->m_referencedAnimGraphInstance)
             {
                 referencedAnimGraph->GetRootStateMachine()->RecursiveSetUniqueDataFlag(uniqueData->m_referencedAnimGraphInstance, flag, enabled);
@@ -441,7 +514,7 @@ namespace EMotionFX
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();
         if (referencedAnimGraph)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             if (uniqueData->m_referencedAnimGraphInstance)
             {
                 referencedAnimGraph->GetRootStateMachine()->RecursiveCollectActiveNodes(uniqueData->m_referencedAnimGraphInstance, outNodes, nodeType);
@@ -610,10 +683,11 @@ namespace EMotionFX
         for (size_t i = 0; i < numAnimGraphInstances; ++i)
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->GetUniqueObjectData(mObjectIndex));
             if (uniqueData)
             {
                 uniqueData->m_parameterMappingCacheDirty = true;
+                uniqueData->Invalidate();
             }
         }
 
@@ -640,6 +714,11 @@ namespace EMotionFX
                         // because the asset is already loaded, and at that point it assigns the right m_assetData
                         AZ_Assert(m_animGraphAsset.IsReady(), "Expecting a ready anim graph asset");
                         OnAnimGraphAssetReady();
+                    }
+                    else
+                    {
+                        // If the asset is not ready and not queue loaded (probably is deleted or renamed), we have to clear out the input ports.
+                        ReinitInputPorts();
                     }
                 }
                 else
@@ -746,8 +825,8 @@ namespace EMotionFX
     {
         if (animGraphInstance)
         {
-            EMotionFX::AnimGraphReferenceNode::UniqueData* uniqueData = static_cast<EMotionFX::AnimGraphReferenceNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-            if (uniqueData && uniqueData->m_referencedAnimGraphInstance)
+            EMotionFX::AnimGraphReferenceNode::UniqueData* uniqueData = static_cast<EMotionFX::AnimGraphReferenceNode::UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
+            if (uniqueData->m_referencedAnimGraphInstance)
             {
                 return uniqueData->m_referencedAnimGraphInstance;
             }
@@ -758,94 +837,8 @@ namespace EMotionFX
 
     void AnimGraphReferenceNode::OnAnimGraphAssetReady()
     {
-        MotionSet* motionSet = GetMotionSet();
-        bool reinitInputPorts = false;
-
-        // Three cases:
-        // 1) we currently don't have a reference anim graph and the user add it (need to initialize)
-        // 2) we currently have a reference anim graph and the user removed it (need to clear)
-        // 3) we currently have a reference anim graph and the user changed it (need to re-initialize)
-
         AZStd::unordered_set<const AnimGraphNode*> nodeSet;
         m_hasCycles = RecursiveDetectCycles(nodeSet);
-        
-        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numAnimGraphInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            
-            if (GetEMotionFX().GetIsInEditorMode())
-            {
-                SetHasError(animGraphInstance, m_hasCycles);
-            }
-
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-            if (!uniqueData)
-            {
-                continue;
-            }
-
-            MotionSet* animGraphInstanceMotionSet = motionSet;
-            if (!animGraphInstanceMotionSet)
-            {
-                // Use the parent's motion set
-                animGraphInstanceMotionSet = animGraphInstance->GetMotionSet();
-            }
-
-            
-            if (!uniqueData->m_referencedAnimGraphInstance)
-            {
-                if (m_animGraphAsset)
-                {
-                    // Case 1
-                    AZ_Assert(m_animGraphAsset.IsReady(), "Expected anim graph asset to be ready at this point");
-
-                    if (!m_hasCycles)
-                    {
-                        AnimGraph* animGraph = m_animGraphAsset.Get()->GetAnimGraph();
-
-                        uniqueData->m_referencedAnimGraphInstance = AnimGraphInstance::Create(animGraph,
-                            animGraphInstance->GetActorInstance(),
-                            animGraphInstanceMotionSet);
-                        uniqueData->m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
-                    }
-
-                    reinitInputPorts = true;
-                }
-            }
-            else
-            {
-                if (!m_animGraphAsset)
-                {
-                    uniqueData->m_referencedAnimGraphInstance->Destroy();
-                    uniqueData->m_referencedAnimGraphInstance = nullptr;
-                    reinitInputPorts = true;
-                }
-                else
-                {
-                    // Case 3
-                    // Check if the reference anim graph is the same, if it is, no need to recreate the anim graph instance
-                    if (uniqueData->m_referencedAnimGraphInstance->GetAnimGraph() != m_animGraphAsset.Get()->GetAnimGraph())
-                    {
-                        uniqueData->m_referencedAnimGraphInstance->Destroy();
-                        uniqueData->m_referencedAnimGraphInstance = nullptr;
-
-                        if (!m_hasCycles)
-                        {
-                            AZ_Assert(m_animGraphAsset.IsReady(), "Expected anim graph asset to be ready at this point");
-                            AnimGraph* animGraph = m_animGraphAsset.Get()->GetAnimGraph();
-
-                            uniqueData->m_referencedAnimGraphInstance = AnimGraphInstance::Create(animGraph,
-                                animGraphInstance->GetActorInstance(),
-                                animGraphInstanceMotionSet);
-                            uniqueData->m_referencedAnimGraphInstance->SetParentAnimGraphInstance(animGraphInstance);
-                        }
-                
-                        reinitInputPorts = true;
-                    }
-                }
-            }
-        }
 
         // Set the node info text.
         if (m_animGraphAsset)
@@ -859,7 +852,6 @@ namespace EMotionFX
                     AzFramework::StringFunc::Path::GetFileName(m_animGraphAsset.Get()->GetAnimGraph()->GetFileName(), filename);
                     SetNodeInfo(filename.c_str());
                 }
-                reinitInputPorts = true;
             }
             else if (GetEMotionFX().GetIsInEditorMode())
             {
@@ -871,16 +863,15 @@ namespace EMotionFX
             SetNodeInfo("<empty>");
         }
 
-        if (reinitInputPorts)
-        {
-            ReinitInputPorts();
-        }
+        ReinitInputPorts();
 
         // Comparing the asset objects themselves just compares the AssetIds,
         // which don't change across reloads. This check compares the actual
         // AnimGraph pointers.
         if (m_lastProcessedAnimGraphAsset.Get() != m_animGraphAsset.Get())
         {
+            InvalidateUniqueDatas();
+
             AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnReferenceAnimGraphChanged, this);
         }
 
@@ -896,9 +887,9 @@ namespace EMotionFX
         for (size_t i = 0; i < numAnimGraphInstances; ++i)
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
-            if (uniqueData && uniqueData->m_referencedAnimGraphInstance)
+            if (uniqueData->m_referencedAnimGraphInstance)
             {
                 MotionSet* animGraphInstanceMotionSet = motionSet;
                 if (!animGraphInstanceMotionSet)
@@ -1028,11 +1019,16 @@ namespace EMotionFX
             return;
         }
 
+        AnimGraph* referencedAnimGraph = m_animGraphAsset.Get()->GetAnimGraph();
+
+        if (!referencedAnimGraph)
+        {
+            return;
+        }
+
         AZ_Assert(!GetNumConnections(), "Unexpected connections");
 
         const ValueParameterVector& valueParameters = mAnimGraph->RecursivelyGetValueParameters();
-
-        AnimGraph* referencedAnimGraph = m_animGraphAsset.Get()->GetAnimGraph();
         const ValueParameterVector& referencedValueParameters = referencedAnimGraph->RecursivelyGetValueParameters();
 
         // For each parameter in referencedValueParameters, if it is not in valueParameters or is not compatible, add it
@@ -1074,7 +1070,7 @@ namespace EMotionFX
         m_parameterIndexByPortIndex.clear();
 
         // Get the ValueParameters from the AnimGraph
-        if (m_animGraphAsset)
+        if (m_animGraphAsset && m_animGraphAsset.Get()->GetAnimGraph())
         {
             AnimGraph* animGraph = m_animGraphAsset.Get()->GetAnimGraph();
 
@@ -1189,7 +1185,7 @@ namespace EMotionFX
     {
         AZ_Assert(animGraphInstance, "Expected non-null anim graph instance");
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         uniqueData->m_parameterMappingCache.clear();
 
         AnimGraph* referencedAnimGraph = GetReferencedAnimGraph();

@@ -62,10 +62,10 @@ namespace EMotionFX
             }
 
             static void Reflect(AZ::ReflectContext* context);
+            static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         private:
             EditorSimpleLODComponent(const EditorSimpleLODComponent&) = delete;
-
             // ActorComponentNotificationBus::Handler
             void OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance) override;
             void OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance) override;
@@ -75,10 +75,8 @@ namespace EMotionFX
 
             void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-            void GenerateDefaultDistances(AZ::u32 numLodLevels);
-
             EMotionFX::ActorInstance*                   m_actorInstance;        // Associated actor instance (retrieved from Actor Component).
-            AZStd::vector<float>                        m_lodDistances;         // Lod distances that decide which lod the actor should choose.
+            SimpleLODComponent::Configuration           m_configuration;
         };
     }
 }

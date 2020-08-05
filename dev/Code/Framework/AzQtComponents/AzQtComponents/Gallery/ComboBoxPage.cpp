@@ -19,6 +19,7 @@
 #include <QMenu>
 #include <QCheckBox>
 #include <QLineEdit>
+#include <QStandardItemModel>
 
 class FirstIsErrorComboBoxValidator
     : public AzQtComponents::ComboBoxValidator
@@ -54,6 +55,21 @@ ComboBoxPage::ComboBoxPage(QWidget* parent)
 
     ui->m_error->addItem(QString("Item 0"));
     ui->m_error->addItem(QString("Item 1"));
+
+    auto* model = new QStandardItemModel(0, 1, this);
+    const auto addItem = [model](const QString& text, Qt::CheckState checkState)
+    {
+        auto* item = new QStandardItem(text);
+        item->setCheckable(true);
+        item->setCheckState(checkState);
+        model->appendRow(item);
+    };
+    addItem(QStringLiteral("Orange"), Qt::Unchecked);
+    addItem(QStringLiteral("Apple"), Qt::Checked);
+    addItem(QStringLiteral("Banana"), Qt::PartiallyChecked);
+
+    ui->m_customCheckState->setModel(model);
+    AzQtComponents::ComboBox::addCustomCheckStateStyle(ui->m_customCheckState);
 
     QString exampleText = R"(
 

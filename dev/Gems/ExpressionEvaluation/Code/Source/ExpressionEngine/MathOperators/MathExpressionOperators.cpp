@@ -199,6 +199,11 @@ namespace ExpressionEvaluation
         double lhsValue = Utils::GetAnyValue<double>(leftValue);
         double rhsValue = Utils::GetAnyValue<double>(rightValue);
 
-        return ExpressionResult(aznumeric_cast<double>(aznumeric_cast<int>(lhsValue) % aznumeric_cast<int>(rhsValue)));
+        if (!AZ::IsClose(rhsValue, 0.0, std::numeric_limits<double>().epsilon()))
+        {
+            return ExpressionResult(aznumeric_cast<double>(aznumeric_cast<int>(lhsValue) % aznumeric_cast<int>(rhsValue)));
+        }
+
+        return ExpressionResult();
     }
 }

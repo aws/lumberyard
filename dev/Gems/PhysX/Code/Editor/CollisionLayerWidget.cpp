@@ -40,7 +40,7 @@ namespace PhysX
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
             });
 
-            connect(picker->GetEditButton(), &QPushButton::clicked, this, &CollisionLayerWidget::OnEditButtonClicked);
+            connect(picker->GetEditButton(), &QToolButton::clicked, this, &CollisionLayerWidget::OnEditButtonClicked);
 
             return picker;
         }

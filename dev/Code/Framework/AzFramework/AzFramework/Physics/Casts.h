@@ -18,6 +18,7 @@
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/RTTI/RTTI.h>
 
 #include <AzFramework/Physics/WorldBody.h>
 #include <AzFramework/Physics/Collision.h>
@@ -30,7 +31,7 @@ namespace Physics
     class ShapeConfiguration;
 
     /// Enum to specify the hit type returned by the filter callback.
-    enum QueryHitType 
+    enum QueryHitType
     {
         None, ///< The hit should not be reported.
         Touch, ///< The hit should be reported but it should not block the query
@@ -41,11 +42,39 @@ namespace Physics
     using FilterCallback = AZStd::function<QueryHitType(const Physics::WorldBody* body, const Physics::Shape* shape)>;
 
     /// Enum to specify which shapes are included in the query.
-    enum class QueryType
+    enum class QueryType : int
     {
         Static, ///< Only test against static shapes
         Dynamic, ///< Only test against dynamic shapes
         StaticAndDynamic ///< Test against both static and dynamic shapes
+    };
+
+    //! Scene query and geometry query behavior flags.
+    //! 
+    //! HitFlags are used for 3 different purposes:
+    //! 
+    //! 1) To request hit fields to be filled in by scene queries (such as hit position, normal, face index or UVs).
+    //! 2) Once query is completed, to indicate which fields are valid (note that a query may produce more valid fields than requested).
+    //! 3) To specify additional options for the narrow phase and mid-phase intersection routines.
+    enum class HitFlags : AZ::u16
+    {
+        Position = (1 << 0), //!< "position" member of the hit is valid
+        Normal = (1 << 1), //!< "normal" member of the hit is valid
+        UV = (1 << 3), //!< "u" and "v" barycentric coordinates of the hit are valid. Not applicable to ShapeCast queries.
+        //! Performance hint flag for ShapeCasts when it is known upfront there's no initial overlap.
+        //! NOTE: using this flag may cause undefined results if shapes are initially overlapping.
+        AssumeNoInitialOverlap = (1 << 4), 
+        MeshMultiple = (1 << 5), //!< Report all hits for meshes rather than just the first. Not applicable to ShapeCast queries.
+        //! Report any first hit for meshes. If neither MeshMultiple nor MeshAny is specified,
+        //! a single closest hit will be reported for meshes.
+        MeshAny = (1 << 6), 
+        //! Report hits with back faces of mesh triangles. Also report hits for raycast
+        //! originating on mesh surface and facing away from the surface normal. Not applicable to ShapeCast queries.
+        MeshBothSides = (1 << 7), 
+        PreciseSweep = (1 << 8), //!< Use more accurate but slower narrow phase sweep tests.
+        MTD = (1 << 9), //!< Report the minimum translation depth, normal and contact point.
+        FaceIndex = (1 << 10), //!< "face index" member of the hit is valid. Required to get the per-face material data.
+        Default = Position | Normal | FaceIndex
     };
 
     /// Casts a ray from a starting pose along a direction returning objects that intersected with the ray.
@@ -60,6 +89,7 @@ namespace Physics
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< The layers to include in the query
         FilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
+        HitFlags m_hitFlags = HitFlags::Default; ///< Query behavior flags
         AZ::u64 m_maxResults = 32; ///< The Maximum results for this request to return, this is limited by the value set in WorldConfiguration
     };
     
@@ -76,6 +106,7 @@ namespace Physics
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< Collision filter for the query.
         FilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
+        HitFlags m_hitFlags = HitFlags::Default; ///< Query behavior flags
         AZ::u64 m_maxResults = 32; ///< The Maximum results for this request to return, this is limited by the value set in WorldConfiguration
     };
 
@@ -126,4 +157,19 @@ namespace Physics
         Material* m_material = nullptr; ///< The material on the shape (or face) that was hit
     };
 
+    /// Bitwise operators for HitFlags
+    inline HitFlags operator|(HitFlags lhs, HitFlags rhs)
+    {
+        return static_cast<HitFlags>(static_cast<AZ::u16>(lhs) | static_cast<AZ::u16>(rhs));
+    }
+
+    inline HitFlags operator&(HitFlags lhs, HitFlags rhs)
+    {
+        return static_cast<HitFlags>(static_cast<AZ::u16>(lhs) & static_cast<AZ::u16>(rhs));
+    }
 } // namespace Physics
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(Physics::QueryType, "{0E0E56A8-73A8-40B4-B438-B19FC852E3C0}");
+}

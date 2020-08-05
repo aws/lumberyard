@@ -44,6 +44,11 @@ namespace LmbrCentral
             required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
             required.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
         }
+
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
+        }
         
         // AzFramework::EntityDebugDisplayEventBus
         void DisplayEntityViewport(

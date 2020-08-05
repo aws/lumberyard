@@ -183,7 +183,7 @@ namespace AzToolsFramework
             : public AZ::EBusTraits
         {
         public:
-            using BusIdType = AZ::EntityId;
+            using BusIdType = AZ::EntityComponentIdPair;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
 
         protected:
@@ -215,7 +215,8 @@ namespace AzToolsFramework
 
          /// Mouse viewport events to be intercepted by individual ComponentModes.
         class ComponentModeRequests
-            : public ViewportInteraction::MouseViewportRequests {};
+            : public ViewportInteraction::MouseViewportRequests
+            , public ComponentMode {};
 
         /// Type to inherit to implement ComponentModeRequests.
         using ComponentModeRequestBus = AZ::EBus<ComponentModeRequests, ComponentModeMouseViewportRequests>;

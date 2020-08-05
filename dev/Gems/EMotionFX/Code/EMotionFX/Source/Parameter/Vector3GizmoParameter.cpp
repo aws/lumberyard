@@ -48,9 +48,8 @@ namespace EMotionFX
     }
 
 
-    const AZStd::string& Vector3GizmoParameter::GetTypeDisplayName() const
+    const char* Vector3GizmoParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Vector3 gizmo";
-        return typeDisplayName;
+        return "Vector3 gizmo";
     }
 }

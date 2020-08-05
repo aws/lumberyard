@@ -68,6 +68,9 @@ namespace GraphCanvas
         //! (Note: currently incompatible with text elide)
         void SetWrap(bool wrap);
 
+        //! Sets whether or not the text label will allow newlines in the text
+        void SetAllowNewlines(bool allow);
+
         void SetDefaultAlignment(Qt::Alignment defaultAlignment);
 
         Styling::StyleHelper& GetStyleHelper();
@@ -93,6 +96,7 @@ namespace GraphCanvas
         Qt::Alignment   m_defaultAlignment;
         bool m_elide;
         bool m_wrap;
+        bool m_allowNewlines;
 
         QString         m_labelText;
         QString         m_displayText;

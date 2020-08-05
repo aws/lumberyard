@@ -35,6 +35,7 @@ namespace GraphCanvas
         : m_slotId(slotId)
         , m_connectionType(ConnectionType::CT_Invalid)
         , m_trackClick(false)
+        , m_deletionClick(false)
     {
         setFlags(ItemSendsScenePositionChanges);
         setZValue(1);
@@ -161,10 +162,20 @@ namespace GraphCanvas
 
     void SlotConnectionPin::hoverEnterEvent(QGraphicsSceneHoverEvent* hoverEvent)
     {
+        OnMouseEnter(hoverEvent->modifiers() & Qt::KeyboardModifier::AltModifier);
+    }
+
+    void SlotConnectionPin::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
+    {
+        OnMouseLeave();
+    }    
+
+    void SlotConnectionPin::OnMouseEnter(bool hasAltModifier)
+    {
         m_hovered = true;
         grabKeyboard();
 
-        if (hoverEvent->modifiers() & Qt::KeyboardModifier::AltModifier)
+        if (hasAltModifier)
         {
             SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, RootGraphicsItemDisplayState::Deletion);
         }
@@ -176,7 +187,7 @@ namespace GraphCanvas
         m_nodeDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::Inspection);
     }
 
-    void SlotConnectionPin::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
+    void SlotConnectionPin::OnMouseLeave()
     {
         m_nodeDisplayStateStateSetter.ReleaseState();
 
@@ -193,13 +204,12 @@ namespace GraphCanvas
     {
         if (event->button() == Qt::LeftButton && boundingRect().contains(event->pos()))
         {
+            m_trackClick = true;
+
             if (event->modifiers() & Qt::KeyboardModifier::AltModifier)
             {
                 SlotRequestBus::Event(m_slotId, &SlotRequests::ClearConnections);
-            }
-            else
-            {
-                m_trackClick = true;
+                m_deletionClick = true;
             }
 
             return;
@@ -212,9 +222,13 @@ namespace GraphCanvas
     {
         if (m_trackClick)
         {
-            OnSlotClicked();
+            if (!m_deletionClick)
+            {
+                OnSlotClicked();
+            }
         }
 
+        m_deletionClick = false;
         m_trackClick = false;
         SlotLayoutItem::mouseReleaseEvent(event);
     }
@@ -225,8 +239,17 @@ namespace GraphCanvas
         {
             if (!sceneBoundingRect().contains(event->scenePos()))
             {
-                m_trackClick = false;
-                HandleNewConnection();
+                if (!m_deletionClick)
+                {
+                    m_trackClick = false;
+                    HandleNewConnection();
+                }
+                else
+                {
+                    m_trackClick = false;
+                    m_deletionClick = false;
+                    OnMouseLeave();
+                }
             }
         }
 
@@ -273,6 +296,8 @@ namespace GraphCanvas
 
         SceneRequestBus::Event(sceneId, &SceneRequestBus::Events::ClearSelection);
         SlotRequestBus::Event(m_slotId, &SlotRequests::DisplayConnection);
+
+        OnMouseLeave();
     }
 
     void SlotConnectionPin::DrawConnectionPin(QPainter* painter, QRectF drawRect, bool isConnected)

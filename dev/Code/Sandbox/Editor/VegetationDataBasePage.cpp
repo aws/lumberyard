@@ -92,15 +92,15 @@ CVegetationDataBasePage::CVegetationDataBasePage(QWidget* pParent /*=NULL*/)
     m_ui->m_wndReport->ShowGroups(true);
 
     m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnVisible, 24);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnObject, 200);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnCategory, 30);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnCount, 40);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnTexSize, 40);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnMaterial, 100);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnElevationMin, 40);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnElevationMax, 40);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnSlopeMin, 40);
-    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnSlopeMax, 40);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnObject, 250);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnCount, 80);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnTexSize, 100);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnMaterial, 150);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnElevationMin, 100);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnElevationMax, 100);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnSlopeMin, 80);
+    m_ui->m_wndReport->header()->resizeSection(CVegetationDataBaseModel::ColumnSlopeMax, 80);
+
     m_ui->m_wndReport->header()->setSectionsMovable(true);
     m_ui->m_wndReport->header()->setSectionHidden(CVegetationDataBaseModel::ColumnCategory, true);
     m_ui->m_wndReport->viewport()->setMouseTracking(true);

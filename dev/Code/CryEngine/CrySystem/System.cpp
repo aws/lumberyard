@@ -1740,7 +1740,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
                     AZStd::string::format("%s/%s: %.2f (percent)", stat.GetOwner().data(), stat.GetName().data(), stat.GetPercentage()).c_str());
                 break;
             default:
-                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, AZStd::string::format("Unsupported stat type: %i", stat.GetType()).c_str());
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, AZStd::string::format("Unsupported stat type: %i", static_cast<int>(stat.GetType())).c_str());
                 break;
             }
             y -= 12.0f;

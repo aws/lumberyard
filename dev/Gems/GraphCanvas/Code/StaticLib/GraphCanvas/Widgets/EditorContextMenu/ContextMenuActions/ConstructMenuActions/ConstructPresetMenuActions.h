@@ -72,7 +72,7 @@ namespace GraphCanvas
     protected:
         PresetsMenuActionGroup(ConstructType constructType);
 
-    public:        
+    public:
         ~PresetsMenuActionGroup();
 
         void PopulateMenu(EditorContextMenu* contextMenu);
@@ -85,14 +85,17 @@ namespace GraphCanvas
         void OnConstructPresetsChanged(ConstructType constructType) override;
         ////
 
+        void SetEnabled(bool enabled);
+
     private:
 
+        AZStd::unordered_set< QMenu* > m_menus;
         AZStd::unordered_set< AZStd::string > m_subMenus;
 
         EditorContextMenu* m_contextMenu;
         ConstructType m_constructType;
 
-        bool m_isDirty;        
+        bool m_isDirty;
     };
 
     ////////////////////
@@ -146,6 +149,6 @@ namespace GraphCanvas
 
         NodeGroupPresetsMenuActionGroup();
 
-        AddPresetMenuAction* CreatePresetMenuAction(EditorContextMenu* contextMenu, AZStd::shared_ptr<ConstructPreset> preset) override;
+        AddPresetMenuAction* CreatePresetMenuAction(EditorContextMenu* contextMenu, AZStd::shared_ptr<ConstructPreset> preset) override;        
     };
 }

@@ -67,11 +67,11 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance, int32 decisionIndex)
-                : AnimGraphNodeData(node, animGraphInstance)        { mDecisionIndex = decisionIndex; }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+                : AnimGraphNodeData(node, animGraphInstance) {}
 
         public:
-            int32   mDecisionIndex;
+            int32 mDecisionIndex = -1;
         };
 
         BlendTreePoseSwitchNode();
@@ -86,7 +86,7 @@ namespace EMotionFX
         AnimGraphObject::ECategory GetPaletteCategory() const override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -44,7 +44,7 @@ void KeepEditorActiveChanged(ICVar* keepEditorActive)
 
 void ToolbarIconSizeChanged(ICVar* toolbarIconSize)
 {
-    MainWindow::instance()->AdjustToolBarIconSize();
+    MainWindow::instance()->AdjustToolBarIconSize(static_cast<AzQtComponents::ToolBar::ToolBarIconSize>(toolbarIconSize->GetIVal()));
 }
 
 class SettingsGroup
@@ -180,7 +180,7 @@ SEditorSettings::SEditorSettings()
     useLowercasePaths = 0;
     showErrorDialogOnLoad = 1;
 
-    consoleBackgroundColorTheme = ConsoleColorTheme::Light;
+    consoleBackgroundColorTheme = ConsoleColorTheme::Dark;
     bShowTimeInConsole = false;
     bLayerDoubleClicking = false;
 
@@ -248,7 +248,7 @@ SEditorSettings::SEditorSettings()
     //////////////////////////////////////////////////////////////////////////
     gui.bWindowsVista = QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA;
 
-    gui.nToolbarIconSize = 0;
+    gui.nToolbarIconSize = static_cast<int>(AzQtComponents::ToolBar::ToolBarIconSize::Default);
 
     int lfHeight = 8;// -MulDiv(8, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
     gui.nDefaultFontHieght = lfHeight;
@@ -267,7 +267,7 @@ SEditorSettings::SEditorSettings()
 
     sliceSettings.dynamicByDefault = false;
 
-    bEnableUI2 = false;
+    bEnableUI2 = true;
 
     new QtApplicationListener(); // Deletes itself when it's done.
 }
@@ -497,9 +497,9 @@ void SEditorSettings::Save()
     // Save settings to registry.
     SaveValue("Settings", "UndoLevels", undoLevels);
     SaveValue("Settings", "UndoSliceOverrideSaveValue", m_undoSliceOverrideSaveValue);
-    SaveValue("Settings", "ShowDashboardAtStartup", bShowDashboardAtStartup);
+    SaveValue("Settings", "ShowWelcomeScreenAtStartup", bShowDashboardAtStartup);
     SaveValue("Settings", "ShowCircularDependencyError", m_showCircularDependencyError);
-    SaveValue("Settings", "AutoloadLastLevelAtStartup", bAutoloadLastLevelAtStartup);
+    SaveValue("Settings", "LoadLastLevelAtStartup", bAutoloadLastLevelAtStartup);
     SaveValue("Settings", "MuteAudio", bMuteAudio);
     SaveValue("Settings", "AutoBackup", autoBackupEnabled);
     SaveValue("Settings", "AutoBackupTime", autoBackupTime);
@@ -533,7 +533,7 @@ void SEditorSettings::Save()
     SaveValue("Settings", "TemporaryDirectory", strStandardTempDirectory);
     SaveValue("Settings", "EditorEnv", strEditorEnv);
 
-    SaveValue("Settings", "ConsoleBackgroundColorTheme", (int)consoleBackgroundColorTheme);
+    SaveValue("Settings", "ConsoleBackgroundColorThemeV2", (int)consoleBackgroundColorTheme);
 
     SaveValue("Settings", "ShowTimeInConsole", bShowTimeInConsole);
     SaveValue("Settings", "LayerDoubleClicking", bLayerDoubleClicking);
@@ -568,7 +568,7 @@ void SEditorSettings::Save()
     SaveValue("Settings", "HideMouseCursorOnCapture", viewports.bHideMouseCursorWhenCaptured);
     SaveValue("Settings", "DragSquareSize", viewports.nDragSquareSize);
     SaveValue("Settings", "EnableContextMenu", viewports.bEnableContextMenu);
-    SaveValue("Settings", "ToolbarIconSize", gui.nToolbarIconSize);
+    SaveValue("Settings", "ToolbarIconSizeV2", gui.nToolbarIconSize);
     SaveValue("Settings", "WarningIconsDrawDistance", viewports.fWarningIconsDrawDistance);
     SaveValue("Settings", "ShowScaleWarnings", viewports.bShowScaleWarnings);
     SaveValue("Settings", "ShowRotationWarnings", viewports.bShowRotationWarnings);
@@ -735,9 +735,9 @@ void SEditorSettings::Load()
     // Load settings from registry.
     LoadValue("Settings", "UndoLevels", undoLevels);
     LoadValue("Settings", "UndoSliceOverrideSaveValue", m_undoSliceOverrideSaveValue);  
-    LoadValue("Settings", "ShowDashboardAtStartup", bShowDashboardAtStartup);
+    LoadValue("Settings", "ShowWelcomeScreenAtStartup", bShowDashboardAtStartup);
     LoadValue("Settings", "ShowCircularDependencyError", m_showCircularDependencyError);
-    LoadValue("Settings", "AutoloadLastLevelAtStartup", bAutoloadLastLevelAtStartup);
+    LoadValue("Settings", "LoadLastLevelAtStartup", bAutoloadLastLevelAtStartup);
     LoadValue("Settings", "MuteAudio", bMuteAudio);
     LoadValue("Settings", "AutoBackup", autoBackupEnabled);
     LoadValue("Settings", "AutoBackupTime", autoBackupTime);
@@ -772,11 +772,11 @@ void SEditorSettings::Load()
     LoadValue("Settings", "EditorEnv", strEditorEnv);
 
     int consoleBackgroundColorThemeInt = (int)consoleBackgroundColorTheme;
-    LoadValue("Settings", "ConsoleBackgroundColorTheme", consoleBackgroundColorThemeInt);
+    LoadValue("Settings", "ConsoleBackgroundColorThemeV2", consoleBackgroundColorThemeInt);
     consoleBackgroundColorTheme = (ConsoleColorTheme)consoleBackgroundColorThemeInt;
     if (consoleBackgroundColorTheme != ConsoleColorTheme::Dark && consoleBackgroundColorTheme != ConsoleColorTheme::Light)
     {
-        consoleBackgroundColorTheme = ConsoleColorTheme::Light;
+        consoleBackgroundColorTheme = ConsoleColorTheme::Dark;
     }
 
     LoadValue("Settings", "ShowTimeInConsole", bShowTimeInConsole);
@@ -812,7 +812,7 @@ void SEditorSettings::Load()
     LoadValue("Settings", "HideMouseCursorOnCapture", viewports.bHideMouseCursorWhenCaptured);
     LoadValue("Settings", "DragSquareSize", viewports.nDragSquareSize);
     LoadValue("Settings", "EnableContextMenu", viewports.bEnableContextMenu);
-    LoadValue("Settings", "ToolbarIconSize", gui.nToolbarIconSize);
+    LoadValue("Settings", "ToolbarIconSizeV2", gui.nToolbarIconSize);
     LoadValue("Settings", "WarningIconsDrawDistance", viewports.fWarningIconsDrawDistance);
     LoadValue("Settings", "ShowScaleWarnings", viewports.bShowScaleWarnings);
     LoadValue("Settings", "ShowRotationWarnings", viewports.bShowRotationWarnings);

@@ -87,6 +87,20 @@ namespace ExpressionEvaluation
     // ExpressionEvaluationSystemComponent
     ////////////////////////////////////////
 
+    static bool ExpressionTokenConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+    {
+        if (rootElement.GetVersion() < 1)
+        {
+            AZ::Crc32 interfaceId;
+            rootElement.GetChildData(AZ_CRC("InterfaceId", 0x221346a5), interfaceId);
+            rootElement.RemoveElementByName(AZ_CRC("InterfaceId", 0x221346a5));
+
+            rootElement.AddElementWithData<unsigned int>(serializeContext, "ParserId", static_cast<unsigned int>(interfaceId));
+        }
+
+        return true;
+    }
+
     void ExpressionEvaluationSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
@@ -102,7 +116,7 @@ namespace ExpressionEvaluation
             ;
 
             serialize->Class<ExpressionToken>()
-                ->Version(1)
+                ->Version(1, ExpressionTokenConverter)
                 ->Field("ParserId", &ExpressionToken::m_parserId)
                 ->Field("TokenInformation", &ExpressionToken::m_information)
             ;
@@ -282,6 +296,8 @@ namespace ExpressionEvaluation
             }
         }
 
+        AZStd::stack<size_t> openParenOffsetStack;
+
         // We want to make sure our parsing makes logical sense(i.e. goes in the pattern of Value Operator Value Operator Value)
         // Otherwise elements might not function correctly         
         bool expectOperator = false;
@@ -312,6 +328,7 @@ namespace ExpressionEvaluation
                             }
 
                             operatorStack.emplace_back(AZStd::move(expressionToken));
+                            openParenOffsetStack.push(offset);
                         }
                         else if (result.m_element.m_id == InternalTypes::CloseParen)
                         {
@@ -322,6 +339,8 @@ namespace ExpressionEvaluation
                                 return ReportUnexpectedSymbol(expressionString, offset, result.m_charactersConsumed);
                             }
 
+                            bool foundOpenParen = false;
+
                             while (!operatorStack.empty())
                             {
                                 auto searchExpressionToken = operatorStack.back();
@@ -331,6 +350,8 @@ namespace ExpressionEvaluation
                                 {
                                     if (searchExpressionToken.m_information.m_id == InternalTypes::OpenParen)
                                     {
+                                        foundOpenParen = true;
+                                        openParenOffsetStack.pop();
                                         break;
                                     }
                                 }
@@ -338,6 +359,11 @@ namespace ExpressionEvaluation
                                 {
                                     expressionTree.PushElement(AZStd::move(searchExpressionToken));
                                 }
+                            }
+
+                            if (!foundOpenParen)
+                            {
+                                return ReportUnexpectedSymbol(expressionString, offset, result.m_charactersConsumed);
                             }
                         }
                         else if (expressionToken.m_information.m_id == InternalTypes::Variable)
@@ -438,10 +464,38 @@ namespace ExpressionEvaluation
             return ReportMissingValue(offset);
         }
 
+        if (!openParenOffsetStack.empty())
+        {
+            size_t initialOffset = openParenOffsetStack.top();
+
+            AZStd::string unbalancedParensString;
+
+            AZStd::vector<size_t> reversedList;
+
+            while (!openParenOffsetStack.empty())
+            {
+                reversedList.push_back(openParenOffsetStack.top());
+                openParenOffsetStack.pop();
+            }
+
+            for (auto reverseIter = reversedList.rbegin(); reverseIter != reversedList.rend(); ++reverseIter)
+            {            
+                if (!unbalancedParensString.empty())
+                {
+                    unbalancedParensString.append(", ");
+                }
+
+                unbalancedParensString.append(AZStd::to_string((*reverseIter)));
+            }
+
+            return ReportUnbalancedParen(initialOffset, unbalancedParensString);
+        }
+
         while (!operatorStack.empty())
         {
             ExpressionToken token = operatorStack.back();
             operatorStack.pop_back();
+
             expressionTree.PushElement(AZStd::move(token));
         }
 
@@ -517,7 +571,7 @@ namespace ExpressionEvaluation
         ParsingError parsingError;
 
         parsingError.m_offsetIndex = offset;
-        parsingError.m_errorString = AZStd::string::format("Unexpected Operator '%s' found at character %i. Expected a Value.", substring, offset);
+        parsingError.m_errorString = AZStd::string::format("Unexpected Operator '%s' found at character %i. Expected a Value.", substring.c_str(), offset);
 
         return AZ::Failure(parsingError);
     }
@@ -529,7 +583,7 @@ namespace ExpressionEvaluation
         ParsingError parsingError;
 
         parsingError.m_offsetIndex = offset;
-        parsingError.m_errorString = AZStd::string::format("Unexpected Value '%s' found at character %i. Expected an Operator or end of expression.", substring, offset);
+        parsingError.m_errorString = AZStd::string::format("Unexpected Value '%s' found at character %i. Expected an Operator or end of expression.", substring.c_str(), offset);
 
         return AZ::Failure(parsingError);
     }
@@ -552,6 +606,16 @@ namespace ExpressionEvaluation
 
         parsingError.m_offsetIndex = offset;
         parsingError.m_errorString = AZStd::string::format("Unknown character '%c' found in expression.", parseString.at(offset));
+
+        return AZ::Failure(parsingError);
+    }
+
+    AZ::Outcome<void, ParsingError> ExpressionEvaluationSystemComponent::ReportUnbalancedParen(size_t offset, const AZStd::string& openParenOffsetString) const
+    {
+        ParsingError parsingError;
+
+        parsingError.m_offsetIndex = offset;
+        parsingError.m_errorString = AZStd::string::format("Unbalanced ( found at character(s) '%s' in expression.", openParenOffsetString.c_str());
 
         return AZ::Failure(parsingError);
     }

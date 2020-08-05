@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorHexEdit.h>
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
 
 #include <QDoubleValidator>
 #include <QGridLayout>
@@ -70,9 +71,10 @@ ColorHexEdit::ColorHexEdit(QWidget* parent)
     layout->setContentsMargins(0, 0, 0, 0);
 
     m_edit = new QLineEdit(QStringLiteral("000000"), this);
-    m_edit->setValidator(new QRegExpValidator(QRegExp(QStringLiteral("^[0-9A-Fa-f]{0,6}$")), this));
+    m_edit->setObjectName(QStringLiteral("colorhexedit"));
+    m_edit->setValidator(new QRegExpValidator(QRegExp(QStringLiteral("^[0-9A-Fa-f]{1,6}$")), this));
     m_edit->setFixedWidth(52);
-    m_edit->setAlignment(Qt::AlignHCenter);
+    LineEdit::setErrorIconEnabled(m_edit, false);
     connect(m_edit, &QLineEdit::textChanged, this, &ColorHexEdit::textChanged);
     connect(m_edit, &QLineEdit::editingFinished, this, [this]() {
         m_valueChanging = false;
@@ -84,9 +86,9 @@ ColorHexEdit::ColorHexEdit(QWidget* parent)
     m_edit->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_edit, &QWidget::customContextMenuRequested, this, &ColorHexEdit::showContextMenu);
 
-    auto hexLabel = new QLabel(tr("#"), this);
-    hexLabel->setAlignment(Qt::AlignHCenter);
-    layout->addWidget(hexLabel, 1, 0);
+    m_hexLabel = new QLabel(tr("#"), this);
+    m_hexLabel->setAlignment(Qt::AlignHCenter);
+    layout->addWidget(m_hexLabel, 1, 0);
 
     initEditValue();
 }
@@ -157,6 +159,11 @@ void ColorHexEdit::setAlpha(qreal alpha)
     {
         initEditValue();
     }
+}
+
+void ColorHexEdit::setLabelVisible(bool visible)
+{
+    m_hexLabel->setVisible(visible);
 }
 
 bool ColorHexEdit::eventFilter(QObject* watched, QEvent* event)
@@ -254,7 +261,7 @@ void ColorHexEdit::initEditValue()
     if (rgb != m_edit->text().toUInt(nullptr, 16))
     {
         const auto value = QStringLiteral("%1").arg(rgb, 6, 16, QLatin1Char('0'));
-        const QSignalBlocker b(m_edit);
+        const QSignalBlocker b(this);
         m_edit->setText(value.toUpper());
     }
 }

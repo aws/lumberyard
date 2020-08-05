@@ -1,0 +1,52 @@
+{
+  "name": "PYSIDE2",
+  "source": "@GEM@/3rdParty/pyside2",
+  "description": "PySide2 & Shiboken2 binaries.",
+  "non_release_only": "False",
+  "lib_required": "False",
+  "platform": {
+    "win_x64_vs2017": {
+      "libpath_release": [
+        "windows/release/PySide2",
+        "windows/release/shiboken2"
+      ],
+      "importlibpath_release": [
+        "windows/release/PySide2",
+        "windows/release/shiboken2"
+      ],
+      "sharedlibpath_release": [
+        "windows/release/PySide2",
+        "windows/release/shiboken2"
+      ],
+      "import_release": [
+        "pyside2.abi3.lib"
+      ],
+      "shared_release": [
+        "pyside2.abi3.dll",
+        "shiboken2.abi3.dll",
+        "shiboken2.pyd"
+      ],
+
+      "libpath_debug": [
+        "windows/debug/PySide2",
+        "windows/debug/shiboken2"
+      ],
+      "importlibpath_debug": [
+        "windows/debug/PySide2",
+        "windows/debug/shiboken2"
+      ],
+      "sharedlibpath_debug": [
+        "windows/debug/PySide2",
+        "windows/debug/shiboken2"
+      ],
+      "import_debug": [
+        "pyside2.cp37-win_amd64.lib"
+      ],
+      "shared_debug": [
+        "pyside2_d.cp37-win_amd64.dll",
+        "shiboken2_d.cp37-win_amd64.dll",
+        "shiboken2_d.cp37-win_amd64.pyd"
+      ]
+    }
+  }
+}

@@ -47,6 +47,8 @@ namespace AzQtComponents
         bool singleTabFillsWidth() const { return m_singleTabFillsWidth; }
         void setSingleTabFillsWidth(bool singleTabFillsWidth);
 
+        QString tabText(int index) const;
+
     Q_SIGNALS:
         void closeTab(int index);
         void undockTab(int index);

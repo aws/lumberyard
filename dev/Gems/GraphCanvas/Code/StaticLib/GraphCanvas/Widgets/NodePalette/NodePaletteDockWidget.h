@@ -41,14 +41,17 @@ namespace GraphCanvas
 {    
     class GraphCanvasMimeEvent;
     class NodePaletteTreeDelegate;
+    class NodePaletteTreeView;
     class NodePaletteWidget;
-    struct NodePaletteConfig;
+    struct NodePaletteConfig;    
 
     class NodePaletteDockWidget
         : public AzQtComponents::StyledDockWidget
     {
         Q_OBJECT
     public:
+        AZ_CLASS_ALLOCATOR(NodePaletteDockWidget, AZ::SystemAllocator, 0);
+
         NodePaletteDockWidget(GraphCanvasTreeItem* treeItem, const EditorId& editorId, const QString& windowLabel, QWidget* parent, const char* mimeType, bool inContextMenu, AZStd::string_view identifier);
         NodePaletteDockWidget(QWidget* parent, const QString& windowLabel, const NodePaletteConfig& configuration);
 
@@ -79,7 +82,9 @@ namespace GraphCanvas
 
     protected:
 
-        QTreeView* GetTreeView() const;
+        GraphCanvasTreeItem* ModTreeRoot();
+
+        NodePaletteTreeView* GetTreeView() const;
         NodePaletteWidget* GetNodePaletteWidget() const;
 
         // This method here is to help facilitate resetting the model. This will not be called during
@@ -87,8 +92,7 @@ namespace GraphCanvas
         virtual GraphCanvasTreeItem* CreatePaletteRoot() const;
 
     signals:
-        void OnContextMenuSelection();
-        void OnTreeItemDoubleClicked(GraphCanvasTreeItem* treeItem);
+        void OnContextMenuSelection();        
 
     private:
 

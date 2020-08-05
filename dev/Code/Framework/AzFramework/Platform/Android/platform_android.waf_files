@@ -27,6 +27,10 @@
         [
             "../Common/Default/AzFramework/Network/AssetProcessorConnection_Default.cpp"
         ],
+        "StreamingInstall/Platform/Android":
+        [
+            "../Common/Unimplemented/AzFramework/StreamingInstall/StreamingInstall_Unimplemented.cpp"
+        ],
         "TargetManagement/Platform/Android":
         [
             "../Common/Default/AzFramework/TargetManagement/TargetManagementComponent_Default.cpp"

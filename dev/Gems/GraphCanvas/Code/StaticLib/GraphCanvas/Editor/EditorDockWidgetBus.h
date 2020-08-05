@@ -39,6 +39,7 @@ namespace GraphCanvas
         virtual AZ::EntityId GetViewId() const = 0;
         virtual GraphId GetGraphId() const = 0;
         virtual EditorDockWidget* AsEditorDockWidget() = 0;
+        virtual void SetTitle(const AZStd::string& title) = 0;
     };
 
     using EditorDockWidgetRequestBus = AZ::EBus<EditorDockWidgetRequests>;

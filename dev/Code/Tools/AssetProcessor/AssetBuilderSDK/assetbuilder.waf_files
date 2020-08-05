@@ -7,7 +7,8 @@
         "AssetBuilderSDK/AssetBuilderSDK.h",
         "AssetBuilderSDK/AssetBuilderSDK.cpp",
         "AssetBuilderSDK/AssetBuilderBusses.h",
-        "AssetBuilderSDK/SerializationDependencies.h"
+        "AssetBuilderSDK/SerializationDependencies.h",
+        "AssetBuilderSDK/SerializationDependencies.cpp"
       ]
         
     }

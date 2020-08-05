@@ -2,7 +2,7 @@
     "none":
     {
         "FileWatcher": [
-            "native/FileWatcher/FileWatcher_linux.cpp"
+            "native/FileWatcher/FileWatcher_linuxos.cpp"
         ],
         "utilities": [
             "native/utilities/Utils_UnixLike.cpp",

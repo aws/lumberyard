@@ -103,5 +103,8 @@ namespace AZ
         AZStd::pair<AZ::Uuid, AZ::Uuid> GetOutcomeTypes(const AZ::Uuid& type);
         AZStd::vector<AZ::Uuid> GetContainedTypes(const AZ::Uuid& type);
 
+        /// Resolve the instance pointer for a given ClassElement by casting it to the actual type
+        /// expected by the ClassData for this element
+        void* ResolvePointer(void* ptr, const SerializeContext::ClassElement& classElement, const SerializeContext& context);
     } // namespace Utils
 } // namespace AzCore

@@ -33,17 +33,15 @@
 
 QPushButton
 {
-    color: white;
+    color: #ffffff;
     font-family: "Amazon Ember";
     font-size: 12px;
-    font-weight: 570;
-    line-height: 24px;
 }
 
 QPushButton:hover,
 QPushButton:pressed
 {
-    color: white;
+    color: #FFFFFF;
 }
 
 QPushButton:disabled
@@ -51,12 +49,18 @@ QPushButton:disabled
     color: #AAAAAA;
 }
 
+QPushButton:flat
+{
+    border: none;
+    background-color: transparent;
+}
+
 QPushButton.Primary,
 QPushButton:default,
 QToolButton::menu-indicator,
 QToolButton.SmallIcon::menu-indicator
 {
-    color: white;
+    color: #FFFFFF;
 }
 
 QPushButton.Primary:disabled,
@@ -71,3 +75,10 @@ QPushButton.SmallIcon
     margin: 0px;
 }
 
+/* Utility classes for shared styling */
+
+QPushButton.flat,
+QToolButton.flat
+{
+    qproperty-flat: true;
+}

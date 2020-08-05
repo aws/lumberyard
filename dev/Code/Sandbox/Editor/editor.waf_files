@@ -2,6 +2,11 @@
     "auto": {
         "Core": [
             "main.cpp"
+        ],
+
+        "style": [
+            "Style/Editor.qss",
+            "Style/resources.qrc"
         ]
     }
 }

@@ -1404,7 +1404,7 @@ namespace SliceFavorites
         if (xmlDoc->parse<0>(buffer.data()))
         {
             AZ::rapidxml::xml_node<char>* xmlRootNode = xmlDoc->first_node();
-            if (!xmlRootNode || azstrnicmp(xmlRootNode->name(), RootXMLTag, AZ_ARRAY_SIZE(RootXMLTag)))
+            if (!xmlRootNode || azstrnicmp(xmlRootNode->name(), RootXMLTag, strlen(RootXMLTag) + 1))
             {
                 emit DisplayWarning(tr("Invalid Slice Favorites File"), tr("The XML isn't recognized as a valid SliceFavorites File, please try a different file to import."));
                 return 0;

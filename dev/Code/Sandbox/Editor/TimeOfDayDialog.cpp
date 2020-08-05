@@ -601,7 +601,7 @@ void CTimeOfDayDialog::Init()
     connect(m_ui->nextKeyButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_NEXT_KEY); });
     connect(m_ui->removeAllExceptSelectedButton, &QAbstractButton::clicked, this, [=]() { m_ui->spline->OnUserCommand(ID_SPLINE_FLATTEN_ALL); });
 
-    connect(m_ui->timelineSlider, &QSlider::valueChanged, this, [=](int value) { SetTime(value / 60.0f); });
+    connect(m_ui->timelineSlider, &AzQtComponents::SliderInt::valueChanged, this, [=](int value) { SetTime(value / 60.0f); });
 
     connect(m_ui->spline, &SplineWidget::beforeChange, this, &CTimeOfDayDialog::OnBeforeSplineChange);
     connect(m_ui->spline, &SplineWidget::change, this, [=]() { OnSplineChange(m_ui->spline); });

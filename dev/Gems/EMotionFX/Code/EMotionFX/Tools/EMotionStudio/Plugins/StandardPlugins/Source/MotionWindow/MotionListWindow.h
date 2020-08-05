@@ -33,11 +33,6 @@ QT_FORWARD_DECLARE_CLASS(QAction)
 QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
-namespace AzQtComponents
-{
-    class FilteredSearchWidget;
-}
-
 namespace EMStudio
 {
     // forward declarations
@@ -95,20 +90,18 @@ namespace EMStudio
         uint32 GetMotionID(uint32 rowIndex);
         uint32 FindRowByMotionID(uint32 motionID);
         bool CheckIfIsMotionVisible(MotionWindowPlugin::MotionTableEntry* entry);
+        void OnTextFilterChanged(const QString& text);
+
     signals:
         void MotionSelectionChanged();
+        void SaveRequested();
+        void RemoveMotionsRequested();
 
     private slots:
         void cellDoubleClicked(int row, int column);
         void itemSelectionChanged();
-        void OnAddMotionsButtonPressed();
-        void OnRemoveMotionsButtonPressed();
-        void OnClearMotionsButtonPressed();
-        void OnStopSelectedMotionsButton();
-        void OnStopAllMotionsButton();
-        void OnSave();
-        void OnTextFilterChanged(const QString& text);
         void OnAddMotionsInSelectedMotionSets();
+        void OnOpenInFileBrowser();
 
     private:
         void keyPressEvent(QKeyEvent* event) override;
@@ -122,12 +115,7 @@ namespace EMStudio
         AZStd::vector<MotionWindowPlugin::MotionTableEntry*>    mShownMotionEntries;
         QVBoxLayout*                                            mVLayout;
         MotionTableWidget*                                      mMotionTable;
-        QPushButton*                                            mAddMotionsButton;
-        QPushButton*                                            mRemoveMotionsButton;
-        QPushButton*                                            mClearMotionsButton;
-        QPushButton*                                            mSaveButton;
         MotionWindowPlugin*                                     mMotionWindowPlugin;
-        AzQtComponents::FilteredSearchWidget*                   m_searchWidget;
         AZStd::string                                           m_searchWidgetText;
     };
 

@@ -201,6 +201,12 @@ namespace AZ
         AZ_INLINE bool PointCylinder(const AZ::Vector3& baseCenterPoint, const AZ::Vector3& axisVector,
             float axisLengthSquared, float radiusSquared, const AZ::Vector3& testPoint)
         {
+            // If the cylinder shape has no volume then the point cannot be inside.
+            if (axisLengthSquared <= 0.0f || radiusSquared <= 0.0f)
+            {
+                return false;
+            }
+
             AZ::Vector3 baseCenterPointToTestPoint = testPoint - baseCenterPoint;
             float dotProduct = baseCenterPointToTestPoint.Dot(axisVector);
 

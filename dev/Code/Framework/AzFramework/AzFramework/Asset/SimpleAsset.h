@@ -48,6 +48,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/typetraits/alignment_of.h>
@@ -94,6 +95,20 @@ namespace AzFramework
                         ;
                 }
             }
+
+            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->Class<SimpleAssetReferenceBase>()
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Category, "Asset")
+                    ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ->Property("assetPath", &SimpleAssetReferenceBase::GetAssetPath, nullptr)
+                    ->Property("assetType", &SimpleAssetReferenceBase::GetAssetType, nullptr)
+                    ->Property("fileFilter", &SimpleAssetReferenceBase::GetFileFilter, nullptr)
+                    ->Method("SetAssetPath", &SimpleAssetReferenceBase::SetAssetPath)
+                        ->Attribute(AZ::Script::Attributes::Alias, "set_asset_path")
+                    ;
+            }
         }
 
     protected:
@@ -106,6 +121,8 @@ namespace AzFramework
                 AZStd::char_traits<char>,
                 AZStd::static_buffer_allocator<128, AZStd::alignment_of<char>::value> >;
 
+    inline const AZ::Uuid SimpleAssetReferenceTypeId = { "{D03D0CF6-9A61-4DBA-AC53-E62453CE940D}" };
+
     /*!
      * Templated asset reference type.
      * This currently acts as a convenience helper for registering
@@ -117,9 +134,8 @@ namespace AzFramework
         : public SimpleAssetReferenceBase
     {
     public:
-
         AZ_CLASS_ALLOCATOR(SimpleAssetReference<AssetType>, AZ::SystemAllocator, 0);
-        AZ_RTTI((SimpleAssetReference<AssetType>, "{D03D0CF6-9A61-4DBA-AC53-E62453CE940D}", AssetType), SimpleAssetReferenceBase);
+        AZ_RTTI((SimpleAssetReference<AssetType>, SimpleAssetReferenceTypeId, AssetType), SimpleAssetReferenceBase);
 
         static void Register(AZ::SerializeContext& context)
         {
@@ -131,8 +147,8 @@ namespace AzFramework
             ;
         }
 
-        virtual AZ::Data::AssetType GetAssetType() const { return AZ::Data::AssetType(AZ::AzTypeInfo<AssetType>::Uuid()); }
-        virtual const char* GetFileFilter() const { return AssetType::GetFileFilter(); }
+        AZ::Data::AssetType GetAssetType() const override { return AZ::Data::AssetType(AZ::AzTypeInfo<AssetType>::Uuid()); }
+        const char* GetFileFilter() const override { return AssetType::GetFileFilter(); }
 
     private:
 
@@ -146,7 +162,7 @@ namespace AzFramework
             if (!s_name)
             {
                 s_name = AZ::Environment::CreateVariable<AssetInfoString>(varName);
-                AZ_Assert(s_name, "Could not create an evironmental variable with name '%s'", varName);
+                AZ_Assert(s_name, "Could not create an environmental variable with name '%s'", varName);
             }
 
             (*s_name) = AssetType::TYPEINFO_Name();
@@ -162,7 +178,7 @@ namespace AzFramework
             if (!s_filter)
             {
                 s_filter = AZ::Environment::CreateVariable<AssetInfoString>(varName);
-                AZ_Assert(s_filter, "Could not create an evironmental variable with name '%s'", varName);
+                AZ_Assert(s_filter, "Could not create an environmental variable with name '%s'", varName);
             }
 
             (*s_filter) = AssetType::GetFileFilter();
@@ -190,5 +206,28 @@ namespace AzFramework
     const char* SimpleAssetTypeGetFileFilter(const AZ::Data::AssetType& assetType);
 
 } // namespace AzFramework
+
+namespace AZ
+{
+    //! OnDemandReflection for any generic SimpleAssetReference<T>
+    template<typename T>
+    struct OnDemandReflection<AzFramework::SimpleAssetReference<T>>
+    {
+        using SimpleAssetReferenceType = AzFramework::SimpleAssetReference<T>;
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->Class<SimpleAssetReferenceType>(SimpleAssetReferenceType::RTTI_TypeName())
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ;
+            }
+        }
+    };
+
+    //! This is being declared so that azrtti_typeid<AzFramework::SimpleAssetReference>() will work
+    AZ_TYPE_INFO_INTERNAL_VARIATION_GENERIC(AzFramework::SimpleAssetReference, AzFramework::SimpleAssetReferenceTypeId)
+}
 
 #endif // AZFRAMEWORK_SIMPLEASSET_H

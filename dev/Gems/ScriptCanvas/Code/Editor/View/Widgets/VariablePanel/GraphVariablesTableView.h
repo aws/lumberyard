@@ -42,6 +42,7 @@ namespace ScriptCanvasEditor
             Name,
             Type,
             DefaultValue,
+            Scope,
             Count
         };
 
@@ -80,12 +81,16 @@ namespace ScriptCanvasEditor
 
         // ScriptCanvas::VariableRuntimeNotificationBus
         void OnVariableValueChanged() override;
+        void OnVariableScopeChanged() override;
+        void OnVariablePriorityChanged() override;
         ////
 
         ScriptCanvas::VariableId FindVariableIdForIndex(const QModelIndex& index) const;
         ScriptCanvas::GraphScopedVariableId FindScopedVariableIdForIndex(const QModelIndex& index) const;
 
         int FindRowForVariableId(const ScriptCanvas::VariableId& variableId) const;
+
+        bool IsFunction() const;
 
     signals:
         void VariableAdded(QModelIndex modelIndex);
@@ -94,7 +99,9 @@ namespace ScriptCanvasEditor
 
         bool IsEditableType(ScriptCanvas::Data::Type scriptCanvasDataType) const;
 
-        void PopulateSceneVariables();        
+        void PopulateSceneVariables();
+
+        AZ::Data::AssetType m_assetType;
 
         AZStd::vector<ScriptCanvas::GraphScopedVariableId> m_variableIds;
         ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
@@ -109,12 +116,15 @@ namespace ScriptCanvasEditor
         GraphVariablesModelSortFilterProxyModel(QObject* parent);
 
         bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+        bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
         void SetFilter(const QString& filter);
 
     private:
         QString m_filter;
         QRegExp m_filterRegex;
+
+        ScriptCanvas::GraphVariable::Comparator m_variableComparator;
     };
 
     class GraphVariablesTableView
@@ -125,7 +135,7 @@ namespace ScriptCanvasEditor
     public:
         static bool HasCopyVariableData();
         static void CopyVariableToClipboard(const ScriptCanvas::ScriptCanvasId& scriptCanvasId, const ScriptCanvas::VariableId& variableId);
-        static void HandleVariablePaste(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
+        static bool HandleVariablePaste(const ScriptCanvas::ScriptCanvasId& scriptCanvasId);
 
         AZ_CLASS_ALLOCATOR(GraphVariablesTableView, AZ::SystemAllocator, 0);
         GraphVariablesTableView(QWidget* parent);

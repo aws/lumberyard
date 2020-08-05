@@ -151,4 +151,8 @@ function DynamicContentTest:FileStatusChanged(fileName, fileStatus)
 	end
 end
 
+function DynamicContentTest:OnDataReceived(fileName, received, total)
+    Debug.Log("Received " .. tostring(received) .. " bytes of " .. fileName .. " (Total size "..tostring(total)..")")
+end
+
 return DynamicContentTest

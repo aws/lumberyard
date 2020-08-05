@@ -20,17 +20,17 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(JsonUnorderedSetContainerSerializer, SystemAllocator, 0);
 
     JsonSerializationResult::Result JsonUnorderedSetContainerSerializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
-        return m_baseSerializer.Load(outputValue, outputValueTypeId, inputValue, path, settings);
+        return m_baseSerializer.Load(outputValue, outputValueTypeId, inputValue, context);
     }
 
-    JsonSerializationResult::Result JsonUnorderedSetContainerSerializer::Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-        const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonUnorderedSetContainerSerializer::Store(rapidjson::Value& outputValue, const void* inputValue,
+        const void* defaultValue, const Uuid& valueTypeId, JsonSerializerContext& context)
     {
         namespace JSR = JsonSerializationResult;
         
-        JSR::Result result = m_baseSerializer.Store(outputValue, allocator, inputValue, defaultValue, valueTypeId, path, settings);
+        JSR::Result result = m_baseSerializer.Store(outputValue, inputValue, defaultValue, valueTypeId, context);
         
         // Only sort if there's an array. If something went wrong or the set has been fully defaulted then the output won't be an array.
         if (outputValue.IsArray())

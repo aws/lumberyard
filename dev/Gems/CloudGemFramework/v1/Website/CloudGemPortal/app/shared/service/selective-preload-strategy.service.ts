@@ -8,7 +8,7 @@ import { DefinitionService } from './definition.service'
 export class PreloadingService implements PreloadingStrategy {
     preloadedModules: string[] = [];
 
-    constructor(private defintion: DefinitionService) {
+    constructor(private definitionService: DefinitionService) {
 
     }
 
@@ -18,7 +18,7 @@ export class PreloadingService implements PreloadingStrategy {
             this.preloadedModules.push(route.path);
 
             // log the route path to the console
-            if (!this.defintion.isProd)
+            if (!this.definitionService.isProd)
                 console.log('Preloaded: ' + route.path);
 
             return load();

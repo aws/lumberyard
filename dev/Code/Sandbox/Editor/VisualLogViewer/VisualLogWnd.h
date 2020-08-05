@@ -93,7 +93,7 @@ class CVisualLogWnd
     Q_OBJECT
 
 public: // Construction & destruction
-    CVisualLogWnd();
+    explicit CVisualLogWnd(QWidget* parent = nullptr);
     virtual ~CVisualLogWnd();
 
 private:

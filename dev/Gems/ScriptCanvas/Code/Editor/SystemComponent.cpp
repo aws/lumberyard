@@ -47,6 +47,7 @@
 
 #include <ScriptCanvas/View/EditCtrls/GenericLineEditCtrl.h>
 #include <Editor/Framework/ScriptCanvasGraphUtilities.h>
+#include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
 
 namespace ScriptCanvasEditor
 {
@@ -130,7 +131,6 @@ namespace ScriptCanvasEditor
         ScriptCanvasExecutionBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
-        m_documentContext.Activate();
     }
 
     void SystemComponent::NotifyRegisterViews()
@@ -146,8 +146,6 @@ namespace ScriptCanvasEditor
 
     void SystemComponent::Deactivate()
     {
-        m_documentContext.Deactivate();
-
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         ScriptCanvasExecutionBus::Handler::BusDisconnect();
@@ -174,11 +172,13 @@ namespace ScriptCanvasEditor
         outCreatableTypes.insert(m_creatableTypes.begin(), m_creatableTypes.end());
     }
 
-    void SystemComponent::CreateEditorComponentsOnEntity(AZ::Entity* entity)
+    void SystemComponent::CreateEditorComponentsOnEntity(AZ::Entity* entity, const AZ::Data::AssetType& assetType)
     {
         if (entity)
         {
             auto graph = entity->CreateComponent<Graph>();
+            graph->SetAssetType(assetType);
+
             entity->CreateComponent<EditorGraphVariableManagerComponent>(graph->GetScriptCanvasId());
         }
     }
@@ -217,6 +217,7 @@ namespace ScriptCanvasEditor
                 {
                     menu->addSeparator();
                     scriptCanvasMenu = menu->addMenu(QObject::tr("Edit Script Canvas"));
+                    scriptCanvasMenu->setEnabled(false);
                     menu->addSeparator();
                 }
 
@@ -225,33 +226,45 @@ namespace ScriptCanvasEditor
 
                 if (entity)
                 {
-                    // TODO: Refactor this to work off of AssetId rather then runtime ids
-                    AZ::EBusAggregateResults<ScriptCanvas::ScriptCanvasId> graphIds;
-                    EditorContextMenuRequestBus::EventResult(graphIds, entity->GetId(), &EditorContextMenuRequests::GetScriptCanvasId);
+                    AZ::EBusAggregateResults<AZ::Data::AssetId> assetIds;
+                    EditorContextMenuRequestBus::EventResult(assetIds, entity->GetId(), &EditorContextMenuRequests::GetAssetId);
 
-                    if (!graphIds.values.empty())
+                    if (!assetIds.values.empty())
                     {
                         QMenu* entityMenu = scriptCanvasMenu;
                         if (entitiesWithScriptCanvas.size() > 1)
                         {
+                            scriptCanvasMenu->setEnabled(true);
                             entityMenu = scriptCanvasMenu->addMenu(entity->GetName().c_str());
+                            entityMenu->setEnabled(false);
                         }
 
-                        AZStd::unordered_set< ScriptCanvas::ScriptCanvasId > usedIds;
+                        AZStd::unordered_set< AZ::Data::AssetId > usedIds;
 
-                        for (const auto& graphId : graphIds.values)
+                        for (const auto& assetId : assetIds.values)
                         {
-                            if (!graphId.IsValid() || usedIds.count(graphId) != 0)
+                            if (!assetId.IsValid() || usedIds.count(assetId) != 0)
                             {
                                 continue;
                             }
 
-                            usedIds.insert(graphId);
+                            entityMenu->setEnabled(true);
 
-                            AZStd::string scriptName;
-                            EditorScriptCanvasRequestBus::EventResult(scriptName, graphId, &EditorScriptCanvasRequests::GetName);
-                            action = entityMenu->addAction(QString("%1").arg(QString(scriptName.c_str())));
-                            QObject::connect(action, &QAction::triggered, [graphId] { EditorScriptCanvasRequestBus::Event(graphId, &EditorScriptCanvasRequests::OpenEditor); });
+                            usedIds.insert(assetId);
+
+                            AZStd::string rootPath;
+                            AZ::Data::AssetInfo assetInfo = AssetHelpers::GetAssetInfo(assetId, rootPath);
+
+                            AZStd::string displayName;
+                            AZ::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), displayName);
+
+                            action = entityMenu->addAction(QString("%1").arg(QString(displayName.c_str())));
+
+                            QObject::connect(action, &QAction::triggered, [assetId]
+                            {
+                                AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
+                                GeneralRequestBus::Broadcast(&GeneralRequests::OpenScriptCanvasAsset, assetId, -1);
+                            });
                         }
                     }
                 }
@@ -285,6 +298,43 @@ namespace ScriptCanvasEditor
 
         // not one of our types.
         return AzToolsFramework::AssetBrowser::SourceFileDetails();
+    }
+
+    void SystemComponent::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
+    {
+        using namespace AzToolsFramework;
+        using namespace AzToolsFramework::AssetBrowser;
+
+        bool isScriptCanvasAsset = false;
+        ScriptCanvasAssetDescription scriptCanvasAssetDescription;
+        if (AZStd::wildcard_match(AZStd::string::format("*%s", scriptCanvasAssetDescription.GetExtensionImpl()).c_str(), fullSourceFileName))
+        {
+            isScriptCanvasAsset = true;
+        }
+
+        ScriptCanvasFunctionDescription scriptCanvasFunctionAssetDescription;
+        if (!isScriptCanvasAsset && AZStd::wildcard_match(AZStd::string::format("*%s", scriptCanvasFunctionAssetDescription.GetExtensionImpl()).c_str(), fullSourceFileName))
+        {
+            isScriptCanvasAsset = true;
+        }
+
+        if (isScriptCanvasAsset)
+        {
+            auto scriptCanvasEditorCallback = [this](const char* fullSourceFileNameInCall, const AZ::Uuid& sourceUUIDInCall)
+            {
+                AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
+                const SourceAssetBrowserEntry* fullDetails = SourceAssetBrowserEntry::GetSourceByUuid(sourceUUIDInCall);
+                if (fullDetails)
+                {
+                    AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
+
+                    AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::OpenViewPane, "Script Canvas");
+                    GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, sourceUUIDInCall, -1);
+                }
+            };
+
+            openers.push_back({ "Lumberyard_ScriptCanvasEditor", "Open In Script Canvas Editor...", QIcon(), scriptCanvasEditorCallback });
+        }
     }
 
     void SystemComponent::OnUserSettingsActivated()

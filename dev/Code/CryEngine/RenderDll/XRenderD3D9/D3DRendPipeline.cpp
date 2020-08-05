@@ -2673,7 +2673,12 @@ void SnapVector(Vec3& vVector, const float fSnapRange)
 void CD3D9Renderer::FX_WaterVolumesCausticsPreprocess(N3DEngineCommon::SCausticInfo& causticInfo)
 {
     PROFILE_LABEL_SCOPE("PREPROCESS");
-    const uint32 waterRenderList = EFSLIST_WATER;
+
+    AZ_Assert((SRendItem::BatchFlags(EFSLIST_WATER, m_RP.m_pRLD) & FB_WATER_CAUSTIC) == 0, "Water volume found in the wrong render list");
+
+    const uint32 waterRenderList = EFSLIST_REFRACTIVE_SURFACE;
+    const int32 waterSortGroup = 0;
+
     const int recursiveLevel = SRendItem::m_RecurseLevel[m_RP.m_nProcessThreadID];
     SThreadInfo* const pShaderThreadInfo = &(m_RP.m_TI[m_RP.m_nProcessThreadID]);
 
@@ -2763,7 +2768,7 @@ void CD3D9Renderer::FX_WaterVolumesCausticsPreprocess(N3DEngineCommon::SCausticI
 
     PROFILE_DIPS_START;
 
-    m_RP.m_nSortGroupID = 1;
+    m_RP.m_nSortGroupID = waterSortGroup;
     FX_ProcessBatchesList(m_RP.m_pRLD->m_nStartRI[m_RP.m_nSortGroupID][waterRenderList], m_RP.m_pRLD->m_nEndRI[m_RP.m_nSortGroupID][waterRenderList], FB_WATER_CAUSTIC);
 
     PROFILE_DIPS_END(waterRenderList);
@@ -2859,7 +2864,9 @@ void CD3D9Renderer::FX_WaterVolumesCaustics()
 {
     uint64 nPrevFlagsShaderRT = gRenDev->m_RP.m_FlagsShader_RT;
 
-    const uint32 waterRenderList = EFSLIST_WATER;
+    const uint32 waterRenderList = EFSLIST_REFRACTIVE_SURFACE;
+    const int32 waterSortGroup = 0;
+
     uint32 nBatchMask = SRendItem::BatchFlags(waterRenderList, m_RP.m_pRLD);
 
     bool isEmpty = SRendItem::IsListEmpty(waterRenderList, m_RP.m_nProcessThreadID, m_RP.m_pRLD) && SRendItem::IsListEmpty(EFSLIST_WATER_VOLUMES, m_RP.m_nProcessThreadID, m_RP.m_pRLD);
@@ -2867,11 +2874,10 @@ void CD3D9Renderer::FX_WaterVolumesCaustics()
     // Check if there are any water volumes that have caustics enabled
     if (!isEmpty)
     {
-        auto& RESTRICT_REFERENCE RI = CRenderView::CurrentRenderView()->GetRenderItems(1, waterRenderList);
+        auto& RESTRICT_REFERENCE RI = CRenderView::CurrentRenderView()->GetRenderItems(waterSortGroup, waterRenderList);
 
-        const int sortGroupID = 1;
-        int endRI = m_RP.m_pRLD->m_nEndRI[sortGroupID][waterRenderList];
-        int curRI = m_RP.m_pRLD->m_nStartRI[sortGroupID][waterRenderList];
+        int endRI = m_RP.m_pRLD->m_nEndRI[waterSortGroup][waterRenderList];
+        int curRI = m_RP.m_pRLD->m_nStartRI[waterSortGroup][waterRenderList];
 
         isEmpty = true;
 
@@ -3006,7 +3012,10 @@ void CD3D9Renderer::FX_WaterVolumesCaustics()
 
 void CD3D9Renderer::FX_WaterVolumesPreprocess()
 {
-    const uint32 waterRenderList = EFSLIST_WATER;
+    AZ_Assert((SRendItem::BatchFlags(EFSLIST_WATER, m_RP.m_pRLD) & FB_WATER_REFL) == 0, "Water volume found in the wrong render list");
+
+    const uint32 waterRenderList = EFSLIST_REFRACTIVE_SURFACE;
+    const int32 waterSortGroup = 0;
 
     uint32 nBatchMask = SRendItem::BatchFlags(waterRenderList, m_RP.m_pRLD);
     if ((nBatchMask & FB_WATER_REFL) && CTexture::IsTextureExist(CTexture::s_ptexWaterVolumeRefl[0]))
@@ -3042,7 +3051,7 @@ void CD3D9Renderer::FX_WaterVolumesPreprocess()
 
         PROFILE_DIPS_START;
 
-        m_RP.m_nSortGroupID = 1;
+        m_RP.m_nSortGroupID = waterSortGroup;
         FX_ProcessBatchesList(m_RP.m_pRLD->m_nStartRI[m_RP.m_nSortGroupID][waterRenderList], m_RP.m_pRLD->m_nEndRI[m_RP.m_nSortGroupID][waterRenderList], FB_WATER_REFL);
 
         PROFILE_DIPS_END(waterRenderList);

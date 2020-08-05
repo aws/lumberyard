@@ -84,14 +84,14 @@ namespace GraphCanvas
     {
         SlotComponent::Activate();
         
-        PropertySlotBus::Handler::BusConnect(GetEntityId());
+        PropertySlotRequestBus::Handler::BusConnect(GetEntityId());
     }
     
     void PropertySlotComponent::Deactivate()
     {
         SlotComponent::Deactivate();
         
-        PropertySlotBus::Handler::BusDisconnect();
+        PropertySlotRequestBus::Handler::BusDisconnect();
     }
 
     int PropertySlotComponent::GetLayoutPriority() const

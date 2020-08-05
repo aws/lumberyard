@@ -56,7 +56,8 @@ namespace GraphCanvas
         , public GeometryNotificationBus::Handler
         , public NodeGroupRequestBus::Handler
         , public NodeGroupNotificationBus::MultiHandler
-        , public PersistentIdNotificationBus::Handler        
+        , public PersistentIdNotificationBus::Handler
+        , public VisualNotificationBus::Handler
     {
         friend class NodeGroupFrameGraphicsWidget;
 
@@ -210,7 +211,7 @@ namespace GraphCanvas
         void OnDragSelectStart() override;
         void OnDragSelectEnd() override;
 
-        void OnEntitiesDeserializationComplete() override;
+        void OnEntitiesDeserializationComplete(const GraphSerialization&) override;
 
         void OnGraphLoadComplete() override;
 

@@ -18,11 +18,15 @@
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 #include "../../../../EMStudioSDK/Source/UnitScaleWindow.h"
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <QContextMenuEvent>
 #include <QMessageBox>
 #include <QMenu>
 #include <QHeaderView>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QToolBar>
 
 
 namespace EMStudio
@@ -30,76 +34,76 @@ namespace EMStudio
     ActorsWindow::ActorsWindow(SceneManagerPlugin* plugin, QWidget* parent)
         : QWidget(parent)
     {
-        mPlugin = plugin;
+        m_plugin = plugin;
 
         // create the layouts
         QVBoxLayout* vLayout = new QVBoxLayout();
-        QHBoxLayout* hLayout = new QHBoxLayout();
-        hLayout->setMargin(0);
         vLayout->setMargin(0);
-        hLayout->setSpacing(0);
         vLayout->setSpacing(2);
-        hLayout->setAlignment(Qt::AlignLeft);
         vLayout->setAlignment(Qt::AlignTop);
 
         // create the tree widget
-        mTreeWidget = new QTreeWidget();
-        mTreeWidget->setObjectName("IsVisibleTreeView");
+        m_treeWidget = new QTreeWidget();
+        m_treeWidget->setObjectName("IsVisibleTreeView");
 
         // create header items
-        mTreeWidget->setColumnCount(2);
+        m_treeWidget->setColumnCount(1);
         QStringList headerList;
         headerList.append("Name");
-        headerList.append("ID");
-        mTreeWidget->setHeaderLabels(headerList);
+        m_treeWidget->setHeaderLabels(headerList);
 
         // set optical stuff for the tree
-        mTreeWidget->setColumnWidth(0, 200);
-        mTreeWidget->setColumnWidth(1, 20);
-        mTreeWidget->setColumnWidth(1, 100);
-        mTreeWidget->setSortingEnabled(false);
-        mTreeWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
-        mTreeWidget->setMinimumWidth(150);
-        mTreeWidget->setMinimumHeight(150);
-        mTreeWidget->setAlternatingRowColors(true);
-        mTreeWidget->setExpandsOnDoubleClick(true);
-        mTreeWidget->setAnimated(true);
+        m_treeWidget->setColumnWidth(0, 200);
+        m_treeWidget->setColumnWidth(1, 20);
+        m_treeWidget->setColumnWidth(1, 100);
+        m_treeWidget->setSortingEnabled(false);
+        m_treeWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        m_treeWidget->setMinimumWidth(150);
+        m_treeWidget->setMinimumHeight(150);
+        m_treeWidget->setAlternatingRowColors(true);
+        m_treeWidget->setExpandsOnDoubleClick(true);
+        m_treeWidget->setAnimated(true);
 
         // disable the move of section to have column order fixed
-        mTreeWidget->header()->setSectionsMovable(false);
+        m_treeWidget->header()->setSectionsMovable(false);
+        m_treeWidget->setHeaderHidden(true);
 
-        // create the push buttons
-        mLoadActorsButton       = new QPushButton("");
-        mCreateInstanceButton   = new QPushButton("");
-        mRemoveButton           = new QPushButton("");
-        mClearButton            = new QPushButton("");
-        mSaveButton             = new QPushButton("");
+        AzQtComponents::CheckBox::setVisibilityMode(m_treeWidget, true);
 
-        EMStudioManager::MakeTransparentButton(mLoadActorsButton,      "/Images/Icons/Open.png",       "Load actors from file");
-        EMStudioManager::MakeTransparentButton(mCreateInstanceButton,  "/Images/Icons/Plus.png",       "Create a new instance of the selected actors");
-        EMStudioManager::MakeTransparentButton(mRemoveButton,          "/Images/Icons/Minus.png",      "Remove selected actors/actor instances");
-        EMStudioManager::MakeTransparentButton(mClearButton,           "/Images/Icons/Clear.png",      "Remove all actors/actor instances");
-        EMStudioManager::MakeTransparentButton(mSaveButton,            "/Images/Menu/FileSave.png",    "Save selected actors");
+        QToolBar* toolBar = new QToolBar(this);
 
-        // add widgets to the layouts
-        hLayout->addWidget(mCreateInstanceButton);
-        hLayout->addWidget(mRemoveButton);
-        hLayout->addWidget(mClearButton);
-        hLayout->addWidget(mLoadActorsButton);
-        hLayout->addWidget(mSaveButton);
-        vLayout->addLayout(hLayout);
-        vLayout->addWidget(mTreeWidget);
+        // Open actors
+        {
+            QAction* menuAction = toolBar->addAction(
+                MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Open.svg"),
+                tr("Load actor from asset"));
 
-        // connect
-        connect(mLoadActorsButton,     &QPushButton::clicked, GetMainWindow(), &MainWindow::OnFileOpenActor);
-        connect(mCreateInstanceButton, &QPushButton::clicked, this, &ActorsWindow::OnCreateInstanceButtonClicked);
-        connect(mRemoveButton,         &QPushButton::clicked, this, &ActorsWindow::OnRemoveButtonClicked);
-        connect(mClearButton,          &QPushButton::clicked, this, &ActorsWindow::OnClearButtonClicked);
-        connect(mSaveButton,           &QPushButton::clicked, GetMainWindow(), &MainWindow::OnFileSaveSelectedActors);
-        connect(mTreeWidget,           &QTreeWidget::itemChanged, this, &ActorsWindow::OnVisibleChanged);
-        connect(mTreeWidget,           &QTreeWidget::itemSelectionChanged, this, &ActorsWindow::OnSelectionChanged);
+            QToolButton* toolButton = qobject_cast<QToolButton*>(toolBar->widgetForAction(menuAction));
+            AZ_Assert(toolButton, "The action widget must be a tool button.");
+            toolButton->setPopupMode(QToolButton::InstantPopup);
 
-        // set the layout
+            QMenu* contextMenu = new QMenu(toolBar);
+
+            m_loadActorAction = contextMenu->addAction("Load actor", GetMainWindow(), &MainWindow::OnFileOpenActor);
+            m_mergeActorAction = contextMenu->addAction("Merge actor", GetMainWindow(), &MainWindow::OnFileMergeActor);
+
+            menuAction->setMenu(contextMenu);
+        }
+
+        m_createInstanceAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.svg"),
+            tr("Create a new instance of the selected actors"),
+            this, &ActorsWindow::OnCreateInstanceButtonClicked);
+
+        m_saveAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Save.svg"),
+            tr("Save selected actors"),
+            GetMainWindow(), &MainWindow::OnFileSaveSelectedActors);
+
+        vLayout->addWidget(toolBar);
+        vLayout->addWidget(m_treeWidget);
+
+        connect(m_treeWidget, &QTreeWidget::itemChanged, this, &ActorsWindow::OnVisibleChanged);
+        connect(m_treeWidget, &QTreeWidget::itemSelectionChanged, this, &ActorsWindow::OnSelectionChanged);
+
         setLayout(vLayout);
     }
 
@@ -107,8 +111,8 @@ namespace EMStudio
     void ActorsWindow::ReInit()
     {
         // disable signals and clear the tree widget
-        mTreeWidget->blockSignals(true);
-        mTreeWidget->clear();
+        m_treeWidget->blockSignals(true);
+        m_treeWidget->clear();
 
         // iterate trough all actors and add them to the tree including their instances
         const uint32 numActors = EMotionFX::GetActorManager().GetNumActors();
@@ -130,17 +134,17 @@ namespace EMStudio
             }
 
             // create a tree item for the new attachment
-            QTreeWidgetItem* newItem = new QTreeWidgetItem(mTreeWidget);
+            QTreeWidgetItem* newItem = new QTreeWidgetItem(m_treeWidget);
 
             // add checkboxes to the treeitem
             newItem->setFlags(newItem->flags() | Qt::ItemIsUserCheckable);
             newItem->setCheckState(0, Qt::Checked);
 
             // adjust text of the treeitem
-            AzFramework::StringFunc::Path::GetFileName(actor->GetFileName(), mTempString);
-            newItem->setText(0, mTempString.c_str());
-            mTempString = AZStd::string::format("%i", actor->GetID());
-            newItem->setText(1, mTempString.c_str());
+            AzFramework::StringFunc::Path::GetFileName(actor->GetFileName(), m_tempString);
+            m_tempString += AZStd::string::format(" (ID: %i)", actor->GetID());
+            newItem->setText(0, m_tempString.c_str());
+            newItem->setData(0, Qt::UserRole, actor->GetID());
             newItem->setExpanded(true);
 
             if (actor->GetDirtyFlag())
@@ -151,7 +155,7 @@ namespace EMStudio
             }
 
             // add as top level item
-            mTreeWidget->addTopLevelItem(newItem);
+            m_treeWidget->addTopLevelItem(newItem);
 
             for (uint32 k = 0; k < numActorInstances; ++k)
             {
@@ -165,8 +169,8 @@ namespace EMStudio
                     newChildItem->setFlags(newChildItem->flags() | Qt::ItemIsUserCheckable);
 
                     // adjust text of the treeitem
-                    newChildItem->setText(0, "Instance");
-                    newChildItem->setText(1, AZStd::string::format("%i", actorInstance->GetID()).c_str());
+                    newChildItem->setText(0, tr("Instance (ID: %1)").arg(actorInstance->GetID()));
+                    newChildItem->setData(0, Qt::UserRole, actorInstance->GetID());
                     newChildItem->setExpanded(true);
 
                     // add as top level item
@@ -176,7 +180,7 @@ namespace EMStudio
         }
 
         // enable signals
-        mTreeWidget->blockSignals(false);
+        m_treeWidget->blockSignals(false);
     }
 
 
@@ -186,13 +190,13 @@ namespace EMStudio
         const CommandSystem::SelectionList& selection = GetCommandManager()->GetCurrentSelection();
 
         // disable signals
-        mTreeWidget->blockSignals(true);
+        m_treeWidget->blockSignals(true);
 
-        const uint32 numTopLevelItems = mTreeWidget->topLevelItemCount();
+        const uint32 numTopLevelItems = m_treeWidget->topLevelItemCount();
         for (uint32 i = 0; i < numTopLevelItems; ++i)
         {
             bool                atLeastOneInstanceVisible   = false;
-            QTreeWidgetItem*    item                        = mTreeWidget->topLevelItem(i);
+            QTreeWidgetItem*    item                        = m_treeWidget->topLevelItem(i);
             const uint32        actorID                     = GetIDFromTreeItem(item);
             EMotionFX::Actor*   actor                       = EMotionFX::GetActorManager().FindActorByID(actorID);
             const bool          actorSelected               = selection.CheckIfHasActor(actor);
@@ -222,7 +226,7 @@ namespace EMStudio
         }
 
         // enable signals
-        mTreeWidget->blockSignals(false);
+        m_treeWidget->blockSignals(false);
 
         // toggle enabled state of the add/remove buttons
         SetControlsEnabled();
@@ -235,7 +239,7 @@ namespace EMStudio
 
         AZStd::vector<EMotionFX::Actor*> toBeRemovedActors;
 
-        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
+        const QList<QTreeWidgetItem*> items = m_treeWidget->selectedItems();
         const uint32 numItems = items.length();
         for (uint32 i = 0; i < numItems; ++i)
         {
@@ -259,13 +263,13 @@ namespace EMStudio
                     {
                         QTreeWidgetItem* child = item->child(j);
 
-                        mTempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(child));
-                        commandGroup.AddCommandString(mTempString);
+                        m_tempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(child));
+                        commandGroup.AddCommandString(m_tempString);
                     }
 
                     // remove the actor
-                    mTempString = AZStd::string::format("RemoveActor -actorID %i", actorId);
-                    commandGroup.AddCommandString(mTempString);
+                    m_tempString = AZStd::string::format("RemoveActor -actorID %i", actorId);
+                    commandGroup.AddCommandString(m_tempString);
                 
                     toBeRemovedActors.emplace_back(actor);
                 }
@@ -275,8 +279,8 @@ namespace EMStudio
                 // remove the actor instance
                 if (!parent->isSelected())
                 {
-                    mTempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(item));
-                    commandGroup.AddCommandString(mTempString);
+                    m_tempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(item));
+                    commandGroup.AddCommandString(m_tempString);
                 }
             }
         }
@@ -284,7 +288,7 @@ namespace EMStudio
         // Ask the user if he wants to save the actor in case it got modified and is about to be removed.
         for (EMotionFX::Actor* actor : toBeRemovedActors)
         {
-            mPlugin->SaveDirtyActor(actor, &commandGroup, true, false);
+            m_plugin->SaveDirtyActor(actor, &commandGroup, true, false);
         }
 
         AZStd::string result;
@@ -293,7 +297,7 @@ namespace EMStudio
             AZ_Error("EMotionFX", false, result.c_str());
         }
 
-        mPlugin->ReInit();
+        m_plugin->ReInit();
     }
 
 
@@ -325,7 +329,7 @@ namespace EMStudio
         AZStd::vector<uint32> actorIDs;
 
         // filter the list to keep the actor items only
-        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
+        const QList<QTreeWidgetItem*> items = m_treeWidget->selectedItems();
         const uint32 numItems = items.length();
         for (uint32 i = 0; i < numItems; ++i)
         {
@@ -367,7 +371,7 @@ namespace EMStudio
         }
 
         // update the interface
-        mPlugin->UpdateInterface();
+        m_plugin->UpdateInterface();
     }
 
 
@@ -389,14 +393,14 @@ namespace EMStudio
             {
                 QTreeWidgetItem* child = item->child(i);
 
-                mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(child), AZStd::to_string(item->checkState(0) == Qt::Checked).c_str());
-                commandGroup.AddCommandString(mTempString);
+                m_tempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(child), AZStd::to_string(item->checkState(0) == Qt::Checked).c_str());
+                commandGroup.AddCommandString(m_tempString);
             }
         }
         else
         {
-            mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(item), AZStd::to_string(item->checkState(0) == Qt::Checked).c_str());
-            commandGroup.AddCommandString(mTempString);
+            m_tempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(item), AZStd::to_string(item->checkState(0) == Qt::Checked).c_str());
+            commandGroup.AddCommandString(m_tempString);
         }
 
         AZStd::string result;
@@ -405,7 +409,7 @@ namespace EMStudio
             AZ_Error("EMotionFX", false, result.c_str());
         }
 
-        mPlugin->UpdateInterface();
+        m_plugin->UpdateInterface();
     }
 
 
@@ -422,20 +426,20 @@ namespace EMStudio
         }
 
         // get the selected items
-        const uint32 numTopItems = mTreeWidget->topLevelItemCount();
+        const uint32 numTopItems = m_treeWidget->topLevelItemCount();
         for (uint32 i = 0; i < numTopItems; ++i)
         {
             // selection of the topLevelItems
-            QTreeWidgetItem* topLevelItem = mTreeWidget->topLevelItem(i);
+            QTreeWidgetItem* topLevelItem = m_treeWidget->topLevelItem(i);
             if (topLevelItem->isSelected())
             {
-                mTempString = AZStd::string::format("Select -actorID %i", GetIDFromTreeItem(topLevelItem));
-                commandGroup.AddCommandString(mTempString);
+                m_tempString = AZStd::string::format("Select -actorID %i", GetIDFromTreeItem(topLevelItem));
+                commandGroup.AddCommandString(m_tempString);
             }
             else
             {
-                mTempString = AZStd::string::format("Unselect -actorID %i", GetIDFromTreeItem(topLevelItem));
-                commandGroup.AddCommandString(mTempString);
+                m_tempString = AZStd::string::format("Unselect -actorID %i", GetIDFromTreeItem(topLevelItem));
+                commandGroup.AddCommandString(m_tempString);
             }
 
             // loop trough the children and adjust selection there
@@ -445,13 +449,13 @@ namespace EMStudio
                 QTreeWidgetItem* child = topLevelItem->child(j);
                 if (child->isSelected())
                 {
-                    mTempString = AZStd::string::format("Select -actorInstanceID %i", GetIDFromTreeItem(child));
-                    commandGroup.AddCommandString(mTempString);
+                    m_tempString = AZStd::string::format("Select -actorInstanceID %i", GetIDFromTreeItem(child));
+                    commandGroup.AddCommandString(m_tempString);
                 }
                 else
                 {
-                    mTempString = AZStd::string::format("Unselect -actorInstanceID %i", GetIDFromTreeItem(child));
-                    commandGroup.AddCommandString(mTempString);
+                    m_tempString = AZStd::string::format("Unselect -actorInstanceID %i", GetIDFromTreeItem(child));
+                    commandGroup.AddCommandString(m_tempString);
                 }
             }
         }
@@ -486,11 +490,11 @@ namespace EMStudio
 
     void ActorsWindow::contextMenuEvent(QContextMenuEvent* event)
     {
-        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
+        const QList<QTreeWidgetItem*> items = m_treeWidget->selectedItems();
 
         // get number of selected items and top level items
         const uint32 numSelected = items.size();
-        const uint32 numTopItems = mTreeWidget->topLevelItemCount();
+        const uint32 numTopItems = m_treeWidget->topLevelItemCount();
 
         // create the context menu
         QMenu menu(this);
@@ -522,57 +526,34 @@ namespace EMStudio
         {
             if (instanceSelected)
             {
-                QAction* resetTransformationAction = menu.addAction("Reset Transforms");
+                QAction* resetTransformationAction = menu.addAction("Reset transforms");
                 connect(resetTransformationAction, &QAction::triggered, this, &ActorsWindow::OnResetTransformationOfSelectedActorInstances);
 
                 menu.addSeparator();
 
-                QAction* hideAction = menu.addAction("Hide Selected Actor Instances");
+                QAction* hideAction = menu.addAction("Hide selected instance");
                 connect(hideAction, &QAction::triggered, this, &ActorsWindow::OnHideSelected);
 
-                QAction* unhideAction = menu.addAction("Unhide Selected Actor Instances");
+                QAction* unhideAction = menu.addAction("Show selected instance");
                 connect(unhideAction, &QAction::triggered, this, &ActorsWindow::OnUnhideSelected);
 
                 menu.addSeparator();
             }
 
-            if (actorSelected)
-            {
-                QAction* addAction = menu.addAction("Create New Actor Instances");
-                addAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                connect(addAction, &QAction::triggered, this, &ActorsWindow::OnCreateInstanceButtonClicked);
-            }
-
             if (instanceSelected)
             {
-                QAction* cloneAction = menu.addAction("Clone Selected Actor Instances");
-                cloneAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
+                QAction* cloneAction = menu.addAction("Copy selected");
                 connect(cloneAction, &QAction::triggered, this, &ActorsWindow::OnCloneSelected);
             }
 
-            QAction* removeAction = menu.addAction("Remove Selected Actors/Actor Instances");
-            removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
+            QAction* removeAction = menu.addAction("Remove selected");
             connect(removeAction, &QAction::triggered, this, &ActorsWindow::OnRemoveButtonClicked);
         }
 
         if (numTopItems > 0)
         {
-            QAction* clearAction = menu.addAction("Remove All Actors/Actor Instances");
-            clearAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Clear.png"));
+            QAction* clearAction = menu.addAction("Remove all");
             connect(clearAction, &QAction::triggered, this, &ActorsWindow::OnClearButtonClicked);
-
-            menu.addSeparator();
-        }
-
-        QAction* loadAction = menu.addAction("Load Actors From File");
-        loadAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        connect(loadAction, &QAction::triggered, GetMainWindow(), &MainWindow::OnFileOpenActor);
-
-        if (numSelected > 0)
-        {
-            QAction* saveAction = menu.addAction("Save Selected Actors");
-            saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
-            connect(saveAction, &QAction::triggered, GetMainWindow(), &MainWindow::OnFileSaveSelectedActors);
         }
 
         // show the menu at the given position
@@ -612,15 +593,15 @@ namespace EMStudio
     void ActorsWindow::SetControlsEnabled()
     {
         // check if table widget was set
-        if (mTreeWidget == nullptr)
+        if (m_treeWidget == nullptr)
         {
             return;
         }
 
         // get number of selected items and top level items
-        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
+        const QList<QTreeWidgetItem*> items = m_treeWidget->selectedItems();
         const uint32 numSelected = items.size();
-        const uint32 numTopItems = mTreeWidget->topLevelItemCount();
+        const uint32 numTopItems = m_treeWidget->topLevelItemCount();
 
         // check if at least one actor selected
         bool actorSelected = false;
@@ -635,20 +616,17 @@ namespace EMStudio
         }
 
         // set the enabled state of the buttons
-        mCreateInstanceButton->setEnabled(actorSelected);
-        mRemoveButton->setEnabled(numSelected != 0);
-        mSaveButton->setEnabled(numSelected != 0);
-        mClearButton->setEnabled(numTopItems > 0);
+        m_createInstanceAction->setEnabled(actorSelected);
+        m_saveAction->setEnabled(numSelected != 0);
     }
 
 
     void ActorsWindow::SetVisibilityFlags(bool isVisible)
     {
-        // create the command group
         MCore::CommandGroup commandGroup(isVisible ? "Unhide actor instances" : "Hide actor instances");
 
         // create the instances of the selected actors
-        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
+        const QList<QTreeWidgetItem*> items = m_treeWidget->selectedItems();
         const uint32 numItems = items.length();
         for (uint32 i = 0; i < numItems; ++i)
         {
@@ -662,8 +640,8 @@ namespace EMStudio
             // extract the id from the given item
             const uint32 id = GetIDFromTreeItem(item);
 
-            mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", id, AZStd::to_string(isVisible).c_str());
-            commandGroup.AddCommandString(mTempString);
+            m_tempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", id, AZStd::to_string(isVisible).c_str());
+            commandGroup.AddCommandString(m_tempString);
         }
 
         // execute the command group
@@ -674,7 +652,7 @@ namespace EMStudio
         }
 
         // update the interface
-        mPlugin->UpdateInterface();
+        m_plugin->UpdateInterface();
     }
 
 
@@ -684,8 +662,6 @@ namespace EMStudio
         {
             return MCORE_INVALIDINDEX32;
         }
-        return AzFramework::StringFunc::ToInt(FromQtString(item->text(1)).c_str());
+        return item->data(0, Qt::UserRole).toInt();
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/SceneManager/ActorsWindow.moc>

@@ -18,14 +18,12 @@
 #include <ScriptCanvas/Bus/NodeIdPair.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
-#include <ScriptCanvas/GraphCanvas/VersionControlledNodeBus.h>
 
 #include <Editor/GraphCanvas/DataInterfaces/ScriptCanvasVariableDataInterface.h>
 
 #include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <Editor/Include/ScriptCanvas/Components/EditorUtils.h>
 #include <Editor/Undo/ScriptCanvasGraphCommand.h>
-
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/EntitySaveDataBus.h>
@@ -50,8 +48,8 @@ namespace ScriptCanvasEditor
         , private GraphCanvas::GraphModelRequestBus::Handler
         , private GraphCanvas::SceneNotificationBus::Handler
         , private GraphItemCommandNotificationBus::Handler
-        , private VersionControlledNodeNotificationBus::MultiHandler
         , private GraphCanvas::ToastNotificationBus::MultiHandler
+        , private GeneralEditorNotificationBus::Handler
     {
     private:
         typedef AZStd::unordered_map< AZ::EntityId, AZ::EntityId > WrappedNodeGroupingMap;
@@ -117,6 +115,10 @@ namespace ScriptCanvasEditor
         void ReleaseVariableCounter(AZ::u32 variableCounter) override;
         ////
 
+        // RuntimeBus
+        AZ::Data::AssetId GetAssetId() const override { return m_assetId; }
+        ////
+
         // GraphCanvas::GraphModelRequestBus
         void RequestUndoPoint() override;
 
@@ -150,6 +152,7 @@ namespace ScriptCanvasEditor
 
         void ResetSlotToDefaultValue(const GraphCanvas::Endpoint& endpoint) override;
         void ResetReference(const GraphCanvas::Endpoint& endpoint) override;
+        void ResetProperty(const GraphCanvas::NodeId& nodeId, const AZ::Crc32& propertyId) override;
 
         void RemoveSlot(const GraphCanvas::Endpoint& endpoint) override;
         bool IsSlotRemovable(const GraphCanvas::Endpoint& endpoint) const override;
@@ -200,9 +203,13 @@ namespace ScriptCanvasEditor
         ///////////////////////////
 
         // EditorGraphRequestBus
+        void SetAssetId(const AZ::Data::AssetId& assetId) override { m_assetId = assetId; }
+
         void CreateGraphCanvasScene() override;
         void ClearGraphCanvasScene() override;
         void DisplayGraphCanvasScene() override;
+
+        void OnGraphCanvasSceneVisible() override;
 
         GraphCanvas::GraphId GetGraphCanvasGraphId() const override;
 
@@ -229,12 +236,16 @@ namespace ScriptCanvasEditor
         bool ConvertReferenceToVariableNode(const GraphCanvas::Endpoint& endpoint) override;
 
         void QueueVersionUpdate(const AZ::EntityId& graphCanvasNodeId) override;
+
+        bool IsRuntimeGraph() const override;
+        bool IsFunctionGraph() const override;
+
+        ScriptCanvas::Endpoint ConvertToScriptCanvasEndpoint(const GraphCanvas::Endpoint& endpoint) const override;
+        GraphCanvas::Endpoint ConvertToGraphCanvasEndpoint(const ScriptCanvas::Endpoint& endpoint) const override;
         ////
 
-        // VersionControlledNodeNotificationBus
-        void OnVersionConversionBegin() override;
-        void OnVersionConversionEnd() override;
-        ////
+        bool OnVersionConversionBegin(ScriptCanvas::Node& node);
+        void OnVersionConversionEnd(ScriptCanvas::Node& node);
 
         // EntitySaveDataGraphActionBus
         void OnSaveDataDirtied(const AZ::EntityId& savedElement) override;
@@ -252,9 +263,31 @@ namespace ScriptCanvasEditor
         void OnToastDismissed() override;
         ////
 
+        // GeneralEditorNotificationBus
+        void OnUndoRedoEnd() override;
+        ////
+
+        void SetAssetType(AZ::Data::AssetType);
+
         void ReportError(const ScriptCanvas::Node& node, const AZStd::string& errorSource, const AZStd::string& errorMessage) override;
 
         const GraphStatisticsHelper& GetNodeUsageStatistics() const;
+
+        // Finds and returns all nodes within the graph that are of the specified type
+        template <typename NodeType>
+        AZStd::vector<const NodeType*> GetNodesOfType() const
+        {
+            AZStd::vector<const NodeType*> nodes;
+            for (auto& nodeRef : m_graphData.m_nodes)
+            {
+                const NodeType* node = nodeRef->FindComponent<NodeType>();
+                if (node)
+                {
+                    nodes.push_back(node);
+                }
+            }
+            return nodes;
+        }
 
     protected:
         void PostRestore(const UndoData& restoredData);
@@ -264,10 +297,9 @@ namespace ScriptCanvasEditor
     private:
         Graph(const Graph&) = delete;
 
-        ScriptCanvas::Endpoint ConvertToScriptCanvasEndpoint(const GraphCanvas::Endpoint& endpoint) const;
-        AZ::EntityId          ConvertToScriptCanvasNodeId(const GraphCanvas::NodeId& nodeId) const;
-
-        GraphCanvas::Endpoint ConvertToGraphCanvasEndpoint(const ScriptCanvas::Endpoint& endpoint) const;        
+        void DisplayUpdateToast();
+        
+        AZ::EntityId          ConvertToScriptCanvasNodeId(const GraphCanvas::NodeId& nodeId) const;        
 
         GraphCanvas::NodePropertyDisplay* CreateDisplayPropertyForSlot(const AZ::EntityId& scriptCanvasNodeId, const ScriptCanvas::SlotId& scriptCanvasSlotId) const;
 
@@ -289,6 +321,8 @@ namespace ScriptCanvasEditor
         //// Version Update code
         AZStd::unordered_set< AZ::EntityId > m_queuedConvertingNodes;
         AZStd::unordered_set< AZ::EntityId > m_convertingNodes;
+        AZStd::unordered_multimap< AZ::EntityId, ScriptCanvas::SlotId > m_versionedSlots;
+        AZStd::unordered_set< AZStd::string > m_updateStrings;
 
         AZ::u32 m_variableCounter;
         AZ::EntityId m_wrapperNodeDropTarget;
@@ -314,5 +348,7 @@ namespace ScriptCanvasEditor
 
         //! Defaults to true to signal that this graph does not have the GraphCanvas stuff intermingled
         bool m_saveFormatConverted = true;
+
+        AZ::Data::AssetId m_assetId;
     };
 }

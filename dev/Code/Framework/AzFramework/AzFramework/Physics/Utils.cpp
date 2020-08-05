@@ -25,6 +25,7 @@
 #include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/ScriptCanvasPhysicsUtils.h>
 #include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 
 namespace Physics
 {
@@ -125,11 +126,31 @@ namespace Physics
         
         void ReflectWorldBus(AZ::ReflectContext* context)
         {
-            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
             {
                 behaviorContext->EBus<Physics::WorldRequestBus>("WorldRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Module, "physics")
+                    ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                     ->Event("GetGravity", &Physics::WorldRequestBus::Events::GetGravity)
                     ->Event("SetGravity", &Physics::WorldRequestBus::Events::SetGravity)
+                    ;
+            }
+        }
+
+        void ReflectWorldBodyBus(AZ::ReflectContext* context)
+        {
+            if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<Physics::WorldBodyRequestBus>("WorldBodyRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Module, "physics")
+                    ->Attribute(AZ::Script::Attributes::Category, "PhysX")
+                    ->Event("EnablePhysics", &WorldBodyRequests::EnablePhysics)
+                    ->Event("DisablePhysics", &WorldBodyRequests::DisablePhysics)
+                    ->Event("IsPhysicsEnabled", &WorldBodyRequests::IsPhysicsEnabled)
+                    ->Event("GetAabb", &WorldBodyRequests::GetAabb)
+                    ->Event("RayCast", &WorldBodyRequests::RayCast)
                     ;
             }
         }
@@ -164,6 +185,7 @@ namespace Physics
             AnimationConfiguration::Reflect(context);
             CharacterConfiguration::Reflect(context);
             ReflectWorldBus(context);
+            ReflectWorldBodyBus(context);
             CollisionFilteringRequests::Reflect(context);
             TriggerNotificationBusBehaviorHandler::Reflect(context);
             CollisionNotificationBusBehaviorHandler::Reflect(context);

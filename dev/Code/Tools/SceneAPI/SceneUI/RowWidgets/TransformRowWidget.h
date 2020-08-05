@@ -20,9 +20,9 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-namespace AzToolsFramework
+namespace AzQtComponents
 {
-    class PropertyVectorCtrl;
+    class VectorInput;
 }
 
 namespace AZ
@@ -71,16 +71,16 @@ namespace AZ
                 void GetTransform(AZ::Transform& transform) const;
                 const ExpandedTransform& GetExpandedTransform() const;
 
-                AzToolsFramework::PropertyVectorCtrl* GetTranslationWidget();
-                AzToolsFramework::PropertyVectorCtrl* GetRotationWidget();
-                AzToolsFramework::PropertyVectorCtrl* GetScaleWidget();
+                AzQtComponents::VectorInput* GetTranslationWidget();
+                AzQtComponents::VectorInput* GetRotationWidget();
+                AzQtComponents::VectorInput* GetScaleWidget();
 
             protected:
                 ExpandedTransform m_transform;
 
-                AzToolsFramework::PropertyVectorCtrl* m_translationWidget;
-                AzToolsFramework::PropertyVectorCtrl* m_rotationWidget;
-                AzToolsFramework::PropertyVectorCtrl* m_scaleWidget;
+                AzQtComponents::VectorInput* m_translationWidget;
+                AzQtComponents::VectorInput* m_rotationWidget;
+                AzQtComponents::VectorInput* m_scaleWidget;
             };
         } // namespace SceneUI
     } // namespace SceneAPI

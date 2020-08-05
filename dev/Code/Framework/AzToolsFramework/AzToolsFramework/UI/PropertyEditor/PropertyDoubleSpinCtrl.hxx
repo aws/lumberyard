@@ -20,10 +20,13 @@
 
 #pragma once
 
+namespace AzQtComponents
+{
+    class DoubleSpinBox;
+}
+
 namespace AzToolsFramework
 {
-    class DHQDoubleSpinbox;
-
     class PropertyDoubleSpinCtrl
         : public QWidget
     {
@@ -63,7 +66,7 @@ namespace AzToolsFramework
         void onChildSpinboxValueChange(double value);
 
     private:
-        DHQDoubleSpinbox* m_pSpinBox;
+        AzQtComponents::DoubleSpinBox* m_pSpinBox;
         double m_multiplier;
 
     protected:

@@ -75,7 +75,7 @@ namespace PhysXEditorTests
             idPair, &PhysX::EditorColliderComponentRequests::SetSphereRadius, sphereRadius);
 
         // Notify listeners that collider has changed
-        PhysX::ColliderComponentEventBus::Event(editorEntity->GetId(), &PhysX::ColliderComponentEvents::OnColliderChanged);
+        Physics::ColliderComponentEventBus::Event(editorEntity->GetId(), &Physics::ColliderComponentEvents::OnColliderChanged);
 
         AZStd::shared_ptr<Physics::World> editorWorld;
         Physics::EditorWorldBus::BroadcastResult(editorWorld, &Physics::EditorWorldRequests::GetEditorWorld);

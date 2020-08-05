@@ -14,7 +14,8 @@
             "Tests/RigidBodyComponentTests.cpp",
             "Tests/StaticRigidBodyComponentTests.cpp",
             "Tests/PrimitiveShapeFitterTests.cpp",
-            "Tests/PrimitiveShapeFitterTestData.cpp"
+            "Tests/PrimitiveShapeFitterTestData.cpp",
+            "Tests/ShapeGeometryTests.cpp"
         ]
     }
 }

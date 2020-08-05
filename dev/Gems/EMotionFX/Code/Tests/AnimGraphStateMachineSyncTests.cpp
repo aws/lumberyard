@@ -79,7 +79,7 @@ namespace EMotionFX
             motionNode->AddMotionId(motionId);
             motionNode->SetMotionPlaySpeed(playSpeed);
             motionNode->RecursiveOnChangeMotionSet(m_animGraphInstance, m_motionSet);
-            motionNode->PickNewActiveMotion(m_animGraphInstance, static_cast<AnimGraphMotionNode::UniqueData*>(motionNode->FindUniqueNodeData(m_animGraphInstance)));
+            motionNode->PickNewActiveMotion(m_animGraphInstance, static_cast<AnimGraphMotionNode::UniqueData*>(motionNode->FindOrCreateUniqueNodeData(m_animGraphInstance)));
         }
 
         void SetUp() override

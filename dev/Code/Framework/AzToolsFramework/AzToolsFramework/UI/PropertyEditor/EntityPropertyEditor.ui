@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>609</width>
+    <width>914</width>
     <height>1170</height>
    </rect>
   </property>
@@ -24,120 +24,38 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <widget class="QLabel" name="m_entityDetailsLabel">
-     <property name="text">
-      <string/>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-     <property name="margin">
-      <number>4</number>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="AzToolsFramework::IconButton" name="m_entityIcon">
-       <property name="minimumSize">
-        <size>
-         <width>30</width>
-         <height>30</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>30</width>
-         <height>30</height>
-        </size>
-       </property>
-       <property name="toolTip">
-        <string>Change entity icon</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QLabel" name="m_entityDetailsLabel">
        <property name="text">
         <string/>
        </property>
-       <property name="iconSize">
-        <size>
-         <width>30</width>
-         <height>30</height>
-        </size>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="margin">
+        <number>4</number>
        </property>
       </widget>
      </item>
-     <item row="0" column="1" colspan="2">
-      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,0">
-       <item>
-        <widget class="QLabel" name="m_entityNameLabel">
-         <property name="palette">
-          <palette>
-           <active>
-            <colorrole role="WindowText">
-             <brush brushstyle="SolidPattern">
-              <color alpha="255">
-               <red>255</red>
-               <green>153</green>
-               <blue>0</blue>
-              </color>
-             </brush>
-            </colorrole>
-           </active>
-           <inactive>
-            <colorrole role="WindowText">
-             <brush brushstyle="SolidPattern">
-              <color alpha="255">
-               <red>255</red>
-               <green>153</green>
-               <blue>0</blue>
-              </color>
-             </brush>
-            </colorrole>
-           </inactive>
-           <disabled>
-            <colorrole role="WindowText">
-             <brush brushstyle="SolidPattern">
-              <color alpha="255">
-               <red>120</red>
-               <green>120</green>
-               <blue>120</blue>
-              </color>
-             </brush>
-            </colorrole>
-           </disabled>
-          </palette>
-         </property>
-         <property name="text">
-          <string>Name</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="m_entityNameEditor">
-         <property name="readOnly">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="AzToolsFramework::IconButton" name="m_pinButton">
+     <item>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="AzToolsFramework::IconButton" name="m_entityIcon">
          <property name="minimumSize">
           <size>
-           <width>16</width>
-           <height>16</height>
+           <width>30</width>
+           <height>30</height>
           </size>
          </property>
          <property name="maximumSize">
           <size>
-           <width>16</width>
-           <height>16</height>
+           <width>30</width>
+           <height>30</height>
           </size>
          </property>
          <property name="toolTip">
-          <string>Open pinned inspector</string>
+          <string>Change entity icon</string>
          </property>
          <property name="styleSheet">
           <string notr="true"/>
@@ -145,22 +63,110 @@
          <property name="text">
           <string/>
          </property>
-         <property name="icon">
-          <iconset>
-           <normaloff>:/PropertyEditor/Resources/pin_button.png</normaloff>:/PropertyEditor/Resources/pin_button.png</iconset>
-         </property>
          <property name="iconSize">
           <size>
-           <width>16</width>
-           <height>16</height>
+           <width>30</width>
+           <height>30</height>
           </size>
          </property>
         </widget>
        </item>
+       <item row="0" column="1" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,0">
+         <item>
+          <widget class="QLabel" name="m_entityNameLabel">
+           <property name="palette">
+            <palette>
+             <active>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </active>
+             <inactive>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>153</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </inactive>
+             <disabled>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>120</red>
+                 <green>120</green>
+                 <blue>120</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </disabled>
+            </palette>
+           </property>
+           <property name="text">
+            <string>Name</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="m_entityNameEditor">
+           <property name="readOnly">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="m_pinButton">
+           <property name="minimumSize">
+            <size>
+             <width>16</width>
+             <height>16</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16</width>
+             <height>16</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Open pinned inspector</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true"/>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normaloff>:/PropertyEditor/Resources/pin_button.svg</normaloff>:/PropertyEditor/Resources/pin_button.svg</iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>16</width>
+             <height>16</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
       </layout>
      </item>
-    </layout>
-   </item>
+     
    <item>
     <widget class="QWidget" name="m_darkBox" native="true">
      <property name="enabled">
@@ -813,123 +819,52 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_10">
-     <property name="spacing">
-      <number>0</number>
-     </property>
-     <property name="leftMargin">
-      <number>2</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>2</number>
-     </property>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
-      <number>12</number>
-     </property>
-     <item>
-      <widget class="QPushButton" name="m_addComponentButton">
-       <property name="text">
-        <string>Add Component ▾</string>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="leftMargin">
+        <number>0</number>
        </property>
-      </widget>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>6</number>
+       </property>
+       <item>
+        <widget class="QPushButton" name="m_addComponentButton">
+         <property name="text">
+          <string>Add Component ▾</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
-    </layout>
-   </item>
-   <item>
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="m_horizontalLayout_search">
-     <property name="spacing">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>6</number>
-     </property>
-     <property name="bottomMargin">
-      <number>6</number>
-     </property>
      <item>
-      <widget class="QLineEdit" name="m_entitySearchBox">
-       <property name="styleSheet">
-        <string notr="true">
-                  selection-background-color: rgb(233, 99, 0);
-                  background: #6e7071;
-                  background-image: url(:/AssetBrowser/Resources/search.png);
-                  background-repeat: no-repeat;
-                  background-position: left;
-                  padding: 2 2 2 24;
-                  color: rgb(255, 255, 255);
-                </string>
-       </property>
-       <property name="frame">
-        <bool>false</bool>
-       </property>
-       <property name="placeholderText">
-        <string>Search...</string>
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="m_buttonClearFilter">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+      <layout class="QHBoxLayout" name="m_horizontalLayout_search">
+       <property name="spacing">
+        <number>0</number>
        </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>25</height>
-        </size>
+       <property name="topMargin">
+        <number>4</number>
        </property>
-       <property name="styleSheet">
-        <string notr="true">
-                  border: none;
-                  background: #6e7071;
-                </string>
+       <property name="bottomMargin">
+        <number>4</number>
        </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="flat">
-        <bool>false</bool>
-       </property>
-      </widget>
+       <item>
+        <widget class="QLineEdit" name="m_entitySearchBox">
+         <property name="placeholderText">
+          <string>Search...</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
-    </layout>
-   </item>
-   <item>
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>588</width>
-       <height>13</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
    <item>
     <widget class="QScrollArea" name="m_componentList">
      <property name="focusPolicy">
@@ -952,8 +887,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>591</width>
-        <height>895</height>
+          <width>894</width>
+          <height>885</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -964,7 +899,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <property name="spacing">
-        <number>12</number>
+        <number>0</number>
        </property>
        <property name="leftMargin">
         <number>0</number>
@@ -983,7 +918,8 @@
     </widget>
    </item>
   </layout>
-  <zorder>m_darkBox</zorder>
+   </item>
+  </layout>
  </widget>
  <customwidgets>
   <customwidget>

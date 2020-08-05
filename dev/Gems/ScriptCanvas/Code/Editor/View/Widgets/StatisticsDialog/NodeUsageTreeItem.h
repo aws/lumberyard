@@ -19,7 +19,7 @@
 #include <GraphCanvas/Widgets/NodePalette/TreeItems/IconDecoratedNodePaletteTreeItem.h>
 
 #include <Editor/View/Widgets/NodePalette/NodePaletteModel.h>
-#include <ScriptCanvas/Bus/DocumentContextBus.h>
+#include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Components/EditorUtils.h>
 
 namespace ScriptCanvasEditor

@@ -16,7 +16,6 @@ class QEvent;
 #include <AzCore/Component/EntityBus.h>
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEntityIdCtrl.hxx>
-#include <AzToolsFramework/UI/PropertyEditor/EntityIdQLabel.hxx>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/ComboBoxDataInterface.h>

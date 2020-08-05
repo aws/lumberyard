@@ -19,7 +19,6 @@
     "inlineSources": false,
     "inlineSourceMap": false,
     "sourceMap": true,
-    "noEmitOnError": true,
     "noImplicitAny": false,
     "preserveConstEnums": true,
     "emitDecoratorMetadata": true,

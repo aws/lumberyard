@@ -16,9 +16,11 @@
 #include "HashComputer.h"
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
-
+#include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Terrain/TerrainDataRequestBus.h>
-
+#include "MathConversion.h" 
+#include "CryCommon/IConsole.h"
 
 namespace MNM
 {
@@ -317,16 +319,84 @@ namespace MNM
         return true;
     }
 
+    void WorldVoxelizer::GetAZCollidersInAABB(const AABB& aabb, AZStd::vector<Physics::OverlapHit>& overlapHits)
+    {
+        Physics::BoxShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_dimensions = LYVec3ToAZVec3(aabb.GetSize());
+
+        Physics::OverlapRequest overlapRequest;
+        overlapRequest.m_pose = AZ::Transform::CreateTranslation(LYVec3ToAZVec3(aabb.GetCenter()));
+        overlapRequest.m_shapeConfiguration = &shapeConfiguration;
+        overlapRequest.m_queryType = Physics::QueryType::Static;
+
+        // there are multiple physics worlds out there (editor & default)
+        const AZ::Crc32 worldId = gEnv->IsEditor() && !gEnv->IsEditorGameMode() ? Physics::EditorPhysicsWorldId : Physics::DefaultPhysicsWorldId;
+        Physics::WorldRequestBus::EventResult(overlapHits, worldId, &Physics::WorldRequestBus::Events::Overlap, overlapRequest);
+    }
+
+    size_t WorldVoxelizer::RasterizeAZColliderGeometry(const AABB& aabb,  const AZStd::vector<Physics::OverlapHit>& overlapHits)
+    {
+        AZStd::vector<AZ::Vector3> verts;
+        AZStd::vector<AZ::u32> indices;
+
+        AZ::Aabb volumeAABB = LyAABBToAZAabb(aabb);
+
+        size_t triCount = 0;
+
+        for (const auto& overlapHit : overlapHits)
+        {
+            if (overlapHit.m_body && overlapHit.m_body->GetNativePointer() && overlapHit.m_shape && overlapHit.m_shape->GetNativePointer())
+            {
+                verts.clear();
+                indices.clear();
+
+                // most physics bodies just have world transforms, but some also have local transforms including terrain.
+                // we are not applying the local orientation because it causes terrain geometry to be oriented incorrectly 
+                const AZ::Transform worldTransform = overlapHit.m_body->GetTransform() * AZ::Transform::CreateTranslation(overlapHit.m_shape->GetLocalPose().first);
+
+                overlapHit.m_shape->GetGeometry(verts, indices, &volumeAABB);
+                if (!verts.empty())
+                {
+                    // TODO check the worldTransform and do simpler math if transform is identity or not scaled & rotated
+                    if (!indices.empty())
+                    {
+                        for (size_t i = 0; i < indices.size(); i += 3)
+                        {
+                            RasterizeTriangle(AZVec3ToLYVec3(worldTransform * verts[indices[i + 0]]), 
+                                              AZVec3ToLYVec3(worldTransform * verts[indices[i + 1]]), 
+                                              AZVec3ToLYVec3(worldTransform * verts[indices[i + 2]]));
+                        }
+
+                        triCount += indices.size() / 3;
+                    }
+                    else
+                    {
+                        // convex meshes just have a triangle list with no indices
+                        for (size_t i = 0; i < verts.size(); i += 3)
+                        {
+                            RasterizeTriangle(AZVec3ToLYVec3(worldTransform * verts[i + 0]), 
+                                              AZVec3ToLYVec3(worldTransform * verts[i + 1]), 
+                                              AZVec3ToLYVec3(worldTransform * verts[i + 2]));
+                        }
+
+                        triCount += verts.size() / 3;
+                    }
+                }
+            }
+        }
+
+        return triCount;
+    }
+
     PREFAST_SUPPRESS_WARNING(6262)
     size_t WorldVoxelizer::ProcessGeometry(uint32 hashValueSeed /* = 0 */, uint32 hashTest /* = 0 */, uint32* hashValue /* = 0 */, NavigationMeshEntityCallback pEntityCallback /* = NULL */)
     {
         size_t triCount = 0;
+        int entityCount = 0;
 
         const size_t MaxConsideredEntityCount = 2048;
         IPhysicalEntity* entities[MaxConsideredEntityCount] = { 0 };
         IPhysicalEntity** entityList = &entities[0];
-        int entityCount = gEnv->pPhysicalWorld->GetEntitiesInBox(m_volumeAABB.min, m_volumeAABB.max, entityList,
-                ent_static | ent_terrain | ent_sleeping_rigid | ent_rigid | ent_allocate_list | ent_addref_results, MaxConsideredEntityCount);
 
         pe_status_pos sp;
         pe_status_dynamics dyn;
@@ -334,77 +404,36 @@ namespace MNM
         Matrix34 worldTM;
         sp.pMtx3x4 = &worldTM;
 
-        HashComputer hash(hashValueSeed);
-        hash.Add((uint32)entityCount);
-
         const size_t MaxTerrainAABBCount = 16;
         AABB terrainAABB[MaxTerrainAABBCount];
         size_t terrainAABBCount = 0;
 
-        uint32 flags = 0; // not used yet
-        for (int i = 0; i < entityCount; ++i)
+        // step 1 is to create a hash based on the number of entities/colliders (including terrain), their transforms and AABBs
+        // step 2 is to compare that hash with the existing hash, if they're the same we skip re-voxelizing
+        HashComputer hash(hashValueSeed);
+
+        // 0 - CryPhysics only (default)
+        // 1 - CryPhysics and AZ::Physics
+        // 2 - AZ::Physics only
+        static ICVar *physicsIntegrationMode = gEnv->pConsole ? gEnv->pConsole->GetCVar("ai_NavPhysicsMode") : nullptr;
+        const bool legacyPhysicsEnabled = !physicsIntegrationMode || physicsIntegrationMode->GetIVal() < 2;
+        const bool azPhysicsEnabled = physicsIntegrationMode && physicsIntegrationMode->GetIVal() > 0;
+
+        if (legacyPhysicsEnabled && gEnv->pPhysicalWorld)
         {
-            IPhysicalEntity* entity = entityList[i];
+            entityCount = gEnv->pPhysicalWorld->GetEntitiesInBox(m_volumeAABB.min, m_volumeAABB.max, entityList,
+                    ent_static | ent_terrain | ent_sleeping_rigid | ent_rigid | ent_allocate_list | ent_addref_results, MaxConsideredEntityCount);
+            hash.Add((uint32)entityCount);
 
-            if (pEntityCallback && pEntityCallback(*entity, flags) == false)
-            {
-                entity->Release();
-                entityList[i] = NULL;
-                continue;
-            }
-
-            sp.ipart = 0;
-            MARK_UNUSED sp.partid;
-
-            while (entity->GetStatus(&sp))
-            {
-                if (sp.pGeomProxy && (sp.flagsOR & geom_colltype_player))
-                {
-                    if (sp.pGeomProxy->GetType() == GEOM_HEIGHTFIELD)
-                    {
-                        const AABB aabb = ComputeTerrainAABB(sp.pGeomProxy);
-                        if (terrainAABBCount < MaxTerrainAABBCount)
-                        {
-                            terrainAABB[terrainAABBCount++] = aabb;
-                        }
-
-                        if (aabb.GetSize().len2() > 0.0f)
-                        {
-                            hash.Add(aabb.min);
-                            hash.Add(aabb.max);
-                        }
-                    }
-                    else
-                    {
-                        hash.Add(sp.BBox[0]);
-                        hash.Add(sp.BBox[1]);
-                        hash.Add((uint32)sp.iSimClass);
-                        hash.Add(worldTM);
-                    }
-                }
-
-                ++sp.ipart;
-                MARK_UNUSED sp.partid;
-            }
-            MARK_UNUSED sp.ipart;
-        }
-
-        hash.Complete();
-
-        if (hashValue)
-        {
-            *hashValue = hash.GetValue();
-        }
-
-        if (hashTest != hash.GetValue())
-        {
-            terrainAABBCount = 0;
-
+            uint32 flags = 0;
             for (int i = 0; i < entityCount; ++i)
             {
                 IPhysicalEntity* entity = entityList[i];
-                if (!entity)
+
+                if (pEntityCallback && pEntityCallback(*entity, flags) == false)
                 {
+                    entity->Release();
+                    entityList[i] = NULL;
                     continue;
                 }
 
@@ -417,21 +446,25 @@ namespace MNM
                     {
                         if (sp.pGeomProxy->GetType() == GEOM_HEIGHTFIELD)
                         {
+                            const AABB aabb = ComputeTerrainAABB(sp.pGeomProxy);
                             if (terrainAABBCount < MaxTerrainAABBCount)
                             {
-                                const AABB& aabb = terrainAABB[terrainAABBCount++];
+                                terrainAABB[terrainAABBCount++] = aabb;
+                            }
 
-                                if (aabb.GetSize().len2() <= 0.0f)
-                                {
-                                    ++sp.ipart;
-                                    MARK_UNUSED sp.partid;
-
-                                    continue;
-                                }
+                            if (aabb.GetSize().len2() > 0.0f)
+                            {
+                                hash.Add(aabb.min);
+                                hash.Add(aabb.max);
                             }
                         }
-
-                        triCount += VoxelizeGeometry(sp.pGeomProxy, worldTM);
+                        else
+                        {
+                            hash.Add(sp.BBox[0]);
+                            hash.Add(sp.BBox[1]);
+                            hash.Add((uint32)sp.iSimClass);
+                            hash.Add(worldTM);
+                        }
                     }
 
                     ++sp.ipart;
@@ -441,17 +474,95 @@ namespace MNM
             }
         }
 
-        for (int i = 0; i < entityCount; ++i)
+        AZStd::vector<Physics::OverlapHit> overlapHits;
+        if(azPhysicsEnabled)
         {
-            if (entityList[i])
+            GetAZCollidersInAABB(m_volumeAABB, overlapHits);
+
+            hash.Add(static_cast<uint32>(overlapHits.size()));
+
+            for (const auto& overlapHit : overlapHits)
             {
-                entityList[i]->Release();
+                hash.Add(AZVec3ToLYVec3(overlapHit.m_body->GetAabb().GetMin()));
+                hash.Add(AZVec3ToLYVec3(overlapHit.m_body->GetAabb().GetMax()));
+                hash.Add(AZTransformToLYTransform(overlapHit.m_body->GetTransform()));
             }
         }
 
-        if (entities != entityList)
+        hash.Complete();
+
+        if (hashValue)
         {
-            gEnv->pPhysicalWorld->GetPhysUtils()->DeletePointer(entityList);
+            *hashValue = hash.GetValue();
+        }
+
+        if (hashTest != hash.GetValue())
+        {
+            if (azPhysicsEnabled && !overlapHits.empty())
+            {
+                triCount += RasterizeAZColliderGeometry(m_volumeAABB, overlapHits);
+            }
+
+            if (legacyPhysicsEnabled)
+            {
+                terrainAABBCount = 0;
+
+                for (int i = 0; i < entityCount; ++i)
+                {
+                    IPhysicalEntity* entity = entityList[i];
+                    if (!entity)
+                    {
+                        continue;
+                    }
+
+                    sp.ipart = 0;
+                    MARK_UNUSED sp.partid;
+
+                    while (entity->GetStatus(&sp))
+                    {
+                        if (sp.pGeomProxy && (sp.flagsOR & geom_colltype_player))
+                        {
+                            if (sp.pGeomProxy->GetType() == GEOM_HEIGHTFIELD)
+                            {
+                                if (terrainAABBCount < MaxTerrainAABBCount)
+                                {
+                                    const AABB& aabb = terrainAABB[terrainAABBCount++];
+
+                                    if (aabb.GetSize().len2() <= 0.0f)
+                                    {
+                                        ++sp.ipart;
+                                        MARK_UNUSED sp.partid;
+
+                                        continue;
+                                    }
+                                }
+                            }
+
+                            triCount += VoxelizeGeometry(sp.pGeomProxy, worldTM);
+                        }
+
+                        ++sp.ipart;
+                        MARK_UNUSED sp.partid;
+                    }
+                    MARK_UNUSED sp.ipart;
+                }
+            }
+        }
+
+        if (legacyPhysicsEnabled)
+        {
+            for (int i = 0; i < entityCount; ++i)
+            {
+                if (entityList[i])
+                {
+                    entityList[i]->Release();
+                }
+            }
+
+            if (entities != entityList)
+            {
+                gEnv->pPhysicalWorld->GetPhysUtils()->DeletePointer(entityList);
+            }
         }
 
         return triCount;

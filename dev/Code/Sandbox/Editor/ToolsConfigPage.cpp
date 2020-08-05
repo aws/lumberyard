@@ -20,6 +20,8 @@
 #include "KeyboardCustomizationSettings.h"
 #include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
+
 #include <QCompleter>
 #include <QDialogButtonBox>
 #include <QFileSystemModel>
@@ -444,7 +446,7 @@ ToolsConfigDialog::ToolsConfigDialog(QWidget* parent)
 {
     setWindowTitle(tr("Configure ToolBox Macros"));
     setLayout(new QVBoxLayout);
-    QTabWidget* tabs = new QTabWidget;
+    AzQtComponents::TabWidget* tabs = new AzQtComponents::TabWidget;
     layout()->addWidget(tabs);
     CToolsConfigPage* page = new CToolsConfigPage;
     tabs->addTab(page, page->windowTitle());

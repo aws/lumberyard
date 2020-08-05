@@ -74,7 +74,17 @@ namespace ScriptCanvasEditor
         void OnPropertyChanged() override
         {
             SignalValueChanged();
-        }        
+        }
+
+        void PushUndoBlock()
+        {
+            GeneralRequestBus::Broadcast(&GeneralRequests::PushPreventUndoStateUpdate);
+        }
+
+        void PopUndoBlock()
+        {
+            GeneralRequestBus::Broadcast(&GeneralRequests::PopPreventUndoStateUpdate);
+        }
 
         void PostUndoPoint()
         {
@@ -84,7 +94,9 @@ namespace ScriptCanvasEditor
 
         void SetValue(const DataType& valueType)
         {
+            PushUndoBlock();
             m_nodePropertyInterface->SetPropertyData(valueType);
+            PopUndoBlock();
             
             PostUndoPoint();
             PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);

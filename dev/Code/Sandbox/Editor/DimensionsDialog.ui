@@ -6,9 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>270</width>
-    <height>196</height>
+    <width>465</width>
+    <height>237</height>
    </rect>
+  </property>
+  <property name="focusPolicy">
+   <enum>Qt::StrongFocus</enum>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
@@ -19,6 +22,9 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <widget class="QRadioButton" name="Dim512">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>512 x 512</string>
         </property>
@@ -29,6 +35,9 @@
       </item>
       <item>
        <widget class="QRadioButton" name="Dim1024">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>1024 x 1024</string>
         </property>
@@ -36,6 +45,9 @@
       </item>
       <item>
        <widget class="QRadioButton" name="Dim2048">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>2048 x 2048</string>
         </property>
@@ -43,6 +55,9 @@
       </item>
       <item>
        <widget class="QRadioButton" name="Dim4096">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>4096 x 4096</string>
         </property>
@@ -50,6 +65,9 @@
       </item>
       <item>
        <widget class="QRadioButton" name="Dim8192">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>8192 x 8192</string>
         </property>
@@ -57,6 +75,9 @@
       </item>
       <item>
        <widget class="QRadioButton" name="Dim16384">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="text">
          <string>16384 x 16384</string>
         </property>
@@ -67,6 +88,9 @@
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
      <property name="standardButtons">
       <set>QDialogButtonBox::Ok</set>
      </property>

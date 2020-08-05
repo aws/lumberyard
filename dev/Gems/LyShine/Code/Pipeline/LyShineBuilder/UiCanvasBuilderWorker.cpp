@@ -211,6 +211,8 @@ namespace LyShine
             jobProduct.m_productSubID = 0;
             jobProduct.m_dependencies = AZStd::move(productDependencies);
             jobProduct.m_pathDependencies = AZStd::move(productPathDependencySet);
+            jobProduct.m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
+
             response.m_outputProducts.push_back(AZStd::move(jobProduct));
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         }

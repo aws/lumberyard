@@ -14,107 +14,19 @@
 
 #include <AzCore/JSON/document.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/Serialization/Json/JsonSerializationResult.h>
+#include <AzCore/Serialization/Json/JsonSerializationSettings.h>
 #include <AzCore/std/functional.h>
-#include <AzCore/std/string/osstring.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
-
-#include <AzCore/std/any.h>
-#include <AzCore/std/containers/unordered_map.h>
 
 namespace AZ
 {
     class BaseJsonSerializer;
-    class JsonRegistrationContext;
-    class SerializeContext;
-
-    using JsonIssueCallback = AZStd::function<JsonSerializationResult::ResultCode(AZStd::string_view message, 
-        JsonSerializationResult::ResultCode result, AZStd::string_view path)>;
-
-    //! Holds a collection of generic settings objects to be used by custom serializers.
-    class JsonSerializationMetadata
-    {
-    public:
-        //! Adds a new settings object to the metadata collection.
-        //! Only one object of the same type can be added.
-        //! Returns false if an object of this type was already added.
-        template<typename MetadataT>
-        bool Add(MetadataT&& data)
-        {
-            auto typeId = azrtti_typeid<MetadataT>();
-            auto iter = m_data.find(typeId);
-            if (iter != m_data.end())
-            {
-                AZ_Warning("JsonSerializationMetadata", false, "Metadata object of type %s already added", typeId.template ToString<OSString>().c_str());
-                return false;
-            }
-
-            m_data[typeId] = AZStd::any{AZStd::forward<MetadataT>(data)};
-            return true;
-        }
-
-        //! Returns settings of the type MetadataT, or null if no settings of that type exists.
-        template<typename MetadataT>
-        MetadataT* Find()
-        {
-            const auto& typeId = azrtti_typeid<MetadataT>();
-            auto iter = m_data.find(typeId);
-            if (iter != m_data.end())
-            {
-                return AZStd::any_cast<MetadataT>(&iter->second);
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
-        template<typename MetadataT>
-        const MetadataT* Find() const
-        {
-            return const_cast<JsonSerializationMetadata*>(this)->Find<MetadataT>();
-        }
-
-
-    private:
-
-        AZStd::unordered_map<AZ::TypeId, AZStd::any> m_data;
-    };
     
-    //! Optional settings used while loading a json document to an object.
-    struct JsonDeserializerSettings final
+    enum class JsonMergeApproach
     {
-        //! Optional serialize context. If not provided the default instance will be retrieved through an EBus call.
-        SerializeContext* m_serializeContext = nullptr;
-        //! Optional json registration context. If not provided the default instance will be retrieved through an EBus call.
-        JsonRegistrationContext* m_registrationContext = nullptr;
-        //! Optional callback when issues are encountered. If not provided reporting will be forwarded to the default issue reporting.
-        //! This can also be used to change the returned result code to alter the behavior of the deserializer.
-        JsonIssueCallback m_reporting;
-
-        //! If true this will clear all containers in the object before applying the data from the json document. If set to false
-        //! any values in the container will be kept and not overwritten.
-        //! Note that this does not apply to containers where elements have a fixed location such as smart pointers or AZStd::tuple.
-        bool m_clearContainers = false;
-
-        JsonSerializationMetadata m_metadata;
-    };
-    
-    //! Optional settings used while storing an object to a json document.
-    struct JsonSerializerSettings final
-    {
-        //! Optional serialize context. If not provided the default instance will be retrieved through an EBus call.
-        SerializeContext* m_serializeContext = nullptr;
-        //! Optional json registration context. If not provided the default instance will be retrieved through an EBus call.
-        JsonRegistrationContext* m_registrationContext = nullptr;
-        //! Optional callback when issues are encountered. If not provided reporting will be forwarded to the default issue reporting.
-        //! This can also be used to change the returned result code to alter the behavior of the serializer.
-        JsonIssueCallback m_reporting;
-
-        //! If true default value will be stored, otherwise only changed values will be stored. This will automatically be set to false
-        //! if the Store function is given a default object.
-        bool m_keepDefaults = false;
-
-        JsonSerializationMetadata m_metadata;
+        JsonPatch, //!< Uses JSON Patch to merge two json documents. See https://tools.ietf.org/html/rfc6902
+        JsonMergePatch //!< Uses JSON Merge Patch to merge two json documents. See https://tools.ietf.org/html/rfc7386
     };
 
     enum class JsonSerializerCompareResult
@@ -133,6 +45,41 @@ namespace AZ
         static const char* DefaultStringIdentifier;
         static const char* KeyFieldIdentifier;
         static const char* ValueFieldIdentifier;
+
+        //! Merges two json values together by applying "patch" to "target" using the selected merge algorithm.
+        //! This version of ApplyPatch is destructive to "target". If the patch can't be correctly applied it will
+        //! leave target in a partially patched state. Use the over version of ApplyPatch if target should be copied.
+        //! @param target The value where the patch will be applied to.
+        //! @param allocator The allocator associated with the document that holds the target.
+        //! @param patch The value holding the patch information.
+        //! @param approach The merge algorithm that will be used to apply the patch on top of the target.
+        //! @param settings Optional additional settings to control the way the patch is applied.
+        static JsonSerializationResult::ResultCode ApplyPatch(rapidjson::Value& target, rapidjson::Document::AllocatorType& allocator,
+            const rapidjson::Value& patch, JsonMergeApproach approach, JsonApplyPatchSettings settings = JsonApplyPatchSettings{});
+
+        //! Merges two json values together by applying "patch" to a copy of "output" and written to output using the
+        //! selected merge algorithm. This version of ApplyPatch is non-destructive to "source". If the patch couldn't be
+        //! fully applied "output" will be left set to an empty (default) object.
+        //! @param source A copy of source with the patch applied to it or an empty object if the patch couldn't be applied.
+        //! @param allocator The allocator associated with the document that holds the source.
+        //! @param target The value where the patch will be applied to.
+        //! @param patch The value holding the patch information.
+        //! @param approach The merge algorithm that will be used to apply the patch on top of the target.
+        //! @param settings Optional additional settings to control the way the patch is applied.
+        static JsonSerializationResult::ResultCode ApplyPatch(rapidjson::Value& output, rapidjson::Document::AllocatorType& allocator,
+            const rapidjson::Value& source, const rapidjson::Value& patch, JsonMergeApproach approach,
+            JsonApplyPatchSettings settings = JsonApplyPatchSettings{});
+
+        //! Creates a patch using the selected merge algorithm such that when applied to source it results in target.
+        //! @param patch The value containing the differences between source and target.
+        //! @param allocator The allocator associated with the document that will hold the patch.
+        //! @param source The value used as a starting point.
+        //! @param target The value that will result if the patch is applied to the source.
+        //! @param approach The algorithm that will be used when the patch is applied to the source.
+        //! @param settings Optional additional settings to control the way the patch is created.
+        static JsonSerializationResult::ResultCode CreatePatch(rapidjson::Value& patch, rapidjson::Document::AllocatorType& allocator,
+            const rapidjson::Value& source, const rapidjson::Value& target, JsonMergeApproach approach,
+            JsonCreatePatchSettings settings = JsonCreatePatchSettings{});
 
         //! Loads the data from the provided json value into the supplied object. The object is expected to be created before calling load.
         //! @param object Object where the data will be loaded into.
@@ -224,7 +171,7 @@ namespace AZ
         JsonSerialization(const JsonSerialization& rhs) = delete;
         JsonSerialization(JsonSerialization&& rhs) = delete;
 
-        static JsonSerializationResult::ResultCode DefaultIssueReporter(AZ::OSString& scratchBuffer, AZStd::string_view message,
+        static JsonSerializationResult::ResultCode DefaultIssueReporter(AZStd::string& scratchBuffer, AZStd::string_view message,
             JsonSerializationResult::ResultCode result, AZStd::string_view path);
 
         static JsonSerializerCompareResult CompareObject(const rapidjson::Value& lhs, const rapidjson::Value& rhs);

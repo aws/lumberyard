@@ -26,7 +26,9 @@
 #include <AzFramework/Math/MathUtils.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
+#include <QComboBox>
 #include <QFontMetrics>
+#include <AzQtComponents/Components/Widgets/VectorInput.h>
 
 #include <ui_InfoBar.h>
 
@@ -47,11 +49,6 @@ CInfoBar::CInfoBar(QWidget* parent)
     , ui(new Ui::CInfoBar)
 {
     ui->setupUi(this);
-
-    foreach(auto buttons, findChildren<QAbstractButton*>())
-    {
-        buttons->setProperty("class", "tiny");
-    }
 
     m_enabledVector = false;
     m_bVectorLock = false;
@@ -75,31 +72,15 @@ CInfoBar::CInfoBar(QWidget* parent)
     connect(ui->m_vectorLock, &QToolButton::clicked, this, &CInfoBar::OnVectorLock);
     connect(ui->m_lockSelection, &QToolButton::clicked, this, &CInfoBar::OnLockSelection);
 
-    auto doubleSpinBoxValueChanged = static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged);
-    connect(ui->m_moveSpeed, doubleSpinBoxValueChanged, this, &CInfoBar::OnUpdateMoveSpeed);
+    auto comboBoxTextChanged = static_cast<void(QComboBox::*)(const QString&)>(&QComboBox::currentTextChanged);
+    connect(ui->m_moveSpeed, comboBoxTextChanged, this, &CInfoBar::OnUpdateMoveSpeedText);
+    connect(ui->m_moveSpeed->lineEdit(), &QLineEdit::returnPressed, this, &CInfoBar::OnSpeedComboBoxEnter);
 
-    connect(ui->m_posCtrlX, &QNumberCtrl::valueChanged, this, &CInfoBar::OnVectorChanged);
-    connect(ui->m_posCtrlY, &QNumberCtrl::valueChanged, this, &CInfoBar::OnVectorChanged);
-    connect(ui->m_posCtrlZ, &QNumberCtrl::valueChanged, this, &CInfoBar::OnVectorChanged);
+    connect(ui->m_posCtrl, &AzQtComponents::VectorInput::valueChanged, this, &CInfoBar::OnVectorChanged);
 
-    connect(ui->m_posCtrlX, &QNumberCtrl::valueUpdated, this, &CInfoBar::OnVectorUpdateX);
-    connect(ui->m_posCtrlY, &QNumberCtrl::valueUpdated, this, &CInfoBar::OnVectorUpdateY);
-    connect(ui->m_posCtrlZ, &QNumberCtrl::valueUpdated, this, &CInfoBar::OnVectorUpdateZ);
-
-    connect(ui->m_posCtrlX, &QNumberCtrl::dragStarted, this, &CInfoBar::OnBeginVectorUpdate);
-    connect(ui->m_posCtrlY, &QNumberCtrl::dragStarted, this, &CInfoBar::OnBeginVectorUpdate);
-    connect(ui->m_posCtrlZ, &QNumberCtrl::dragStarted, this, &CInfoBar::OnBeginVectorUpdate);
-
-    connect(ui->m_posCtrlX, &QNumberCtrl::dragFinished, this, &CInfoBar::OnEndVectorUpdate);
-    connect(ui->m_posCtrlY, &QNumberCtrl::dragFinished, this, &CInfoBar::OnEndVectorUpdate);
-    connect(ui->m_posCtrlZ, &QNumberCtrl::dragFinished, this, &CInfoBar::OnEndVectorUpdate);
-
-    connect(ui->m_posCtrlX, &QNumberCtrl::mouseReleased, this, &CInfoBar::OnEnableIdleUpdate);
-    connect(ui->m_posCtrlY, &QNumberCtrl::mouseReleased, this, &CInfoBar::OnEnableIdleUpdate);
-    connect(ui->m_posCtrlZ, &QNumberCtrl::mouseReleased, this, &CInfoBar::OnEnableIdleUpdate);
-    connect(ui->m_posCtrlX, &QNumberCtrl::mousePressed, this, &CInfoBar::OnDisableIdleUpdate);
-    connect(ui->m_posCtrlY, &QNumberCtrl::mousePressed, this, &CInfoBar::OnDisableIdleUpdate);
-    connect(ui->m_posCtrlZ, &QNumberCtrl::mousePressed, this, &CInfoBar::OnDisableIdleUpdate);
+    // posCtrl is a VectorInput initialized via UI; as such, we can't construct it to have only 3 elements.
+    // We can just hide the W element as it is unused.
+    ui->m_posCtrl->getElements()[3]->setVisible(false);
 
     connect(ui->m_setVector, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSetVector);
     connect(ui->m_terrainCollision, &QToolButton::clicked, this, &CInfoBar::OnBnClickedTerrainCollision);
@@ -108,9 +89,6 @@ CInfoBar::CInfoBar(QWidget* parent)
     connect(ui->m_physDoStepBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedDoStepPhys);
     connect(ui->m_syncPlayerBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSyncplayer);
     connect(ui->m_gotoPos, &QToolButton::clicked, this, &CInfoBar::OnBnClickedGotoPosition);
-    connect(ui->m_speed_01, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSpeed01);
-    connect(ui->m_speed_1, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSpeed1);
-    connect(ui->m_speed_10, &QToolButton::clicked, this, &CInfoBar::OnBnClickedSpeed10);
     connect(ui->m_muteBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedMuteAudio);
     connect(ui->m_vrBtn, &QToolButton::clicked, this, &CInfoBar::OnBnClickedEnableVR);
 
@@ -126,7 +104,7 @@ CInfoBar::CInfoBar(QWidget* parent)
         ui->m_terrainCollision->setToolTip(checked ? tr("Disable Terrain Camera Collision") : tr("Enable Terrain Camera Collision"));
     });
     connect(ui->m_physicsBtn, &QAbstractButton::toggled, ui->m_physicsBtn, [this](bool checked) {
-        ui->m_physicsBtn->setToolTip(checked ? tr("Disable Physics/AI (Ctrl+P)") : tr("Enable Physics/AI (Ctrl+P)"));
+        ui->m_physicsBtn->setToolTip(checked ? tr("Stop Simulation (Ctrl+P)") : tr("Simulate (Ctrl+P)"));
     });
     connect(ui->m_physSingleStepBtn, &QAbstractButton::toggled, ui->m_physSingleStepBtn, [this](bool checked) {
         ui->m_physSingleStepBtn->setToolTip(checked ? tr("Disable Physics/AI Single-step Mode ('<' in Game Mode)") : tr("Enable Physics/AI Single-step Mode ('<' in Game Mode)"));
@@ -145,14 +123,17 @@ CInfoBar::CInfoBar(QWidget* parent)
     if (GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         ui->m_lockSelection->setVisible(false);
-        ui->m_posCtrlX->setVisible(false);
-        ui->m_posCtrlY->setVisible(false);
-        ui->m_posCtrlZ->setVisible(false);
+        ui->m_posCtrl->setVisible(false);
         ui->m_setVector->setVisible(false);
-        ui->label_2->setVisible(false);
-        ui->label_3->setVisible(false);
-        ui->label_4->setVisible(false);
         ui->m_vectorLock->setVisible(false);
+
+        // As we're hiding some of the icons, we have an extra spacer to deal with.
+        // We cannot set the visibility of separators, so we'll have to take it out.
+        int separatorIndex = layout()->indexOf(ui->verticalSpacer_2);
+        QLayoutItem* separator = layout()->takeAt(separatorIndex);
+
+        // takeAt() removes the item from the layout; delete to avoid memory leaks.
+        delete separator;
     }
 
     // hide the terrain collision button if terrain editing has been disabled
@@ -160,6 +141,17 @@ CInfoBar::CInfoBar(QWidget* parent)
     ui->m_terrainCollision->setVisible(false);
 #endif //#ifdef LY_TERRAIN_EDITOR
 
+    ui->m_moveSpeed->setValidator(new QDoubleValidator(m_minSpeed, m_maxSpeed, m_numDecimals, ui->m_moveSpeed));
+
+    // Populate the presets in the ComboBox
+    for (float presetValue : m_speedPresetValues)
+    {
+        ui->m_moveSpeed->addItem(QString().setNum(presetValue, 'f', m_numDecimals), presetValue);
+    }
+
+    SetSpeedComboBox(gSettings.cameraMoveSpeed);
+
+    ui->m_moveSpeed->setInsertPolicy(QComboBox::NoInsert);
 
     using namespace AzToolsFramework::ComponentModeFramework;
     EditorComponentModeNotificationBus::Handler::BusConnect(AzToolsFramework::GetEntityContextId());
@@ -233,44 +225,6 @@ void CInfoBar::OnEditorNotifyEvent(EEditorNotifyEvent event)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CInfoBar::OnVectorUpdateX()
-{
-    if (ui->m_posCtrlX->IsDragging() || m_currValue.x != ui->m_posCtrlX->value())
-    {
-        if (m_bVectorLock)
-        {
-            Vec3 v = GetVector();
-            SetVector(Vec3(v.x, v.x, v.x));
-        }
-        OnVectorUpdate(false);
-    }
-}
-
-void CInfoBar::OnVectorUpdateY()
-{
-    if (ui->m_posCtrlY->IsDragging() || m_currValue.y != ui->m_posCtrlY->value())
-    {
-        if (m_bVectorLock)
-        {
-            Vec3 v = GetVector();
-            SetVector(Vec3(v.y, v.y, v.y));
-        }
-        OnVectorUpdate(false);
-    }
-}
-
-void CInfoBar::OnVectorUpdateZ()
-{
-    if (ui->m_posCtrlZ->IsDragging() || m_currValue.z != ui->m_posCtrlZ->value())
-    {
-        if (m_bVectorLock)
-        {
-            Vec3 v = GetVector();
-            SetVector(Vec3(v.z, v.z, v.z));
-        }
-        OnVectorUpdate(false);
-    }
-}
 
 void CInfoBar::OnVectorChanged()
 {
@@ -285,7 +239,6 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
     {
         return;
     }
-
 
     Vec3 v = GetVector();
 
@@ -504,10 +457,11 @@ void CInfoBar::IdleUpdate()
         m_sLastText = str;
     }
 
-    if (gSettings.cameraMoveSpeed != m_prevMoveSpeed)
+    if (gSettings.cameraMoveSpeed != m_prevMoveSpeed &&
+        !ui->m_moveSpeed->lineEdit()->hasFocus())
     {
         m_prevMoveSpeed = gSettings.cameraMoveSpeed;
-        ui->m_moveSpeed->setValue(gSettings.cameraMoveSpeed);
+        SetSpeedComboBox(gSettings.cameraMoveSpeed);
     }
 
     {
@@ -711,9 +665,6 @@ void CInfoBar::IdleUpdate()
             undoString = QStringLiteral("Scale Object(s)");
             break;
         }
-        ui->m_posCtrlX->EnableUndo(undoString);
-        ui->m_posCtrlY->EnableUndo(undoString);
-        ui->m_posCtrlZ->EnableUndo(undoString);
 
         // edit mode changed, we must update the number values
         updateDisplayVector = true;
@@ -729,8 +680,6 @@ void CInfoBar::IdleUpdate()
         m_bSelectionChanged = false;
     }
 
-    // If there is a drag operation in progress, always update the number values
-    updateDisplayVector |= m_bDragMode && (ui->m_posCtrlX->IsDragging() || ui->m_posCtrlY->IsDragging() || ui->m_posCtrlZ->IsDragging());
     if (updateDisplayVector)
     {
         SetVector(v);
@@ -757,10 +706,9 @@ void CInfoBar::SetVector(const Vec3& v)
 
     if (m_currValue != v)
     {
-        static const double fPREC = 1e-4;
-        ui->m_posCtrlX->setValue(Round(v.x, fPREC));
-        ui->m_posCtrlY->setValue(Round(v.y, fPREC));
-        ui->m_posCtrlZ->setValue(Round(v.z, fPREC));
+        ui->m_posCtrl->setValuebyIndex(v.x, 0);
+        ui->m_posCtrl->setValuebyIndex(v.y, 1);
+        ui->m_posCtrl->setValuebyIndex(v.z, 2);
         m_currValue = v;
     }
 }
@@ -768,9 +716,9 @@ void CInfoBar::SetVector(const Vec3& v)
 Vec3 CInfoBar::GetVector()
 {
     Vec3 v;
-    v.x = ui->m_posCtrlX->value();
-    v.y = ui->m_posCtrlY->value();
-    v.z = ui->m_posCtrlZ->value();
+    v.x = ui->m_posCtrl->getElements()[0]->getValue();
+    v.y = ui->m_posCtrl->getElements()[1]->getValue();
+    v.z = ui->m_posCtrl->getElements()[2]->getValue();
     m_currValue = v;
     return v;
 }
@@ -780,10 +728,7 @@ void CInfoBar::EnableVector(bool enable)
     if (m_enabledVector != enable)
     {
         m_enabledVector = enable;
-        ui->m_posCtrlX->setEnabled(enable);
-        ui->m_posCtrlY->setEnabled(enable);
-        ui->m_posCtrlZ->setEnabled(enable);
-
+        ui->m_posCtrl->setEnabled(enable);
         ui->m_vectorLock->setEnabled(enable);
         ui->m_setVector->setEnabled(enable);
     }
@@ -798,57 +743,54 @@ void CInfoBar::SetVectorLock(bool bVectorLock)
 
 void CInfoBar::SetVectorRange(float min, float max)
 {
-    // We call our custom override of SetRange so that we can avoid generating Qt messages.
-    ui->m_posCtrlX->SetRange(min, max);
-    ui->m_posCtrlY->SetRange(min, max);
-    ui->m_posCtrlZ->SetRange(min, max);
+    // Worth noting that this gets called every IdleUpdate, so it is necessary to make sure
+    // setting the min/max doesn't result in the Qt event queue being pumped
+    ui->m_posCtrl->setMinimum(min);
+    ui->m_posCtrl->setMaximum(max);
 }
 
 void CInfoBar::OnVectorLock()
 {
-    // TODO: Add your control notification handler code here
     SetVectorLock(ui->m_vectorLock->isChecked());
 }
 
 void CInfoBar::OnLockSelection()
 {
-    // TODO: Add your control notification handler code here
     bool locked = ui->m_lockSelection->isChecked();
     ui->m_lockSelection->setChecked(locked);
     m_bSelectionLocked = (locked) ? true : false;
     GetIEditor()->LockSelection(m_bSelectionLocked);
 }
 
-void CInfoBar::OnUpdateMoveSpeed()
+void CInfoBar::OnUpdateMoveSpeedText(const QString& text)
 {
-    gSettings.cameraMoveSpeed = ui->m_moveSpeed->value();
+    gSettings.cameraMoveSpeed = aznumeric_cast<float>(Round(text.toDouble(), m_speedStep));
+}
+
+void CInfoBar::OnSpeedComboBoxEnter()
+{
+    ui->m_moveSpeed->clearFocus();
 }
 
 void CInfoBar::OnInitDialog()
 {
     QFontMetrics metrics({});
-    int width = metrics.boundingRect("-9999.99").width() * 1.1;
+    int width = metrics.boundingRect("-9999.99").width() * m_fieldWidthMultiplier;
 
-    ui->m_posCtrlX->setEnabled(false);
-    ui->m_posCtrlX->setMaximumWidth(width);
-    ui->m_posCtrlY->setEnabled(false);
-    ui->m_posCtrlY->setMaximumWidth(width);
-    ui->m_posCtrlZ->setEnabled(false);
-    ui->m_posCtrlZ->setMaximumWidth(width);
+    ui->m_posCtrl->setEnabled(false);
+    ui->m_posCtrl->getElements()[0]->setFixedWidth(width);
+    ui->m_posCtrl->getElements()[1]->setFixedWidth(width);
+    ui->m_posCtrl->getElements()[2]->setFixedWidth(width);
     ui->m_setVector->setEnabled(false);
+
+    ui->m_moveSpeed->setFixedWidth(width);
 
     ui->m_physicsBtn->setEnabled(false);
     ui->m_physSingleStepBtn->setEnabled(false);
     ui->m_physDoStepBtn->setEnabled(false);
-
-    ui->m_moveSpeed->setRange(0.01, 100);
-    ui->m_moveSpeed->setSingleStep(0.1);
-
-    ui->m_moveSpeed->setValue(gSettings.cameraMoveSpeed);
-
+    
     ui->m_muteBtn->setChecked(gSettings.bMuteAudio);
     Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, gSettings.bMuteAudio ? m_oMuteAudioRequest : m_oUnmuteAudioRequest);
-    ui->m_moveSpeed->setValue(gSettings.cameraMoveSpeed);
 
     //This is here just in case this class hasn't been created before
     //a VR headset was initialized
@@ -861,15 +803,6 @@ void CInfoBar::OnInitDialog()
     AZ::VR::VREventBus::Handler::BusConnect();
 }
 
-void CInfoBar::OnEnableIdleUpdate()
-{
-    m_idleUpdateEnabled = true;
-}
-void CInfoBar::OnDisableIdleUpdate()
-{
-    m_idleUpdateEnabled = false;
-}
-
 void CInfoBar::OnHMDInitialized()
 {
     ui->m_vrBtn->setEnabled(true);
@@ -878,19 +811,6 @@ void CInfoBar::OnHMDInitialized()
 void CInfoBar::OnHMDShutdown()
 {
     ui->m_vrBtn->setEnabled(false);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CInfoBar::OnBeginVectorUpdate()
-{
-    m_lastValue = GetVector();
-    m_bDragMode = true;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CInfoBar::OnEndVectorUpdate()
-{
-    m_bDragMode = false;
 }
 
 void CInfoBar::OnBnClickedTerrainCollision()
@@ -944,30 +864,6 @@ void CInfoBar::OnBnClickedSetVector()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CInfoBar::OnBnClickedSpeed01()
-{
-    ui->m_moveSpeed->setValue(0.1);
-    OnUpdateMoveSpeed();
-    MainWindow::instance()->setFocus();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CInfoBar::OnBnClickedSpeed1()
-{
-    ui->m_moveSpeed->setValue(1);
-    OnUpdateMoveSpeed();
-    MainWindow::instance()->setFocus();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CInfoBar::OnBnClickedSpeed10()
-{
-    ui->m_moveSpeed->setValue(10);
-    OnUpdateMoveSpeed();
-    MainWindow::instance()->setFocus();
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CInfoBar::OnBnClickedMuteAudio()
 {
     gSettings.bMuteAudio = !gSettings.bMuteAudio;
@@ -991,6 +887,21 @@ void CInfoBar::EnteredComponentMode(const AZStd::vector<AZ::Uuid>& /*componentMo
 void CInfoBar::LeftComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
 {
     ui->m_physicsBtn->setEnabled(true);
+}
+
+void CInfoBar::SetSpeedComboBox(double value)
+{
+    value = AZStd::clamp(Round(value, m_speedStep), m_minSpeed, m_maxSpeed);
+
+    int index = ui->m_moveSpeed->findData(value);
+    if (index != -1)
+    {
+        ui->m_moveSpeed->setCurrentIndex(index);
+    }
+    else
+    {
+        ui->m_moveSpeed->lineEdit()->setText(QString().setNum(value, 'f', m_numDecimals));
+    }
 }
 
 #include <InfoBar.moc>

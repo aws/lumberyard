@@ -52,6 +52,7 @@ namespace EMotionFX
 
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
             void Reset() override;
+            void Update() override;
             const AZStd::vector<AnimGraphNode*>& GetActiveStates(); // TODO: Make constant see if there is a way to keep it up to date and allow access to the array directly.
 
             uint32 Save(uint8* outputBuffer) const override;
@@ -75,13 +76,14 @@ namespace EMotionFX
         void RecursiveReinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
+        void RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance) override;
+
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
         void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
-        void RecursiveResetUniqueData(AnimGraphInstance* animGraphInstance) override;
-        void RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        void RecursiveResetUniqueDatas(AnimGraphInstance* animGraphInstance) override;
         void RecursiveResetFlags(AnimGraphInstance* animGraphInstance, uint32 flagsToDisable = 0xffffffff) override;
 
         const char* GetPaletteName() const override                     { return "State Machine"; }
@@ -171,7 +173,7 @@ namespace EMotionFX
          * @param[in] animGraphInstance The anim graph instance to check.
          * @return True in case the state machine is transitioning at the moment, false in case a state is fully active and blended in.
          */
-        bool IsTransitioning(const AnimGraphInstance* animGraphInstance) const;
+        bool IsTransitioning(AnimGraphInstance* animGraphInstance) const;
 
         /**
          * Check if the given transition is currently active.
@@ -179,7 +181,7 @@ namespace EMotionFX
          * @param[in] animGraphInstance The anim graph instance to check.
          * @return True in case the transition is active, on the transition stack and currently transitioning, false if not.
          */
-        bool IsTransitionActive(const AnimGraphStateTransition* transition, const AnimGraphInstance* animGraphInstance) const;
+        bool IsTransitionActive(const AnimGraphStateTransition* transition, AnimGraphInstance* animGraphInstance) const;
 
         /**
          * Get the latest active transition. The latest active transition is the one that got started most recently, is still transitioning
@@ -187,14 +189,14 @@ namespace EMotionFX
          * @param[in] animGraphInstance The instance for the state machine to check.
          * @result The latest active transition.
          */
-        AnimGraphStateTransition* GetLatestActiveTransition(const AnimGraphInstance* animGraphInstance) const;
+        AnimGraphStateTransition* GetLatestActiveTransition(AnimGraphInstance* animGraphInstance) const;
 
         /**
          * Get all currently active transitions.
          * @param[in] animGraphInstance The anim graph instance to check.
          * @return Transition stack containing all active transitions. An empty stack means that there is no transition active currently.
          */
-        const AZStd::vector<AnimGraphStateTransition*>& GetActiveTransitions(const AnimGraphInstance* animGraphInstance) const;
+        const AZStd::vector<AnimGraphStateTransition*>& GetActiveTransitions(AnimGraphInstance* animGraphInstance) const;
 
         AnimGraphStateTransition* FindTransition(AnimGraphInstance* animGraphInstance, AnimGraphNode* currentState, AnimGraphNode* targetState) const;
 
@@ -284,7 +286,7 @@ namespace EMotionFX
 
         bool IsTransitioning(const UniqueData* uniqueData) const;
 
-        bool IsLatestActiveTransitionDone(const AnimGraphInstance* animGraphInstance, const UniqueData* uniqueData) const;
+        bool IsLatestActiveTransitionDone(AnimGraphInstance* animGraphInstance, const UniqueData* uniqueData) const;
 
         void UpdateExitStateReachedFlag(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void StartTransition(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData, AnimGraphStateTransition* transition, bool calledFromWithinUpdate = false);

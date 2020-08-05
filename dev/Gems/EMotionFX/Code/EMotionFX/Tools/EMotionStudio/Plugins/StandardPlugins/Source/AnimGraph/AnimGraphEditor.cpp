@@ -41,7 +41,7 @@ namespace EMotionFX
     {
         QHBoxLayout* mainLayout = new QHBoxLayout();
         QLabel* iconLabel = new QLabel(this);
-        iconLabel->setPixmap(QPixmap(":/EMotionFX/AnimGraph.png").scaled(QSize(32, 32), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+        iconLabel->setPixmap(QPixmap(":/EMotionFX/AnimGraphComponent.svg").scaled(QSize(32, 32), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         mainLayout->addWidget(iconLabel, 0, Qt::Alignment(Qt::AlignLeft | Qt::AlignTop));
         
         QVBoxLayout* vLayout = new QVBoxLayout();
@@ -274,6 +274,8 @@ namespace EMotionFX
 
         // enable signals
         m_motionSetComboBox->blockSignals(false);
+        // Set ComboBox Name
+        m_motionSetComboBox->setObjectName("EMFX.AttributesWindowWidget.AnimGraph.MotionSetComboBox");
     }
 
 

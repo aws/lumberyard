@@ -47,12 +47,16 @@ namespace ScriptCanvasEditor
         void SetFilter(const QString& filter);
 
         QCompleter* GetVariableCompleter();
-        void TryCreateVariableByTypeName(const AZStd::string& typeName);        
+        void TryCreateVariableByTypeName(const AZStd::string& typeName);
 
         // QObject
         void hideEvent(QHideEvent* hideEvent) override;
         void showEvent(QShowEvent* showEvent) override;
         ////
+
+        const DataTypePaletteModel* GetVariableTypePaletteModel() const;
+        AZStd::vector< AZ::TypeId > GetArrayTypes() const;
+        AZStd::vector< AZ::TypeId > GetMapTypes() const;
 
     public slots:
         void OnClicked(const QModelIndex& modelIndex);

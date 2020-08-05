@@ -11,7 +11,9 @@
 */
 #include "StdAfx.h"
 #include "PropertyRowWidget.hxx"
-#include "PropertyQTConstants.h"
+
+#include <AzQtComponents/Components/StyleManager.h>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
@@ -27,6 +29,8 @@ AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: con
 #include <QMessageBox>
 AZ_POP_DISABLE_WARNING
 
+static const int LabelColumnStretch = 2;
+static const int ValueColumnStretch = 3;
 
 namespace AzToolsFramework
 {
@@ -42,7 +46,7 @@ namespace AzToolsFramework
 
         m_mainLayout = new QHBoxLayout();
         m_mainLayout->setSpacing(0);
-        m_mainLayout->setContentsMargins(PropertyQTConstant_LeftMargin, 1, PropertyQTConstant_RightMargin, 1);
+        m_mainLayout->setContentsMargins(0, 1, 0, 1);
 
         m_leftHandSideLayout = new QHBoxLayout(nullptr);
         m_middleLayout = new QHBoxLayout(nullptr);
@@ -50,7 +54,7 @@ namespace AzToolsFramework
 
         m_leftHandSideLayout->setSpacing(0);
         m_middleLayout->setSpacing(0);
-        m_rightHandSideLayout->setSpacing(0);
+        m_rightHandSideLayout->setSpacing(4);
         m_leftHandSideLayout->setContentsMargins(0, 0, 0, 0);
         m_middleLayout->setContentsMargins(0, 0, 0, 0);
         m_rightHandSideLayout->setContentsMargins(0, 0, 0, 0);
@@ -64,12 +68,16 @@ namespace AzToolsFramework
         UpdateIndicator(nullptr);
 
         m_leftAreaContainer = new QWidget(this);
-        m_mainLayout->addWidget(m_leftAreaContainer, 0, Qt::AlignLeft);
-        m_mainLayout->addLayout(m_middleLayout, 1);
-        m_mainLayout->addLayout(m_rightHandSideLayout, 0);
+        m_middleAreaContainer = new QWidget(this);
+        const int minimumControlWidth = 192;
+        m_middleAreaContainer->setMinimumWidth(minimumControlWidth);
+        m_mainLayout->addWidget(m_leftAreaContainer, LabelColumnStretch, Qt::AlignLeft);
+        m_mainLayout->addWidget(m_middleAreaContainer, ValueColumnStretch);
         m_leftAreaContainer->setLayout(m_leftHandSideLayout);
+        m_middleAreaContainer->setLayout(m_middleLayout);
 
-        m_leftAreaContainer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
+        m_middleLayout->addStretch();
+        m_middleLayout->addLayout(m_rightHandSideLayout);
 
 
         m_indent = new QSpacerItem(1, 1, QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -78,13 +86,13 @@ namespace AzToolsFramework
 
         m_leftHandSideLayout->addSpacerItem(m_indent);
 
-        m_nameLabel = aznew QLabel(this);
+        m_nameLabel = aznew AzQtComponents::ElidingLabel(this);
         m_nameLabel->setObjectName("Name");
-        m_nameLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
+        m_nameLabel->setContentsMargins(4,0,0,0); // Add 4px to match CardHeader
         m_nameLabel->setFixedHeight(16);
 
         m_defaultLabel = aznew QLabel(this);
-        m_middleLayout->addWidget(m_defaultLabel);
+        m_middleLayout->insertWidget(0, m_defaultLabel, 1);
         m_defaultLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         m_defaultLabel->hide();
         m_defaultLabel->setFixedHeight(16);
@@ -167,35 +175,29 @@ namespace AzToolsFramework
 
     void PropertyRowWidget::createContainerButtons()
     {
-        static QIcon s_iconClear(":/PropertyEditor/Resources/trash-small.png");
-        static QIcon s_iconAdd(":/PropertyEditor/Resources/list-add-small.png");
+        static QIcon s_iconClear(QStringLiteral(":/stylesheet/img/UI20/delete-16.svg"));
+        static QIcon s_iconAdd(QStringLiteral(":/stylesheet/img/UI20/add-16.svg"));
 
         if (!m_containerClearButton)
         {
             // add those extra controls on the right hand side
-            m_containerClearButton = new QPushButton(this);
-            m_containerClearButton->setFlat(true);
-            //m_containerClearButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
-            m_containerClearButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            m_containerClearButton->setFixedSize(QSize(16, 16));
+            m_containerClearButton = new QToolButton(this);
+            m_containerClearButton->setAutoRaise(true);
             m_containerClearButton->setIcon(s_iconClear);
             m_containerClearButton->setToolTip(tr("Remove all elements"));
 
-            m_containerAddButton = new QPushButton(this);
-            m_containerAddButton->setFlat(true);
-            m_containerAddButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
-            m_containerAddButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            m_containerAddButton->setFixedSize(QSize(16, 16));
+            m_containerAddButton = new QToolButton(this);
+            m_containerAddButton->setAutoRaise(true);
             m_containerAddButton->setIcon(s_iconAdd);
             m_containerAddButton->setToolTip(tr("Add new child element"));
 
-            m_rightHandSideLayout->insertWidget(0, m_containerClearButton);
-            m_rightHandSideLayout->insertWidget(1, m_containerAddButton);
+            m_rightHandSideLayout->insertWidget(0, m_containerAddButton);
+            m_rightHandSideLayout->insertWidget(1, m_containerClearButton);
 
             UpdateEnabledState();
 
-            connect(m_containerClearButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedClearContainerButton);
-            connect(m_containerAddButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedAddElementButton);
+            connect(m_containerClearButton, &QToolButton::clicked, this, &PropertyRowWidget::OnClickedClearContainerButton);
+            connect(m_containerAddButton, &QToolButton::clicked, this, &PropertyRowWidget::OnClickedAddElementButton);
         }
     }
 
@@ -321,7 +323,6 @@ namespace AzToolsFramework
         }
 
         UpdateDefaultLabel(dataNode);
-        m_leftAreaContainer->setMinimumWidth(CalculateLabelWidth());
 
         if (m_containerEditable)
         {
@@ -354,17 +355,14 @@ namespace AzToolsFramework
         {
             if (!m_elementRemoveButton)
             {
-                static QIcon s_iconRemove(":/PropertyEditor/Resources/cross-small.png");
-                m_elementRemoveButton = new QPushButton(this);
-                m_elementRemoveButton->setFlat(true);
-                m_elementRemoveButton->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
-                m_elementRemoveButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-                m_elementRemoveButton->setFixedSize(QSize(16, 16));
+                static QIcon s_iconRemove(QStringLiteral(":/stylesheet/img/UI20/delete-16.svg"));
+                m_elementRemoveButton = new QToolButton(this);
+                m_elementRemoveButton->setAutoRaise(true);
                 m_elementRemoveButton->setIcon(s_iconRemove);
                 m_elementRemoveButton->setToolTip(tr("Remove this element"));
                 m_elementRemoveButton->setDisabled(m_readOnly);
                 m_rightHandSideLayout->insertWidget(m_rightHandSideLayout->count(), m_elementRemoveButton);
-                connect(m_elementRemoveButton, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedRemoveElementButton);
+                connect(m_elementRemoveButton, &QToolButton::clicked, this, &PropertyRowWidget::OnClickedRemoveElementButton);
                 m_elementRemoveButton->setVisible(!m_parentRow->m_isFixedSizeOrSmartPtrContainer);
             }
         }
@@ -390,37 +388,14 @@ namespace AzToolsFramework
         return m_nameLabel->text();
     }
 
-    QString PropertyRowWidget::MakeFilterHighlightedName(const QString& name, const QString& filter)
-    {
-        const QString BACKGROUND_COLOR{ "#707070" };
-        QString tagStart = "<span style=\"background-color: " + BACKGROUND_COLOR + "\">";
-        QString tagEnd = "</span>";
-
-        QString result = name;
-
-        if (!filter.isEmpty())
-        {
-            int highlightTextIndex = 0;
-            do
-            {
-                highlightTextIndex = result.lastIndexOf(filter, highlightTextIndex - 1, Qt::CaseInsensitive);
-                if (highlightTextIndex >= 0)
-                {
-                    result.insert(highlightTextIndex + filter.length(), tagEnd);
-                    result.insert(highlightTextIndex, tagStart);
-                }
-            } while (highlightTextIndex > 0);
-        }
-
-        return result;
-    }
-
     void PropertyRowWidget::SetNameLabel(const char* text)
     {
-        QString label = MakeFilterHighlightedName(QString(text), m_currentFilterString);
+        QString label{ text };
         m_nameLabel->setText(label);
         m_nameLabel->setVisible(!label.isEmpty());
-        m_leftAreaContainer->setMinimumWidth(CalculateLabelWidth());
+        // setting the stretches to 0 in case of an empty label really hides the label (i.e. even the reserved space)
+        m_mainLayout->setStretch(0, label.isEmpty() ? 0 : LabelColumnStretch);
+        m_mainLayout->setStretch(1, label.isEmpty() ? 0 : ValueColumnStretch);
         m_identifier = AZ::Crc32(text);
     }
 
@@ -449,9 +424,7 @@ namespace AzToolsFramework
         style()->polish(this);
         update();
 
-        m_nameLabel->style()->unpolish(m_nameLabel);
-        m_nameLabel->style()->polish(m_nameLabel);
-        m_nameLabel->update();
+        AzQtComponents::StyleManager::repolishStyleSheet(m_nameLabel);
     }
 
     void PropertyRowWidget::OnValuesUpdated()
@@ -817,7 +790,7 @@ namespace AzToolsFramework
         AZ_Assert(m_initialized, "You must initialize a container before you can embed a child widget");
         m_childWidget = pChild;
 
-        m_middleLayout->addWidget(pChild);
+        m_middleLayout->insertWidget(0, pChild, 1);
         pChild->show();
 
         m_childWidget->setDisabled(m_readOnly);
@@ -931,7 +904,6 @@ namespace AzToolsFramework
             {
                 m_defaultLabel->setText(m_defaultValueString.c_str());
                 m_defaultLabel->setVisible(!m_defaultValueString.empty());
-                m_leftAreaContainer->setMinimumWidth(CalculateLabelWidth());
             }
         }
         else if (attributeName == AZ::Edit::Attributes::AutoExpand)
@@ -1101,20 +1073,17 @@ namespace AzToolsFramework
         {
             if (!m_dropDownArrow)
             {
-                m_dropDownArrow = new QPushButton(this);
-                m_dropDownArrow->setFlat(true);
-                m_dropDownArrow->setStyleSheet("border: none; background-color: transparent; padding: 0ex;");
-                m_dropDownArrow->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-                m_dropDownArrow->setFixedSize(QSize(m_leafIndentation, m_leafIndentation));
+                m_dropDownArrow = new QCheckBox(this);
+                AzQtComponents::CheckBox::applyExpanderStyle(m_dropDownArrow);
                 m_leftHandSideLayout->insertWidget(2, m_dropDownArrow);
-                connect(m_dropDownArrow, &QPushButton::clicked, this, &PropertyRowWidget::OnClickedExpansionButton);
+                connect(m_dropDownArrow, &QCheckBox::clicked, this, &PropertyRowWidget::OnClickedExpansionButton);
             }
             m_dropDownArrow->show();
             m_indent->changeSize((m_treeDepth * m_treeIndentation), 1, QSizePolicy::Fixed, QSizePolicy::Fixed);
             m_leftHandSideLayout->invalidate();
             m_leftHandSideLayout->update();
             m_leftHandSideLayout->activate();
-            m_dropDownArrow->setIcon(m_expanded ? m_iconOpen : m_iconClosed);
+            m_dropDownArrow->setChecked(m_expanded);
         }
     }
 
@@ -1155,7 +1124,7 @@ namespace AzToolsFramework
 
     void PropertyRowWidget::OnClickedExpansionButton()
     {
-        if (!m_forbidExpansion)
+        if (!m_forbidExpansion && m_dropDownArrow && m_dropDownArrow->isVisible())
         {
             DoExpandOrContract(!IsExpanded(), 0 != (QGuiApplication::keyboardModifiers() & Qt::ControlModifier));
         }
@@ -1405,8 +1374,7 @@ namespace AzToolsFramework
     {
         if (m_defaultLabel->isHidden() && m_nameLabel->isHidden())
         {
-            // 14 pixels per depth for indentation and 16 pixels for the expand/collapse button.
-            return (m_treeDepth * 14) + 16;
+            return (m_treeDepth * m_treeIndentation) + m_leafIndentation;
         }
         else
         {
@@ -1422,7 +1390,6 @@ namespace AzToolsFramework
     void PropertyRowWidget::SetLabelWidth(int width)
     {
         m_requestedLabelWidth = width;
-        m_leftAreaContainer->setMinimumWidth(CalculateLabelWidth());
     }
 
     void PropertyRowWidget::SetTreeIndentation(int indentation)
@@ -1616,6 +1583,7 @@ namespace AzToolsFramework
     void PropertyRowWidget::SetFilterString(const AZStd::string& str)
     {
         m_currentFilterString = str.c_str();
+        m_nameLabel->setFilter(m_currentFilterString);
     }
 
 }

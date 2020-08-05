@@ -10,23 +10,25 @@
 *
 */
 
+#include <AzCore/Casting/numeric_cast.h>
+
 #include <AzQtComponents/Components/Widgets/Slider.h>
 #include <AzQtComponents/Components/Widgets/GradientSlider.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 
-#include <QStyleFactory>
-
-#include <QMouseEvent>
 #include <QApplication>
-#include <QPainter>
-#include <QStyleOption>
-#include <QVariant>
-#include <QSettings>
-#include <QVBoxLayout>
 #include <QEvent>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QSettings>
+#include <QStyleFactory>
+#include <QStyleOption>
 #include <QToolTip>
+#include <QVariant>
+#include <QVBoxLayout>
+#include <QWheelEvent>
 
 namespace AzQtComponents
 {
@@ -109,6 +111,18 @@ void CustomSlider::mouseReleaseEvent(QMouseEvent* ev)
     QSlider::mouseReleaseEvent(ev);
 }
 
+void CustomSlider::wheelEvent(QWheelEvent* ev)
+{
+    if (hasFocus())
+    {
+        QSlider::wheelEvent(ev);
+    }
+    else
+    {
+        ev->ignore();
+    }
+}
+
 Slider::Slider(QWidget* parent)
     : Slider(Qt::Horizontal, parent)
 {
@@ -153,6 +167,16 @@ QSize Slider::sizeHint() const
 QSize Slider::minimumSizeHint() const
 {
     return m_slider->minimumSizeHint();
+}
+
+void Slider::setFocusProxy(QWidget* proxy)
+{
+    m_slider->setFocusProxy(proxy);
+}
+
+QWidget* Slider::focusProxy() const
+{
+    return m_slider->focusProxy();
 }
 
 void Slider::setTracking(bool enable)
@@ -300,6 +324,10 @@ bool Slider::eventFilter(QObject* watched, QEvent* event)
 
             case QEvent::Leave:
                 m_mousePos = QPoint();
+                break;
+
+            case QEvent::ToolTip:
+                return true;
                 break;
         }
     }
@@ -656,25 +684,13 @@ QString SliderInt::hoverValueText(int sliderValue) const
     return QStringLiteral("%1").arg(sliderValue);
 }
 
-
-inline double calculateRealSliderValue(const SliderDouble* slider, int value)
-{
-    double sliderValue = static_cast<double>(value);
-    double range = slider->maximum() - slider->minimum();
-    double steps = static_cast<double>(slider->numSteps() - 1);
-
-    double denormalizedValue = ((sliderValue / steps) * range) + slider->minimum();
-
-    return denormalizedValue;
-}
-
-
 SliderDouble::SliderDouble(QWidget* parent)
     : SliderDouble(Qt::Horizontal, parent)
 {
 }
 
 static const int g_sliderDecimalPrecisonDefault = 7;
+static const double g_defaultCurveMidpoint = 0.5;
 
 SliderDouble::SliderDouble(Qt::Orientation orientation, QWidget* parent)
     : Slider(orientation, parent)
@@ -683,21 +699,18 @@ SliderDouble::SliderDouble(Qt::Orientation orientation, QWidget* parent)
     setRange(m_minimum, m_maximum, m_numSteps);
 
     connect(m_slider, &QSlider::valueChanged, this, [this](int newValue) {
-        double denormalizedValue = calculateRealSliderValue(this, newValue);
-        Q_EMIT valueChanged(denormalizedValue);
+        Q_EMIT valueChanged(calculateRealSliderValue(newValue));
     });
 }
 
 void SliderDouble::setValue(double value)
 {
-    int normalizedValue = static_cast<int>(((value - m_minimum) / (m_maximum - m_minimum)) * static_cast<double>(m_numSteps - 1));
-
-    m_slider->setValue(normalizedValue);
+    m_slider->setValue(aznumeric_cast<int>(convertToSliderValue(value)));
 }
 
 double SliderDouble::value() const
 {
-    return calculateRealSliderValue(this, m_slider->value());
+    return calculateRealSliderValue(m_slider->value());
 }
 
 double SliderDouble::minimum() const
@@ -747,11 +760,99 @@ void SliderDouble::setRange(double min, double max, int numSteps)
     Q_EMIT rangeChanged(min, max, numSteps);
 }
 
+void SliderDouble::setCurveMidpoint(double midpoint)
+{
+    QSignalBlocker block(this);
+    const double currentValue = value();
+    m_curveMidpoint = std::clamp<double>(midpoint, 0, 1);
+    setValue(currentValue);
+}
+
 QString SliderDouble::hoverValueText(int sliderValue) const
 {
     // maybe format this, max number of digits?
-    QString valueText = toString(calculateRealSliderValue(this, sliderValue), m_decimals, locale());
+    QString valueText = toString(calculateRealSliderValue(sliderValue), m_decimals, locale());
     return QStringLiteral("%1").arg(valueText);
+}
+
+double SliderDouble::calculateRealSliderValue(int value) const
+{
+    const double sliderValue = static_cast<double>(value);
+    const double range = maximum() - minimum();
+    const double steps = static_cast<double>(numSteps() - 1);
+
+    const double denormalizedValue = ((sliderValue / steps) * range) + minimum();
+
+    return convertFromSliderValue(denormalizedValue);
+}
+
+double SliderDouble::convertToSliderValue(double value) const
+{
+    return convertPowerCurveValue(value, false);
+}
+
+double SliderDouble::convertFromSliderValue(double value) const
+{
+    return convertPowerCurveValue(value, true);
+}
+
+double SliderDouble::convertPowerCurveValue(double value, bool fromSlider) const
+{
+    // If the midpoint is set to the default (0.5), then ignore the curve logic
+    // and just return the linear scale value. Also, having a midpoint value
+    // of 0.5 would cause a divide by 0 error in the a/b coefficients.
+    static const double epsilon = .001;
+
+    const double normalizedValue = (value - m_minimum) / (m_maximum - m_minimum);
+    if (AZ::IsClose(m_curveMidpoint, g_defaultCurveMidpoint, epsilon))
+    {
+        if (fromSlider)
+        {
+            return value;
+        }
+        else
+        {
+            return static_cast<int>(normalizedValue * static_cast<double>(m_numSteps - 1));
+        }
+    }
+
+    // Calculate a new slider value based on the curve given the current slider value
+    // This part is executed when we get a new value from the user dragging the slider
+    if (fromSlider)
+    {
+        // Calculate the midpoint value of our slider range based on the normalized midpoint curve value
+        const double sliderMax = maximum();
+        const double sliderMin = minimum();
+        const double range = sliderMax - sliderMin;
+        const double sliderMidpoint = sliderMin + (m_curveMidpoint * range);
+
+        // Power curve variables based on the various slider min, midpoint, and max values
+        const double a = ((sliderMin * sliderMax) - (sliderMidpoint * sliderMidpoint)) / (sliderMin - (2 * sliderMidpoint) + sliderMax);
+        const double b = std::pow(sliderMidpoint - sliderMin, 2) / (sliderMin - (2 * sliderMidpoint) + sliderMax);
+        const double c = 2 * std::log((sliderMax - sliderMidpoint) / (sliderMidpoint - sliderMin));
+
+        const double newSliderValue = a + b * std::exp(c * normalizedValue);
+        return newSliderValue;
+    }
+    // Calculate a new slider value based on the curve given the current spinbox value
+    // This part is executed when we get a new value set externally
+    else
+    {
+        // Calculate the midpoint value of our slider range based on the normalized midpoint curve value
+        const int sliderMax = m_slider->maximum();
+        const int sliderMin = m_slider->minimum();
+        const double range = sliderMax - sliderMin;
+        const int sliderMidpoint = sliderMin + static_cast<int>(m_curveMidpoint * range);
+
+        // Power curve variables based on the various slider min, midpoint, and max values
+        const double a = ((sliderMin * sliderMax) - (sliderMidpoint * sliderMidpoint)) / (sliderMin - (2 * sliderMidpoint) + sliderMax);
+        const double b = std::pow(sliderMidpoint - sliderMin, 2) / (sliderMin - (2 * sliderMidpoint) + sliderMax);
+        const double c = 2 * std::log((sliderMax - sliderMidpoint) / (sliderMidpoint - sliderMin));
+
+        const double sliderValue = static_cast<int>(normalizedValue * static_cast<double>(m_numSteps - 1));
+        const double newSliderValue = std::log((sliderValue - a) / b) / c;
+        return sliderMin + (newSliderValue * range);
+    }
 }
 
 } // namespace AzQtComponents

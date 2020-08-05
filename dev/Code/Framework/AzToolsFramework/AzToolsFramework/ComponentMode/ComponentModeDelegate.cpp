@@ -83,23 +83,19 @@ namespace AzToolsFramework
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<ComponentModeDelegate>()
-                    ->Version(0)
-                    ->Field("ComponentModeEnterButton", &ComponentModeDelegate::m_componentModeEnterButton)
-                    ->Field("ComponentModeLeaveButton", &ComponentModeDelegate::m_componentModeLeaveButton)
+                    ->Version(1)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<ComponentModeDelegate>(
                         "Component Mode", "Provides advanced editing of Components.")
-                        ->DataElement(AZ::Edit::UIHandlers::Button,&ComponentModeDelegate::m_componentModeEnterButton,
-                            "", s_componentModeEnterDescription)
+                        ->UIElement(AZ::Edit::UIHandlers::Button, "", s_componentModeEnterDescription)
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ComponentModeDelegate::OnComponentModeEnterButtonPressed)
                             ->Attribute(AZ::Edit::Attributes::ButtonText, "Edit")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &EnterComponentModeButtonVisible)
                             ->Attribute(AZ::Edit::Attributes::ReadOnly, &ComponentModeDelegate::ComponentModeButtonInactive)
-                        ->DataElement(AZ::Edit::UIHandlers::Button, &ComponentModeDelegate::m_componentModeLeaveButton,
-                            "", s_componentModeLeaveDescription)
+                        ->UIElement(AZ::Edit::UIHandlers::Button, "", s_componentModeLeaveDescription)
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ComponentModeDelegate::OnComponentModeLeaveButtonPressed)
                             ->Attribute(AZ::Edit::Attributes::ButtonText, "Done")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &LeaveComponentModeButtonVisible)
@@ -175,7 +171,7 @@ namespace AzToolsFramework
 
         void ComponentModeDelegate::OnSelected()
         {
-            ComponentModeDelegateRequestBus::Handler::BusConnect(m_entityComponentIdPair.GetEntityId());
+            ComponentModeDelegateRequestBus::Handler::BusConnect(m_entityComponentIdPair);
         }
 
         void ComponentModeDelegate::OnDeselected()

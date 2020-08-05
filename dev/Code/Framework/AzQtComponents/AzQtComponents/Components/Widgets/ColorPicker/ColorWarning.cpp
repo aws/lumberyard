@@ -11,7 +11,6 @@
 */
 
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorWarning.h>
-#include <AzQtComponents/Components/Widgets/ColorPicker/Swatch.h>
 #include <AzQtComponents/Components/Style.h>
 
 #include <QHBoxLayout>
@@ -41,10 +40,6 @@ namespace AzQtComponents
         m_iconLabel = new QLabel(this);
         m_iconLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
         layout->addWidget(m_iconLabel);
-
-        m_swatch = new Swatch(this);
-        m_swatch->setFixedSize({ LINE_HEIGHT, LINE_HEIGHT });
-        layout->addWidget(m_swatch);
 
         m_messageLabel = new QLabel(this);
         m_messageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -88,7 +83,6 @@ namespace AzQtComponents
     void ColorWarning::setColor(const AZ::Color& color)
     {
         m_color = color;
-        m_swatch->setColor(color);
     }
 
     const QString& ColorWarning::message() const

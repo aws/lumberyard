@@ -288,8 +288,7 @@ namespace EMStudio
             }
 
             static AZStd::string perfTempString;
-            float theoreticalFPS = 1000.0f / renderTime;
-            perfTempString = AZStd::string::format("%d FPS - %.0fms (%d FPS)", lastFPS, renderTime, (int)theoreticalFPS);
+            perfTempString = AZStd::string::format("%d FPS (%.1f ms)", lastFPS, renderTime);
 
             // initialize the painter and get the font metrics
             //painter.setBrush( Qt::NoBrush );

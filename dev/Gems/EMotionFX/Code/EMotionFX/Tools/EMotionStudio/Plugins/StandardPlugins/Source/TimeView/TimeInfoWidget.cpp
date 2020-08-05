@@ -30,7 +30,7 @@ namespace EMStudio
         mPlugin = plugin;
 
         // init font
-        mFont.setPixelSize(22);
+        mFont.setPixelSize(mShowOverwriteStartTime ? 22 : 18);
         mOverwriteFont.setPixelSize(12);
         //mFont.setBold( true );
 
@@ -41,15 +41,6 @@ namespace EMStudio
         // init brushes and pens
         mPenText            = QPen(QColor(200, 200, 200));
         mPenTextFocus       = QPen(QColor(244, 156, 28));
-
-        mHeaderGradient     = QLinearGradient(0, 0, 0, 35);
-        mHeaderGradient.setColorAt(1.0f, QColor(65, 65, 65));
-        mHeaderGradient.setColorAt(0.5f, QColor(40, 40, 40));
-        mHeaderGradient.setColorAt(0.0f, QColor(20, 20, 20));
-
-        //mHeaderGradient= QLinearGradient(0, 0, 0, 35);
-        //mHeaderGradient.setColorAt(1.0f, QColor(30,30,30));
-        //mHeaderGradient.setColorAt(0.0f, QColor(20,20,20));
 
         setFocusPolicy(Qt::StrongFocus);
     }
@@ -85,12 +76,6 @@ namespace EMStudio
         // enable anti aliassing
         //painter.setRenderHint(QPainter::Antialiasing);
 
-        // fill the background
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(mHeaderGradient);
-        painter.drawRect(event->rect());
-        //painter.fillRect( event->rect(), mHeaderGradient );
-
         QTextOption options;
         options.setAlignment(Qt::AlignCenter);
 
@@ -120,9 +105,22 @@ namespace EMStudio
         mCurTimeString = AZStd::string::format("%.2d:%.2d:%.2d", minutes, seconds, milSecs);
 
         QRect upperTextRect = event->rect();
-        upperTextRect.setTop(upperTextRect.top() + 1);
-        upperTextRect.setHeight(upperTextRect.height() - 17);
+        if (mShowOverwriteStartTime)
+        {
+            upperTextRect.setTop(upperTextRect.top() + 1);
+            upperTextRect.setHeight(upperTextRect.height() - 17);
+        }
+        else
+        {
+            mPlugin->DecomposeTime(mOverwriteEndTime, &minutes, &seconds, &milSecs, &frameNumber);
+            mCurTimeString += AZStd::string::format(" / %.2d:%.2d:%.2d", minutes, seconds, milSecs);
+        }
         painter.drawText(upperTextRect, mCurTimeString.c_str(), options);
+
+        if (!mShowOverwriteStartTime)
+        {
+            return;
+        }
 
         if (mOverwriteStartTime < 0)
         {

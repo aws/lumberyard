@@ -46,7 +46,7 @@ namespace ScriptCanvasEditor
                 if (retVal.empty() && crcValue != AZ::Crc32())
                 {
                     AZ_Warning("ScriptCanvas", false, "Unknown CRC value. Cannot display cached string.");
-                    retVal = AZStd::string::format("0x%X", crcValue);
+                    retVal = AZStd::string::format("0x%X", static_cast<AZ::u32>(crcValue));
                 }
             }
 

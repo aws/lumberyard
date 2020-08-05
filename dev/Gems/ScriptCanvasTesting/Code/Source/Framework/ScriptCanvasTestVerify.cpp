@@ -24,8 +24,6 @@ namespace ScriptCanvasTests
         }
         else if (reporter.IsReportFinished())
         {
-            bool reportCheckpoints = false;
-
             const auto& successes = reporter.GetSuccess();
             for (const auto& success : successes)
             {
@@ -42,13 +40,11 @@ namespace ScriptCanvasTests
             if (!reporter.IsDeactivated())
             {
                 result.m_consoleOutput += "Graph did not deactivate\n";
-                reportCheckpoints = true;
             }
 
             if (!reporter.IsErrorFree())
             {
                 result.m_consoleOutput += "Graph had errors\n";
-                reportCheckpoints = true;
             }
 
             const auto& failures = reporter.GetFailure();
@@ -62,28 +58,20 @@ namespace ScriptCanvasTests
             if (!reporter.IsComplete())
             {
                 result.m_consoleOutput += "Graph was not marked complete\n";
-                reportCheckpoints = true;
             }
 
-            if (reportCheckpoints)
+            const auto& checkpoints = reporter.GetCheckpoints();
+            if (!checkpoints.empty())            
             {
-                const auto& checkpoints = reporter.GetCheckpoints();
-                if (checkpoints.empty())
-                {
-                    result.m_consoleOutput += "No checkpoints or other unit test nodes found, using them can help parse graph test failures\n";
-                }
-                else
-                {
-                    AZStd::string checkpointPath = "Checkpoint Path:\n";
-                    int i = 0;
+                AZStd::string checkpointPath = "Checkpoint Path:\n";
+                int i = 0;
 
-                    for (const auto& checkpoint : checkpoints)
-                    {
-                        checkpointPath += AZStd::string::format("%2d: %s\n", ++i, checkpoint.data());
-                    }
-
-                    result.m_consoleOutput += checkpointPath.data();
+                for (const auto& checkpoint : checkpoints)
+                {
+                    checkpointPath += AZStd::string::format("%2d: %s\n", ++i, checkpoint.data());
                 }
+
+                result.m_consoleOutput += checkpointPath.data();
             }
 
             if (reporter.IsComplete() && failures.empty())

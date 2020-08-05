@@ -105,11 +105,9 @@ namespace NvCloth
         EXPECT_NEAR(pxMatrix.getBasis(pxBasisZ).z, rotation.GetBasisZ().GetZ(), NvClothTest::Tolerance);
     }
 
-    // Class to provide triangle input data through TriangleInputProxy interface.
-    class TriangleInputPlane
-        : public TriangleInputProxy
+    // Class to provide triangle input data for tests
+    struct TriangleInputPlane
     {
-    public:
         // Creates triangle data for a plane in XY axis with any dimensions and segments.
         static TriangleInputPlane CreatePlane(float width, float height, AZ::u32 segmentsX, AZ::u32 segmentsY)
         {
@@ -119,9 +117,10 @@ namespace NvCloth
             plane.m_uvs.resize((segmentsX + 1) * (segmentsY + 1));
             plane.m_indices.resize((segmentsX * segmentsY * 2) * 3);
 
-            const Vec3 topLeft(
+            const SimParticleType topLeft(
                 -width * 0.5f,
                 -height * 0.5f,
+                0.0f,
                 0.0f);
 
             // Vertices and UVs
@@ -133,13 +132,14 @@ namespace NvCloth
                     const float fractionX = ((float)x / (float)segmentsX);
                     const float fractionY = ((float)y / (float)segmentsY);
 
-                    Vec3 position(
+                    SimParticleType position(
                         fractionX * width,
                         fractionY * height,
+                        0.0f,
                         0.0f);
 
                     plane.m_vertices[segmentIndex] = topLeft + position;
-                    plane.m_uvs[segmentIndex] = Vec2(fractionX, fractionY);
+                    plane.m_uvs[segmentIndex] = SimUVType(fractionX, fractionY);
                 }
             }
 
@@ -155,56 +155,22 @@ namespace NvCloth
 
                     //Top left to bottom right
 
-                    plane.m_indices[firstTriangleStartIndex + 0] = static_cast<AZ::u32>((x + 0) + (y + 0) * (segmentsX + 1));
-                    plane.m_indices[firstTriangleStartIndex + 1] = static_cast<AZ::u32>((x + 1) + (y + 0) * (segmentsX + 1));
-                    plane.m_indices[firstTriangleStartIndex + 2] = static_cast<AZ::u32>((x + 1) + (y + 1) * (segmentsX + 1));
+                    plane.m_indices[firstTriangleStartIndex + 0] = static_cast<SimIndexType>((x + 0) + (y + 0) * (segmentsX + 1));
+                    plane.m_indices[firstTriangleStartIndex + 1] = static_cast<SimIndexType>((x + 1) + (y + 0) * (segmentsX + 1));
+                    plane.m_indices[firstTriangleStartIndex + 2] = static_cast<SimIndexType>((x + 1) + (y + 1) * (segmentsX + 1));
 
-                    plane.m_indices[secondTriangleStartIndex + 0] = static_cast<AZ::u32>((x + 0) + (y + 0) * (segmentsX + 1));
-                    plane.m_indices[secondTriangleStartIndex + 1] = static_cast<AZ::u32>((x + 1) + (y + 1) * (segmentsX + 1));
-                    plane.m_indices[secondTriangleStartIndex + 2] = static_cast<AZ::u32>((x + 0) + (y + 1) * (segmentsX + 1));
+                    plane.m_indices[secondTriangleStartIndex + 0] = static_cast<SimIndexType>((x + 0) + (y + 0) * (segmentsX + 1));
+                    plane.m_indices[secondTriangleStartIndex + 1] = static_cast<SimIndexType>((x + 1) + (y + 1) * (segmentsX + 1));
+                    plane.m_indices[secondTriangleStartIndex + 2] = static_cast<SimIndexType>((x + 0) + (y + 1) * (segmentsX + 1));
                 }
             }
 
             return plane;
         }
 
-        AZ::u32 GetTriangleCount() const override
-        {
-            return m_indices.size() / 3;
-        }
-
-        AZ::u32 GetVertexCount() const override
-        {
-            return m_vertices.size();
-        }
-
-        TriangleIndices GetTriangleIndices(AZ::u32 index) const override
-        {
-            AZ_Assert(index < m_indices.size() / 3, "Triangle index %d outside range [0,%d]", index, m_indices.size() - 1);
-            TriangleIndices triangleIndices;
-            for (int i = 0; i < 3; ++i)
-            {
-                triangleIndices[i] = m_indices[index * 3 + i];
-            }
-            return triangleIndices;
-        }
-
-        Vec3 GetPosition(AZ::u32 index) const override
-        {
-            AZ_Assert(index < m_vertices.size(), "Vertex index %d outside range [0,%d]", index, m_vertices.size() - 1);
-            return m_vertices[index];
-        }
-
-        Vec2 GetUV(AZ::u32 index) const override
-        {
-            AZ_Assert(index < m_uvs.size(), "UV index %d outside range [0,%d]", index, m_uvs.size() - 1);
-            return m_uvs[index];
-        }
-
-    private:
-        AZStd::vector<Vec3> m_vertices;
-        AZStd::vector<Vec2> m_uvs;
-        AZStd::vector<AZ::u32> m_indices;
+        AZStd::vector<SimParticleType> m_vertices;
+        AZStd::vector<SimIndexType> m_indices;
+        AZStd::vector<SimUVType> m_uvs;
     };
 
     TEST_F(NvClothTest, TangentSpaceCalculation_CalculateTangentScapePlaneXY_CalculationIsCorrect)
@@ -217,12 +183,9 @@ namespace NvCloth
         const TriangleInputPlane planeXY = TriangleInputPlane::CreatePlane(width, height, segmentsX, segmentsY);
 
         TangentSpaceCalculation tangentSpacePlaneXY;
+        tangentSpacePlaneXY.Calculate(planeXY.m_vertices, planeXY.m_indices, planeXY.m_uvs);
 
-        AZStd::string errorMessage;
-        TangentSpaceCalculation::Error error = tangentSpacePlaneXY.CalculateTangentSpace(planeXY, errorMessage);
-
-        EXPECT_EQ(error, TangentSpaceCalculation::Error::NoErrors);
-        EXPECT_EQ(tangentSpacePlaneXY.GetBaseCount(), planeXY.GetVertexCount());
+        EXPECT_EQ(tangentSpacePlaneXY.GetBaseCount(), planeXY.m_vertices.size());
         for (size_t i = 0; i < tangentSpacePlaneXY.GetBaseCount(); ++i)
         {
             Vec3 tangent, bitangent, normal;

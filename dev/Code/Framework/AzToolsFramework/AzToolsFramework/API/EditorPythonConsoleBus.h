@@ -71,8 +71,25 @@ namespace AzToolsFramework
     public:
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::MultipleAndOrdered;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        // used with the AZ::EBusHandlerPolicy::MultipleAndOrdered HandlerPolicy
+        struct BusHandlerOrderCompare
+        {
+            bool operator()(EditorPythonConsoleNotifications* left, EditorPythonConsoleNotifications* right) const
+            {
+                return left->GetOrder() < right->GetOrder();
+            }
+        };
+        /**
+        * Specifies the order a handler receives events relative to other handlers
+        * @return a value specifying this handler's relative order
+        */
+        virtual int GetOrder()
+        {
+            return std::numeric_limits<int>::max();
+        }
         //////////////////////////////////////////////////////////////////////////
 
         //! post a normal message to the console
@@ -80,6 +97,9 @@ namespace AzToolsFramework
 
         //! post an error message to the console
         virtual void OnErrorMessage(AZStd::string_view message) = 0;
+
+        //! post an internal Python exception from a script call
+        virtual void OnExceptionMessage(AZStd::string_view message) = 0;
     };
     using EditorPythonConsoleNotificationBus = AZ::EBus<EditorPythonConsoleNotifications>;
 }

@@ -24,9 +24,8 @@ namespace AZ
         AZ_RTTI(JsonBoolSerializer, "{54A80CAA-1A01-4EED-9F99-D5809A17D310}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
     };
 } // namespace AZ

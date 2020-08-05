@@ -20,6 +20,7 @@
 #include <AzFramework/Physics/Material.h>
 #include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+#include <AzCore/std/optional.h>
 
 #include <PxPhysicsAPI.h>
 
@@ -61,6 +62,28 @@ namespace PhysX
 
         World* GetDefaultWorld();
 
+        //! Creates a PhysX cooked mesh config from the given points.
+        //! 
+        //! @param pointList Vector of points to build the mesh from.
+        //! @param scale Scale to be assigned to the cooked mesh.
+        //! @return Either a valid cooked mesh or none if the cooking failed.
+        //! 
+        AZStd::optional<Physics::CookedMeshShapeConfiguration> CreatePxCookedMeshConfiguration(const AZStd::vector<AZ::Vector3>& pointList, const AZ::Vector3& scale);
+
+        // 255 is the hard limit for PhysX number of vertices/faces. Upper bound is set to something sensible and less than this hard limit.
+        constexpr AZ::u8 MinFrustumSubdivisions = 3;
+        constexpr AZ::u8 MaxFrustumSubdivisions = 125; 
+
+        //! Creates the points for a given frustum along the z axis as specified by the supplied arguements.
+        //!
+        //! @param height Height of the frustum. Must be greater than 0.
+        //! @param bottomRadius Radius of bottom cace of frustum. Must be greater than 0 if topRadius is 0, otherwise can be 0.
+        //! @param topRadius Radius of top face of frustum. Must be greater than 0 if bottompRadius is 0, otherwise can be 0.
+        //! @param subdivisionsNumber of angular subdivisions. Must be between 3 and 125 inclusive.
+        //! @return Either a valid point list or none if any of the arguements are invalid.
+        //!
+        AZStd::optional<AZStd::vector<AZ::Vector3>> CreatePointsAtFrustumExtents(float height, float bottomRadius, float topRadius, AZ::u8 subdivisions);
+    
         AZStd::string ConvexCookingResultToString(physx::PxConvexMeshCookingResult::Enum convexCookingResultCode);
         AZStd::string TriMeshCookingResultToString(physx::PxTriangleMeshCookingResult::Enum triangleCookingResultCode);
 
@@ -79,7 +102,6 @@ namespace PhysX
         AZStd::unique_ptr<Physics::RigidBodyStatic> CreateTerrain(
             const PhysX::TerrainConfiguration& terrainConfiguration, const AZ::EntityId& entityId, const AZStd::string_view& name);
 
-        
         void GetMaterialList(
             AZStd::vector<physx::PxMaterial*>& pxMaterials, const AZStd::vector<int>& materialIndexMapping,
             const Physics::TerrainMaterialSurfaceIdMap& terrainMaterialsToSurfaceIds);
@@ -98,6 +120,17 @@ namespace PhysX
 
         /// Logs a warning message using the names of the entities provided.
         void WarnEntityNames(const AZStd::vector<AZ::EntityId>& entityIds, const char* category, const char* message);
+
+        /// Logs a warning if there is more than one connected bus of the particular type.
+        template<typename BusT>
+        void LogWarningIfMultipleComponents(const char* messageCategroy, const char* messageFormat)
+        {
+            const auto entityIds = FindConnectedBusIds<BusT>();
+            if (entityIds.size() > 1)
+            {
+                WarnEntityNames(entityIds, messageCategroy, messageFormat);
+            }
+        }
 
         /// Converts collider position and orientation offsets to a transform.
         AZ::Transform GetColliderLocalTransform(const AZ::Vector3& colliderRelativePosition
@@ -135,16 +168,8 @@ namespace PhysX
         AZ::Vector3 GetNonUniformScale(AZ::EntityId entityId);
         AZ::Vector3 GetUniformScale(AZ::EntityId entityId);
 
-        /// Logs a warning if there is more than one connected bus of the particular type.
-        template<typename BusT>
-        void LogWarningIfMultipleComponents(const char* messageCategroy, const char* messageFormat)
-        {
-            const auto entityIds = FindConnectedBusIds<BusT>();
-            if (entityIds.size() > 1)
-            {
-                WarnEntityNames(entityIds, messageCategroy, messageFormat);
-            }
-        }
+        /// Returns defaultValue if the input is infinite or NaN, otherwise returns the input unchanged.
+        const AZ::Vector3& Sanitize(const AZ::Vector3& input, const AZ::Vector3& defaultValue = AZ::Vector3::CreateZero());
 
         namespace Geometry
         {
@@ -158,7 +183,31 @@ namespace PhysX
 
             /// Generates a list of points on the surface of a cylinder.
             PointList GenerateCylinderPoints(float height, float radius);
+
+            /// Generates vertices and indices representing the provided box geometry 
+            void GetBoxGeometry(const physx::PxBoxGeometry& geometry, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices);
+
+            /// Generates vertices and indices representing the provided capsule geometry 
+            void GetCapsuleGeometry(const physx::PxCapsuleGeometry& geometry, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, const AZ::u32 stacks, const AZ::u32 slices);
+
+            /// Generates vertices and indices representing the provided convex mesh geometry 
+            void GetConvexMeshGeometry(const physx::PxConvexMeshGeometry& geometry, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices);
+
+            /// Generates vertices and indices representing the provided heightfield geometry, optionally limited to a bounding box
+            void GetHeightFieldGeometry(const physx::PxHeightFieldGeometry& geometry, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, AZ::Aabb* optionalBounds);
+
+            /// Generates vertices and indices representing the provided sphere geometry and optional stacks and slices
+            void GetSphereGeometry(const physx::PxSphereGeometry& geometry, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, const AZ::u32 stacks, const AZ::u32 slices);
+
+            /// Generates vertices and indices representing the provided triangle mesh geometry 
+            void GetTriangleMeshGeometry(const physx::PxTriangleMeshGeometry& geometry, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices);
         } // namespace Geometry
+
+        namespace RayCast
+        {
+            Physics::RayCastHit ClosestRayHitAgainstShapes(const Physics::RayCastRequest& request,
+                const AZStd::vector<AZStd::shared_ptr<PhysX::Shape>>& shapes, const AZ::Transform& parentTransform);
+        } // namespace RayCast
     } // namespace Utils
 
     namespace ReflectionUtils

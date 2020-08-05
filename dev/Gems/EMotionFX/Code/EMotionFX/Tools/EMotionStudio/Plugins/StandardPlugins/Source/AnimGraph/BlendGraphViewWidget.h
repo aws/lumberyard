@@ -12,21 +12,25 @@
 
 #pragma once
 
-#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <Editor/ActorEditorBus.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <QStackedWidget>
+#include <QAction>
 #include <QWidget>
+#include <QAction>
 
-
-QT_FORWARD_DECLARE_CLASS(QAction)
 QT_FORWARD_DECLARE_CLASS(QMenu)
 QT_FORWARD_DECLARE_CLASS(QMenuBar)
 QT_FORWARD_DECLARE_CLASS(QHBoxLayout)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
+QT_FORWARD_DECLARE_CLASS(QShowEvent)
 QT_FORWARD_DECLARE_CLASS(QSplitter)
+QT_FORWARD_DECLARE_CLASS(QToolBar)
 QT_FORWARD_DECLARE_CLASS(QLayout)
 
+namespace EMotionFX { class AnimGraphNode; }
 
 namespace EMStudio
 {
@@ -42,7 +46,7 @@ namespace EMStudio
         , public EMotionFX::ActorEditorRequestBus::Handler
     {
         MCORE_MEMORYOBJECTCATEGORY(BlendGraphViewWidget, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         enum EOptionFlag
@@ -73,7 +77,7 @@ namespace EMStudio
         BlendGraphViewWidget(AnimGraphPlugin* plugin, QWidget* parentWidget);
         ~BlendGraphViewWidget();
 
-        bool GetOptionFlag(EOptionFlag option) const { return mActions[(uint32)option]->isChecked(); }
+        bool GetOptionFlag(EOptionFlag option) const { return m_actions[(uint32)option]->isChecked(); }
         void SetOptionFlag(EOptionFlag option, bool isEnabled);
         void SetOptionEnabled(EOptionFlag option, bool isEnabled);
 
@@ -84,6 +88,9 @@ namespace EMStudio
         // If there is a specific widget to handle this node returns that.
         // Else, returns nullptr.
         AnimGraphNodeWidget* GetWidgetForNode(const EMotionFX::AnimGraphNode* node);
+
+        // Get Actions (used for testing purposes)
+        QAction* GetAction(EOptionFlag option) const { return m_actions[option]; }
 
     public slots:
         void OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent);
@@ -97,7 +104,6 @@ namespace EMStudio
 
         void ZoomSelected();
 
-        void OnActivateAnimGraph();
         void OnActivateState();
 
         void OnDisplayPlaySpeeds();
@@ -110,23 +116,25 @@ namespace EMStudio
 
         void OpenAnimGraph(EMotionFX::AnimGraph* animGraph);
 
-        void CreateEntry(QMenu* menu, QHBoxLayout* toolbarLayout, const char* entryName, const char* toolbarIconFileName, bool addToToolbar, bool checkable, int32 actionIndex, const QKeySequence& shortcut = 0, bool border = true, bool addToMenu = true);
         void BuildOpenMenu();
-        void AddSeparator(QLayout* layout = nullptr);
+
+        void showEvent(QShowEvent* showEvent);
 
         void keyReleaseEvent(QKeyEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
 
     private:
-        QMenuBar*               mMenu;
-        QMenu*                  mOpenMenu;
-        QHBoxLayout*            mToolbarLayout;
-        QAction*                mActions[NUM_OPTIONS];
-        QPushButton*            mToolbarButtons[NUM_OPTIONS];
-        AnimGraphPlugin*        mParentPlugin;
-        NavigationLinkWidget*   mNavigationLink;
-        QStackedWidget          mViewportStack;
-        QSplitter*              mViewportSplitter;
+        QToolBar* CreateTopToolBar();
+        QToolBar* CreateNavigationToolBar();
+
+        QMenuBar* m_menu = nullptr;
+        QMenu* m_openMenu = nullptr;
+        QHBoxLayout* m_toolbarLayout = nullptr;
+        QAction* m_actions[NUM_OPTIONS];
+        AnimGraphPlugin* m_parentPlugin = nullptr;
+        NavigationLinkWidget* mNavigationLink = nullptr;
+        QStackedWidget m_viewportStack;
+        QSplitter* m_viewportSplitter = nullptr;
 
         // This maps a node's UUID to a widget that will be used to
         // display the "contents" of that node type.  If no entry for a given
@@ -135,6 +143,6 @@ namespace EMStudio
         // shown to draw the nodes inside the tree.  For special types like a
         // blendspace, a separate widget is registered to handle the drawing for that
         // node.
-        AZStd::unordered_map<AZ::TypeId, AnimGraphNodeWidget*> mNodeTypeToWidgetMap;
+        AZStd::unordered_map<AZ::TypeId, AnimGraphNodeWidget*> m_nodeTypeToWidgetMap;
     };
 }   // namespace EMStudio

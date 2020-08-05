@@ -18,6 +18,8 @@
 #include <QPainter>
 #include <QSettings>
 #include <QStyleOption>
+#include <QWindow>
+#include <QSurfaceFormat>
 #include <qdrawutil.h>
 
 #include <limits>
@@ -66,7 +68,7 @@ namespace AzQtComponents
         config.verticalMargin = 5;
         config.horizontalPadding = 0;
         config.verticalPadding = 4;
-        config.subMenuOverlap = -5;
+        config.subMenuOverlap = 0;
 
         return config;
     }
@@ -82,9 +84,23 @@ namespace AzQtComponents
         }
 
         style->repolishOnSettingsChange(widget);
-        menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
+
+        // QMenu::popup results in the QWindow being created before polish is called. If the QWindow
+        // is created with the wrong flags, window tranparency does not work. Check if the window
+        // surface format supports an alpha. If not, destroy it.
+        if (QWindow* window = menu->windowHandle())
+        {
+            if (!window->format().hasAlpha())
+            {
+                window->destroy();
+            }
+        }
+
+        // Set the widget attributes we need to enable window transparency. Do this before calling
+        // QWidget::setWindowFlags as the QWindow is created here if it does not exist.
         menu->setAttribute(Qt::WA_TranslucentBackground, true);
         menu->setAttribute(Qt::WA_OpaquePaintEvent, true);
+        menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
 
         return true;
     }
@@ -141,6 +157,32 @@ namespace AzQtComponents
         if (qobject_cast<const QMenu*>(widget))
         {
             return config.subMenuOverlap;
+        }
+
+        return std::numeric_limits<int>::lowest();
+    }
+
+    int Menu::verticalShadowMargin(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(style);
+        Q_UNUSED(option);
+
+        if (qobject_cast<const QMenu*>(widget))
+        {
+            return -config.verticalMargin;
+        }
+
+        return std::numeric_limits<int>::lowest();
+    }
+
+    int Menu::horizontalShadowMargin(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(style);
+        Q_UNUSED(option);
+
+        if (qobject_cast<const QMenu*>(widget))
+        {
+            return -config.horizontalMargin;
         }
 
         return std::numeric_limits<int>::lowest();

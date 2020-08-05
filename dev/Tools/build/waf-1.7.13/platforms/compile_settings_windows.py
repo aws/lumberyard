@@ -15,6 +15,7 @@
 import os
 
 # waflib imports
+from waflib import Logs
 from waflib.Configure import conf
 from waflib.Errors import WafError
 
@@ -115,3 +116,31 @@ def register_win_x64_external_ly_metrics(self, compiler, configuration):
                                    includes=[include_path],
                                    libpath=[stlib_path],
                                    lib=['LyMetricsProducer_static.lib'])
+
+@conf
+def register_win_x64_external_optional_cuda(self, target_platform):
+
+    # Obtain CUDA sdk path from system variable CUDA_PATH
+    cuda_sdk_root = os.getenv('CUDA_PATH')
+    if not cuda_sdk_root or not os.path.isdir(cuda_sdk_root) or not os.path.exists(cuda_sdk_root):
+        return;
+
+    Logs.info('[INFO] Detected NVIDIA CUDA SDK at: {}'.format(cuda_sdk_root))
+    
+    cuda_includes = os.path.join(cuda_sdk_root, 'include')
+    cude_libpath = os.path.join(cuda_sdk_root, 'lib', 'x64')
+    cuda_lib = 'cuda.lib'
+    
+    folders_to_validate = [cuda_includes, cude_libpath]
+    for folder in folders_to_validate:
+        if not os.path.isdir(folder) or not os.path.exists(folder):
+            Logs.warn('[WARN] Missing NVIDIA CUDA SDK folder {}'.format(folder))
+            Logs.warn('[WARN] NVIDIA CUDA SDK will not be used.')
+            return;
+
+    self.register_3rd_party_uselib('CUDA', target_platform,
+                                   includes=[cuda_includes],
+                                   defines=['CUDA_ENABLED'],
+                                   libpath=[cude_libpath],
+                                   lib=[cuda_lib],
+                                   linkflags=['/DELAYLOAD:nvcuda.dll'])

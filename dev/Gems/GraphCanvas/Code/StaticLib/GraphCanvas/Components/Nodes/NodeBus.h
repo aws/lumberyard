@@ -89,10 +89,14 @@ namespace GraphCanvas
         virtual void SignalBatchedConnectionManipulationBegin() = 0;
         virtual void SignalBatchedConnectionManipulationEnd() = 0;
 
+        // Used to signal the node that a connection that belongs to it is beginning to be manipulated.
+        virtual void SignalConnectionMoveBegin(const ConnectionId& connectionId) = 0;
+
         // Will attempt to update the partially disabled state based on the connection Execution connections
         virtual RootGraphicsItemEnabledState UpdateEnabledState() = 0;
 
-        virtual bool IsHidingUnusedSlots() = 0;
+        virtual bool HasHideableSlots() const = 0;
+        virtual bool IsHidingUnusedSlots() const = 0;
         virtual void ShowAllSlots() = 0;
         virtual void HideUnusedSlots() = 0;
     };
@@ -131,7 +135,7 @@ namespace GraphCanvas
         //! 1. The entity ID of the slot that was removed.
         virtual void OnSlotRemovedFromNode(const AZ::EntityId&) {}
 
-        virtual void OnNodeActivated() {};
+        virtual void OnNodeActivated() {}
 
         virtual void OnNodeWrapped(const AZ::EntityId& wrappingNode) {}
         virtual void OnNodeUnwrapped(const AZ::EntityId& wrappingNode) {}

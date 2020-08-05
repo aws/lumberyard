@@ -142,7 +142,7 @@ namespace CommandSystem
         m_oldContents.clear();
 
         newAction->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -420,7 +420,7 @@ namespace CommandSystem
         m_oldContents.clear();
 
         newAction->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
         return true;
     }
 
@@ -549,7 +549,7 @@ namespace CommandSystem
         // save the current dirty flag and tell the anim graph that something got changed
         m_oldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
         return true;
     }
 

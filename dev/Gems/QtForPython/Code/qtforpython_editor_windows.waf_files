@@ -1,0 +1,15 @@
+{
+    "none":
+    {
+        "Include":
+        [
+            "Include/QtForPython/QtForPythonBus.h"
+        ],
+        "Source":
+        [
+            "Source/QtForPythonModule.cpp",
+            "Source/QtForPythonSystemComponent.cpp",
+            "Source/QtForPythonSystemComponent.h"
+        ]
+    }
+}

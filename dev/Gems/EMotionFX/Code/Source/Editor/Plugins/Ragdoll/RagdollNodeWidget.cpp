@@ -88,6 +88,7 @@ namespace EMotionFX
         buttonLayout->addWidget(m_addColliderButton);
 
         m_addRemoveButton = new QPushButton(result);
+        m_addRemoveButton->setObjectName("EMFX.RagdollNodeWidget.PushButton.RagdollAddRemoveButton");
         connect(m_addRemoveButton, &QPushButton::clicked, this, &RagdollNodeWidget::OnAddRemoveRagdollNode);
         buttonLayout->addWidget(m_addRemoveButton);
 
@@ -96,7 +97,7 @@ namespace EMotionFX
         layout->addWidget(m_jointLimitWidget);
 
         // Colliders
-        m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/RagdollCollider_White.png"), result);
+        m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/Collider.svg"), result);
         connect(m_collidersWidget, &ColliderContainerWidget::RemoveCollider, this, &RagdollNodeWidget::OnRemoveCollider);
         layout->addWidget(m_collidersWidget);
 

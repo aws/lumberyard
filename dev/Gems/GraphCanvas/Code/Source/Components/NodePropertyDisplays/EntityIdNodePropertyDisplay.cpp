@@ -17,6 +17,7 @@
 #include <QMenu>
 #include <QMimeData>
 
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
 
 #include <Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.h>
@@ -38,9 +39,6 @@ namespace GraphCanvas
         , m_propertyEntityIdCtrl(nullptr)
         , m_proxyWidget(nullptr)
     {
-        // This label is never displayed. Used to just get the name.
-        m_entityIdLabel.setProperty("HasNoWindowDecorations", true);
-
         m_dataInterface->RegisterDisplay(this);
         
         m_disabledLabel = aznew GraphCanvasLabel();
@@ -105,15 +103,17 @@ namespace GraphCanvas
         {
             m_propertyEntityIdCtrl->SetCurrentEntityId(valueEntityId, false, name);
         }
-        m_entityIdLabel.SetEntityId(valueEntityId, name);
 
-        QString displayLabel = m_entityIdLabel.text();
-        if (displayLabel.isEmpty())
+        const AZStd::string entityName = AzToolsFramework::GetEntityName(valueEntityId, name);
+        if (entityName.empty())
         {
-            displayLabel = "<None>";
+            const QString notFoundMessage = QObject::tr("(Entity not found)");
+            m_displayLabel->SetLabel(notFoundMessage.toUtf8().data());
         }
-            
-        m_displayLabel->SetLabel(displayLabel.toUtf8().data());
+        else
+        {
+            m_displayLabel->SetLabel(entityName);
+        }
 
         if (m_proxyWidget)
         {

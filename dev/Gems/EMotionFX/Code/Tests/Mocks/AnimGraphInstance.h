@@ -71,8 +71,6 @@ namespace EMotionFX
         //void ReserveInternalAttributes(size_t totalNumInternalAttributes);
         //void RemoveInternalAttribute(size_t index, bool delFromMem = true);
         //uint32 AddInternalAttribute(MCore::Attribute* attribute);
-        //AnimGraphObjectData* FindUniqueObjectData(const AnimGraphObject* object) const;
-        //AnimGraphNodeData* FindUniqueNodeData(const AnimGraphNode* node) const;
         //void AddUniqueObjectData();
         //void RegisterUniqueObjectData(AnimGraphObjectData* data);
         //AnimGraphObjectData* GetUniqueObjectData(size_t index);

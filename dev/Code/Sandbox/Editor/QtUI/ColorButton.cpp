@@ -14,8 +14,10 @@
 #include "StdAfx.h"
 #include "ColorButton.h"
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include <QPainter>
-#include <QColorDialog>
 
 ColorButton::ColorButton(QWidget* parent /* = nullptr */)
     : QToolButton(parent)
@@ -37,12 +39,17 @@ void macRaiseWindowDelayed(QWidget* window);
 
 void ColorButton::OnClick()
 {
-    QColor color = QColorDialog::getColor(m_color, this, tr("Select Color"));
+    const QColor color = AzQtComponents::toQColor(
+        AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB,
+        AzQtComponents::fromQColor(m_color),
+        tr("Select Color")));
+
 #if AZ_TRAIT_OS_PLATFORM_APPLE
     macRaiseWindowDelayed(window());
 #endif
 
-    if (color.isValid())
+    if (color != m_color)
+    
     {
         m_color = color;
         update();

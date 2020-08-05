@@ -179,6 +179,8 @@ namespace SceneBuilder
                 jobProduct.m_pathDependencies.emplace(pathDependency, AssetBuilderSDK::ProductPathDependencyType::SourceFile);
             }
         }
+
+        jobProduct.m_dependenciesHandled = true; // We've populated the dependencies immediately above so it's OK to tell the AP we've handled dependencies
     }
 
     bool SceneBuilderWorker::LoadScene(AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& result,

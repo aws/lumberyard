@@ -38,6 +38,18 @@ namespace ScriptCanvas
                 return true;
             }
 
+            void OperatorClear::OnInit()
+            {
+                // Verisoning for bad initial setup of output container slot
+                Slot* slot = OperatorClearProperty::GetContainerSlot(this);
+
+                if (slot && slot->GetDynamicGroup() == AZ::Crc32())
+                {
+                    SetDynamicGroup(slot->GetId(), AZ::Crc32("ContainerGroup"));
+                }
+                ////
+            }
+
             void OperatorClear::OnInputSignal(const SlotId& slotId)
             {
                 const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);

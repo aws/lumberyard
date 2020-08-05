@@ -17,6 +17,7 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QLabel>
+#include <AzQtComponents/Components/Widgets/SliderCombo.h>
 
 
 namespace EMStudio
@@ -85,15 +86,14 @@ namespace EMStudio
             connect(mMorphTargets[i].mManualMode, &QCheckBox::clicked, this, &MorphTargetGroupWidget::ManualModeClicked);
 
             // create slider to adjust the morph target
-            mMorphTargets[i].mSliderWeight = new MysticQt::FloatSlider();
+            mMorphTargets[i].mSliderWeight = new AzQtComponents::SliderDoubleCombo();
             mMorphTargets[i].mSliderWeight->setMinimumWidth(50);
-            mMorphTargets[i].mSliderWeight->SetSingleStep(0.1f);
             mMorphTargets[i].mSliderWeight->setProperty("MorphTargetIndex", intIndex);
-            mMorphTargets[i].mSliderWeight->GetSpinBox()->setMinimumWidth(40);
-            mMorphTargets[i].mSliderWeight->GetSpinBox()->setMaximumWidth(40);
+            mMorphTargets[i].mSliderWeight->spinbox()->setMinimumWidth(40);
+            mMorphTargets[i].mSliderWeight->spinbox()->setMaximumWidth(40);
             gridLayout->addWidget(mMorphTargets[i].mSliderWeight, intIndex, 2);
-            connect(mMorphTargets[i].mSliderWeight, static_cast<void (MysticQt::FloatSlider::*)(float)>(&MysticQt::FloatSlider::ValueChanged), this, &MorphTargetGroupWidget::SliderWeightMoved);
-            connect(mMorphTargets[i].mSliderWeight, &MysticQt::FloatSlider::FinishedValueChange, this, &MorphTargetGroupWidget::SliderWeightReleased);
+            connect(mMorphTargets[i].mSliderWeight, &AzQtComponents::SliderDoubleCombo::valueChanged, this, &MorphTargetGroupWidget::SliderWeightMoved);
+            connect(mMorphTargets[i].mSliderWeight, &AzQtComponents::SliderDoubleCombo::editingFinished, this, &MorphTargetGroupWidget::SliderWeightReleased);
 
             // create the name label
             QLabel* nameLabel = new QLabel(morphTargets[i]->GetName());
@@ -197,23 +197,23 @@ namespace EMStudio
 
 
     // slider weight moved
-    void MorphTargetGroupWidget::SliderWeightMoved(float value)
+    void MorphTargetGroupWidget::SliderWeightMoved()
     {
         // get the morph target
-        MysticQt::FloatSlider* floatSlider = static_cast<MysticQt::FloatSlider*>(sender());
+        AzQtComponents::SliderDoubleCombo* floatSlider = static_cast<AzQtComponents::SliderDoubleCombo*>(sender());
         const int morphTargetIndex = floatSlider->property("MorphTargetIndex").toInt();
         EMotionFX::MorphSetupInstance::MorphTarget* morphTargetInstance = mMorphTargets[morphTargetIndex].mMorphTargetInstance;
 
         // update the weight
-        morphTargetInstance->SetWeight(value);
+        morphTargetInstance->SetWeight(aznumeric_cast<float>(floatSlider->value()));
     }
 
 
     // slider weight released
-    void MorphTargetGroupWidget::SliderWeightReleased(float value)
+    void MorphTargetGroupWidget::SliderWeightReleased()
     {
         // get the morph target and the morph target instance
-        MysticQt::FloatSlider* floatSlider = static_cast<MysticQt::FloatSlider*>(sender());
+        AzQtComponents::SliderDoubleCombo* floatSlider = static_cast<AzQtComponents::SliderDoubleCombo*>(sender());
         const int morphTargetIndex = floatSlider->property("MorphTargetIndex").toInt();
         EMotionFX::MorphTarget* morphTarget = mMorphTargets[morphTargetIndex].mMorphTarget;
         EMotionFX::MorphSetupInstance::MorphTarget* morphTargetInstance = mMorphTargets[morphTargetIndex].mMorphTargetInstance;
@@ -223,14 +223,14 @@ namespace EMStudio
 
         // execute command
         AZStd::string result;
-        const AZStd::string command = AZStd::string::format("AdjustMorphTarget -actorInstanceID %i -lodLevel %i -name \"%s\" -weight %f", mActorInstance->GetID(), mActorInstance->GetLODLevel(), morphTarget->GetName(), value);
+        const AZStd::string command = AZStd::string::format("AdjustMorphTarget -actorInstanceID %i -lodLevel %i -name \"%s\" -weight %f", mActorInstance->GetID(), mActorInstance->GetLODLevel(), morphTarget->GetName(), floatSlider->value());
         if (EMStudio::GetCommandManager()->ExecuteCommand(command, result) == false)
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
 
         // set the new old weight value
-        mMorphTargets[morphTargetIndex].mOldWeight = value;
+        mMorphTargets[morphTargetIndex].mOldWeight = aznumeric_cast<float>(floatSlider->value());
     }
 
 
@@ -269,7 +269,7 @@ namespace EMStudio
             }
 
             // disable signals
-            mMorphTargets[i].mSliderWeight->BlockSignals(true);
+            QSignalBlocker sb(mMorphTargets[i].mSliderWeight);
             mMorphTargets[i].mManualMode->blockSignals(true);
 
             // update the manual mode
@@ -277,11 +277,12 @@ namespace EMStudio
 
             // update the slider weight
             mMorphTargets[i].mSliderWeight->setDisabled(!manualMode);
-            mMorphTargets[i].mSliderWeight->SetRange(rangeMin, rangeMax);
-            mMorphTargets[i].mSliderWeight->SetValue(weight);
+            mMorphTargets[i].mSliderWeight->setRange(rangeMin, rangeMax);
+            // enforce single step of 0.1
+            mMorphTargets[i].mSliderWeight->slider()->setNumSteps(aznumeric_cast<int>((rangeMax - rangeMin) / 0.1 + 1.0));
+            mMorphTargets[i].mSliderWeight->setValue(weight);
 
             // enable signals
-            mMorphTargets[i].mSliderWeight->BlockSignals(false);
             mMorphTargets[i].mManualMode->blockSignals(false);
 
             // store the current weight
@@ -321,7 +322,7 @@ namespace EMStudio
             const bool  manualMode  = mMorphTargets[i].mMorphTargetInstance->GetIsInManualMode();
 
             // disable signals
-            mMorphTargets[i].mSliderWeight->BlockSignals(true);
+            QSignalBlocker sb(mMorphTargets[i].mSliderWeight);
             mMorphTargets[i].mManualMode->blockSignals(true);
 
             // update the manual mode
@@ -329,11 +330,12 @@ namespace EMStudio
 
             // update the slider weight
             mMorphTargets[i].mSliderWeight->setDisabled(!manualMode);
-            mMorphTargets[i].mSliderWeight->SetRange(rangeMin, rangeMax);
-            mMorphTargets[i].mSliderWeight->SetValue(weight);
+            mMorphTargets[i].mSliderWeight->setRange(rangeMin, rangeMax);
+            // enforce single step of 0.1
+            mMorphTargets[i].mSliderWeight->slider()->setNumSteps(aznumeric_cast<int>((rangeMax - rangeMin) / 0.1 + 1.0));
+            mMorphTargets[i].mSliderWeight->setValue(weight);
 
             // enable signals
-            mMorphTargets[i].mSliderWeight->BlockSignals(false);
             mMorphTargets[i].mManualMode->blockSignals(false);
 
             // store the current weight

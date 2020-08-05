@@ -28,9 +28,9 @@ namespace ScriptCanvas
                 AZStd::string replaceString = ReplaceProperty::GetReplace(this);
                 AZStd::string withString = ReplaceProperty::GetWith(this);
 
-                bool ignoreCase = ReplaceProperty::GetIgnoreCase(this);
+                bool caseSensitive = ReplaceProperty::GetCaseSensitive(this);
                 
-                AzFramework::StringFunc::Replace(sourceString, replaceString.c_str(), withString.c_str(), !ignoreCase);
+                AzFramework::StringFunc::Replace(sourceString, replaceString.c_str(), withString.c_str(), caseSensitive);
 
                 const SlotId outputResultSlotId = ReplaceProperty::GetResultSlotId(this);
 

@@ -50,7 +50,7 @@ namespace EMotionFX
         layout->addWidget(m_addColliderButton);
 
         // Colliders
-        m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/RagdollCollider_White.png"), result);
+        m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/Collider.svg"), result);
         connect(m_collidersWidget, &ColliderContainerWidget::RemoveCollider, this, &HitDetectionJointWidget::OnRemoveCollider);
         layout->addWidget(m_collidersWidget);
 

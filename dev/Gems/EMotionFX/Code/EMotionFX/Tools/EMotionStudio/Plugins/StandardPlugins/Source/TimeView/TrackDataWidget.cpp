@@ -10,12 +10,14 @@
 *
 */
 
-// include the required headers
-#include "TrackDataWidget.h"
-#include "TimeViewPlugin.h"
-#include "TimeInfoWidget.h"
-#include "TrackHeaderWidget.h"
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TrackDataWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TrackHeaderWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeInfoWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewShared.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewToolBar.h>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QPainter>
 #include <QToolTip>
 #include <QPaintEvent>
@@ -147,13 +149,22 @@ namespace EMStudio
         painter.setFont(mDataFont);
 
         // if there is a recording show that, otherwise show motion tracks
-        if (EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon)
+        switch (mPlugin->GetMode())
         {
-            PaintRecorder(painter, rect);
-        }
-        else
-        {
-            PaintMotionTracks(painter, rect);
+            case TimeViewMode::AnimGraph:
+            {
+                PaintRecorder(painter, rect);
+                break;
+            }
+            case TimeViewMode::Motion:
+            {
+                PaintMotionTracks(painter, rect);
+                break;
+            }
+            default:
+            {
+                break;
+            }
         }
 
         painter.setRenderHint(QPainter::Antialiasing, false);
@@ -187,15 +198,16 @@ namespace EMStudio
         }
     }
 
+    void TrackDataWidget::RemoveTrack(AZ::u32 trackIndex)
+    {
+        mPlugin->SetRedrawFlag();
+        CommandSystem::CommandRemoveEventTrack(trackIndex);
+        mPlugin->UnselectAllElements();
+    }
+
     // draw the time marker
     void TrackDataWidget::DrawTimeMarker(QPainter& painter, const QRect& rect)
     {
-        if (mPlugin->mTrackDataWidget->mDraggingElement == nullptr && mPlugin->mTrackDataWidget->mResizeElement == nullptr && hasFocus())
-        {
-            painter.setPen(mPlugin->mPenCurTimeHelper);
-            painter.drawLine(aznumeric_cast<int>(mPlugin->mCurMouseX), 14, aznumeric_cast<int>(mPlugin->mCurMouseX), rect.bottom());
-        }
-
         // draw the current time marker
         float startHeight = 0.0f;
         const float curTimeX = aznumeric_cast<float>(mPlugin->TimeToPixel(mPlugin->mCurTime));
@@ -247,9 +259,10 @@ namespace EMStudio
         // get the actor instance data for the first selected actor instance, and render the node history for that
         const EMotionFX::Recorder::ActorInstanceData* actorInstanceData = &recorder.GetActorInstanceData(actorInstanceDataIndex);
 
-        const bool displayNodeActivity  = mPlugin->mTrackHeaderWidget->mNodeActivityCheckBox->isChecked();
-        const bool displayEvents        = mPlugin->mTrackHeaderWidget->mEventsCheckBox->isChecked();
-        const bool displayRelativeGraph = mPlugin->mTrackHeaderWidget->mRelativeGraphCheckBox->isChecked();
+        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+        const bool displayNodeActivity = recorderGroup->GetDisplayNodeActivity();
+        const bool displayEvents = recorderGroup->GetDisplayMotionEvents();
+        const bool displayRelativeGraph = recorderGroup->GetDisplayRelativeGraph();
 
         int32 startOffset = 0;
         int32 requiredHeight = 0;
@@ -331,10 +344,11 @@ namespace EMStudio
         const MCore::Array<EMotionFX::Recorder::NodeHistoryItem*>& historyItems = actorInstanceData->mNodeHistoryItems;
         int32 windowWidth = geometry().width();
 
-        const bool useNodeColors = mPlugin->mTrackHeaderWidget->mNodeTypeColorsCheckBox->isChecked();
+        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+        const bool useNodeColors = recorderGroup->GetUseNodeTypeColors();
+        const bool limitGraphHeight = recorderGroup->GetLimitGraphHeight();
         const bool showNodeNames = mPlugin->mTrackHeaderWidget->mNodeNamesCheckBox->isChecked();
         const bool showMotionFiles = mPlugin->mTrackHeaderWidget->mMotionFilesCheckBox->isChecked();
-        const bool limitGraphHeight = mPlugin->mTrackHeaderWidget->mLimitGraphHeightCheckBox->isChecked();
         const bool interpolate = recorder.GetRecordSettings().mInterpolate;
 
         float graphHeight = aznumeric_cast<float>(geometry().height() - mGraphStartHeight);
@@ -540,7 +554,8 @@ namespace EMStudio
                 {
                     if (curItem->mStartTime >= mPlugin->mNodeHistoryItem->mStartTime && curItem->mStartTime <= mPlugin->mNodeHistoryItem->mEndTime)
                     {
-                        if (mPlugin->mTrackHeaderWidget->mNodeActivityCheckBox->isChecked())
+                        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+                        if (recorderGroup->GetDisplayNodeActivity())
                         {
                             borderColor = QColor(255, 128, 0);
                             color = QColor(255, 128, 0);
@@ -609,11 +624,13 @@ namespace EMStudio
         int32 windowWidth = geometry().width();
 
         // calculate the remapped track list, based on sorted global weight, with the most influencing track on top
-        const bool sorted = mPlugin->mTrackHeaderWidget->mSortNodeActivityCheckBox->isChecked();
+        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+        const bool sorted = recorderGroup->GetSortNodeActivity();
+        const bool useNodeColors = recorderGroup->GetUseNodeTypeColors();
+
         const uint32 graphContentsCode = mPlugin->mTrackHeaderWidget->mNodeContentsComboBox->currentIndex();
         recorder.ExtractNodeHistoryItems(*actorInstanceData, aznumeric_cast<float>(mPlugin->mCurTime), sorted, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
 
-        const bool useNodeColors = mPlugin->mTrackHeaderWidget->mNodeTypeColorsCheckBox->isChecked();
         const bool showNodeNames = mPlugin->mTrackHeaderWidget->mNodeNamesCheckBox->isChecked();
         const bool showMotionFiles = mPlugin->mTrackHeaderWidget->mMotionFilesCheckBox->isChecked();
         const bool interpolate = recorder.GetRecordSettings().mInterpolate;
@@ -987,7 +1004,8 @@ namespace EMStudio
         }
 
         // if we clicked inside the node history area
-        if (GetIsInsideNodeHistory(event->y()) && mPlugin->mTrackHeaderWidget->mNodeActivityCheckBox->isChecked())
+        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+        if (GetIsInsideNodeHistory(event->y()) && recorderGroup->GetDisplayNodeActivity())
         {
             EMotionFX::Recorder::ActorInstanceData* actorInstanceData = FindActorInstanceData();
             EMotionFX::Recorder::NodeHistoryItem* historyItem = FindNodeHistoryItem(actorInstanceData, event->x(), event->y());
@@ -1013,9 +1031,6 @@ namespace EMStudio
 
         const int32 deltaRelY = event->y() - mLastMouseY;
         mLastMouseY = event->y();
-
-        //if (mPlugin->GetTimeInfoWidget())
-        //      mPlugin->GetTimeInfoWidget()->SetOverwriteTime( mPlugin->PixelToTime(event->x()), mPlugin->PixelToTime(event->x()) );
 
         const bool altPressed = event->modifiers() & Qt::AltModifier;
         const bool isZooming = mMouseLeftClicked == false && mMouseRightClicked && altPressed;
@@ -1350,7 +1365,8 @@ namespace EMStudio
             else // not inside timeline
             {
                 // if we clicked inside the node history area
-                if (GetIsInsideNodeHistory(event->y()) && mPlugin->mTrackHeaderWidget->mNodeActivityCheckBox->isChecked())
+                RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+                if (GetIsInsideNodeHistory(event->y()) && recorderGroup->GetDisplayNodeActivity())
                 {
                     EMotionFX::Recorder::ActorInstanceData* actorInstanceData = FindActorInstanceData();
                     EMotionFX::Recorder::NodeHistoryItem* historyItem = FindNodeHistoryItem(actorInstanceData, event->x(), event->y());
@@ -1722,7 +1738,6 @@ namespace EMStudio
             }
         }
 
-        // create the context menu
         QMenu menu(this);
 
         if (timeTrack)
@@ -1730,8 +1745,7 @@ namespace EMStudio
             TimeTrackElement* element = mPlugin->GetElementAt(mContextMenuX, mContextMenuY);
             if (element == nullptr)
             {
-                QAction* action = menu.addAction("Add Motion Event");
-                action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
+                QAction* action = menu.addAction("Add motion event");
                 connect(action, &QAction::triggered, this, &TrackDataWidget::OnAddElement);
 
                 // add action to add a motion event which gets its param and type from the selected preset
@@ -1741,49 +1755,41 @@ namespace EMStudio
                     MotionEventsPlugin* eventsPlugin = static_cast<MotionEventsPlugin*>(plugin);
                     if (eventsPlugin->CheckIfIsPresetReadyToDrop())
                     {
-                        QAction* presetAction = menu.addAction("Add Preset Event");
-                        presetAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
+                        QAction* presetAction = menu.addAction("Add preset event");
                         connect(presetAction, &QAction::triggered, this, &TrackDataWidget::OnCreatePresetEvent);
                     }
                 }
 
                 if (timeTrack->GetNumElements() > 0)
                 {
-                    action = menu.addAction("Cut All Events In Track");
-                    action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
+                    action = menu.addAction("Cut all events in track");
                     connect(action, &QAction::triggered, this, &TrackDataWidget::OnCutTrack);
 
-                    action = menu.addAction("Copy All Events In Track");
-                    action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
+                    action = menu.addAction("Copy all events in track");
                     connect(action, &QAction::triggered, this, &TrackDataWidget::OnCopyTrack);
                 }
 
                 if (GetIsReadyForPaste())
                 {
                     action = menu.addAction("Paste");
-                    action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
                     connect(action, &QAction::triggered, this, &TrackDataWidget::OnPaste);
 
-                    action = menu.addAction("Paste At Location");
-                    action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
+                    action = menu.addAction("Paste at location");
                     connect(action, &QAction::triggered, this, &TrackDataWidget::OnPasteAtLocation);
                 }
             }
             else if (element->GetIsSelected())
             {
                 QAction* action = menu.addAction("Cut");
-                action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
                 connect(action, &QAction::triggered, this, &TrackDataWidget::OnCutElement);
 
                 action = menu.addAction("Copy");
-                action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
                 connect(action, &QAction::triggered, this, &TrackDataWidget::OnCopyElement);
             }
         }
         else
         {
-            QAction* action = menu.addAction("Add Event Track");
-            action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
+            QAction* action = menu.addAction("Add event track");
             connect(action, &QAction::triggered, this, &TrackDataWidget::OnAddTrack);
         }
 
@@ -1791,7 +1797,7 @@ namespace EMStudio
         if (numSelectedElements > 0)
         {
             // construct the action name
-            AZStd::string actionName = "Remove Selected Event";
+            AZStd::string actionName = "Remove selected event";
             if (numSelectedElements > 1)
             {
                 actionName += "s";
@@ -1799,17 +1805,22 @@ namespace EMStudio
 
             // add the action
             QAction* action = menu.addAction(actionName.c_str());
-            action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
             connect(action, &QAction::triggered, this, &TrackDataWidget::RemoveSelectedMotionEventsInTrack);
         }
 
         // menu entry for removing all elements
         if (timeTrack && timeTrack->GetNumElements() > 0)
         {
-            // add the action
-            QAction* action = menu.addAction("Clear Track");
-            action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Clear.png"));
+            QAction* action = menu.addAction("Clear track");
             connect(action, &QAction::triggered, this, &TrackDataWidget::RemoveAllMotionEventsInTrack);
+        }
+
+        // Remove track.
+        if (timeTrack)
+        {
+            QAction* action = menu.addAction("Remove track");
+            action->setEnabled(timeTrack->GetIsDeletable());
+            connect(action, &QAction::triggered, this, &TrackDataWidget::OnRemoveEventTrack);
         }
 
         // show the menu at the given position
@@ -1902,7 +1913,6 @@ namespace EMStudio
     {
         mPlugin->SetRedrawFlag();
 
-        // get the track where we are at the moment
         TimeTrack* timeTrack = mPlugin->GetTrackAt(mLastMouseY);
         if (timeTrack == nullptr)
         {
@@ -1924,6 +1934,20 @@ namespace EMStudio
         mPlugin->UnselectAllElements();
     }
 
+    void TrackDataWidget::OnRemoveEventTrack()
+    {
+        const TimeTrack* timeTrack = mPlugin->GetTrackAt(mLastMouseY);
+        if (!timeTrack)
+        {
+            return;
+        }
+
+        const AZ::Outcome<AZ::u32> trackIndexOutcome = mPlugin->FindTrackIndex(timeTrack);
+        if (trackIndexOutcome.IsSuccess())
+        {
+            RemoveTrack(trackIndexOutcome.GetValue());
+        }
+    }
 
     void TrackDataWidget::FillCopyElements(bool selectedItemsOnly)
     {
@@ -2190,6 +2214,11 @@ namespace EMStudio
         eventsPlugin->OnEventPresetDropped(mousePos);
     }
 
+    void TrackDataWidget::OnAddTrack()
+    {
+        mPlugin->SetRedrawFlag();
+        CommandSystem::CommandAddEventTrack();
+    }
 
     // select all elements within a given rect
     void TrackDataWidget::SelectElementsInRect(const QRect& rect, bool overwriteCurSelection, bool select, bool toggleMode)
@@ -2315,9 +2344,11 @@ namespace EMStudio
         }
 
         // make sure the mTrackRemap array is up to date
-        const bool sorted = mPlugin->mTrackHeaderWidget->mSortNodeActivityCheckBox->isChecked();
+        RecorderGroup* recorderGroup = mPlugin->GetTimeViewToolBar()->GetRecorderGroup();
+        const bool sorted = recorderGroup->GetSortNodeActivity();
         const uint32 graphContentsCode = mPlugin->mTrackHeaderWidget->mNodeContentsComboBox->currentIndex();
         EMotionFX::GetRecorder().ExtractNodeHistoryItems(*actorInstanceData, aznumeric_cast<float>(mPlugin->mCurTime), sorted, (EMotionFX::Recorder::EValueType)graphContentsCode, &mActiveItems, &mTrackRemap);
+
 
         // get the history items shortcut
         const MCore::Array<EMotionFX::Recorder::NodeHistoryItem*>&  historyItems = actorInstanceData->mNodeHistoryItems;
@@ -2390,11 +2421,9 @@ namespace EMStudio
         // Timeline actions
         //---------------------
         QAction* action = menu.addAction("Zoom To Fit All");
-        //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
         connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnZoomAll);
 
         action = menu.addAction("Reset Timeline");
-        //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
         connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnResetTimeline);
 
         //---------------------
@@ -2406,7 +2435,6 @@ namespace EMStudio
             menu.addSeparator();
 
             action = menu.addAction("Show Node In Graph");
-            //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
             connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnShowNodeHistoryNodeInGraph);
         }
 

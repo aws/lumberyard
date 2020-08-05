@@ -19,8 +19,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include <AzCore/Debug/Timer.h>
-#include <MysticQt/Source/ComboBox.h>
-#include <MysticQt/Source/Slider.h>
 #include <MysticQt/Source/DialogStack.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphGameControllerSettings.h>
@@ -37,6 +35,7 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QBasicTimer>
+#include <QComboBox>
 
 #include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphNodeCommands.h>
@@ -47,6 +46,11 @@
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
 QT_FORWARD_DECLARE_CLASS(QLabel)
 
+namespace AzQtComponents
+{
+    class SliderInt;
+}
+
 namespace EMStudio
 {
     // forward declarations
@@ -55,7 +59,7 @@ namespace EMStudio
     class GameControllerWindow
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
                  MCORE_MEMORYOBJECTCATEGORY(GameControllerWindow, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
     public:
@@ -122,8 +126,8 @@ namespace EMStudio
             MCORE_MEMORYOBJECTCATEGORY(GameControllerWindow::ParameterInfo, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
             const EMotionFX::Parameter*         mParameter;
-            MysticQt::ComboBox*                 mAxis;
-            MysticQt::ComboBox*                 mMode;
+            QComboBox*                          mAxis;
+            QComboBox*                          mMode;
             QCheckBox*                          mInvert;
             QLineEdit*                          mValue;
         };
@@ -141,8 +145,8 @@ namespace EMStudio
             QWidget*                            mWidget;
         };
 
-        ParameterInfo* FindParamInfoByModeComboBox(MysticQt::ComboBox* comboBox);
-        ParameterInfo* FindParamInfoByAxisComboBox(MysticQt::ComboBox* comboBox);
+        ParameterInfo* FindParamInfoByModeComboBox(QComboBox* comboBox);
+        ParameterInfo* FindParamInfoByAxisComboBox(QComboBox* comboBox);
         ParameterInfo* FindParamInfoByCheckBox(QCheckBox* checkBox);
         ParameterInfo* FindButtonInfoByAttributeInfo(const EMotionFX::Parameter* parameter);
         ButtonInfo* FindButtonInfo(QWidget* widget);
@@ -169,14 +173,14 @@ namespace EMStudio
         MysticQt::DialogStack*          mDialogStack;
 
         QWidget*                        mDynamicWidget;
-        MysticQt::Slider*               mDeadZoneSlider;
+        AzQtComponents::SliderInt*      mDeadZoneSlider;
         QLabel*                         mDeadZoneValueLabel;
         QGridLayout*                    mParameterGridLayout;
         QGridLayout*                    mButtonGridLayout;
-        MysticQt::ComboBox*             mGameControllerComboBox;
+        QComboBox*                      mGameControllerComboBox;
 
         // preset interface elements
-        MysticQt::ComboBox*             mPresetComboBox;
+        QComboBox*                      mPresetComboBox;
         QLineEdit*                      mPresetNameLineEdit;
         QPushButton*                    mAddPresetButton;
         QPushButton*                    mRemovePresetButton;

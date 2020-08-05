@@ -21,9 +21,16 @@
 #include <PhysX/HeightFieldAsset.h>
 #include <BoxColliderComponent.h>
 
+namespace Physics
+{
+    class RigidBodyStatic;
+}
+
 namespace PhysX
 {
     using EntityPtr = AZStd::shared_ptr<AZ::Entity>;
+    using PointList = AZStd::vector<AZ::Vector3>;
+    using VertexIndexData = AZStd::pair<PointList, AZStd::vector<AZ::u32>>;
 
     namespace TestUtils
     {
@@ -46,6 +53,7 @@ namespace PhysX
 
         // Create static boxes
         EntityPtr CreateStaticBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions);
+        AZStd::unique_ptr<Physics::RigidBodyStatic> CreateStaticTriangleMeshCube(float halfExtent);
 
         // Collision Filtering
         void SetCollisionLayer(EntityPtr& entity, const AZStd::string& layerName, const AZStd::string& colliderTag = "");
@@ -68,6 +76,9 @@ namespace PhysX
         // Misc
         EntityPtr AddUnitTestBoxComponentsMix(const AZ::Vector3& position, const char* name = "TestBoxEntity");
 
+        // Mesh data generation
+        PointList GeneratePyramidPoints(float length);
+        VertexIndexData GenerateCubeMeshData(float halfExtent);
 
     } // namespace TestUtils
 } // namespace PhysX

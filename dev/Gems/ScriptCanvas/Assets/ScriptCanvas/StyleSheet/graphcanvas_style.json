@@ -33,11 +33,11 @@
     "margin": 0,
     "spacing": 1,
     "opacity": "75%"
-  },  
+  },
   {
     "selectors": [ "node:preview" ],
     "opacity": "50%"
-  },  
+  },
   {
     "selectors": [ "node:hovered" ],
 
@@ -45,7 +45,7 @@
 
     "border-color": "#4285f4",
     "opacity": "100%"
-  },  
+  },
   {
     "selectors": [ "node:disabled" ],
 
@@ -91,11 +91,11 @@
     "opacity": "100%"
   },
   {
-    "selectors": [ "node:unused" ],    
+    "selectors": [ "node:unused" ],
     "opacity": "25%"
   },
   {
-    "selectors": [ "node:partially_unused" ],    
+    "selectors": [ "node:partially_unused" ],
     "opacity": "40%"
   },
   {
@@ -110,7 +110,7 @@
     "selectors": [ "node.collapsedGroup:selected" ],
 
     "border-color": "#f3811d"
-  },  
+  },
   {
     "selectors": [ "node.collapsedGroup:highlighted" ],
 
@@ -156,7 +156,7 @@
     "margin": 0
   },
   {
-    "selectors": [ "node:disabled > .maintitle" ],    
+    "selectors": [ "node:disabled > .maintitle" ],
     "font-style": "italic"
   },
   {
@@ -166,7 +166,7 @@
   {
     "selectors": [ "node:inspection_transparent > title" ],
     "background-color": "#6441A4"
-  },  
+  },
   {
     "selectors": [ "node > .subtitle" ],
 
@@ -197,7 +197,7 @@
   },
   {
     "selectors": [ "node:disabled > .subtitle" ],
-    "font-style": "italic"    
+    "font-style": "italic"
   },
   {
     "selectors": [ "comment" ],
@@ -952,6 +952,46 @@
     "border-color": "#E25243"
   },
   {
+    "selectors": [ "assetIdPropertyDisplayLabel" ],
+
+    "font-family": "Open Sans",
+    "font-size": "115%",
+    "font-style": "default",
+    "font-variant": "default",
+    "font-weight": "default",
+
+    "background-color": "#666666",
+    "color": "#EEEEEE",
+    "min-height": 25,
+    "min-width": 132,
+    "max-width": 132,
+    "max-height": 35,
+    "border-radius": 2,
+    "border-width": 1,
+    "border-style": "solid",
+    "border-color": "#222222",
+    "text-alignment": "left",
+    "text-vertical-alignment": "center"
+  },
+  {
+    "selectors": [ "assetIdPropertyDisplayLabel:invalidDrop" ],
+
+    "background-color": "#BE3333",
+    "border-radius": 2,
+    "border-width": 1,
+    "border-style": "solid",
+    "border-color": "#EEEEEE"
+  },
+  {
+    "selectors": [ "assetIdPropertyDisplayLabel:validDrop" ],
+
+    "background-color": "#f3811d",
+    "border-radius": 2,
+    "border-width": 1,
+    "border-style": "solid",
+    "border-color": "#EEEEEE"
+  },
+  {
     "selectors": [ "booleanPropertyDisabledLabel" ],
     "background-color": "transparent",
     "min-height": 25,
@@ -1564,7 +1604,7 @@
     "border-width": 1,
     "border-style": "solid",
     "border-color": "#EEEEEE"
-    
+
   },
   {
     "selectors": [ "propertySlot" ],
@@ -1759,7 +1799,7 @@
     "selectors": [ "connection.varFlow:dragging" ],
 
     "line-style": "dotted"
-  },  
+  },
   {
     "selectors": [ "connection.referenceFlow:dragging" ],
 
@@ -1844,8 +1884,8 @@
     "selectors": [ "NumberDataColorPalette" ],
     "palette-style": "solid",
     "line-color": "#E3E322",
-    "background-color": "#E3E322"    
-  },  
+    "background-color": "#E3E322"
+  },
   {
     "selectors": [ "EntityIdDataColorPalette" ],
     "palette-style": "solid",
@@ -1903,7 +1943,7 @@
     "color": "#ffffff"
   },
   {
-    "selectors": ["DisabledColorPalette"],
+    "selectors": [ "DisabledColorPalette" ],
     "palette-style": "solid",
     "line-color": "#B0B8B7",
     "background-color": "#B0B8B7",
@@ -1952,6 +1992,13 @@
     "color": "#ffffff"
   },
   {
+    "selectors": [ "FunctionNodeTitlePalette" ],
+    "palette-style": "solid",
+    "line-color": "#0D47A8",
+    "background-color": "#0D47A8",
+    "color": "#ffffff"
+  },  
+  {
     "selectors": [ "ObjectNodeTitlePalette" ],
     "palette-style": "solid",
     "line-color": "#AF937B",
@@ -1999,6 +2046,31 @@
     "color": "#ffffff"
   },
   {
+    "selectors": [ "NodelingTitlePalette" ],
+    "palette-style": "candystripe",
+    "line-color": "#B9B9B9",
+    "background-color": "#28b034",
+    "color": "#ffffff",
+
+    "border-width": 2,
+    "border-style": "solid",
+    "border-color": "#ff00ff",
+    "border-radius": 18,
+
+    "max-stripe-size": 50,
+    "min-stripes": 3,
+    "stripe-color": "#706B01",
+    "stripe-angle": 90,
+    "stripe-offset": 0
+  },
+  {
+    "selectors": [ "DisabledPalette" ],
+    "palette-style": "solid",
+    "line-color": "#8A8691",
+    "background-color": "#8A869180",
+    "color": "#ffffff"
+  },
+  {
     "selectors": [ "TestingNodeTitlePalette" ],
     "palette-style": "candystripe",
     "line-color": "#B9B9B9",
@@ -2030,7 +2102,7 @@
     "line-color": "#FCF9A6",
     "background-color": "#FCF9A6",
     "color": "#ffffff"
-  },  
+  },
   {
     "selectors": [ "BookmarkTypeIcon" ],
     "margin": 2,
@@ -2068,11 +2140,11 @@
   },
   {
     "selectors": [ "CommentPresetIcon" ],
-    
+
     "margin": 2,
     "width": 12,
     "height": 8,
-    
+
     "border-width": 1,
     "border-style": "solid",
     "border-color": "#00000033",
@@ -2080,18 +2152,18 @@
   },
   {
     "selectors": [ "NodeGroupPresetIcon" ],
-    
+
     "margin": 2,
     "width": 12,
     "height": 8,
-    
+
     "border-width": 1,
     "border-style": "solid",
     "border-color": "#00000033",
     "border-radius": 1
   },
   {
-    "selectors": ["UnknownLayer"],
+    "selectors": [ "UnknownLayer" ],
     "z-value": -3
   },
   {
@@ -2100,19 +2172,19 @@
   },
   {
     "selectors": [ "NodeGroupLayer_interactive" ],
-    
-    "z-value": -2   
+
+    "z-value": -2
   },
   {
-    "selectors": ["ConnectionLayer"],
+    "selectors": [ "ConnectionLayer" ],
     "z-value": -1
   },
   {
-    "selectors": ["ConnectionLayer_interactive"],    
+    "selectors": [ "ConnectionLayer_interactive" ],
     "z-value": 0
   },
   {
-    "selectors": [ "NodeLayer" ],    
+    "selectors": [ "NodeLayer" ],
     "z-value": 1
   },
   {
@@ -2120,7 +2192,7 @@
     "z-value": 2
   },
   {
-    "selectors": ["ConnectionLayer_editing"],    
+    "selectors": [ "ConnectionLayer_editing" ],
     "z-value": 3
   },
   {
@@ -2128,7 +2200,7 @@
     "z-value": 3
   },
   {
-    "selectors": [ "CommentLayer_interactive" ],    
+    "selectors": [ "CommentLayer_interactive" ],
     "z-value": 4
   },
   {
@@ -2138,13 +2210,13 @@
   {
     "selectors": [ "BookmarkAnchor_interactive" ],
     "z-value": 4
-  },  
-  {
-    "selectors": [ "NodeGroupLayer_grouped" ],    
-    "z-value": 5    
   },
   {
-    "selectors": ["ConnectionLayer_grouped"],    
+    "selectors": [ "NodeGroupLayer_grouped" ],
+    "z-value": 5
+  },
+  {
+    "selectors": [ "ConnectionLayer_grouped" ],
     "z-value": 6
   },
   {
@@ -2158,5 +2230,9 @@
   {
     "selectors": [ "BookmarkAnchor_grouped" ],
     "z-value": 9
+  },
+  {
+    "selectors": ["Sizing_WidthSteps"],
+    "steps": "7|14|21|28"
   }
 ]

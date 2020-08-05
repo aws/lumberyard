@@ -32,7 +32,8 @@ namespace AzQtComponents
             int defaultButtonMargin;
             int menuIndicatorWidth;
             QColor checkedStateBackgroundColor;
-            QPixmap menuIndicatorIcon;
+            QString menuIndicatorIcon;
+            QSize menuIndicatorIconSize;
         };
 
         /*!

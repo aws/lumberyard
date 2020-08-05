@@ -18,8 +18,6 @@
 #include <QHeaderView>
 #include <QPushButton>
 
-#include <MysticQt/Source/ColorLabel.h>
-
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphNodeGroup.h>

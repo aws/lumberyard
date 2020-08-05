@@ -29,18 +29,19 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0" colspan="5">
-      <spacer name="verticalSpacer">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
+     <item row="5" column="2">
+      <widget class="AzQtComponents::SliderDoubleCombo" name="verticalSliderDoubleComboWithSoftRange" native="true">
+       <property name="orientation" stdset="0">
+        <number>2</number>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>SliderDoubleCombo without value</string>
        </property>
-      </spacer>
+      </widget>
      </item>
      <item row="2" column="0" colspan="5">
       <spacer name="verticalSpacer_3">
@@ -55,78 +56,102 @@
        </property>
       </spacer>
      </item>
-      <item row="5" column="1">
-        <widget class="QLabel" name="label_2">
-          <property name="text">
-            <string>Slider Combobox</string>
-          </property>
-        </widget>
-      </item>
-      <item row="5" column="2">
-        <widget class="AzQtComponents::SliderCombo" name="verticalSliderCombo" native="true">
-          <property name="enabled">
-            <bool>true</bool>
-          </property>
-          <property name="orientation" stdset="0">
-            <number>2</number>
-          </property>
-        </widget>
-      </item>
-      <item row="6" column="1">
-        <widget class="QLabel" name="label_2">
-          <property name="text">
-            <string>Slider Combobox without value</string>
-          </property>
-        </widget>
-      </item>
-      <item row="6" column="2">
-        <widget class="AzQtComponents::SliderCombo" name="verticalSliderComboWithoutValue" native="true">
-          <property name="enabled">
-            <bool>true</bool>
-          </property>
-          <property name="orientation" stdset="0">
-            <number>2</number>
-          </property>
-        </widget>
-      </item>
-
-
-
-      <item row="4" column="2">
-        <widget class="AzQtComponents::SliderDoubleCombo" name="verticalSliderDoubleComboWithoutValue" native="true">
-          <property name="enabled">
-            <bool>true</bool>
-          </property>
-          <property name="orientation" stdset="0">
-            <number>2</number>
-          </property>
-        </widget>
-      </item>
-      <item row="4" column="1">
-        <widget class="QLabel" name="label_2">
-          <property name="text">
-            <string>Slider DoubleCombobox without value</string>
-          </property>
-        </widget>
-      </item>
-      <item row="3" column="2">
-        <widget class="AzQtComponents::SliderDoubleCombo" name="verticalSliderDoubleCombo" native="true">
-          <property name="enabled">
-            <bool>true</bool>
-          </property>
-          <property name="orientation" stdset="0">
-            <number>2</number>
-          </property>
-        </widget>
-      </item>
-      <item row="3" column="1">
-        <widget class="QLabel" name="label_2">
-          <property name="text">
-            <string>Slider DoubleCombobox</string>
-          </property>
-        </widget>
-      </item>
-      <item row="7" column="0" colspan="5">
+     <item row="7" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>SliderCombo</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>SliderDoubleCombo with soft range</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="AzQtComponents::SliderDoubleCombo" name="verticalSliderDoubleCombo" native="true">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="orientation" stdset="0">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="AzQtComponents::SliderDoubleCombo" name="verticalSliderDoubleComboWithoutValue" native="true">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="orientation" stdset="0">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0" colspan="5">
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="9" column="1">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>SliderCombo with soft range</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="2">
+      <widget class="AzQtComponents::SliderCombo" name="verticalSliderCombo" native="true">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="orientation" stdset="0">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>SliderDoubleCombo</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="2">
+      <widget class="AzQtComponents::SliderCombo" name="verticalSliderComboWithSoftRange" native="true">
+       <property name="orientation" stdset="0">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>SliderCombo without value</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="2">
+      <widget class="AzQtComponents::SliderCombo" name="verticalSliderComboWithoutValue" native="true">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="orientation" stdset="0">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="0" colspan="5">
       <spacer name="verticalSpacer_2">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -139,6 +164,23 @@
        </property>
       </spacer>
      </item>
+     <item row="6" column="1">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>SliderDoubleCombo with curve</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="AzQtComponents::SliderDoubleCombo" name="curveSliderDoubleCombo" native="true">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="orientation" stdset="0">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>
@@ -149,11 +191,11 @@
    <extends>QWidget</extends>
    <header location="global">AzQtComponents/Components/Widgets/SliderCombo.h</header>
   </customwidget>
-   <customwidget>
-     <class>AzQtComponents::SliderDoubleCombo</class>
-     <extends>QWidget</extends>
-     <header location="global">AzQtComponents/Components/Widgets/SliderCombo.h</header>
-   </customwidget>
+  <customwidget>
+   <class>AzQtComponents::SliderDoubleCombo</class>
+   <extends>QWidget</extends>
+   <header location="global">AzQtComponents/Components/Widgets/SliderCombo.h</header>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections/>

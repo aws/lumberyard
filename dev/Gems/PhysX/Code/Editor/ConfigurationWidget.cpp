@@ -13,6 +13,7 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 #include <QBoxLayout>
 #include <Editor/ConfigurationWidget.h>
 #include <Editor/SettingsWidget.h>
@@ -27,10 +28,11 @@ namespace PhysX
             : QWidget(parent)
         {
             QVBoxLayout* verticalLayout = new QVBoxLayout(this);
-            verticalLayout->setContentsMargins(0, 0, 0, 0);
+            verticalLayout->setContentsMargins(0, 5, 0, 0);
             verticalLayout->setSpacing(0);
 
-            m_tabs = new QTabWidget(this);
+            m_tabs = new AzQtComponents::TabWidget(this);
+            AzQtComponents::TabWidget::applySecondaryStyle(m_tabs, false);
 
             m_settings = new SettingsWidget();
             m_collisionFiltering = new CollisionFilteringWidget();

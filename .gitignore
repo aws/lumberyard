@@ -105,6 +105,9 @@
 /dev/Bin64
 /dev/Bin64vc141
 /dev/Bin64vc141.Debug
+/dev/Bin64vc142
+/dev/Bin64vc142.Debug.Dedicated
+/dev/Cache
 /dev/Cache
 /dev/SamplesProject
 /dev/Code/SDKs
@@ -130,3 +133,4 @@
 /dev/SetupAssistantUserPreferences.ini
 /dev/_WAF_/environment.json
 /SetupAssistant.bat
+

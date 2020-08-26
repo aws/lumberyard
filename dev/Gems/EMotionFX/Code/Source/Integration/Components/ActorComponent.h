@@ -53,6 +53,23 @@ namespace EMotionFX
             AZ_COMPONENT(ActorComponent, "{BDC97E7F-A054-448B-A26F-EA2B5D78E377}");
             friend class EditorActorComponent;
 
+            struct BoundingBoxConfiguration
+            {
+                AZ_TYPE_INFO(BoundingBoxConfiguration, "{EBCFF975-00A5-4578-85C7-59909F52067C}");
+
+                BoundingBoxConfiguration() = default;
+
+                EMotionFX::ActorInstance::EBoundsType m_boundsType          = EMotionFX::ActorInstance::BOUNDS_STATIC_BASED;
+                bool                                  m_autoUpdateBounds    = true;
+                float                                 m_updateTimeFrequency = 0.f;
+                AZ::u32                               m_updateItemFrequency = 1;
+
+                void Set(ActorInstance* inst) const;
+                void SetAndUpdate(ActorInstance* inst) const;
+
+                static void Reflect(AZ::ReflectContext* context);
+            };
+
             /**
             * Configuration struct for procedural configuration of Actor Components.
             */
@@ -72,6 +89,7 @@ namespace EMotionFX
                 bool                            m_renderBounds;             ///< Toggles rendering of the character bounds used for visibility testing.
                 SkinningMethod                  m_skinningMethod;           ///< The skinning method for this actor
                 AZ::u32                         m_lodLevel;
+                BoundingBoxConfiguration        m_bboxConfig;
                 bool                            m_forceUpdateJointsOOV;     // Force updating the joints when it is out of camera view. By default, joints level update
                                                                             // (beside the root joint) on actor are disabled when the actor is out of view. 
 

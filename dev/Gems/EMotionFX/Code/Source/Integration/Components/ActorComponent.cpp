@@ -39,13 +39,50 @@ namespace EMotionFX
     namespace Integration
     {
         //////////////////////////////////////////////////////////////////////////
+        void ActorComponent::BoundingBoxConfiguration::Set(ActorInstance* actor) const
+        {
+            if (m_autoUpdateBounds)
+            {
+                actor->SetupAutoBoundsUpdate(m_updateTimeFrequency, m_boundsType, m_updateItemFrequency);
+            }
+            else
+            {
+                actor->SetBoundsUpdateType(m_boundsType);
+                actor->SetBoundsUpdateEnabled(false);
+            }
+        }
+
+        void ActorComponent::BoundingBoxConfiguration::SetAndUpdate(ActorInstance* actor) const
+        {
+            Set(actor);
+            auto freq = actor->GetBoundsUpdateEnabled() ? actor->GetBoundsUpdateItemFrequency() : 1;
+            actor->UpdateBounds(0, actor->GetBoundsUpdateType(), freq);
+        }
+
+        void ActorComponent::BoundingBoxConfiguration::Reflect(AZ::ReflectContext * context)
+        {
+            if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<BoundingBoxConfiguration>()
+                    ->Version(1)
+                    ->Field("m_boundsType", &BoundingBoxConfiguration::m_boundsType)
+                    ->Field("m_autoUpdateBounds", &BoundingBoxConfiguration::m_autoUpdateBounds)
+                    ->Field("m_updateTimeFrequency", &BoundingBoxConfiguration::m_updateTimeFrequency)
+                    ->Field("m_updateItemFrequency", &BoundingBoxConfiguration::m_updateItemFrequency)
+                    ;
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
         void ActorComponent::Configuration::Reflect(AZ::ReflectContext* context)
         {
+            BoundingBoxConfiguration::Reflect(context);
+
             auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
                 serializeContext->Class<Configuration>()
-                    ->Version(3)
+                    ->Version(4)
                     ->Field("ActorAsset", &Configuration::m_actorAsset)
                     ->Field("MaterialPerLOD", &Configuration::m_materialPerLOD)
                     ->Field("RenderSkeleton", &Configuration::m_renderSkeleton)
@@ -55,6 +92,7 @@ namespace EMotionFX
                     ->Field("AttachmentTarget", &Configuration::m_attachmentTarget)
                     ->Field("SkinningMethod", &Configuration::m_skinningMethod)
                     ->Field("LODLevel", &Configuration::m_lodLevel)
+                    ->Field("BoundingBoxConfig", &Configuration::m_bboxConfig)
                     ->Field("ForceJointsUpdateOOV", &Configuration::m_forceUpdateJointsOOV)
                 ;
             }
@@ -303,6 +341,9 @@ namespace EMotionFX
                 AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
 
                 m_actorInstance->UpdateWorldTransform();
+                // Set bounds update mode and compute bbox first time 
+                m_configuration.m_bboxConfig.SetAndUpdate(m_actorInstance.get());
+
                 m_actorInstance->UpdateBounds(0, ActorInstance::EBoundsType::BOUNDS_STATIC_BASED);
 
                 RenderBackend* renderBackend = AZ::Interface<RenderBackendManager>::Get()->GetRenderBackend();

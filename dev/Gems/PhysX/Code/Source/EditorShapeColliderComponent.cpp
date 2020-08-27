@@ -602,6 +602,8 @@ namespace PhysX
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
         PhysX::ColliderShapeRequestBus::Handler::BusConnect(GetEntityId());
 
+        EBUS_EVENT_ID_RESULT(m_cachedWorldTm, GetEntityId(), AZ::TransformBus, GetWorldTM);
+
         bool refreshPropertyTree = true;
         UpdateShapeConfigs(refreshPropertyTree);
 
@@ -642,8 +644,14 @@ namespace PhysX
     }
 
     // TransformBus
-    void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+        if (world.IsClose(m_cachedWorldTm))
+        {
+            return;
+        }
+        m_cachedWorldTm = world;
+
         bool refreshPropertyTree = false;
         UpdateShapeConfigs(refreshPropertyTree);
 

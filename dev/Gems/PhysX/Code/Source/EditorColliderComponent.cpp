@@ -471,6 +471,9 @@ namespace PhysX
 
             m_editorBody = AZ::Interface<Physics::System>::Get()->CreateStaticRigidBody(configuration);
 
+            auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
+            shapeConfiguration.m_scale = Utils::GetUniformScale(GetEntityId());
+
             if (m_shapeConfiguration.IsAssetConfig())
             {
                 AZStd::vector<AZStd::shared_ptr<Physics::Shape>> shapes;
@@ -485,7 +488,6 @@ namespace PhysX
             {
                 const Physics::ColliderConfiguration colliderConfiguration = GetColliderConfigurationScaled();
 
-                const auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
                 AZStd::shared_ptr<Physics::Shape> shape = AZ::Interface<Physics::System>::Get()->CreateShape(
                     colliderConfiguration, shapeConfiguration);
 
@@ -493,6 +495,8 @@ namespace PhysX
             }
 
             editorWorld->AddBody(*m_editorBody);
+
+            shapeConfiguration.m_scale = AZ::Vector3::CreateOne();
         }
 
         m_colliderDebugDraw.ClearCachedGeometry();
@@ -849,8 +853,6 @@ namespace PhysX
 
     void EditorColliderComponent::UpdateShapeConfigurationScale()
     {
-        auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
-        shapeConfiguration.m_scale = GetWorldTM().ExtractScale();
         m_colliderDebugDraw.ClearCachedGeometry();
     }
 

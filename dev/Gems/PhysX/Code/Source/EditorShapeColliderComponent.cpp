@@ -247,11 +247,16 @@ namespace PhysX
             configuration.m_debugName = GetEntity()->GetName();
 
             m_editorBody = AZ::Interface<Physics::System>::Get()->CreateStaticRigidBody(configuration);
+            const AZ::Vector3 scale = Utils::GetUniformScale(GetEntityId());
 
-            for (const auto& shapeConfig : m_shapeConfigs)
+            for (auto& shapeConfig : m_shapeConfigs)
             {
+                shapeConfig->m_scale = scale;
+
                 AZStd::shared_ptr<Physics::Shape> shape = AZ::Interface<Physics::System>::Get()->CreateShape(m_colliderConfig, *shapeConfig);
                 m_editorBody->AddShape(shape);
+
+                shapeConfig->m_scale = AZ::Vector3::CreateOne();
             }
 
             if (!m_shapeConfigs.empty())
@@ -344,7 +349,6 @@ namespace PhysX
             configuration = Physics::BoxShapeConfiguration(boxDimensions);
         }
 
-        m_shapeConfigs.back()->m_scale = scale;
         m_geometryCache.m_boxDimensions = scale * boxDimensions;
     }
 
@@ -370,7 +374,6 @@ namespace PhysX
             configuration = capsuleShapeConfig;
         }
 
-        m_shapeConfigs.back()->m_scale = scale;
         const float scalarScale = scale.GetMaxElement();
         m_geometryCache.m_radius = scalarScale * capsuleShapeConfig.m_radius;
         m_geometryCache.m_height = scalarScale * capsuleShapeConfig.m_height;
@@ -396,7 +399,6 @@ namespace PhysX
             configuration = Physics::SphereShapeConfiguration(radius);
         }
         
-        m_shapeConfigs.back()->m_scale = scale;
         m_geometryCache.m_radius = scale.GetMaxElement() * radius;
     }
 

@@ -54,6 +54,7 @@
 #include <Integration/System/SystemComponent.h>
 
 #include <AzFramework/Physics/World.h>
+#include <Integration/MotionExtractionHandlerBus.h>
 
 
 #if defined(EMOTIONFXANIMATION_EDITOR) // EMFX tools / editor includes
@@ -699,13 +700,14 @@ namespace EMotionFX
                         const AZ::EntityId entityId = entity->GetId();
 
                         // Check if we have any physics character controllers.
+                        bool hasCustomMotionExtractionController = MotionExtractionHandlerRequestBus::FindFirstHandler(entityId) != nullptr;
                         bool hasPhysicsController = false;
                         bool hasCryPhysicsController = false;
                         Physics::CharacterRequestBus::EventResult(hasPhysicsController, entityId, &Physics::CharacterRequests::IsPresent);
                         LmbrCentral::CryCharacterPhysicsRequestBus::EventResult(hasCryPhysicsController, entityId, &LmbrCentral::CryCharacterPhysicsRequests::IsCryCharacterControllerPresent);
 
                         // If we have a physics controller.
-                        if (hasPhysicsController || hasCryPhysicsController)
+                        if (hasCustomMotionExtractionController || hasPhysicsController || hasCryPhysicsController)
                         {
                             const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
 
@@ -715,7 +717,13 @@ namespace EMotionFX
                             const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
                             const AZ::Vector3 positionDelta = actorInstancePosition - currentTransform.GetPosition();
 
-                            if (hasPhysicsController)
+                            if (hasCustomMotionExtractionController)
+                            {
+                                MotionExtractionHandlerRequestBus::Event(entityId, &MotionExtractionHandlerRequestBus::Events::HandleMotionExtraction, positionDelta, timeDelta);
+
+                                AZ::TransformBus::EventResult(currentTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
+                            }
+                            else if (hasPhysicsController)
                             {
                                 Physics::CharacterRequestBus::Event(entityId, &Physics::CharacterRequests::TryRelativeMove, positionDelta, timeDelta);
 

@@ -27,6 +27,8 @@ namespace AzToolsFramework
     PropertyColorCtrl::PropertyColorCtrl(QWidget* pParent)
         : QWidget(pParent)
     {
+        m_alphaChannelEnabled = false;
+
         // create the gui, it consists of a layout, and in that layout, a text field for the value
         // and then a slider for the value.
         QHBoxLayout* pLayout = new QHBoxLayout(this);
@@ -36,15 +38,7 @@ namespace AzToolsFramework
         m_colorEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         m_colorEdit->setMinimumWidth(PropertyQTConstant_MinimumWidth);
         m_colorEdit->setFixedHeight(PropertyQTConstant_DefaultHeight);
-        /*Use regex to validate the input
-        *\d\d?    Match 0-99
-        *1\d\d    Match 100 - 199
-        *2[0-4]\d Match 200-249
-        *25[0-5]  Match 250 - 255
-        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?)\s*,\s*){2} Match the first two "0-255,"
-        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?) Match the last "0-255"
-        */
-        m_colorEdit->setValidator(new QRegExpValidator(QRegExp("^\\s*((25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*,\\s*){2}(25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*$")));
+        m_colorEdit->setValidator(CreateTextEditValidator());
 
         m_pDefaultButton = new QToolButton(this);
         m_pDefaultButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -81,6 +75,14 @@ namespace AzToolsFramework
         return m_color;
     }
 
+    void PropertyColorCtrl::setAlphaChannelEnabled(bool enabled) {
+        if (m_alphaChannelEnabled != enabled) { 
+            m_alphaChannelEnabled = enabled;
+
+            m_colorEdit->setValidator(CreateTextEditValidator());
+        }
+    }
+
     QWidget* PropertyColorCtrl::GetFirstInTabOrder()
     {
         return m_pDefaultButton;
@@ -113,9 +115,14 @@ namespace AzToolsFramework
                 m_pColorDialog->setCurrentColor(AzQtComponents::fromQColor(m_color));
             }
 
-            int R, G, B;
-            m_color.getRgb(&R, &G, &B);
-            m_colorEdit->setText(QStringLiteral("%1,%2,%3").arg(R).arg(G).arg(B));
+            int R, G, B, A;
+            m_color.getRgb(&R, &G, &B, &A);
+            auto colorStr =
+                m_alphaChannelEnabled
+                ? QStringLiteral("%1,%2,%3,%4").arg(R).arg(G).arg(B).arg(A)
+                : QStringLiteral("%1,%2,%3").arg(R).arg(G).arg(B)
+                ;
+            m_colorEdit->setText(colorStr);
         }
     }
 
@@ -140,6 +147,25 @@ namespace AzToolsFramework
         }
     }
 
+    QRegExpValidator * PropertyColorCtrl::CreateTextEditValidator() const {
+        /*Use regex to validate the input
+        *\d\d?    Match 0-99
+        *1\d\d    Match 100 - 199
+        *2[0-4]\d Match 200-249
+        *25[0-5]  Match 250 - 255
+        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?)\s*,\s*){2} Match the first two (or three with alpha channel) "0-255,"
+        *(25[0-5]|2[0-4]\d|1\d\d|\d\d?) Match the last "0-255"
+        */
+
+        int numInitialChannelComponents = m_alphaChannelEnabled ? 3 : 2;
+
+        AZStd::string regex = AZStd::string::format(
+            "^\\s*((25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*,\\s*){%d}(25[0-5]|2[0-4]\\d|1\\d\\d|\\d\\d?)\\s*$",
+            numInitialChannelComponents);
+
+        return new QRegExpValidator(QRegExp(regex.c_str()));
+    }
+
     void PropertyColorCtrl::CreateColorDialog()
     {
         // Don't need to create a dialog if it already exists.
@@ -148,7 +174,8 @@ namespace AzToolsFramework
             return;
         }
 
-        m_pColorDialog = new AzQtComponents::ColorPicker(AzQtComponents::ColorPicker::Configuration::RGB, QString(), this);
+        const auto config = m_alphaChannelEnabled ? AzQtComponents::ColorPicker::Configuration::RGBA : AzQtComponents::ColorPicker::Configuration::RGB;
+        m_pColorDialog = new AzQtComponents::ColorPicker(config, QString(), this);
         m_pColorDialog->setWindowTitle(tr("Select Color"));
         m_pColorDialog->setWindowModality(Qt::ApplicationModal);
         m_pColorDialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -194,12 +221,15 @@ namespace AzToolsFramework
     QColor PropertyColorCtrl::convertFromString(const QString& string)
     {
         QStringList strList = string.split(",", QString::SkipEmptyParts);
-        int R = 0, G = 0, B = 0;
-        AZ_Assert(strList.size() == 3, "Invalid input string for RGB field!");
+        int R = 0, G = 0, B = 0, A = 255;
+        AZ_Assert(strList.size() == 3 || strList.size() == 4, "Invalid input string for RGB field!");
         R = strList[0].trimmed().toInt();
         G = strList[1].trimmed().toInt();
         B = strList[2].trimmed().toInt();
-        return QColor(R, G, B);
+        if (m_alphaChannelEnabled) { 
+            A = strList[3].trimmed().toInt();
+        }
+        return QColor(R, G, B, A);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -262,8 +292,21 @@ namespace AzToolsFramework
         }
     }
 
-    void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* /*GUI*/, AZ::u32 /*attrib*/, PropertyAttributeReader* /*attrValue*/, const char* /*debugName*/)
+    void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
+        if (attrib == AZ_CRC("AlphaChannel"))
+        {
+            bool alphaChannel;
+            if (attrValue->Read<bool>(alphaChannel)) { 
+                GUI->setAlphaChannelEnabled(alphaChannel);
+            }
+            else
+            {
+                (void)debugName;
+                AZ_WarningOnce("AZColorPropertyHandler", false, "Failed to read 'AlphaChannel' attribute from property '%s'; expected `bool' type", debugName);
+            }
+        }
+
     }
 
     void AZColorPropertyHandler::WriteGUIValuesIntoProperty(size_t index, PropertyColorCtrl* GUI, property_t& instance, InstanceDataNode* node)

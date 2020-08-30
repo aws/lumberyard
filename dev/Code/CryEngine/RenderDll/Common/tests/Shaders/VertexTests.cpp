@@ -52,42 +52,60 @@ int32 m_cSizeVF[eVF_Max] =
 
     sizeof(SVF_P3F_C4F_T2F),  //format number 23 (for testing verification)
     sizeof(SVF_P3F_C4F_T2F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T3F),
     sizeof(SVF_P3F_C4F_T2F_T1F),
     sizeof(SVF_P3F_C4F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T3F),
     sizeof(SVF_P3F_C4F_T4F_T2F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T3F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T1F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F),  //30
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F),
     sizeof(SVF_P4F_T2F_C4F_T4F_T4F),  //35
     sizeof(SVF_P3F_C4F_T2F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T3F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T1F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T4F),  //40
     sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T4F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F),  //45
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F),
     sizeof(SVF_P4F_T2F_C4F_T4F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T3F_T4F_T4F),  //50
+    sizeof(SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T1F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F),  //55
     sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F),
     sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F),  //60
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F),
     sizeof(SVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F),
 };
 
@@ -116,7 +134,7 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {      //eVF_P3S_C4B_T2S
         OOFS(SVF_P3S_C4B_T2S, st),
         OOFS(SVF_P3S_C4B_T2S, color.dcolor),
--1
+        -1
     },
 
     {      //eVF_P3S_C4B_T2S_T2S
@@ -182,8 +200,8 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {   // eVF_P2F_T4F_T4F_C4F
         OOFS(SVF_P2F_T4F_T4F_C4F, st),
         OOFS(SVF_P2F_T4F_T4F_C4F, color),
-        -1
-    },
+        -1 
+    }, 
     {     // eVF_P2S_N4B_C4B_T1F
         OOFS(SVF_P2S_N4B_C4B_T1F, z),
         OOFS(SVF_P2S_N4B_C4B_T1F, color.dcolor),
@@ -214,6 +232,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T2F_T3F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T2F_T3F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T2F_T1F
         OOFS(SVF_P3F_C4F_T2F_T1F, st),
         OOFS(SVF_P3F_C4F_T2F_T1F, color),
@@ -222,6 +245,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T2F_T1F_T3F
         OOFS(SVF_P3F_C4F_T2F_T1F_T3F, st0),
         OOFS(SVF_P3F_C4F_T2F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T3F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F, color),
         -1
     },
     {     // eVF_P3F_C4F_T4F_T2F
@@ -234,6 +262,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T4F_T2F_T3F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T4F_T2F_T3F_T3F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F, color),
+        -1
+   },
     {     // eVF_P3F_C4F_T4F_T2F_T1F
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F, st0),
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F, color),
@@ -242,6 +275,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F, st0),
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F, color),
         -1
     },
     {     // eVF_P3F_C4F_T2F_T2F_T1F
@@ -254,6 +292,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F, st0),
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F, color),
@@ -262,6 +305,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F, st0),
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F, color),
         -1
     },
     {     // eVF_P4F_T2F_C4F_T4F_T4F
@@ -279,6 +327,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T2F_T3F_T4F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T2F_T3F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T2F_T1F_T4F
         OOFS(SVF_P3F_C4F_T2F_T1F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T1F_T4F, color),
@@ -287,6 +340,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T2F_T1F_T3F_T4F
         OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F, color),
         -1
     },
     {     // eVF_P3F_C4F_T4F_T2F_T4F
@@ -299,6 +357,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T4F_T2F_T1F_T4F
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F, st0),
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F, color),
@@ -307,6 +370,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F, st0),
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F, color),
         -1
     },
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T4F
@@ -319,6 +387,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F, color),
@@ -327,6 +400,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F, color),
         -1
     },
     {     // eVF_P4F_T2F_C4F_T4F_T4F_T4F
@@ -344,6 +422,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T2F_T3F_T4F_T4F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T2F_T1F_T4F_T4F
         OOFS(SVF_P3F_C4F_T2F_T1F_T4F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T1F_T4F_T4F, color),
@@ -352,6 +435,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F
         OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F, color),
         -1
     },
     {     // eVF_P3F_C4F_T4F_T2F_T4F_T4F
@@ -364,6 +452,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F, st0),
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F, color),
@@ -372,6 +465,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F, st0),
         OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F, color),
         -1
     },
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F
@@ -384,6 +482,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F, color),
         -1
     },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F, color),
+        -1
+    },
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F, color),
@@ -392,6 +495,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F, st0),
         OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F, color),
+        -1
+    },
+    {     // eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F, st0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F, color),
         -1
     },
     {     // eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F

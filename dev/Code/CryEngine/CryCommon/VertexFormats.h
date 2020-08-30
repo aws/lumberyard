@@ -58,42 +58,60 @@ enum EVertexFormat : uint8
 
     eVF_P3F_C4F_T2F,  //numbering for tracking the new vertex formats and for comparison with testing 23
     eVF_P3F_C4F_T2F_T3F,
+    eVF_P3F_C4F_T2F_T3F_T3F,
     eVF_P3F_C4F_T2F_T1F,
     eVF_P3F_C4F_T2F_T1F_T3F,
+    eVF_P3F_C4F_T2F_T1F_T3F_T3F,
     eVF_P3F_C4F_T4F_T2F,
     eVF_P3F_C4F_T4F_T2F_T3F,
+    eVF_P3F_C4F_T4F_T2F_T3F_T3F,
     eVF_P3F_C4F_T4F_T2F_T1F,
     eVF_P3F_C4F_T4F_T2F_T1F_T3F,  //30
+    eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F,
     eVF_P3F_C4F_T2F_T2F_T1F,
     eVF_P3F_C4F_T2F_T2F_T1F_T3F,
+    eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F,
+    eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F,
     eVF_P4F_T2F_C4F_T4F_T4F,  //35
     eVF_P3F_C4F_T2F_T4F,
     eVF_P3F_C4F_T2F_T3F_T4F,
+    eVF_P3F_C4F_T2F_T3F_T3F_T4F,
     eVF_P3F_C4F_T2F_T1F_T4F,
     eVF_P3F_C4F_T2F_T1F_T3F_T4F,
+    eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F,
     eVF_P3F_C4F_T4F_T2F_T4F,  //40
     eVF_P3F_C4F_T4F_T2F_T3F_T4F,
+    eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F,
+    eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F,  //45
+    eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F,
+    eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F,
     eVF_P4F_T2F_C4F_T4F_T4F_T4F,
     eVF_P3F_C4F_T2F_T4F_T4F,
     eVF_P3F_C4F_T2F_T3F_T4F_T4F,  //50
+    eVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T1F_T4F_T4F,
     eVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F,
+    eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T4F_T2F_T4F_T4F,
     eVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F,
+    eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F,  //55
     eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F,
+    eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F,
+    eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F,
     eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F,  //60
+    eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F,
     eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F,
 
     eVF_Max,
@@ -401,6 +419,15 @@ struct SVF_P3F_C4F_T2F_T3F
     Vec3 st1;
 };
 
+struct SVF_P3F_C4F_T2F_T3F_T3F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec3 st1;
+    Vec3 st2;
+};
+
 struct SVF_P3F_C4F_T2F_T1F
 {
     Vec3 xyz;
@@ -418,6 +445,16 @@ struct SVF_P3F_C4F_T2F_T1F_T3F
     Vec3 st1;
 };
 
+struct SVF_P3F_C4F_T2F_T1F_T3F_T3F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec3 st2;
+};
+
 struct SVF_P3F_C4F_T4F_T2F
 {
     Vec3 xyz;
@@ -433,6 +470,16 @@ struct SVF_P3F_C4F_T4F_T2F_T3F
     Vec4 st0;
     Vec2 st1;
     Vec3 st2;
+};
+
+struct SVF_P3F_C4F_T4F_T2F_T3F_T3F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec3 st3;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F
@@ -454,6 +501,17 @@ struct SVF_P3F_C4F_T4F_T2F_T1F_T3F
     Vec3 st2;
 };
 
+struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+};
+
 struct SVF_P3F_C4F_T2F_T2F_T1F
 {
     Vec3 xyz;
@@ -471,6 +529,17 @@ struct SVF_P3F_C4F_T2F_T2F_T1F_T3F
     Vec2 st1;
     float z;
     Vec3 st2;
+};
+
+struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F
@@ -494,6 +563,17 @@ struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F
     Vec3 st2;
 };
 
+struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec3 st3;
+};
 struct SVF_P4F_T2F_C4F_T4F_T4F
 {
     Vec4 xyzw;
@@ -520,6 +600,16 @@ struct SVF_P3F_C4F_T2F_T3F_T4F
     Vec4 st2;
 };
 
+struct SVF_P3F_C4F_T2F_T3F_T3F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
+};
+
 struct SVF_P3F_C4F_T2F_T1F_T4F
 {
     Vec3 xyz;
@@ -539,6 +629,17 @@ struct SVF_P3F_C4F_T2F_T1F_T3F_T4F
     Vec4 st2;
 };
 
+struct SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
+};
+
 struct SVF_P3F_C4F_T4F_T2F_T4F
 {
     Vec3 xyz;
@@ -556,6 +657,17 @@ struct SVF_P3F_C4F_T4F_T2F_T3F_T4F
     Vec2 st1;
     Vec3 st2;
     Vec4 st3;
+};
+
+struct SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T4F
@@ -579,6 +691,18 @@ struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F
     Vec4 st3;
 };
 
+struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+};
+
 struct SVF_P3F_C4F_T2F_T2F_T1F_T4F
 {
     Vec3 xyz;
@@ -598,6 +722,18 @@ struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F
     float z;
     Vec3 st2;
     Vec4 st3;
+};
+
+struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F
@@ -621,6 +757,19 @@ struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F
     float z1;
     Vec3 st2;
     Vec4 st3;
+};
+
+struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
 };
 
 struct SVF_P4F_T2F_C4F_T4F_T4F_T4F
@@ -652,6 +801,17 @@ struct SVF_P3F_C4F_T2F_T3F_T4F_T4F
     Vec4 st3;
 };
 
+struct SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
+};
+
 struct SVF_P3F_C4F_T2F_T1F_T4F_T4F
 {
     Vec3 xyz;
@@ -673,6 +833,18 @@ struct SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F
     Vec4 st3;
 };
 
+struct SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    float z;
+    Vec3 st1;
+    Vec3 st2;
+    Vec4 st3;
+    Vec4 st4;
+};
+
 struct SVF_P3F_C4F_T4F_T2F_T4F_T4F
 {
     Vec3 xyz;
@@ -692,6 +864,18 @@ struct SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F
     Vec3 st2;
     Vec4 st3;
     Vec4 st4;
+};
+
+struct SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec4 st0;
+    Vec2 st1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
 struct SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F
@@ -717,6 +901,19 @@ struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F
     Vec4 st4;
 };
 
+struct SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec4 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
+};
+
 struct SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F
 {
     Vec3 xyz;
@@ -738,6 +935,19 @@ struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F
     Vec3 st2;
     Vec4 st3;
     Vec4 st4;
+};
+
+struct SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec2 st1;
+    float z;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
 struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F
@@ -763,6 +973,20 @@ struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F
     Vec3 st2;
     Vec4 st3;
     Vec4 st4;
+};
+
+struct SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F
+{
+    Vec3 xyz;
+    Vec4 color;
+    Vec2 st0;
+    Vec2 st1;
+    float z0;
+    float z1;
+    Vec3 st2;
+    Vec3 st3;
+    Vec4 st4;
+    Vec4 st5;
 };
 
 struct SVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F

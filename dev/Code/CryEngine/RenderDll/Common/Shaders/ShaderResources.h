@@ -127,6 +127,9 @@ public:
     virtual void SetAlphaRef(float alphaRef) final { m_AlphaRef = alphaRef; }
 
     virtual DynArrayRef<SShaderParam>& GetParameters() final { return m_ShaderParams; }
+
+	virtual SDeformInfo	*GetDeformInfo() final { return m_pDeformInfo; }
+
     virtual ColorF GetFinalEmittance() final
     {
         const float kKiloScale = 1000.0f;

@@ -2004,6 +2004,8 @@ struct IRenderShaderResources
     virtual TexturesResourcesMap* GetTexturesResourceMap() = 0;
     virtual DynArrayRef<SShaderParam>& GetParameters() = 0;
 
+	virtual SDeformInfo	*GetDeformInfo() = 0;
+
     virtual ColorF GetFinalEmittance() = 0;
     virtual float GetVoxelCoverage() = 0;
 

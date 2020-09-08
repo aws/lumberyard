@@ -18,6 +18,7 @@
 #include <AzCore/std/containers/map.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 
 #include <LyShine/Bus/UiEditorCanvasBus.h>
 
@@ -878,6 +879,7 @@ void ViewportWidget::RenderEditMode()
         m_viewportInteraction->GetCanvasToViewportTranslation());
 
     AZ::Vector2 viewportSize(aznumeric_cast<float>(size().width()), aznumeric_cast<float>(size().height()));
+    viewportSize *= QHighDpiScaling::factor(windowHandle()->screen());
 
     // clear the stencil buffer before rendering each canvas - required for masking
     // NOTE: the FRT_CLEAR_IMMEDIATE is required since we will not be setting the render target
@@ -1011,6 +1013,8 @@ void ViewportWidget::RenderPreviewMode()
     {
         // Get the canvas size
         AZ::Vector2 viewportSize(aznumeric_cast<float>(size().width()), aznumeric_cast<float>(size().height()));
+        viewportSize *= QHighDpiScaling::factor(windowHandle()->screen());
+
         AZ::Vector2 canvasSize = m_editorWindow->GetPreviewCanvasSize();
         if (canvasSize.GetX() == 0.0f && canvasSize.GetY() == 0.0f)
         {

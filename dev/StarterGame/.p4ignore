@@ -1,7 +1,0 @@
-# Ignore compiled assets
-*.dds
-*.caf
-*.$animsettings
-
-# Ignore Editor's backup files
-*.bak*

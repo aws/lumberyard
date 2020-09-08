@@ -63,7 +63,7 @@ namespace ScriptCanvasEditor
 {
     class VariablePropertiesComponent
         : public GraphCanvas::GraphCanvasPropertyComponent
-        , protected ScriptCanvas::VariableNotificationBus::Handler        
+        , protected ScriptCanvas::VariableNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(VariablePropertiesComponent, "{885F276B-9633-42F7-85BD-10869E606873}", GraphCanvasPropertyComponent);
@@ -84,8 +84,7 @@ namespace ScriptCanvasEditor
         // VariableNotificationBus::Handler
         void OnVariableRemoved() override;
         void OnVariableRenamed(AZStd::string_view variableName) override;        
-        void OnVariableExposureChanged() override;
-        void OnVariableExposureGroupChanged() override;
+        void OnVariableScopeChanged() override;
 
         void OnVariableValueChanged() override;
         ////
@@ -110,6 +109,7 @@ namespace ScriptCanvasEditor
         : public AzQtComponents::StyledDockWidget
         , public GraphCanvas::AssetEditorNotificationBus::Handler
         , public AzToolsFramework::EditorEvents::Bus::Handler
+        , public VariableAutomationRequestBus::Handler
     {
         Q_OBJECT
 
@@ -126,6 +126,13 @@ namespace ScriptCanvasEditor
 
         // GraphCanvas::AssetEditorNotificationBus::Handler
         void OnActiveGraphChanged(const GraphCanvas::GraphId& graphCanvasGraphId) override;
+        ////
+
+        // VariableAutomationRequestBus
+        AZStd::vector< ScriptCanvas::Data::Type > GetPrimitiveTypes() const override;
+        AZStd::vector< ScriptCanvas::Data::Type > GetBehaviorContextObjectTypes() const override;
+        AZStd::vector< ScriptCanvas::Data::Type > GetMapTypes() const override;
+        AZStd::vector< ScriptCanvas::Data::Type > GetArrayTypes() const override;
         ////
 
         // AzToolsFramework::EditorEvents::Bus
@@ -165,7 +172,7 @@ namespace ScriptCanvasEditor
         void UpdateFilter();
 
         void OnReturnPressed();
-        void OnQuickFilterChanged();
+        void OnQuickFilterChanged(const QString &text);
 
         void RefreshModel();
 

@@ -37,8 +37,7 @@ _PROJECT_NAME = 'MultiplayerSample'
 # A few force excludes to keep the file size in check.
 _EXCLUDED_PATH_PATTERNS = [
     re.compile('3rdparty/Qt/([^/]+?)/clang_64($|/.*)', re.I),
-    re.compile('3rdparty/Qt/([^/]+?)/msvc2013_64($|/.*)', re.I),
-    re.compile('3rdparty/Qt/([^/]+?)/msvc2015_64($|/.*)', re.I),
+    re.compile('3rdparty/Qt/([^/]+?)/msvc(.*)_64($|/.*)', re.I),
     re.compile('3rdparty/Qt/([^/]+?)/patches($|/.*)', re.I),
     re.compile('dev/Code/Sandbox/SDKs($|/.*)', re.I),
     re.compile('dev/Code/SDKs($|/.*)', re.I),

@@ -431,7 +431,7 @@ namespace GraphicsReflectContext
                 &PostEffects::ApplyEffectGroupAtPosition,
                 { {
                     { "GroupName",  "Game path of the post effect group xml",         behaviorContext->MakeDefaultValue(AZStd::string_view()) },
-                    { "Position",   "Used to calculate the distance between camera",  behaviorContext->MakeDefaultValue(AZ::Vector3()) },
+                    { "Position",   "Used to calculate the distance between camera",  behaviorContext->MakeDefaultValue(AZ::Vector3(0.f,0.f,0.f)) },
                 } })
             ->Attribute(AZ::Script::Attributes::ToolTip, 
                 "Applies an effect group at a specific position in the world. Only applies to effect groups with the fadeDistance attribute set. Must be called every frame to maintain the effect.")

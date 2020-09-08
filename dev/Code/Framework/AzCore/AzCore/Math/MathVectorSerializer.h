@@ -23,10 +23,9 @@ namespace AZ
         AZ_RTTI(JsonVector2Serializer, "{E1EAA209-9682-4120-B26B-3EDD9AD56D6F}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
     };
 
     class JsonVector3Serializer
@@ -36,10 +35,9 @@ namespace AZ
         AZ_RTTI(JsonVector3Serializer, "{BF82BBF3-3CD9-48DA-97CC-E4DF2EF01552}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
     };
 
     class JsonVector4Serializer
@@ -49,9 +47,8 @@ namespace AZ
         AZ_RTTI(JsonVector4Serializer, "{05B45EA7-7102-4281-8AA0-2AC72D74AAFD}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
     };
 }

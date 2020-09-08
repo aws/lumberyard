@@ -49,6 +49,18 @@ namespace GraphCanvas
         ConfigureGlowOutline(configuration);
     }
 
+    GlowOutlineGraphicsItem::~GlowOutlineGraphicsItem()
+    {
+        AZ::SystemTickBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
+    }
+
+    void GlowOutlineGraphicsItem::OnSystemTick()
+    {
+        UpdateOutlinePath();
+        AZ::SystemTickBus::Handler::BusDisconnect();
+    }
+
     void GlowOutlineGraphicsItem::OnTick(float delta, AZ::ScriptTimePoint timePoint)
     {
         m_currentTime += delta;
@@ -66,17 +78,17 @@ namespace GraphCanvas
 
     void GlowOutlineGraphicsItem::OnConnectionPathUpdated()
     {
-        UpdateOutlinePath();
+        AZ::SystemTickBus::Handler::BusConnect();
     }
 
     void GlowOutlineGraphicsItem::OnPositionChanged(const AZ::EntityId& /*targetEntity*/, const AZ::Vector2& /*position*/)
-    {
-        UpdateOutlinePath();
+    {        
+        AZ::SystemTickBus::Handler::BusConnect();
     }
 
     void GlowOutlineGraphicsItem::OnBoundsChanged()
     {
-        UpdateOutlinePath();
+        AZ::SystemTickBus::Handler::BusConnect();
     }
 
     void GlowOutlineGraphicsItem::OnZoomChanged(qreal zoomLevel)
@@ -109,7 +121,7 @@ namespace GraphCanvas
     }
 
     void GlowOutlineGraphicsItem::OnSettingsChanged()
-    {        
+    {
         GraphCanvas::ViewId viewId;
         GraphCanvas::SceneRequestBus::EventResult(viewId, GetGraphId(), &GraphCanvas::SceneRequests::GetViewId);
 

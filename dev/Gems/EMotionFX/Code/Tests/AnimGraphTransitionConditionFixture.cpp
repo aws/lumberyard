@@ -91,7 +91,6 @@ namespace EMotionFX
 
         m_animGraphInstance = AnimGraphInstance::Create(m_animGraph.get(), m_actorInstance, m_motionSet);
         m_actorInstance->SetAnimGraphInstance(m_animGraphInstance);
-        m_animGraphInstance->UpdateUniqueData();
     }
 
     void AnimGraphTransitionConditionFixture::TearDown()

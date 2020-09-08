@@ -13,9 +13,15 @@
 
 QCheckBox
 {
+    background-color: transparent;
     font-size: 12px;
     line-height: 16px;
     outline: 0;
+}
+
+QCheckBox:disabled
+{
+    color: #999999;
 }
 
 QAbstractItemView::indicator,
@@ -114,4 +120,58 @@ QCheckBox.ToggleSwitch::indicator:Checked:focus
     border-width: 0px;
     margin: 1px;
     image: url(:/stylesheet/img/UI20/toggleswitch/checked-focus.svg);
+}
+
+QCheckBox.Expander
+{
+    background-color: transparent;
+    spacing: 0px;
+    margin: 0px;
+    padding: 0px;
+    min-height: 16px;
+    max-height: 16px;
+    min-width: 16px;
+    max-width: 16px;
+}
+
+QCheckBox.Expander::indicator
+{
+    width: 16px;
+    height: 16px;
+    border: none;
+    margin: 0px;
+}
+
+QCheckBox.Expander::indicator:checked,
+QCheckBox.Expander::indicator:checked:disabled,
+QCheckBox.Expander::indicator:checked:focus
+{
+    image: url(:/Cards/img/UI20/Cards/caret-down.svg);
+}
+
+QCheckBox.Expander::indicator:checked:disabled
+{
+    image: url(:/Cards/img/UI20/Cards/caret-down-disabled.svg);
+}
+
+QCheckBox.Expander::indicator:unchecked,
+QCheckBox.Expander::indicator:unchecked:disabled,
+QCheckBox.Expander::indicator:unchecked:focus
+{
+    image: url(:/Cards/img/UI20/Cards/caret-right.svg);
+}
+
+QCheckBox.Expander::indicator:unchecked:disabled
+{
+    image: url(:/Cards/img/UI20/Cards/caret-right-disabled.svg);
+}
+
+QAbstractItemView[class~='VisibilityMode']::indicator:checked
+{
+    image: url(:/EMotionFX/Visualization.svg)
+}
+
+QAbstractItemView[class~='VisibilityMode']::indicator:unchecked
+{
+    image: url(:/EMotionFX/VisualizationHidden.svg)
 }

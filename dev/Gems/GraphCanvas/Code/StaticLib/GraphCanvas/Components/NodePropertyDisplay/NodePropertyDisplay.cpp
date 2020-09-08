@@ -122,6 +122,10 @@ namespace GraphCanvas
     void NodePropertyDisplay::UnregisterShortcutDispatcher(QWidget* widget)
     {
         AzQtComponents::ShortcutDispatchBus::Handler::BusDisconnect(widget);
+
+        widget->clearFocus();
+        widget->releaseKeyboard();
+        widget->releaseMouse();
     }
 
     QWidget* NodePropertyDisplay::GetShortcutDispatchScopeRoot(QWidget*)

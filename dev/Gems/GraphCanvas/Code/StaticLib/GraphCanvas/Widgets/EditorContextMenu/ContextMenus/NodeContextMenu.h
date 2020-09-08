@@ -31,8 +31,6 @@ namespace GraphCanvas
     
         void OnRefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId) override;
 
-    private:
-
         EditActionsMenuGroup        m_editActionGroup;
         NodeGroupActionsMenuGroup   m_nodeGroupActionGroup;
         DisableActionsMenuGroup     m_disableActionGroup;

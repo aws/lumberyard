@@ -10,9 +10,13 @@
 *
 */
 
-#include "MotionEventPresetsWidget.h"
-#include "MotionEventsPlugin.h"
-#include "MotionEventPresetCreateDialog.h"
+#include <AzCore/std/sort.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionEvents/MotionEventPresetsWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionEvents/MotionEventsPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionEvents/MotionEventPresetCreateDialog.h>
+#include <QAction>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -26,18 +30,13 @@
 #include <QShortcut>
 #include <QKeySequence>
 #include <QDragEnterEvent>
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include "../../../../EMStudioSDK/Source/MainWindow.h"
+#include <QToolBar>
 
 
 namespace EMStudio
 {
     MotionEventPresetsWidget::MotionEventPresetsWidget(QWidget* parent, MotionEventsPlugin* plugin)
         : QWidget(parent)
-        , mTableWidget(nullptr)
-        , mAddButton(nullptr)
-        , mRemoveButton(nullptr)
-        , mClearButton(nullptr)
         , mPlugin(plugin)
     {
         Init();
@@ -57,6 +56,7 @@ namespace EMStudio
         mTableWidget->setCornerButtonEnabled(false);
         mTableWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
         mTableWidget->setContextMenuPolicy(Qt::DefaultContextMenu);
+        mTableWidget->setShowGrid(false);
 
         // set the table to row single selection
         mTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -64,34 +64,35 @@ namespace EMStudio
 
         QHeaderView* horizontalHeader = mTableWidget->horizontalHeader();
         horizontalHeader->setStretchLastSection(true);
+        horizontalHeader->setVisible(false);
 
-        // create buttons
-        mAddButton = new QPushButton();
-        mRemoveButton = new QPushButton();
-        mClearButton = new QPushButton();
-        mLoadButton = new QPushButton();
-        mSaveButton = new QPushButton();
-        mSaveAsButton = new QPushButton();
+        QToolBar* toolBar = new QToolBar(this);
 
-        EMStudioManager::MakeTransparentButton(mAddButton,     "/Images/Icons/Plus.png",       "Add new motion event preset");
-        EMStudioManager::MakeTransparentButton(mRemoveButton,  "/Images/Icons/Minus.png",      "Remove selected motion event presets");
-        EMStudioManager::MakeTransparentButton(mClearButton,   "/Images/Icons/Clear.png",      "Remove all motion event presets");
-        EMStudioManager::MakeTransparentButton(mLoadButton,    "/Images/Icons/Open.png",       "Load motion event preset config file");
-        EMStudioManager::MakeTransparentButton(mSaveButton,    "/Images/Menu/FileSave.png",    "Save motion event preset config file");
-        EMStudioManager::MakeTransparentButton(mSaveAsButton,  "/Images/Menu/FileSaveAs.png",  "Save a copy of motion event preset config file");
+        m_addAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.svg"),
+            tr("Add new motion event preset"),
+            this, &MotionEventPresetsWidget::AddMotionEventPreset);
 
-        // create the buttons layout
-        QHBoxLayout* buttonLayout = new QHBoxLayout();
-        buttonLayout->setSpacing(0);
-        buttonLayout->setAlignment(Qt::AlignLeft);
-        buttonLayout->addWidget(mAddButton);
-        buttonLayout->addWidget(mRemoveButton);
-        buttonLayout->addWidget(mClearButton);
-        buttonLayout->addWidget(mLoadButton);
-        buttonLayout->addWidget(mSaveButton);
-        buttonLayout->addWidget(mSaveAsButton);
+        m_loadAction = toolBar->addAction(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Open.svg"),
+            tr("Load motion event preset config file"),
+            this, [=]() { LoadPresets(); /* use lambda so that we get the default value for the showDialog parameter */ });
 
-        layout->addLayout(buttonLayout);
+        m_saveMenuAction = toolBar->addAction(
+            MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Save.svg"),
+            tr("Save motion event preset config"));
+        {
+            QToolButton* toolButton = qobject_cast<QToolButton*>(toolBar->widgetForAction(m_saveMenuAction));
+            AZ_Assert(toolButton, "The action widget must be a tool button.");
+            toolButton->setPopupMode(QToolButton::InstantPopup);
+
+            QMenu* contextMenu = new QMenu(toolBar);
+
+            m_saveAction = contextMenu->addAction("Save", this, [=]() { SavePresets(); /* use lambda so that we get the default value for the showDialog parameter */ });
+            m_saveAsAction = contextMenu->addAction("Save as...", this, &MotionEventPresetsWidget::SaveWithDialog);
+
+            m_saveMenuAction->setMenu(contextMenu);
+        }
+
+        layout->addWidget(toolBar);
         layout->addWidget(mTableWidget);
         layout->addLayout(ioButtonsLayout);
 
@@ -99,12 +100,6 @@ namespace EMStudio
         setLayout(layout);
 
         // connect the signals and the slots
-        connect(mAddButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::AddMotionEventPreset);
-        connect(mRemoveButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::RemoveMotionEventPresets);
-        connect(mClearButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::ClearMotionEventPresetsButton);
-        connect(mLoadButton, &QPushButton::clicked, [this]() { this->LoadPresets(); /* use lambda so that we get the default value for the showDialog parameter */ });
-        connect(mSaveButton, &QPushButton::clicked, [this]() { this->SavePresets(); });
-        connect(mSaveAsButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::SaveWithDialog);
         connect(mTableWidget, &MotionEventPresetsWidget::DragTableWidget::itemSelectionChanged, this, &MotionEventPresetsWidget::SelectionChanged);
         connect(mTableWidget, &QTableWidget::cellDoubleClicked, this, [this](int row, int column)
         {
@@ -131,6 +126,16 @@ namespace EMStudio
 
     void MotionEventPresetsWidget::ReInit()
     {
+        // Remember selected items
+        QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
+        AZStd::vector<AZ::u32> selectedRows;
+        selectedRows.reserve(selectedItems.size());
+        for (const QTableWidgetItem* selectedItem : selectedItems)
+        {
+            const AZ::u32 row = selectedItem->row();
+            selectedRows.emplace_back(row);
+        }
+
         // clear the table widget
         mTableWidget->clear();
         mTableWidget->setColumnCount(2);
@@ -150,7 +155,7 @@ namespace EMStudio
         mTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
         mTableWidget->setColumnWidth(0, 39);
 
-        for (uint32 i = 0; i < numEventPresets; ++i)
+        for (AZ::u32 i = 0; i < numEventPresets; ++i)
         {
             MotionEventPreset* motionEventPreset = GetEventPresetManager()->GetPreset(i);
             if (motionEventPreset == nullptr)
@@ -162,24 +167,28 @@ namespace EMStudio
             QPixmap colorPixmap(16, 16);
             const QColor eventColor(motionEventPreset->GetEventColor());
             colorPixmap.fill(eventColor);
-            QTableWidgetItem* tableItemColor = new QTableWidgetItem(QIcon(colorPixmap), "");
+            QIcon icon;
+            icon.addPixmap(colorPixmap);
+            icon.addPixmap(colorPixmap, QIcon::Selected);
+            QTableWidgetItem* tableItemColor = new QTableWidgetItem(icon, "");
             QTableWidgetItem* tableItemPresetName = new QTableWidgetItem(motionEventPreset->GetName().c_str());
 
             AZStd::string whatsThisString = AZStd::string::format("%i", i);
             tableItemColor->setWhatsThis(whatsThisString.c_str());
             tableItemPresetName->setWhatsThis(whatsThisString.c_str());
 
-            // set backgroundcolor of the row
-            QColor backgroundColor(eventColor);
-            backgroundColor.setAlpha(50);
-            tableItemColor->setBackgroundColor(backgroundColor);
-            tableItemPresetName->setBackgroundColor(backgroundColor);
-
             mTableWidget->setItem(i, 0, tableItemColor);
             mTableWidget->setItem(i, 1, tableItemPresetName);
 
             // Editing will be handled in the double click signal handler
             tableItemPresetName->setFlags(tableItemPresetName->flags() ^ Qt::ItemIsEditable);
+
+            // Check if row should be selected
+            if (AZStd::find(selectedRows.begin(), selectedRows.end(), i) != selectedRows.end())
+            {
+                mTableWidget->setItemSelected(tableItemColor, true);
+                mTableWidget->setItemSelected(tableItemPresetName, true);
+            }
         }
 
         // set the vertical header not visible
@@ -208,25 +217,7 @@ namespace EMStudio
 
     void MotionEventPresetsWidget::UpdateInterface()
     {
-        mClearButton->setEnabled(false);
-        mRemoveButton->setEnabled(false);
-        mSaveButton->setEnabled(false);
-
-        if (!GetEventPresetManager()->IsEmpty())
-        {
-            mClearButton->setEnabled(true);
-        }
-
-        QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
-        if (selectedItems.count() > 0)
-        {
-            mRemoveButton->setEnabled(true);
-        }
-
-        if (GetEventPresetManager()->GetIsDirty() && !GetEventPresetManager()->GetFileNameString().empty())
-        {
-            mSaveButton->setEnabled(true);
-        }
+        m_saveAction->setEnabled(!GetEventPresetManager()->GetFileNameString().empty());
     }
 
 
@@ -250,53 +241,48 @@ namespace EMStudio
     void MotionEventPresetsWidget::RemoveMotionEventPreset(uint32 index)
     {
         GetEventPresetManager()->RemovePreset(index);
-
-        // reinit the dialog
         ReInit();
     }
 
 
-    void MotionEventPresetsWidget::RemoveMotionEventPresets()
+    void MotionEventPresetsWidget::RemoveSelectedMotionEventPresets()
     {
-        // store which indices to delete
-        MCore::Array<int> deleteRows;
-
-        // get selected rows
-        const uint32 numRows = mTableWidget->rowCount();
-        for (uint32 i = 0; i < numRows; ++i)
+        QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
+        if (selectedItems.isEmpty())
         {
-            QTableWidgetItem* item = mTableWidget->item(i, 0);
-            if (item->isSelected())
-            {
-                deleteRows.Add(item->whatsThis().toInt());
-            }
-        }
-
-        const uint32 numDeletions = deleteRows.GetLength();
-        if (numDeletions == 0)
-        {
+            ClearMotionEventPresetsButton();
             return;
         }
 
-        deleteRows.Sort();
-
-        // remove all selected rows
-        for (uint32 i = numDeletions; i > 0; --i)
+        AZStd::vector<int> deleteRows;
+        for (const QTableWidgetItem* selectedItem : selectedItems)
         {
-            RemoveMotionEventPreset(deleteRows[i - 1]);
+            const int row = selectedItem->row();
+            if (AZStd::find(deleteRows.begin(), deleteRows.end(), row) == deleteRows.end())
+            {
+                deleteRows.emplace_back(row);
+            }
         }
 
-        // reinit the table
+        const int firstSelectedRow = deleteRows[0];
+        AZStd::sort(deleteRows.begin(), deleteRows.end(), AZStd::greater<int>());
+
+        // Remove all selected rows back-to-front.
+        for (const int row : deleteRows)
+        {
+            RemoveMotionEventPreset(row);
+        }
+
         ReInit();
 
         // selected the next row
-        if (deleteRows[0] > (mTableWidget->rowCount() - 1))
+        if (firstSelectedRow > (mTableWidget->rowCount() - 1))
         {
-            mTableWidget->selectRow(deleteRows[0] - 1);
+            mTableWidget->selectRow(firstSelectedRow - 1);
         }
         else
         {
-            mTableWidget->selectRow(deleteRows[0]);
+            mTableWidget->selectRow(firstSelectedRow);
         }
     }
 
@@ -322,7 +308,7 @@ namespace EMStudio
     void MotionEventPresetsWidget::ClearMotionEventPresets()
     {
         mTableWidget->selectAll();
-        RemoveMotionEventPresets();
+        RemoveSelectedMotionEventPresets();
         UpdateInterface();
     }
 
@@ -384,7 +370,21 @@ namespace EMStudio
 
     void MotionEventPresetsWidget::contextMenuEvent(QContextMenuEvent* event)
     {
-        MCORE_UNUSED(event);
+        QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
+        if (selectedItems.isEmpty())
+        {
+            return;
+        }
+
+        QMenu menu(this);
+
+        menu.addAction(tr("Remove selected motion event presets"),
+            this, &MotionEventPresetsWidget::RemoveSelectedMotionEventPresets);
+
+        if (!menu.isEmpty())
+        {
+            menu.exec(event->globalPos());
+        }
     }
 
 
@@ -393,7 +393,7 @@ namespace EMStudio
         // delete key
         if (event->key() == Qt::Key_Delete)
         {
-            RemoveMotionEventPresets();
+            RemoveSelectedMotionEventPresets();
             event->accept();
             return;
         }
@@ -416,5 +416,3 @@ namespace EMStudio
         QWidget::keyReleaseEvent(event);
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/MotionEvents/MotionEventPresetsWidget.moc>

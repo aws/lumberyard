@@ -333,13 +333,13 @@ namespace AZ
             * for debugging purposes - creates a string that represents the assets id, subid, hint, and name.
             * You should use this function for any time you want to show the full details of an asset in a log message
             * as it will always produce a consistent output string.  By convention, don't surround the output of this call
-            * with any kind of decorator, (for example, dont format like [%s]) becuase decorators are built-in.
+            * with any kind of decorator, (for example, don't format like [%s]) because decorators are built-in.
             */
             template<class StringType>
             StringType ToString() const;
 
             /**
-            * for debugging purposes only - udpates a string that represents the asset's id, subid, hint and name.
+            * for debugging purposes only - updates a string that represents the asset's id, subid, hint and name.
             * see comment details on StringType ToString() above.
             */
             template<class StringType>
@@ -478,8 +478,8 @@ namespace AZ
             
             /** 
             * Called when an error happened with an asset. When this message is received the asset should be considered broken by default.
-            * Note that this can happen when the asset erros during load, but also happens when the asset is missing (not in catalog etc.)
-            * in the case of an asset that is completly missing, the Asset<T> passed in here will have no hint or other information about
+            * Note that this can happen when the asset errors during load, but also happens when the asset is missing (not in catalog etc.)
+            * in the case of an asset that is completely missing, the Asset<T> passed in here will have no hint or other information about
             * the asset since completely missing assets are not registered in the asset manager's database or the catalog.
             */
             virtual void OnAssetError(Asset<AssetData> asset) { (void)asset; }
@@ -704,8 +704,7 @@ namespace AZ
                 m_assetId = AZStd::move(rhs.m_assetId);
                 m_assetType = AZStd::move(rhs.m_assetType);
                 m_assetData = rhs.m_assetData;
-            m_loadBehavior = rhs.m_loadBehavior;
-
+                m_loadBehavior = rhs.m_loadBehavior;
 
                 if (!preserveAssetHint)
                 {
@@ -1059,8 +1058,9 @@ namespace AZStd
         typedef size_t      result_type;
         AZ_FORCE_INLINE size_t operator()(const AZ::Data::AssetId& id) const
         {
-            // use the subId here becuase otherwise you suffer performance problems if one source has a lot of products (same guid, varying subid)
+            // use the subId here because otherwise you suffer performance problems if one source has a lot of products (same guid, varying subid)
             return id.m_guid.GetHash() ^ static_cast<size_t>(id.m_subId);
         }
     };
 }
+

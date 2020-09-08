@@ -54,11 +54,9 @@ namespace EMotionFX
         ;
     }
 
-
-    const AZStd::string& Vector4Parameter::GetTypeDisplayName() const
+    const char* Vector4Parameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Vector4";
-        return typeDisplayName;
+        return "Vector4";
     }
 
     MCore::Attribute* Vector4Parameter::ConstructDefaultValueAsAttribute() const

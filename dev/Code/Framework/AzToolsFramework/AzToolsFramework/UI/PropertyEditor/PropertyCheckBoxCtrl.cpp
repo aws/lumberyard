@@ -9,16 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "StdAfx.h"
 #include "PropertyCheckBoxCtrl.hxx"
 #include "PropertyQTConstants.h"
 
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHBoxLayout>
 AZ_POP_DISABLE_WARNING
 
 
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 
 namespace AzToolsFramework
 {
@@ -38,6 +40,8 @@ namespace AzToolsFramework
         m_checkBox->setFixedHeight(PropertyQTConstant_DefaultHeight);
 
         m_checkBox->setFocusPolicy(Qt::StrongFocus);
+
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(m_checkBox);
 
         setLayout(layout);
         setFocusProxy(m_checkBox);

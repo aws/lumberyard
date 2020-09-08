@@ -10,10 +10,9 @@
 *
 */
 
-#ifndef __EMSTUDIO_RENDERPLUGIN_H
-#define __EMSTUDIO_RENDERPLUGIN_H
+#pragma once
 
-// include MCore
+#include <AzCore/std/containers/vector.h>
 #include <MCore/Source/StandardHeaders.h>
 #include "../EMStudioConfig.h"
 #include "../DockWidgetPlugin.h"
@@ -42,7 +41,7 @@ namespace EMStudio
         , private EMotionFX::SkeletonOutlinerNotificationBus::Handler
     {
         MCORE_MEMORYOBJECTCATEGORY(RenderPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE)
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         enum
@@ -145,8 +144,8 @@ namespace EMStudio
         MCORE_INLINE RenderViewWidget* GetFocusViewWidget()                         { return mFocusViewWidget; }
         MCORE_INLINE void SetFocusViewWidget(RenderViewWidget* focusViewWidget)     { mFocusViewWidget = focusViewWidget; }
 
-        MCORE_INLINE RenderViewWidget* GetViewWidget(uint32 index)                  { return mViewWidgets[index]; }
-        MCORE_INLINE uint32 GetNumViewWidgets()                                     { return mViewWidgets.GetLength(); }
+        RenderViewWidget* GetViewWidget(size_t index) { return m_viewWidgets[index]; }
+        size_t GetNumViewWidgets() const { return m_viewWidgets.size(); }
         RenderViewWidget* CreateViewWidget(QWidget* parent);
         void RemoveViewWidget(RenderViewWidget* viewWidget);
         void ClearViewWidgets();
@@ -154,8 +153,10 @@ namespace EMStudio
         MCORE_INLINE RenderViewWidget* GetActiveViewWidget()                        { return mActiveViewWidget; }
         MCORE_INLINE void SetActiveViewWidget(RenderViewWidget* viewWidget)         { mActiveViewWidget = viewWidget; }
 
-        MCORE_INLINE void AddLayout(Layout* layout)                                 { mLayouts.Add(layout); }
-        Layout* FindLayoutByName(const AZStd::string& layoutName);
+        void AddLayout(Layout* layout) { m_layouts.emplace_back(layout); }
+        Layout* FindLayoutByName(const AZStd::string& layoutName) const;
+        Layout* GetCurrentLayout() const { return m_currentLayout; }
+        const AZStd::vector<Layout*>& GetLayouts() { return m_layouts; }
 
         MCORE_INLINE QCursor& GetZoomInCursor()                                     { assert(mZoomInCursor); return *mZoomInCursor; }
         MCORE_INLINE QCursor& GetZoomOutCursor()                                    { assert(mZoomOutCursor); return *mZoomOutCursor; }
@@ -192,11 +193,10 @@ namespace EMStudio
         void LayoutButtonPressed(const QString& text);
 
     protected:
-        QPushButton* AddLayoutButton(const char* imageFileName);
         //void SetAspiredRenderingFPS(int32 fps);
 
         // motion extraction paths
-        MCore::Array< MCommon::RenderUtil::TrajectoryTracePath* >   mTrajectoryTracePaths;
+        AZStd::vector<MCommon::RenderUtil::TrajectoryTracePath*> m_trajectoryTracePaths;
 
         // the transformation manipulators
         MCommon::TranslateManipulator*      mTranslateManipulator;
@@ -211,36 +211,24 @@ namespace EMStudio
         MCore::Array<EMStudioRenderActor*>  mActors;
 
         // view widgets
-        MCore::Array<RenderViewWidget*>     mViewWidgets;
+        AZStd::vector<RenderViewWidget*>    m_viewWidgets;
         RenderViewWidget*                   mActiveViewWidget;
         RenderViewWidget*                   mFocusViewWidget;
 
         // render view layouts
-        MCore::Array<Layout*>               mLayouts;
-        Layout*                             mCurrentLayout;
+        AZStd::vector<Layout*>              m_layouts;
+        Layout*                             m_currentLayout;
 
         // cursor image files
         QCursor*                            mZoomInCursor;
         QCursor*                            mZoomOutCursor;
-        QCursor*                            mTranslateCursor;
-        QCursor*                            mRotateCursor;
-        QCursor*                            mNotAllowedCursor;
-
-        // transformation manipulator buttons
-        QPushButton*                        mSelectionModeButton;
-        QPushButton*                        mTranslationModeButton;
-        QPushButton*                        mRotationModeButton;
-        QPushButton*                        mScaleModeButton;
 
         // window visibility
         bool                                mIsVisible;
 
         // base layout and interface functionality
         QHBoxLayout*                        mBaseLayout;
-        QWidget*                            mToolbarWidget;
-        QVBoxLayout*                        mToolbarLayout;
         QWidget*                            mRenderLayoutWidget;
-        QSignalMapper*                      mSignalMapper;
         QWidget*                            mInnerWidget;
         CommandSystem::SelectionList*       mCurrentSelection;
         bool                                mFirstFrameAfterReInit;
@@ -266,5 +254,3 @@ namespace EMStudio
         AdjustActorInstanceCallback*        mAdjustActorInstanceCallback;
     };
 } // namespace EMStudio
-
-#endif

@@ -76,6 +76,7 @@ private:
     void OnAutoLoadLevelBtnClicked(bool checked);
     void OnShowOnStartupBtnClicked(bool checked);
     void OnCloseBtnClicked(bool checked);
+    void OnEnableUI20Toggled(bool checked);
 
     void SyncUpdate(const QString& /* message */, News::LogType /* logType */) {}
     void SyncFail(News::ErrorCode error);

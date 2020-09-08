@@ -583,4 +583,344 @@ namespace Physics
 
         delete sphere;
     }
+
+    TEST_F(PhysicsComponentBusTest, WorldBodyBus_RigidBodyColliders_AABBAreCorrect)
+    {
+        // Create 3 colliders, one of each type and check that the AABB of their body is the expected
+        AZStd::unique_ptr<AZ::Entity> box = AZStd::unique_ptr<AZ::Entity>(AddBoxEntity(AZ::Vector3(0, 0, 0), AZ::Vector3(32, 32, 32)));
+        AZ::Aabb boxAABB;
+        Physics::WorldBodyRequestBus::EventResult(boxAABB, box->GetId(), &Physics::WorldBodyRequests::GetAabb);
+        EXPECT_TRUE(boxAABB.GetMin().IsClose(AZ::Vector3(-16, -16, -16)) && boxAABB.GetMax().IsClose(AZ::Vector3(16, 16, 16)));
+
+        AZStd::unique_ptr<AZ::Entity> sphere = AZStd::unique_ptr<AZ::Entity>(AddSphereEntity(AZ::Vector3(-100, 0, 0), 16));
+        AZ::Aabb sphereAABB;
+        Physics::WorldBodyRequestBus::EventResult(sphereAABB, sphere->GetId(), &Physics::WorldBodyRequests::GetAabb);
+        EXPECT_TRUE(sphereAABB.GetMin().IsClose(AZ::Vector3(-16 -100, -16, -16)) && sphereAABB.GetMax().IsClose(AZ::Vector3(16 -100, 16, 16)));
+
+        AZStd::unique_ptr<AZ::Entity> capsule = AZStd::unique_ptr<AZ::Entity>(AddCapsuleEntity(AZ::Vector3(100, 0, 0), 128, 16));
+        AZ::Aabb capsuleAABB;
+        Physics::WorldBodyRequestBus::EventResult(capsuleAABB, capsule->GetId(), &Physics::WorldBodyRequests::GetAabb);
+        EXPECT_TRUE(capsuleAABB.GetMin().IsClose(AZ::Vector3(-16 +100, -16, -64)) && capsuleAABB.GetMax().IsClose(AZ::Vector3(16 +100, 16, 64)));
+    }
+
+    TEST_F(PhysicsComponentBusTest, WorldBodyBus_StaticRigidBodyColliders_AABBAreCorrect)
+    {
+        // Create 3 colliders, one of each type and check that the AABB of their body is the expected
+        AZStd::unique_ptr<AZ::Entity> box = AZStd::unique_ptr<AZ::Entity>(AddStaticBoxEntity(AZ::Vector3(0, 0, 0), AZ::Vector3(32, 32, 32)));
+        AZ::Aabb boxAABB;
+        Physics::WorldBodyRequestBus::EventResult(boxAABB, box->GetId(), &Physics::WorldBodyRequests::GetAabb);
+        EXPECT_TRUE(boxAABB.GetMin().IsClose(AZ::Vector3(-16, -16, -16)) && boxAABB.GetMax().IsClose(AZ::Vector3(16, 16, 16)));
+
+        AZStd::unique_ptr<AZ::Entity> sphere = AZStd::unique_ptr<AZ::Entity>(AddStaticSphereEntity(AZ::Vector3(-100, 0, 0), 16));
+        AZ::Aabb sphereAABB;
+        Physics::WorldBodyRequestBus::EventResult(sphereAABB, sphere->GetId(), &Physics::WorldBodyRequests::GetAabb);
+        EXPECT_TRUE(sphereAABB.GetMin().IsClose(AZ::Vector3(-16 -100, -16, -16)) && sphereAABB.GetMax().IsClose(AZ::Vector3(16 -100, 16, 16)));
+
+        AZStd::unique_ptr<AZ::Entity> capsule = AZStd::unique_ptr<AZ::Entity>(AddStaticCapsuleEntity(AZ::Vector3(100, 0, 0), 128, 16));
+        AZ::Aabb capsuleAABB;
+        Physics::WorldBodyRequestBus::EventResult(capsuleAABB, capsule->GetId(), &Physics::WorldBodyRequests::GetAabb);
+        EXPECT_TRUE(capsuleAABB.GetMin().IsClose(AZ::Vector3(-16 +100, -16, -64)) && capsuleAABB.GetMax().IsClose(AZ::Vector3(16 +100, 16, 64)));
+    }
+
+    using CreateEntityFunc = AZStd::function<AZStd::unique_ptr<AZ::Entity>(const AZ::Vector3&)>;
+
+    void CheckDisableEnablePhysics(AZStd::vector<CreateEntityFunc> entityCreations)
+    {
+        // Fake Pointer for filling result to make sure that m_body has changed
+        Physics::WorldBody* fakeBody = (Physics::WorldBody*)(0x1234);
+
+        int i = 0;
+        for (CreateEntityFunc entityCreation : entityCreations)
+        {
+            AZ::Vector3 entityPos = AZ::Vector3(128.f * i, 0, 0);
+            AZStd::unique_ptr<AZ::Entity> entity = entityCreation(entityPos);
+
+            Physics::RayCastHit hit;
+            Physics::RayCastRequest request;
+            request.m_start = entityPos + AZ::Vector3(0, 0, 100);
+            request.m_direction = AZ::Vector3(0, 0, -1);
+            request.m_distance = 200.f;
+
+            Physics::WorldBodyRequestBus::Event(entity->GetId(), &Physics::WorldBodyRequests::DisablePhysics);
+
+            bool enabled = true;
+            Physics::WorldBodyRequestBus::EventResult(enabled, entity->GetId(), &Physics::WorldBodyRequests::IsPhysicsEnabled);
+            EXPECT_FALSE(enabled);
+
+            hit.m_body = fakeBody;
+            Physics::WorldRequestBus::BroadcastResult(hit, &Physics::WorldRequests::RayCast, request);
+            EXPECT_FALSE(hit);
+
+            Physics::WorldBodyRequestBus::Event(entity->GetId(), &Physics::WorldBodyRequests::EnablePhysics);
+
+            enabled = false;
+            Physics::WorldBodyRequestBus::EventResult(enabled, entity->GetId(), &Physics::WorldBodyRequests::IsPhysicsEnabled);
+            EXPECT_TRUE(enabled);
+
+            hit.m_body = nullptr;
+            Physics::WorldRequestBus::BroadcastResult(hit, &Physics::WorldRequests::RayCast, request);
+            EXPECT_TRUE(hit && hit.m_body->GetEntityId() == entity->GetId());
+
+            ++i;
+        }
+    }
+
+    TEST_F(PhysicsComponentBusTest, WorldBodyBus_EnableDisablePhysics_StaticRigidBody)
+    {
+        AZStd::vector<CreateEntityFunc> entityCreations =
+        {
+            [this](const AZ::Vector3& position) { return AZStd::unique_ptr<AZ::Entity>(AddStaticBoxEntity(position, AZ::Vector3(32, 32, 32))); },
+            [this](const AZ::Vector3& position) { return AZStd::unique_ptr<AZ::Entity>(AddStaticSphereEntity(position, 16)); },
+            [this](const AZ::Vector3& position) { return AZStd::unique_ptr<AZ::Entity>(AddStaticCapsuleEntity(position, 16, 16)); }
+        };
+        CheckDisableEnablePhysics(entityCreations);
+    }
+
+    TEST_F(PhysicsComponentBusTest, WorldBodyBus_EnableDisablePhysics_RigidBody)
+    {
+        AZStd::vector<CreateEntityFunc> entityCreations =
+        {
+            [this](const AZ::Vector3& position) { return AZStd::unique_ptr<AZ::Entity>(AddBoxEntity(position, AZ::Vector3(32, 32, 32))); },
+            [this](const AZ::Vector3& position) { return AZStd::unique_ptr<AZ::Entity>(AddSphereEntity(position, 16)); },
+            [this](const AZ::Vector3& position) { return AZStd::unique_ptr<AZ::Entity>(AddCapsuleEntity(position, 16, 16)); }
+        };
+        CheckDisableEnablePhysics(entityCreations);
+    }
+
+    TEST_F(PhysicsComponentBusTest, WorldBodyRayCast_CastAgainstStaticBox_ReturnsHit)
+    {
+        AZStd::unique_ptr<AZ::Entity> staticBoxEntity(AddStaticBoxEntity(AZ::Vector3(0.0f), AZ::Vector3(10.f, 10.f, 10.f)));
+
+        RayCastRequest request;
+        request.m_start = AZ::Vector3(-100.0f, 0.0f, 0.0f);
+        request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        request.m_distance = 200.0f;
+
+        Physics::RayCastHit hit;
+        Physics::WorldBodyRequestBus::EventResult(hit, staticBoxEntity->GetId(), &Physics::WorldBodyRequests::RayCast, request);
+
+        EXPECT_TRUE(hit);
+
+        bool hitIncludeSphereEntity = (hit.m_body->GetEntityId() == staticBoxEntity->GetId());
+        EXPECT_TRUE(hitIncludeSphereEntity);
+    }
+
+    using RayCastFunc = AZStd::function<Physics::RayCastHit(AZ::EntityId, const Physics::RayCastRequest&)>;
+
+    class PhysicsRigidBodyRayBusTest
+        : public Physics::GenericPhysicsInterfaceTest
+        , public ::testing::WithParamInterface<RayCastFunc>
+    {
+    };
+
+    TEST_P(PhysicsRigidBodyRayBusTest, ComponentRayCast_CastAgainstNothing_ReturnsNoHit)
+    {
+        RayCastRequest request;
+        request.m_start = AZ::Vector3(-100.0f, 0.0f, 0.0f);
+        request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        request.m_distance = 200.0f;
+
+        auto rayCastFunction = GetParam();
+        RayCastHit hit = rayCastFunction(AZ::EntityId(), request);
+
+        EXPECT_FALSE(hit);
+    }
+
+    TEST_P(PhysicsRigidBodyRayBusTest, ComponentRayCast_CastAgainstSphere_ReturnsHit)
+    {
+        AZStd::unique_ptr<AZ::Entity> sphereEntity(AddSphereEntity(AZ::Vector3(0.0f), 10.0f));
+
+        RayCastRequest request;
+        request.m_start = AZ::Vector3(-100.0f, 0.0f, 0.0f);
+        request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        request.m_distance = 200.0f;
+
+        auto rayCastFunction = GetParam();
+        RayCastHit hit = rayCastFunction(sphereEntity->GetId(), request);
+
+        EXPECT_TRUE(hit);
+
+        bool hitsIncludeSphereEntity = (hit.m_body->GetEntityId() == sphereEntity->GetId());
+        EXPECT_TRUE(hitsIncludeSphereEntity);
+    }
+
+    TEST_P(PhysicsRigidBodyRayBusTest, ComponentRayCast_CastAgainstBoxEntityWithLocalOffset_ReturnsHit)
+    {
+        const AZ::Vector3 boxExtent = AZ::Vector3(10.0f, 10.0f, 10.0f);
+        const AZ::Vector3 box1Offset(0.0f, 0.0f, 30.0f);
+        const AZ::Vector3 box2Offset(0.0f, 0.0f, -30.0f);
+
+        MultiShapeConfig config;
+        config.m_position = AZ::Vector3(0.0f, 100.0f, 20.0f);
+        config.m_shapes.AddBox(boxExtent, box1Offset);
+        config.m_shapes.AddBox(boxExtent, box2Offset);
+
+        auto shapeWithTwoBoxes = AddMultiShapeEntity(config);
+
+        RayCastRequest request;
+        request.m_start = AZ::Vector3(-100.0f, 100.0f, 50.0f);
+        request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        request.m_distance = 200.0f;
+
+        auto rayCastFunction = GetParam();
+        RayCastHit result = rayCastFunction(shapeWithTwoBoxes->GetId(), request);
+
+        EXPECT_TRUE(result);
+
+        bool hitIncludeEntity = (result.m_body->GetEntityId() == shapeWithTwoBoxes->GetId());
+        EXPECT_TRUE(hitIncludeEntity);
+    }
+
+    TEST_P(PhysicsRigidBodyRayBusTest, ComponentRayCast_CastAgainstBoxEntityWithMultipleShapesLocalOffset_ReturnsHits)
+    {
+        // Entity at (0, 100, 20) with two box childs with offsets +30 and -30 in Z.
+        // Child boxes world position centers are at (0, 100, 50) and (0, 100, -10)
+        // 4 rays tests that should retrieves the correct boxes
+
+        const AZ::Vector3 boxExtent = AZ::Vector3(10.0f, 10.0f, 10.0f);
+        const AZ::Vector3 box1Offset(0.0f, 0.0f, 30.0f);
+        const AZ::Vector3 box2Offset(0.0f, 0.0f, -30.0f);
+
+        MultiShapeConfig config;
+        config.m_position = AZ::Vector3(0.0f, 100.0f, 20.0f);
+        config.m_shapes.AddBox(boxExtent, box1Offset);
+        config.m_shapes.AddBox(boxExtent, box2Offset);
+
+        AZStd::unique_ptr<AZ::Entity> shapeWithTwoBoxes(AddMultiShapeEntity(config));
+        AZStd::vector<AZStd::shared_ptr<Physics::Shape>> shapes;
+        PhysX::ColliderComponentRequestBus::EventResult(shapes, shapeWithTwoBoxes->GetId(), &PhysX::ColliderComponentRequests::GetShapes);
+
+        // Upper box part z=50 (-x to +x)
+        {
+            RayCastRequest request;
+            request.m_start = AZ::Vector3(-100.0f, 100.0f, 50.0f);
+            request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+            request.m_distance = 200.0f;
+
+            auto rayCastFunction = GetParam();
+            RayCastHit result = rayCastFunction(shapeWithTwoBoxes->GetId(), request);
+
+            EXPECT_TRUE(result);
+            bool hitIncludesEntity = (result.m_body->GetEntityId() == shapeWithTwoBoxes->GetId());
+            EXPECT_TRUE(hitIncludesEntity);
+            bool hitIncludesShape = (result.m_shape == shapes[0].get());
+            EXPECT_TRUE(hitIncludesShape);
+        }
+
+        // Lower box part z=-10 (-x to +x)
+        {
+            RayCastRequest request;
+            request.m_start = AZ::Vector3(-100.0f, 100.0f, -10.0f);
+            request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+            request.m_distance = 200.0f;
+
+            auto rayCastFunction = GetParam();
+            RayCastHit result = rayCastFunction(shapeWithTwoBoxes->GetId(), request);
+
+            EXPECT_TRUE(result);
+            bool hitIncludesEntity = (result.m_body->GetEntityId() == shapeWithTwoBoxes->GetId());
+            EXPECT_TRUE(hitIncludesEntity);
+            bool hitIncludesShape = (result.m_shape == shapes[1].get());
+            EXPECT_TRUE(hitIncludesShape);
+        }
+
+        // Trace Vertically from top, it should retrieve the upper box shape
+        {
+            RayCastRequest request;
+            request.m_start = AZ::Vector3(0.0f, 100.0f, 80.0f);
+            request.m_direction = AZ::Vector3(0.0f, 0.0f, -1.0f);
+            request.m_distance = 200.0f;
+
+            auto rayCastFunction = GetParam();
+            RayCastHit result = rayCastFunction(shapeWithTwoBoxes->GetId(), request);
+
+            EXPECT_TRUE(result);
+            bool hitIncludesEntity = (result.m_body->GetEntityId() == shapeWithTwoBoxes->GetId());
+            EXPECT_TRUE(hitIncludesEntity);
+            bool hitIncludesShape = (result.m_shape == shapes[0].get());
+            EXPECT_TRUE(hitIncludesShape);
+        }
+
+        // Trace Vertically from bottom, it should retrieve the lower box shape
+        {
+            RayCastRequest request;
+            request.m_start = AZ::Vector3(0.0f, 100.0f, -80.0f);
+            request.m_direction = AZ::Vector3(0.0f, 0.0f, 1.0f);
+            request.m_distance = 200.0f;
+
+            auto rayCastFunction = GetParam();
+            RayCastHit result = rayCastFunction(shapeWithTwoBoxes->GetId(), request);
+
+            EXPECT_TRUE(result);
+            bool hitIncludesEntity = (result.m_body->GetEntityId() == shapeWithTwoBoxes->GetId());
+            EXPECT_TRUE(hitIncludesEntity);
+            bool hitIncludesShape = (result.m_shape == shapes[1].get());
+            EXPECT_TRUE(hitIncludesShape);
+        }
+    }
+
+    TEST_P(PhysicsRigidBodyRayBusTest, ComponentRayCast_CastAgainstBoxEntityLocalOffsetAndRotation_ReturnsHits)
+    {
+        // Entity at (0,0,0) rotated by 90 degrees and child box offset (0,100,0).
+        // World position of the child should be (-100, 0, 0).
+        // This tests raycasts from (0, 0, 0) to (-200, 0 ,0) checking that collides with the box
+
+        const AZ::Vector3 boxExtent = AZ::Vector3(10.0f, 10.0f, 10.0f);
+        const AZ::Vector3 boxOffset(0.0f, 100.0f, 0.0f);
+
+        MultiShapeConfig config;
+        config.m_position = AZ::Vector3(0.0f, 0.0f, 0.0f);
+        config.m_rotation = AZ::Vector3(0, 0, AZ::Constants::HalfPi);
+        config.m_shapes.AddBox(boxExtent, boxOffset);
+
+        AZStd::unique_ptr<AZ::Entity> shapeWithOneBox(AddMultiShapeEntity(config));
+        AZStd::vector<AZStd::shared_ptr<Physics::Shape>> shapes;
+        PhysX::ColliderComponentRequestBus::EventResult(shapes, shapeWithOneBox->GetId(), &PhysX::ColliderComponentRequests::GetShapes);
+
+        RayCastRequest request;
+        request.m_start = AZ::Vector3(0.0f, 0.0f, 0.0f);
+        request.m_direction = AZ::Vector3(-1.0f, 0.0f, 0.0f);
+        request.m_distance = 200.0f;
+
+        auto rayCastFunction = GetParam();
+        RayCastHit result = rayCastFunction(shapeWithOneBox->GetId(), request);
+
+        EXPECT_TRUE(result);
+        bool hitIncludesEntity = (result.m_body->GetEntityId() == shapeWithOneBox->GetId());
+        EXPECT_TRUE(hitIncludesEntity);
+        bool hitIncludesShape = (result.m_shape == shapes[0].get());
+        EXPECT_TRUE(hitIncludesShape);
+    }
+
+    static const RayCastFunc RigidBodyRaycastEBusCall = [](AZ::EntityId entityId, const Physics::RayCastRequest& request)
+    {
+        Physics::RayCastHit ret;
+        Physics::RigidBodyRequestBus::EventResult(ret, entityId, &Physics::RigidBodyRequests::RayCast, request);
+        return ret;
+    };
+
+    static const RayCastFunc WorldBodyRaycastEBusCall = [](AZ::EntityId entityId, const Physics::RayCastRequest& request)
+    {
+        Physics::RayCastHit ret;
+        Physics::WorldBodyRequestBus::EventResult(ret, entityId, &Physics::WorldBodyRequests::RayCast, request);
+        return ret;
+    };
+
+    INSTANTIATE_TEST_CASE_P(, PhysicsRigidBodyRayBusTest,
+        ::testing::Values(RigidBodyRaycastEBusCall, WorldBodyRaycastEBusCall),
+        // Provide nice names for the tests runs
+        [](const testing::TestParamInfo<PhysicsRigidBodyRayBusTest::ParamType>& info)
+        {
+            const char* name = "";
+            switch (info.index)
+            {
+            case 0:
+                name = "RigidBodyRequestBus";
+                break;
+            case 1:
+                name = "WorldBodyRequestBus";
+                break;
+            }
+            return name;
+        });
 } // namespace Physics

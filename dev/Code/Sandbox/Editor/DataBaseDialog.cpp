@@ -28,14 +28,9 @@
 
 #include <QTabWidget>
 #include <QVBoxLayout>
-#include <QDebug>
-
-#include "QtUtil.h"
-
-#include <QTabWidget>
-#include <QVBoxLayout>
-#include <QDebug>
 #include <QScrollArea>
+
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include "ShortcutDispatcher.h"
@@ -69,7 +64,7 @@ const GUID& CDataBaseDialog::GetClassID()
 CDataBaseDialog::CDataBaseDialog(QWidget* pParent)
     : QWidget(pParent)
 {
-    m_tabCtrl = new QTabWidget(this);
+    m_tabCtrl = new AzQtComponents::TabWidget(this);
 
     connect(m_tabCtrl, &QTabWidget::currentChanged, this, QtUtil::Select<int>::OverloadOf(&CDataBaseDialog::Activate));
 

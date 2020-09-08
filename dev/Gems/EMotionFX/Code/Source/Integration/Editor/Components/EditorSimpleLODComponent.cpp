@@ -40,8 +40,8 @@ namespace EMotionFX
             if (serializeContext)
             {
                 serializeContext->Class<EditorSimpleLODComponent, AzToolsFramework::Components::EditorComponentBase>()
-                    ->Version(1)
-                    ->Field("LODDistances", &EditorSimpleLODComponent::m_lodDistances)
+                    ->Version(2, VersionConverter)
+                    ->Field("LOD Configuration", &EditorSimpleLODComponent::m_configuration)
                     ;
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -50,20 +50,31 @@ namespace EMotionFX
                     editContext->Class<EditorSimpleLODComponent>(
                         "Simple LOD Distance", "The Simple LOD distance component alters the actor LOD level based on ")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Animation")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SimpleLODDistance.svg")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Mannequin.png")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->DataElement(0, &EditorSimpleLODComponent::m_lodDistances,
-                            "LOD Distance (Max)", "The maximum camera distance of this LOD.")
-                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->ElementAttribute(AZ::Edit::Attributes::Step, 0.01f)
-                        ->ElementAttribute(AZ::Edit::Attributes::Suffix, " m");
+                            ->Attribute(AZ::Edit::Attributes::Category, "Animation")
+                            ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SimpleLODDistance.svg")
+                            ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Mannequin.png")
+                            ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(0, &EditorSimpleLODComponent::m_configuration, "LOD Configuration", "");
                 }
             }
 
+        }
+
+        bool EditorSimpleLODComponent::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            const unsigned int version = classElement.GetVersion();
+            bool result = true;
+            if (version < 2)
+            {
+                AZ::SerializeContext::DataElementNode LODDistanceNode = classElement.GetSubElement(1);
+                classElement.RemoveElement(1);
+                result = result && classElement.AddElement<SimpleLODComponent::Configuration>(context, "LOD Configuration");
+                AZ::SerializeContext::DataElementNode& LODConfigurationNode = classElement.GetSubElement(1);
+                result = result && LODConfigurationNode.AddElement(LODDistanceNode);
+            }
+
+            return true;
         }
 
         EditorSimpleLODComponent::EditorSimpleLODComponent()
@@ -87,10 +98,7 @@ namespace EMotionFX
             {
                 m_actorInstance = actorInstance.get();
                 const AZ::u32 numLODs = m_actorInstance->GetActor()->GetNumLODLevels();
-                if (numLODs != m_lodDistances.size())
-                {
-                    GenerateDefaultDistances(numLODs);
-                }
+                m_configuration.GenerateDefaultValue(numLODs);
             }
             else
             {
@@ -113,40 +121,24 @@ namespace EMotionFX
             {
                 m_actorInstance = actorInstance;
                 const AZ::u32 numLODs = m_actorInstance->GetActor()->GetNumLODLevels();
-                if (numLODs != m_lodDistances.size())
-                {
-                    GenerateDefaultDistances(numLODs);
-                }
+                m_configuration.GenerateDefaultValue(numLODs);
             }
         }
 
         void EditorSimpleLODComponent::OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance)
         {
             m_actorInstance = nullptr;
-            m_lodDistances.clear();
+            m_configuration.Reset();
         }
 
         void EditorSimpleLODComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         {
-            SimpleLODComponent::UpdateLODLevelByDistance(m_actorInstance, m_lodDistances, GetEntityId());
-        }
-
-        void EditorSimpleLODComponent::GenerateDefaultDistances(AZ::u32 numLodLevels)
-        {
-            // Generate the default LOD to 10, 20, 30....
-            m_lodDistances.resize(numLodLevels);
-            for (AZ::u32 i = 0; i < numLodLevels; ++i)
-            {
-                m_lodDistances[i] = i * 10.0f + 10.0f;
-            }
+            SimpleLODComponent::UpdateLodLevelByDistance(m_actorInstance, m_configuration, GetEntityId());
         }
 
         void EditorSimpleLODComponent::BuildGameEntity(AZ::Entity* gameEntity)
         {
-            SimpleLODComponent::Configuration cfg;
-            cfg.m_lodDistances = m_lodDistances;
-
-            gameEntity->AddComponent(aznew SimpleLODComponent(&cfg));
+            gameEntity->AddComponent(aznew SimpleLODComponent(&m_configuration));
         }
     }
 }

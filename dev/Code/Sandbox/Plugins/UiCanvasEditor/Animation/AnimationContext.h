@@ -73,7 +73,7 @@ public:
     /** Set active editing sequence.
         @param seq New active sequence.
     */
-    void SetSequence(CUiAnimViewSequence* pSequence, bool bForce, bool bNoNotify);
+    void SetSequence(CUiAnimViewSequence* pSequence, bool bForce, bool bNoNotify, bool recordUndo = false);
 
     /** Get currently edited sequence.
     */

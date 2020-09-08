@@ -33,35 +33,31 @@ namespace EMStudio
         // Required for serialization
         Vector3GizmoParameterEditor()
             : Vector3GizmoParameterEditor(nullptr, nullptr, AZStd::vector<MCore::Attribute*>())
-        {}
+        {
+        }
 
         Vector3GizmoParameterEditor(EMotionFX::AnimGraph* animGraph, const EMotionFX::ValueParameter* valueParameter, const AZStd::vector<MCore::Attribute*>& attributes);
-
         ~Vector3GizmoParameterEditor() override;
 
         static void Reflect(AZ::ReflectContext* context);
 
-        void setIsReadOnly(bool isReadOnly) override;
-
         QWidget* CreateGizmoWidget(const AZStd::function<void()>& manipulatorCallback) override;
-
-        void SetValue(const AZ::Vector3& value);
-        
+        void SetValue(const AZ::Vector3& value);      
         void UpdateValue() override;
+        void setIsReadOnly(bool isReadOnly) override;
 
     private:
         void OnValueChanged();
         void UpdateAnimGraphInstanceAttributes();
+        void ToggleTranslationGizmo();
 
         AZ::Vector3 GetMinValue() const;
         AZ::Vector3 GetMaxValue() const;
 
-        void ToggleTranslationGizmo();
-
-        AZ::Vector3 m_currentValue;
-
-        QPushButton* m_gizmoButton;
-        MCommon::TranslateManipulator* m_transformationGizmo;
+    private:
+        AZ::Vector3 m_currentValue = AZ::Vector3::CreateZero();
+        QPushButton* m_gizmoButton = nullptr;
+        MCommon::TranslateManipulator* m_transformationGizmo = nullptr;
         AZStd::function<void()> m_manipulatorCallback;
     };
-}
+} // namespace EMStudio

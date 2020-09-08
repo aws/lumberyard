@@ -17,7 +17,6 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QCheckBox>
-#include <MysticQt/Source/ButtonGroup.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/ActorManager.h>
@@ -47,7 +46,6 @@ namespace EMStudio
     void MotionMirroringWindow::Init()
     {
         QVBoxLayout* layout = new QVBoxLayout();
-        layout->setMargin(0);
         setLayout(layout);
 
         mMotionMirroringButton = new QCheckBox("Use Motion Mirroring");

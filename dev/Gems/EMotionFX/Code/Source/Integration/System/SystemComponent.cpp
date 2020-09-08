@@ -732,7 +732,7 @@ namespace EMotionFX
 
                             // Calculate the difference in rotation and apply that to the entity transform.
                             const AZ::Quaternion actorInstanceRotation = actorInstance->GetWorldSpaceTransform().mRotation;
-                            const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateFromTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
+                            const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateRotationFromScaledTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
                             if (!rotationDelta.IsIdentity(AZ::g_fltEps))
                             {
                                 currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
@@ -741,7 +741,7 @@ namespace EMotionFX
                         }
                         else // There is no physics controller, just use EMotion FX's actor instance transform directly.
                         {
-                            const AZ::Transform newTransform = MCore::EmfxTransformToAzTransform(actorInstance->GetWorldSpaceTransform());
+                            const AZ::Transform newTransform = actorInstance->GetWorldSpaceTransform().ToAZTransform();
                             AZ::TransformBus::Event(entityId, &AZ::TransformBus::Events::SetWorldTM, newTransform);
                         }
                     }
@@ -881,7 +881,7 @@ namespace EMotionFX
 
             EMStudio::GetManager()->ExecuteApp();
 
-            AZStd::function<QWidget*()> windowCreationFunc = []()
+            AZStd::function<QWidget*(QWidget*)> windowCreationFunc = [](QWidget* parent = nullptr)
                 {
                     return EMStudio::GetMainWindow();
                 };
@@ -910,11 +910,11 @@ namespace EMotionFX
             using namespace AzToolsFramework::AssetBrowser;
             if (AZStd::wildcard_match("*.motionset", fullSourceFileName))
             {
-                return SourceFileDetails("Editor/Images/AssetBrowser/MotionSet_16.png");
+                return SourceFileDetails("Editor/Images/AssetBrowser/MotionSet_16.svg");
             }
             else if (AZStd::wildcard_match("*.animgraph", fullSourceFileName))
             {
-                return SourceFileDetails("Editor/Images/AssetBrowser/AnimGraph_16.png");
+                return SourceFileDetails("Editor/Images/AssetBrowser/AnimGraph_16.svg");
             }
             return SourceFileDetails(); // no result
         }

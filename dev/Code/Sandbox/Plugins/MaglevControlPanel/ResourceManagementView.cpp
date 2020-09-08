@@ -13,6 +13,7 @@
 
 #include "EditorCoreAPI.h"
 
+#include <AWSUtil.h>
 #include <ResourceManagementView.h>
 #include <ActiveDeployment.h>
 #include <AWSResourceManager.h>
@@ -66,6 +67,8 @@
 #include <DetailWidget/TextDetailWidget.moc>
 #include <DetailWidget/FileContentDetailWidget.moc>
 
+#include <AzQtComponents/Components/StyleManager.h>
+
 const int ResourceManagementView::SEARCH_LIGHTER_VALUE {
     70
 };                                                           // How much lighter should the block around search text appear - 150 is pretty much saturated
@@ -88,6 +91,7 @@ ResourceManagementView::ResourceManagementView(QWidget* parent)
     //setStyleSheet("border: 1px solid red");
 
     setObjectName("ResourceManagement");
+    AzQtComponents::StyleManager::setStyleSheet(this, "style:CloudCanvas.qss");
 
     Init();
 
@@ -1218,8 +1222,7 @@ void ResourceManagementView::OnUpdateResourceGroupButtonGainedFocus()
     QStandardItem* resourceGroup = FindSelectedItemResourceGroup();
     if (resourceGroup != nullptr)
     {
-        QColor highlightColor = GetIEditor()->GetColorByName("ResourceGroupHighlightColor");
-        resourceGroup->setBackground(highlightColor);  // Highlight the node
+        resourceGroup->setBackground(AWSUtil::MakePrettyColor("Highlight"));  // Highlight the node
     }
 }
 
@@ -1325,6 +1328,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
     PopupDialogWidget dialog { this };
     dialog.setObjectName("UpdateStack");
     dialog.setWindowTitle(model->GetUpdateConfirmationTitle());
+    dialog.setContentsMargins(QMargins(10, 10, 10, 10));
 
     auto stackResourcesModel = model->GetStackResourcesModel();
     auto pendingChangesModel = stackResourcesModel->GetPendingChangeFilterProxy();
@@ -1337,6 +1341,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
     resourcesTable.setObjectName("ResourcesTable");
     resourcesTable.TableView()->setModel(pendingChangesModel.data());
     resourcesTable.TableView()->verticalHeader()->hide();
+    resourcesTable.TableView()->setShowGrid(false);
     resourcesTable.TableView()->setEditTriggers(QTableView::NoEditTriggers);
     resourcesTable.TableView()->setSelectionMode(QTableView::NoSelection);
     resourcesTable.TableView()->setFocusPolicy(Qt::NoFocus);
@@ -1378,7 +1383,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
     dialog.AddSpanningWidgetRow(&messageLabel);
 
     QCheckBox confirmDeletionCheckBox{};
-    confirmDeletionCheckBox.setText("It is OK that this will permamently DELETE resources.");
+    confirmDeletionCheckBox.setText("It is OK that this will permanently DELETE resources.");
     confirmDeletionCheckBox.setEnabled(false);
     dialog.AddSpanningWidgetRow(&confirmDeletionCheckBox);
 

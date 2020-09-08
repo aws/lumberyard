@@ -31,6 +31,10 @@ namespace AZ
         {
             class IGraphObject;
         }
+        namespace FbxSceneBuilder
+        {
+            struct QueueNode;
+        }
 
         namespace Containers
         {
@@ -57,6 +61,7 @@ namespace AZ
                 class NodeIndex
                 {
                     friend class SceneGraph;
+                    friend struct FbxSceneBuilder::QueueNode;
                 public:
                     // Type needs to be able to store an index in a NodeHeader (currently 21-bits).
                     using IndexType = uint32_t;

@@ -14,6 +14,7 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzFramework/Physics/Casts.h>
 
 namespace Physics
 {
@@ -37,7 +38,6 @@ namespace Physics
         virtual float GetInverseMass() const = 0;
         virtual void SetMass(float mass) = 0;
         virtual void SetCenterOfMassOffset(const AZ::Vector3& comOffset) = 0;
-
         virtual AZ::Vector3 GetLinearVelocity() const = 0;
         virtual void SetLinearVelocity(const AZ::Vector3& velocity) = 0;
         virtual AZ::Vector3 GetAngularVelocity() const = 0;
@@ -68,6 +68,8 @@ namespace Physics
 
         virtual AZ::Aabb GetAabb() const = 0;
         virtual Physics::RigidBody* GetRigidBody() = 0;
+
+        virtual Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) = 0;
     };
 
     using RigidBodyRequestBus = AZ::EBus<RigidBodyRequests>;

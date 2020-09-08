@@ -12,7 +12,6 @@
 
 #include "MorphTargetEditWindow.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include <MysticQt/Source/DoubleSpinbox.h>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -47,21 +46,21 @@ namespace EMStudio
         QLabel* rangeMinLabel = new QLabel("Range Min");
 
         // create the range min double spinbox
-        mRangeMin = new MysticQt::DoubleSpinBox();
+        mRangeMin = new AzQtComponents::DoubleSpinBox();
         mRangeMin->setSingleStep(0.1);
         mRangeMin->setRange(std::numeric_limits<int32>::lowest(), morphTargetRangeMax);
         mRangeMin->setValue(morphTargetRangeMin);
-        connect(mRangeMin, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &MorphTargetEditWindow::MorphTargetRangeMinValueChanged);
+        connect(mRangeMin, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &MorphTargetEditWindow::MorphTargetRangeMinValueChanged);
 
         // create the range max label
         QLabel* rangeMaxLabel = new QLabel("Range Max");
 
         // create the range max double spinbox
-        mRangeMax = new MysticQt::DoubleSpinBox();
+        mRangeMax = new AzQtComponents::DoubleSpinBox();
         mRangeMax->setSingleStep(0.1);
         mRangeMax->setRange(morphTargetRangeMin, std::numeric_limits<int32>::max());
         mRangeMax->setValue(morphTargetRangeMax);
-        connect(mRangeMax, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &MorphTargetEditWindow::MorphTargetRangeMaxValueChanged);
+        connect(mRangeMax, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &MorphTargetEditWindow::MorphTargetRangeMaxValueChanged);
 
         // create the grid layout
         QGridLayout* gridLayout = new QGridLayout();

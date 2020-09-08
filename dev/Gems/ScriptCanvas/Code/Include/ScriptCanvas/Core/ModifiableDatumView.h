@@ -53,6 +53,8 @@ namespace ScriptCanvas
         const Datum* GetDatum() const;
         Datum CloneDatum();
 
+        void SetLabel(const AZStd::string& label);
+
         void SetToDefaultValueOfType();
 
         void AssignToDatum(Datum&& datum);

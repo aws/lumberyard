@@ -1,0 +1,9 @@
+{
+    "description": "Configuration for StarterGame",
+    "visual_studio_name": "StarterGame",
+    "comment" : "",
+    "game_projects" : "StarterGame",
+
+    "modules" : [
+    ]
+}

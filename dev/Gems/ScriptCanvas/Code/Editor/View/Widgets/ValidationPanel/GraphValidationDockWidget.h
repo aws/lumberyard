@@ -202,6 +202,8 @@ namespace ScriptCanvasEditor
         void OnToastInteraction() override;
         void OnToastDismissed() override;
         ////
+
+        bool HasValidationIssues() const;
         
     public slots:
     

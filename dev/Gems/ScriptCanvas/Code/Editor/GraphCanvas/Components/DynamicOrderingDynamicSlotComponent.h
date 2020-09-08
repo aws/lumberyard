@@ -35,12 +35,13 @@ namespace ScriptCanvasEditor
         void OnSystemTick() override;
         ////
 
-        // NodeNotificationBus
-        void OnSceneSet(const AZ::EntityId& sceneId) override;
+        // SceneMemberNotificationBus
+        void OnSceneSet(const AZ::EntityId& sceneId) override;        
+        void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization& serializationTarget) override;
         ////
 
-        // SceneMemberNotificationBus        
-        void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization& serializationTarget) override;
+        // NodeNotifications
+        void OnSlotsReordered() override;
         ////
 
         // DynamicRequestBus
@@ -54,6 +55,5 @@ namespace ScriptCanvasEditor
     private:
 
         bool m_deserialized;
-        AZ::EntityId m_nodeId;
     };
 }

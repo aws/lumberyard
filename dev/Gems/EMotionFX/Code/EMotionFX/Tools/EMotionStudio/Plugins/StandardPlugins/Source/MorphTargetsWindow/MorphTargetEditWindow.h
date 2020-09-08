@@ -17,7 +17,7 @@
 #include <EMotionFX/Source/MorphTarget.h>
 #include "PhonemeSelectionWindow.h"
 #include <QDialog>
-#include <MysticQt/Source/DoubleSpinbox.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 
 namespace EMStudio
@@ -42,10 +42,10 @@ namespace EMStudio
         void EditPhonemeButtonClicked();
 
     private:
-        EMotionFX::ActorInstance*   mActorInstance;
-        EMotionFX::MorphTarget*     mMorphTarget;
-        MysticQt::DoubleSpinBox*    mRangeMin;
-        MysticQt::DoubleSpinBox*    mRangeMax;
-        PhonemeSelectionWindow*     mPhonemeSelectionWindow;
+        EMotionFX::ActorInstance*       mActorInstance;
+        EMotionFX::MorphTarget*         mMorphTarget;
+        AzQtComponents::DoubleSpinBox*  mRangeMin;
+        AzQtComponents::DoubleSpinBox*  mRangeMax;
+        PhonemeSelectionWindow*         mPhonemeSelectionWindow;
     };
 } // namespace EMStudio

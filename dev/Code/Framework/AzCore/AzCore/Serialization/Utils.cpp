@@ -467,5 +467,31 @@ namespace AZ
             return AZStd::make_pair(azrtti_typeid<void>(), azrtti_typeid<void>());
         }
 
+        void* ResolvePointer(void* ptr, const SerializeContext::ClassElement& classElement, const SerializeContext& context)
+        {
+            if (classElement.m_flags & SerializeContext::ClassElement::FLG_POINTER)
+            {
+                // In the case of pointer-to-pointer, we'll deference.
+                ptr = *(void**)(ptr);
+
+                // Pointer-to-pointer fields may be base class / polymorphic, so cast pointer to actual type,
+                // safe for passing as 'this' to member functions.
+                if (ptr && classElement.m_azRtti)
+                {
+                    Uuid actualClassId = classElement.m_azRtti->GetActualUuid(ptr);
+                    if (actualClassId != classElement.m_typeId)
+                    {
+                        const SerializeContext::ClassData* classData = context.FindClassData(actualClassId);
+                        if (classData)
+                        {
+                            ptr = classElement.m_azRtti->Cast(ptr, classData->m_azRtti->GetTypeId());
+                        }
+                    }
+                }
+            }
+
+            return ptr;
+        }
+
     } // namespace Utils
 } // namespace AZ

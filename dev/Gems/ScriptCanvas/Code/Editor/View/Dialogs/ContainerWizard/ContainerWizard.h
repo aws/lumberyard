@@ -61,6 +61,8 @@ namespace ScriptCanvasEditor
 
         bool eventFilter(QObject* object, QEvent* event) override;
 
+        const AZStd::unordered_map< AZ::Crc32, AZ::TypeId >& GetFinalTypeMapping() const;
+
     public Q_SLOTS:
         void ReparseDisplay();
 
@@ -86,7 +88,7 @@ namespace ScriptCanvasEditor
         void PopulateMapDisplay();
         void PopulateGeneralDisplay(const AZStd::string& patternFallback = "Type %i", const AZStd::string& singleTypeString = "Type", const AZStd::vector< AZStd::string >& typeLabels = AZStd::vector< AZStd::string>());
 
-    private:        
+    private:
 
         void RegisterDataType(const AZ::TypeId& dataType);
         void RegisterContainerType(const AZ::TypeId& containerType);
@@ -118,7 +120,7 @@ namespace ScriptCanvasEditor
         AZStd::unordered_map< AZ::TypeId, AZStd::string > m_dataTypes;
 
         AZStd::unordered_map< AZ::Crc32, DataTypeSet > m_containerDataTypeSets;
-        AZStd::unordered_map< AZ::Crc32, AZ::Uuid > m_finalContainerTypeIds;
+        AZStd::unordered_map< AZ::Crc32, AZ::TypeId > m_finalContainerTypeIds;
 
         AZStd::unique_ptr< Ui::ContainerWizard > m_ui;
     };

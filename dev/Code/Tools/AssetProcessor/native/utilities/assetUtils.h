@@ -50,6 +50,10 @@ namespace AssetProcessor
 
 namespace AssetUtilities
 {
+    //! Set precision fingerprint timestamps will be truncated to avoid mismatches across systems/packaging with different file timestamp precisions
+    //! Timestamps default to milliseconds.  A value of 1 will keep the default millisecond precision.  A value of 1000 will reduce the precision to seconds
+    void SetTruncateFingerprintTimestamp(int precision);
+
     //! Compute the root asset folder by scanning for marker files such as root.ini
     //! By Default, this searches the applications root and walks upwards, but you are allowed to instead
     //! supply a different starting root.  in that case, it will start from there instead, and walk upwards.
@@ -92,6 +96,7 @@ namespace AssetUtilities
     //! Reads the server address from the config file.
     QString ServerAddress();
 
+    int AllowedTimeZoneOffset();
 
     //! Determine the name of the current game - for example, SamplesProject
     QString ComputeGameName(QString initialFolder = QString(), bool force = false);
@@ -221,7 +226,10 @@ namespace AssetUtilities
 
     //! interrogate a given file, which is specified as a full path name, and generate a fingerprint for it.
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail);
-    
+
+    //! Adjusts a timestamp to fix timezone settings and account for any precision adjustment needed
+    std::uint64_t AdjustTimestamp(QDateTime timestamp);
+
     // Generates a fingerprint string based on details of the file, will return the string "0" if the file does not exist.
     // note that the 'name to use' can be blank, but it used to disambiguate between files that have the same
     // modtime and size.
@@ -300,6 +308,9 @@ namespace AssetUtilities
 
         AZ::s64 GetErrorCount() const;
         AZ::s64 GetWarningCount() const;
+
+        void AddError();
+        void AddWarning();
 
     private:
         AZStd::unique_ptr<AzFramework::LogFile> m_logFile;

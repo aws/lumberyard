@@ -17,6 +17,7 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 
 #include <AzCore/Component/TransformBus.h>
 #include <PhysX/ColliderComponentBus.h>
@@ -49,9 +50,10 @@ namespace PhysX
         : public AzToolsFramework::Components::EditorComponentBase
         , protected AzFramework::EntityDebugDisplayEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
-        , private PhysX::ColliderComponentEventBus::Handler
+        , private Physics::ColliderComponentEventBus::Handler
         , private PhysX::ConfigurationNotificationBus::Handler
         , private Physics::WorldNotificationBus::Handler
+        , private Physics::WorldBodyRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorRigidBodyComponent, "{F2478E6B-001A-4006-9D7E-DCB5A6B041DD}", AzToolsFramework::Components::EditorComponentBase);
@@ -63,6 +65,7 @@ namespace PhysX
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
+            provided.push_back(AZ_CRC("PhysicsWorldBodyService", 0x944da0cc));
             provided.push_back(AZ_CRC("PhysXRigidBodyService", 0x1d4c64a8));
         }
 
@@ -101,7 +104,7 @@ namespace PhysX
         // TransformBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        // ColliderComponentEventBus
+        // Physics::ColliderComponentEventBus
         void OnColliderChanged() override;
 
         // PhysX::ConfigurationNotificationBus
@@ -109,6 +112,14 @@ namespace PhysX
 
         // Physics::WorldNotificationBus
         void OnPrePhysicsUpdate(float fixedDeltaTime) override;
+
+        // WorldBodyRequestBus
+        void EnablePhysics() override;
+        void DisablePhysics() override;
+        bool IsPhysicsEnabled() const override;
+        AZ::Aabb GetAabb() const override;
+        Physics::WorldBody* GetWorldBody() override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
 
         void UpdateEditorWorldRigidBody();
         void UpdateDebugDrawSettings(const PhysXConfiguration& configuration);

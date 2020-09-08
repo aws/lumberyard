@@ -50,7 +50,7 @@ namespace ScriptCanvas
 
                 ScriptCanvas_SerializeProperty(ScriptCanvas::EBusBusId, m_busId);
 
-                ReceiveScriptEvent() = default;
+                ReceiveScriptEvent();
                 ~ReceiveScriptEvent() override;
 
                 void OnActivate() override;
@@ -66,8 +66,6 @@ namespace ScriptCanvas
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("OnDisconnected", "Signaled when this event handler is disconnected."));
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("OnFailure", "Signaled when it is not possible to connect this handler."));
 
-                void Initialize(const AZ::Data::AssetId assetId) override;
-
                 const AZ::Data::AssetId GetAssetId() const { return m_scriptEventAssetId; }
                 ScriptCanvas::EBusBusId GetBusId() const { return ScriptCanvas::EBusBusId(GetAssetId().ToString<AZStd::string>().c_str()); }
 
@@ -77,7 +75,11 @@ namespace ScriptCanvas
 
                 bool IsIDRequired() const;
 
-                void UpdateScriptEventAsset() override;
+                // NodeVersioning
+                bool IsOutOfDate() const override;
+                UpdateResult OnUpdateNode() override;
+                AZStd::string GetUpdateString() const override;
+                ////
 
                 using Events = AZStd::vector<Internal::ScriptEventEntry>;
 
@@ -91,11 +93,13 @@ namespace ScriptCanvas
 
                 void Connect();
                 void Disconnect(bool queueDisconnect = true);
+                void CompleteDisconnection();
 
                 bool CreateEbus();
                 bool SetupHandler();
 
                 void OnInputSignal(const SlotId& slotId) override;
+                void OnInputChanged(const Datum& input, const SlotId& slotId) override;
                 
                 AZ::BehaviorEBusHandler* m_handler = nullptr;
                 AZ::BehaviorEBus* m_ebus = nullptr;
@@ -119,7 +123,6 @@ namespace ScriptCanvas
 
                 static const char* c_busIdName;
                 static const char* c_busIdTooltip;
-                bool m_deferDisconnect = false;
 
                 struct EventHookUserData
                 {
@@ -130,6 +133,9 @@ namespace ScriptCanvas
                 EventHookUserData m_userData;
 
                 ScriptCanvas_SerializePropertyWithDefaults(bool, m_autoConnectToGraphOwner, true);
+
+                bool m_connected;
+
             };
         } // namespace Core
     } // namespace Nodes

@@ -51,7 +51,7 @@ namespace LyShine
             // Register UI Canvas Builder
             AssetBuilderSDK::AssetBuilderDesc uiBuilderDescriptor;
             uiBuilderDescriptor.m_name = "UI Canvas Builder";
-            uiBuilderDescriptor.m_version = 2;
+            uiBuilderDescriptor.m_version = 3;
             uiBuilderDescriptor.m_analysisFingerprint = builderAnalysisFingerprint;
             uiBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.uicanvas", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             uiBuilderDescriptor.m_busId = UiCanvasBuilderWorker::GetUUID();

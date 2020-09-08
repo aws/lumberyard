@@ -125,6 +125,7 @@ private:
     int ShowPopupMenuSingleSelection(struct UiAnimContextMenu& contextMenu, CUiAnimViewSequence* pSequence, CUiAnimViewNode* pNode);
     int ShowPopupMenuMultiSelection(struct UiAnimContextMenu& contextMenu);
     int ShowPopupMenu(QPoint point, const CRecord* pItemInfo);
+    void EditEvents();
 
     void SetPopupMenuLock(QMenu* menu);
     void CreateSetAnimationLayerPopupMenu(QMenu& menuSetLayer, CUiAnimViewTrack* pTrack) const;

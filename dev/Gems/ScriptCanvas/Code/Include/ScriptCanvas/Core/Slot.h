@@ -29,6 +29,14 @@ namespace ScriptCanvas
 {
     class Contract;
     class Node;
+
+    struct TransientSlotIdentifier
+    {
+        AZStd::string m_name;
+        SlotDescriptor m_slotDescriptor;
+
+        int m_index = 0;
+    };
     
     class Slot final
         : public VariableNotificationBus::Handler
@@ -60,6 +68,25 @@ namespace ScriptCanvas
 
         void AddContract(const ContractDescriptor& contractDesc);
 
+        template<typename T>
+        void RemoveContract()
+        {
+            AZ::Uuid contractType = azrtti_typeid<T>();
+
+            auto contractIter = m_contracts.begin();
+
+            while (contractIter != m_contracts.end())
+            {
+                if (azrtti_typeid(contractIter->get()) == contractType)
+                {
+                    m_contracts.erase(contractIter);
+                    break;
+                }
+
+                ++contractIter;
+            }
+        }
+
         AZStd::vector<AZStd::unique_ptr<Contract>>& GetContracts() { return m_contracts; }
         const AZStd::vector<AZStd::unique_ptr<Contract>>& GetContracts() const { return m_contracts; }
 
@@ -72,7 +99,7 @@ namespace ScriptCanvas
         ////
 
         const SlotDescriptor& GetDescriptor() const { return m_descriptor; }
-        const SlotId& GetId() const { return m_id; }        
+        const SlotId& GetId() const { return m_id; }
 
         const Node* GetNode() const { return m_node; }
         Node* GetNode() { return m_node; }
@@ -88,8 +115,10 @@ namespace ScriptCanvas
 
         Data::Type GetDataType() const;
 
+        bool IsConnected() const;
+
         bool IsData() const;
-        
+
         const Datum* FindDatum() const;
         void FindModifiableDatumView(ModifiableDatumView& datumView);
 
@@ -145,7 +174,20 @@ namespace ScriptCanvas
         AZ::Outcome<void, AZStd::string> IsTypeMatchFor(const Slot& slot) const;
         AZ::Outcome<void, AZStd::string> IsTypeMatchFor(const Data::Type& dataType) const;
 
-        void Rename(AZStd::string_view slotName);        
+        void Rename(AZStd::string_view slotName);
+
+        void SignalRenamed();
+        void SignalTypeChanged(const ScriptCanvas::Data::Type& dataType);
+
+        void UpdateDatumVisibility();
+
+        // Editor Fields
+
+        // Returns information which can be used to identify this slot in a 'transient' fashion.
+        // This data should not be stored and used for long term retrieval but should be valid within a single session
+        // to identify the same slot between different nodes.
+        TransientSlotIdentifier GetTransientIdentifier() const;
+        ////
 
     protected:
 
@@ -166,7 +208,7 @@ namespace ScriptCanvas
         GraphVariable*     m_variable = nullptr;
 
         DynamicDataType m_dynamicDataType{ DynamicDataType::None };
-        ScriptCanvas::Data::Type m_displayDataType{ ScriptCanvas::Data::Type::Invalid() };        
+        ScriptCanvas::Data::Type m_displayDataType{ ScriptCanvas::Data::Type::Invalid() };
 
         SlotId m_id;
         Node*  m_node;

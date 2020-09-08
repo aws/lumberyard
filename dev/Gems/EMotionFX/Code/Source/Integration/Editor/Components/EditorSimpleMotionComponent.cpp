@@ -169,9 +169,8 @@ namespace EMotionFX
             {
                 // The Editor allows scrubbing back and forth on animation blending transitions, so don't delete 
                 // motion instances if it's blend weight is zero.
-                bool deleteOnZeroWeight = false;
-
-                m_motionInstance = SimpleMotionComponent::PlayMotionInternal(m_actorInstance, m_configuration, deleteOnZeroWeight);
+                // The Editor preview should preview the motion in place to prevent off center movement.
+                m_motionInstance = SimpleMotionComponent::PlayMotionInternal(m_actorInstance, m_configuration, /*deleteOnZeroWeight*/false, /*inPlace*/true);
             }
         }
 

@@ -25,10 +25,9 @@ namespace AZ
         AZ_RTTI(JsonUnorderedSetContainerSerializer, "{4229622F-0F18-4A52-BB22-CEE3FD13A21D}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId,
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
 
     private:
         JsonBasicContainerSerializer m_baseSerializer;

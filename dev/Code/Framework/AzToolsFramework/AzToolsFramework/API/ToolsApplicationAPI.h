@@ -408,6 +408,9 @@ namespace AzToolsFramework
         //! Create a new entity at a specified position
         virtual AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& pos, AZ::EntityId parentId = AZ::EntityId()) = 0;
 
+        //! Gets an existing entity id from a known id.
+        virtual AZ::EntityId GetExistingEntity(AZ::u64 id) = 0;
+
         /*!
          * Delete all currently-selected entities.
          */
@@ -739,7 +742,7 @@ namespace AzToolsFramework
         /// \param category - category under the Tools menu that will contain the option to open the pane.
         /// \param viewOptions - structure defining various UI options for the pane.
         /// \param widgetCreationFunc - function callback for constructing the pane.
-        typedef AZStd::function<QWidget*()> WidgetCreationFunc;
+        typedef AZStd::function<QWidget*(QWidget*)> WidgetCreationFunc;
         virtual void RegisterViewPane(const char* /*name*/, const char* /*category*/, const ViewPaneOptions& /*viewOptions*/, const WidgetCreationFunc& /*widgetCreationFunc*/) {};
 
         /// Unregisters a view pane by name from the main editor.
@@ -803,6 +806,9 @@ namespace AzToolsFramework
 
         /// Create a new entity at a specified position
         virtual AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& /*pos*/, AZ::EntityId parentId = AZ::EntityId()) { (void)parentId; return AZ::EntityId(); }
+
+        /// Gets and existing EntityId from a known id passed ad a u64
+        virtual AZ::EntityId GetExistingEntity(AZ::u64 id) {return AZ::EntityId{id}; }
 
         virtual AzFramework::EntityContextId GetEntityContextId() { return AzFramework::EntityContextId::CreateNull(); }
 
@@ -871,7 +877,7 @@ namespace AzToolsFramework
          */
         virtual const char* GetDefaultAgentNavigationTypeName() { return ""; }
         
-        virtual void OpenPinnedInspector(const AzToolsFramework::EntityIdList& /*entities*/) { }
+        virtual void OpenPinnedInspector(const AzToolsFramework::EntityIdSet& /*entities*/) { }
 
         virtual void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* /*editor*/) {}
 
@@ -1002,9 +1008,9 @@ namespace AzToolsFramework
     template <typename TWidget>
     inline void RegisterViewPane(const char* name, const char* category, const ViewPaneOptions& viewOptions)
     {
-        AZStd::function<QWidget*()> windowCreationFunc = []()
+        AZStd::function<QWidget*(QWidget*)> windowCreationFunc = [](QWidget* parent = nullptr)
         {
-            return new TWidget();
+            return new TWidget(parent);
         };
 
         EditorRequests::Bus::Broadcast(&EditorRequests::RegisterViewPane, name, category, viewOptions, windowCreationFunc);
@@ -1022,7 +1028,7 @@ namespace AzToolsFramework
     /// \param category - category under the "Tools" menu that will contain the option to open the newly registered pane.
     /// \param viewOptions - structure defining various options for the pane.
     template <typename TWidget>
-    inline void RegisterViewPane(const char* viewPaneName, const char* category, const ViewPaneOptions& viewOptions, AZStd::function<QWidget*()> windowCreationFunc)
+    inline void RegisterViewPane(const char* viewPaneName, const char* category, const ViewPaneOptions& viewOptions, AZStd::function<QWidget*(QWidget*)> windowCreationFunc)
     {
         EditorRequests::Bus::Broadcast(&EditorRequests::RegisterViewPane, viewPaneName, category, viewOptions, windowCreationFunc);
     }

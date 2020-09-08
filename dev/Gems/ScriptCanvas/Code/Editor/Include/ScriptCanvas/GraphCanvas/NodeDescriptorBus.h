@@ -48,6 +48,8 @@ namespace ScriptCanvasEditor
         GetVariable,
         UserDefined,
         ClassMethod,
+        FunctionNode,
+        ExecutionNodeling,
         
         Invalid
     };

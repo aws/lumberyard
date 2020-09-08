@@ -34,10 +34,10 @@ namespace AZ
     }
 
     JsonSerializationResult::Result JsonUuidSerializer::Load(void* outputValue, const Uuid& outputValueTypeId,
-        const rapidjson::Value& inputValue, StackedString& path, const JsonDeserializerSettings& settings)
+        const rapidjson::Value& inputValue, JsonDeserializerContext& context)
     {
         MessageResult result = UnreportedLoad(outputValue, outputValueTypeId, inputValue);
-        return JsonSerializationResult::Result(settings, result.m_message, result.m_result, path);
+        return context.Report(result.m_result, result.m_message);
     }
 
     JsonUuidSerializer::MessageResult JsonUuidSerializer::UnreportedLoad(void* outputValue, const Uuid& outputValueTypeId,
@@ -78,7 +78,7 @@ namespace AZ
                         JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Unsupported));
                 }
                 *valAsUuid = temp;
-                return MessageResult("Successfully read uuid.", JSR::ResultCode::Success(JSR::Tasks::ReadField));
+                return MessageResult("Successfully read uuid.", JSR::ResultCode(JSR::Tasks::ReadField, JSR::Outcomes::Success));
             }
             else
             {
@@ -92,17 +92,15 @@ namespace AZ
         }
     }
 
-    JsonSerializationResult::Result JsonUuidSerializer::Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-        const void* inputValue, const void* defaultValue, const Uuid& valueTypeId,
-        StackedString& path, const JsonSerializerSettings& settings)
+    JsonSerializationResult::Result JsonUuidSerializer::Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+        const Uuid& valueTypeId, JsonSerializerContext& context)
     {
-        MessageResult result = UnreportedStore(outputValue, allocator, inputValue, defaultValue, valueTypeId, settings);
-        return JsonSerializationResult::Result(settings, result.m_message, result.m_result, path);
+        MessageResult result = UnreportedStore(outputValue, inputValue, defaultValue, valueTypeId, context);
+        return context.Report(result.m_result, result.m_message);
     }
 
-    JsonUuidSerializer::MessageResult JsonUuidSerializer::UnreportedStore(rapidjson::Value& outputValue,
-        rapidjson::Document::AllocatorType& allocator, const void* inputValue, const void* defaultValue,
-        const Uuid& valueTypeId, const JsonSerializerSettings& settings)
+    JsonUuidSerializer::MessageResult JsonUuidSerializer::UnreportedStore(rapidjson::Value& outputValue, const void* inputValue,
+        const void* defaultValue, const Uuid& valueTypeId, JsonSerializerContext& context)
     {
         namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
 
@@ -111,13 +109,13 @@ namespace AZ
         AZ_UNUSED(valueTypeId);
 
         const Uuid& valAsUuid = *reinterpret_cast<const Uuid*>(inputValue);
-        if (settings.m_keepDefaults || !defaultValue || (valAsUuid != *reinterpret_cast<const Uuid*>(defaultValue)))
+        if (context.ShouldKeepDefaults() || !defaultValue || (valAsUuid != *reinterpret_cast<const Uuid*>(defaultValue)))
         {
             AZStd::string valAsString = valAsUuid.ToString<AZStd::string>();
-            outputValue.SetString(valAsString.c_str(), aznumeric_caster(valAsString.length()), allocator);
-            return MessageResult("Uuid successfully stored.", JSR::ResultCode::Success(JSR::Tasks::WriteValue));
+            outputValue.SetString(valAsString.c_str(), aznumeric_caster(valAsString.length()), context.GetJsonAllocator());
+            return MessageResult("Uuid successfully stored.", JSR::ResultCode(JSR::Tasks::WriteValue, JSR::Outcomes::Success));
         }
         
-        return MessageResult("Default Uuid used.", JSR::ResultCode::Default(JSR::Tasks::WriteValue));
+        return MessageResult("Default Uuid used.", JSR::ResultCode(JSR::Tasks::WriteValue, JSR::Outcomes::DefaultsUsed));
     }
 } // namespace AZ

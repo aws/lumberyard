@@ -26,9 +26,9 @@ namespace JsonSerializationTests
 
         ~JsonSerializerMock() override = default;
 
-        MOCK_METHOD5(Load, AZ::JsonSerializationResult::Result(void*, const AZ::Uuid&, const rapidjson::Value&,
-            AZ::StackedString&, const AZ::JsonDeserializerSettings&));
-        MOCK_METHOD7(Store, AZ::JsonSerializationResult::Result(rapidjson::Value&, rapidjson::Document::AllocatorType&,
-            const void*, const void*, const AZ::Uuid&, AZ::StackedString&, const AZ::JsonSerializerSettings&));
+        MOCK_METHOD4(Load, AZ::JsonSerializationResult::Result(void*, const AZ::Uuid&, const rapidjson::Value&,
+            AZ::JsonDeserializerContext&));
+        MOCK_METHOD5(Store, AZ::JsonSerializationResult::Result(rapidjson::Value&, const void*, const void*,
+            const AZ::Uuid&, AZ::JsonSerializerContext& context));
     };
 } //namespace JsonSerializationTests

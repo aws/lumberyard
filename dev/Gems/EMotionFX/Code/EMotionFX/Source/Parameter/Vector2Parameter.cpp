@@ -22,7 +22,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(Vector2Parameter, AnimGraphAllocator, 0)
 
-        
     void Vector2Parameter::Reflect(AZ::ReflectContext* context)
     {
         // This method calls Reflect() on it's parent class, which is uncommon
@@ -54,10 +53,9 @@ namespace EMotionFX
         ;
     }
 
-    const AZStd::string& Vector2Parameter::GetTypeDisplayName() const
+    const char* Vector2Parameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Vector2";
-        return typeDisplayName;
+        return "Vector2";
     }
 
     MCore::Attribute* Vector2Parameter::ConstructDefaultValueAsAttribute() const

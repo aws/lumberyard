@@ -29,6 +29,35 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeAccumTransformNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeAccumTransformNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    BlendTreeAccumTransformNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+        mAdditiveTransform.Identity();
+        EMFX_SCALECODE(mAdditiveTransform.mScale.CreateZero();)
+        SetHasError(true);
+    }
+
+    void BlendTreeAccumTransformNode::UniqueData::Update()
+    {
+        BlendTreeAccumTransformNode* accumTransformNode = azdynamic_cast<BlendTreeAccumTransformNode*>(mObject);
+        AZ_Assert(accumTransformNode, "Unique data linked to incorrect node type.");
+
+        const ActorInstance* actorInstance = mAnimGraphInstance->GetActorInstance();
+        const Actor* actor = actorInstance->GetActor();
+        const Skeleton* skeleton = actor->GetSkeleton();
+        const Node* node = skeleton->FindNodeByName(accumTransformNode->GetTargetNodeName().c_str());
+        if (node)
+        {
+            mNodeIndex = node->GetNodeIndex();
+            SetHasError(false);
+        }
+        else
+        {
+            mNodeIndex = InvalidIndex32;
+            SetHasError(true);
+        }
+    }
+
     BlendTreeAccumTransformNode::BlendTreeAccumTransformNode()
         : AnimGraphNode()
         , m_translateSpeed(1.0f)
@@ -56,32 +85,6 @@ namespace EMotionFX
 
     BlendTreeAccumTransformNode::~BlendTreeAccumTransformNode()
     {
-    }
-
-
-    void BlendTreeAccumTransformNode::Reinit()
-    {
-        if (!mAnimGraph)
-        {
-            return;
-        }
-
-        AnimGraphNode::Reinit();
-
-        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
-        {
-            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
-
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
-            if (!uniqueData)
-            {
-                continue;
-            }
-
-            uniqueData->mMustUpdate = true;
-            animGraphInstance->UpdateUniqueData();
-        }
     }
 
 
@@ -116,29 +119,24 @@ namespace EMotionFX
     // perform the calculations / actions
     void BlendTreeAccumTransformNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        // check if we already did output
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
+        AnimGraphPose* outputPose = nullptr;
 
-        // get the output pose
-        AnimGraphPose* outputPose;
-
-        // get the unique
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        UpdateUniqueData(animGraphInstance, uniqueData);
-        if (uniqueData->mIsValid == false)
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
+        if (uniqueData->GetHasError())
         {
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             outputPose->InitFromBindPose(actorInstance);
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                SetHasError(uniqueData, true);
             }
             return;
         }
         else if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, false);
+            SetHasError(uniqueData, false);
         }
 
 
@@ -286,50 +284,6 @@ namespace EMotionFX
         }
     }
 
-
-    // update the unique data
-    void BlendTreeAccumTransformNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
-    {
-        // update the unique data if needed
-        if (uniqueData->mMustUpdate)
-        {
-            ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            Actor* actor = actorInstance->GetActor();
-
-            uniqueData->mMustUpdate = false;
-            uniqueData->mNodeIndex  = MCORE_INVALIDINDEX32;
-            uniqueData->mIsValid    = false;
-            //      uniqueData->mAdditiveTransform.Identity();
-
-            // try get the node
-            const Node* node = actor->GetSkeleton()->FindNodeByName(m_targetNodeName.c_str());
-            if (!node)
-            {
-                return;
-            }
-
-            uniqueData->mNodeIndex = node->GetNodeIndex();
-            uniqueData->mIsValid = true;
-        }
-    }
-
-
-    void BlendTreeAccumTransformNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        //mOutputPose.Init( animGraphInstance->GetActorInstance() );
-
-        // find our unique data
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        uniqueData->mMustUpdate = true;
-    }
-
-
     // update
     void BlendTreeAccumTransformNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
@@ -337,7 +291,7 @@ namespace EMotionFX
         AnimGraphNode::Update(animGraphInstance, timePassedInSeconds);
 
         // store the passed time
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         uniqueData->mDeltaTime = timePassedInSeconds;
     }
 
@@ -354,18 +308,16 @@ namespace EMotionFX
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
 
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
             if (!uniqueData)
             {
                 continue;
             }
 
             uniqueData->mAdditiveTransform.Identity();
+            EMFX_SCALECODE(uniqueData->mAdditiveTransform.mScale.CreateZero();)
 
-            EMFX_SCALECODE(uniqueData->mAdditiveTransform.mScale.CreateZero();
-                )
-
-            animGraphInstance->UpdateUniqueData();
+            InvalidateUniqueData(animGraphInstance);
         }
     }
 

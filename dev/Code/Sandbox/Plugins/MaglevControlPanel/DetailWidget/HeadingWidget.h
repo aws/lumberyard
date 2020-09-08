@@ -15,7 +15,7 @@
 #include <QFrame>
 
 class QLabel;
-class QPushButton;
+class QToolButton;
 
 class HeadingWidget
     : public QFrame
@@ -42,7 +42,7 @@ private:
 
     QLabel* m_titleLabel;
     QLabel* m_messageLabel;
-    QPushButton* m_refreshButton;
+    QToolButton* m_refreshButton;
 
     void CreateUI();
 };

@@ -179,9 +179,15 @@ namespace AzToolsFramework
             AssetGroupFilter* assetGroupFilter = new AssetGroupFilter();
             assetGroupFilter->SetAssetGroup(group);
             assetGroupFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
+            auto assetGroupFilterPtr = FilterConstType(assetGroupFilter);
 
-            selection.SetDisplayFilter(FilterConstType(assetGroupFilter));
-            selection.SetSelectionFilter(ProductsNoFoldersFilter());
+            selection.SetDisplayFilter(assetGroupFilterPtr);
+
+            CompositeFilter* compFilter = new CompositeFilter(CompositeFilter::LogicOperatorType::AND);
+            compFilter->AddFilter(assetGroupFilterPtr);
+            compFilter->AddFilter(ProductsNoFoldersFilter());
+
+            selection.SetSelectionFilter(FilterConstType(compFilter));
             selection.SetMultiselect(multiselect);
 
             return selection;

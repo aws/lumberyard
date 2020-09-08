@@ -44,17 +44,20 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="1">
-        <widget class="AzQtComponents::BrowseEdit" name="browseEditEnabled" native="true">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>0</height>
-          </size>
+       <item row="2" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditClearButton" native="true"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Clear Button Enabled</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
           <string>Disabled</string>
@@ -80,7 +83,43 @@
          </property>
         </widget>
        </item>
+       <item row="6" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditNumberNonReadOnly" native="true"/>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>ValidDropTarget</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditValidDropTarget" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Number Validator Read Only</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditNumberReadOnly" native="true"/>
+       </item>
        <item row="1" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditReadOnlyClearButton" native="true"/>
+       </item>
+       <item row="3" column="1">
         <widget class="AzQtComponents::BrowseEdit" name="browseEditDisabled" native="true">
          <property name="minimumSize">
           <size>
@@ -90,25 +129,52 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Number Validator Read Only</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_4">
          <property name="text">
           <string>Number Validator Non Read Only</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="AzQtComponents::BrowseEdit" name="browseEditNumberNonReadOnly" native="true"/>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Read Only Text - Clear Button Enabled</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
        </item>
-       <item row="3" column="1">
-        <widget class="AzQtComponents::BrowseEdit" name="browseEditNumberReadOnly" native="true"/>
+       <item row="0" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditEnabled" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>InvalidDropTarget</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="AzQtComponents::BrowseEdit" name="browseEditInvalidDropTarget" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

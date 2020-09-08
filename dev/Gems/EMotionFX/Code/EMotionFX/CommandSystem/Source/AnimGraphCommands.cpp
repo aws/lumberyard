@@ -114,7 +114,7 @@ namespace CommandSystem
         }
         mOldAnimGraphID = animGraph->GetID();
 
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         // return the id of the newly created anim graph
         AZStd::to_string(outResult, animGraph->GetID());
@@ -229,7 +229,7 @@ namespace CommandSystem
         mPreviouslyUsedID = animGraph->GetID();
 
         animGraph->RecursiveReinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         // register master animgraph
         GetCommandManager()->ExecuteCommandInsideCommand("Unselect -animGraphIndex SELECT_ALL", resultString);
@@ -560,11 +560,8 @@ namespace CommandSystem
                     animGraphInstance = EMotionFX::AnimGraphInstance::Create(animGraph, actorInstance, motionSet);
                     animGraphInstance->SetVisualizeScale(visualizeScale);
 
-                    // set the anim graph instance
                     actorInstance->SetAnimGraphInstance(animGraphInstance);
-
-                    // update unique datas
-                    animGraphInstance->UpdateUniqueData();
+                    animGraphInstance->RecursiveInvalidateUniqueDatas();
                 }
             }
             else
@@ -587,7 +584,7 @@ namespace CommandSystem
                 animGraphInstance->SetVisualizeScale(visualizeScale);
 
                 actorInstance->SetAnimGraphInstance(animGraphInstance);
-                animGraphInstance->UpdateUniqueData();
+                animGraphInstance->RecursiveInvalidateUniqueDatas();
             }
         }
 
@@ -695,11 +692,8 @@ namespace CommandSystem
                     animGraphInstance = EMotionFX::AnimGraphInstance::Create(animGraph, actorInstance, motionSet);
                     animGraphInstance->SetVisualizeScale(mOldVisualizeScaleUsed);
 
-                    // set the anim graph instance
                     actorInstance->SetAnimGraphInstance(animGraphInstance);
-
-                    // prepare, init and update
-                    animGraphInstance->UpdateUniqueData();
+                    animGraphInstance->RecursiveInvalidateUniqueDatas();
                 }
             }
             else
@@ -717,11 +711,8 @@ namespace CommandSystem
                 animGraphInstance = EMotionFX::AnimGraphInstance::Create(animGraph, actorInstance, motionSet);
                 animGraphInstance->SetVisualizeScale(mOldVisualizeScaleUsed);
 
-                // set the anim graph instance
                 actorInstance->SetAnimGraphInstance(animGraphInstance);
-
-                // prepare, init and update
-                animGraphInstance->UpdateUniqueData();
+                animGraphInstance->RecursiveInvalidateUniqueDatas();
             }
         }
 

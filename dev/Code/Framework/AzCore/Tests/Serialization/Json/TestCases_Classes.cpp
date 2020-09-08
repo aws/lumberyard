@@ -25,6 +25,19 @@ namespace JsonSerializationTests
         , m_var2(var2)
     {}
 
+    void SimpleClass::add_ref()
+    {
+        ++m_refCount;
+    }
+
+    void SimpleClass::release()
+    {
+        if (--m_refCount == 0)
+        {
+            delete this;
+        }
+    }
+
     bool SimpleClass::Equals(const SimpleClass& rhs, bool fullReflection) const
     {
         return !fullReflection || (m_var1 == rhs.m_var1 && m_var2 == rhs.m_var2);
@@ -195,17 +208,19 @@ namespace JsonSerializationTests
     {
         auto instance = AZStd::make_unique<MultipleInheritence>();
         instance->m_var1 = 88;
-        instance->m_base2Var = -88.0;
+        instance->m_base2Var1 = -88.0;
 
         const char* strippedDefaults = R"(
             {
-                "base2_var": -88.0,
+                "base2_var1": -88.0,
                 "var1": 88
             })";
         const char* keptDefaults = R"(
             {
                 "base_var": -42.0,
-                "base2_var": -88.0,
+                "base2_var1": -88.0,
+                "base2_var2": -233.0,
+                "base2_var3": -333.0,
                 "var1": 88,
                 "var2": 42.0
             })";
@@ -220,12 +235,16 @@ namespace JsonSerializationTests
         instance->m_var1 = 88;
         instance->m_var2 = 88.0;
         instance->m_baseVar = -88.0f;
-        instance->m_base2Var = -90.0f;
+        instance->m_base2Var1 = -190.0;
+        instance->m_base2Var2 = -290.0;
+        instance->m_base2Var3 = -390.0;
 
         const char* json = R"(
             {
                 "base_var": -88.0,
-                "base2_var": -90.0,
+                "base2_var1": -190.0,
+                "base2_var2": -290.0,
+                "base2_var3": -390.0,
                 "var1": 88,
                 "var2": 88.0
             })";

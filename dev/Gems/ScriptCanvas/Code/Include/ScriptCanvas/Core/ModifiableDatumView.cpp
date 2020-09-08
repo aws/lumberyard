@@ -69,6 +69,11 @@ namespace ScriptCanvas
         return m_datum ? Datum((*m_datum)) : Datum();
     }
 
+    void ModifiableDatumView::SetLabel(const AZStd::string& label)
+    {
+        m_datum->SetLabel(label);
+    }
+
     void ModifiableDatumView::SetToDefaultValueOfType()
     {
         if (m_datum)
@@ -81,7 +86,7 @@ namespace ScriptCanvas
     {
         if (m_datum)
         {
-            (*m_datum) = AZStd::move(datum);            
+            (*m_datum) = AZStd::move(datum);
             SignalModification();
         }
     }
@@ -90,8 +95,13 @@ namespace ScriptCanvas
     {
         if (m_datum)
         {
-            (*m_datum) = datum;
-            SignalModification();
+            ComparisonOutcome comparisonResult = (*m_datum) != datum;
+            
+            if (!comparisonResult || comparisonResult.GetValue())
+            {
+                (*m_datum) = datum;
+                SignalModification();
+            }
         }
     }
 

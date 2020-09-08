@@ -49,10 +49,15 @@ namespace ScriptCanvasEditor
             ScriptCanvas::ModifiableDatumView datumView;
             ModifySlotObject(datumView);
 
-            datumView.SetAs<AZStd::string>(value);
+            const AZStd::string* string = datumView.GetAs<AZStd::string>();
 
-            PostUndoPoint();
-            PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
+            if (string->compare(value) != 0)
+            {
+                datumView.SetAs<AZStd::string>(value);
+
+                PostUndoPoint();
+                PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
+            }
         }
         ////
     };

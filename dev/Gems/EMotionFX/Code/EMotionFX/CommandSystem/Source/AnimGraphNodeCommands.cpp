@@ -370,7 +370,7 @@ namespace CommandSystem
         EMotionFX::GetEventManager().OnCreatedNode(animGraph, node);
 
         node->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         // init new node for all anim graph instances belonging to it
         const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
@@ -579,7 +579,7 @@ namespace CommandSystem
         if (parameters.GetValueAsBool("updateAttributes", this))
         {
             node->Reinit();
-            animGraph->UpdateUniqueData();
+            animGraph->RecursiveInvalidateUniqueDatas();
         }
 
         return true;
@@ -650,7 +650,7 @@ namespace CommandSystem
         animGraph->SetDirtyFlag(mOldDirtyFlag);
 
         node->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -794,7 +794,7 @@ namespace CommandSystem
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -973,7 +973,7 @@ namespace CommandSystem
         animGraph->SetDirtyFlag(true);
 
         stateMachine->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }
@@ -1025,7 +1025,7 @@ namespace CommandSystem
         animGraph->SetDirtyFlag(mOldDirtyFlag);
 
         stateMachine->Reinit();
-        animGraph->UpdateUniqueData();
+        animGraph->RecursiveInvalidateUniqueDatas();
 
         return true;
     }

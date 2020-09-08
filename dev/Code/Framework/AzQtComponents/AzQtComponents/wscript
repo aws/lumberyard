@@ -39,15 +39,13 @@ def build(bld):
         platforms        = ['win', 'darwin', 'linux'],
         configurations   = ['all'],
         disable_pch      = True,
-        features         = ['qt5', 'link_running_program', 'crcfix'],
-        uselib           = ['QT5CORE','QT5GUI','QT5WIDGETS','QT5XML', 'QT5WINEXTRAS', 'QT5MACEXTRAS'],
+        features         = ['qt5', 'link_running_program', 'copy_to_lmbrsetup', 'crcfix'],
+        uselib           = ['QT5CORE','QT5GUI','QT5WIDGETS','QT5XML', 'QT5WINEXTRAS', 'QT5MACEXTRAS', 'QT5SVG'],
         use              = ['AzFramework'],
         includes         = ['..', '../../AzToolsFramework'],
         export_includes  = ['..'],
 
-        # Note that for some of the high dpi and SHAppBarMessage/ABM_GETAUTOHIDEBAREX stuff for the title bars, we require a WINNT version of 602
-        # This define does not need to be exported to any other module and won't affect our header files being included
-        win_defines      = ['WIN64', 'NOMINMAX', '_WIN32_WINNT=0x602'],
+        win_defines      = ['WIN64', 'NOMINMAX'],
 
         win_lib          = ['User32', 'Shell32', 'Gdi32', 'Magnification'],
 
@@ -78,43 +76,42 @@ def build(bld):
 
         win_enable_rtti = True
     )
-
+    
     bld.LumberyardApp(
-        target          = 'AmazonStyle',
-        file_list       = ['azqtcomponents_style.waf_files'],
+        target          = 'AmazonQtControlGallery',
+        file_list       = ['azqtcomponents_gallery.waf_files'],
         platforms       = ['win', 'darwin', 'linux'],
-        configurations  = ['all'],
-        exclude_monolithic = True,
-        vs_filter       = 'AZ Framework/AzQtComponents/Deprecated',
+        configurations  = ['debug_all', 'profile_all'],
+        vs_filter       = 'AZ Framework/AzQtComponents',
 
-        use             = ['AzQtComponents'],
-        includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/StyleGallery')],
+        use             = ['AzQtComponents', 'AzToolsFramework'],
+        includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/Gallery'), bld.Path('Code/Framework/AzToolsFramework')],
 
         features        = ['qt5'],
 
-        uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'QT5XML'],
+        uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'QT5SVG', 'QT5XML'],
 
         darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
         linux_rpath     = ['@executable_path', '@executable_path/qtlibs/lib']
     )
 
-    # for the moment, only build the AmazonQtControlGallery when doing a non-release build
-    # It's for internal consumption only, at this point
+    # Only build AmazonStyle and ReflectedPropertyEditorStandalone for internal consumption
     version = bld.get_lumberyard_version()
     if version == "0.0.0.0":
         bld.LumberyardApp(
-            target          = 'AmazonQtControlGallery',
-            file_list       = ['azqtcomponents_gallery.waf_files'],
+            target          = 'AmazonStyle',
+            file_list       = ['azqtcomponents_style.waf_files'],
             platforms       = ['win', 'darwin', 'linux'],
-            configurations  = ['debug_all', 'profile_all'],
-            vs_filter       = 'AZ Framework/AzQtComponents',
+            configurations  = ['all'],
+            exclude_monolithic = True,
+            vs_filter       = 'AZ Framework/AzQtComponents/Deprecated',
 
-            use             = ['AzQtComponents', 'AzToolsFramework'],
-            includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/Gallery'), bld.Path('Code/Framework/AzToolsFramework')],
+            use             = ['AzQtComponents'],
+            includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/StyleGallery')],
 
             features        = ['qt5'],
 
-            uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'QT5SVG', 'QT5XML'],
+            uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'QT5XML'],
 
             darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
             linux_rpath     = ['@executable_path', '@executable_path/qtlibs/lib']

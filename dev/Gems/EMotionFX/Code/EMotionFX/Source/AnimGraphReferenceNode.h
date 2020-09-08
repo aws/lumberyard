@@ -51,14 +51,12 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* parentAnimGraphInstance, AnimGraphInstance* referencedAnimGraphInstance)
-                : AnimGraphNodeData(node, parentAnimGraphInstance)
-                , m_referencedAnimGraphInstance(referencedAnimGraphInstance)
-                , m_parameterMappingCacheDirty(true)
-            {}
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* parentAnimGraphInstance);
             ~UniqueData();
 
-            AnimGraphInstance* m_referencedAnimGraphInstance;
+            void Update() override;
+
+            AnimGraphInstance* m_referencedAnimGraphInstance = nullptr;
 
             // Cache the mappings.
             // During Update, parameter values that are not coming from an upstream connections
@@ -79,7 +77,7 @@ namespace EMotionFX
                 uint32                   m_targetValueParameterIndex;
             };
             AZStd::vector<ValueParameterMappingCacheEntry> m_parameterMappingCache;
-            bool m_parameterMappingCacheDirty;
+            bool m_parameterMappingCacheDirty = true;
         };
 
 
@@ -90,11 +88,11 @@ namespace EMotionFX
         void RecursiveReinit();
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
 
-        void RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        void RecursiveInvalidateUniqueDatas(AnimGraphInstance* animGraphInstance) override;
         void RecursiveResetFlags(AnimGraphInstance* animGraphInstance, uint32 flagsToDisable = 0xffffffff) override;
 
         void RecursiveSetUniqueDataFlag(AnimGraphInstance* animGraphInstance, uint32 flag, bool enabled) override;

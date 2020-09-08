@@ -20,12 +20,10 @@
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(TagParameter, AnimGraphAllocator, 0);
-
         
-    const AZStd::string& TagParameter::GetTypeDisplayName() const
+    const char* TagParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Tag (checkbox)";
-        return typeDisplayName;
+        return "Tag (checkbox)";
     }
 
     void TagParameter::Reflect(AZ::ReflectContext* context)

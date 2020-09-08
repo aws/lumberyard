@@ -295,7 +295,7 @@ namespace SliceBuilder
         // Dynamic Slice Creation
         if (request.m_jobDescription.m_jobParameters.find(AZ_CRC("JobParam_MakeDynamicSlice", 0xa89310ab)) != request.m_jobDescription.m_jobParameters.end())
         {
-            if (GetDynamicSliceAssetAndDependencies(&stream, fullPath.c_str(), platformTags, exportSliceAsset, productDependencies, productPathDependencySet))
+            if (GetDynamicSliceAsset(&stream, fullPath.c_str(), platformTags, exportSliceAsset))
             {
                 AZStd::string dynamicSliceOutputPath;
                 AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), fileNameOnly.c_str(), dynamicSliceOutputPath, true, true, true);
@@ -314,12 +314,12 @@ namespace SliceBuilder
                     return;
                 }
 
-                AssetBuilderSDK::JobProduct jobProduct(dynamicSliceOutputPath);
-                jobProduct.m_productAssetType = azrtti_typeid<AZ::DynamicSliceAsset>();
-                jobProduct.m_productSubID = AZ::DynamicSliceAsset::GetAssetSubId();
-                jobProduct.m_dependencies = AZStd::move(productDependencies);
-                jobProduct.m_pathDependencies = AZStd::move(productPathDependencySet);
-                response.m_outputProducts.push_back(AZStd::move(jobProduct));
+                AssetBuilderSDK::JobProduct jobProduct;
+
+                if(OutputSliceJob(exportSliceAsset, dynamicSliceOutputPath, jobProduct))
+                {
+                    response.m_outputProducts.push_back(AZStd::move(jobProduct));
+                }
             }
         }
 
@@ -476,7 +476,7 @@ namespace SliceBuilder
         AZ_TracePrintf(s_sliceBuilder, "Finished processing slice %s\n", fullPath.c_str());
     }
 
-    bool SliceBuilderWorker::GetDynamicSliceAssetAndDependencies(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset, AZStd::vector<AssetBuilderSDK::ProductDependency>& outProductDependencies, AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet) const
+    bool SliceBuilderWorker::GetDynamicSliceAsset(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset)
     {
         AssetBuilderSDK::AssertAndErrorAbsorber assertAndErrorAbsorber(true);
 
@@ -545,10 +545,12 @@ namespace SliceBuilder
 
         outSliceAsset = sliceCompilationResult.GetValue();
 
-        // Gather product dependencies from the compiled asset, not the source asset. In some cases asset references can change during asset compliation.
-        AssetBuilderSDK::GatherProductDependencies(*context, outSliceAsset.Get()->GetEntity(), outProductDependencies, productPathDependencySet);
-
         return true;
+    }
+
+    bool SliceBuilderWorker::OutputSliceJob(const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset, AZStd::string_view outputPath, AssetBuilderSDK::JobProduct& jobProduct)
+    {
+        return AssetBuilderSDK::OutputObject(sliceAsset.Get()->GetEntity(), outputPath, azrtti_typeid<AZ::DynamicSliceAsset>(), AZ::DynamicSliceAsset::GetAssetSubId(), jobProduct);
     }
 
     AZ::Uuid SliceBuilderWorker::GetUUID()

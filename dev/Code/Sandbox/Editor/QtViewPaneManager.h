@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include "DockWidgetUtils.h"
 #include "Include/EditorCoreAPI.h"
 #include <QtViewPane.h>
 #include "Resource.h"
@@ -40,12 +39,13 @@ struct ViewLayoutState;
 
 namespace AzQtComponents
 {
+    class DockMainWindow;
     class StyledDockWidget;
     class FancyDocking;
 
 } // namespace AzQtComponents
 
-typedef AZStd::function<QWidget*()> ViewPaneFactory;
+typedef AZStd::function<QWidget*(QWidget*)> ViewPaneFactory;
 
 class DockWidget
     : public AzQtComponents::StyledDockWidget
@@ -132,9 +132,6 @@ struct QtViewPane
         return m_options.isPreview;
     }
 
-    static bool IsTabbed(QDockWidget* dockWidget);
-    static AzQtComponents::DockTabWidget* ParentTabWidget(QDockWidget* dockWidget);
-
     bool Close(CloseModes = CloseMode::Destroy);
     bool CloseInstance(QDockWidget* dockWidget, CloseModes closeModes = CloseMode::Destroy);
 };
@@ -148,7 +145,7 @@ class EDITOR_CORE_API QtViewPaneManager
 public:
     explicit QtViewPaneManager(QObject* parent = nullptr);
     ~QtViewPaneManager();
-    void SetMainWindow(QMainWindow*, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities);
+    void SetMainWindow(AzQtComponents::DockMainWindow*, QSettings* settings, const QByteArray& lastMainWindowState, bool enableLegacyCryEntities);
     void RegisterPane(const QString &name, const QString &category, ViewPaneFactory, const AzToolsFramework::ViewPaneOptions& = {});
     void UnregisterPane(const QString& name);
     QtViewPane* GetPane(int id);
@@ -156,6 +153,7 @@ public:
     QtViewPane* GetViewportPane(int viewportType);
     QDockWidget* GetView(const QString& name);
     bool IsVisible(const QString& name);
+    bool IsPaneRegistered(const QString& name) const;
 
     /**
      * Constructs and shows a view pane.
@@ -259,14 +257,14 @@ private:
 template<class TWidget>
 bool RegisterQtViewPane(IEditor* editor, const QString& name, const QString& category, const AzToolsFramework::ViewPaneOptions& options = {})
 {
-    QtViewPaneManager::instance()->RegisterPane(name, category, []() { return new TWidget(); }, options);
+    QtViewPaneManager::instance()->RegisterPane(name, category, [](QWidget* parent = nullptr) { return new TWidget(parent); }, options);
     return true;
 }
 
 template<class TWidget>
 bool RegisterQtViewPaneWithName(IEditor* editor, const QString& name, const QString& category, const AzToolsFramework::ViewPaneOptions& options = {})
 {
-    QtViewPaneManager::instance()->RegisterPane(name, category, [name]() { return new TWidget(name); }, options);
+    QtViewPaneManager::instance()->RegisterPane(name, category, [name](QWidget* parent = nullptr) { return new TWidget(name, parent); }, options);
     return true;
 }
 

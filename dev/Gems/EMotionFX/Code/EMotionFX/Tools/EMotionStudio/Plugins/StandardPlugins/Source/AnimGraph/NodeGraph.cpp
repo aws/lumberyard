@@ -184,7 +184,7 @@ namespace EMStudio
                 }
 
                 // get the unique data
-                EMotionFX::AnimGraphNodeData* uniqueData = emfxNode->FindUniqueNodeData(animGraphInstance);
+                EMotionFX::AnimGraphNodeData* uniqueData = emfxNode->FindOrCreateUniqueNodeData(animGraphInstance);
 
                 // draw the background darkened rect
                 uint32 requiredHeight = 5;
@@ -2168,25 +2168,20 @@ namespace EMStudio
 
     StateConnection* NodeGraph::FindStateConnection(const QModelIndex& modelIndex)
     {
-        const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
-        if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
+        // This function could get called when the model index is about to be removed. So we can't use the model index data directly to find the transition as it will be invalid.
+        // We have to rely on the UI data.
+        for (const GraphNodeByModelIndex::value_type& target : m_graphNodeByModelIndex)
         {
-            const EMotionFX::AnimGraphStateTransition* transition = modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
-
-            GraphNode* target = FindGraphNode(transition->GetTargetNode());
-            if (target)
+            MCore::Array<NodeConnection*>& connections = target.second->GetConnections();
+            const uint32 connectionsCount = connections.GetLength();
+            for (uint32 i = 0; i < connectionsCount; ++i)
             {
-                MCore::Array<NodeConnection*>& connections = target->GetConnections();
-                const uint32 connectionsCount = connections.GetLength();
-                for (uint32 i = 0; i < connectionsCount; ++i)
+                if (connections[i]->GetType() == StateConnection::TYPE_ID)
                 {
-                    if (connections[i]->GetType() == StateConnection::TYPE_ID)
+                    StateConnection* visualStateConnection = static_cast<StateConnection*>(connections[i]);
+                    if (visualStateConnection->GetModelIndex() == modelIndex)
                     {
-                        StateConnection* visualStateConnection = static_cast<StateConnection*>(connections[i]);
-                        if (visualStateConnection->GetModelIndex() == modelIndex)
-                        {
-                            return visualStateConnection;
-                        }
+                        return visualStateConnection;
                     }
                 }
             }
@@ -2206,7 +2201,6 @@ namespace EMStudio
                 GraphNode* target = FindGraphNode(parentModelIndex);
                 if (target)
                 {
-                    const EMotionFX::BlendTreeConnection* connection = modelIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
                     MCore::Array<NodeConnection*>& connections = target->GetConnections();
                     const uint32 connectionsCount = connections.GetLength();
                     for (uint32 i = 0; i < connectionsCount; ++i)

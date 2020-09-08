@@ -34,7 +34,7 @@ namespace CopyDependencyBuilder
         // add your other preload lib to the root or level PreloadLib.txt, it will load other preload libs recursively.
         preloadLibBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*preloadlibs.txt", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         preloadLibBuilderDescriptor.m_busId = azrtti_typeid<ParticlePreloadLibsBuilderWorker>();
-        preloadLibBuilderDescriptor.m_version = 1;
+        preloadLibBuilderDescriptor.m_version = 2;
         preloadLibBuilderDescriptor.m_createJobFunction =
             AZStd::bind(&ParticlePreloadLibsBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         preloadLibBuilderDescriptor.m_processJobFunction =

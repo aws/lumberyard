@@ -47,9 +47,8 @@ namespace EMotionFX
         ;
     }
 
-    const AZStd::string& IntSliderParameter::GetTypeDisplayName() const
+    const char* IntSliderParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Integer (slider)";
-        return typeDisplayName;
+        return "Integer (slider)";
     }
 }

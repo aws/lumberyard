@@ -13,90 +13,61 @@
 
 #include "OutlinerDisplayOptionsMenu.h"
 
-#include <QCheckBox>
-#include <QLabel>
 #include <QIcon>
-#include <QRadioButton>
 
-#include <AzCore/std/containers/vector.h>
-
-#include <UI/Outliner/ui_OutlinerDisplayOptionsMenu.h>
-
-
-namespace
-{
-    struct SortElementInfo
-    {
-        SortElementInfo(QFrame* frame, QRadioButton* radioButton, QLabel* iconLabel, const QIcon& icon, int id)
-            : m_frame(frame)
-            , m_radioButton(radioButton)
-            , m_iconLabel(iconLabel)
-            , m_icon(icon)
-            , m_id(id)
-        {
-        }
-
-        QFrame* m_frame = nullptr;
-        QRadioButton* m_radioButton = nullptr;
-        QLabel* m_iconLabel = nullptr;
-        QIcon m_icon;
-        int m_id;
-    };
-}
 
 namespace EntityOutliner
 {
     DisplayOptionsMenu::DisplayOptionsMenu(QWidget* parent)
         : QMenu(parent)
-        , m_ui(new Ui::OutlinerDisplayOptions)
     {
-        m_ui->setupUi(this);
+        auto sortManually = addAction(QIcon(QStringLiteral(":/sort_manually.svg")), tr("Sort: Manually"));
+        sortManually->setData(static_cast<int>(DisplaySortMode::Manually));
+        sortManually->setCheckable(true);
 
-        // use the parent's palette to match the existing hover behaviour throughout the outliner
-        QWidget* parentWidget = static_cast<QWidget*>(QObject::parent());
-        const QString checkboxHoverStyle = QString("QRadioButton::hover { color: %1; }").arg(parentWidget->palette().color(QPalette::Link).name()); 
+        auto sortAtoZ = addAction(QIcon(QStringLiteral(":/sort_a_to_z.svg")), tr("Sort: A to Z"));
+        sortAtoZ->setData(static_cast<int>(DisplaySortMode::AtoZ));
+        sortAtoZ->setCheckable(true);
 
-        SortElementInfo sortElements[] = {
-            { m_ui->sortAtoZFrame,      m_ui->sortAtoZRadioButton,       m_ui->sortAtoZIconLabel,        QIcon("://sort_a_to_z.png"),    static_cast<int>(DisplaySortMode::AtoZ) },
-            { m_ui->sortManuallyFrame,  m_ui->sortManuallyRadioButton,   m_ui->sortManuallyIconLabel,    QIcon("://sort_manually.png"),  static_cast<int>(DisplaySortMode::Manually) },
-            { m_ui->sortZtoAFrame,      m_ui->sortZtoARadioButton,       m_ui->sortZtoAIconLabel,        QIcon("://sort_z_to_a.png"),    static_cast<int>(DisplaySortMode::ZtoA) }
-        };
+        auto sortZtoA = addAction(QIcon(QStringLiteral(":/sort_z_to_a.svg")), tr("Sort: Z to A"));
+        sortZtoA->setData(static_cast<int>(DisplaySortMode::ZtoA));
+        sortZtoA->setCheckable(true);
 
-        for (SortElementInfo& sortElem : sortElements)
-        {
-            // Qt designer has no way of manually setting the button IDs in the group
-            m_ui->sortButtonGroup->setId(sortElem.m_radioButton, sortElem.m_id);
-            sortElem.m_iconLabel->setPixmap(sortElem.m_icon.pixmap(sortElem.m_iconLabel->size()));
-            sortElem.m_radioButton->setStyleSheet(checkboxHoverStyle);
-        }
+        addSeparator();
 
-        m_ui->autoScrollCheckbox->setStyleSheet(checkboxHoverStyle);
-        m_ui->autoExpandCheckbox->setStyleSheet(checkboxHoverStyle);
+        auto autoScroll = addAction(tr("Scroll to Selected"));
+        autoScroll->setCheckable(true);
 
-        m_ui->sortManuallyRadioButton->setChecked(true);
-        m_ui->autoScrollCheckbox->setChecked(true);
-        m_ui->autoExpandCheckbox->setChecked(true);
+        auto autoExpand = addAction(tr("Expand Selected"));
+        autoExpand->setCheckable(true);
 
-        connect(m_ui->sortButtonGroup, static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked), this, &DisplayOptionsMenu::OnSortModeSelected);
-        connect(m_ui->autoScrollCheckbox, &QCheckBox::stateChanged, this, &DisplayOptionsMenu::OnAutoScrollToggle);
-        connect(m_ui->autoExpandCheckbox, &QCheckBox::stateChanged, this, &DisplayOptionsMenu::OnAutoExpandToggle);
+        auto sortGroup = new QActionGroup(this);
+        sortGroup->addAction(sortManually);
+        sortGroup->addAction(sortAtoZ);
+        sortGroup->addAction(sortZtoA);
+
+        sortManually->setChecked(true);
+        autoScroll->setChecked(true);
+        autoExpand->setChecked(true);
+
+        connect(sortGroup, &QActionGroup::triggered, this, &DisplayOptionsMenu::OnSortModeSelected);
+        connect(autoScroll, &QAction::toggled, this, &DisplayOptionsMenu::OnAutoScrollToggle);
+        connect(autoExpand, &QAction::toggled, this, &DisplayOptionsMenu::OnAutoExpandToggle);
     }
 
-    void DisplayOptionsMenu::OnSortModeSelected(int sortMode)
+    void DisplayOptionsMenu::OnSortModeSelected(QAction* action)
     {
-        emit OnSortModeChanged(static_cast<DisplaySortMode>(sortMode));
+        const auto sortMode = static_cast<DisplaySortMode>(action->data().toInt());
+        emit OnSortModeChanged(sortMode);
     }
 
-    void DisplayOptionsMenu::OnAutoScrollToggle(int state)
+    void DisplayOptionsMenu::OnAutoScrollToggle(bool checked)
     {
-        emit OnOptionToggled(DisplayOption::AutoScroll, state == Qt::Checked);
+        emit OnOptionToggled(DisplayOption::AutoScroll, checked);
     }
 
-    void DisplayOptionsMenu::OnAutoExpandToggle(int state)
+    void DisplayOptionsMenu::OnAutoExpandToggle(bool checked)
     {
-        emit OnOptionToggled(DisplayOption::AutoExpand, state == Qt::Checked);
+        emit OnOptionToggled(DisplayOption::AutoExpand, checked);
     }
 }
-
-#include <UI/Outliner/OutlinerDisplayOptionsMenu.moc>
-

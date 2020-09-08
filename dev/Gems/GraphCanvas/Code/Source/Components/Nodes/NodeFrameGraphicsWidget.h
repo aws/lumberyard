@@ -44,6 +44,13 @@ namespace GraphCanvas
             Deletion
         };
 
+        enum StepAxis
+        {
+            Unknown,
+            Height,
+            Width
+        };
+
     public:
         AZ_TYPE_INFO(NodeFrameGraphicsWidget, "{33B9DFFB-9E40-4D55-82A7-85468F7E7790}");
         AZ_CLASS_ALLOCATOR(NodeFrameGraphicsWidget, AZ::SystemAllocator, 0);
@@ -108,19 +115,20 @@ namespace GraphCanvas
         // NodeUIRequestBus
         void AdjustSize() override;
 
+        void SetSteppedSizingEnabled(bool sizing) override;
         void SetSnapToGrid(bool snapToGrid) override;
         void SetResizeToGrid(bool resizeToGrid) override;
         void SetGrid(AZ::EntityId gridId) override;
 
         qreal GetCornerRadius() const override;
-        ////
+        ////        
 
     protected:
 
         void SetDisplayState(NodeFrameDisplayState displayState);
         void UpdateDisplayState(NodeFrameDisplayState displayState, bool enabled);
 
-        int GrowToNextStep(int value, int step) const;
+        int GrowToNextStep(int value, int step, StepAxis stepAxis  = StepAxis::Unknown) const;
         int RoundToClosestStep(int value, int step) const;
         int ShrinkToPreviousStep(int value, int step) const;
 
@@ -133,5 +141,11 @@ namespace GraphCanvas
 
         Styling::StyleHelper m_style;
         NodeFrameDisplayState m_displayState;
+
+        bool m_enabledSteppedSizing = true;
+        EditorId m_editorId;
+
+        AZ::EntityId m_wrapperNode;
+        bool m_isWrapped = false;
     };
 }

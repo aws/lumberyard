@@ -119,11 +119,13 @@ namespace ScriptCanvasEditor
 
     void LiveLoggingDataAggregator::Connected(const ScriptCanvas::Debugger::Target& target)
     {
+        AZStd::lock(m_notificationMutex);
         SetupExternalEntities();
     }
 
     void LiveLoggingDataAggregator::GraphActivated(const ScriptCanvas::GraphActivation& activationSignal)
     {
+        AZStd::lock(m_notificationMutex);
         RegisterScriptCanvas(activationSignal.m_runtimeEntity, activationSignal.m_graphIdentifier);
         RegisterEntityName(activationSignal.m_runtimeEntity, activationSignal.m_runtimeEntity.GetName());
         LoggingDataNotificationBus::Event(GetDataId(), &LoggingDataNotifications::OnEnabledStateChanged, activationSignal.m_entityIsObserved, activationSignal.m_runtimeEntity, activationSignal.m_graphIdentifier);
@@ -131,41 +133,49 @@ namespace ScriptCanvasEditor
 
     void LiveLoggingDataAggregator::GraphDeactivated(const ScriptCanvas::GraphDeactivation& deactivationSignal)
     {
+        AZStd::lock(m_notificationMutex);
         UnregisterScriptCanvas(deactivationSignal.m_runtimeEntity, deactivationSignal.m_graphIdentifier);
     }
 
     void LiveLoggingDataAggregator::NodeStateChanged(const ScriptCanvas::NodeStateChange& nodeStateChangeSignal)
     {
+        AZStd::lock(m_notificationMutex);
         ProcessNodeStateChanged(nodeStateChangeSignal);
     }
 
     void LiveLoggingDataAggregator::SignaledInput(const ScriptCanvas::InputSignal& inputSignal)
     {
+        AZStd::lock(m_notificationMutex);
         ProcessInputSignal(inputSignal);
     }
 
     void LiveLoggingDataAggregator::SignaledOutput(const ScriptCanvas::OutputSignal& outputSignal)
     {
+        AZStd::lock(m_notificationMutex);
         ProcessOutputSignal(outputSignal);
     }
 
     void LiveLoggingDataAggregator::SignaledDataOutput(const ScriptCanvas::OutputDataSignal& outputDataSignal)
     {
+        AZStd::lock(m_notificationMutex);
         ProcessOutputDataSignal(outputDataSignal);
     }
 
     void LiveLoggingDataAggregator::AnnotateNode(const ScriptCanvas::AnnotateNodeSignal& annotateNode)
     {
+        AZStd::lock(m_notificationMutex);
         ProcessAnnotateNode(annotateNode);
     }
 
     void LiveLoggingDataAggregator::VariableChanged(const ScriptCanvas::VariableChange& variableChangeSignal)
     {
+        AZStd::lock(m_notificationMutex);
         ProcessVariableChangedSignal(variableChangeSignal);
     }
 
     void LiveLoggingDataAggregator::GetActiveEntitiesResult(const ScriptCanvas::ActiveEntityStatusMap& activeEntities)
     {
+        AZStd::lock(m_notificationMutex);
         m_ignoreRegistrations = true;
 
         for (const auto& activeEntityPair : activeEntities)
@@ -342,13 +352,17 @@ namespace ScriptCanvasEditor
 
     void LiveLoggingDataAggregator::StartCaptureData()
     {
+        AZStd::lock(m_notificationMutex);
         m_isCapturingData = true;
 
         ResetLog();
+
+        ScriptCanvas::Debugger::ServiceNotificationsBus::Handler::BusConnect();
     }
 
     void LiveLoggingDataAggregator::StopCaptureData()
     {
+        AZStd::lock(m_notificationMutex);
         m_isCapturingData = false;
 
         ResetData();
@@ -374,5 +388,9 @@ namespace ScriptCanvasEditor
         {
             SetupExternalEntities();
         }
+
+        ScriptCanvas::ExecutionLogAssetEBus::Broadcast(&ScriptCanvas::ExecutionLogAssetBus::ClearLog);
+
+        ScriptCanvas::Debugger::ServiceNotificationsBus::Handler::BusDisconnect();
     }
 }

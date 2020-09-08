@@ -24,11 +24,9 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BoolParameter, AnimGraphAllocator, 0)
 
-
-        const AZStd::string& BoolParameter::GetTypeDisplayName() const
+    const char* BoolParameter::GetTypeDisplayName() const
     {
-        static const AZStd::string typeDisplayName = "Boolean (checkbox)";
-        return typeDisplayName;
+        return "Boolean (checkbox)";
     }
 
     void BoolParameter::Reflect(AZ::ReflectContext* context)

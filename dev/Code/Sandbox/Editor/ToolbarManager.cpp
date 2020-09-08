@@ -15,9 +15,12 @@
 #include "ActionManager.h"
 #include "MainWindow.h"
 #include "IGemManager.h"
+#include "Settings.h"
 
 #include <AzToolsFramework/API/EditorAnimationSystemRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 
 #include <QDataStream>
 #include <QDebug>
@@ -409,12 +412,6 @@ void ToolbarManager::InitializeStandardToolbars()
         m_standardToolbars.reserve(5 + macroToolbars.size());
         m_standardToolbars.push_back(GetEditModeToolbar());
         m_standardToolbars.push_back(GetObjectToolbar());
-        m_standardToolbars.push_back(GetEditorsToolbar());
-
-        if (IsGemEnabled("a2f08ba9713f485a8485d7588e5b120f", ">=1.0"))
-        {
-            m_standardToolbars.push_back(GetSubstanceToolbar());
-        }
 
         IPlugin* pGamePlugin = GetIEditor()->GetPluginManager()->GetPluginByGUID("{71CED8AB-54E2-4739-AA78-7590A5DC5AEB}");
         IPlugin* pDescriptionEditorPlugin = GetIEditor()->GetPluginManager()->GetPluginByGUID("{4B9B7074-2D58-4AFD-BBE1-BE469D48456A}");
@@ -490,6 +487,7 @@ bool ToolbarManager::IsGemEnabled(const QString& uuid, const QString& version) c
 AmazonToolbar ToolbarManager::GetEditModeToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("EditMode", QObject::tr("Edit Mode Toolbar"));
+    t.SetMainToolbar(true);
     t.AddAction(ID_TOOLBAR_WIDGET_UNDO, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_REDO, ORIGINAL_TOOLBAR_VERSION);
 
@@ -535,9 +533,6 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
         t.AddAction(ID_SELECTION_DELETE, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_SELECTION_SAVE, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_SELECTION_LOAD, ORIGINAL_TOOLBAR_VERSION);
-
-        t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
-        t.AddAction(ID_TOOLBAR_WIDGET_LAYER_SELECT, ORIGINAL_TOOLBAR_VERSION);
     }
 
     return t;
@@ -546,6 +541,7 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
 AmazonToolbar ToolbarManager::GetObjectToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Object", QObject::tr("Object Toolbar"));
+    t.SetMainToolbar(true);
     t.AddAction(ID_GOTO_SELECTED, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OBJECTMODIFY_ALIGN, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OBJECTMODIFY_ALIGNTOGRID, ORIGINAL_TOOLBAR_VERSION);
@@ -568,11 +564,6 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Editors", QObject::tr("Editors Toolbar"));
 
-    if (GetIEditor()->IsLegacyUIEnabled())
-    {
-        t.AddAction(ID_OPEN_LAYER_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-    }
-
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         if (gEnv->pRenderer->GetRenderType() != eRT_Other)
@@ -581,22 +572,7 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
         }
     }
 
-    t.AddAction(ID_OPEN_CHARACTER_TOOL, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_OPEN_MANNEQUIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-    AZ::EBusReduceResult<bool, AZStd::logical_or<bool>> emfxEnabled(false);
-    using AnimationRequestBus = AzToolsFramework::EditorAnimationSystemRequestsBus;
-    using AnimationSystemType = AzToolsFramework::EditorAnimationSystemRequests::AnimationSystem;
-    AnimationRequestBus::BroadcastResult(emfxEnabled, &AnimationRequestBus::Events::IsSystemActive, AnimationSystemType::EMotionFX);
-    if (emfxEnabled.value)
-    {
-        t.AddAction(ID_OPEN_EMOTIONFX_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-    }
     t.AddAction(ID_OPEN_AIDEBUGGER, ORIGINAL_TOOLBAR_VERSION);
-
-    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
-    {
-        t.AddAction(ID_OPEN_TRACKVIEW, ORIGINAL_TOOLBAR_VERSION);
-    }
 
     t.AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, ORIGINAL_TOOLBAR_VERSION);
 
@@ -612,27 +588,17 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
     if (gEnv->pRenderer->GetRenderType() != eRT_Other)
     {
         t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-        t.AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_GENERATORS_LIGHTING, ORIGINAL_TOOLBAR_VERSION);
     }
 
     t.AddAction(ID_OPEN_DATABASE, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_OPEN_UICANVASEDITOR, ORIGINAL_TOOLBAR_VERSION);
 
-    return t;
-}
-
-AmazonToolbar ToolbarManager::GetSubstanceToolbar() const
-{
-    AmazonToolbar t = AmazonToolbar("Substance", QObject::tr("Substance Toolbar"));
-    t.AddAction(ID_OPEN_SUBSTANCE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     return t;
 }
 
 AmazonToolbar ToolbarManager::GetMiscToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Misc", QObject::tr("Misc Toolbar"));
-    t.AddAction(ID_OPEN_ASSET_BROWSER, ORIGINAL_TOOLBAR_VERSION);
     return t;
 }
 
@@ -815,7 +781,7 @@ int ToolbarManager::Add(const QString& name)
     AmazonToolbar t(name, name);
     t.InstantiateToolbar(m_mainWindow, this);
 
-    MainWindow::instance()->AdjustToolBarIconSize();
+    MainWindow::instance()->AdjustToolBarIconSize(static_cast<AzQtComponents::ToolBar::ToolBarIconSize>(gSettings.gui.nToolbarIconSize));
 
     m_toolbars.push_back(t);
     SaveToolbars();
@@ -1321,7 +1287,10 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     Q_ASSERT(!m_toolbar);
     m_toolbar = new EditableQToolBar(m_translatedName, manager);
     m_toolbar->setObjectName(m_name);
-    m_toolbar->setIconSize(QSize(32, 32));
+    if (IsMainToolbar())
+    {
+        AzQtComponents::ToolBar::addMainToolBarStyle(m_toolbar);
+    }
     mainWindow->addToolBar(m_toolbar);
 
     // Hide custom toolbars if they've been flagged that way.

@@ -244,10 +244,8 @@ namespace EMotionFX
             // on the master's. Otherwise, we need to update them now itself.
             if ((syncMode == SYNCMODE_DISABLED) || (i == masterIdx))
             {
-                float newTime;
-                motionInstance->CalcNewTimeAfterUpdate(timePassedInSeconds, &newTime);
-
-                motionInfo.m_currentTime = newTime;
+                const MotionInstance::PlayStateOut newPlayState = motionInstance->CalcPlayStateAfterUpdate(timePassedInSeconds);
+                motionInfo.m_currentTime = newPlayState.m_currentTime;
             }
 
             motionInstance->SetPause(false);
@@ -396,7 +394,7 @@ namespace EMotionFX
     {
         for (const MotionInfo& motionInfo : motionInfos)
         {
-            if (motionInfo.m_syncTrack->GetNumEvents() == 0)
+            if (!motionInfo.m_syncTrack || motionInfo.m_syncTrack->GetNumEvents() == 0)
             {
                 return false;
             }

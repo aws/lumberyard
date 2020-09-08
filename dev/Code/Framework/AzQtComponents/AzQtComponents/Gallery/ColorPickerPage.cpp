@@ -14,10 +14,12 @@
 #include <Gallery/ui_ColorPickerPage.h>
 
 #include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 #include <QDir>
 #include <QFileDialog>
 #include <QStringList>
+#include <QDebug>
 
 namespace
 {
@@ -56,7 +58,12 @@ Example:<br/>
 
 // To let the user picker a color:
 QColor initialColor { 0, 0, 0, 0 };
-QColor newColor = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::ConfigurationA, initialColor, "Color Picker");
+QColor newColor = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, initialColor, "Color Picker Dialog Title");
+
+// Possible Configurations
+AzQtComponents::ColorPicker::Configuration::RGBA
+AzQtComponents::ColorPicker::Configuration::RGB
+AzQtComponents::ColorPicker::Configuration::HueSaturation
 
 </pre>
 
@@ -78,6 +85,7 @@ ColorPickerPage::~ColorPickerPage()
 void ColorPickerPage::pickColor(AzQtComponents::ColorPicker::Configuration configuration, const QString& context)
 {
     m_lastColor = AzQtComponents::ColorPicker::getColor(configuration, m_lastColor, QStringLiteral("Color Picker (%1)").arg(getConfigurationName(configuration)), context, QStringList(), this);
+    qDebug() << AzQtComponents::toQColor(m_lastColor);
 }
 
 void ColorPickerPage::onColorPickWithPalettesButtonClicked()
@@ -86,4 +94,5 @@ void ColorPickerPage::onColorPickWithPalettesButtonClicked()
         QDir::currentPath(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
     m_lastColor = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGBA, m_lastColor, tr("Color Picker With Palettes"), QString(), QStringList() << dir, this);
+    qDebug() << AzQtComponents::toQColor(m_lastColor);
 }

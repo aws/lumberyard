@@ -30,6 +30,7 @@
 
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <ScriptCanvas/Core/NodeBus.h>
+#include <ScriptCanvas/GraphCanvas/MappingBus.h>
 #include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
 #include <ScriptCanvas/Libraries/Core/SendScriptEvent.h>
 

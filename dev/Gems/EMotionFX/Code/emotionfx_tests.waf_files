@@ -11,6 +11,7 @@
             "Tests/AnimGraphCommandTests.cpp",
             "Tests/AnimGraphActionCommandTests.cpp",
             "Tests/AnimGraphCopyPasteTests.cpp",
+            "Tests/AnimGraphDeferredInitTests.cpp",
             "Tests/AnimGraphEventHandlerCounter.h",
             "Tests/AnimGraphEventHandlerCounter.cpp",
             "Tests/AnimGraphEventTests.cpp",
@@ -71,6 +72,7 @@
             "Tests/MotionEventCommandTests.cpp",
             "Tests/MotionEventTrackTests.cpp",
             "Tests/MotionExtractionTests.cpp",
+            "Tests/MotionInstanceTests.cpp",
             "Tests/PoseTests.cpp",
             "Tests/Printers.cpp",
             "Tests/QuaternionParameterTests.cpp",
@@ -84,7 +86,9 @@
             "Tests/SystemComponentTests.cpp",
             "Tests/TransformUnitTests.cpp",
             "Tests/Vector2ToVector3CompatibilityTests.cpp",
-            "Tests/Vector3ParameterTests.cpp"
+            "Tests/Vector3ParameterTests.cpp",
+            "Tests/PhysicsSetupUtils.h",
+            "Tests/PhysicsSetupUtils.cpp"
         ],
         "Tests/MCore":
         [
@@ -126,6 +130,7 @@
             "Tests/Mocks/ObjectAffectedByParameterChanges.h",
             "Tests/Mocks/Parameter.h",
             "Tests/Mocks/ParameterFactory.h",
+            "Tests/Mocks/PhysicsRagdoll.h",
             "Tests/Mocks/SimulatedObject.h",
             "Tests/Mocks/SimulatedObjectSetup.h",
             "Tests/Mocks/Skeleton.h",

@@ -63,6 +63,7 @@ namespace EditorPythonBindings
         void PrepareWrappedObject(const AZ::BehaviorClass& behaviorClass);
         void ReleaseWrappedObject();
         bool CreateDefault(const AZ::BehaviorClass* behaviorClass);
+        void PopulateMethodsAndProperties(const AZ::BehaviorClass& behaviorClass);
 
     private:
         enum class Ownership

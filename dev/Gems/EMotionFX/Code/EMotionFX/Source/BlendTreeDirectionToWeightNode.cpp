@@ -76,8 +76,6 @@ namespace EMotionFX
         // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
-
         // if there are less than two incoming connections, there is nothing to do
         const size_t numConnections = mConnections.size();
         if (numConnections < 2 || mDisabled)

@@ -17,13 +17,14 @@
 #include "AttributeItem.h"
 
 #include <Util/Variable.h>
-#include "QCustomColorDialog.h"
 #include "AttributeView.h"
 #include <VariableWidgets/ui_QColorWidget.h>
 #include "../ContextMenu.h"
 #include "IEditorParticleUtils.h"
 #include "UIFactory.h"
 #include <VariableWidgets/QColumnWidget.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 #include <ParticleParams.h>
 
@@ -41,6 +42,7 @@ QColorWidgetImp::QColorWidgetImp(CAttributeItem* parent)
     , m_AlphaVar(nullptr)
     , m_AlphaVar1(nullptr)
     , m_AlphaVarEnableVar1(nullptr)
+    , m_colorPicker(nullptr)
 {
     QString colorString;
     parent->getVar()->Get(colorString);
@@ -261,19 +263,30 @@ void QColorWidgetImp::onSelectColor(int index)
     ui->multiplierBox->setDisabled(true);
     ui->multiplierBox1->setDisabled(true);
 
-    QCustomColorDialog* dlg = UIFactory::GetColorPicker(m_color[index]);
+    AzQtComponents::ColorPicker* dlg = m_colorPicker;
+    if (!dlg) {
+        dlg = new AzQtComponents::ColorPicker(AzQtComponents::ColorPicker::Configuration::RGBA);
+        dlg->setWindowTitle("Color Picker");
+        m_colorPicker = dlg;
+    }
+    else {
+        disconnect(dlg, &AzQtComponents::ColorPicker::currentColorChanged, nullptr, nullptr);
+        disconnect(dlg, &AzQtComponents::ColorPicker::finished, nullptr, nullptr);
+    }
+
     // Connect the color dialog and Color to undo
-    connect(dlg, &QCustomColorDialog::SignalSelectedColorChanged, this, [=]()
+    connect(dlg, &AzQtComponents::ColorPicker::currentColorChanged, this, [=]()
         {
-            setInternalColor(dlg->GetColor(), index, false);
+            const QColor currentColor = AzQtComponents::toQColor(dlg->currentColor());
+            setInternalColor(currentColor, index, false);
             //Only update alpha var if the alpha selected is less than 1 or the alpha input is less than 1
             float curAlpha = GetAlphaValue(index);
-            if (dlg->GetColor().alphaF() < 1 || curAlpha <= 1)
+            if (currentColor.alphaF() < 1 || curAlpha <= 1)
             {
-                setInternalAlpha(dlg->GetColor().alphaF(), index, false);
+                setInternalAlpha(currentColor.alphaF(), index, false);
             }
         });
-    connect(dlg, &QCustomColorDialog::SignalEndColorEditing, this, [=](bool accept)
+    connect(dlg, &AzQtComponents::ColorPicker::finished, this, [=](bool accept)
         {
             QColor oldValue = m_OriginColor;
             QColor currentValue = m_color[0];
@@ -296,13 +309,17 @@ void QColorWidgetImp::onSelectColor(int index)
                 }
                 emit m_parent->SignalUndoPoint();
             }
-            // Disconnect signals with Color Dialog
-            disconnect(dlg, 0, this, 0);
+
+            dlg->deleteLater();
+            m_colorPicker = nullptr;
 
             //enable the alpha editing
             ui->multiplierBox->setDisabled(false);
             ui->multiplierBox1->setDisabled(false);
         });
+
+    dlg->setCurrentColor(AzQtComponents::fromQColor(m_color[index]));
+    dlg->setSelectedColor(AzQtComponents::fromQColor(m_color[index]));
 
     //Store color for undoing
     m_OriginColor = m_color[0];

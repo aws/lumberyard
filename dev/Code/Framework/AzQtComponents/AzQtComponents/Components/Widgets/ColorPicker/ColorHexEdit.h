@@ -15,6 +15,7 @@
 #include <QWidget>
 
 class QLineEdit;
+class QLabel;
 
 namespace AzQtComponents
 {
@@ -45,6 +46,8 @@ namespace AzQtComponents
         qreal alpha() const;
 
         bool editAlpha() const { return m_editAlpha; }
+
+        void setLabelVisible(bool visible);
 
         bool eventFilter(QObject* watched, QEvent* event) override;
 
@@ -78,6 +81,7 @@ namespace AzQtComponents
         qreal m_alpha;
 
         QLineEdit* m_edit;
+        QLabel* m_hexLabel;
 
         bool m_valueChanging = false;
         bool m_editAlpha = false;

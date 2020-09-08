@@ -39,5 +39,13 @@ namespace ScriptCanvas
         constexpr const char* InvalidExpressionId = "DV-0006";
         static const AZ::Crc32 InvalidExpressionCrc = AZ_CRC(InvalidExpressionId);
 
+        constexpr const char* UnknownDataTypeId = "DV-0007";
+        static const AZ::Crc32 UnknownDataTypeCrc = AZ_CRC(UnknownDataTypeId);
+
+        constexpr const char* InvalidReferenceId = "DV-0008";
+        static const AZ::Crc32 InvalidReferenceCrc = AZ_CRC(InvalidReferenceId);
+        
+        constexpr const char* InvalidRandomSignalId = "DV-0009";
+        static const AZ::Crc32 InvalidRandomSignalCrc = AZ_CRC(InvalidRandomSignalId);
     }
 }

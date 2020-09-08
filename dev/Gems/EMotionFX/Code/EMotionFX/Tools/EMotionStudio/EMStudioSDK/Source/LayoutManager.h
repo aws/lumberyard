@@ -14,6 +14,7 @@
 
 #include "EMStudioConfig.h"
 #include <MCore/Source/MemoryManager.h>
+#include <Editor/InputDialogValidatable.h>
 
 namespace EMStudio
 {
@@ -59,7 +60,13 @@ namespace EMStudio
         void SaveLayoutAs();
         bool SaveLayout(const char* filename);
         bool LoadLayout(const char* filename);
+
+        void SaveDialogAccepted();
+        void SaveDialogRejected();
+
+        InputDialogValidatable* GetSaveLayoutNameDialog();
     private:
         bool mIsSwitching;
+        InputDialogValidatable* m_inputDialog = nullptr;
     };
 }   // namespace EMStudio

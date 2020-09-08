@@ -42,7 +42,6 @@ CEnvironmentPanel::CEnvironmentPanel(QWidget* pParent /*=nullptr*/)
     ui->m_wndProps->CreateItems(node, m_varBlock, functor(*GetIEditor()->GetDocument(), &CCryEditDoc::OnEnvironmentPropertyChanged), true);
     ui->m_wndProps->RebuildCtrl(false);
     ui->m_wndProps->ExpandAll();
-    ui->m_wndProps->setFixedHeight(ui->m_wndProps->GetVisibleHeight() + 20);
     connect(ui->APPLYBTN, &QPushButton::clicked, this, &CEnvironmentPanel::OnBnClickedApply);
 }
 

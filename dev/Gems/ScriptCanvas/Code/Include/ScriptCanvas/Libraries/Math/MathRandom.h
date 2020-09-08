@@ -360,6 +360,54 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RandomVector4, SetRandomVector4Defaults, "Math/Random", "{76FCA9CF-7BBF-471C-9D4A-67FE8E9C6298}", "returns a random Vector4", "Min", "Max");
 
+        AZ_INLINE void SetRandomPointInArcDefaults(Node& node)
+        {
+            SetDefaultValuesByIndex<0>::_(node, Data::Vector3Type(0.f,0.f,0.f));
+            SetDefaultValuesByIndex<1>::_(node, Data::Vector3Type(1.f, 0.f, 0.f));
+            SetDefaultValuesByIndex<2>::_(node, Data::Vector3Type(0.f, 0.f, 1.f));
+            SetDefaultValuesByIndex<3>::_(node, Data::NumberType(1.0));
+            SetDefaultValuesByIndex<4>::_(node, Data::NumberType(45.0));
+        }
+
+        AZ_INLINE Data::Vector3Type RandomPointInArc(Data::Vector3Type origin, Data::Vector3Type direction, Data::Vector3Type normal, Data::NumberType length, Data::NumberType angle)
+        {
+            float randomAngle = MathNodeUtilities::GetRandomReal<float>(0, aznumeric_cast<float>(angle));
+            randomAngle -= aznumeric_cast<float>(angle) * 0.5f;
+
+            Data::QuaternionType rotation = Data::QuaternionType::CreateFromAxisAngle(normal, AZ::DegToRad(randomAngle));
+
+            Data::Vector3Type rotatedDirection = rotation * direction;
+            rotatedDirection.Normalize();
+
+            float randomLength = MathNodeUtilities::GetRandomReal<float>(0, aznumeric_cast<float>(length));
+            rotatedDirection = randomLength * rotatedDirection;
+
+            return rotatedDirection + origin;
+        }
+
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RandomPointInArc, SetRandomPointInArcDefaults, "Math/Random", "{CD4BFC02-3214-4EB8-BD7E-60749B783D3B}", "returns a random point in the specified arc", "Origin", "Direction", "Normal", "Radius", "Angle");
+
+        AZ_INLINE void SetRandomPointInWedgeDefaults(Node& node)
+        {
+            SetDefaultValuesByIndex<0>::_(node, Data::Vector3Type(0.f, 0.f, 0.f));
+            SetDefaultValuesByIndex<1>::_(node, Data::Vector3Type(1.f, 0.f, 0.f));
+            SetDefaultValuesByIndex<2>::_(node, Data::Vector3Type(0.f, 0.f, 1.f));
+            SetDefaultValuesByIndex<3>::_(node, Data::NumberType(1.0));
+            SetDefaultValuesByIndex<4>::_(node, Data::NumberType(1.0));
+            SetDefaultValuesByIndex<5>::_(node, Data::NumberType(45.0));
+        }
+
+        AZ_INLINE Data::Vector3Type RandomPointInWedge(Data::Vector3Type origin, Data::Vector3Type direction, Data::Vector3Type normal, Data::NumberType length, Data::NumberType height, Data::NumberType angle)
+        {
+            Data::Vector3Type randomPointInArc = RandomPointInArc(origin, direction, normal, length, angle);
+
+            float randomHeight = MathNodeUtilities::GetRandomReal<float>(0, aznumeric_cast<float>(height));
+
+            return randomPointInArc + (randomHeight * normal);
+        }
+
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RandomPointInWedge, SetRandomPointInWedgeDefaults, "Math/Random", "{F224DA37-240D-4ABB-A97A-3565197B94B4}", "returns a random point in the specified wedge", "Origin", "Direction", "Normal", "Radius", "Height", "Angle");
+
         using Registrar = RegistrarGeneric
             < RandomColorNode
             , RandomGrayscaleNode
@@ -380,6 +428,8 @@ namespace ScriptCanvas
             , RandomVector2Node
             , RandomVector3Node
             , RandomVector4Node
+            , RandomPointInArcNode
+            , RandomPointInWedgeNode
             >;
     } // namespace RandomNodes
 } // namespace ScriptCanvas

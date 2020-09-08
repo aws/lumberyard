@@ -19,6 +19,18 @@
             "Editor/QtMetaTypes.h"
         ],
         "Editor/Gem": [
+
+        ],
+        "Editor/AssetTracker": [
+            "Editor/Assets/ScriptCanvasAssetTracker.cpp",
+            "Editor/Assets/ScriptCanvasAssetTracker.h",
+            "Editor/Assets/ScriptCanvasAssetTrackerBus.h",
+            "Editor/Assets/ScriptCanvasAssetHelpers.h",
+            "Editor/Assets/ScriptCanvasAssetTrackerDefinitions.h"
+        ],
+        "Editor/Assets/Functions": [
+            "Editor/Include/ScriptCanvas/Assets/Functions/ScriptCanvasFunctionAssetHandler.h",
+            "Editor/Assets/Functions/ScriptCanvasFunctionAssetHandler.cpp"
         ],
         "Editor/Assets": [
             "Editor/Include/ScriptCanvas/Assets/ScriptCanvasAsset.h",
@@ -32,8 +44,8 @@
             "Editor/Assets/ScriptCanvasAssetReference.h",
             "Editor/Assets/ScriptCanvasAssetReference.cpp",
             "Editor/Assets/ScriptCanvasAssetReferenceContainer.h",
-            "Editor/Include/ScriptCanvas/Assets/ScriptCanvasDocumentContext.h",
-            "Editor/Assets/ScriptCanvasDocumentContext.cpp"
+            "Editor/Assets/ScriptCanvasMemoryAsset.h",
+            "Editor/Assets/ScriptCanvasMemoryAsset.cpp"
         ],
         "Editor/Bus": [
             "Editor/Include/ScriptCanvas/Bus/RequestBus.h",
@@ -41,7 +53,6 @@
             "Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h",
             "Editor/Include/ScriptCanvas/Bus/ScriptCanvasBus.h",
             "Editor/Include/ScriptCanvas/Bus/IconBus.h",
-            "Editor/Include/ScriptCanvas/Bus/DocumentContextBus.h",
             "Editor/Include/ScriptCanvas/Bus/GraphBus.h",
             "Editor/Include/ScriptCanvas/Bus/UndoBus.h",
             "Editor/Include/ScriptCanvas/Bus/EditorSceneVariableManagerBus.h",
@@ -63,8 +74,7 @@
         "Editor/GraphCanvas": [
             "Editor/Include/ScriptCanvas/GraphCanvas/DynamicSlotBus.h",
             "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h",
-            "Editor/Include/ScriptCanvas/GraphCanvas/MappingBus.h",   
-            "Editor/Include/ScriptCanvas/GraphCanvas/VersionControlledNodeBus.h",
+            "Editor/Include/ScriptCanvas/GraphCanvas/MappingBus.h",
             "Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h",
             "Editor/GraphCanvas/PropertySlotIds.h"
         ],
@@ -87,10 +97,14 @@
             "Editor/GraphCanvas/Components/NodeDescriptors/EBusSenderNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/FunctionNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/FunctionNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/NodelingDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/NodelingDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/UserDefinedNodeDescriptorComponent.cpp",
@@ -149,8 +163,6 @@
         "Editor/Undo": [
             "Editor/Undo/ScriptCanvasGraphCommand.cpp",
             "Editor/Undo/ScriptCanvasGraphCommand.h",
-            "Editor/Undo/ScriptCanvasUndoCache.cpp",
-            "Editor/Undo/ScriptCanvasUndoCache.h",
             "Editor/Undo/ScriptCanvasUndoManager.cpp",
             "Editor/Undo/ScriptCanvasUndoManager.h"
         ],
@@ -184,9 +196,6 @@
             "Editor/View/Dialogs/ContainerWizard/ContainerWizard.ui"
         ],
         "Editor/View/Widgets": [
-            "Editor/View/Widgets/AssetGraphSceneData.cpp",
-            "Editor/View/Widgets/AssetGraphSceneData.h",
-            "Editor/View/Widgets/AssetGraphSceneDataBus.h",
             "Editor/View/Widgets/CanvasWidget.ui",
             "Editor/View/Widgets/CanvasWidget.h",
             "Editor/View/Widgets/CanvasWidget.cpp",
@@ -206,13 +215,6 @@
             "Editor/View/Widgets/MainWindowStatusWidget.h",
             "Editor/View/Widgets/MainWindowStatusWidget.cpp",
             "Editor/View/Widgets/MainWindowStatusWidget.ui",
-            "Editor/View/Widgets/NodeFavorites.h",
-            "Editor/View/Widgets/NodeFavorites.cpp",
-            "Editor/View/Widgets/NodeOutliner.h",
-            "Editor/View/Widgets/NodeOutliner.cpp",            
-            "Editor/View/Widgets/NodeTableView.ui",
-            "Editor/View/Widgets/NodeTableView.h",
-            "Editor/View/Widgets/NodeTableView.cpp",
             "Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.h",
             "Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.cpp",
             "Editor/View/Widgets/ScriptCanvasNodePaletteToolbar.ui",
@@ -225,6 +227,8 @@
         "Editor/View/Widgets/NodePalette": [
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.cpp",
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.h",
+            "Editor/View/Widgets/NodePalette/FunctionNodePaletteTreeItemTypes.cpp",
+            "Editor/View/Widgets/NodePalette/FunctionNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.cpp",

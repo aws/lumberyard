@@ -15,6 +15,7 @@
 #include <AzFramework/Physics/CharacterBus.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 #include <API/CharacterController.h>
 #include <AzCore/Component/TransformBus.h>
 #include <PhysXCharacters/CharacterControllerBus.h>
@@ -29,6 +30,7 @@ namespace PhysXCharacters
     class CharacterControllerComponent
         : public AZ::Component
         , public Physics::CharacterRequestBus::Handler
+        , public Physics::WorldBodyRequestBus::Handler
         , public AZ::TransformNotificationBus::Handler
         , public CharacterControllerRequestBus::Handler
         , public Physics::CollisionFilteringRequestBus::Handler
@@ -45,6 +47,7 @@ namespace PhysXCharacters
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
+            provided.push_back(AZ_CRC("PhysicsWorldBodyService", 0x944da0cc));
             provided.push_back(AZ_CRC("PhysXCharacterControllerService", 0x428de4fa));
         }
 
@@ -88,6 +91,14 @@ namespace PhysXCharacters
         AZ::Vector3 TryRelativeMove(const AZ::Vector3& deltaPosition, float deltaTime) override;
         bool IsPresent() const override { return true; }
 
+        // WorldBodyRequestBus
+        void EnablePhysics() override;
+        void DisablePhysics() override;
+        bool IsPhysicsEnabled() const override;
+        AZ::Aabb GetAabb() const override;
+        Physics::WorldBody* GetWorldBody() override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
+
         // CharacterControllerRequestBus
         void Resize(float height) override;
         float GetHeight() override;
@@ -110,6 +121,7 @@ namespace PhysXCharacters
         void ToggleCollisionLayer(const AZStd::string& layerName, AZ::Crc32 colliderTag, bool enabled) override;
 
     private:
+        bool CreateController();
         void AttachColliders(Physics::Character& character);
         bool ValidateDirectlyControlled();
 

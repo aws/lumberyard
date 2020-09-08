@@ -52,6 +52,7 @@ namespace EMStudio
                 ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NamedPropertyStringValue::m_value, "", "")
                 ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &NamedPropertyStringValue::m_name)
+                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ;
     }
 

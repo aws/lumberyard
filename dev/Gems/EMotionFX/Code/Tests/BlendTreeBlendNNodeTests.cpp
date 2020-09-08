@@ -66,11 +66,9 @@ namespace EMotionFX
             m_blendNNode->UpdateParamWeights();
             m_blendNNode->SetParamWeightsEquallyDistributed(-1.0f, 1.0f);
 
-            {
-                Parameter* parameter = ParameterFactory::Create(azrtti_typeid<FloatSliderParameter>());
-                parameter->SetName("parameter_test");
-                m_blendTreeAnimGraph->AddParameter(parameter);
-            }
+            Parameter* parameter = ParameterFactory::Create(azrtti_typeid<FloatSliderParameter>());
+            parameter->SetName("parameter_test");
+            m_blendTreeAnimGraph->AddParameter(parameter);
 
             BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
             m_blendTree->AddChildNode(parameterNode);
@@ -261,6 +259,24 @@ namespace EMotionFX
         BlendTreeFloatConstantNode* m_floatNode = nullptr;
         BlendTreeBlendNNode* m_blendNNode = nullptr;
     };
+
+    // Make sure we don't crash when we have no inputs, such as reported by bug LY-114828
+    // Also make sure removing connections on BlendN doesn't crash, as reported by LY-114846
+    TEST_F(BlendTreeBlendNNodeTests, NoInputsNoCrashTest)
+    {
+        // Remove all input connections of the blendN node.
+        while (m_blendNNode->GetNumConnections() > 0)
+        {
+            const BlendTreeConnection* connection = m_blendNNode->GetConnection(0);
+            m_blendNNode->RemoveConnection(
+                connection->GetSourceNode(),
+                connection->GetSourcePort(),
+                connection->GetTargetPort());
+        }
+
+        // Update EMFX, which crashed before in the above mentioned Jira bug reports.
+        GetEMotionFX().Update(0.1f); 
+    }
 
     TEST_P(BlendTreeBlendNNodeSyncTestFixture, PlaySpeedAndTimeSyncTests)
     {

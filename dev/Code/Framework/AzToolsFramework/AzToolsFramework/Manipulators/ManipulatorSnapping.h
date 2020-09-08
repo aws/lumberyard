@@ -13,9 +13,16 @@
 #pragma once
 
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Transform.h>
+
+namespace AzFramework
+{
+    class DebugDisplayRequests;
+}
 
 namespace AzToolsFramework
 {
+    /// Structure to encapsulate grid snapping properties.
     struct GridSnapParameters
     {
         GridSnapParameters(bool gridSnap, float gridSize);
@@ -23,6 +30,28 @@ namespace AzToolsFramework
         bool m_gridSnap;
         float m_gridSize;
     };
+
+    /// Structure to encapsulate the current grid snapping state.
+    struct GridSnapAction
+    {
+        GridSnapAction(const GridSnapParameters& gridSnapParameters, bool localSnapping);
+
+        GridSnapParameters m_gridSnapParams;
+        bool m_localSnapping;
+    };
+
+    /// Structure to hold transformed incoming viewport interaction from world space to manipulator space.
+    struct ManipulatorInteraction
+    {
+        AZ::Vector3 m_localRayOrigin; ///< The ray origin (start) in the reference from of the manipulator.
+        AZ::Vector3 m_localRayDirection; ///< The ray direction in the reference from of the manipulator.
+        float m_scaleReciprocal; ///< The scale reciprocal (1.0 / scale) of the transform used to move the
+                                 ///< ray from world space to local space.
+    };
+
+    /// Build a ManipulatorInteraction structure from the incoming viewport interaction.
+    ManipulatorInteraction BuildManipulatorInteraction(
+        const AZ::Transform& worldFromLocal, const AZ::Vector3& worldRayOrigin, const AZ::Vector3& worldRayDirection);
 
     /// Calculate the offset along an axis to adjust a position
     /// to stay snapped to a given grid size.
@@ -45,6 +74,13 @@ namespace AzToolsFramework
     /// @return Angle in degrees
     float AngleStep(int viewportId);
 
+    /// Wrapper for grid rendering check call.
+    bool ShowingGrid(int viewportId);
+
+    /// Render the grid used for snapping.
+    void DrawSnappingGrid(
+        AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Transform& worldFromLocal, float squareSize);
+
     /// Round to x number of significant digits.
     /// @param value Number to round.
     /// @param exponent Precision to use when rounding.
@@ -64,8 +100,16 @@ namespace AzToolsFramework
     /// value > 0 return 1.0
     /// value < 0 return -1.0
     /// value == 0 return 0.0
-    inline float Sign(float value)
+    inline float Sign(const float value)
     {
         return static_cast<float>((0.0f < value) - (value < 0.0f));
+    }
+
+    /// Find the max scale element and return the reciprocal of it.
+    /// Note: The reciprocal will be rounded to three significant digits to eliminate 
+    /// noise in the value returned when dealing with values far from the origin.
+    inline float ScaleReciprocal(const AZ::Transform& transform)
+    {
+        return Round3(transform.RetrieveScaleExact().GetMaxElement().GetReciprocalExact());
     }
 } // namespace AzToolsFramework

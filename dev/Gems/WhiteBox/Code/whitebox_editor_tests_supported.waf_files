@@ -1,0 +1,13 @@
+{
+    "none": {
+        "Tests": [
+            "Tests/WhiteBoxTestFixtures.h",
+            "Tests/WhiteBoxTest.cpp",
+            "Tests/WhiteBoxEdgeTest.cpp",
+            "Tests/WhiteBoxUVTest.cpp",
+            "Tests/WhiteBoxSelectionTest.cpp",
+            "Tests/WhiteBoxTestUtil.h",
+            "Tests/WhiteBoxRenderDataTest.cpp"
+        ]
+    }
+}

@@ -46,11 +46,9 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)
-                , mMustUpdate(true)
-            {
-            }
+            UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+
+            void Update() override;
 
         public:
             struct MaskInstance
@@ -61,7 +59,6 @@ namespace EMotionFX
 
             AZStd::vector<MaskInstance> m_maskInstances;
             AZStd::optional<AZ::u32> m_motionExtractionInputPortNr;
-            bool mMustUpdate;
         };
 
         BlendTreeMaskNode();
@@ -73,7 +70,7 @@ namespace EMotionFX
         // ActorNotificationBus overrides
         void OnMotionExtractionNodeChanged(Actor* actor, Node* newMotionExtractionNode) override;
 
-        void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphObjectData* CreateUniqueData(AnimGraphInstance* animGraphInstance) override { return aznew UniqueData(this, animGraphInstance); }
         bool GetHasOutputPose() const override { return true; }
         bool GetSupportsVisualization() const override { return true; }
         AZ::Color GetVisualColor() const override { return AZ::Color(0.2f, 0.78f, 0.2f, 1.0f); }
@@ -109,8 +106,9 @@ namespace EMotionFX
             BlendTreeMaskNode* m_parent = nullptr;
         };
 
+        const AZStd::vector<Mask>& GetMasks() const { return m_masks; }
+
     private:
-        void UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;

@@ -10,19 +10,29 @@
 *
 */
 
+#include <MCore/Source/LogManager.h>
+#include <MCore/Source/StringConversions.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphNodeCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/AnimGraphReferenceNode.h>
+#include <EMotionFX/Source/AnimGraphMotionNode.h>
+#include <EMotionFX/Source/Motion.h>
+#include <EMotionFX/Source/MotionManager.h>
+#include <EMotionFX/Source/MotionInstance.h>
+#include <EMotionFX/Source/MotionSet.h>
+#include <Editor/AnimGraphEditorBus.h>
 #include <EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphWidget.h>
-#include <MCore/Source/LogManager.h>
-#include <MCore/Source/StringConversions.h>
-#include <QColorDialog>
-
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionWindowPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionListWindow.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionSetsWindow/MotionSetsWindowPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
 
 namespace EMStudio
 {
@@ -63,21 +73,20 @@ namespace EMStudio
     {
         const AZ::Color color = animGraphNode->GetVisualizeColor();
         const AZ::Color originalColor = color;
-        QColor initialColor;
-        initialColor.setRgbF(color.GetR(), color.GetG(), color.GetB(), color.GetA());
 
-        QColorDialog dialog(initialColor);
-        auto changeNodeColor = [animGraphNode](const QColor& color)
+        AzQtComponents::ColorPicker dialog(AzQtComponents::ColorPicker::Configuration::RGBA);
+        dialog.setCurrentColor(originalColor);
+        dialog.setSelectedColor(originalColor);
+        auto changeNodeColor = [animGraphNode](const AZ::Color& color)
         {
-            const AZ::Color newColor(color.red()/255.0f, color.green()/255.0f, color.blue()/255.0f, 1.0f);
-            animGraphNode->SetVisualizeColor(newColor);
+            animGraphNode->SetVisualizeColor(color);
         };
 
         // Show live the color the user is choosing
-        connect(&dialog, &QColorDialog::currentColorChanged, changeNodeColor);
+        connect(&dialog, &AzQtComponents::ColorPicker::currentColorChanged, changeNodeColor);
         if (dialog.exec() != QDialog::Accepted)
         {
-            changeNodeColor(initialColor);
+            changeNodeColor(originalColor);
         }
     }
 
@@ -169,6 +178,57 @@ namespace EMStudio
             {
                 MCore::LogError(commandResult.c_str());
             }
+        }
+    }
+
+    void AnimGraphActionManager::PreviewMotionSelected(const char* motionId)
+    {
+        GetMainWindow()->DisableUndoRedo();
+        CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        MCore::CommandGroup commandGroup("Preview Motion");
+        AZStd::string commandString, commandParameters, result;
+
+        EMotionFX::MotionSet::MotionEntry* motionEntry = MotionSetsWindowPlugin::FindBestMatchMotionEntryById(motionId);
+        
+        if (!motionEntry || !motionEntry->GetMotion())
+        {
+            return;
+        }
+
+        // If found motion entry, add select and play motion command strings to command group.
+        EMotionFX::Motion* motion = motionEntry->GetMotion();
+        EMotionFX::PlayBackInfo* defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
+        defaultPlayBackInfo->mBlendInTime = 0.0f;
+        defaultPlayBackInfo->mBlendOutTime = 0.0f;
+        commandParameters = CommandSystem::CommandPlayMotion::PlayBackInfoToCommandParameters(defaultPlayBackInfo);
+
+        const AZ::u32 motionIndex = EMotionFX::GetMotionManager().FindMotionIndexByName(motion->GetName());
+        commandString = AZStd::string::format("Select -motionIndex %d", motionIndex);
+        commandGroup.AddCommandString(commandString);
+
+        commandString = AZStd::string::format("PlayMotion -filename \"%s\" %s", motion->GetFileName(), commandParameters.c_str());
+        commandGroup.AddCommandString(commandString);
+        selectionList.ClearMotionSelection();
+
+        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+        {
+            AZ_Error("EMotionFX", false, result.c_str());
+        }
+
+        // Update motion list window to select motion.
+        EMStudioPlugin* motionBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
+        MotionWindowPlugin* motionWindowPlugin = static_cast<MotionWindowPlugin*>(motionBasePlugin);
+        if (motionWindowPlugin)
+        {
+            motionWindowPlugin->ReInit();
+        }
+
+        // Update time view plugin with new motion related data.
+        EMStudioPlugin* timeViewBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(TimeViewPlugin::CLASS_ID);
+        TimeViewPlugin* timeViewPlugin = static_cast<TimeViewPlugin*>(timeViewBasePlugin);
+        if (timeViewPlugin)
+        {
+            timeViewPlugin->SetMode(TimeViewMode::Motion);
         }
     }
 
@@ -386,6 +446,34 @@ namespace EMStudio
         }
     }
 
+    void AnimGraphActionManager::ActivateAnimGraph()
+    {
+        // Activate the anim graph for visual feedback of button click.
+        EMotionFX::MotionSet* motionSet = nullptr;
+        EMotionFX::AnimGraphEditorRequestBus::BroadcastResult(motionSet, &EMotionFX::AnimGraphEditorRequests::GetSelectedMotionSet);
+        if (!motionSet)
+        {
+            const EMotionFX::MotionManager& motionManager = EMotionFX::GetMotionManager();
+
+            // In case no motion set was selected yet, use the first available. The activate graph callback will update the UI.
+            const AZ::u32 numMotionSets = motionManager.GetNumMotionSets();
+            for (AZ::u32 i = 0; i < numMotionSets; ++i)
+            {
+                EMotionFX::MotionSet* currentMotionSet = motionManager.GetMotionSet(i);
+                if (!currentMotionSet->GetIsOwnedByRuntime())
+                {
+                    motionSet = currentMotionSet;
+                    break;
+                }
+            }
+        }
+
+        EMotionFX::AnimGraph* animGraph = m_plugin->GetAnimGraphModel().GetFocusedAnimGraph();
+        if (animGraph)
+        {
+            ActivateGraphForSelectedActors(animGraph, motionSet);
+        }
+    }
 
     void AnimGraphActionManager::ActivateGraphForSelectedActors(EMotionFX::AnimGraph* animGraph, EMotionFX::MotionSet* motionSet)
     {

@@ -47,7 +47,6 @@ namespace EMotionFX
         BlendTreeRaycastNode();
         ~BlendTreeRaycastNode() override;
 
-        void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         AZ::Color GetVisualColor() const override      { return AZ::Color(0.5f, 1.0f, 1.0f, 1.0f); }

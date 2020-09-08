@@ -10,13 +10,12 @@
 *
 */
 
-#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include "LogWindowPlugin.h"
 #include "LogWindowCallback.h"
-#include <MysticQt/Source/MysticQtManager.h>
-#include <QPushButton>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <QLabel>
-#include <QLineEdit>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 
 
 namespace EMStudio
@@ -65,7 +64,7 @@ namespace EMStudio
     // get the creator name
     const char* LogWindowPlugin::GetCreatorName() const
     {
-        return "MysticGD";
+        return "Amazon";
     }
 
 
@@ -95,41 +94,27 @@ namespace EMStudio
         windowWidgetLayout->setSpacing(3);
         windowWidgetLayout->setMargin(3);
 
-        // create the filter button group
-        mFilterButtonGroup = new MysticQt::ButtonGroup(nullptr, 1, 6);
-        mFilterButtonGroup->GetButton(0, 0)->setText("Fatal");
-        mFilterButtonGroup->GetButton(0, 1)->setText("Error");
-        mFilterButtonGroup->GetButton(0, 2)->setText("Warning");
-        mFilterButtonGroup->GetButton(0, 3)->setText("Info");
-        mFilterButtonGroup->GetButton(0, 4)->setText("Detailed Info");
-        mFilterButtonGroup->GetButton(0, 5)->setText("Debug");
-        mFilterButtonGroup->GetButton(0, 0)->setChecked(true);
-        mFilterButtonGroup->GetButton(0, 1)->setChecked(true);
-        mFilterButtonGroup->GetButton(0, 2)->setChecked(true);
-        mFilterButtonGroup->GetButton(0, 3)->setChecked(true);
-    #ifdef MCORE_DEBUG
-        mFilterButtonGroup->GetButton(0, 4)->setChecked(true);
-        mFilterButtonGroup->GetButton(0, 5)->setChecked(true);
-    #else
-        mFilterButtonGroup->GetButton(0, 4)->setChecked(false);
-        mFilterButtonGroup->GetButton(0, 5)->setChecked(false);
-    #endif
-        connect(mFilterButtonGroup, &MysticQt::ButtonGroup::ButtonPressed, this, &LogWindowPlugin::OnFilterButtonPressed);
-
-        // create the spacer widget
-        QWidget* spacerWidget = new QWidget();
-        spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-
         // create the find widget
-        AzQtComponents::FilteredSearchWidget* searchWidget = new AzQtComponents::FilteredSearchWidget(windowWidget);
-        connect(searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &LogWindowPlugin::OnTextFilterChanged);
+        mSearchWidget = new AzQtComponents::FilteredSearchWidget(windowWidget);
+        AddFilter(tr("Fatal"), MCore::LogCallback::LOGLEVEL_FATAL, true);
+        AddFilter(tr("Error"), MCore::LogCallback::LOGLEVEL_ERROR, true);
+        AddFilter(tr("Warning"), MCore::LogCallback::LOGLEVEL_WARNING, true);
+        AddFilter(tr("Info"), MCore::LogCallback::LOGLEVEL_INFO, true);
+    #ifdef MCORE_DEBUG
+        AddFilter(tr("Detailed Info"), MCore::LogCallback::LOGLEVEL_DETAILEDINFO, true);
+        AddFilter(tr("Debug"), MCore::LogCallback::LOGLEVEL_DEBUG, true);
+    #else
+        AddFilter(tr("Detailed Info"), MCore::LogCallback::LOGLEVEL_DETAILEDINFO, false);
+        AddFilter(tr("Debug"), MCore::LogCallback::LOGLEVEL_DEBUG, false);
+    #endif
+        connect(mSearchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &LogWindowPlugin::OnTextFilterChanged);
+        connect(mSearchWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged, this, &LogWindowPlugin::OnTypeFilterChanged);
 
         // create the filter layout
         QHBoxLayout* topLayout = new QHBoxLayout();
         topLayout->addWidget(new QLabel("Filter:"));
-        topLayout->addWidget(mFilterButtonGroup);
-        topLayout->addWidget(spacerWidget);
-        topLayout->addWidget(searchWidget);
+        topLayout->addWidget(mSearchWidget);
+        topLayout->addStretch();
         topLayout->setSpacing(6);
 
         // add the filter layout
@@ -143,7 +128,7 @@ namespace EMStudio
         windowWidget->setLayout(windowWidgetLayout);
 
         // set the table as content
-        mDock->SetContents(windowWidget);
+        mDock->setWidget(windowWidget);
 
         // create the callback
         mLogCallback->SetLogLevels(MCore::LogCallback::LOGLEVEL_ALL);
@@ -161,36 +146,24 @@ namespace EMStudio
     }
 
 
-    // filter button pressed
-    void LogWindowPlugin::OnFilterButtonPressed()
+    // type filter changed
+    void LogWindowPlugin::OnTypeFilterChanged(const QVector<AzQtComponents::SearchTypeFilter>& filters)
     {
         uint32 newFilter = 0;
-        if (mFilterButtonGroup->GetIsButtonChecked(0, 0))
+        for (const auto& filter : filters)
         {
-            newFilter |= MCore::LogCallback::LOGLEVEL_FATAL;
-        }
-        if (mFilterButtonGroup->GetIsButtonChecked(0, 1))
-        {
-            newFilter |= MCore::LogCallback::LOGLEVEL_ERROR;
-        }
-        if (mFilterButtonGroup->GetIsButtonChecked(0, 2))
-        {
-            newFilter |= MCore::LogCallback::LOGLEVEL_WARNING;
-        }
-        if (mFilterButtonGroup->GetIsButtonChecked(0, 3))
-        {
-            newFilter |= MCore::LogCallback::LOGLEVEL_INFO;
-        }
-        if (mFilterButtonGroup->GetIsButtonChecked(0, 4))
-        {
-            newFilter |= MCore::LogCallback::LOGLEVEL_DETAILEDINFO;
-        }
-        if (mFilterButtonGroup->GetIsButtonChecked(0, 5))
-        {
-            newFilter |= MCore::LogCallback::LOGLEVEL_DEBUG;
+            newFilter |= filter.metadata.toInt();
         }
         mLogCallback->SetFilter(newFilter);
     }
-} // namespace EMStudio
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/LogWindow/LogWindowPlugin.moc>
+
+    void LogWindowPlugin::AddFilter(const QString& name, MCore::LogCallback::ELogLevel level, bool enabled)
+    {
+        AzQtComponents::SearchTypeFilter filter(tr("Level"), name);
+        filter.metadata = static_cast<int>(level);
+        filter.enabled = enabled;
+        mSearchWidget->AddTypeFilter(filter);
+    }
+
+} // namespace EMStudio

@@ -39,7 +39,7 @@ class CTerrainDialog
     Q_OBJECT
 
 public:
-    CTerrainDialog();
+    explicit CTerrainDialog(QWidget* parent = nullptr);
     ~CTerrainDialog();
 
     SNoiseParams* GetLastParam() { return m_sLastParam; };

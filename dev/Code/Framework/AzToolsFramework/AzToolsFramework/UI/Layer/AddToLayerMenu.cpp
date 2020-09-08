@@ -17,6 +17,8 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/containers/stack.h>
+#include <AzQtComponents/AzQtComponentsAPI.h>
+#include <AzQtComponents/Components/Style.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
@@ -72,6 +74,8 @@ namespace AzToolsFramework
             QWidget* assignToLayerWidget = new QWidget(assignToLayerMenu);
             // Special behavior and properties are defined in NewEditorStyleSheet.qss based on this name.
             assignToLayerWidget->setObjectName("LayerHierarchyMenuItem");
+            // Add class to fix hover state styling for WidgetAction
+            AzQtComponents::Style::addClass(assignToLayerWidget, "WidgetAction");
             QHBoxLayout* assignToLayerLayout = new QHBoxLayout(assignToLayerWidget);
             assignToLayerAction->setDefaultWidget(assignToLayerWidget);
             
@@ -176,6 +180,8 @@ namespace AzToolsFramework
         QWidget* assignToLayerWidget = new QWidget(assignToLayerMenu);
         // Special behavior and properties are defined in NewEditorStyleSheet.qss based on this name.
         assignToLayerWidget->setObjectName("LayerHierarchyMenuItem");
+        // Add class to fix hover state styling for WidgetAction
+        AzQtComponents::Style::addClass(assignToLayerWidget, "WidgetAction");
         QHBoxLayout* assignToLayerLayout = new QHBoxLayout(assignToLayerWidget);
         assignToLayerAction->setDefaultWidget(assignToLayerWidget);
 

@@ -42,19 +42,27 @@ namespace AzToolsFramework
 
     void IconButton::paintEvent(QPaintEvent* /*event*/)
     {
-        if (m_currentIconCacheKey != icon().cacheKey())
+        if (m_currentIconCacheKey != icon().cacheKey() + highlightedIcon().cacheKey() || m_currentIconCacheKeySize != size())
         {
-            m_currentIconCacheKey = icon().cacheKey();
+            m_currentIconCacheKey = icon().cacheKey() + highlightedIcon().cacheKey();
+            m_currentIconCacheKeySize = size();
 
-            // We want the pixmap of the largest size that's smaller than (512, 512).
-            m_iconPixmap = icon().pixmap(QSize(512, 512));
+            // We want the pixmap of the largest size that's smaller than us.
+            m_iconPixmap = icon().pixmap(size());
 
-            m_highlightedIconPixmap = m_iconPixmap;
-            QPainter pixmapPainter;
-            pixmapPainter.begin(&m_highlightedIconPixmap);
-            pixmapPainter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
-            pixmapPainter.fillRect(m_highlightedIconPixmap.rect(), QColor(250, 250, 250, 180));
-            pixmapPainter.end();
+            if (!highlightedIcon().isNull())
+            {
+                m_highlightedIconPixmap = highlightedIcon().pixmap(size());
+            }
+            else
+            {
+                m_highlightedIconPixmap = m_iconPixmap;
+                QPainter pixmapPainter;
+                pixmapPainter.begin(&m_highlightedIconPixmap);
+                pixmapPainter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+                pixmapPainter.fillRect(m_highlightedIconPixmap.rect(), QColor(250, 250, 250, 180));
+                pixmapPainter.end();
+            }
         }
 
         QPainter painter(this);
@@ -62,28 +70,18 @@ namespace AzToolsFramework
         /*
          * Fit the icon image into the center of the EntityIconButton
          */
-        QSize buttonSize = size();
-        QRect destRect(0, 0, buttonSize.width(), buttonSize.height());
-        float iconWidth = aznumeric_caster(m_iconPixmap.width());
-        float iconHeight = aznumeric_caster(m_iconPixmap.height());
-        if (iconWidth > iconHeight)
+        QRect destRect = m_iconPixmap.rect();
+        if (destRect.width() > width())
         {
-            destRect.setLeft(0);
-            destRect.setRight(buttonSize.width() - 1);
-            float destHeight = buttonSize.width() * (iconHeight / iconWidth);
-            int halfHeightDiff = aznumeric_caster((buttonSize.height() - destHeight) * 0.5f);
-            destRect.setTop(halfHeightDiff);
-            destRect.setRight(buttonSize.height() - 1 - halfHeightDiff);
+            float rel = static_cast<float>(width()) / static_cast<float>(destRect.width());
+            destRect.setSize(destRect.size() * rel);
         }
-        else
+        if (destRect.height() > height())
         {
-            destRect.setTop(0);
-            destRect.setBottom(buttonSize.height() - 1);
-            float destWidth = buttonSize.height() * (iconWidth / iconHeight);
-            int halfWidthDiff = aznumeric_caster((buttonSize.width() - destWidth) * 0.5f);
-            destRect.setLeft(halfWidthDiff);
-            destRect.setRight(buttonSize.width() - 1 - halfWidthDiff);
+            float rel = static_cast<float>(height()) / static_cast<float>(destRect.height());
+            destRect.setSize(destRect.size() * rel);
         }
+        destRect.moveCenter(rect().center());
 
         if (m_mouseOver)
         {

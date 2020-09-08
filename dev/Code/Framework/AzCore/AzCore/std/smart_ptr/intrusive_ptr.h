@@ -26,6 +26,7 @@
 
 #include <AzCore/std/smart_ptr/sp_convertible.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/typetraits/is_abstract.h>
 
 namespace AZStd
 {

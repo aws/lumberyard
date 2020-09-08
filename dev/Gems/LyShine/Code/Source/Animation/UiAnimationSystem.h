@@ -39,7 +39,7 @@ struct ISkeletonAnim;
 class UiAnimationSystem
     : public IUiAnimationSystem
 {
-    typedef std::vector<PlayingUIAnimSequence> PlayingSequences;
+    typedef AZStd::vector<PlayingUIAnimSequence> PlayingSequences;
 
 public:
     AZ_CLASS_ALLOCATOR(UiAnimationSystem, AZ::SystemAllocator, 0)
@@ -145,6 +145,8 @@ public:
     static void StaticInitialize();
 
     static void Reflect(AZ::SerializeContext* serializeContext);
+
+    void NotifyTrackEventListeners(const char* eventName, const char* valueName, IUiAnimSequence* pSequence) override;
 
 private:
     void NotifyListeners(IUiAnimSequence* pSequence, IUiAnimationListener::EUiAnimationEvent event);

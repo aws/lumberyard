@@ -10,6 +10,11 @@
 *
 */
 
+QTableView
+{
+    qproperty-showGrid: false;
+}
+
 AzQtComponents--TableView,
 QTableView,
 QListView,

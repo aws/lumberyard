@@ -11,8 +11,8 @@
 */
 #include "StdAfx.h"
 #include "PropertyVectorCtrl.hxx"
-#include "DHQSpinbox.hxx"
 #include "PropertyQTConstants.h"
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QHBoxLayout>
 AZ_POP_DISABLE_WARNING
@@ -24,242 +24,22 @@ namespace AzToolsFramework
 {
     //////////////////////////////////////////////////////////////////////////
 
-    VectorElement::VectorElement(QWidget* pParent)
-        : QObject(pParent)
-        , m_wasValueEditedByUser(false)
+    PropertyVectorCtrl::PropertyVectorCtrl(QWidget* parent, int elementCount, int elementsPerRow, QString customLabels)
+        : AzQtComponents::VectorInput(parent, elementCount, elementsPerRow, customLabels)
     {
-        m_spinBox = aznew DHQDoubleSpinbox(pParent);
-        m_spinBox->setKeyboardTracking(false); // don't send valueChanged every time a character is typed (no need for undo/redo per digit of a double value)
 
-        m_label = aznew QLabel(pParent);
-
-        m_spinBox->setMinimumWidth(PropertyQTConstant_MinimumWidth);
-        m_spinBox->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-
-        using OnValueChanged = void(QDoubleSpinBox::*)(double);
-        auto valueChanged = static_cast<OnValueChanged>(&QDoubleSpinBox::valueChanged);
-        connect(m_spinBox, valueChanged, this, &VectorElement::onValueChanged);
-        connect(m_spinBox, &QDoubleSpinBox::editingFinished, this, &VectorElement::editingFinished);
-    }
-
-    void VectorElement::SetLabel(const char* label)
-    {
-        m_label->setText(label);
-        m_label->setObjectName(label);
-    }
-
-    void VectorElement::SetValue(double newValue)
-    {
-        m_value = newValue;
-        m_spinBox->blockSignals(true);
-        m_spinBox->setValue(newValue);
-        m_spinBox->blockSignals(false);
-        m_wasValueEditedByUser = false;
-        Q_EMIT valueChanged(newValue);
-    }
-
-    void VectorElement::onValueChanged(double newValue)
-    {
-        if (!AZ::IsClose(m_value, newValue, std::numeric_limits<double>::epsilon()))
-        {
-            m_value = newValue;
-            m_wasValueEditedByUser = true;
-            Q_EMIT valueChanged(newValue);
-        }
     }
 
     //////////////////////////////////////////////////////////////////////////
 
-    PropertyVectorCtrl::PropertyVectorCtrl(QWidget* parent, int elementCount, int elementsPerRow, AZStd::string customLabels)
-        : QWidget(parent)
+    AzQtComponents::VectorInput* VectorPropertyHandlerCommon::ConstructGUI(QWidget* parent) const
     {
-        // Set up Qt layout
-        QGridLayout* pLayout = new QGridLayout(this);
-        pLayout->setMargin(0);
-        pLayout->setSpacing(2);
-        pLayout->setContentsMargins(1, 0, 1, 0);
-
-        AZ_Warning("Property Editor", elementCount >= 2,
-            "Vector controls with less than 2 elements are not supported");
-
-        if (elementCount < 2)
-        {
-            elementCount = 2;
-        }
-
-        m_elementCount = elementCount;
-        m_elements = new VectorElement*[m_elementCount];
-
-        // Setting up custom labels
-        AZStd::string labels = customLabels.empty() ? "XYZW" : customLabels;
-
-        // Adding elements to the layout
-        int numberOfElementsRemaining = m_elementCount;
-        int numberOfRowsInLayout = elementsPerRow <= 0 ? 1 : static_cast<int>(std::ceil(static_cast<float>(m_elementCount) / static_cast<float>(elementsPerRow)));
-        int actualElementsPerRow = elementsPerRow <= 0 ? m_elementCount : elementsPerRow;
-
-        for (int rowIdx = 0; rowIdx < numberOfRowsInLayout; rowIdx++)
-        {
-            QHBoxLayout* layout = new QHBoxLayout();
-            for (int columnIdx = 0; columnIdx < actualElementsPerRow; columnIdx++)
-            {
-                if (numberOfElementsRemaining > 0)
-                {
-                    int elementIndex = rowIdx * elementsPerRow + columnIdx;
-
-                    m_elements[elementIndex] = new VectorElement(this);
-                    AZStd::string label(labels.substr(elementIndex, 1));
-                    m_elements[elementIndex]->SetLabel(label.c_str());
-
-                    layout->addWidget(m_elements[elementIndex]->GetLabel());
-                    layout->addWidget(m_elements[elementIndex]->GetSpinBox());
-
-                    using OnValueChanged = void(QDoubleSpinBox::*)(double);
-                    auto valueChanged = static_cast<OnValueChanged>(&QDoubleSpinBox::valueChanged);
-                    connect(m_elements[elementIndex]->GetSpinBox(), valueChanged, this, [elementIndex, this](double value)
-                        {
-                            OnValueChangedInElement(value, elementIndex);
-                        });
-                    connect(m_elements[elementIndex]->GetSpinBox(), &QDoubleSpinBox::editingFinished, this, &PropertyVectorCtrl::editingFinished);
-
-                    numberOfElementsRemaining--;
-                }
-            }
-
-            // Add internal layout to the external grid layout
-            pLayout->addLayout(layout, rowIdx, 0);
-        }
-    }
-
-    PropertyVectorCtrl::~PropertyVectorCtrl()
-    {
-        delete[] m_elements;
-    }
-
-    void PropertyVectorCtrl::setLabel(int index, const AZStd::string& label)
-    {
-        AZ_Warning("PropertyGrid", index < m_elementCount,
-            "This control handles only %i controls", m_elementCount)
-        if (index < m_elementCount)
-        {
-            m_elements[index]->SetLabel(label.c_str());
-        }
-    }
-
-    void PropertyVectorCtrl::setLabelStyle(int index, const AZStd::string& qss)
-    {
-        AZ_Warning("PropertyGrid", index < m_elementCount,
-            "This control handles only %i controls", m_elementCount)
-        if (index < m_elementCount)
-        {
-            m_elements[index]->GetLabel()->setStyleSheet(qss.c_str());
-        }
-    }
-
-    void PropertyVectorCtrl::setValuebyIndex(double value, int elementIndex)
-    {
-        AZ_Warning("PropertyGrid", elementIndex < m_elementCount,
-            "This control handles only %i controls", m_elementCount)
-        if (elementIndex < m_elementCount)
-        {
-            m_elements[elementIndex]->SetValue(value);
-        }
-    }
-
-    void PropertyVectorCtrl::setMinimum(double value)
-    {
-        for (size_t i = 0; i < m_elementCount; ++i)
-        {
-            m_elements[i]->GetSpinBox()->blockSignals(true);
-            m_elements[i]->GetSpinBox()->setMinimum(value);
-            m_elements[i]->GetSpinBox()->blockSignals(false);
-        }
-    }
-
-    void PropertyVectorCtrl::setMaximum(double value)
-    {
-        for (size_t i = 0; i < m_elementCount; ++i)
-        {
-            m_elements[i]->GetSpinBox()->blockSignals(true);
-            m_elements[i]->GetSpinBox()->setMaximum(value);
-            m_elements[i]->GetSpinBox()->blockSignals(false);
-        }
-    }
-
-    void PropertyVectorCtrl::setStep(double value)
-    {
-        for (size_t i = 0; i < m_elementCount; ++i)
-        {
-            m_elements[i]->GetSpinBox()->blockSignals(true);
-            m_elements[i]->GetSpinBox()->setSingleStep(value);
-            m_elements[i]->GetSpinBox()->blockSignals(false);
-        }
-    }
-
-    void PropertyVectorCtrl::setDecimals(int value)
-    {
-        for (size_t i = 0; i < m_elementCount; ++i)
-        {
-            m_elements[i]->GetSpinBox()->blockSignals(true);
-            m_elements[i]->GetSpinBox()->setDecimals(value);
-            m_elements[i]->GetSpinBox()->blockSignals(false);
-        }
-    }
-
-    void PropertyVectorCtrl::setDisplayDecimals(int value)
-    {
-        for (size_t i = 0; i < m_elementCount; ++i)
-        {
-            m_elements[i]->GetSpinBox()->blockSignals(true);
-            m_elements[i]->GetSpinBox()->SetDisplayDecimals(value);
-            m_elements[i]->GetSpinBox()->blockSignals(false);
-        }
-    }
-
-    void PropertyVectorCtrl::OnValueChangedInElement(double newValue, int elementIndex)
-    {
-        Q_EMIT valueChanged(newValue);
-        Q_EMIT valueAtIndexChanged(elementIndex, newValue);
-    }
-
-    void PropertyVectorCtrl::setSuffix(const AZStd::string label)
-    {
-        for (size_t i = 0; i < m_elementCount; ++i)
-        {
-            m_elements[i]->GetSpinBox()->blockSignals(true);
-            m_elements[i]->GetSpinBox()->setSuffix(label.c_str());
-            m_elements[i]->GetSpinBox()->blockSignals(false);
-        }
-    }
-
-    QWidget* PropertyVectorCtrl::GetFirstInTabOrder()
-    {
-        return m_elements[0]->GetSpinBox();
-    }
-
-    QWidget* PropertyVectorCtrl::GetLastInTabOrder()
-    {
-        return m_elements[m_elementCount - 1]->GetSpinBox();
-    }
-
-    void PropertyVectorCtrl::UpdateTabOrder()
-    {
-        for (int i = 0; i < m_elementCount - 1; i++)
-        {
-            setTabOrder(m_elements[i]->GetSpinBox(), m_elements[i + 1]->GetSpinBox());
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-
-    PropertyVectorCtrl* VectorPropertyHandlerCommon::ConstructGUI(QWidget* parent) const
-    {
-        PropertyVectorCtrl* newCtrl = aznew PropertyVectorCtrl(parent, m_elementCount, m_elementsPerRow, m_customLabels);
-        QObject::connect(newCtrl, &PropertyVectorCtrl::valueChanged, newCtrl, [newCtrl]()
+        AzQtComponents::VectorInput* newCtrl = new AzQtComponents::VectorInput(parent, m_elementCount, m_elementsPerRow, m_customLabels.c_str());
+        QObject::connect(newCtrl, &AzQtComponents::VectorInput::valueChanged, newCtrl, [newCtrl]()
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
-        newCtrl->connect(newCtrl, &PropertyVectorCtrl::editingFinished, [newCtrl]()
+        newCtrl->connect(newCtrl, &AzQtComponents::VectorInput::editingFinished, [newCtrl]()
         {
             PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
         });
@@ -270,14 +50,14 @@ namespace AzToolsFramework
         return newCtrl;
     }
 
-    void VectorPropertyHandlerCommon::ConsumeAttributes(PropertyVectorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) const
+    void VectorPropertyHandlerCommon::ConsumeAttributes(AzQtComponents::VectorInput* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) const
     {
         if (attrib == AZ::Edit::Attributes::Suffix)
         {
             AZStd::string label;
             if (attrValue->Read<AZStd::string>(label))
             {
-                GUI->setSuffix(label);
+                GUI->setSuffix(label.c_str());
             }
         }
         else if (attrib == AZ::Edit::Attributes::LabelForX)
@@ -285,7 +65,7 @@ namespace AzToolsFramework
             AZStd::string label;
             if (attrValue->Read<AZStd::string>(label))
             {
-                GUI->setLabel(0, label);
+                GUI->setLabel(0, label.c_str());
             }
         }
         else if (attrib == AZ::Edit::Attributes::LabelForY)
@@ -293,7 +73,7 @@ namespace AzToolsFramework
             AZStd::string label;
             if (attrValue->Read<AZStd::string>(label))
             {
-                GUI->setLabel(1, label);
+                GUI->setLabel(1, label.c_str());
             }
         }
         else if (attrib == AZ::Edit::Attributes::StyleForX)
@@ -301,7 +81,7 @@ namespace AzToolsFramework
             AZStd::string qss;
             if (attrValue->Read<AZStd::string>(qss))
             {
-                GUI->setLabelStyle(0, qss);
+                GUI->setLabelStyle(0, qss.c_str());
             }
         }
         else if (attrib == AZ::Edit::Attributes::StyleForY)
@@ -309,7 +89,7 @@ namespace AzToolsFramework
             AZStd::string qss;
             if (attrValue->Read<AZStd::string>(qss))
             {
-                GUI->setLabelStyle(1, qss);
+                GUI->setLabelStyle(1, qss.c_str());
             }
         }
         else if (attrib == AZ::Edit::Attributes::Min)
@@ -378,7 +158,7 @@ namespace AzToolsFramework
                 AZStd::string label;
                 if (attrValue->Read<AZStd::string>(label))
                 {
-                    GUI->setLabel(2, label);
+                    GUI->setLabel(2, label.c_str());
                 }
             }
             else if (attrib == AZ::Edit::Attributes::StyleForZ)
@@ -386,7 +166,7 @@ namespace AzToolsFramework
                 AZStd::string qss;
                 if (attrValue->Read<AZStd::string>(qss))
                 {
-                    GUI->setLabelStyle(2, qss);
+                    GUI->setLabelStyle(2, qss.c_str());
                 }
             }
 
@@ -397,7 +177,7 @@ namespace AzToolsFramework
                     AZStd::string label;
                     if (attrValue->Read<AZStd::string>(label))
                     {
-                        GUI->setLabel(3, label);
+                        GUI->setLabel(3, label.c_str());
                     }
                 }
                 else if (attrib == AZ::Edit::Attributes::StyleForW)
@@ -405,7 +185,7 @@ namespace AzToolsFramework
                     AZStd::string qss;
                     if (attrValue->Read<AZStd::string>(qss))
                     {
-                        GUI->setLabelStyle(3, qss);
+                        GUI->setLabelStyle(3, qss.c_str());
                     }
                 }
             }
@@ -413,18 +193,18 @@ namespace AzToolsFramework
     }
 
     //////////////////////////////////////////////////////////////////////////
-    void QuaternionPropertyHandler::WriteGUIValuesIntoProperty(size_t, PropertyVectorCtrl* GUI, AZ::Quaternion& instance, InstanceDataNode*)
+    void QuaternionPropertyHandler::WriteGUIValuesIntoProperty(size_t, AzQtComponents::VectorInput* GUI, AZ::Quaternion& instance, InstanceDataNode*)
     {
-        VectorElement** elements = GUI->getElements();
+        AzQtComponents::VectorElement** elements = GUI->getElements();
 
-        AZ::Vector3 eulerRotation(static_cast<float>(elements[0]->GetValue()), static_cast<float>(elements[1]->GetValue()), static_cast<float>(elements[2]->GetValue()));
+        AZ::Vector3 eulerRotation(static_cast<float>(elements[0]->getValue()), static_cast<float>(elements[1]->getValue()), static_cast<float>(elements[2]->getValue()));
         AZ::Quaternion newValue;
         newValue.SetFromEulerDegrees(eulerRotation);
 
         instance = static_cast<AZ::Quaternion>(newValue);
     }
 
-    bool QuaternionPropertyHandler::ReadValuesIntoGUI(size_t, PropertyVectorCtrl* GUI, const AZ::Quaternion& instance, InstanceDataNode*)
+    bool QuaternionPropertyHandler::ReadValuesIntoGUI(size_t, AzQtComponents::VectorInput* GUI, const AZ::Quaternion& instance, InstanceDataNode*)
     {
         GUI->blockSignals(true);
         

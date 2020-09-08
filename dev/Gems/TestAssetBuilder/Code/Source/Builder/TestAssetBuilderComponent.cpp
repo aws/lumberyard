@@ -61,7 +61,8 @@ namespace TestAssetBuilder
     void TestAssetBuilderComponent::Activate()
     {
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
-        builderDescriptor.m_name = " Test Asset Builder";
+        builderDescriptor.m_name = "Test Asset Builder";
+        builderDescriptor.m_version = 1;
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.source", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.dependent", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.slicetest", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
@@ -685,6 +686,7 @@ namespace TestAssetBuilder
         fileIO->Close(assetfileHandle);
 
         AssetBuilderSDK::JobProduct jobProduct(fileNameOnly, outputAssetType, outputSubId);
+        jobProduct.m_dependenciesHandled = true; // This builder has no product dependencies
 
         // once you've filled up the details of the product in jobProduct, add it to the result list:
         response.m_outputProducts.push_back(jobProduct);

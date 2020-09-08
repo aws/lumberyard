@@ -1,0 +1,13 @@
+<Material MtlFlags="524544" DccMaterialHash="0" vertModifType="0">
+ <SubMaterials>
+  <Material Name="AlarmMAT" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800000080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.03954624,0.03954624,0.03954624,1" Emittance="0.98225069,0.084376216,0.084376216,5" Opacity="1" Shininess="83.019997" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="Objects/Airship/Airship_AlarmLamp_01_diff.tif"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_alarmlamp_01_ddn.dds"/>
+    <Texture Map="Emittance" File="objects/airship/airship_alarmlamp_01_emis.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

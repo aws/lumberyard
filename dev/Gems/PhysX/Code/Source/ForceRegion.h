@@ -34,7 +34,7 @@ namespace PhysX
     class ForceRegion : private AZ::TransformNotificationBus::MultiHandler
         , private LmbrCentral::SplineComponentNotificationBus::Handler
         , private PhysX::ForceRegionRequestBus::Handler
-        , private PhysX::ColliderComponentEventBus::Handler
+        , private Physics::ColliderComponentEventBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForceRegion, AZ::SystemAllocator, 0);
@@ -74,7 +74,7 @@ namespace PhysX
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        // ColliderComponentEventBus
+        // Physics::ColliderComponentEventBus
         void OnColliderChanged() override;
 
         AZ::EntityId m_entityId; ///< Entity id of the volume.

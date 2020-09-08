@@ -810,7 +810,12 @@ namespace EMStudio
 
             for (ModelItemData* child : modelItemData->m_children)
             {
-                if (child->m_type == ModelItemType::NODE && azrtti_typeid(child->m_object.m_node) == azrtti_typeid<EMotionFX::AnimGraphReferenceNode>())
+                if (child->m_type == ModelItemType::CONNECTION)
+                {
+                    // The connection (input port from the referencce node) is a children of reference node, but belongs to the parent anim graph
+                    RecursiveSetAnimGraphInstance(child, currentReferencedAnimGraphInstance, newAnimGraphInstance);
+                }
+                else if (child->m_type == ModelItemType::NODE && azrtti_typeid(child->m_object.m_node) == azrtti_typeid<EMotionFX::AnimGraphReferenceNode>())
                 {
                     RecursiveSetReferenceNodeAnimGraphInstance(child, currentReferencedAnimGraphInstance, newReferencedAnimGraphInstance);
                 }

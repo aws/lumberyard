@@ -45,8 +45,8 @@ namespace LuaBuilder
         {
             AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
             builderDescriptor.m_name = "Lua Worker Builder";
-            builderDescriptor.m_version = 4;
-            builderDescriptor.m_analysisFingerprint = AZStd::string::format("%d", AZ::ScriptAsset::AssetVersion);
+            builderDescriptor.m_version = 5;
+            builderDescriptor.m_analysisFingerprint = AZStd::string::format("%d", static_cast<AZ::u8>(AZ::ScriptAsset::AssetVersion));
             builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.lua", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             builderDescriptor.m_busId = azrtti_typeid<LuaBuilderWorker>();
             builderDescriptor.m_createJobFunction = AZStd::bind(&LuaBuilderWorker::CreateJobs, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);

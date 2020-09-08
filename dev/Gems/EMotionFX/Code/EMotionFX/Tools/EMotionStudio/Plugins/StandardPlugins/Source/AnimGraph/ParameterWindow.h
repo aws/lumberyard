@@ -20,7 +20,9 @@
 #include <QPointer>
 #include <QWidget>
 #include <QLineEdit>
+#include <QTreeWidget>
 
+QT_FORWARD_DECLARE_CLASS(QAction)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 QT_FORWARD_DECLARE_CLASS(QScrollArea)
 QT_FORWARD_DECLARE_CLASS(QTreeWidget)
@@ -50,7 +52,8 @@ namespace EMStudio
 {
     class AnimGraphPlugin;
     class ValueParameterEditor;
-    
+    class ParameterWindowTreeWidget;
+
     class ParameterCreateRenameWindow
         : public QDialog
     {
@@ -104,6 +107,7 @@ namespace EMStudio
 
         // select manually
         void SingleSelectGroupParameter(const char* groupName, bool ensureVisibility = false, bool updateInterface = false);
+        void SelectParameters(const AZStd::vector<AZStd::string>& parameterNames, bool updateInterface = false);
 
         void UpdateParameterValue(const EMotionFX::Parameter* parameter);
 
@@ -119,23 +123,22 @@ namespace EMStudio
     public slots:
         void OnRecorderStateChanged();
         void OnMakeDefaultValue();
+        void OnAddParameter();
+        void OnAddGroup();
+        void OnRemoveSelected();
 
     private slots:
         void UpdateInterface();
 
-        void OnAddParameter();
         void OnEditButton();
-        void OnRemoveButton();
         void OnClearButton() { ClearParameters(); }
 
         void OnGroupCollapsed(QTreeWidgetItem* item);
         void OnGroupExpanded(QTreeWidgetItem* item);
 
-        void OnAddGroup();
         void OnGroupParameterSelected();
 
-        void OnMoveParameterUp();
-        void OnMoveParameterDown();
+        void OnMoveParameterTo(int idx, const QString& parameter, const QString& parent);
         void OnTextFilterChanged(const QString& text);
         void OnSelectionChanged();
 
@@ -189,14 +192,10 @@ namespace EMStudio
         EMotionFX::AnimGraph*           m_animGraph;
 
         // toolbar buttons
-        QPushButton*                    mAddButton;
-        static int                      m_contextMenuWidth;
-        QPushButton*                    mRemoveButton;
-        QPushButton*                    mClearButton;
+        QAction* m_addAction;
+        static int m_contextMenuWidth;
 
-        QPushButton*                    mEditButton;
-        QPushButton*                    mMoveUpButton;
-        QPushButton*                    mMoveDownButton;
+        QAction* m_editAction;
 
         AZStd::vector<AZStd::string>    mSelectedParameterNames;
         bool                            mEnsureVisibility;
@@ -204,7 +203,7 @@ namespace EMStudio
 
         AZStd::string                   mFilterString;
         AnimGraphPlugin*                mPlugin;
-        QTreeWidget*                    mTreeWidget;
+        ParameterWindowTreeWidget*      mTreeWidget;
         AzQtComponents::FilteredSearchWidget* m_searchWidget;
         QVBoxLayout*                    mVerticalLayout;
         QScrollArea*                    mScrollArea;
@@ -216,5 +215,32 @@ namespace EMStudio
         };
         typedef AZStd::unordered_map<const EMotionFX::Parameter*, ParameterWidget> ParameterWidgetByParameter;
         ParameterWidgetByParameter m_parameterWidgets;
+    };
+
+    class ParameterWindowTreeWidgetPrivate;
+    class ParameterWindowTreeWidget
+        : public QTreeWidget
+    {
+        Q_OBJECT
+
+    public:
+        ParameterWindowTreeWidget(QWidget* parent=nullptr);
+
+        void SetAnimGraph(EMotionFX::AnimGraph* animGraph);
+
+    signals:
+        void ParameterMoved(int idx, const QString& parameter, const QString& parent);
+        void DragEnded();
+
+    protected:
+        void startDrag(Qt::DropActions supportedActions) override;
+        void dropEvent(QDropEvent* event) override;
+
+    private:
+        EMotionFX::AnimGraph* m_animGraph = nullptr;
+        QTreeWidgetItem* m_draggedParam = nullptr;
+        QTreeWidgetItem* m_draggedParentParam = nullptr;
+
+        Q_DECLARE_PRIVATE(ParameterWindowTreeWidget)
     };
 } // namespace EMStudio

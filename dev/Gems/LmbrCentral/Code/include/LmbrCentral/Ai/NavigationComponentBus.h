@@ -174,6 +174,13 @@ namespace LmbrCentral
 
         virtual ~NavigationComponentRequests() {}
 
+        enum class MovementMethod
+        {
+            Transform,
+            Physics,
+            Custom
+        };
+
         /** Finds a path as per the provided request configuration
         * @param request Allows the issuer of the request to override one, all or none of the pathfinding configuration defaults for this entity
         * @return Returns a unique identifier to this pathfinding request
@@ -181,10 +188,17 @@ namespace LmbrCentral
         virtual PathfindRequest::NavigationRequestId FindPath(const PathfindRequest& /*request*/) { return 0; }
 
         /** Creates a path finding request to navigate towards the specified entity.
-        * @param request EntityId of the entity we want to navigate towards.
+        * @param entityId EntityId of the entity we want to navigate towards.
         * @return Returns a unique identifier to this pathfinding request
         */
         virtual PathfindRequest::NavigationRequestId FindPathToEntity(AZ::EntityId /*entityId*/) { return 0; }
+
+        /** Creates a path finding request to navigate towards the specified position.
+        * @param destination World position we want to navigate to.
+        * @return Returns a unique identifier to this pathfinding request
+        */
+        virtual PathfindRequest::NavigationRequestId FindPathToPosition(const AZ::Vector3& /*destination*/) = 0;
+
 
         /** Stops all pathfinding operations for the given requestId
         * The id is primarily used to make sure that the request being cancelled is in-fact the
@@ -203,6 +217,16 @@ namespace LmbrCentral
         *  @param agentSpeed specifies the new agent speed as a float
         */
         virtual void SetAgentSpeed(float agentSpeed) = 0;
+
+        /* Returns the current AI movement method 
+        *  @return Returns the current agent's movement method 
+        */
+        virtual MovementMethod GetAgentMovementMethod() = 0;
+
+        /* Updates the AI Agent's movement method 
+        *  @param movementMethod specifies the new agent movement method 
+        */
+        virtual void SetAgentMovementMethod(MovementMethod movementMethod) = 0;
     };
 
     // Bus to service the Navigation component event group
@@ -254,6 +278,16 @@ namespace LmbrCentral
         * @param distanceRemaining remaining distance in this path
         */
         virtual void OnTraversalInProgress(PathfindRequest::NavigationRequestId /*requestId*/, float /*distanceRemaining*/) {}
+
+        /**
+        * Indicates that the path for the traversal has updated.  If the 
+        * nextPathPosition and inflectionPosition are equal, they represent 
+        * the end of the path.
+        * @param requestId Id of the request for which traversal is in progress
+        * @param nextPathPosition furthest point on the path we can move to without colliding with anything 
+        * @param inflectionPosition next point on the path beyond nextPathPoint that deviates from a straight-line path
+        */
+        virtual void OnTraversalPathUpdate(PathfindRequest::NavigationRequestId /*requestId*/, const AZ::Vector3& /*nextPathPosition*/, const AZ::Vector3& /*inflectionPosition*/) {}
 
         /**
         * Indicates that traversal for the indicated request has completed successfully

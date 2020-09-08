@@ -66,12 +66,10 @@ namespace GraphCanvas
         {
             setTitleBarWidget(new QWidget());
             setFeatures(NoDockWidgetFeatures);
-            setContentsMargins(15, 0, 0, 0);
             m_ui->dockWidgetContents->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         }
 
         QObject::connect(m_ui->nodePaletteWidget, &NodePaletteWidget::OnCreateSelection, this, &NodePaletteDockWidget::OnContextMenuSelection);
-        QObject::connect(m_ui->nodePaletteWidget, &NodePaletteWidget::OnTreeItemDoubleClicked, this, &NodePaletteDockWidget::OnTreeItemDoubleClicked);
     }
 
     NodePaletteDockWidget::NodePaletteDockWidget(QWidget* parent, const QString& windowLabel, const NodePaletteConfig& nodePaletteConfig)
@@ -88,12 +86,10 @@ namespace GraphCanvas
         {
             setTitleBarWidget(new QWidget());
             setFeatures(NoDockWidgetFeatures);
-            setContentsMargins(15, 0, 0, 0);
             m_ui->dockWidgetContents->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         }
 
         QObject::connect(m_ui->nodePaletteWidget, &NodePaletteWidget::OnCreateSelection, this, &NodePaletteDockWidget::OnContextMenuSelection);
-        QObject::connect(m_ui->nodePaletteWidget, &NodePaletteWidget::OnTreeItemDoubleClicked, this, &NodePaletteDockWidget::OnTreeItemDoubleClicked);
     }
 
     NodePaletteDockWidget::~NodePaletteDockWidget()
@@ -174,7 +170,12 @@ namespace GraphCanvas
         return m_ui->nodePaletteWidget->GetTreeRoot();
     }
 
-    QTreeView* NodePaletteDockWidget::GetTreeView() const
+    GraphCanvasTreeItem* NodePaletteDockWidget::ModTreeRoot()
+    {
+        return m_ui->nodePaletteWidget->ModTreeRoot();
+    }
+
+    NodePaletteTreeView* NodePaletteDockWidget::GetTreeView() const
     {
         return m_ui->nodePaletteWidget->GetTreeView();
     }

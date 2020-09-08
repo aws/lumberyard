@@ -46,6 +46,7 @@ namespace AzQtComponents
         card->setSwatchSize(m_swatchSize);
         card->setGammaEnabled(m_gammaEnabled);
         card->setGamma(m_gamma);
+        card->setMaximumWidth(m_paletteWidth);
 
         return card;
     }

@@ -74,6 +74,8 @@ namespace AzQtComponents
         static int horizontalMargin(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
         static int verticalMargin(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
         static int subMenuOverlap(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
+        static int verticalShadowMargin(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
+        static int horizontalShadowMargin(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
 
         static bool drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
     };

@@ -24,6 +24,7 @@
 #include <QFileDialog>
 #include <QString>
 #include <QTimerEvent>
+#include <QComboBox>
 
 #include <IEditor.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -45,7 +46,8 @@
 #include <EMotionFX/Source/Parameter/TagParameter.h>
 #include <MCore/Source/LogManager.h>
 #include <MysticQt/Source/DialogStack.h>
-#include <MysticQt/Source/LinkWidget.h>
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
+#include <AzQtComponents/Components/Widgets/Slider.h>
 #include "BlendNodeSelectionWindow.h"
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphHierarchyWidget.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
@@ -138,7 +140,7 @@ namespace EMStudio
         layout->addWidget(mDialogStack);
 
         // add the game controller
-        mGameControllerComboBox = new MysticQt::ComboBox();
+        mGameControllerComboBox = new QComboBox();
         UpdateGameControllerComboBox();
 
         QHBoxLayout* gameControllerLayout = new QHBoxLayout();
@@ -153,19 +155,19 @@ namespace EMStudio
         QHBoxLayout* horizontalLayout = new QHBoxLayout();
         horizontalLayout->setMargin(0);
 
-        mPresetComboBox     = new MysticQt::ComboBox();
+        mPresetComboBox     = new QComboBox();
         mAddPresetButton    = new QPushButton();
         mRemovePresetButton = new QPushButton();
         mPresetNameLineEdit = new QLineEdit();
 
-        connect(mPresetComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnPresetComboBox);
+        connect(mPresetComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &GameControllerWindow::OnPresetComboBox);
         connect(mAddPresetButton, &QPushButton::clicked, this, &GameControllerWindow::OnAddPresetButton);
         connect(mRemovePresetButton, &QPushButton::clicked, this, &GameControllerWindow::OnRemovePresetButton);
         connect(mPresetNameLineEdit, &QLineEdit::textEdited, this, &GameControllerWindow::OnPresetNameEdited);
         connect(mPresetNameLineEdit, &QLineEdit::returnPressed, this, &GameControllerWindow::OnPresetNameChanged);
 
-        EMStudioManager::MakeTransparentButton(mAddPresetButton, "/Images/Icons/Plus.png", "Add a game controller preset");
-        EMStudioManager::MakeTransparentButton(mRemovePresetButton, "/Images/Icons/Remove.png", "Remove a game controller preset");
+        EMStudioManager::MakeTransparentButton(mAddPresetButton, "/Images/Icons/Plus.svg", "Add a game controller preset");
+        EMStudioManager::MakeTransparentButton(mRemovePresetButton, "/Images/Icons/Remove.svg", "Remove a game controller preset");
 
         QHBoxLayout* buttonsLayout = new QHBoxLayout();
         buttonsLayout->addWidget(mAddPresetButton);
@@ -183,7 +185,7 @@ namespace EMStudio
         dummyWidget->setObjectName("StyledWidgetDark");
         dummyWidget->setLayout(gameControllerLayout);
         mDialogStack->Add(dummyWidget, "Game Controller And Preset Selection");
-        connect(mGameControllerComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnGameControllerComboBox);
+        connect(mGameControllerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &GameControllerWindow::OnGameControllerComboBox);
 
         DisablePresetInterface();
         AutoSelectGameController();
@@ -261,7 +263,7 @@ namespace EMStudio
     {
         MCORE_UNUSED(value);
 
-        //MysticQt::ComboBox* combo = qobject_cast<MysticQt::ComboBox*>( sender() );
+        //QComboBox* combo = qobject_cast<QComboBox*>( sender() );
         //String stringValue = combo->currentText().toAscii().data();
         ReInit();
 
@@ -379,7 +381,7 @@ namespace EMStudio
             mParameterGridLayout->addWidget(label, parameterIndex, 0);
 
             // add the axis combo box to the layout
-            MysticQt::ComboBox* axesComboBox = new MysticQt::ComboBox();
+            QComboBox* axesComboBox = new QComboBox();
             axesComboBox->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
             axesComboBox->addItem("None");
 
@@ -432,14 +434,14 @@ namespace EMStudio
                 }
             }
         #endif
-            connect(axesComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnAxisComboBox);
+            connect(axesComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &GameControllerWindow::OnAxisComboBox);
 
             // select the given axis in the combo box or select none if there is no assignment yet or the assigned axis wasn't found on the current game controller
             axesComboBox->setCurrentIndex(selectedComboItem);
             mParameterGridLayout->addWidget(axesComboBox, parameterIndex, 1);
 
             // add the mode combo box to the layout
-            MysticQt::ComboBox* modeComboBox = new MysticQt::ComboBox();
+            QComboBox* modeComboBox = new QComboBox();
             modeComboBox->addItem("Standard Mode");
             modeComboBox->addItem("Zero To One Mode");
             modeComboBox->addItem("Parameter Range Mode");
@@ -447,7 +449,7 @@ namespace EMStudio
             modeComboBox->addItem("Negative Param Range Mode");
             modeComboBox->addItem("Rotate Character");
             modeComboBox->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-            connect(modeComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnParameterModeComboBox);
+            connect(modeComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &GameControllerWindow::OnParameterModeComboBox);
             modeComboBox->setCurrentIndex(settingsInfo->m_mode);
             mParameterGridLayout->addWidget(modeComboBox, parameterIndex, 2);
 
@@ -509,7 +511,7 @@ namespace EMStudio
             mButtonGridLayout->addWidget(nameLabel, i, 0);
 
             // add the mode combo box to the layout
-            MysticQt::ComboBox* modeComboBox = new MysticQt::ComboBox();
+            QComboBox* modeComboBox = new QComboBox();
             modeComboBox->addItem("None");
             modeComboBox->addItem("Switch To State Mode");
             modeComboBox->addItem("Toggle Bool Parameter Mode");
@@ -518,7 +520,7 @@ namespace EMStudio
             modeComboBox->addItem("Enable Bool For One Frame Only");
             //modeComboBox->addItem( "Execute Script Mode" );
             modeComboBox->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-            connect(modeComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnButtonModeComboBox);
+            connect(modeComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &GameControllerWindow::OnButtonModeComboBox);
             modeComboBox->setCurrentIndex(settingsInfo->m_mode);
             mButtonGridLayout->addWidget(modeComboBox, i, 1);
 
@@ -571,7 +573,7 @@ namespace EMStudio
         deadZoneLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         previewGridLayout->addWidget(deadZoneLabel, realTimePreviewLabelCounter + 1, 0);
 
-        mDeadZoneSlider = new MysticQt::Slider(Qt::Horizontal);
+        mDeadZoneSlider = new AzQtComponents::SliderInt(Qt::Horizontal);
         mDeadZoneSlider->setRange(1, 90);
         mDeadZoneSlider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         deadZoneLayout->addWidget(mDeadZoneSlider);
@@ -583,7 +585,7 @@ namespace EMStudio
         mDeadZoneSlider->setValue(aznumeric_cast<int>(mGameController->GetDeadZone() * 100));
         mString = AZStd::string::format("%.2f", mGameController->GetDeadZone());
         mDeadZoneValueLabel->setText(mString.c_str());
-        connect(mDeadZoneSlider, &MysticQt::Slider::valueChanged, this, &GameControllerWindow::OnDeadZoneSliderChanged);
+        connect(mDeadZoneSlider, &AzQtComponents::SliderInt::valueChanged, this, &GameControllerWindow::OnDeadZoneSliderChanged);
     #endif
 
         // start the timers
@@ -717,7 +719,7 @@ namespace EMStudio
     }
 
 
-    GameControllerWindow::ParameterInfo* GameControllerWindow::FindParamInfoByModeComboBox(MysticQt::ComboBox* comboBox)
+    GameControllerWindow::ParameterInfo* GameControllerWindow::FindParamInfoByModeComboBox(QComboBox* comboBox)
     {
         // get the number of parameter infos and iterate through them
         const uint32 numParamInfos = mParameterInfos.GetLength();
@@ -786,7 +788,7 @@ namespace EMStudio
             return;
         }
 
-        MysticQt::ComboBox* combo = qobject_cast<MysticQt::ComboBox*>(sender());
+        QComboBox* combo = qobject_cast<QComboBox*>(sender());
         ParameterInfo* paramInfo = FindParamInfoByModeComboBox(combo);
         if (paramInfo == nullptr)
         {
@@ -840,19 +842,20 @@ namespace EMStudio
             QHBoxLayout* layout = new QHBoxLayout();
             layout->setMargin(0);
 
-            MysticQt::LinkWidget* linkWidget = new MysticQt::LinkWidget("Select node");
-            linkWidget->setProperty("ButtonIndex", buttonIndex);
+            auto browseEdit = new AzQtComponents::BrowseEdit();
+            browseEdit->setPlaceholderText("Select node");
+            browseEdit->setProperty("ButtonIndex", buttonIndex);
             if (settingsInfo->m_string.empty() == false)
             {
-                linkWidget->setText(settingsInfo->m_string.c_str());
+                browseEdit->setText(settingsInfo->m_string.c_str());
             }
 
-            connect(linkWidget, &MysticQt::LinkWidget::clicked, this, &GameControllerWindow::OnSelectNodeButtonClicked);
+            connect(browseEdit, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &GameControllerWindow::OnSelectNodeButtonClicked);
 
-            linkWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            browseEdit->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
             layout->addWidget(new QLabel("State:"));
-            layout->addWidget(linkWidget);
+            layout->addWidget(browseEdit);
             widget->setLayout(layout);
             break;
         }
@@ -868,7 +871,7 @@ namespace EMStudio
             widget->setStyleSheet("#GameControllerButtonModeSettings{ background-color: transparent; }");
             QHBoxLayout* layout = new QHBoxLayout();
             layout->setMargin(0);
-            MysticQt::ComboBox* comboBox = new MysticQt::ComboBox();
+            QComboBox* comboBox = new QComboBox();
 
             const EMotionFX::ValueParameterVector& valueParameters = mAnimGraph->RecursivelyGetValueParameters();
             for (const EMotionFX::ValueParameter* valueParameter : valueParameters)
@@ -880,7 +883,7 @@ namespace EMStudio
                 }
             }
 
-            connect(comboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnButtonParameterComboBox);
+            connect(comboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &GameControllerWindow::OnButtonParameterComboBox);
             comboBox->setProperty("ButtonIndex", buttonIndex);
 
             // select the correct parameter
@@ -918,8 +921,8 @@ namespace EMStudio
     void GameControllerWindow::OnSelectNodeButtonClicked()
     {
         // get the sender widget
-        MysticQt::LinkWidget* linkWidget = (MysticQt::LinkWidget*)(QWidget*)sender();
-        if (linkWidget == nullptr)
+        auto browseEdit = qobject_cast<AzQtComponents::BrowseEdit*>(sender());
+        if (browseEdit == nullptr)
         {
             return;
         }
@@ -934,13 +937,13 @@ namespace EMStudio
             return;
         }
 
-        int32 buttonIndex = linkWidget->property("ButtonIndex").toInt();
+        int32 buttonIndex = browseEdit->property("ButtonIndex").toInt();
 
         EMotionFX::AnimGraphGameControllerSettings::ButtonInfo* settingsInfo = activePreset->FindButtonInfo(buttonIndex);
         MCORE_ASSERT(settingsInfo);
 
         // create and show the state selection window
-        BlendNodeSelectionWindow stateSelectionWindow(linkWidget);
+        BlendNodeSelectionWindow stateSelectionWindow(browseEdit);
         stateSelectionWindow.GetAnimGraphHierarchyWidget().SetSingleSelectionMode(true);
         stateSelectionWindow.GetAnimGraphHierarchyWidget().SetFilterNodeType(azrtti_typeid<EMotionFX::AnimGraphStateMachine>());
         stateSelectionWindow.setModal(true);
@@ -957,7 +960,7 @@ namespace EMStudio
         }
 
         settingsInfo->m_string = selectedStates[0].mNodeName.c_str();
-        linkWidget->setText(selectedStates[0].mNodeName.c_str());
+        browseEdit->setPlaceholderText(selectedStates[0].mNodeName.c_str());
     }
 
 
@@ -976,7 +979,7 @@ namespace EMStudio
             return;
         }
 
-        MysticQt::ComboBox* combo = qobject_cast<MysticQt::ComboBox*>(sender());
+        QComboBox* combo = qobject_cast<QComboBox*>(sender());
         int32 buttonIndex = combo->property("ButtonIndex").toInt();
 
         EMotionFX::AnimGraphGameControllerSettings::ButtonInfo* settingsInfo = activePreset->FindButtonInfo(buttonIndex);
@@ -1013,7 +1016,7 @@ namespace EMStudio
             return;
         }
 
-        MysticQt::ComboBox* combo = qobject_cast<MysticQt::ComboBox*>(sender());
+        QComboBox* combo = qobject_cast<QComboBox*>(sender());
         ButtonInfo* buttonInfo = FindButtonInfo(combo);
         if (buttonInfo == nullptr)
         {
@@ -1077,7 +1080,7 @@ namespace EMStudio
         // get the game controller settings from the current anim graph
         EMotionFX::AnimGraphGameControllerSettings& gameControllerSettings = mAnimGraph->GetGameControllerSettings();
 
-        MysticQt::ComboBox* combo = qobject_cast<MysticQt::ComboBox*>(sender());
+        QComboBox* combo = qobject_cast<QComboBox*>(sender());
         EMotionFX::AnimGraphGameControllerSettings::Preset* preset = gameControllerSettings.GetPreset(combo->currentIndex());
         gameControllerSettings.SetActivePreset(preset);
 
@@ -1153,7 +1156,7 @@ namespace EMStudio
     }
 
 
-    GameControllerWindow::ParameterInfo* GameControllerWindow::FindParamInfoByAxisComboBox(MysticQt::ComboBox* comboBox)
+    GameControllerWindow::ParameterInfo* GameControllerWindow::FindParamInfoByAxisComboBox(QComboBox* comboBox)
     {
         // get the number of parameter infos and iterate through them
         const uint32 numParamInfos = mParameterInfos.GetLength();
@@ -1184,7 +1187,7 @@ namespace EMStudio
             return;
         }
 
-        MysticQt::ComboBox* combo = qobject_cast<MysticQt::ComboBox*>(sender());
+        QComboBox* combo = qobject_cast<QComboBox*>(sender());
         ParameterInfo* paramInfo = FindParamInfoByAxisComboBox(combo);
         if (paramInfo == nullptr)
         {
@@ -1979,5 +1982,3 @@ namespace EMStudio
         return true;
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GameControllerWindow.moc>

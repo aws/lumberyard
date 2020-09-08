@@ -29,6 +29,6 @@ namespace EMotionFX
 
         static void Reflect(AZ::ReflectContext* context);
 
-        const AZStd::string& GetTypeDisplayName() const override;
+        const char* GetTypeDisplayName() const override;
     };
 }

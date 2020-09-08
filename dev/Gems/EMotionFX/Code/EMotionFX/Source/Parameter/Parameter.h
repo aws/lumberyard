@@ -34,7 +34,7 @@ namespace EMotionFX
 
         static void Reflect(AZ::ReflectContext* context);
 
-        virtual const AZStd::string& GetTypeDisplayName() const = 0;
+        virtual const char* GetTypeDisplayName() const = 0;
         
         const AZStd::string& GetName() const { return m_name; }
         void SetName(const AZStd::string& name) { m_name = name; }

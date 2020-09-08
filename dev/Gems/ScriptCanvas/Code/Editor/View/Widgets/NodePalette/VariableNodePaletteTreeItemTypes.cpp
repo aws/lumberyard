@@ -547,8 +547,12 @@ namespace ScriptCanvasEditor
 
         if (m_scriptCanvasId != scriptCanvasId)
         {
-            GraphItemCommandNotificationBus::Handler::BusDisconnect(m_scriptCanvasId);
-            ScriptCanvas::GraphVariableManagerNotificationBus::Handler::BusDisconnect(m_scriptCanvasId);
+            if (m_scriptCanvasId.IsValid())
+            {
+                GraphItemCommandNotificationBus::Handler::BusDisconnect(m_scriptCanvasId);
+                ScriptCanvas::GraphVariableManagerNotificationBus::Handler::BusDisconnect(m_scriptCanvasId);
+             }
+
             m_scriptCanvasId = scriptCanvasId;
 
             if (m_scriptCanvasId.IsValid())

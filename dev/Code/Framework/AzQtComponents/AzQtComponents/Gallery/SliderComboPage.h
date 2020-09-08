@@ -26,6 +26,8 @@ public:
     explicit SliderComboPage(QWidget* parent = nullptr);
     ~SliderComboPage() override;
 
+    void sliderValueChanged();
+
 private:
     QScopedPointer<Ui::SliderComboPage> ui;
 };

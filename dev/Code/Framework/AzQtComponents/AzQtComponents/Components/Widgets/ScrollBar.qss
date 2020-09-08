@@ -63,7 +63,7 @@ QScrollBar::sub-line:vertical
      height: 0px;
 }
 
-QAbstractScrollArea > QWidget
+QAbstractScrollArea > .QWidget
 {
     background: none;
 }
@@ -83,8 +83,8 @@ QScrollBar::handle:hover
     background-color: #999999;
 }
 
-QAbstractScrollArea > QWidget:hover,
-QAbstractScrollArea > QWidget[ShowBackground=true]
+QAbstractScrollArea > .QWidget:hover,
+QAbstractScrollArea > .QWidget[ShowBackground=true]
 {
     background-color: rgba(255, 255, 255, 12%);
 }

@@ -75,6 +75,7 @@ namespace AzToolsFramework
 
             void CreateAsset(AZ::Data::AssetType assetType);
             void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData> asset);
+            void SetAsset(const AZ::Data::Asset<AZ::Data::AssetData> asset);
 
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;

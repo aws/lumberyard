@@ -38,6 +38,7 @@
 
 #include <QGraphicsOpacityEffect>
 #include <QLabel>
+#include <QToolButton>
 #include <QMenu>
 #include <QDir>
 #include <QPainter>
@@ -193,9 +194,10 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     connect(m_listModel, &OutlinerListModel::ResetFilter, this, &OutlinerWidget::ClearFilter);
     connect(m_listModel, &OutlinerListModel::ReapplyFilter, this, &OutlinerWidget::InvalidateFilter);
 
-    QPushButton* display_options = new QPushButton(this);
+    QToolButton* display_options = new QToolButton(this);
     display_options->setObjectName(QStringLiteral("m_display_options"));
-    display_options->setFixedSize(QSize(30, 22));
+    display_options->setPopupMode(QToolButton::InstantPopup);
+    display_options->setAutoRaise(true);
 
     m_gui->m_searchWidget->AddWidgetToSearchWidget(display_options);
 

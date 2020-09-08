@@ -10,11 +10,15 @@
 *
 */
 
+#include <Core/ExecutionNotificationsBus.h>
+
+#include <Libraries/Core/MethodUtility.h>
+
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
+#include <ScriptCanvas/Execution/ExecutionBus.h>
 #include <ScriptCanvas/Libraries/Core/SetVariable.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
-#include <Libraries/Core/MethodUtility.h>
-#include <Core/ExecutionNotificationsBus.h>
+
 
 namespace ScriptCanvas
 {
@@ -24,7 +28,7 @@ namespace ScriptCanvas
         {
             void SetVariableNode::OnInit()
             {
-                VariableNodeRequestBus::Handler::BusConnect(GetEntityId());                
+                VariableNodeRequestBus::Handler::BusConnect(GetEntityId());
             }
 
             void SetVariableNode::OnPostActivate()
@@ -36,7 +40,7 @@ namespace ScriptCanvas
 
                     if (GetExecutionType() == ScriptCanvas::ExecutionType::Editor)
                     {
-                        VariableNotificationBus::Handler::BusConnect(GetScopedVariableId());                        
+                        VariableNotificationBus::Handler::BusConnect(GetScopedVariableId());
                     }
                     else if (GetExecutionType() == ScriptCanvas::ExecutionType::Runtime)
                     {
@@ -44,6 +48,7 @@ namespace ScriptCanvas
 
                         if (variable)
                         {
+                            m_variableName = variable->GetVariableName();
                             variable->ConfigureDatumView(m_variableView);
                         }
                     }
@@ -54,7 +59,9 @@ namespace ScriptCanvas
             {
                 if (slotID == GetSlotId(GetInputSlotName()))
                 {
-                    const Datum* sourceDatum = FindDatum(m_variableDataInSlotId);                    
+                    SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), CreateAnnotationData());
+
+                    const Datum* sourceDatum = FindDatum(m_variableDataInSlotId);
 
                     if (sourceDatum && m_variableView.IsValid())
                     {
@@ -201,7 +208,7 @@ namespace ScriptCanvas
                         DataSlotConfiguration slotConfiguration;
 
                         slotConfiguration.m_name = Data::GetName(varType);
-                        slotConfiguration.SetConnectionType(ConnectionType::Input);                        
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
                         slotConfiguration.ConfigureDatum(AZStd::move(Datum(varType, Datum::eOriginality::Copy)));
 
                         m_variableDataInSlotId = AddSlot(slotConfiguration);
@@ -211,7 +218,7 @@ namespace ScriptCanvas
                         DataSlotConfiguration slotConfiguration;
 
                         slotConfiguration.m_name = Data::GetName(varType);
-                        slotConfiguration.SetConnectionType(ConnectionType::Output);                        
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);
                         slotConfiguration.SetType(varType);
 
                         m_variableDataOutSlotId = AddSlot(slotConfiguration);
@@ -290,6 +297,12 @@ namespace ScriptCanvas
                     RemoveSlots();
                 }
                 VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemovedFromNode, removedVariableId);
+            }
+
+            AnnotateNodeSignal SetVariableNode::CreateAnnotationData()
+            {
+                AZ::EntityId assetNodeId = GetRuntimeBus()->FindAssetNodeIdByRuntimeNodeId(GetEntityId());
+                return AnnotateNodeSignal(CreateGraphInfo(GetOwningScriptCanvasId(), GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, m_variableName, AZ::NamedEntityId(assetNodeId, GetNodeName()));
             }
 
             void SetVariableNode::AddPropertySlots(const Data::Type& type)

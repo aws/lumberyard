@@ -1,0 +1,42 @@
+<Material MtlFlags="557312" DccMaterialHash="2578552120" vertModifType="0">
+ <SubMaterials>
+  <Material Name="jumpsuitMat" MtlFlags="524416" DccMaterialHash="4166745942" Shader="Illum" GenMask="200A00080000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="1,1,1,0.007874039" Opacity="1" Shininess="2.00788" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="valena/textures/jumpsuit_low_jumpsuitmat_diff.tif"/>
+    <Texture Map="Bumpmap" File="valena/textures/jumpsuit_low_jumpsuitmat_ddna.tif"/>
+    <Texture Map="Specular" File="valena/textures/jumpsuit_low_jumpsuitmat_spec.tif"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="glovesbootsMat" MtlFlags="524416" DccMaterialHash="545211684" Shader="Illum" GenMask="200A00080000003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%FX_DISSOLVE%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="1,1,1,0.59572601" Opacity="1" Shininess="151.91013" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="valena/textures/gloveboots_low_glovesbootsmat_diff.tif"/>
+    <Texture Map="Bumpmap" File="valena/textures/gloveboots_low_glovesbootsmat_ddna.tif"/>
+    <Texture Map="Specular" File="valena/textures/gloveboots_low_glovesbootsmat_spec.tif"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="helmetMat" MtlFlags="524416" DccMaterialHash="1071375613" Shader="Illum" GenMask="200A00080080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%FX_DISSOLVE%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="1,1,1,1" Emittance="0,0.32314324,0.55201149,200" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Emittance" File="valena/textures/helmet_low_helmetmat_emis.tif">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorRate="6.8899999" TexMod_UOscillatorPhase="4.5900002" TexMod_UOscillatorAmplitude="0.1" TexMod_VOscillatorRate="4.5900002" TexMod_VOscillatorPhase="4.0799999" TexMod_VOscillatorAmplitude="0.1"/>
+    </Texture>
+    <Texture Map="Specular" File="valena/textures/helmet_low_helmetmat_spec.tif"/>
+    <Texture Map="Bumpmap" File="valena/textures/helmet_low_helmetmat_ddna.tif"/>
+    <Texture Map="Diffuse" File="valena/textures/helmet_low_helmetmat_diff.tif"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="beltMat" MtlFlags="524416" DccMaterialHash="4200776900" Shader="Illum" GenMask="200A00080080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%FX_DISSOLVE%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="1,1,1,1" Emittance="0,0.32314324,0.55201149,200" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Emittance" File="valena/textures/belt_low_beltmat_emis.tif">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_UOscillatorRate="3.0599999" TexMod_UOscillatorPhase="6.6300001" TexMod_UOscillatorAmplitude="0.039999999" TexMod_VOscillatorPhase="2.55"/>
+    </Texture>
+    <Texture Map="Specular" File="valena/textures/belt_low_beltmat_spec.tif"/>
+    <Texture Map="Bumpmap" File="valena/textures/belt_low_beltmat_ddna.tif"/>
+    <Texture Map="Diffuse" File="valena/textures/belt_low_beltmat_diff.tif"/>
+   </Textures>
+   <PublicParams DissolveColor="1,1,1" EmittanceMapGamma="1" DissolveEdgeThickness="0" SSSIndex="0" DissolvePercentage="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+</Material>

@@ -32,11 +32,16 @@ namespace AzQtComponents
     public:
         explicit TabWidgetActionToolBar(QWidget* parent = nullptr);
 
+    signals:
+        void actionsChanged();
+
     protected:
         bool eventFilter(QObject* watched, QEvent* event) override;
 
     private:
         friend class TabWidget;
+        friend class TabWidgetActionToolBarContainer;
+
         AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
         QHash<QAction*, QPushButton*> m_actionButtons;
         AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING

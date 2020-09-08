@@ -16,7 +16,7 @@
 #include <AzCore/Math/ColorSerializer.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
-
+#include <Tests/Serialization/Json/JsonSerializerConformityTests.h>
 
 #pragma push_macro("AZ_NUMERICCAST_ENABLED") // pushing macro for uber file protection
 #undef AZ_NUMERICCAST_ENABLED
@@ -24,6 +24,57 @@
 
 namespace JsonSerializationTests
 {
+    class ColorSerializerTestDescription :
+        public JsonSerializerConformityTestDescriptor<AZ::Color>
+    {
+    public:
+        AZStd::shared_ptr<AZ::BaseJsonSerializer> CreateSerializer() override
+        {
+            return AZStd::make_shared<AZ::JsonColorSerializer>();
+        }
+
+        AZStd::shared_ptr<AZ::Color> CreateDefaultInstance() override
+        {
+            return AZStd::make_shared<AZ::Color>(AZ::Color::CreateZero());
+        }
+
+        AZStd::shared_ptr<AZ::Color> CreatePartialDefaultInstance() override
+        {
+            return AZStd::make_shared<AZ::Color>(0.5f, 0.5f, 0.5f, 0.0f);
+        }
+
+        AZStd::shared_ptr<AZ::Color> CreateFullySetInstance() override
+        {
+            return AZStd::make_shared<AZ::Color>(AZ::Color::CreateOne());
+        }
+
+        AZStd::string_view GetJsonForPartialDefaultInstance() override
+        {
+            return "[0.5, 0.5, 0.5]";
+        }
+
+        AZStd::string_view GetJsonForFullySetInstance() override
+        {
+            return "[1.0, 1.0, 1.0, 1.0]";
+        }
+
+        void ConfigureFeatures(JsonSerializerConformityTestDescriptorFeatures& features) override
+        {
+            features.EnableJsonType(rapidjson::kObjectType);
+            features.EnableJsonType(rapidjson::kArrayType);
+            features.m_supportsInjection = false;
+            features.m_fixedSizeArray = true;
+        }
+
+        bool AreEqual(const AZ::Color& lhs, const AZ::Color& rhs) override
+        {
+            return lhs == rhs;
+        }
+    };
+
+    using ColorSerializerConformityTestTypes = ::testing::Types<ColorSerializerTestDescription>;
+    INSTANTIATE_TYPED_TEST_CASE_P(JsonColorSerializer, JsonSerializerConformityTests, ColorSerializerConformityTestTypes);
+
     class JsonColorSerializerTests
         : public BaseJsonSerializerFixture
     {
@@ -99,54 +150,6 @@ namespace JsonSerializationTests
 
     // Load - base form
 
-    TEST_F(JsonColorSerializerTests, Load_StringType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testVal(rapidjson::kStringType);
-        AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_NullType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testVal(rapidjson::kNullType);
-        AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_TrueType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testVal(rapidjson::kTrueType);
-        AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_FalseType_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value testVal(rapidjson::kFalseType);
-        AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
-    }
-
     TEST_F(JsonColorSerializerTests, Load_FloatRgbArray_LoadsChannels)
     {
         using namespace AZ::JsonSerializationResult;
@@ -154,30 +157,9 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray({ 1.0f, 0.1f, 0.5f });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.3f);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_FloatRgbaArray_LoadsChannels)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Document document = CreateArray({ 1.0f, 0.1f, 0.5f, 0.8f });
-        AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-        ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_LessThanThreeArrayElements_ReturnsUnsupported)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Document document = CreateArray({ 1.0f, 0.1f });
-        AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
     TEST_F(JsonColorSerializerTests, Load_MoreThanFourArrayElement_LoadsChannelsAndReturnsPartialConvert)
@@ -186,53 +168,69 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray({ 1.0f, 0.1f, 0.5f, 0.8f, 0.2f, 0.3f });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_NonFloatingPointValuesInArray_ReturnsUnsupported)
+    TEST_F(JsonColorSerializerTests, Load_InvalidRedInFloatArray_ReturnsUnsupported)
     {
         using namespace AZ::JsonSerializationResult;
 
-        rapidjson::Document document;
-        rapidjson::Value testVal(rapidjson::kArrayType);
-        testVal.PushBack(1, document.GetAllocator());
-        testVal.PushBack("Hello", document.GetAllocator());
-        testVal.PushBack(true, document.GetAllocator());
+        rapidjson::Document document(rapidjson::kArrayType);
+        document.PushBack("Hello", document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
         AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_PartiallyInvalidArray_ReturnsUnsupported)
+    TEST_F(JsonColorSerializerTests, Load_InvalidGreenInFloatArray_ReturnsUnsupported)
     {
         using namespace AZ::JsonSerializationResult;
 
-        rapidjson::Document document;
-        rapidjson::Value testVal(rapidjson::kArrayType);
-        testVal.PushBack(1.0f, document.GetAllocator());
-        testVal.PushBack("Hello", document.GetAllocator());
-        testVal.PushBack(0.5f, document.GetAllocator());
+        rapidjson::Document document(rapidjson::kArrayType);
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack("Hello", document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
         AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_EmptyObject_ReturnsUnsupported)
+    TEST_F(JsonColorSerializerTests, Load_InvalidBlueInFloatArray_ReturnsUnsupported)
     {
         using namespace AZ::JsonSerializationResult;
 
-        rapidjson::Value testVal(rapidjson::kObjectType);
+        rapidjson::Document document(rapidjson::kArrayType);
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack("Hello", document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
         AZ::Color color = AZ::Color::CreateZero();
-        AZ::Color reference = color;
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
-        EXPECT_EQ(reference, color);
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
+    }
+
+    TEST_F(JsonColorSerializerTests, Load_InvalidAlphaInFloatArray_ReturnsUnsupported)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Document document(rapidjson::kArrayType);
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack(0.5f, document.GetAllocator());
+        document.PushBack("Hello", document.GetAllocator());
+        AZ::Color color = AZ::Color::CreateZero();
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
     }
 
     // Load - RGB Object
@@ -244,7 +242,7 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray("RGB", { 1.0f, 0.1f, 0.5f });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.3f);
     }
@@ -256,7 +254,7 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray("rGb", { 1.0f, 0.1f, 0.5f });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.3f);
     }
@@ -267,7 +265,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGB", { 1.0f, 0.1f });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -278,12 +276,12 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray("RGB", { 1.0f, 0.1f, 0.5f, 0.8f });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.3f);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_RgbObjectWithInvalidEntry_ReturnsPartialConvertAndLoadsColor)
+    TEST_F(JsonColorSerializerTests, Load_RgbObjectWithInvalidEntry_ReturnsUnsupportedLeavesColorUntouched)
     {
         using namespace AZ::JsonSerializationResult;
 
@@ -293,8 +291,9 @@ namespace JsonSerializationTests
         ASSERT_NE(nullptr, arrayValue);
         arrayValue->SetString("Hello world");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
     }
 
     TEST_F(JsonColorSerializerTests, Load_RgbObjectWrongType_ReturnsUnsupported)
@@ -303,7 +302,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("RGB", "FF00FF00");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -315,7 +314,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGBA", { 1.0f, 0.1f, 0.5f, 0.8f });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
     }
@@ -326,7 +325,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("rGbA", { 1.0f, 0.1f, 0.5f, 0.8f });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
     }
@@ -337,7 +336,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGBA", { 1.0f, 0.1f });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -347,23 +346,9 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGBA", { 1.0f, 0.1f, 0.5f, 0.8f, 0.3f });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_RgbaObjectWithInvalidEntry_ReturnsPartialConvertAndLoadsColor)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Document document = CreateArray("RGBA", { 1.0f, 0.1f, 0.5f, 0.8f, 0.3f });
-        rapidjson::Pointer pointer("/RGBA/1");
-        rapidjson::Value* arrayValue = pointer.Get(document);
-        ASSERT_NE(nullptr, arrayValue);
-        arrayValue->SetString("Hello world");
-        AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
     TEST_F(JsonColorSerializerTests, Load_RgbaObjectWrongType_ReturnsUnsupported)
@@ -372,7 +357,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("RGBA", "FF00FF00");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -385,7 +370,7 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray("RGB8", { 255, 51, 204 });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
     }
@@ -397,7 +382,7 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray("rGb8", { 255, 51, 204 });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
     }
@@ -408,7 +393,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGB8", { 255, 51 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -419,23 +404,9 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateArray("RGB8", { 255, 51, 204, 153 });
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
-    }
-
-    TEST_F(JsonColorSerializerTests, Load_Rgb8ObjectWithInvalidEntry_ReturnsPartialConvertAndLoadsColor)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Document document = CreateArray("RGB8", { 255, 51, 204, 153 });
-        rapidjson::Pointer pointer("/RGB8/1");
-        rapidjson::Value* arrayValue = pointer.Get(document);
-        ASSERT_NE(nullptr, arrayValue);
-        arrayValue->SetString("Hello world");
-        AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
-        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
     TEST_F(JsonColorSerializerTests, Load_Rgb8ObjectWrongType_ReturnsUnsupported)
@@ -444,7 +415,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("RGB8", "FF00FF00");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -456,7 +427,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204, 153 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.6f);
     }
@@ -467,7 +438,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("rGbA8", { 255, 51, 204, 153 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.6f);
     }
@@ -478,7 +449,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -488,23 +459,57 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204, 153, 102 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.6f);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_Rgba8ObjectWithInvalidEntry_ReturnsPartialConvertAndLoadsColor)
+    TEST_F(JsonColorSerializerTests, Load_Rgba8ObjectWithInvalidRed_ReturnsUnsupportedLeavesColorUntouched)
     {
         using namespace AZ::JsonSerializationResult;
 
         rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204, 153, 102 });
-        rapidjson::Pointer pointer("/RGBA8/1");
-        rapidjson::Value* arrayValue = pointer.Get(document);
-        ASSERT_NE(nullptr, arrayValue);
-        arrayValue->SetString("Hello world");
+        rapidjson::Pointer("/RGBA8/0").Get(document)->SetString("Hello world");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
+    }
+
+    TEST_F(JsonColorSerializerTests, Load_Rgba8ObjectWithInvalidGreen_ReturnsUnsupportedLeavesColorUntouched)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204, 153, 102 });
+        rapidjson::Pointer("/RGBA8/1").Get(document)->SetString("Hello world");
+        AZ::Color color = AZ::Color::CreateZero();
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
+    }
+
+    TEST_F(JsonColorSerializerTests, Load_Rgba8ObjectWithInvalidBlue_ReturnsUnsupportedLeavesColorUntouched)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204, 153, 102 });
+        rapidjson::Pointer("/RGBA8/2").Get(document)->SetString("Hello world");
+        AZ::Color color = AZ::Color::CreateZero();
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
+    }
+
+    TEST_F(JsonColorSerializerTests, Load_Rgba8ObjectWithInvalidAlpha_ReturnsUnsupportedLeavesColorUntouched)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Document document = CreateArray("RGBA8", { 255, 51, 204, 153, 102 });
+        rapidjson::Pointer("/RGBA8/3").Get(document)->SetString("Hello world");
+        AZ::Color color = AZ::Color::CreateZero();
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
     }
 
     TEST_F(JsonColorSerializerTests, Load_Rgba8ObjectWrongType_ReturnsUnsupported)
@@ -513,7 +518,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("RGBA8", "FF00FF00");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -526,19 +531,31 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateString("HEX", "FF33CC");
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_HexObjectRandomCase_ReturnsSuccessAndLoadsColor)
+    TEST_F(JsonColorSerializerTests, Load_HexObjectRandomCaseInName_ReturnsSuccessAndLoadsColor)
     {
         using namespace AZ::JsonSerializationResult;
 
         rapidjson::Document document = CreateString("hEx", "FF33CC");
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
+        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
+        ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
+    }
+
+    TEST_F(JsonColorSerializerTests, Load_HexObjectRandomCaseInValue_ReturnsSuccessAndLoadsColor)
+    {
+        using namespace AZ::JsonSerializationResult;
+
+        rapidjson::Document document = CreateString("hEx", "Ff33cC");
+        AZ::Color color = AZ::Color::CreateZero();
+        color.SetA(0.3f);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
     }
@@ -549,7 +566,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("HEX", "FF33");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -560,20 +577,22 @@ namespace JsonSerializationTests
         rapidjson::Document document = CreateString("HEX", "FF33CC99FF33CC and a comment");
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.3f);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_HexObjectWithInvalidChars_ReturnsUnsupported)
+    TEST_F(JsonColorSerializerTests, Load_HexObjectWithInvalidChars_ReturnsUnsupportedLeavesColorUntouched)
     {
         using namespace AZ::JsonSerializationResult;
 
         rapidjson::Document document = CreateString("HEX", "FFXXCC");
         AZ::Color color = AZ::Color::CreateZero();
         color.SetA(0.3f);
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        AZ::Color reference = color;
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(reference, color);
     }
 
     TEST_F(JsonColorSerializerTests, Load_HexObjectWrongType_ReturnsUnsupported)
@@ -582,7 +601,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("HEX", { 255, 51, 204, 153 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -594,7 +613,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("HEXA", "FF33CC99");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.6f);
     }
@@ -605,7 +624,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("hExA", "FF33CC99");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.6f);
     }
@@ -616,7 +635,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("HEXA", "FF33CC");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -626,19 +645,20 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateString("HEXA", "FF33CC99FF33CC and a comment");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.2f, 0.8f, 0.6f);
     }
 
-    TEST_F(JsonColorSerializerTests, Load_HexaObjectWithInvalidChars_ReturnsUnsupported)
+    TEST_F(JsonColorSerializerTests, Load_HexaObjectWithInvalidChars_ReturnsUnsupportedLeavesColorUntouched)
     {
         using namespace AZ::JsonSerializationResult;
 
         rapidjson::Document document = CreateString("HEXA", "FFXXCC99");
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
+        EXPECT_EQ(AZ::Color::CreateZero(), color);
     }
 
     TEST_F(JsonColorSerializerTests, Load_HexaObjectWrongType_ReturnsUnsupported)
@@ -647,7 +667,7 @@ namespace JsonSerializationTests
 
         rapidjson::Document document = CreateArray("HEXA", { 255, 51, 204, 153 });
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), document, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -662,7 +682,7 @@ namespace JsonSerializationTests
         testVal.AddMember(rapidjson::StringRef("Hello"), rapidjson::StringRef("World"), document.GetAllocator());
 
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
     }
 
@@ -688,7 +708,7 @@ namespace JsonSerializationTests
         testVal.AddMember(rapidjson::StringRef("RGBA"), AZStd::move(testArray2), document.GetAllocator());
 
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
     }
@@ -716,47 +736,15 @@ namespace JsonSerializationTests
         testVal.AddMember(rapidjson::StringRef("Hello"), rapidjson::StringRef("World"), document.GetAllocator());
 
         AZ::Color color = AZ::Color::CreateZero();
-        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_colorSerializer->Load(&color, azrtti_typeid<AZ::Color>(), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
         ExpectColorEq(color, 1.0f, 0.1f, 0.5f, 0.8f);
     }
 
-    // StoreWithDefault
 
-    TEST_F(JsonColorSerializerTests, StoreWithDefault_StoreWithoutDefault_ReturnsSuccessAndChannelsWrittenToFloatArray)
-    {
-        using namespace AZ::JsonSerializationResult;
+    // Store
 
-        rapidjson::Document document;
-        float values[] = { 1.0f, 0.2f, 0.8f, 0.6f };
-        AZ::Color color = AZ::Color::CreateFromFloat4(values);
-        ResultCode result = m_colorSerializer->Store(document, document.GetAllocator(), &color, nullptr, azrtti_typeid<AZ::Color>(),
-            m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::Success, result.GetOutcome());
-
-        ASSERT_TRUE(document.IsArray());
-        ASSERT_EQ(4, document.Size());
-        for (rapidjson::SizeType i = 0; i < 4; ++i)
-        {
-            ASSERT_TRUE(document[i].IsDouble());
-            EXPECT_DOUBLE_EQ(document[i].GetDouble(), values[i]);
-        }
-    }
-
-    TEST_F(JsonColorSerializerTests, StoreWithDefault_StoreAllDefaults_ReturnsDefaultValue)
-    {
-        using namespace AZ::JsonSerializationResult;
-
-        rapidjson::Value convertedValue = CreateExplicitDefault();
-        float values[] = { 1.0f, 0.2f, 0.8f, 0.6f };
-        AZ::Color color = AZ::Color::CreateFromFloat4(values);
-        ResultCode result = m_colorSerializer->Store(convertedValue, m_jsonDocument->GetAllocator(), &color, &color, azrtti_typeid<AZ::Color>(),
-            m_path, m_serializationSettings);
-        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
-        Expect_ExplicitDefault(convertedValue);
-    }
-
-    TEST_F(JsonColorSerializerTests, StoreWithDefault_OnlyAlphaIsDefault_ReturnsPartialDefaultValueAndDoesNotStoreAlpha)
+    TEST_F(JsonColorSerializerTests, Store_OnlyAlphaIsDefault_ReturnsPartialDefaultValueAndDoesNotStoreAlpha)
     {
         using namespace AZ::JsonSerializationResult;
 
@@ -766,8 +754,7 @@ namespace JsonSerializationTests
         float defaultValues[] = { 0.3f, 0.6f, 0.9f, 0.6f };
         AZ::Color defaultColor = AZ::Color::CreateFromFloat4(defaultValues);
 
-        ResultCode result = m_colorSerializer->Store(document, document.GetAllocator(), &color, &defaultColor, azrtti_typeid<AZ::Color>(),
-            m_path, m_serializationSettings);
+        ResultCode result = m_colorSerializer->Store(document, &color, &defaultColor, azrtti_typeid<AZ::Color>(), *m_jsonSerializationContext);
         EXPECT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
         
         ASSERT_TRUE(document.IsArray());
@@ -779,7 +766,7 @@ namespace JsonSerializationTests
         }
     }
 
-    TEST_F(JsonColorSerializerTests, StoreWithDefault_OnlyGreenIsDefault_ReturnsSuccessAndAllValuesAreStored)
+    TEST_F(JsonColorSerializerTests, Store_OnlyGreenIsDefault_ReturnsSuccessAndAllValuesAreStored)
     {
         using namespace AZ::JsonSerializationResult;
 
@@ -789,8 +776,7 @@ namespace JsonSerializationTests
         float defaultValues[] = { 0.3f, 0.2f, 0.9f, 1.0f };
         AZ::Color defaultColor = AZ::Color::CreateFromFloat4(defaultValues);
 
-        ResultCode result = m_colorSerializer->Store(document, document.GetAllocator(), &color, &defaultColor, azrtti_typeid<AZ::Color>(),
-            m_path, m_serializationSettings);
+        ResultCode result = m_colorSerializer->Store(document, &color, &defaultColor, azrtti_typeid<AZ::Color>(), *m_jsonSerializationContext);
         EXPECT_EQ(Outcomes::Success, result.GetOutcome());
 
         ASSERT_TRUE(document.IsArray());
@@ -802,7 +788,7 @@ namespace JsonSerializationTests
         }
     }
 
-    TEST_F(JsonColorSerializerTests, StoreWithDefault_GreenAndAlphaAreDefault_ReturnsPartialDefaultValueAndRgbIsStored)
+    TEST_F(JsonColorSerializerTests, Store_GreenAndAlphaAreDefault_ReturnsPartialDefaultValueAndRgbIsStored)
     {
         using namespace AZ::JsonSerializationResult;
 
@@ -812,8 +798,7 @@ namespace JsonSerializationTests
         float defaultValues[] = { 0.3f, 0.2f, 0.9f, 0.6f };
         AZ::Color defaultColor = AZ::Color::CreateFromFloat4(defaultValues);
 
-        ResultCode result = m_colorSerializer->Store(document, document.GetAllocator(), &color, &defaultColor, azrtti_typeid<AZ::Color>(),
-            m_path, m_serializationSettings);
+        ResultCode result = m_colorSerializer->Store(document, &color, &defaultColor, azrtti_typeid<AZ::Color>(), *m_jsonSerializationContext);
         EXPECT_EQ(Outcomes::PartialDefaults, result.GetOutcome());
 
         ASSERT_TRUE(document.IsArray());

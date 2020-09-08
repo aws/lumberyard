@@ -99,7 +99,7 @@ namespace AnimGraphParameterCommandsTests
     {
         using ::CommandSystem::SelectionList;
 
-        void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* targetNode, const EMotionFX::BlendTreeConnection* connection) {}
+        void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* targetNode, const EMotionFX::BlendTreeConnection* connection, bool updateUniqueData = true) {}
     } // namespace CommandSystem
 
 #include <Tests/Mocks/ActorManager.h>

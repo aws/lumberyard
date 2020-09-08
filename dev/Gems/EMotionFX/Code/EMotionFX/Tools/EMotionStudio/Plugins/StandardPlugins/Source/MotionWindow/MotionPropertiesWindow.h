@@ -19,7 +19,6 @@
 #include <EMotionFX/Source/PlayBackInfo.h>
 #include <QWidget>
 #include <QLabel>
-#include <MysticQt/Source/Slider.h>
 
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)
@@ -47,32 +46,8 @@ namespace EMStudio
 
         void Init();
 
-        MCORE_INLINE float GetPlaySpeed() const                     { return mPlaySpeedSlider->value() * 0.001f; }
-        MCORE_INLINE void SetPlaySpeed(float value)                 { mPlaySpeedSlider->setValue(static_cast<int>(value * 1000)); }
-
-    public slots:
-        void UpdateInterface();
-        void UpdateMotions();
-
-        void PlaySpeedSliderChanged(int value);
-        void ResetPlaySpeed()                                       { SetPlaySpeed(EMotionFX::PlayBackInfo().mPlaySpeed); }
-
-    private:
-        void ClearMotionEntries();
-
-        MotionWindowPlugin*             mMotionWindowPlugin;
-
-        QPushButton*                    mButtonLoopForever;
-        QPushButton*                    mButtonMirror;
-        QPushButton*                    mButtonInPlace;
-
-        QPushButton*                    mButtonPlayForward;
-        QPushButton*                    mButtonPlayBackward;
-
-        MysticQt::Slider*               mPlaySpeedSlider;
-        QPushButton*                    mPlaySpeedResetButton;
-
-        QLabel*                         mPlaySpeedLabel;
+        void AddSubProperties(QWidget* widget);
+        void FinalizeSubProperties();
     };
 } // namespace EMStudio
 

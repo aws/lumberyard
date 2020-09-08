@@ -18,7 +18,6 @@
 
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include <MysticQt/Source/DockWidget.h>
 
 #include <MCore/Source/Random.h>
 #include <MCore/Source/Array.h>
@@ -66,7 +65,6 @@ namespace EMStudio
     class NodeGroupWindow;
     class BlendGraphViewWidget;
     class AnimGraphPlugin;
-    class RecorderWidget;
     class TimeViewPlugin;
     class SaveDirtyAnimGraphFilesCallback;
     class NavigationHistory;
@@ -178,8 +176,6 @@ namespace EMStudio
         void OnDoubleClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData* actorInstanceData, EMotionFX::Recorder::NodeHistoryItem* historyItem);
         void OnClickedRecorderNodeHistoryItem(EMotionFX::Recorder::ActorInstanceData* actorInstanceData, EMotionFX::Recorder::NodeHistoryItem* historyItem);
 
-        void UpdateWindowVisibility();
-
     public:
         BlendGraphWidget* GetGraphWidget()                     { return mGraphWidget; }
         NavigateWidget* GetNavigateWidget()                    { return mNavigateWidget; }
@@ -188,18 +184,16 @@ namespace EMStudio
         ParameterWindow* GetParameterWindow()                  { return mParameterWindow; }
         NodeGroupWindow* GetNodeGroupWidget()                  { return mNodeGroupWindow; }
         BlendGraphViewWidget* GetViewWidget()                  { return mViewWidget; }
-        RecorderWidget* GetRecorderWidget()                    { return mRecorderWidget; }
         NavigationHistory* GetNavigationHistory() const        { return m_navigationHistory; }
 
-        MysticQt::DockWidget* GetAttributeDock()               { return mAttributeDock; }
-        MysticQt::DockWidget* GetNodePaletteDock()             { return mNodePaletteDock; }
-        MysticQt::DockWidget* GetRecorderDock()                { return mRecorderDock; }
-        MysticQt::DockWidget* GetParameterDock()               { return mParameterDock; }
-        MysticQt::DockWidget* GetNodeGroupDock()               { return mNodeGroupDock; }
+        QDockWidget* GetAttributeDock()                        { return mAttributeDock; }
+        QDockWidget* GetNodePaletteDock()                      { return mNodePaletteDock; }
+        QDockWidget* GetParameterDock()                        { return mParameterDock; }
+        QDockWidget* GetNodeGroupDock()                        { return mNodeGroupDock; }
 
 #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameControllerWindow* GetGameControllerWindow()        { return mGameControllerWindow; }
-        MysticQt::DockWidget* GetGameControllerDock()          { return mGameControllerDock; }
+        QDockWidget* GetGameControllerDock()                   { return mGameControllerDock; }
 #endif
 
         void SetDisplayFlagEnabled(uint32 flags, bool enabled)
@@ -241,7 +235,6 @@ namespace EMStudio
             WINDOWS_NODEGROUPWINDOW = 3,
             WINDOWS_PALETTEWINDOW = 4,
             WINDOWS_GAMECONTROLLERWINDOW = 5,
-            WINDOWS_RECORDER = 6,
 
             NUM_DOCKWINDOW_OPTIONS //automatically gets the next number assigned
         };
@@ -268,22 +261,20 @@ namespace EMStudio
         ParameterWindow*                            mParameterWindow;
         NodeGroupWindow*                            mNodeGroupWindow;
         BlendGraphViewWidget*                       mViewWidget;
-        RecorderWidget*                             mRecorderWidget;
         NavigationHistory*                          m_navigationHistory;
 
         SaveDirtyAnimGraphFilesCallback*            mDirtyFilesCallback;
 
-        MysticQt::DockWidget*                       mAttributeDock;
-        MysticQt::DockWidget*                       mNodePaletteDock;
-        MysticQt::DockWidget*                       mRecorderDock;
-        MysticQt::DockWidget*                       mParameterDock;
-        MysticQt::DockWidget*                       mNodeGroupDock;
+        QDockWidget*                                mAttributeDock;
+        QDockWidget*                                mNodePaletteDock;
+        QDockWidget*                                mParameterDock;
+        QDockWidget*                                mNodeGroupDock;
         QAction*                                    mDockWindowActions[NUM_DOCKWINDOW_OPTIONS];
         EMotionFX::AnimGraph*                       mActiveAnimGraph;
 
 #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameControllerWindow*                       mGameControllerWindow;
-        QPointer<MysticQt::DockWidget>              mGameControllerDock;
+        QPointer<QDockWidget>                       mGameControllerDock;
 #endif
 
         float                                       mLastPlayTime;
@@ -307,6 +298,10 @@ namespace EMStudio
         bool GetOptionFlag(EDockWindowOptionFlag option) { return mDockWindowActions[(uint32)option]->isChecked(); }
         void SetOptionFlag(EDockWindowOptionFlag option, bool isEnabled);
         void SetOptionEnabled(EDockWindowOptionFlag option, bool isEnabled);
+
+    private slots:
+        void UpdateWindowVisibility(EDockWindowOptionFlag option, bool checked);
+        void UpdateWindowActionsCheckState();
     };
 }   // namespace EMStudio
 

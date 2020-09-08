@@ -18,6 +18,7 @@
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/std/string/regex.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
 namespace AZ
 {
@@ -33,162 +34,51 @@ namespace AssetBuilderSDK
         const AZ::SerializeContext::ClassElement* classElement,
         AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet,
         ProductPathDependencySet& productPathDependencySet,
-        bool enumerateChildren)
-    {
-        if(classData == nullptr)
-        {
-            return false;
-        }
-        if (classData->m_typeId == AZ::GetAssetClassId())
-        {
-            auto* asset = reinterpret_cast<AZ::Data::Asset<AZ::Data::AssetData>*>(instancePointer);
+        bool enumerateChildren);
 
-            if (asset->GetId().IsValid())
-            {
-                productDependencySet.emplace(asset->GetId());
-            }
-        }
-        else if (classData->m_typeId == azrtti_typeid<AZ::Data::AssetId>())
-        {
-            auto* assetId = reinterpret_cast<AZ::Data::AssetId*>(instancePointer);
-
-            if (assetId->IsValid())
-            {
-                productDependencySet.emplace(*assetId);
-            }
-        }
-        else if (classData->m_azRtti && classData->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
-        {
-            auto* asset = reinterpret_cast<AzFramework::SimpleAssetReferenceBase*>(instancePointer);
-
-            if (!asset->GetAssetPath().empty())
-            {
-                AZStd::string filePath = asset->GetAssetPath();
-                AZStd::string fileExtension;
-                if (!AzFramework::StringFunc::Path::GetExtension(filePath.c_str(), fileExtension))
-                {
-                    // GetFileFilter can return either
-                    // 1) one file extension like "*.fileExtension"
-                    // 2) one file extension like "fileExtension"
-                    // 3) a semi colon separated list of file extensions like  "*.fileExtension1; *.fileExtension2"
-                    // Please note that if file extension is missing from the path and we get a list of semicolon separated file extensions
-                    // we will extract the first file extension and use that. 
-                    fileExtension = asset->GetFileFilter();
-                    AZStd::regex fileExtensionRegex("^(?:\\*\\.)?(\\w+);?");
-                    AZStd::smatch match;
-                    if (AZStd::regex_search(fileExtension, match, fileExtensionRegex))
-                    {
-                        fileExtension = match[1];
-                        AzFramework::StringFunc::Path::ReplaceExtension(filePath, fileExtension.c_str());
-                    }
-                }
-
-                    productPathDependencySet.emplace(filePath, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
-            }
-        }
-        else if(enumerateChildren)
-        {
-
-            auto beginCallback = [&serializeContext, &productDependencySet, &productPathDependencySet, enumerateChildren](void* instancePointer, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement)
-            {
-                // EnumerateInstance calls are already recursive, so no need to keep going, set enumerateChildren to false.
-                return UpdateDependenciesFromClassData(serializeContext, instancePointer, classData, classElement, productDependencySet, productPathDependencySet, false);
-            };
-            AZ::SerializeContext::EnumerateInstanceCallContext callContext(
-                beginCallback,
-                {},
-                &serializeContext,
-                AZ::SerializeContext::ENUM_ACCESS_FOR_READ,
-                nullptr
-            );
-
-            return serializeContext.EnumerateInstance(&callContext, instancePointer, classData->m_typeId, classData, classElement);
-        }
-        return true;
-    }
-
-    void fillDependencyVectorFromSet(
-        AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-        AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet)
-    {
-        productDependencies.reserve(productDependencySet.size());
-
-        for (const auto& assetId : productDependencySet)
-        {
-            constexpr int flags = 0;
-            productDependencies.emplace_back(assetId, flags);
-        }
-    }
+    void FillDependencyVectorFromSet(AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies, AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet);
 
     bool GatherProductDependenciesForFile(
         AZ::SerializeContext& serializeContext,
         const AZStd::string& filePath,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
-        ProductPathDependencySet& productPathDependencySet)
-    {
-        AZ::IO::FileIOStream fileStream;
-        if (!fileStream.Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary))
-        {
-            return false;
-        }
-        AZStd::unordered_set<AZ::Data::AssetId> productDependencySet;
+        ProductPathDependencySet& productPathDependencySet);
 
-        // UpdateDependenciesFromClassData is also looking for assets. In some cases, the assets may not be ready to use
-        // in UpdateDependenciesFromClassData, and have an invalid asset ID. This asset filter will be called with valid, ready to use assets,
-        // but it's only called on assets and not other supported types, and it's only available when loading the file, and not on an in-memory stream.
-        AZ::ObjectStream::FilterDescriptor assetReadyFilterDescriptor([&productDependencySet, &productPathDependencySet](const AZ::Data::Asset<AZ::Data::AssetData>& asset)
-        {
-            if (asset.GetId().IsValid())
-            {
-                productDependencySet.emplace(asset.GetId());
-            }
-            return true;
-        });
+    using DependencyHandler = AZStd::function<bool(
+        const AZ::SerializeContext& /*serializeContext*/,
+        void* /*instancePointer*/,
+        const AZ::SerializeContext::ClassData* /*classData*/,
+        const AZ::SerializeContext::ClassElement* /*classElement*/,
+        AZStd::unordered_set<AZ::Data::AssetId>& /*productDependencySet*/,
+        ProductPathDependencySet& /*productPathDependencySet*/,
+        bool enumerateChildren)>;
 
-        if (!AZ::ObjectStream::LoadBlocking(&fileStream, serializeContext, [&productDependencySet, &productPathDependencySet](void* instancePointer, const AZ::Uuid& classId, const AZ::SerializeContext* callbackSerializeContext)
-        {
-            auto classData = callbackSerializeContext->FindClassData(classId);
-            // LoadBlocking only enumerates the topmost level objects, so call UpdateDependenciesFromClassData with enumerateChildren set.
-            UpdateDependenciesFromClassData(*callbackSerializeContext, instancePointer, classData, nullptr, productDependencySet, productPathDependencySet, true);
-            return true;
-        }, assetReadyFilterDescriptor))
-        {
-            return false;
-        }
-        fillDependencyVectorFromSet(productDependencies, productDependencySet);
-        return true;
-    }
+    bool GatherProductDependencies(
+        AZ::SerializeContext& serializeContext,
+        void* obj,
+        AZ::TypeId typeId,
+        AZStd::vector<ProductDependency>& productDependencies,
+        ProductPathDependencySet& productPathDependencySet,
+        const DependencyHandler& handler = &UpdateDependenciesFromClassData);
 
     template<class T>
     bool GatherProductDependencies(
         AZ::SerializeContext& serializeContext,
         T* obj,
-        AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
+        AZStd::vector<ProductDependency>& productDependencies,
         ProductPathDependencySet& productPathDependencySet,
-        const AZStd::function<bool(
-            const AZ::SerializeContext& serializeContext,
-            void* instancePointer,
-            const AZ::SerializeContext::ClassData* classData,
-            const AZ::SerializeContext::ClassElement* classElement,
-            AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet,
-            ProductPathDependencySet& productPathDependencySet,
-            bool enumerateChildren)>& handler = &AssetBuilderSDK::UpdateDependenciesFromClassData)
+        const DependencyHandler& handler = &UpdateDependenciesFromClassData)
     {
-        if (obj == nullptr)
-        {
-            AZ_Error("AssetBuilderSDK", false, "Cannot gather product dependencies for null data.");
-            return false;
-        }
+        return GatherProductDependencies(serializeContext, obj, azrtti_typeid<T>(), productDependencies, productPathDependencySet, handler);
+    }
 
-        // start with a set to make it easy to avoid duplicate entries.
-        AZStd::unordered_set<AZ::Data::AssetId> productDependencySet;
-        auto beginCallback = [&serializeContext, &productDependencySet, &productPathDependencySet, handler](void* instancePointer, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement)
-        {
-            // EnumerateObject already visits every element, so no need to enumerate farther, set enumerateChildren to false.
-            return handler(serializeContext, instancePointer, classData, classElement, productDependencySet, productPathDependencySet, false);
-        };
-        bool enumerateResult = serializeContext.EnumerateObject(obj, beginCallback, {}, AZ::SerializeContext::ENUM_ACCESS_FOR_READ, nullptr);
-        fillDependencyVectorFromSet(productDependencies, productDependencySet);
-        return enumerateResult;
+    bool OutputObject(void* obj, AZ::TypeId typeId, AZStd::string_view outputPath, AZ::Data::AssetType assetType, AZ::u32 subId, JobProduct& jobProduct, AZ::SerializeContext* serializeContext = nullptr,
+        const DependencyHandler& handler = &UpdateDependenciesFromClassData);
+
+    template<class T>
+    bool OutputObject(T* obj, AZStd::string_view outputPath, AZ::Data::AssetType assetType, AZ::u32 subId, JobProduct& jobProduct, AZ::SerializeContext* serializeContext = nullptr,
+        const DependencyHandler& handler = &UpdateDependenciesFromClassData)
+    {
+        return OutputObject(obj, azrtti_typeid<T>(), outputPath, assetType, subId, jobProduct, serializeContext, handler);
     }
 }

@@ -217,6 +217,32 @@ AzFramework::SurfaceData::SurfaceTagWeight CTerrain::GetMaxSurfaceWeightFromFloa
     return retWeight;
 }
 
+const char* CTerrain::GetMaxSurfaceName(AZ::Vector3 position
+    , Sampler sampleFilter, bool* terrainExistsPtr) const
+{
+    const float x = position.GetX();
+    const float y = position.GetY();
+
+    const int nX = aznumeric_caster(x);
+    const int nY = aznumeric_caster(y);
+
+    ITerrain::SurfaceWeight surfaceWeight = GetSurfaceWeight(nX, nY);
+    const bool terrainExists = surfaceWeight.PrimaryId() != ITerrain::SurfaceWeight::Hole;
+    if (terrainExistsPtr)
+    {
+        *terrainExistsPtr = terrainExists;
+    }
+
+    if (terrainExists)
+    {
+        return m_SurfaceTypes[surfaceWeight.PrimaryId()].szName;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 bool CTerrain::GetIsHoleFromFloats(float x, float y, Sampler sampleFilter) const
 {
     return IsHole(aznumeric_cast<int>(x), aznumeric_cast<int>(y));

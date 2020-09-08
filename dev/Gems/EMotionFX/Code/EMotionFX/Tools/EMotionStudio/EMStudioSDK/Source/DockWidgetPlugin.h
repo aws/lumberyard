@@ -15,7 +15,7 @@
 #include <MCore/Source/StandardHeaders.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
-#include <MysticQt/Source/DockWidget.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
 #include <QPointer>
 
 
@@ -50,11 +50,11 @@ namespace EMStudio
 
         bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
 
-        MysticQt::DockWidget* GetDockWidget();
+        QDockWidget* GetDockWidget();
 
     protected:
         QWidget* CreateErrorContentWidget(const char* errorMessage) const;
 
-        QPointer<MysticQt::DockWidget> mDock;
+        QPointer<QDockWidget> mDock;
     };
 }   // namespace EMStudio

@@ -27,13 +27,16 @@ namespace EMotionFX
         if (jointCount)
         {
             AddNode(0, "rootJoint");
-            GetBindPose()->SetModelSpaceTransform(0, {});
+            GetBindPose()->SetLocalSpaceTransform(0, Transform::CreateIdentity());
         }
 
         for (uint32 i = 1; i < jointCount; ++i)
         {
             AddNode(i, ("joint" + AZStd::to_string(i)).c_str(), i - 1);
-            GetBindPose()->SetModelSpaceTransform(i, {});
+
+            Transform transform = Transform::CreateIdentity();
+            transform.mPosition = AZ::Vector3(static_cast<float>(i), 0.0f, 0.0f);
+            GetBindPose()->SetLocalSpaceTransform(i, transform);
         }
     }
 
@@ -43,7 +46,10 @@ namespace EMotionFX
         for (uint32 i = 0; i < jointCount; ++i)
         {
             AddNode(i, ("rootJoint" + AZStd::to_string(i)).c_str());
-            GetBindPose()->SetModelSpaceTransform(i, {});
+
+            Transform transform = Transform::CreateIdentity();
+            transform.mPosition = AZ::Vector3(static_cast<float>(i), 0.0f, 0.0f);
+            GetBindPose()->SetLocalSpaceTransform(i, transform);
         }
     }
 

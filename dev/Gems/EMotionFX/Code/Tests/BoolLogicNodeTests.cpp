@@ -153,12 +153,12 @@ namespace EMotionFX
         BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
         m_blendTree->AddChildNode(parameterNode);
         parameterNode->InitAfterLoading(m_blendTreeAnimGraph.get());
-        parameterNode->OnUpdateUniqueData(m_animGraphInstance);
+        parameterNode->InvalidateUniqueData(m_animGraphInstance);
 
         BlendTreeBoolLogicNode* boolLogicNode = aznew BlendTreeBoolLogicNode();
         m_blendTree->AddChildNode(boolLogicNode);
         boolLogicNode->InitAfterLoading(m_blendTreeAnimGraph.get());
-        boolLogicNode->OnUpdateUniqueData(m_animGraphInstance);
+        boolLogicNode->InvalidateUniqueData(m_animGraphInstance);
 
         const AZ::Outcome<size_t> boolXParamIndexOutcome = m_animGraphInstance->FindParameterIndex(nameBoolX);
         const AZ::Outcome<size_t> boolYParamIndexOutcome = m_animGraphInstance->FindParameterIndex(nameBoolY);

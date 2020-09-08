@@ -22,8 +22,19 @@
 #include <ScriptCanvas/Components/EditorGraph.h>
 #include <ScriptCanvas/Components/EditorGraphVariableManagerComponent.h>
 
-namespace ScriptCanvasEditor
+namespace ScriptCanvas
 {
+    ScriptCanvasData::ScriptCanvasData(ScriptCanvasData&& other)
+        : m_scriptCanvasEntity(AZStd::move(other.m_scriptCanvasEntity))
+    {
+    }
+
+    ScriptCanvasData& ScriptCanvasData::operator=(ScriptCanvasData&& other)
+    {
+        m_scriptCanvasEntity = AZStd::move(other.m_scriptCanvasEntity);
+        return *this;
+    }
+
     static bool ScriptCanvasDataVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootDataElementNode)
     {
         if (rootDataElementNode.GetVersion() == 0)
@@ -85,26 +96,6 @@ namespace ScriptCanvasEditor
         return true;
     }
 
-    ScriptCanvasData::ScriptCanvasData()
-    {
-
-    }
-
-    ScriptCanvasData::~ScriptCanvasData()
-    {
-
-    }
-
-    ScriptCanvasData::ScriptCanvasData(ScriptCanvasData&& other)
-        : m_scriptCanvasEntity(AZStd::move(other.m_scriptCanvasEntity))
-    {
-    }
-
-    ScriptCanvasData& ScriptCanvasData::operator=(ScriptCanvasData&& other)
-    {
-        m_scriptCanvasEntity = AZStd::move(other.m_scriptCanvasEntity);
-        return *this;
-    }
 
     void ScriptCanvasData::Reflect(AZ::ReflectContext* reflectContext)
     {
@@ -117,31 +108,22 @@ namespace ScriptCanvasEditor
         }
     }
 
-    AZ::Entity* ScriptCanvasAsset::GetScriptCanvasEntity() const
-    {
-        return m_data.m_scriptCanvasEntity.get();
-    }
+}
 
+namespace ScriptCanvasEditor
+{
     ScriptCanvas::Graph* ScriptCanvasAsset::GetScriptCanvasGraph() const
     {
-        return AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Graph>(m_data.m_scriptCanvasEntity.get());
+        return AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Graph>(m_data->m_scriptCanvasEntity.get());
+    }    
+
+    ScriptCanvas::ScriptCanvasData& ScriptCanvasAsset::GetScriptCanvasData()
+    {
+        return *m_data;
     }
 
-    void ScriptCanvasAsset::SetScriptCanvasEntity(AZ::Entity* scriptCanvasEntity)
+    const ScriptCanvas::ScriptCanvasData& ScriptCanvasAsset::GetScriptCanvasData() const
     {
-        if (m_data.m_scriptCanvasEntity.get() != scriptCanvasEntity)
-        {
-            m_data.m_scriptCanvasEntity.reset(scriptCanvasEntity);
-        }
+        return *m_data;
     }
-
-    ScriptCanvasData& ScriptCanvasAsset::GetScriptCanvasData()
-    {
-        return m_data;
-    }
-
-    const ScriptCanvasData& ScriptCanvasAsset::GetScriptCanvasData() const
-    {
-        return m_data;
-    }
-} // namespace ScriptCanvasEditor
+}

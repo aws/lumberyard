@@ -74,7 +74,7 @@ namespace EMotionFX
     void AnimGraphTimeCondition::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // add the unique data for the condition to the anim graph
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // increase the elapsed time of the condition
         uniqueData->mElapsedTime += timePassedInSeconds;
@@ -85,7 +85,7 @@ namespace EMotionFX
     void AnimGraphTimeCondition::Reset(AnimGraphInstance* animGraphInstance)
     {
         // find the unique data and reset it
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // reset the elapsed time
         uniqueData->mElapsedTime = 0.0f;
@@ -116,7 +116,7 @@ namespace EMotionFX
     bool AnimGraphTimeCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
         // add the unique data for the condition to the anim graph
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         // in case the elapsed time is bigger than the count down time, we can trigger the condition
         if (uniqueData->mElapsedTime + 0.0001f >= uniqueData->mCountDownTime)   // The 0.0001f is to counter floating point inaccuracies. The AZ float epsilon is too small.
@@ -127,20 +127,6 @@ namespace EMotionFX
         // we have not reached the count down time yet, don't trigger yet
         return false;
     }
-
-
-    // pre-create unique data object
-    void AnimGraphTimeCondition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        // add the unique data for the condition to the anim graph
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-    }
-
 
     // construct and output the information summary string for this object
     void AnimGraphTimeCondition::GetSummary(AZStd::string* outResult) const

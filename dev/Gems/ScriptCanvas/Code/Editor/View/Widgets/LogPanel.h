@@ -25,6 +25,11 @@
 #include <ScriptCanvas/Core/NodeBus.h>
 #include <ScriptCanvas/Bus/GraphBus.h>
 
+namespace AzQtComponents
+{
+    class TabWidget;
+}
+
 namespace Ui
 {
     class LogPanel;
@@ -53,7 +58,7 @@ namespace ScriptCanvasEditor
 
             ScriptCanvas::ScriptCanvasId m_scriptCanvasId;
 
-            QTabWidget* pTabWidget;
+            AzQtComponents::TabWidget* pTabWidget;
         };
 
         class LogPanelWidget 

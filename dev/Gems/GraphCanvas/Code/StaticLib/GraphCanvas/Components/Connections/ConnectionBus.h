@@ -174,6 +174,8 @@ namespace GraphCanvas
         using BusIdType = AZ::EntityId;
 
         virtual void UpdateConnectionPath() = 0;
+
+        virtual void SetAltDeletionEnabled(bool enabled) = 0;
     };
 
     using ConnectionUIRequestBus = AZ::EBus<ConnectionUIRequests>;

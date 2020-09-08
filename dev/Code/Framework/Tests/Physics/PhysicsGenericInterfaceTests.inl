@@ -13,6 +13,7 @@
 #include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
 #include <AzFramework/Physics/World.h>
+#include <PhysX/ColliderComponentBus.h>
 
 namespace Physics
 {
@@ -905,4 +906,5 @@ namespace Physics
 
         EXPECT_EQ(shape->GetTag(), AZ::Crc32(colliderTagName));
     }
+
 } // namespace Physics

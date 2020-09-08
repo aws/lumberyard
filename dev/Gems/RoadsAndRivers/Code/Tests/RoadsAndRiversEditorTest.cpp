@@ -116,6 +116,7 @@ namespace UnitTest
         float GetHeight(AZ::Vector3 position, Sampler sampler = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override { return 0.0f; }
         AzFramework::SurfaceData::SurfaceTagWeight GetMaxSurfaceWeight(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override { return AzFramework::SurfaceData::SurfaceTagWeight(); }
         AzFramework::SurfaceData::SurfaceTagWeight GetMaxSurfaceWeightFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override { return AzFramework::SurfaceData::SurfaceTagWeight(); }
+        const char * GetMaxSurfaceName(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override { return nullptr; }
         bool GetIsHoleFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR) const override { return true; }
         AZ::Vector3 GetNormal(AZ::Vector3 position, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const override { return AZ::Vector3::CreateAxisZ(); }
         AZ::Vector3 GetNormalFromFloats(float x, float y, Sampler sampleFilter = Sampler::BILINEAR, bool* terrainExistsPtr = nullptr) const  override { return AZ::Vector3::CreateAxisZ(); }

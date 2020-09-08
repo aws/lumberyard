@@ -155,16 +155,9 @@ namespace ScriptCanvas
                 
                 m_counter = 0;
                 
-                if (speedOnlyTime > 0 && maxDuration > 0)
+                if (speedOnlyTime >= 0.0f && maxDuration >= 0.0f)
                 {
-                    if (speedOnlyTime > maxDuration)
-                    {
-                        m_duration = maxDuration;
-                    }
-                    else
-                    {
-                        m_duration = speedOnlyTime;
-                    }
+                    m_duration = AZStd::min(speedOnlyTime, maxDuration);
                 }
                 else if (speedOnlyTime >= 0.0f)
                 {
@@ -232,19 +225,19 @@ namespace ScriptCanvas
                 CalculateLerpStep<Data::Vector4Type>(percent, stepDatum);
             }
 
+            if (AZ::IsClose(percent, 1.0f, AZ::g_fltEps))
+            {
+                SignalOutput(LerpBetweenProperty::GetLerpCompleteSlotId(this));
+                AZ::TickBus::Handler::BusDisconnect();
+            }
+
             Datum percentDatum(ScriptCanvas::Data::Type::Number(), Datum::eOriginality::Original);
             percentDatum.Set<Data::NumberType>(percent);
             
             PushOutput(percentDatum, *GetSlot(m_percentSlotId));
             PushOutput(stepDatum, *GetSlot(m_stepSlotId));
             
-            SignalOutput(LerpBetweenProperty::GetTickSlotId(this));
-            
-            if (AZ::IsClose(percent, 1.0f, AZ::g_fltEps))
-            {
-                SignalOutput(LerpBetweenProperty::GetLerpCompleteSlotId(this));
-                AZ::TickBus::Handler::BusDisconnect();
-            }
+            SignalOutput(LerpBetweenProperty::GetTickSlotId(this));            
         }
         
         bool LerpBetween::IsGroupConnected() const

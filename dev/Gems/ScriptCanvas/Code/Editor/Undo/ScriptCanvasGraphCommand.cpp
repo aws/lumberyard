@@ -21,9 +21,10 @@
 #include <GraphCanvas/Components/SceneBus.h>
 
 #include <Editor/Undo/ScriptCanvasGraphCommand.h>
-#include <Editor/Undo/ScriptCanvasUndoCache.h>
 
 #include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
+#include <Editor/Assets/ScriptCanvasAssetTrackerBus.h>
+#include <Editor/Assets/ScriptCanvasMemoryAsset.h>
 
 namespace ScriptCanvasEditor
 {
@@ -40,7 +41,7 @@ namespace ScriptCanvasEditor
     {
     }
 
-    void GraphItemCommand::Capture(AZ::Entity*, bool)
+    void GraphItemCommand::Capture(ScriptCanvasMemoryAsset&, bool)
     {
     }
 
@@ -109,27 +110,13 @@ namespace ScriptCanvasEditor
         RestoreItem(m_redoState);
     }
 
-    void GraphItemChangeCommand::Capture(AZ::Entity* scriptCanvasEntity, bool captureUndo)
+    void GraphItemChangeCommand::Capture(ScriptCanvasMemoryAsset& memoryAsset, bool captureUndo)
     {
-        if (!scriptCanvasEntity)
-        {
-            return;
-        }
+        m_scriptCanvasId = memoryAsset.GetScriptCanvasId();
+        m_graphCanvasGraphId = memoryAsset.GetGraphId();
 
-        ScriptCanvas::Graph* graph = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Graph>(scriptCanvasEntity);
-
-        if (graph == nullptr)
-        {
-            return;
-        }
-
-        m_scriptCanvasId = graph->GetScriptCanvasId();
-        m_scriptCanvasEntityId = graph->GetGraphEntity()->GetId();
-
-        EditorGraphRequestBus::EventResult(m_graphCanvasGraphId, m_scriptCanvasId, &EditorGraphRequests::GetGraphCanvasGraphId);
-
-        UndoCache* undoCache{};
-        UndoRequestBus::BroadcastResult(undoCache, &UndoRequests::GetSceneUndoCache, m_scriptCanvasId);
+        UndoCache* undoCache = nullptr;
+        UndoRequestBus::EventResult(undoCache, m_scriptCanvasId, &UndoRequests::GetSceneUndoCache);
         if (!undoCache)
         {
             AZ_Error("Script Canvas", false, "Unable to find ScriptCanvas Undo Cache. Most likely the Undo Manager has no active scene");
@@ -151,7 +138,7 @@ namespace ScriptCanvasEditor
         else
         {
             UndoData undoData;
-            UndoRequestBus::BroadcastResult(undoData, &UndoRequests::CreateUndoData, m_scriptCanvasId);
+            UndoRequestBus::EventResult(undoData, m_scriptCanvasId , &UndoRequests::CreateUndoData);
 
             AZ::SerializeContext* serializeContext{};
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
@@ -176,19 +163,12 @@ namespace ScriptCanvasEditor
             return;
         }
 
-        AZ::Entity* scriptCanvasEntity;
-        AZ::ComponentApplicationBus::BroadcastResult(scriptCanvasEntity, &AZ::ComponentApplicationRequests::FindEntity, m_scriptCanvasEntityId);
-        if (!scriptCanvasEntity)
-        {
-            return;
-        }
-
         AZ::SerializeContext* serializeContext{};
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
         AZ::IO::MemoryStream byteStream(restoreBuffer.data(), restoreBuffer.size());
 
         UndoData oldData;
-        UndoRequestBus::BroadcastResult(oldData, &UndoRequests::CreateUndoData, m_scriptCanvasId);
+        UndoRequestBus::EventResult(oldData, m_scriptCanvasId , &UndoRequests::CreateUndoData);
 
         // Remove old Script Canvas data
         GraphItemCommandNotificationBus::Event(m_scriptCanvasId, &GraphItemCommandNotificationBus::Events::PreRestore, oldData);
@@ -200,14 +180,14 @@ namespace ScriptCanvasEditor
         {
             ActivateRestoredGraphData(restoreData);
 
-            UndoCache* undoCache{};
-            UndoRequestBus::BroadcastResult(undoCache, &UndoRequests::GetSceneUndoCache, m_scriptCanvasId);
+            UndoCache* undoCache = nullptr;
+            UndoRequestBus::EventResult(undoCache, m_scriptCanvasId, &UndoRequests::GetSceneUndoCache);
             if (!undoCache)
             {
                 AZ_Assert(false, "Unable to find ScriptCanvas Undo Cache. Most likely the ScriptCanvasEditor Undo Manager has not been created");
                 return;
             }
-            undoCache->UpdateCache(m_scriptCanvasId);
+            undoCache->UpdateCache(m_scriptCanvasEntityId);
 
             GraphItemCommandNotificationBus::Event(m_scriptCanvasId, &GraphItemCommandNotifications::PostRestore, restoreData);
         }
@@ -229,9 +209,9 @@ namespace ScriptCanvasEditor
         RestoreItem(m_redoState);
     }
 
-    void GraphItemAddCommand::Capture(AZ::Entity* scriptCanvasEntity, bool)
+    void GraphItemAddCommand::Capture(ScriptCanvasMemoryAsset& memoryAsset, bool)
     {
-        GraphItemChangeCommand::Capture(scriptCanvasEntity, false);
+        GraphItemChangeCommand::Capture(memoryAsset, false);
     }
 
     //// Graph Item Removal Command
@@ -250,8 +230,8 @@ namespace ScriptCanvasEditor
         RestoreItem(m_redoState);
     }
 
-    void GraphItemRemovalCommand::Capture(AZ::Entity* scriptCanvasEntity, bool)
+    void GraphItemRemovalCommand::Capture(ScriptCanvasMemoryAsset& memoryAsset, bool)
     {
-        GraphItemChangeCommand::Capture(scriptCanvasEntity, true);
+        GraphItemChangeCommand::Capture(memoryAsset, true);
     }
 }

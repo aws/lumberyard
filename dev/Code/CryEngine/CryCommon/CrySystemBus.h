@@ -54,6 +54,24 @@ public:
 
     //! Engine post physics update.
     virtual void OnCrySystemPostPhysicsUpdate() {}
+
+    //! Sent when a new level is being created.
+    virtual void OnCryEditorBeginCreate() {}
+
+    //! Sent after a new level has been created.
+    virtual void OnCryEditorEndCreate() {}
+
+    //! Sent when a level is about to be loaded.
+    virtual void OnCryEditorBeginLoad() {}
+
+    //! Sent after a level has been loaded.
+    virtual void OnCryEditorEndLoad() {}
+
+    //! Sent when the document is about to close.
+    virtual void OnCryEditorCloseScene() {}
+
+    //! Sent when the document is closed.
+    virtual void OnCryEditorSceneClosed() {}
 };
 using CrySystemEventBus = AZ::EBus<CrySystemEvents>;
 

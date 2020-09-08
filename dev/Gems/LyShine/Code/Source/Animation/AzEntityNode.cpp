@@ -114,7 +114,7 @@ namespace
 
 //////////////////////////////////////////////////////////////////////////
 CUiAnimAzEntityNode::CUiAnimAzEntityNode(const int id)
-    : CUiAnimNode(id)
+    : CUiAnimNode(id, eUiAnimNodeType_AzEntity)
 {
     m_bWasTransRot = false;
     m_bInitialPhysicsStatus = false;
@@ -156,11 +156,9 @@ void CUiAnimAzEntityNode::Initialize()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CUiAnimAzEntityNode::AddTrack(IUiAnimTrack* pTrack)
+void CUiAnimAzEntityNode::AddTrack(IUiAnimTrack* track)
 {
-    const CUiAnimParamType& paramType = pTrack->GetParameterType();
-
-    CUiAnimNode::AddTrack(pTrack);
+    CUiAnimNode::AddTrack(track);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -437,10 +435,10 @@ bool CUiAnimAzEntityNode::GetParamInfoFromType(const CUiAnimParamType& paramId, 
 //////////////////////////////////////////////////////////////////////////
 const AZ::SerializeContext::ClassElement* CUiAnimAzEntityNode::ComputeOffsetFromElementName(
     const AZ::SerializeContext::ClassData* classData,
-    IUiAnimTrack* pTrack,
+    IUiAnimTrack* track,
     size_t baseOffset)
 {
-    const UiAnimParamData& paramData = pTrack->GetParamData();
+    const UiAnimParamData& paramData = track->GetParamData();
 
     // find the data element in the class data that matches the name in the paramData
     AZ::Crc32 nameCrc = AZ_CRC(paramData.GetName());
@@ -496,7 +494,7 @@ const AZ::SerializeContext::ClassElement* CUiAnimAzEntityNode::ComputeOffsetFrom
 
     // Set the correct offset in the param data for the track
     UiAnimParamData newParamData(paramData.GetComponentId(), paramData.GetName(), element->m_typeId, baseOffset + element->m_offset);
-    pTrack->SetParamData(newParamData);
+    track->SetParamData(newParamData);
 
     return element;
 }
@@ -527,18 +525,18 @@ void CUiAnimAzEntityNode::ComputeOffsetsFromElementNames()
     // go through all its tracks and update the offsets
     for (int i = 0, num = (int)m_tracks.size(); i < num; i++)
     {
-        IUiAnimTrack* pTrack = m_tracks[i].get();
+        IUiAnimTrack* track = m_tracks[i].get();
 
-        if (pTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
+        if (track->GetParameterType() == eUiAnimParamType_AzComponentField)
         {
             // Get the class data for the component that this track is animating
-            const UiAnimParamData& paramData = pTrack->GetParamData();
+            const UiAnimParamData& paramData = track->GetParamData();
             AZ::Component* component = paramData.GetComponent(entity);
             const AZ::Uuid& classId = AZ::SerializeTypeInfo<AZ::Component>::GetUuid(component);
             const AZ::SerializeContext::ClassData* classData = context->FindClassData(classId);
 
             // update the offset for the field this track is animating
-            const AZ::SerializeContext::ClassElement* element = ComputeOffsetFromElementName(classData, pTrack, 0);
+            const AZ::SerializeContext::ClassElement* element = ComputeOffsetFromElementName(classData, track, 0);
 
             bool deleteTrack = false;
             if (element)
@@ -550,9 +548,9 @@ void CUiAnimAzEntityNode::ComputeOffsetsFromElementNames()
                 // Search the sub-tracks also if any.
                 if (baseElementClassData && !baseElementClassData->m_elements.empty())
                 {
-                    for (int k = 0; k < pTrack->GetSubTrackCount(); ++k)
+                    for (int k = 0; k < track->GetSubTrackCount(); ++k)
                     {
-                        IUiAnimTrack* pSubTrack = pTrack->GetSubTrack(k);
+                        IUiAnimTrack* pSubTrack = track->GetSubTrack(k);
 
                         if (pSubTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
                         {
@@ -672,18 +670,19 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
     int trackCount = NumTracks();
     for (int paramIndex = 0; paramIndex < trackCount; paramIndex++)
     {
+        IUiAnimTrack* track = m_tracks[paramIndex].get();
+
         CUiAnimParamType paramType = m_tracks[paramIndex]->GetParameterType();
-        IUiAnimTrack* pTrack = m_tracks[paramIndex].get();
-        if ((pTrack->HasKeys() == false)
-            || (pTrack->GetFlags() & IUiAnimTrack::eUiAnimTrackFlags_Disabled)
-            || pTrack->IsMasked(ec.trackMask))
+        if ((track->HasKeys() == false)
+            || (track->GetFlags() & IUiAnimTrack::eUiAnimTrackFlags_Disabled)
+            || track->IsMasked(ec.trackMask))
         {
             continue;
         }
 
         AZ_Assert(paramType.GetType() == eUiAnimParamType_AzComponentField, "Invalid param type");
 
-        const UiAnimParamData& paramData = pTrack->GetParamData();
+        const UiAnimParamData& paramData = track->GetParamData();
 
         AZ::Component* component = paramData.GetComponent(entity);
 
@@ -699,7 +698,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             float* elementFloat = reinterpret_cast<float*>(elementData);
 
             float trackValue;
-            pTrack->GetValue(ec.time, trackValue);
+            track->GetValue(ec.time, trackValue);
 
             *elementFloat = trackValue;
         }
@@ -708,7 +707,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             bool* elementValue = reinterpret_cast<bool*>(elementData);
 
             bool trackValue;
-            pTrack->GetValue(ec.time, trackValue);
+            track->GetValue(ec.time, trackValue);
 
             *elementValue = trackValue;
         }
@@ -717,7 +716,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             AZ::Vector2* elementValue = reinterpret_cast<AZ::Vector2*>(elementData);
 
             AZ::Vector2 trackValue;
-            pTrack->GetValue(ec.time, trackValue);
+            track->GetValue(ec.time, trackValue);
 
             *elementValue = trackValue;
         }
@@ -726,7 +725,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             AZ::Vector3* elementValue = reinterpret_cast<AZ::Vector3*>(elementData);
 
             AZ::Vector3 trackValue;
-            pTrack->GetValue(ec.time, trackValue);
+            track->GetValue(ec.time, trackValue);
 
             *elementValue = trackValue;
         }
@@ -735,7 +734,7 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             AZ::Vector4* elementValue = reinterpret_cast<AZ::Vector4*>(elementData);
 
             AZ::Vector4 trackValue;
-            pTrack->GetValue(ec.time, trackValue);
+            track->GetValue(ec.time, trackValue);
 
             *elementValue = trackValue;
         }
@@ -744,16 +743,16 @@ void CUiAnimAzEntityNode::Animate(SUiAnimContext& ec)
             AZ::Color* elementValue = reinterpret_cast<AZ::Color*>(elementData);
 
             AZ::Color trackValue = AZ::Color::CreateOne(); // Initialize alpha
-            pTrack->GetValue(ec.time, trackValue);
+            track->GetValue(ec.time, trackValue);
 
             *elementValue = trackValue;
         }
         else
         {
             // Animate the sub-tracks also if any.
-            for (int k = 0; k < pTrack->GetSubTrackCount(); ++k)
+            for (int k = 0; k < track->GetSubTrackCount(); ++k)
             {
-                IUiAnimTrack* pSubTrack = pTrack->GetSubTrack(k);
+                IUiAnimTrack* pSubTrack = track->GetSubTrack(k);
 
                 const UiAnimParamData& subTrackParamData = pSubTrack->GetParamData();
 
@@ -848,20 +847,20 @@ IUiAnimTrack* CUiAnimAzEntityNode::GetTrackForAzField(const UiAnimParamData& par
 {
     for (int i = 0, num = (int)m_tracks.size(); i < num; i++)
     {
-        IUiAnimTrack* pTrack = m_tracks[i].get();
+        IUiAnimTrack* track = m_tracks[i].get();
 
-        if (pTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
+        if (track->GetParameterType() == eUiAnimParamType_AzComponentField)
         {
-            if (pTrack->GetParamData() == param)
+            if (track->GetParamData() == param)
             {
-                return pTrack;
+                return track;
             }
         }
 
         // Search the sub-tracks also if any.
-        for (int k = 0; k < pTrack->GetSubTrackCount(); ++k)
+        for (int k = 0; k < track->GetSubTrackCount(); ++k)
         {
-            IUiAnimTrack* pSubTrack = pTrack->GetSubTrack(k);
+            IUiAnimTrack* pSubTrack = track->GetSubTrack(k);
 
             if (pSubTrack->GetParameterType() == eUiAnimParamType_AzComponentField)
             {
@@ -882,7 +881,7 @@ IUiAnimTrack* CUiAnimAzEntityNode::CreateTrackForAzField(const UiAnimParamData& 
     EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
     AZ_Assert(context, "No serialization context found");
 
-    IUiAnimTrack* pTrack = nullptr;
+    IUiAnimTrack* track = nullptr;
 
     const AZ::SerializeContext::ClassData* classData = context->FindClassData(param.GetTypeId());
     if (classData && !classData->m_elements.empty())
@@ -910,91 +909,93 @@ IUiAnimTrack* CUiAnimAzEntityNode::CreateTrackForAzField(const UiAnimParamData& 
             break;
         }
 
-        pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, valueType);
+        track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, valueType);
 
-        pTrack->SetParamData(param);
+        track->SetParamData(param);
 
-        int numSubTracks = pTrack->GetSubTrackCount();
+        int numSubTracks = track->GetSubTrackCount();
         int curSubTrack = 0;
 
         for (const AZ::SerializeContext::ClassElement& element : classData->m_elements)
         {
             if (element.m_typeId == AZ::SerializeTypeInfo<float>::GetUuid() && curSubTrack < numSubTracks)
             {
-                IUiAnimTrack* pSubTrack = pTrack->GetSubTrack(curSubTrack);
+                IUiAnimTrack* pSubTrack = track->GetSubTrack(curSubTrack);
+
                 pSubTrack->SetParameterType(eUiAnimParamType_AzComponentField);
 
                 UiAnimParamData subTrackParam(param.GetComponentId(), element.m_name,
                     element.m_typeId, param.GetOffset() + element.m_offset);
                 pSubTrack->SetParamData(subTrackParam);
 
-                pTrack->SetSubTrackName(curSubTrack, element.m_name);
+                track->SetSubTrackName(curSubTrack, element.m_name);
                 curSubTrack++;
             }
         }
 
         for (int i = curSubTrack; i < numElements; ++i)
         {
-            pTrack->SetSubTrackName(i, "_unused");  // only happens if some elements were not floats
+            track->SetSubTrackName(i, "_unused");  // only happens if some elements were not floats
         }
     }
     else if (param.GetTypeId() == AZ::SerializeTypeInfo<AZ::Vector2>::GetUuid())
     {
-        pTrack = CreateVectorTrack(param, eUiAnimValue_Vector2, 2);
+        track = CreateVectorTrack(param, eUiAnimValue_Vector2, 2);
     }
     else if (param.GetTypeId() == AZ::SerializeTypeInfo<AZ::Vector3>::GetUuid())
     {
-        pTrack = CreateVectorTrack(param, eUiAnimValue_Vector3, 3);
+        track = CreateVectorTrack(param, eUiAnimValue_Vector3, 3);
     }
     else if (param.GetTypeId() == AZ::SerializeTypeInfo<AZ::Vector4>::GetUuid())
     {
-        pTrack = CreateVectorTrack(param, eUiAnimValue_Vector4, 4);
+        track = CreateVectorTrack(param, eUiAnimValue_Vector4, 4);
     }
     else if (param.GetTypeId() == AZ::SerializeTypeInfo<AZ::Color>::GetUuid())
     {
         // this is a compound type, create a compound track
-        pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Vector3);
+        track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Vector3);
 
-        pTrack->SetParamData(param);
+        track->SetParamData(param);
 
-        pTrack->SetSubTrackName(0, "R");
-        pTrack->SetSubTrackName(1, "G");
-        pTrack->SetSubTrackName(2, "B");
+        track->SetSubTrackName(0, "R");
+        track->SetSubTrackName(1, "G");
+        track->SetSubTrackName(2, "B");
 
-        int numSubTracks = pTrack->GetSubTrackCount();
+        int numSubTracks = track->GetSubTrackCount();
         for (int i = 0; i < numSubTracks; ++i)
         {
-            IUiAnimTrack* pSubTrack = pTrack->GetSubTrack(i);
+            IUiAnimTrack* pSubTrack = track->GetSubTrack(i);
+
             pSubTrack->SetParameterType(eUiAnimParamType_Float);    // subtracks are not actual component properties
         }
 
-        return pTrack;
+        return track;
     }
     else
     {
         if (param.GetTypeId() == AZ::SerializeTypeInfo<float>::GetUuid())
         {
-            pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Unknown);
+            track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Unknown);
         }
         else if (param.GetTypeId() == AZ::SerializeTypeInfo<bool>::GetUuid())
         {
-            pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Bool);
+            track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Bool);
         }
         else if (param.GetTypeId() == AZ::SerializeTypeInfo<int>::GetUuid())
         {
             // no support for int yet
-            pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Bool);
+            track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Bool);
         }
         else if (param.GetTypeId() == AZ::SerializeTypeInfo<unsigned int>::GetUuid())
         {
             // no support for int yet
-            pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Bool);
+            track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, eUiAnimValue_Bool);
         }
 
-        pTrack->SetParamData(param);
+        track->SetParamData(param);
     }
 
-    return pTrack;
+    return track;
 }
 
 void CUiAnimAzEntityNode::OnStart()
@@ -1016,10 +1017,10 @@ void CUiAnimAzEntityNode::OnStop()
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, float value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->SetValue(time, value);
+        track->SetValue(time, value);
         return true;
     }
 
@@ -1029,11 +1030,11 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, bool value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->CreateKey(time);
-        pTrack->SetValue(time, value);
+        track->CreateKey(time);
+        track->SetValue(time, value);
         return true;
     }
 
@@ -1043,12 +1044,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, int value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->CreateKey(time);
-        // don't have int tracks yet
-        //        pTrack->SetValue(time, value);
+        track->CreateKey(time);
         return true;
     }
 
@@ -1058,12 +1057,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, unsigned int value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->CreateKey(time);
-        // don't have unsigned int tracks yet
-        //        pTrack->SetValue(time, value);
+        track->CreateKey(time);
         return true;
     }
 
@@ -1073,10 +1070,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, const AZ::Vector2& value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->SetValue(time, value);
+        track->SetValue(time, value);
         return true;
     }
 
@@ -1086,10 +1083,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, const AZ::Vector3& value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->SetValue(time, value);
+        track->SetValue(time, value);
         return true;
     }
 
@@ -1099,10 +1096,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, const AZ::Vector4& value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->SetValue(time, value);
+        track->SetValue(time, value);
         return true;
     }
 
@@ -1112,10 +1109,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& param, const AZ::Color& value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->SetValue(time, value);
+        track->SetValue(time, value);
         return true;
     }
 
@@ -1125,10 +1122,10 @@ bool CUiAnimAzEntityNode::SetParamValueAz(float time, const UiAnimParamData& par
 //////////////////////////////////////////////////////////////////////////
 bool CUiAnimAzEntityNode::GetParamValueAz(float time, const UiAnimParamData& param, float& value)
 {
-    IUiAnimTrack* pTrack = GetTrackForAzField(param);
-    if (pTrack)
+    IUiAnimTrack* track = GetTrackForAzField(param);
+    if (track)
     {
-        pTrack->GetValue(time, value);
+        track->GetValue(time, value);
         return true;
     }
 
@@ -1216,28 +1213,29 @@ Vec3 CUiAnimAzEntityNode::Noise::Get(float time) const
 IUiAnimTrack* CUiAnimAzEntityNode::CreateVectorTrack(const UiAnimParamData& param, EUiAnimValue valueType, int numElements)
 {
     // this is a compound type, create a compound track
-    IUiAnimTrack* pTrack = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, valueType);
+    IUiAnimTrack* track = CreateTrackInternal(eUiAnimParamType_AzComponentField, eUiAnimCurveType_BezierFloat, valueType);
 
-    pTrack->SetParamData(param);
+    track->SetParamData(param);
 
-    int numSubTracks = pTrack->GetSubTrackCount();
+    int numSubTracks = track->GetSubTrackCount();
 
-    pTrack->SetSubTrackName(0, "X");
-    pTrack->SetSubTrackName(1, "Y");
+    track->SetSubTrackName(0, "X");
+    track->SetSubTrackName(1, "Y");
     if (numElements > 2)
     {
-        pTrack->SetSubTrackName(2, "Z");
+        track->SetSubTrackName(2, "Z");
         if (numElements > 3)
         {
-            pTrack->SetSubTrackName(3, "W");
+            track->SetSubTrackName(3, "W");
         }
     }
 
     for (int i = 0; i < numElements; ++i)
     {
-        IUiAnimTrack* pSubTrack = pTrack->GetSubTrack(i);
+        IUiAnimTrack* pSubTrack = track->GetSubTrack(i);
+
         pSubTrack->SetParameterType(eUiAnimParamType_Float);    // subtracks are not actual component properties
     }
 
-    return pTrack;
+    return track;
 }

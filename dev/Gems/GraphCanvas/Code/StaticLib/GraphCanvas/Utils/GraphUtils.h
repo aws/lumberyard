@@ -217,6 +217,13 @@ namespace GraphCanvas
             None
         };
 
+        enum class CalculationType
+        {
+            Floor,
+            Round,
+            Ceiling
+        };
+
     public:
         static bool IsConnectableNode(const NodeId& entityId);
         static bool IsNodeOrWrapperSelected(const NodeId& nodeId);
@@ -229,6 +236,7 @@ namespace GraphCanvas
         static bool IsWrapperNode(const AZ::EntityId& graphMemberId);
         static bool IsSlot(const AZ::EntityId& graphMemberId);
         static bool IsSlotVisible(const SlotId& slotId);
+        static bool IsSlotHideable(const SlotId& slotId);
         static bool IsSlotConnectionType(const SlotId& slotId, ConnectionType connectionType);
         static bool IsSlotType(const SlotId& slotId, SlotType slotType);
         static bool IsSlot(const SlotId& slotId, SlotType slotType, ConnectionType connectionType);
@@ -238,6 +246,9 @@ namespace GraphCanvas
 
         static bool IsComment(const AZ::EntityId& graphMemberId);
         static bool IsBookmarkAnchor(const AZ::EntityId& graphMemberId);
+
+        static AZ::EntityId CreateGroupForElements(const AZ::EntityId& graphId, const AZStd::vector<AZ::EntityId>& memberIds, AZ::Vector2 startingPoint = AZ::Vector2(0,0));
+        static void ResizeGroupToElements(const AZ::EntityId& groupId, const AZStd::vector<AZ::EntityId>& memberIds);
 
         static AZ::Vector2 FindMinorStep(const AZ::EntityId& graphId);
         static AZ::Vector2 FindMajorStep(const AZ::EntityId& graphId);
@@ -282,11 +293,18 @@ namespace GraphCanvas
 
         static bool CanHideEndpoint(const Endpoint& endpoint, const HideSlotConfig& slotConfig);
 
+        static void AlignSlotForConnection(const GraphCanvas::Endpoint& moveableEndpoint, const GraphCanvas::Endpoint& fixedEndpoint);
+
+        static QPointF CalculateAnchorPoint(const QPointF& position, const AZ::Vector2& anchorPoint, const QRectF& boundingBox);
+        static QPointF CalculateGridSnapPosition(const QPointF& position, const AZ::Vector2& anchorPoint, const QRectF& boundingBox, const AZ::Vector2& gridStep, CalculationType calculationType = CalculationType::Round);
+
     private:
         static ConnectionId CreateUnknownConnection(const GraphId& graphId, const Endpoint& firstEndpoint, const Endpoint& secondEndpoint);
-        static void ParseConnectionsForSerialization(GraphSerialization& graphData, const AZStd::unordered_set< ConnectionId >& connectionIds);        
+        static void ParseConnectionsForSerialization(GraphSerialization& graphData, const AZStd::unordered_set< ConnectionId >& connectionIds);
 
         static QRectF CalculateAlignedPosition(const AlignConfig& alignConfig, QRectF boundingBox, QPointF movementDirection, const AZStd::vector< QRectF >& collidableObjects, const AZ::Vector2& spacing, const AZ::Vector2& overlapSpacing);
+
+        static QRectF AlignBoundingBoxToGrid(const QRectF& boundingBox, const AZ::Vector2& stepSize);
     };
 
     struct AlignConfig
@@ -321,10 +339,15 @@ namespace GraphCanvas
         };
 
         NodeOrderingStruct(const NodeId& nodeId, const AZ::Vector2& anchorPoint);
+        NodeOrderingStruct(const NodeId& nodeId, const AZ::Vector2& anchorPoint, const QRectF& boundingBox);
 
         NodeId  m_nodeId;
         QRectF  m_boundingBox;
         QPointF m_anchorPoint;
+
+    private:
+
+        void CalculateAnchorPoint(const AZ::Vector2& anchorPoint);
     };
 
     typedef AZStd::set< NodeOrderingStruct, NodeOrderingStruct::Comparator > OrderedNodeStruct;

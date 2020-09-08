@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/std/containers/vector.h>
+#include <EMotionFX/Source/MotionSet.h>
 #include <QtCore/QObject>
 #include <MCore/Source/StandardHeaders.h>
 
@@ -77,6 +78,8 @@ namespace EMStudio
         // Sets the first-selected node as an entry state
         void SetEntryState();
 
+        void PreviewMotionSelected(const char* motionId);
+
         // Adds a wild card transition to the first-selected node
         void AddWildCardTransition();
 
@@ -93,6 +96,7 @@ namespace EMStudio
 
         void OpenReferencedAnimGraph(EMotionFX::AnimGraphReferenceNode* referenceNode);
 
+        void ActivateAnimGraph();
         void ActivateGraphForSelectedActors(EMotionFX::AnimGraph* animGraph, EMotionFX::MotionSet* motionSet);
 
         // Align selected nodes.

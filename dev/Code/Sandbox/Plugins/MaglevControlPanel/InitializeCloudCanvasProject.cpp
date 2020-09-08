@@ -34,6 +34,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <AzQtComponents/Components/StyleManager.h>
+
 #include <Util/PathUtil.h>
 
 #include <InitializeCloudCanvasProject.moc>
@@ -58,6 +60,7 @@ static const char* ACCESS_KEY_EDIT = "Access key edit";
 static const char* SECRET_KEY_EDIT = "Secret key edit";
 
 // Constants for creating edit controls
+static const int windowMaxHeight = 480;
 static const int boxHeight = 24;
 static const int boxWidth = (InitializeCloudCanvasProject::defaultWidth * 2 / 3) - 15;
 static const int radioWidth = boxWidth;
@@ -66,6 +69,8 @@ InitializeCloudCanvasProject::InitializeCloudCanvasProject(QWidget* parent)
     : QMainWindow(parent)
     , m_model(GetIEditor()->GetAWSResourceManager()->GetProfileModel())
 {
+    setMaximumHeight(windowMaxHeight);
+    AzQtComponents::StyleManager::setStyleSheet(this, "style:CloudCanvas.qss");
     InitializeWindow();
 }
 

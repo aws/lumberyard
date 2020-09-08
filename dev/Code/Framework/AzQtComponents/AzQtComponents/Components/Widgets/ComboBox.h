@@ -67,6 +67,7 @@ namespace AzQtComponents
             QString errorImage;
             QSize errorImageSize;
             int errorImageSpacing;
+            int itemPadding;
         };
 
         /*!
@@ -95,6 +96,15 @@ namespace AzQtComponents
         */
        static void setError(QComboBox* cb, bool error);
 
+        /*!
+         * Applies the CustomCheckState styling to a QCheckBox.
+         * With this style applied, the checkmark will be defined by the model,
+         * and won't be automatically checked for the current item.
+         * Same as
+         *   AzQtComponents::Style::addClass(comboBox, "CustomCheckState")
+         */
+        static void addCustomCheckStateStyle(QComboBox* cb);
+
     private:
         friend class Style;
 
@@ -110,6 +120,7 @@ namespace AzQtComponents
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
         static QSize sizeFromContents(const Style* style, QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget, const ComboBox::Config& config);
+        static QRect comboBoxListBoxPopupRect(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
         static bool drawComboBox(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config);
         static bool drawComboBoxLabel(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
         static bool drawIndicatorArrow(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);

@@ -87,6 +87,8 @@ namespace AzToolsFramework
             virtual bool GridSnappingEnabled() = 0;
             /// Return the grid snapping size.
             virtual float GridSize() = 0;
+            /// Does the grid currently want to be displayed.
+            virtual bool ShowGrid() = 0;
             /// Return if angle snapping is enabled.
             virtual bool AngleSnappingEnabled() = 0;
             /// Return the angle snapping/step size.

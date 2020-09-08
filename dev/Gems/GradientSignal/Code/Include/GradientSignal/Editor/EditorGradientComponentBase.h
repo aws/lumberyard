@@ -17,7 +17,6 @@
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
-#include <GradientSignal/Editor/EditorGradientSamplerBus.h>
 #include <GradientSignal/Editor/EditorGradientTypeIds.h>
 #include <GradientSignal/Ebuses/GradientPreviewContextRequestBus.h>
 #include <GradientSignal/Ebuses/GradientRequestBus.h>
@@ -64,27 +63,6 @@ namespace GradientSignal
         configuration.m_gradientSampler.m_ownerEntityId = entityId;
     }
 
-    template<typename T>
-    AzToolsFramework::EntityIdList GetSamplerGradientEntities(T& configuration, AZStd::enable_if_t<!HasGradientSampler<T>::value && !HasCustomSetSamplerOwner<T>::value>* = nullptr)
-    {
-        AzToolsFramework::EntityIdList emptyList;
-        return emptyList;
-    }
-
-    template<typename T>
-    AzToolsFramework::EntityIdList GetSamplerGradientEntities(T& configuration, AZStd::enable_if_t<HasGradientSampler<T>::value>* = nullptr)
-    {
-        return { configuration.m_gradientSampler.m_gradientId };
-    }
-
-    template<typename T>
-    void SetSamplerGradientEntities(T& configuration, AzToolsFramework::EntityIdList gradientIds, AZStd::enable_if_t<!HasGradientSampler<T>::value && !HasCustomSetSamplerOwner<T>::value>* = nullptr) {}
-
-    template<typename T>
-    void SetSamplerGradientEntities(T& configuration, AzToolsFramework::EntityIdList gradientIds, AZStd::enable_if_t<HasGradientSampler<T>::value>* = nullptr)
-    {
-        configuration.m_gradientSampler.m_gradientId = !gradientIds.empty() ? gradientIds[0] : AZ::EntityId();
-    }
     //////////////////////////////////////////////////////////////////////////
 
     template<typename TComponent, typename TConfiguration>
@@ -93,7 +71,6 @@ namespace GradientSignal
         , protected GradientPreviewContextRequestBus::Handler
         , protected AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , protected LmbrCentral::DependencyNotificationBus::Handler
-        , protected EditorGradientSamplerRequestBus::Handler
     {
     public:
         using BaseClassType = LmbrCentral::EditorWrappedComponentBase<TComponent, TConfiguration>;
@@ -124,12 +101,6 @@ namespace GradientSignal
         // This is used by the preview so we can pass an invalid entity Id if our component is disabled
         AZ::EntityId GetGradientEntityId() const;
 
-        //////////////////////////////////////////////////////////////////////////
-        // EditorGradientSamplerRequestBus
-        AzToolsFramework::EntityIdList GetInboundGradientIds() override;
-        void SetInboundGradientIds(AzToolsFramework::EntityIdList gradientIds) override;
-        //////////////////////////////////////////////////////////////////////////
-
     private:
 
         //////////////////////////////////////////////////////////////////////////
@@ -148,7 +119,7 @@ namespace GradientSignal
         AZ::u32 GetPreviewConstrainToShapeVisibility() const;
         AZ::u32 PreviewSettingsAndSettingsVisibilityChanged() const;
         void UpdatePreviewSettings() const;
-        void CancelPreviewRendering() const;
+        AzToolsFramework::EntityIdList CancelPreviewRendering() const;
     private:
         AZ::EntityId m_previewEntityId;
         AZ::Vector3 m_previewPosition = AZ::Vector3(0.0f);

@@ -20,6 +20,7 @@
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
@@ -91,12 +92,14 @@ namespace PhysX
         , private PhysX::ColliderShapeRequestBus::Handler
         , private LmbrCentral::MeshComponentNotificationBus::Handler
         , private PhysX::EditorColliderComponentRequestBus::Handler
+        , private Physics::WorldBodyRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorColliderComponent, "{FD429282-A075-4966-857F-D0BBF186CFE6}", AzToolsFramework::Components::EditorComponentBase);
         static void Reflect(AZ::ReflectContext* context);
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
+            provided.push_back(AZ_CRC("PhysicsWorldBodyService", 0x944da0cc));
             provided.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
             provided.push_back(AZ_CRC("PhysXTriggerService", 0x3a117d7b));
         }
@@ -199,11 +202,20 @@ namespace PhysX
         AZ::u32 OnConfigurationChanged();
         void UpdateShapeConfigurationScale();
 
+        // WorldBodyRequestBus
+        void EnablePhysics() override;
+        void DisablePhysics() override;
+        bool IsPhysicsEnabled() const override;
+        AZ::Aabb GetAabb() const override;
+        Physics::WorldBody* GetWorldBody() override;
+        Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
+
         // Mesh collider
         void UpdateMeshAsset();
         bool IsAssetConfig() const;
-
+        
         void CreateStaticEditorCollider();
+        void ClearStaticEditorCollider();
         
         void BuildDebugDrawMesh() const;
 

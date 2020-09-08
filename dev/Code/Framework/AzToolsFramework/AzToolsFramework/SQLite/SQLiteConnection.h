@@ -82,6 +82,10 @@ namespace AzToolsFramework
             //! If a Statement takes no parameters, you can execute it one-off without binding any parameters:
             bool ExecuteOneOffStatement(const char* name);
 
+            //! Prepares and executes an sql string, running callback on each result row.  If callback returns false, iteration will stop and the function will exit
+            //! bindCallback is called after the query is prepared and gives an option to bind any needed parameters
+            bool ExecuteRawSqlQuery(const AZStd::string& sql, const AZStd::function<bool(sqlite3_stmt*)>& resultCallback, const AZStd::function<void(sqlite3_stmt*)>& bindCallback);
+
             //! Returns true if the given table name exists in the database.
             bool DoesTableExist(const char* name);
 
@@ -91,6 +95,13 @@ namespace AzToolsFramework
             StatementContainer m_statementPrototypes;
         };
 
+        AZStd::string GetColumnText(sqlite3_stmt* statement, int col);
+        int GetColumnInt(sqlite3_stmt* statement, int col);
+        double GetColumnDouble(sqlite3_stmt* statement, int col);
+        const void* GetColumnBlob(sqlite3_stmt* statement, int col);
+        int GetColumnBlobBytes(sqlite3_stmt* statement, int col);
+        AZ::s64 GetColumnInt64(sqlite3_stmt* statement, int col);
+        AZ::Uuid GetColumnUuid(sqlite3_stmt* statement, int col);
 
         /** A statement is a live, working-right now statement (or a cached one) which you are currently executing.
          *  All binding is by reference, so you must not destroy the bound objects before executing the statement.

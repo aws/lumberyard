@@ -140,6 +140,7 @@ namespace AZ
     };
 
     static bool ConvertLegacyBoolToEnum(AZ::SerializeContext& context, AZStd::any& patchAny, const DataNode& sourceNode);
+    static void ReportDataPatchMismatch(SerializeContext* context, const SerializeContext::ClassElement* classElement, const TypeId& patchDataTypeId);
 
     //=========================================================================
     // DataNodeTree::Build
@@ -632,10 +633,7 @@ namespace AZ
 
                     if (!deprecatedWithNoConverter)
                     {
-                        AZ_Error("DataNodeTree::ApplyToElements", false, "Patch element with TypeId: %s is not of the same type or derived from source element with Name: '%s' and TypeId: %s",
-                            patchDataTypeId.ToString<AZStd::string>().data(),
-                            sourceNode->m_classElement->m_name,
-                            sourceNode->m_classElement->m_typeId.ToString<AZStd::string>().data());
+                        ReportDataPatchMismatch(context, sourceNode->m_classElement, patchDataTypeId);
                     }
                 }
                 else
@@ -648,10 +646,7 @@ namespace AZ
             {
                 if (sourceNode->m_classElement->m_typeId != patchDataTypeId && patchDataTypeId != underlyingTypeId)
                 {
-                    AZ_Error("DataNodeTree::ApplyToElements", false, "Patch element with TypeId: %s does not match the source element with Name: '%s' and TypeId: %s",
-                        patchDataTypeId.ToString<AZStd::string>().data(),
-                        sourceNode->m_classElement->m_name,
-                        sourceNode->m_classElement->m_typeId.ToString<AZStd::string>().data());
+                    ReportDataPatchMismatch(context, sourceNode->m_classElement, patchDataTypeId);
 
                     return nullptr;
                 }
@@ -805,7 +800,7 @@ namespace AZ
                 // Skip this step if PreventOverride flag is preventing creation of new elements.
                 if (!(addressFlags & DataPatch::Flag::PreventOverrideEffect))
                 {
-                    AZStd::vector<u64> newElementIds;
+                    AZStd::vector<AZStd::pair<AZ::u64, AZ::TypeId>> newElementIds;
                     {
                         // Check each datapatch that matches our address + 1 address element ("possible new element datapatches")
                         auto foundIt = childPatchLookup.find(address);
@@ -820,7 +815,8 @@ namespace AZ
                                     continue; // this is removal of element (actual patch is empty), we already handled removed elements above
                                 }
 
-                                u64 newElementId = childPatchAddress.back().GetAddressElement();
+                                AZ::u64 newElementId = childPatchAddress.back().GetAddressElement();
+                                const AZ::TypeId& newElementTypeId = childPatchAddress.back().GetElementTypeId();
 
                                 elementIndex = 0;
                                 bool isFound = false;
@@ -848,7 +844,7 @@ namespace AZ
 
                                 if (!isFound) // if element is not in the source container, it will be added
                                 {
-                                    newElementIds.push_back(newElementId);
+                                    newElementIds.push_back({ newElementId, newElementTypeId });
                                 }
                             }
                         }
@@ -858,11 +854,42 @@ namespace AZ
                     }
 
                     // Add missing elements to container.
-                    for (u64 newElementId : newElementIds)
+                    for (const AZStd::pair<AZ::u64, AZ::TypeId>& newElementId : newElementIds)
                     {
                         // pick any child element for a classElement sample
                         DataNode defaultSourceNode;
-                        defaultSourceNode.m_classElement = sourceNode->m_classData->m_container->GetElement(sourceNode->m_classData->m_container->GetDefaultElementNameCrc());
+                        SerializeContext::ClassElement patchClassElement;
+
+                        // Build a DataElement representing the type owned by the container
+                        // so we can query for its ClassElement
+                        SerializeContext::DataElement patchDataElement;
+                        patchDataElement.m_id = newElementId.second;
+                        patchDataElement.m_nameCrc = sourceNode->m_classData->m_container->GetElementNameCrC();
+
+                        if (sourceNode->m_classData->m_container->GetElement(patchClassElement, patchDataElement))
+                        {
+                            defaultSourceNode.m_classElement = &patchClassElement;
+                        }
+                        else
+                        {
+                            AZStd::string sourceTypeIdName;
+                            if (auto classData = context->FindClassData(sourceNode->m_classElement->m_typeId))
+                            {
+                                sourceTypeIdName = classData->m_name;
+                            }
+
+                            // Could not find default data type for this node
+                            AZ_Warning("DataNodeTree::ApplyToElements", false,
+                                "Attempted to get class element data from %s of type %s (Type Id: %s) during DataPatch::Apply and failed.\n"
+                                 "The element will not be patched into the container. This is likely caused by a corrupted DataPatch on disk.\n"
+                                 "It is recommended to debug the patch and source asset.",
+                                sourceNode->m_classElement->m_name,
+                                sourceTypeIdName.c_str(),
+                                sourceNode->m_classElement->m_typeId.ToString<AZStd::string>().c_str()
+                            );
+
+                            continue;
+                        }
 
                         // Attempt to add version and typeId information to address based on classElement
                         const AZ::SerializeContext::ClassData* elementClassData = context->FindClassData(defaultSourceNode.m_classElement->m_typeId, parentClassData, defaultSourceNode.m_classElement->m_nameCrc);
@@ -878,10 +905,10 @@ namespace AZ
 
                         defaultSourceNode.m_classData = elementClassData;
 
-                        address.emplace_back(newElementId,
-                                             elementClassData,
-                                             nullptr,
-                                             AddressTypeElement::ElementType::Index);
+                        address.emplace_back(newElementId.first,
+                            elementClassData,
+                            nullptr,
+                            AddressTypeElement::ElementType::Index);
 
                         ApplyToElements(
                             &defaultSourceNode,
@@ -2113,5 +2140,27 @@ namespace AZ
                 Field("m_targetClassVersion", &DataPatch::m_targetClassVersion)->
                 Field("m_patch", &DataPatch::m_patch);
         }
+    }
+
+    void ReportDataPatchMismatch(SerializeContext* context, const SerializeContext::ClassElement* classElement, const TypeId& patchDataTypeId)
+    {
+        AZStd::string patchTypeIdName;
+        if (auto classData = context->FindClassData(patchDataTypeId))
+        {
+            patchTypeIdName = classData->m_name;
+        }
+
+        AZStd::string sourceTypeIdName;
+        if (auto classData = context->FindClassData(classElement->m_typeId))
+        {
+            sourceTypeIdName = classData->m_name;
+        }
+
+        AZ_Warning("DataNodeTree::ApplyToElements", false, "Patch element with Type: %s (Type Id: %s) does not match the source element with Name: '%s' of Type: %s (Type Id: %s)",
+            patchTypeIdName.c_str(),
+            patchDataTypeId.ToString<AZStd::string>().c_str(),
+            classElement->m_name,
+            sourceTypeIdName.c_str(),
+            classElement->m_typeId.ToString<AZStd::string>().c_str());
     }
 }   // namespace AZ

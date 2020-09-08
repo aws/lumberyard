@@ -50,8 +50,13 @@ namespace GraphCanvas
         m_commentPresets.RefreshPresets();
     }
 
-    void GraphCanvasConstructActionsMenuGroup::DisableBookmark()
+    void GraphCanvasConstructActionsMenuGroup::SetAddBookmarkEnabled(bool enabled)
     {
-        m_createBookmark->setEnabled(false);
+        m_createBookmark->setEnabled(enabled);
+    }
+
+    void GraphCanvasConstructActionsMenuGroup::SetCommentsEnabled(bool enabled)
+    {
+        m_commentPresets.SetEnabled(enabled);
     }
 }

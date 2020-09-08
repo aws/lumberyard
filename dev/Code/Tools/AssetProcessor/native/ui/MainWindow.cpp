@@ -694,6 +694,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::ShowWindow()
 {
+    show();
     AzQtComponents::bringWindowToTop(this);
 }
 

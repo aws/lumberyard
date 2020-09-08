@@ -14,6 +14,7 @@
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/EntityUtils.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 #include <Components/BookmarkManagerComponent.h>
 #include <Components/BookmarkAnchor/BookmarkAnchorComponent.h>
@@ -63,6 +64,7 @@
 #include <GraphCanvas/Types/EntitySaveData.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
 
+#include <GraphCanvas/Widgets/GraphCanvasEditor/GraphCanvasAssetEditorMainWindow.h>
 #include <GraphCanvas/Widgets/GraphCanvasMimeEvent.h>
 #include <GraphCanvas/Widgets/GraphCanvasTreeModel.h>
 #include <GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.h>
@@ -142,12 +144,35 @@ namespace GraphCanvas
             Styling::NestedSelector::Reflect(serializeContext);
             TranslationKeyedString::Reflect(serializeContext);
             Styling::Style::Reflect(serializeContext);
+            AssetEditorUserSettings::Reflect(serializeContext);
         }
 
         EditorConstructPresets::Reflect(context);
         GraphCanvasMimeEvent::Reflect(context);
         GraphCanvasTreeModel::Reflect(context);        
         CreateSplicingNodeMimeEvent::Reflect(context);
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<AssetEditorRequestBus>("AssetEditorRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "AssetEditor")
+                ->Attribute(AZ::Script::Attributes::Module, EditorGraphModuleName)
+                ->Event("CreateNewGraph", &AssetEditorRequests::CreateNewGraph)
+                ->Event("ContainsGraph", &AssetEditorRequests::ContainsGraph)
+                ->Event("CloseGraph", &AssetEditorRequests::CloseGraph)
+                ;
+
+            behaviorContext->EBus<SceneRequestBus>("SceneRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Scene")
+                ->Attribute(AZ::Script::Attributes::Module, EditorGraphModuleName)
+                ->Event("CutSelection", &SceneRequests::CutSelection)
+                ->Event("CopySelection", &SceneRequests::CopySelection)
+                ->Event("Paste", &SceneRequests::Paste)
+                ->Event("DuplicateSelection", &SceneRequests::DuplicateSelection)
+                ;
+        }
     }
 
     void GraphCanvasSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

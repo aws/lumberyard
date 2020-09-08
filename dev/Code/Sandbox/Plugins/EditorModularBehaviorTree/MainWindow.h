@@ -28,7 +28,7 @@ class MainWindow
 {
     Q_OBJECT
 public:
-    MainWindow();
+    explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
     // you are required to implement this to satisfy the unregister/registerclass requirements on "RegisterQtViewPane"

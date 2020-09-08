@@ -19,7 +19,6 @@
 
 namespace AZ
 {
-    class StackedString;
     struct Uuid;
 
     class JsonDeserializer final
@@ -60,31 +59,48 @@ namespace AZ
         JsonDeserializer(JsonDeserializer&& rhs) = delete;
 
         static JsonSerializationResult::ResultCode Load(void* object, const Uuid& typeId, const rapidjson::Value& value,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
 
         static JsonSerializationResult::ResultCode LoadToPointer(void* object, const Uuid& typeId, const rapidjson::Value& value,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
 
         static JsonSerializationResult::ResultCode LoadWithClassElement(void* object, const rapidjson::Value& value,
-            const SerializeContext::ClassElement& classElement, StackedString& path, const JsonDeserializerSettings& settings);
+            const SerializeContext::ClassElement& classElement, JsonDeserializerContext& context);
         
         static JsonSerializationResult::ResultCode LoadClass(void* object, const SerializeContext::ClassData& classData, const rapidjson::Value& value,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
 
-        static JsonSerializationResult::ResultCode LoadContainer(void* containerPtr, const SerializeContext::ClassData& containerClass, const rapidjson::Value& value,
-            StackedString& path, const JsonDeserializerSettings& settings);
+        static JsonSerializationResult::ResultCode LoadEnum(void* object, const SerializeContext::ClassData& classData, const rapidjson::Value& value,
+            JsonDeserializerContext& context);
 
-        static JsonSerializationResult::ResultCode LoadItemInContainer(void* containerPtr, SerializeContext::IDataContainer& container,
-            const SerializeContext::ClassData& containerclassData, const rapidjson::Value& value, 
-            StackedString& path, const JsonDeserializerSettings& settings);
+        template<typename UnderlyingType>
+        static JsonSerializationResult::Result LoadUnderlyingEnumType(UnderlyingType& outputValue,
+            const SerializeContext::ClassData& classData, const rapidjson::Value& inputValue, JsonDeserializerContext& context);
+
+        template<typename UnderlyingType>
+        static JsonSerializationResult::Result LoadEnumFromNumber(UnderlyingType& outputValue,
+            const SerializeContext::ClassData& classData, const rapidjson::Value& inputValue, JsonDeserializerContext& context);
+
+        template<typename UnderlyingType>
+        static JsonSerializationResult::Result LoadEnumFromString(UnderlyingType& outputValue,
+            const SerializeContext::ClassData& classData, const rapidjson::Value& inputValue, JsonDeserializerContext& context);
+
+        template<typename UnderlyingType>
+        static JsonSerializationResult::Result LoadEnumFromContainer(UnderlyingType& outputValue,
+            const SerializeContext::ClassData& classData, const rapidjson::Value& inputValue, JsonDeserializerContext& context);
+
+        static AZStd::string ReportAvailableEnumOptions(AZStd::string_view message,
+            const AZStd::vector<AttributeSharedPair, AZStdFunctorAllocator>& attributes, bool signedValues);
 
         //! Fills out a pointer if needed based on the information in the provide json value. If FullyProcessed is returned
         //! there's no more information to process and if ContinueProcessing is returned the pointer needs to be further loaded.
-        static ResolvePointerResult ResolvePointer(void*& object, Uuid& objectType, JsonSerializationResult::ResultCode& status, const rapidjson::Value& pointerData,
-            const AZ::IRttiHelper& rtti, StackedString& path, const JsonDeserializerSettings& settings);
+        static ResolvePointerResult ResolvePointer(void** object, Uuid& objectType, JsonSerializationResult::ResultCode& status, const rapidjson::Value& pointerData,
+            const AZ::IRttiHelper& rtti, JsonDeserializerContext& context);
 
-        static LoadTypeIdResult LoadTypeIdFromJsonObject(const rapidjson::Value& node, const AZ::IRttiHelper& rtti, const JsonDeserializerSettings& settings);
-        static LoadTypeIdResult LoadTypeIdFromJsonString(const rapidjson::Value& node, const AZ::IRttiHelper* baseClassRtti, const JsonDeserializerSettings& settings);
+        static LoadTypeIdResult LoadTypeIdFromJsonObject(const rapidjson::Value& node, const AZ::IRttiHelper& rtti, JsonDeserializerContext& context);
+        static LoadTypeIdResult LoadTypeIdFromJsonString(const rapidjson::Value& node, const AZ::IRttiHelper* baseClassRtti, JsonDeserializerContext& context);
+        static JsonSerializationResult::ResultCode LoadTypeId(Uuid& typeId, const rapidjson::Value& input, JsonDeserializerContext& context,
+            const Uuid* baseTypeId = nullptr, bool* isExplicit = nullptr);
 
         //! Searches the class data matching typeId at object for a child element that matches nameCrc
         //! Sets the outSubclassTypeId to the found element data's typeId, and returns the offset pointer within storageClass to the found element.

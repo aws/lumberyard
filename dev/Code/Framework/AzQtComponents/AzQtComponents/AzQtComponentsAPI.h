@@ -33,8 +33,12 @@ namespace AzQtComponents
     constexpr const char* StoredClearButtonState = "_storedClearButtonState";
     constexpr const char* StoredHoverAttributeState = "_storedWaHoverState";
     constexpr const char* ErrorMessage = "_errorMessage";
-    constexpr const char* SideButtonsEnabled = "_sideButtonsEnabled";
+    constexpr const char* ErrorIconEnabled = "_errorIconEnabled";
     constexpr const char* Validator = "Validator";
     constexpr const char* HasPopupOpen = "HasPopupOpen";
+    constexpr const char* HasExternalError = "HasExternalError";
+    constexpr const char* NoMargins = "NoMargins";
+    constexpr const char* ValidDropTarget = "ValidDropTarget";
+    constexpr const char* InvalidDropTarget = "InvalidDropTarget";
 }
 

@@ -1,5 +1,5 @@
 {
-    "none": 
+    "none":
     {
         "std":
         [
@@ -22,6 +22,7 @@
             "hash.h",
             "hash_table.h",
             "iterator.h",
+            "numeric.h",
             "optional.h",
             "ratio.h",
             "reference_wrapper.h",

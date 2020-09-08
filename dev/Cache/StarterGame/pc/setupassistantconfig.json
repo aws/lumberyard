@@ -322,8 +322,8 @@
         {
             "identifier" : "sqlite",
             "name" : "sqliteName",
-            "version" : "v3.8.8.2-az.1",
-            "source": "SQLite/v3.8.8.2-az.1",
+            "version" : "v3.32.2",
+            "source": "SQLite/v3.32.2",
             "optional" : 0,
             "description" : "sqliteDescriptionSummary",
             "detailedInstructions" : "sqliteDetailedInstructions",
@@ -331,13 +331,13 @@
             "symlinks" :
             [
                 {
-                    "source" : "SQLite/v3.8.8.2-az.1",
+                    "source" : "SQLite/v3.32.2",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/SQLite",
                     "exampleFile" : "sqlite3.c"
                 },
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source" : "SQLite/v3.8.8.2-az.1",
+                    "source" : "SQLite/v3.32.2",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/SQLite",
                     "exampleFile" : "build/win_x64/vc140/release/sqlite.lib"
                 }
@@ -810,8 +810,8 @@
         {
             "identifier": "qt",
             "name": "qtName",
-            "version": "5.12.4.0-az",
-            "source": "Qt/5.12.4.0-az",
+            "version": "5.12.4.1-az",
+            "source": "Qt/5.12.4.1-az",
             "optional": 0,
             "description": "qtDescriptionSummary",
             "detailedInstructions": "qtDetailedInstructions",
@@ -820,25 +820,25 @@
             "symlinks":
             [
                 {
-                    "source": "Qt/5.12.4.0-az",
+                    "source": "Qt/5.12.4.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "LICENSE"
                 },
                 {
                     "compilers": [ "vc141", "vc142" ],
-                    "source": "Qt/5.12.4.0-az",
+                    "source": "Qt/5.12.4.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "msvc2017_64/bin/moc.exe"
                 },
                 {
                     "hostOS": [ "macOS" ],
-                    "source": "Qt/5.12.4.0-az",
+                    "source": "Qt/5.12.4.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "clang_64/bin/moc"
                 },
                 {
                     "hostOS": [ "linux" ],
-                    "source": "Qt/5.12.4.0-az",
+                    "source": "Qt/5.12.4.1-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "gcc_64/bin/moc"
                 }
@@ -1316,50 +1316,50 @@
         {
             "identifier" : "NVCLOTHLIB",
             "name" : "NVCLOTHLIBName",
-            "version" : "1.1.6-az.2",
-            "source" : "NvCloth/1.1.6-az.2",
+            "version" : "1.1.6-az.3",
+            "source" : "NvCloth/1.1.6-az.3",
             "description" : "NVCLOTHLIBDescriptionSummary",
             "detailedInstructions" : "NVCLOTHLIBDetailedInstructions",
             "roles" : ["compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "NvCloth/1.1.6-az.2/NvCloth",
+                    "source" : "NvCloth/1.1.6-az.3/NvCloth",
                     "destination" : "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile" : "include/NvCloth/Factory.h"
                 },
                 {
-                    "source" : "NvCloth/1.1.6-az.2/PxShared",
+                    "source" : "NvCloth/1.1.6-az.3/PxShared",
                     "destination" : "$CODEFOLDERNAME$/SDKs/NvCloth/PxShared",
                     "exampleFile" : "include/foundation/Px.h"
                 },
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source": "NvCloth/1.1.6-az.2/NvCloth",
+                    "source": "NvCloth/1.1.6-az.3/NvCloth",
                     "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile": "lib/vc141win64-cmake/NvCloth_x64.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source": "NvCloth/1.1.6-az.2/NvCloth",
+                    "source": "NvCloth/1.1.6-az.3/NvCloth",
                     "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile": "lib/osx64-cmake/libNvCloth.a"
                 },
                 {
                     "roles" : ["compileios"],
-                    "source": "NvCloth/1.1.6-az.2/NvCloth",
+                    "source": "NvCloth/1.1.6-az.3/NvCloth",
                     "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile": "lib/ios-cmake/libNvCloth.a"
                 },
                 {
                     "roles" : ["compileandroid"],
-                    "source": "NvCloth/1.1.6-az.2/NvCloth",
+                    "source": "NvCloth/1.1.6-az.3/NvCloth",
                     "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile": "lib/android-arm64-v8a-release-cmake/libNvCloth.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "NvCloth/1.1.6-az.2/NvCloth",
+                    "source": "NvCloth/1.1.6-az.3/NvCloth",
                     "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
                     "exampleFile": "lib/linux64-cmake/libNvCloth.a"
                 }

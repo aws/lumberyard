@@ -26,8 +26,9 @@ namespace GraphCanvas
 
         void PopulateMenu(EditorContextMenu* contextMenu);
         void RefreshGroup();
-        
-        void DisableBookmark();        
+
+        void SetAddBookmarkEnabled(bool enabled);
+        void SetCommentsEnabled(bool enabled);
         
     private:
     

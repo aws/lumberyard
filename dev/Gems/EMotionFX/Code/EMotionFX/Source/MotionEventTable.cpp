@@ -66,7 +66,7 @@ namespace EMotionFX
     }
 
     // process all events within a given time range
-    void MotionEventTable::ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const
+    void MotionEventTable::ProcessEvents(float startTime, float endTime, const MotionInstance* motionInstance) const
     {
         // process all event tracks
         for (MotionEventTrack* track : m_tracks)
@@ -79,9 +79,8 @@ namespace EMotionFX
         }
     }
 
-
     // extract all events from all tracks
-    void MotionEventTable::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const
+    void MotionEventTable::ExtractEvents(float startTime, float endTime, const MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const
     {
         // iterate over all tracks
         for (MotionEventTrack* track : m_tracks)
@@ -93,8 +92,6 @@ namespace EMotionFX
             }
         }
     }
-
-
 
     // remove all event tracks
     void MotionEventTable::RemoveAllTracks(bool delFromMem)

@@ -107,6 +107,7 @@ namespace LuaBuilder
 
             ParseDependencies(request.m_fullPath, dependencySet);
             response.m_outputProducts.back().m_pathDependencies.insert(dependencySet.begin(), dependencySet.end());
+            response.m_outputProducts.back().m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
         }
         else
         {
@@ -117,6 +118,7 @@ namespace LuaBuilder
         // Run copy
         response.m_outputProducts.emplace_back(request.m_fullPath, azrtti_typeid<AZ::ScriptAsset>(), AZ::ScriptAsset::CopiedAssetSubId);
         response.m_outputProducts.back().m_pathDependencies.swap(dependencySet);
+        response.m_outputProducts.back().m_dependenciesHandled = true; // We've output the dependencies immediately above so it's OK to tell the AP we've handled dependencies
     }
 
     //////////////////////////////////////////////////////////////////////////

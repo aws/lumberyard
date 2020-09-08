@@ -556,7 +556,7 @@ namespace JsonSerializationTests
         // Explicitly use a type that's registered but doesn't have a container to trigger the result for types
         // without containers.
         SimpleClass instance;
-        ResultCode result = m_serializer->Load(&instance, azrtti_typeid<SimpleClass>(), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&instance, azrtti_typeid<SimpleClass>(), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
         EXPECT_EQ(Processing::Altered, result.GetProcessing());
     }
@@ -568,8 +568,7 @@ namespace JsonSerializationTests
         // Explicitly use a type that's registered but doesn't have a container to trigger the result for types
         // without containers.
         SimpleClass instance;
-        ResultCode result = m_serializer->Store(*m_jsonDocument, m_jsonDocument->GetAllocator(), &instance, nullptr,
-            azrtti_typeid<SimpleClass>(), m_path, m_serializationSettings);
+        ResultCode result = m_serializer->Store(*m_jsonDocument, &instance, nullptr, azrtti_typeid<SimpleClass>(), *m_jsonSerializationContext);
         EXPECT_EQ(Outcomes::Unsupported, result.GetOutcome());
         EXPECT_EQ(Processing::Altered, result.GetProcessing());
     }

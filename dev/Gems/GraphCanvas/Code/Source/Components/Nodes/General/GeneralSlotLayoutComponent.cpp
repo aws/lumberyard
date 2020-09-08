@@ -54,7 +54,7 @@ namespace GraphCanvas
     }
 
     GeneralSlotLayoutComponent::GeneralSlotLayoutComponent()
-        : m_enableDividers(true)
+        : m_enableDividers(false)
     {
     }
 

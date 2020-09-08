@@ -22,7 +22,7 @@ namespace PhysX
     {
         struct HeightFieldAssetHeader
         {
-            AZ::u32 m_assetVersion = 1;
+            AZ::u32 m_assetVersion = 2;
             AZ::u32 m_assetDataSize = 0;
         };
 

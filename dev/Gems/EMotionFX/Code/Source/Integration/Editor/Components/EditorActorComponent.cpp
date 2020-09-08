@@ -49,7 +49,7 @@ namespace EMotionFX
             if (serializeContext)
             {
                 serializeContext->Class<EditorActorComponent, AzToolsFramework::Components::EditorComponentBase>()
-                    ->Version(3)
+                    ->Version(4)
                     ->Field("ActorAsset", &EditorActorComponent::m_actorAsset)
                     ->Field("MaterialPerLOD", &EditorActorComponent::m_materialPerLOD)
                     ->Field("MaterialPerActor", &EditorActorComponent::m_materialPerActor)
@@ -59,6 +59,7 @@ namespace EMotionFX
                     ->Field("RenderCharacter", &EditorActorComponent::m_renderCharacter)
                     ->Field("RenderBounds", &EditorActorComponent::m_renderBounds)
                     ->Field("SkinningMethod", &EditorActorComponent::m_skinningMethod)
+                    ->Field("UpdateJointTransformsWhenOutOfView", &EditorActorComponent::m_forceUpdateJointsOOV)
                     ->Field("LodLevel", &EditorActorComponent::m_lodLevel)
                 ;
 
@@ -78,14 +79,14 @@ namespace EMotionFX
                         "Actor asset", "Assigned actor asset")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAssetSelected)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute("EditButton", "Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32")
+                        ->Attribute("EditButton", "")
                         ->Attribute("EditDescription", "Open in Animation Editor")
                         ->Attribute("EditCallback", &EditorActorComponent::LaunchAnimationEditor)
                         ->DataElement(0, &EditorActorComponent::m_materialPerActor,
                         "Material", "Material assignment for this actor")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnMaterialPerActorChanged)
-                        ->ClassElement(AZ::Edit::ClassElements::Group, "Options")
+                        ->ClassElement(AZ::Edit::ClassElements::Group, "Render options")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(0, &EditorActorComponent::m_renderCharacter,
                         "Draw character", "Toggles rendering of character mesh.")
@@ -114,6 +115,10 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("EMotionFXActorService", 0xd6e8f48d))
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorActorComponent::AttachmentTargetVisibility)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAttachmentTargetChanged)
+                        ->ClassElement(AZ::Edit::ClassElements::Group, "Out of view")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(0, &EditorActorComponent::m_forceUpdateJointsOOV,
+                            "Force update joints", "Force update the joint transforms of actor, even when the character is out of the camera view.")
                         ->ClassElement(AZ::Edit::ClassElements::Group, "Preview")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(0, &EditorActorComponent::m_lodLevel,
@@ -614,10 +619,7 @@ namespace EMotionFX
                 return;
             }
 
-            const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateRotationFromScaledTransform(world);
-            const AZ::Vector3 entityPosition = world.GetTranslation();
-            const EMotionFX::Transform worldTransformNoScale(entityPosition, entityOrientation);
-            m_actorInstance->SetLocalSpaceTransform(worldTransformNoScale);
+            m_actorInstance->SetLocalSpaceTransform(MCore::AzTransformToEmfxTransform(world));
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -664,6 +666,7 @@ namespace EMotionFX
             cfg.m_attachmentJointIndex = m_attachmentJointIndex;
             cfg.m_lodLevel = m_lodLevel;
             cfg.m_skinningMethod = m_skinningMethod;
+            cfg.m_forceUpdateJointsOOV = m_forceUpdateJointsOOV;
 
             gameEntity->AddComponent(aznew ActorComponent(&cfg));
         }
@@ -707,7 +710,6 @@ namespace EMotionFX
             // animated by a motion component that is previewing the animation in the editor
             m_actorInstance->UpdateMeshDeformers(0.0f, true);
 
-            // Get the MCore::Matrix used by Mesh::Intersects
             const TransformData* transformData = m_actorInstance->GetTransformData();
             const Pose* currentPose = transformData->GetCurrentPose();
 

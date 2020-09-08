@@ -20,6 +20,7 @@
 #include "Editor/View/Widgets/ui_LogPanel.h"
 #include <Editor/View/Dialogs/Settings.h>
 
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
 namespace ScriptCanvasEditor
 {

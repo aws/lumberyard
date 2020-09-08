@@ -87,7 +87,7 @@ namespace EMotionFX
          * mMotionExtractionEnabled - true
          * mStartNodeIndex       - MCORE_INVALIDINDEX32 (allow modifications of all nodes)
          * mRetarget             - false (no motion retargeting allowed)
-         * mFreezeAtLastFrame    - false (motion doesn't freeze at last frame, but will fade out automatically)
+         * mFreezeAtLastFrame    - true (motion freezes in last frame when not looping forever)
          * mEnableMotionEvents   - true (all motion events will be processed for this motion instance
          * mBlendOutBeforeEnded  - true (blend out so that it faded out at the end of the motion).
          * mCanOverwrite         - true (can overwrite other motion instances when reaching a weight of 1.0)
@@ -117,7 +117,7 @@ namespace EMotionFX
             mMix                 = false;
             mMotionExtractionEnabled = true;
             mRetarget            = false;
-            mFreezeAtLastFrame   = false;
+            mFreezeAtLastFrame   = true;
             mEnableMotionEvents  = true;
             mBlendOutBeforeEnded = true;
             mCanOverwrite        = true;

@@ -58,9 +58,7 @@
             "UIEnumsDatabase.cpp",
             "LyViewPaneNames.h",
             "QtViewPaneManager.cpp",
-            "QtViewPaneManager.h",
-            "DockWidgetUtils.cpp",
-            "DockWidgetUtils.h"
+            "QtViewPaneManager.h"
         ],
         "System":
         [

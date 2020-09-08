@@ -39,7 +39,7 @@ namespace AudioControls
         Q_OBJECT
 
     public:
-        CAudioControlsEditorWindow();
+        explicit CAudioControlsEditorWindow(QWidget* parent = nullptr);
         ~CAudioControlsEditorWindow();
         void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 

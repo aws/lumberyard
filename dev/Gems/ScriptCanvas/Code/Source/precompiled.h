@@ -18,8 +18,6 @@
 
 #include <ScriptCanvas/Core/Attributes.h>
 
-
-
 #if defined(SCRIPTCANVAS_EDITOR)
 
 #include <AzCore/PlatformDef.h>

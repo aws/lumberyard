@@ -80,6 +80,8 @@ namespace ScriptCanvas
                 void OnVariableRemoved() override;
                 ////
 
+                AnnotateNodeSignal CreateAnnotationData();
+
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signaled sends the variable referenced by this node to a Data Output slot"));
 
                 // Outputs
@@ -95,6 +97,7 @@ namespace ScriptCanvas
 
                 ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertyAccounts);
 
+                AZStd::string_view  m_variableName;
                 ModifiableDatumView m_variableView;
 
             };

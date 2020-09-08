@@ -83,13 +83,13 @@ namespace EMotionFX
             scrollArea->setWidget(m_nodeWidget);
             scrollArea->setWidgetResizable(true);
         
-            mDock->SetContents(scrollArea);
+            mDock->setWidget(scrollArea);
 
             EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
         }
         else
         {
-            mDock->SetContents(CreateErrorContentWidget("Ragdoll editor depends on the PhysX and the PhysXCharacters gems. Please enable them in the project configurator."));
+            mDock->setWidget(CreateErrorContentWidget("Ragdoll editor depends on the PhysX and the PhysXCharacters gems. Please enable them in the project configurator."));
         }
 
         return true;
@@ -157,6 +157,22 @@ namespace EMotionFX
             connect(removeToRagdollAction, &QAction::triggered, this, &RagdollNodeInspectorPlugin::OnRemoveFromRagdoll);
         }
     }
+
+    bool RagdollNodeInspectorPlugin::IsNodeInRagdoll(const QModelIndex& index)
+    {
+        const Actor* actor = index.data(SkeletonModel::ROLE_ACTOR_POINTER).value<Actor*>();
+        const Node* joint = index.data(SkeletonModel::ROLE_POINTER).value<Node*>();
+
+        const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = actor->GetPhysicsSetup();
+        const Physics::RagdollConfiguration& ragdollConfig = physicsSetup->GetRagdollConfig();
+
+        if (ragdollConfig.FindNodeConfigByName(joint->GetNameString()))
+        {
+            return true;
+        }
+        return false;
+    }
+
 
     void RagdollNodeInspectorPlugin::AddToRagdoll(const QModelIndexList& modelIndices)
     {

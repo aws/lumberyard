@@ -172,7 +172,6 @@ namespace EMotionFX
         const float result = m_calculateFunc(x, y);
 
         // update the output value
-        //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(result);
 
         //if (rand() % 50 == 0)

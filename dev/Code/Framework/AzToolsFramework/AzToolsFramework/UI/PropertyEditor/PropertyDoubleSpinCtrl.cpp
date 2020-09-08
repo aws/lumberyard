@@ -11,7 +11,6 @@
 */
 #include "StdAfx.h"
 #include "PropertyDoubleSpinCtrl.hxx"
-#include "DHQSpinbox.hxx"
 #include "PropertyQTConstants.h"
 #include <QSlider>
 #include <QLineEdit>
@@ -22,6 +21,7 @@ AZ_POP_DISABLE_WARNING
 #include <cfloat>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/VectorFloat.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
                                                                // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QFocusEvent>
@@ -35,7 +35,7 @@ namespace AzToolsFramework
         // create the gui, it consists of a layout, and in that layout, a text field for the value
         // and then a slider for the value.
         QHBoxLayout* pLayout = new QHBoxLayout(this);
-        m_pSpinBox = aznew DHQDoubleSpinbox(this);
+        m_pSpinBox = new AzQtComponents::DoubleSpinBox(this);
         m_pSpinBox->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
         m_pSpinBox->setMinimumWidth(PropertyQTConstant_MinimumWidth);
         m_pSpinBox->setFixedHeight(PropertyQTConstant_DefaultHeight);

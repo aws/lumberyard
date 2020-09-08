@@ -10,12 +10,13 @@
 *
 */
 
-// include required headers
+#include <AzCore/Math/MathUtils.h>
 #include "TimeViewPlugin.h"
 #include "TrackDataHeaderWidget.h"
 #include "TrackDataWidget.h"
 #include "TrackHeaderWidget.h"
 #include "TimeInfoWidget.h"
+#include "TimeViewToolBar.h"
 
 #include "../MotionWindow/MotionWindowPlugin.h"
 #include "../MotionWindow/MotionListWindow.h"
@@ -44,10 +45,8 @@
 #include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/MotionEventTable.h>
 
-
 namespace EMStudio
 {
-    // constructor
     TimeViewPlugin::TimeViewPlugin()
         : EMStudio::DockWidgetPlugin()
     {
@@ -86,11 +85,6 @@ namespace EMStudio
         mMotionListWindow           = nullptr;
         m_motionSetPlugin           = nullptr;
         mMotion                     = nullptr;
-        mAdjustMotionCallback       = nullptr;
-        mSelectCallback             = nullptr;
-        mUnselectCallback           = nullptr;
-        mClearSelectionCallback     = nullptr;
-        mRecorderClearCallback      = nullptr;
 
         mBrushCurTimeHandle = QBrush(QColor(255, 180, 0));
         mPenCurTimeHandle   = QPen(QColor(255, 180, 0));
@@ -98,20 +92,16 @@ namespace EMStudio
         mPenCurTimeHelper   = QPen(QColor(100, 100, 100), 1, Qt::DotLine);
     }
 
-
-    // destructor
     TimeViewPlugin::~TimeViewPlugin()
     {
-        GetCommandManager()->RemoveCommandCallback(mAdjustMotionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mSelectCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mUnselectCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mClearSelectionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mRecorderClearCallback, false);
-        delete mAdjustMotionCallback;
-        delete mSelectCallback;
-        delete mUnselectCallback;
-        delete mClearSelectionCallback;
-        delete mRecorderClearCallback;
+        EMotionFX::AnimGraphEditorNotificationBus::Handler::BusDisconnect();
+
+        for (MCore::Command::Callback* callback : m_commandCallbacks)
+        {
+            GetCommandManager()->RemoveCommandCallback(callback, false);
+            delete callback;
+        }
+        m_commandCallbacks.clear();
 
         RemoveAllTracks();
 
@@ -152,7 +142,7 @@ namespace EMStudio
     // get the creator name
     const char* TimeViewPlugin::GetCreatorName() const
     {
-        return "MysticGD";
+        return "Amazon";
     }
 
 
@@ -185,21 +175,29 @@ namespace EMStudio
         }
     }
 
-
     // init after the parent dock window has been created
     bool TimeViewPlugin::Init()
     {
-        // create callbacks
-        mAdjustMotionCallback = new CommandAdjustMotionCallback(false);
-        mSelectCallback = new CommandSelectCallback(false);
-        mUnselectCallback = new CommandUnselectCallback(false);
-        mClearSelectionCallback = new CommandClearSelectionCallback(false);
-        mRecorderClearCallback = new CommandRecorderClearCallback(false);
-        GetCommandManager()->RegisterCommandCallback("AdjustMotion", mAdjustMotionCallback);
-        GetCommandManager()->RegisterCommandCallback("Select", mSelectCallback);
-        GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
-        GetCommandManager()->RegisterCommandCallback("ClearSelection", mClearSelectionCallback);
-        GetCommandManager()->RegisterCommandCallback("RecorderClear", mRecorderClearCallback);
+        m_commandCallbacks.emplace_back(new CommandAdjustMotionCallback(false));
+        GetCommandManager()->RegisterCommandCallback("AdjustMotion", m_commandCallbacks.back());
+
+        m_commandCallbacks.emplace_back(new CommandSelectCallback(false));
+        GetCommandManager()->RegisterCommandCallback("Select", m_commandCallbacks.back());
+
+        m_commandCallbacks.emplace_back(new CommandUnselectCallback(false));
+        GetCommandManager()->RegisterCommandCallback("Unselect", m_commandCallbacks.back());
+
+        m_commandCallbacks.emplace_back(new CommandClearSelectionCallback(false));
+        GetCommandManager()->RegisterCommandCallback("ClearSelection", m_commandCallbacks.back());
+
+        m_commandCallbacks.emplace_back(new CommandRecorderClearCallback(false));
+        GetCommandManager()->RegisterCommandCallback("RecorderClear", m_commandCallbacks.back());
+
+        m_commandCallbacks.emplace_back(new UpdateInterfaceCallback(false));
+        GetCommandManager()->RegisterCommandCallback("AdjustDefaultPlayBackInfo", m_commandCallbacks.back());
+
+        m_commandCallbacks.emplace_back(new UpdateInterfaceCallback(false));
+        GetCommandManager()->RegisterCommandCallback("PlayMotion", m_commandCallbacks.back());
 
         // load the cursors
         mZoomInCursor       = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").c_str()).scaled(32, 32));
@@ -207,22 +205,27 @@ namespace EMStudio
 
         // create main widget
         mMainWidget = new QWidget(mDock);
-        mDock->SetContents(mMainWidget);
+        mDock->setWidget(mMainWidget);
         QGridLayout* mainLayout = new QGridLayout();
         mainLayout->setMargin(0);
         mainLayout->setSpacing(0);
         mMainWidget->setLayout(mainLayout);
 
         // create widgets in the header
+        QHBoxLayout* topLayout = new QHBoxLayout();
+        // Top
+        mTimeViewToolBar = new TimeViewToolBar(this);
+
         // Top-left
         mTimeInfoWidget = new TimeInfoWidget(this);
-        mTimeInfoWidget->setFixedSize(175, 40);
-        mainLayout->addWidget(mTimeInfoWidget, 0, 0);
+        mTimeInfoWidget->setFixedWidth(175);
+        topLayout->addWidget(mTimeInfoWidget);
+        topLayout->addWidget(mTimeViewToolBar);
+        mainLayout->addLayout(topLayout, 0, 0, 1, 2);
 
         // Top-right
         mTrackDataHeaderWidget = new TrackDataHeaderWidget(this, mDock);
         mTrackDataHeaderWidget->setFixedHeight(40);
-        mainLayout->addWidget(mTrackDataHeaderWidget, 0, 1);
 
         // create widgets in the body. For the body we are going to put a scroll area
         // so we can get a vertical scroll bar when we have more tracks than what the
@@ -233,20 +236,27 @@ namespace EMStudio
         bodyWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         bodyWidget->setWidgetResizable(true);
 
-        // scroll areas require an inner widget to hold the layout (instead of a layout
-        // directly).
+        // scroll areas require an inner widget to hold the layout (instead of a layout directly).
         QWidget* innerWidget = new QWidget(bodyWidget);
         QHBoxLayout* bodyLayout = new QHBoxLayout();
         bodyLayout->setMargin(0);
         bodyLayout->setSpacing(0);
         innerWidget->setLayout(bodyLayout);
         bodyWidget->setWidget(innerWidget);
-        mainLayout->addWidget(bodyWidget, 1, 0, 1, 2);
+        mainLayout->addWidget(bodyWidget, 2, 0, 1, 2);
 
         // Bottom-left
         mTrackHeaderWidget = new TrackHeaderWidget(this, mDock);
         mTrackHeaderWidget->setFixedWidth(175);
         bodyLayout->addWidget(mTrackHeaderWidget);
+
+        // Left
+        QHBoxLayout* addTrackAndTrackDataLayout = new QHBoxLayout;
+        addTrackAndTrackDataLayout->addWidget(mTrackHeaderWidget->GetAddTrackWidget());
+        mTrackHeaderWidget->GetAddTrackWidget()->setFixedWidth(175);
+        addTrackAndTrackDataLayout->addWidget(mTrackDataHeaderWidget);
+
+        mainLayout->addLayout(addTrackAndTrackDataLayout, 1, 0, 1, 2);
 
         // bottom-right
         mTrackDataWidget = new TrackDataWidget(this, mDock);
@@ -257,15 +267,20 @@ namespace EMStudio
         connect(mTrackDataWidget, &TrackDataWidget::ElementTrackChanged, this, &TimeViewPlugin::MotionEventTrackChanged);
         connect(mTrackDataWidget, &TrackDataWidget::MotionEventChanged, this, &TimeViewPlugin::MotionEventChanged);
         connect(this, &TimeViewPlugin::DeleteKeyPressed, this, &TimeViewPlugin::RemoveSelectedMotionEvents);
-        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &TimeViewPlugin::VisibilityChanged);
+        connect(mDock, &QDockWidget::visibilityChanged, this, &TimeViewPlugin::VisibilityChanged);
 
         connect(this, &TimeViewPlugin::ManualTimeChange, this, &TimeViewPlugin::OnManualTimeChange);
+
+        connect(mTimeViewToolBar, &TimeViewToolBar::RecorderStateChanged, this, &TimeViewPlugin::RecorderStateChanged);
 
         SetCurrentTime(0.0f);
         SetScale(1.0f);
 
         SetRedrawFlag();
 
+        mTimeViewToolBar->UpdateInterface();
+
+        EMotionFX::AnimGraphEditorNotificationBus::Handler::BusConnect();
         return true;
     }
 
@@ -314,6 +329,19 @@ namespace EMStudio
         return nullptr;
     }
 
+    AZ::Outcome<AZ::u32> TimeViewPlugin::FindTrackIndex(const TimeTrack* track) const
+    {
+        const AZ::u32 numTracks = mTracks.GetLength();
+        for (AZ::u32 i = 0; i < numTracks; ++i)
+        {
+            if (mTracks[i] == track)
+            {
+                return AZ::Success(i);
+            }
+        }
+
+        return AZ::Failure();
+    }
 
     // round a double based on 0.5 (everything above is rounded up, everything else rounded down)
     double TimeViewPlugin::RoundDouble(double x) const
@@ -426,30 +454,6 @@ namespace EMStudio
         mTimeInfoWidget->update();
         mDirty = false;
     }
-
-
-    /*
-    // scroll horizontally
-    void TimeViewPlugin::OnHSliderValueChanged(int value)
-    {
-        mHorizontalScroll->blockSignals(true);
-        SetScrollX(value);
-        mHorizontalScroll->blockSignals(false);
-
-    //  UpdateVisualData();
-    }
-    */
-
-    // change the scale / zoom
-    /*void TimeViewPlugin::OnScaleSliderValueChanged(int value)
-    {
-        mTimeScale = value / TIMEVIEW_PIXELSPERSECOND;
-        UpdateVisualData();
-
-        // inform the motion info about the changes
-        UpdateCurrentMotionInfo();
-    }*/
-
 
     // calc the time value to a pixel value (excluding scroll)
     double TimeViewPlugin::TimeToPixel(double timeInSeconds, bool scale) const
@@ -581,6 +585,11 @@ namespace EMStudio
     // set the current time in seconds
     void TimeViewPlugin::SetCurrentTime(double timeInSeconds)
     {
+        const double oneMs = 1.0 / 1000.0;
+        if (!AZ::IsClose(mCurTime, timeInSeconds, oneMs))
+        {
+            mDirty = true;
+        }
         mCurTime = timeInSeconds;
     }
 
@@ -832,34 +841,57 @@ namespace EMStudio
             mEventHistoryItem   = nullptr;
         }
 
-        // if we're using the recorder
-        EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
-        //if (recorder.IsRecording() || recorder.IsInPlayMode())
-        if (recorder.GetRecordTime() > MCore::Math::epsilon)
+        switch (m_mode)
         {
-            if (recorder.GetIsInPlayMode() && recorder.GetIsInAutoPlayMode())
+            case TimeViewMode::Motion:
             {
-                SetCurrentTime(recorder.GetCurrentPlayTime());
-                MakeTimeVisible(mCurTime, 0.5, false);
+                const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
+                if (motionInstances.size() == 1)
+                {
+                    EMotionFX::MotionInstance* motionInstance = motionInstances[0];
+                    if (!AZ::IsClose(aznumeric_cast<float>(mCurTime), motionInstance->GetCurrentTime(), MCore::Math::epsilon))
+                    {
+                        SetCurrentTime(motionInstance->GetCurrentTime());
+                    }
+                }
+                else
+                {
+                    // Either no motion is selected or multiple actor instances play the motion.
+                    SetCurrentTime(0.0f);
+                }
+
+                break;
             }
 
-            if (recorder.GetIsRecording())
+            case TimeViewMode::AnimGraph:
             {
-                SetCurrentTime(mMaxTime);
-                MakeTimeVisible(recorder.GetRecordTime(), 0.95, false);
-            }
-        }
-        else // we're not using the recorder
-        {
-            const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-            if (motionInstances.size() == 1)
-            {
-                EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                if (MCore::Compare<float>::CheckIfIsClose(aznumeric_cast<float>(mCurTime), motionInstance->GetCurrentTime(), MCore::Math::epsilon) == false)
+                EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
+                if (recorder.GetRecordTime() > MCore::Math::epsilon)
                 {
-                    SetCurrentTime(motionInstance->GetCurrentTime());
-                    mDirty = true;
+                    if (recorder.GetIsInPlayMode() && recorder.GetIsInAutoPlayMode())
+                    {
+                        SetCurrentTime(recorder.GetCurrentPlayTime());
+                        MakeTimeVisible(mCurTime, 0.5, false);
+                    }
+
+                    if (recorder.GetIsRecording())
+                    {
+                        SetCurrentTime(mMaxTime);
+                        MakeTimeVisible(recorder.GetRecordTime(), 0.95, false);
+                    }
                 }
+                else
+                {
+                    SetCurrentTime(0.0f);
+                }
+
+                break;
+            }
+
+            default:
+            {
+                SetCurrentTime(0.0f);
+                break;
             }
         }
 
@@ -893,31 +925,11 @@ namespace EMStudio
         }
     }
 
-    /*
-    // handle timer event
-    void TimeViewPlugin::timerEvent(QTimerEvent* event)
+
+    void TimeViewPlugin::SetRedrawFlag()
     {
-        ValidatePluginLinks();
-
-        if (EMotionFX::GetRecorder().IsRecording() || EMotionFX::GetRecorder().IsInPlayMode())
-        {
-            if (EMotionFX::GetRecorder().IsInPlayMode() && EMotionFX::GetRecorder().IsInAutoPlayMode())
-                SetCurrentTime( EMotionFX::GetRecorder().GetCurrentPlayTime() );
-
-            //mTimeViewWidget->update();
-            mTrackDataWidget->update();
-        }
-        else
-        {
-            MCore::Array<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-            if (motionInstances.GetLength() == 1)
-            {
-                MotionInstance* motionInstance = motionInstances[0];
-                SetCurrentTime( motionInstance->GetCurrentTime() );
-            }
-        }
+        mDirty = true;
     }
-    */
 
 
     void TimeViewPlugin::UpdateViewSettings()
@@ -1122,60 +1134,44 @@ namespace EMStudio
 
     void TimeViewPlugin::ValidatePluginLinks()
     {
-        if (mMotionWindowPlugin == nullptr)
-        {
-            EMStudioPlugin* motionBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
-            if (motionBasePlugin)
-            {
-                mMotionWindowPlugin = (MotionWindowPlugin*)motionBasePlugin;
-                mMotionListWindow   = mMotionWindowPlugin->GetMotionListWindow();
+        mMotionWindowPlugin = nullptr;
+        mMotionListWindow = nullptr;
+        mMotionEventsPlugin = nullptr;
+        m_motionSetPlugin = nullptr;
 
-                // Attention: do this only once!
-                connect(mMotionListWindow, &MotionListWindow::MotionSelectionChanged, this, &TimeViewPlugin::MotionSelectionChanged);
-            }
+        EMStudio::PluginManager* pluginManager = EMStudio::GetPluginManager();
+
+        EMStudioPlugin* motionBasePlugin = pluginManager->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
+        if (motionBasePlugin)
+        {
+            mMotionWindowPlugin = static_cast<MotionWindowPlugin*>(motionBasePlugin);
+            mMotionListWindow   = mMotionWindowPlugin->GetMotionListWindow();
+            connect(mMotionListWindow, &MotionListWindow::MotionSelectionChanged, this, &TimeViewPlugin::MotionSelectionChanged, Qt::UniqueConnection); // UniqueConnection as we could connect multiple times.
         }
 
-        if (!m_motionSetPlugin)
+        EMStudioPlugin* motionSetBasePlugin = pluginManager->FindActivePlugin(MotionSetsWindowPlugin::CLASS_ID);
+        if (motionSetBasePlugin)
         {
-            EMStudioPlugin* motionSetBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionSetsWindowPlugin::CLASS_ID);
-            if (motionSetBasePlugin)
-            {
-                m_motionSetPlugin = (MotionSetsWindowPlugin*)motionSetBasePlugin;
-                connect(m_motionSetPlugin->GetMotionSetWindow(), &MotionSetWindow::MotionSelectionChanged, this, &TimeViewPlugin::MotionSelectionChanged);
-            }
+            m_motionSetPlugin = static_cast<MotionSetsWindowPlugin*>(motionSetBasePlugin);
+            connect(m_motionSetPlugin->GetMotionSetWindow(), &MotionSetWindow::MotionSelectionChanged, this, &TimeViewPlugin::MotionSelectionChanged, Qt::UniqueConnection); // UniqueConnection as we could connect multiple times.
         }
 
-        if (mMotionEventsPlugin == nullptr)
+        EMStudioPlugin* motionEventsBasePlugin = pluginManager->FindActivePlugin(MotionEventsPlugin::CLASS_ID);
+        if (motionEventsBasePlugin)
         {
-            EMStudioPlugin* motionEventsBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionEventsPlugin::CLASS_ID);
-            if (motionEventsBasePlugin)
-            {
-                mMotionEventsPlugin = (MotionEventsPlugin*)motionEventsBasePlugin;
-                mMotionEventsPlugin->ValidatePluginLinks();
-            }
+            mMotionEventsPlugin = static_cast<MotionEventsPlugin*>(motionEventsBasePlugin);
+            mMotionEventsPlugin->ValidatePluginLinks();
         }
     }
 
 
     void TimeViewPlugin::MotionSelectionChanged()
     {
-        EMotionFX::Motion* motion = GetCommandManager()->GetCurrentSelection().GetSingleMotion();
-        if (mMotion != motion)
+        ValidatePluginLinks();
+        if ((mMotionListWindow && mMotionListWindow->isVisible()) ||
+            (m_motionSetPlugin && m_motionSetPlugin->GetMotionSetWindow() && m_motionSetPlugin->GetMotionSetWindow()->isVisible()))
         {
-            mMotion = motion;
-            ReInit();
-        }
-
-        if (mTrackHeaderWidget)
-        {
-            if (motion == nullptr)
-            {
-                mTrackHeaderWidget->GetAddTrackButton()->setEnabled(false);
-            }
-            else
-            {
-                mTrackHeaderWidget->GetAddTrackButton()->setEnabled(true);
-            }
+            SetMode(TimeViewMode::Motion);
         }
     }
 
@@ -1244,8 +1240,9 @@ namespace EMStudio
 
         ValidatePluginLinks();
 
-        // if we have a recording, don't init things for the motions
-        if (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon || EMotionFX::GetRecorder().GetIsInPlayMode())
+        // If we are in anim graph mode and have a recording, don't init for the motions.
+        if ((m_mode == TimeViewMode::AnimGraph) &&
+            (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon || EMotionFX::GetRecorder().GetIsInPlayMode()))
         {
             SetScrollX(0);
             mTrackHeaderWidget->ReInit();
@@ -1259,22 +1256,16 @@ namespace EMStudio
 
             const EMotionFX::MotionEventTable* eventTable = mMotion->GetEventTable();
 
+            RemoveAllTracks();
+
             // get the number of motion event tracks and iterate through them
             const size_t numEventTracks = eventTable->GetNumTracks();
             for (trackIndex = 0; trackIndex < numEventTracks; ++trackIndex)
             {
                 const EMotionFX::MotionEventTrack* eventTrack = eventTable->GetTrack(trackIndex);
 
-                TimeTrack* timeTrack = nullptr;
-                if (trackIndex < GetNumTracks())
-                {
-                    timeTrack = GetTrack(static_cast<uint32>(trackIndex));
-                }
-                else
-                {
-                    timeTrack = new TimeTrack(this);
-                    AddTrack(timeTrack);
-                }
+                TimeTrack* timeTrack = new TimeTrack(this);
+                AddTrack(timeTrack);
 
                 timeTrack->SetName(eventTrack->GetName());
                 timeTrack->SetIsEnabled(eventTrack->GetIsEnabled());
@@ -1389,12 +1380,6 @@ namespace EMStudio
                 }
                 timeTrack->SetElementCount(numMotionEvents);
             }
-
-            for (trackIndex = numEventTracks; trackIndex < GetNumTracks(); ++trackIndex)
-            {
-                TimeTrack* timeTrack = GetTrack(static_cast<uint32>(trackIndex));
-                timeTrack->SetIsVisible(false);
-            }
         }
         else // mMotion == nullptr
         {
@@ -1437,6 +1422,8 @@ namespace EMStudio
                 motionInfo->mScrollX    = 0.0;
             }
         }
+
+        UpdateVisualData();
     }
 
 
@@ -1749,36 +1736,47 @@ namespace EMStudio
             *outClipEnd     = 0.0;
         }
 
-        EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
-        if (recorder.GetRecordTime() > MCore::Math::epsilon)
+        switch (m_mode)
         {
-            if (outClipEnd)
+            case TimeViewMode::Motion:
             {
-                *outClipEnd = recorder.GetRecordTime();
+                EMotionFX::Motion* motion = GetMotion();
+                if (motion)
+                {
+                    EMotionFX::PlayBackInfo* playbackInfo = motion->GetDefaultPlayBackInfo();
+
+                    if (outClipStart)
+                    {
+                        *outClipStart = playbackInfo->mClipStartTime;
+                    }
+                    if (outClipEnd)
+                    {
+                        *outClipEnd = playbackInfo->mClipEndTime;
+                    }
+                    if (outMaxTime)
+                    {
+                        *outMaxTime = motion->GetMaxTime();
+                    }
+                }
+
+                break;
             }
-            if (outMaxTime)
+            case TimeViewMode::AnimGraph:
             {
-                *outMaxTime = recorder.GetRecordTime();
-            }
-        }
-        else
-        {
-            EMotionFX::Motion* motion = GetMotion();
-            if (motion)
-            {
-                EMotionFX::PlayBackInfo* playbackInfo = motion->GetDefaultPlayBackInfo();
-                if (outClipStart)
+                EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
+                if (recorder.GetRecordTime() > MCore::Math::epsilon)
                 {
-                    *outClipStart   = playbackInfo->mClipStartTime;
+                    if (outClipEnd)
+                    {
+                        *outClipEnd = recorder.GetRecordTime();
+                    }
+                    if (outMaxTime)
+                    {
+                        *outMaxTime = recorder.GetRecordTime();
+                    }
                 }
-                if (outClipEnd)
-                {
-                    *outClipEnd     = playbackInfo->mClipEndTime;
-                }
-                if (outMaxTime)
-                {
-                    *outMaxTime     = motion->GetMaxTime();
-                }
+
+                break;
             }
         }
     }
@@ -1868,9 +1866,10 @@ namespace EMStudio
                 const uint32 actorInstanceDataIndex = recorder.FindActorInstanceDataIndex(actorInstance);
                 if (actorInstanceDataIndex != MCORE_INVALIDINDEX32)
                 {
-                    const bool displayNodeActivity  = mTrackHeaderWidget->mNodeActivityCheckBox->isChecked();
-                    const bool displayEvents        = mTrackHeaderWidget->mEventsCheckBox->isChecked();
-                    const bool displayRelativeGraph = mTrackHeaderWidget->mRelativeGraphCheckBox->isChecked();
+                    RecorderGroup* recorderGroup = mTimeViewToolBar->GetRecorderGroup();
+                    const bool displayNodeActivity = recorderGroup->GetDisplayNodeActivity();
+                    const bool displayEvents = recorderGroup->GetDisplayMotionEvents();
+                    const bool displayRelativeGraph = recorderGroup->GetDisplayRelativeGraph();
                     bool isTop = true;
 
                     const EMotionFX::Recorder::ActorInstanceData& actorInstanceData = recorder.GetActorInstanceData(actorInstanceDataIndex);
@@ -2023,6 +2022,18 @@ namespace EMStudio
         return true;
     }
 
+    bool UpdateInterfaceTimeViewPlugin()
+    {
+        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(TimeViewPlugin::CLASS_ID);
+        if (plugin == nullptr)
+        {
+            return false;
+        }
+
+        static_cast<TimeViewPlugin*>(plugin)->GetTimeViewToolBar()->UpdateInterface();
+
+        return true;
+    }
 
     bool TimeViewPlugin::CommandAdjustMotionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)       { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitTimeViewPlugin(); }
     bool TimeViewPlugin::CommandAdjustMotionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)          { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitTimeViewPlugin(); }
@@ -2031,6 +2042,7 @@ namespace EMStudio
         MCORE_UNUSED(command);
         if (CommandSystem::CheckIfHasMotionSelectionParameter(commandLine) == false)
         {
+            UpdateInterfaceTimeViewPlugin();
             return true;
         }
         return MotionSelectionChangedTimeViewPlugin();
@@ -2040,6 +2052,7 @@ namespace EMStudio
         MCORE_UNUSED(command);
         if (CommandSystem::CheckIfHasMotionSelectionParameter(commandLine) == false)
         {
+            UpdateInterfaceTimeViewPlugin();
             return true;
         }
         return MotionSelectionChangedTimeViewPlugin();
@@ -2068,12 +2081,16 @@ namespace EMStudio
     bool TimeViewPlugin::CommandRecorderClearCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitTimeViewPlugin(); }
     bool TimeViewPlugin::CommandRecorderClearCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitTimeViewPlugin(); }
 
+    bool TimeViewPlugin::UpdateInterfaceCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateInterfaceTimeViewPlugin(); }
+    bool TimeViewPlugin::UpdateInterfaceCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateInterfaceTimeViewPlugin(); }
+
     // calculate the content heights
     uint32 TimeViewPlugin::CalcContentHeight() const
     {
-        const bool displayNodeActivity  = mTrackHeaderWidget->mNodeActivityCheckBox->isChecked();
-        const bool displayEvents        = mTrackHeaderWidget->mEventsCheckBox->isChecked();
-        const bool displayRelativeGraph = mTrackHeaderWidget->mRelativeGraphCheckBox->isChecked();
+        RecorderGroup* recorderGroup = mTimeViewToolBar->GetRecorderGroup();
+        const bool displayNodeActivity = recorderGroup->GetDisplayNodeActivity();
+        const bool displayEvents = recorderGroup->GetDisplayMotionEvents();
+        const bool displayRelativeGraph = recorderGroup->GetDisplayRelativeGraph();
 
         uint32 result = 0;
         if (displayNodeActivity)
@@ -2094,12 +2111,55 @@ namespace EMStudio
         return result;
     }
 
-
     void TimeViewPlugin::OnManualTimeChange(float timeValue)
     {
         MCORE_UNUSED(timeValue);
         GetMainWindow()->OnUpdateRenderPlugins();
     }
-} // namespace EMStudio
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.moc>
+    void TimeViewPlugin::OnFocusIn()
+    {
+        SetMode(TimeViewMode::AnimGraph);
+    }
+
+    void TimeViewPlugin::OnShow()
+    {
+        SetMode(TimeViewMode::AnimGraph);
+    }
+
+    void TimeViewPlugin::SetMode(TimeViewMode mode)
+    {
+        const bool modeChanged = (m_mode != mode);
+        m_mode = mode;
+
+        switch (mode)
+        {
+            case TimeViewMode::Motion:
+            {
+                EMotionFX::Motion* motion = GetCommandManager()->GetCurrentSelection().GetSingleMotion();
+                if ((mMotion != motion) || modeChanged)
+                {
+                    mMotion = motion;
+                    ReInit();
+                }
+
+                if (mTrackHeaderWidget)
+                {
+                    mTrackHeaderWidget->GetAddTrackWidget()->setEnabled(motion != nullptr);
+                }
+
+                break;
+            }
+
+            default:
+            {
+                mMotion = nullptr;
+                ReInit();
+                OnZoomAll();
+                SetCurrentTime(0.0f);
+            }
+        }
+
+        mTimeViewToolBar->UpdateInterface();
+    }
+} // namespace EMStudio

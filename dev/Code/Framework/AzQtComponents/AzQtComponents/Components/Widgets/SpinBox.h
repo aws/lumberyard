@@ -83,6 +83,7 @@ namespace AzQtComponents
             QCursor scrollCursorRightMax;
             // For VectorInput, DoubleVectorInput
             int labelSize;
+            bool autoSelectAllOnClickFocus;
         };
 
         /*!
@@ -95,7 +96,21 @@ namespace AzQtComponents
          */
         static Config defaultConfig();
 
+        /*!
+         * Sets the HasError property of the QAbstractSpinBox to hasError. This
+         * allows the developer to manually set the error state of a SpinBox or
+         * DoubleSpinBox.π
+         */
+        static void setHasError(QAbstractSpinBox* spinbox, bool hasError);
+
         explicit SpinBox(QWidget* parent = nullptr);
+
+        // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
+        // YOU MUST USE A POINTER TO SpinBox, NOT A POINTER TO QSpinBox
+        // Needed so that we can keep track of the last value properly for trapping the Escape key
+        void setValue(int value);
+
+        QSize minimumSizeHint() const override;
 
         bool isUndoAvailable() const;
         bool isRedoAvailable() const;
@@ -108,7 +123,10 @@ namespace AzQtComponents
         void globalUndoTriggered();
         void globalRedoTriggered();
 
+        void cutTriggered();
+        void copyTriggered();
         void pasteTriggered();
+        void deleteTriggered();
         /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
         /// as the parameters will only be valid for a short time
         void contextMenuAboutToShow(QMenu* menu, QAction* undoAction, QAction* redoAction);
@@ -117,6 +135,7 @@ namespace AzQtComponents
         friend class Style;
         friend class EditorProxyStyle;
         friend class SpinBoxWatcher;
+        friend class VectorElement;
 
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::SpinBox::s_spinBoxWatcher': class 'QPointer<AzQtComponents::SpinBoxWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::SpinBox'
         static QPointer<SpinBoxWatcher> s_spinBoxWatcher;
@@ -131,10 +150,17 @@ namespace AzQtComponents
         static bool polish(QProxyStyle* style, QWidget* widget, const Config& config);
         static bool unpolish(QProxyStyle* style, QWidget* widget, const Config& config);
 
+        static void setButtonSymbolsForStyle(QAbstractSpinBox* spinBox, bool isUI10);
+
         void focusInEvent(QFocusEvent* e) override;
+        void focusOutEvent(QFocusEvent* e) override;
         void contextMenuEvent(QContextMenuEvent* ev) override;
+        virtual void setLastValue(int v);
 
         internal::SpinBoxLineEdit* m_lineEdit = nullptr;
+        int m_lastValue = 0;
+        QString m_lastSuffix;
+        QSize m_lastMinimumSize;
 
         friend class DoubleSpinBox;
     };
@@ -186,6 +212,13 @@ namespace AzQtComponents
 
         explicit DoubleSpinBox(QWidget* parent = nullptr);
 
+        // NOTE: setValue() is not virtual, but is in the base class. In order for this to work
+        // YOU MUST USE A POINTER TO DoubleSpinbox, NOT A POINTER TO QSpinBox
+        // Needed so that we can keep track of the last value properly for trapping the Escape key
+        void setValue(double value);
+
+        QSize minimumSizeHint() const override;
+
         QString textFromValue(double value) const override;
 
         bool isUndoAvailable() const;
@@ -195,12 +228,12 @@ namespace AzQtComponents
         void setOptions(Options options) { m_options = options; }
 
         int displayDecimals() const { return m_displayDecimals; }
+        void SetDisplayDecimals(int displayDecimals) { setDisplayDecimals(displayDecimals); }
         void setDisplayDecimals(int displayDecimals) { m_displayDecimals = displayDecimals; }
 
         bool isEditing() const;
 
         void setInitialValueWasSetting(bool b);
-        void updateValue(double value);
 
     Q_SIGNALS:
         void valueChangeBegan();
@@ -209,7 +242,10 @@ namespace AzQtComponents
         void globalUndoTriggered();
         void globalRedoTriggered();
 
+        void cutTriggered();
+        void copyTriggered();
         void pasteTriggered();
+        void deleteTriggered();
 
         /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
         /// as the parameters will only be valid for a short time
@@ -219,12 +255,16 @@ namespace AzQtComponents
         friend class SpinBoxWatcher;
 
         void focusInEvent(QFocusEvent* e) override;
+        void focusOutEvent(QFocusEvent* e) override;
         void contextMenuEvent(QContextMenuEvent* ev) override;
         QString stringValue(double value, bool truncated = false) const;
         void updateToolTip(double value);
+        virtual void setLastValue(double v);
 
         internal::SpinBoxLineEdit* m_lineEdit = nullptr;
-        
+        double m_lastValue = 0.0;
+        QString m_lastSuffix;
+        QSize m_lastMinimumSize;
         int m_displayDecimals;
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::DoubleSpinBox::m_options': class 'QFlags<AzQtComponents::DoubleSpinBox::Option>' needs to have dll-interface to be used by clients of class 'AzQtComponents::DoubleSpinBox'
         Options m_options;
@@ -258,7 +298,10 @@ namespace AzQtComponents
             void globalRedoTriggered();
             void selectAllTriggered();
 
+            void cutTriggered();
+            void copyTriggered();
             void pasteTriggered();
+            void deleteTriggered();
         };
     } // namespace internal
 } // namespace AzQtComponents

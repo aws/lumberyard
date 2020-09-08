@@ -21,7 +21,7 @@
 
 QWidget* PropertyHandlerLayoutPadding::CreateGUI(QWidget* pParent)
 {
-    AzToolsFramework::PropertyVectorCtrl* ctrl = m_common.ConstructGUI(pParent);
+    AzQtComponents::VectorInput* ctrl = m_common.ConstructGUI(pParent);
     ctrl->setLabel(0, "Left");
     ctrl->setLabel(1, "Top");
     ctrl->setLabel(2, "Right");

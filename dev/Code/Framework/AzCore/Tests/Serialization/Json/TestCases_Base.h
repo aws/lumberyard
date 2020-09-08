@@ -14,6 +14,7 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 namespace JsonSerializationTests
@@ -62,27 +63,43 @@ namespace JsonSerializationTests
 
     struct BaseClass
     {
+        template<class T>
+        friend struct AZStd::IntrusivePtrCountPolicy;
+
         AZ_CLASS_ALLOCATOR(BaseClass, AZ::SystemAllocator, 0);
         AZ_RTTI(BaseClass, "{E0A66EB6-1AC5-4C73-B1A7-6367A47EC026}");
 
         virtual ~BaseClass() = default;
 
+        virtual void add_ref();
+        virtual void release();
+
         bool Equals(const BaseClass& rhs, bool) const;
         static void Reflect(AZStd::unique_ptr<AZ::SerializeContext>& context);
 
+        mutable int m_refCount = 0;
         float m_baseVar{ -42.0f };
     };
 
     struct BaseClass2
     {
+        template<class T>
+        friend struct AZStd::IntrusivePtrCountPolicy;
+
         AZ_CLASS_ALLOCATOR(BaseClass2, AZ::SystemAllocator, 0);
         AZ_RTTI(BaseClass2, "{F9D704C1-04AF-463C-B47A-02C28805AAEE}");
 
         virtual ~BaseClass2() = default;
 
+        virtual void add_ref();
+        virtual void release();
+
         bool Equals(const BaseClass2& rhs, bool) const;
         static void Reflect(AZStd::unique_ptr<AZ::SerializeContext>& context);
 
-        float m_base2Var{ -33.0f };
+        mutable int m_refCount = 0;
+        double m_base2Var1{ -133.0 };
+        double m_base2Var2{ -233.0 };
+        double m_base2Var3{ -333.0 };
     };
 } // namespace JsonSerializationTests

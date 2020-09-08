@@ -290,6 +290,11 @@ namespace ScriptCanvasEditor
         }
     }
 
+    const AZStd::vector<AZ::TypeId>& DataTypePaletteModel::GetVariableTypes() const
+    {
+        return m_variableTypes;
+    }
+
     void DataTypePaletteModel::AddDataTypeImpl(const AZ::TypeId& typeId)
     {
 

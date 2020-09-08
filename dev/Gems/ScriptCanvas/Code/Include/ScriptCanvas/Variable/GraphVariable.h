@@ -29,13 +29,87 @@ namespace ScriptCanvas
     //! Properties that govern Datum replication
     struct ReplicaNetworkProperties
     {
-        AZ_TYPE_INFO(ReplicaNetworkProperties, "{4F055551-DD75-4877-93CE-E80C844FC155}");
-        AZ_CLASS_ALLOCATOR(ReplicaNetworkProperties, AZ::SystemAllocator, 0);
+    AZ_TYPE_INFO(ReplicaNetworkProperties, "{4F055551-DD75-4877-93CE-E80C844FC155}");
+    AZ_CLASS_ALLOCATOR(ReplicaNetworkProperties, AZ::SystemAllocator, 0);
 
-        static void Reflect(AZ::ReflectContext* context);
+    static void Reflect(AZ::ReflectContext* context);
 
-        bool m_isSynchronized = false;
+    bool m_isSynchronized = false;
     };
+
+    namespace VariableFlags
+    {
+        namespace Deprecated
+        {
+            enum Exposure : AZ::u8
+            {
+                Exp_Local = 1 << 0,
+                Exp_Input = 1 << 1,
+                Exp_Output = 1 << 2,
+                Exp_InOut = (Exp_Input | Exp_Output)
+            };
+        }
+
+        enum Scope : AZ::u8
+        {
+            Local = 0,
+            Input = 1,
+            Output = 2,
+            InOut = 3
+        };
+
+        static const char* GetScopeDisplayLabel(Scope scopeType)
+        {
+            switch (scopeType)
+            {
+            case Scope::Local:
+                return "Local";
+            case Scope::Input:
+                return "In";
+            case Scope::Output:
+                return "Out";
+            case Scope::InOut:
+                return "In/Out";
+            default:
+                return "?";
+            }
+        }
+
+        static Scope GetScopeFromLabel(const char* label)
+        {
+            if (strcmp("In", label) == 0)
+            {
+                return Scope::Input;
+            }
+            else if (strcmp("Out", label) == 0)
+            {
+                return Scope::Output;
+            }
+            else if (strcmp("In/Out", label) == 0)
+            {
+                return Scope::InOut;
+            }
+
+            return Scope::Local;
+        }
+
+        static const char* GetScopeToolTip(Scope scopeType)
+        {
+            switch (scopeType)
+            {
+            case Scope::Local:
+                return "Variable is for use in the local scope only.";
+            case Scope::Input:
+                return "Variable will have an initial value set from an external source.";
+            case Scope::Output:
+                return "Variable will be used to return values to an external source.";
+            case Scope::InOut:
+                return "Variable will be used to receive and return values to an external source.";
+            default:
+                return "?";
+            }
+        }
+    }
 
     class GraphVariable
         : public DatumNotificationBus::Handler
@@ -43,11 +117,37 @@ namespace ScriptCanvas
         friend class ModifiableDatumView;
 
     public:
+
         AZ_TYPE_INFO(GraphVariable, "{5BDC128B-8355-479C-8FA8-4BFFAB6915A8}");
         AZ_CLASS_ALLOCATOR(GraphVariable, AZ::SystemAllocator, 0);
         static void Reflect(AZ::ReflectContext* context);
 
         static const char* GetVariableNotificationBusName() { return "VariableNotification"; }
+
+        class Comparator
+        {
+        public:
+
+            bool operator()(const GraphVariable* a, const GraphVariable* b) const
+            {
+                if (a->m_sortPriority == b->m_sortPriority)
+                {
+                    return a->m_variableName < b->m_variableName;
+                }
+
+                if (b->m_sortPriority < 0)
+                {
+                    return true;
+                }
+
+                if (a->m_sortPriority < 0)
+                {
+                    return false;
+                }
+                
+                return a->m_sortPriority < b->m_sortPriority;
+            }
+        };
 
         GraphVariable();
         explicit GraphVariable(const Datum& variableData);
@@ -78,21 +178,25 @@ namespace ScriptCanvas
 
         void SetDisplayName(const AZStd::string& displayName);
         AZStd::string_view GetDisplayName() const;
+        
+        void SetScriptInputControlVisibility(const AZ::Crc32& inputControlVisibility);
 
         AZ::Crc32 GetInputControlVisibility() const;
-        void SetInputControlVisibility(const AZ::Crc32& inputControlVisibility);
+        AZ::Crc32 GetScriptInputControlVisibility() const;
+        AZ::Crc32 GetFunctionInputControlVisibility() const;
         
         AZ::Crc32 GetVisibility() const;
         void SetVisibility(AZ::Crc32 visibility);
 
-        // Temporary work around. Eventually we're going to want a bitmask so we can have multiple options here.
-        // But the editor functionality isn't quite ready for this. So going to bias this towards maintaining a
-        // consistent editor rather then consistent data.
-        bool ExposeAsComponentInput() const { return m_exposeAsInput; }
-        void SetExposeAsComponentInput(bool exposeAsInput) { m_exposeAsInput = exposeAsInput;  }
+        void RemoveScope(VariableFlags::Scope scopeType);
+        void SetScope(VariableFlags::Scope scopeType);
+        VariableFlags::Scope GetScope() const;
+
+        bool IsInScope(VariableFlags::Scope scopeType) const;
+        bool IsLocalVariableOnly() const;
 
         void SetExposureCategory(AZStd::string_view exposureCategory) { m_exposureCategory = exposureCategory; }
-        AZStd::string_view GetExposureCategory() const { return m_exposureCategory; }        
+        AZStd::string_view GetExposureCategory() const { return m_exposureCategory; }
 
         void GenerateNewId();
 
@@ -105,20 +209,28 @@ namespace ScriptCanvas
 
         // Editor Callbacks
         void OnDatumEdited(const Datum* datum) override;
+        AZStd::vector<AZStd::pair<AZ::u8, AZStd::string>> GetScopes() const;
         ////
+
+        int GetSortPriority() const;
 
     private:
 
-        void OnExposureChanged();
-        void OnExposureGroupChanged();
+        bool IsInFunction() const;
+        
+        void OnScopeTypedChanged();
+        void OnSortPriorityChanged();
 
         void OnValueChanged();
 
         AZStd::string GetDescriptionOverride();
 
+        int m_sortPriority;
+
+        VariableFlags::Scope m_scope;
+
         // Still need to make this a proper bitmask, once we have support for multiple
         // input/output attributes. For now, just going to assume it's only the single flag(which is is).
-        bool m_exposeAsInput;
         AZ::Crc32 m_inputControlVisibility;
         AZ::Crc32 m_visibility;
 
@@ -127,7 +239,7 @@ namespace ScriptCanvas
         bool m_signalValueChanges;
 
         ScriptCanvasId m_scriptCanvasId;
-        VariableId m_variableId;        
+        VariableId m_variableId;
 
         AZ::EntityId m_datumId;
 
@@ -135,13 +247,10 @@ namespace ScriptCanvas
         Datum m_datum;
         
         ReplicaNetworkProperties m_networkProperties;
-
-        GraphScopedVariableId    m_notificationId;
     };
 
     using GraphVariableMapping = AZStd::unordered_map< VariableId, GraphVariable >;
 }
-
 namespace AZ
 {
 

@@ -18,6 +18,10 @@
 
 namespace AzToolsFramework
 {
+    AZ_CVAR_EXTERNABLE(
+        bool, cl_manipulatorDrawDebug, false, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Enable debug drawing for Manipulators");
+
     const AZ::Color BaseManipulator::s_defaultMouseOverColor = AZ::Color(1.0f, 1.0f, 0.0f, 1.0f); // yellow
 
     AZ_CLASS_ALLOCATOR_IMPL(BaseManipulator, AZ::SystemAllocator, 0)

@@ -11,12 +11,6 @@
 *
 */
 
-AzQtComponents--SliderDouble,
-AzQtComponents--GradientSlider
-{
-    qproperty-decimals: 7;
-}
-
 AzQtComponents--Slider.HorizontalSlider
 {
     qproperty-toolTipOffsetX: -8;

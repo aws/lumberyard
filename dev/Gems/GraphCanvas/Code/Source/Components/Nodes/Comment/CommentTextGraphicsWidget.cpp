@@ -51,6 +51,7 @@ namespace GraphCanvas
         setFlag(ItemIsMovable, false);
 
         m_displayLabel = aznew GraphCanvasLabel();
+        m_displayLabel->SetAllowNewlines(true);
         m_layout = new QGraphicsLinearLayout(Qt::Vertical);
         m_layout->setSpacing(0);
         m_layout->setContentsMargins(0, 0, 0, 0);

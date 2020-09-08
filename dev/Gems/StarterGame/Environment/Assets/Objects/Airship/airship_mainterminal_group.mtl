@@ -1,0 +1,32 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="MainTerminalMAT" MtlFlags="524416" Shader="Illum" GenMask="4000010000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.072271854,0.072271854,0.072271854,1" Opacity="1" Shininess="203" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_mainterminal_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/airship/airship_mainterminal_01_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Collision3" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+  <Material Name="MainTerminalScreenMAT" MtlFlags="524416" Shader="Illum" GenMask="4000000020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0,0,0,1" Specular="0.27049783,0.27049783,0.27049783,1" Emittance="0,0.25015831,0.78353792,0.0099999998" Opacity="1" Shininess="220" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/airship/airship_mainterminalscreen_01_diff.dds"/>
+    <Texture Map="Emittance" File="objects/airship/airship_mainterminalscreen_01_diff.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="MainTerminalScreenOverlayMAT" MtlFlags="524452" Shader="Illum" GenMask="4000000020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0,0,0,1" Specular="0,0,0,1" Emittance="0.020288564,0.32314324,1,10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/effects/airship_mainterminalscreenoverlay_01.dds"/>
+    <Texture Map="Decal" File="textures/effects/fx_gradientfade_05.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.0078130001" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="30" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Emittance" File="textures/effects/airship_mainterminalscreenoverlay_01.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

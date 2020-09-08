@@ -28,63 +28,10 @@ namespace EMStudio
     // create the context menu
     void RenderViewWidget::OnContextMenuEvent(QWidget* renderWidget, bool ctrlPressed, int32 localMouseX, int32 localMouseY, QPoint globalMousePos, RenderPlugin* plugin, MCommon::Camera* camera)
     {
-        MCORE_UNUSED(ctrlPressed);
-        MCORE_UNUSED(localMouseX);
-        MCORE_UNUSED(localMouseY);
-        MCORE_UNUSED(camera);
-        /*
-            // find the actor instance under the cursor
-            ActorInstance* actorInstance = nullptr;
-            const MCore::Ray cameraRay = camera->Unproject(localMouseX, localMouseY);
-
-            // iterate over all existing actor instances and find the one that is hit by the ray
-            const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-            for (uint32 i=0; i<numActorInstances; ++i)
-            {
-                // get the current actor instance
-                ActorInstance* currInstance = EMotionFX::GetActorManager().GetActorInstance(i);
-                if (currInstance == nullptr)
-                    continue;
-
-                // check if actor instance is visible and gets rendered
-                if (currInstance->GetIsVisible() == false || currInstance->GetRender() == false)
-                    continue;
-
-                // check for an intersection
-                Vector3 intersect, normal;
-                Node* intersectionNode = currInstance->IntersectsMesh(0, cameraRay, &intersect, &normal);
-                if (intersectionNode)
-                {
-                    // set the actor instance
-                    actorInstance = currInstance;
-
-                    // get the currently selected actor instance
-                    EMotionFX::ActorInstance* selectedInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-                    if (currInstance != selectedInstance)
-                    {
-                        // call selection commands, depending on selection state and ctrl state
-                        String outResult;
-                        CommandGroup commandGroup("Select actor instances", 2);
-                        if (ctrlPressed == false)
-                            commandGroup.AddCommandString( "Unselect -actorInstanceID SELECT_ALL" );
-
-                        String command;
-                        command = AZStd::string::format("Select -actorInstanceID %i", actorInstance->GetID());
-                        commandGroup.AddCommandString( command.AsChar() );
-
-                        // execute the commands
-                        if(GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
-                        {
-                            if (outResult.GetIsEmpty() == false)
-                                LogError( outResult.AsChar() );
-                        }
-                    }
-
-                    // break look because instance has been found
-                    break;
-                }
-            }
-        */
+        AZ_UNUSED(ctrlPressed);
+        AZ_UNUSED(localMouseX);
+        AZ_UNUSED(localMouseY);
+        AZ_UNUSED(camera);
 
         // read the maximum number of recent files
         QSettings settings(this);
@@ -170,15 +117,6 @@ namespace EMStudio
 
         // add sub menu for camera control
         menu.addMenu(GetCameraMenu());
-
-        // set the icons of the context menu items
-        openAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        mergeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        openProjectAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        selectAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Rendering/Select.png"));
-        translateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Rendering/Translate.png"));
-        rotateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Rendering/Rotate.png"));
-        scaleAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Rendering/Scale.png"));
 
         // connect the context menu to the corresponding slots
         connect(openAction,         &QAction::triggered, mainWindow,  &MainWindow::OnFileOpenActor);

@@ -33,6 +33,9 @@ AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <ScriptCanvas/Components/EditorGraphVariableManagerComponent.h>
 AZ_POP_DISABLE_WARNING
 
+#include <ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h>
+#include <ScriptCanvas/Assets/Functions/ScriptCanvasFunctionAssetHandler.h>
+
 namespace ScriptCanvasEditor
 {
     EditorAssetSystemComponent::~EditorAssetSystemComponent()
@@ -67,7 +70,8 @@ namespace ScriptCanvasEditor
 
     void EditorAssetSystemComponent::Activate()
     {
-        m_editorAssetRegistry.Register<ScriptCanvasAsset, ScriptCanvasAssetHandler>();
+        m_editorAssetRegistry.Register<ScriptCanvasAsset, ScriptCanvasAssetHandler, ScriptCanvasAssetDescription>();
+        m_editorAssetRegistry.Register<ScriptCanvas::ScriptCanvasFunctionAsset, ScriptCanvasFunctionAssetHandler, ScriptCanvas::ScriptCanvasFunctionDescription>();
 
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         EditorAssetConversionBus::Handler::BusConnect();
@@ -88,7 +92,10 @@ namespace ScriptCanvasEditor
     static bool HandlesSource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* entry)
     {
         AZStd::string_view targetExtension = entry->GetExtension();
-        AZStd::string_view scriptCanvasFileFilter = ScriptCanvasAssetHandler::GetFileFilter();
+
+        ScriptCanvasAsset::Description description;
+        AZStd::string_view scriptCanvasFileFilter = description.GetFileFilterImpl();
+
         if (AZStd::wildcard_match(scriptCanvasFileFilter.data(), targetExtension.data()))
         {
             return true;
@@ -128,7 +135,7 @@ namespace ScriptCanvasEditor
             auto& assetManager = AZ::Data::AssetManager::Instance();
             AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset = assetManager.GetAsset(sourceAssetId, azrtti_typeid<ScriptCanvasAsset>());
             AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
-            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset, -1);
+            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset.GetId(), -1);
             if (!openOutcome)
             {
                 AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());

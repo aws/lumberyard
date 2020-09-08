@@ -204,9 +204,9 @@ namespace EMStudio
         mRemoveButton   = new QPushButton();
         mClearButton    = new QPushButton();
 
-        EMStudioManager::MakeTransparentButton(mAddButton,     "/Images/Icons/Plus.png",   "Add a new node group");
-        EMStudioManager::MakeTransparentButton(mRemoveButton,  "/Images/Icons/Minus.png",  "Remove selected node groups");
-        EMStudioManager::MakeTransparentButton(mClearButton,   "/Images/Icons/Clear.png",  "Remove all node groups");
+        EMStudioManager::MakeTransparentButton(mAddButton,     "/Images/Icons/Plus.svg",   "Add a new node group");
+        EMStudioManager::MakeTransparentButton(mRemoveButton,  "/Images/Icons/Minus.svg",  "Remove selected node groups");
+        EMStudioManager::MakeTransparentButton(mClearButton,   "/Images/Icons/Clear.svg",  "Remove all node groups");
 
         // add the buttons to the button layout
         QHBoxLayout* buttonLayout = new QHBoxLayout();
@@ -675,14 +675,12 @@ namespace EMStudio
 
         // add node group is always enabled
         QAction* addAction = menu.addAction("Add Node Group");
-        addAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
         connect(addAction, &QAction::triggered, this, &NodeGroupManagementWidget::AddNodeGroup);
 
         // add remove action
         if (rowIndices.size() > 0)
         {
             QAction* removeAction = menu.addAction("Remove Selected Node Group");
-            removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
             connect(removeAction, &QAction::triggered, this, &NodeGroupManagementWidget::RemoveSelectedNodeGroup);
         }
 

@@ -29,7 +29,36 @@ namespace ScriptCanvasEditor
         ScopedUndoBatch& operator=(const ScopedUndoBatch&) = delete;
     };
 
-    class UndoCache;
+    // This cache maintains the previous state of the Script Canvas graph items recorded for Undo
+    class UndoCache
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(UndoCache, AZ::SystemAllocator, 0);
+
+        UndoCache() = default;
+        ~UndoCache() = default;
+
+        // Update the graph item within the cache
+        void UpdateCache(ScriptCanvas::ScriptCanvasId);
+
+        // remove the graph item from the cache
+        void PurgeCache(ScriptCanvas::ScriptCanvasId);
+
+        // retrieve the last known state for the graph item
+        const AZStd::vector<AZ::u8>& Retrieve(ScriptCanvas::ScriptCanvasId);
+
+        // Populate the cache from a ScriptCanvas Entity graph entity
+        void PopulateCache(ScriptCanvas::ScriptCanvasId);
+
+        // clear the entire cache:
+        void Clear();
+
+    protected:
+
+        AZStd::unordered_map <ScriptCanvas::ScriptCanvasId, AZStd::vector<AZ::u8>> m_dataMap; ///< Stores an Entity Id to serialized graph data(Node/Connection) map
+
+        AZStd::vector<AZ::u8> m_emptyData;
+    };
 
     class SceneUndoState
     {
@@ -46,65 +75,5 @@ namespace ScriptCanvasEditor
         AZStd::unique_ptr<AzToolsFramework::UndoSystem::UndoStack> m_undoStack;
 
         AzToolsFramework::UndoSystem::URSequencePoint* m_currentUndoBatch = nullptr;
-    };
-
-    class UndoManager
-        : public UndoRequestBus::Handler
-        , public AzToolsFramework::UndoSystem::IUndoNotify
-        , public GraphCanvas::AssetEditorNotificationBus::Handler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(UndoManager, AZ::SystemAllocator, 0);
-
-        UndoManager();
-        ~UndoManager();
-
-        UndoCache* GetActiveSceneUndoCache() override;
-        UndoCache* GetSceneUndoCache(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId);
-
-        AZStd::unique_ptr<SceneUndoState> ExtractSceneUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId);
-        void InsertUndoState(ScriptCanvas::ScriptCanvasId scriptCanvasGraphId, AZStd::unique_ptr<SceneUndoState> sceneUndoState);
-
-        void BeginUndoBatch(AZStd::string_view label) override;
-        void EndUndoBatch() override;
-
-        void AddUndo(AzToolsFramework::UndoSystem::URSequencePoint* sequencePoint) override;
-
-        void AddGraphItemChangeUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel) override;
-        void AddGraphItemAdditionUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel) override;
-        void AddGraphItemRemovalUndo(AZ::Entity* scriptCanvasEntity, AZStd::string_view undoLabel) override;
-
-        void Undo() override;
-        void Redo() override;
-        void Reset() override;
-
-        UndoData CreateUndoData(ScriptCanvas::ScriptCanvasId scriptCanvasEntityId) override;
-
-        bool IsInUndoRedo() const { return m_isInUndo; }
-
-        //! IUndoNotify
-        void OnUndoStackChanged() override;
-        ////
-        
-        // GraphCanvas::GraphCanvasEditorNotificationBus
-        void OnGraphLoaded(const GraphCanvas::GraphId& graphCanvasGraphId) override;
-        void OnGraphUnloaded(const GraphCanvas::GraphId& graphCanvasGraphId) override;
-        void OnGraphRefreshed(const GraphCanvas::GraphId& oldGraphCanvasGraphId, const GraphCanvas::GraphId& newGraphCanvasGraphId) override;
-
-        void OnActiveGraphChanged(const GraphCanvas::GraphId& activeGraphCanvasGraph) override;
-        ////
-
-    protected:
-
-        SceneUndoState* FindActiveUndoState() const;
-        SceneUndoState* FindUndoState(const GraphCanvas::GraphId& sceneId) const;
-
-        GraphCanvas::GraphId m_activeGraphCanvasGraphId;
-
-        AZStd::unordered_map< GraphCanvas::GraphId, SceneUndoState* > m_undoMapping;
-
-        bool m_isInUndo = false;
-        bool m_canUndo = false;
-        bool m_canRedo = false;
     };
 }

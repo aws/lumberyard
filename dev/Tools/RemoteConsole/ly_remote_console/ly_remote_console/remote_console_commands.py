@@ -48,18 +48,24 @@ def capture_screenshot_command(remote_console_instance):
 
 
 def send_command_and_expect_response(remote_console_instance, command_to_run, expected_log_line, timeout=60):
-    # type: (RemoteConsole, str, str) -> None
+    # type: (RemoteConsole, str, str, int) -> None
     """
     This is just a helper function to help send a command and validate against expected output.
     :param remote_console_instance: RemoteConsole instance
     :param command_to_run: The command that you wish to run
     :param expected_log_line:  The console log line to expect in order to set the event to true
-    :return: None
+    :param timeout: int representing the time to wait in seconds
+    :return: None, but will assert against the expected_response() boolean return for validation.
     """
-    remote_console_instance.send_command(command_to_run)
-    expect_func = remote_console_instance.expect_log_line(expected_log_line, timeout)
+    event = threading.Event()
+    remote_console_instance.handlers[expected_log_line.encode()] = event
 
-    assert expect_func(),\
+    def expected_response():
+        return remote_console_instance.expect_log_line(expected_log_line, timeout)
+
+    remote_console_instance.send_command(command_to_run)
+
+    assert expected_response(), \
         '{} command failed. Was looking for {} in the log but did not find it.'.format(
             command_to_run, expected_log_line)
 
@@ -196,15 +202,18 @@ class RemoteConsole:
         Looks for a log line event to expect within a time frame. Returns False is timeout is reached.
         :param match_string: The string to match that acts as a key
         :param timeout: The timeout to wait for the log line in seconds
+        :return: boolean True if match_string found, False otherwise.
         """
-        evt = threading.Event()
-        self.handlers[match_string.encode()] = evt
+        logger.info("waiting for event '{}' for '{}' seconds".format(match_string, timeout))
 
-        def log_event():
-            logger.info("waiting for event '{0}'".format(match_string))
-            return evt.wait(timeout)
+        event = threading.Event()
+        self.handlers[match_string.encode()] = event
+        event_success = event.wait(timeout)
 
-        return log_event
+        logger.warning(
+            'Returning "{}" for expect_log_line() - previously this returned a function object, '
+            'so if you see failures now this may be why.'.format(event_success))
+        return event_success
 
     def _create_message(self, message_type, message_body=''):
         # type: (bytes, str) -> bytearray

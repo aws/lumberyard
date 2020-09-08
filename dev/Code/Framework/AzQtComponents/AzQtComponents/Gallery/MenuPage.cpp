@@ -45,9 +45,13 @@ MenuPage::MenuPage(QWidget* parent)
     submenu->addSeparator();
     submenu->addAction(actionText);
 
-    auto action = menu->addAction(QStringLiteral("Checkable"));
-    action->setCheckable(true);
-    action->setChecked(true);
+    auto checkableAction = menu->addAction(QStringLiteral("Checkable"));
+    checkableAction->setCheckable(true);
+    checkableAction->setChecked(true);
+
+    auto checkableIconAction = menu->addAction(QIcon(QStringLiteral(":/stylesheet/img/search.svg")), QStringLiteral("Checkable + Icon"));
+    checkableIconAction->setCheckable(true);
+    checkableIconAction->setChecked(true);
 
     menu->addSeparator();
     menu->addAction(actionText);
@@ -78,6 +82,8 @@ action->setChecked(true);
 // To add a sub-menu:
 auto submenu = menu->addMenu(QStringLiteral("Submenu"));
 submenu->addAction(actionText);
+
+// Note: some Lumberyard menus (like the one in the MainWindow) forcefully hide icons by design.
 
 </pre>
 

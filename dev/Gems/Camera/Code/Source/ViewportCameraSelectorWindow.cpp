@@ -423,7 +423,7 @@ namespace Camera
     struct ViewportSelectorHolder
         : public QWidget
     {
-        ViewportSelectorHolder(QWidget* parent = nullptr)
+        explicit ViewportSelectorHolder(QWidget* parent = nullptr)
             : QWidget(parent)
         {
             setLayout(new QVBoxLayout(this));
@@ -435,9 +435,9 @@ namespace Camera
     };
 
     // simple factory method
-    static ViewportSelectorHolder* CreateNewSelectionWindow()
+    static ViewportSelectorHolder* CreateNewSelectionWindow(QWidget* parent = nullptr)
     {
-        return new ViewportSelectorHolder();
+        return new ViewportSelectorHolder(parent);
     }
 
 

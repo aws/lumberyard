@@ -170,6 +170,7 @@ namespace PhysX
         Physics::Utils::DeferDelete(AZStd::move(m_rigidBody));
 
         Physics::RigidBodyRequestBus::Handler::BusDisconnect();
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
         Physics::WorldNotificationBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
@@ -269,6 +270,7 @@ namespace PhysX
         AZ::TickBus::Handler::BusConnect();
         AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
         Physics::RigidBodyRequestBus::Handler::BusConnect(GetEntityId());
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void RigidBodyComponent::EnablePhysics()
@@ -301,6 +303,7 @@ namespace PhysX
         m_initialScale = transform.ExtractScaleExact();
 
         Physics::RigidBodyNotificationBus::Event(GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsEnabled);
+        Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsEnabled);
     }
 
     void RigidBodyComponent::DisablePhysics()
@@ -311,6 +314,7 @@ namespace PhysX
         }
 
         Physics::RigidBodyNotificationBus::Event(GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsDisabled);
+        Physics::WorldBodyNotificationBus::Event(GetEntityId(), &Physics::WorldBodyNotifications::OnPhysicsDisabled);
     }
 
     bool RigidBodyComponent::IsPhysicsEnabled() const
@@ -482,6 +486,20 @@ namespace PhysX
     Physics::RigidBody* RigidBodyComponent::GetRigidBody()
     {
         return m_rigidBody.get();
+    }
+
+    Physics::WorldBody* RigidBodyComponent::GetWorldBody()
+    {
+        return m_rigidBody.get();
+    }
+
+    Physics::RayCastHit RigidBodyComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        if (m_rigidBody)
+        {
+            return m_rigidBody->RayCast(request);
+        }
+        return Physics::RayCastHit();
     }
 
     void RigidBodyComponent::OnSliceInstantiated(const AZ::Data::AssetId&, const AZ::SliceComponent::SliceInstanceAddress&)

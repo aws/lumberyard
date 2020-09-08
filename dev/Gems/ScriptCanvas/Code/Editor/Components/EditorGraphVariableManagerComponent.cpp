@@ -32,17 +32,19 @@ namespace ScriptCanvasEditor
 
         const ScriptCanvas::GraphVariableMapping* variableMapping = nullptr;
         ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableMapping, m_busId, &ScriptCanvas::GraphVariableManagerRequests::GetVariables);
-
-        beginInsertRows(QModelIndex(), 0, static_cast<int>(variableMapping->size()));
-
-        m_variableIds.reserve(variableMapping->size());
-
-        for (const auto& mapPair : (*variableMapping))
+        if (variableMapping)
         {
-            m_variableIds.emplace_back(mapPair.first);
-        }
+            beginInsertRows(QModelIndex(), 0, static_cast<int>(variableMapping->size()));
 
-        endInsertRows();
+            m_variableIds.reserve(variableMapping->size());
+
+            for (const auto& mapPair : (*variableMapping))
+            {
+                m_variableIds.emplace_back(mapPair.first);
+            }
+
+            endInsertRows();
+        }
     }
 
     ScriptCanvas::VariableId EditorGraphVariableItemModel::FindVariableIdForIndex(const QModelIndex& modelIndex) const

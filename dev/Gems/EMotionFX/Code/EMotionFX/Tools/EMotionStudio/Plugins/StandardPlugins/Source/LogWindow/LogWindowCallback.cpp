@@ -49,7 +49,7 @@ namespace EMStudio
         setSelectionBehavior(QAbstractItemView::SelectRows);
 
         // set the filter
-    #ifdef MCORE_DEBUG
+    #ifdef AZ_DEBUG
         mFilter = LOGLEVEL_FATAL | LOGLEVEL_ERROR | LOGLEVEL_WARNING | LOGLEVEL_INFO | LOGLEVEL_DETAILEDINFO | LOGLEVEL_DEBUG;
     #else
         mFilter = LOGLEVEL_FATAL | LOGLEVEL_ERROR | LOGLEVEL_WARNING | LOGLEVEL_INFO;
@@ -84,7 +84,7 @@ namespace EMStudio
         const QTime currentTime = QTime::currentTime();
         const QString currentDateTimeString = currentTime.toString("[hh:mm:ss]");
         QTableWidgetItem* timeItem = new QTableWidgetItem(currentDateTimeString);
-        timeItem->setTextColor(QColor(85, 85, 85));
+        timeItem->setTextColor(QColor(105, 105, 105));
         QTableWidgetItem* messageItem = new QTableWidgetItem(text);
         messageItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         messageItem->setData(Qt::UserRole, (int)logLevel);
@@ -403,5 +403,3 @@ namespace EMStudio
     }
 
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/LogWindow/LogWindowCallback.moc>

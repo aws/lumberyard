@@ -22,6 +22,7 @@
 #include <Editor/Translation/TranslationHelper.h>
 #include <Editor/View/Widgets/PropertyGridBus.h>
 
+#include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
 
 namespace ScriptCanvasEditor
@@ -192,6 +193,17 @@ namespace ScriptCanvasEditor
                     if (remapVariableOutcome)
                     {
                         SetVariableId(remapVariableOutcome.GetValue());
+
+                        bool runtimeGraph = false;
+                        EditorGraphRequestBus::EventResult(runtimeGraph, scriptCanvasId, &EditorGraphRequests::IsRuntimeGraph);
+
+                        ScriptCanvas::GraphVariable* variable = nullptr;
+                        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variable, scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, remapVariableOutcome.GetValue());
+
+                        if (variable)
+                        {
+                            variable->RemoveScope(ScriptCanvas::VariableFlags::Scope::Output);
+                        }
                     }
                 }
             }

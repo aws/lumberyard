@@ -14,6 +14,7 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzToolsFramework/Manipulators/BaseManipulator.h>
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 
 namespace AzToolsFramework
 {
@@ -65,7 +66,14 @@ namespace AzToolsFramework
         void Deselect() { m_selected = false; }
         void ToggleSelected() { m_selected = !m_selected; }
 
+        // LUMBERYARD_DEPRECATED(LY-106737)
         void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
+
+        template<typename Views>
+        void SetViews(Views&& views)
+        {
+            m_manipulatorViews = AZStd::forward<Views>(views);
+        }
 
     private:
         void OnLeftMouseDownImpl(
@@ -90,6 +98,6 @@ namespace AzToolsFramework
         MouseActionCallback m_onRightMouseDownCallback = nullptr;
         MouseActionCallback m_onRightMouseUpCallback = nullptr;
 
-        AZStd::unique_ptr<ManipulatorView> m_manipulatorView = nullptr; ///< Look of manipulator.
+        ManipulatorViews m_manipulatorViews; ///< Look of manipulator.
     };
 } // namespace AzToolsFramework

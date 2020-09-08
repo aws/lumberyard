@@ -23,13 +23,13 @@ namespace ScriptCanvas
         {
             ////////////////////
             // StringFormatted
-            ////////////////////            
+            ////////////////////
 
             void StringFormatted::OnInit()
             {
                 bool addedDisplayGroup = false;
 
-                // DISPLAY_GROUP_VERSION_CONVERTER                
+                // DISPLAY_GROUP_VERSION_CONVERTER
                 for (auto slotPair : m_formatSlotMap)
                 {
                     Slot* slot = GetSlot(slotPair.second);
@@ -63,7 +63,15 @@ namespace ScriptCanvas
 
             void StringFormatted::OnConfigured()
             {
-                // Parse the serialized format to make sure the utility containers are properly configured for lookup at runtime.
+                // In configure, we want to parse to ensure our slots are setup for when we are added to the graph and initialized.
+                if (m_formatSlotMap.empty())
+                {
+                    ParseFormat();
+                }
+            }
+
+            void StringFormatted::OnDeserialized()
+            {
                 ParseFormat();
             }
 
@@ -120,7 +128,7 @@ namespace ScriptCanvas
                     while (m_formatSlotMap.find(name) != m_formatSlotMap.end())
                     {
                         ++value;
-                        name = AZStd::string::format("Value_%i", value);                        
+                        name = AZStd::string::format("Value_%i", value);
                     }
 
                     m_format.append("{");
@@ -248,7 +256,7 @@ namespace ScriptCanvas
                     auto formatSlotIter = m_formatSlotMap.find(name);
 
                     if (formatSlotIter == m_formatSlotMap.end())
-                    {                        
+                    {
                         continue;
                     }
 
@@ -271,31 +279,69 @@ namespace ScriptCanvas
 
                     ++slotOrder;
                 }
+
+                SignalSlotsReordered();
             }
 
             void StringFormatted::ParseFormat()
             {
-                // Used to defer the removal of slots and only remove those slots that actually need to be removed at the end of the format parsing operation.
-                AZStd::unordered_map<SlotId, AZStd::string> slotsToRemove;
+                // Used to defer the removal of slots and only remove those slots that actually need to be removed at the end of the format parsing operation.                
+                AZStd::unordered_set<SlotId> slotsToRemove;
+                AZStd::unordered_map<SlotId, ScriptCanvas::VariableId> slotVariableReferences;
+
+                // When this node is duplicated. It recreates all of the slots, but discards the display type data.
+                // This causes the sanity checking to fail, which in turn causes the display type in graph canvas to be orphaned.
+                // Going to maintain the dynamic display type, and let the sanity check handle removing it rather then
+                // it occurring through new slot creation.
+                AZStd::unordered_map<SlotId, ScriptCanvas::Data::Type> displayTypes;
+
+                m_parsingFormat = true;
 
                 // Mark all existing slots as potential candidates for removal.
                 for (const auto& entry : m_formatSlotMap)
                 {
-                    slotsToRemove.emplace(entry.second, entry.first);
+                    const Slot* slot = GetSlot(entry.second);
+
+                    if (!slot)
+                    {
+                        continue;
+                    }
+
+                    if (slot->IsVariableReference())
+                    {
+                        slotVariableReferences[entry.second] = slot->GetVariableReference();
+                    }
+
+                    displayTypes[entry.second] = slot->GetDisplayType();
+
+                    const bool signalRemoval = false;
+                    RemoveSlot(entry.second, signalRemoval);
+
+                    slotsToRemove.insert(entry.second);
                 }
+
+                m_parsingFormat = false;
 
                 // Going to move around some of the other slots here. But this should at least make it consistent no mater what
                 // element was using it.
-                int slotOrder = static_cast<int>(GetSlots().size() - m_formatSlotMap.size()) - 1;
+                int slotOrder = aznumeric_cast<int>(GetSlots().size()) - 1;
+
+                if (slotOrder < 0)
+                {
+                    slotOrder = 0;
+                }
 
                 // Clear the utility containers.
                 m_arrayBindingMap.clear();
-                m_unresolvedString.clear();                
+                m_unresolvedString.clear();
 
                 static AZStd::regex formatRegex(R"(\{(\w+)\})");
                 AZStd::smatch match;
 
                 AZStd::string format = m_format;
+
+                NamedSlotIdMap newMapping;
+
                 while (AZStd::regex_search(format, match, formatRegex))
                 {
                     m_unresolvedString.push_back(match.prefix().str());
@@ -304,14 +350,13 @@ namespace ScriptCanvas
                     AZStd::string tooltip = AZStd::string::format("Value which replaces instances of {%s} in the resulting string.", match[1].str().c_str());
 
                     SlotId slotId;
-                    auto slotIdIter = m_formatSlotMap.find(name);
 
-                    if (slotIdIter != m_formatSlotMap.end())
+                    auto mappingIter = newMapping.find(name);
+
+                    if (mappingIter == newMapping.end())
                     {
-                        slotId = slotIdIter->second;
-                    }
-                    else
-                    {
+                        auto slotIdIter = m_formatSlotMap.find(name);
+
                         // If the slot has never existed, create it
                         DynamicDataSlotConfiguration dataSlotConfiguration;
 
@@ -321,24 +366,60 @@ namespace ScriptCanvas
 
                         dataSlotConfiguration.SetConnectionType(ConnectionType::Input);
                         dataSlotConfiguration.m_dynamicDataType = DynamicDataType::Any;
-
                         dataSlotConfiguration.m_addUniqueSlotByNameAndType = true;
 
-                        auto pair = m_formatSlotMap.emplace(AZStd::make_pair(name, InsertSlot(slotOrder, dataSlotConfiguration)));
+                        bool isNewSlot = true;
 
+                        if (slotIdIter != m_formatSlotMap.end())
+                        {
+                            isNewSlot = false;
+                            dataSlotConfiguration.m_slotId = slotIdIter->second;
+                            slotId = slotIdIter->second;
+                        }
+
+                        auto pair = newMapping.emplace(AZStd::make_pair(name, InsertSlot(slotOrder, dataSlotConfiguration, isNewSlot)));
                         slotId = pair.first->second;
+
+                        slotsToRemove.erase(slotId);
+
+                        Slot* slot = GetSlot(slotId);
+
+                        if (slot)
+                        {
+                            auto referenceIter = slotVariableReferences.find(slotId);
+
+                            if (referenceIter != slotVariableReferences.end())
+                            {
+                                slot->SetVariableReference(referenceIter->second);
+                            }
+
+                            auto displayTypeIter = displayTypes.find(slotId);
+
+                            if (displayTypeIter != displayTypes.end())
+                            {
+                                slot->SetDisplayType(displayTypeIter->second);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        slotId = mappingIter->second;
                     }
 
                     m_arrayBindingMap.emplace(AZStd::make_pair(m_unresolvedString.size(), slotId));
                     m_unresolvedString.push_back(""); // blank placeholder, will be filled when the data slot is resolved.
 
-                    // Remove the slot from the list of slots that should be removed.
-                    slotsToRemove.erase(slotId);
-
                     format = match.suffix();
 
-                    ++slotOrder;                    
+                    ++slotOrder;
                 }
+
+                for (auto slotId : slotsToRemove)
+                {
+                    SignalSlotRemoved(slotId);
+                }
+
+                m_formatSlotMap = AZStd::move(newMapping);
 
                 // If there's some left over in the match make sure it gets recorded.
                 if (!format.empty())
@@ -346,30 +427,7 @@ namespace ScriptCanvas
                     m_unresolvedString.push_back(format);
                 }
 
-                m_parsingFormat = true;
-
-                // If there are still any items in slotsToRemove it means they really need to be removed.
-                for (const auto& slot : slotsToRemove)
-                {
-                    m_formatSlotMap.erase(slot.second);
-                    RemoveSlot(slot.first);
-
-                    // Make sure we remove them from the arrayBinding as they should not be considered for 
-                    // resolving the final text.
-                    for (ArrayBindingMap::iterator it = m_arrayBindingMap.begin(); it != m_arrayBindingMap.end();)
-                    {
-                        if (it->second == slot.first)
-                        {
-                            it = m_arrayBindingMap.erase(it);
-                        }
-                        else
-                        {
-                            ++it;
-                        }
-                    }
-                }
-
-                m_parsingFormat = false;
+                SignalSlotsReordered();
             }
 
             void StringFormatted::OnFormatChanged()

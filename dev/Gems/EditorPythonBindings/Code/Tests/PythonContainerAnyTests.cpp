@@ -10,14 +10,9 @@
  *
  */
 #include <Source/PythonCommon.h>
-
 #include <AzCore/PlatformDef.h>
-
-// Suppressing C++17 warning in pybind: dev/gems/editorpythonbindings/3rdparty/python33/include/bytesobject.h(89): warning C5033: 'register' is no longer a supported storage class
-AZ_PUSH_DISABLE_WARNING(5033, "-Wunknown-warning-option")
 #include <pybind11/pybind11.h>
 #include <pybind11/embed.h>
-AZ_POP_DISABLE_WARNING
 
 #include "PythonTraceMessageSink.h"
 #include "PythonTestingUtility.h"

@@ -236,6 +236,7 @@ void CTVEventsDialog::OnBnClickedButtonAddEvent()
     const QString add = QInputDialog::getText(this, tr("Track Event Name"), QString());
     if (!add.isEmpty() && static_cast<TVEventsModel*>(m_ui->m_List->model())->addRow(add))
     {
+        m_lastAddedEvent = add;
         m_ui->m_List->setCurrentIndex(m_ui->m_List->model()->index(m_ui->m_List->model()->rowCount() - 1, 0));
     }
     m_ui->m_List->setFocus();
@@ -335,6 +336,11 @@ void CTVEventsDialog::UpdateButtons()
     m_ui->buttonRenameEvent->setEnabled(bRename);
     m_ui->buttonUpEvent->setEnabled(bUp);
     m_ui->buttonDownEvent->setEnabled(bDown);
+}
+
+const QString& CTVEventsDialog::GetLastAddedEvent()
+{
+    return m_lastAddedEvent;
 }
 
 int TVEventsModel::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float& timeFirstUsed) const

@@ -10,21 +10,16 @@
 *
 */
 
-#ifndef __EMSTUDIO_PREFERENCESWINDOW_H
-#define __EMSTUDIO_PREFERENCESWINDOW_H
+#pragma once
 
-// include required headers
-#include "EMStudioConfig.h"
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string.h>
-#include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/Array.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioConfig.h>
+#include <AzQtComponents/Components/Widgets/SegmentBar.h>
 #include <QDialog>
 
-
-// forward declarations
 QT_FORWARD_DECLARE_CLASS(QStackedWidget)
-QT_FORWARD_DECLARE_CLASS(QListWidget)
-QT_FORWARD_DECLARE_CLASS(QListWidgetItem)
 
 namespace AzToolsFramework
 {
@@ -39,52 +34,35 @@ namespace EMStudio
     class EMSTUDIO_API PreferencesWindow
         : public QDialog
     {
-        Q_OBJECT
-        MCORE_MEMORYOBJECTCATEGORY(PreferencesWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
+        Q_OBJECT // AUTOMOC
 
     public:
-        struct Category
-        {
-            MCORE_MEMORYOBJECTCATEGORY(PreferencesWindow::Category, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
-
-            QWidget *                                    mWidget;
-            AzToolsFramework::ReflectedPropertyEditor*   mPropertyWidget;
-            QListWidgetItem*                             mListWidgetItem;
-            AZStd::string                                mName;
-        };
-
-        PreferencesWindow(QWidget* parent);
+        explicit PreferencesWindow(QWidget* parent = nullptr);
         virtual ~PreferencesWindow();
 
         void Init();
 
-        AzToolsFramework::ReflectedPropertyEditor* AddCategory(const char* categoryName, const char* relativeFileName, bool readOnly);
-        void AddCategory(QWidget* widget, const char* categoryName, const char* relativeFileName, bool readOnly);
+        AzToolsFramework::ReflectedPropertyEditor* AddCategory(const char* categoryName);
+        void AddCategory(QWidget* widget, const char* categoryName);
 
-        MCORE_INLINE AzToolsFramework::ReflectedPropertyEditor* FindPropertyWidgetByName(const char* categoryName)
-        {
-            Category* category = FindCategoryByName(categoryName);
-            if (category == nullptr)
-            {
-                return nullptr;
-            }
-            else
-            {
-                return category->mPropertyWidget;
-            }
-        }
+        AzToolsFramework::ReflectedPropertyEditor* FindPropertyWidgetByName(const char* categoryName) const;
 
     public slots:
-        void ChangePage(QListWidgetItem* current, QListWidgetItem* previous);
+        void OnTabChanged(int newTabIndex);
 
     private:
+        struct Category
+        {
+            QWidget* m_widget = nullptr;
+            AzToolsFramework::ReflectedPropertyEditor* m_propertyWidget = nullptr;
+            int m_tabIndex = -1;
+            AZStd::string m_name;
+        };
+
         Category* FindCategoryByName(const char* categoryName) const;
         
-        MCore::Array<Category*>                     mCategories;
-        QStackedWidget*                             mStackedWidget;
-        QListWidget*                                mCategoriesWidget;
+        AZStd::vector<AZStd::unique_ptr<Category>> m_categories;
+        QStackedWidget* m_stackedWidget = nullptr;
+        AzQtComponents::SegmentBar* m_categorySegmentBar = nullptr;
     };
 } // namespace EMStudio
-
-
-#endif

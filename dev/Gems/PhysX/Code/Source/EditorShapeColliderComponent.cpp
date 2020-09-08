@@ -13,25 +13,38 @@
 #include <PhysX_precompiled.h>
 #include <EditorShapeColliderComponent.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <LyViewPaneNames.h>
 #include <ShapeColliderComponent.h>
 #include <EditorRigidBodyComponent.h>
-#include <PhysX/ColliderComponentBus.h>
 #include <Editor/ConfigurationWindowBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/CapsuleShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
+#include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
+#include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 #include <PhysX/SystemComponentBus.h>
-#include <AzCore/Math/Geometry2DUtils.h>
 #include <Source/Utils.h>
+#include <AzCore/Math/Geometry2DUtils.h>
+#include <cmath>
 
 namespace PhysX
 {
     EditorShapeColliderComponent::EditorShapeColliderComponent()
     {
         m_colliderConfig.SetPropertyVisibility(Physics::ColliderConfiguration::Offset, false);
+    }
+
+    AZ::Crc32 EditorShapeColliderComponent::SubdivisionCountVisibility()
+    {
+        if (m_shapeType == ShapeType::Cylinder)
+        {
+            return AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show;
+        }
+        
+        return AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide;
     }
 
     void EditorShapeColliderComponent::Reflect(AZ::ReflectContext* context)
@@ -43,6 +56,7 @@ namespace PhysX
                 ->Field("ColliderConfiguration", &EditorShapeColliderComponent::m_colliderConfig)
                 ->Field("DebugDrawSettings", &EditorShapeColliderComponent::m_colliderDebugDraw)
                 ->Field("ShapeConfigs", &EditorShapeColliderComponent::m_shapeConfigs)
+                ->Field("SubdivisionCount", &EditorShapeColliderComponent::m_subdivisionCount)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -62,6 +76,11 @@ namespace PhysX
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorShapeColliderComponent::m_colliderDebugDraw,
                         "Debug draw settings", "Debug draw settings")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorShapeColliderComponent::m_subdivisionCount, "Subdivision count", "Number of angular subdivisions in the PhysX cylinder")
+                        ->Attribute(AZ::Edit::Attributes::Min, Utils::MinFrustumSubdivisions)
+                        ->Attribute(AZ::Edit::Attributes::Max, Utils::MaxFrustumSubdivisions)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorShapeColliderComponent::OnSubdivisionCountChange)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorShapeColliderComponent::SubdivisionCountVisibility)
                     ;
             }
         }
@@ -69,6 +88,7 @@ namespace PhysX
 
     void EditorShapeColliderComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
+        provided.push_back(AZ_CRC("PhysicsWorldBodyService", 0x944da0cc));
         provided.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
         provided.push_back(AZ_CRC("PhysXTriggerService", 0x3a117d7b));
         provided.push_back(AZ_CRC("PhysXShapeColliderService", 0x98a7e779));
@@ -123,6 +143,16 @@ namespace PhysX
             if (cylinderHeight > 0.0f)
             {
                 m_geometryCache.m_cachedSamplePoints = Utils::Geometry::GenerateCylinderPoints(cylinderHeight,
+                    m_geometryCache.m_radius);
+            }
+            break;
+        }
+        case ShapeType::Cylinder:
+        {
+            if (m_geometryCache.m_height > 0.0f && m_geometryCache.m_radius > 0.0f)
+            {
+                m_geometryCache.m_cachedSamplePoints = Utils::Geometry::GenerateCylinderPoints(
+                    m_geometryCache.m_height,
                     m_geometryCache.m_radius);
             }
             break;
@@ -231,19 +261,19 @@ namespace PhysX
 
             Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
         }
+
+        Physics::WorldBodyRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     AZ::u32 EditorShapeColliderComponent::OnConfigurationChanged()
     {
         m_colliderConfig.m_materialSelection.SetMaterialSlots(Physics::MaterialSelection::SlotsArray());
         CreateStaticEditorCollider();
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
         return AZ::Edit::PropertyRefreshLevels::None;
     }
 
-    void EditorShapeColliderComponent::UpdateShapeConfigs()
+    void EditorShapeColliderComponent::UpdateShapeConfigs(bool refreshPropertyTree)
     {
-        m_shapeConfigs.clear();
         m_geometryCache.m_cachedSamplePointsDirty = true;
 
         AZ::Crc32 shapeCrc;
@@ -255,26 +285,27 @@ namespace PhysX
         // using if blocks because switch statements aren't supported for values generated by the crc macro
         if (shapeCrc == ShapeConstants::Box)
         {
-            m_shapeType = ShapeType::Box;
             UpdateBoxConfig(uniformScale);
         }
 
         else if (shapeCrc == ShapeConstants::Capsule)
         {
-            m_shapeType = ShapeType::Capsule;
             UpdateCapsuleConfig(uniformScale);
         }
 
         else if (shapeCrc == ShapeConstants::Sphere)
         {
-            m_shapeType = ShapeType::Sphere;
             UpdateSphereConfig(uniformScale);
         }
 
         else if (shapeCrc == ShapeConstants::PolygonPrism)
         {
-            m_shapeType = ShapeType::PolygonPrism;
             UpdatePolygonPrismDecomposition();
+        }
+
+        else if (shapeCrc == ShapeConstants::Cylinder)
+        {
+            UpdateCylinderConfig(uniformScale);
         }
 
         else
@@ -286,8 +317,11 @@ namespace PhysX
             m_shapeTypeWarningIssued = true;
         }
 
-        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
-            &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+        if (refreshPropertyTree)
+        {
+            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+        }
     }
 
     void EditorShapeColliderComponent::UpdateBoxConfig(const AZ::Vector3& scale)
@@ -295,7 +329,21 @@ namespace PhysX
         AZ::Vector3 boxDimensions = AZ::Vector3::CreateOne();
         LmbrCentral::BoxShapeComponentRequestsBus::EventResult(boxDimensions, GetEntityId(),
             &LmbrCentral::BoxShapeComponentRequests::GetBoxDimensions);
-        m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::BoxShapeConfiguration>(boxDimensions));
+
+        if (m_shapeType != ShapeType::Box)
+        {
+            m_shapeConfigs.clear();
+            m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::BoxShapeConfiguration>(boxDimensions));
+
+            m_shapeType = ShapeType::Box;
+        }
+        else
+        {
+            Physics::BoxShapeConfiguration& configuration =
+                static_cast<Physics::BoxShapeConfiguration&>(*m_shapeConfigs.back());
+            configuration = Physics::BoxShapeConfiguration(boxDimensions);
+        }
+
         m_shapeConfigs.back()->m_scale = scale;
         m_geometryCache.m_boxDimensions = scale * boxDimensions;
     }
@@ -307,7 +355,21 @@ namespace PhysX
             &LmbrCentral::CapsuleShapeComponentRequests::GetCapsuleConfiguration);
         const Physics::CapsuleShapeConfiguration& capsuleShapeConfig =
             Utils::ConvertFromLmbrCentralCapsuleConfig(lmbrCentralCapsuleShapeConfig);
-        m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::CapsuleShapeConfiguration>(capsuleShapeConfig));
+
+        if (m_shapeType != ShapeType::Capsule)
+        {
+            m_shapeConfigs.clear();
+            m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::CapsuleShapeConfiguration>(capsuleShapeConfig));
+
+            m_shapeType = ShapeType::Capsule;
+        }
+        else
+        {
+            Physics::CapsuleShapeConfiguration& configuration =
+                static_cast<Physics::CapsuleShapeConfiguration&>(*m_shapeConfigs.back());
+            configuration = capsuleShapeConfig;
+        }
+
         m_shapeConfigs.back()->m_scale = scale;
         const float scalarScale = scale.GetMaxElement();
         m_geometryCache.m_radius = scalarScale * capsuleShapeConfig.m_radius;
@@ -319,9 +381,82 @@ namespace PhysX
         float radius = 0.0f;
         LmbrCentral::SphereShapeComponentRequestsBus::EventResult(radius, GetEntityId(),
             &LmbrCentral::SphereShapeComponentRequests::GetRadius);
-        m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::SphereShapeConfiguration>(radius));
+
+        if (m_shapeType != ShapeType::Sphere)
+        {
+            m_shapeConfigs.clear();
+            m_shapeConfigs.emplace_back(AZStd::make_shared<Physics::SphereShapeConfiguration>(radius));
+
+            m_shapeType = ShapeType::Sphere;
+        }
+        else
+        {
+            Physics::SphereShapeConfiguration& configuration =
+                static_cast<Physics::SphereShapeConfiguration&>(*m_shapeConfigs.back());
+            configuration = Physics::SphereShapeConfiguration(radius);
+        }
+        
         m_shapeConfigs.back()->m_scale = scale;
         m_geometryCache.m_radius = scale.GetMaxElement() * radius;
+    }
+
+    void EditorShapeColliderComponent::UpdateCylinderConfig(const AZ::Vector3& scale)
+    {
+        float height = 1.0f;
+        float radius = 1.0f;
+
+        LmbrCentral::CylinderShapeComponentRequestsBus::EventResult(radius, GetEntityId(),
+            &LmbrCentral::CylinderShapeComponentRequests::GetRadius);
+
+        LmbrCentral::CylinderShapeComponentRequestsBus::EventResult(height, GetEntityId(),
+            &LmbrCentral::CylinderShapeComponentRequests::GetHeight);
+
+        const float scalarScale = scale.GetMaxElement();
+        m_geometryCache.m_height = scalarScale * height;
+        m_geometryCache.m_radius = scalarScale * radius;
+
+        if (radius <= 0.0f || height <= 0.0f)
+        {
+            AZ_Warning("PhysX", false, "%s: Negative or zero cylinder dimensions are invalid (radius: '%f', height: '%f).", GetEntity()->GetName().c_str(), radius, height);
+            return;
+        }
+
+        AZStd::optional<AZStd::vector<AZ::Vector3>> points = Utils::CreatePointsAtFrustumExtents(height, radius, radius, m_subdivisionCount);
+
+        if (!points.has_value())
+        {
+            AZ_Warning("PhysX", false, "Could not generate cylinder shape collider.");
+            return;
+        }
+
+        AZStd::optional<Physics::CookedMeshShapeConfiguration> shapeConfig = Utils::CreatePxCookedMeshConfiguration(points.value(), scale);
+
+        if (shapeConfig.has_value())
+        {
+            if (m_shapeType != ShapeType::Cylinder)
+            {
+                m_shapeConfigs.clear();
+                m_shapeConfigs.push_back(AZStd::make_shared<Physics::CookedMeshShapeConfiguration>(shapeConfig.value()));
+
+                m_shapeType = ShapeType::Cylinder;
+            }
+            else
+            {
+                Physics::CookedMeshShapeConfiguration& configuration =
+                    static_cast<Physics::CookedMeshShapeConfiguration&>(*m_shapeConfigs.back());
+                configuration = Physics::CookedMeshShapeConfiguration(shapeConfig.value());
+            }
+
+            CreateStaticEditorCollider();
+        }
+    }
+
+    AZ::u32 EditorShapeColliderComponent::OnSubdivisionCountChange()
+    {
+        const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
+        UpdateCylinderConfig(uniformScale);
+        Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
+        return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
     }
 
     void EditorShapeColliderComponent::UpdatePolygonPrismDecomposition()
@@ -339,6 +474,8 @@ namespace PhysX
 
         CreateStaticEditorCollider();
         m_mesh.SetDebugDrawDirty();
+
+        m_shapeType = ShapeType::PolygonPrism;
     }
 
     void EditorShapeColliderComponent::UpdatePolygonPrismDecomposition(const AZ::PolygonPrismPtr polygonPrismPtr)
@@ -397,7 +534,13 @@ namespace PhysX
         // Create the cooked convex mesh configurations
         const AZStd::vector<PolygonPrismMeshUtils::Face>& faces = m_mesh.GetFaces();
         size_t numFacesTotal = faces.size();
-        m_shapeConfigs.clear();
+
+        if (m_shapeType != ShapeType::PolygonPrism)
+        {
+            m_shapeConfigs.clear();
+            m_shapeType = ShapeType::PolygonPrism;
+        }
+
         if (numFacesRemoved <= numFacesTotal)
         {
             m_shapeConfigs.reserve(numFacesTotal - numFacesRemoved);
@@ -407,6 +550,8 @@ namespace PhysX
 
         const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
         m_geometryCache.m_height = uniformScale.GetX() * unscaledPrismHeight;
+
+        int shapeConfigsCount = 0;
 
         for (int faceIndex = 0; faceIndex < numFacesTotal; faceIndex++)
         {
@@ -421,22 +566,31 @@ namespace PhysX
 
             for (int edgeIndex = 0; edgeIndex < faces[faceIndex].m_numEdges; edgeIndex++)
             {
-                points.emplace_back(AZ::Vector3(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), 0.0f));
-                points.emplace_back(AZ::Vector3(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), unscaledPrismHeight));
+                points.emplace_back(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), 0.0f);
+                points.emplace_back(currentEdge->m_origin.GetX(), currentEdge->m_origin.GetY(), unscaledPrismHeight);
                 currentEdge = currentEdge->m_next;
             }
 
-            AZStd::vector<AZ::u8> cookedData;
-            bool cookingResult = false;
-            PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookConvexMeshToMemory,
-                points.data(), static_cast<AZ::u32>(points.size()), cookedData);
-            Physics::CookedMeshShapeConfiguration shapeConfig;
-            shapeConfig.SetCookedMeshData(cookedData.data(), cookedData.size(),
-                Physics::CookedMeshShapeConfiguration::MeshType::Convex);
-            shapeConfig.m_scale = uniformScale;
+            AZStd::optional<Physics::CookedMeshShapeConfiguration> shapeConfig = Utils::CreatePxCookedMeshConfiguration(points, uniformScale);
 
-            m_shapeConfigs.push_back(AZStd::make_shared<Physics::CookedMeshShapeConfiguration>(shapeConfig));
+            if (shapeConfig.has_value())
+            {
+                if (shapeConfigsCount >= m_shapeConfigs.size())
+                {
+                    m_shapeConfigs.push_back(AZStd::make_shared<Physics::CookedMeshShapeConfiguration>(shapeConfig.value()));
+                }
+                else
+                {
+                    Physics::CookedMeshShapeConfiguration& configuration =
+                        static_cast<Physics::CookedMeshShapeConfiguration&>(*m_shapeConfigs[shapeConfigsCount]);
+                    configuration = Physics::CookedMeshShapeConfiguration(shapeConfig.value());
+                }
+
+                ++shapeConfigsCount;
+            }
         }
+
+        m_shapeConfigs.resize(shapeConfigsCount);
     }
 
     // AZ::Component
@@ -447,7 +601,9 @@ namespace PhysX
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(GetEntityId());
         PhysX::ColliderShapeRequestBus::Handler::BusConnect(GetEntityId());
-        UpdateShapeConfigs();
+
+        bool refreshPropertyTree = true;
+        UpdateShapeConfigs(refreshPropertyTree);
 
         // Debug drawing
         m_colliderDebugDraw.Connect(GetEntityId());
@@ -455,11 +611,12 @@ namespace PhysX
 
         CreateStaticEditorCollider();
 
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
     }
 
     void EditorShapeColliderComponent::Deactivate()
     {
+        Physics::WorldBodyRequestBus::Handler::BusDisconnect();
         m_colliderDebugDraw.Disconnect();
 
         PhysX::ColliderShapeRequestBus::Handler::BusDisconnect();
@@ -487,10 +644,12 @@ namespace PhysX
     // TransformBus
     void EditorShapeColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
-        UpdatePolygonPrismDecomposition();
+        bool refreshPropertyTree = false;
+        UpdateShapeConfigs(refreshPropertyTree);
+
         CreateStaticEditorCollider();
         m_geometryCache.m_cachedSamplePointsDirty = true;
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
     }
 
     // PhysX::ConfigurationNotificationBus
@@ -504,15 +663,61 @@ namespace PhysX
     void EditorShapeColliderComponent::OnDefaultMaterialLibraryChanged(const AZ::Data::AssetId& defaultMaterialLibrary)
     {
         m_colliderConfig.m_materialSelection.OnDefaultMaterialLibraryChanged(defaultMaterialLibrary);
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
+    }
+
+    void EditorShapeColliderComponent::EnablePhysics()
+    {
+        if (!IsPhysicsEnabled())
+        {
+            CreateStaticEditorCollider();
+        }
+    }
+
+    void EditorShapeColliderComponent::DisablePhysics()
+    {
+        m_editorBody.reset();
+    }
+
+    bool EditorShapeColliderComponent::IsPhysicsEnabled() const
+    {
+        return m_editorBody && m_editorBody->GetWorld();
+    }
+
+    AZ::Aabb EditorShapeColliderComponent::GetAabb() const
+    {
+        if (m_editorBody)
+        {
+            return m_editorBody->GetAabb();
+        }
+        return AZ::Aabb::CreateNull();
+    }
+
+    Physics::WorldBody* EditorShapeColliderComponent::GetWorldBody()
+    {
+        return m_editorBody.get();
+    }
+
+    Physics::RayCastHit EditorShapeColliderComponent::RayCast(const Physics::RayCastRequest& request)
+    {
+        if (m_editorBody)
+        {
+            return m_editorBody->RayCast(request);
+        }
+        return Physics::RayCastHit();
     }
 
     // LmbrCentral::ShapeComponentNotificationBus
     void EditorShapeColliderComponent::OnShapeChanged(LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons changeReason)
     {
-        UpdateShapeConfigs();
-        CreateStaticEditorCollider();
-        ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
+        if (changeReason == LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged)
+        {
+            bool refreshPropertyTree = true;
+            UpdateShapeConfigs(refreshPropertyTree);
+
+            CreateStaticEditorCollider();
+            Physics::ColliderComponentEventBus::Event(GetEntityId(), &Physics::ColliderComponentEvents::OnColliderChanged);
+        }
     }
 
     // DisplayCallback
@@ -531,6 +736,18 @@ namespace PhysX
                 m_colliderDebugDraw.DrawPolygonPrism(debugDisplay, m_colliderConfig, m_mesh.GetDebugDrawPoints(height,
                     uniformScale.GetX()));
             }
+        }
+
+        else if (m_shapeType == ShapeType::Cylinder)
+        {
+            if (!m_shapeConfigs.empty())
+            {
+                const AZ::u32 shapeIndex = 0;
+                const AZ::Vector3 uniformScale = Utils::GetUniformScale(GetEntityId());
+                Physics::ShapeConfiguration* shapeConfig = m_shapeConfigs[0].get();
+                m_colliderDebugDraw.BuildMeshes(*shapeConfig, shapeIndex);
+                m_colliderDebugDraw.DrawMesh(debugDisplay, m_colliderConfig, *static_cast<Physics::CookedMeshShapeConfiguration*>(shapeConfig), uniformScale, shapeIndex);
+            }            
         }
 
         // for primitive shapes just display the shape configs

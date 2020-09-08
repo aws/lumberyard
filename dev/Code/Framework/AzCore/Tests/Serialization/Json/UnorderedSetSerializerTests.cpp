@@ -152,7 +152,7 @@ namespace JsonSerializationTests
         testVal.PushBack(rapidjson::Value(288), m_jsonDocument->GetAllocator());
         testVal.PushBack(rapidjson::Value(288), m_jsonDocument->GetAllocator());
         testVal.PushBack(rapidjson::Value(388), m_jsonDocument->GetAllocator());
-        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, m_path, m_deserializationSettings);
+        ResultCode result = m_serializer->Load(&instance, azrtti_typeid(&instance), testVal, *m_jsonDeserializationContext);
         EXPECT_EQ(Outcomes::Unavailable, result.GetOutcome());
         EXPECT_EQ(Processing::PartialAlter, result.GetProcessing());
         

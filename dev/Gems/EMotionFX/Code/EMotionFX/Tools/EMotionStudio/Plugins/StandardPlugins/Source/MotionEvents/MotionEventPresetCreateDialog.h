@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/ColorLabel.h>
 #include <QDialog>
 #include <EMotionStudio/EMStudioSDK/Source/MotionEventPresetManager.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/MotionEvents/EventDataEditor.h>

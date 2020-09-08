@@ -74,9 +74,10 @@ namespace GraphCanvas
         m_ui->organizeTopLeft->setVisible(false);
         m_ui->organizeCentered->setVisible(false);
         m_ui->organizeBottomRight->setVisible(false);
-
-        // Disabling the customization line as a temporary measure
+        
+        // Disable customization panel until they are used
         m_ui->customizationPanel->setVisible(false);
+        m_ui->creationPanel->setVisible(false);
 
         QObject::connect(m_ui->organizeTopLeft, &QToolButton::clicked, this, &AssetEditorToolbar::OrganizeTopLeft);
         QObject::connect(m_ui->organizeCentered, &QToolButton::clicked, this, &AssetEditorToolbar::OrganizeCentered);
@@ -91,6 +92,12 @@ namespace GraphCanvas
         m_ui->customizationPanel->layout()->addWidget(action);
     }
 
+    void AssetEditorToolbar::AddCreationAction(QToolButton* action)
+    {
+        m_ui->creationPanel->setVisible(true);
+        m_ui->creationPanel->layout()->addWidget(action);
+    }
+
     void AssetEditorToolbar::OnActiveGraphChanged(const GraphId& graphId)
     {
         m_activeGraphId = graphId;
@@ -103,6 +110,18 @@ namespace GraphCanvas
 
     void AssetEditorToolbar::OnSelectionChanged()
     {
+        UpdateButtonStates();
+    }
+
+    void AssetEditorToolbar::OnViewDisabled()
+    {
+        m_viewDisabled = true;
+        UpdateButtonStates();
+    }
+
+    void AssetEditorToolbar::OnViewEnabled()
+    {
+        m_viewDisabled = false;
         UpdateButtonStates();
     }
 
@@ -228,7 +247,7 @@ namespace GraphCanvas
 
         AssetEditorSettingsRequestBus::EventResult(config.m_alignTime, m_editorId, &AssetEditorSettingsRequests::GetAlignmentTime);
 
-        OrganizeSelected(config);    
+        OrganizeSelected(config);
     }
 
     void AssetEditorToolbar::OrganizeBottomRight(bool)
@@ -293,15 +312,15 @@ namespace GraphCanvas
         bool hasSelection = false;
         SceneRequestBus::EventResult(hasSelection, m_activeGraphId, &SceneRequests::HasSelectedItems);
 
-        m_ui->topAlign->setEnabled(hasSelection && hasScene);
-        m_ui->bottomAlign->setEnabled(hasSelection && hasScene);
+        m_ui->topAlign->setEnabled(hasSelection && hasScene && !m_viewDisabled);
+        m_ui->bottomAlign->setEnabled(hasSelection && hasScene && !m_viewDisabled);
 
-        m_ui->leftAlign->setEnabled(hasSelection && hasScene);
-        m_ui->rightAlign->setEnabled(hasSelection && hasScene);
+        m_ui->leftAlign->setEnabled(hasSelection && hasScene && !m_viewDisabled);
+        m_ui->rightAlign->setEnabled(hasSelection && hasScene && !m_viewDisabled);
 
-        m_ui->addComment->setEnabled(hasScene);
-        m_ui->groupNodes->setEnabled(hasScene);
-        m_ui->ungroupNodes->setEnabled(hasSelection && hasScene);
+        m_ui->addComment->setEnabled(hasScene && !m_viewDisabled);
+        m_ui->groupNodes->setEnabled(hasScene && !m_viewDisabled);
+        m_ui->ungroupNodes->setEnabled(hasSelection && hasScene && !m_viewDisabled);
     }
 
     void AssetEditorToolbar::OnCommentMenuAboutToShow()

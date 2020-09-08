@@ -24,10 +24,9 @@ namespace AZ
         AZ_RTTI(JsonColorSerializer, "{4C0CF19D-7F92-459A-88C3-47C07BE8BD45}", BaseJsonSerializer);
         AZ_CLASS_ALLOCATOR_DECL;
         JsonSerializationResult::Result Load(void* outputValue, const Uuid& outputValueTypeId, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings) override;
-        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, rapidjson::Document::AllocatorType& allocator,
-            const void* inputValue, const void* defaultValue, const Uuid& valueTypeId, 
-            StackedString& path, const JsonSerializerSettings& settings) override;
+            JsonDeserializerContext& context) override;
+        JsonSerializationResult::Result Store(rapidjson::Value& outputValue, const void* inputValue, const void* defaultValue,
+            const Uuid& valueTypeId, JsonSerializerContext& context) override;
 
     private:
         enum class LoadAlpha
@@ -38,13 +37,13 @@ namespace AZ
         };
 
         JsonSerializationResult::Result LoadObject(Color& output, const rapidjson::Value& inputValue,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
         JsonSerializationResult::Result LoadFloatArray(Color& output, const rapidjson::Value& inputValue, LoadAlpha loadAlpha,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
         JsonSerializationResult::Result LoadByteArray(Color& output, const rapidjson::Value& inputValue, bool loadAlpha,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
         JsonSerializationResult::Result LoadHexString(Color& output, const rapidjson::Value& inputValue, bool loadAlpha,
-            StackedString& path, const JsonDeserializerSettings& settings);
+            JsonDeserializerContext& context);
         uint32_t ClampToByteColorRange(int64_t value) const;
     };
 }

@@ -13,6 +13,7 @@
 
 #include "EditorCommon.h"
 #include "FeedbackDialog.h"
+#include <AzQtComponents/Buses/ShortcutDispatch.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
@@ -242,7 +243,7 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
         // To display CTRL+SHIFT+Z by default, we have to provide the
         // list of shortcuts explicitly.
         {
-            action->setShortcuts(QList<QKeySequence>{QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z),
+            action->setShortcuts(QList<QKeySequence>{AzQtComponents::RedoKeySequence,
                                                      QKeySequence(Qt::META + Qt::SHIFT + Qt::Key_Z),
                                                      QKeySequence(QKeySequence::Redo)});
         }
@@ -1040,6 +1041,14 @@ void EditorWindow::SetupShortcuts()
     }
 }
 
+void DisplayNullMetadataMessage(EditorWindow* editorWindow)
+{
+    QMessageBox(QMessageBox::Critical,
+        "Error",
+        QString::fromUtf8("Unable to save: canvas metadata is null. Please try reopening the canvas."),
+        QMessageBox::Ok, editorWindow).exec();
+}
+
 QAction* EditorWindow::CreateSaveCanvasAction(AZ::EntityId canvasEntityId, bool forContextMenu)
 {
     UiCanvasMetadata *canvasMetadata = canvasEntityId.IsValid() ? GetCanvasMetadata(canvasEntityId) : nullptr;
@@ -1080,6 +1089,10 @@ QAction* EditorWindow::CreateSaveCanvasAction(AZ::EntityId canvasEntityId, bool 
             // Refresh the File menu to update the
             // "Recent Files" and "Save".
             RefreshEditorMenu();
+        }
+        else
+        {
+            DisplayNullMetadataMessage(this);
         }
     });
 
@@ -1124,6 +1137,10 @@ QAction* EditorWindow::CreateSaveCanvasAsAction(AZ::EntityId canvasEntityId, boo
             // Refresh the File menu to update the
             // "Recent Files" and "Save".
             RefreshEditorMenu();
+        }
+        else
+        {
+            DisplayNullMetadataMessage(this);
         }
     });
 

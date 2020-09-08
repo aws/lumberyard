@@ -19,6 +19,7 @@ namespace nv
     namespace cloth
     {
         class Factory;
+        class Cloth;
     }
 }
 
@@ -32,8 +33,18 @@ namespace NvCloth
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        // Public methods here
         virtual nv::cloth::Factory* GetClothFactory() = 0;
+        virtual void AddCloth(nv::cloth::Cloth* cloth) = 0;
+        virtual void RemoveCloth(nv::cloth::Cloth* cloth) = 0;
     };
     using SystemRequestBus = AZ::EBus<SystemRequests>;
+
+    class SystemNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual void OnPreUpdateClothSimulation(float deltaTime) = 0;
+        virtual void OnPostUpdateClothSimulation(float deltaTime) = 0;
+    };
+    using SystemNotificationsBus = AZ::EBus<SystemNotifications>;
 } // namespace NvCloth

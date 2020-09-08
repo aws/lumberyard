@@ -14,6 +14,7 @@
 #include <Editor/Nodes/ScriptCanvasAssetNode.h>
 
 #include <ScriptCanvas/Core/Graph.h>
+#include <Editor/Assets/ScriptCanvasAssetTrackerBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -100,12 +101,12 @@ namespace ScriptCanvasEditor
         m_scriptCanvasAssetInstance.GetReference().SetAssetDataStoredInternally(storeInObjectStream);
     }
 
-    ScriptCanvasData& ScriptCanvasAssetNode::GetScriptCanvasData()
+    ScriptCanvas::ScriptCanvasData& ScriptCanvasAssetNode::GetScriptCanvasData()
     {
         return m_scriptCanvasAssetInstance.GetScriptCanvasData();
     }
 
-    const ScriptCanvasData& ScriptCanvasAssetNode::GetScriptCanvasData() const
+    const ScriptCanvas::ScriptCanvasData& ScriptCanvasAssetNode::GetScriptCanvasData() const
     {
         return m_scriptCanvasAssetInstance.GetScriptCanvasData();
     }
@@ -130,7 +131,9 @@ namespace ScriptCanvasEditor
         m_scriptCanvasAssetInstance.GetReference().SetAsset(scriptCanvasAsset);
         if (scriptCanvasAsset.GetId().IsValid())
         {
-            DocumentContextRequestBus::Broadcast(&DocumentContextRequests::LoadScriptCanvasAssetById, scriptCanvasAsset.GetId(), true);
+            auto onAssetReady = [](ScriptCanvasMemoryAsset&) {};
+            AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::Load, scriptCanvasAsset.GetId(), azrtti_typeid<ScriptCanvasAsset>(), onAssetReady);
+
             AZ::Data::AssetBus::Handler::BusConnect(scriptCanvasAsset.GetId());
             ApplyDataPatch();
         }

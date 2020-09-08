@@ -28,6 +28,19 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeBlendNNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeight, AnimGraphAllocator, 0)
 
+    BlendTreeBlendNNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+        : AnimGraphNodeData(node, animGraphInstance)
+    {
+    }
+
+    void BlendTreeBlendNNode::UniqueData::Update()
+    {
+        BlendTreeBlendNNode* blendNNode = azdynamic_cast<BlendTreeBlendNNode*>(mObject);
+        AZ_Assert(blendNNode, "Unique data linked to incorrect node type.");
+
+        blendNNode->UpdateParamWeightRanges();
+    }
+
     BlendNParamWeight::BlendNParamWeight(AZ::u32 portId, float weightRange)
         : m_portId(portId)
         , m_weightRange(weightRange)
@@ -119,17 +132,8 @@ namespace EMotionFX
         return AnimGraphObject::CATEGORY_BLENDING;
     }
 
-    // pre-create the unique data
-    void BlendTreeBlendNNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    void BlendTreeBlendNNode::UpdateParamWeightRanges()
     {
-        // locate the existing unique data for this node
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance, MCORE_INVALIDINDEX32, MCORE_INVALIDINDEX32);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
         // Initialize default connection custom weights
         // If this node has connections but no custom weights, it needs to set the default custom weight ranges
         if (m_paramWeights.empty())
@@ -172,7 +176,7 @@ namespace EMotionFX
         }
 
         float weight = m_paramWeights.front().m_weightRange;
-        if (mDisabled == false)
+        if (!mDisabled)
         {
             if (mInputPorts[INPUTPORT_WEIGHT].mConnection)
             {
@@ -255,7 +259,7 @@ namespace EMotionFX
             return;
         }
 
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueNodeData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueNodeData(this));
 
         // check if we need to resync, this indicates the two motions we blend between changed
         bool resync = false;
@@ -296,8 +300,15 @@ namespace EMotionFX
                 nodeToSync->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_RESYNC, true);
             }
 
-            // perform the syncing
-            nodeToSync->AutoSync(animGraphInstance, nodeA, blendWeight, syncMode, resync);
+            // Only use the blend weight when syncing between the two active anim graph input nodes, otherwise use a blend weight of 1.
+            if (i != poseIndexB)
+            {
+                nodeToSync->AutoSync(animGraphInstance, nodeA, 1.0f, syncMode, resync);
+            }
+            else
+            {
+                nodeToSync->AutoSync(animGraphInstance, nodeA, blendWeight, syncMode, resync);
+            }
         }
 
         uniqueData->mIndexA = poseIndexA;
@@ -313,7 +324,7 @@ namespace EMotionFX
         AnimGraphPose* outputPose;
 
         // if there are no connections, there is nothing to do
-        if (mConnections.empty() || mDisabled)
+        if (mDisabled || !HasRequiredInputs())
         {
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
@@ -405,21 +416,30 @@ namespace EMotionFX
         }
     }
 
+    bool BlendTreeBlendNNode::HasRequiredInputs() const
+    {
+        if (mConnections.empty())
+        {
+            return false;
+        }
+
+        // If we have only one input connection and it is our weight input, that means we have no input poses.
+        return !(mConnections.size() == 1 && mInputPorts[INPUTPORT_WEIGHT].mConnection);
+    }
+
     void BlendTreeBlendNNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // if the node is disabled
-        if (mDisabled)
+        if (mDisabled || !HasRequiredInputs())
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             uniqueData->Clear();
             return;
         }
 
-        // get the input weight
-        BlendTreeConnection* connection = mInputPorts[INPUTPORT_WEIGHT].mConnection;
-        if (connection)
+        const BlendTreeConnection* weightConnection = mInputPorts[INPUTPORT_WEIGHT].mConnection;
+        if (weightConnection)
         {
-            UpdateIncomingNode(animGraphInstance, connection->GetSourceNode(), timePassedInSeconds);
+            UpdateIncomingNode(animGraphInstance, weightConnection->GetSourceNode(), timePassedInSeconds);
         }
 
         // get two nodes that we receive input poses from, and get the blend weight
@@ -431,9 +451,9 @@ namespace EMotionFX
         FindBlendNodes(animGraphInstance, &nodeA, &nodeB, &poseIndexA, &poseIndexB, &blendWeight);
 
         // if we have no input nodes
-        if (nodeA == nullptr)
+        if (!nodeA)
         {
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             uniqueData->Clear();
             return;
         }
@@ -445,7 +465,7 @@ namespace EMotionFX
         }
 
         // update the sync track
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         uniqueData->Init(animGraphInstance, nodeA);
 
         // output the correct play speed
@@ -459,17 +479,17 @@ namespace EMotionFX
     void BlendTreeBlendNNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // if the node is disabled
-        if (mDisabled)
+        if (mDisabled || !HasRequiredInputs())
         {
             return;
         }
 
         // top down update the weight input
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         const BlendTreeConnection* con = GetInputPort(INPUTPORT_WEIGHT).mConnection;
         if (con)
         {
-            con->GetSourceNode()->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight());
+            con->GetSourceNode()->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight());
             con->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
         }
 
@@ -497,8 +517,8 @@ namespace EMotionFX
                 }
             }
 
-            nodeA->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - blendWeight));
-            nodeA->FindUniqueNodeData(animGraphInstance)->SetLocalWeight(1.0f - blendWeight);
+            nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - blendWeight));
+            nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->SetLocalWeight(1.0f - blendWeight);
         }
 
         if (nodeB)
@@ -512,29 +532,33 @@ namespace EMotionFX
                 }
             }
 
-            nodeB->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * blendWeight);
-            nodeB->FindUniqueNodeData(animGraphInstance)->SetLocalWeight(blendWeight);
+            nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * blendWeight);
+            nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->SetLocalWeight(blendWeight);
         }
 
         if (nodeA && nodeA == nodeB)
         {
             if (blendWeight < MCore::Math::epsilon)
             {
-                nodeA->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight());
-                nodeA->FindUniqueNodeData(animGraphInstance)->SetLocalWeight(1.0f);
+                nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight());
+                nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->SetLocalWeight(1.0f);
             }
             else
             {
                 if (blendWeight > 1.0f - MCore::Math::epsilon)
                 {
-                    nodeA->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(0.0f);
-                    nodeA->FindUniqueNodeData(animGraphInstance)->SetLocalWeight(0.0f);
+                    nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->SetGlobalWeight(0.0f);
+                    nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->SetLocalWeight(0.0f);
                 }
             }
         }
 
         // Top-down update the relevant nodes.
-        nodeA->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+        if (nodeA)
+        {
+            nodeA->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+        }
+
         if (nodeB && nodeA != nodeB)
         {
             nodeB->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
@@ -545,11 +569,11 @@ namespace EMotionFX
     void BlendTreeBlendNNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // if we don't have enough inputs or are disabled, we don't need to update anything
-        if (mDisabled)
+        if (mDisabled || !HasRequiredInputs())
         {
             // request the reference counted data inside the unique data
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -576,7 +600,7 @@ namespace EMotionFX
         {
             // request the reference counted data inside the unique data
             RequestRefDatas(animGraphInstance);
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
             AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
             data->ClearEventBuffer();
             data->ZeroTrajectoryDelta();
@@ -591,7 +615,7 @@ namespace EMotionFX
 
         // request the reference counted data inside the unique data
         RequestRefDatas(animGraphInstance);
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
 
         FilterEvents(animGraphInstance, m_eventMode, nodeA, nodeB, blendWeight, data);
@@ -599,7 +623,7 @@ namespace EMotionFX
         // if we have just one input node
         if (nodeA == nodeB || nodeB == nullptr)
         {
-            AnimGraphRefCountedData* sourceData = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            AnimGraphRefCountedData* sourceData = nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
             data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
             data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
             return;
@@ -611,8 +635,8 @@ namespace EMotionFX
         Transform motionExtractDeltaA;
         Transform motionExtractDeltaB;
 
-        AnimGraphRefCountedData* nodeAData = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-        AnimGraphRefCountedData* nodeBData = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* nodeAData = nodeA->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* nodeBData = nodeB->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
 
         // blend the results
         Transform delta = nodeAData->GetTrajectoryDelta();
@@ -668,6 +692,7 @@ namespace EMotionFX
             ->Attribute(AZ_CRC("BlendTreeBlendNNodeParamWeightsElement", 0x7eae1990), "")
             ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeBlendNNode::UpdateParamWeightRanges)
             ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("BlendNParamWeightsElementHandler", 0xec71620d));
     }
 

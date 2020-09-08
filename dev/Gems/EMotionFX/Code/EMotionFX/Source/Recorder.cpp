@@ -191,6 +191,10 @@ namespace EMotionFX
         mCurrentPlayTime = 0.0f;
     }
 
+    bool Recorder::HasRecording() const
+    {
+        return (GetRecordTime() > AZ::g_fltEps && !m_actorInstanceDatas.empty());
+    }
 
     // clear any currently recorded data
     void Recorder::Clear()
@@ -548,8 +552,8 @@ namespace EMotionFX
             {
                 // get some shortcuts
                 AnimGraphInstanceData& animGraphInstanceData  = *actorInstanceData->mAnimGraphData;
-                const AnimGraphInstance*   animGraphInstance  = animGraphInstanceData.mAnimGraphInstance;
-                const AnimGraph*           animGraph          = animGraphInstance->GetAnimGraph();
+                AnimGraphInstance*     animGraphInstance      = animGraphInstanceData.mAnimGraphInstance;
+                const AnimGraph*       animGraph              = animGraphInstance->GetAnimGraph();
 
                 // add a new frame
                 MCore::Array<AnimGraphAnimFrame>& frames = animGraphInstanceData.mFrames;
@@ -597,7 +601,7 @@ namespace EMotionFX
 
 
     // recursively save the node's unique data
-    bool Recorder::SaveUniqueData(const AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData)
+    bool Recorder::SaveUniqueData(AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData)
     {
         // get the current frame's data pointer
         AnimGraphAnimFrame& currentFrame = animGraphInstanceData.mFrames.GetLast();
@@ -850,7 +854,7 @@ namespace EMotionFX
         }
 
         // for all animgraph instances that we recorded, restore their internal states
-        const AnimGraphInstance* animGraphInstance = animGraphInstanceData.mAnimGraphInstance;
+        AnimGraphInstance* animGraphInstance = animGraphInstanceData.mAnimGraphInstance;
 
         // get the real frame number (clamped)
         const uint32 realFrameNumber = MCore::Min<uint32>(frameNumber, animGraphInstanceData.mFrames.GetLength() - 1);
@@ -1032,7 +1036,7 @@ namespace EMotionFX
                 }
 
                 // add the weight key and update infos
-                const AnimGraphNodeData* uniqueData = activeNode->FindUniqueNodeData(animGraphInstance);
+                const AnimGraphNodeData* uniqueData = activeNode->FindOrCreateUniqueNodeData(animGraphInstance);
                 const float keyTime = mRecordTime - item->mStartTime;
                 item->mGlobalWeights.AddKey(keyTime, uniqueData->GetGlobalWeight());
                 item->mLocalWeights.AddKey(keyTime, uniqueData->GetLocalWeight());

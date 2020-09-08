@@ -1232,18 +1232,12 @@ namespace AZ
 
         bool ToBool(const char* in)
         {
-            if (!in)
+            bool boolValue = false;
+            if (LooksLikeBool(in, &boolValue))
             {
-                return false;
+                return boolValue;
             }
-            if (!azstricmp(in, "true"))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return false;
         }
 
         bool LooksLikeBool(const char* in, bool* pBool /* = nullptr */)
@@ -1253,13 +1247,7 @@ namespace AZ
                 return false;
             }
 
-            size_t len = strlen(in);
-            if (len < 4) //cant be less than 4 characters and match "true", "false" is even more
-            {
-                return false;
-            }
-
-            if (!azstricmp(in, "true"))
+            if (!azstricmp(in, "true") || !azstricmp(in, "1"))
             {
                 if (pBool)
                 {
@@ -1267,7 +1255,8 @@ namespace AZ
                 }
                 return true;
             }
-            if (!azstricmp(in, "false"))
+
+            if (!azstricmp(in, "false") || !azstricmp(in, "0"))
             {
                 if (pBool)
                 {

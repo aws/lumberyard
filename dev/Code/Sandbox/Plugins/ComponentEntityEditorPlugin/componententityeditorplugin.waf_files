@@ -51,7 +51,6 @@
         "UI/Outliner": [
             "UI/Outliner/OutlinerDisplayOptionsMenu.h",
             "UI/Outliner/OutlinerDisplayOptionsMenu.cpp",
-            "UI/Outliner/OutlinerDisplayOptionsMenu.ui",
             "UI/Outliner/OutlinerTreeView.hxx",
             "UI/Outliner/OutlinerTreeView.cpp",
             "UI/Outliner/OutlinerWidget.hxx",

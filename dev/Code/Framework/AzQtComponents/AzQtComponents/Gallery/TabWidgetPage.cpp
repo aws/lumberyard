@@ -53,6 +53,8 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
     ui->tabWidget_2->setActionToolBarVisible();
     ui->tabWidget_3->setActionToolBarVisible();
     ui->tabWidgetBig->setActionToolBarVisible();
+    ui->tabWidgetSecondary->setActionToolBarVisible();
+    ui->tabWidgetSecondaryBorderless->setActionToolBarVisible();
 
     ui->tabWidget->addAction(action1);
     ui->tabWidget->addAction(action2);
@@ -67,6 +69,17 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
     ui->tabWidget_3->addAction(action3);
 
     ui->tabWidgetBig->addAction(actionAddTab);
+
+    AzQtComponents::TabWidget::applySecondaryStyle(ui->tabWidgetSecondary);
+    ui->tabWidgetSecondary->addAction(action1);
+    ui->tabWidgetSecondary->addAction(action2);
+    ui->tabWidgetSecondary->addAction(action3);
+
+    AzQtComponents::TabWidget::applySecondaryStyle(ui->tabWidgetSecondaryBorderless, false);
+    connect(ui->tabWidgetSecondaryBorderless, &QTabWidget::tabCloseRequested, ui->tabWidgetSecondaryBorderless, &QTabWidget::removeTab);
+    ui->tabWidgetSecondaryBorderless->addAction(action1);
+    ui->tabWidgetSecondaryBorderless->addAction(action2);
+    ui->tabWidgetSecondaryBorderless->addAction(action3);
 
     auto* removeFirstAction = new QPushButton("Remove first action");
     auto* removeLastAction = new QPushButton("Remove last action");
@@ -91,6 +104,16 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
         {
             ui->tabWidget_3->removeAction(ui->tabWidget_3->actions()[0]);
         }
+
+        if (ui->tabWidgetSecondary->actions().count())
+        {
+            ui->tabWidgetSecondary->removeAction(ui->tabWidgetSecondary->actions()[0]);
+        }
+
+        if (ui->tabWidgetSecondaryBorderless->actions().count())
+        {
+            ui->tabWidgetSecondaryBorderless->removeAction(ui->tabWidgetSecondaryBorderless->actions()[0]);
+        }
     });
 
     connect(removeLastAction, &QPushButton::clicked, this, [this]() {
@@ -107,6 +130,16 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
         if (ui->tabWidget_3->actions().count())
         {
             ui->tabWidget_3->removeAction(ui->tabWidget_3->actions()[ui->tabWidget_3->actions().count() - 1]);
+        }
+
+        if (ui->tabWidgetSecondary->actions().count())
+        {
+            ui->tabWidgetSecondary->removeAction(ui->tabWidgetSecondary->actions()[ui->tabWidgetSecondary->actions().count() - 1]);
+        }
+
+        if (ui->tabWidgetSecondaryBorderless->actions().count())
+        {
+            ui->tabWidgetSecondaryBorderless->removeAction(ui->tabWidgetSecondaryBorderless->actions()[ui->tabWidgetSecondaryBorderless->actions().count() - 1]);
         }
     });
 
@@ -139,6 +172,8 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
         ui->tabWidget_2->setActionToolBarVisible(!ui->tabWidget_2->isActionToolBarVisible());
         ui->tabWidget_3->setActionToolBarVisible(!ui->tabWidget_3->isActionToolBarVisible());
         ui->tabWidgetBig->setActionToolBarVisible(!ui->tabWidgetBig->isActionToolBarVisible());
+        ui->tabWidgetSecondary->setActionToolBarVisible(!ui->tabWidgetSecondary->isActionToolBarVisible());
+        ui->tabWidgetSecondaryBorderless->setActionToolBarVisible(!ui->tabWidgetSecondaryBorderless->isActionToolBarVisible());
     });
 
     ui->verticalLayout->addWidget(removeFirstAction);
@@ -151,6 +186,8 @@ TabWidgetPage::TabWidgetPage(QWidget* parent)
 QTabWidget docs: <a href="http://doc.qt.io/qt-5/qtabwidget.html">http://doc.qt.io/qt-5/qtabwidget.html</a><br/>
 QTabBar docs: <a href="http://doc.qt.io/qt-5/qtabbar.html">http://doc.qt.io/qt-5/qtabbar.html</a><br/>
 
+Note: The overflow mechanism relies on the TabWidget, so using standalone TabBars is not supported.
+
 <pre>
 #include &lt;AzQtComponents/Components/Widgets/TabWidget.h&gt;
 
@@ -162,6 +199,8 @@ AzQtComponents::TabWidget* tabWidget = new AzQtComponents::TabWidget();
 
 // To make tabs closeable
 tabWidget->setTabsCloseable(true);
+// Remember to also connect the signal appropriately
+connect(tabWidget, &QTabWidget::tabCloseRequested, tabWidget, &QTabWidget::removeTab);
 
 // To make tabs moveable/draggable
 tabWidget->setMovable(true);
@@ -217,6 +256,11 @@ tabWidget->removeAction(action1);
 // Changing actions' icons or texts automatically reflects on the widget
 action1->setText("New action1 text");
 action1->setIcon(QIcon(":/stylesheet/img/new_action1_icon.png"));
+
+// Set the secondary style for Tabs
+// The bordered argument lets you disable the outer border (defaults to true)
+// Make sure setActionToolBarVisible is called before this
+AzQtComponents::TabWidget::applySecondaryStyle(tabWidget, bordered);
 
 </pre>
 

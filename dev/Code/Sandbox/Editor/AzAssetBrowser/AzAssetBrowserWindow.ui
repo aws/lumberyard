@@ -68,13 +68,6 @@
         </layout>
        </item>
        <item>
-        <widget class="Line" name="m_line">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QSplitter" name="m_splitter">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -129,7 +122,7 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="verticalLayoutWidget">
+         <widget class="QWidget" name="previewWidgetWrapper">
           <layout class="QVBoxLayout" name="m_rightLayout">
            <item>
             <widget class="AzToolsFramework::AssetBrowser::PreviewerFrame" name="m_previewerFrame">

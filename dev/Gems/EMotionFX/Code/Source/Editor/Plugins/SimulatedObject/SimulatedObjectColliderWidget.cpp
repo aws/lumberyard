@@ -48,11 +48,12 @@ namespace EMotionFX
         m_addColliderButton = new AddColliderButton("Add simulated object collider", result,
             { azrtti_typeid<Physics::CapsuleShapeConfiguration>(),
              azrtti_typeid<Physics::SphereShapeConfiguration>() });
+        m_addColliderButton->setObjectName("EMFX.SimulatedObjectColliderWidget.AddColliderButton");
         connect(m_addColliderButton, &AddColliderButton::AddCollider, this, &SimulatedObjectColliderWidget::OnAddCollider);
         layout->addWidget(m_addColliderButton);
 
         // Colliders
-        m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/RagdollCollider_White.png"), result); // use the ragdoll white collider icon because it's generic to all colliders.
+        m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/Collider.svg"), result); // use the ragdoll white collider icon because it's generic to all colliders.
         connect(m_collidersWidget, &ColliderContainerWidget::RemoveCollider, this, &SimulatedObjectColliderWidget::OnRemoveCollider);
         layout->addWidget(m_collidersWidget);
 

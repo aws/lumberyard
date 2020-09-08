@@ -41,7 +41,7 @@ namespace EMStudio
         const char* GetCompileDate() const override         { return MCORE_DATE; }
         const char* GetName() const override                { return "Morph Targets"; }
         uint32 GetClassID() const override                  { return MorphTargetsWindowPlugin::CLASS_ID; }
-        const char* GetCreatorName() const override         { return "MysticGD"; }
+        const char* GetCreatorName() const override         { return "Amazon"; }
         float GetVersion() const override                   { return 1.0f;  }
         bool GetIsClosable() const override                 { return true;  }
         bool GetIsFloatable() const override                { return true;  }

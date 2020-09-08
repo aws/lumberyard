@@ -27,10 +27,12 @@
 #include <RigidBodyStatic.h>
 #include <SphereColliderComponent.h>
 #include <TerrainComponent.h>
+#include <Utils.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>
 #include <PhysX/SystemComponentBus.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/UnitTest/UnitTest.h>
 #include <Tests/PhysXTestCommon.h>
 #include <Utils.h>
 
@@ -38,13 +40,14 @@ namespace PhysX
 {
     class PhysXSpecificTest
         : public PhysXDefaultWorldTest
+        , public UnitTest::TraceBusRedirector
     {
     protected:
+
+
         float tolerance = 1e-3f;
     };
 
-    using PointList = AZStd::vector<AZ::Vector3>;
-    using VertexIndexData = AZStd::pair<PointList, AZStd::vector<AZ::u32>>;
 
     namespace PhysXTests
     {
@@ -66,47 +69,42 @@ namespace PhysX
     {
         AZ::Interface<Physics::CollisionRequests>::Get()->CreateCollisionGroup(name, group);
     }
-
-    PointList GeneratePyramidPoints(float length)
+    
+    void SanityCheckValidFrustumParams(const AZStd::vector<AZ::Vector3>& points, float validHeight, float validBottomRadius, float validTopRadius, AZ::u8 validSubdivisions)
     {
-        const PointList points
-        {
-            AZ::Vector3(length, 0.0f, 0.0f),
-            AZ::Vector3(-length, 0.0f, 0.0f),
-            AZ::Vector3(0.0f, length, 0.0f),
-            AZ::Vector3(0.0f, -length, 0.0f),
-            AZ::Vector3(0.0f, 0.0f, length)
-        };
+        double rad = 0;
+        const double step = AZ::Constants::TwoPi / aznumeric_cast<double>(validSubdivisions);
+        const float halfHeight = validHeight * 0.5f;
 
-        return points;
+        for (auto i = 0; i < points.size() / 2; i++)
+        {
+            // Canonical way to plot points on the circumference a cicle
+            // If any attempt to refactor/optimize the implemented algorithm fails, this test will fail
+            const float x = aznumeric_cast<float>(std::cos(rad));
+            const float y = aznumeric_cast<float>(std::sin(rad));
+
+            // Top face point is offset half the height along the positive z axis
+            {
+                const AZ::Vector3& p = points[i * 2];
+
+                EXPECT_FLOAT_EQ(p.GetX(), x * validTopRadius);
+                EXPECT_FLOAT_EQ(p.GetY(), y * validTopRadius);
+                EXPECT_FLOAT_EQ(p.GetZ(), +halfHeight);
+            }
+
+            // Bottom face point is offset half the height along the negative z axis
+            {
+                const AZ::Vector3& p = points[i * 2 + 1];
+
+                EXPECT_FLOAT_EQ(p.GetX(), x * validBottomRadius);
+                EXPECT_FLOAT_EQ(p.GetY(), y * validBottomRadius);
+                EXPECT_FLOAT_EQ(p.GetZ(), -halfHeight);
+            }
+
+            rad += step;
+        }
     }
 
-    VertexIndexData GenerateCubeMeshData(float halfExtent)
-    {
-        const PointList points
-        {
-            AZ::Vector3(-halfExtent, -halfExtent,  halfExtent),
-            AZ::Vector3(halfExtent, -halfExtent,  halfExtent),
-            AZ::Vector3(-halfExtent,  halfExtent,  halfExtent),
-            AZ::Vector3(halfExtent,  halfExtent,  halfExtent),
-            AZ::Vector3(-halfExtent, -halfExtent, -halfExtent),
-            AZ::Vector3(halfExtent, -halfExtent, -halfExtent),
-            AZ::Vector3(-halfExtent,  halfExtent, -halfExtent),
-            AZ::Vector3(halfExtent,  halfExtent, -halfExtent)
-        };
-
-        const AZStd::vector<AZ::u32> indices =
-        {
-            0, 1, 2, 2, 1, 3,
-            2, 3, 7, 2, 7, 6,
-            7, 3, 1, 1, 5, 7,
-            0, 2, 4, 2, 6, 4,
-            0, 4, 1, 1, 4, 5,
-            4, 6, 5, 5, 6, 7
-        };
-
-        return AZStd::make_pair(points, indices);
-    }
 
     TEST_F(PhysXSpecificTest, VectorConversion_ConvertToPxVec3_ConvertedVectorsCorrect)
     {
@@ -951,7 +949,7 @@ namespace PhysX
         ASSERT_TRUE(rigidBody != nullptr);
 
         // Generate input data
-        const PointList testPoints = GeneratePyramidPoints(1.0f);
+        const PointList testPoints = TestUtils::GeneratePyramidPoints(1.0f);
         AZStd::vector<AZ::u8> cookedData;
         bool cookingResult = false;
         PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookConvexMeshToMemory,
@@ -1012,7 +1010,7 @@ namespace PhysX
         AZStd::unique_ptr<Physics::RigidBodyStatic> rigidBody = AZ::Interface<Physics::System>::Get()->CreateStaticRigidBody(rigidBodyConfiguration);
 
         // Generate input data
-        VertexIndexData cubeMeshData = GenerateCubeMeshData(3.0f);
+        VertexIndexData cubeMeshData = TestUtils::GenerateCubeMeshData(3.0f);
         AZStd::vector<AZ::u8> cookedData;
         bool cookingResult = false;
         PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookTriangleMeshToMemory,
@@ -1092,6 +1090,248 @@ namespace PhysX
         // Clean up
         shape->release();
     }
+    
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_CreateWithInvalidHeight_ReturnsEmpty)
+    {
+        // Given a frustum with an invalid height
+        float invalidHeight = 0.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions; 
 
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(invalidHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // The frustum creation will be unsuccessful
+        EXPECT_FALSE(points.has_value());
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_CreateWithInvalidBottomRadius_ReturnsEmpty)
+    {
+        // Given a frustum with an invalid bottom radius
+        float validHeight = 1.0f;
+        float invalidBottomRadius = -1.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, invalidBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be unsuccessful
+        EXPECT_FALSE(points.has_value());
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_CreateFromInvalidTopRadius_ReturnsEmpty)
+    {
+        // Given a frustum with an invalid top radius
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float invalidTopRadius = -1.0f;
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, invalidTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be unsuccessful
+        EXPECT_FALSE(points.has_value());
+    }
+
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_CreateFromInvalidBottomAndTopRadius_ReturnsEmpty)
+    {
+        // Given a frustum with an invalid bottom and top radius
+        float validHeight = 1.0f;
+        float invalidBottomRadius = 0.0f; 
+        float invalidTopRadius = 0.0f;    
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, invalidBottomRadius, invalidTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be unsuccessful
+        EXPECT_FALSE(points.has_value());
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_CreateFromInvalidMinSubdivisions_ReturnsEmpty)
+    {
+        // Given a frustum with an invalid minimum subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 invalidMinSubdivisions = Utils::MinFrustumSubdivisions - 1;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, invalidMinSubdivisions);
+
+        // Expect the frustum creation to be unsuccessful
+        EXPECT_FALSE(points.has_value());
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_CreateFromInvalidMaxSubdivisions_ReturnsEmpty)
+    {
+        // Given a frustum with an invalid maximum subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 invalidMaxSubdivisions = Utils::MaxFrustumSubdivisions + 1;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, invalidMaxSubdivisions);
+
+        // Expect the frustum creation to be unsuccessful
+        EXPECT_FALSE(points.has_value());
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_Create3SidedFrustum_ReturnsPoints)
+    {
+        // Given a valid unit frustum with MinSubdivisions subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be successful
+        EXPECT_TRUE(points.has_value());
+
+        // Expect each generated point to be equal to the canonical frustum plotting algorithm
+        SanityCheckValidFrustumParams(points.value(), validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_Create3SidedBottomCone_ReturnsPoints)
+    {
+        // Given a valid unit frustum with MinSubdivisions subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 0.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be successful
+        EXPECT_TRUE(points.has_value());
+
+        // Expect each generated point to be equal to the canonical frustum plotting algorithm
+        SanityCheckValidFrustumParams(points.value(), validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_Create3SidedTopCone_ReturnsPoints)
+    {
+        // Given a valid unit frustum with MinSubdivisions subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 0.0f;
+        AZ::u8 validSubdivisions = Utils::MinFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be successful
+        EXPECT_TRUE(points.has_value());
+
+        // Expect each generated point to be equal to the canonical frustum plotting algorithm
+        SanityCheckValidFrustumParams(points.value(), validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_Create125SidedFrustum_ReturnsPoints)
+    {
+        // Given a valid unit frustum with MaxSubdivisions subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 validSubdivisions = Utils::MaxFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be successful
+        EXPECT_TRUE(points.has_value());
+
+        // Expect each generated point to be equal to the canonical frustum plotting algorithm
+        SanityCheckValidFrustumParams(points.value(), validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+    }
+
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_Create125SidedBottomCone_ReturnsPoints)
+    {
+        // Given a valid unit frustum with MaxSubdivisions subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 0.0f;
+        float validTopRadius = 1.0f;
+        AZ::u8 validSubdivisions = Utils::MaxFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be successful
+        EXPECT_TRUE(points.has_value());
+
+        // Expect each generated point to be equal to the canonical frustum plotting algorithm
+        SanityCheckValidFrustumParams(points.value(), validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+    }
+    
+    TEST_F(PhysXSpecificTest, FrustumCreatePoints_Create125SidedTopCone_ReturnsPoints)
+    {
+        // Given a valid unit frustum with MaxSubdivisions subdivisions
+        float validHeight = 1.0f;
+        float validBottomRadius = 1.0f;
+        float validTopRadius = 0.0f;
+        AZ::u8 validSubdivisions = Utils::MaxFrustumSubdivisions;
+
+        // Attempt to create a frustum point list from the given parameters
+        auto points = Utils::CreatePointsAtFrustumExtents(validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+
+        // Expect the frustum creation to be successful
+        EXPECT_TRUE(points.has_value());
+
+        // Expect each generated point to be equal to the canonical frustum plotting algorithm
+        SanityCheckValidFrustumParams(points.value(), validHeight, validBottomRadius, validTopRadius, validSubdivisions);
+    }
+
+    TEST_F(PhysXSpecificTest, RayCast_CastFromInsidTriangleMesh_ReturnsHitsBasedOnHitFlags)
+    {
+        // Add a cube to the scene
+        AZStd::unique_ptr<Physics::RigidBodyStatic> rigidBody = TestUtils::CreateStaticTriangleMeshCube(3.0f);
+        AZStd::shared_ptr<Physics::World> world = GetDefaultWorld();
+        world->AddBody(*rigidBody);
+
+        // Do a simple raycast from the inside of the cube
+        Physics::RayCastRequest request;
+        request.m_start = AZ::Vector3(0.0f);
+        request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        request.m_distance = 20.0f;
+        request.m_hitFlags = Physics::HitFlags::Position;
+
+        // Verify no hit is detected
+        Physics::RayCastHit hit = world->RayCast(request);
+        EXPECT_FALSE(hit);
+
+        // Set the flags to count hits for both sides of the mesh
+        request.m_hitFlags = Physics::HitFlags::Position | Physics::HitFlags::MeshBothSides;
+
+        // Verify now the hit is detected and it's indeed the cube
+        AZStd::vector<Physics::RayCastHit> hits = world->RayCastMultiple(request);
+        EXPECT_EQ(hits.size(), 1);
+        EXPECT_TRUE(hits[0].m_body == rigidBody.get());
+
+        // Shift the ray start position outside of the mesh
+        request.m_start.SetX(-4.0f);
+
+        // Set the flags to include multiple hits per object
+        request.m_hitFlags = Physics::HitFlags::Position | Physics::HitFlags::MeshBothSides | Physics::HitFlags::MeshMultiple;
+
+        // Verify now we have 4 hits: outside + inside of 1st side and inside + outside of the 2nd side
+        hits = world->RayCastMultiple(request);
+        EXPECT_EQ(hits.size(), 4);
+
+        // Verify all hits are for the test cube
+        bool testBodyInAllHits = AZStd::all_of(hits.begin(), hits.end(), [&rigidBody](const Physics::RayCastHit& hit)
+            {
+                return hit.m_body == rigidBody.get();
+            });
+        EXPECT_TRUE(testBodyInAllHits);
+    }
 } // namespace PhysX
 

@@ -29,8 +29,17 @@ namespace ScriptCanvas
             const char* ReceiveScriptEvent::c_busIdName = "Source";
             const char* ReceiveScriptEvent::c_busIdTooltip = "ID used to connect on a specific Event address";
 
+            ReceiveScriptEvent::ReceiveScriptEvent()
+                : m_connected(false)
+            {}
+
             ReceiveScriptEvent::~ReceiveScriptEvent()
             {
+                if (m_connected && m_handler)
+                {
+                    m_handler->Disconnect();
+                }
+
                 if (m_ebus && m_handler && m_ebus->m_destroyHandler)
                 {
                     m_ebus->m_destroyHandler->Invoke(m_handler);
@@ -38,16 +47,6 @@ namespace ScriptCanvas
 
                 m_ebus = nullptr;
                 m_handler = nullptr;
-            }
-
-            void ReceiveScriptEvent::Initialize(const AZ::Data::AssetId assetId)
-            {
-                ScriptEventBase::Initialize(assetId);
-
-                if (m_asset.IsReady())
-                {
-                    CompleteInitialize(m_asset);
-                }
             }
 
             void ReceiveScriptEvent::CompleteInitialize(AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset)
@@ -65,7 +64,7 @@ namespace ScriptCanvas
                 else if (!wasConfigured)
                 {
                     m_eventSlotMapping = populationMapping;
-                }                
+                }
             }
 
             void ReceiveScriptEvent::PopulateAsset(AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset, SlotIdMapping& populationMapping)
@@ -94,6 +93,8 @@ namespace ScriptCanvas
 
                         if (m_definition.IsAddressRequired())
                         {
+                            bool isNewSlot = true;
+
                             const auto busToolTip = AZStd::string::format("%s (Type: %s)", c_busIdTooltip, m_ebus->m_idParam.m_name);
                             const AZ::TypeId& busId = m_ebus->m_idParam.m_typeId;                            
 
@@ -104,15 +105,16 @@ namespace ScriptCanvas
 
                             if (remappingIter != m_eventSlotMapping.end())
                             {
+                                isNewSlot = false;
                                 config.m_slotId = remappingIter->second;
                             }
 
                             config.m_name = c_busIdName;
                             config.m_toolTip = busToolTip;
-                            config.SetConnectionType(ConnectionType::Input);                            
+                            config.SetConnectionType(ConnectionType::Input);
 
                             if (busId == azrtti_typeid<AZ::EntityId>())
-                            {                                
+                            {
                                 config.SetDefaultValue(GraphOwnerId);
                                 config.m_contractDescs = { { []() { return aznew RestrictedTypeContract({ Data::Type::EntityID() }); } } };
                             }
@@ -124,7 +126,7 @@ namespace ScriptCanvas
                                 config.m_contractDescs = { { [busIdType]() { return aznew RestrictedTypeContract({ busIdType }); } } };
                             }
 
-                            addressSlotId = AddSlot(config);
+                            addressSlotId = AddSlot(config, isNewSlot);
 
                             populationMapping[addressId] = addressSlotId;
                         }
@@ -168,6 +170,7 @@ namespace ScriptCanvas
                 if (methodDefinition == m_definition.GetMethods().end())
                 {
                     AZ_Assert(false, "The script event definition does not have the event for which this method was created.");
+                    return;
                 }
 
                 AZ::Uuid namePropertyId = methodDefinition->GetNameProperty().GetId();
@@ -206,6 +209,8 @@ namespace ScriptCanvas
 
                     AZ::Uuid resultIdentifier = methodDefinition.GetReturnTypeProperty().GetId();
 
+                    bool isNewSlot = true;
+
                     DataSlotConfiguration slotConfiguration;
 
                     slotConfiguration.m_name = AZStd::string::format("Result: %s", argumentTypeName.c_str());
@@ -218,10 +223,11 @@ namespace ScriptCanvas
 
                     if (remappingIdIter != m_eventSlotMapping.end())
                     {
+                        isNewSlot = false;
                         slotConfiguration.m_slotId = remappingIdIter->second;
                     }
 
-                    SlotId slotId = AddSlot(slotConfiguration);
+                    SlotId slotId = AddSlot(slotConfiguration, isNewSlot);
 
                     populationMapping[resultIdentifier] = slotId;
                     eBusEventEntry.m_resultSlotId = slotId;
@@ -382,14 +388,8 @@ namespace ScriptCanvas
                 }
 
                 {
-                    // We need to defer disconnection in case something in the execution of this event
-                    // causes this node to be deactivated (i.e. Destroy Game Entity on Self)
-                    m_deferDisconnect = true;
-
                     // now, this should pass execution off to the nodes that will push their output into this result input
-                    SignalOutput(scriptEventEntry.m_eventSlotId);
-
-                    m_deferDisconnect = false;
+                    SignalOutput(scriptEventEntry.m_eventSlotId, ExecuteMode::UntilNodeIsFoundInStack);
                 }
 
                 // route executed nodes output to my input, and my input to the result
@@ -417,14 +417,16 @@ namespace ScriptCanvas
                     AZ_Warning("Script Canvas", !result, "Script Canvas handler is not expecting a result, but was called receiving one!");
                 }
 
+                // route executed nodes output to my input, and my input to the result
+                AZ_Warning("Script Canvas", (result != nullptr) == scriptEventEntry.IsExpectingResult(), "Node %s-%s mismatch between expecting a result and getting one!", m_ebus->m_name.c_str(), scriptEventEntry.m_eventName.c_str());
+                AZ_Warning("Script Canvas", scriptEventEntry.m_resultEvaluated, "Node %s-%s result not evaluated properly!", m_ebus->m_name.c_str(), scriptEventEntry.m_eventName.c_str());
+
                 scriptEventEntry.m_isHandlingEvent = false;
             }
 
             void ReceiveScriptEvent::OnActivate()
             {
                 SetAutoConnectToGraphOwner(m_autoConnectToGraphOwner);
-                m_deferDisconnect = false;
-
                 ScriptEventBase::OnActivate();
             }
 
@@ -452,7 +454,7 @@ namespace ScriptCanvas
 
             void ReceiveScriptEvent::OnDeactivate()
             {
-                Disconnect(m_deferDisconnect);
+                Disconnect(false);
 
                 ScriptEventBase::OnDeactivate();
             }
@@ -491,43 +493,46 @@ namespace ScriptCanvas
 
                 if (!IsIDRequired() || busIdParameter.GetValueAddress())
                 {
-                    // Ensure we disconnect if this bus is already connected, this could happen if a different bus Id is provided
-                    // and this node is connected through the Connect slot.
-                    m_handler->Disconnect();
+                    if (m_connected)
+                    {
+                        // Ensure we disconnect if this bus is already connected, this could happen if a different bus Id is provided
+                        // and this node is connected through the Connect slot.
+                        m_handler->Disconnect();
+                    }
 
                     AZ_VerifyError("Script Canvas", m_handler->Connect(&busIdParameter),
                         "Unable to connect to EBus with BusIdType %s. The BusIdType of the Script Event (%s) does not match the BusIdType provided.",
                         busIdType.ToString<AZStd::string>().data(), m_definition.GetName().c_str());
+
+                    m_connected = true;
                 }
+            }
+
+            void ReceiveScriptEvent::CompleteDisconnection()
+            {
+                m_handler->Disconnect();
+                m_connected = false;
+
+                SlotId onDisconnectSlotId = ReceiveScriptEventProperty::GetOnDisconnectedSlotId(this);
+                SignalOutput(onDisconnectSlotId);
             }
 
             void ReceiveScriptEvent::Disconnect(bool queueDisconnect)
             {
-                AZStd::string busName = m_definition.GetName();
-
-                auto disconnectFunc = [this, busName]()
-                {
-                    if (m_handler == nullptr)
-                    {
-                        // The bus was already disconnected, nothing to do
-                        return;
-                    }
-
-                    if (m_handler->IsConnected())
-                    {
-                        m_handler->Disconnect();
-                    }
-                };
-
-                if (m_handler)
+                if (m_connected && m_handler)
                 {
                     if (queueDisconnect)
                     {
-                        AZ::TickBus::QueueFunction(disconnectFunc);
+                        AZ::SystemTickBus::QueueFunction(
+                            [this]()
+                            {
+                                CompleteDisconnection();
+                            }
+                        );
                     }
                     else
                     {
-                        disconnectFunc();
+                        CompleteDisconnection();
                     }
                 }
             }
@@ -597,12 +602,13 @@ namespace ScriptCanvas
                 }
 
                 m_definition = asset.Get()->m_definition;
+
                 if (m_version == 0)
                 {
                     m_version = m_definition.GetVersion();
                 }
 
-                if (!m_scriptEvent)
+                if (!m_scriptEvent && m_scriptEventAssetId.IsValid())
                 {
                     ScriptEvents::ScriptEventBus::BroadcastResult(m_scriptEvent, &ScriptEvents::ScriptEventRequests::RegisterScriptEvent, m_scriptEventAssetId, m_version);
                     m_scriptEvent->Init(m_scriptEventAssetId);
@@ -651,13 +657,12 @@ namespace ScriptCanvas
             {
                 if (!m_handler)
                 {
-                    if (!m_asset.IsReady())
+                    if (!m_asset.IsReady() && m_scriptEventAssetId.IsValid())
                     {
                         m_asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId, true, nullptr, true);
+                        CreateHandler(m_asset);
+                        CreateEbus();
                     }
-
-                    CreateHandler(m_asset);
-                    CreateEbus();
 
                     if (!m_handler)
                     {
@@ -698,45 +703,53 @@ namespace ScriptCanvas
                 {
                     Disconnect();
 
-                    SlotId onDisconnectSlotId = ReceiveScriptEventProperty::GetOnDisconnectedSlotId(this);
-                    SignalOutput(onDisconnectSlotId);
                     return;
                 }
             }
 
-            void ReceiveScriptEvent::UpdateScriptEventAsset()
+            void ReceiveScriptEvent::OnInputChanged(const Datum& input, const SlotId& slotId)            
             {
-                AZStd::unordered_map< AZ::Uuid, Datum > slotDatumValues;
-                AZStd::unordered_map< AZ::Uuid, VariableId > slotVariableIds;
+                if (GetExecutionType() == ExecutionType::Runtime
+                    && m_autoConnectToGraphOwner 
+                    && slotId == FindSlotIdForDescriptor(c_busIdName, SlotDescriptors::DataIn()))
+                {
+                    Disconnect(false);
+                    Connect();
+                }
+            }
 
+            bool ReceiveScriptEvent::IsOutOfDate() const
+            {
+                bool isOutOfDate = false;
+
+                AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(GetAssetId());
+
+                if (assetData)
+                {
+                    ScriptEvents::ScriptEvent& definition = assetData.Get()->m_definition;
+
+                    if (GetVersion() != definition.GetVersion())
+                    {
+                        isOutOfDate = true;
+                    }
+                }
+                else
+                {
+                    // If we don't have any asset data. We are definitely out of date.
+                    return true;
+                }
+
+                return isOutOfDate;
+            }
+
+            UpdateResult ReceiveScriptEvent::OnUpdateNode()
+            {
                 for (auto mapPair : m_eventSlotMapping)
                 {
-                    Slot* slot = GetSlot(mapPair.second);
-
-                    if (slot == nullptr)
-                    {
-                        continue;
-                    }
-
-                    if (slot->IsVariableReference())
-                    {
-                        slotVariableIds.insert(AZStd::make_pair(mapPair.first, slot->GetVariableReference()));
-                    }
-                    else
-                    {
-                        ModifiableDatumView datumView;
-                        FindModifiableDatumView(mapPair.second, datumView);
-
-                        if (datumView.IsValid())
-                        {
-                            slotDatumValues.insert(AZStd::make_pair(mapPair.first, datumView.CloneDatum()));
-                        }
-                    }
-
                     const bool removeConnections = false;
                     RemoveSlot(mapPair.second, removeConnections);
                 }
-                
+
                 m_eventMap.clear();
                 m_scriptEvent.reset();
 
@@ -751,48 +764,28 @@ namespace ScriptCanvas
                 AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_scriptEventAssetId);
                 PopulateAsset(asset, populationMapping);
 
-                // Erase anything we remapped since we don't want to signal out that it changed.
-                for (auto mappingPair : populationMapping)
-                {
-                    m_eventSlotMapping.erase(mappingPair.first);
-                }
-
-                // Actually do the removal signalling for any slots that weren't updated
-                for (auto mappingPair : m_eventSlotMapping)
-                {
-                    RemoveConnectionsForSlot(mappingPair.second);
-                }
-
                 m_eventSlotMapping = AZStd::move(populationMapping);
 
-                for (auto variablePair : slotVariableIds)
+                if (m_ebus == nullptr)
                 {
-                    auto slotIter = m_eventSlotMapping.find(variablePair.first);
-
-                    if (slotIter != m_eventSlotMapping.end())
-                    {
-                        Slot* slot = GetSlot(slotIter->second);
-
-                        if (slot && slot->ConvertToReference())
-                        {
-                            slot->SetVariableReference(variablePair.second);
-                        }
-                    }
+                    return UpdateResult::DeleteNode;
                 }
-
-                for (auto datumPair : slotDatumValues)
+                else
                 {
-                    auto slotIter = m_eventSlotMapping.find(datumPair.first);
+                    return UpdateResult::DirtyGraph;
+                }
+            }
 
-                    if (slotIter != m_eventSlotMapping.end())
-                    {
-                        SlotId slotId = slotIter->second;
 
-                        ModifiableDatumView datumView;
-                        FindModifiableDatumView(slotId, datumView);
-
-                        datumView.AssignToDatum(AZStd::move(datumPair.second));
-                    }
+            AZStd::string ReceiveScriptEvent::GetUpdateString() const
+            {
+                if (m_ebus)
+                {
+                    return AZStd::string::format("Updated ScriptEvent (%s)", m_definition.GetName().c_str());
+                }
+                else
+                {
+                    return AZStd::string::format("Deleted ScriptEvent (%s)", m_asset.GetId().ToString<AZStd::string>().c_str());
                 }
             }
 

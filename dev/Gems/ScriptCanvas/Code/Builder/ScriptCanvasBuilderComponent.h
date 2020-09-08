@@ -44,5 +44,6 @@ namespace ScriptCanvasBuilder
         PluginComponent(const PluginComponent&) = delete;
 
         Worker m_scriptCanvasBuilder;
+        FunctionWorker m_scriptCanvasFunctionBuilder;
     };
 }

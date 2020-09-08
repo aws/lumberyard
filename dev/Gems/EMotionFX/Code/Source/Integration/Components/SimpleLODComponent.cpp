@@ -42,17 +42,76 @@ namespace EMotionFX
 {
     namespace Integration
     {
-
         void SimpleLODComponent::Configuration::Reflect(AZ::ReflectContext *context)
         {
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
                 serializeContext->Class<Configuration>()
-                    ->Version(1)
+                    ->Version(2)
                     ->Field("LODDistances", &Configuration::m_lodDistances)
+                    ->Field("EnableLODSampling", &Configuration::m_enableLodSampling)
+                    ->Field("LODSampleRates", &Configuration::m_lodSampleRates)
                     ;
+
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
+                if (editContext)
+                {
+                    editContext->Class<SimpleLODComponent::Configuration>("Configuration", "The LOD Configuration.")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->DataElement(0, &SimpleLODComponent::Configuration::m_lodDistances,
+                            "LOD distance (Max)", "The maximum camera distance of this LOD.")
+                            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                            ->ElementAttribute(AZ::Edit::Attributes::Step, 0.01f)
+                            ->ElementAttribute(AZ::Edit::Attributes::Suffix, " m")
+                        ->DataElement(0, &SimpleLODComponent::Configuration::m_enableLodSampling,
+                            "Enable LOD anim graph sampling", "AnimGraph sample rate will adjust based on LOD level.")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                        ->DataElement(0, &SimpleLODComponent::Configuration::m_lodSampleRates,
+                            "Anim graph sample rates", "The sample rate of anim graph based on LOD. Setting it to O means the maximum sample rate.")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &SimpleLODComponent::Configuration::GetEnableLodSampling)
+                            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                            ->ElementAttribute(AZ::Edit::Attributes::Step, 1.0f);
+                }
             }
+        }
+
+        void SimpleLODComponent::Configuration::Reset()
+        {
+            m_lodDistances.clear();
+        }
+
+        void SimpleLODComponent::Configuration::GenerateDefaultValue(AZ::u32 numLODs)
+        {
+            if (numLODs != m_lodDistances.size())
+            {
+                // Generate the default LOD (max) distance to 10, 20, 30....
+                m_lodDistances.resize(numLODs);
+                for (AZ::u32 i = 0; i < numLODs; ++i)
+                {
+                    m_lodDistances[i] = i * 10.0f + 10.0f;
+                }
+            }
+
+            if (numLODs != m_lodSampleRates.size())
+            {
+                // Generate the default LOD Sample Rate to 140, 60, 45, 25, 15, 10
+                const float defaultSampleRate[] = {140.0f, 60.0f, 45.0f, 25.0f, 15.0f, 10.0f};
+                m_lodSampleRates.resize(numLODs);
+                for (AZ::u32 i = 0; i < numLODs; ++i)
+                {
+                    m_lodSampleRates[i] = defaultSampleRate[i];
+                }
+            }
+        }
+
+        bool SimpleLODComponent::Configuration::GetEnableLodSampling()
+        {
+            return m_enableLodSampling;
         }
 
         void SimpleLODComponent::Reflect(AZ::ReflectContext* context)
@@ -77,10 +136,6 @@ namespace EMotionFX
                 }
             }
 
-        }
-
-        SimpleLODComponent::Configuration::Configuration()
-        {
         }
 
         SimpleLODComponent::SimpleLODComponent(const Configuration* config)
@@ -127,10 +182,10 @@ namespace EMotionFX
         {
             AZ_UNUSED(deltaTime);
             AZ_UNUSED(time);
-            UpdateLODLevelByDistance(m_actorInstance, m_configuration.m_lodDistances, GetEntityId());
+            UpdateLodLevelByDistance(m_actorInstance, m_configuration, GetEntityId());
         }
 
-        AZ::u32 SimpleLODComponent::GetLODByDistance(const AZStd::vector<float>& distances, float distance)
+        AZ::u32 SimpleLODComponent::GetLodByDistance(const AZStd::vector<float>& distances, float distance)
         {
             const size_t max = distances.size();
             for (size_t i = 0; i < max; ++i)
@@ -145,7 +200,7 @@ namespace EMotionFX
             return static_cast<AZ::u32>(max - 1);
         }
 
-        void SimpleLODComponent::UpdateLODLevelByDistance(EMotionFX::ActorInstance * actorInstance, const AZStd::vector<float>& distances, AZ::EntityId entityId)
+        void SimpleLODComponent::UpdateLodLevelByDistance(EMotionFX::ActorInstance * actorInstance, const Configuration& configuration, AZ::EntityId entityId)
         {
             if (actorInstance)
             {
@@ -159,8 +214,15 @@ namespace EMotionFX
                     const CCamera& camera = gEnv->pSystem->GetViewCamera();
                     const AZ::Vector3& cameraPos = LYVec3ToAZVec3(camera.GetPosition());
                     const AZ::VectorFloat distance = cameraPos.GetDistance(worldPos);
-                    const AZ::u32 lodByDistance = GetLODByDistance(distances, distance);
+                    const AZ::u32 lodByDistance = GetLodByDistance(configuration.m_lodDistances, distance);
                     actorInstance->SetLODLevel(lodByDistance);
+
+                    if (configuration.m_enableLodSampling)
+                    {
+                        const float animGraphSampleRate = configuration.m_lodSampleRates[lodByDistance];
+                        const float updateRateInSeconds = animGraphSampleRate > 0.0f ? 1.0f / animGraphSampleRate : 0.0f;
+                        actorInstance->SetMotionSamplingRate(updateRateInSeconds);
+                    }
                 }
             }
         }

@@ -128,7 +128,7 @@ namespace AZ
         {
             ScriptPropertyTable* scriptPropertyTable = reinterpret_cast<ScriptPropertyTable*>(lua_touserdata(lua,lua_upvalueindex(1)));
 
-            if (scriptPropertyTable)            
+            if (scriptPropertyTable)
             {
                 AZ::ScriptContext* scriptContext = scriptPropertyTable->GetScriptContext();
 
@@ -190,7 +190,7 @@ namespace AZ
             else
             {
                 return 2;
-            }            
+            }
         }
 
         static int ScriptPropertyTable__Length(lua_State* lua)
@@ -207,8 +207,8 @@ namespace AZ
                 AZ_Error("ScriptPropertyTable", scriptContext == nullptr || scriptContext->NativeContext() == lua, "Trying to use a ScriptPropertyTable(%s) in the wrong lua context\n.", scriptPropertyTable->m_name.c_str());
 
                 if (scriptContext && scriptContext->NativeContext() == lua)
-                {                    
-                    tableLength = scriptPropertyTable->GetLuaTableLength();                    
+                {
+                    tableLength = scriptPropertyTable->GetLuaTableLength();
                 }
             }
 
@@ -249,7 +249,7 @@ namespace AZ
                     }
                     else
                     {
-                        AZ::Crc32 hashIndex = AZ::Crc32(fieldName);                        
+                        AZ::Crc32 hashIndex = AZ::Crc32(fieldName);
                         auto insertResult = retVal->m_keyMapping.emplace(hashIndex, valueProperty);
 
                         if (!insertResult.second)
@@ -257,7 +257,7 @@ namespace AZ
                             AZ_Error("ScriptPropertyTable", false, "Found collision on string %s when constructing table %s\n", fieldName, name);
                             delete valueProperty;
                         }
-                    }                    
+                    }
                 }
             }
         }
@@ -281,6 +281,8 @@ namespace AZ
         : ScriptPropertyTable(name)
     {
         CloneDataFrom(scriptPropertyTable);
+
+        m_enableMetatableControl = scriptPropertyTable->m_enableMetatableControl;
     }
     
     ScriptPropertyTable::ScriptPropertyTable(const char* name)
@@ -633,15 +635,24 @@ namespace AZ
 
     ScriptPropertyTable* ScriptPropertyTable::Clone(const char* name) const
     {
+        if (name == nullptr)
+        {
+            name = m_name.c_str();
+        }
+
         AZ::ScriptPropertyTable* scriptPropertyTable = aznew AZ::ScriptPropertyTable(name, this);
-        scriptPropertyTable->CloneDataFrom(this);
+
+        if (m_scriptContext)
+        {
+            scriptPropertyTable->Write((*m_scriptContext));
+        }
 
         return scriptPropertyTable;
     }
 
     bool ScriptPropertyTable::Write(AZ::ScriptContext& context)
     {
-        bool wroteValue = false;        
+        bool wroteValue = false;
         
         if (m_enableMetatableControl)
         {
@@ -843,7 +854,7 @@ namespace AZ
         if (m_scriptContext == nullptr)
         {
             m_scriptContext = &scriptContext;
-            lua_State* nativeContext = m_scriptContext->NativeContext();            
+            lua_State* nativeContext = m_scriptContext->NativeContext();
 
             // <table>
             lua_createtable(nativeContext,0,1);

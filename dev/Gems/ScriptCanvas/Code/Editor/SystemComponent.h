@@ -15,7 +15,6 @@
 #include <Core/GraphBus.h>
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/ScriptCanvasExecutionBus.h>
-#include <ScriptCanvas/Assets/ScriptCanvasDocumentContext.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -23,6 +22,7 @@
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <Editor/Assets/ScriptCanvasAssetTracker.h>
 
 namespace ScriptCanvasEditor
 {
@@ -58,7 +58,7 @@ namespace ScriptCanvasEditor
         // SystemRequestBus::Handler        
         void AddAsyncJob(AZStd::function<void()>&& jobFunc) override;
         void GetEditorCreatableTypes(AZStd::unordered_set<ScriptCanvas::Data::Type>& outCreatableTypes);
-        void CreateEditorComponentsOnEntity(AZ::Entity* entity) override;
+        void CreateEditorComponentsOnEntity(AZ::Entity* entity, const AZ::Data::AssetType& assetType) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -75,6 +75,7 @@ namespace ScriptCanvasEditor
         ////////////////////////////////////////////////////////////////////////
         //  AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus overrides
         AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
+        void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -90,8 +91,10 @@ namespace ScriptCanvasEditor
 
         AZStd::unique_ptr<AZ::JobManager> m_jobManager;
         AZStd::unique_ptr<AZ::JobContext> m_jobContext;
-        DocumentContext m_documentContext;
+
         AZStd::vector<AZStd::unique_ptr<AzToolsFramework::PropertyHandlerBase>> m_propertyHandlers;
         AZStd::unordered_set<ScriptCanvas::Data::Type> m_creatableTypes;
+
+        AssetTracker m_assetTracker;
     };
 }

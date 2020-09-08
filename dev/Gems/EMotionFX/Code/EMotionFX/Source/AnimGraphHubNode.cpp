@@ -68,7 +68,7 @@ namespace EMotionFX
     void AnimGraphHubNode::OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* previousState, AnimGraphStateTransition* usedTransition)
     {
         MCORE_UNUSED(usedTransition);
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
 
         uniqueData->m_sourceNode = (previousState != this) ? previousState : nullptr;
 
@@ -76,40 +76,26 @@ namespace EMotionFX
         while (uniqueData->m_sourceNode && azrtti_typeid(uniqueData->m_sourceNode) == azrtti_typeid<AnimGraphHubNode>())
         {
             AnimGraphHubNode* sourceHubNode = static_cast<AnimGraphHubNode*>(uniqueData->m_sourceNode);
-            UniqueData* sourceHubNodeUniqueData = static_cast<UniqueData*>(sourceHubNode->FindUniqueNodeData(animGraphInstance));
+            UniqueData* sourceHubNodeUniqueData = static_cast<UniqueData*>(sourceHubNode->FindOrCreateUniqueNodeData(animGraphInstance));
             uniqueData->m_sourceNode = sourceHubNodeUniqueData->m_sourceNode;
         }
     }
 
-
     void AnimGraphHubNode::Rewind(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         uniqueData->m_sourceNode = nullptr;
     }
 
-    AnimGraphNode* AnimGraphHubNode::GetSourceNode(const AnimGraphInstance* animGraphInstance) const
+    AnimGraphNode* AnimGraphHubNode::GetSourceNode(AnimGraphInstance* animGraphInstance) const
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
         return uniqueData->m_sourceNode;
     }
 
-    void AnimGraphHubNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
-        if (!uniqueData)
-        {
-            uniqueData = aznew UniqueData(this, animGraphInstance);
-            animGraphInstance->RegisterUniqueObjectData(uniqueData);
-        }
-
-        OnUpdateTriggerActionsUniqueData(animGraphInstance);
-    }
-
-
     void AnimGraphHubNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraphPose* outputPose;
         AnimGraphNode* sourceNode = uniqueData->m_sourceNode;
@@ -121,14 +107,14 @@ namespace EMotionFX
 
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                SetHasError(uniqueData, true);
             }
         }
         else
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, false);
+                SetHasError(uniqueData, false);
             }
 
             // Get the output pose of the source node into our output pose.
@@ -149,7 +135,7 @@ namespace EMotionFX
 
     void AnimGraphHubNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraphNode* sourceNode = uniqueData->m_sourceNode;
         if (!sourceNode)
@@ -167,7 +153,7 @@ namespace EMotionFX
 
     void AnimGraphHubNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraphNode* sourceNode = uniqueData->m_sourceNode;
         if (!sourceNode)
@@ -182,7 +168,7 @@ namespace EMotionFX
 
     void AnimGraphHubNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));
 
         AnimGraphNode* sourceNode = uniqueData->m_sourceNode;
         if (!sourceNode)
@@ -199,7 +185,7 @@ namespace EMotionFX
         // Copy over the events and trajectory.
         RequestRefDatas(animGraphInstance);
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
-        AnimGraphRefCountedData* sourceData = sourceNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        AnimGraphRefCountedData* sourceData = sourceNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetRefCountedData();
         if (sourceData)
         {
             data->SetEventBuffer(sourceData->GetEventBuffer());
@@ -219,7 +205,7 @@ namespace EMotionFX
         {
             AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
             
-            UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));          
+            UniqueData* uniqueData = static_cast<UniqueData*>(FindOrCreateUniqueNodeData(animGraphInstance));          
             if (uniqueData->m_sourceNode == nodeToRemove)
             {
                 uniqueData->m_sourceNode = nullptr;

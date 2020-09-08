@@ -12,7 +12,9 @@
 #include "StdAfx.h"
 #include <QtCore/QAbstractItemModel>
 #include "ColorPickerDelegate.hxx"
-#include <QtWidgets/QColorDialog>
+
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 namespace AzToolsFramework
 {
@@ -25,15 +27,15 @@ namespace AzToolsFramework
     {
         (void)index;
         (void)option;
-        QColorDialog* ptrDialog = new QColorDialog(parent);
+        AzQtComponents::ColorPicker* ptrDialog = new AzQtComponents::ColorPicker(AzQtComponents::ColorPicker::Configuration::RGB,
+                tr("Select Color"), parent);
         ptrDialog->setWindowFlags(Qt::Tool);
-        ptrDialog->setOptions(QColorDialog::NoButtons);
         return ptrDialog;
     }
 
     void ColorPickerDelegate::setEditorData(QWidget* editor, const QModelIndex& index) const
     {
-        QColorDialog* colorEditor = qobject_cast<QColorDialog*>(editor);
+        AzQtComponents::ColorPicker* colorEditor = qobject_cast<AzQtComponents::ColorPicker*>(editor);
 
         if (!editor)
         {
@@ -46,21 +48,20 @@ namespace AzToolsFramework
             return;
         }
 
-        QColor pickedColor = qvariant_cast<QColor>(colorResult);
-
-        colorEditor->setCurrentColor(pickedColor);
+        const QColor pickedColor = qvariant_cast<QColor>(colorResult);
+        colorEditor->setCurrentColor(AzQtComponents::fromQColor(pickedColor));
     }
 
     void ColorPickerDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const
     {
-        QColorDialog* colorEditor = qobject_cast<QColorDialog*>(editor);
+        AzQtComponents::ColorPicker* colorEditor = qobject_cast<AzQtComponents::ColorPicker*>(editor);
 
         if (!editor)
         {
             return;
         }
 
-        QVariant colorVariant = colorEditor->currentColor();
+        const QVariant colorVariant = AzQtComponents::toQColor(colorEditor->currentColor());
         model->setData(index, colorVariant, COLOR_PICKER_ROLE);
     }
 

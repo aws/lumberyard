@@ -16,7 +16,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/ButtonGroup.h>
 #include <QDialog>
 
 

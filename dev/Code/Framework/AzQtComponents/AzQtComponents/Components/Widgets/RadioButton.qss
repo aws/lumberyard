@@ -15,8 +15,12 @@ QRadioButton
 {
     font-size: 12px;
     line-height: 18px;
-    color: rgb(204, 204, 204);
     outline: 0;
+}
+
+QRadioButton:disabled
+{
+    color: #999999;
 }
 
 QRadioButton::indicator:!focus

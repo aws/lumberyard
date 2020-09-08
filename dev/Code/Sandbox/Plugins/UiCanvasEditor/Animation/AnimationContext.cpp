@@ -27,6 +27,7 @@
 
 #include "Animation/UiAnimViewSequence.h"
 #include "Animation/UiAnimViewDialog.h"
+#include "Animation/UiAnimViewUndo.h"
 
 #include "RenderViewport.h"
 #include "Viewport.h"
@@ -150,7 +151,7 @@ void CUiAnimationContext::ActiveCanvasChanged()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CUiAnimationContext::SetSequence(CUiAnimViewSequence* pSequence, bool bForce, bool bNoNotify)
+void CUiAnimationContext::SetSequence(CUiAnimViewSequence* pSequence, bool bForce, bool bNoNotify, bool recordUndo)
 {
     CUiAnimViewSequence* pCurrentSequence = m_pSequence;
 
@@ -219,6 +220,13 @@ void CUiAnimationContext::SetSequence(CUiAnimViewSequence* pSequence, bool bForc
             m_contextListeners[i]->OnTimeChanged(0.0f);
             m_contextListeners[i]->OnSequenceChanged(m_pSequence);
         }
+    }
+
+    if (recordUndo)
+    {
+        // Safely track sequence changes for clean undos
+        UiAnimUndo undo("Change Sequence");
+        UiAnimUndo::Record(new CUndoSequenceChange(pCurrentSequence, pSequence));
     }
 
     m_recording = bRecording;

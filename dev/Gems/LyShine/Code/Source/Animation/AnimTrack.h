@@ -16,6 +16,7 @@
 //forward declarations.
 #include <LyShine/Animation/IUiAnimation.h>
 #include "UiAnimSerialize.h"
+#include <AzCore/RTTI/TypeInfo.h>
 
 /** General templated track for event type keys.
         KeyType class must be derived from IKey.
@@ -26,7 +27,7 @@ class TUiAnimTrack
 {
 public:
     AZ_CLASS_ALLOCATOR(TUiAnimTrack, AZ::SystemAllocator, 0)
-    AZ_RTTI((TUiAnimTrack, "{7C2942C1-0ACE-404E-BF2B-E095A1B69A5B}", IBoolKey), IUiAnimTrack);
+    AZ_RTTI((TUiAnimTrack<KeyType>, "{5513FA16-991D-40DD-99B2-9C5531AC872C}", KeyType), IUiAnimTrack);
 
     TUiAnimTrack();
 
@@ -45,13 +46,14 @@ public:
     virtual void SetParamData(const UiAnimParamData& param) { m_componentParamData = param; }
 
     //////////////////////////////////////////////////////////////////////////
+    // for intrusive_ptr support
     void add_ref() override;
     void release() override;
     //////////////////////////////////////////////////////////////////////////
 
     virtual bool IsKeySelected(int key) const
     {
-        assert(key >= 0 && key < (int)m_keys.size());
+        AZ_Assert(key >= 0 && key < (int)m_keys.size(), "Key index is out of range");
         if (m_keys[key].flags & AKEY_SELECTED)
         {
             return true;
@@ -61,7 +63,7 @@ public:
 
     virtual void SelectKey(int key, bool select)
     {
-        assert(key >= 0 && key < (int)m_keys.size());
+        AZ_Assert(key >= 0 && key < (int)m_keys.size(), "Key index is out of range");
         if (select)
         {
             m_keys[key].flags |= AKEY_SELECTED;
@@ -119,13 +121,13 @@ public:
     virtual void SortKeys();
 
     //! Get track flags.
-    virtual int GetFlags() { return m_flags; };
+    virtual int GetFlags() { return m_flags; }
 
     //! Check if track is masked
     virtual bool IsMasked(const uint32 mask) const { return false; }
 
     //! Set track flags.
-    virtual void SetFlags(int flags) { m_flags = flags; };
+    virtual void SetFlags(int flags) { m_flags = flags; }
 
     //////////////////////////////////////////////////////////////////////////
     // Get track value at specified time.
@@ -270,7 +272,7 @@ inline void TUiAnimTrack<KeyType>::release()
 template <class KeyType>
 inline void TUiAnimTrack<KeyType>::RemoveKey(int index)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys.erase(m_keys.begin() + index);
     Invalidate();
 }
@@ -279,8 +281,8 @@ inline void TUiAnimTrack<KeyType>::RemoveKey(int index)
 template <class KeyType>
 inline void TUiAnimTrack<KeyType>::GetKey(int index, IKey* key) const
 {
-    assert(index >= 0 && index < (int)m_keys.size());
-    assert(key != 0);
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
+    AZ_Assert(key != 0, "Key cannot be null!");
     *(KeyType*)key = m_keys[index];
 }
 
@@ -288,8 +290,8 @@ inline void TUiAnimTrack<KeyType>::GetKey(int index, IKey* key) const
 template <class KeyType>
 inline void TUiAnimTrack<KeyType>::SetKey(int index, IKey* key)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
-    assert(key != 0);
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
+    AZ_Assert(key != 0, "Key cannot be null!");
     m_keys[index] = *(KeyType*)key;
     Invalidate();
 }
@@ -298,7 +300,7 @@ inline void TUiAnimTrack<KeyType>::SetKey(int index, IKey* key)
 template <class KeyType>
 inline float TUiAnimTrack<KeyType>::GetKeyTime(int index) const
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     return m_keys[index].time;
 }
 
@@ -306,7 +308,7 @@ inline float TUiAnimTrack<KeyType>::GetKeyTime(int index) const
 template <class KeyType>
 inline void TUiAnimTrack<KeyType>::SetKeyTime(int index, float time)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys[index].time = time;
     Invalidate();
 }
@@ -329,7 +331,7 @@ inline int TUiAnimTrack<KeyType>::FindKey(float time)
 template <class KeyType>
 inline int TUiAnimTrack<KeyType>::GetKeyFlags(int index)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     return m_keys[index].flags;
 }
 
@@ -337,7 +339,7 @@ inline int TUiAnimTrack<KeyType>::GetKeyFlags(int index)
 template <class KeyType>
 inline void TUiAnimTrack<KeyType>::SetKeyFlags(int index, int flags)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys[index].flags = flags;
     Invalidate();
 }
@@ -604,4 +606,10 @@ inline int TUiAnimTrack<KeyType>::GetActiveKey(float time, KeyType* key)
     }
     m_currKey = -1;
     return m_currKey;
+}
+
+// For backward compatibility.
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(TUiAnimTrack<IBoolKey>, "{7C2942C1-0ACE-404E-BF2B-E095A1B69A5B}");
 }

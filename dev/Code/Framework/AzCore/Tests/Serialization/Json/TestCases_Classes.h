@@ -12,12 +12,16 @@
 
 #pragma once
 
+#include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <Tests/Serialization/Json/TestCases_Base.h>
 
 namespace JsonSerializationTests
 {
     struct SimpleClass
     {
+        template<class T>
+        friend struct AZStd::IntrusivePtrCountPolicy;
+
         AZ_CLASS_ALLOCATOR(SimpleClass, AZ::SystemAllocator, 0);
         AZ_RTTI(SimpleClass, "{5A40E851-A748-40F3-97BA-5BB3A98CDD61}");
 
@@ -25,6 +29,9 @@ namespace JsonSerializationTests
         explicit SimpleClass(int var1);
         SimpleClass(int var1, float var2);
         virtual ~SimpleClass() = default;
+
+        void add_ref();
+        void release();
 
         static const bool SupportsPartialDefaults = true;
 
@@ -40,6 +47,7 @@ namespace JsonSerializationTests
         bool operator==(const SimpleClass& rhs) const;
         bool operator!=(const SimpleClass& rhs) const;
 
+        mutable int m_refCount = 0;
         int m_var1{ 42 };
         float m_var2{ 42.0f };
     };

@@ -149,6 +149,7 @@ namespace EMotionFX
             AZStd::string                       m_attachmentJointName;      ///< Joint name on target to which to attach (if ActorAttachment).
             AZ::u32                             m_attachmentJointIndex;
             AZ::u32                             m_lodLevel;
+            bool                                m_forceUpdateJointsOOV = false;
             // \todo attachmentTarget node nr
 
             // Note: LOD work in progress. For now we use one material instead of a list of material, because we don't have the support for LOD with multiple FBXs.

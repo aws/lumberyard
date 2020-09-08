@@ -165,4 +165,9 @@ namespace CommandSystem
     CommandManager::~CommandManager()
     {
     }
+
+    void CommandManager::SetUserOpenedWorkspaceFlag(bool flag)
+    {
+        m_userOpenedWorkspaceFlag = flag;
+    }
 } // namespace CommandSystem

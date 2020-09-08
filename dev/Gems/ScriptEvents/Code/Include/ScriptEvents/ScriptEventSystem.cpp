@@ -20,6 +20,11 @@ namespace ScriptEvents
     AZStd::intrusive_ptr<Internal::ScriptEvent> ScriptEventsSystemComponentImpl::RegisterScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version)
     {
         AZ_Assert(assetId.IsValid(), "Unable to register Script Event with invalid asset Id");
+        if (!assetId.IsValid())
+        {
+            return nullptr;
+        }
+
         ScriptEventKey key(assetId, 0);
 
         if (m_scriptEvents.find(key) == m_scriptEvents.end())

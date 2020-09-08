@@ -62,11 +62,14 @@ namespace ScriptCanvasEditor
 
         virtual void ConfigureGraphCanvasSlot(const ScriptCanvas::Slot* slot, const GraphCanvas::SlotId& graphCanvasSlotId);
 
+        const AZ::EntityId& GetScriptCanvasNodeId() const { return m_scriptCanvasNodeId; }
+
     private:
 
-        void HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint);       
+        void HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint);
 
         GraphCanvas::SlotGroup m_slotGroup;
+        AZ::EntityId           m_scriptCanvasNodeId;
 
         bool m_queueUpdates;
         AZStd::unordered_set<ScriptCanvas::Endpoint> m_queuedEndpoints;

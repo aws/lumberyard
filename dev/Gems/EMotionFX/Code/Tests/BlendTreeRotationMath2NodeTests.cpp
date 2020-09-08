@@ -1,4 +1,3 @@
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,6 +11,7 @@
 */
 
 #include "AnimGraphFixture.h"
+#include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/BlendTree.h>
@@ -22,6 +22,8 @@
 #include <EMotionFX/Source/BlendTreeSetTransformNode.h>
 #include <EMotionFX/Source/AnimGraphBindPoseNode.h>
 #include <EMotionFX/Source/BlendTreeRotationMath2Node.h>
+#include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/Skeleton.h>
 
 
 namespace EMotionFX
@@ -73,14 +75,13 @@ namespace EMotionFX
 
     TEST_F(BlendTreeRotationMath2NodeTests, EvalauteTranslationBlending)
     {
-        BlendTreeGetTransformNode::UniqueData* getNodeUniqueData = static_cast<BlendTreeGetTransformNode::UniqueData*>(m_getTransformNode->FindUniqueNodeData(m_animGraphInstance));
-        getNodeUniqueData->m_nodeIndex = 0;
+        const char* firstNodeName = m_actor->GetSkeleton()->GetNode(0)->GetName();
 
-        BlendTreeSetTransformNode::UniqueData* setNodeUniqueData = static_cast<BlendTreeSetTransformNode::UniqueData*>(m_setTransformNode->FindUniqueNodeData(m_animGraphInstance));
-        setNodeUniqueData->m_nodeIndex = 0;
+        m_getTransformNode->SetJointName(firstNodeName);
+        m_getTransformNode->InvalidateUniqueData(m_animGraphInstance);
 
-        m_getTransformNode->OnUpdateUniqueData(m_animGraphInstance);
-        m_setTransformNode->OnUpdateUniqueData(m_animGraphInstance);
+        m_setTransformNode->SetJointName(firstNodeName);
+        m_setTransformNode->InvalidateUniqueData(m_animGraphInstance);
 
         AZ::Quaternion expectedRotation = AZ::Quaternion::CreateRotationY(MCore::Math::pi * 0.25f);
 

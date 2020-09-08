@@ -136,28 +136,13 @@ namespace GraphCanvas
                 }
             }
         }
+
+        ConnectionNotificationBus::Handler::BusDisconnect();
     }
 
     void NodeComponent::OnConnectedTo(const AZ::EntityId& connectionId, const Endpoint& endpoint)
     {
-        AZ_UNUSED(connectionId);
-        AZ_UNUSED(endpoint);
-
-        RootGraphicsItemRequests* itemInterface = RootGraphicsItemRequestBus::FindFirstHandler(GetEntityId());
-
-        if (itemInterface)
-        {
-            RootGraphicsItemEnabledState enabledState = itemInterface->GetEnabledState();
-            RootGraphicsItemEnabledState updatedState = UpdateEnabledState();
-
-            if (updatedState != enabledState)
-            {
-                AZStd::unordered_set< NodeId > updatedStateSet;
-                updatedStateSet.insert(GetEntityId());
-
-                GraphUtils::SetNodesEnabledState(updatedStateSet, updatedState);
-            }
-        }
+        UpdateDisabledStateVisuals();
     }
 
     void NodeComponent::OnDisconnectedFrom(const AZ::EntityId& connectionId, const Endpoint& endpoint)
@@ -560,6 +545,11 @@ namespace GraphCanvas
         NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnBatchedConnectionManipulationEnd);
     }
 
+    void NodeComponent::SignalConnectionMoveBegin(const ConnectionId& connectionId)
+    {
+        ConnectionNotificationBus::Handler::BusConnect(connectionId);
+    }
+
     RootGraphicsItemEnabledState NodeComponent::UpdateEnabledState()
     {
         RootGraphicsItemRequests* graphicsInterface = RootGraphicsItemRequestBus::FindFirstHandler(GetEntityId());
@@ -636,7 +626,23 @@ namespace GraphCanvas
         return graphicsInterface->GetEnabledState();
     }
 
-    bool NodeComponent::IsHidingUnusedSlots()
+    bool NodeComponent::HasHideableSlots() const
+    {
+        bool canHideSlots = false;
+
+        for (auto slotEntity : m_slots)
+        {
+            if (GraphUtils::IsSlotHideable(slotEntity->GetId()))
+            {
+                canHideSlots = true;
+                break;
+            }
+        }
+
+        return canHideSlots;
+    }
+
+    bool NodeComponent::IsHidingUnusedSlots() const
     {
         return m_saveData.m_hideUnusedSlots;
     }
@@ -665,6 +671,16 @@ namespace GraphCanvas
         m_saveData.SignalDirty();
     }
 
+    void NodeComponent::OnMoveFinalized(bool isValidConnection)
+    {
+        if (isValidConnection)
+        {
+            UpdateDisabledStateVisuals();
+        }
+
+        ConnectionNotificationBus::Handler::BusDisconnect();
+    }
+
     void NodeComponent::HideUnusedSlotsImpl()
     {
         HideSlotConfig hideConfig;
@@ -676,6 +692,25 @@ namespace GraphCanvas
             if (GraphUtils::CanHideEndpoint(endpoint, hideConfig))
             {
                 VisualRequestBus::Event(endpoint.GetSlotId(), &VisualRequests::SetVisible, false);
+            }
+        }
+    }
+
+    void NodeComponent::UpdateDisabledStateVisuals()
+    {
+        RootGraphicsItemRequests* itemInterface = RootGraphicsItemRequestBus::FindFirstHandler(GetEntityId());
+
+        if (itemInterface)
+        {
+            RootGraphicsItemEnabledState enabledState = itemInterface->GetEnabledState();
+            RootGraphicsItemEnabledState updatedState = UpdateEnabledState();
+
+            if (updatedState != enabledState)
+            {
+                AZStd::unordered_set< NodeId > updatedStateSet;
+                updatedStateSet.insert(GetEntityId());
+
+                GraphUtils::SetNodesEnabledState(updatedStateSet, updatedState);
             }
         }
     }

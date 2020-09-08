@@ -540,6 +540,14 @@ namespace GraphCanvas
 
     AZ::EntityId SlotComponent::CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection)
     {
+        if (createConnection)
+        {
+            if (otherEndpoint.IsValid() && !CanCreateConnectionTo(otherEndpoint))
+            {
+                return AZ::EntityId();
+            }
+        }
+
         Endpoint sourceEndpoint;
         Endpoint targetEndpoint;
 

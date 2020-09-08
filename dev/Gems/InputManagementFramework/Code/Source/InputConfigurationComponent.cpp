@@ -22,6 +22,11 @@
 
 namespace Input
 {
+    static AZ::s32 Uint32ToInt32(const AZ::u32& value)
+    {
+        return static_cast<AZ::s32>(value);
+    };
+
     InputConfigurationComponent::~InputConfigurationComponent()
     {
         m_inputEventBindings.Cleanup();
@@ -42,11 +47,12 @@ namespace Input
                 ;
 
             serializeContext->Class<InputConfigurationComponent, AZ::Component>()
-                ->Version(3)
+                ->Version(4)
                 ->Field("Input Event Bindings", &InputConfigurationComponent::m_inputEventBindingsAsset)
                 ->Field("Input Contexts", &InputConfigurationComponent::m_inputContexts)
                 ->Field("Local Player Index", &InputConfigurationComponent::m_localPlayerIndex)
                 ->NameChange(2, 3, "Local User Id", "Local Player Index")
+                ->TypeChange("Local Player Index", 3, 4, AZStd::function<AZ::s32(const AZ::u32&)>(&Uint32ToInt32))
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -69,7 +75,8 @@ namespace Input
                     "Asset containing input to event binding information.")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                        ->Attribute("EditButton", "Editor/Icons/Assets/InputBindings")
+                        ->Attribute("BrowseIcon", ":/stylesheet/img/UI20/browse-edit-select-files.svg")
+                        ->Attribute("EditButton", "")
                         ->Attribute("EditDescription", "Open in Input Bindings Editor")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &InputConfigurationComponent::m_inputContexts, "Input contexts", "These are the contexts valid for this input binding.  The default context is empty string")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
@@ -91,7 +98,17 @@ namespace Input
         // can be set from data, but will only work on platforms such as PC where the local user id corresponds
         // to the local player index. For other platforms, SetLocalUserId must be called at runtime with the id
         // of a logged in user, which will overwrite anything set here from data.
-        m_localUserId = m_localPlayerIndex;
+        if (m_localPlayerIndex == -1)
+        {
+            m_localUserId = AzFramework::LocalUserIdAny;
+        }
+        else
+        {
+            // we have to cast to u32 here even if LocalUserId is not a u32 type because some platforms use
+            // an aggregate type for m_localUserId and only have the pertinent constructors/operators for u32
+            m_localUserId = aznumeric_cast<AZ::u32>(m_localPlayerIndex);
+        }
+        
     }
 
     void InputConfigurationComponent::Activate()

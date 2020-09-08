@@ -150,9 +150,9 @@ namespace ScriptCanvas
                 return AZ::Success();
             }
 
-            void SendScriptEvent::AddInputSlot(size_t argIndex, const AZStd::string_view argName, const AZStd::string_view tooltip, AZ::BehaviorMethod* method, const AZ::BehaviorParameter* argument, AZ::Uuid slotKey, SlotIdMapping& populationMapping)
+            void SendScriptEvent::AddInputSlot(size_t slotIndex, size_t argIndex, const AZStd::string_view argName, const AZStd::string_view tooltip, AZ::BehaviorMethod* method, const AZ::BehaviorParameter* argument, AZ::Uuid slotKey, SlotIdMapping& populationMapping)
             {
-                bool signalAdd = true;
+                bool isNewSlot = true;
 
                 ScriptCanvas::SlotId slotId;
 
@@ -168,23 +168,23 @@ namespace ScriptCanvas
                 if (mappingIter != m_eventSlotMapping.end())
                 {
                     slotConfiguration.m_slotId = mappingIter->second;
-                    signalAdd = false;
+                    isNewSlot = false;
                 }
 
                 if (argument->m_typeId == azrtti_typeid<AZ::EntityId>())
                 {
                     slotConfiguration.SetDefaultValue(ScriptCanvas::GraphOwnerId);
 
-                    slotId = AddSlot(slotConfiguration, signalAdd);
+                    slotId = InsertSlot(aznumeric_cast<AZ::s64>(slotIndex), slotConfiguration, isNewSlot);
                 }
                 else
                 {
                     slotConfiguration.ConfigureDatum(AZStd::move(Datum(*argument, Datum::eOriginality::Copy, nullptr)));
-                    slotId = AddSlot(slotConfiguration, signalAdd);
+                    slotId = InsertSlot(aznumeric_cast<AZ::s64>(slotIndex), slotConfiguration, isNewSlot);
 
                     if (auto defaultValue = method->GetDefaultValue(argIndex))
                     {
-                        ModifiableDatumView datumView;                        
+                        ModifiableDatumView datumView;
                         FindModifiableDatumView(slotId, datumView);
 
                         if (datumView.IsValid() && Data::IsValueType(datumView.GetDataType()))
@@ -270,7 +270,7 @@ namespace ScriptCanvas
                 AZ::BehaviorMethod* method{};
                 if (!FindEvent(method, emptyNamespaces, ebusEventName))
                 {
-                    AZ_Error("Script Canvas", false, "The Script Event %s::%s could not be found", busName.c_str(), ebusEventName.data());
+                    AZ_Error("Script Canvas", IsUpdating(), "The Script Event %s::%s could not be found", busName.c_str(), ebusEventName.data());
                     return;
                 }
 
@@ -286,12 +286,21 @@ namespace ScriptCanvas
                 AZ_Warning("ScriptCanvas", isExposableOutcome.IsSuccess(), "BehaviorContext Method %s is no longer exposable to ScriptCanvas: %s", isExposableOutcome.GetError().data());
                 ConfigureMethod(*method);
 
+                size_t slotOffset = GetSlots().size();
+
                 if (method->HasResult())
                 {
                     if (const AZ::BehaviorParameter* result = method->GetResult())
                     {
                         if (!result->m_typeId.IsNull() && result->m_typeId != azrtti_typeid<void>())
                         {
+                            // Arbitrary UUID for result slots.
+                            // Doesn't need to be globally unique, as each method will only have
+                            // a single output.
+                            //
+                            // Should this change we'll need a new way of generating this.
+                            AZ::Uuid slotKey = AZ::Uuid("{C7E99974-D1C0-4108-B731-120AF000060C}");
+
                             Data::Type outputType(AZ::BehaviorContextHelper::IsStringParameter(*result) ? Data::Type::String() : Data::FromAZType(result->m_typeId));
                             // multiple outs will need out value names
                             const AZStd::string resultSlotName(AZStd::string::format("Result: %s", Data::GetName(outputType).c_str()));
@@ -302,14 +311,27 @@ namespace ScriptCanvas
                             slotConfiguration.SetConnectionType(ConnectionType::Output);
                             slotConfiguration.SetType(outputType);
 
-                            m_resultSlotID = AddSlot(slotConfiguration);
+                            auto slotIdIter = m_eventSlotMapping.find(slotKey);
+
+                            bool isNewSlot = true;
+
+                            if (slotIdIter != m_eventSlotMapping.end())
+                            {
+                                isNewSlot = false;
+                                slotConfiguration.m_slotId = slotIdIter->second;
+                            }
+
+                            m_resultSlotID = InsertSlot(aznumeric_cast<AZ::s64>(slotOffset), slotConfiguration, isNewSlot);
+                            ++slotOffset;
+
+                            populationMapping[slotKey] = m_resultSlotID;
                         }
                     }
                 }
 
                 ScriptEvents::Method scriptEventMethod;
                 bool methodFound = definition.FindMethod(method->m_name, scriptEventMethod);
-
+                
                 size_t argIndex = 0;
                 
                 // Address slot (BusId)
@@ -318,7 +340,7 @@ namespace ScriptCanvas
                     if (const AZ::BehaviorParameter* argument = method->GetArgument(argIndex))
                     {
                         AZ::Uuid slotKey = definition.GetAddressTypeProperty().GetId();
-                        AddInputSlot(argIndex, GetSourceSlotName(), method->GetArgumentToolTip(argIndex)->c_str(), method, argument, slotKey, populationMapping);
+                        AddInputSlot(slotOffset + argIndex, argIndex, GetSourceSlotName(), method->GetArgumentToolTip(argIndex)->c_str(), method, argument, slotKey, populationMapping);
                     }
                     ++argIndex;
                 }
@@ -335,18 +357,8 @@ namespace ScriptCanvas
 
                     if (argument)
                     {
-                        AddInputSlot(argIndex, argName, argumentTooltip, method, argument, slotKey, populationMapping);
+                        AddInputSlot(slotOffset + argIndex, argIndex, argName, argumentTooltip, method, argument, slotKey, populationMapping);
                     }
-                }
-
-                {
-                    ExecutionSlotConfiguration slotConfiguration("In", ConnectionType::Input);
-                    AddSlot(slotConfiguration);
-                }
-
-                {
-                    ExecutionSlotConfiguration slotConfiguration("Out", ConnectionType::Output);
-                    AddSlot(slotConfiguration);
                 }
 
                 PopulateNodeType();
@@ -459,33 +471,39 @@ namespace ScriptCanvas
                 return false;
             }
 
-            void SendScriptEvent::UpdateScriptEventAsset()
+            bool SendScriptEvent::IsOutOfDate() const
             {
-                AZStd::unordered_map< AZ::Uuid, Datum > slotDatumValues;
-                AZStd::unordered_map< AZ::Uuid, VariableId > slotVariableReferences;
+                bool isOutOfDate = false;
 
-                for (auto mapPair : m_eventSlotMapping)
+                AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(GetAssetId());
+
+                if(assetData)
+                {
+                    ScriptEvents::ScriptEvent& definition = assetData.Get()->m_definition;
+
+                    if(GetVersion() != definition.GetVersion())
+                    {
+                        isOutOfDate = true;
+                    }
+                }
+                else
+                {
+                    // If we don't have any asset data. We are definitely out of date.
+                    return true;
+                }
+
+                return isOutOfDate;
+            }
+
+            UpdateResult SendScriptEvent::OnUpdateNode()
+            {
+                for(auto mapPair : m_eventSlotMapping)
                 {
                     Slot* slot = GetSlot(mapPair.second);
 
                     if (slot == nullptr)
                     {
                         continue;
-                    }
-
-                    if (slot->IsVariableReference())
-                    {
-                        slotVariableReferences[mapPair.first] = slot->GetVariableReference();
-                    }
-                    else
-                    {
-                        ModifiableDatumView datumView;
-                        FindModifiableDatumView(mapPair.second, datumView);
-
-                        if (datumView.IsValid())
-                        {
-                            slotDatumValues.insert(AZStd::make_pair(mapPair.first, datumView.CloneDatum()));
-                        }
                     }
 
                     const bool removeConnections = false;
@@ -501,6 +519,7 @@ namespace ScriptCanvas
                 m_scriptEvent.reset();
 
                 m_ebus = nullptr;
+                m_method = nullptr;
 
                 m_version = 0;
 
@@ -508,64 +527,27 @@ namespace ScriptCanvas
 
                 BuildNode(m_scriptEventAssetId, eventId, populationMapping);
 
-                // Erase anything we remapped since we don't want to signal out that it changed.
-                for (auto mappingPair : populationMapping)
-                {
-                    m_eventSlotMapping.erase(mappingPair.first);
-                }
-
-                // Actually do the removal signalling for any slots that weren't updated
-                for (auto mappingPair : m_eventSlotMapping)
-                {
-                    RemoveConnectionsForSlot(mappingPair.second);
-                }
-
                 m_eventSlotMapping = AZStd::move(populationMapping);
 
-                for (auto referencePair : slotVariableReferences)
+                if (m_method == nullptr)
                 {
-                    auto slotIter = m_eventSlotMapping.find(referencePair.first);
-
-                    if (slotIter != m_eventSlotMapping.end())
-                    {
-                        Slot* slot = GetSlot(slotIter->second);
-                        
-                        if (slot && slot->ConvertToReference())
-                        {
-                            slot->SetVariableReference(referencePair.second);
-                        }
-                    }
+                    return UpdateResult::DeleteNode;
                 }
-
-                for (auto datumPair : slotDatumValues)
+                else
                 {
-                    auto slotIter = m_eventSlotMapping.find(datumPair.first);
+                    return UpdateResult::DirtyGraph;
+                }
+            }
 
-                    if (slotIter != m_eventSlotMapping.end())
-                    {
-                        SlotId slotId = slotIter->second;
-
-                        ModifiableDatumView datumView;
-                        FindModifiableDatumView(slotId, datumView);
-
-                        // If our types are the same. Maintain our connections.
-                        if (datumView.GetDataType() == datumPair.second.GetType())
-                        {
-                            datumView.AssignToDatum(datumPair.second);
-                        }
-                        // Otherwise we'll want to try to update our type.
-                        else
-                        {
-                            RemoveConnectionsForSlot(slotId);
-                        }
-
-                        Slot* slot = GetSlot(slotId);
-
-                        if (slot)
-                        {
-                            slot->SetDisplayType(datumView.GetDataType());
-                        }
-                    }
+            AZStd::string SendScriptEvent::GetUpdateString() const
+            {
+                if (m_method)
+                {
+                    return AZStd::string::format("Updated ScriptEvent (%s)", m_definition.GetName().c_str());
+                }
+                else
+                {
+                    return AZStd::string::format("Deleted ScriptEvent (%s)", m_asset.GetId().ToString<AZStd::string>().c_str());
                 }
             }
 
@@ -610,7 +592,7 @@ namespace ScriptCanvas
 
                 if (sender == m_ebus->m_events.end())
                 {
-                    AZ_Error("Script Canvas", false, "No event by name of %s found in the ebus %s", eventName.data(), m_scriptEvent->GetBusName().c_str());
+                    AZ_Error("Script Canvas", IsUpdating(), "No event by name of %s found in the ebus %s", eventName.data(), m_scriptEvent->GetBusName().c_str());
                     return false;
                 }
 

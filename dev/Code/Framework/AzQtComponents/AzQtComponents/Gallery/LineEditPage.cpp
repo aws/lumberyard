@@ -42,6 +42,9 @@ LineEditPage::LineEditPage(QWidget* parent)
         AzQtComponents::Text::addTitleStyle(title);
     }
 
+    AzQtComponents::LineEdit::applyDropTargetStyle(ui->validDropTargetLineEdit, true);
+    AzQtComponents::LineEdit::applyDropTargetStyle(ui->invalidDropTargetLineEdit, false);
+
     ui->withData->setToolTip("<b></b>This will be a very very long sentence with an end but not for a long time, spanning an entire screen. I said, spanning an entire screen. No really. An entire screen. A very long, very wide screen.");
 
     ui->error->setText("Error");
@@ -53,6 +56,7 @@ LineEditPage::LineEditPage(QWidget* parent)
     validator->setBottom(3.0);
     ui->longNumber->setValidator(validator);
     AzQtComponents::LineEdit::setErrorMessage(ui->longNumber, QStringLiteral("Value must be between 3.0 and 4.0"));
+    ui->longNumber->setClearButtonEnabled(true);
 
     const auto searchBoxes = {ui->searchBox, ui->emptySearchBox};
     for (auto searchBox : searchBoxes)
@@ -92,6 +96,9 @@ lineEdit->setValidator(new CustomValidator(lineEdit));
 // to set the error message
 AzQtComponents::LineEdit::setErrorMessage(lineEdit, QStringLiteral("Value must be between 3.0 and 4.0"));
 
+// You may also set external error state on the line edit that is OR'ed with validators and mask
+AzQtComponents::LineEdit::setExternalError(lineEdit, true);
+
 // You can also use pre-made validators for QDoubleValidator, QIntValidator, QRegularExpressionValidator
 
 // To listen for text changes:
@@ -109,6 +116,14 @@ connect(lineEdit, QLineEdit::editingFinished, this, [lineEdit](){
     qDebug() &lt;&lt; QString("Editing finished. New text: %1").arg(lineEdit->text());
 });
 
+// To show the line edit as a valid drop target:
+AzQtComponents::LineEdit::applyDropTargetStyle(lineEdit, true);
+
+// To show the line edit as an invalid drop target:
+AzQtComponents::LineEdit::applyDropTargetStyle(lineEdit, false);
+
+// To clear the drop target style:
+AzQtComponents::LineEdit::removeDropTargetStyle(lineEdit);
 </pre>
 
 )";

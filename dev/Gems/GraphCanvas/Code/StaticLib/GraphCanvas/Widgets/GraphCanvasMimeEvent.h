@@ -15,6 +15,9 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/RTTI/RTTI.h>
 
+#include <GraphCanvas/Types/Types.h>
+#include <GraphCanvas/Editor/EditorTypes.h>
+
 namespace GraphCanvas
 {
     class GraphCanvasMimeEvent
@@ -26,6 +29,17 @@ namespace GraphCanvas
         GraphCanvasMimeEvent() = default;
         virtual ~GraphCanvasMimeEvent() = default;
         
+        virtual bool CanGraphHandleEvent(const GraphId& graphId) const
+        {
+            AZ_UNUSED(graphId);
+            return true;
+        }
+
         virtual bool ExecuteEvent(const AZ::Vector2& sceneMousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId) = 0;
+
+        const NodeId& GetCreatedNodeId() const;
+        
+    protected:
+        NodeId m_createdNodeId;
     };
 }

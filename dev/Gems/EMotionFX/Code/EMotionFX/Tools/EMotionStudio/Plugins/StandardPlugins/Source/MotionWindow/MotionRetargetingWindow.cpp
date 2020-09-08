@@ -16,14 +16,13 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QCheckBox>
-#include <QVBoxLayout>
+#include <QGridLayout>
 #include <QIcon>
-#include <MysticQt/Source/ButtonGroup.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/LogManager.h>
-
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 
 namespace EMStudio
 {
@@ -46,18 +45,21 @@ namespace EMStudio
     // init after the parent dock window has been created
     void MotionRetargetingWindow::Init()
     {
-        QVBoxLayout* layout = new QVBoxLayout();
-        layout->setMargin(0);
+        QGridLayout* layout = new QGridLayout();
         setLayout(layout);
 
-        mMotionRetargetingButton = new QCheckBox("Use Motion Retargeting");
-        layout->addWidget(mMotionRetargetingButton);
+        mMotionRetargetingButton = new QCheckBox();
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(mMotionRetargetingButton);
+        layout->addWidget(new QLabel(tr("Use Motion Retargeting")), 0, 0);
+        layout->addWidget(mMotionRetargetingButton, 0, 1);
         connect(mMotionRetargetingButton, &QCheckBox::clicked, this, &MotionRetargetingWindow::UpdateMotions);
 
-        //mRenderMotionBindPose = new QCheckBox("Render Motion Bind Pose");
+        //mRenderMotionBindPose = new QCheckBox();
+        //AzQtComponents::CheckBox::applyToggleSwitchStyle(mRenderMotionBindPose);
         //mRenderMotionBindPose->setToolTip("Render motion bind pose of the currently selected motion for the selected actor instances");
         //mRenderMotionBindPose->setChecked(false);
-        //layout->addWidget(mRenderMotionBindPose);
+        //layout->addWidget(new QLabel(tr("Render Motion Bind Pose")), 1, 0);
+        //layout->addWidget(mRenderMotionBindPose, 1, 1);
     }
 
 

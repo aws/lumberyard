@@ -157,7 +157,7 @@ namespace EMotionFX
                 if (motionInst->GetMaxLoops() - 1 == motionInst->GetNumCurrentLoops())
                 {
                     // if the start of the next motion will have completely faded in, before this motion instance will fade out
-                    if (motionInst->GetCurrentTime() >= motionInst->GetMaxTime() - timeToRemoveFromMaxTime)
+                    if (motionInst->GetCurrentTime() >= motionInst->GetDuration() - timeToRemoveFromMaxTime)
                     {
                         return true;
                     }

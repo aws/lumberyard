@@ -93,8 +93,8 @@ namespace CommandSystem
             playbackInfo->mNumLoops,
             playbackInfo->mPriorityLevel,
             playbackInfo->mStartNodeIndex,
-            playbackInfo->mBlendMode,
-            playbackInfo->mPlayMode,
+            static_cast<AZ::u8>(playbackInfo->mBlendMode),
+            static_cast<AZ::u8>(playbackInfo->mPlayMode),
             AZStd::to_string(playbackInfo->mMirrorMotion).c_str(),
             AZStd::to_string(playbackInfo->mMix).c_str(),
             AZStd::to_string(playbackInfo->mPlayNow).c_str(),
@@ -1213,8 +1213,7 @@ namespace CommandSystem
         for (size_t i = 0; i < numInst; ++i)
         {
             EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-
-            animGraphInstance->UpdateUniqueData();
+            animGraphInstance->RecursiveInvalidateUniqueDatas();
         }
     }
 

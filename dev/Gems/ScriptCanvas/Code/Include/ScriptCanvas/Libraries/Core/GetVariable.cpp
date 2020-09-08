@@ -37,6 +37,16 @@ namespace ScriptCanvas
                     {
                         VariableNotificationBus::Handler::BusConnect(GraphScopedVariableId(GetOwningScriptCanvasId(), m_variableId));                        
                     }
+                    else
+                    {
+                        GraphVariable* variable = FindGraphVariable(m_variableId);
+
+                        if (variable)
+                        {
+                            m_variableName = variable->GetVariableName();
+                            variable->ConfigureDatumView(m_variableView);
+                        }
+                    }
                 }
             }
 
@@ -44,11 +54,15 @@ namespace ScriptCanvas
             {
                 if (slotID == GetSlotId("In"))
                 {
-                    if (const Datum* inputDatum = GetDatum())
+                    SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), CreateAnnotationData());
+
+                    if (m_variableView.IsValid())
                     {
                         Slot* resultSlot = GetSlot(m_variableDataOutSlotId);
                         if (resultSlot)
                         {
+                            const Datum* inputDatum = m_variableView.GetDatum();
+
                             PushOutput(*inputDatum, *resultSlot);
 
                             // Push the data for each property slot out as well
@@ -68,6 +82,7 @@ namespace ScriptCanvas
                             }
                         }
                     }
+
                     SignalOutput(GetSlotId("Out"));
                 }
             }
@@ -325,6 +340,12 @@ namespace ScriptCanvas
                     RemoveOutputSlot();
                 }
                 VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemovedFromNode, removedVariableId);
+            }
+
+            AnnotateNodeSignal GetVariableNode::CreateAnnotationData()
+            {
+                AZ::EntityId assetNodeId = GetRuntimeBus()->FindAssetNodeIdByRuntimeNodeId(GetEntityId());
+                return AnnotateNodeSignal(CreateGraphInfo(GetOwningScriptCanvasId(), GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, m_variableName, AZ::NamedEntityId(assetNodeId, GetNodeName()));
             }
         }
     }

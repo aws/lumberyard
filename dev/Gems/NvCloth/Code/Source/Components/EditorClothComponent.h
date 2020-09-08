@@ -14,7 +14,9 @@
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
-#include <Components/ClothComponent.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
+
+#include <System/ClothConfiguration.h>
 
 namespace NvCloth
 {

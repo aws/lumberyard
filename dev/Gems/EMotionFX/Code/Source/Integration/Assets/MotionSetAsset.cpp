@@ -213,7 +213,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         const char* MotionSetAssetHandler::GetBrowserIcon() const
         {
-            return "Editor/Images/AssetBrowser/MotionSet_16.png";
+            return "Editor/Images/AssetBrowser/MotionSet_16.svg";
         }
         //////////////////////////////////////////////////////////////////////////
         void MotionSetAssetBuilderHandler::InitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset, bool loadStageSucceeded, bool isReload)

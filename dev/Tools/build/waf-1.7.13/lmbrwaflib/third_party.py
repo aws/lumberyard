@@ -2123,7 +2123,7 @@ class ThirdPartySettings:
         sdk_source_full_path = os.path.normpath(os.path.join(third_party_root, sdk_source))
 
         if not os.path.exists(sdk_source_full_path) and sdk_enabled and not sdk_optional:
-            self.ctx.warn_once('3rd party alias {} references a missing local SDK path. Make sure it is available through Setup Assistant'.format(identifier))
+            self.ctx.warn_once('3rd party alias {} references a missing local SDK path: {}. Make sure it is available through Setup Assistant'.format(identifier, sdk_source_full_path))
 
         return sdk_source_full_path, sdk_enabled, sdk_roles, sdk_optional
 

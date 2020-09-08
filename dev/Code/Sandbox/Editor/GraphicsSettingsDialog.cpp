@@ -18,7 +18,6 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QFile>
-#include <QSpinBox>
 #include <QLineEdit>
 #include <QGridLayout>
 #include <QDebug>
@@ -332,7 +331,7 @@ void GraphicsSettingsDialog::BuildColumn(int specLevel)
         QWidget* input = nullptr;
         if (it.second.type == CVAR_INT)
         {
-            AzToolsFramework::DHQSpinbox* intval = aznew AzToolsFramework::DHQSpinbox(nullptr);
+            AzQtComponents::SpinBox* intval = new AzQtComponents::SpinBox(nullptr);
             intval->setFocusPolicy(Qt::StrongFocus);
             intval->setMaximum(INT32_MAX);
             intval->setMinimum(INT32_MIN);
@@ -347,7 +346,7 @@ void GraphicsSettingsDialog::BuildColumn(int specLevel)
         }
         else if (it.second.type == CVAR_FLOAT)
         {
-            AzToolsFramework::DHQDoubleSpinbox* doubleval = aznew AzToolsFramework::DHQDoubleSpinbox(nullptr);
+            AzQtComponents::DoubleSpinBox* doubleval = new AzQtComponents::DoubleSpinBox(nullptr);
             doubleval->setFocusPolicy(Qt::StrongFocus);
             doubleval->setMaximum(FLT_MAX);
             doubleval->setMinimum(-FLT_MAX);
@@ -959,7 +958,7 @@ bool GraphicsSettingsDialog::CVarChanged(AZStd::any val, const char* cvarName, i
 
 void GraphicsSettingsDialog::CVarChanged(int i)
 {
-    AzToolsFramework::DHQSpinbox* box = static_cast<AzToolsFramework::DHQSpinbox*>(sender());
+    AzQtComponents::SpinBox* box = static_cast<AzQtComponents::SpinBox*>(sender());
     QString str = box->objectName();
     QByteArray ba = str.toUtf8();
     const char* cvarName = ba.data();
@@ -984,7 +983,7 @@ void GraphicsSettingsDialog::CVarChanged(int i)
 
 void GraphicsSettingsDialog::CVarChanged(double d)
 {
-    AzToolsFramework::DHQDoubleSpinbox* box = static_cast<AzToolsFramework::DHQDoubleSpinbox*>(sender());
+    AzQtComponents::DoubleSpinBox* box = static_cast<AzQtComponents::DoubleSpinBox*>(sender());
     QString str = box->objectName();
     QByteArray ba = str.toUtf8();
     const char* cvarName = ba.data();

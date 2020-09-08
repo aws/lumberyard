@@ -113,6 +113,8 @@ namespace EMStudio
 
         MCORE_INLINE bool GetAvoidRendering() const                                             { return mAvoidRendering; }
         MCORE_INLINE void SetAvoidRendering(bool avoidRendering)                                { mAvoidRendering = avoidRendering; }
+        MCORE_INLINE bool GetIgnoreVisibility() const                                           { return mIgnoreVisible; }
+        MCORE_INLINE void SetIgnoreVisibility(bool ignoreVisible)                               { mIgnoreVisible = ignoreVisible; }
 
     private:
         MCore::Array<MCommon::TransformationManipulator*> mTransformationManipulators;
@@ -129,6 +131,7 @@ namespace EMStudio
         bool                                mAutoLoadLastWorkspace;
         AZStd::string                       mHTMLLinkString;
         bool                                mAvoidRendering;
+        bool                                mIgnoreVisible = false;
         MotionEventPresetManager*           mEventPresetManager;
 
         // SkeletonOutlinerNotificationBus

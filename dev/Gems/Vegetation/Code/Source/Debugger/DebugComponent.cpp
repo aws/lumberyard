@@ -1123,7 +1123,7 @@ void DebugComponent::DumpPerformanceReport(const PerformanceReport& report, Filt
     AZStd::string logFolder = AZStd::string::format("@log@/vegetation");
     AZ::IO::LocalFileIO::GetInstance()->CreatePath(logFolder.c_str());
 
-    AZStd::string logFile = AZStd::string::format("%s/%s_%s_%s_%u.csv", logFolder.c_str(), "vegperf", GetSortTypeString(sort), GetFilterTypeLevelString(filter), AZStd::chrono::system_clock::now().time_since_epoch());
+    AZStd::string logFile = AZStd::string::format("%s/%s_%s_%s_%u.csv", logFolder.c_str(), "vegperf", GetSortTypeString(sort), GetFilterTypeLevelString(filter), AZStd::chrono::system_clock::now().time_since_epoch().count());
 
     AZ::IO::HandleType logHandle;
     AZ::IO::Result result = AZ::IO::LocalFileIO::GetInstance()->Open(logFile.c_str(), AZ::IO::OpenMode::ModeWrite, logHandle);

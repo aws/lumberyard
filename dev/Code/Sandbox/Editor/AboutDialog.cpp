@@ -23,6 +23,8 @@
 #include <QDesktopServices>
 #include <QFont>
 
+#include <AzCore/Casting/numeric_cast.h>
+
 CAboutDialog::CAboutDialog(QString versionText, QString richTextCopyrightNotice, QWidget* pParent /*=NULL*/)
     : QDialog(pParent)
     , m_ui(new Ui::CAboutDialog)
@@ -35,17 +37,20 @@ CAboutDialog::CAboutDialog(QString versionText, QString richTextCopyrightNotice,
 
     m_ui->m_transparentTrademarks->setText(versionText);
 
+    m_ui->m_transparentAllRightReserved->setObjectName("copyrightNotice");
     m_ui->m_transparentAllRightReserved->setTextFormat(Qt::RichText);
     m_ui->m_transparentAllRightReserved->setText(richTextCopyrightNotice);
 
-    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/sandbox_dark.png"));
+    m_ui->m_transparentAgreement->setObjectName("link");
+    m_ui->m_transparentNotice->setObjectName("link");
 
-    QFont smallFont(QStringLiteral("MS Shell Dlg 2"));
-    smallFont.setPointSizeF(7.5);
-    m_ui->m_transparentAllRightReserved->setFont(smallFont);
+    setStyleSheet( "CAboutDialog > QLabel#copyrightNotice { color: #AAAAAA; font-size: 9px; }\
+                    CAboutDialog > QLabel#link { text-decoration: underline; color: #00A1C9; }");
+
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_startergame.png"));
 
     // Prevent re-sizing
-    setFixedSize(width(), height());
+    setFixedSize(m_enforcedWidth, aznumeric_cast<int>(m_enforcedWidth * m_enforcedRatio));
 }
 
 CAboutDialog::~CAboutDialog()
@@ -55,7 +60,11 @@ CAboutDialog::~CAboutDialog()
 void CAboutDialog::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
-    painter.drawPixmap(rect(), m_backgroundImage);
+
+    // Enforce the sizing to avoid stretching the image
+    QRect drawTarget = rect();
+    drawTarget.setHeight( aznumeric_cast<int>( drawTarget.width() * m_enforcedRatio ) );
+    painter.drawPixmap(drawTarget, m_backgroundImage);
 }
 
 void CAboutDialog::mouseReleaseEvent(QMouseEvent* event)

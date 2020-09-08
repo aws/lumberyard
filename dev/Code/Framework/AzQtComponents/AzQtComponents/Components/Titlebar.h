@@ -21,9 +21,7 @@
 #include <QPoint>
 #include <QPointer>
 #include <QTimer>
-#include <QLabel>
 
-class QMoveEvent;
 class QMouseEvent;
 class QMenu;
 class QDockWidget;
@@ -31,23 +29,13 @@ class QLabel;
 class QHBoxLayout;
 class QSettings;
 class QStyleOption;
-class QPaintEvent;
 class QStackedLayout;
 
 namespace AzQtComponents
 {
     class Style;
     class DockTabBar;
-
-    class AZ_QT_COMPONENTS_API TitleBarLabel : public QLabel
-    {
-        Q_OBJECT
-
-    public:
-        explicit TitleBarLabel(QWidget* parent = nullptr);
-        ~TitleBarLabel() override;
-        QSize minimumSizeHint() const override;
-    };
+    class ElidingLabel;
 
     /* TitleBar style is now applied from Qt Style Sheets.
      *
@@ -232,7 +220,7 @@ namespace AzQtComponents
         DockTabBar* m_tabBar = nullptr;
         QWidget* m_firstButton = nullptr;
         QLabel* m_icon = nullptr;
-        QLabel* m_label = nullptr;
+        ElidingLabel* m_label = nullptr;
         bool m_showLabelWhenSimple = true;
         bool m_appearAsTabBar = false;
         QFrame* m_buttonsContainer = nullptr;

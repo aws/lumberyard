@@ -314,7 +314,7 @@ namespace PhysX
             s_raycastBuffer.resize(maxResults);
         }
         // Raycast
-        physx::PxRaycastBuffer castResult(s_raycastBuffer.begin(), aznumeric_cast<physx::PxU32>(request.m_maxResults));
+        physx::PxRaycastBuffer castResult(s_raycastBuffer.begin(), aznumeric_cast<physx::PxU32>(maxResults));
         bool status = false;
         {
             PHYSX_SCENE_READ_LOCK(*m_world);
@@ -408,7 +408,7 @@ namespace PhysX
             }
 
             // Buffer to store results
-            physx::PxSweepBuffer pxResult(s_sweepBuffer.begin(), aznumeric_cast<physx::PxU32>(request.m_maxResults));
+            physx::PxSweepBuffer pxResult(s_sweepBuffer.begin(), aznumeric_cast<physx::PxU32>(maxResults));
 
             bool status = false;
             {
@@ -456,7 +456,7 @@ namespace PhysX
             s_overlapBuffer.resize(maxResults);
         }
         // Buffer to store results
-        physx::PxOverlapBuffer queryHits(s_overlapBuffer.begin(), aznumeric_cast<physx::PxU32>(request.m_maxResults));
+        physx::PxOverlapBuffer queryHits(s_overlapBuffer.begin(), aznumeric_cast<physx::PxU32>(maxResults));
         bool status = false;
         {
             PHYSX_SCENE_READ_LOCK(*m_world);

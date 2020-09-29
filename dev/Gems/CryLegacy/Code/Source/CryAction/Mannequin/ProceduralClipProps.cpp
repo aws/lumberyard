@@ -164,6 +164,7 @@ public:
                     pAttachment->AddBinding(pEntityAttachment);
                     m_attachedEntityId = attachEntityId;
 
+#if ENABLE_CRY_PHYSICS
                     if (IPhysicalEntity* pPhysics = pEntity->GetPhysics())
                     {
                         pe_action_add_constraint constraint;
@@ -176,6 +177,7 @@ public:
                         colltype.flagsOR = geom_no_coll_response;
                         pPhysics->SetParams(&colltype);
                     }
+#endif // ENABLE_CRY_PHYSICS
                 }
             }
         }
@@ -196,6 +198,7 @@ public:
                         {
                             pAttachment->ClearBinding();
 
+#if ENABLE_CRY_PHYSICS
                             if (IEntity* pEntity = gEnv->pEntitySystem->GetEntity(m_attachedEntityId))
                             {
                                 if (IPhysicalEntity* pPhysics = pEntity->GetPhysics())
@@ -215,6 +218,7 @@ public:
                                     pPhysics->Action(&action);
                                 }
                             }
+#endif // ENABLE_CRY_PHYSICS
                         }
                     }
                 }

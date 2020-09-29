@@ -722,7 +722,7 @@ lSysUpdate:
             return NULL;
         }
         RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId], threadId);
-#   if BUFFER_ENABLE_DIRECT_ACCESS == 0
+#   if !BUFFER_ENABLE_DIRECT_ACCESS || defined(NULL_RENDERER)
         if (gRenDev->m_pRT && gRenDev->m_pRT->IsMultithreaded())
         {
             // Always use system copy in MT mode
@@ -760,7 +760,7 @@ lSysUpdate:
         // DX11 has to use the deferred context to call map, which is not threadsafe
         // DX9 can experience huge stalls if resources are used while rendering is performed
         buffer_handle_t nVB = ~0u;
-#   if BUFFER_ENABLE_DIRECT_ACCESS
+#   if BUFFER_ENABLE_DIRECT_ACCESS && !defined(NULL_RENDERER)
         nVB = MS->m_nID;
         if ((nVB != ~0u && (MS->m_nFrameCreate != nFrame || MS->m_nElements != m_nVerts)) || !CRenderer::CV_r_buffer_enable_lockless_updates)
 #   endif
@@ -920,7 +920,7 @@ lSysUpdate:
         // DX11 has to use the deferred context to call map, which is not threadsafe
         // DX9 can experience huge stalls if resources are used while rendering is performed
         buffer_handle_t nIB = -1;
-#   if BUFFER_ENABLE_DIRECT_ACCESS
+#   if BUFFER_ENABLE_DIRECT_ACCESS && !defined(NULL_RENDERER)
         nIB = m_IBStream.m_nID;
         if ((nIB != ~0u && (m_IBStream.m_nFrameCreate || m_IBStream.m_nElements != m_nInds)) || !CRenderer::CV_r_buffer_enable_lockless_updates)
 #   endif
@@ -4504,7 +4504,7 @@ bool CRenderMesh::ClearStaleMemory(bool bLocked, int threadId)
         // In DX11 we cannot lock device buffers efficiently from the MT,
         // so we have to keep system copy. On UMA systems we can clear the buffer
         // and access VRAM directly
-        #if BUFFER_ENABLE_DIRECT_ACCESS
+        #if BUFFER_ENABLE_DIRECT_ACCESS && !defined(NULL_RENDERER)
         if (!bKeepSystem)
         {
             for (int i = 0; i < VSF_NUM; i++)

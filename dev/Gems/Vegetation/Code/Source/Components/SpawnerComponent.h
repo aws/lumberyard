@@ -49,7 +49,7 @@ namespace Vegetation
         AZ_RTTI(SpawnerConfig, "{98A6B0CE-FAD0-4108-B019-6B01931E649F}", AreaConfig);
         static void Reflect(AZ::ReflectContext* context);
         bool m_inheritBehavior = true;
-        bool m_allowEmptyMeshes = false;
+        bool m_allowEmptyMeshes = true;
         FilterStage m_filterStage = FilterStage::PreProcess;
     };
 

@@ -2641,7 +2641,7 @@ void CHeightmap::UpdateEngineTerrain(int left, int bottom, int areaSize, int _he
         {
             // Take note that we swap bottom / left. The editor height data is transposed.
             LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainElevationAndSurfaceWeights
-                , bottom, left, areaSize, m_pHeightmap.data(), WeightmapSize, surfaceWeights);
+                , bottom, left, areaSize, m_pHeightmap.data(), WeightmapSize, surfaceWeights, bElevation);
         
             // Only one handler should exist.
             return false;
@@ -2661,10 +2661,13 @@ void CHeightmap::UpdateEngineTerrain(int left, int bottom, int areaSize, int _he
     int x2 = x1 + originalInputAreaSize * nHeightMapUnitSize;
     int y2 = y1 + originalInputAreaSize * nHeightMapUnitSize;
 
-    // Y and X switched by historical reasons.
-    const AZ::Vector3 min = AZ::Vector3(y1, x1, -AZ_FLT_MAX);
-    const AZ::Vector3 max = AZ::Vector3(y2, x2, AZ_FLT_MAX);
-    AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateFromMinMax(min, max));
+    if (bElevation)
+    {
+        // Y and X switched by historical reasons.
+        const AZ::Vector3 min = AZ::Vector3(y1, x1, -AZ_FLT_MAX);
+        const AZ::Vector3 max = AZ::Vector3(y2, x2, AZ_FLT_MAX);
+        AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateFromMinMax(min, max));
+    }
 }
 
 
@@ -2955,7 +2958,7 @@ void CHeightmap::MakeHole(int x1, int y1, int width, int height, bool bMake)
         }
     }
 
-    UpdateEngineTerrain(x1, y1, x2 - x1, y2 - y1, false, true);
+    UpdateEngineTerrain(x1, y1, x2 - x1, y2 - y1, true, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3127,7 +3130,7 @@ float CHeightmap::GetAccurateSlope(const float x, const float y)
 //////////////////////////////////////////////////////////////////////////
 void CHeightmap::UpdateEngineHole(int x1, int y1, int width, int height)
 {
-    UpdateEngineTerrain(x1, y1, width, height, false, true);
+    UpdateEngineTerrain(x1, y1, width, height, true, true);
 }
 
 

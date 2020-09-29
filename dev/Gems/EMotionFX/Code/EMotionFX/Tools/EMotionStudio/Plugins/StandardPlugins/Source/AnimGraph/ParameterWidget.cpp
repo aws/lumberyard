@@ -145,7 +145,7 @@ namespace EMStudio
 
             groupItem->setExpanded(true);
             const EMotionFX::ValueParameterVector childValueParameters = groupParameter->GetChildValueParameters();
-            tempString = AZStd::string::format("%d Parameters", childValueParameters.size());
+            tempString = AZStd::string::format("%zu Parameters", childValueParameters.size());
             groupItem->setToolTip(1, tempString.c_str());
             mTreeWidget->addTopLevelItem(groupItem);
 

@@ -26,7 +26,9 @@ struct IInput;
 struct ITimer;
 struct IEntitySystem;
 struct I3DEngine;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct ICVar;
 
 #undef GetUserName
@@ -398,6 +400,7 @@ public:
     //! <description>Sets the volumetric fog modifiers.</description>
     int SetVolumetricFogModifiers(IFunctionHandler* pH);
 
+#if ENABLE_CRY_PHYSICS
     //! <code>System.SetWind( vWind )</code>
     //!     <param name="vWind">Wind direction.</param>
     //! <description>Sets the wind direction.</description>
@@ -406,6 +409,7 @@ public:
     //! <code>System.SetWind()</code>
     //! <description>Gets the wind direction.</description>
     int GetWind(IFunctionHandler* pH);
+#endif // ENABLE_CRY_PHYSICS
 
     //! <code>System.GetSurfaceTypeIdByName( surfaceName )</code>
     //!     <param name="surfaceName">Surface name.</param>

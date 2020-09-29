@@ -417,6 +417,7 @@ Vec3 CPuppet::UpdateTargetTracking(CWeakRef<CAIObject> refTarget, const Vec3& vT
 
         AABB aabbCur, aabbNext;
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pPhys = 0;
 
         // Marcio: pLiveTarget will be a different object if it was retrieved by association.
@@ -438,6 +439,7 @@ Vec3 CPuppet::UpdateTargetTracking(CWeakRef<CAIObject> refTarget, const Vec3& vT
         }
 
         if (!pPhys)
+#endif // ENABLE_CRY_PHYSICS
         {
             AIWarning("CPuppet::UpdateTargetTracking() Target %s does not have physics!", pTarget->GetName());
             AIAssert(0);
@@ -446,11 +448,13 @@ Vec3 CPuppet::UpdateTargetTracking(CWeakRef<CAIObject> refTarget, const Vec3& vT
             return vTargetPos;
         }
 
+#if ENABLE_CRY_PHYSICS
         pe_status_pos statusPos;
         pPhys->GetStatus(&statusPos);
         aabbCur.Reset();
         aabbCur.Add(statusPos.BBox[0] + statusPos.pos);
         aabbCur.Add(statusPos.BBox[1] + statusPos.pos);
+#endif // ENABLE_CRY_PHYSICS
         aabbNext = aabbCur;
         aabbCur.min.z -= 0.05f; // This adjustment moves any ground effect slightly in front of the target.
         aabbNext.min.z -= 0.05f;

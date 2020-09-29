@@ -16,6 +16,8 @@
 
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "IIndexedMesh.h"
 #include "IPhysics.h"
 #include "IDeferredCollisionEvent.h"
@@ -95,5 +97,6 @@ public:
     static int g_nPieces;
     static float g_maxPieceLifetime;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_BREAKABLEPLANE_H

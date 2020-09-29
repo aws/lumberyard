@@ -520,7 +520,7 @@ namespace AZ
             return false;
         }
 
-        void StorageDriveWin::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void StorageDriveWin::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             if (m_cachesInitialized)
             {

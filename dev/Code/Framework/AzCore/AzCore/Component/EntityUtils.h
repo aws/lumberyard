@@ -196,6 +196,13 @@ namespace AZ
             return entity ? FindDerivedComponents<ComponentType>(entity) : AZStd::vector<ComponentType*>();
         }
 
+        using EnumerateBaseRecursiveVisitor = AZStd::function< bool(const SerializeContext::ClassData*, const Uuid&)>;
+        bool EnumerateBaseRecursive(SerializeContext* context, const EnumerateBaseRecursiveVisitor& baseClassVisitor, const TypeId& typeToExamine);
+
+        //! Performs a recursive search of all classes declared in the serialize hierarchy of typeToExamine
+        //! and returns true it has been marked as deprecated, false otherwise.
+        bool CheckIfClassIsDeprecated(SerializeContext* context, const TypeId& typeToExamine);
+
         //! performs a recursive search of all classes declared in the serialize hierarchy of typeToExamine
         //! and returns true if it finds typeToFind, false otherwise.
         bool CheckDeclaresSerializeBaseClass(SerializeContext* context, const TypeId& typeToFind, const TypeId& typeToExamine);

@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 #include "ImGuiManager.h"
 #include <AzCore/PlatformIncl.h>
+#include <OtherActiveImGuiBus.h>
 #include <platform_impl.h>
 
 #ifdef IMGUI_ENABLED
@@ -172,6 +173,10 @@ void ImGuiManager::Initialize()
     // Create ImGui Context
     ImGui::CreateContext();
 
+#if defined(OTHER_ACTIVE)
+    ImGui::OtherActiveImGuiNotificationBus::Broadcast(&ImGui::OtherActiveImGuiNotificationBus::Events::OnImGuiContextCreated);
+#endif
+
     // Set config file
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = "imgui.ini";
@@ -226,6 +231,7 @@ void ImGuiManager::Initialize()
     io.DisplaySize.x = static_cast<float>(renderer->GetWidth());
     io.DisplaySize.y = static_cast<float>(renderer->GetHeight());
 
+#if !defined(OTHER_ACTIVE)
     // Create Font Texture
     unsigned char* pixels;
     int width, height;
@@ -238,6 +244,7 @@ void ImGuiManager::Initialize()
         m_fontTextureId = fontTexture->GetTextureID();
         io.Fonts->SetTexID(static_cast<void*>(fontTexture));
     }
+#endif
 
     // Broadcast ImGui Ready to Listeners
     ImGuiUpdateListenerBus::Broadcast(&IImGuiUpdateListener::OnImGuiInitialize);
@@ -271,6 +278,7 @@ void ImGuiManager::Shutdown()
     InputChannelEventListener::Disconnect();
     InputTextEventListener::Disconnect();
 
+#if !defined(OTHER_ACTIVE)
     // Destroy ImGui Font Texture
     if (gEnv->pRenderer && m_fontTextureId > 0)
     {
@@ -278,6 +286,7 @@ void ImGuiManager::Shutdown()
         io.Fonts->SetTexID(nullptr);
         gEnv->pRenderer->RemoveTexture(m_fontTextureId);
     }
+#endif
 
     // Finally, destroy the ImGui Context.
     ImGui::DestroyContext();
@@ -348,23 +357,27 @@ void ImGuiManager::OnPreRender()
     }
 
     // Show or hide the virtual keyboard as necessary
-    bool hasTextEntryStarted = false;
-    AzFramework::InputTextEntryRequestBus::EventResult(hasTextEntryStarted,
-                                                       AzFramework::InputDeviceVirtualKeyboard::Id,
-                                                       &AzFramework::InputTextEntryRequests::HasTextEntryStarted);
-    if (io.WantTextInput && !hasTextEntryStarted)
+    bool resetEnterDown = false;
+    if (io.WantTextInput && !m_keyboardShown)
     {
         AzFramework::InputTextEntryRequests::VirtualKeyboardOptions options;
         AzFramework::InputTextEntryRequestBus::Broadcast(&AzFramework::InputTextEntryRequests::TextEntryStart, options);
+        m_keyboardShown = true;
     }
-    else if (!io.WantTextInput && hasTextEntryStarted)
+    else if (!io.WantTextInput && m_keyboardShown)
     {
         AzFramework::InputTextEntryRequestBus::Broadcast(&AzFramework::InputTextEntryRequests::TextEntryStop);
-        io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter)] = false;
+        io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter)] = true;
+        m_keyboardShown = false;
+        resetEnterDown = true;
     }
 
     // Start New Frame
     ImGui::NewFrame();
+    if (!io.WantTextInput && resetEnterDown)
+    {
+        io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter)] = false;
+    }
 }
 
 void ImGuiManager::OnPostUpdate(float fDeltaTime)
@@ -390,6 +403,17 @@ void ImGuiManager::OnPostUpdate(float fDeltaTime)
     IRenderer* renderer = gEnv->pRenderer;
     TransformationMatrices backupSceneMatrices;
 
+    AZ::u32 backBufferWidth = 0;
+    AZ::u32 backBufferHeight = 0;
+
+#if defined(OTHER_ACTIVE)
+    OtherActiveImGuiRequestBus::BroadcastResult(backBufferWidth, &OtherActiveImGuiRequestBus::Events::GetBackBufferWidth);
+    OtherActiveImGuiRequestBus::BroadcastResult(backBufferHeight, &OtherActiveImGuiRequestBus::Events::GetBackBufferHeight);
+#else
+    backBufferWidth = renderer->GetBackBufferWidth();
+    backBufferHeight = renderer->GetBackBufferHeight();
+#endif
+
     // Find ImGui Render Resolution. 
     int renderRes[2];
     switch (m_resolutionMode)
@@ -403,15 +427,15 @@ void ImGuiManager::OnPostUpdate(float fDeltaTime)
             break;
 
         case ImGuiResolutionMode::MatchRenderResolution:
-            renderRes[0] = renderer->GetBackBufferWidth();
-            renderRes[1] = renderer->GetBackBufferHeight();
+            renderRes[0] = backBufferWidth;
+            renderRes[1] = backBufferHeight;
             break;
 
         case ImGuiResolutionMode::MatchToMaxRenderResolution:
-            if (renderer->GetBackBufferWidth() <= static_cast<int>(m_renderResolution.x))
+            if (backBufferWidth <= static_cast<int>(m_renderResolution.x))
             {
-                renderRes[0] = renderer->GetBackBufferWidth();
-                renderRes[1] = renderer->GetBackBufferHeight();
+                renderRes[0] = backBufferWidth;
+                renderRes[1] = backBufferHeight;
             }
             else
             {
@@ -421,25 +445,29 @@ void ImGuiManager::OnPostUpdate(float fDeltaTime)
             break;
     }
 
-    ImVec2 scaleRects(  static_cast<float>(renderer->GetBackBufferWidth()) / static_cast<float>(renderRes[0]),
-                        static_cast<float>(renderer->GetBackBufferHeight() / static_cast<float>(renderRes[1])));
+    ImVec2 scaleRects(  static_cast<float>(backBufferWidth) / static_cast<float>(renderRes[0]),
+                        static_cast<float>(backBufferHeight / static_cast<float>(renderRes[1])));
 
     // Save off the last render resolution for input
     m_lastRenderResolution.x = static_cast<float>(renderRes[0]);
     m_lastRenderResolution.y = static_cast<float>(renderRes[1]);
 
+#if !defined(OTHER_ACTIVE)
     // Configure Renderer for 2D ImGui Rendering
     renderer->SetCullMode(R_CULL_DISABLE);
     renderer->Set2DMode(renderRes[0], renderRes[1], backupSceneMatrices);
     renderer->SetColorOp(eCO_REPLACE, eCO_MODULATE, eCA_Diffuse, DEF_TEXARG0);
     renderer->SetSrgbWrite(false);
     renderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
+#endif
 
     // Render!
     RenderImGuiBuffers(scaleRects);
 
+#if !defined(OTHER_ACTIVE)
     // Cleanup Renderer Settings
     renderer->Unset2DMode(backupSceneMatrices);
+#endif
 
     // Clear the simulated backspace key
     if (m_simulateBackspaceKeyPressed)
@@ -744,6 +772,9 @@ void ImGuiManager::RenderImGuiBuffers(const ImVec2& scaleRects)
     //@rky: Only render the main ImGui if it is visible
     if (m_clientMenuBarState != DisplayState::Hidden)
     {
+#if defined(OTHER_ACTIVE)
+        OtherActiveImGuiRequestBus::Broadcast(&OtherActiveImGuiRequestBus::Events::RenderImGuiBuffers, drawData, scaleRects);
+#else
         IRenderer* renderer = gEnv->pRenderer;
 
         // Expand vertex buffer if necessary
@@ -826,6 +857,7 @@ void ImGuiManager::RenderImGuiBuffers(const ImVec2& scaleRects)
 
         // Reset scissor usage on renderer
         renderer->SetScissor();
+#endif
     }
 }
 

@@ -28,7 +28,7 @@ namespace EditorPythonBindings
         , protected AzToolsFramework::EditorPythonRunnerRequestBus::Handler
     {
     public:
-        AZ_COMPONENT(PythonSystemComponent, "{97F88B0F-CF68-4623-9541-549E59EE5F0C}");
+        AZ_COMPONENT(PythonSystemComponent, "{97F88B0F-CF68-4623-9541-549E59EE5F0C}", AZ::Component);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -51,7 +51,7 @@ namespace EditorPythonBindings
 
         ////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorPythonRunnerRequestBus::Handler interface implementation
-        void ExecuteByString(AZStd::string_view script) override;
+        void ExecuteByString(AZStd::string_view script, bool printResult) override;
         void ExecuteByFilename(AZStd::string_view filename) override;
         void ExecuteByFilenameWithArgs(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args) override;
         void ExecuteByFilenameAsTest(AZStd::string_view filename, const AZStd::vector<AZStd::string_view>& args) override;
@@ -77,7 +77,7 @@ namespace EditorPythonBindings
         // bootstrap logic and data
         using PythonPathStack = AZStd::vector<AZStd::string>;
         void DiscoverPythonPaths(PythonPathStack& pythonPathStack);
-        void ExecuteBoostrapScripts(const PythonPathStack& pythonPathStack);
+        void ExecuteBootstrapScripts(const PythonPathStack& pythonPathStack);
 
         // starts the Python interpreter 
         bool StartPythonInterpreter(const PythonPathStack& pythonPathStack);

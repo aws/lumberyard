@@ -16,6 +16,7 @@
 #include "AreaSolid.h"
 #include <IRenderAuxGeom.h>
 #include "Components/IComponentAudio.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 namespace
 {
@@ -3345,8 +3346,19 @@ void CArea::Draw(size_t const idx)
                 v1.y = m_vpSegments[sIdx]->bbox.max.y;
             }
 
-            v0.z = max(m_VOrigin, p3DEngine->GetTerrainElevation(v0.x, v0.y) + deltaZ);
-            v1.z = max(m_VOrigin, p3DEngine->GetTerrainElevation(v1.x, v1.y) + deltaZ);
+            float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , v0.x, v0.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+            v0.z = max(m_VOrigin, elevation + deltaZ);
+
+            elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , v1.x, v1.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+            v1.z = max(m_VOrigin, elevation + deltaZ);
 
             // draw lower line segments
             pRC->DrawLine(v0, color, v1, color);

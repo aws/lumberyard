@@ -11,6 +11,7 @@ fuel[\\/].*
 glew32.*
 icu.*
 imguilib.*
+ispc_texcomp\.dll
 lib(eay32|EGL|fbxsdk|GLES|GLESv2|ogg|opus|vo).*
 libSce.*
 mcpp0.*

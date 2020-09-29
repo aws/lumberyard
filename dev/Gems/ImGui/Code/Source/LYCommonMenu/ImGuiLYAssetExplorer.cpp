@@ -437,7 +437,7 @@ namespace ImGui
                     // If we should draw the mesh, draw the tree node!
                     if (displayMesh)
                     {
-                        if (ImGui::TreeNode(AZStd::string::format("Mesh (%03d) - %s", meshInstanceList.m_instanceOptionMap.size(), meshInstanceList.m_meshPath.c_str()).c_str()))
+                        if (ImGui::TreeNode(AZStd::string::format("Mesh (%03zu) - %s", meshInstanceList.m_instanceOptionMap.size(), meshInstanceList.m_meshPath.c_str()).c_str()))
                         {
                             ImGuiUpdate_DrawMeshMouseOver(meshInstanceList);
 
@@ -869,7 +869,7 @@ namespace ImGui
                 // Draw Misc Lod Info
                 if (m_inWorld_label_miscLod)
                 {
-                    entityLabel.append(AZStd::string::format("\nFirst Lod Distance: %d\f", renderNode->GetFirstLodDistance()));
+                    entityLabel.append(AZStd::string::format("\nFirst Lod Distance: %f", renderNode->GetFirstLodDistance()));
                     float distances[SMeshLodInfo::s_nMaxLodCount];
                     renderNode->GetLodDistances(gEnv->p3DEngine->GetFrameLodInfo(), distances);
                     for (int i = 0; i < SMeshLodInfo::s_nMaxLodCount; i++)

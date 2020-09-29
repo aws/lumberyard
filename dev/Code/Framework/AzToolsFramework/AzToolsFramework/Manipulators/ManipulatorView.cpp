@@ -222,6 +222,11 @@ namespace AzToolsFramework
 
     ManipulatorView::ManipulatorView() = default;
 
+    ManipulatorView::ManipulatorView(const bool screenSizeFixed)
+        : m_screenSizeFixed(screenSizeFixed)
+    {
+    }
+
     ManipulatorView::~ManipulatorView()
     {
         Invalidate(m_managerId);
@@ -237,16 +242,29 @@ namespace AzToolsFramework
 
     void ManipulatorView::RefreshBound(
         const ManipulatorManagerId managerId, const ManipulatorId manipulatorId,
-        const Picking::BoundRequestShapeBase& shape)
+        const Picking::BoundRequestShapeBase& bound)
     {
         ManipulatorManagerRequestBus::EventResult(
             m_boundId, managerId, &ManipulatorManagerRequestBus::Events::UpdateBound,
-            manipulatorId, m_boundId, shape);
+            manipulatorId, m_boundId, bound);
 
         // store the manager id if we know the bound has been registered
         m_managerId = managerId;
         // the bound will now be up to date
         m_boundDirty = false;
+    }
+
+    void ManipulatorView::RefreshBoundInternal(
+        const ManipulatorManagerId managerId, const ManipulatorId manipulatorId,
+        const Picking::BoundRequestShapeBase& bound)
+    {
+        // update the manipulator's bounds if necessary
+        // if m_screenSizeFixed is true, any camera movement can potentially change the size
+        // of the manipulator, so we update bounds every frame regardless until we have performance issue
+        if (m_screenSizeFixed || m_boundDirty)
+        {
+            RefreshBound(managerId, manipulatorId, bound);
+        }
     }
 
     void ManipulatorView::Invalidate(const ManipulatorManagerId managerId)
@@ -263,7 +281,7 @@ namespace AzToolsFramework
     AZ::VectorFloat ManipulatorView::ManipulatorViewScaleMultiplier(
         const AZ::Vector3& worldPosition, const AzFramework::CameraState& cameraState) const
     {
-        return m_screenSizeFixed
+        return ScreenSizeFixed()
             ? CalculateScreenToWorldMultiplier(worldPosition, cameraState)
             : AZ::VectorFloat::CreateOne();
     }
@@ -311,13 +329,7 @@ namespace AzToolsFramework
             debugDisplay.CullOn();
         }
 
-        // update the manipulator's bounds if necessary
-        // if m_screenSizeFixed is true, any camera movement can potentially change the size
-        // of the manipulator, so we update bounds every frame regardless until we have performance issue
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, quadBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, quadBound);
     }
 
     void ManipulatorViewQuadBillboard::Draw(
@@ -336,10 +348,7 @@ namespace AzToolsFramework
             quadBound.m_corner1, quadBound.m_corner2,
             quadBound.m_corner3, quadBound.m_corner4);
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, quadBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, quadBound);
     }
 
     void ManipulatorViewLine::Draw(
@@ -364,10 +373,7 @@ namespace AzToolsFramework
         debugDisplay.SetLineWidth(defaultLineWidth(manipulatorState.m_mouseOver));
         debugDisplay.DrawLine(lineBound.m_start, lineBound.m_end);
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, lineBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, lineBound);
     }
 
     void ManipulatorViewLineSelect::Draw(
@@ -382,11 +388,6 @@ namespace AzToolsFramework
         const Picking::BoundShapeLineSegment lineBound =
             CalculateLineBound(m_localStart, m_localEnd, manipulatorState.m_worldFromLocal, m_width * viewScale);
 
-        if (m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, lineBound);
-        }
-
         if (manipulatorState.m_mouseOver)
         {
             const LineSegmentSelectionManipulator::Action action = CalculateManipulationDataAction(
@@ -400,6 +401,8 @@ namespace AzToolsFramework
                 worldLineHitPosition, ManipulatorViewScaleMultiplier(worldLineHitPosition, cameraState)
                     * g_defaultManipulatorSphereRadius, false);
         }
+
+        RefreshBoundInternal(managerId, manipulatorId, lineBound);
     }
 
     void ManipulatorViewCone::Draw(
@@ -440,10 +443,7 @@ namespace AzToolsFramework
         debugDisplay.DrawCone(coneBound.m_base, coneBound.m_axis, coneBound.m_radius, coneBound.m_height, false);
         debugDisplay.SetFillMode(prevFillMode);
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, coneBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, coneBound);
     }
 
     void ManipulatorViewBox::Draw(
@@ -475,10 +475,7 @@ namespace AzToolsFramework
         debugDisplay.DrawSolidOBB(boxBound.m_center,
             xAxis, yAxis, zAxis, boxBound.m_halfExtents);
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, boxBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, boxBound);
     }
 
     void ManipulatorViewCylinder::Draw(
@@ -504,10 +501,7 @@ namespace AzToolsFramework
         debugDisplay.DrawSolidCylinder(cylinderBound.m_base + cylinderBound.m_axis * cylinderBound.m_height * 0.5f,
             cylinderBound.m_axis, cylinderBound.m_radius, cylinderBound.m_height, false);
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, cylinderBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, cylinderBound);
     }
 
     void ManipulatorViewSphere::Draw(
@@ -534,10 +528,7 @@ namespace AzToolsFramework
             debugDisplay.DepthTestOff();
         }
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, sphereBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, sphereBound);
     }
 
     void ManipulatorViewCircle::Draw(
@@ -570,10 +561,7 @@ namespace AzToolsFramework
         debugDisplay.PopMatrix();
         debugDisplay.CullOff();
 
-        if (m_screenSizeFixed || m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, torusBound);
-        }
+        RefreshBoundInternal(managerId, manipulatorId, torusBound);
     }
 
     void DrawHalfDottedCircle(
@@ -602,11 +590,6 @@ namespace AzToolsFramework
         const Picking::BoundShapeSpline splineBound =
             CalculateSplineBound(m_spline, manipulatorState.m_worldFromLocal, m_width * viewScale);
 
-        if (m_boundDirty)
-        {
-            RefreshBound(managerId, manipulatorId, splineBound);
-        }
-
         if (manipulatorState.m_mouseOver)
         {
             const SplineSelectionManipulator::Action action = CalculateManipulationDataAction(
@@ -621,6 +604,8 @@ namespace AzToolsFramework
                 worldSplineHitPosition, ManipulatorViewScaleMultiplier(worldSplineHitPosition, cameraState)
                     * g_defaultManipulatorSphereRadius, false);
         }
+
+        RefreshBoundInternal(managerId, manipulatorId, splineBound);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

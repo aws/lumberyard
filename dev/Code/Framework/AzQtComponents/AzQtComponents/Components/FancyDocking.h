@@ -97,8 +97,10 @@ namespace AzQtComponents
         private Q_SLOTS:
         void onTabIndexPressed(int index);
         void onTabCountChanged(int count);
+        void onCurrentTabIndexChanged(int index);
         void onTabWidgetInserted(QWidget* widget);
         void onUndockTab(int index);
+        void onTabBarDoubleClicked();
         void onUndockDockWidget();
         void updateDockingGeometry();
         void onDropZoneHoverFadeInUpdate();
@@ -153,6 +155,12 @@ namespace AzQtComponents
         void undockDockWidget(QDockWidget* dockWidget, QDockWidget* placeholder = nullptr);
         void SetDragOrDockOnFloatingMainWindow(QMainWindow* mainWindow);
         int NumVisibleDockWidgets(QMainWindow* mainWindow);
+        void QueueUpdateFloatingWindowTitle(QMainWindow* mainWindow);
+
+        void AddTitleBarButtons(AzQtComponents::DockTabWidget* tabWidget, AzQtComponents::TitleBar* titleBar);
+        void RemoveTitleBarButtons(AzQtComponents::DockTabWidget* tabWidget, AzQtComponents::TitleBar* titleBar = nullptr);
+        void UpdateTitleBars(QMainWindow* mainWindow);
+        bool IsFloatingDockWidget(QDockWidget* dockWidget);
 
         void StartDropZone(QWidget* dropZoneContainer, const QPoint& globalPos);
         void StopDropZone();
@@ -169,7 +177,8 @@ namespace AzQtComponents
 
         int titleBarOffset(const QDockWidget* dockWidget) const;
 
-        QPoint multiscreenMapFromGlobal(const QPoint& point);
+        QPoint multiscreenMapFromGlobal(const QPoint& point) const;
+        bool WidgetContainsPoint(QWidget* widget, const QPoint& pos) const;
 
         QMainWindow* m_mainWindow;
         QDesktopWidget* m_desktopWidget;

@@ -43,6 +43,7 @@ namespace EMotionFX
     namespace Integration
     {
         class EMotionFXEventHandler;
+        class CryRenderBackend;
 
         class SystemComponent
             : public AZ::Component

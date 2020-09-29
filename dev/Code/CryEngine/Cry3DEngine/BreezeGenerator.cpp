@@ -12,6 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "BreezeGenerator.h"
 
 #include <AzFramework/Terrain/TerrainDataRequestBus.h>
@@ -185,3 +188,5 @@ void CBreezeGenerator::Update()
         }
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

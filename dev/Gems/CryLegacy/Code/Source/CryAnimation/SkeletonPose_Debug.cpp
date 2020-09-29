@@ -336,7 +336,9 @@ size_t CSkeletonPose::SizeOfThis()
 
     TotalSize += m_arrCGAJoints.get_alloc_size();
 
+#if ENABLE_CRY_PHYSICS
     TotalSize += m_physics.SizeOfThis();
+#endif
 
     return TotalSize;
 }
@@ -354,5 +356,7 @@ void CSkeletonPose::GetMemoryUsage(ICrySizer* pSizer) const
     pSizer->AddObject(m_PoseBlenderAim);
     pSizer->AddObject(m_PoseBlenderLook);
 
+#if ENABLE_CRY_PHYSICS
     pSizer->AddObject(m_physics);
+#endif
 }

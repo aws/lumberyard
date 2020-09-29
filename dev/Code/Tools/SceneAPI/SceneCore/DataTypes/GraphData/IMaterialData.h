@@ -40,8 +40,9 @@ namespace AZ
                     Normal
                 };
 
-                virtual ~IMaterialData() override = default;
+                ~IMaterialData() override = default;
 
+                virtual const AZStd::string& GetMaterialName() const = 0;
                 virtual const AZStd::string& GetTexture(TextureMapType mapType) const = 0;
                 virtual bool IsNoDraw() const = 0;
 

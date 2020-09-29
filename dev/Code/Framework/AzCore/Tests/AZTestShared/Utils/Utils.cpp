@@ -69,6 +69,7 @@ namespace AZ
             AZ_UNUSED(line);
             AZ_UNUSED(func);
             AZ_UNUSED(message);
+            ++m_assertCount;
             return true;
         }
 
@@ -85,6 +86,7 @@ namespace AZ
             AZ_UNUSED(line);
             AZ_UNUSED(func);
             AZ_UNUSED(message);
+            ++m_errorCount;
             return true;
         }
 
@@ -109,6 +111,7 @@ namespace AZ
             AZ_UNUSED(line);
             AZ_UNUSED(func);
             AZ_UNUSED(message);
+            ++m_warningCount;
             return true;
         }
 

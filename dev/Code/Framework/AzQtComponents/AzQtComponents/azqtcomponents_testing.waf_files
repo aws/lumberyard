@@ -6,7 +6,13 @@
             "Tests/AzQtComponentTests.cpp",
             "Tests/ColorControllerTests.cpp",
             "Tests/FloatToStringConversionTests.cpp",
-            "Tests/HexParsingTests.cpp"
+            "Tests/HexParsingTests.cpp",
+            "Tests/StyleSheetCacheTests.cpp",
+            "Tests/qrc1.qrc",
+            "Tests/qrc2.qrc",
+            "Tests/qrc1/sheet1.qss",
+            "Tests/qrc1/sheet2.qss",
+            "Tests/qrc2/sheet1.qss"
         ]
     }
 }

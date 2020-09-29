@@ -79,27 +79,26 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////
     namespace ATLInternalControlIDs
     {
-        static TAudioControlID LoseFocusTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::LoseFocusName));
-        static TAudioControlID GetFocusTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::GetFocusName));
-        static TAudioControlID MuteAllTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::MuteAllName));
-        static TAudioControlID UnmuteAllTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::UnmuteAllName));
-        static TAudioControlID DoNothingTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::DoNothingName));
-        static TAudioControlID ObjectSpeedRtpcID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::ObjectSpeedName));
+        static constexpr TAudioControlID LoseFocusTriggerID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::LoseFocusName));
+        static constexpr TAudioControlID GetFocusTriggerID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::GetFocusName));
+        static constexpr TAudioControlID MuteAllTriggerID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::MuteAllName));
+        static constexpr TAudioControlID UnmuteAllTriggerID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::UnmuteAllName));
+        static constexpr TAudioControlID DoNothingTriggerID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::DoNothingName));
+        static constexpr TAudioControlID ObjectSpeedRtpcID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::ObjectSpeedName));
 
-        static TAudioControlID ObstructionOcclusionCalcSwitchID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::ObstructionOcclusionCalcName));
-        static TAudioSwitchStateID OOCStateIDs[eAOOCT_COUNT] =
+        static constexpr TAudioControlID ObstructionOcclusionCalcSwitchID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::ObstructionOcclusionCalcName));
+        static constexpr TAudioSwitchStateID OOCStateIDs[] =
         {
-            static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OOCIgnoreStateName)),
-            static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OOCSingleRayStateName)),
-            static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OOCMultiRayStateName)),
-            INVALID_AUDIO_SWITCH_STATE_ID,
+            static_cast<TAudioSwitchStateID>(AZ_CRC_CE(ATLInternalControlNames::OOCIgnoreStateName)),
+            static_cast<TAudioSwitchStateID>(AZ_CRC_CE(ATLInternalControlNames::OOCSingleRayStateName)),
+            static_cast<TAudioSwitchStateID>(AZ_CRC_CE(ATLInternalControlNames::OOCMultiRayStateName))
         };
 
-        static TAudioControlID ObjectVelocityTrackingSwitchID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::ObjectVelocityTrackingName));
-        static TAudioSwitchStateID OVTOnStateID = static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OVTOnStateName));
-        static TAudioSwitchStateID OVTOffStateID = static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OVTOffStateName));
+        static constexpr TAudioControlID ObjectVelocityTrackingSwitchID = static_cast<TAudioControlID>(AZ_CRC_CE(ATLInternalControlNames::ObjectVelocityTrackingName));
+        static constexpr TAudioSwitchStateID OVTOnStateID = static_cast<TAudioSwitchStateID>(AZ_CRC_CE(ATLInternalControlNames::OVTOnStateName));
+        static constexpr TAudioSwitchStateID OVTOffStateID = static_cast<TAudioSwitchStateID>(AZ_CRC_CE(ATLInternalControlNames::OVTOffStateName));
 
-        static TAudioPreloadRequestID GlobalPreloadRequestID = static_cast<TAudioPreloadRequestID>(AZ_CRC(ATLInternalControlNames::GlobalPreloadRequestName));
+        static constexpr TAudioPreloadRequestID GlobalPreloadRequestID = static_cast<TAudioPreloadRequestID>(AZ_CRC_CE(ATLInternalControlNames::GlobalPreloadRequestName));
 
     } // namespace ATLInternalControlIDs
 

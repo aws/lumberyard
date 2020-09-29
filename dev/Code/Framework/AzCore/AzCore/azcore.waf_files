@@ -14,14 +14,17 @@
             "AzCoreModule.h",
             "AzCoreModule.cpp"
         ],
-        "Asset":
+        "Asset": 
         [
             "Asset/AssetCommon.cpp",
             "Asset/AssetCommon.h",
+            "Asset/AssetContainer.cpp",
+            "Asset/AssetContainer.h",
             "Asset/AssetJsonSerializer.cpp",
             "Asset/AssetJsonSerializer.h",
             "Asset/AssetManager.cpp",
             "Asset/AssetManager.h",
+            "Asset/AssetManager_private.h",
             "Asset/AssetManagerBus.h",
             "Asset/AssetManagerComponent.cpp",
             "Asset/AssetManagerComponent.h",
@@ -441,9 +444,10 @@
             "Outcome/Internal/OutcomeStorage.h",
             "Outcome/Internal/OutcomeImpl.h"
         ],
-        "Preprocessor":
+        "Preprocessor": 
         [
             "Preprocessor/CodeGen.h",
+            "Preprocessor/Enum.h",
             "Preprocessor/Sequences.h"
         ],
         "RTTI":

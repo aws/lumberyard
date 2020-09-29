@@ -21,7 +21,11 @@
 //=========================================================================
 // RegisterConvertors
 //=========================================================================
-extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* pRC)
+
+extern "C"
+AZ_DEPRECATED(,
+    "RegisterConvertors is deprecated and will be removed in a future release")
+DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler * pRC)
 {
     // LUMBERYARD_DEPRECATED(LY-111690)
 }

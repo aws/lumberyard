@@ -13,8 +13,7 @@
 #pragma once
 
 #include <AzCore/RTTI/RTTI.h>
-
-#include <Source/XmlFormattedAssetBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/XmlFormattedAssetBuilderWorker.h>
 
 namespace CopyDependencyBuilder
 {

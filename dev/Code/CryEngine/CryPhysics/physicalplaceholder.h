@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_PHYSICALPLACEHOLDER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #pragma pack(push)
 #pragma pack(1)
 // Packed and aligned structure ensures bitfield packs properly across
@@ -120,3 +122,5 @@ public:
 };
 
 #endif // CRYINCLUDE_CRYPHYSICS_PHYSICALPLACEHOLDER_H
+
+#endif // ENABLE_CRY_PHYSICS

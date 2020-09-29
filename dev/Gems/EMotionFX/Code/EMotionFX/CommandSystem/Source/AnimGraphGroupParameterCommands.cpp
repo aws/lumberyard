@@ -541,7 +541,7 @@ namespace CommandSystem
         MCore::CommandGroup commandGroup;
         const AZStd::string updateWindow = parameters.GetValue("updateUI", this);
 
-        command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\" -index %d -parent \"%s\" -updateUI %s",
+        command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\" -index %zu -parent \"%s\" -updateUI %s",
                 animGraph->GetID(),
                 mOldName.c_str(),
                 mOldIndex,

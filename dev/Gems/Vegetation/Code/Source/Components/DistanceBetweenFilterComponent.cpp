@@ -175,12 +175,16 @@ namespace Vegetation
         {
             if (m_configuration.m_allowOverrides && instanceData.m_descriptorPtr->m_radiusOverrideEnabled)
             {
+                // We're using per-descriptor overrides, so we call GetRadius(), which will either return the
+                // instance radius or the hard-coded radius, depending on this descriptor's override settings.
                 return AZ::Aabb::CreateCenterRadius(instanceData.m_position, instanceData.m_descriptorPtr->GetRadius() * instanceData.m_scale);
             }
 
             if (m_configuration.m_boundMode == BoundMode::MeshRadius)
             {
-                return AZ::Aabb::CreateCenterRadius(instanceData.m_position, instanceData.m_descriptorPtr->m_meshRadius * instanceData.m_scale);
+                // Since we aren't using per-descriptor overrides, we call GetInstanceRadius() to always get the instance radius
+                // regardless of the descriptor's radius settings.
+                return AZ::Aabb::CreateCenterRadius(instanceData.m_position, instanceData.m_descriptorPtr->GetInstanceRadius() * instanceData.m_scale);
             }
         }
 
@@ -211,7 +215,7 @@ namespace Vegetation
 
             if (intersects)
             {
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("DistanceBetweenFilter")));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("DistanceBetweenFilter")));
             }
         }
 

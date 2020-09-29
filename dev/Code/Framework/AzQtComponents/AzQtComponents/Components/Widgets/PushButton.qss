@@ -46,7 +46,7 @@ QPushButton:pressed
 
 QPushButton:disabled
 {
-    color: #AAAAAA;
+    color: #BBBBBB;
 }
 
 QPushButton:flat

@@ -431,6 +431,7 @@ namespace LmbrCentral
                     // unable to turn on light. This happens when trying to turn on a light was was previously not visible. Use UpdateRenderLight to
                     // update the light's visibility (by recreating it) to turn it on.
                     m_light.UpdateRenderLight(m_configuration);
+                    TurnOnLight();
                 }
             }
             else

@@ -17,10 +17,19 @@
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+
+#include <AzQtComponents/Components/Titlebar.h>
+#include <AzQtComponents/Components/DockBarButton.h>
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
+
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionSetsWindow/MotionSetsWindowPlugin.h>
 
 #include <QString>
 #include <QToolBar>
 #include <QTreeView>
+#include <QTreeWidget>
 
 QT_FORWARD_DECLARE_CLASS(QWidget)
 QT_FORWARD_DECLARE_CLASS(QAction)
@@ -34,6 +43,8 @@ namespace AzToolsFramework
 
 namespace EMotionFX
 {
+    class SimulatedObjectColliderWidget;
+
     class MakeQtApplicationBase
     {
     public:
@@ -74,15 +85,40 @@ namespace EMotionFX
         static QAction* GetNamedAction(const QWidget* widget, const QString& actionName);
         static bool GetActionFromContextMenu(QAction*& action, const QMenu* contextMenu, const QString& actionName);
 
+        static void ExecuteCommands(std::vector<std::string> commands);
+
+        void CreateStyleManager();
+
         void CloseAllPlugins();
+        void DeselectAllAnimGraphNodes();
         void CloseAllNotificationWindows();
+        static void BringUpContextMenu(QObject* widget, const QPoint& pos, const QPoint& globalPos);
         void BringUpContextMenu(const QTreeView* treeview, const QRect& rect);
+        void BringUpContextMenu(const QTreeWidget* treeWidget, const QRect& rect);
         void SelectIndexes(const QModelIndexList& indexList, QTreeView* treeView, const int start, const int end);
+
         AzToolsFramework::PropertyRowWidget* GetNamedPropertyRowWidgetFromReflectedPropertyEditor(AzToolsFramework::ReflectedPropertyEditor* rpe, const QString& name);
+        void TriggerContextMenuAction(QWidget* widget, const QString& actionname);
+        void TriggerModalContextMenuAction(QWidget* widget, const QString& actionname);
+
+        AzQtComponents::WindowDecorationWrapper* GetDecorationWrapperForMainWindow() const;
+        AzQtComponents::TitleBar* GetTitleBarForMainWindow() const;
+        AzQtComponents::DockBarButton* GetDockBarButtonForMainWindow(AzQtComponents::DockBarButton::WindowDecorationButton buttonType) const;
+
+        void SelectActor(Actor* actor);
+        void SelectActorInstance(ActorInstance* actorInstance);
+
+        static EMStudio::MotionSetsWindowPlugin* GetMotionSetsWindowPlugin();
+        static EMStudio::MotionSetManagementWindow* GetMotionSetManagementWindow();
+
+        void CreateAnimGraphParameter(const AZStd::string& name);
+
+        SimulatedObjectColliderWidget* GetSimulatedObjectColliderWidget() const;
     protected:
         void SetupQtAndFixtureBase();
         void SetupPluginWindows();
 
         QApplication* m_uiApp = nullptr;
+        EMStudio::AnimGraphPlugin* m_animGraphPlugin = nullptr;
     };
 } // end namespace EMotionFX

@@ -561,8 +561,6 @@ public:
     void OffsetPosition(const Vec3& delta);
     void Render(const struct SRendParams& EntDrawParams, const SRenderingPassInfo& passInfo);
 
-    struct IPhysicalEntity* GetPhysics() const { return NULL; };
-    void SetPhysics(IPhysicalEntity* pPhys) { };
     void SetMaterial(_smart_ptr<IMaterial> pMat) override {}
     _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL);
     _smart_ptr<IMaterial> GetMaterialOverride(){return NULL; }
@@ -615,8 +613,6 @@ public:
     void OffsetPosition(const Vec3& delta) {}
     void Render(const struct SRendParams& EntDrawParams, const SRenderingPassInfo& passInfo) {__debugbreak(); }
 
-    struct IPhysicalEntity* GetPhysics() const { __debugbreak(); return NULL; };
-    void SetPhysics(IPhysicalEntity* pPhys) {__debugbreak(); };
     void SetMaterial(_smart_ptr<IMaterial> pMat) override {__debugbreak(); }
     _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL){ __debugbreak(); return NULL; }
     _smart_ptr<IMaterial> GetMaterialOverride(){ __debugbreak(); return NULL; }

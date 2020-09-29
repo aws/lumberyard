@@ -11,10 +11,12 @@
 */
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/NameConstants.h>
 #include <AzFramework/Physics/ClassConverters.h>
 #include <AzFramework/Physics/SystemBus.h>
 
@@ -69,13 +71,14 @@ namespace Physics
         if (serializeContext)
         {
             serializeContext->Class<MaterialConfiguration>()
-                ->Version(2, &VersionConverter)
+                ->Version(3, &VersionConverter)
                 ->Field("SurfaceType", &MaterialConfiguration::m_surfaceType)
                 ->Field("DynamicFriction", &MaterialConfiguration::m_dynamicFriction)
                 ->Field("StaticFriction", &MaterialConfiguration::m_staticFriction)
                 ->Field("Restitution", &MaterialConfiguration::m_restitution)
                 ->Field("FrictionCombine", &MaterialConfiguration::m_frictionCombine)
                 ->Field("RestitutionCombine", &MaterialConfiguration::m_restitutionCombine)
+                ->Field("Density", &MaterialConfiguration::m_density)
                 ->Field("DebugColor", &MaterialConfiguration::m_debugColor)
                 ;
 
@@ -107,6 +110,11 @@ namespace Physics
                         ->EnumAttribute(Material::CombineMode::Minimum, "Minimum")
                         ->EnumAttribute(Material::CombineMode::Maximum, "Maximum")
                         ->EnumAttribute(Material::CombineMode::Multiply, "Multiply")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &MaterialConfiguration::m_density, "Density", "Material density")
+                        ->Attribute(AZ::Edit::Attributes::Min, MaterialConfiguration::MinDensityLimit)
+                        ->Attribute(AZ::Edit::Attributes::Max, MaterialConfiguration::MaxDensityLimit)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, " " + Physics::NameConstants::GetDensityUnit())
+
                     ->DataElement(AZ::Edit::UIHandlers::Color, &MaterialConfiguration::m_debugColor, "Debug Color", "Debug color to use for this material")
                     ;
             }
@@ -347,6 +355,13 @@ namespace Physics
         return id;
     }
 
+    MaterialId MaterialId::FromUUID(const AZ::Uuid& uuid)
+    {
+        MaterialId id;
+        id.m_id = uuid;
+        return id;
+    }
+
     //////////////////////////////////////////////////////////////////////////
 
     void MaterialSelection::Reflect(AZ::ReflectContext* context)
@@ -553,9 +568,7 @@ namespace Physics
     {
         if (IsDefaultMaterialLibraryAsset())
         {
-            const AZ::Data::Asset<Physics::MaterialLibraryAsset>& defaultMaterialLibrary
-                = GetDefaultMaterialLibrary();
-
+            const AZ::Data::Asset<Physics::MaterialLibraryAsset>& defaultMaterialLibrary = GetDefaultMaterialLibrary();
             return defaultMaterialLibrary;
         }
 
@@ -570,8 +583,11 @@ namespace Physics
     const AZ::Data::Asset<Physics::MaterialLibraryAsset>& MaterialSelection::GetDefaultMaterialLibrary()
     {
         const AZ::Data::Asset<Physics::MaterialLibraryAsset>* defaultIdPtr = &s_invalidMaterialLibrary;
-        Physics::SystemRequestBus::BroadcastResult(defaultIdPtr, &Physics::SystemRequests::GetDefaultMaterialLibraryAssetPtr);
-        AZ_Assert(defaultIdPtr, "Default material library pointer must be valid");
+        if (auto* physSystem = AZ::Interface<Physics::System>::Get())
+        {
+            defaultIdPtr = physSystem->GetDefaultMaterialLibraryAssetPtr();
+        }
+        AZ_Assert(defaultIdPtr, "Default material library pointer must be non-null");
         return *defaultIdPtr;
     }
 

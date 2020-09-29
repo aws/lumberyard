@@ -35,11 +35,6 @@ namespace PhysX
 
         static void Reflect(AZ::ReflectContext* context);
 
-        bool ShowInertia() const
-        {
-            return !m_computeInertiaTensor;
-        }
-
         // Debug properties.
         bool m_centerOfMassDebugDraw = false;
     };

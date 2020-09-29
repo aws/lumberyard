@@ -78,6 +78,8 @@ namespace PhysX
         dynamicFriction = AZ::GetMax(0.0f, dynamicFriction);
         restitution = AZ::GetClamp(restitution, 0.0f, 1.0f);
 
+        SetDensity(materialConfiguration.m_density);
+
         auto pxMaterial = PxGetPhysics().createMaterial(staticFriction, dynamicFriction, restitution);
 
         auto materialDestructor = [](auto material)
@@ -110,6 +112,8 @@ namespace PhysX
 
         SetFrictionCombineMode(configuration.m_frictionCombine);
         SetRestitutionCombineMode(configuration.m_restitutionCombine);
+
+        SetDensity(configuration.m_density);
 
         m_surfaceType = AZ::Crc32(configuration.m_surfaceType.c_str());
         m_surfaceString = configuration.m_surfaceType;
@@ -212,6 +216,22 @@ namespace PhysX
         }
     }
 
+    float Material::GetDensity() const
+    {
+        return m_density;
+    }
+
+    void Material::SetDensity(const float density)
+    {
+        using Physics::MaterialConfiguration;
+
+        AZ_Warning("PhysX Material", density >= MaterialConfiguration::MinDensityLimit && density <= MaterialConfiguration::MaxDensityLimit,
+            "Density %f for material %s should be in range [%f, %f].", density, m_surfaceString.c_str(),
+            MaterialConfiguration::MinDensityLimit, MaterialConfiguration::MaxDensityLimit);
+        m_density = AZ::GetClamp(density,
+            MaterialConfiguration::MinDensityLimit, MaterialConfiguration::MaxDensityLimit);
+    }
+
     AZ::u32 Material::GetCryEngineSurfaceId() const
     {
         return m_cryEngineSurfaceId;
@@ -275,6 +295,21 @@ namespace PhysX
                 outMaterials.push_back(GetDefaultMaterial());
             }
         }
+    }
+
+    AZStd::weak_ptr<Physics::Material> MaterialsManager::GetMaterialByName(const AZStd::string& name)
+    {
+        auto it = AZStd::find_if(m_materialsFromAssets.begin(), m_materialsFromAssets.end(),
+            [&name](const AZStd::pair<AZ::Uuid, AZStd::shared_ptr<Material>>& elem)
+        {
+            return elem.second.get()->GetSurfaceTypeName() == name;
+        });
+
+        if (it != m_materialsFromAssets.end())
+        {
+            return it->second;
+        }
+        return {};
     }
 
     AZ::u32 MaterialsManager::GetFirstSelectedMaterialIndex(const Physics::MaterialSelection& materialSelection)

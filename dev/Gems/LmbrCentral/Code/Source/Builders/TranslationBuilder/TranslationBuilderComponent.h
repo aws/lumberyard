@@ -24,12 +24,10 @@ namespace TranslationBuilder
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler // this will deliver you the "shut down!" message on another thread.
     {
     public:
-        TranslationBuilderWorker();
-        ~TranslationBuilderWorker();
 
         //! Asset Builder Callback Functions
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response);
-        void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
+        void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const;
 
         //////////////////////////////////////////////////////////////////////////
         //!AssetBuilderSDK::AssetBuilderCommandBus interface
@@ -55,16 +53,11 @@ namespace TranslationBuilder
         AZ_COMPONENT(BuilderPluginComponent, "{61560B47-39B8-43DD-ACBE-956ECFF9C414}")
         static void Reflect(AZ::ReflectContext* context);
 
-        BuilderPluginComponent(); // avoid initialization here.
-
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component
-        virtual void Init(); // create objects, allocate memory and initialize yourself without reaching out to the outside world
-        virtual void Activate(); // reach out to the outside world and connect up to what you need to, register things, etc.
-        virtual void Deactivate(); // unregister things, disconnect from the outside world
+        void Activate() override; // reach out to the outside world and connect up to what you need to, register things, etc.
+        void Deactivate() override; // unregister things, disconnect from the outside world
         //////////////////////////////////////////////////////////////////////////
-
-        virtual ~BuilderPluginComponent(); // free memory an uninitialize yourself.
 
     private:
         TranslationBuilderWorker m_builderWorker;

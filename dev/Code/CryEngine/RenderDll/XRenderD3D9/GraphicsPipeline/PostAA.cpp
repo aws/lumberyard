@@ -759,9 +759,17 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
 
     GetUtils().ShEndPass();
     
-    //UI should be coming in next. Since its in a gem we cant set loadactions in lyshine.
-    //Hence we are setting it here. Stencil is setup as DoCare for load and store as it gets cleared at the start of UI rendering
-    rd->FX_SetDepthDontCareActions(0, true, true); //We set this again here as all the actions get reset to conservative settings (do care) after the draw call
+    // UI or auxgeom (now debug draw gem) should be coming in next. Since its in a gem we cant set loadactions in lyshine or draw debug.
+    // Hence we are setting it here. Stencil is setup as DoCare for load and store as it gets cleared at the start of UI rendering.
+    if (isAuxGeomEnabled)
+    {
+        rd->FX_SetDepthDontCareActions(0, false, true); // Aux geom requires loading the depth, but not storing it
+    }
+    else
+    {
+        rd->FX_SetDepthDontCareActions(0, true, true); // We set this again here as all the actions get reset to conservative settings (do care) after the draw call
+    }
+    
     rd->FX_SetStencilDontCareActions(0, false, false);
 }
 

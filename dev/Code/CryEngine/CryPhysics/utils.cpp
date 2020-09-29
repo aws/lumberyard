@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 
@@ -2083,3 +2085,4 @@ void SOcclusionCubeMap::DebugDrawToScreen(float xpos, float ypos, float imageWid
 #endif  // _RELEASE
 */
 
+#endif // ENABLE_CRY_PHYSICS

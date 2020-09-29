@@ -20,7 +20,7 @@ using namespace AZ;
 
 namespace UnitTest
 {
-    // Defined in script->cpp
+    // Implemented in script.cpp
     void AZTestAssert(bool check);
 
     void AZTestAssertFloatClose(float v1, float v2)

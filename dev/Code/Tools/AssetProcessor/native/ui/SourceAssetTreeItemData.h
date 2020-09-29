@@ -41,4 +41,5 @@ namespace AssetProcessor
         AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry m_scanFolderInfo;
         bool m_hasDatabaseInfo = false;
     };
+    AZ::Outcome<QString> GetAbsolutePathToSource(const AssetTreeItem& source);
 } // AssetProcessor

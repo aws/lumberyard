@@ -14,7 +14,6 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <AzQtComponents/Components/Widgets/DragAndDrop.h>
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Widgets/CheckBox.h>
@@ -65,20 +64,16 @@
 #include <QLineEdit>
 #include <QHeaderView>
 #include <QComboBox>
-AZ_PUSH_DISABLE_WARNING(4251 4244 4800, "-Wunknown-warning-option") // 4251: 'QTextStream::d_ptr': class 'QScopedPointer<QTextStreamPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTextStream'
-                                                               // 4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QDebug>
-AZ_POP_DISABLE_WARNING
 #include <QKeyEvent>
 #include <QTextEdit>
 #include <QKeySequenceEdit>
 #include <QListView>
 #include <QTableView>
-
-AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'QCss::Declaration::d': class 'QExplicitlySharedDataPointer<QCss::Declaration::DeclarationData>' needs to have dll-interface to be used by clients of struct 'QCss::Declaration'
 #include <QtWidgets/private/qstylesheetstyle_p.h>
 #include <QtGui/private/qscreen_p.h>
-AZ_POP_DISABLE_WARNING
+
+#include <QtWidgets/private/qstylehelper_p.h>
 
 #include <limits>
 
@@ -908,6 +903,17 @@ namespace AzQtComponents
                 }
             }
             break;
+            case SE_TreeViewDisclosureItem:
+            {
+                auto treeView = static_cast<const QTreeView*>(widget);
+                if (TreeView::isBranchLinesEnabled(treeView) && qobject_cast<BranchDelegate*>(treeView->itemDelegate()))
+                {
+                    auto copy = *option;
+                    copy.rect.adjust(treeView->indentation(), 0, treeView->indentation(), 0);
+                    return QProxyStyle::subElementRect(element, &copy, widget);
+                }
+            }
+            break;
         }
 
         return QProxyStyle::subElementRect(element, option, widget);
@@ -988,7 +994,7 @@ namespace AzQtComponents
             }
 
             case QStyle::PM_DockWidgetSeparatorExtent:
-                return 2;
+                return 3;
                 break;
 
             case QStyle::PM_SliderThickness:
@@ -1067,10 +1073,6 @@ namespace AzQtComponents
                 }
                 break;
             }
-
-            case QStyle::PM_ScrollView_ScrollBarOverlap:
-                return 16;
-                break;
 
             case QStyle::PM_MenuButtonIndicator:
             {

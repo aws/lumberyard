@@ -619,7 +619,7 @@ namespace AssetProcessor
                     AZStd::hash_combine<AZStd::string>(currentHash, element);
                 }
 
-                builderDesc.m_analysisFingerprint = AZStd::string::format("0x%llX", currentHash);
+                builderDesc.m_analysisFingerprint = AZStd::string::format("0x%zX", currentHash);
 
                 // the "rc" builder can only emit dependencies if it has createjobs in a recognizer.
                 if (!supportsCreateJobs)

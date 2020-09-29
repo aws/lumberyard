@@ -682,9 +682,14 @@ namespace AzToolsFramework
         
         ReflectedPropertyEditorUpdateSentinel updateSentinel(m_editor, &m_editor->m_updateDepth);
 
-        bool isParentAssociativeContainer = IsParentAssociativeContainer(node);
-        bool isAssociativeContainerPair = isParentAssociativeContainer ? IsPairContainer(node) : false;
-
+        const bool isParentAssociativeContainer = IsParentAssociativeContainer(node);
+        // Map our pair editor into a label (key) -> value entry
+        // Only do this if we're a valid part of an associative container and the InstanceDataHierarchy figured out how to rasterize
+        // our key entry into a string (which we can check by looking up whether it stored ElementInstances)
+        const bool isAssociativeContainerPair = isParentAssociativeContainer &&
+            IsPairContainer(node) &&
+            node->FindAttribute(AZ::Edit::InternalAttributes::ElementInstances);
+        
         PropertyRowWidget* pWidget = nullptr;
         if (visibility == NodeDisplayVisibility::Visible || visibility == NodeDisplayVisibility::HideChildren)
         {
@@ -1610,6 +1615,7 @@ namespace AzToolsFramework
         while (pContainerNode && !pContainerNode->GetClassMetadata()->m_container)
         {
             pContainerNode = pContainerNode->GetParent();
+            node = node->GetParent();
         }
 
         // Check if the container is actually a PairContainer that belongs to an associative container
@@ -1643,8 +1649,14 @@ namespace AzToolsFramework
         for (AZStd::size_t instanceIndex = 0; instanceIndex < pContainerNode->GetNumInstances(); ++instanceIndex)
         {
             void* elementPtr = nodeInstancesOut[instanceIndex];
-            container->RemoveElement(pContainerNode->GetInstance(instanceIndex), elementPtr, pContainerNode->GetSerializeContext());
+            [[maybe_unused]] bool removed =
+                container->RemoveElement(pContainerNode->GetInstance(instanceIndex), elementPtr, pContainerNode->GetSerializeContext());
+            AZ_Assert(removed, "Failed to remove element \"%s\" of type %s from instance %d.",
+                node->GetElementMetadata() ? node->GetElementMetadata()->m_name : node->GetClassMetadata()->m_name,
+                node->GetClassMetadata()->m_typeId.ToString<AZStd::string>().c_str(),
+                instanceIndex);
         }
+
 
         if (m_impl->m_ptrNotify)
         {
@@ -1789,11 +1801,17 @@ namespace AzToolsFramework
                 syntheticData.m_name = message;
                 syntheticData.m_description = "";
 
+                bool hasProvidedFirstDynamicEditData = false;
                 promptEditor->SetDynamicEditDataProvider([&](const void* objectPtr, const AZ::SerializeContext::ClassData* classData) -> const AZ::Edit::ElementData*
                     {
                         Q_UNUSED(classData)
-                        if (objectPtr == value)
+
+                        // Ensure we only override the first instance of dynamic element data
+                        // This prevents overriding the name field for compound editors like AZ::EntityId where the address
+                        // of the first field may be equivalent to the object address
+                        if (objectPtr == value && !hasProvidedFirstDynamicEditData)
                         {
+                            hasProvidedFirstDynamicEditData = true;
                             return &syntheticData;
                         }
                         return nullptr;
@@ -1801,12 +1819,23 @@ namespace AzToolsFramework
             }
 
             // Prompt using a new ReflectedPropertyEditor to query the value
-            promptEditor->Setup(m_impl->m_context, nullptr, true);
+            promptEditor->Setup(m_impl->m_context, nullptr, false);
             promptEditor->SetVisibilityCallback([](InstanceDataNode* node, NodeDisplayVisibility& visibility, bool& checkChildVisibility)
                 {
-                    // Show all non-root nodes, we don't care that we're editing e.g. a pair of values, or a keyed value wrapper
-                    visibility = node->GetParent() ? NodeDisplayVisibility::Visible : NodeDisplayVisibility::NotVisible;
-                    checkChildVisibility = true;
+                    // An associative container key will be (at the time of writing) either:
+                    // - An RValueToLValueWrapper, a reflected class with one entry to expose the key type (most common)
+                    // - A container class, like AZStd::pair (uncommon but possible with the highly permissive reflection system)
+                    // In both of these cases, we're not interested in the top-level node (either the wrapper class or a container)
+                    // and so we should hide the top level node and show its direct descendants (i.e. nodes with no grandparent)
+                    if (!node->GetParent())
+                    {
+                        visibility = NodeDisplayVisibility::NotVisible;
+                        checkChildVisibility = true;
+                    }
+                    else if (!node->GetParent()->GetParent())
+                    {
+                        visibility = NodeDisplayVisibility::Visible;
+                    }
                 });
             promptEditor->AddInstance(value, typeId);
             promptEditor->InvalidateAll();
@@ -1844,8 +1873,10 @@ namespace AzToolsFramework
             return dialogFlag ? true : false;
         };
 
+        AZStd::shared_ptr<void> keyToAdd(nullptr);
+
         bool createdElement = pContainerNode->CreateContainerElement(CreateContainerElementSelectClassCallback,
-            [this, pContainerNode, promptForValue](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
+            [this, pContainerNode, promptForValue, &keyToAdd](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
         {
             bool handled = false;
 
@@ -1856,18 +1887,26 @@ namespace AzToolsFramework
                 auto associativeInterface = container ? container->GetAssociativeContainerInterface() : nullptr;
                 if (associativeInterface)
                 {
-                    auto attribute = classElement->FindAttribute(AZ_CRC("KeyType", 0x15bc5303));
-                    auto attributeData = azrtti_cast<AZ::AttributeData<AZ::TypeId>*>(attribute);
-                    AZ_Assert(attributeData, "KeyType must be defined for keyed containers");
-                    auto keyId = attributeData->Get(dataPtr);
-                    auto keyPtr = associativeInterface->CreateKey();
-                    ReflectedPropertyEditorHelper::HandleDefaultNumericValues(keyPtr.get(), keyId);
+                    if (keyToAdd)
+                    {
+                        handled = true;
+                    }
+                    else
+                    {
+                        auto attribute = classElement->FindAttribute(AZ_CRC("KeyType", 0x15bc5303));
+                        auto attributeData = azrtti_cast<AZ::AttributeData<AZ::TypeId>*>(attribute);
+                        AZ_Assert(attributeData, "KeyType must be defined for keyed containers");
+                        auto keyId = attributeData->Get(dataPtr);
 
-                    handled = promptForValue(keyPtr.get(), keyId, "New Key");
+                        keyToAdd = associativeInterface->CreateKey();
+                        ReflectedPropertyEditorHelper::HandleDefaultNumericValues(keyToAdd.get(), keyId);
+
+                        handled = promptForValue(keyToAdd.get(), keyId, "New Key");
+                    }
 
                     if (handled)
                     {
-                        associativeInterface->SetElementKey(dataPtr, keyPtr.get());
+                        associativeInterface->SetElementKey(dataPtr, keyToAdd.get());
                     }
                 }
                 else
@@ -2039,7 +2078,7 @@ namespace AzToolsFramework
         return nullptr;
     }
 
-    void ReflectedPropertyEditor::ExpandAll()
+    void ReflectedPropertyEditor::ExpandAll(bool saveExpansionState)
     {
         const auto widgetsToExpand = m_impl->getTopLevelWidgets();
         for (auto widget : widgetsToExpand)
@@ -2050,9 +2089,14 @@ namespace AzToolsFramework
         }
 
         m_impl->AdjustLabelWidth();
+
+        if (saveExpansionState)
+        {
+            m_impl->SaveExpansion();
+        }
     }
 
-    void ReflectedPropertyEditor::CollapseAll()
+    void ReflectedPropertyEditor::CollapseAll(bool saveExpansionState)
     {
         const auto widgetsToCollapse = m_impl->getTopLevelWidgets();
         for (auto widget : widgetsToCollapse)
@@ -2064,6 +2108,11 @@ namespace AzToolsFramework
                 widget->SetExpanded(false);
                 m_impl->ExpandChildren(widget, false, false);
             }
+        }
+
+        if (saveExpansionState)
+        {
+            m_impl->SaveExpansion();
         }
     }
 

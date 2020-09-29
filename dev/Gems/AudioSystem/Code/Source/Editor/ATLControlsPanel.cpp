@@ -13,7 +13,7 @@
 
 #include <ATLControlsPanel.h>
 
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AzQtComponents/Components/Style.h>
 
 #include <ACEEnums.h>
@@ -44,32 +44,43 @@
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    class QFilterButton
-        : public QPushButton
+
+    QFilterButton::QFilterButton(const QIcon& icon, const QString& text, QWidget* parent)
+        : QWidget(parent)
     {
-    public:
-        QFilterButton(const QIcon& icon, const QString& text, QWidget* parent = 0)
-            : QPushButton(icon, text, parent)
-        {
-            setStyleSheet("text-align: left;");
-            setCheckable(true);
-            setFlat(true);
-        }
-    protected:
-        void paintEvent(QPaintEvent* event)
-        {
-            QPushButton::paintEvent(event);
-            if (isChecked())
-            {
-                QPainter painter(this);
-                const int heightPadding = 4;
-                const int widthPadding = 3;
-                painter.setPen(QPen(QApplication::palette().color(QPalette::Highlight), 2));
-                painter.drawLine(QPoint(event->rect().width() - widthPadding, heightPadding),
-                    QPoint(event->rect().width() - widthPadding, event->rect().height() - heightPadding));
-            }
-        }
-    };
+        const QMargins margin = QMargins(5, 2, 5, 2);
+        // Add class to fix hover state styling for WidgetAction
+        AzQtComponents::Style::addClass(this, "WidgetAction");
+
+        QHBoxLayout* layout = new QHBoxLayout(this);
+        layout->setSpacing(1);
+        QPixmap* checkMark = new QPixmap(":/stylesheet/img/UI20/checkmark-menu.svg");
+        checkMark->scaledToWidth(16);
+        m_checkIcon.setPixmap(*checkMark);
+        QSizePolicy sp = m_checkIcon.sizePolicy();
+        sp.setRetainSizeWhenHidden(true);
+        m_checkIcon.setSizePolicy(sp);
+        layout->addWidget(&m_checkIcon);
+        m_filterIcon.setPixmap(icon.pixmap(16, 16));
+        layout->addWidget(&m_filterIcon);
+        layout->addWidget(&m_actionText);
+        layout->addStretch();
+        layout->setContentsMargins(margin);
+        setLayout(layout);
+    }
+
+    void QFilterButton::mousePressEvent(QMouseEvent* event)
+    {
+        QWidget::mousePressEvent(event);
+        SetChecked(!m_checked);
+        emit clicked(m_checked);
+    }
+
+    void QFilterButton::SetChecked(bool checked)
+    {
+        m_checked = checked;
+        m_checkIcon.setVisible(checked);
+    }
 
     //-------------------------------------------------------------------------------------------//
     CATLControlsPanel::CATLControlsPanel(CATLControlsModel* pATLModel, QATLTreeModel* pATLControlsModel)
@@ -96,57 +107,41 @@ namespace AudioControls
         // *********************************
 
         // ************ Filtering ************
-        const QMargins margin = QMargins(5, 2, 5, 2);
         for (int i = 0; i < eACET_NUM_TYPES; ++i)
         {
-            EACEControlType type = (EACEControlType)i;
+            EACEControlType type = ( EACEControlType )i;
             QWidgetAction* pWidgetAction = new QWidgetAction(this);
-            QWidget* pWidget = new QWidget(this);
-            QHBoxLayout* pLayout = new QHBoxLayout(pWidget);
 
-            // Add class to fix hover state styling for WidgetAction
-            AzQtComponents::Style::addClass(pWidget, "WidgetAction");
-
-            pLayout->setSpacing(1);
             m_pControlTypeFilterButtons[type] = new QFilterButton(GetControlTypeIcon(type), "", this);
-            m_pControlTypeFilterButtons[type]->setChecked(true);
-            pLayout->addWidget(m_pControlTypeFilterButtons[type]);
-            pLayout->setContentsMargins(margin);
-            pWidget->setLayout(pLayout);
-            pWidgetAction->setDefaultWidget(pWidget);
-            m_filterMenu.addAction(pWidgetAction);
+            m_pControlTypeFilterButtons[type]->SetChecked(true);
+            if (type != eACET_SWITCH_STATE)
+            {
+                pWidgetAction->setDefaultWidget(m_pControlTypeFilterButtons[type]);
+                m_filterMenu.addAction(pWidgetAction);
+            }
         }
 
         QWidgetAction* pWidgetAction = new QWidgetAction(this);
-        QWidget* pWidget = new QWidget(this);
-        QHBoxLayout* pLayout = new QHBoxLayout(pWidget);
 
-        // Add class to fix hover state styling for WidgetAction
-        AzQtComponents::Style::addClass(pWidget, "WidgetAction");
-
-        pLayout->setSpacing(1);
-        m_unassignedFilterButton = new QFilterButton(QIcon(":/AudioControlsEditor/Icons/Config_Red_Icon.png"), "", this);
-        m_unassignedFilterButton->setChecked(m_showUnassignedControls);
-        m_unassignedFilterButton->setText("Unassigned");
-        pLayout->addWidget(m_unassignedFilterButton);
-        pLayout->setContentsMargins(margin);
-        pWidget->setLayout(pLayout);
-        pWidgetAction->setDefaultWidget(pWidget);
+        m_unassignedFilterButton = new QFilterButton(QIcon(":/Editor/Icons/Unassigned.svg"), "", this);
+        m_unassignedFilterButton->SetText("Unassigned");
+        m_unassignedFilterButton->SetChecked(m_showUnassignedControls);
+        pWidgetAction->setDefaultWidget(m_unassignedFilterButton);
         m_filterMenu.addAction(pWidgetAction);
 
         m_pFiltersButton->setMenu(&m_filterMenu);
-        m_pControlTypeFilterButtons[eACET_TRIGGER]->setText("Triggers");
-        m_pControlTypeFilterButtons[eACET_RTPC]->setText("RTPCs");
-        m_pControlTypeFilterButtons[eACET_SWITCH]->setText("Switches");
-        m_pControlTypeFilterButtons[eACET_ENVIRONMENT]->setText("Environments");
-        m_pControlTypeFilterButtons[eACET_PRELOAD]->setText("Preloads");
+        m_pControlTypeFilterButtons[eACET_TRIGGER]->SetText("Triggers");
+        m_pControlTypeFilterButtons[eACET_RTPC]->SetText("RTPCs");
+        m_pControlTypeFilterButtons[eACET_SWITCH]->SetText("Switches");
+        m_pControlTypeFilterButtons[eACET_SWITCH_STATE]->hide();
+        m_pControlTypeFilterButtons[eACET_ENVIRONMENT]->SetText("Environments");
+        m_pControlTypeFilterButtons[eACET_PRELOAD]->SetText("Preloads");
         connect(m_pControlTypeFilterButtons[eACET_TRIGGER], SIGNAL(clicked(bool)), this, SLOT(ShowTriggers(bool)));
         connect(m_pControlTypeFilterButtons[eACET_RTPC], SIGNAL(clicked(bool)), this, SLOT(ShowRTPCs(bool)));
         connect(m_pControlTypeFilterButtons[eACET_SWITCH], SIGNAL(clicked(bool)), this, SLOT(ShowSwitches(bool)));
         connect(m_pControlTypeFilterButtons[eACET_ENVIRONMENT], SIGNAL(clicked(bool)), this, SLOT(ShowEnvironments(bool)));
         connect(m_pControlTypeFilterButtons[eACET_PRELOAD], SIGNAL(clicked(bool)), this, SLOT(ShowPreloads(bool)));
         connect(m_unassignedFilterButton, SIGNAL(clicked(bool)), this, SLOT(ShowUnassigned(bool)));
-        m_pControlTypeFilterButtons[eACET_SWITCH_STATE]->setHidden(true);
         connect(m_pTextFilter, SIGNAL(textChanged(QString)), this, SLOT(SetFilterString(QString)));
         //  *********************************
 
@@ -345,12 +340,12 @@ namespace AudioControls
                 EACEControlType controlType = (EACEControlType)i;
                 m_visibleTypes[controlType] = !bShow;
                 ControlTypeFiltered(controlType, !bShow);
-                m_pControlTypeFilterButtons[controlType]->setChecked(!bShow);
+                m_pControlTypeFilterButtons[controlType]->SetChecked(!bShow);
             }
         }
         m_visibleTypes[type] = bShow;
         ControlTypeFiltered(type, bShow);
-        m_pControlTypeFilterButtons[type]->setChecked(bShow);
+        m_pControlTypeFilterButtons[type]->SetChecked(bShow);
         ApplyFilter();
     }
 
@@ -646,7 +641,7 @@ namespace AudioControls
         if (!m_visibleTypes[controlType])
         {
             m_visibleTypes[controlType] = true;
-            m_pControlTypeFilterButtons[controlType]->setChecked(true);
+            m_pControlTypeFilterButtons[controlType]->SetChecked(true);
         }
         m_pTextFilter->setText("");
         ApplyFilter();
@@ -791,7 +786,7 @@ namespace AudioControls
                                 AZStd::string sControlName(roleDataMap[Qt::DisplayRole].toString().toUtf8().data());
                                 if (eControlType  == eACET_PRELOAD)
                                 {
-                                    AzFramework::StringFunc::Path::StripExtension(sControlName);
+                                    AZ::StringFunc::Path::StripExtension(sControlName);
                                 }
                                 CATLControl* pTargetControl = m_pTreeModel->CreateControl(eControlType, sControlName, pATLParent);
                                 if (pTargetControl)
@@ -799,20 +794,10 @@ namespace AudioControls
                                     TConnectionPtr pAudioConnection = pAudioSystemEditorImpl->CreateConnectionToControl(pTargetControl->GetType(), pAudioSystemControl);
                                     if (pAudioConnection)
                                     {
-                                        if (eControlType == eACET_PRELOAD)
-                                        {
-                                            // Try finding the "default" group, otherwise set the 0th group...
-                                            int defaultGroupIndex = m_pATLModel->GetConnectionGroupId("default");
-                                            if (defaultGroupIndex < 0)
-                                            {
-                                                defaultGroupIndex = 0;
-                                            }
-                                            pAudioConnection->SetGroup(m_pATLModel->GetConnectionGroupAt(defaultGroupIndex));
-                                        }
                                         pTargetControl->AddConnection(pAudioConnection);
                                     }
-                                    pTargetItem = m_pTreeModel->AddControl(pTargetControl, pTargetItem);
 
+                                    pTargetItem = m_pTreeModel->AddControl(pTargetControl, pTargetItem);
                                     SelectItem(pTargetItem);
                                 }
                             }
@@ -837,7 +822,7 @@ namespace AudioControls
         {
             EACEControlType controlType = (EACEControlType)i;
             m_visibleTypes[controlType] = true;
-            m_pControlTypeFilterButtons[controlType]->setChecked(true);
+            m_pControlTypeFilterButtons[controlType]->SetChecked(true);
         }
         m_pTextFilter->setText("");
         ApplyFilter();

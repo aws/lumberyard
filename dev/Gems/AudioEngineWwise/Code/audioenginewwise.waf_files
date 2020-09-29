@@ -11,6 +11,7 @@
             "Source/Engine/AudioSystemImpl_wwise.h",
             "Source/Engine/AudioSystemImplCVars.h",
             "Source/Engine/Common_wwise.h",
+            "Source/Engine/Config_wwise.h",
             "Source/Engine/FileIOHandler_wwise.h",
             "Source/Engine/PluginRegistration_wwise.h"
         ],
@@ -19,6 +20,7 @@
             "Source/Engine/AudioSystemImpl_wwise.cpp",
             "Source/Engine/AudioSystemImplCVars.cpp",
             "Source/Engine/Common_wwise.cpp",
+            "Source/Engine/Config_wwise.cpp",
             "Source/Engine/FileIOHandler_wwise.cpp"
         ],
         "Source/Engine/AudioInput": [

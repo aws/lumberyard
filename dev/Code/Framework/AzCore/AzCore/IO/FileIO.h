@@ -268,7 +268,7 @@ namespace AZ
             AZ_CLASS_ALLOCATOR(FileIOStream, SystemAllocator, 0);
             FileIOStream();
             FileIOStream(HandleType fileHandle, AZ::IO::OpenMode mode, bool ownsHandle);
-            FileIOStream(const char* path, AZ::IO::OpenMode mode);
+            FileIOStream(const char* path, AZ::IO::OpenMode mode, bool errorOnFailure = false);
             ~FileIOStream() override;
 
             bool Open(const char* path, AZ::IO::OpenMode mode);
@@ -290,9 +290,10 @@ namespace AZ
 
         private:
             HandleType m_handle;    ///< Open file handle.
-            bool m_ownsHandle;      ///< Set if the FileIOStream instance created the handle (and should therefore auto-close it on destruction).
             AZStd::string m_filename; ///< Stores filename for reopen support
             OpenMode m_mode; ///< Stores open mode flag to be used when reopening
+            bool m_ownsHandle;      ///< Set if the FileIOStream instance created the handle (and should therefore auto-close it on destruction).
+            bool m_errorOnFailure{ false };
         };
     } // namespace IO
 } // namespace AZ

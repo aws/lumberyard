@@ -316,15 +316,6 @@ void CLightningRenderNode::Render(const struct SRendParams& rParam, const SRende
     m_triStrip.Draw(rParam, passInfo, pRenderer, pRenderObject, m_pMaterial, distanceToCamera);
 }
 
-IPhysicalEntity* CLightningRenderNode::GetPhysics() const
-{
-    return 0;
-}
-
-void CLightningRenderNode::SetPhysics(IPhysicalEntity*)
-{
-}
-
 void CLightningRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 {
     m_pMaterial = pMat;

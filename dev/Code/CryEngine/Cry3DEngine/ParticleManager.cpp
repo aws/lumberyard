@@ -117,6 +117,7 @@ CParticleManager::CParticleManager(bool bEnable)
     g_pParticleTimer = gEnv->pTimer;
     m_pLastDefaultParams = &GetDefaultParams();
 
+#if PARTICLES_USE_CRY_PHYSICS
     if (GetPhysicalWorld())
     {
         GetPhysicalWorld()->AddEventClient(EventPhysAreaChange::id, &StaticOnPhysAreaChange, 0);
@@ -125,6 +126,7 @@ CParticleManager::CParticleManager(bool bEnable)
         REGISTER_COMMAND("e_ParticleListEffects", &CmdParticleListEffects, 0, "Writes all effects used and counts to log");
         REGISTER_COMMAND("e_ParticleMemory", &CmdParticleMemory, 0, "Displays current particle memory usage");
     }
+#endif // PARTICLES_USE_CRY_PHYSICS
 
     // reset tracking data for dumping vertex/index pool usage
 #if defined(PARTICLE_COLLECT_VERT_IND_POOL_USAGE)
@@ -148,7 +150,9 @@ CParticleManager::~CParticleManager()
     {
         Get3DEngine()->GetIVisAreaManager()->RemoveListener(this);
     }
+#if PARTICLES_USE_CRY_PHYSICS
     GetPhysicalWorld()->RemoveEventClient(EventPhysAreaChange::id, &StaticOnPhysAreaChange, 0);
+#endif // PARTICLES_USE_CRY_PHYSICS
 
     m_bEnabled = false;  // Do this before Reset so it doesn't try to create new shaders before destructing.
     Reset(false);

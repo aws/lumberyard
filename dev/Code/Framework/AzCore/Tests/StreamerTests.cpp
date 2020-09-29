@@ -252,7 +252,7 @@ namespace AZ
 
                 for (size_t i = 0; i < m_testFileCount; ++i)
                 {
-                    AZStd::string name = AZStd::string::format("TestFile_%i.test", i);
+                    AZStd::string name = AZStd::string::format("TestFile_%zu.test", i);
                     FileIOBase::GetInstance()->DestroyPath(name.c_str());
                 }
 
@@ -281,7 +281,7 @@ namespace AZ
             //! @return The name of the test file.
             AZStd::unique_ptr<MockFileBase> CreateTestFile(size_t fileSize, PadArchive padding)
             {
-                AZStd::string name = AZStd::string::format("TestFile_%i.test", m_testFileCount++);
+                AZStd::string name = AZStd::string::format("TestFile_%zu.test", m_testFileCount++);
                 AZStd::unique_ptr<MockFileBase> result = CreateMockFile();
                 result->CreateTestFile(name, fileSize, padding);
                 if (CreateDedicatedCache())
@@ -448,7 +448,7 @@ namespace AZ
         }
 
         // Queue a request on a suspended device, then resume to see if gets picked up again.
-        TYPED_TEST_P(StreamerTest, SuspendProcesisng_SuspendWhileFileIsQueued_FileIsNotReadUntilProcessingIsRestarted)
+        TYPED_TEST_P(StreamerTest, SuspendProcessing_SuspendWhileFileIsQueued_FileIsNotReadUntilProcessingIsRestarted)
         {
             static const size_t fileSize = 50 * 1024; // 50kb file.
             auto testFile = this->CreateTestFile(fileSize, PadArchive::No);
@@ -481,11 +481,65 @@ namespace AZ
             EXPECT_EQ(Request::StateType::ST_COMPLETED, request->m_state);
         }
 
+        // Collect statistics and destroy caches on separate threads to verify thread safety
+        TYPED_TEST_P(StreamerTest, CollectStatistics_DedicatedCacheDestroyed_DoesNotAssert_FT)
+        {
+            constexpr size_t NumThreads = 4;
+            constexpr size_t NumFilesToRead = 16;
+            static const size_t FileSize = 50 * 1024; // 50kb file.
+
+            // while reading multiple files in multiple threads and then destroying their dedicated cache
+            AZStd::vector<AZStd::thread> threads;
+            for (auto threadIdx = 0; threadIdx < NumThreads; ++threadIdx)
+            {
+                threads.emplace_back([this, threadIdx, NumFilesToRead]()
+                {
+                    for (auto fileIdx = 0; fileIdx < NumFilesToRead; ++fileIdx)
+                    {
+                        auto testFile = this->CreateTestFile(FileSize, PadArchive::No);
+                        char buffer[FileSize];
+                        SizeType readSize = Streamer::Instance().Read(testFile->GetFileName().c_str(), 0, FileSize, buffer,
+                            ExecuteWhenIdle, Request::PriorityType::DR_PRIORITY_NORMAL, nullptr, "UnitTest");
+                        if (this->CreateDedicatedCache())
+                        {
+                            AZ::IO::Streamer::Instance().DestroyDedicatedCache(testFile->GetFileName().c_str());
+                        }
+                    }
+                });
+            }
+
+            // run CollectStatistics frequently
+            // expect we do not try to access data deleted on another thread
+            AZStd::atomic_bool allThreadsComplete(false);
+            AZStd::thread collectStatisticsThread = AZStd::thread([&allThreadsComplete]()
+            {
+                while (!allThreadsComplete)
+                {
+                    AZStd::vector<AZ::IO::Statistic> stats;
+
+                    AZ_TEST_START_TRACE_SUPPRESSION;
+                    AZ::IO::Streamer::Instance().CollectStatistics(stats);
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(0);
+
+                    AZStd::this_thread::yield();
+                }
+            });
+
+            for (auto& thread : threads)
+            {
+                thread.join();
+            }
+
+            allThreadsComplete = true;
+            collectStatisticsThread.join();
+        }
+
         REGISTER_TYPED_TEST_CASE_P(StreamerTest,
             Read_ReadSmallFileEntirely_FileFullyRead,
             Read_ReadLargeFileEntirely_FileFullyRead,
             Read_ReadMultiplePieces_AllReadRequestWereSuccessful,
-            SuspendProcesisng_SuspendWhileFileIsQueued_FileIsNotReadUntilProcessingIsRestarted);
+            SuspendProcessing_SuspendWhileFileIsQueued_FileIsNotReadUntilProcessingIsRestarted,
+            CollectStatistics_DedicatedCacheDestroyed_DoesNotAssert_FT);
 
         typedef ::testing::Types<GlobalCache_Uncompressed, DedicatedCache_Uncompressed, GlobalCache_Compressed, DedicatedCache_Compressed> StreamerTestCases;
 

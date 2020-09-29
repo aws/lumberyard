@@ -54,12 +54,12 @@ QEnumWidget::QEnumWidget(CAttributeItem* parent)
     //This sub control (especially the alignment) is un-stylable via QSS global stylesheets, so we have to style it through lineEdit
     lineEdit()->setReadOnly(true); 
     lineEdit()->setStyleSheet("*{background: transparent; border: 0px none red;}");
-    lineEdit()->setAlignment(Qt::AlignRight);
+    lineEdit()->setAlignment(Qt::AlignLeft);
     lineEdit()->installEventFilter(this);
 
     for (int i = 0; i < count(); i++)
     {
-        setItemData(i, Qt::AlignRight, Qt::TextAlignmentRole);
+        setItemData(i, QVariant(Qt::AlignLeft | Qt::AlignVCenter), Qt::TextAlignmentRole);
     }
 
     QString selection;
@@ -69,6 +69,9 @@ QEnumWidget::QEnumWidget(CAttributeItem* parent)
     {
         setCurrentIndex(selectedIdx);
     }
+
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(sizePolicy);
 
     // connect to particle variable
     connect(this, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::activated), this, &QEnumWidget::onUserChange);

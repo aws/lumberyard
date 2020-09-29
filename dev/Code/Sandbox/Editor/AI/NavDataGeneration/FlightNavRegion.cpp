@@ -128,6 +128,7 @@ struct SObstacle
     std::vector<Vec3> vertices;
 };
 
+#if ENABLE_CRY_PHYSICS
 CFlightNavRegion::CFlightNavRegion(IPhysicalWorld* pPhysWorld, CGraph* pGraph)
     : m_pPhysWorld(pPhysWorld)
     , m_pGraph(pGraph)
@@ -140,6 +141,18 @@ CFlightNavRegion::CFlightNavRegion(IPhysicalWorld* pPhysWorld, CGraph* pGraph)
     AIAssert(m_pGraph);
     Clear();
 }
+#else
+CFlightNavRegion::CFlightNavRegion(CGraph* pGraph)
+    : m_pGraph(pGraph)
+    , m_childSubDiv(0)
+    , m_terrainDownSample(0)
+    , m_heightFieldDimX(0)
+    , m_heightFieldDimY(0)
+{
+    AIAssert(m_pGraph);
+    Clear();
+}
+#endif // ENABLE_CRY_PHYSICS
 
 CFlightNavRegion::~CFlightNavRegion()
 {

@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include "Viewport/WhiteBoxModifierUtil.h"
 #include "Viewport/WhiteBoxViewportConstants.h"
 
 #include <AzCore/Component/ComponentBus.h>
@@ -56,14 +55,12 @@ namespace WhiteBox
         void SetWidths(float width, float hoverWidth);
 
         void Refresh();
-        void UpdateIntersectionPoint(const AZ::Vector3& intersectionPoint);
+        void CreateView();
         bool PerformingAction() const;
 
     private:
         void CreateManipulator();
         void DestroyManipulator();
-
-        void CreateView(const AZ::Vector3& intersectionPoint);
 
         Api::EdgeHandles m_edgeHandles; //!< The edge handles this modifier is currently associated with (edge group).
         Api::EdgeHandle m_hoveredEdgeHandle; //!< The edge handle the mouse is currently over.
@@ -71,7 +68,6 @@ namespace WhiteBox
         AZ::EntityComponentIdPair m_entityComponentIdPair;
         //! Manipulators for performing edge translations.
         AZStd::shared_ptr<AzToolsFramework::PlanarManipulator> m_translationManipulator;
-        AZ::Vector3 m_intersectionPoint; //!< The point where the edge was picked.
         //! Manipulator views used to represent mesh edges for translation.
         AZStd::vector<AZStd::shared_ptr<ManipulatorViewEdge>> m_edgeViews;
         AZ::Color m_color = cl_whiteBoxEdgeUserColor; //!< The color to use for the regular edge.

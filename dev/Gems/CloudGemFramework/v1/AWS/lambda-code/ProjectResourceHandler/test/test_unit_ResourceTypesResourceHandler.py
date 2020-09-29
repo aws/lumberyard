@@ -126,6 +126,18 @@ class UnitTest_CloudGemFramework_ResourceTypeResourcesHandler_ResourceTypeLambda
             'S3Bucket': self.MOCK_S3_CODE_BUCKET
         }
 
+    def __generate_update_function_configuration_parameters(self, function_name, memory_size=None):
+        update_function_configuration_params = {
+            'Description': ANY,
+            'FunctionName': function_name,
+            'Handler': ANY,
+            'Role': ANY,
+            'Runtime': ANY,
+            'Timeout': ANY}
+
+        if memory_size:
+            update_function_configuration_params.update({'MemorySize': memory_size})
+
     def __generate_lambda_stubber_for_create_function(self,
                                                       lambda_client_to_stub,
                                                       expected_handler='Custom_AccessControl.handler',
@@ -168,7 +180,8 @@ class UnitTest_CloudGemFramework_ResourceTypeResourcesHandler_ResourceTypeLambda
     def __generate_lambda_stubber_for_update_function(self,
                                                       lambda_client_to_stub,
                                                       expected_function_name,
-                                                      expected_tags=None):
+                                                      expected_tags=None,
+                                                      expected_memory_size=None):
         """Rather than use a MagicMock for the client, use a boto3 stubber to wrap a real lambda client for the expected calls
         when we update a custom resource function.
 
@@ -204,7 +217,13 @@ class UnitTest_CloudGemFramework_ResourceTypeResourcesHandler_ResourceTypeLambda
 
         lambda_stubber.add_response('tag_resource', {}, tag_resource_expected_params)
 
-        # 3. update function
+        # 3. update function configuration
+        update_function_configuration_params = self.__generate_update_function_configuration_parameters(
+            function_name=expected_function_name, memory_size=expected_memory_size)
+
+        lambda_stubber.add_response('update_function_configuration', {}, update_function_configuration_params)
+
+        # 4. update function code
         update_function_response = {
             'FunctionArn': 'arn:aws:lambda:region:account:function:lambda',
             'Version': '1'
@@ -384,6 +403,7 @@ class UnitTest_CloudGemFramework_ResourceTypeResourcesHandler_ResourceTypeLambda
         _expected_lambda_tags = {"stack-name": self.STACK_NAME}
         _expected_iam_tags = [{'Key': 'stack-name', 'Value': self.STACK_NAME}]
         _function_name = '{}-CRH-TestLogicalId-{}'.format(self.STACK_NAME, _test_lambda_name)
+        _memory_value = 256
 
         _expected_lambda_tags = {constant.PROJECT_NAME_TAG: self.STACK_NAME, constant.STACK_ID_TAG: self.STACK_ARN}
 
@@ -401,7 +421,8 @@ class UnitTest_CloudGemFramework_ResourceTypeResourcesHandler_ResourceTypeLambda
         lambda_client = self._generate_new_lambda_client()
         lambda_stubber = self.__generate_lambda_stubber_for_update_function(lambda_client_to_stub=lambda_client,
                                                                             expected_function_name=_function_name,
-                                                                            expected_tags=_expected_lambda_tags)
+                                                                            expected_tags=_expected_lambda_tags,
+                                                                            expected_memory_size = _memory_value)
         lambda_stubber.activate()
 
         _definitions = {

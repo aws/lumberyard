@@ -189,10 +189,12 @@ bool CWaterRipples::Preprocess()
 
 void CWaterRipples::CreatePhysCallbacks()
 {
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pPhysicalWorld)
     {
         gEnv->pPhysicalWorld->AddEventClient(EventPhysCollision::id, &OnEventPhysCollision, 1);
     }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,10 +202,12 @@ void CWaterRipples::CreatePhysCallbacks()
 
 void CWaterRipples::ReleasePhysCallbacks()
 {
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pPhysicalWorld)
     {
         gEnv->pPhysicalWorld->RemoveEventClient(EventPhysCollision::id, &OnEventPhysCollision, 1);
     }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -280,6 +284,7 @@ int CWaterRipples::OnEventPhysCollision(const EventPhys* pEvent)
         return 1;
     }
 
+#if ENABLE_CRY_PHYSICS
     // only add nearby hits
     if (pEventPhysArea->idmat[1]  == gEnv->pPhysicalWorld->GetWaterMat())
     {
@@ -288,6 +293,7 @@ int CWaterRipples::OnEventPhysCollision(const EventPhys* pEvent)
         float fMomentum = pEventPhysArea->vloc->GetLength() * max(pEventPhysArea->mass[0], 0.025f);
         AddHit(pEventPhysArea->pt, 1.0f, fMomentum);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return 1;
 }

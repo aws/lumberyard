@@ -9,7 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "PhysicsSystemComponent.h"
 
 #include <AzFramework/Physics/PhysicsComponentBus.h>
@@ -136,7 +141,6 @@ namespace LmbrCentral
             serializeContext->Class<PhysicsSystemComponent, AZ::Component>()
                 ->Version(1)
             ;
-
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<PhysicsSystemComponent>(
@@ -627,3 +631,6 @@ namespace LmbrCentral
         m_enabled = enable;
     }
 } // namespace LmbrCentral
+
+
+#endif // ENABLE_CRY_PHYSICS

@@ -20,6 +20,9 @@ namespace AzToolsFramework
 {
     namespace Components
     {
+        // This disables the warning about calling deprecated functions.  It is necessary because several functions from
+        // EditorComponentAPIBus have been deprecated, and the bus handling causes these functions to be called here.
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
         //! A System Component to reflect Editor operations on Components to Behavior Context
         class EditorComponentAPIComponent
             : public AZ::Component
@@ -38,13 +41,17 @@ namespace AzToolsFramework
             void Deactivate() override;
 
             // EditorComponentAPIBus ...
-            AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) override; //@deprecated. Use FindComponentTypeIdsByEntityType
+            AZ_DEPRECATED(
+                AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) override;, //@deprecated. Use FindComponentTypeIdsByEntityType
+                "FindComponentTypeIds is deprecated, please use FindComponentTypeIdsByEntityType")
             AZStd::vector<AZ::Uuid> FindComponentTypeIdsByEntityType(const AZStd::vector<AZStd::string>& componentTypeNames, EditorComponentAPIRequests::EntityType entityType) override;
             AZStd::vector<AZStd::string> FindComponentTypeNames(const AZ::ComponentTypeList& componentTypeIds) override;
-            AZStd::vector<AZStd::string> BuildComponentTypeNameList() override; //@deprecated. Use BuildComponentTypeNameListByEntityType
+            AZ_DEPRECATED(AZStd::vector<AZStd::string> BuildComponentTypeNameList() override;, //@deprecated. Use BuildComponentTypeNameListByEntityType
+                "BuildComponentTypeNameList is deprecated, please use BuildComponentTypeNameListByEntityType")
             AZStd::vector<AZStd::string> BuildComponentTypeNameListByEntityType(EditorComponentAPIRequests::EntityType entityType) override;
 
             AddComponentsOutcome AddComponentsOfType(AZ::EntityId entityId, const AZ::ComponentTypeList& componentTypeIds) override;
+            AddComponentsOutcome AddComponentOfType(AZ::EntityId entityId, const AZ::Uuid& componentTypeId) override;
             bool HasComponentOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
             size_t CountComponentsOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
             GetComponentOutcome GetComponentOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) override;
@@ -61,6 +68,7 @@ namespace AzToolsFramework
             PropertyOutcome SetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) override;
             bool CompareComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) override;
             const AZStd::vector<AZStd::string> BuildComponentPropertyList(const AZ::EntityComponentIdPair& componentInstance) override;
+            void SetVisibleEnforcement(bool enforceVisiblity) override;
 
         private:
             AZ::Entity* FindEntity(AZ::EntityId entityId);
@@ -68,8 +76,9 @@ namespace AzToolsFramework
             AZ::Component* FindComponent(AZ::EntityId entityId, AZ::Uuid componentType);
             AZStd::vector<AZ::Component*> FindComponents(AZ::EntityId entityId, AZ::Uuid componentType);
 
+            bool m_usePropertyVisibility = false;
             AZ::SerializeContext* m_serializeContext = nullptr;
         };
-
+        AZ_POP_DISABLE_WARNING
     } // Components
 } // AzToolsFramework

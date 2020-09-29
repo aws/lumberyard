@@ -24,6 +24,8 @@ namespace Physics
         : public AZ::ComponentBus
     {
     public:
+        using MutexType = AZStd::mutex;
+
         virtual void EnablePhysics() = 0;
         virtual void DisablePhysics() = 0;
         virtual bool IsPhysicsEnabled() const = 0;

@@ -47,7 +47,7 @@ CAboutDialog::CAboutDialog(QString versionText, QString richTextCopyrightNotice,
     setStyleSheet( "CAboutDialog > QLabel#copyrightNotice { color: #AAAAAA; font-size: 9px; }\
                     CAboutDialog > QLabel#link { text-decoration: underline; color: #00A1C9; }");
 
-    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_startergame.png"));
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_1_26.png"));
 
     // Prevent re-sizing
     setFixedSize(m_enforcedWidth, aznumeric_cast<int>(m_enforcedWidth * m_enforcedRatio));

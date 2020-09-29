@@ -20,27 +20,31 @@
 
 namespace AzToolsFramework
 {
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     // LUMBERYARD_DEPRECATED(LY-108269)
-    class DHQSpinbox
+    class AZ_DEPRECATED(,"DHQSpinbox is deprecated, please use AzQtComponents::SpinBox instead")
+        DHQSpinbox
         : public AzQtComponents::SpinBox
     {
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(DHQSpinbox, AZ::SystemAllocator, 0);
 
-        explicit DHQSpinbox(QWidget* parent = 0);
+        explicit DHQSpinbox(QWidget* parent = nullptr);
     };
 
     // LUMBERYARD_DEPRECATED(LY-108269)
-    class DHQDoubleSpinbox
+    class AZ_DEPRECATED(,"DHQDoubleSpinbox is deprecated, please use AzQtComponents::DoubleSpinBox instead")
+        DHQDoubleSpinbox
         : public AzQtComponents::DoubleSpinBox
     {
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(DHQDoubleSpinbox, AZ::SystemAllocator, 0);
 
-        explicit DHQDoubleSpinbox(QWidget* parent = 0);
+        explicit DHQDoubleSpinbox(QWidget* parent = nullptr);
     };
+    AZ_POP_DISABLE_WARNING
 }
 
 #endif

@@ -1777,6 +1777,7 @@ CLeaderAction::eActionUpdateResult CLeaderAction_Attack_SwitchPositions::Update(
                         Vec3 hitdir(dir * radius);
                         Vec3 pos(center - hitdir);
                         IAIActorProxy* pProxy = pPuppet->GetProxy();
+#if ENABLE_CRY_PHYSICS
                         IPhysicalEntity* pPhysics = pProxy ? pProxy->GetPhysics() : NULL;
 
                         ray_hit hit;
@@ -1790,6 +1791,7 @@ CLeaderAction::eActionUpdateResult CLeaderAction_Attack_SwitchPositions::Update(
                                 pos = hit.pt - dir;
                             }
                         }
+#endif // ENABLE_CRY_PHYSICS
                         pPuppet->SetRefPointPos(pos);
                         continue;
                     }
@@ -1954,6 +1956,7 @@ int CLeaderAction_Attack_SwitchPositions::GetFormationPointWithTarget(CUnitImg& 
             }
 
             IAIActorProxy* pProxy = pTarget->GetProxy();
+#if ENABLE_CRY_PHYSICS
             IPhysicalEntity* pTargetPhysics = pProxy ? pProxy->GetPhysics() : NULL;
 
             if (!pTargetPhysics)
@@ -1967,6 +1970,7 @@ int CLeaderAction_Attack_SwitchPositions::GetFormationPointWithTarget(CUnitImg& 
                     }
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
 
             Vec3 beaconpos = pTarget->GetPos();
 
@@ -2044,6 +2048,7 @@ int CLeaderAction_Attack_SwitchPositions::GetFormationPointWithTarget(CUnitImg& 
 
                         // tweak the right Z position for formation point - the same Z as the requestor being at the formation point
                         int rayresult2 = 0;
+#if ENABLE_CRY_PHYSICS
                         if (!m_bVisibilityChecked && !unit.IsFar())
                         {
                             if (i < formationSize)
@@ -2057,6 +2062,7 @@ int CLeaderAction_Attack_SwitchPositions::GetFormationPointWithTarget(CUnitImg& 
                             Vec3 rayPos(pos.x, pos.y, pos.z + zDisp);
                             rayresult2 = gAIEnv.pWorld->RayWorldIntersection(rayPos, pTarget->GetPos() - rayPos, COVER_OBJECT_TYPES | ent_living, HIT_COVER, &hit, 1, pTargetPhysics);
                         }
+#endif // ENABLE_CRY_PHYSICS
                         // TO DO: optimization with m_bVisibilityChecked and m_Targetvisiblep[]
                         // works perfectly only if there's one enemy
                         if (!rayresult2 || m_PointProperties[i].bTargetVisible)

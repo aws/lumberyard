@@ -282,7 +282,7 @@ namespace Vegetation
 
             for (const auto& entityId : m_configuration.m_vegetationAreaIds)
             {
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FillAreaStart, entityId, AZStd::chrono::system_clock::now()));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FillAreaStart, entityId, AZStd::chrono::system_clock::now()));
                 if (context.m_availablePoints.empty())
                 {
                     break;
@@ -291,7 +291,7 @@ namespace Vegetation
                 AreaNotificationBus::Event(entityId, &AreaNotificationBus::Events::OnAreaConnect);
                 AreaRequestBus::Event(entityId, &AreaRequestBus::Events::ClaimPositions, processedIds, context);
                 AreaNotificationBus::Event(entityId, &AreaNotificationBus::Events::OnAreaDisconnect);
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FillAreaEnd, entityId, AZStd::chrono::system_clock::now(), context.m_availablePoints.size()));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FillAreaEnd, entityId, AZStd::chrono::system_clock::now(), aznumeric_cast<AZ::u32>(context.m_availablePoints.size())));
             }
             m_isRequestInProgress = false;
         }

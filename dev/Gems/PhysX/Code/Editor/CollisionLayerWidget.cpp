@@ -112,7 +112,7 @@ namespace PhysX
 
             for (AZ::u8 layer = 0; layer < Physics::CollisionLayers::s_maxCollisionLayers; ++layer)
             {
-                auto layerName = configuration.m_collisionLayers.GetName(layer);
+                const auto& layerName = configuration.m_collisionLayers.GetName(layer);
                 if (!layerName.empty())
                 {
                     layerNames.push_back(layerName);

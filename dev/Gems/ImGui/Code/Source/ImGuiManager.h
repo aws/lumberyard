@@ -103,6 +103,7 @@ namespace ImGui
         float m_lastPrimaryTouchPosition[2] = { 0.0f, 0.0f };
         bool m_useLastPrimaryTouchPosition = false;
         bool m_simulateBackspaceKeyPressed = false;
+        bool m_keyboardShown = false;
 
 #if defined(LOAD_IMGUI_LIB_DYNAMICALLY)
         AZStd::unique_ptr<AZ::DynamicModuleHandle>  m_imgSharedLib;

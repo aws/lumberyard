@@ -1019,16 +1019,20 @@ class Settings(object):
                     option_name = settings.get(SETTING_KEY_ATTRIBUTE, None)
                     default_value = _stringify(settings.get(SETTING_KEY_DEFAULT_VALUE, ''))
 
+                    from_config = False
                     if apply_from_command_line and option_name in self.runtime_override_attributes:
                         override_value = self.settings_map[option_name]
                     elif override_settings and override_settings.has_option(settings_group, option_name):
                         override_value = override_settings.get(settings_group, option_name)
+                        from_config = True
                     else:
                         override_value = None
 
                     # If there are any of the external project related overrides that are passed in, apply it here
                     if override_value_map:
                         if option_name in override_value_map:
+                            if from_config and override_value != override_value_map[option_name]:
+                                override_settings.set(settings_group, option_name, override_value_map[option_name])
                             override_value = override_value_map[option_name]
 
                     has_existing_override = (override_value != default_value and not last_hash)

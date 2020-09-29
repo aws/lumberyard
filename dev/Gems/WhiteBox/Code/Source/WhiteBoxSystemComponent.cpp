@@ -66,7 +66,7 @@ namespace WhiteBox
         AZ::Data::AssetCatalogRequestBus::Broadcast(
             &AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, AZ::AzTypeInfo<AssetT>::Uuid());
         AZ::Data::AssetCatalogRequestBus::Broadcast(
-            &AZ::Data::AssetCatalogRequests::AddExtension, AssetHandlerT::s_assetFileExtension);
+            &AZ::Data::AssetCatalogRequests::AddExtension, AssetHandlerT::AssetFileExtension);
 
         assetHandlers.emplace_back(AZStd::make_unique<AssetHandlerT>());
     }

@@ -26,6 +26,7 @@
 #include "IConsole.h"
 #include "DebugDrawContext.h"
 #include <I3DEngine.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 const float CFormation::m_fDISTANCE_UPDATE_THR = 0.3f;
 const float CFormation::m_fSIGHT_WIDTH = 1.f;
@@ -1127,7 +1128,12 @@ void CFormation::SetOffsetPointsPos(const Vec3& vMoveDir)
             Vec3 posRot;
             posRot = pos.x * moveDirXAxis + pos.y * vMoveDir;
             pos = posRot + vBasePos;
-            pos.z = gEnv->p3DEngine->GetTerrainElevation(pos.x, pos.y) + 1.75f;
+
+            float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , pos.x, pos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+            pos.z = elevation + 1.75f;
 
             if (bFirst)
             {
@@ -1719,6 +1725,7 @@ void CFormation::SetScale(float fScale)
             }
             else
             {
+#if ENABLE_CRY_PHYSICS
                 pe_status_dynamics  dSt;
                 pOwner->GetProxy()->GetPhysics()->GetStatus(&dSt);
                 vDir = -dSt.v;
@@ -1727,6 +1734,7 @@ void CFormation::SetScale(float fScale)
                     vDir.Normalize();
                 }
                 else
+#endif // ENABLE_CRY_PHYSICS
                 {
                     vDir = pOwner->GetMoveDir();
                 }

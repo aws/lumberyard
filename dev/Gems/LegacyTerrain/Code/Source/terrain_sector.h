@@ -18,10 +18,11 @@
 #define ARR_TEX_OFFSETS_SIZE 4
 
 #include <CryArray2d.h>
-#include "Terrain/Texture/MacroTexture.h"
-#include "Terrain/LegacyTerrainBase.h"
 #include <ITerrain.h>
 #include <Terrain/ITerrainNode.h>
+
+#include "Texture/MacroTexture.h"
+#include "LegacyTerrainBase.h"
 
 class BuildMeshData;
 class InPlaceIndexBuffer;

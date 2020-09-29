@@ -148,6 +148,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.stack_descriptions = {}
         self.deployment_name_override = None
         self.resource_group_name_override = None
+        self.deployment_tags = None
         resource_manager.stack.STACK_UPDATE_DELAY_TIME = 20
 
         # assumes this file is ...\dev\Gems\CloudGemFramework\v?\ResourceManager\resource_manager\test\lmbr_aws_test_support.py
@@ -240,7 +241,10 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__deployment_resource_transitions = create(
             create=ResourceTransition(1, lambda context: (
                 self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),
-                # creating a new deployment stack requires we lock the project stack since the configuration will be updated
+                # creating a new deployment stack requires we lock the project stack since the configuration will be updated  
+                self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--tags', self.TEST_DEPLOYMENT_TAGS,
+                              '--confirm-aws-usage',
+                              '--confirm-security-change') if self.TEST_DEPLOYMENT_TAGS else
                 self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME,
                               '--confirm-aws-usage',
                               '--confirm-security-change'),
@@ -636,6 +640,13 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
     def set_deployment_name(self, value):
         self.deployment_name_override = value
+
+    @property
+    def TEST_DEPLOYMENT_TAGS(self):
+        return self.deployment_tags if self.deployment_tags else ''
+
+    def set_deployment_tags(self, deployment_tags):
+        self.deployment_tags = deployment_tags
 
     @property
     def TEST_RESOURCE_GROUP_NAME(self):

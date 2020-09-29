@@ -21,6 +21,7 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/shared_mutex.h>
 #include <AzCore/std/parallel/condition_variable.h>
+#include <AzCore/std/parallel/threadbus.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/delegate/delegate.h>
@@ -1055,5 +1056,221 @@ namespace UnitTest
         signalThread.join();
 
         EXPECT_EQ(1, i);
+    }
+
+    // Fixture for thread-driller-bus related calls
+    // exists only to categorize the tests.
+    class ThreadEventsBus :
+        public AllocatorsFixture
+    {
+        public:
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+        }
+
+        void TearDown() override
+        {
+            AllocatorsFixture::TearDown();
+        }
+    };
+
+    template <typename T> class ThreadEventCounter :
+        public T
+    {
+        public:
+        void Connect() { T::BusConnect(); }
+        void Disconnect() { T::BusDisconnect(); }
+
+        virtual ~ThreadEventCounter() {}
+
+        int m_enterCount = 0;
+        int m_exitCount = 0;
+
+        protected:
+
+
+        void OnThreadEnter(const AZStd::thread::id&, const AZStd::thread_desc*) override
+        {
+            ++m_enterCount;
+        }
+
+        void OnThreadExit(const AZStd::thread::id& id) override
+        {
+            ++m_exitCount;
+        }
+    };
+    
+    TEST_F(ThreadEventsBus, Broadcasts_BothBusses)
+    {
+        ThreadEventCounter<AZStd::ThreadEventBus::Handler> eventBusCounter;
+        ThreadEventCounter<AZStd::ThreadDrillerEventBus::Handler> drillerBusCounter;
+        auto thread_function = [&]()
+        {
+               ; // intentionally left blank
+        };
+
+        eventBusCounter.Connect();
+        drillerBusCounter.Connect();
+
+        AZStd::thread starter =  AZStd::thread(thread_function);
+        starter.join();
+        EXPECT_EQ(drillerBusCounter.m_enterCount, 1);
+        EXPECT_EQ(drillerBusCounter.m_exitCount, 1);
+        EXPECT_EQ(eventBusCounter.m_enterCount, 1);
+        EXPECT_EQ(eventBusCounter.m_exitCount, 1);
+        eventBusCounter.Disconnect();
+        drillerBusCounter.Disconnect();
+    }
+
+    // this class tests for deadlocks caused by interactions between the thread
+    // driller bus and the other driller busses.
+    // Client code (ie, not part of the driller system) can connec to the
+    // ThreadEventBus and be told when threads are started and stopped
+    // However, if they instead listen to the ThreadDrillerEventBus, a deadlock condition
+    // could be caused if they lock a mutex that another thread needs in order to proceed.
+    // This test makes sure that using the ThreadEventBus (ie, the one meant for client code)
+    // instead of the ThreadDrillerEventBus (the one meant only for profilers) does NOT cause
+    // a deadlock.
+
+    // We will simulate this series of events by doing the following
+    // 1.  Main thread listens on the ThreadEventBus
+    // 2.  OnThreadExit will lock a mutex, perform an allocation, unlock a mutex
+    // 3.  The thread itself will lock the mutex, perform an allocation, unlock the mutex.
+    // As long as there is no cross talk between the client and the driller busses, the
+    // above operation should not deadlock.
+    // but if there is, then a deadlock can occur where one thread will be unable to perform
+    // its allocation because the other is in OnThreadExit()
+    // and the other will not be able to perform OnThreadExit() because it cannot lock the mutex.
+
+    class ThreadEventsDeathTest :
+        public AllocatorsFixture
+    {
+        public:
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+        }
+
+        void TearDown() override
+        {
+            AllocatorsFixture::TearDown();
+        }
+    };
+
+    class DeadlockCauser : public AZStd::ThreadEventBus::Handler
+    {
+        public:
+        virtual ~DeadlockCauser() { }
+
+        AZStd::recursive_mutex deadlock_mutex;
+
+        void PerformTest()
+        {
+            BusConnect();
+
+            auto thread_function = [&]()
+            {
+                // to cause the most amount of flapping threads
+                // will yield between each instruction
+                AZStd::this_thread::yield();
+                AZStd::lock_guard<AZStd::recursive_mutex> locker(this->deadlock_mutex);
+                AZStd::this_thread::yield();
+                char* mybuffer = (char*)azmalloc(1024 * 1024);
+                AZStd::this_thread::yield();
+                azfree(mybuffer);
+                AZStd::this_thread::yield();
+            };
+
+            // IF there's crosstalk between the threads
+            // then this deadlocks, instantly, every time, even with just 2 threads.
+            // To avoid killing our test CI system, we'll do this in another thread, and kill it
+            // if it takes longer than a few seconds.
+            AZStd::atomic_bool doneIt = {false};
+
+            auto deadlocker_function = [&]()
+            {
+                // this test is a 10/10 failure
+                // at just 4 retry_count, we quadruple it here to make sure
+                for (int retry_count = 0; retry_count < 16; ++retry_count)
+                {
+                    // cause some contention for the mutex
+                    // it takes only 2 threads to do this 10/10 times... quadruple it
+                    // to ensure reproduction.
+                    AZStd::thread waitThreads[8];
+                    for (size_t threadIdx = 0; threadIdx < AZ_ARRAY_SIZE(waitThreads); ++threadIdx)
+                    {
+                        AZStd::this_thread::yield();
+                        waitThreads[threadIdx] = AZStd::thread(thread_function);
+                        AZStd::this_thread::yield();
+                    }
+
+                    for (auto& thread : waitThreads)
+                    {
+                        thread.join();
+                    }
+                }
+
+                doneIt.store(true);
+            };
+
+            AZStd::thread deadlocker_thread = AZStd::thread(deadlocker_function);
+
+            chrono::system_clock::time_point startTime = chrono::system_clock::now();
+            while (!doneIt.load())
+            {
+                AZStd::this_thread::yield();
+                auto sleepTime = chrono::system_clock::now() - startTime;
+
+                // the test normally succeeds in under a second
+                // but machines can be slow, so we'll give it 20x the
+                // necessary time
+                if (AZStd::chrono::duration_cast<AZStd::chrono::seconds>(sleepTime).count() > 20)
+                {
+                    // this should not take that long, we have deadlocked.
+                    break;
+                }
+            }
+
+            // if we're deadlocked, doneIt will be false
+            // and if that happens, we have to exit() because
+            // everyting will deadlock (forever) and this will jeaopardize the CI system.
+            EXPECT_TRUE(doneIt.load()) << "A test has deadlocked, aborting module";
+            if (!doneIt.load())
+            {
+                abort();
+            }
+            BusDisconnect();
+            deadlocker_thread.join();
+        }
+
+        void OnThreadExit(const AZStd::thread::id&) override
+        {
+            AZStd::this_thread::yield();
+            AZStd::lock_guard<AZStd::recursive_mutex> locker(this->deadlock_mutex);
+            AZStd::this_thread::yield();
+            char* mybuffer = (char*)azmalloc(1024 * 1024);
+            AZStd::this_thread::yield();
+            azfree(mybuffer);
+            AZStd::this_thread::yield();
+        }
+
+        void OnThreadEnter(const AZStd::thread::id& id, const AZStd::thread_desc*) override
+        {
+            OnThreadExit(id);
+        }
+    };
+
+    TEST_F(ThreadEventsDeathTest, UsingClientBus_AvoidsDeadlock)
+    {
+        EXPECT_EXIT(
+            {
+                DeadlockCauser cause;
+                cause.PerformTest();
+                // you MUST exit for EXPECT_EXIT to function.
+                _exit(0); // this will cause spew, but it wont be considered to have failed.
+            }
+        , ::testing::ExitedWithCode(0),".*");
+        
     }
 }

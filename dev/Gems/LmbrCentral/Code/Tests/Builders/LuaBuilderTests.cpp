@@ -9,8 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#include <LmbrCentral_precompiled.h>
 #include <AzTest/AzTest.h>
-#include <Source/LuaBuilderWorker.h>
+#include <Builders/LuaBuilder/LuaBuilderWorker.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
@@ -53,7 +55,7 @@ namespace UnitTest
         AssetBuilderSDK::ProductPathDependencySet pathDependencies;
 
         char resolvedPath[AZ_MAX_PATH_LEN];
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Code/Tools/AssetProcessor/Builders/LuaBuilder/Tests/test1.lua", resolvedPath, AZ_MAX_PATH_LEN);
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test1.lua", resolvedPath, AZ_MAX_PATH_LEN);
 
         worker.ParseDependencies(AZStd::string(resolvedPath), pathDependencies);
 
@@ -72,7 +74,7 @@ namespace UnitTest
         AssetBuilderSDK::ProductPathDependencySet pathDependencies;
 
         char resolvedPath[AZ_MAX_PATH_LEN];
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Code/Tools/AssetProcessor/Builders/LuaBuilder/Tests/test2.lua", resolvedPath, AZ_MAX_PATH_LEN);
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test2.lua", resolvedPath, AZ_MAX_PATH_LEN);
 
         worker.ParseDependencies(AZStd::string(resolvedPath), pathDependencies);
 
@@ -89,7 +91,7 @@ namespace UnitTest
         AssetBuilderSDK::ProductPathDependencySet pathDependencies;
 
         char resolvedPath[AZ_MAX_PATH_LEN];
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Code/Tools/AssetProcessor/Builders/LuaBuilder/Tests/test3_general_dependencies.lua", resolvedPath, AZ_MAX_PATH_LEN);
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test3_general_dependencies.lua", resolvedPath, AZ_MAX_PATH_LEN);
 
         worker.ParseDependencies(AZStd::string(resolvedPath), pathDependencies);
 
@@ -106,7 +108,7 @@ namespace UnitTest
         AssetBuilderSDK::ProductPathDependencySet pathDependencies;
 
         char resolvedPath[AZ_MAX_PATH_LEN];
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Code/Tools/AssetProcessor/Builders/LuaBuilder/Tests/test4_console_command.lua", resolvedPath, AZ_MAX_PATH_LEN);
+        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@root@/../Gems/LmbrCentral/Code/Tests/Lua/test4_console_command.lua", resolvedPath, AZ_MAX_PATH_LEN);
 
         worker.ParseDependencies(AZStd::string(resolvedPath), pathDependencies);
 
@@ -117,5 +119,3 @@ namespace UnitTest
         );
     }
 }
-
-AZ_UNIT_TEST_HOOK();

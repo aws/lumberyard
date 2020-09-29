@@ -19,7 +19,7 @@
 
 namespace SliceBuilder
 {
-    //! SliceBuilder is responsible for compiling slices and uicanvases
+    //! SliceBuilder is responsible for compiling slices
     class BuilderPluginComponent
         : public AZ::Component
     {

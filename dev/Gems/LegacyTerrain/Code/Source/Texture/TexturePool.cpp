@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 #include "TexturePool.h"
 
 TexturePool::TexturePool(uint32 maxElementCount)

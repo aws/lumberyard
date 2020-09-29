@@ -13,7 +13,9 @@
 
 #ifndef CRYINCLUDE_CRYCOMMON_CRYPHYSICS_H
 #define CRYINCLUDE_CRYCOMMON_CRYPHYSICS_H
-#pragma once
+
+#if ENABLE_CRY_PHYSICS
+#pragma once    
 
 #ifdef PHYSICS_EXPORTS
     #define CRYPHYSICS_API __declspec(dllexport)
@@ -28,5 +30,6 @@
 #include <physinterface.h> // <> required for Interfuscator
 
 extern "C" CRYPHYSICS_API IPhysicalWorld * CreatePhysicalWorld();
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_CRYPHYSICS_H

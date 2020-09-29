@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -16,13 +16,13 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/string/string_view.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include <AzCore/std/string/conversions.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 #include <AzFramework/FileFunc/FileFunc.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AudioFileUtils.h>
 #include <ATLCommon.h>
@@ -30,8 +30,10 @@
 #include <IAudioSystemImplementation.h>
 
 #include <MathConversion.h>
-#include <IPhysics.h>
-#include <ISurfaceType.h>
+#if AUDIO_ENABLE_CRY_PHYSICS
+    #include <IPhysics.h>
+    #include <ISurfaceType.h>
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 #include <I3DEngine.h>
 #include <IRenderAuxGeom.h>
 
@@ -308,23 +310,34 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioObjectManager::Update(const float fUpdateIntervalMS, const SATLWorldPosition& rListenerPosition)
     {
+#if AUDIO_ENABLE_CRY_PHYSICS
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         //reset the ray counts
-        CATLAudioObject::CPropagationProcessor::s_nTotalAsyncPhysRays = 0;
-        CATLAudioObject::CPropagationProcessor::s_nTotalSyncPhysRays = 0;
+        CPropagationProcessor::s_nTotalAsyncPhysRays = 0;
+        CPropagationProcessor::s_nTotalSyncPhysRays = 0;
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
         m_fTimeSinceLastVelocityUpdateMS += fUpdateIntervalMS;
         const bool bUpdateVelocity = m_fTimeSinceLastVelocityUpdateMS > s_fVelocityUpdateIntervalMS;
+
+#if !AUDIO_ENABLE_CRY_PHYSICS
+        m_raycastManager.ProcessRaycastResults(fUpdateIntervalMS);
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
 
         for (auto& audioObjectPair : m_cAudioObjects)
         {
             CATLAudioObject* const pObject = audioObjectPair.second;
 
-            if (HasActiveEvents(pObject))
+            if (pObject->HasActiveEvents())
             {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Audio, "Inner Per-Object CAudioObjectManager::Update");
+
                 pObject->Update(fUpdateIntervalMS, rListenerPosition);
 
+#if AUDIO_ENABLE_CRY_PHYSICS
                 if (pObject->CanRunObstructionOcclusion())
                 {
                     SATLSoundPropagationData oPropagationData;
@@ -335,6 +348,18 @@ namespace Audio
                         oPropagationData.fObstruction,
                         oPropagationData.fOcclusion);
                 }
+#else
+                if (pObject->CanRunRaycasts())
+                {
+                    SATLSoundPropagationData propData;
+                    pObject->GetObstOccData(propData);
+
+                    AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::SetObstructionOcclusion,
+                        pObject->GetImplDataPtr(),
+                        propData.fObstruction,
+                        propData.fOcclusion);
+                }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
                 if (bUpdateVelocity && pObject->GetVelocityTracking())
                 {
@@ -406,12 +431,11 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CATLAudioObject* CAudioObjectManager::LookupID(const TAudioObjectID nID) const
     {
-        TActiveObjectMap::const_iterator iPlace;
         CATLAudioObject* pResult = nullptr;
-
-        if (FindPlaceConst(m_cAudioObjects, nID, iPlace))
+        auto it = m_cAudioObjects.find(nID);
+        if (it != m_cAudioObjects.end())
         {
-            pResult = iPlace->second;
+            pResult = it->second;
         }
 
         return pResult;
@@ -478,6 +502,7 @@ namespace Audio
         }
     }
 
+#if AUDIO_ENABLE_CRY_PHYSICS
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioObjectManager::ReportObstructionRay(const TAudioObjectID nAudioObjectID, const size_t nRayID)
     {
@@ -503,6 +528,7 @@ namespace Audio
         }
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CATLAudioObject* CAudioObjectManager::GetInstance()
@@ -521,7 +547,7 @@ namespace Audio
             const TAudioObjectID nNewID = AudioObjectIDFactory::GetNextID();
             IATLAudioObjectData* pObjectData = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(pObjectData, &AudioSystemImplementationRequestBus::Events::NewAudioObjectData, nNewID);
-           
+
             size_t unallocatedMemorySize = AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().GetUnAllocatedMemory();
 
             const size_t minimalMemorySize = 100 * 1024;
@@ -603,12 +629,9 @@ namespace Audio
             m_cObjectPool.m_cReserved.push_back(pObject);
         }
 
-        TActiveObjectMap::const_iterator IterObjects(m_cAudioObjects.begin());
-        TActiveObjectMap::const_iterator const IterObjectsEnd(m_cAudioObjects.end());
-
-        for (; IterObjects != IterObjectsEnd; ++IterObjects)
+        for (const auto& audioObjectPair : m_cAudioObjects)
         {
-            CATLAudioObject* const pAudioObject = IterObjects->second;
+            CATLAudioObject* const pAudioObject = audioObjectPair.second;
             IATLAudioObjectData* pObjectData = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(pObjectData, &AudioSystemImplementationRequestBus::Events::NewAudioObjectData, pAudioObject->GetID());
             pAudioObject->SetImplDataPtr(pObjectData);
@@ -635,12 +658,9 @@ namespace Audio
 
         m_cObjectPool.m_cReserved.clear();
 
-        TActiveObjectMap::const_iterator IterObjects(m_cAudioObjects.begin());
-        TActiveObjectMap::const_iterator const IterObjectsEnd(m_cAudioObjects.end());
-
-        for (; IterObjects != IterObjectsEnd; ++IterObjects)
+        for (const auto& audioObjectPair : m_cAudioObjects)
         {
-            CATLAudioObject* const pAudioObject = IterObjects->second;
+            CATLAudioObject* const pAudioObject = audioObjectPair.second;
             if (auto implObject = pAudioObject->GetImplDataPtr())
             {
                 EAudioRequestStatus eResult = eARS_FAILURE;
@@ -654,6 +674,7 @@ namespace Audio
         }
     }
 
+#if AUDIO_ENABLE_CRY_PHYSICS
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioObjectManager::ReleasePendingRays()
     {
@@ -685,31 +706,76 @@ namespace Audio
             }
         }
     }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
+
+#if !AUDIO_ENABLE_CRY_PHYSICS
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    bool CAudioObjectManager::HasActiveEvents(const CATLAudioObjectBase* const pAudioObject) const
+    void AudioRaycastManager::PushAudioRaycastRequest(const AudioRaycastRequest& request)
     {
-        bool bFoundActiveEvent = false;
-
-        const TObjectEventSet& rActiveEvents = pAudioObject->GetActiveEvents();
-        TObjectEventSet::const_iterator IterActiveEvents(rActiveEvents.begin());
-        TObjectEventSet::const_iterator const IterActiveEventsEnd(rActiveEvents.end());
-
-        for (; IterActiveEvents != IterActiveEventsEnd; ++IterActiveEvents)
-        {
-            const CATLEvent* const pEvent = m_refAudioEventManager.LookupID(*IterActiveEvents);
-
-            if (pEvent->IsPlaying())
-            {
-                bFoundActiveEvent = true;
-                break;
-            }
-        }
-
-        return bFoundActiveEvent;
+        // [Audio Thread]
+        AZStd::lock_guard<AZStd::mutex> lock(m_raycastRequestsMutex);
+        m_raycastRequests.push_back(request);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void AudioRaycastManager::OnPostPhysicsUpdate([[maybe_unused]] float fixedDeltaTimeSeconds)
+    {
+        // [Main Thread]
+        AudioRaycastRequestQueueType processingQueue;
 
+        // Lock and swap the main request container with a local one for processing...
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_raycastRequestsMutex);
+            processingQueue.swap(m_raycastRequests);
+        }
+
+        AudioRaycastResultQueueType resultsQueue;
+        resultsQueue.reserve(processingQueue.size());
+
+        // Process raycasts and enter results in resultsQueue...
+        for (const AudioRaycastRequest& request : processingQueue)
+        {
+            AZ_Assert(request.m_request.m_maxResults <= s_maxHitResultsPerRaycast,
+                "Encountered audio raycast request that has maxResults set too high (%" PRIu64 ")!\n", request.m_request.m_maxResults);
+
+            AZStd::vector<Physics::RayCastHit> hitResults;
+            Physics::WorldRequestBus::BroadcastResult(hitResults, &Physics::WorldRequestBus::Events::RayCastMultiple, request.m_request);
+
+            AZ_Error("Audio Raycast", hitResults.size() <= s_maxHitResultsPerRaycast,
+                "RayCastMultiple returned too many hits (%zu)!\n", hitResults.size());
+
+            resultsQueue.emplace_back(AZStd::move(hitResults), request.m_audioObjectId, request.m_rayIndex);
+        }
+
+        // Lock and swap the local results into the target container (or move-append if necessary)...
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_raycastResultsMutex);
+            if (m_raycastResults.empty())
+            {
+                m_raycastResults.swap(resultsQueue);
+            }
+            else
+            {
+                AZStd::move(resultsQueue.begin(), resultsQueue.end(), AZStd::back_inserter(m_raycastResults));
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void AudioRaycastManager::ProcessRaycastResults([[maybe_unused]] float updateIntervalMs)
+    {
+        // [Audio Thread]
+        AZStd::scoped_lock<AZStd::mutex> lock(m_raycastResultsMutex);
+        for (const AudioRaycastResult& result : m_raycastResults)
+        {
+            AudioRaycastNotificationBus::Event(result.m_audioObjectId, &AudioRaycastNotificationBus::Events::OnAudioRaycastResults, result);
+        }
+
+        m_raycastResults.clear();
+    }
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     //  CAudioListenerManager
@@ -995,7 +1061,7 @@ namespace Audio
     void CATLXmlProcessor::ParseControlsData(const char* const folderPath, const EATLDataScope dataScope)
     {
         AZStd::string searchPath;
-        AzFramework::StringFunc::Path::Join(m_rootPath.c_str(), folderPath, searchPath);
+        AZ::StringFunc::Path::Join(m_rootPath.c_str(), folderPath, searchPath);
 
         AZStd::vector<AZStd::string> foundFiles = Audio::FindFilesInPath(searchPath, "*.xml");
 
@@ -1043,7 +1109,7 @@ namespace Audio
     void CATLXmlProcessor::ParsePreloadsData(const char* const folderPath, const EATLDataScope dataScope)
     {
         AZStd::string searchPath;
-        AzFramework::StringFunc::Path::Join(m_rootPath.c_str(), folderPath, searchPath);
+        AZ::StringFunc::Path::Join(m_rootPath.c_str(), folderPath, searchPath);
 
         AZStd::vector<AZStd::string> foundFiles = Audio::FindFilesInPath(searchPath, "*.xml");
 
@@ -1068,7 +1134,7 @@ namespace Audio
                     {
                         AZStd::string_view relativePath(folderPath);
                         AZStd::string levelName;
-                        AzFramework::StringFunc::Path::GetFileName(relativePath.data(), levelName);
+                        AZ::StringFunc::Path::GetFileName(relativePath.data(), levelName);
                         ParseAudioPreloads(childNode, dataScope, levelName.data());
                     }
                     else
@@ -1170,8 +1236,8 @@ namespace Audio
         {
             TAudioPreloadRequestID preloadRequestId = ATLInternalControlIDs::GlobalPreloadRequestID;
             const char* preloadRequestName = ATLInternalControlNames::GlobalPreloadRequestName;
-
             bool autoLoad = false;
+
             auto loadTypeAttr = preloadNode->first_attribute(ATLXmlTags::ATLTypeAttribute, 0, false);
             auto nameAttr = preloadNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
 
@@ -1192,81 +1258,113 @@ namespace Audio
 
             if (preloadRequestId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
             {
-                // Needs to have at least two child nodes: <ATLPlatforms> and one or more <ATLConfigGroup>.
-                auto platformsNode = preloadNode->first_node(ATLXmlTags::ATLPlatformsTag, 0, false);
-                auto configGroupNode = preloadNode->first_node(ATLXmlTags::ATLConfigGroupTag, 0, false);
-                if (platformsNode && configGroupNode)
+                // Legacy support - Try legacy first here because it contains more nodes than the newer format...
+                auto fileEntryIds = LegacyParseFileEntries(preloadNode, dataScope, autoLoad);
+
+                if (fileEntryIds.empty())
                 {
-                    const char* configGroupName = nullptr;
-                    auto platformNode = platformsNode->first_node(ATLXmlTags::PlatformNodeTag, 0, false);
-                    while (platformNode)
-                    {
-                        auto platformAttr = platformNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
-                        if (platformAttr)
-                        {
-                            if (azstricmp(platformAttr->value(), ATLXmlTags::PlatformName) == 0 || azstricmp(platformAttr->value(), ATLXmlTags::PlatformCodeName) == 0)
-                            {
-                                auto configGroupAttr = platformNode->first_attribute(ATLXmlTags::ATLConfigGroupAttribute, 0, false);
-                                if (configGroupAttr)
-                                {
-                                    configGroupName = configGroupAttr->value();
-                                    break;
-                                }
-                            }
-                        }
+                    fileEntryIds = ParseFileEntries(preloadNode, dataScope, autoLoad);
+                }
 
-                        platformNode = platformNode->next_sibling(ATLXmlTags::PlatformNodeTag, 0, false);
-                    }
+                auto it = m_rPreloadRequests.find(preloadRequestId);
+                if (it == m_rPreloadRequests.end())
+                {
+                    auto preloadRequest = azcreate(CATLPreloadRequest, (preloadRequestId, dataScope, autoLoad, fileEntryIds), Audio::AudioSystemAllocator, "ATLPreloadRequest");
+                    m_rPreloadRequests[preloadRequestId] = preloadRequest;
 
-                    if (configGroupName)
-                    {
-                        while (configGroupNode)
-                        {
-                            auto configGroupAttr = configGroupNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
-                            if (configGroupAttr && azstricmp(configGroupAttr->value(), configGroupName) == 0)
-                            {
-                                // Found a config group associated with this platform...
-                                CATLPreloadRequest::TFileEntryIDs fileEntryIds;
-
-                                auto fileNode = configGroupNode->first_node(nullptr, 0, false);
-                                while (fileNode)
-                                {
-                                    TAudioFileEntryID fileEntryId = m_rFileCacheMgr.TryAddFileCacheEntry(fileNode, dataScope, autoLoad);
-                                    if (fileEntryId != INVALID_AUDIO_FILE_ENTRY_ID)
-                                    {
-                                        fileEntryIds.push_back(fileEntryId);
-                                    }
-
-                                    fileNode = fileNode->next_sibling(nullptr, 0, false);
-                                }
-
-                                auto it = m_rPreloadRequests.find(preloadRequestId);
-                                if (it == m_rPreloadRequests.end())
-                                {
-                                    auto preloadRequest = azcreate(CATLPreloadRequest, (preloadRequestId, dataScope, autoLoad, fileEntryIds), Audio::AudioSystemAllocator, "ATLPreloadRequest");
-                                    m_rPreloadRequests[preloadRequestId] = preloadRequest;
-
-                                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                                    m_pDebugNameStore->AddAudioPreloadRequest(preloadRequestId, preloadRequestName);
-                                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                                }
-                                else
-                                {
-                                    it->second->m_cFileEntryIDs.insert(it->second->m_cFileEntryIDs.end(), fileEntryIds.begin(), fileEntryIds.end());
-                                }
-
-                                // No need to continue looking through the config groups...
-                                break;
-                            }
-
-                            configGroupNode = configGroupNode->next_sibling(ATLXmlTags::ATLConfigGroupTag, 0, false);
-                        }
-                    }
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    m_pDebugNameStore->AddAudioPreloadRequest(preloadRequestId, preloadRequestName);
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                }
+                else if (!fileEntryIds.empty())
+                {
+                    it->second->m_cFileEntryIDs.insert(it->second->m_cFileEntryIDs.end(), fileEntryIds.begin(), fileEntryIds.end());
                 }
             }
 
             preloadNode = preloadNode->next_sibling(ATLXmlTags::ATLPreloadRequestTag, 0, false);
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    CATLPreloadRequest::TFileEntryIDs CATLXmlProcessor::LegacyParseFileEntries(const AZ::rapidxml::xml_node<char>* preloadNode, const EATLDataScope dataScope, bool autoLoad)
+    {
+        CATLPreloadRequest::TFileEntryIDs fileEntryIds;
+
+        auto platformsNode = preloadNode->first_node(ATLXmlTags::ATLPlatformsTag, 0, false);
+        auto configGroupNode = preloadNode->first_node(ATLXmlTags::ATLConfigGroupTag, 0, false);
+        if (platformsNode && configGroupNode)
+        {
+            const char* configGroupName = nullptr;
+            auto platformNode = platformsNode->first_node(ATLXmlTags::PlatformNodeTag, 0, false);
+            while (platformNode)
+            {
+                auto platformAttr = platformNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+                if (platformAttr)
+                {
+                    if (azstricmp(platformAttr->value(), ATLXmlTags::PlatformName) == 0 || azstricmp(platformAttr->value(), ATLXmlTags::PlatformCodeName) == 0)
+                    {
+                        auto configGroupAttr = platformNode->first_attribute(ATLXmlTags::ATLConfigGroupAttribute, 0, false);
+                        if (configGroupAttr)
+                        {
+                            configGroupName = configGroupAttr->value();
+                            break;
+                        }
+                    }
+                }
+
+                platformNode = platformNode->next_sibling(ATLXmlTags::PlatformNodeTag, 0, false);
+            }
+
+            if (configGroupName)
+            {
+                while (configGroupNode)
+                {
+                    auto configGroupAttr = configGroupNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+                    if (configGroupAttr && azstricmp(configGroupAttr->value(), configGroupName) == 0)
+                    {
+                        // Found a config group associated with this platform...
+                        auto fileNode = configGroupNode->first_node(nullptr, 0, false);
+                        while (fileNode)
+                        {
+                            TAudioFileEntryID fileEntryId = m_rFileCacheMgr.TryAddFileCacheEntry(fileNode, dataScope, autoLoad);
+                            if (fileEntryId != INVALID_AUDIO_FILE_ENTRY_ID)
+                            {
+                                fileEntryIds.push_back(fileEntryId);
+                            }
+
+                            fileNode = fileNode->next_sibling(nullptr, 0, false);
+                        }
+
+                        // No need to continue looking through the config groups once a match is found...
+                        break;
+                    }
+
+                    configGroupNode = configGroupNode->next_sibling(ATLXmlTags::ATLConfigGroupTag, 0, false);
+                }
+            }
+        }
+
+        return fileEntryIds;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    CATLPreloadRequest::TFileEntryIDs CATLXmlProcessor::ParseFileEntries(const AZ::rapidxml::xml_node<char>* preloadNode, const EATLDataScope dataScope, bool autoLoad)
+    {
+        CATLPreloadRequest::TFileEntryIDs fileEntryIds;
+        auto fileNode = preloadNode->first_node(nullptr, 0, false);
+        while (fileNode)
+        {
+            TAudioFileEntryID fileEntryId = m_rFileCacheMgr.TryAddFileCacheEntry(fileNode, dataScope, autoLoad);
+            if (fileEntryId != INVALID_AUDIO_FILE_ENTRY_ID)
+            {
+                fileEntryIds.push_back(fileEntryId);
+            }
+
+            fileNode = fileNode->next_sibling(nullptr, 0, false);
+        }
+
+        return fileEntryIds;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1749,7 +1847,13 @@ namespace Audio
         {
             auto const atlEvent = audioEventPair.second;
 
-            AZStd::string triggerName(m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID));
+            const char* name = m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID);
+            if (!name)
+            {
+                continue;
+            }
+
+            AZStd::string triggerName(name);
             AZStd::to_lower(triggerName.begin(), triggerName.end());
 
             if (AudioDebugDrawFilter(triggerName, triggerFilter))
@@ -1830,7 +1934,7 @@ namespace Audio
         {
             auto const audioObject = audioObjectPair.second;
 
-            if (HasActiveEvents(audioObject))
+            if (audioObject->HasActiveEvents())
             {
                 ++nNumActiveAudioObjects;
             }
@@ -1849,12 +1953,18 @@ namespace Audio
         {
             auto const audioObject = audioObjectPair.second;
 
-            AZStd::string audioObjectName(m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID()));
+            const char* name = m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID());
+            if (!name)
+            {
+                continue;
+            }
+
+            AZStd::string audioObjectName(name);
             AZStd::to_lower(audioObjectName.begin(), audioObjectName.end());
 
             bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
 
-            bDraw = bDraw && (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || HasActiveEvents(audioObject));
+            bDraw = bDraw && (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || audioObject->HasActiveEvents());
 
             if (bDraw)
             {
@@ -1886,25 +1996,39 @@ namespace Audio
         {
             auto const audioObject = audioObjectPair.second;
 
-            AZStd::string audioObjectName(m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID()));
+            const char* name = m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID());
+            if (!name)
+            {
+                continue;
+            }
+
+            AZStd::string audioObjectName(name);
             AZStd::to_lower(audioObjectName.begin(), audioObjectName.end());
 
             bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
-            bool hasActiveEvents = HasActiveEvents(audioObject);
+            bool hasActiveEvents = audioObject->HasActiveEvents();
             bDraw = bDraw && (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || hasActiveEvents);
 
             if (bDraw)
             {
                 const AZ::Vector3 position(audioObject->GetPosition().GetPositionVec());
+                SATLSoundPropagationData propData;
+#if !AUDIO_ENABLE_CRY_PHYSICS
+                audioObject->GetObstOccData(propData);
+#else
+                audioObject->GetPropagationData(propData);
+#endif
 
                 rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f,
                     hasActiveEvents ? fItemActiveColor : fItemInactiveColor,
                     false,
-                    "[%.2f  %.2f  %.2f] (%llu): %s",
+                    "[%.2f  %.2f  %.2f] (ID: %llu  Obst: %.2f  Occl: %.2f): %s",
                     static_cast<float>(position.GetX()),
                     static_cast<float>(position.GetY()),
                     static_cast<float>(position.GetZ()),
                     audioObject->GetID(),
+                    propData.fObstruction,
+                    propData.fOcclusion,
                     audioObjectName.c_str());
 
                 fPosY += 16.0f;

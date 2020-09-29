@@ -567,12 +567,10 @@ namespace AZStd
             }
         }
 
-#ifdef AZ_HAS_INITIALIZERS_LIST
         AZ_FORCE_INLINE void insert(const_iterator insertPos, std::initializer_list<value_type> list)
         {
             insert(insertPos, list.begin(), list.end());
         }
-#endif // #ifdef AZ_HAS_INITIALIZERS_LIST
 
         template<class InputIterator>
         AZ_FORCE_INLINE void insert(const_iterator insertPos, InputIterator first, InputIterator last)

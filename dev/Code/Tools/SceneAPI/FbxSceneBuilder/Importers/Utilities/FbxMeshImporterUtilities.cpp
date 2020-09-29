@@ -27,6 +27,10 @@ namespace AZ
             bool BuildSceneMeshFromFbxMesh(const AZStd::shared_ptr<SceneData::GraphData::MeshData>& mesh,
                 const FbxSDKWrapper::FbxMeshWrapper& sourceMesh, const FbxSceneSystem& sceneSystem)
             {
+                // Save unit sizes of the mesh
+                mesh->SetUnitSizeInMeters(sceneSystem.GetUnitSizeInMeters());
+                mesh->SetOriginalUnitSizeInMeters(sceneSystem.GetOriginalUnitSizeInMeters());
+
                 // Get mesh subset count by scanning material IDs in meshes.
                 // For negative material ids we will add an additional
                 // subset at the end, see "++maxMaterialIndex".

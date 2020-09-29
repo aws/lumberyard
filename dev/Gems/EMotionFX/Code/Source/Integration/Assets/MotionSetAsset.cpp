@@ -80,6 +80,12 @@ namespace EMotionFX
             AZ::Data::AssetBus::MultiHandler::BusDisconnect();
         }
 
+        void MotionSetAsset::SetData(EMotionFX::MotionSet* motionSet)
+        {
+            m_emfxMotionSet.reset(motionSet);
+            m_status = static_cast<int>(AZ::Data::AssetData::AssetStatus::Ready);
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void MotionSetAsset::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {

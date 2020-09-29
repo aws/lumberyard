@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYACTION_BREAKABLEGLASSSYSTEM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #include <IBreakableGlassSystem.h>
 
 // Forward decls
@@ -67,5 +68,6 @@ private:
     SBreakableGlassCVars*               m_pGlassCVars;
     bool                                                m_enabled;
 };//------------------------------------------------------------------------------------------------
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYACTION_BREAKABLEGLASSSYSTEM_H

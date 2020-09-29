@@ -13,6 +13,7 @@
 #pragma once
 
 #include "Rendering/WhiteBoxRenderData.h"
+#include "WhiteBox/WhiteBoxComponentBus.h"
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
@@ -25,6 +26,7 @@ namespace WhiteBox
     //! Runtime representation of White Box.
     class WhiteBoxComponent
         : public AZ::Component
+        , public WhiteBoxComponentRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
     {
     public:
@@ -37,6 +39,9 @@ namespace WhiteBox
         WhiteBoxComponent(WhiteBoxComponent&&) = default;
         WhiteBoxComponent& operator=(WhiteBoxComponent&&) = default;
         ~WhiteBoxComponent();
+
+        // WhiteBoxComponentRequestBus ...
+        bool WhiteBoxIsVisible() const override;
 
         void GenerateWhiteBoxMesh(const WhiteBoxRenderData& whiteBoxRenderData);
 

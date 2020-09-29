@@ -284,7 +284,7 @@ namespace AZ
             StreamStackEntry::FlushEntireCache();
         }
 
-        void BlockCache::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void BlockCache::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             statistics.push_back(Statistic::CreatePercentage(m_name, "Cache Hit Rate", CalculateHitRatePercentage()));
             statistics.push_back(Statistic::CreatePercentage(m_name, "Cacheable", CalculateCacheableRatePercentage()));

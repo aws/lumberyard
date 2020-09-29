@@ -29,6 +29,7 @@
 #include "CommentNode.h"
 #include "LayerNode.h"
 #include "ShadowsSetupNode.h"
+#include "TimeOfDayNode.h"
 
 #include <StlUtils.h>
 #include <MathConversion.h>
@@ -120,6 +121,20 @@ namespace
         REGISTER_NODE_TYPE(Environment)
         REGISTER_NODE_TYPE(AzEntity)
         REGISTER_NODE_TYPE(Component)
+        REGISTER_NODE_TYPE(TOD_Sun)
+        REGISTER_NODE_TYPE(TOD_Fog)
+        REGISTER_NODE_TYPE(TOD_VolumetricFog)
+        REGISTER_NODE_TYPE(TOD_SkyLight)
+        REGISTER_NODE_TYPE(TOD_NightSky)
+        REGISTER_NODE_TYPE(TOD_NightSkyMultiplier)
+        REGISTER_NODE_TYPE(TOD_CloudShading)
+        REGISTER_NODE_TYPE(TOD_SunRaysEffect)
+        REGISTER_NODE_TYPE(TOD_AdvancedTOD)
+        REGISTER_NODE_TYPE(TOD_Filters)
+        REGISTER_NODE_TYPE(TOD_DepthOfField)
+        REGISTER_NODE_TYPE(TOD_Shadows)
+        REGISTER_NODE_TYPE(TOD_Obsolete)
+        REGISTER_NODE_TYPE(TOD_HDR)
     }
 
     // If you get an assert in this function, it means two param types have the same enum value.
@@ -255,6 +270,7 @@ void CMovieSystem::DoNodeStaticInitialisation()
 {
     CAnimMaterialNode::Initialize();
     CAnimPostFXNode::Initialize();
+    CAnimTODNode::Initialize();
     CAnimSceneNode::Initialize();
     CAnimScreenFaderNode::Initialize();
     CCommentNode::Initialize();
@@ -717,7 +733,7 @@ void CMovieSystem::NotifyListeners(IAnimSequence* sequence, IMovieListener::EMov
     {
         /*
             * When a sequence is stopped, Resume is called just before stopped (not sure why). To ensure that a OnStop notification is sent out after the Resume,
-            * notifications for eMovieEvent_Started and eMovieEvent_Stopped are handled in IAnimSequence::OnStart and IAnimSequence::OnStop 
+            * notifications for eMovieEvent_Started and eMovieEvent_Stopped are handled in IAnimSequence::OnStart and IAnimSequence::OnStop
             */
         case IMovieListener::eMovieEvent_Aborted:
         {
@@ -734,7 +750,7 @@ void CMovieSystem::NotifyListeners(IAnimSequence* sequence, IMovieListener::EMov
             // do nothing for unhandled IMovieListener events
             break;
         }
-    }    
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1207,6 +1223,15 @@ void CMovieSystem::Callback(IMovieCallback::ECallbackReason reason, IAnimNode* p
         ->Field("Sequences", &CMovieSystem::m_sequences);
 
     AnimSerializer::ReflectAnimTypes(serializeContext);
+}
+
+//////////////////////////////////////////////////////////////////////////
+/*static*/ void CMovieSystem::ClearEnumToStringMaps()
+{
+    g_animNodeEnumToStringMap.clear();
+    g_animNodeStringToEnumMap.clear();
+    g_animParamEnumToStringMap.clear();
+    g_animParamStringToEnumMap.clear();
 }
 
 //////////////////////////////////////////////////////////////////////////

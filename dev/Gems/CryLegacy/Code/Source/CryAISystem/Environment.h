@@ -129,8 +129,10 @@ struct SAIEnvironment
     typedef IntersectionTestQueue<43> GlobalIntersectionTester;
     GlobalIntersectionTester* pIntersectionTester;
 
+#if ENABLE_CRY_PHYSICS
     //more cache friendly
     IPhysicalWorld* pWorld;//TODO use this more, or eliminate it.
+#endif // ENABLE_CRY_PHYSICS
 
 
     SAIEnvironment();

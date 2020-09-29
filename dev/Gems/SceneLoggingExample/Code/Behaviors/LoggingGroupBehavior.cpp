@@ -147,6 +147,6 @@ namespace SceneLoggingExample
         // Let's also set a default name for this group. Groups often match one-to-one with the file that they output.
         // For example, a Mesh Group will produce a .cgf file with the same name. If the name is used as a file name, 
         // it is important to check whether it's a valid path name and isn't duplicating another name.
-        newGroup->SetName(AZStd::string::format("Logger_%i", AZStd::distance(view.begin(), view.end())));
+        newGroup->SetName(AZStd::string::format("Logger_%li", AZStd::distance(view.begin(), view.end())));
     }
 } // namespace SceneLoggingExample

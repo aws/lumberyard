@@ -84,10 +84,11 @@ namespace LegacyTerrain
     public:
         virtual ~LegacyTerrainEditorDataRequests() = default;
 
-        //! Returns true if a new legacy terrain system was created.
-        //! Otherwise returns false (most likely out of memory, or a legacy
-        //! terrain system already exists).
-        virtual bool CreateTerrainSystemFromEditorData() = 0;
+        //! Initializes "STerrainInfo" object. 
+        virtual bool GetTerrainInfo(STerrainInfo& terrainInfo) = 0;
+
+        //! Returns true if editor terrain data was given to the legacy terrain system.
+        virtual bool InitializeTerrainSystemFromEditorData() = 0;
 
         virtual void DestroyTerrainSystem() = 0;
 
@@ -179,7 +180,7 @@ namespace LegacyTerrain
 
         virtual ~LegacyTerrainDataRequests() = default;
 
-        virtual void SetTerrainElevationAndSurfaceWeights(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet) = 0;
+        virtual void SetTerrainElevationAndSurfaceWeights(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet, bool heightsChanged) = 0;
 
         virtual void LoadTerrainSurfacesFromXML(XmlNodeRef pDoc) = 0;
 

@@ -15,8 +15,10 @@
 #define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_STATCGFPHYSICALIZE_H
 #pragma once
 
-#include "PhysWorld.h"
 #include "CGFContent.h"
+
+#if ENABLE_CRY_PHYSICS
+#include "PhysWorld.h"
 
 //////////////////////////////////////////////////////////////////////////
 class CPhysicsInterface
@@ -47,5 +49,6 @@ private:
     IGeomManager* m_pGeomManager;
     CPhysWorldLoader m_physLoader;
 };
+#endif
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_STATCGFPHYSICALIZE_H

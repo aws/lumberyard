@@ -354,6 +354,9 @@ namespace AzToolsFramework
                 AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
                 AZStd::vector< AZ::Data::AssetId>& rootAncestorPushList);
 
+            //! Helper method to load a slice Entity from a given assetId
+            AZStd::shared_ptr<AZ::Entity> GetSliceEntityForAssetId(const AZ::Data::AssetId& assetId);
+
         } // namespace Internal
 
         //=========================================================================
@@ -720,7 +723,9 @@ namespace AzToolsFramework
                     {
                         if (IsReparentNonTrivial(rootEntity, dummyParentId))
                         {
-                            ReparentNonTrivialSliceInstanceHierarchy(rootEntity, dummyParentId);
+                            AZ::EntityId oldParentId;
+                            AZ::TransformBus::EventResult(oldParentId, rootEntity, &AZ::TransformBus::Events::GetParentId);
+                            ReparentNonTrivialSliceInstanceHierarchy(rootEntity, oldParentId);
                         }
 
                         // update the list of entities to include in the new slice
@@ -742,7 +747,7 @@ namespace AzToolsFramework
                 bool entitiesHaveCommonRoot = false;
                 
                 AzToolsFramework::EntityList entityObjectsToInclude;
-                for (const AZ::EntityId entityId : entitiesToIncludeInAsset)
+                for (AZ::EntityId entityId : entitiesToIncludeInAsset)
                 {
                     AZ::Entity* entity = nullptr;
                     AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
@@ -1082,7 +1087,7 @@ namespace AzToolsFramework
                     const SliceTransaction::Result result = transaction->UpdateEntity(entityId);
                     if (!result)
                     {
-                        return AZ::Failure(AZStd::string::format("Failed to add entity with Id %1 to slice transaction for \"%s\". Slice push aborted.\n\nError:\n%s",
+                        return AZ::Failure(AZStd::string::format("Failed to add entity with Id %s to slice transaction for \"%s\". Slice push aborted.\n\nError:\n%s",
                             entityId.ToString().c_str(),
                             sliceAsset.ToString<AZStd::string>().c_str(),
                             result.GetError().c_str()));
@@ -2542,42 +2547,75 @@ namespace AzToolsFramework
             return pushableChangesAvailable || haveNewOrDeletedEntities;
         }
 
+        bool IsDynamic(const AZ::Data::AssetId& assetId)
+        {
+            AZStd::shared_ptr<AZ::Entity> sliceEntity = Internal::GetSliceEntityForAssetId(assetId);
+            AZ::SliceComponent* sliceComponent = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
+            if (sliceComponent)
+            {
+                return sliceComponent->IsDynamic();
+            }
+            else
+            {
+                AZ_Warning("Slice", false, "Asset %s does not contain a slice component", assetId.ToString<AZStd::string>().c_str());
+            }
+
+            return false;
+        }
+
+        void SetIsDynamic(const AZ::Data::AssetId& assetId, bool isDynamic)
+        {
+            AZStd::shared_ptr<AZ::Entity> sliceEntity = Internal::GetSliceEntityForAssetId(assetId);
+            AZ::SliceComponent* sliceComponent = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
+            if (sliceComponent)
+            {
+                AZStd::string relativePath, fullPath;
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(relativePath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, assetId);
+
+                bool fullPathFound = false;
+                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, relativePath, fullPath);
+                if (fullPathFound)
+                {
+                    sliceComponent->SetIsDynamic(isDynamic);
+                    Internal::ResaveSlice(sliceEntity, fullPath);
+                }
+            }
+            else
+            {
+                AZ_Warning("Slice", false, "Asset %s does not contain a slice component", assetId.ToString<AZStd::string>().c_str());
+            }
+        }
+
         void CreateSliceAssetContextMenu(QMenu* menu, const AZStd::string& fullFilePath)
         {
             if (!menu)
             {
                 return;
             }
-            // For slices, we provide the option to toggle the dynamic flag.
-            QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
-            AZStd::shared_ptr<AZ::Entity> sliceEntity(AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullFilePath, nullptr,
-                AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading)));
-            AZ::SliceComponent* sliceAsset = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
-            if (sliceAsset)
+
+            AZStd::string relativePath;
+            bool relativePathFound = false;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(relativePathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetRelativeProductPathFromFullSourceOrProductPath, fullFilePath, relativePath);
+
+            AZ::Data::AssetId sliceAssetId;
+            if (relativePathFound)
             {
-                if (sliceAsset->IsDynamic())
-                {
-                    menu->addAction(sliceOptions[1], [sliceEntity, fullFilePath]()
-                    {
-                        /*Unset dynamic slice*/
-                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
-                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
-                        sliceAsset->SetIsDynamic(false);
-                        Internal::ResaveSlice(sliceEntity, fullFilePath);
-                    });
-                }
-                else
-                {
-                    menu->addAction(sliceOptions[0], [sliceEntity, fullFilePath]()
-                    {
-                        /*Set dynamic slice*/
-                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
-                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
-                        sliceAsset->SetIsDynamic(true);
-                        Internal::ResaveSlice(sliceEntity, fullFilePath);
-                    });
-                }
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, relativePath.c_str(), AZ::Data::s_invalidAssetType, false);
             }
+
+            if (!sliceAssetId.IsValid())
+            {
+                return;
+            }
+
+            // For slices, we provide the option to toggle the dynamic flag.
+            bool isDynamic = IsDynamic(sliceAssetId);
+            QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
+            QString optionLabel = isDynamic ? sliceOptions[1] : sliceOptions[0];
+            menu->addAction(optionLabel, [sliceAssetId, isDynamic]()
+            {
+                SetIsDynamic(sliceAssetId, !isDynamic);
+            });
         }
 
         void RemoveInvalidChildOrderArrayEntries(const AZStd::vector<AZ::EntityId>& originalOrderArray,
@@ -4175,6 +4213,43 @@ namespace AzToolsFramework
                     newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
                 }
             }
+
+            AZStd::shared_ptr<AZ::Entity> GetSliceEntityForAssetId(const AZ::Data::AssetId& assetId)
+            {
+                if (!assetId.IsValid())
+                {
+                    AZ_Warning("Slice", false, "AssetId is invalid for asset %s", assetId.ToString<AZStd::string>().c_str());
+                    return nullptr;
+                }
+
+                AZStd::string relativePath, fullPath;
+                AZ::Data::AssetCatalogRequestBus::BroadcastResult(relativePath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, assetId);
+
+                if (relativePath.empty())
+                {
+                    AZ_Warning("Slice", false, "No relative path found for asset %s", assetId.ToString<AZStd::string>().c_str());
+                    return nullptr;
+                }
+
+                bool fullPathFound = false;
+                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, relativePath, fullPath);
+
+                if (fullPathFound)
+                {
+                    AZStd::shared_ptr<AZ::Entity> sliceEntity(AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullPath, nullptr,
+                        AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading)));
+
+                    return sliceEntity;
+                }
+                else
+                {
+                    AZ_Warning("Slice", false, "Could not find full path for asset %s", assetId.ToString<AZStd::string>().c_str());
+                }
+
+                return nullptr;
+            }
+
+            
         } // namespace Internal
 
         void SliceUserSettings::Reflect(AZ::ReflectContext* context)

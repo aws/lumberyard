@@ -862,17 +862,6 @@ void CVolumeObjectRenderNode::Render(const SRendParams& rParam, const SRendering
 }
 
 
-IPhysicalEntity* CVolumeObjectRenderNode::GetPhysics() const
-{
-    return 0;
-}
-
-
-void CVolumeObjectRenderNode::SetPhysics(IPhysicalEntity*)
-{
-}
-
-
 void CVolumeObjectRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 {
     m_pMaterial = pMat;

@@ -18,6 +18,8 @@
 #include <AzCore/std/containers/bitset.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 namespace AzFramework
 {
@@ -55,6 +57,7 @@ namespace AZ
             AZStd::bitset<64> m_flags;
         };
 
+        using PreloadAssetListType = AZStd::unordered_map<AZ::Data::AssetId, AZStd::unordered_set<AZ::Data::AssetId>>;
         /**
          * Request bus for asset catalogs. Presently we expect only one asset catalog, so this
          * bus is limited to one handlers.
@@ -119,6 +122,9 @@ namespace AZ
             /// \param the list reference to fill with registered types.
             virtual void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& /*assetTypes*/) {}
 
+            /// Get Asset Type Uuid from its Display Name
+            virtual AZ::Data::AssetType GetAssetTypeByDisplayName(const AZStd::string_view /*displayName*/) { return AZ::Data::AssetType();  }
+
             /// Adds an asset to the catalog.
             /// \param id - the id to assign the asset. 
             /// \param info - the information to assign to that ID
@@ -161,12 +167,28 @@ namespace AZ
             /// \return AZ::Success containing a list of dependencies
             virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetAllProductDependencies(const AssetId& /*id*/) { return AZ::Failure<AZStd::string>("Not implemented"); }
 
+            /// Retrieves a list of products the given (product) asset depends on (recursively) which are not flagged as NoLoad.
+            /// NoLoad dependencies will be returned in the noload set for the caller to load on demand if desired
+            /// \param id - the id of the asset to look up the dependencies for
+            /// \return AZ::Success containing a list of dependencies, noloadSet with the dependencies flagged as NoLoad, preloadLists contains the specific dependencies which are PreLoad for
+            /// each asset.  These assets are all also found in the product dependency list which the noloadset are not.  This is because the intent of the return value product dependency list
+            /// is the entire set of assets which need to load by default for the requested assetID, and the preload list is only to allow us to manage and communicate about subsets of those assets
+            /// which have additional reporting requirements.  We don't want to report assets which have preload dependencies as "Ready" until all of their "PreLoad" dependencies are also ready
+            /// NoLoad assets however simply wait for the user to request an additional load - they or their dependencies don't begin loading by default
+            virtual AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetLoadBehaviorProductDependencies([[maybe_unused]] const AZ::Data::AssetId& id, [[maybe_unused]] AZStd::unordered_set<AZ::Data::AssetId>& noloadSet, [[maybe_unused]] PreloadAssetListType& preloadLists) { return AZ::Failure<AZStd::string>("Not implemented"); }
 
             /// Retrieves a list of all products the given (product) asset depends on (recursively).
             /// \param id - the id of the asset to look up the dependencies for
             /// \param exclusionList - list of AssetIds to ignore (recursively).  If a match is found, it and all its dependencies are skipped.
+            /// \param wildcardPatternExclusionList - if a dependency matches any of these wildcard patterns, it should be ignored (recursively). If a match is found, it and all its dependencies are skipped.
             /// \return AZ::Success containing a list of dependencies
-            virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetAllProductDependenciesFilter([[maybe_unused]] const AssetId& id, [[maybe_unused]] const AZStd::unordered_set<AssetId>& exclusionList) { return AZ::Failure<AZStd::string>("Not implemented"); }
+            virtual AZ::Outcome<AZStd::vector<ProductDependency>, AZStd::string> GetAllProductDependenciesFilter([[maybe_unused]] const AssetId& id, [[maybe_unused]] const AZStd::unordered_set<AssetId>& exclusionList, [[maybe_unused]] const AZStd::vector<AZStd::string>& wildcardPatternExclusionList) { return AZ::Failure<AZStd::string>("Not implemented"); }
+
+            /// Checks the relative path of the asset associated with the assetId against the input wildcard pattern.
+            /// Does not verify the validity of the input wildcard pattern.
+            /// AssetIds that cannot be resolved to a relative path are treated as though they do not match the input pattern.
+            /// \return true if the relative path associated with the input assetId matches the input wildcard pattern
+            virtual bool DoesAssetIdMatchWildcardPattern(const AZ::Data::AssetId& /*assetId*/, const AZStd::string&/* wildcardPattern*/) { return false; }
 
             using BeginAssetEnumerationCB = AZStd::function< void() >;
             using AssetEnumerationCB = AZStd::function< void(const AZ::Data::AssetId /*id*/, const AZ::Data::AssetInfo& /*info*/) >;

@@ -21,6 +21,7 @@ from six import iteritems  # Python 2.7/3.7 Compatibility
 from resource_manager.errors import HandledError
 from boto3.s3.transfer import S3Transfer
 from boto3.s3.transfer import TransferConfig
+from botocore.exceptions import ClientError
 
 import staging
 import signing
@@ -30,7 +31,7 @@ import show_manifest
 import pak_files
 from functools import wraps
 from path_utils import ensure_posix_path
-
+import cloudfront
 
 def list_manifests(context, args):
     # this will need to look for manifest references and build a tree
@@ -840,7 +841,7 @@ class ProgressPercentage(object):
 
 def command_upload_manifest_content(context, args):
     staging_args = staging.parse_staging_arguments(args)
-    upload_manifest_content(context, args.manifest_path, args.deployment_name, staging_args, args.all, args.signing)
+    upload_manifest_content(context, args.manifest_path, args.deployment_name, staging_args, args.all, args.signing, args.invalidate_existing_files)
 
 
 def _append_loose_manifest(context, files_list, manifest_path):
@@ -870,7 +871,7 @@ def _append_loose_manifest(context, files_list, manifest_path):
 # 3 - Check each item in our manifest against a HEAD call to get the metadata with our saved local hash values
 # 4 - Upload each unmatched pak file
 # 5 - Upload the manifest (In pak and loose)
-def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all=False, do_signing=False):
+def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all=False, do_signing=False, invalidate_existing_files=False):
     build_new_paks(context, manifest_path, upload_all)
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
     _update_file_hashes(context, manifest_path, manifest)
@@ -889,7 +890,7 @@ def upload_manifest_content(context, manifest_path, deployment_name, staging_arg
                 continue
             show_manifest.found_updated_item(this_key)
             context.view.found_updated_item(this_key)
-            _do_file_upload(context, this_file_path, bucket_name, this_key, thisFile['hash'])
+            _do_file_upload(context, this_file_path, bucket_name, this_key, thisFile['hash'], invalidate_existing_files)
             upload_info = {}
 
             if do_signing:
@@ -915,18 +916,24 @@ def upload_manifest_content(context, manifest_path, deployment_name, staging_arg
             staging.set_staging_status(thisFile, context, staging_args, deployment_name)
 
 
-def _upload_manifest(context, manifest_pak_path, deployment_name):
-    source_path, manifest_name = os.path.split(manifest_pak_path)
-    _do_file_upload(context, manifest_pak_path, _get_content_bucket_by_name(context, deployment_name), manifest_name, '')
-    return manifest_name
-
-
 def _get_meta_hash_name():
     return 'hash'
 
 
-def _do_file_upload(context, this_file_path, bucketName, thisKey, hashValue):
+def _do_file_upload(context, this_file_path, bucketName, thisKey, hashValue, invalidate_existing_files=False):
     s3 = context.aws.client('s3')
+    if invalidate_existing_files:
+        try:
+            s3.get_object(
+                Bucket=bucketName,
+                Key=thisKey
+            )
+            cloudfront.create_invalidation(context, thisKey, thisKey + hashValue)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchKey':
+                # File doesn't exist in the s3 bucket. Consider it as a new file.
+                pass
+
     config = TransferConfig(
         max_concurrency=10,
         num_download_attempts=10,
@@ -937,11 +944,6 @@ def _do_file_upload(context, this_file_path, bucketName, thisKey, hashValue):
                          extra_args={'Metadata': {_get_meta_hash_name(): hashValue}})
     show_manifest.done_uploading(this_file_path)
     context.view.done_uploading(this_file_path)
-
-
-def _do_put_upload(context, this_file_path, bucketName, thisKey, hashValue):
-    s3 = context.aws.client('s3')
-    s3.upload_file(this_file_path, bucketName, thisKey, ExtraArgs={'Metadata': {_get_meta_hash_name(): hashValue}})
 
 
 def _get_cache_game_path(context, game_directory):
@@ -1149,10 +1151,10 @@ def get_list_objects_limit():
 
 def upload_folder_command(context, args):
     staging_args = staging.parse_staging_arguments(args)
-    upload_folder(context, args.folder, args.bundle_type, args.deployment_name, staging_args, args.signing)
+    upload_folder(context, args.folder, args.bundle_type, args.deployment_name, staging_args, args.signing, args.invalidate_existing_files)
 
 
-def upload_folder(context, folder, bundle_type, deployment_name, staging_args, do_signing=False):
+def upload_folder(context, folder, bundle_type, deployment_name, staging_args, do_signing=False, invalidate_existing_files=False):
     """Upload all of the bundles in a specific folder - no manifest necessary"""
     folder_path = folder if os.path.isabs(folder) else os.path.abspath(folder)
     bundles = glob.glob(os.path.join(folder_path, '*' + os.path.extsep + bundle_type))
@@ -1178,7 +1180,7 @@ def upload_folder(context, folder, bundle_type, deployment_name, staging_args, d
             continue
 
         print('Uploading {} as {}'.format(thisBundle, thisKey))
-        _do_file_upload(context, thisBundle, bucketName, thisKey, thisHash)
+        _do_file_upload(context, thisBundle, bucketName, thisKey, thisHash, invalidate_existing_files)
         did_upload = True
         upload_info = {}
 

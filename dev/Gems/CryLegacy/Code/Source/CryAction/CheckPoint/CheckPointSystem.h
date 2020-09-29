@@ -78,9 +78,6 @@ private:
     //actor data : mainly flags
     void WriteActorData(XmlNodeRef parentNode);
 
-    //vehicle data
-    void WriteVehicleData(XmlNodeRef parentNode);
-
     //checkpoint data
     void WriteMetaData(EntityId checkpointId, XmlNodeRef parentNode, SCheckpointData& outMetaData);
 

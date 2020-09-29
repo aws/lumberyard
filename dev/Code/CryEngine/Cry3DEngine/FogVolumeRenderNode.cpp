@@ -539,17 +539,6 @@ void CFogVolumeRenderNode::Render(const SRendParams& rParam, const SRenderingPas
 }
 
 
-IPhysicalEntity* CFogVolumeRenderNode::GetPhysics() const
-{
-    return 0;
-}
-
-
-void CFogVolumeRenderNode::SetPhysics(IPhysicalEntity*)
-{
-}
-
-
 void CFogVolumeRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 {
 }

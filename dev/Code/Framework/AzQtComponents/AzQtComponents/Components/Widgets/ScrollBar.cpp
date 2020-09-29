@@ -30,6 +30,7 @@ namespace AzQtComponents
 {
     static constexpr const char* g_showBackgroundProperty = "ShowBackground";
     static constexpr const char* g_scrollBarModeProperty = "ScrollBarMode";
+    static constexpr const char* g_darkStyleClass = "DarkScrollBar";
 
     class ScrollBarWatcher : public QObject
     {
@@ -215,6 +216,20 @@ namespace AzQtComponents
             m_widgets.remove(scrollArea);
         }
     };
+
+    void ScrollBar::applyDarkStyle(QAbstractScrollArea* scrollArea)
+    {
+        // Note: ScrollBars default to light
+        Style::addClass(scrollArea, g_darkStyleClass);
+        StyleManager::repolishStyleSheet(scrollArea);
+    }
+
+    void ScrollBar::applyLightStyle(QAbstractScrollArea* scrollArea)
+    {
+        // Note: ScrollBars default to light
+        Style::removeClass(scrollArea, g_darkStyleClass);
+        StyleManager::repolishStyleSheet(scrollArea);
+    }
 
     QPointer<ScrollBarWatcher> ScrollBar::s_scrollBarWatcher = nullptr;
     unsigned int ScrollBar::s_watcherReferenceCount = 0;

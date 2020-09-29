@@ -116,23 +116,6 @@
         </property>
        </spacer>
       </item>
-      <item>
-       <widget class="QLabel" name="enableUI20Label">
-        <property name="text">
-         <string>Enable UI 2.0 (Preview)</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="enableUI20">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
    </item>

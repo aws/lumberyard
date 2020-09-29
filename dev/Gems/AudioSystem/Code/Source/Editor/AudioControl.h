@@ -14,35 +14,32 @@
 #pragma once
 
 #include <ACETypes.h>
-#include <AzCore/std/containers/map.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
+
 #include <IAudioConnection.h>
+#include <IAudioSystemControl.h>
 
 #include <IXml.h>
 
 namespace AudioControls
 {
-    extern const char* g_sDefaultGroup;
-
     class CATLControlsModel;
 
     //-------------------------------------------------------------------------------------------//
     struct SRawConnectionData
     {
-        SRawConnectionData(XmlNodeRef node, bool bIsValid)
+        SRawConnectionData(XmlNodeRef node, bool isValid)
             : m_xmlNode(node)
-            , m_isValid(bIsValid)
+            , m_isValid(isValid)
         {}
 
         XmlNodeRef m_xmlNode;
 
-        // indicates if the connection is valid for the currently loaded middle-ware
+        // indicates if the connection is valid for the currently loaded middleware
         bool m_isValid;
     };
 
     using TXmlNodeList = AZStd::vector<SRawConnectionData>;
-    using TConnectionPerGroup = AZStd::map<AZStd::string, TXmlNodeList>;
 
     //-------------------------------------------------------------------------------------------//
     class CATLControl
@@ -52,88 +49,85 @@ namespace AudioControls
         friend class CUndoControlModified;
 
     public:
-        CATLControl();
-        CATLControl(const AZStd::string& sControlName, CID nID, EACEControlType eType, CATLControlsModel* pModel);
+        CATLControl() = default;
+        CATLControl(const AZStd::string& controlName, CID id, EACEControlType type, CATLControlsModel* atlControlsModel);
         ~CATLControl();
 
         CID GetId() const;
-
+        AZStd::string GetName() const;
+        CATLControl* GetParent() const;
+        AZStd::string GetScope() const;
         EACEControlType GetType() const;
 
-        AZStd::string GetName() const;
-        void SetName(const AZStd::string_view name);
-
         bool HasScope() const;
-        AZStd::string GetScope() const;
-        void SetScope(const AZStd::string_view sScope);
-
         bool IsAutoLoad() const;
-        void SetAutoLoad(bool bAutoLoad);
 
-        CATLControl* GetParent() const
-        {
-            return m_pParent;
-        }
-        void SetParent(CATLControl* pParent);
+        void SetAutoLoad(bool isAutoLoad);
+        void SetName(const AZStd::string_view name);
+        void SetParent(CATLControl* parent);
+        void SetScope(const AZStd::string_view scope);
 
         size_t ChildCount() const
         {
             return m_children.size();
         }
 
-        CATLControl* GetChild(AZ::u32 index) const
+        CATLControl* GetChild(size_t index) const
         {
-            return m_children[index];
+            return (index < m_children.size() ? m_children[index] : nullptr);
         }
 
-        void AddChild(CATLControl* pChildControl)
+        void AddChild(CATLControl* childControl)
         {
-            m_children.push_back(pChildControl);
+            if (childControl)
+            {
+                m_children.push_back(childControl);
+            }
         }
 
-        void RemoveChild(CATLControl* pChildControl)
+        void RemoveChild(CATLControl* childControl)
         {
-            m_children.erase(AZStd::remove(m_children.begin(), m_children.end(), pChildControl), m_children.end());
+            if (childControl)
+            {
+                m_children.erase(AZStd::remove(m_children.begin(), m_children.end(), childControl), m_children.end());
+            }
         }
-
-        // Controls can group connection according to a platform
-        // This is used primarily for the Preload Requests
-        int GetGroupForPlatform(const AZStd::string_view platform) const;
-        void SetGroupForPlatform(const AZStd::string_view platform, int connectionGroupId);
 
         size_t ConnectionCount() const;
-        void AddConnection(TConnectionPtr pConnection);
-        void RemoveConnection(TConnectionPtr pConnection);
-        void RemoveConnection(IAudioSystemControl* pAudioSystemControl);
+        TConnectionPtr GetConnectionAt(size_t index) const;
+        TConnectionPtr GetConnection(CID id) const;
+        TConnectionPtr GetConnection(IAudioSystemControl* middlewareControl) const;
+
+        void AddConnection(TConnectionPtr connection);
+        void RemoveConnection(TConnectionPtr connection);
+        void RemoveConnection(IAudioSystemControl* middlewareControl);
         void ClearConnections();
-        TConnectionPtr GetConnectionAt(int index);
-        TConnectionPtr GetConnection(CID id, const AZStd::string_view group = g_sDefaultGroup);
-        TConnectionPtr GetConnection(IAudioSystemControl* m_pAudioSystemControl, const AZStd::string_view group = g_sDefaultGroup);
         void ReloadConnections();
         bool IsFullyConnected() const;
 
         void SignalControlAboutToBeModified();
         void SignalControlModified();
-        void SignalConnectionAdded(IAudioSystemControl* pMiddlewareControl);
-        void SignalConnectionRemoved(IAudioSystemControl* pMiddlewareControl);
+        void SignalConnectionAdded(IAudioSystemControl* middlewareControl);
+        void SignalConnectionRemoved(IAudioSystemControl* middlewareControl);
 
     private:
         void SetId(CID id);
         void SetType(EACEControlType type);
-        CID m_nID;
-        EACEControlType m_eType;
-        AZStd::string m_sName;
-        AZStd::string m_sScope;
 
-        AZStd::map<AZStd::string, int> m_groupPerPlatform;
+        CID m_id = ACE_INVALID_CID;
+        EACEControlType m_type = eACET_TRIGGER;
+        AZStd::string m_name;
+        AZStd::string m_scope;
+
         AZStd::vector<TConnectionPtr> m_connectedControls;
         AZStd::vector<CATLControl*> m_children;
 
-        CATLControl* m_pParent;
-        bool m_bAutoLoad;
+        CATLControlsModel* m_atlControlsModel = nullptr;
+        CATLControl* m_parent = nullptr;
+        bool m_isAutoLoad = true;
 
         // All the raw connection nodes. Used for reloading the data when switching middleware.
-        TConnectionPerGroup m_connectionNodes;
-        CATLControlsModel* m_pModel;
+        TXmlNodeList m_connectionNodes;
     };
+
 } // namespace AudioControls

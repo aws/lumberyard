@@ -731,7 +731,6 @@ namespace AzToolsFramework
             return AZ::Success(AZStd::move(addComponentsResults));
         }
 
-        // LUMBERYARD_DEPRECATED(LY-103316)
         EditorEntityActionComponent::AddExistingComponentsOutcome EditorEntityActionComponent::AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd)
         {
             if (!entity)
@@ -741,7 +740,6 @@ namespace AzToolsFramework
 
             return AddExistingComponentsToEntityById(entity->GetId(), componentsToAdd);
         }
-        // LUMBERYARD_DEPRECATED(LY-103316)
 
         EntityCompositionRequests::ScrubEntitiesOutcome EditorEntityActionComponent::ScrubEntities(const EntityList& entities)
         {

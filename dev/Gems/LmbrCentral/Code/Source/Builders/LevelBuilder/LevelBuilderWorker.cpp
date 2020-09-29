@@ -10,6 +10,7 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "LevelBuilderWorker.h"
 #include <AssetBuilderSDK/SerializationDependencies.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

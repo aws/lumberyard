@@ -10,6 +10,7 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "CopyDependencyBuilderComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
@@ -19,21 +20,21 @@ namespace CopyDependencyBuilder
     void CopyDependencyBuilderComponent::Activate()
     {
         m_fontBuilderWorker.RegisterBuilderWorker();
-        m_audioControlBuilderWorker.RegisterBuilderWorker();
         m_cfgBuilderWorker.RegisterBuilderWorker();
         m_schemaBuilderWorker.RegisterBuilderWorker();
         m_xmlBuilderWorker.RegisterBuilderWorker();
         m_particlePreloadBuilderWorker.RegisterBuilderWorker();
+        m_emfxWorkspaceBuilderWorker.RegisterBuilderWorker();
     }
 
     void CopyDependencyBuilderComponent::Deactivate()
     {
+        m_emfxWorkspaceBuilderWorker.UnregisterBuilderWorker();
         m_particlePreloadBuilderWorker.UnregisterBuilderWorker();
         m_xmlBuilderWorker.UnregisterBuilderWorker();
         m_schemaBuilderWorker.UnregisterBuilderWorker();
         m_cfgBuilderWorker.UnregisterBuilderWorker();
-        m_audioControlBuilderWorker.UnregisterBuilderWorker();
-        m_fontBuilderWorker.UnregisterBuilderWorker();    
+        m_fontBuilderWorker.UnregisterBuilderWorker();
     }
 
     void CopyDependencyBuilderComponent::Reflect(AZ::ReflectContext* context)
@@ -41,7 +42,8 @@ namespace CopyDependencyBuilder
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<CopyDependencyBuilderComponent, AZ::Component>()
-                ->Version(2);
+                ->Version(3)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));
         }
     }
 }

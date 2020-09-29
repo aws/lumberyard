@@ -103,6 +103,8 @@ namespace EditorInternal
         RegisterComponentDescriptor(AzToolsFramework::ObjectManagerFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::MaterialPythonFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::PythonEditorFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::DisplaySettingsComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::TrackViewComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::TrackViewFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::VegetationToolFuncsHandler::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::ViewPanePythonFuncsHandler::CreateDescriptor());
@@ -126,6 +128,10 @@ namespace EditorInternal
         components.emplace_back(azrtti_typeid<AzToolsFramework::Thumbnailer::ThumbnailerComponent>());
         components.emplace_back(azrtti_typeid<AzToolsFramework::AssetBrowser::AssetBrowserComponent>());
         components.emplace_back(azrtti_typeid<AzToolsFramework::MaterialBrowser::MaterialBrowserComponent>());
+
+        // Add new Bus-based Python Bindings
+        components.emplace_back(azrtti_typeid<AzToolsFramework::DisplaySettingsComponent>());
+        components.emplace_back(azrtti_typeid<AzToolsFramework::TrackViewComponent>());
 
         return components;
     }
@@ -216,7 +222,7 @@ namespace EditorInternal
                 appRootArg = argv[index];
                 isAppRootArg = false;
             }
-            else if (azstricmp("--app-root", argv[index]) == 0)
+            else if (AzFramework::StringFunc::Equal("--app-root", argv[index]))
             {
                 isAppRootArg = true;
             }
@@ -284,27 +290,22 @@ namespace EditorInternal
 
         if (!AZ::IO::SystemFile::Exists(levelPath.c_str()))
         {
-            // now let's check if they pre-pended directories (Samples/SomeLevelName)
             AZStd::string levelFileName;
-            {
-                AZStd::size_t found = levelPath.find_last_of("/\\");
-                if (found == AZStd::string::npos)
-                {
-                    levelFileName = levelPath.substr(found + 1);
-                }
-                else
-                {
-                    levelFileName = levelPath;
-                }
-            }
+            AZStd::string levelPathName;
+            AZStd::string levelExtension;
+            AzFramework::StringFunc::Path::Split(levelPath.c_str(), nullptr, &levelPathName, &levelFileName, &levelExtension);
 
-            // if the input path can't be found, let's automatically add on the game folder and the levels
+            // construct a full path for the level from input 'Samples/SomeLevelName'
+            //   to '<project path>/Levels/Samples/SomeLevelName/SomeLevelName.ly'
+            levelPath = GetGameFolder();
+            AzFramework::StringFunc::Path::Join(levelPath.c_str(), DefaultLevelFolder, levelPath);
+            AzFramework::StringFunc::Path::Join(levelPath.c_str(), levelPathName.c_str(), levelPath);
             AzFramework::StringFunc::Path::Join(levelPath.c_str(), levelFileName.c_str(), levelPath);
-            AzFramework::StringFunc::Path::Join(DefaultLevelFolder, levelPath.c_str(), levelPath);
-            AzFramework::StringFunc::Path::Join(GetGameFolder().c_str(), levelPath.c_str(), levelPath);
+            AzFramework::StringFunc::Path::Join(levelPath.c_str(), levelFileName.c_str(), levelPath);
+            AzFramework::StringFunc::Path::Join(levelPath.c_str(), levelExtension.c_str(), levelPath);
 
             // make sure the level path includes the cry extension, if needed
-            if (!levelFileName.ends_with(OldFileExtension) && !levelFileName.ends_with(DefaultFileExtension))
+            if (levelExtension.empty())
             {
                 AZStd::size_t levelPathLength = levelPath.length();
                 levelPath += OldFileExtension;
@@ -338,7 +339,7 @@ namespace EditorInternal
 
     int EditorToolsApplication::CreateLevel(AZStd::string_view levelName, int resolution, int unitSize, bool bUseTerrain)
     {
-        // Clang warns about a temporary being created in a function's arguement list, so fullyQualifiedLevelName before the call
+        // Clang warns about a temporary being created in a function's argument list, so fullyQualifiedLevelName before the call
         QString fullyQualifiedLevelName;
         return CCryEditApp::instance()->CreateLevel(QString::fromUtf8(levelName.data(), static_cast<int>(levelName.size())), resolution, unitSize, bUseTerrain, fullyQualifiedLevelName,
             CCryEditApp::TerrainTextureExportSettings(CCryEditApp::TerrainTextureExportTechnique::PromptUser));
@@ -346,7 +347,13 @@ namespace EditorInternal
 
     int EditorToolsApplication::CreateLevelNoPrompt(AZStd::string_view levelName, int heightmapResolution, int heightmapUnitSize, int terrainExportTextureSize, bool useTerrain)
     {
-        // Clang warns about a temporary being created in a function's arguement list, so fullyQualifiedLevelName before the call
+        // If a level was open, ignore any unsaved changes if it had been modified
+        if (GetIEditor()->IsLevelLoaded())
+        {
+            GetIEditor()->GetDocument()->SetModifiedFlag(false);
+        }
+
+        // Clang warns about a temporary being created in a function's argument list, so fullyQualifiedLevelName before the call
         QString fullyQualifiedLevelName;
         return CCryEditApp::instance()->CreateLevel(QString::fromUtf8(levelName.data(), static_cast<int>(levelName.size())), heightmapResolution, heightmapUnitSize, useTerrain, fullyQualifiedLevelName,
             CCryEditApp::TerrainTextureExportSettings(CCryEditApp::TerrainTextureExportTechnique::UseDefault, terrainExportTextureSize));

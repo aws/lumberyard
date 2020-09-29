@@ -15,7 +15,6 @@
 
 #include <IAudioInterfacesCommonData.h>
 
-#include <IAudioConnection.h>
 #include <IAudioSystemControl.h>
 
 namespace AudioControls

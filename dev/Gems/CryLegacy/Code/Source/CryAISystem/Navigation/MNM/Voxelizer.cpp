@@ -391,6 +391,7 @@ namespace MNM
     PREFAST_SUPPRESS_WARNING(6262)
     size_t WorldVoxelizer::ProcessGeometry(uint32 hashValueSeed /* = 0 */, uint32 hashTest /* = 0 */, uint32* hashValue /* = 0 */, NavigationMeshEntityCallback pEntityCallback /* = NULL */)
     {
+#if ENABLE_CRY_PHYSICS
         size_t triCount = 0;
         int entityCount = 0;
 
@@ -566,6 +567,42 @@ namespace MNM
         }
 
         return triCount;
+#else
+        // step 1 is to create a hash based on the number of entities/colliders (including terrain), their transforms and AABBs
+        HashComputer hash(hashValueSeed);
+
+        AZStd::vector<Physics::OverlapHit> overlapHits;
+        GetAZCollidersInAABB(m_volumeAABB, overlapHits);
+
+        hash.Add(static_cast<uint32>(overlapHits.size()));
+
+        for (const auto& overlapHit : overlapHits)
+        {
+            hash.Add(AZVec3ToLYVec3(overlapHit.m_body->GetAabb().GetMin()));
+            hash.Add(AZVec3ToLYVec3(overlapHit.m_body->GetAabb().GetMax()));
+            hash.Add(AZTransformToLYTransform(overlapHit.m_body->GetTransform()));
+        }
+
+        hash.Complete();
+
+        if (hashValue)
+        {
+            *hashValue = hash.GetValue();
+        }
+
+        size_t triCount = 0;
+
+        // step 2 is to compare that hash with the existing hash, if they're the same we skip re-voxelizing
+        if (hashTest != hash.GetValue())
+        {
+            if (!overlapHits.empty())
+            {
+                triCount += RasterizeAZColliderGeometry(m_volumeAABB, overlapHits);
+            }
+        }
+
+        return triCount;
+#endif // ENABLE_CRY_PHYSICS
     }
 
     struct PhysicsVolume
@@ -595,6 +632,7 @@ namespace MNM
 
     void WorldVoxelizer::CalculateWaterDepth()
     {
+#if ENABLE_CRY_PHYSICS
         const size_t width = m_spanGrid.GetWidth();
         const size_t height = m_spanGrid.GetHeight();
         const float oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : gEnv->p3DEngine->GetWaterLevel();
@@ -712,6 +750,7 @@ namespace MNM
         {
             gEnv->pPhysicalWorld->GetPhysUtils()->DeletePointer(areaList);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     void WorldVoxelizer::VoxelizeGeometry(const Vec3* vertices, size_t triCount, const Matrix34& worldTM)

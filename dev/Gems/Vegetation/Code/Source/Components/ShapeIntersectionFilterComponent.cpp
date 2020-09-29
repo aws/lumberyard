@@ -159,7 +159,7 @@ namespace Vegetation
         LmbrCentral::ShapeComponentRequestsBus::EventResult(inside, m_configuration.m_shapeEntityId, &LmbrCentral::ShapeComponentRequestsBus::Events::IsPointInside, instanceData.m_position);
         if (!inside)
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("ShapeIntersectionFilter")));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("ShapeIntersectionFilter")));
         }
         return inside;
     }

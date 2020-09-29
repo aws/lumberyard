@@ -144,7 +144,7 @@ namespace UnitTest
         AZ::EntityId parent = sliceEntity;
         for (size_t entityCounter = 0; entityCounter < 10; ++entityCounter)
         {
-            parent = CreateEditorEntity(AZStd::string::format("Added Entity Level %i", entityCounter).c_str(), liveEntityIds, parent);
+            parent = CreateEditorEntity(AZStd::string::format("Added Entity Level %zu", entityCounter).c_str(), liveEntityIds, parent);
             ASSERT_TRUE(parent.IsValid());
         }
 
@@ -181,7 +181,7 @@ namespace UnitTest
         for (size_t childEntityCounter = 0; childEntityCounter < 10; ++childEntityCounter)
         {
             // Generate a set of children who share the same parent (SliceEntity) and add them to the list of entities to push
-            addedEntity = CreateEditorEntity(AZStd::string::format("Child #%i", childEntityCounter).c_str(), liveEntityIds, sliceEntity);
+            addedEntity = CreateEditorEntity(AZStd::string::format("Child #%zu", childEntityCounter).c_str(), liveEntityIds, sliceEntity);
             ASSERT_TRUE(addedEntity.IsValid());
 
             entitiesToPush.emplace_back(addedEntity);

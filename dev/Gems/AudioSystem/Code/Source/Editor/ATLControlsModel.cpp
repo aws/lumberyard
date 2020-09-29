@@ -15,7 +15,7 @@
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/string/conversions.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AudioControlsEditorUndo.h>
 #include <IEditor.h>
 
@@ -26,7 +26,7 @@ namespace AudioControls
 
     //-------------------------------------------------------------------------------------------//
     CATLControlsModel::CATLControlsModel()
-        : m_bSuppressMessages(false)
+        : m_suppressMessages(false)
     {
         ClearDirtyFlags();
     }
@@ -38,25 +38,25 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl* CATLControlsModel::CreateControl(const AZStd::string& sControlName, EACEControlType eType, CATLControl* pParent)
+    CATLControl* CATLControlsModel::CreateControl(const AZStd::string& controlName, EACEControlType type, CATLControl* parent)
     {
-        AZStd::shared_ptr<CATLControl> pControl = AZStd::make_shared<CATLControl>(sControlName, GenerateUniqueId(), eType, this);
-        if (pControl)
+        AZStd::shared_ptr<CATLControl> control = AZStd::make_shared<CATLControl>(controlName, GenerateUniqueId(), type, this);
+        if (control)
         {
-            if (pParent)
+            if (parent)
             {
-                pControl->SetParent(pParent);
+                control->SetParent(parent);
             }
 
-            InsertControl(pControl);
+            InsertControl(control);
 
             if (!CUndo::IsSuspended())
             {
                 CUndo undo("Audio Control Created");
-                CUndo::Record(new CUndoControlAdd(pControl->GetId()));
+                CUndo::Record(new CUndoControlAdd(control->GetId()));
             }
         }
-        return pControl.get();
+        return control.get();
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -64,27 +64,27 @@ namespace AudioControls
     {
         if (id != ACE_INVALID_CID)
         {
-            ControlList children;
             size_t size = m_controls.size();
             for (auto it = m_controls.begin(); it != m_controls.end(); ++it)
             {
-                AZStd::shared_ptr<CATLControl>& pControl = *it;
-                if (pControl && pControl->GetId() == id)
+                AZStd::shared_ptr<CATLControl>& control = *it;
+                if (control && control->GetId() == id)
                 {
-                    pControl->ClearConnections();
-                    OnControlRemoved(pControl.get());
+                    control->ClearConnections();
+                    OnControlRemoved(control.get());
 
                     // Remove control from parent
-                    CATLControl* pParent = pControl->GetParent();
-                    if (pParent)
+                    CATLControl* parent = control->GetParent();
+                    if (parent)
                     {
-                        pParent->RemoveChild(pControl.get());
+                        parent->RemoveChild(control.get());
                     }
 
                     if (!CUndo::IsSuspended())
                     {
-                        CUndo::Record(new CUndoControlRemove(pControl));
+                        CUndo::Record(new CUndoControlRemove(control));
                     }
+
                     m_controls.erase(it, it + 1);
                     break;
                 }
@@ -110,16 +110,16 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    bool CATLControlsModel::IsNameValid(const AZStd::string_view name, EACEControlType type, const AZStd::string_view scope, const CATLControl* const pParent) const
+    bool CATLControlsModel::IsNameValid(const AZStd::string_view name, EACEControlType type, const AZStd::string_view scope, const CATLControl* const parent) const
     {
         const size_t size = m_controls.size();
         for (size_t i = 0; i < size; ++i)
         {
             if (m_controls[i]
                 && m_controls[i]->GetType() == type
-                && (AzFramework::StringFunc::Equal(m_controls[i]->GetName().c_str(), name.data()))
+                && (AZ::StringFunc::Equal(m_controls[i]->GetName().c_str(), name.data()))
                 && (m_controls[i]->GetScope().empty() || m_controls[i]->GetScope() == scope)
-                && (m_controls[i]->GetParent() == pParent))
+                && (m_controls[i]->GetParent() == parent))
             {
                 return false;
             }
@@ -128,20 +128,20 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    AZStd::string CATLControlsModel::GenerateUniqueName(const AZStd::string_view sRootName, EACEControlType eType, const AZStd::string_view sScope, const CATLControl* const pParent) const
+    AZStd::string CATLControlsModel::GenerateUniqueName(const AZStd::string_view rootName, EACEControlType type, const AZStd::string_view scope, const CATLControl* const parent) const
     {
-        AZStd::string uniqueName = sRootName;
+        AZStd::string uniqueName = rootName;
         AZ::u32 number = 1;
-        while (!IsNameValid(uniqueName, eType, sScope, pParent))
+        while (!IsNameValid(uniqueName, type, scope, parent))
         {
-            uniqueName = AZStd::string::format("%s_%u", sRootName.data(), number++);
+            uniqueName = AZStd::string::format("%s_%u", rootName.data(), number++);
         }
 
         return uniqueName;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddScope(AZStd::string scopeName, bool bLocalOnly)
+    void CATLControlsModel::AddScope(AZStd::string scopeName, bool localOnly)
     {
         AZStd::to_lower(scopeName.begin(), scopeName.end());
         const size_t size = m_scopes.size();
@@ -152,7 +152,7 @@ namespace AudioControls
                 return;
             }
         }
-        m_scopes.push_back(SControlScope(scopeName, bLocalOnly));
+        m_scopes.push_back(SControlScope(scopeName, localOnly));
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -166,7 +166,7 @@ namespace AudioControls
     {
         AZStd::to_lower(scopeName.begin(), scopeName.end());
         const size_t size = m_scopes.size();
-        for (int i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i)
         {
             if (m_scopes[i].name == scopeName)
             {
@@ -177,45 +177,15 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    int CATLControlsModel::GetScopeCount() const
+    size_t CATLControlsModel::GetScopeCount() const
     {
         return m_scopes.size();
     }
 
     //-------------------------------------------------------------------------------------------//
-    SControlScope CATLControlsModel::GetScopeAt(int index) const
+    SControlScope CATLControlsModel::GetScopeAt(size_t index) const
     {
-        if (index < m_scopes.size())
-        {
-            return m_scopes[index];
-        }
-        return SControlScope();
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    AZStd::string CATLControlsModel::GetPlatformAt(AZ::u32 index)
-    {
-        if (index < m_platforms.size())
-        {
-            return m_platforms[index];
-        }
-        return "";
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    AZ::u32 CATLControlsModel::GetPlatformCount()
-    {
-        return m_platforms.size();
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddPlatform(AZStd::string platformName)
-    {
-        AZStd::to_lower(platformName.begin(), platformName.end());
-        if (AZStd::find(m_platforms.begin(), m_platforms.end(), platformName) == m_platforms.end())
-        {
-            m_platforms.push_back(platformName);
-        }
+        return (index < m_scopes.size() ? m_scopes[index] : SControlScope());
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -223,63 +193,22 @@ namespace AudioControls
     {
         m_controls.clear();
         m_scopes.clear();
-        m_platforms.clear();
-        m_connectionGroups.clear();
         ClearDirtyFlags();
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddConnectionGroup(const AZStd::string_view name)
+    void CATLControlsModel::AddListener(IATLControlModelListener* modelListener)
     {
-        if (AZStd::find(m_connectionGroups.begin(), m_connectionGroups.end(), name) == m_connectionGroups.end())
+        if (AZStd::find(m_listeners.begin(), m_listeners.end(), modelListener) == m_listeners.end())
         {
-            m_connectionGroups.push_back(name);
+            m_listeners.push_back(modelListener);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    int CATLControlsModel::GetConnectionGroupId(const AZStd::string_view name)
+    void CATLControlsModel::RemoveListener(IATLControlModelListener* modelListener)
     {
-        size_t size = m_connectionGroups.size();
-        for (int i = 0; i < size; ++i)
-        {
-            if (m_connectionGroups[i].compare(name) == 0)
-            {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    int CATLControlsModel::GetConnectionGroupCount() const
-    {
-        return m_connectionGroups.size();
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    AZStd::string CATLControlsModel::GetConnectionGroupAt(int index) const
-    {
-        if (index < m_connectionGroups.size())
-        {
-            return m_connectionGroups[index];
-        }
-        return "";
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddListener(IATLControlModelListener* pListener)
-    {
-        if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
-        {
-            m_listeners.push_back(pListener);
-        }
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::RemoveListener(IATLControlModelListener* pListener)
-    {
-        auto it = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener);
+        auto it = AZStd::find(m_listeners.begin(), m_listeners.end(), modelListener);
         if (it != m_listeners.end())
         {
             m_listeners.erase(it);
@@ -287,72 +216,72 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::OnControlAdded(CATLControl* pControl)
+    void CATLControlsModel::OnControlAdded(CATLControl* control)
     {
-        if (!m_bSuppressMessages)
+        if (!m_suppressMessages)
         {
             for (auto listener : m_listeners)
             {
-                listener->OnControlAdded(pControl);
+                listener->OnControlAdded(control);
             }
-            m_bControlTypeModified[pControl->GetType()] = true;
+            m_isControlTypeModified[control->GetType()] = true;
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::OnControlRemoved(CATLControl* pControl)
+    void CATLControlsModel::OnControlRemoved(CATLControl* control)
     {
-        if (!m_bSuppressMessages)
+        if (!m_suppressMessages)
         {
             for (auto listener : m_listeners)
             {
-                listener->OnControlRemoved(pControl);
+                listener->OnControlRemoved(control);
             }
-            m_bControlTypeModified[pControl->GetType()] = true;
+            m_isControlTypeModified[control->GetType()] = true;
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::OnConnectionAdded(CATLControl* pControl, IAudioSystemControl* pMiddlewareControl)
+    void CATLControlsModel::OnConnectionAdded(CATLControl* control, IAudioSystemControl* middlewareControl)
     {
-        if (!m_bSuppressMessages)
+        if (!m_suppressMessages)
         {
             for (auto listener : m_listeners)
             {
-                listener->OnConnectionAdded(pControl, pMiddlewareControl);
-            }
-        }
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::OnConnectionRemoved(CATLControl* pControl, IAudioSystemControl* pMiddlewareControl)
-    {
-        if (!m_bSuppressMessages)
-        {
-            for (auto listener : m_listeners)
-            {
-                listener->OnConnectionRemoved(pControl, pMiddlewareControl);
+                listener->OnConnectionAdded(control, middlewareControl);
             }
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::OnControlModified(CATLControl* pControl)
+    void CATLControlsModel::OnConnectionRemoved(CATLControl* control, IAudioSystemControl* middlewareControl)
     {
-        if (!m_bSuppressMessages)
+        if (!m_suppressMessages)
         {
             for (auto listener : m_listeners)
             {
-                listener->OnControlModified(pControl);
+                listener->OnConnectionRemoved(control, middlewareControl);
             }
-            m_bControlTypeModified[pControl->GetType()] = true;
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::SetSuppressMessages(bool bSuppressMessages)
+    void CATLControlsModel::OnControlModified(CATLControl* control)
     {
-        m_bSuppressMessages = bSuppressMessages;
+        if (!m_suppressMessages)
+        {
+            for (auto listener : m_listeners)
+            {
+                listener->OnControlModified(control);
+            }
+            m_isControlTypeModified[control->GetType()] = true;
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------//
+    void CATLControlsModel::SetSuppressMessages(bool suppressMessages)
+    {
+        m_suppressMessages = suppressMessages;
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -360,7 +289,7 @@ namespace AudioControls
     {
         for (int i = 0; i < eACET_NUM_TYPES; ++i)
         {
-            if (m_bControlTypeModified[i])
+            if (m_isControlTypeModified[i])
             {
                 return true;
             }
@@ -369,11 +298,11 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    bool CATLControlsModel::IsTypeDirty(EACEControlType eType)
+    bool CATLControlsModel::IsTypeDirty(EACEControlType type)
     {
-        if (eType != eACET_NUM_TYPES)
+        if (type != eACET_NUM_TYPES)
         {
-            return m_bControlTypeModified[eType];
+            return m_isControlTypeModified[type];
         }
         return true;
     }
@@ -383,25 +312,25 @@ namespace AudioControls
     {
         for (int i = 0; i < eACET_NUM_TYPES; ++i)
         {
-            m_bControlTypeModified[i] = false;
+            m_isControlTypeModified[i] = false;
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl* CATLControlsModel::FindControl(const AZStd::string_view sControlName, EACEControlType eType, const AZStd::string_view sScope, CATLControl* pParent) const
+    CATLControl* CATLControlsModel::FindControl(const AZStd::string_view controlName, EACEControlType type, const AZStd::string_view scope, CATLControl* parent) const
     {
-        if (pParent)
+        if (parent)
         {
-            const size_t size = pParent->ChildCount();
+            const size_t size = parent->ChildCount();
             for (size_t i = 0; i < size; ++i)
             {
-                CATLControl* pControl = pParent->GetChild(i);
-                if (pControl
-                    && pControl->GetName() == sControlName
-                    && pControl->GetType() == eType
-                    && pControl->GetScope() == sScope)
+                CATLControl* control = parent->GetChild(i);
+                if (control
+                    && control->GetName() == controlName
+                    && control->GetType() == type
+                    && control->GetScope() == scope)
                 {
-                    return pControl;
+                    return control;
                 }
             }
         }
@@ -410,13 +339,13 @@ namespace AudioControls
             const size_t size = m_controls.size();
             for (size_t i = 0; i < size; ++i)
             {
-                CATLControl* pControl = m_controls[i].get();
-                if (pControl
-                    && pControl->GetName() == sControlName
-                    && pControl->GetType() == eType
-                    && pControl->GetScope() == sScope)
+                CATLControl* control = m_controls[i].get();
+                if (control
+                    && control->GetName() == controlName
+                    && control->GetType() == type
+                    && control->GetScope() == scope)
                 {
-                    return pControl;
+                    return control;
                 }
             }
         }
@@ -424,35 +353,35 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    AZStd::shared_ptr<CATLControl> CATLControlsModel::TakeControl(CID nID)
+    AZStd::shared_ptr<CATLControl> CATLControlsModel::TakeControl(CID id)
     {
         const size_t size = m_controls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            if (m_controls[i]->GetId() == nID)
+            if (m_controls[i]->GetId() == id)
             {
-                AZStd::shared_ptr<CATLControl> pControl = m_controls[i];
-                RemoveControl(nID);
-                return pControl;
+                AZStd::shared_ptr<CATLControl> control = m_controls[i];
+                RemoveControl(id);
+                return control;
             }
         }
         return nullptr;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::InsertControl(AZStd::shared_ptr<CATLControl> pControl)
+    void CATLControlsModel::InsertControl(AZStd::shared_ptr<CATLControl> control)
     {
-        if (pControl)
+        if (control)
         {
-            m_controls.push_back(pControl);
+            m_controls.push_back(control);
 
-            CATLControl* pParent = pControl->GetParent();
-            if (pParent)
+            CATLControl* parent = control->GetParent();
+            if (parent)
             {
-                pParent->AddChild(pControl.get());
+                parent->AddChild(control.get());
             }
 
-            OnControlAdded(pControl.get());
+            OnControlAdded(control.get());
         }
     }
 
@@ -462,10 +391,10 @@ namespace AudioControls
         const size_t size = m_controls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            CATLControl* pControl = m_controls[i].get();
-            if (pControl)
+            CATLControl* control = m_controls[i].get();
+            if (control)
             {
-                pControl->ClearConnections();
+                control->ClearConnections();
             }
         }
     }
@@ -476,10 +405,10 @@ namespace AudioControls
         const size_t size = m_controls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            CATLControl* pControl = m_controls[i].get();
-            if (pControl)
+            CATLControl* control = m_controls[i].get();
+            if (control)
             {
-                pControl->ReloadConnections();
+                control->ReloadConnections();
             }
         }
     }

@@ -20,6 +20,7 @@
 #include "CryActionCVars.h"
 #include "IAnimatedCharacter.h"
 #include "IGameFramework.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 const static char* COOP_ANIM_NAME = "CoopAnimation";
 const static int MY_ANIM = 54545;
@@ -817,7 +818,12 @@ void CCooperativeAnimation::PlayAndSlideCharacters(float dt, bool& bAnimFailure,
             // Safety check to guarantee character will not fall through ground
             if (m_generalParams.bPreventFallingThroughTerrain)
             {
-                testQuat.t.z = max(testQuat.t.z, gEnv->p3DEngine->GetTerrainElevation(testQuat.t.x, testQuat.t.y));
+                float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                    , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                    , testQuat.t.x, testQuat.t.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+                testQuat.t.z = max(testQuat.t.z, elevation);
             }
 
             pEnt->SetPos(testQuat.t);
@@ -1125,6 +1131,7 @@ void CCooperativeAnimation::CleanupForFinishedCharacter(SCharacterParams& params
 
 void CCooperativeAnimation::IgnoreCollisionsWithFirstActor(SCharacterParams& characterParams, bool ignore)
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pActorPE = characterParams.pActor->GetEntity()->GetPhysics();
     if (pActorPE)
     {
@@ -1148,6 +1155,10 @@ void CCooperativeAnimation::IgnoreCollisionsWithFirstActor(SCharacterParams& cha
             characterParams.collisionsDisabledWithFirstActor = false;
         }
     }
+#else
+    AZ_UNUSED(characterParams);
+    AZ_UNUSED(ignore);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CCooperativeAnimation::SetColliderModeAndMCM(SCharacterParams* params)

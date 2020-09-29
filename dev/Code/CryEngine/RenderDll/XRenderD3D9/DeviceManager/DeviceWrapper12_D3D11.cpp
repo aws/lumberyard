@@ -195,12 +195,12 @@ bool CDeviceGraphicsPSO_DX11::Init(const CDeviceGraphicsPSODesc& psoDesc)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class CDeviceComputePSO_DX11
+class CDeviceComputePSO_DX11 final
     : public CDeviceComputePSO
 {
 public:
     CDeviceComputePSO_DX11() {}
-    virtual ~CDeviceComputePSO_DX11() final {}
+    virtual ~CDeviceComputePSO_DX11() {}
     virtual bool Build() final { return false; }
 };
 

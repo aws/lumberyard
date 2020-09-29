@@ -837,6 +837,7 @@ bool CVisionMap::RayCastSubmit(const QueuedRayID& queuedRayID, RayCastRequest& r
     rayCastRequest.flags = observerParams.raycastFlags;
     rayCastRequest.maxHitCount = 2;
 
+#if ENABLE_CRY_PHYSICS
     size_t skipListCount = observerParams.skipListSize + observableParams.skipListSize;
     assert(rayCastRequest.skipListCount <= RayCastRequest::MaxSkipListCount);
 
@@ -849,6 +850,7 @@ bool CVisionMap::RayCastSubmit(const QueuedRayID& queuedRayID, RayCastRequest& r
     size_t observableSkipListCount =
         std::min<size_t>(observableParams.skipListSize, RayCastRequest::MaxSkipListCount - observerSkipListCount);
     memcpy(rayCastRequest.skipList + observerSkipListCount, observableParams.skipList, observableSkipListCount * sizeof(IPhysicalEntity*));
+#endif // ENABLE_CRY_PHYSICS
 
 #if VISIONMAP_DEBUG
     m_numberOfRayCastsSubmittedThisFrame++;

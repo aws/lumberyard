@@ -848,12 +848,14 @@ void CWaterVolumeRenderNode::SetRiverPhysicsArea(const Vec3* pVertices, unsigned
 }
 
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CWaterVolumeRenderNode::SetAndCreatePhysicsArea(const Vec3* pVertices, unsigned int numVertices)
 {
     SetAreaPhysicsArea(pVertices, numVertices, false);
 
     return CreatePhysicsAreaFromSettings();
 }
+#endif // ENABLE_CRY_PHYSICS
 
 const char* CWaterVolumeRenderNode::GetEntityClassName() const
 {
@@ -1164,6 +1166,7 @@ void CWaterVolumeRenderNode::Physicalize(bool bInstant)
     Dephysicalize();
 
     // setup physical area
+#if ENABLE_CRY_PHYSICS
     m_pPhysArea = CreatePhysicsAreaFromSettings();
 
     if (m_pPhysArea)
@@ -1185,6 +1188,7 @@ void CWaterVolumeRenderNode::Physicalize(bool bInstant)
 
         m_pPhysArea->SetParams(&m_auxPhysParams);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
@@ -1192,7 +1196,9 @@ void CWaterVolumeRenderNode::Dephysicalize(bool bKeepIfReferenced)
 {
     if (m_pPhysArea)
     {
+#if ENABLE_CRY_PHYSICS
         GetPhysicalWorld()->DestroyPhysicalEntity(m_pPhysArea);
+#endif
         m_pPhysArea = 0;
         m_attachedToEntity = false;
     }
@@ -1381,6 +1387,7 @@ int OnWaterUpdate(const EventPhysAreaChange* pEvent)
     return 1;
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CWaterVolumeRenderNode::CreatePhysicsAreaFromSettings()
 {
     if (!m_pPhysAreaInput)
@@ -1401,6 +1408,7 @@ IPhysicalEntity* CWaterVolumeRenderNode::CreatePhysicsAreaFromSettings()
     return GetPhysicalWorld()->AddArea(&m_pPhysAreaInput->m_contour[0], m_pPhysAreaInput->m_contour.size(), min(0.0f, -m_volumeDepth), 10.0f,
         Vec3(ZERO), Quat(IDENTITY), 1.0f, Vec3(ZERO), &m_pPhysAreaInput->m_indices[0], m_pPhysAreaInput->m_indices.size() / 3, pFlow);
 }
+#endif
 
 void CWaterVolumeRenderNode::SyncToPhysMesh(const QuatT& qtSurface, IGeometry* pSurface, float depth)
 {

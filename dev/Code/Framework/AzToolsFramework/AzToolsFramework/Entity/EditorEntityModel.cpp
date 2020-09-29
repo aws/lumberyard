@@ -1117,7 +1117,7 @@ namespace AzToolsFramework
 
         if (AzToolsFramework::SliceUtilities::IsReparentNonTrivial(m_entityId, parentId))
         {
-            m_entityId = AzToolsFramework::SliceUtilities::ReparentNonTrivialEntityHierarchy(m_entityId, parentId);
+            AzToolsFramework::SliceUtilities::ReparentNonTrivialSliceInstanceHierarchy(m_entityId, parentId);
         }
 
         // Guarding this to prevent the entity from being marked dirty when the parent doesn't change.

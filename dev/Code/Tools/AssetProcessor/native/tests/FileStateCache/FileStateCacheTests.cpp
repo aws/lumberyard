@@ -32,13 +32,14 @@ namespace UnitTests
         bool exists = false;
         FileStateInfo fileInfo;
 
-        FileStateRequestBus::BroadcastResult(exists, &FileStateRequestBus::Events::Exists, path);
+        auto* fileStateInterface = AZ::Interface<IFileStateRequests>::Get();
 
+        ASSERT_NE(fileStateInterface, nullptr);
+        exists = fileStateInterface->Exists(path);
+        
         ASSERT_EQ(exists, shouldExist);
 
-        exists = false;
-
-        FileStateRequestBus::BroadcastResult(exists, &FileStateRequestBus::Events::GetFileInfo, path, &fileInfo);
+        exists = fileStateInterface->GetFileInfo(path, &fileInfo);
 
         ASSERT_EQ(exists, shouldExist);
 

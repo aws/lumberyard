@@ -185,7 +185,38 @@ namespace UnitTest
         EXPECT_TRUE(!saveResult.IsSuccess());
     }
 
-    TEST_F(JsonSerializationUtilsTests, ParseJsonString)
+    TEST_F(JsonSerializationUtilsTests, WriteJson)
+    {
+        rapidjson::Document document;
+        document.SetObject();
+        document.AddMember("a", 1, document.GetAllocator());
+        document.AddMember("b", 2, document.GetAllocator());
+        document.AddMember("c", 3, document.GetAllocator());
+
+        const char* expectedJsonText =
+            "{\n"
+            "    \"a\": 1,\n"
+            "    \"b\": 2,\n"
+            "    \"c\": 3\n"
+            "}";
+
+        AZStd::string outString;
+        AZ::Outcome<void, AZStd::string> result1 = JsonSerializationUtils::WriteJsonString(document, outString);
+        EXPECT_TRUE(result1.IsSuccess());
+        EXPECT_STREQ(expectedJsonText, outString.c_str());
+
+        AZStd::vector<char> outBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char>> outStream{&outBuffer};
+        AZ::Outcome<void, AZStd::string> result2 = JsonSerializationUtils::WriteJsonStream(document, outStream);
+        EXPECT_TRUE(result2.IsSuccess());
+
+        outBuffer.push_back(0);
+        EXPECT_STREQ(expectedJsonText, outBuffer.data());
+
+        // Unfortunately we can't unit test WriteJsonFile because core unit tests don't have access to the local file IO system.
+    }
+
+    TEST_F(JsonSerializationUtilsTests, ReadJsonString)
     {
         const char* jsonText =
             R"(
@@ -195,7 +226,7 @@ namespace UnitTest
                 "c": 3
             })";
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::ParseJson(jsonText);
+        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::ReadJsonString(jsonText);
 
         EXPECT_TRUE(result.IsSuccess());
         EXPECT_TRUE(result.GetValue().IsObject());
@@ -207,7 +238,7 @@ namespace UnitTest
         EXPECT_EQ(result.GetValue()["c"].GetInt(), 3);
     }
 
-    TEST_F(JsonSerializationUtilsTests, ParseJsonString_ErrorReportsLineNumber)
+    TEST_F(JsonSerializationUtilsTests, ReadJsonString_ErrorReportsLineNumber)
     {
         const char* jsonText =
             R"(
@@ -218,7 +249,7 @@ namespace UnitTest
             }
             )";
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::ParseJson(jsonText);
+        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::ReadJsonString(jsonText);
 
         EXPECT_FALSE(result.IsSuccess());
         EXPECT_TRUE(result.GetError().find("JSON parse error at line 4:") == 0);
@@ -236,7 +267,7 @@ namespace UnitTest
 
         IO::MemoryStream stream(jsonText, strlen(jsonText));
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::LoadJson(stream);
+        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::ReadJsonStream(stream);
 
         EXPECT_TRUE(result.IsSuccess());
         EXPECT_TRUE(result.GetValue().IsObject());
@@ -261,7 +292,7 @@ namespace UnitTest
 
         IO::MemoryStream stream(jsonText, strlen(jsonText));
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::LoadJson(stream);
+        AZ::Outcome<rapidjson::Document, AZStd::string> result = JsonSerializationUtils::ReadJsonStream(stream);
 
         EXPECT_FALSE(result.IsSuccess());
         EXPECT_TRUE(result.GetError().find("JSON parse error at line 5:") == 0);

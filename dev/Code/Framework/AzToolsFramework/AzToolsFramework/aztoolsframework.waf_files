@@ -138,6 +138,9 @@
             "Component/EditorLevelComponentAPIComponent.cpp",
             "Component/EditorLevelComponentAPIComponent.h"
         ],
+        "Editor": [
+            "Editor/EditorSettingsAPIBus.h"
+        ],
         "Entity": [
             "Entity/EditorEntityStartStatus.h",
             "Entity/EditorEntityAPIBus.h",
@@ -194,6 +197,8 @@
             "Manipulators/ManipulatorView.h",
             "Manipulators/ManipulatorSnapping.cpp",
             "Manipulators/ManipulatorSnapping.h",
+            "Manipulators/MultiLinearManipulator.cpp",
+            "Manipulators/MultiLinearManipulator.h",
             "Manipulators/PlanarManipulator.cpp",
             "Manipulators/PlanarManipulator.h",
             "Manipulators/RotationManipulators.cpp",
@@ -240,6 +245,10 @@
             "PropertyTreeEditor/PropertyTreeEditorComponent.cpp",
             "PropertyTreeEditor/PropertyTreeEditorComponent.h"
         ],
+        "Render" : [
+            "Render/EditorIntersectorComponent.cpp",
+            "Render/EditorIntersectorComponent.h"
+        ],
         "Slice": [
             "Slice/SliceDataFlagsCommand.h",
             "Slice/SliceDataFlagsCommand.cpp",
@@ -254,6 +263,9 @@
             "Slice/SliceDependencyBrowserBus.h",
             "Slice/SliceRelationshipNode.h",
             "Slice/SliceRelationshipNode.cpp",
+            "Slice/SliceRequestBus.h",
+            "Slice/SliceRequestComponent.h",
+            "Slice/SliceRequestComponent.cpp",
             "Slice/SliceMetadataEntityContextBus.h",
             "Slice/SliceMetadataEntityContextComponent.h",
             "Slice/SliceMetadataEntityContextComponent.cpp"

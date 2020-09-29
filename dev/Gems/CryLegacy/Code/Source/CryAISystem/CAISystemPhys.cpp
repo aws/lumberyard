@@ -29,6 +29,7 @@ float CAISystem::GetWaterOcclusionValue(const Vec3& targetPos) const
 
     float fResult = 0.0f;
 
+#if ENABLE_CRY_PHYSICS
     if (gAIEnv.CVars.WaterOcclusionEnable > 0)
     {
         const float waterLevel = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(targetPos) : gEnv->p3DEngine->GetWaterLevel(&targetPos);
@@ -82,6 +83,7 @@ float CAISystem::GetWaterOcclusionValue(const Vec3& targetPos) const
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return fResult;
 }
@@ -115,8 +117,12 @@ bool CAISystem::CheckPointsVisibility(const Vec3& from, const Vec3& to, float ra
     skipListSize += (skipList[0] != 0) ? 1 : 0;
     skipListSize += (skipList[1] != 0) ? 1 : 0;
 
+#if ENABLE_CRY_PHYSICS
     return !gAIEnv.pRayCaster->Cast(RayCastRequest(from, dir, COVER_OBJECT_TYPES, HIT_COVER | HIT_SOFT_COVER,
             skipList, skipListSize));
+#else
+    return true;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //
@@ -139,11 +145,15 @@ bool CAISystem::CheckObjectsVisibility(const IAIObject* pObj1, const IAIObject* 
         pActor->GetPhysicalSkipEntities(skipList);
     }
 
+#if ENABLE_CRY_PHYSICS
     const RayCastResult& result = gAIEnv.pRayCaster->Cast(RayCastRequest(pObj1->GetPos(), dir, COVER_OBJECT_TYPES,
                 HIT_COVER | HIT_SOFT_COVER, &skipList[0], skipList.size()));
 
     // Allow small fudge in th test just in case the point is exactly on ground.
     return !result || result[0].dist > (dir.GetLength() - 0.1f);
+#else
+    return true;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //-----------------------------------------------------------------------------------------------------------
@@ -182,6 +192,7 @@ bool CAISystem::CheckVisibilityToBody(CAIActor* pObserver, CAIActor* pBody, floa
     }
 
     bool isVisible = false;
+#if ENABLE_CRY_PHYSICS
     const RayCastResult& result = gAIEnv.pRayCaster->Cast(RayCastRequest(puppetPos, posDiff, COVER_OBJECT_TYPES, newFlags,
                 &skipList[0], skipList.size()));
 
@@ -198,6 +209,7 @@ bool CAISystem::CheckVisibilityToBody(CAIActor* pObserver, CAIActor* pBody, floa
     {
         return false;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     closestDistSq = distSq;
 

@@ -41,9 +41,42 @@ namespace PhysX
         AZ::Aabb m_aabb;
     };
 
+    /// Requests serviced by all forces used by force regions.
+    class BaseForce
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(BaseForce, AZ::SystemAllocator, 0);
+        AZ_RTTI(BaseForce, "{0D1DFFE1-16C1-425B-972B-DC70FDC61B56}");
+        static void Reflect(AZ::SerializeContext& context);
+
+        virtual ~BaseForce() = default;
+
+        /// Connect to any buses.
+        virtual void Activate(AZ::EntityId entityId)
+        {
+            m_entityId = entityId;
+        }
+
+        /// Disconnect from any buses.
+        virtual void Deactivate()
+        {
+            m_entityId.SetInvalid();
+        }
+
+        /// Calculate the size and direction the force.
+        virtual AZ::Vector3 CalculateForce(const EntityParams& entityParams
+            , const RegionParams& volumeParams) const = 0;
+
+    protected:
+        void NotifyChanged();
+
+        AZ::EntityId m_entityId;
+    };
+
     /// Class for a world space force exerted on bodies in a force region.
-    class ForceWorldSpace : public BaseForce
-        , ForceWorldSpaceRequestBus::Handler
+    class ForceWorldSpace final
+        : public BaseForce
+        , private ForceWorldSpaceRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForceWorldSpace, AZ::SystemAllocator, 0);
@@ -56,29 +89,30 @@ namespace PhysX
         // BaseForce
         void Activate(AZ::EntityId entityId) override 
         { 
-            BusConnect(entityId); 
+            BaseForce::Activate(entityId);
             ForceWorldSpaceRequestBus::Handler::BusConnect(entityId);
         }
         void Deactivate() override 
         { 
             ForceWorldSpaceRequestBus::Handler::BusDisconnect();
-            BusDisconnect(); 
+            BaseForce::Deactivate();
         }
 
-        // ForceWorldSpaceRequestBus
-        void SetDirection(const AZ::Vector3& direction) override { m_direction = direction; }
-        AZ::Vector3 GetDirection() override { return m_direction; }
-        void SetMagnitude(float magnitude) override { m_magnitude = magnitude; }
-        float GetMagnitude() override { return m_magnitude; }
-
     private:
+        // ForceWorldSpaceRequestBus
+        void SetDirection(const AZ::Vector3& direction) override;
+        AZ::Vector3 GetDirection() const override;
+        void SetMagnitude(float magnitude) override;
+        float GetMagnitude() const override;
+
         AZ::Vector3 m_direction = AZ::Vector3::CreateAxisZ();
         float m_magnitude = 10.f;
     };
 
     /// Class for a local space force exerted on bodies in a force region.
-    class ForceLocalSpace : public BaseForce
-        , ForceLocalSpaceRequestBus::Handler
+    class ForceLocalSpace final
+        : public BaseForce
+        , private ForceLocalSpaceRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForceLocalSpace, AZ::SystemAllocator, 0);
@@ -91,30 +125,31 @@ namespace PhysX
         // BaseForce
         void Activate(AZ::EntityId entityId) override
         {
-            BusConnect(entityId);
+            BaseForce::Activate(entityId);
             ForceLocalSpaceRequestBus::Handler::BusConnect(entityId);
         }
         void Deactivate() override
         {
             ForceLocalSpaceRequestBus::Handler::BusDisconnect();
-            BusDisconnect();
+            BaseForce::Deactivate();
         }
 
-        // ForceLocalSpaceRequestBus
-        void SetDirection(const AZ::Vector3& direction) override { m_direction = direction; }
-        AZ::Vector3 GetDirection() override { return m_direction; }
-        void SetMagnitude(float magnitude) override { m_magnitude = magnitude; }
-        float GetMagnitude() override { return m_magnitude; }
-
     private:
+        // ForceLocalSpaceRequestBus
+        void SetDirection(const AZ::Vector3& direction) override;
+        AZ::Vector3 GetDirection() const override;
+        void SetMagnitude(float magnitude) override;
+        float GetMagnitude() const override;
+
         AZ::Vector3 m_direction = AZ::Vector3::CreateAxisZ();
         float m_magnitude = 10.0f;
     };
 
     /// Class for a point force exerted on bodies in a force region. 
     /// Bodies in a force region with a point force are repelled away from the center of the force region.
-    class ForcePoint : public BaseForce
-        , ForcePointRequestBus::Handler
+    class ForcePoint final
+        : public BaseForce
+        , private ForcePointRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForcePoint, AZ::SystemAllocator, 0);
@@ -127,27 +162,28 @@ namespace PhysX
         // BaseForce
         void Activate(AZ::EntityId entityId) override
         {
-            BusConnect(entityId);
+            BaseForce::Activate(entityId);
             ForcePointRequestBus::Handler::BusConnect(entityId);
         }
         void Deactivate() override
         {
             ForcePointRequestBus::Handler::BusDisconnect();
-            BusDisconnect();
+            BaseForce::Deactivate();
         }
 
-        // ForcePointRequestBus
-        void SetMagnitude(float magnitude) override { m_magnitude = magnitude; }
-        float GetMagnitude() override { return m_magnitude; }
-
     private:
+        // ForcePointRequestBus
+        void SetMagnitude(float magnitude) override;
+        float GetMagnitude() const override;
+
         float m_magnitude = 1.0f;
     };
 
     /// Class for a spline follow force.
     /// Bodies in a force region with a spline follow force tend to follow the path of the spline.
-    class ForceSplineFollow : public BaseForce
-        , ForceSplineFollowRequestBus::Handler
+    class ForceSplineFollow final
+        : public BaseForce
+        , private ForceSplineFollowRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForceSplineFollow, AZ::SystemAllocator, 0);
@@ -165,20 +201,20 @@ namespace PhysX
         void Deactivate() override
         {
             ForceSplineFollowRequestBus::Handler::BusDisconnect();
-            BusDisconnect();
+            BaseForce::Deactivate();
         }
 
-        // ForceSplineFollowRequestBus
-        void SetDampingRatio(float ratio) override { m_dampingRatio = ratio; }
-        float GetDampingRatio() override { return m_dampingRatio; }
-        void SetFrequency(float frequency) override { m_frequency = frequency; }
-        float GetFrequency() override { return m_frequency; }
-        void SetTargetSpeed(float targetSpeed) override { m_targetSpeed = targetSpeed; }
-        float GetTargetSpeed() override { return m_targetSpeed; }
-        void SetLookAhead(float lookAhead) override { m_lookAhead = lookAhead; }
-        float GetLookAhead() override { return m_lookAhead; }
-
     private:
+        // ForceSplineFollowRequestBus
+        void SetDampingRatio(float ratio) override;
+        float GetDampingRatio() const override;
+        void SetFrequency(float frequency) override;
+        float GetFrequency() const override;
+        void SetTargetSpeed(float targetSpeed) override;
+        float GetTargetSpeed() const override;
+        void SetLookAhead(float lookAhead) override;
+        float GetLookAhead() const override;
+
         float m_dampingRatio = 1.0f;
         float m_frequency = 3.0f;
         float m_targetSpeed = 1.0f;
@@ -187,8 +223,9 @@ namespace PhysX
     };
 
     /// Class for a simple drag force.
-    class ForceSimpleDrag : public BaseForce
-        , ForceSimpleDragRequestBus::Handler
+    class ForceSimpleDrag final
+        : public BaseForce
+        , private ForceSimpleDragRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForceSimpleDrag, AZ::SystemAllocator, 0);
@@ -201,28 +238,29 @@ namespace PhysX
         // BaseForce
         void Activate(AZ::EntityId entityId) override
         {
-            BusConnect(entityId);
+            BaseForce::Activate(entityId);
             ForceSimpleDragRequestBus::Handler::BusConnect(entityId);
         }
         void Deactivate() override
         {
             ForceSimpleDragRequestBus::Handler::BusDisconnect();
-            BusDisconnect();
+            BaseForce::Deactivate();
         }
 
-        // ForceSimpleDragRequests
-        void SetDensity(float density) override { m_volumeDensity = density; }
-        float GetDensity() override { return m_volumeDensity; }
-
     private:
+        // ForceSimpleDragRequests
+        void SetDensity(float density) override;
+        float GetDensity() const override;
+
         //Wikipedia: https://en.wikipedia.org/wiki/Drag_coefficient
         float m_dragCoefficient = 0.47f;
         float m_volumeDensity = 1.0f;
     };
 
     /// Class for a linear damping force.
-    class ForceLinearDamping : public BaseForce
-        , ForceLinearDampingRequestBus::Handler
+    class ForceLinearDamping final
+        : public BaseForce
+        , private ForceLinearDampingRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ForceLinearDamping, AZ::SystemAllocator, 0);
@@ -235,20 +273,20 @@ namespace PhysX
         // BaseForce
         void Activate(AZ::EntityId entityId) override 
         { 
-            BusConnect(entityId); 
+            BaseForce::Activate(entityId);
             ForceLinearDampingRequestBus::Handler::BusConnect(entityId);
         }
         void Deactivate() override 
         {
             ForceLinearDampingRequestBus::Handler::BusDisconnect();
-            BusDisconnect(); 
+            BaseForce::Deactivate();
         }
 
-        // ForceLinearDampingRequests
-        void SetDamping(float damping) override { m_damping = damping; }
-        float GetDamping() override { return m_damping; }
-
     private:
+        // ForceLinearDampingRequests
+        void SetDamping(float damping) override;
+        float GetDamping() const override;
+
         float m_damping = 1.0f;
     };
 }

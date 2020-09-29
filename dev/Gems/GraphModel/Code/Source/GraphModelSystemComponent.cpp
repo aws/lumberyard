@@ -60,6 +60,9 @@ namespace GraphModel
                 ->Version(0)
                 ;
 
+            serialize->RegisterGenericType<GraphModel::NodePtrList>();
+            serialize->RegisterGenericType<GraphModel::SlotPtrList>();
+
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
                 ec->Class<GraphModelSystemComponent>("GraphModel", "A generic node graph data model")

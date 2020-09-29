@@ -46,10 +46,6 @@ namespace AzToolsFramework
                     Field("InteractionId", &MouseInteraction::m_interactionId)->
                     Field("KeyboardModifiers", &MouseInteraction::m_keyboardModifiers);
 
-                serializeContext->Class<ScreenPoint>()->
-                    Field("X", &ScreenPoint::m_x)->
-                    Field("Y", &ScreenPoint::m_y);
-
                 MouseInteractionEvent::Reflect(*serializeContext);
             }
         }

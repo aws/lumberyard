@@ -23,6 +23,55 @@
 #include <IEntityRenderState.h>
 #include <TimeValue.h>
 
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// CryPhysics deprecation
+//
+// Select one and only one of these two #defines.
+//
+// A) (Default) Enabling this will cause particles to use the global CryPhysics
+//    setting, whether it's enabled or disabled.
+#define PARTICLES_USE_CRY_PHYSICS ENABLE_CRY_PHYSICS
+
+// B) Enabling this will cause particles code to use the new PhysX-compatible code,
+//    regardless of whether CryPhysics is ON or OFF.
+//    Don't set PARTICLES_USE_CRY_PHYSICS to 1, because if ENABLE_CRY_PHYSICS is 0 then it
+//    will result in compile errors.
+//#define PARTICLES_USE_CRY_PHYSICS 0
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+#if PARTICLES_USE_CRY_PHYSICS
+using CryParticlePhysEntity = IPhysicalEntity; //! Particle's own physics entity 
+using CryParticleHitEntity = IPhysicalEntity; //! Phys entity that a particle hit against (for simple collision)
+using CryParticleRayHit = ray_hit;
+#else // AZPhysics
+namespace Physics
+{
+    class RigidBody;
+    class WorldBody;
+    class Material;
+}
+
+using CryParticlePhysEntity = Physics::RigidBody;
+using CryParticleHitEntity = Physics::WorldBody;
+struct CryParticleRayHit
+{
+    float dist;
+    CryParticleHitEntity* pCollider;
+    int ipart;
+    int partid;
+    Physics::Material* material = nullptr;
+    short idmatOrg; // original material index, not mapped with material mapping
+    int foreignIdx;
+    Vec3 pt;
+    Vec3 n; // surface normal
+    int bTerrain;   // global terrain hit
+    int iPrim; // hit triangle index
+};
+#endif // PARTICLES_USE_CRY_PHYSICS
+
+
 enum EParticleEmitterFlags
 {
     ePEF_Independent = BIT(0),          // Not controlled by entity.
@@ -43,7 +92,7 @@ struct GeomRef
 {
     IStatObj*   m_pStatObj;
     ICharacterInstance* m_pChar;
-    IPhysicalEntity* m_pPhysEnt;
+    CryParticlePhysEntity* m_pPhysEnt;
 
     GeomRef()
         : m_pStatObj(0)
@@ -57,7 +106,7 @@ struct GeomRef
         : m_pChar(pChar)
         , m_pStatObj(0)
         , m_pPhysEnt(0) {}
-    GeomRef(IPhysicalEntity* pPhys)
+    GeomRef(CryParticlePhysEntity* pPhys)
         : m_pChar(0)
         , m_pStatObj(0)
         , m_pPhysEnt(pPhys) {}
@@ -67,6 +116,7 @@ struct GeomRef
         return m_pStatObj || m_pChar || m_pPhysEnt;
     }
 };
+
 //Summary:
 //      Real-time params to control particle emitters.
 // Description:
@@ -91,6 +141,7 @@ struct SpawnParams
     Vec3                    colorTint;                  // particle color tint
     Vec3                    particleSizeScale;          // Multiplier for particle size. For geom particle, it only uses y component for uniform scale
     float                   particleSizeScaleRandom;    // Random for particle size's scale.
+    AZ::EntityId            azEntityId;
 
     inline SpawnParams(EGeomType eType = GeomType_None, EGeomForm eForm = GeomForm_Surface)
         : colorTint(1.0f, 1.0f, 1.0f)
@@ -131,7 +182,7 @@ struct ParticleTarget
 struct EmitParticleData
 {
     IStatObj*                   pStatObj;               // The displayable geometry object for the entity. If NULL, uses emitter settings for sprite or geometry.
-    IPhysicalEntity*    pPhysEnt;               // A physical entity which controls the particle. If NULL, uses emitter settings to physicalise or move particle.
+    CryParticlePhysEntity*    pPhysEnt;               // A physical entity which controls the particle. If NULL, uses emitter settings to physicalise or move particle.
     QuatTS                      Location;               // Specified location for particle.
     Velocity3                   Velocity;               // Specified linear and rotational velocity for particle.
     bool                            bHasLocation;       // Location is specified.
@@ -151,6 +202,7 @@ struct EmitParticleData
 };
 
 struct ParticleParams;
+struct IParticleEffect;
 
 // Level of Detail related data - Vera, Chris, Confetti
 struct SLodInfo
@@ -533,7 +585,7 @@ struct IParticleEmitter
     //       pData - Specific data for particle, or NULL for defaults.
     virtual void EmitParticle(const EmitParticleData* pData = NULL) = 0;
 
-    void EmitParticle(IStatObj* pStatObj, IPhysicalEntity* pPhysEnt = NULL, QuatTS* pLocation = NULL, Velocity3* pVel = NULL)
+    void EmitParticle(IStatObj* pStatObj, CryParticlePhysEntity* pPhysEnt = NULL, QuatTS* pLocation = NULL, Velocity3* pVel = NULL)
     {
         EmitParticleData data;
         data.pStatObj = pStatObj;

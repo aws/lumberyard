@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "singleboxtree.h"
@@ -4355,3 +4357,5 @@ void CArticulatedEntity::GetMemoryStatistics(ICrySizer* pSizer) const
     pSizer->AddObject(m_joints, m_nJointsAlloc * sizeof(m_joints[0]));
     pSizer->AddObject(m_infos, m_nPartsAlloc * sizeof(m_infos[0]));
 }
+
+#endif // ENABLE_CRY_PHYSICS

@@ -91,11 +91,21 @@ public:
     { m_LastLoc.s = -1.f; }
     void SetLastLoc()
     { m_LastLoc = GetSource().GetLocation(); }
+
+    // This is a legacy function that should be removed when it is no longer used anywhere.
     bool GetMoveRelative(Vec3& vPreTrans, QuatTS& qtMove) const;
+
     void UpdateForce();
 
     bool HasForce() const
+#if PARTICLES_USE_CRY_PHYSICS
     { return (m_pForce != 0); }
+#else
+    {
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        return false;
+    }
+#endif // PARTICLES_USE_CRY_PHYSICS
 
     int EmitParticle(SParticleUpdateContext& context, const EmitParticleData& data, float fAge = 0.f, QuatTS* plocPreTransform = NULL);
 
@@ -173,8 +183,10 @@ private:
     uint32              m_nEmitIndex;
     uint16              m_nSequenceIndex;
 
+#if PARTICLES_USE_CRY_PHYSICS
     // External objects.
     IPhysicalEntity*        m_pForce;
+#endif
     Vec3 m_emitterBounds;
 
     // Methods.

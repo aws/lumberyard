@@ -33,8 +33,6 @@ namespace AzQtComponents
 
 ColorPreview::ColorPreview(QWidget* parent)
     : QFrame(parent)
-    , m_gammaEnabled(false)
-    , m_gamma(1.0)
     , m_draggedSwatch(new Swatch(this))
 {
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -87,38 +85,6 @@ AZ::Color ColorPreview::selectedColor() const
     return m_selectedColor;
 }
 
-void ColorPreview::setGammaEnabled(bool gammaEnabled)
-{
-    if (gammaEnabled == m_gammaEnabled)
-    {
-        return;
-    }
-
-    m_gammaEnabled = gammaEnabled;
-    update();
-}
-
-bool ColorPreview::isGammaEnabled() const
-{
-    return m_gammaEnabled;
-}
-
-void ColorPreview::setGamma(qreal gamma)
-{
-    if (qFuzzyCompare(gamma, m_gamma))
-    {
-        return;
-    }
-
-    m_gamma = gamma;
-    update();
-}
-
-qreal ColorPreview::gamma() const
-{
-    return m_gamma;
-}
-
 QSize ColorPreview::sizeHint() const
 {
     return { 200 + 2*frameWidth(), 20 + 2*frameWidth() };
@@ -129,24 +95,12 @@ void ColorPreview::paintEvent(QPaintEvent*)
     QPainter p(this);
 
     drawFrame(&p);
-
-    AZ::Color selected, current;
-    if (m_gammaEnabled)
-    {
-        selected = AdjustGamma(m_selectedColor, aznumeric_cast<float>(m_gamma));
-        current = AdjustGamma(m_currentColor, aznumeric_cast<float>(m_gamma));
-    }
-    else
-    {
-        selected = m_selectedColor;
-        current = m_currentColor;
-    }
-
+    
     const QRect r = contentsRect();
     const int w = r.width() / 2;
 
-    p.fillRect(QRect(r.x(), r.y(), w, r.height()), MakeAlphaBrush(selected));
-    p.fillRect(QRect(r.x() + w, r.y(), r.width() - w, r.height()), MakeAlphaBrush(current));
+    p.fillRect(QRect(r.x(), r.y(), w, r.height()), MakeAlphaBrush(m_selectedColor));
+    p.fillRect(QRect(r.x() + w, r.y(), r.width() - w, r.height()), MakeAlphaBrush(m_currentColor));
 
     QStyleOptionFrame option;
     option.initFrom(this);
@@ -186,15 +140,10 @@ void ColorPreview::mouseMoveEvent(QMouseEvent* event)
     QMimeData* mimeData = new QMimeData();
     QDrag* drag = new QDrag(this);
 
-    AZ::Color color = (event->pos().x() < contentsRect().width() / 2) ? selectedColor() : currentColor();
+    const AZ::Color color = (event->pos().x() < contentsRect().width() / 2) ? selectedColor() : currentColor();
     palette.tryAppendColor(color);
     palette.save(mimeData);
     drag->setMimeData(mimeData);
-
-    if (m_gammaEnabled)
-    {
-        color = AdjustGamma(color, aznumeric_cast<float>(m_gamma));
-    }
 
     m_draggedSwatch->setColor(color);
     QPixmap pixmap(m_draggedSwatch->size());

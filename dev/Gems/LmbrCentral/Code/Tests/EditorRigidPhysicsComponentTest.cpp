@@ -10,6 +10,9 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "LmbrCentralEditor.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Physics/EditorRigidPhysicsComponent.h"
@@ -204,3 +207,4 @@ TEST_F(LoadEditorRigidPhysicsConfigurationV1, Load_Succeeds)
 {
     EXPECT_NE(m_object.get(), nullptr);
 }
+#endif // ENABLE_CRY_PHYSICS

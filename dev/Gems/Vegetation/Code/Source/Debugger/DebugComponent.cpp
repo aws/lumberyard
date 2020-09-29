@@ -917,7 +917,7 @@ void DebugComponent::PrepareNextReport()
                 AreaSectorTiming& areaSectorTiming = iterator->second;
                 areaSectorTiming.m_totalTime += AZStd::chrono::microseconds(sectorAreaData.m_end - sectorAreaData.m_start).count();
                 areaSectorTiming.m_numInstances += sectorAreaData.m_numInstancesCreated;
-                for( const auto reasonValue : sectorAreaData.m_numInstancesRejectedByFilters )
+                for( const auto& reasonValue : sectorAreaData.m_numInstancesRejectedByFilters )
                 {
                     DebugComponentUtilities::IncrementFilterReason(areaSectorTiming.m_numInstancesRejectedByFilters, reasonValue.first, reasonValue.second);
                 }
@@ -1123,7 +1123,8 @@ void DebugComponent::DumpPerformanceReport(const PerformanceReport& report, Filt
     AZStd::string logFolder = AZStd::string::format("@log@/vegetation");
     AZ::IO::LocalFileIO::GetInstance()->CreatePath(logFolder.c_str());
 
-    AZStd::string logFile = AZStd::string::format("%s/%s_%s_%s_%u.csv", logFolder.c_str(), "vegperf", GetSortTypeString(sort), GetFilterTypeLevelString(filter), AZStd::chrono::system_clock::now().time_since_epoch().count());
+    AZ::u64 timeSinceEpoch = AZStd::chrono::system_clock::now().time_since_epoch().count();
+    AZStd::string logFile = AZStd::string::format("%s/%s_%s_%s_%llu.csv", logFolder.c_str(), "vegperf", GetSortTypeString(sort), GetFilterTypeLevelString(filter), timeSinceEpoch);
 
     AZ::IO::HandleType logHandle;
     AZ::IO::Result result = AZ::IO::LocalFileIO::GetInstance()->Open(logFile.c_str(), AZ::IO::OpenMode::ModeWrite, logHandle);

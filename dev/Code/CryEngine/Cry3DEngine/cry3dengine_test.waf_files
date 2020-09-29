@@ -11,6 +11,7 @@
             "Tests/MockValidationTest.cpp",
             "Tests/MaterialTests.cpp",
             "Tests/MergedMeshTest.cpp",
+            "Tests/PostEffectGroupTests.cpp",
             "Tests/OctreeTest.cpp"
         ]
     }

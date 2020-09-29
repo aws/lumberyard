@@ -16,136 +16,102 @@
 #include <IAudioInterfacesCommonData.h>
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Description:
-//          This file defines the data-types used in the IAudioSystemImplementation.h
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLAudioObjectData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLAudioObject (e.g. a middleware-specific unique ID)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio object.
+    //! (e.g. a middleware-specific object ID)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLAudioObjectData
     {
-        virtual ~IATLAudioObjectData() {}
+        virtual ~IATLAudioObjectData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLListenerData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLListenerObject (e.g. a middleware-specific unique ID)
+    //! AudioSystemImplementation may use this base class for an middleware-specific audio listener.
+    //! (e.g. a middleware-specific object ID)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLListenerData
     {
-        virtual ~IATLListenerData() {}
+        virtual ~IATLListenerData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLTriggerImplData>
-    // Summary::
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLTriggerImpl
-    //          (e.g. a middleware-specific event ID or name, a sound-file name to be passed to an API function)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio trigger.
+    //! (e.g. a middleware-specific event ID or name, a sound file to be passed to an API function)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLTriggerImplData
     {
-        virtual ~IATLTriggerImplData() {}
+        virtual ~IATLTriggerImplData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLRtpcImplData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLRtpcImpl
-    //          (e.g. a middleware-specific control ID or a parameter name to be passed to an API function)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio parameter.
+    //! (e.g. a middleware-specific parameter ID or name to be passed to an API function)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLRtpcImplData
     {
-        virtual ~IATLRtpcImplData() {}
+        virtual ~IATLRtpcImplData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLSwitchStateImplData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLSwitchStateImpl
-    //          (e.g. a middleware-specific control ID or a switch and state names to be passed to an API function)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio switch state.
+    //! (e.g. a middleware-specific switch ID or switch/state names to be passed to an API function)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLSwitchStateImplData
     {
-        virtual ~IATLSwitchStateImplData() {}
+        virtual ~IATLSwitchStateImplData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLEnvironmentImplData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLEnvironmentImpl
-    //          (e.g. a middleware-specific bus ID or name to be passed to an API function)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio environment.
+    //! (e.g. a middleware-specific auxiliary bus ID or name to be passed to an API function)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLEnvironmentImplData
     {
-        virtual ~IATLEnvironmentImplData() {}
+        virtual ~IATLEnvironmentImplData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLEventData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLEvent
-    //          (e.g. a middleware-specific playingID of an active event/sound for a play event)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio event.
+    //! (e.g. a middleware-specific event or playing ID of an active event/sound)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLEventData
     {
-        virtual ~IATLEventData() {}
+        virtual ~IATLEventData() = default;
 
         TAudioControlID m_triggerId = INVALID_AUDIO_CONTROL_ID;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title IATLAudioFileEntryData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing implementation-specific
-    //          data needed for identifying and using the corresponding ATLAudioFileEntry.
-    //          (e.g. a middleware-specific bank ID if the AudioFileEntry represents a soundbank)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio file entry.
+    //! (e.g. a middleware-specific bank ID if the AudioFileEntry represents a soundbank)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct IATLAudioFileEntryData
     {
-        virtual ~IATLAudioFileEntryData() {}
+        virtual ~IATLAudioFileEntryData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title SATLSourceData>
-    // Summary:
-    //          An AudioSystemImplementation may use this interface to define a class for storing
-    //          implementation-specific data needed for identifying and using the corresponding ATLSource.
-    //          (e.g. a middleware-specific sourceID, language, collection, and filename of an external
-    //          source for a play event)
+    //! AudioSystemImplementation may use this base class for a middleware-specific audio source.
+    //! (e.g. a middleware-specific source ID, language, collection, and file ID of an external source)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLSourceData
     {
         SAudioSourceInfo m_sourceInfo;
 
-        SATLSourceData()
-        {}
+        SATLSourceData() = default;
 
         SATLSourceData(const SAudioSourceInfo& sourceInfo)
             : m_sourceInfo(sourceInfo)
         {}
 
-        ~SATLSourceData() {}
+        ~SATLSourceData() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title SATLAudioFileEntryInfo>
-    // Summary:
-    //          This is a POD structure used to pass the information about a file preloaded into memory between
-    //          the CryAudioSystem and an AudioSystemImplementation
+    //! This is used to pass information about a file loaded into memory between the Audio System
+    //! and the Audio Engine (i.e. audio middleware implementation)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLAudioFileEntryInfo
     {
@@ -157,24 +123,25 @@ namespace Audio
         bool bLocalized = false;                        // is the file localized?
 
         SATLAudioFileEntryInfo() = default;
+        ~SATLAudioFileEntryInfo() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // <title SAudioImplMemoryInfo>
-    // Summary:
-    //          This is a POD structure used to pass the information about an AudioSystemImplementation's memory usage
-    //          Note: This struct cannot define a constructor, it needs to be a POD!
+    //! This is used to pass information about an AudioSystemImplementation's memory usage in its main allocators.
+    //! Note: This struct cannot define a constructor, it needs to be a POD!
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SAudioImplMemoryInfo
     {
-        size_t nPrimaryPoolSize;             // total size in bytes of the Primary Memory Pool
-        size_t nPrimaryPoolUsedSize;         // bytes allocated inside the Primary Memory Pool
-        size_t nPrimaryPoolAllocations;      // number of allocations performed in the Primary Memory Pool
-        size_t nSecondaryPoolSize;           // total size in bytes of the Secondary Memory Pool
-        size_t nSecondaryPoolUsedSize;       // bytes allocated inside the Secondary Memory Pool
-        size_t nSecondaryPoolAllocations;    // number of allocations performed in the Secondary Memory Pool
+        size_t nPrimaryPoolSize = 0;             // total size in bytes of the Primary Memory Pool
+        size_t nPrimaryPoolUsedSize = 0;         // bytes allocated inside the Primary Memory Pool
+        size_t nPrimaryPoolAllocations = 0;      // number of allocations performed in the Primary Memory Pool
+        size_t nSecondaryPoolSize = 0;           // total size in bytes of the Secondary Memory Pool
+        size_t nSecondaryPoolUsedSize = 0;       // bytes allocated inside the Secondary Memory Pool
+        size_t nSecondaryPoolAllocations = 0;    // number of allocations performed in the Secondary Memory Pool
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //! This is used to pass information about an audio middleware's detailed memory pool usage.
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct AudioImplMemoryPoolInfo
     {
@@ -186,4 +153,5 @@ namespace Audio
         AZ::u32 m_numAllocs = 0;        // number of alloc calls
         AZ::u32 m_numFrees = 0;         // number of free calls
     };
+
 } // namespace Audio

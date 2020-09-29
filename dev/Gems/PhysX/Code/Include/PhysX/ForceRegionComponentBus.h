@@ -17,30 +17,6 @@
 
 namespace PhysX
 {
-    struct EntityParams;
-    struct RegionParams;
-
-    /// Requests serviced by all forces used by force regions.
-    class BaseForce
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(BaseForce, AZ::SystemAllocator, 0);
-        AZ_RTTI(BaseForce, "{0D1DFFE1-16C1-425B-972B-DC70FDC61B56}");
-        static void Reflect(AZ::SerializeContext& context);
-
-        virtual ~BaseForce() = default;
-
-        /// Connect to any buses.
-        virtual void Activate(AZ::EntityId entityId) = 0;
-
-        /// Disconnect from any buses.
-        virtual void Deactivate() = 0;
-
-        /// Calculate the size and direction the force.
-        virtual AZ::Vector3 CalculateForce(const EntityParams& entityParams
-            , const RegionParams& volumeParams) const = 0;
-    };
-
     /// Requests serviced by a world space force.
     class ForceWorldSpaceRequests
         : public AZ::ComponentBus
@@ -50,13 +26,13 @@ namespace PhysX
         virtual void SetDirection(const AZ::Vector3& direction) = 0;
 
         /// Gets the direction of the force in world space.
-        virtual AZ::Vector3 GetDirection() = 0;
+        virtual AZ::Vector3 GetDirection() const = 0;
 
         /// Sets the magnitude of the force.
         virtual void SetMagnitude(float magnitude) = 0;
 
         /// Gets the magnitude of the force.
-        virtual float GetMagnitude() = 0;
+        virtual float GetMagnitude() const = 0;
     };
 
     using ForceWorldSpaceRequestBus = AZ::EBus<ForceWorldSpaceRequests>;
@@ -70,13 +46,13 @@ namespace PhysX
         virtual void SetDirection(const AZ::Vector3& direction) = 0;
 
         /// Gets the direction of the force in local space.
-        virtual AZ::Vector3 GetDirection() = 0;
+        virtual AZ::Vector3 GetDirection() const = 0;
 
         /// Sets the magnitude of the force.
         virtual void SetMagnitude(float magnitude) = 0;
 
         /// Gets the magnitude of the force.
-        virtual float GetMagnitude() = 0;
+        virtual float GetMagnitude() const = 0;
     };
 
     using ForceLocalSpaceRequestBus = AZ::EBus<ForceLocalSpaceRequests>;
@@ -90,7 +66,7 @@ namespace PhysX
         virtual void SetMagnitude(float magnitude) = 0;
 
         /// Gets the magnitude of the force.
-        virtual float GetMagnitude() = 0;
+        virtual float GetMagnitude() const = 0;
     };
 
     using ForcePointRequestBus = AZ::EBus<ForcePointRequests>;
@@ -104,25 +80,25 @@ namespace PhysX
         virtual void SetDampingRatio(float ratio) = 0;
 
         /// Gets the damping ratio of the force.
-        virtual float GetDampingRatio() = 0;
+        virtual float GetDampingRatio() const = 0;
 
         /// Sets the frequency of the force.
         virtual void SetFrequency(float frequency) = 0;
 
         /// Gets the frequency of the force.
-        virtual float GetFrequency() = 0;
+        virtual float GetFrequency() const = 0;
 
         /// Sets the traget speed of the force.
         virtual void SetTargetSpeed(float targetSpeed) = 0;
 
         /// Gets the target speed of the force.
-        virtual float GetTargetSpeed() = 0;
+        virtual float GetTargetSpeed() const = 0;
 
         /// Sets the lookahead of the force.
         virtual void SetLookAhead(float lookAhead) = 0;
 
         /// Gets the lookahead of the force.
-        virtual float GetLookAhead() = 0;
+        virtual float GetLookAhead() const = 0;
     };
 
     using ForceSplineFollowRequestBus = AZ::EBus<ForceSplineFollowRequests>;
@@ -136,7 +112,7 @@ namespace PhysX
         virtual void SetDensity(float density) = 0;
 
         /// Gets the density of the volume.
-        virtual float GetDensity() = 0;
+        virtual float GetDensity() const = 0;
     };
 
     using ForceSimpleDragRequestBus = AZ::EBus<ForceSimpleDragRequests>;
@@ -150,7 +126,7 @@ namespace PhysX
         virtual void SetDamping(float damping) = 0;
 
         /// Gets the damping amount of the force.
-        virtual float GetDamping() = 0;
+        virtual float GetDamping() const = 0;
     };
 
     using ForceLinearDampingRequestBus = AZ::EBus<ForceLinearDampingRequests>;
@@ -169,7 +145,10 @@ namespace PhysX
         virtual void OnCalculateNetForce(AZ::EntityId forceRegionEntityId
             , AZ::EntityId targetEntityId
             , const AZ::Vector3& netForceDirection
-            , float netForceMagnitude) = 0;
+            , float netForceMagnitude) {}
+
+        /// Dispatched when any force in force region is changed.
+        virtual void OnForceRegionForceChanged(AZ::EntityId forceRegionEntityId) {}
     };
     using ForceRegionNotificationBus = AZ::EBus<ForceRegionNotifications>;
 

@@ -63,6 +63,7 @@ namespace AzToolsFramework
         AZStd::string CreateChangelistForm(const AZStd::string& client, const AZStd::string& user, const AZStd::string& description);
 
         void ExecuteAdd(const AZStd::string& changelist, const AZStd::string& filePath);
+        void ExecuteAdd(const AZStd::string& changelist, const AZStd::unordered_set<AZStd::string>& filePaths);
         void ExecuteClaimChangedFile(const AZStd::string& filePath, const AZStd::string& changeList);
         void ExecuteDelete(const AZStd::string& changelist, const AZStd::string& filePath);
         void ExecuteEdit(const AZStd::string& changelist, const AZStd::string& filePath);

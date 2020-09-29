@@ -34,6 +34,9 @@ namespace PhysX
             void Deactivate() override;
             static void Reflect(AZ::ReflectContext* context);
 
+            void GetAvailableModifiers(AZ::SceneAPI::Events::ManifestMetaInfo::ModifiersList& modifiers,
+                const AZ::SceneAPI::Containers::Scene& scene,
+                const AZ::SceneAPI::DataTypes::IManifestObject& target) override;
             void GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene) override;
             void InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) override;
             AZ::SceneAPI::Events::ProcessingResult UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action,

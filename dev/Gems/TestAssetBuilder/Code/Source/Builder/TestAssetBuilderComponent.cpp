@@ -21,6 +21,7 @@
 
 namespace TestAssetBuilder
 {
+    bool failedNetworkConnectionTest = true;
 
     AZ::Data::AssetStreamInfo TestDependentAssetCatalog::GetStreamInfoForLoad(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& type) 
     {
@@ -62,7 +63,7 @@ namespace TestAssetBuilder
     {
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Test Asset Builder";
-        builderDescriptor.m_version = 1;
+        builderDescriptor.m_version = 2;
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.source", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.dependent", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.slicetest", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
@@ -70,6 +71,12 @@ namespace TestAssetBuilder
         builderDescriptor.m_busId = azrtti_typeid<TestAssetBuilderComponent>();
         builderDescriptor.m_createJobFunction = AZStd::bind(&TestAssetBuilderComponent::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&TestAssetBuilderComponent::ProcessJob, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
+
+        bool success = false;
+        AZStd::vector<AZStd::string> assetSafeFolders;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetAssetSafeFolders, assetSafeFolders);
+
+        failedNetworkConnectionTest = !success || assetSafeFolders.empty();
 
         BusConnect(builderDescriptor.m_busId);
 
@@ -121,6 +128,12 @@ namespace TestAssetBuilder
         if (m_isShuttingDown)
         {
             response.m_result = AssetBuilderSDK::CreateJobsResultCode::ShuttingDown;
+            return;
+        }
+
+        if(failedNetworkConnectionTest)
+        {
+            AZ_Assert(false, "GetAssetSafeFolders API failed to respond or responded with an empty list.  The network connection to AssetProcessor must be established before builder activation.");
             return;
         }
 

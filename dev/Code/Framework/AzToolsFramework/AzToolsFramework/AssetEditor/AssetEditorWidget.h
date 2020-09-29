@@ -92,6 +92,7 @@ namespace AzToolsFramework
 
             void SaveAsset();
             void SaveAssetAs();
+            bool SaveAssetToPath(AZStd::string_view assetPath);
             void ExpandAll();
             void CollapseAll();
 
@@ -133,7 +134,7 @@ namespace AzToolsFramework
             // AZ::SystemTickBus
             void OnSystemTick() override;
 
-            AZStd::vector<AZ::Data::AssetType> m_genericAssetTypes;
+            AZStd::vector<AZ::Data::AssetType>  m_genericAssetTypes;
             AZ::Data::AssetId                    m_sourceAssetId;
             AZ::Data::Asset<AZ::Data::AssetData> m_inMemoryAsset;
             ReflectedPropertyEditor* m_propertyEditor;
@@ -165,6 +166,7 @@ namespace AzToolsFramework
             void PopulateGenericAssetTypes();
             void CreateAssetImpl(AZ::Data::AssetType assetType);
             bool SaveAsDialog(AZ::Data::Asset<AZ::Data::AssetData>& asset);
+            bool SaveImpl(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const QString& saveAsPath);
             void LoadAsset(AZ::Data::AssetId assetId, AZ::Data::AssetType assetType);
             void UpdatePropertyEditor(AZ::Data::Asset<AZ::Data::AssetData>& asset);
 

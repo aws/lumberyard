@@ -9,23 +9,24 @@
     },
     "auto":
     {
-        "Include/Rendering": 
+        "Include/Rendering":
         [
             "include/LmbrCentral/Rendering/EditorCameraCorrectionBus.h",
             "include/LmbrCentral/Rendering/EditorLightComponentBus.h",
             "include/LmbrCentral/Rendering/EditorMeshBus.h"
         ],
-        "Include/Shape": [
+        "Include/Shape":
+        [
             "include/LmbrCentral/Shape/EditorPolygonPrismShapeComponentBus.h",
             "include/LmbrCentral/Shape/EditorSplineComponentBus.h",
             "include/LmbrCentral/Shape/EditorTubeShapeComponentBus.h"
         ],
-        "Include/Component": 
+        "Include/Component":
         [
             "include/LmbrCentral/Component/EditorWrappedComponentBase.h",
             "include/LmbrCentral/Component/EditorWrappedComponentBase.inl"
         ],
-        "Source/Animation": 
+        "Source/Animation":
         [
             "Source/Animation/EditorAttachmentComponent.h",
             "Source/Animation/EditorAttachmentComponent.cpp",
@@ -36,7 +37,7 @@
             "Source/Animation/EditorMannequinScopeComponent.h",
             "Source/Animation/EditorMannequinScopeComponent.cpp"
         ],
-        "Source/Audio": 
+        "Source/Audio":
         [
             "Source/Audio/EditorAudioAreaEnvironmentComponent.h",
             "Source/Audio/EditorAudioAreaEnvironmentComponent.cpp",
@@ -55,7 +56,7 @@
             "Source/Audio/EditorAudioTriggerComponent.h",
             "Source/Audio/EditorAudioTriggerComponent.cpp"
         ],
-        "Source/Metrics": 
+        "Source/Metrics":
         [
             "Source/Metrics/ActionMetricsTracker.cpp",
             "Source/Metrics/ActionMetricsTracker.h",
@@ -63,7 +64,7 @@
             "Source/Metrics/LyEditorMetricsSystemComponent.h",
             "Source/Metrics/LyEditorMetricsSystemComponent.cpp"
         ],
-        "Source/Physics": 
+        "Source/Physics":
         [
             "Source/Physics/EditorConstraintComponent.h",
             "Source/Physics/EditorConstraintComponent.cpp",
@@ -120,7 +121,8 @@
             "Source/Scripting/EditorTriggerAreaComponent.h",
             "Source/Scripting/EditorTriggerAreaComponent.cpp"
         ],
-        "Source/Shape": [
+        "Source/Shape":
+        [
             "Source/Shape/EditorBaseShapeComponent.h",
             "Source/Shape/EditorBaseShapeComponent.cpp",
             "Source/Shape/EditorSphereShapeComponent.h",
@@ -135,6 +137,8 @@
             "Source/Shape/EditorCapsuleShapeComponent.cpp",
             "Source/Shape/EditorCompoundShapeComponent.h",
             "Source/Shape/EditorCompoundShapeComponent.cpp",
+            "Source/Shape/EditorQuadShapeComponent.h",
+            "Source/Shape/EditorQuadShapeComponent.cpp",
             "Source/Shape/EditorSplineComponent.h",
             "Source/Shape/EditorSplineComponent.cpp",
             "Source/Shape/EditorSplineComponentMode.h",
@@ -150,7 +154,8 @@
             "Source/Shape/EditorShapeComponentConverters.h",
             "Source/Shape/EditorShapeComponentConverters.cpp"
         ],
-        "source/Ai": [
+        "source/Ai":
+        [
             "Source/Ai/EditorNavigationSeedComponent.h",
             "Source/Ai/EditorNavigationSeedComponent.cpp",
             "Source/Ai/EditorNavigationAreaComponent.h",
@@ -158,9 +163,100 @@
             "Source/Ai/EditorNavigationUtil.h",
             "Source/Ai/EditorNavigationUtil.cpp"
         ],
-        "Source/Editor": [
+        "Source/Editor":
+        [
             "Source/Editor/EditorCommentComponent.h",
             "Source/Editor/EditorCommentComponent.cpp"
+        ],
+        "Source/Builders/CopyDependencyBuilder":
+        [
+            "Source/Builders/CopyDependencyBuilder/CopyDependencyBuilderComponent.cpp",
+            "Source/Builders/CopyDependencyBuilder/CopyDependencyBuilderComponent.h",
+            "Source/Builders/CopyDependencyBuilder/CopyDependencyBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/CopyDependencyBuilderWorker.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/Cfg":
+        [
+            "Source/Builders/CopyDependencyBuilder/CfgBuilderWorker/CfgBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/CfgBuilderWorker/CfgBuilderWorker.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/EmFxWorkspace":
+        [
+            "Source/Builders/CopyDependencyBuilder/EmfxWorkspaceBuilderWorker/EmfxWorkspaceBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/EmfxWorkspaceBuilderWorker/EmfxWorkspaceBuilderWorker.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/Font":
+        [
+            "Source/Builders/CopyDependencyBuilder/FontBuilderWorker/FontBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/FontBuilderWorker/FontBuilderWorker.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/ParticlePreloadLibs":
+        [
+            "Source/Builders/CopyDependencyBuilder/ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/Schema":
+        [
+            "Source/Builders/CopyDependencyBuilder/SchemaBuilderWorker/SchemaBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/SchemaBuilderWorker/SchemaBuilderWorker.h",
+            "Source/Builders/CopyDependencyBuilder/SchemaBuilderWorker/SchemaUtils.cpp",
+            "Source/Builders/CopyDependencyBuilder/SchemaBuilderWorker/SchemaUtils.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/Xml":
+        [
+            "Source/Builders/CopyDependencyBuilder/XmlBuilderWorker/XmlBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/XmlBuilderWorker/XmlBuilderWorker.h"
+        ],
+        "Source/Builders/CopyDependencyBuilder/XmlFormatted":
+        [
+            "Source/Builders/CopyDependencyBuilder/XmlFormattedAssetBuilderWorker.cpp",
+            "Source/Builders/CopyDependencyBuilder/XmlFormattedAssetBuilderWorker.h"
+        ],
+        "Source/Builders/DependencyBuilder":
+        [
+            "Source/Builders/DependencyBuilder/DependencyBuilderComponent.cpp",
+            "Source/Builders/DependencyBuilder/DependencyBuilderComponent.h",
+            "Source/Builders/DependencyBuilder/DependencyBuilderWorker.cpp",
+            "Source/Builders/DependencyBuilder/DependencyBuilderWorker.h"
+        ],
+        "Source/Builders/DependencyBuilder/Seed":
+        [
+            "Source/Builders/DependencyBuilder/SeedBuilderWorker/SeedBuilderWorker.cpp",
+            "Source/Builders/DependencyBuilder/SeedBuilderWorker/SeedBuilderWorker.h"
+        ],
+        "Source/Builders/LevelBuilder":
+        [
+            "Source/Builders/LevelBuilder/LevelBuilderComponent.cpp",
+            "Source/Builders/LevelBuilder/LevelBuilderComponent.h",
+            "Source/Builders/LevelBuilder/LevelBuilderWorker.cpp",
+            "Source/Builders/LevelBuilder/LevelBuilderWorker.h"
+        ],
+        "Source/Builders/MaterialBuilder":
+        [
+            "Source/Builders/MaterialBuilder/MaterialBuilderComponent.cpp",
+            "Source/Builders/MaterialBuilder/MaterialBuilderComponent.h"
+        ],
+        "Source/Builders/SliceBuilder":
+        [
+            "Source/Builders/SliceBuilder/SliceBuilderComponent.cpp",
+            "Source/Builders/SliceBuilder/SliceBuilderComponent.h",
+            "Source/Builders/SliceBuilder/SliceBuilderWorker.cpp",
+            "Source/Builders/SliceBuilder/SliceBuilderWorker.h"
+        ],
+        "Source/Builders/TranslationBuilder":
+        [
+            "Source/Builders/TranslationBuilder/TranslationBuilderComponent.cpp",
+            "Source/Builders/TranslationBuilder/TranslationBuilderComponent.h"
+        ],
+        "Source/Builders/LuaBuilder":
+        [
+            "Source/Builders/LuaBuilder/LuaBuilderComponent.h",
+            "Source/Builders/LuaBuilder/LuaBuilderComponent.cpp",
+            "Source/Builders/LuaBuilder/LuaBuilderWorker.cpp",
+            "Source/Builders/LuaBuilder/LuaBuilderWorker.h",
+            "Source/Builders/LuaBuilder/LuaHelpers.cpp",
+            "Source/Builders/LuaBuilder/LuaHelpers.h"
         ]
+
     }
 }

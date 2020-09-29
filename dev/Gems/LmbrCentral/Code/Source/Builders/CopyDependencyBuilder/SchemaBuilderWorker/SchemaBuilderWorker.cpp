@@ -10,6 +10,7 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "SchemaBuilderWorker.h"
 #include "SchemaUtils.h"
 
@@ -28,7 +29,7 @@ namespace CopyDependencyBuilder
         xmlSchemaBuilderDescriptor.m_name = "SchemaBuilderWorker";
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.xmlschema", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_busId = azrtti_typeid<SchemaBuilderWorker>();
-        xmlSchemaBuilderDescriptor.m_version = 3;
+        xmlSchemaBuilderDescriptor.m_version = 4;
         xmlSchemaBuilderDescriptor.m_createJobFunction =
             AZStd::bind(&SchemaBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         xmlSchemaBuilderDescriptor.m_processJobFunction =

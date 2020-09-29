@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/API/ApplicationAPI.h>
@@ -27,6 +28,7 @@
 #include <IConsole.h>
 
 #include <platform_impl.h>
+
 
 namespace AssetValidation
 {

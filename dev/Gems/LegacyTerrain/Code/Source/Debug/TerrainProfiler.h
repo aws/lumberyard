@@ -16,7 +16,7 @@
 #include <AzCore/Debug/Timer.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/Debug/StatisticalProfilerProxy.h>
-#include "Terrain/LegacyTerrainBase.h"
+#include "LegacyTerrainBase.h"
 
 #define TERRAIN_SCOPE_PROFILE(profiler, scopeNameId) AZ_PROFILE_SCOPE(profiler, scopeNameId)
 

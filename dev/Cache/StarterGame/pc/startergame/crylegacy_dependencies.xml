@@ -13,7 +13,7 @@
     <Dependency path="libs/flownodes/flowinitdata/*.json" optional="false" />
     <Dependency path="libs/gameforcefeedback/forcefeedbackeffects.xml" optional="true" />
     <Dependency path="libs/materialeffects/flowgraphs/*.xml" optional="false" />
-    <Dependency path="libs/materialeffects/fxlibs/*.xml" optional="false" />
+    <Dependency path="libs/materialeffects/materialeffects.xml" optional="false" />
     <Dependency path="libs/materialeffects/mergedmeshsurfacetypes.xml" optional="true" />
     <Dependency path="libs/readability/faces/faces.xml" optional="true" />
     <Dependency path="libs/smartobjects/classtemplates/*.xml" optional="false" />

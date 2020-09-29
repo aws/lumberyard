@@ -60,7 +60,9 @@ struct ICryPak;
 struct IStreamEngine;
 
 struct IRenderer;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct I3DEngine;
 class CCamera;
 struct SParametricSamplerInternal;
@@ -83,7 +85,9 @@ extern IStreamEngine*     g_pIStreamEngine;
 
 extern IRenderer*                   g_pIRenderer;
 extern IRenderAuxGeom*      g_pAuxGeom;
+#if ENABLE_CRY_PHYSICS
 extern IPhysicalWorld*      g_pIPhysicalWorld;
+#endif
 extern I3DEngine*                   g_pI3DEngine;
 
 
@@ -116,7 +120,9 @@ ILINE void g_InitInterfaces()
 
     //We initialize these pointers once here and then every frame in CharacterManager::Update()
     g_pIRenderer            = g_pISystem->GetIRenderer();
+#if ENABLE_CRY_PHYSICS
     g_pIPhysicalWorld   = g_pISystem->GetIPhysicalWorld();
+#endif
     g_pI3DEngine            =   g_pISystem->GetI3DEngine();
 
     Console::GetInst().Init();
@@ -135,7 +141,9 @@ ILINE void g_DeleteInterfaces()
     ;
 
     g_pIRenderer            = NULL;
+#if ENABLE_CRY_PHYSICS
     g_pIPhysicalWorld   = NULL;
+#endif 
     g_pI3DEngine            =   NULL;
 }
 

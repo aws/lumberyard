@@ -10,6 +10,7 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "XmlBuilderWorker.h"
 
 #include <AssetBuilderSDK/SerializationDependencies.h>
@@ -21,7 +22,7 @@
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
-#include <Source/SchemaBuilderWorker/SchemaUtils.h>
+#include "Builders/CopyDependencyBuilder/SchemaBuilderWorker/SchemaUtils.h"
 
 namespace CopyDependencyBuilder
 {
@@ -112,10 +113,26 @@ namespace CopyDependencyBuilder
                         ? AssetBuilderSDK::ProductPathDependencyType::SourceFile
                         : AssetBuilderSDK::ProductPathDependencyType::ProductFile;
 
-                
                     if (dependencyValue.empty())
                     {
                         return true;
+                    }
+
+                    // Reject values that don't pass the match pattern
+                    if(!schemaAttribute.GetMatchPattern().empty())
+                    {
+                        AZStd::regex match(schemaAttribute.GetMatchPattern(), AZStd::regex_constants::ECMAScript | AZStd::regex_constants::icase);
+
+                        if(!AZStd::regex_search(dependencyValue, match))
+                        {
+                            return true;
+                        }
+                    }
+
+                    if(!schemaAttribute.GetFindPattern().empty())
+                    {
+                        AZStd::regex find(schemaAttribute.GetFindPattern(), AZStd::regex_constants::ECMAScript | AZStd::regex_constants::icase);
+                        dependencyValue = AZStd::regex_replace(dependencyValue, find, schemaAttribute.GetReplacePattern());
                     }
 
                     if (AddFileExtention(schemaAttribute.GetExpectedExtension(), dependencyValue, schemaAttribute.IsOptional()))
@@ -273,8 +290,8 @@ namespace CopyDependencyBuilder
             if (versionPartsCount > MaxVersionPartsCount)
             {
                 return AZ::Failure(AZStd::string::format(
-                    "Failed to parse invalid version string \"%s\". ",
-                    "Only version number with at most %d parts is supported. "
+                    "Failed to parse invalid version string \"%s\". "
+                    "Only version number with at most %zu parts is supported. "
                     , versionStr.c_str(), MaxVersionPartsCount));
             }
 
@@ -319,7 +336,7 @@ namespace CopyDependencyBuilder
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.ent", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.vegdescriptorlist", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         xmlSchemaBuilderDescriptor.m_busId = azrtti_typeid<XmlBuilderWorker>();
-        xmlSchemaBuilderDescriptor.m_version = 7;
+        xmlSchemaBuilderDescriptor.m_version = 8;
         xmlSchemaBuilderDescriptor.m_createJobFunction =
             AZStd::bind(&XmlBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
         xmlSchemaBuilderDescriptor.m_processJobFunction =

@@ -13,8 +13,7 @@
 #pragma once
 
 #include <AzCore/RTTI/RTTI.h>
-
-#include <Source/CopyDependencyBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/CopyDependencyBuilderWorker.h>
 
 namespace CopyDependencyBuilder
 {

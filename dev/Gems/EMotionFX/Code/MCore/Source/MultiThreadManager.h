@@ -160,8 +160,8 @@ namespace MCore
         {
             mCV.WaitWithTimeout(mMutex, microseconds, [this] { return mConditionValue; });
         }
-        void NotifyAll()            { mConditionValue = true; mCV.NotifyAll(); }
-        void NotifyOne()            { mConditionValue = true; mCV.NotifyOne(); }
+        void NotifyAll() { { LockGuard lockMutex(mMutex); mConditionValue = true; } mCV.NotifyAll(); }
+        void NotifyOne() { { LockGuard lockMutex(mMutex); mConditionValue = true; } mCV.NotifyOne(); }
 
     private:
         Mutex               mMutex;

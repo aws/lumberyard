@@ -389,9 +389,10 @@ namespace ScriptCanvasEditor
         {
             assetId = CheckAssetId(assetId);
 
-            if (m_assetsInUse.find(assetId) != m_assetsInUse.end())
+            auto assetIter = m_assetsInUse.find(assetId);
+            if (assetIter != m_assetsInUse.end())
             {
-                return m_assetsInUse[assetId]->GetGraphId();
+                return assetIter->second->GetGraphId();
             }
         }
 
@@ -538,25 +539,45 @@ namespace ScriptCanvasEditor
     void AssetTracker::OnAssetReady(const ScriptCanvasMemoryAsset* asset)
     {
         AZ::Data::AssetId assetId = CheckAssetId(asset->GetId());
-        AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetReady, m_assetsInUse[assetId]);
+
+        auto assetInUseIter = m_assetsInUse.find(assetId);
+        if (assetInUseIter != m_assetsInUse.end())
+        {
+            AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetReady, assetInUseIter->second);
+        }
     }
 
     void AssetTracker::OnAssetReloaded(const ScriptCanvasMemoryAsset* asset)
     {
         AZ::Data::AssetId assetId = CheckAssetId(asset->GetId());
-        AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetReloaded, m_assetsInUse[assetId]);
+
+        auto assetInUseIter = m_assetsInUse.find(assetId);
+        if (assetInUseIter != m_assetsInUse.end())
+        {
+            AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetReloaded, assetInUseIter->second);
+        }
     }
 
     void AssetTracker::OnAssetSaved(const ScriptCanvasMemoryAsset* asset, bool isSuccessful)
     {
         AZ::Data::AssetId assetId = CheckAssetId(asset->GetId());
-        AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetSaved, m_assetsInUse[assetId], isSuccessful);
+
+        auto assetInUseIter = m_assetsInUse.find(assetId);
+        if (assetInUseIter != m_assetsInUse.end())
+        {
+            AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetSaved, assetInUseIter->second, isSuccessful);
+        }
     }
 
     void AssetTracker::OnAssetError(const ScriptCanvasMemoryAsset* asset)
     {
         AZ::Data::AssetId assetId = CheckAssetId(asset->GetId());
-        AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetError, m_assetsInUse[assetId]);
+
+        auto assetInUseIter = m_assetsInUse.find(assetId);
+        if (assetInUseIter != m_assetsInUse.end())
+        {
+            AssetTrackerNotificationBus::Broadcast(&AssetTrackerNotifications::OnAssetError, assetInUseIter->second);
+        }
     }
 
 }

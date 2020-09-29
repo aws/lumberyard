@@ -109,10 +109,14 @@ private:
     {
         SWaterSegment()
             : m_pWaterRenderNode(NULL)
+#if ENABLE_CRY_PHYSICS
             , m_pWaterArea(NULL)
+#endif
             , m_physicsLocalAreaCenter(ZERO) {}
         IWaterVolumeRenderNode* m_pWaterRenderNode;
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* m_pWaterArea;
+#endif
         Vec3 m_physicsLocalAreaCenter;
     };
 

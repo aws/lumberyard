@@ -429,7 +429,7 @@ void GraphicsSettingsDialog::LoadPlatformConfigurations()
 
         CVarGroupInfo& specFileGroup = m_cvarGroupData["SpecFile"];
 
-        QPushButton* invisibleButton = new QPushButton(nullptr);
+        QToolButton* invisibleButton = new QToolButton(nullptr);
         invisibleButton->setMinimumWidth(INPUT_MIN_WIDTH);
         invisibleButton->setMinimumHeight(INPUT_MIN_HEIGHT);
         specFileGroup.m_layout->addWidget(invisibleButton, PLATFORM_LABEL_ROW - 1, cfgFileIndex + CVAR_VALUE_COLUMN_OFFSET, INPUT_ROW_SPAN, INPUT_COLUMN_SPAN);
@@ -1202,15 +1202,15 @@ bool GraphicsSettingsDialog::IsCustomSpecAlreadyLoaded(const AZStd::string& file
     return findResult != customConfigFilenames.end();
 }
 
-void GraphicsSettingsDialog::SetCollapsedLayout(const QString& groupName, QPushButton* togglebutton, QGridLayout* layout)
+void GraphicsSettingsDialog::SetCollapsedLayout(const QString& groupName, QToolButton* togglebutton, QGridLayout* layout)
 {
     CollapseGroup* cgroup = new CollapseGroup();
     cgroup->m_groupName = groupName;
     cgroup->m_dropDownButton = togglebutton;
     cgroup->m_gridlayout = layout;
     cgroup->m_isCollapsed = false;
-    cgroup->m_dropDownButton->setStyleSheet("QPushButton{ border: 0px solid transparent;}");
-    connect(cgroup->m_dropDownButton, &QPushButton::clicked, this, [=]() { cgroup->ToggleCollpased(); });
+    cgroup->m_dropDownButton->setStyleSheet("QToolButton{ border: 0px solid transparent;}");
+    connect(cgroup->m_dropDownButton, &QToolButton::clicked, this, [=]() { cgroup->ToggleCollpased(); });
     cgroup->m_dropDownButton->setIcon(cgroup->m_iconOpen);
 
     m_uiCollapseGroup.push_back(cgroup);
@@ -1413,11 +1413,11 @@ GraphicsSettingsDialog::CollapseGroup::CollapseGroup()
     , m_gridlayout(nullptr)
     , m_isCollapsed(false)
 {
-    m_iconOpen = QIcon(":/PropertyEditor/Resources/group_open.png");
-    m_iconClosed = QIcon(":/PropertyEditor/Resources/group_closed.png");
+    m_iconOpen = QIcon(":/TreeView/open_small.svg");
+    m_iconClosed = QIcon(":/TreeView/closed_small.svg");
 }
 
-void GraphicsSettingsDialog::CollapseGroup::ToggleButton(QPushButton* button, QGridLayout* layout)
+void GraphicsSettingsDialog::CollapseGroup::ToggleButton(QToolButton* button, QGridLayout* layout)
 {
     if (button && m_gridlayout)
     {

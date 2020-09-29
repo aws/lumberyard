@@ -319,7 +319,7 @@ namespace PhysX::Pipeline
                 // Compute the 3x3 covariance matrix.
                 Eigenanalysis::SquareMatrix<Eigenanalysis::Real, 3> covariances{};
 
-                for (const auto vertex : verticesCentered)
+                for (const auto& vertex : verticesCentered)
                 {
                     for (int i = 0; i < 3; ++i)
                     {

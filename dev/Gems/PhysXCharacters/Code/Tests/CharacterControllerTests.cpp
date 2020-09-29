@@ -366,7 +366,7 @@ namespace PhysXCharacters
         auto triggerEntity = AZStd::make_unique<AZ::Entity>("TriggerEntity");
         triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetWorldTM(AZ::Transform::Identity());
         triggerEntity->CreateComponent(PhysX::StaticRigidBodyComponentTypeId);
-        PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::AddColliderComponentToEntity, triggerEntity.get(), triggerConfig, boxConfig, false);
+        Physics::SystemRequestBus::Broadcast(&Physics::SystemRequests::AddColliderComponentToEntity, triggerEntity.get(), triggerConfig, boxConfig, false);
         triggerEntity->Init();
         triggerEntity->Activate();
 

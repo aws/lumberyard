@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_HEIGHTFIELDBV_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CHeightfieldBV
     : public CBVTree
 {
@@ -56,5 +58,6 @@ struct InitHeightfieldGlobals
 
 void project_box_on_grid(box* pbox, grid* pgrid, geometry_under_test* pGTest, int& ix, int& iy, int& sx, int& sy, float& minz);
 
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_HEIGHTFIELDBV_H

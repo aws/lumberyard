@@ -321,7 +321,7 @@ namespace AzQtComponents
 
     void BreadCrumbs::onLinkActivated(const QString& link)
     {
-        Q_EMIT pathChanged(link);
+        pushPath(link);
     }
 
     QString BreadCrumbs::buildPathFromList(const QStringList& fullPath, int pos)
@@ -346,7 +346,7 @@ namespace AzQtComponents
         for (int i = m_truncatedPaths.size() - 1; i >= 0; i--)
         {
             hiddenPaths.addAction(m_truncatedPaths.at(i), [this, i]() {
-                Q_EMIT pathChanged(buildPathFromList(m_truncatedPaths, i + 1));
+                pushPath(buildPathFromList(m_truncatedPaths, i + 1));
             });
         }
 

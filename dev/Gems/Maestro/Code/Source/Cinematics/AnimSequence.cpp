@@ -34,6 +34,7 @@
 #include "I3DEngine.h"
 #include "ShadowsSetupNode.h"
 #include "AnimEnvironmentNode.h"
+#include "TimeOfDayNode.h"
 #include "SequenceTrack.h"
 #include "AnimNodeGroup.h"
 #include "IScriptSystem.h"
@@ -212,6 +213,15 @@ bool CAnimSequence::AddNode(IAnimNode* animNode)
     animNode->SetSequence(this);
     animNode->SetTimeRange(m_timeRange);
 
+    AnimNodeType nodeType = animNode->GetType();
+
+    //These nodes can fail to be activated normally
+    if (nodeType == AnimNodeType::Environment ||
+        nodeType >= AnimNodeType::TOD_START && nodeType <= AnimNodeType::TOD_END)
+    {
+        animNode->Activate(true);
+    }
+
     // Check if this node already in sequence. If found, don't add it again.
     bool found = false;
     for (int i = 0; i < (int)m_nodes.size(); i++)
@@ -257,13 +267,13 @@ bool CAnimSequence::AddNode(IAnimNode* animNode)
             }
         }
     }
-     
+
     if (animNode->NeedToRender())
     {
         AddNodeNeedToRender(animNode);
     }
 
-    bool bNewDirectorNode = m_activeDirector == NULL && animNode->GetType() == AnimNodeType::Director;
+    bool bNewDirectorNode = m_activeDirector == NULL && nodeType == AnimNodeType::Director;
     if (bNewDirectorNode)
     {
         m_activeDirector = animNode;
@@ -333,7 +343,23 @@ IAnimNode* CAnimSequence::CreateNodeInternal(AnimNodeType nodeType, uint32 nNode
         case AnimNodeType::Environment:
             animNode = aznew CAnimEnvironmentNode(nNodeId);
             break;
-        default:     
+        case AnimNodeType::TOD_Sun:
+        case AnimNodeType::TOD_Fog:
+        case AnimNodeType::TOD_VolumetricFog:
+        case AnimNodeType::TOD_SkyLight:
+        case AnimNodeType::TOD_NightSky:
+        case AnimNodeType::TOD_NightSkyMultiplier:
+        case AnimNodeType::TOD_CloudShading:
+        case AnimNodeType::TOD_SunRaysEffect:
+        case AnimNodeType::TOD_AdvancedTOD:
+        case AnimNodeType::TOD_Filters:
+        case AnimNodeType::TOD_DepthOfField:
+        case AnimNodeType::TOD_Shadows:
+        case AnimNodeType::TOD_Obsolete:
+        case AnimNodeType::TOD_HDR:
+            animNode = CAnimTODNode::CreateNode(nNodeId, nodeType);
+            break;
+        default:
             m_pMovieSystem->LogUserNotificationMsg("AnimNode cannot be added because it is an unsupported object type.");
             break;
     }
@@ -388,7 +414,7 @@ IAnimNode* CAnimSequence::CreateNode(XmlNodeRef node)
     CAnimNode* newAnimNode = static_cast<CAnimNode*>(pNewNode);
 
     // Make sure de-serializing this node didn't just create an id conflict. This can happen sometimes
-    // when copy/pasting nodes from a different sequence to this one. 
+    // when copy/pasting nodes from a different sequence to this one.
     for (auto curNode : m_nodes)
     {
         CAnimNode* animNode = static_cast<CAnimNode*>(curNode.get());
@@ -431,6 +457,8 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
         i++;
     }
 
+    AnimNodeType nodeType = node->GetType();
+
     // The removed one was the active director node.
     if (m_activeDirector == node)
     {
@@ -448,6 +476,19 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
                 break;
             }
         }
+    }
+
+    // On removing a node, animate all TOD Nodes at the current time to fix any
+    // issues with ToD settings incorrectly clearing
+    if (nodeType == AnimNodeType::Environment ||
+        nodeType >= AnimNodeType::TOD_START && nodeType <= AnimNodeType::TOD_START)
+    {
+        SAnimContext ec;
+        ec.singleFrame = true;
+        ec.resetting = false;
+        ec.sequence = this;
+        ec.time = m_timeRange.start;
+        Animate(ec);
     }
 }
 
@@ -1348,7 +1389,7 @@ void CAnimSequence::RemoveNodeNeedToRender(IAnimNode* pNode)
 
 //////////////////////////////////////////////////////////////////////////
 void CAnimSequence::SetSequenceEntityId(const AZ::EntityId& sequenceEntityId)
-{ 
+{
     m_sequenceEntityId = sequenceEntityId;
 }
 //////////////////////////////////////////////////////////////////////////

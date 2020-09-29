@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "trimesh.h"
@@ -5624,3 +5626,5 @@ int CPhysicalEntity::GenerateJoints()
     delete[] pScaleNorm;
     return m_pStructure->nJoints;
 }
+
+#endif // ENABLE_CRY_PHYSICS

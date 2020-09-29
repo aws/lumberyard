@@ -55,6 +55,7 @@ def get_python_path(ctx):
 
     return python_cmd
 
+
 def run_subprocess(command_args, working_dir = None, as_shell = False, fail_on_error = False):
     exe_name = os.path.basename(command_args[0])
     command = ' '.join(command_args)
@@ -182,8 +183,39 @@ def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb
             '/obb_patch_pak=patch.{}.{}.obb'.format(app_version_number, package_name)
         ])
 
+    # Read audio config file to figure out what audio folders should be included in the pak files
+    audio_config_json = read_audio_config_file(ctx)
+
+    if audio_config_json and 'platformMaps' in audio_config_json:
+        inclusions = []
+        exclusions = []
+        for p in audio_config_json['platformMaps']:
+            if p['assetPlatform'] == assets_platform or p['enginePlatform'].lower() == ctx.game_platform:
+                inclusions.append(p['bankSubPath'])
+            else:
+                exclusions.append(p['bankSubPath'])
+
+        def format_path(x):
+            return f'sounds\\{ctx.audio_middleware}\\{x}\\*.*'
+
+        # Keep a wide open filter for desired file types, then subtract away undesired paths...
+        # If there aren't any included paths, keep the default property which is "sounds\*.*"
+        if inclusions:
+            paths = f'sounds\\*.json;sounds\\{ctx.audio_middleware}\\*.bnk;sounds\\{ctx.audio_middleware}\\*.wem'
+
+            rc_cmd.extend([
+                '/sounds_pak_types="{}"'.format(paths)
+            ])
+
+        if exclusions:
+            paths = ';'.join(map(format_path, exclusions))
+
+            rc_cmd.extend([
+                '/sounds_pak_excludes="{}"'.format(paths)
+            ])
+
     # Invoking RC as non-shell exposes how rigid it's command line parsing is...
-    return run_subprocess(rc_cmd, working_dir = ctx.launch_dir, as_shell = True)
+    return run_subprocess(rc_cmd, working_dir=ctx.launch_dir, as_shell=True)
 
 
 def run_asset_bundler_job(ctx, game, platform, target_path):

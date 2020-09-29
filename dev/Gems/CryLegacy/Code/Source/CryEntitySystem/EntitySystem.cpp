@@ -270,7 +270,9 @@ void SEntityLoadParams::RemoveRef()
 //////////////////////////////////////////////////////////////////////
 CEntitySystem::CEntitySystem(ISystem* pSystem)
     : m_entityTimeoutList(gEnv->pTimer)
+#if ENABLE_CRY_PHYSICS
     , m_pPhysicsEventListener(nullptr)
+#endif
 {
     CComponentRender::SetTimeoutList(&m_entityTimeoutList);
 
@@ -297,7 +299,9 @@ CEntitySystem::CEntitySystem(ISystem* pSystem)
     m_nStartPause.SetSeconds(-1.0f);
 
     m_pAreaManager = new CAreaManager(this);
+#if ENABLE_CRY_PHYSICS
     m_pBreakableManager = new CBreakableManager(this);
+#endif
     m_pEntityArchetypeManager = new CEntityArchetypeManager;
     m_pEventDistributer = new CComponentEventDistributer(CVar::pUpdateType->GetIVal());
 
@@ -344,12 +348,14 @@ CEntitySystem::~CEntitySystem()
     SAFE_DELETE(m_pEventDistributer);
     SAFE_DELETE(m_pEntityLoadManager);
     SAFE_DELETE(m_pEntityPoolManager);
-
+#if ENABLE_CRY_PHYSICS
     SAFE_DELETE(m_pPhysicsEventListener);
-
+#endif
     SAFE_DELETE(m_pProximityTriggerSystem);
     SAFE_DELETE(m_pPartitionGrid);
+#if ENABLE_CRY_PHYSICS
     SAFE_DELETE(m_pBreakableManager);
+#endif
 
     SAFE_DELETE(g_Alloc_ComponentRender);
     SAFE_DELETE(g_Alloc_EntitySlot);
@@ -378,10 +384,12 @@ bool CEntitySystem::Init(ISystem* pSystem)
     m_pEntityScriptBinding = new CScriptBind_Entity(pSystem->GetIScriptSystem(), pSystem, this);
 
     // Initialize physics events handler.
+#if ENABLE_CRY_PHYSICS
     if (pSystem->GetIPhysicalWorld())
     {
         m_pPhysicsEventListener = new CPhysicsEventListener(this, pSystem->GetIPhysicalWorld());
     }
+#endif
 
     //////////////////////////////////////////////////////////////////////////
     // Should reallocate grid if level size change.
@@ -411,6 +419,7 @@ void CEntitySystem::Release()
     delete this;
 }
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 void CEntitySystem::RegisterPhysicCallbacks()
 {
@@ -433,6 +442,7 @@ void CEntitySystem::UnregisterPhysicCallbacks()
     CComponentPhysics::DisableValidation();
 # endif
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////
 void CEntitySystem::Unload()
@@ -484,6 +494,7 @@ void CEntitySystem::Reset()
     assert(m_pEntityPoolManager);
     m_pEntityPoolManager->Reset();
 
+#if ENABLE_CRY_PHYSICS
     // Flush the physics linetest and events queue
     if (gEnv->pPhysicalWorld)
     {
@@ -491,6 +502,7 @@ void CEntitySystem::Reset()
         gEnv->pPhysicalWorld->ClearLoggedEvents();
     }
     GetBreakableManager()->ResetBrokenObjects();
+#endif // ENABLE_CRY_PHYSICS
 
     PurgeDeferredCollisionEvents(true);
 
@@ -1159,6 +1171,7 @@ uint32 CEntitySystem::GetNumEntities() const
 }
 
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 IEntity* CEntitySystem::GetEntityFromPhysics(IPhysicalEntity* pPhysEntity) const
 {
@@ -1181,6 +1194,7 @@ int CEntitySystem::GetPhysicalEntitiesInBox(const Vec3& origin, float radius, IP
 
     return m_pISystem->GetIPhysicalWorld()->GetEntitiesInBox(bmin, bmax, pList, physFlags);
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 int CEntitySystem::QueryProximity(SEntityProximityQuery& query)
@@ -1941,10 +1955,7 @@ void CEntitySystem::DoUpdateLoop(float fFrameTime)
                     if (IAIObject* aiObject = ce->GetAI())
                     {
                         bIsAI = true;
-                        if (!(bAIEnabled = aiObject->IsEnabled()))
-                        {
-                            bAIEnabled = aiObject->GetProxy()->GetLinkedDriverEntityId() != 0;
-                        }
+                        bAIEnabled = aiObject->IsEnabled();
                     }
 
                     IComponentRenderPtr pRenderComponent = ce->GetComponent<IComponentRender>();
@@ -2010,10 +2021,12 @@ void CEntitySystem::DoUpdateLoop(float fFrameTime)
                 {
                     nNumRenderable++;
                 }
+#if ENABLE_CRY_PHYSICS
                 if (ce->GetComponent<IComponentPhysics>())
                 {
                     nNumPhysicalize++;
                 }
+#endif
                 if (ce->GetComponent<IComponentScript>())
                 {
                     nNumScriptable++;
@@ -2652,6 +2665,7 @@ void CEntitySystem::DebugDraw(CEntity* ce, float timeMs)
             {
                 pRender->DrawLabelEx(wp, 1.1f, colors, true, true, szProfInfo);
 
+#if ENABLE_CRY_PHYSICS
                 IComponentPhysicsPtr pPhysicsComponent = ce->GetComponent<IComponentPhysics>();
                 if (pPhysicsComponent)
                 {
@@ -2665,6 +2679,7 @@ void CEntitySystem::DebugDraw(CEntity* ce, float timeMs)
                         pRender->DrawLabelEx(wp, 1.1f, colors, true, true, szProfInfo);
                     }
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 Vec3 entPos = ce->GetPos();
                 sprintf_s(szProfInfo, "Entity:  %8.5f %8.5f %8.5f", entPos.x, entPos.y, entPos.z);

@@ -158,7 +158,44 @@ bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightP
 
 #if defined(AZ_PLATFORM_IOS)
     const bool isScreenLandscape = o_widthPixels > o_heightPixels;
-    const bool isInterfaceLandscape = UIInterfaceOrientationIsLandscape([[NativeApplicationType sharedApplication] statusBarOrientation]);
+
+    UIInterfaceOrientation uiOrientation = UIInterfaceOrientationUnknown;
+#if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
+    if(@available(iOS 13.0, tvOS 13.0, *))
+    {
+        UIWindow* foundWindow = nil;
+        
+        //Find the key window
+        NSArray* windows = [[UIApplication sharedApplication] windows];
+        for (UIWindow* window in windows)
+        {
+            if (window.isKeyWindow)
+            {
+                foundWindow = window;
+                break;
+            }
+        }
+        
+        //Check if the key window is found
+        if(foundWindow)
+        {
+            uiOrientation = foundWindow.windowScene.interfaceOrientation;
+        }
+        else
+        {
+            //If no key window is found create a temporary window in order to extract the orientation
+            //This can happen as this function gets called before the renderer is initialized
+            CGRect screenBounds = [[NativeScreenType mainScreen] bounds];
+            UIWindow* tempWindow = [[NativeWindowType alloc] initWithFrame: screenBounds];
+            uiOrientation = tempWindow.windowScene.interfaceOrientation;
+            [tempWindow release];
+        }
+    }
+#else
+    uiOrientation = UIApplication.sharedApplication.statusBarOrientation;
+#endif
+    
+    const bool isInterfaceLandscape = UIInterfaceOrientationIsLandscape(uiOrientation);
     if (isScreenLandscape != isInterfaceLandscape)
     {
         const int width = o_widthPixels;

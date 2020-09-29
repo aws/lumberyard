@@ -275,8 +275,13 @@ CEditorImpl::CEditorImpl()
     // this will end up being overridden if the CryEntityRemoval gem is present
     // if the new viewport interaction model is enabled we must also disable the legacy ui
     // it is not compatible with any of the legacy system (e.g. CryDesigner)
+#if 1 || !defined(OTHER_ACTIVE)
     m_isLegacyUIEnabled = gSettings.enableLegacyUI && !gSettings.newViewportInteractionModel;
     m_isNewViewportInteractionModelEnabled = gSettings.newViewportInteractionModel;
+#else
+    m_isLegacyUIEnabled = false;
+    m_isNewViewportInteractionModelEnabled = true;
+#endif
 
     m_pErrorReport = new CErrorReport;
     m_pFileNameResolver = new CMissingAssetResolver;
@@ -1871,7 +1876,11 @@ void CEditorImpl::InitMetrics()
     const bool metricsInitAwsApi = false;
 
     // LY_METRICS_BUILD_TIME is defined by the build system
-    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId.data(), statusFilePath, LY_METRICS_BUILD_TIME);
+    // Use the engine version (which comes from engine.json) as the base version, so that we can discern the original
+    // Lumberyard version, since the application version will be changed to "0.0.0.0" for any custom build.
+    const char* engineVersion = nullptr;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineVersion, &AzToolsFramework::ToolsApplicationRequests::GetEngineVersion);
+    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId.data(), statusFilePath, LY_METRICS_BUILD_TIME, engineVersion);
 }
 
 void CEditorImpl::DetectVersion()
@@ -2466,7 +2475,7 @@ void CEditorImpl::CmdPy(IConsoleCmdArgs* pArgs)
 
         scriptCmd = scriptCmd.right(scriptCmd.length() - 2); // The part of the text after the 'py'
         scriptCmd = scriptCmd.trimmed();
-        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, scriptCmd.toUtf8().data());
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, scriptCmd.toUtf8().data(), false);
     }
     else
     {

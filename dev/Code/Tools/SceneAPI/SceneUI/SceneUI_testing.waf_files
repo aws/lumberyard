@@ -7,6 +7,7 @@
         ],
         "Tests/RowWidgets":
         [
+            "Tests/RowWidgets/NodeTreeSelectionWidgetTests.cpp",
             "Tests/RowWidgets/TransformRowWidgetTests.cpp"
         ]
     }

@@ -14,6 +14,7 @@
 #include <QColor>
 #include <QString>
 #include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/Math/Color.h>
 #include "LayerResult.h"
 
 namespace AzToolsFramework
@@ -60,9 +61,19 @@ namespace AzToolsFramework
             virtual void UpdateLayerNameConflictMapping(AZStd::unordered_map<AZStd::string, int>& nameConflictMapping) = 0;
 
             /**
+            * Sets the color of the layer.
+            */
+            virtual void SetLayerColor(AZ::Color newColor) = 0;
+
+            /**
              * Retrieves the color of the layer.
              */
             virtual QColor GetLayerColor() = 0;
+
+            /**
+            * Retrieve the layer's color property value in it's native format
+            */
+            virtual AZ::Color GetColorPropertyValue() = 0;
 
             /**
              * Retrieves the save format.

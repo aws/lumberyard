@@ -46,7 +46,7 @@ namespace AZ
             void FlushCache(const RequestPath& filePath) override;
             void FlushEntireCache() override;
 
-            void CollectStatistics(AZStd::vector<Statistic>& statistics) const override;
+            void CollectStatistics(AZStd::vector<Statistic>& statistics) override;
             
             double CalculateHitRatePercentage() const;
             double CalculateCacheableRatePercentage() const;

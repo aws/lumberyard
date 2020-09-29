@@ -50,10 +50,6 @@ namespace AZ
             SceneAPI::Events::ProcessingResult ProcessNode(NodeExportContext& context);
 
         protected:
-            using HierarchyStorageIterator = SceneAPI::Containers::SceneGraph::HierarchyStorageConstIterator;
-
-            bool ConcatenateMatricesUpwards(Transform& transform, const HierarchyStorageIterator& nodeIterator, const SceneAPI::Containers::SceneGraph& graph) const;
-            bool MultiplyEndPointTransforms(Transform& transform, const HierarchyStorageIterator& nodeIterator, const SceneAPI::Containers::SceneGraph& graph) const;
             void TransformToMatrix34(Matrix34& out, const Transform& in) const;
 
             Transform m_cachedRootMatrix;

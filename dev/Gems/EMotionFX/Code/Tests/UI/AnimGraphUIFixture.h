@@ -18,13 +18,13 @@
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
-
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphWidget.h>
 
 #include <QString>
 
 namespace EMotionFX
 {
+
     class AnimGraphUIFixture
         : public UIFixture
     {
@@ -35,6 +35,7 @@ namespace EMotionFX
         EMStudio::NodeGraph* GetActiveNodeGraph() const;
         EMotionFX::AnimGraphNode* CreateAnimGraphNode(const AZStd::string& type, const AZStd::string& args="", const AnimGraph* animGraph = nullptr) const;
 
+        AnimGraphNode* AddNodeToAnimGraph(EMotionFX::AnimGraph*  animGraph, const QString& nodeTypeName);
     protected:
         EMStudio::AnimGraphPlugin* m_animGraphPlugin;
         EMStudio::BlendGraphWidget* m_blendGraphWidget;

@@ -34,9 +34,9 @@ public:
     bool CanExitNow() override { return true; }
     void OnEditorNotify(EEditorNotifyEvent aEventId) override;
 
-    static const char* GetHelpLink() { return "https://docs.aws.amazon.com/console/lumberyard/developerguide/cloud-canvas"; }
-    static const char* GetDeploymentHelpLink() { return "https://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-ui-rm-deployments.html"; }
-    static const char* GetRolesHelpLink() { return "https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-built-in-roles-and-policies.html"; }
+    static const char* GetHelpLink() { return "https://docs.aws.amazon.com/console/lumberyard/cloudcanvas"; }
+    static const char* GetDeploymentHelpLink() { return "https://docs.aws.amazon.com/console/lumberyard/cloudcanvas/deploy"; }
+    static const char* GetRolesHelpLink() { return "https://docs.aws.amazon.com/console/lumberyard/cloudcanvas/roles"; }
 private:
     static const DWORD s_pluginVersion = 1;
     QSettings m_pluginSettings;

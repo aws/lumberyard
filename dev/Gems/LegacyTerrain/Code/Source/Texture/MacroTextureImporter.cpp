@@ -10,9 +10,16 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 
-#include <ITerrain.h>
+#ifndef AZ_MONOLITHIC_BUILD 
+#include <TypeInfo_impl.h>
+#include <IShader_info.h>
+#include <I3DEngine_info.h>
+#include <ITerrain_info.h>
+#include <Common_TypeInfo.h>
+#endif //#ifndef AZ_MONOLITHIC_BUILD 
+
 #include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include "MacroTextureImporter.h"
@@ -58,7 +65,7 @@ bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfi
     ScopedFileHandle scopedHandle(filepath, "rbx");
     if (!scopedHandle.IsValid())
     {
-        Cry3DEngineBase::FileWarning(0, filepath, "Error opening terrain texture file: file not found (you might need to regenerate the surface texture)");
+        AZ_Warning("LegacyTerrain", false, "Error opening terrain texture file: %s. file not found (you might need to regenerate the surface texture)", filepath);
         return false;
     }
     bool bSwapEndian = false;

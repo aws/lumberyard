@@ -18,7 +18,6 @@
 #include <AzCore/std/containers/map.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 
 #include <LyShine/Bus/UiEditorCanvasBus.h>
 
@@ -30,6 +29,7 @@
 #include "CanvasHelpers.h"
 #include "AssetDropHelpers.h"
 #include "QtHelpers.h"
+#include <QtGui/private/qhighdpiscaling_p.h>
 
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY         "ViewportWidget::m_drawElementBordersFlags"
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_DEFAULT     ( ViewportWidget::DrawElementBorders_Unselected )

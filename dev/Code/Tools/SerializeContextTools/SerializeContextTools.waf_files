@@ -1,0 +1,19 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "Application.h",
+            "Application.cpp",
+            "Converter.h",
+            "Converter.cpp",
+            "Dumper.h",
+            "Dumper.cpp",
+            "GemInfo.h",
+            "GemInfo.cpp",
+            "main.cpp",
+            "Utilities.h",
+            "Utilities.cpp"
+        ]
+    }
+}

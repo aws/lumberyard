@@ -142,7 +142,11 @@ CNavigation::CNavigation(ISystem* pSystem)
     m_pGraph = new CGraph(this);
     m_pTriangularNavRegion = new CTriangularNavRegion(m_pGraph, &m_VertexList);
     m_pWaypointHumanNavRegion = new CWaypointHumanNavRegion(this);
+#if ENABLE_CRY_PHYSICS
     m_pFlightNavRegion = new CFlightNavRegion(pSystem->GetIPhysicalWorld(), m_pGraph);
+#else
+    m_pFlightNavRegion = new CFlightNavRegion(m_pGraph);
+#endif
     m_pVolumeNavRegion = new CVolumeNavRegion(this);
     m_pRoadNavRegion = new CRoadNavRegion(m_pGraph);
     m_pSmartObjectNavRegion = new CSmartObjectNavRegion(m_pGraph);
@@ -425,6 +429,7 @@ bool CNavigation::ValidateBigObstacles()
     max.Set(fTSize, fTSize, 5000.0f);
 
     // get only static physical entities (trees, buildings etc...)
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity** pObstacles;
     int flags = ent_static | ent_ignore_noncolliding;
     int count = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(min, max, pObstacles, flags);
@@ -519,6 +524,10 @@ bool CNavigation::ValidateBigObstacles()
         //      if (IsPointOnForbiddenEdge(calc_pos, edgeTol))
         //          continue;
     }
+#else
+    // Obstacle validation
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     return true;
 }
 
@@ -2061,6 +2070,7 @@ void CNavigation::ParseIntoFile(CGraph* pGraph, bool bForbidden)
         Vec3 bboxsize(1.f, 1.f, 1.f);
         IPhysicalEntity* pPhys = 0;
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity** pEntityList;
         int nCount = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(vPos - bboxsize, vPos + bboxsize, pEntityList, ent_static);
 
@@ -2077,6 +2087,11 @@ void CNavigation::ParseIntoFile(CGraph* pGraph, bool bForbidden)
             }
             ++j;
         }
+#else
+        // Retrieve entities around
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        int nCount = 0;
+#endif
 
         if (!pPhys)
         {
@@ -2314,6 +2329,7 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
     }
     m_pTriangulator = new CTriangulator();
 
+#if ENABLE_CRY_PHYSICS
     // get only static physical entities (trees, buildings etc...)
     IPhysicalEntity** pObstacles;
     int flags = ent_static;
@@ -2322,7 +2338,9 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
         flags |= ent_ignore_noncolliding;
     }
     int count = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(min, max, pObstacles, flags);
-
+#else
+    int count = 0;
+#endif
     m_pTriangulator->m_vVertices.reserve(count);
 
     AILogProgress("Processing >>> %d objects >>> box size [%.0f x %.0f %.0f]", count, max.x, max.y, max.z);
@@ -2340,7 +2358,7 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
     }
 
     int vertexCounter(0);
-
+#if ENABLE_CRY_PHYSICS
     for (int i = 0; i < count; ++i)
     {
         IPhysicalEntity* pCurrent = pObstacles[i];
@@ -2469,6 +2487,11 @@ void CNavigation::GenerateTriangulation(const char* szLevel, const char* szMissi
         m_pTriangulator->AddVertex(obstaclePos.x, obstaclePos.y, obstaclePos.z, collideable, hideable);
         ++vertexCounter;
     }
+
+#else
+    // Retrieve entities around
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     AILogProgress("Processing >>> %d vertises added  >>> ", vertexCounter);
     vertexCounter = 0;
@@ -2724,6 +2747,7 @@ bool CNavigation::CalculateForbiddenAreas()
         return true;
     }
 
+#if ENABLE_CRY_PHYSICS
     // get all the objects that need code-generated forbidden areas
     std::vector<Sphere> extraObjects;
 
@@ -3150,6 +3174,10 @@ bool CNavigation::CalculateForbiddenAreas()
     {
         return false;
     }
+#else
+    // Calculate forbidden areas
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
     return true;
 }
@@ -4379,7 +4407,13 @@ void CNavigation::CalculateLinkExposure(CGraphNodeManager& nodeManager, CGraphLi
             distTotal, distToMid, iPt, numPts);
 
         IPhysicalEntity**   ppList = NULL;
+#if ENABLE_CRY_PHYSICS
         int numEntities = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(pt + box.min, pt + box.max, ppList, ent_static);
+#else
+        // Entities around box
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        int numEntities = 0;
+#endif
         float thisCoverNum = 0.0f;
         for (int i = 0; i < numEntities; ++i)
         {
@@ -4540,6 +4574,7 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
         IPhysicalEntity* pEndPhys = 0;
         IPhysicalEntity* pStartPhys = 0;
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity** pEntityList;
         int nCount = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(vStart - bboxsize, vStart + bboxsize,
                 pEntityList, ent_static);
@@ -4556,7 +4591,13 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
             }
             ++i;
         }
+#else
+        // Retrieve entities
+        int nCount = 0;
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
+#if ENABLE_CRY_PHYSICS
         nCount = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(vEnd - bboxsize, vEnd + bboxsize, pEntityList, ent_static);
         i = 0;
         while (i < nCount)
@@ -4571,6 +4612,10 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
             }
             ++i;
         }
+#else
+        // Retrieve entities
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
         Vec3 vStartCut = vStart;
         Vec3 vEndCut = vEnd;
@@ -4612,6 +4657,7 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
             else
             {
                 Vec3 vModStart = vStart - testLen * sideDir;
+#if ENABLE_CRY_PHYSICS
                 if (obEnd.IsCollidable() && m_pSystem->GetIPhysicalWorld()->CollideEntityWithBeam(pEndPhys, vModStart, (vEnd - vModStart), testRadius, &se_hit))
                 {
                     float distToHit = testRadius + se_hit.dist;
@@ -4626,6 +4672,10 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
                     }
                     vEndCut = vModStart + distToHit * (vEnd - vModStart).GetNormalizedSafe();
                 }
+#else
+                // Collision with beam
+                CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
             }
         }
 
@@ -4659,6 +4709,7 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
             else
             {
                 Vec3 vModEnd = vEnd + testLen * sideDir;
+#if ENABLE_CRY_PHYSICS
                 if (obStart.IsCollidable() && m_pSystem->GetIPhysicalWorld()->CollideEntityWithBeam(pStartPhys, vModEnd, (vStart - vModEnd), testRadius, &se_hit))
                 {
                     float distToHit = testRadius + se_hit.dist;
@@ -4673,6 +4724,10 @@ void CNavigation::CalculateLinkRadius(CGraphNodeManager& nodeManager, CGraphLink
                     }
                     vStartCut = vModEnd + distToHit * (vStart - vModEnd).GetNormalizedSafe();
                 }
+#else
+                // Collision against beam
+                CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
             }
         }
 
@@ -5128,7 +5183,12 @@ void CNavigation::GenerateFlightNavigation(const char* szLevel, const char* szMi
         min.Set(0, 0, -100000);
         max.Set(fTSize, fTSize, 100000);
 
+#if ENABLE_CRY_PHYSICS
         obstacleCount = m_pSystem->GetIPhysicalWorld()->GetEntitiesInBox(min, max, pObstacles, ent_static | ent_ignore_noncolliding);
+#else
+        // Retrieve obstacles in box
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
         // Collect shortcuts.
         std::list<SpecialArea*> shortcuts;

@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_SINGLEBOXTREE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 class CSingleBoxTree
     : public CBVTree
@@ -46,5 +47,7 @@ public:
     int m_nPrims;
     int m_bIsConvex;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_SINGLEBOXTREE_H

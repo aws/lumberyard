@@ -85,7 +85,7 @@ namespace EMotionFX
         }
         else
         {
-            m_pickButton->setText(AZStd::string::format("%d states", numStates).c_str());
+            m_pickButton->setText(AZStd::string::format("%zu states", numStates).c_str());
             m_resetButton->setVisible(true);
         }
     }

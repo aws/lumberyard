@@ -14,6 +14,7 @@
 #include <AzCore/std/sort.h>
 
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Widgets/TabWidget.h>
 #include <AzQtComponents/Components/Widgets/TabWidgetActionToolBar.h>
@@ -27,6 +28,7 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QSettings>
+#include <QSpacerItem>
 #include <QStyle>
 #include <QStyleOption>
 #include <QTabWidget>
@@ -43,6 +45,7 @@ namespace AzQtComponents
     static int g_closeButtonPadding = -1;
     static int g_closeButtonMinTabWidth = -1;
     static int g_toolTipTabWidthThreshold = -1;
+    static int g_overflowSpacing = -1;
     static QString g_secondaryStyleClass = QStringLiteral("Secondary");
     static QString g_borderedStyleClass = QStringLiteral("Bordered");
     static QString g_emptyStyleClass = QStringLiteral("Empty");
@@ -103,11 +106,13 @@ namespace AzQtComponents
         ConfigHelpers::read<int>(settings, QStringLiteral("CloseButtonMinTabWidth"), config.closeButtonMinTabWidth);
         ConfigHelpers::read<int>(settings, QStringLiteral("ToolTipTabWidthThreshold"), config.toolTipTabWidthThreshold);
         ConfigHelpers::read<bool>(settings, QStringLiteral("ShowOverflowMenu"), config.showOverflowMenu);
+        ConfigHelpers::read<int>(settings, QStringLiteral("OverflowSpacing"), config.overflowSpacing);
 
         g_closeButtonPadding = config.closeButtonRightPadding;
         g_closeButtonWidth = config.closeButtonSize;
         g_closeButtonMinTabWidth = config.closeButtonMinTabWidth;
         g_toolTipTabWidthThreshold = config.toolTipTabWidthThreshold;
+        g_overflowSpacing = config.overflowSpacing;
 
         return config;
     }
@@ -115,22 +120,24 @@ namespace AzQtComponents
     TabWidget::Config TabWidget::defaultConfig()
     {
         return {
-            QPixmap(), // TearIcon
-            0,         // TearIconLeftPadding
-            30,        // TabHeight 28 + 1 (top margin) + 1 (bottom margin)
-            32,        // MinimumTabWidth
-            16,        // CloseButtonSize
-            40,        // TextRightPadding
-            4,         // CloseButtonRightPadding
-            50,        // CloseButtonMinTabWidth
-            50,        // ToolTipTabWidthThreshold
-            true      // ShowOverflowMenu
+            QPixmap(),  // TearIcon
+            0,          // TearIconLeftPadding
+            30,         // TabHeight 28 + 1 (top margin) + 1 (bottom margin)
+            32,         // MinimumTabWidth
+            16,         // CloseButtonSize
+            40,         // TextRightPadding
+            4,          // CloseButtonRightPadding
+            50,         // CloseButtonMinTabWidth
+            50,         // ToolTipTabWidthThreshold
+            true,       // ShowOverflowMenu
+            24          // OverflowSpacing
         };
     }
 
     void TabWidget::setCustomTabBar(TabBar* tabBar)
     {
         QTabWidget::setTabBar(tabBar);
+        tabBar->setHandleOverflow(m_shouldShowOverflowMenu);
         connect(tabBar, &TabBar::overflowingChanged, this, &TabWidget::setOverflowMenuVisible);
     }
 
@@ -152,6 +159,11 @@ namespace AzQtComponents
     bool TabWidget::isActionToolBarVisible() const
     {
         return m_actionToolBarContainer->isActionToolBarVisible();
+    }
+
+    void TabWidget::setOverflowButtonSpacing(bool enable)
+    {
+        m_spaceOverflowButton = enable;
     }
 
     void TabWidget::resizeEvent(QResizeEvent* resizeEvent)
@@ -200,6 +212,18 @@ namespace AzQtComponents
         {
             m_actionToolBarContainer->overflowButton()->setVisible(false);
         }
+
+        if (m_shouldShowOverflowMenu && m_spaceOverflowButton && visible)
+        {
+            m_actionToolBarContainer->overflowSpacer()->changeSize(g_overflowSpacing, 0, QSizePolicy::Fixed, QSizePolicy::Fixed);
+        }
+        else
+        {
+            m_actionToolBarContainer->overflowSpacer()->changeSize(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed);
+        }
+
+        // Force a Layout refresh to update the spacer properly
+        m_actionToolBarContainer->layout()->invalidate();
     }
 
     void TabWidget::resetOverflowMenu()
@@ -244,6 +268,11 @@ namespace AzQtComponents
         {
             style->repolishOnSettingsChange(widget);
             tabWidget->m_shouldShowOverflowMenu = config.showOverflowMenu;
+            auto tabBarWidget = qobject_cast<TabBar*>(tabWidget->tabBar());
+            if (tabBarWidget)
+            {
+                tabBarWidget->setHandleOverflow(tabWidget->m_shouldShowOverflowMenu);
+            }
             return true;
         }
 
@@ -258,6 +287,11 @@ namespace AzQtComponents
         if (auto tabWidget = qobject_cast<TabWidget*>(widget))
         {
             tabWidget->m_shouldShowOverflowMenu = false;
+            auto tabBarWidget = qobject_cast<TabBar*>(tabWidget->tabBar());
+            if (tabBarWidget)
+            {
+                tabBarWidget->setHandleOverflow(tabWidget->m_shouldShowOverflowMenu);
+            }
             return true;
         }
 
@@ -267,6 +301,7 @@ namespace AzQtComponents
     TabWidgetActionToolBarContainer::TabWidgetActionToolBarContainer(QWidget* parent)
         : QFrame(parent)
         , m_overflowButton(new QToolButton(this))
+        , m_overflowSpacer(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed))
     {
         m_overflowButton->setObjectName(QStringLiteral("tabWidgetOverflowButton"));
         m_overflowButton->setPopupMode(QToolButton::InstantPopup);
@@ -275,6 +310,8 @@ namespace AzQtComponents
         auto layout = new QHBoxLayout(this);
         layout->setContentsMargins({}); // Defaults to 0
         layout->addWidget(m_overflowButton);
+
+        layout->addSpacerItem(m_overflowSpacer);
     }
 
     void TabWidgetActionToolBarContainer::setActionToolBar(TabWidgetActionToolBar* actionToolBar)
@@ -323,7 +360,7 @@ namespace AzQtComponents
         // Get all buttons from the action tool bar and sort them by order
         // of occurence on the layout
         QVector<QPair<int, QWidget*>> buttons;
-        for (QPushButton* p : m_actionToolBar->m_actionButtons)
+        for (QToolButton* p : m_actionToolBar->m_actionButtons)
         {
             int idx = m_actionToolBar->layout()->indexOf(p);
             if (idx >= 0 && p) {
@@ -378,8 +415,20 @@ namespace AzQtComponents
     {
         connect(this, &TabBar::currentChanged, this, &TabBar::resetOverflow);
         setMouseTracking(true);
-
+        // Set the hover attribute on the tab bar so it receives paint events on
+        // a mouse move. The paint handler updates the close button's visibility
+        setAttribute(Qt::WA_Hover);
         AzQtComponents::Style::addClass(this, g_emptyStyleClass);
+    }
+
+    void TabBar::setHandleOverflow(bool handleOverflow)
+    {
+        m_handleOverflow = handleOverflow;
+    }
+
+    bool TabBar::getHandleOverflow() const
+    {
+        return m_handleOverflow;
     }
 
     void TabBar::resetOverflow()
@@ -498,6 +547,13 @@ namespace AzQtComponents
 
     void TabBar::overflowIfNeeded()
     {
+        // Check if overflow handling is enabled. This also avoids a Qt tab issue that
+        // resets the tab bar's scroll offset to 0 when layoutTabs is triggered below
+        if (!m_handleOverflow)
+        {
+            return;
+        }
+
         if (m_overflowing != OverflowUnchecked)
         {
             return;
@@ -556,28 +612,30 @@ namespace AzQtComponents
         for (int i = 0; i < count(); i++)
         {
             QWidget* tabBtn = tabButton(i, closeSide);
-            int tabWidth = tabRect(i).width();
-
+            
             if (tabBtn)
             {
-                bool shouldShow = (i == index) && tabWidth >= g_closeButtonMinTabWidth;
+                bool shouldShow = (i == index);
 
-                // Need to explicitly move the button if we want to customize its position
-                // Don't bother moving it if it won't be shown
-                if (shouldShow)
+                if (!StyleManager::isUi10())
                 {
-                    QPoint p = tabRect(i).topLeft();
-                    p.setX(p.x() + tabRect(i).width() - g_closeButtonPadding - g_closeButtonWidth);
-                    p.setY(p.y() + (tabRect(i).height() - g_closeButtonWidth) / 2);
-                    tabBtn->move(p);
+                    int tabWidth = tabRect(i).width();
+                    shouldShow &= tabWidth >= g_closeButtonMinTabWidth;
+
+                    // Need to explicitly move the button if we want to customize its position
+                    // Don't bother moving it if it won't be shown
+                    if (shouldShow)
+                    {
+                        QPoint p = tabRect(i).topLeft();
+                        p.setX(p.x() + tabRect(i).width() - g_closeButtonPadding - g_closeButtonWidth);
+                        p.setY(p.y() + (tabRect(i).height() - g_closeButtonWidth) / 2);
+                        tabBtn->move(p);
+                    }
                 }
 
                 tabBtn->setVisible(shouldShow);
-            }
 
-            // Remove tooltips from close buttons so we can see the tab ones
-            if (tabBtn)
-            {
+                // Remove tooltips from close buttons so we can see the tab ones
                 tabBtn->setToolTip("");
             }
         }
@@ -585,6 +643,11 @@ namespace AzQtComponents
 
     void TabBar::setToolTipIfNeeded(int index)
     {
+        if (!m_handleOverflow)
+        {
+            return;
+        }
+
         if (m_movingTab)
         {
             return;

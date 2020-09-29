@@ -80,7 +80,9 @@ namespace LmbrCentral
         class CharacterInstanceEntry
             : private AZ::TransformNotificationBus::Handler
             , private CharacterAnimationRequestBus::Handler
+#if ENABLE_CRY_PHYSICS
             , private AzFramework::PhysicsSystemEventBus::Handler
+#endif
             , private AimIKComponentRequestBus::Handler
         {
         public:
@@ -111,10 +113,12 @@ namespace LmbrCentral
             ICharacterInstance* GetCharacterInstance() override;
             //////////////////////////////////////////////////////////////////////////
             
+#if ENABLE_CRY_PHYSICS
             //////////////////////////////////////////////////////////////////////////
             // PhysicsSystemEventBus handler
             void OnPrePhysicsUpdate() override;
             //////////////////////////////////////////////////////////////////////////
+#endif
 
             //////////////////////////////////////////////////////////////////////////
             // AimIKComponentRequestBus handler

@@ -40,6 +40,21 @@ namespace AzToolsFramework
         return AZ::Vector3::CreateZero();
     }
 
+    AZ::VectorFloat CalculateScreenToWorldMultiplier(
+        const AZ::Vector3& worldPosition, const AzFramework::CameraState& cameraState)
+    {
+        const float apparentDistance = 10.0f;
+
+        // compute the distance from the camera, projected onto the camera's forward direction
+        // note: this keeps the scale value the same when positions are at the edge of the screen
+        const float projectedCameraDistance =
+            std::abs((cameraState.m_position - worldPosition).Dot(cameraState.m_forward));
+
+        // author sizes of bounds/manipulators as they would appear
+        // in perspective 10 meters from the camera.
+        return AZ::GetMax(projectedCameraDistance, cameraState.m_nearClip) / apparentDistance;
+    }
+
     QPoint GetScreenPosition(const int viewportId, const AZ::Vector3& worldTranslation)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);

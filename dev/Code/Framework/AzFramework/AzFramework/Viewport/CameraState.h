@@ -21,7 +21,7 @@ namespace AzFramework
     struct CameraState
     {
         /// @cond
-        AZ_TYPE_INFO(CameraState, "{D309D934-044C-4BA8-91F1-EA3A45177A52}");
+        AZ_TYPE_INFO(CameraState, "{D309D934-044C-4BA8-91F1-EA3A45177A52}")
         CameraState() = default;
         /// @endcond
 
@@ -42,4 +42,18 @@ namespace AzFramework
         float m_fovOrZoom = 0.0f; ///< Fov or zoom of camera depending on if it is using orthographic projection or not.
         bool m_orthographic = false; ///< Is the camera using orthographic projection or not.
     };
+
+    /// Create a camera at the given transform with a specific viewport size.
+    /// @note The near/far clip planes and fov are sensible default values - please
+    /// use SetCameraClippingVolume to override them.
+    CameraState CreateDefaultCamera(const AZ::Transform& transform, const AZ::Vector2& viewportSize);
+
+    /// Create a camera at the given position (no orientation) with a specific viewport size.
+    /// @note The near/far clip planes and fov are sensible default values - please
+    /// use SetCameraClippingVolume to override them.
+    CameraState CreateIdentityDefaultCamera(const AZ::Vector3& position, const AZ::Vector2& viewportSize);
+
+    /// Override the default near/far clipping planes and fov of the camera.
+    void SetCameraClippingVolume(CameraState& cameraState, float nearPlane, float farPlane, float fovRad);
+
 } // namespace AzFramework

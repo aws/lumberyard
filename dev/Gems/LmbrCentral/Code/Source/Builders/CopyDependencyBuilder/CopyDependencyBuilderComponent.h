@@ -15,8 +15,8 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Component/Component.h>
 
-#include "AudioControlBuilderWorker/AudioControlBuilderWorker.h"
 #include "CfgBuilderWorker/CfgBuilderWorker.h"
+#include "EmfxWorkspaceBuilderWorker/EmfxWorkspaceBuilderWorker.h"
 #include "FontBuilderWorker/FontBuilderWorker.h"
 #include "ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.h"
 #include "SchemaBuilderWorker/SchemaBuilderWorker.h"
@@ -42,10 +42,10 @@ namespace CopyDependencyBuilder
 
     private:
         FontBuilderWorker m_fontBuilderWorker;
-        AudioControlBuilderWorker m_audioControlBuilderWorker;
         CfgBuilderWorker m_cfgBuilderWorker;
         ParticlePreloadLibsBuilderWorker m_particlePreloadBuilderWorker;
         XmlBuilderWorker m_xmlBuilderWorker;
         SchemaBuilderWorker m_schemaBuilderWorker;
+        EmfxWorkspaceBuilderWorker m_emfxWorkspaceBuilderWorker;
     };
 }

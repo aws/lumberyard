@@ -15,6 +15,8 @@
 #define _CRE_BREAKABLE_GLASS_HELPERS_
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "CREBreakableGlassConfig.h"
 #include "CryFixedArray.h"
 
@@ -354,5 +356,6 @@ struct SBreakableGlassCVars
     int         m_particleFXUseColours;
     float       m_particleFXScale;
 };//------------------------------------------------------------------------------------------------
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // _CRE_BREAKABLE_GLASS_HELPERS_

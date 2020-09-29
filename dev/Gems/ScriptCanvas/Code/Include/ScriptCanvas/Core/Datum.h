@@ -246,7 +246,7 @@ namespace ScriptCanvas
 
         friend class SerializeContextEventHandler;
 
-        static ComparisonOutcome CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass& behaviorClass, const Datum& lhs, const Datum& rhs);
+        static ComparisonOutcome CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass* behaviorClass, const Datum& lhs, const Datum& rhs);
 
         // is this storage for nodes that are overloaded, e.g. Log, which takes in any data type
         const bool m_isOverloadedStorage = false;

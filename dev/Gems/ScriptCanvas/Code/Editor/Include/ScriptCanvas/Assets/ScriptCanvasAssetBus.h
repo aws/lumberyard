@@ -20,6 +20,8 @@ namespace ScriptCanvas
     public:
 
         using BusIdType = AZ::Data::AssetId;
+        using MutexType = AZStd::recursive_mutex;
+
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
 

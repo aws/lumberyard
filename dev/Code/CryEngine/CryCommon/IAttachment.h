@@ -301,8 +301,10 @@ struct IAttachmentManager
 
     virtual uint32 ProjectAllAttachment() = 0;
 
+#if ENABLE_CRY_PHYSICS
     virtual void PhysicalizeAttachment(int idx, IPhysicalEntity* pent = 0, int nLod = 0) = 0;
     virtual void DephysicalizeAttachment(int idx, IPhysicalEntity* pent = 0) = 0;
+#endif // ENABLE_CRY_PHYSICS
 
     virtual ICharacterInstance* GetSkelInstance() const = 0;
 

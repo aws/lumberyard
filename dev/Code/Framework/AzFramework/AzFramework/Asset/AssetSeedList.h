@@ -24,13 +24,14 @@ namespace AzFramework
         AZ_TYPE_INFO(SeedInfo, "{FACC3682-2ACA-4AA4-B85A-07AD276D18A0}");
 
         SeedInfo() = default;
-        SeedInfo(AZ::Data::AssetId assetId, PlatformFlags platformFlags, const AZStd::string& path);
+        SeedInfo(AZ::Data::AssetId assetId, PlatformFlags platformFlags, const AZStd::string& path, const AZStd::string& seedListFilePath = AZStd::string());
 
         static void Reflect(AZ::ReflectContext* context);
 
         AZ::Data::AssetId m_assetId;
         PlatformFlags m_platformFlags;
         AZStd::string m_assetRelativePath;
+        AZStd::string m_seedListFilePath;
     };
 
     using AssetSeedList = AZStd::vector<SeedInfo>;

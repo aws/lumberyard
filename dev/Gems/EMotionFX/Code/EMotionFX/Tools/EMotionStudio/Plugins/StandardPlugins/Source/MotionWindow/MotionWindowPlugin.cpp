@@ -678,7 +678,7 @@ namespace EMStudio
         }
 
         // create our remove motion command group
-        MCore::CommandGroup commandGroup(AZStd::string::format("Stop motion instances", numMotions).c_str());
+        MCore::CommandGroup commandGroup(AZStd::string::format("Stop %u motion instances", numMotions).c_str());
 
         AZStd::string command;
         for (uint32 i = 0; i < numMotions; ++i)

@@ -21,8 +21,12 @@
 #include <AzQtComponents/Components/Style.h>
 
 #include <QApplication>
-#include <QSettings>
+#include <QComboBox>
+#include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
+#include <QSettings>
+#include <QTextDocumentFragment>
 #include <QToolBar>
 
 class CLayoutSplitterHandle
@@ -86,11 +90,133 @@ void CLayoutSplitter::CreateLayoutView(int row, int col, int id)
 }
 
 //////////////////////////////////////////////////////////////////////////
+// InfoBarExpanderWatcher
+//////////////////////////////////////////////////////////////////////////
+
+class InfoBarExpanderWatcher
+    : public QObject
+{
+public:
+    InfoBarExpanderWatcher(QObject* parent = nullptr)
+        : QObject(parent)
+    {
+    }
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        switch (event->type())
+        {
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+            case QEvent::MouseButtonDblClick:
+            {
+                if (qobject_cast<QToolButton*>(obj))
+                {
+                    auto mouseEvent = static_cast<QMouseEvent*>(event);
+                    auto expansion = qobject_cast<QToolButton*>(obj);
+
+                    expansion->setPopupMode(QToolButton::InstantPopup);
+                    auto menu = new QMenu(expansion);
+
+                    auto toolbar = qobject_cast<QToolBar*>(expansion->parentWidget());
+
+                    auto toolWidgets = toolbar->findChildren<QWidget*>();
+
+                    if (toolWidgets.count() > 0)
+                    {
+                        for (auto toolWidget : toolWidgets)
+                        {
+                            if (AzQtComponents::Style::hasClass(toolWidget, "expanderMenu_hide"))
+                            {
+                                continue;
+                            }
+
+                            if (auto toolButton = qobject_cast<QToolButton*>(toolWidget))
+                            {
+                                if (!toolButton->isVisible())
+                                {
+                                    // Skip some empty buttons
+                                    if (toolButton->text().isEmpty())
+                                    {
+                                        continue;
+                                    }
+
+                                    QString plainText = QTextDocumentFragment::fromHtml(toolButton->text()).toPlainText();
+                                    QAction* action = new QAction(plainText, menu);
+
+                                    if (!toolButton->isEnabled())
+                                    {
+                                        action->setEnabled(false);
+                                    }
+
+                                    connect(action, &QAction::triggered, toolButton, &QToolButton::clicked);
+
+                                    if (toolButton->isCheckable())
+                                    {
+                                        action->setCheckable(true);
+                                    }
+
+                                    action->setChecked(toolButton->isChecked());
+
+                                    menu->addAction(action);
+                                }
+                            }
+                            else if (auto toolCombo = qobject_cast<QComboBox*>(toolWidget))
+                            {
+                                // Add custom menu for Speed
+                                if (toolCombo->objectName() == "m_moveSpeed")
+                                {
+                                    double currentValue = toolCombo->lineEdit()->text().toDouble();
+
+                                    QMenu* newMenu = menu->addMenu(QString("Speed: %1").arg(currentValue));
+
+                                    double presets[] = { 0.1, 1.0, 10.0 };
+                                    for (double preset : presets)
+                                    {
+                                        QAction* presetAction = new QAction(newMenu);
+                                        presetAction->setText(QString::number(preset));
+
+                                        connect(presetAction, &QAction::triggered, this, [preset, this]() {
+                                            if (m_infoBar)
+                                            {
+                                                m_infoBar->SetSpeedComboBox(preset);
+                                            }
+                                        });
+
+                                        newMenu->addAction(presetAction);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    menu->exec(mouseEvent->globalPos());
+                    return true;
+                }
+
+                break;
+            }
+        }
+
+        return QObject::eventFilter(obj, event);
+    }
+
+    void SetInfoBar(CInfoBar* infoBar)
+    {
+        m_infoBar = infoBar;
+    }
+
+private:
+    CInfoBar* m_infoBar = nullptr;
+};
+
+//////////////////////////////////////////////////////////////////////////
 // CLayoutWnd
 //////////////////////////////////////////////////////////////////////////
 CLayoutWnd::CLayoutWnd(QSettings* settings, QWidget* parent)
     : AzQtComponents::ToolBarArea(parent)
     , m_settings(settings)
+    , m_expanderWatcher(new InfoBarExpanderWatcher(this))
 {
     m_bMaximized = false;
     m_maximizedView = 0;
@@ -102,12 +228,19 @@ CLayoutWnd::CLayoutWnd(QSettings* settings, QWidget* parent)
     m_infoBar = new CInfoBar(this);
     connect(qApp, &QApplication::focusChanged, this, &CLayoutWnd::OnFocusChanged);
 
+    m_expanderWatcher->SetInfoBar(m_infoBar);
+
     m_infoToolBar = CreateToolBarFromWidget(m_infoBar,
                                             Qt::BottomToolBarArea,
                                             QStringLiteral("Info Panel"));
     m_infoToolBar->setMovable(false);
     m_infoToolBar->setObjectName("InfoBar");
     AzQtComponents::Style::addClass(m_infoToolBar, "DefaultSpacing");
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_infoToolBar))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
 
     setContextMenuPolicy(Qt::NoContextMenu);
 }
@@ -288,6 +421,13 @@ void CLayoutWnd::CreateLayout(EViewLayout layout, bool bBindViewports, EViewport
     m_maximizedView->setVisible(false);
     m_maximizedView->SetFullscren(true);
 
+#ifdef OTHER_ACTIVE // Other only supports 1 viewport for now.
+        m_viewType[0] = ViewportTypeToClassName(defaultView);
+        if (bBindViewports)
+        {
+            MaximizeViewport(0);
+        }
+#else //!defined(OTHER_ACTIVE)
     switch (layout)
     {
     case ET_Layout0:
@@ -434,6 +574,7 @@ void CLayoutWnd::CreateLayout(EViewLayout layout, bool bBindViewports, EViewport
         break;
     }
     ;
+#endif //OTHER_ACTIVE
 
     if (m_splitWnd)
     {
@@ -516,6 +657,76 @@ const char* CLayoutWnd::GetConfigGroupName()
 {
     return "ViewportLayout";
 }
+
+unsigned int CLayoutWnd::GetViewPaneCount()
+{
+    // If there's a maximized viewport, then exactly 1 is visible.
+    if (m_bMaximized)
+    {
+        return 1;
+    }
+
+    unsigned int numPanes = 0;
+
+    // Otherwise, go searching through and count how many are visible.
+    for (QSplitter* splitter : { m_splitWnd, m_splitWnd2, m_splitWnd3 })
+    {
+        if (splitter)
+        {
+            for (int i = 0; i < splitter->count(); ++i)
+            {
+                if (qobject_cast<CLayoutViewPane*>(splitter->widget(i)))
+                {
+                    numPanes++;
+                }
+            }
+        }
+    }
+
+    return numPanes;
+}
+
+CLayoutViewPane* CLayoutWnd::GetViewPaneByIndex(unsigned int index)
+{
+    // If there's a maximized viewport, return it if index 0 is requested.
+    // (All other index values are invalid in this state)
+    if (m_bMaximized)
+    {
+        if (index == 0)
+        {
+            return m_maximizedView;
+        }
+        return nullptr;
+    }
+
+    unsigned int curIndex = 0;
+
+    // Otherwise, go searching through until we've found the proper number of panes
+    // and return the one at the correct index.
+    for (QSplitter* splitter : { m_splitWnd, m_splitWnd2, m_splitWnd3 })
+    {
+        if (splitter)
+        {
+            for (int i = 0; i < splitter->count(); ++i)
+            {
+                if (QWidget* widget = splitter->widget(i))
+                {
+                    if (CLayoutViewPane* pane = qobject_cast<CLayoutViewPane*>(widget))
+                    {
+                        if (curIndex == index)
+                        {
+                            return pane;
+                        }
+                        curIndex++;
+                    }
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 CLayoutViewPane* CLayoutWnd::GetViewPane(int id)

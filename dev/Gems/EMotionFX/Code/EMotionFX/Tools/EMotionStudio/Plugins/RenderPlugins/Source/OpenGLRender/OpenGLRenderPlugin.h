@@ -10,8 +10,7 @@
 *
 */
 
-#ifndef __EMSTUDIO_OPENGLRENDERPLUGIN_H
-#define __EMSTUDIO_OPENGLRENDERPLUGIN_H
+#pragma once
 
 #include <EMotionFX/Rendering/OpenGL2/Source/glactor.h>
 #include <EMotionFX/Rendering/OpenGL2/Source/GraphicsManager.h>
@@ -22,33 +21,16 @@
 #include "../../../../EMStudioSDK/Source/RenderPlugin/RenderLayouts.h"
 #include "../../../../EMStudioSDK/Source/RenderPlugin/RenderUpdateCallback.h"
 #include "GLWidget.h"
-//#include <QtGui>
-
 
 namespace EMStudio
 {
-    /**
-     *
-     *
-     */
     class OpenGLRenderPlugin
         : public EMStudio::RenderPlugin
     {
         Q_OBJECT
-                           MCORE_MEMORYOBJECTCATEGORY(OpenGLRenderPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_RENDERPLUGIN);
+        MCORE_MEMORYOBJECTCATEGORY(OpenGLRenderPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_RENDERPLUGIN);
 
     public:
-        // update and render callback
-        class GLUpdateCallBack
-            : public RenderUpdateCallback
-        {
-        public:
-            GLUpdateCallBack(OpenGLRenderPlugin* plugin)
-                : RenderUpdateCallback(plugin) {}
-            void OnRender(EMotionFX::ActorInstance* actorInstance, float timePassedInSeconds);
-        };
-
-        // constructor and destructor
         OpenGLRenderPlugin();
         ~OpenGLRenderPlugin();
 
@@ -67,7 +49,6 @@ namespace EMStudio
         EMStudioPlugin* Clone()                             { return new OpenGLRenderPlugin(); }
 
         // overloaded functions
-        //void Render();
         void CreateRenderWidget(RenderViewWidget* renderViewWidget, RenderWidget** outRenderWidget, QWidget** outWidget) override;
 
         // OpenGL engine helper functions
@@ -83,6 +64,3 @@ namespace EMStudio
         void RenderActorInstance(EMotionFX::ActorInstance* actorInstance, float timePassedInSeconds) override;
     };
 } // namespace EMStudio
-
-
-#endif

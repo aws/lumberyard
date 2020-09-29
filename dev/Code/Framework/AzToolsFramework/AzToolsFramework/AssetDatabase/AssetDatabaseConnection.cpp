@@ -23,6 +23,7 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <AzToolsFramework/SQLite/SQLiteQuery.h>
 #include <AzToolsFramework/SQLite/SQLiteBoundColumnSet.h>
+#include <cinttypes>
 
 namespace AzToolsFramework
 {
@@ -791,6 +792,15 @@ namespace AzToolsFramework
                 MakeSqlQuery(QUERY_MISSING_PRODUCT_DEPENDENCY_BY_MISSING_PRODUCT_DEPENDENCYID, QUERY_MISSING_PRODUCT_DEPENDENCY_BY_MISSING_PRODUCT_DEPENDENCYID_STATEMENT, LOG_NAME,
                 SqlParam<AZ::s64>(":missingProductDependencyId"));
 
+            static const char* DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID =
+                "AzToolsFramework::AssetDatabase::DeleteMissingProductDependencyByProductId";
+            static const char* DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
+                "DELETE FROM MissingProductDependencies WHERE "
+                "ProductPK = :productId;";
+            static const auto s_deleteMissingProductDependencyByProductId =
+                MakeSqlQuery(DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID, DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT, LOG_NAME,
+                    SqlParam<AZ::s64>(":productId"));
+
             static const char* QUERY_DIRECT_PRODUCTDEPENDENCIES = "AzToolsFramework::AssetDatabase::QueryDirectProductDependencies";
             static const char* QUERY_DIRECT_PRODUCTDEPENDENCIES_STATEMENT =
                 "SELECT * FROM Products "
@@ -1027,8 +1037,8 @@ namespace AzToolsFramework
 
         AZStd::string ScanFolderDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("ScanFolderDatabaseEntry id:%i path: %s, displayname: %s, portable key: %s",
-                m_scanFolderID,
+            return AZStd::string::format("ScanFolderDatabaseEntry id:%" PRId64 " path: %s, displayname: %s, portable key: %s",
+                static_cast<int64_t>(m_scanFolderID),
                 m_scanFolder.c_str(),
                 m_displayName.c_str(),
                 m_portableKey.c_str());
@@ -1080,7 +1090,8 @@ namespace AzToolsFramework
 
         AZStd::string SourceDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("SourceDatabaseEntry id:%i scanfolderpk: %i sourcename: %s sourceguid: %s", m_sourceID, m_scanFolderPK, m_sourceName.c_str(), m_sourceGuid.ToString<AZStd::string>().c_str());
+            return AZStd::string::format("SourceDatabaseEntry id:%" PRId64 " scanfolderpk: %" PRId64 " sourcename: %s sourceguid: %s",
+                                         static_cast<int64_t>(m_sourceID), static_cast<int64_t>(m_scanFolderPK), m_sourceName.c_str(), m_sourceGuid.ToString<AZStd::string>().c_str());
         }
 
         auto SourceDatabaseEntry::GetColumns()
@@ -1108,7 +1119,8 @@ namespace AzToolsFramework
 
         AZStd::string BuilderInfoEntry::ToString() const
         {
-            return AZStd::string::format("BuilderInfoEntry id:%i uuid: %s fingerprint: %s", m_builderInfoID, m_builderUuid.ToString<AZStd::string>().c_str(), m_analysisFingerprint.c_str());
+            return AZStd::string::format("BuilderInfoEntry id:%" PRId64 " uuid: %s fingerprint: %s", static_cast<int64_t>(m_builderInfoID),
+                m_builderUuid.ToString<AZStd::string>().c_str(), m_analysisFingerprint.c_str());
         }
 
         auto BuilderInfoEntry::GetColumns()
@@ -1135,7 +1147,8 @@ namespace AzToolsFramework
 
         AZStd::string SourceFileDependencyEntry::ToString() const
         {
-            return AZStd::string::format("SourceFileDependencyEntry id:%i builderGuid: %s source: %s dependsOnSource: %s type: %s fromAssetId: %d", m_sourceDependencyID, m_builderGuid.ToString<AZStd::string>().c_str(), m_source.c_str(), m_dependsOnSource.c_str(), m_typeOfDependency == DEP_SourceToSource ? "source" : "job", m_fromAssetId);
+            return AZStd::string::format("SourceFileDependencyEntry id:%" PRId64 " builderGuid: %s source: %s dependsOnSource: %s type: %s fromAssetId: %u",
+                static_cast<int64_t>(m_sourceDependencyID), m_builderGuid.ToString<AZStd::string>().c_str(), m_source.c_str(), m_dependsOnSource.c_str(), m_typeOfDependency == DEP_SourceToSource ? "source" : "job", m_fromAssetId);
         }
 
         auto SourceFileDependencyEntry::GetColumns()
@@ -1243,8 +1256,8 @@ namespace AzToolsFramework
 
         AZStd::string JobDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("JobDatabaseEntry id:%i sourcepk: %i jobkey: %s fingerprint: %i platform: %s builderguid: %s status: %s, warnings: %d, errors %d",
-                m_jobID, m_sourcePK, m_jobKey.c_str(), m_fingerprint, m_platform.c_str(),
+            return AZStd::string::format("JobDatabaseEntry id:%" PRId64 " sourcepk:%" PRId64 " jobkey: %s fingerprint: %i platform: %s builderguid: %s status: %s, warnings: %u, errors %u",
+                static_cast<int64_t>(m_jobID), static_cast<int64_t>(m_sourcePK), m_jobKey.c_str(), m_fingerprint, m_platform.c_str(),
                 m_builderGuid.ToString<AZStd::string>().c_str(), AssetSystem::JobStatusString(m_status),
                 m_warningCount, m_errorCount);
         }
@@ -1351,7 +1364,8 @@ namespace AzToolsFramework
 
         AZStd::string ProductDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("ProductDatabaseEntry id:%i jobpk: %i subid: %i productname: %s assettype: %s", m_productID, m_jobPK, m_subID, m_productName.c_str(), m_assetType.ToString<AZStd::string>().c_str());
+            return AZStd::string::format("ProductDatabaseEntry id:%" PRId64 " jobpk: %" PRId64 " subid: %i productname: %s assettype: %s",
+                                         static_cast<int64_t>(m_productID), static_cast<int64_t>(m_jobPK), m_subID, m_productName.c_str(), m_assetType.ToString<AZStd::string>().c_str());
         }
 
         auto ProductDatabaseEntry::GetColumns()
@@ -1438,8 +1452,9 @@ namespace AzToolsFramework
 
         AZStd::string ProductDependencyDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("ProductDependencyDatabaseEntry id: %i productpk: %i dependencysourceguid: %s dependencysubid: %i dependencyflags: %lu unresolvedPath: %s dependencyType: %i fromAssetId: %d",
-                m_productDependencyID, m_productPK, m_dependencySourceGuid.ToString<AZStd::string>().c_str(), m_dependencySubID, m_dependencyFlags.to_ulong(), m_unresolvedPath.c_str(), m_dependencyType, m_fromAssetId);
+            return AZStd::string::format("ProductDependencyDatabaseEntry id: %" PRId64 " productpk: %" PRId64 " dependencysourceguid: %s dependencysubid: %i dependencyflags: %lu unresolvedPath: %s dependencyType: %u fromAssetId: %u",
+                static_cast<int64_t>(m_productDependencyID), static_cast<int64_t>(m_productPK), m_dependencySourceGuid.ToString<AZStd::string>().c_str(),
+                m_dependencySubID, m_dependencyFlags.to_ulong(), m_unresolvedPath.c_str(), static_cast<AZ::u32>(m_dependencyType), m_fromAssetId);
         }
 
         auto ProductDependencyDatabaseEntry::GetColumns()
@@ -1467,7 +1482,9 @@ namespace AzToolsFramework
             const AZStd::string& sourceFileFingerprint,
             AZ::Uuid dependencySourceGuid,
             AZ::u32 dependencySubId,
-            const AZStd::string& missingDependencyString)
+            const AZStd::string& missingDependencyString,
+            const AZStd::string& lastScanTime,
+            AZ::u64 scanTimeSecondsSinceEpoch)
             : m_missingProductDependencyId(missingProductDependencyId)
             , m_productPK(productPK)
             , m_scannerId(scannerId)
@@ -1476,6 +1493,8 @@ namespace AzToolsFramework
             , m_dependencySourceGuid(dependencySourceGuid)
             , m_dependencySubId(dependencySubId)
             , m_missingDependencyString(missingDependencyString)
+            , m_lastScanTime(lastScanTime)
+            , m_scanTimeSecondsSinceEpoch(scanTimeSecondsSinceEpoch)
         {
         }
 
@@ -1486,7 +1505,9 @@ namespace AzToolsFramework
             const AZStd::string& sourceFileFingerprint,
             AZ::Uuid dependencySourceGuid,
             AZ::u32 dependencySubId,
-            const AZStd::string& missingDependencyString)
+            const AZStd::string& missingDependencyString,
+            const AZStd::string& lastScanTime,
+            AZ::u64 scanTimeSecondsSinceEpoch)
             : m_productPK(productPK)
             , m_scannerId(scannerId)
             , m_scannerVersion(scannerVersion)
@@ -1494,35 +1515,40 @@ namespace AzToolsFramework
             , m_dependencySourceGuid(dependencySourceGuid)
             , m_dependencySubId(dependencySubId)
             , m_missingDependencyString(missingDependencyString)
+            , m_lastScanTime(lastScanTime)
+            , m_scanTimeSecondsSinceEpoch(scanTimeSecondsSinceEpoch)
         {
         }
 
         bool MissingProductDependencyDatabaseEntry::operator==(const MissingProductDependencyDatabaseEntry& other) const
         {
-            //equivalence is when everything but the id is the same
             return m_productPK == other.m_productPK &&
                 m_scannerId == other.m_scannerId &&
                 m_scannerVersion == other.m_scannerVersion &&
                 m_sourceFileFingerprint == other.m_sourceFileFingerprint &&
                 m_dependencySourceGuid == other.m_dependencySourceGuid &&
                 m_dependencySubId == other.m_dependencySubId &&
-                m_missingDependencyString == other.m_missingDependencyString;
+                m_missingDependencyString == other.m_missingDependencyString &&
+                m_lastScanTime == other.m_lastScanTime &&
+                m_scanTimeSecondsSinceEpoch == other.m_scanTimeSecondsSinceEpoch;
         }
 
         AZStd::string MissingProductDependencyDatabaseEntry::ToString() const
         {
             return AZStd::string::format(
                 "MissingProductDependencyDatabaseEntry "
-                "id: %i productpk: %i scannerid: %s scannerversion: %s sourceFileFingerprint: %s "
-                "dependencysourceguid: %s dependencysubid: %i missingDependencyString: %s",
-                m_missingProductDependencyId,
-                m_productPK,
+                "id: %" PRId64 " productpk: %" PRId64 " scannerid: %s scannerversion: %s sourceFileFingerprint: %s "
+                "dependencysourceguid: %s dependencysubid: %u missingDependencyString: %s lastScanTime: %s scanTimeSecondsSinceEpoch %" PRIu64,
+                static_cast<int64_t>(m_missingProductDependencyId),
+                static_cast<int64_t>(m_productPK),
                 m_scannerId.c_str(),
                 m_scannerVersion.c_str(),
                 m_sourceFileFingerprint.c_str(),
                 m_dependencySourceGuid.ToString<AZStd::string>().c_str(),
                 m_dependencySubId,
-                m_missingDependencyString.c_str());
+                m_missingDependencyString.c_str(),
+                m_lastScanTime.c_str(),
+                aznumeric_cast<uint64_t>(m_scanTimeSecondsSinceEpoch));
         }
 
         auto MissingProductDependencyDatabaseEntry::GetColumns()
@@ -1535,7 +1561,9 @@ namespace AzToolsFramework
                 MakeColumn("SourceFileFingerprint", m_sourceFileFingerprint),
                 MakeColumn("DependencySourceGuid", m_dependencySourceGuid),
                 MakeColumn("DependencySubId", m_dependencySubId),
-                MakeColumn("MissingDependencyString", m_missingDependencyString)
+                MakeColumn("MissingDependencyString", m_missingDependencyString),
+                MakeColumn("LastScanTime", m_lastScanTime),
+                MakeColumn("ScanTimeSecondsSinceEpoch", m_scanTimeSecondsSinceEpoch)
             );
         }
 
@@ -1548,13 +1576,14 @@ namespace AzToolsFramework
             return m_scanFolderPK == other.m_scanFolderPK
                 && m_fileName == other.m_fileName
                 && m_isFolder == other.m_isFolder
-                && m_modTime == other.m_modTime;
+                && m_modTime == other.m_modTime
+                && m_hash == other.m_hash;
         }
 
         AZStd::string FileDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("FileDatabaseEntry id: %i scanfolderpk: %i filename: %s isfolder: %i modtime: %i",
-                m_fileID, m_scanFolderPK, m_fileName.c_str(), m_isFolder, m_modTime);
+            return AZStd::string::format("FileDatabaseEntry id: %" PRId64 " scanfolderpk: %" PRId64 " filename: %s isfolder: %i modtime: %" PRIu64 " hash: %" PRIu64,
+                static_cast<int64_t>(m_fileID), static_cast<int64_t>(m_scanFolderPK), m_fileName.c_str(), m_isFolder, static_cast<uint64_t>(m_modTime), static_cast<uint64_t>(m_hash));
         }
 
         auto FileDatabaseEntry::GetColumns()
@@ -1564,7 +1593,8 @@ namespace AzToolsFramework
                 MakeColumn("ScanFolderPK", m_scanFolderPK),
                 MakeColumn("FileName", m_fileName),
                 MakeColumn("IsFolder", m_isFolder),
-                MakeColumn("ModTime", m_modTime)
+                MakeColumn("ModTime", m_modTime),
+                MakeColumn("Hash", m_hash)
             );
         }
 
@@ -1791,6 +1821,7 @@ namespace AzToolsFramework
             
             AddStatement(m_databaseConnection, s_queryMissingProductDependencyByProductId);
             AddStatement(m_databaseConnection, s_queryMissingProductDependencyByMissingProductDependencyId);
+            AddStatement(m_databaseConnection, s_deleteMissingProductDependencyByProductId);
             
             AddStatement(m_databaseConnection, s_queryDirectProductdependencies);
             AddStatement(m_databaseConnection, s_queryDirectReverseProductdependenciesBySourceGuidSubId);
@@ -2562,6 +2593,11 @@ namespace AzToolsFramework
         bool AssetDatabaseConnection::QueryMissingProductDependencyByProductId(AZ::s64 productId, missingProductDependencyHandler handler)
         {
             return s_queryMissingProductDependencyByProductId.BindAndQuery(*m_databaseConnection, handler, &GetMissingProductDependencyResult, productId);
+        }
+
+        bool AssetDatabaseConnection::DeleteMissingProductDependencyByProductId(AZ::s64 productId)
+        {
+            return s_deleteMissingProductDependencyByProductId.BindAndStep(*m_databaseConnection, productId);
         }
 
         bool AssetDatabaseConnection::QueryMissingProductDependencyByMissingProductDependencyId(AZ::s64 missingProductDependencyId, missingProductDependencyHandler handler)

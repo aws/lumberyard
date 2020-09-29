@@ -125,8 +125,10 @@ void CCharInstance::RuntimeInit(_smart_ptr<CDefaultSkeleton> pExtDefaultSkeleton
 
     //
     m_SkeletonPose.UpdateBBox(1);
+#if ENABLE_CRY_PHYSICS
     m_SkeletonPose.m_physics.m_bHasPhysics = m_pDefaultSkeleton->m_bHasPhysics2;
     m_SkeletonPose.m_physics.m_bHasPhysicsProxies = false;
+#endif
 
     m_bHasVertexAnimation = false;
     m_bUseMatrixSkinning = false;
@@ -140,7 +142,9 @@ CCharInstance::~CCharInstance()
 {
     CRY_ASSERT(m_nRefCounter == 0);
     SAFE_RELEASE(m_pFacialInstance);
+#if ENABLE_CRY_PHYSICS
     m_SkeletonPose.m_physics.DestroyPhysics();
+#endif
     KillAllSkeletonEffects();
 
     // unregister from animation queue
@@ -189,10 +193,12 @@ void CCharInstance::StartAnimationProcessing(const SAnimationProcessParams& para
     ANIMATION_LIGHT_PROFILER();
 
     static ICVar* pUseSinglePositionVar = gEnv->pConsole->GetCVar("g_useSinglePosition");
+#if ENABLE_CRY_PHYSICS
     if (pUseSinglePositionVar && pUseSinglePositionVar->GetIVal() & 4)
     {
         m_SkeletonPose.m_physics.SynchronizeWithPhysics(m_SkeletonPose.GetPoseDataExplicitWriteable());
     }
+#endif
 
     m_location                  = params.locationAnimation; //this the current location
     m_fPostProcessZoomAdjustedDistanceFromCamera = params.zoomAdjustedDistanceFromCamera;
@@ -276,6 +282,7 @@ bool CCharInstance::CopyPoseFrom(const ICharacterInstance& rICharInstance)
 // TODO: Should be part of CSkeletonPhysics!
 void CCharInstance::UpdatePhysicsCGA(Skeleton::CPoseData& poseData, float fScale, const QuatTS& rAnimLocationNext)
 {
+ #if ENABLE_CRY_PHYSICS
     DEFINE_PROFILER_FUNCTION();
     CAnimationSet* pAnimationSet = m_pDefaultSkeleton->m_pAnimationSet;
 
@@ -385,9 +392,11 @@ SetAgain:
     {
         m_SkeletonPose.UpdateBBox(1);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
+#if ENABLE_CRY_PHYSICS
 void CCharInstance::ApplyJointVelocitiesToPhysics(IPhysicalEntity* pent, const Quat& qrot, const Vec3& velHost)
 {
     int i, iParent, numNodes = m_SkeletonPose.GetPoseData().GetJointCount();
@@ -461,6 +470,7 @@ void CCharInstance::ApplyJointVelocitiesToPhysics(IPhysicalEntity* pent, const Q
         }
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 //----------------------------------------------------------------------
@@ -603,9 +613,11 @@ void CCharInstance::GetRandomPos(PosNorm& ran, EGeomForm eForm) const
 
 void CCharInstance::OnDetach()
 {
+#if ENABLE_CRY_PHYSICS
     pe_params_rope pr;
     pr.pEntTiedTo[0] = pr.pEntTiedTo[1] = 0;
     m_SkeletonPose.m_physics.SetAuxParams(&pr);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 // Skinning
@@ -638,11 +650,13 @@ void CCharInstance::Serialize(TSerialize ser)
         m_SkeletonAnim.Serialize(ser);
         m_AttachmentManager.Serialize(ser);
 
+#if ENABLE_CRY_PHYSICS
         if (ser.IsReading())
         {
             // Make sure that serialized characters that are ragdoll are updated even if their physic entity is sleeping
             m_SkeletonPose.m_physics.m_bPhysicsWasAwake = true;
         }
+#endif
     }
 }
 

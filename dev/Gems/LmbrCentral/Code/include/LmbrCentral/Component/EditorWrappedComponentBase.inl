@@ -137,6 +137,14 @@ namespace LmbrCentral
         T::GetIncompatibleServices(services);
     }
 
+    template<typename T>
+    void GetDependentServicesHelper(AZ::ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) {}
+
+    template<typename T>
+    void GetDependentServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services, const AZStd::true_type&)
+    {
+        T::GetDependentServices(services);
+    }
     //////////////////////////////////////////////////////////////////////////
 
     template<typename TComponent, typename TConfiguration>
@@ -155,6 +163,12 @@ namespace LmbrCentral
     void EditorWrappedComponentBase<TComponent, TConfiguration>::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services)
     {
         GetProvidedServicesHelper<TComponent>(services, typename AZ::HasComponentProvidedServices<TComponent>::type());
+    }
+
+    template<typename TComponent, typename TConfiguration>
+    void EditorWrappedComponentBase<TComponent, TConfiguration>::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& services)
+    {
+        GetDependentServicesHelper<TComponent>(services, typename AZ::HasComponentDependentServices<TComponent>::type());
     }
 
     template<typename TComponent, typename TConfiguration>

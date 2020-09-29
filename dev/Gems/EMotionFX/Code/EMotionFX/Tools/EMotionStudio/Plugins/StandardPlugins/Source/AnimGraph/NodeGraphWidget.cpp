@@ -677,6 +677,14 @@ namespace EMStudio
                     //update();
                     return;
                 }
+
+                // Right click on the node will trigger a single selection, if the node is not already selected.
+                if (node && !node->GetIsSelected() && !node->GetIsInsideArrowRect(globalPos))
+                {
+                    mPlugin->GetAnimGraphModel().GetSelectionModel().select(QItemSelection(node->GetModelIndex(), node->GetModelIndex()),
+                        QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+                    return;
+                }
             }
 
             if (event->button() == Qt::MidButton)

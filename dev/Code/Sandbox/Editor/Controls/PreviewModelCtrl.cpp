@@ -512,11 +512,15 @@ bool CPreviewModelCtrl::Render()
 
     // save some cvars
     int showNormals = gEnv->pConsole->GetCVar("r_ShowNormals")->GetIVal();
+#if ENABLE_CRY_PHYSICS
     int showPhysics = gEnv->pConsole->GetCVar("p_draw_helpers")->GetIVal();
+#endif
     int showInfo = gEnv->pConsole->GetCVar("r_displayInfo")->GetIVal();
 
     gEnv->pConsole->GetCVar("r_ShowNormals")->Set((int)m_bShowNormals);
+#if ENABLE_CRY_PHYSICS
     gEnv->pConsole->GetCVar("p_draw_helpers")->Set((int)m_bShowPhysics);
+#endif
     gEnv->pConsole->GetCVar("r_displayInfo")->Set((int)m_bShowRenderInfo);
 
     // Render object.
@@ -558,7 +562,9 @@ bool CPreviewModelCtrl::Render()
     RestorePreviousContext();
 
     gEnv->pConsole->GetCVar("r_ShowNormals")->Set(showNormals);
+#if ENABLE_CRY_PHYSICS
     gEnv->pConsole->GetCVar("p_draw_helpers")->Set(showPhysics);
+#endif
     gEnv->pConsole->GetCVar("r_displayInfo")->Set(showInfo);
 
     return true;

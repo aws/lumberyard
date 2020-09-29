@@ -30,9 +30,15 @@
 
 #include "CharacterAnimationManagerComponent.h"
 
+#if !ENABLE_CRY_PHYSICS
+#include "CryPhysicsDeprecation.h"
+#endif
+
 namespace LmbrCentral
 {
+#if ENABLE_CRY_PHYSICS
     using AzFramework::PhysicsSystemEventBus;
+#endif
 
     class CharacterAnimationNotificationBusHandler : public CharacterAnimationNotificationBus::Handler, public AZ::BehaviorEBusHandler
     {
@@ -69,7 +75,12 @@ namespace LmbrCentral
         CharacterAnimationRequestBus::Handler::BusConnect(m_entityId);
         AimIKComponentRequestBus::Handler::BusConnect(m_entityId);
 
+#if ENABLE_CRY_PHYSICS
         PhysicsSystemEventBus::Handler::BusConnect();
+#else
+        // Possible replacement Physics world notification bus
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
         EBUS_EVENT_ID_RESULT(m_currentWorldTransform, m_entityId, AZ::TransformBus, GetWorldTM);
         m_previousWorldTransform = m_currentWorldTransform;
@@ -95,7 +106,9 @@ namespace LmbrCentral
     {
         m_limbIK = nullptr;
 
+#if ENABLE_CRY_PHYSICS
         PhysicsSystemEventBus::Handler::BusDisconnect();
+#endif
 
         AimIKComponentRequestBus::Handler::BusDisconnect();
         CharacterAnimationRequestBus::Handler::BusDisconnect();
@@ -140,6 +153,7 @@ namespace LmbrCentral
         ISkeletonAnim* skeletonAnim = m_characterInstance ? m_characterInstance->GetISkeletonAnim() : nullptr;
         if (skeletonAnim)
         {
+#if ENABLE_CRY_PHYSICS
             pe_status_living livingStatus;
             livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
             EBUS_EVENT_ID(m_entityId, CryPhysicsComponentRequestBus, GetPhysicsStatus, livingStatus);
@@ -152,6 +166,9 @@ namespace LmbrCentral
 
             // Apply smoothing to blend params.
             Animation::SmoothMotionParameters(m_smoothedMotionParameters, targetMotionParameters, m_motionParamsSmoothingState, m_motionParamsSmoothingSettings, deltaTime);
+#else
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
             // Convert character-relative travel direction into an angle for blend parameters.
             // Signed, ranges from -Pi..Pi, with positive angles to the left.
@@ -233,6 +250,7 @@ namespace LmbrCentral
         return m_characterInstance;
     }
 
+#if ENABLE_CRY_PHYSICS
     void CharacterAnimationManagerComponent::CharacterInstanceEntry::OnPrePhysicsUpdate()
     {
         ISkeletonAnim* skeletonAnim = m_characterInstance ? m_characterInstance->GetISkeletonAnim() : nullptr;
@@ -268,7 +286,12 @@ namespace LmbrCentral
             const AZ::Vector3 relativeTranslation = motion.GetTranslation();
             const AZ::Quaternion characterOrientation = AZ::Quaternion::CreateFromTransform(entityTransform);
             const AZ::Vector3 velocity = characterOrientation * (relativeTranslation * frameDeltaTimeInv);
+#if ENABLE_CRY_PHYSICS
             EBUS_EVENT_ID(m_entityId, CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
+#else
+            // Something like Physics::Request set velocity
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
             // Rotation is applied to the entity's transform directly, since physics only handles translation.
             const AZ::Quaternion& rotation = AZ::Quaternion::CreateFromTransform(motion);
@@ -278,12 +301,18 @@ namespace LmbrCentral
         }
         else if (m_appliedAnimDrivenMotion)
         {
+#if ENABLE_CRY_PHYSICS
             // Issue a stop if we're exiting animation-driven root motion.
             EBUS_EVENT_ID(m_entityId, CryCharacterPhysicsRequestBus, RequestVelocity, AZ::Vector3::CreateZero(), 0);
+#else
+            // Something like Physics::Request set velocity
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
         }
 
         m_appliedAnimDrivenMotion = applyAnimDrivenMotion;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
 

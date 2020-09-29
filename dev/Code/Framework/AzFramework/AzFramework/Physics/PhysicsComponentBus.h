@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Aabb.h>
@@ -411,3 +413,5 @@ namespace AZ
 {
     AZ_TYPE_INFO_SPECIALIZE(AzFramework::RigidPhysicsConfig::MassOrDensity, "{0F5DBFB3-FD9A-4E83-B9B3-4713AB2241B4}");
 }
+
+#endif // ENABLE_CRY_PHYSICS

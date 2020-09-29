@@ -92,6 +92,8 @@ static const qint64 s_ReservedDiskSpaceInBytes = 256 * 1024;
 //! Maximum number of temp folders allowed
 static const int s_MaximumTempFolders = 10000;
 
+const char AdditionalScanFolders[] = "additionalScanFolders";
+
 void CreateAndSubmitMetricEvent(const char* name)
 {
     LyMetrics_SubmitEvent(LyMetrics_CreateEvent(name));
@@ -110,6 +112,11 @@ namespace BatchApplicationManagerPrivate
     }
 }
 #endif  //#if defined(AZ_PLATFORM_WINDOWS) && defined(BATCH_MODE)
+
+namespace AssetProcessor
+{
+    const char ExcludeMetaDataFiles[] = "excludeMetaDataFiles";
+}
 
 BatchApplicationManager::BatchApplicationManager(int* argc, char*** argv, QObject* parent)
     : ApplicationManager(argc, argv, parent)
@@ -227,6 +234,26 @@ void BatchApplicationManager::InitAssetProcessorManager()
     else if (commandLine->HasSwitch("dsp"))
     {
         m_dependencyScanPattern = commandLine->GetSwitchValue("dsp", 0).c_str();
+    }
+
+    m_fileDependencyScanPattern = "*";
+
+    if (commandLine->HasSwitch("fileDependencyScanPattern"))
+    {
+        m_fileDependencyScanPattern = commandLine->GetSwitchValue("fileDependencyScanPattern", 0).c_str();
+    }
+    else if (commandLine->HasSwitch("fdsp"))
+    {
+        m_fileDependencyScanPattern = commandLine->GetSwitchValue("fdsp", 0).c_str();
+    }
+
+    if (commandLine->HasSwitch(AdditionalScanFolders))
+    {
+        for (size_t idx = 0; idx < commandLine->GetNumSwitchValues(AdditionalScanFolders); idx++)
+        {
+            AZStd::string value = commandLine->GetSwitchValue(AdditionalScanFolders, idx);
+            m_dependencyAddtionalScanFolders.emplace_back(AZStd::move(value));
+        }
     }
 
     if (commandLine->HasSwitch("dependencyScanMaxIteration"))
@@ -871,6 +898,7 @@ void BatchApplicationManager::HandleFileRelocation() const
     const bool doMove = commandLine->HasSwitch(MoveCommand);
     const bool doDelete = commandLine->HasSwitch(DeleteCommand);
     const bool updateReferences = commandLine->HasSwitch(UpdateReferencesCommand);
+    const bool excludeMetaDataFiles = commandLine->HasSwitch(AssetProcessor::ExcludeMetaDataFiles);
 
     if(doMove || doDelete)
     {
@@ -892,10 +920,13 @@ void BatchApplicationManager::HandleFileRelocation() const
         }
     }
 
-    if(!doMove && updateReferences)
+    if(!doMove)
     {
-        AZ_Error(AssetProcessor::ConsoleChannel, false, "Command --%s must be used with command --%s", UpdateReferencesCommand, MoveCommand);
-        return;
+        if (updateReferences)
+        {
+            AZ_Error(AssetProcessor::ConsoleChannel, false, "Command --%s must be used with command --%s", UpdateReferencesCommand, MoveCommand);
+            return;
+        }
     }
 
     // Print some errors to inform users that the move or delete command must be included
@@ -921,43 +952,43 @@ void BatchApplicationManager::HandleFileRelocation() const
         auto source = commandLine->GetSwitchValue(MoveCommand, 0);
         auto destination = commandLine->GetSwitchValue(MoveCommand, 1);
 
-        AZ_Printf(AssetProcessor::ConsoleChannel, "Move Source: %s, Destination: %s\n", source.c_str(), destination.c_str());
+        AZ_Printf(AssetProcessor::ConsoleChannel, "MODE: Move | SOURCE: %s | DESTINATION: %s\n", source.c_str(), destination.c_str());
 
         if(!previewOnly)
         {
-            AZ_Printf(AssetProcessor::ConsoleChannel, "Performing real file move\n");
+            AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Perform real file move\n");
 
             if (leaveEmptyFolders)
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, "Leaving empty folders\n");
+                AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Leave empty folders\n");
             }
             else
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, "Deleting empty folders\n");
+                AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Delete empty folders\n");
             }
 
             if(updateReferences)
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, "Attempting to perform reference fix-up\n");
+                AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Attempt to perform reference fix-up\n");
             }
         }
         else
         {
-            AZ_Printf(AssetProcessor::ConsoleChannel, "Previewing file move.  Run again with --%s to actually make changes\n", ConfirmCommand);
+            AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Preview file move.  Run again with --%s to actually make changes\n", ConfirmCommand);
         }
 
         auto* interface = AZ::Interface<AssetProcessor::ISourceFileRelocation>::Get();
 
         if(interface)
         {
-            auto result = interface->Move(source, destination, previewOnly, allowBrokenDependencies, !leaveEmptyFolders, updateReferences);
+            auto result = interface->Move(source, destination, previewOnly, allowBrokenDependencies, !leaveEmptyFolders, updateReferences, excludeMetaDataFiles);
 
             if(result.IsSuccess())
             {
                 AssetProcessor::RelocationSuccess success = result.TakeValue();
 
                 // The report can be too long for the AZ_Printf buffer, so split it into individual lines
-                AZStd::string report = interface->BuildReport(success.m_relocationContainer, success.m_updateTasks, true);
+                AZStd::string report = interface->BuildReport(success.m_relocationContainer, success.m_updateTasks, true, updateReferences);
                 AZStd::vector<AZStd::string> lines;
                 AzFramework::StringFunc::Tokenize(report.c_str(), lines, "\n");
 
@@ -975,15 +1006,15 @@ void BatchApplicationManager::HandleFileRelocation() const
                     AZ_Printf(AssetProcessor::ConsoleChannel, "FAILED TO UPDATE: %d\n", success.m_updateFailureCount);
                     
                     AZ_Printf(AssetProcessor::ConsoleChannel, "TOTAL FILES: %d\n", success.m_moveTotalCount);
-                    AZ_Printf(AssetProcessor::ConsoleChannel, "SUCCESSFULLY MOVED: %d\n", success.m_moveSuccessCount);
-                    AZ_Printf(AssetProcessor::ConsoleChannel, "FAILED TO MOVE: %d\n", success.m_moveFailureCount);
+                    AZ_Printf(AssetProcessor::ConsoleChannel, "SUCCESS COUNT: %d\n", success.m_moveSuccessCount);
+                    AZ_Printf(AssetProcessor::ConsoleChannel, "FAILURE COUNT: %d\n", success.m_moveFailureCount);
                 }
             }
             else
             {
                 AssetProcessor::MoveFailure failure = result.TakeError();
 
-                AZ_Printf(AssetProcessor::ConsoleChannel, failure.m_reason.c_str());
+                AZ_Printf(AssetProcessor::ConsoleChannel, "Error: %s\n", failure.m_reason.c_str());
 
                 if(failure.m_dependencyFailure)
                 {
@@ -1011,38 +1042,38 @@ void BatchApplicationManager::HandleFileRelocation() const
 
         auto source = commandLine->GetSwitchValue(DeleteCommand, 0);
 
-        AZ_Printf(AssetProcessor::ConsoleChannel, "Delete Source: %s\n", source.c_str());
+        AZ_Printf(AssetProcessor::ConsoleChannel, "MODE: Delete | Source: %s\n", source.c_str());
 
         if (!previewOnly)
         {
-            AZ_Printf(AssetProcessor::ConsoleChannel, "Performing real file delete\n");
+            AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Perform real file delete\n");
 
             if (leaveEmptyFolders)
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, "Leaving empty folders\n");
+                AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Leave empty folders\n");
             }
             else
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, "Deleting empty folders\n");
+                AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Delete empty folders\n");
             }
         }
         else
         {
-            AZ_Printf(AssetProcessor::ConsoleChannel, "Previewing file delete.  Run again with --%s to actually make changes\n", ConfirmCommand);
+            AZ_Printf(AssetProcessor::ConsoleChannel, "SETTING: Preview file delete.  Run again with --%s to actually make changes\n", ConfirmCommand);
         }
 
         auto* interface = AZ::Interface<AssetProcessor::ISourceFileRelocation>::Get();
 
         if (interface)
         {
-            auto result = interface->Delete(source, previewOnly, allowBrokenDependencies, !leaveEmptyFolders);
+            auto result = interface->Delete(source, previewOnly, allowBrokenDependencies, !leaveEmptyFolders, excludeMetaDataFiles);
 
             if (result.IsSuccess())
             {
                 AssetProcessor::RelocationSuccess success = result.TakeValue();
 
                 // The report can be too long for the AZ_Printf buffer, so split it into individual lines
-                AZStd::string report = interface->BuildReport(success.m_relocationContainer, success.m_updateTasks, false);
+                AZStd::string report = interface->BuildReport(success.m_relocationContainer, success.m_updateTasks, false, updateReferences);
                 AZStd::vector<AZStd::string> lines;
                 AzFramework::StringFunc::Tokenize(report.c_str(), lines, "\n");
 
@@ -1054,9 +1085,9 @@ void BatchApplicationManager::HandleFileRelocation() const
                 if (!previewOnly)
                 {
                     AZ_Printf(AssetProcessor::ConsoleChannel, "DELETE COMPLETE\n");
-                    AZ_Printf(AssetProcessor::ConsoleChannel, "SUCCESSFULLY DELETED: %d\n", success.m_moveSuccessCount);
-                    AZ_Printf(AssetProcessor::ConsoleChannel, "FAILED TO DELETE: %d\n", success.m_moveFailureCount);
                     AZ_Printf(AssetProcessor::ConsoleChannel, "TOTAL FILES: %d\n", success.m_moveTotalCount);
+                    AZ_Printf(AssetProcessor::ConsoleChannel, "SUCCESS COUNT: %d\n", success.m_moveSuccessCount);
+                    AZ_Printf(AssetProcessor::ConsoleChannel, "FAILURE COUNT: %d\n", success.m_moveFailureCount);
                 }
             }
             else
@@ -1109,14 +1140,14 @@ void BatchApplicationManager::CheckForIdle()
 #if defined(BATCH_MODE)
             // If everything else is done, and this application is in batch mode,
             // and it was requested to scan for missing product dependencies, perform that scan now.
-            if (!m_dependencyScanPattern.isEmpty())
+            if (!m_dependencyScanPattern.isEmpty() || !m_fileDependencyScanPattern.isEmpty())
             {
-                m_assetProcessorManager->ScanForMissingProductDependencies(m_dependencyScanPattern, m_dependencyScanMaxIteration);
+                m_assetProcessorManager->ScanForMissingProductDependencies(m_dependencyScanPattern, m_fileDependencyScanPattern, m_dependencyAddtionalScanFolders, m_dependencyScanMaxIteration);
                 m_dependencyScanPattern.clear();
-        }
+                m_fileDependencyScanPattern.clear();
+            }
 
-        HandleFileRelocation();
-
+            HandleFileRelocation();
 #endif
 
             CreateAndSubmitMetricEvent("AssetProcessorIdle");
@@ -1524,6 +1555,10 @@ bool BatchApplicationManager::InitializeExternalBuilders()
     Q_EMIT AssetProcessorStatusChanged(entry);
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
+    // BEGIN DEPRECATED CODE - LUMBERYARD_DEPRECATED(LY-113790)
+    // Builder dll loading is deprecated and will be removed a future release.
+    // All future builders should be placed inside gems following this guide:
+    // https ://docs.aws.amazon.com/lumberyard/latest/userguide/asset-builder-custom.html
 
     // Get the list of external build modules (full paths)
     QStringList fileList;
@@ -1561,6 +1596,7 @@ bool BatchApplicationManager::InitializeExternalBuilders()
             m_externalAssetBuilders.push_back(externalAssetBuilderInfo);
         }
     }
+    // END DEPRECATED CODE
 
     // Also init external builders which may be inside of Gems
     AzToolsFramework::ToolsApplicationRequestBus::Broadcast(

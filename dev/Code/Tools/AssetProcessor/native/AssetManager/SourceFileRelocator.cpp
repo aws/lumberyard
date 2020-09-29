@@ -16,19 +16,74 @@
 #include <AzCore/IO/SystemFile.h>
 #include <QDir>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
+#include <native/utilities/BatchApplicationManager.h>
+#include <cinttypes>
 
 namespace AssetProcessor
 {
+
+    bool WaitForSourceControl(AZStd::binary_semaphore& waitSignal)
+    {
+        constexpr int MaxWaitTimeMS = 10000;
+        constexpr int SleepTimeMS = 50;
+        int retryCount = MaxWaitTimeMS / SleepTimeMS;
+
+        AZ::TickBus::ExecuteQueuedEvents();
+
+        while (!waitSignal.try_acquire_for(AZStd::chrono::milliseconds(SleepTimeMS)) && retryCount >= 0)
+        {
+            --retryCount;
+            AZ::TickBus::ExecuteQueuedEvents();
+        }
+
+        if (retryCount < 0)
+        {
+            AZ_Error("SourceFileRelocator", false, "Timed out waiting for response from source control component.");
+            return false;
+        }
+
+        return true;
+    }
+
+
+    void WildcardHelper(AZStd::string& path)
+    {
+        path.replace(path.length() - 1, 1, "...");
+    }
+
+    void AdjustWildcardForPerforce(AZStd::string& source)
+    {
+        if (source.ends_with('*'))
+        {
+            WildcardHelper(source);
+        }
+    }
+
+    void AdjustWildcardForPerforce(AZStd::string& source, AZStd::string& destination)
+    {
+        if (source.ends_with('*') && destination.ends_with('*'))
+        {
+            WildcardHelper(source);
+            WildcardHelper(destination);
+        }
+    }
+
     SourceFileRelocator::SourceFileRelocator(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> stateData, PlatformConfiguration* platformConfiguration)
         : m_stateData(AZStd::move(stateData))
         , m_platformConfig(platformConfiguration)
     {
         AZ::Interface<ISourceFileRelocation>::Register(this);
+        m_additionalHelpTextMap[AZStd::string("seed")] = AZStd::string("\t\tPlease note that path hints in the seed file might not be correct as a result of this file reference fixup,\
+you can update the path hints by running the AssetBundlerBatch. Please run AssetBundlerBatch --help to find the correct command for updating the path hints for seed files.\
+Please note that only those seed files will get updated that are active for your current game project. If there are seed files that are not active for your current game project and does contain\
+ references to files that are being moved, then asset processor won't be able to catch these references and perform the fixup and the user would have to update them manually.\n");
     }
 
     SourceFileRelocator::~SourceFileRelocator()
@@ -59,7 +114,11 @@ namespace AssetProcessor
                 QDir rooted(scanFolderInfoCheck->ScanPath());
                 QString absolutePath = rooted.absoluteFilePath(tempRelativeName);
                 bool fileExists = false;
-                AssetProcessor::FileStateRequestBus::BroadcastResult(fileExists, &AssetProcessor::FileStateRequestBus::Events::Exists, absolutePath);
+                auto* fileStateInterface = AZ::Interface<IFileStateRequests>::Get();
+                if(fileStateInterface)
+                {
+                    fileExists = fileStateInterface->Exists(absolutePath);
+                }
 
                 if (fileExists)
                 {
@@ -70,7 +129,7 @@ namespace AssetProcessor
                     }
                     else
                     {
-                        return AZ::Failure(AZStd::string::format("Relative path matched multiple files/folders.  Please narrow your query.\nMatch 1: %s\nMatch 2: %s\n",
+                        return AZ::Failure(AZStd::string::format("Relative path matched multiple files/folders.  Please narrow your query by using an absolute path or, if using wildcards, try making your query path more specific.\nMatch 1: %s\nMatch 2: %s\n",
                             matchedPath.toUtf8().constData(),
                             absolutePath.toUtf8().constData()));
                     }
@@ -90,7 +149,7 @@ namespace AssetProcessor
 
         if (!scanFolderInfo)
         {
-            return AZ::Failure(AZStd::string::format("Path %s does not exist within a scan folder.\n", normalizedSource.c_str()));
+            return AZ::Failure(AZStd::string::format("Path %s points to a file outside the current project's scan folders.\n", normalizedSource.c_str()));
         }
 
         if (isRelative)
@@ -100,7 +159,7 @@ namespace AssetProcessor
         else
         {
             QString relativePathQString;
-            if (!PlatformConfiguration::ConvertToRelativePath(normalizedSource.c_str(), scanFolderInfo, relativePathQString, true))
+            if (!PlatformConfiguration::ConvertToRelativePath(normalizedSource.c_str(), scanFolderInfo, relativePathQString, false))
             {
                 return AZ::Failure(AZStd::string::format("Failed to convert path to relative path. %s\n", normalizedSource.c_str()));
             }
@@ -121,19 +180,104 @@ namespace AssetProcessor
         return sourceName;
     }
 
-    void SourceFileRelocator::GetSources(QStringList pathMatches, const ScanFolderInfo* scanFolderInfo,
+    QHash<QString, int> SourceFileRelocator::GetSources(QStringList pathMatches, const ScanFolderInfo* scanFolderInfo,
         SourceFileRelocationContainer& sources) const
     {
+        QHash<QString, int> sourceIndexMap;
         for (auto& file : pathMatches)
         {
             QString databaseSourceName;
 
             PlatformConfiguration::ConvertToRelativePath(file, scanFolderInfo, databaseSourceName);
-            m_stateData->QuerySourceBySourceNameScanFolderID(databaseSourceName.toUtf8().constData(), scanFolderInfo->ScanFolderID(), [this, &sources, &scanFolderInfo](const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry)
+            m_stateData->QuerySourceBySourceNameScanFolderID(databaseSourceName.toUtf8().constData(), scanFolderInfo->ScanFolderID(), [this, &sources, &scanFolderInfo, &sourceIndexMap, &databaseSourceName](const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry)
                 {
                     sources.emplace_back(entry, GetProductMapForSource(entry.m_sourceID), RemoveDatabasePrefix(scanFolderInfo, entry.m_sourceName), scanFolderInfo);
+                    sourceIndexMap[databaseSourceName] = aznumeric_cast<int> (sources.size() - 1);
                     return true;
                 });
+        }
+
+        return sourceIndexMap;
+    }
+
+    void SourceFileRelocator::HandleMetaDataFiles(QStringList pathMatches, QHash<QString, int>& sourceIndexMap, const ScanFolderInfo* scanFolderInfo, SourceFileRelocationContainer& metadataFiles, bool excludeMetaDataFiles) const
+    {
+        QSet<QString> metaDataFileEntries;
+        for (QStringList::Iterator fileIter = pathMatches.begin(); fileIter != pathMatches.end();)
+        {
+            QString file = *fileIter;
+            for (int idx = 0; idx < m_platformConfig->MetaDataFileTypesCount(); idx++)
+            {
+                QPair<QString, QString> metaInfo = m_platformConfig->GetMetaDataFileTypeAt(idx);
+                if (file.endsWith("." + metaInfo.first, Qt::CaseInsensitive))
+                {
+                    //it is a metadata file
+                    if (excludeMetaDataFiles)
+                    {
+                        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Metadata file %s will be ignored because --%s was specified in the command line.\n",
+                            file.toUtf8().constData(), AssetProcessor::ExcludeMetaDataFiles);
+                        fileIter = pathMatches.erase(fileIter);
+                        continue;
+                    }
+                    else
+                    {
+                        QString normalizedFilePath = AssetUtilities::NormalizeFilePath(file);
+                        if (metaDataFileEntries.find(normalizedFilePath) == metaDataFileEntries.end())
+                        {
+                            SourceFileRelocationInfo metaDataFile(file.toUtf8().data(), scanFolderInfo);
+                            metaDataFile.m_isMetaDataFile = true;
+                            metadataFiles.emplace_back(metaDataFile);
+                            metaDataFileEntries.insert(normalizedFilePath);
+                        }
+                    }
+                }
+                else if (!excludeMetaDataFiles && (file.endsWith("." + metaInfo.second, Qt::CaseInsensitive) || metaInfo.second.isEmpty()))
+                {
+                    // if we are here it implies that a metadata file might exists for this source file,
+                    // add metadata file only if it exists and is not added already
+                    AZStd::string metadataFilePath(file.toUtf8().data());
+                    if (metaInfo.second.isEmpty())
+                    {
+                        metadataFilePath.append(AZStd::string::format(".%s", metaInfo.first.toUtf8().data()));
+                    }
+                    else
+                    {
+                        AZ::StringFunc::Path::ReplaceExtension(metadataFilePath, metaInfo.first.toUtf8().data());
+                    };
+
+                    // The metadata file can have a different case than the source file,
+                    // We are trying to finding the correct case for the file here
+
+                    QString metadaFileCorrectCase;
+                    QFileInfo fileInfo(metadataFilePath.c_str());
+                    QStringList fileEntries = fileInfo.absoluteDir().entryList(QDir::Files);
+                    for (const QString& fileEntry : fileEntries)
+                    {
+                        if (QString::compare(fileEntry, fileInfo.fileName(), Qt::CaseInsensitive) == 0)
+                        {
+                            metadaFileCorrectCase = AssetUtilities::NormalizeFilePath(fileInfo.absoluteDir().filePath(fileEntry));
+                            break;
+                        }
+                    }
+
+                    if (QFile::exists(metadataFilePath.c_str()) && metaDataFileEntries.find(metadaFileCorrectCase) == metaDataFileEntries.end())
+                    {
+                        QString databaseSourceName;
+                        PlatformConfiguration::ConvertToRelativePath(file, scanFolderInfo, databaseSourceName);
+                        auto sourceFileIndex = sourceIndexMap.find(databaseSourceName);
+                        if (sourceFileIndex != sourceIndexMap.end())
+                        {
+                            SourceFileRelocationInfo metaDataFile(metadaFileCorrectCase.toUtf8().data(), scanFolderInfo);
+                            metaDataFile.m_isMetaDataFile = true;
+                            metaDataFile.m_sourceFileIndex = sourceFileIndex.value();
+                            metadataFiles.emplace_back(metaDataFile);
+                            metaDataFileEntries.insert(metadaFileCorrectCase);
+                        }  
+                    }
+                }
+            }
+
+            fileIter++;
         }
     }
 
@@ -150,8 +294,48 @@ namespace AssetProcessor
         return products;
     }
 
-    AZ::Outcome<void, AZStd::string> SourceFileRelocator::GetSourcesByPath(const AZStd::string& normalizedSource, SourceFileRelocationContainer& sources, const ScanFolderInfo*& scanFolderInfoOut) const
+    bool SourceFileRelocator::GetFilesFromSourceControl(SourceFileRelocationContainer& sources, const ScanFolderInfo* scanFolderInfo, QString absolutePath, bool excludeMetaDataFiles) const
     {
+        QStringList pathMatches;
+        AZStd::binary_semaphore waitSignal;
+
+        AzToolsFramework::SourceControlResponseCallbackBulk filesInfoCallback = [&](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> filesInfo)
+        {
+            if (success)
+            {
+                for (const auto& fileInfo : filesInfo)
+                {
+                    if (AZ::IO::SystemFile::Exists(fileInfo.m_filePath.c_str()))
+                    {
+                        pathMatches.append(fileInfo.m_filePath.c_str());
+                    }
+                }
+
+                QHash<QString, int> sourceIndexMap = GetSources(pathMatches, scanFolderInfo, sources);
+                HandleMetaDataFiles(pathMatches, sourceIndexMap, scanFolderInfo, sources, excludeMetaDataFiles);
+            }
+
+            waitSignal.release();
+        };
+
+        AZStd::string adjustedPerforceSearchString(absolutePath.toUtf8().data());
+        AdjustWildcardForPerforce(adjustedPerforceSearchString);
+
+        AZStd::unordered_set<AZStd::string> normalizedDir = { adjustedPerforceSearchString };
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommands::GetBulkFileInfo, normalizedDir, filesInfoCallback);
+        WaitForSourceControl(waitSignal);
+
+        return !pathMatches.isEmpty();
+    }
+
+    AZ::Outcome<void, AZStd::string> SourceFileRelocator::GetSourcesByPath(const AZStd::string& normalizedSource, SourceFileRelocationContainer& sources, const ScanFolderInfo*& scanFolderInfoOut, bool excludeMetaDataFiles) const
+    {
+        if(normalizedSource.find("**") != AZStd::string::npos)
+        {
+            return AZ::Failure(AZStd::string("Consecutive wildcards are not allowed.  Please remove extra wildcards from your query.\n"));
+        }
+
         bool isWildcard = normalizedSource.find('*') != AZStd::string_view::npos || normalizedSource.find('?') != AZStd::string_view::npos;
 
         if (isWildcard)
@@ -174,9 +358,18 @@ namespace AssetProcessor
                         continue;
                     }
 
-                    auto pathMatches = m_platformConfig->FindWildcardMatches(scanFolderInfo->ScanPath(), normalizedSource.c_str(), false);
+                    QString relativeFileName(normalizedSource.c_str());
 
-                    if (!pathMatches.isEmpty())
+                    //if relative path starts with the output prefix than remove it first
+                    if (!scanFolderInfo->GetOutputPrefix().isEmpty() && relativeFileName.startsWith(scanFolderInfo->GetOutputPrefix(), Qt::CaseInsensitive))
+                    {
+                        relativeFileName = relativeFileName.right(relativeFileName.length() - (scanFolderInfo->GetOutputPrefix().length() + 1)); // adding 1 for slash
+                    }
+
+                    QDir rooted(scanFolderInfo->ScanPath());
+                    QString absolutePath = rooted.absoluteFilePath(relativeFileName);
+
+                    if (GetFilesFromSourceControl(sources, scanFolderInfo, absolutePath, excludeMetaDataFiles))
                     {
                         if (foundMatch)
                         {
@@ -190,7 +383,6 @@ namespace AssetProcessor
                         scanFolderInfoOut = scanFolderInfo;
                     }
 
-                    GetSources(pathMatches, scanFolderInfo, sources);
                 }
             }
             else
@@ -202,20 +394,21 @@ namespace AssetProcessor
 
                 // Absolute path: just look up the scanfolder and convert to a relative path
                 AZStd::string pathOnly;
-                QString databaseName;
                 AzFramework::StringFunc::Path::GetFullPath(normalizedSource.c_str(), pathOnly);
 
                 scanFolderInfoOut = m_platformConfig->GetScanFolderForFile(pathOnly.c_str());
 
                 if (!scanFolderInfoOut)
                 {
-                    return AZ::Failure(AZStd::string::format("Path %s does not exist in a scanfolder\n", pathOnly.c_str()));
+                    return AZ::Failure(AZStd::string::format("Path %s points to a folder outside the current project's scan folders.\n", pathOnly.c_str()));
                 }
 
-                PlatformConfiguration::ConvertToRelativePath(normalizedSource.c_str(), scanFolderInfoOut, databaseName, false);
+                GetFilesFromSourceControl(sources, scanFolderInfoOut, normalizedSource.c_str(), excludeMetaDataFiles);
+            }
 
-                auto pathMatches = m_platformConfig->FindWildcardMatches(scanFolderInfoOut->ScanPath(), databaseName, false);
-                GetSources(pathMatches, scanFolderInfoOut, sources);
+            if(sources.empty())
+            {
+                return AZ::Failure(AZStd::string("Wildcard search did not match any files.\n"));
             }
         }
         else // Non-wildcard search
@@ -235,13 +428,12 @@ namespace AssetProcessor
             {
                 return AZ::Failure(AZStd::string("Cannot operate on directories.  Please specify a file or use a wildcard to select all files within a directory.\n"));
             }
-            else
+
+            GetFilesFromSourceControl(sources, scanFolderInfoOut, absoluteSourcePath.c_str(), excludeMetaDataFiles);
+
+            if (sources.empty())
             {
-                m_stateData->QuerySourceBySourceNameScanFolderID(relativePath.c_str(), scanFolderInfoOut->ScanFolderID(), [this, &sources, &scanFolderInfoOut, &relativePath](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry) -> bool
-                    {
-                        sources.emplace_back(entry, GetProductMapForSource(entry.m_sourceID), RemoveDatabasePrefix(scanFolderInfoOut, entry.m_sourceName), scanFolderInfoOut);
-                        return true;
-                    });
+                return AZ::Failure(AZStd::string("File not found.\n"));
             }
         }
 
@@ -331,7 +523,7 @@ namespace AssetProcessor
         return AZ::Success(destination);
     }
 
-    void SourceFileRelocator::FixDestinationMissingFilename(AZStd::string& destination, const AZStd::string& source) const
+    void SourceFileRelocator::FixDestinationMissingFilename(AZStd::string& destination, const AZStd::string& source)
     {
         if (destination.ends_with(AZ_CORRECT_DATABASE_SEPARATOR))
         {
@@ -387,30 +579,45 @@ namespace AssetProcessor
 
         for (SourceFileRelocationInfo& relocationInfo : relocationContainer)
         {
-            AZStd::string oldAbsolutePath, selectionSourceAbsolutePath;
-            AzFramework::StringFunc::Path::ConstructFull(sourceScanFolder->ScanPath().toUtf8().constData(), relocationInfo.m_oldRelativePath.c_str(), oldAbsolutePath, true);
-
-            if (AzFramework::StringFunc::Path::IsRelative(source.c_str()))
+            AZStd::string newDestinationPath;
+            // A valid sourceFile Index ( i.e non negative) indicates that it is a metadafile and therefore
+            // we would have to determine the destination info from the source file itself.
+            if (relocationInfo.m_sourceFileIndex == AssetProcessor::SourceFileRelocationInvalidIndex)
             {
-                AzFramework::StringFunc::Path::Join(sourceScanFolder->ScanPath().toUtf8().constData(), source.c_str(), selectionSourceAbsolutePath, false, true, false);
+                AZStd::string oldAbsolutePath, selectionSourceAbsolutePath;
+                AzFramework::StringFunc::Path::ConstructFull(sourceScanFolder->ScanPath().toUtf8().constData(), relocationInfo.m_oldRelativePath.c_str(), oldAbsolutePath, true);
+
+                if (AzFramework::StringFunc::Path::IsRelative(source.c_str()))
+                {
+                    AzFramework::StringFunc::Path::Join(sourceScanFolder->ScanPath().toUtf8().constData(), source.c_str(), selectionSourceAbsolutePath, false, true, false);
+                }
+                else
+                {
+                    selectionSourceAbsolutePath = source;
+                }
+
+                AZStd::replace(selectionSourceAbsolutePath.begin(), selectionSourceAbsolutePath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
+                AZStd::replace(oldAbsolutePath.begin(), oldAbsolutePath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
+
+                auto result = HandleWildcard(oldAbsolutePath, selectionSourceAbsolutePath, destination);
+
+                if (!result.IsSuccess())
+                {
+                    lastError = result.TakeError();
+                    continue;
+                }
+
+                newDestinationPath = AssetUtilities::NormalizeFilePath(result.TakeValue().c_str()).toUtf8().constData();
             }
             else
             {
-                selectionSourceAbsolutePath = source;
+                newDestinationPath = relocationContainer[relocationInfo.m_sourceFileIndex].m_newAbsolutePath;
+                AZStd::string fullFileName;
+                AZ::StringFunc::Path::GetFullFileName(relocationInfo.m_oldAbsolutePath.c_str(), fullFileName);
+                AZ::StringFunc::Path::ReplaceFullName(newDestinationPath, fullFileName.c_str());
             }
 
-            AZStd::replace(selectionSourceAbsolutePath.begin(), selectionSourceAbsolutePath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
-            AZStd::replace(oldAbsolutePath.begin(), oldAbsolutePath.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
-
-            auto result = HandleWildcard(oldAbsolutePath, selectionSourceAbsolutePath, destination);
-
-            if(!result.IsSuccess())
-            {
-                lastError = result.TakeError();
-                continue;
-            }
-
-            AZStd::string newDestinationPath = AssetUtilities::NormalizeFilePath(result.TakeValue().c_str()).toUtf8().constData();
+           
 
             if (!AzFramework::StringFunc::Path::IsRelative(newDestinationPath.c_str()))
             {
@@ -425,14 +632,7 @@ namespace AssetProcessor
             {
                 if (!destinationScanFolderOut)
                 {
-                    AZStd::string relativePath;
-
-                    auto outcome = GetScanFolderAndRelativePath(destination, true, destinationScanFolderOut, relativePath);
-
-                    if (!outcome.IsSuccess())
-                    {
-                        return AZ::Failure(outcome.TakeError());
-                    }
+                    destinationScanFolderOut = sourceScanFolder;
                 }
 
                 relocationInfo.m_newRelativePath = newDestinationPath;
@@ -440,6 +640,7 @@ namespace AssetProcessor
             }
 
             relocationInfo.m_newRelativePath = AssetUtilities::NormalizeFilePath(relocationInfo.m_newRelativePath.c_str()).toUtf8().constData();
+            relocationInfo.m_newAbsolutePath = AssetUtilities::NormalizeFilePath(relocationInfo.m_newAbsolutePath.c_str()).toUtf8().constData();
 
             relocationInfo.m_newUuid = AssetUtilities::CreateSafeSourceUUIDFromName(relocationInfo.m_newRelativePath.c_str());
         }
@@ -455,24 +656,46 @@ namespace AssetProcessor
     AZStd::string BuildTaskFailureReport(const FileUpdateTasks& updateTasks)
     {
         AZStd::string report;
+        AZStd::string skippedReport;
 
-        for(const FileUpdateTask& task : updateTasks)
+        for (const FileUpdateTask& task : updateTasks)
         {
-            if(!task.m_succeeded)
+            if (task.m_skipTask)
             {
-                if(report.empty())
+                if (skippedReport.empty())
                 {
-                    report.append("UPDATE FAILURE REPORT:\nThe following files have a dependency on file(s) that were moved which could not be updated automatically:\n");
+                    skippedReport.append("UPDATE SKIP REPORT:\nThe following files have a dependency on file(s) that failed to move.  These files were not updated:\n");
                 }
 
-                report.append(AZStd::string::format("\t%s\n\t\t%s -> %s\n", task.m_absPathFileToUpdate.c_str(), task.m_oldStrings[0].c_str(), task.m_newStrings[0].c_str()));
+                skippedReport.append(AZStd::string::format("\t%s\n", task.m_absPathFileToUpdate.c_str()));
+            }
+            else if (!task.m_succeeded)
+            {
+                if (report.empty())
+                {
+                    report.append("UPDATE FAILURE REPORT:\nThe following files have a dependency on file(s) that were moved and failed to be updated automatically.  They will need to be updated manually to fix broken references to moved files:\n");
+                }
+
+                report.append(AZStd::string::format("\tFILE: %s\n", task.m_absPathFileToUpdate.c_str()));
+
+                for(int i = 0; i < task.m_oldStrings.size(); ++i)
+                {
+                    report.append(AZStd::string::format("\t\tPOSSIBLE REFERENCE: %s -> UPDATE TO: %s\n", task.m_oldStrings[i].c_str(), task.m_newStrings[i].c_str()));
+                }
             }
         }
+
+        if(!report.empty())
+        {
+            report.append("\n");
+        }
+
+        report.append(skippedReport);
 
         return report;
     }
 
-    AZStd::string SourceFileRelocator::BuildReport(const SourceFileRelocationContainer& relocationEntries, const FileUpdateTasks& updateTasks, bool isMove) const
+    AZStd::string SourceFileRelocator::BuildReport(const SourceFileRelocationContainer& relocationEntries, const FileUpdateTasks& updateTasks, bool isMove, bool updateReference) const
     {
         AZStd::string report;
 
@@ -480,38 +703,60 @@ namespace AssetProcessor
 
         for (const SourceFileRelocationInfo& relocationInfo : relocationEntries)
         {
-            if (isMove)
+            if (relocationInfo.m_isMetaDataFile)
             {
                 report.append(AZStd::string::format(
-                    "SOURCEID: %d, CURRENT PATH: %s, NEW PATH: %s, CURRENT GUID: %s, NEW GUID: %s\n",
-                    relocationInfo.m_sourceEntry.m_sourceID,
+                    "Metadata file CURRENT PATH: %s, NEW PATH: %s\n",
                     relocationInfo.m_oldRelativePath.c_str(),
-                    relocationInfo.m_newRelativePath.c_str(),
-                    relocationInfo.m_sourceEntry.m_sourceGuid.ToString<AZStd::string>().c_str(),
-                    relocationInfo.m_newUuid.ToString<AZStd::string>().c_str()));
+                    relocationInfo.m_newRelativePath.c_str()));
             }
             else
             {
-                report.append(AZStd::string::format(
-                    "SOURCEID: %d, CURRENT PATH: %s, CURRENT GUID: %s\n",
-                    relocationInfo.m_sourceEntry.m_sourceID,
-                    relocationInfo.m_oldRelativePath.c_str(),
-                    relocationInfo.m_sourceEntry.m_sourceGuid.ToString<AZStd::string>().c_str()));
+                if (isMove)
+                {
+                    report.append(AZStd::string::format(
+                        "SOURCEID: %" PRId64 ", CURRENT PATH: %s, NEW PATH: %s, CURRENT GUID: %s, NEW GUID: %s\n",
+                        static_cast<int64_t>(relocationInfo.m_sourceEntry.m_sourceID),
+                        relocationInfo.m_oldRelativePath.c_str(),
+                        relocationInfo.m_newRelativePath.c_str(),
+                        relocationInfo.m_sourceEntry.m_sourceGuid.ToString<AZStd::string>().c_str(),
+                        relocationInfo.m_newUuid.ToString<AZStd::string>().c_str()));
+                }
+                else
+                {
+                    report.append(AZStd::string::format(
+                        "SOURCEID: %" PRId64 ", CURRENT PATH: %s, CURRENT GUID: %s\n",
+                        static_cast<int64_t>(relocationInfo.m_sourceEntry.m_sourceID),
+                        relocationInfo.m_oldRelativePath.c_str(),
+                        relocationInfo.m_sourceEntry.m_sourceGuid.ToString<AZStd::string>().c_str()));
+                }
             }
 
             if (!relocationInfo.m_sourceDependencyEntries.empty())
             {
-                report.append("\tThe following files have a source/job dependency on this file and will break:\n");
+                AZStd::string reportString = AZStd::string::format("\t%s:\n", updateReference ? " The following files have a source / job dependency on this file, we will attempt to fix the references but they may still break"
+                    : "The following files have a source / job dependency on this file and will break");
+                report.append(reportString);
 
                 for (const auto& sourceDependency : relocationInfo.m_sourceDependencyEntries)
                 {
-                    report = AZStd::string::format("%s\t\tPATH: %s, TYPE: %d, %s\n", report.c_str(), sourceDependency.m_dependsOnSource.c_str(), sourceDependency.m_typeOfDependency, sourceDependency.m_fromAssetId ? "AssetId-based" : "Path-based");
+                    report = AZStd::string::format("%s\t\tPATH: %s, TYPE: %d, %s\n", report.c_str(), sourceDependency.m_source.c_str(), sourceDependency.m_typeOfDependency, sourceDependency.m_fromAssetId ? "AssetId-based" : "Path-based");
+                    AZStd::string fileExtension;
+                    AZ::StringFunc::Path::GetExtension(sourceDependency.m_source.c_str(), fileExtension, false);
+
+                    auto found = m_additionalHelpTextMap.find(fileExtension);
+                    if (found != m_additionalHelpTextMap.end())
+                    {
+                        report.append(found->second);
+                    }
                 }
             }
 
             if (!relocationInfo.m_productDependencyEntries.empty())
             {
-                report.append("\tThe following files have a product dependency on one or more of the products generated by this file and will break:\n");
+                AZStd::string reportString = AZStd::string::format("\t%s:\n", updateReference ? " The following files have a product dependency on one or more of the products generated by this file, we will attempt to fix the references but they may still break"
+                    : "The following files have a product dependency on one or more of the products generated by this file and will break");
+                report.append(reportString);
 
                 for (const auto& productDependency : relocationInfo.m_productDependencyEntries)
                 {
@@ -531,7 +776,7 @@ namespace AssetProcessor
                             return false;
                         });
 
-                    m_stateData->QueryCombinedBySourceGuidProductSubId(productDependency.m_dependencySourceGuid, productDependency.m_dependencySubID, [&thisFilesProductEntry, &productDependency](const AzToolsFramework::AssetDatabase::CombinedDatabaseEntry& entry)
+                    m_stateData->QueryCombinedBySourceGuidProductSubId(productDependency.m_dependencySourceGuid, productDependency.m_dependencySubID, [&thisFilesProductEntry](const AzToolsFramework::AssetDatabase::CombinedDatabaseEntry& entry)
                         {
                             thisFilesProductEntry = static_cast<AzToolsFramework::AssetDatabase::ProductDatabaseEntry>(entry);
                             return false;
@@ -547,7 +792,7 @@ namespace AssetProcessor
         return report;
     }
 
-    AZ::Outcome<RelocationSuccess, MoveFailure> SourceFileRelocator::Move(const AZStd::string& source, const AZStd::string& destination, bool previewOnly, bool allowDependencyBreaking, bool removeEmptyFolders, bool updateReferences)
+    AZ::Outcome<RelocationSuccess, MoveFailure> SourceFileRelocator::Move(const AZStd::string& source, const AZStd::string& destination, bool previewOnly, bool allowDependencyBreaking, bool removeEmptyFolders, bool updateReferences, bool excludeMetaDataFiles)
     {
         AZStd::string normalizedSource = source;
         AZStd::string normalizedDestination = destination;
@@ -560,7 +805,7 @@ namespace AssetProcessor
         const ScanFolderInfo* sourceScanFolderInfo{};
         const ScanFolderInfo* destinationScanFolderInfo{};
 
-        auto result = GetSourcesByPath(normalizedSource, relocationContainer, sourceScanFolderInfo);
+        auto result = GetSourcesByPath(normalizedSource, relocationContainer, sourceScanFolderInfo, excludeMetaDataFiles);
 
         if (!result.IsSuccess())
         {
@@ -600,14 +845,7 @@ namespace AssetProcessor
             bool sourceControlEnabled = false;
             AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(sourceControlEnabled, &AzToolsFramework::SourceControlConnectionRequestBus::Events::IsActive);
 
-            if (sourceControlEnabled)
-            {
-                errorCount = DoSourceControlMoveFiles(normalizedSource, normalizedDestination, relocationContainer, sourceScanFolderInfo, destinationScanFolderInfo, removeEmptyFolders);
-            }
-            else
-            {
-                errorCount = DoMoveFiles(relocationContainer, removeEmptyFolders);
-            }
+            errorCount = DoSourceControlMoveFiles(normalizedSource, normalizedDestination, relocationContainer, sourceScanFolderInfo, destinationScanFolderInfo, removeEmptyFolders);
 
             if (updateReferences)
             {
@@ -636,14 +874,14 @@ namespace AssetProcessor
             AZStd::move(updateTasks)));
     }
 
-    AZ::Outcome<RelocationSuccess, AZStd::string> SourceFileRelocator::Delete(const AZStd::string& source, bool previewOnly, bool allowDependencyBreaking, bool removeEmptyFolders)
+    AZ::Outcome<RelocationSuccess, AZStd::string> SourceFileRelocator::Delete(const AZStd::string& source, bool previewOnly, bool allowDependencyBreaking, bool removeEmptyFolders, bool excludeMetaDataFiles)
     {
         AZStd::string normalizedSource = AssetUtilities::NormalizeFilePath(source.c_str()).toUtf8().constData();
 
         SourceFileRelocationContainer relocationContainer;
         const ScanFolderInfo* scanFolderInfo{};
 
-        auto result = GetSourcesByPath(normalizedSource, relocationContainer, scanFolderInfo);
+        auto result = GetSourcesByPath(normalizedSource, relocationContainer, scanFolderInfo, excludeMetaDataFiles);
 
         if (!result.IsSuccess())
         {
@@ -673,17 +911,7 @@ namespace AssetProcessor
                 }
             }
 
-            bool sourceControlEnabled = false;
-            AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(sourceControlEnabled, &AzToolsFramework::SourceControlConnectionRequestBus::Events::IsActive);
-
-            if (sourceControlEnabled)
-            {
-                errorCount = DoSourceControlDeleteFiles(normalizedSource, relocationContainer, scanFolderInfo, removeEmptyFolders);
-            }
-            else
-            {
-                errorCount = DoDeleteFiles(relocationContainer, removeEmptyFolders);
-            }
+            errorCount = DoSourceControlDeleteFiles(normalizedSource, relocationContainer, scanFolderInfo, removeEmptyFolders);
         }
 
         int relocationCount = aznumeric_caster(relocationContainer.size());
@@ -706,110 +934,13 @@ namespace AssetProcessor
         }
     }
 
-    int SourceFileRelocator::DoMoveFiles(SourceFileRelocationContainer& relocationContainer, bool removeEmptyFolders)
-    {
-        int errorCount = 0;
-
-        for (SourceFileRelocationInfo& relocationInfo : relocationContainer)
-        {
-            const char* oldPath = relocationInfo.m_oldAbsolutePath.c_str();
-            const char* newPath = relocationInfo.m_newAbsolutePath.c_str();
-
-            AZ_Error("SourceFileRelocator", !relocationInfo.m_oldAbsolutePath.empty(), "Current absolute path of file is missing: %s", oldPath);
-            AZ_Error("SourceFileRelocator", !relocationInfo.m_newAbsolutePath.empty(), "Destination absolute path of file is missing: %s", oldPath);
-
-            bool oldExists = AZ::IO::LocalFileIO::GetInstance()->Exists(oldPath);
-            bool newExists = AZ::IO::LocalFileIO::GetInstance()->Exists(newPath);
-            bool isReadOnly = AZ::IO::LocalFileIO::GetInstance()->IsReadOnly(oldPath);
-
-            if (!oldExists)
-            {
-                AZ_Error("SourceFileRelocator", false, "File %s does not exist, cannot move non-existant file.", oldPath);
-                errorCount++;
-                continue;
-            }
-
-            if (newExists)
-            {
-                AZ_Error("SourceFileRelocator", false, "Destination file %s already exists, cannot overwrite existing file.", newPath);
-                errorCount++;
-                continue;
-            }
-
-            if(isReadOnly)
-            {
-                AZ_Error("SourceFileRelocator", false, "File %s is marked readonly and will not be moved.", oldPath);
-                errorCount++;
-                continue;
-            }
-
-            AZStd::string newParentFolder;
-            AzFramework::StringFunc::Path::GetFullPath(newPath, newParentFolder);
-
-            if (!AZ::IO::SystemFile::CreateDir(newParentFolder.c_str()))
-            {
-                AZ_Error("SourceFileRelocator", false, "Failed to create directory tree");
-            }
-
-            if (!AZ::IO::SystemFile::Rename(oldPath, newPath))
-            {
-                AZ_Error("SourceFileRelocator", false, "Failed to move/rename file from %s to %s", oldPath, newPath);
-                errorCount++;
-            }
-
-            relocationInfo.m_operationSucceeded = true;
-        }
-
-        if (removeEmptyFolders)
-        {
-            RemoveEmptyFolders(relocationContainer);
-        }
-
-        return errorCount;
-    }
-
-    int SourceFileRelocator::DoDeleteFiles(SourceFileRelocationContainer& relocationContainer, bool removeEmptyFolders)
-    {
-        int errorCount = 0;
-
-        for (SourceFileRelocationInfo& relocationInfo : relocationContainer)
-        {
-            const char* oldPath = relocationInfo.m_oldAbsolutePath.c_str();
-
-            AZ_Error("SourceFileRelocator", !relocationInfo.m_oldAbsolutePath.empty(), "Current absolute path of file is missing: %s", oldPath);
-
-            bool oldExists = AZ::IO::LocalFileIO::GetInstance()->Exists(oldPath);
-
-            if (!oldExists)
-            {
-                AZ_Error("SourceFileRelocator", false, "File %s does not exist, cannot move non-existant file", oldPath);
-                errorCount++;
-                continue;
-            }
-
-            if (!AZ::IO::SystemFile::Delete(oldPath))
-            {
-                AZ_Error("SourceFileRelocator", false, "Failed to delete file %s", oldPath);
-                errorCount++;
-            }
-
-            relocationInfo.m_operationSucceeded = true;
-        }
-
-        if (removeEmptyFolders)
-        {
-            RemoveEmptyFolders(relocationContainer);
-        }
-
-        return errorCount;
-    }
-
     void HandleSourceControlResult(SourceFileRelocationContainer& relocationContainer, AZStd::binary_semaphore& waitSignal, int& errorCount,
         AzToolsFramework::SourceControlFlags checkFlag, bool checkNewPath, bool /*success*/, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
     {
         for (SourceFileRelocationInfo& entry : relocationContainer)
         {
             bool found = false;
+            bool readOnly = false;
 
             for (const AzToolsFramework::SourceControlFileInfo& scInfo : info)
             {
@@ -818,12 +949,22 @@ namespace AssetProcessor
                 if (AssetUtilities::NormalizeFilePath(scInfo.m_filePath.c_str()) == AssetUtilities::NormalizeFilePath(checkPath))
                 {
                     found = true;
-                    entry.m_operationSucceeded = scInfo.HasFlag(checkFlag);
+                    readOnly = !scInfo.HasFlag(AzToolsFramework::SourceControlFlags::SCF_Writeable);
+                    entry.m_operationStatus = (scInfo.m_status == AzToolsFramework::SCS_OpSuccess && scInfo.HasFlag(checkFlag)) ?
+                        SourceFileRelocationStatus::Succeeded : SourceFileRelocationStatus::Failed;
                     break;
                 }
             }
 
-            if(!entry.m_operationSucceeded)
+            if (!found && entry.m_sourceFileIndex != AssetProcessor::SourceFileRelocationInvalidIndex)
+            {
+                // if we are here it implies that it is an meta data file.
+                // it is very much possible that the source control won't be able to find all the meta data files
+                // from the source search path and therefore we will handle them separately.
+                continue;
+            }
+
+            if(entry.m_operationStatus == SourceFileRelocationStatus::Failed)
             {
                 ++errorCount;
 
@@ -833,20 +974,12 @@ namespace AssetProcessor
                 }
                 else
                 {
-                    AZ_Printf("SourceFileRelocator", "Error: operation failed for file %s\n", entry.m_oldAbsolutePath.c_str());
+                    AZ_Printf("SourceFileRelocator", "Error: operation failed for file %s.  Note: File is %s.\n", entry.m_oldAbsolutePath.c_str(), readOnly ? "read-only" : "writable (this is not the source of the error)");
                 }
             }
         }
 
         waitSignal.release();
-    }
-
-    void AdjustWildcardForPerforce(AZStd::string& path)
-    {
-        if (path.ends_with('*'))
-        {
-            path.replace(path.length() - 1, 1, "...");
-        }
     }
 
     AZStd::string ToAbsolutePath(AZStd::string& normalizedPath, const ScanFolderInfo* scanFolderInfo)
@@ -855,7 +988,7 @@ namespace AssetProcessor
 
         if (AzFramework::StringFunc::Path::IsRelative(normalizedPath.c_str()))
         {
-            AzFramework::StringFunc::Path::ConstructFull(scanFolderInfo->ScanPath().toUtf8().constData(), normalizedPath.c_str(), absolutePath, false);
+            AzFramework::StringFunc::AssetDatabasePath::Join(scanFolderInfo->ScanPath().toUtf8().constData(), normalizedPath.c_str(), absolutePath, false, true, false);
         }
         else
         {
@@ -868,26 +1001,37 @@ namespace AssetProcessor
     int SourceFileRelocator::DoSourceControlMoveFiles(AZStd::string normalizedSource, AZStd::string normalizedDestination, SourceFileRelocationContainer& relocationContainer, const ScanFolderInfo* sourceScanFolderInfo, const ScanFolderInfo* destinationScanFolderInfo, bool removeEmptyFolders) const
     {
         using namespace AzToolsFramework;
-        AZ_Printf("SourceFileRelocator", "Using source control to move files\n");
 
         AZ_Assert(sourceScanFolderInfo, "sourceScanFolderInfo cannot be null");
         AZ_Assert(destinationScanFolderInfo, "destinationScanFolderInfo cannot be null");
 
         for(const auto& relocationInfo : relocationContainer)
         {
+            const char* oldPath = relocationInfo.m_oldAbsolutePath.c_str();
             const char* newPath = relocationInfo.m_newAbsolutePath.c_str();
 
-            bool newExists = AZ::IO::LocalFileIO::GetInstance()->Exists(newPath);
+            if(AZ::StringFunc::Equal(newPath, oldPath, true))
+            {
+                // It's not really an error to rename a file to the same thing.  This can happen (unintentionally) with wildcard renames
+                continue;
+            }
+
+            if(AZ::StringFunc::Equal(newPath, oldPath, false))
+            {
+                AZ_Printf("SourceFileRelocator", "Error: Changing the case of a filename is not supported due to potential source control restrictions.  OldPath: %s, NewPath: %s\n", oldPath, newPath);
+                return 1;
+            }
+
+            bool newExists = AZ::IO::SystemFile::Exists(newPath);
 
             if (newExists)
             {
-                AZ_Printf("SourceFileRelocator", "Destination file %s already exists, cannot overwrite existing file\n", newPath);
+                AZ_Printf("SourceFileRelocator", "Warning: Destination file %s already exists, rename will fail\n", newPath);
             }
         }
 
         FixDestinationMissingFilename(normalizedDestination, normalizedSource);
-        AdjustWildcardForPerforce(normalizedSource);
-        AdjustWildcardForPerforce(normalizedDestination);
+        AdjustWildcardForPerforce(normalizedSource, normalizedDestination);
 
         AZStd::string absoluteSource = ToAbsolutePath(normalizedSource, sourceScanFolderInfo);
         AZStd::string absoluteDestination = ToAbsolutePath(normalizedDestination, destinationScanFolderInfo);
@@ -906,12 +1050,31 @@ namespace AssetProcessor
             AZStd::placeholders::_1,
             AZStd::placeholders::_2);
 
-        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestRenameBulk,
-            absoluteSource.c_str(), absoluteDestination.c_str(), callback);
 
-        while (!waitSignal.try_acquire_for(AZStd::chrono::milliseconds(200)))
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestRenameBulkExtended,
+            absoluteSource.c_str(), absoluteDestination.c_str(), true, callback);
+
+        if(!WaitForSourceControl(waitSignal))
         {
-            AZ::TickBus::ExecuteQueuedEvents();
+            return errorCount + 1;
+        }
+
+        // Source control rename operation by source path might not result in moving metadata files,
+        // therefore we will have to move all those metadata files individually whose associated source files got renamed.
+        for (const auto& relocationInfo : relocationContainer)
+        {
+            if (relocationInfo.m_operationStatus == SourceFileRelocationStatus::Succeeded || relocationInfo.m_sourceFileIndex == AssetProcessor::SourceFileRelocationInvalidIndex)
+            {
+                // we do not want to retry if the move operation already succeeded or if it is a source file 
+                continue;
+            }
+
+            AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestRenameBulkExtended,
+                relocationInfo.m_oldAbsolutePath.c_str(), relocationInfo.m_newAbsolutePath.c_str(), true, callback);
+            if (!WaitForSourceControl(waitSignal))
+            {
+                return errorCount + 1;
+            }
         }
 
         if (removeEmptyFolders)
@@ -925,25 +1088,64 @@ namespace AssetProcessor
     int SourceFileRelocator::DoSourceControlDeleteFiles(AZStd::string normalizedSource, SourceFileRelocationContainer& relocationContainer, const ScanFolderInfo* sourceScanFolderInfo, bool removeEmptyFolders) const
     {
         using namespace AzToolsFramework;
-        AZ_Printf("SourceFileRelocator", "Using source control to delete files\n");
 
         AdjustWildcardForPerforce(normalizedSource);
         AZStd::string absoluteSource = ToAbsolutePath(normalizedSource, sourceScanFolderInfo);
 
         AZ_Printf("SourceFileRelocator", "Delete %s\n", absoluteSource.c_str());
 
+        bool sourceControlEnabled = false;
+        AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(sourceControlEnabled, &AzToolsFramework::SourceControlConnectionRequestBus::Events::IsActive);
+
+        SourceControlFlags checkFlag = SCF_PendingDelete;
+
+        if(!sourceControlEnabled)
+        {
+            // When using the local SC component, the only flag set is the writable flag when a file is deleted
+            checkFlag = SCF_Writeable;
+        }
+
         AZStd::binary_semaphore waitSignal;
         int errorCount = 0;
 
-        AzToolsFramework::SourceControlResponseCallbackBulk callback = AZStd::bind(&HandleSourceControlResult, relocationContainer, AZStd::ref(waitSignal), AZStd::ref(errorCount),
-            SCF_PendingDelete, false, AZStd::placeholders::_1, AZStd::placeholders::_2);
+        AzToolsFramework::SourceControlResponseCallbackBulk callback = AZStd::bind(&HandleSourceControlResult, AZStd::ref(relocationContainer), AZStd::ref(waitSignal), AZStd::ref(errorCount),
+            checkFlag, false, AZStd::placeholders::_1, AZStd::placeholders::_2);
 
-        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestDeleteBulk,
-            absoluteSource.c_str(), callback);
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestDeleteBulkExtended, absoluteSource.c_str(), true, callback);
 
-        while (!waitSignal.try_acquire_for(AZStd::chrono::milliseconds(200)))
+        if(!WaitForSourceControl(waitSignal))
         {
-            AZ::TickBus::ExecuteQueuedEvents();
+            return errorCount + 1;
+        }
+
+        // Source control delete operation by source path might not result in deleting metadata files,
+        // therefore we will have to delete all those metadata files individually whose associated source files got removed.
+        for (auto& entry : relocationContainer)
+        {
+            if (entry.m_operationStatus == SourceFileRelocationStatus::Succeeded || entry.m_sourceFileIndex == AssetProcessor::SourceFileRelocationInvalidIndex)
+            {
+                // we do not want to retry if the move operation already succeeded or if it is a source file 
+                continue;
+            }
+
+            AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestDeleteBulkExtended, entry.m_oldAbsolutePath.c_str(), true, callback);
+            if (!WaitForSourceControl(waitSignal))
+            {
+                return errorCount + 1;
+            }
+        }
+
+        if (!sourceControlEnabled)
+        {
+            // Do an extra check to make sure the files were deleted since the flags provided aren't very informative
+            for(auto& relocationInfo : relocationContainer)
+            {
+                if(relocationInfo.m_operationStatus == SourceFileRelocationStatus::Succeeded && AZ::IO::SystemFile::Exists(relocationInfo.m_oldAbsolutePath.c_str()))
+                {
+                    relocationInfo.m_operationStatus = SourceFileRelocationStatus::Failed;
+                    ++errorCount;
+                }
+            }
         }
 
         if (removeEmptyFolders)
@@ -998,6 +1200,11 @@ namespace AssetProcessor
 
     bool SourceFileRelocator::UpdateFileReferences(const FileUpdateTask& updateTask)
     {
+        if(updateTask.m_skipTask)
+        {
+            return false;
+        }
+
         const char* fullPath = updateTask.m_absPathFileToUpdate.c_str();
         AZStd::string fileAsString = FileToString(fullPath);
 
@@ -1010,12 +1217,7 @@ namespace AssetProcessor
 
         for (int i = 0; i < updateTask.m_oldStrings.size(); ++i)
         {
-            didReplace = ReplaceAll(fileAsString, updateTask.m_oldStrings[i], updateTask.m_newStrings[i]);
-
-            if (didReplace)
-            {
-                break;
-            }
+            didReplace |= ReplaceAll(fileAsString, updateTask.m_oldStrings[i], updateTask.m_newStrings[i]);
         }
 
         if (didReplace)
@@ -1087,6 +1289,7 @@ namespace AssetProcessor
 
         // This is the full path to the file we need to fix up
         AzFramework::StringFunc::Path::ConstructFull(scanPath.c_str(), sourceName.c_str(), absPathFileToUpdate);
+        absPathFileToUpdate = AssetUtilities::NormalizeFilePath(absPathFileToUpdate.c_str()).toUtf8().constData();
 
         oldPaths.push_back(oldProductPath);
         oldPaths.push_back(relocationInfo.m_oldRelativePath); // If we fail to find a reference to the product, we'll try to find a reference to the source
@@ -1097,7 +1300,7 @@ namespace AssetProcessor
         return true;
     }
 
-    FileUpdateTasks SourceFileRelocator::UpdateReferences(const SourceFileRelocationContainer& relocationContainer, bool useSourceControl) const
+    FileUpdateTasks SourceFileRelocator::UpdateReferences(const SourceFileRelocationContainer& relocationContainer,  bool useSourceControl) const
     {
         FileUpdateTasks updateTasks;
         AZStd::unordered_set<AZStd::string> filesToEdit;
@@ -1107,7 +1310,7 @@ namespace AssetProcessor
         // we need to make sure we edit the files at the new location
         for(const SourceFileRelocationInfo& relocationInfo : relocationContainer)
         {
-            if (relocationInfo.m_operationSucceeded)
+            if (relocationInfo.m_operationStatus == SourceFileRelocationStatus::Succeeded)
             {
                 movedFileMap.insert(AZStd::make_pair(
                     AssetUtilities::NormalizeFilePath(relocationInfo.m_oldAbsolutePath.c_str()).toUtf8().constData(),
@@ -1130,13 +1333,16 @@ namespace AssetProcessor
         // Gather a list of all the files to edit and the edits that need to be made
         for(const SourceFileRelocationInfo& relocationInfo : relocationContainer)
         {
+            bool skipTask = relocationInfo.m_operationStatus == SourceFileRelocationStatus::Failed;
+
             for (const auto& sourceDependency : relocationInfo.m_sourceDependencyEntries)
             {
                 AZStd::string fullPath = m_platformConfig->FindFirstMatchingFile(sourceDependency.m_source.c_str()).toUtf8().constData();
 
                 fullPath = pathFixupFunc(fullPath.c_str());
 
-                updateTasks.emplace(AZStd::vector<AZStd::string>{relocationInfo.m_oldRelativePath}, AZStd::vector<AZStd::string>{relocationInfo.m_newRelativePath}, fullPath, sourceDependency.m_fromAssetId);
+                updateTasks.emplace(AZStd::vector<AZStd::string>{relocationInfo.m_sourceEntry.m_sourceGuid.ToString<AZStd::string>(), relocationInfo.m_oldRelativePath},
+                    AZStd::vector<AZStd::string>{relocationInfo.m_newUuid.ToString<AZStd::string>(), relocationInfo.m_newRelativePath}, fullPath, sourceDependency.m_fromAssetId, skipTask);
                 filesToEdit.insert(AZStd::move(fullPath));
             }
 
@@ -1149,7 +1355,10 @@ namespace AssetProcessor
                 {
                     fullPath = pathFixupFunc(fullPath.c_str());
 
-                    updateTasks.emplace(oldPaths, newPaths, fullPath, productDependency.m_fromAssetId);
+                    oldPaths.push_back(relocationInfo.m_sourceEntry.m_sourceGuid.ToString<AZStd::string>());
+                    newPaths.push_back(relocationInfo.m_newUuid.ToString<AZStd::string>());
+
+                    updateTasks.emplace(oldPaths, newPaths, fullPath, productDependency.m_fromAssetId, skipTask);
                     filesToEdit.insert(AZStd::move(fullPath));
                 }
             }
@@ -1171,12 +1380,12 @@ namespace AssetProcessor
                 waitSignal.release();
             };
 
-            AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEditBulk, filesToEdit, callback);
+            AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEditBulk, filesToEdit, true, callback);
 
             // Wait for the edit command to finish before trying to actually edit the files
-            while (!waitSignal.try_acquire_for(AZStd::chrono::milliseconds(200)))
+            if(!WaitForSourceControl(waitSignal))
             {
-                AZ::TickBus::ExecuteQueuedEvents();
+                return updateTasks;
             }
         }
 

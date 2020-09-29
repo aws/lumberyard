@@ -21,6 +21,10 @@
 #include "ParticleSubEmitter.h"
 #include "ParticleManager.h"
 
+#if !PARTICLES_USE_CRY_PHYSICS
+#include <AzFramework/Physics/CollisionNotificationBus.h>
+#endif // PARTICLES_USE_CRY_PHYSICS
+
 #undef PlaySound
 
 class CParticle;
@@ -35,6 +39,9 @@ namespace AZ
 class CParticleEmitter
     : public IParticleEmitter
     , public CParticleSource
+#if !PARTICLES_USE_CRY_PHYSICS
+    , public Physics::CollisionNotificationBus::Handler
+#endif
 {
 public:
 
@@ -104,14 +111,6 @@ public:
         return m_pMaterial;
     }
 
-    virtual IPhysicalEntity* GetPhysics() const
-    {
-        return 0;
-    }
-    virtual void SetPhysics(IPhysicalEntity*)
-    {
-    }
-
     virtual void Render(SRendParams const& rParam, const SRenderingPassInfo& passInfo);
 
     virtual void OnEntityEvent(IEntity* pEntity, SEntityEvent const& event);
@@ -121,6 +120,8 @@ public:
     }
 
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
+
+    virtual AZ::EntityId GetEntityId() override;
 
     //////////////////////////////////////////////////////////////////////////
     // IParticleEmitter implementation.
@@ -181,6 +182,13 @@ public:
     void SetEmitterFlags(uint32 flags) override;
 
     bool GetPreviewMode() const override;
+
+#if !PARTICLES_USE_CRY_PHYSICS
+    //////////////////////////////////////////////////////////////////////////
+    // CollisionNotificationBus implementation.
+    //////////////////////////////////////////////////////////////////////////
+    virtual void OnCollisionBegin(const Physics::CollisionEvent& collisionEvent) override;
+#endif
     //////////////////////////////////////////////////////////////////////////
     // Other methods.
     //////////////////////////////////////////////////////////////////////////
@@ -395,6 +403,7 @@ private:
     // Entity connection params.
     int                                             m_nEntityId;
     int                                             m_nEntitySlot;
+    AZ::EntityId                                    m_azEntityId;
 
     uint32                                          m_nEmitterFlags;
 

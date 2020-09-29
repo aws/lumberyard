@@ -103,13 +103,24 @@ namespace AzQtComponents
          */
         static Config defaultConfig();
 
+        enum TitleBarDrawMode
+        {
+            Main = 0,
+            Simple,
+            Hidden
+        };
+
         explicit TitleBar(QWidget* parent = nullptr);
         ~TitleBar();
         bool drawSideBorders() const { return m_drawSideBorders; }
         void setDrawSideBorders(bool);
-        bool drawSimple() const { return m_drawSimple; }
-        void setDrawSimple(bool);
+        bool drawSimple() const { return m_drawMode == TitleBarDrawMode::Simple; }
+        bool drawHidden() const { return m_drawMode == TitleBarDrawMode::Hidden; }
+        TitleBarDrawMode drawMode() const { return m_drawMode; }
+        void setDrawSimple(bool enable);
+        void setDrawMode(TitleBarDrawMode drawMode);
         void setDragEnabled(bool);
+        void setIsShowingWindowControls(bool show);
         bool tearEnabled() const { return m_tearEnabled; }
         void setTearEnabled(bool);
         bool drawAsTabBar() const { return m_appearAsTabBar; }
@@ -206,6 +217,7 @@ namespace AzQtComponents
         void updateTitle();
         void updateTitleBar();
         void setupButtons(bool useDividerButtons = true);
+        void setupButtonsHelper(QFrame* container, QHBoxLayout* layout, bool useDividerButtons);
         bool isDragging() const;
         bool isLeftButtonDown() const;
         bool canDragWindow() const;
@@ -223,11 +235,14 @@ namespace AzQtComponents
         ElidingLabel* m_label = nullptr;
         bool m_showLabelWhenSimple = true;
         bool m_appearAsTabBar = false;
+        bool m_isShowingWindowControls = false;
         QFrame* m_buttonsContainer = nullptr;
+        QFrame* m_tabButtonsContainer = nullptr;
         QHBoxLayout* m_buttonsLayout = nullptr;
+        QHBoxLayout* m_tabButtonsLayout = nullptr;
         QString m_titleOverride;
         bool m_drawSideBorders = true;
-        bool m_drawSimple = false;
+        TitleBarDrawMode m_drawMode = TitleBarDrawMode::Main;
         bool m_dragEnabled = false;
         bool m_tearEnabled = false;
         QPoint m_dragPos;
@@ -242,13 +257,15 @@ namespace AzQtComponents
         bool m_resizingLeft = false;
         qreal m_relativeDragPos = 0.0;
         qreal m_lastLocalPosX = 0.0;
-        QMenu* m_contextMenu = nullptr;
+        QMenu* m_tabsContextMenu = nullptr;
+        QMenu* m_windowContextMenu = nullptr;
         QAction* m_restoreMenuAction = nullptr;
         QAction* m_sizeMenuAction = nullptr;
         QAction* m_moveMenuAction = nullptr;
         QAction* m_minimizeMenuAction = nullptr;
         QAction* m_maximizeMenuAction = nullptr;
         QAction* m_closeMenuAction = nullptr;
+        QAction* m_closeTabMenuAction = nullptr;
         QAction* m_closeGroupMenuAction = nullptr;
         QAction* m_undockMenuAction = nullptr;
         QAction* m_undockGroupMenuAction = nullptr;

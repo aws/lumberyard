@@ -616,6 +616,26 @@ integration_test_suites = {
         )
     },
 
+    'CustomDomainName': {
+        'group': 3,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_test_python_path(
+                path_utils.gem_common_code_path('CloudGemFramework', 'lib', gem_version_directory='v1'),
+                path_utils.gem_resource_manager_code_path('CloudGemFramework', gem_version_directory='v1'),
+            )
+        },
+        'command': python_unittest_command(
+            search_start_directory_path=path_utils.resource_manager_v1_test_path(),
+            pattern='test_integration_service_api_with_custom_domain_name.py'
+        ),
+        'coverage_command': python_coverage_unittest_command(
+            search_start_directory_path=path_utils.resource_manager_v1_test_path(),
+            pattern='test_integration_service_api_with_custom_domain_name.py',
+            gem_name='CloudGemFramework'
+        ),
+        'required_libs': []
+    },
+
     'ServiceApi': {
         'group': 3,
         'environment': {

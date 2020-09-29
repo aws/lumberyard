@@ -11,7 +11,13 @@
 */
 #include "ProductAssetTreeItemData.h"
 
+#include "native/utilities/assetUtils.h"
 #include <AzCore/std/smart_ptr/make_shared.h>
+
+AZ_PUSH_DISABLE_WARNING(4127 4251 4800 4244, "-Wunknown-warning-option")
+#include <QDir>
+#include <QStack>
+AZ_POP_DISABLE_WARNING
 
 namespace AssetProcessor
 {
@@ -39,5 +45,40 @@ namespace AssetProcessor
             m_hasDatabaseInfo = false;
         }
 
+    }
+
+    AZ::Outcome<QString> GetAbsolutePathToProduct(const AssetTreeItem& product)
+    {
+        QDir cacheRootDir;
+        if (!AssetUtilities::ComputeProjectCacheRoot(cacheRootDir))
+        {
+            return AZ::Failure();
+        }
+        QString pathOnDisk;
+        if (product.getChildCount() > 0)
+        {
+            // Folders are special case, they only exist in the interface and don't exist in the asset database.
+            // Figure out the path to the folder by creating a stack of each folder in its hierarchy.
+            QStack<QString> folderStack;
+            for (const AssetTreeItem* folderHierarchy = &product; folderHierarchy != nullptr; folderHierarchy = folderHierarchy->GetParent())
+            {
+                folderStack.push(folderHierarchy->GetData()->m_name);
+            }
+            while (!folderStack.empty())
+            {
+                cacheRootDir.cd(folderStack.pop());
+            }
+            pathOnDisk = cacheRootDir.absolutePath();
+        }
+        else
+        {
+            const AZStd::shared_ptr<const ProductAssetTreeItemData> productItemData = AZStd::rtti_pointer_cast<const ProductAssetTreeItemData>(product.GetData());
+            if (!productItemData)
+            {
+                return AZ::Failure();
+            }
+            pathOnDisk = cacheRootDir.filePath(productItemData->m_databaseInfo.m_productName.c_str());
+        }
+        return AZ::Success(pathOnDisk);
     }
 }

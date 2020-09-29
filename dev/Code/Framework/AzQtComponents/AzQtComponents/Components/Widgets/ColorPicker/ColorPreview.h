@@ -25,8 +25,6 @@ namespace AzQtComponents
         Q_OBJECT
         Q_PROPERTY(AZ::Color currentColor READ currentColor WRITE setCurrentColor)
         Q_PROPERTY(AZ::Color selectedColor READ selectedColor WRITE setSelectedColor)
-        Q_PROPERTY(bool gammaEnabled READ isGammaEnabled WRITE setGammaEnabled)
-        Q_PROPERTY(qreal gamma READ gamma WRITE setGamma)
 
     public:
         explicit ColorPreview(QWidget* parent = nullptr);
@@ -34,14 +32,10 @@ namespace AzQtComponents
 
         AZ::Color currentColor() const;
         AZ::Color selectedColor() const;
-        bool isGammaEnabled() const;
-        qreal gamma() const;
 
     public Q_SLOTS:
         void setCurrentColor(const AZ::Color& color);
         void setSelectedColor(const AZ::Color& color);
-        void setGammaEnabled(bool enabled);
-        void setGamma(qreal gamma);
 
     Q_SIGNALS:
         void colorSelected(const AZ::Color& color);
@@ -61,8 +55,6 @@ namespace AzQtComponents
         AZ::Color m_currentColor;
         AZ::Color m_selectedColor;
         AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
-        bool m_gammaEnabled;
-        qreal m_gamma;
         QPoint m_dragStartPosition;
         Swatch* m_draggedSwatch;
     };

@@ -56,11 +56,13 @@
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
+#include <AzToolsFramework/Slice/SliceRequestComponent.h>
 #include <AzToolsFramework/UI/LegacyFramework/MainWindowSavedState.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorWidget.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemComponent.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <AzToolsFramework/Render/EditorIntersectorComponent.h>
 
 #include <QtWidgets/QMessageBox>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
@@ -427,7 +429,9 @@ namespace AzToolsFramework
                 azrtti_typeid<AzToolsFramework::AzToolsFrameworkConfigurationSystemComponent>(),
                 azrtti_typeid<Components::EditorEntityModelComponent>(),
                 azrtti_typeid<AzToolsFramework::EditorInteractionSystemComponent>(),
-                azrtti_typeid<Components::EditorEntitySearchComponent>()
+                azrtti_typeid<Components::EditorEntitySearchComponent>(),
+                azrtti_typeid<AzToolsFramework::SliceRequestComponent>(),
+                azrtti_typeid<Components::EditorIntersectorComponent>()
             });
 
         return components;
@@ -1700,7 +1704,7 @@ namespace AzToolsFramework
             // For example A has child B and B has child C, and if A and C are isolated, B is too.
             AZStd::vector<AZ::EntityId> inbetweenEntityIds;
 
-            for (const AZ::EntityId entityId : m_selectedEntities)
+            for (AZ::EntityId entityId : m_selectedEntities)
             {
                 bool addInbetweenEntityIds = false;
                 inbetweenEntityIds.clear();
@@ -1730,7 +1734,7 @@ namespace AzToolsFramework
             }
 
 
-            for (const AZ::EntityId entityId : m_isolatedEntityIdSet)
+            for (AZ::EntityId entityId : m_isolatedEntityIdSet)
             {
                 ComponentEntityEditorRequestBus::Event(entityId, &ComponentEntityEditorRequestBus::Events::SetSandBoxObjectIsolated, true);
             }
@@ -1745,7 +1749,7 @@ namespace AzToolsFramework
         {
             m_isInIsolationMode = false;
 
-            for (const AZ::EntityId entityId : m_isolatedEntityIdSet)
+            for (AZ::EntityId entityId : m_isolatedEntityIdSet)
             {
                 ComponentEntityEditorRequestBus::Event(entityId, &ComponentEntityEditorRequestBus::Events::SetSandBoxObjectIsolated, false);
             }

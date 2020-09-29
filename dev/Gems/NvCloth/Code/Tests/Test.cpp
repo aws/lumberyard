@@ -28,7 +28,7 @@ namespace NvCloth
         static const float Tolerance;
     };
 
-    const float NvClothTest::Tolerance = 1e-2f;
+    const float NvClothTest::Tolerance = 1e-5f;
 
     TEST_F(NvClothTest, MathConversion_ConvertAzVector3ToPxVec3_ConversionIsCorrect)
     {
@@ -38,71 +38,40 @@ namespace NvCloth
         const physx::PxVec3 pxA = PxMathConvert(lyA);
         const physx::PxVec3 pxB = PxMathConvert(lyB);
 
-        EXPECT_NEAR(pxA.magnitudeSquared(), 169.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxB.magnitudeSquared(), 81.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxA.dot(pxB), -76.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxA.cross(pxB).x, 4.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxA.cross(pxB).y, -84.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxA.cross(pxB).z, -29.0f, NvClothTest::Tolerance);
+        EXPECT_NEAR(pxA.x, lyA.GetX(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxA.y, lyA.GetY(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxA.z, lyA.GetZ(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxB.x, lyB.GetX(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxB.y, lyB.GetY(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxB.z, lyB.GetZ(), NvClothTest::Tolerance);
+    }
+
+    TEST_F(NvClothTest, MathConversion_ConvertPxVec3ToAzVector3_ConversionIsCorrect)
+    {
+        const physx::PxVec3 pxA(3.0f, -4.0f, 12.0f);
+        const physx::PxVec3 pxB(-8.0f, 1.0f, -4.0f);
+
+        const AZ::Vector3 lyA = PxMathConvert(pxA);
+        const AZ::Vector3 lyB = PxMathConvert(pxB);
+
+        EXPECT_NEAR(lyA.GetX(), pxA.x, NvClothTest::Tolerance);
+        EXPECT_NEAR(lyA.GetY(), pxA.y, NvClothTest::Tolerance);
+        EXPECT_NEAR(lyA.GetZ(), pxA.z, NvClothTest::Tolerance);
+        EXPECT_NEAR(lyB.GetX(), pxB.x, NvClothTest::Tolerance);
+        EXPECT_NEAR(lyB.GetY(), pxB.y, NvClothTest::Tolerance);
+        EXPECT_NEAR(lyB.GetZ(), pxB.z, NvClothTest::Tolerance);
     }
 
     TEST_F(NvClothTest, MathConversion_ConvertAzQuaternionToPxQuat_ConversionIsCorrect)
     {
         const AZ::Quaternion lyQ = AZ::Quaternion(9.0f, -8.0f, -4.0f, 8.0f) / 15.0f;
+
         const physx::PxQuat pxQ = PxMathConvert(lyQ);
-        const physx::PxVec3 pxV = pxQ.rotate(physx::PxVec3(-8.0f, 1.0f, -4.0f));
 
-        EXPECT_NEAR(pxQ.magnitudeSquared(), 1.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxQ.getImaginaryPart().magnitudeSquared(), 161.0f / 225.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxQ.w, 8.0f / 15.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxV.magnitudeSquared(), 81.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxV.x, 8.0f / 9.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxV.y, 403.0f / 45.0f, NvClothTest::Tolerance);
-        EXPECT_NEAR(pxV.z, 4.0f / 45.0f, NvClothTest::Tolerance);
-    }
-
-    TEST_F(NvClothTest, MathConversion_ConvertEMotionFXTransformToPxMat44_ConversionIsCorrect)
-    {
-        const physx::PxVec3 pxVec3Zero(physx::PxZero);
-        const physx::PxMat44 pxMatrixZero(pxVec3Zero, pxVec3Zero, pxVec3Zero, pxVec3Zero);
-        const physx::PxMat44 pxMatrixIdentity(physx::PxIdentity);
-        const AZ::Vector3 position(25.0f, -9.0f, 56.0f);
-        const AZ::Matrix3x3 rotation =
-            AZ::Matrix3x3::CreateRotationX(AZ::DegToRad(35.0f)) *
-            AZ::Matrix3x3::CreateRotationY(AZ::DegToRad(194.0f)) *
-            AZ::Matrix3x3::CreateRotationZ(AZ::DegToRad(-68.0f));
-
-        EMotionFX::Transform emfxTransform;
-        physx::PxMat44 pxMatrix;
-
-        // Test zero transform
-        emfxTransform.Zero();
-        pxMatrix = PxMathConvert(emfxTransform);
-        EXPECT_EQ(pxMatrix, pxMatrixZero);
-
-        // Test identity transform
-        emfxTransform.Identity();
-        pxMatrix = PxMathConvert(emfxTransform);
-        EXPECT_EQ(pxMatrix, pxMatrixIdentity);
-
-        // Test position and rotation
-        emfxTransform.Set(position, AZ::Quaternion::CreateFromMatrix3x3(rotation));
-        pxMatrix = PxMathConvert(emfxTransform);
-        const int pxBasisX = 0;
-        const int pxBasisY = 1;
-        const int pxBasisZ = 2;
-        EXPECT_NEAR(pxMatrix.getPosition().x, position.GetX(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getPosition().y, position.GetY(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getPosition().z, position.GetZ(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisX).x, rotation.GetBasisX().GetX(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisX).y, rotation.GetBasisX().GetY(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisX).z, rotation.GetBasisX().GetZ(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisY).x, rotation.GetBasisY().GetX(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisY).y, rotation.GetBasisY().GetY(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisY).z, rotation.GetBasisY().GetZ(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisZ).x, rotation.GetBasisZ().GetX(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisZ).y, rotation.GetBasisZ().GetY(), NvClothTest::Tolerance);
-        EXPECT_NEAR(pxMatrix.getBasis(pxBasisZ).z, rotation.GetBasisZ().GetZ(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxQ.x, lyQ.GetX(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxQ.y, lyQ.GetY(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxQ.z, lyQ.GetZ(), NvClothTest::Tolerance);
+        EXPECT_NEAR(pxQ.w, lyQ.GetW(), NvClothTest::Tolerance);
     }
 
     // Class to provide triangle input data for tests

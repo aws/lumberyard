@@ -96,7 +96,7 @@ namespace AZ
 
             //! Collect various statistics on this stack entry. These are for profiling and debugging
             //! purposes only.
-            virtual void CollectStatistics(AZStd::vector<Statistic>& statistics) const;
+            virtual void CollectStatistics(AZStd::vector<Statistic>& statistics);
 
         protected:
             StreamStackEntry() = default;

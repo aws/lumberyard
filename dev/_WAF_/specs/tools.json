@@ -38,6 +38,7 @@
         "LyMetricsProducer_python",
         "LyMetricsConsumer",
         "LyInstallerMetrics",
+        "PythonBindingsExample",
         "DeltaCataloger"    
     ]
 }

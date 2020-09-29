@@ -20,6 +20,7 @@
 
 #include "DrawHelper.h"
 
+#if ENABLE_CRY_PHYSICS
 // Physics
 
 // given the bone index, (INDEX, NOT ID), returns this bone's parent index
@@ -829,3 +830,4 @@ void CSkeletonPhysics::Job_SynchronizeWithPhysicsPrepare(Memory::CPool& memoryPo
     Job_Physics_SynchronizeFromAuxPrepare(memoryPool);
     Job_Physics_SynchronizeFromImpactPrepare(memoryPool);
 }
+#endif // ENABLE_CRY_PHYSICS

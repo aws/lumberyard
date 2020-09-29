@@ -12,8 +12,10 @@
 
 #include "AssetTreeItem.h"
 
+#include <QApplication>
 #include <QFileIconProvider>
 #include <QIcon>
+#include <QStyle>
 #include <QVariant>
 
 namespace AssetProcessor
@@ -29,9 +31,13 @@ namespace AssetProcessor
         m_extension = fileInfo.completeSuffix();
     }
 
-    AssetTreeItem::AssetTreeItem(AZStd::shared_ptr<AssetTreeItemData> data, AssetTreeItem* parentItem) :
+    AssetTreeItem::AssetTreeItem(
+        AZStd::shared_ptr<AssetTreeItemData> data,
+        QIcon errorIcon,
+        AssetTreeItem* parentItem) :
         m_data(data),
-        m_parent(parentItem)
+        m_parent(parentItem),
+        m_errorIcon(errorIcon) // QIcon is implicitily shared.
     {
 
     }
@@ -42,7 +48,7 @@ namespace AssetProcessor
 
     AssetTreeItem* AssetTreeItem::CreateChild(AZStd::shared_ptr<AssetTreeItemData> data)
     {
-        m_childItems.emplace_back(new AssetTreeItem(data, this));
+        m_childItems.emplace_back(new AssetTreeItem(data, m_errorIcon, this));
         return m_childItems.back().get();
     }
 
@@ -122,6 +128,10 @@ namespace AssetProcessor
         if (!m_data)
         {
             return QIcon();
+        }
+        if (m_data->m_assetHasUnresolvedIssue)
+        {
+            return m_errorIcon;
         }
         if (m_data->m_isFolder)
         {

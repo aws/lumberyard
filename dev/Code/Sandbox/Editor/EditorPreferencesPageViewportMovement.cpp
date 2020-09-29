@@ -11,7 +11,7 @@
 */
 #include "StdAfx.h"
 #include "EditorPreferencesPageViewportMovement.h"
-
+#include <AzQtComponents/Components/StyleManager.h>
 
 void CEditorPreferencesPage_ViewportMovement::Reflect(AZ::SerializeContext& serialize)
 {
@@ -51,6 +51,22 @@ void CEditorPreferencesPage_ViewportMovement::Reflect(AZ::SerializeContext& seri
 CEditorPreferencesPage_ViewportMovement::CEditorPreferencesPage_ViewportMovement()
 {
     InitializeSettings();
+    m_icon = QIcon(":/res/Camera.svg");
+}
+
+const char* CEditorPreferencesPage_ViewportMovement::GetTitle()
+{
+    if (AzQtComponents::StyleManager::isUi10())
+    {
+        return "Movement";
+    }
+
+    return "Camera";
+}
+
+QIcon& CEditorPreferencesPage_ViewportMovement::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_ViewportMovement::OnApply()

@@ -237,6 +237,65 @@ namespace AzToolsFramework
         }
     }
 
+    bool PropertyTreeEditor::SetSimpleAssetPath(const AZ::Data::AssetId& assetId, const PropertyTreeEditorNode& pteNode)
+    {
+        // Handle SimpleAssetReference
+
+        bool updated = false;
+        size_t numInstances = pteNode.m_nodePtr->GetNumInstances();
+
+        // Get Asset Id from any
+        AZStd::string assetPath;
+        if (assetId.IsValid())
+        {
+            // Get Asset Path from Asset Id
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, assetId);
+        }
+
+        for (size_t idx = 0; idx < numInstances; ++idx)
+        {
+            AzFramework::SimpleAssetReferenceBase* instancePtr = reinterpret_cast<AzFramework::SimpleAssetReferenceBase*>(pteNode.m_nodePtr->GetInstance(idx));
+
+            // Check if valid assetId was provided
+            if (assetId.IsValid())
+            {
+                // Set Asset Path in Asset Reference
+                instancePtr->SetAssetPath(assetPath.c_str());
+                updated = true;
+            }
+            else
+            {
+                // Clear Asset Path in Asset Reference
+                instancePtr->SetAssetPath("");
+                updated = true;
+            }
+        }
+
+        return updated;
+    }
+
+    bool PropertyTreeEditor::SetAssetData(const AZ::Data::AssetId& assetId, const PropertyTreeEditorNode& pteNode)
+    {
+        using namespace AZ::Data;
+        bool updated = false;
+        size_t numInstances = pteNode.m_nodePtr->GetNumInstances();
+        for (size_t idx = 0; idx < numInstances; ++idx)
+        {
+            Asset<AssetData>* instancePtr = reinterpret_cast<Asset<AssetData>*>(pteNode.m_nodePtr->GetInstance(idx));
+            if (assetId.IsValid())
+            {
+                *instancePtr = AssetManager::Instance().GetAsset(assetId, instancePtr->GetType());
+                updated = true;
+            }
+            else
+            {
+                *instancePtr = Asset<AssetData>(AssetId(), instancePtr->GetType());
+                updated = true;
+            }
+        }
+        return updated;
+    }
+
     PropertyTreeEditor::PropertyAccessOutcome PropertyTreeEditor::SetProperty(const AZStd::string_view propertyPath, const AZStd::any& value)
     {
         auto&& propertyNodeHandle = FetchPropertyTreeEditorNode(propertyPath);
@@ -250,66 +309,54 @@ namespace AzToolsFramework
         // Notify the user that they should not use the deprecated name any more, and what it has been replaced with.
         AZ_Warning("PropertyTreeEditor", !pteNode.m_newName, "SetProperty - This path [ %.*s ] is deprecated; property name has been changed to %s.", aznumeric_cast<int>(propertyPath.size()), propertyPath.data(), pteNode.m_newName.value().c_str());
 
-        // Handle Asset cases differently
-        if (value.type() == azrtti_typeid<AZ::Data::AssetId>() && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
+        // If the incoming 'value' is an empty any<> then set the node's property to a default value
+        if (value.empty())
         {
-            // Handle SimpleAssetReference
-
-            size_t numInstances = pteNode.m_nodePtr->GetNumInstances();
-
-            // Get Asset Id from any
-            AZ::Data::AssetId assetId = AZStd::any_cast<AZ::Data::AssetId>(value);
-
-            for (size_t idx = 0; idx < numInstances; ++idx)
+            auto&& classMetaDataRtti = pteNode.m_nodePtr->GetClassMetadata()->m_azRtti;
+            if (classMetaDataRtti && classMetaDataRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
             {
-                AzFramework::SimpleAssetReferenceBase* instancePtr = reinterpret_cast<AzFramework::SimpleAssetReferenceBase*>(pteNode.m_nodePtr->GetInstance(idx));
-
-                // Check if valid assetId was provided
-                if (assetId.IsValid())
-                {
-                    // Get Asset Path from Asset Id
-                    AZStd::string assetPath;
-                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, assetId);
-
-                    // Set Asset Path in Asset Reference
-                    instancePtr->SetAssetPath(assetPath.c_str());
-                }
-                else
-                {
-                    // Clear Asset Path in Asset Reference
-                    instancePtr->SetAssetPath("");
-                }
+                AZ::Data::AssetId emptyAssetId;
+                SetSimpleAssetPath(emptyAssetId, pteNode);
+            }
+            else if (classMetaDataRtti && classMetaDataRtti->GetGenericTypeId() == azrtti_typeid<AZ::Data::Asset>())
+            {
+                AZ::Data::AssetId emptyAssetId;
+                SetAssetData(emptyAssetId, pteNode);
+            }
+            else
+            {
+                const AZ::TypeId& defaultTypeId = pteNode.m_nodePtr->GetClassMetadata()->m_typeId;
+                AZStd::any defaultValue = m_serializeContext->CreateAny(defaultTypeId);
+                pteNode.m_nodePtr->WriteRaw(AZStd::any_cast<void>(&defaultValue), defaultTypeId);
             }
 
             PropertyNotify(&pteNode);
 
-            return {PropertyAccessOutcome::ValueType(value)};
+            return { PropertyAccessOutcome::ValueType(value) };
+        }
 
+        // Handle Asset cases differently
+        if (value.type() == azrtti_typeid<AZ::Data::AssetId>() && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
+        {
+            // Handle SimpleAssetReference
+            if (SetSimpleAssetPath(AZStd::any_cast<AZ::Data::AssetId>(value), pteNode))
+            {
+                PropertyNotify(&pteNode);
+            }
+
+            return {PropertyAccessOutcome::ValueType(value)};
         }
         else if (value.type() == azrtti_typeid<AZ::Data::AssetId>() && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti && pteNode.m_nodePtr->GetClassMetadata()->m_azRtti->GetGenericTypeId() == azrtti_typeid<AZ::Data::Asset>())
         {
             // Handle Asset<>
 
-            size_t numInstances = pteNode.m_nodePtr->GetNumInstances();
-
             // Get Asset Id from any
             AZ::Data::AssetId assetId = AZStd::any_cast<AZ::Data::AssetId>(value);
 
-            for (size_t idx = 0; idx < numInstances; ++idx)
+            if (SetAssetData(assetId, pteNode))
             {
-                AZ::Data::Asset<AZ::Data::AssetData>* instancePtr = reinterpret_cast<AZ::Data::Asset<AZ::Data::AssetData>*>(pteNode.m_nodePtr->GetInstance(idx));
-
-                if (assetId.IsValid())
-                {
-                    *instancePtr = AZ::Data::AssetManager::Instance().GetAsset(assetId, instancePtr->GetType());
-                }
-                else
-                {
-                    *instancePtr = AZ::Data::Asset<AZ::Data::AssetData>(AZ::Data::AssetId(), instancePtr->GetType());
-                }
+                PropertyNotify(&pteNode);
             }
-
-            PropertyNotify(&pteNode);
 
             return {PropertyAccessOutcome::ValueType(value)};
         }
@@ -950,7 +997,7 @@ namespace AzToolsFramework
 
         if (node->m_nodePtr)
         {
-            for (const ChangeNotification notifier : node->m_notifiers)
+            for (const ChangeNotification& notifier : node->m_notifiers)
             {
                 // execute the function or read the value.
                 InstanceDataNode* nodeToNotify = notifier.m_node;

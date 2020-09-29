@@ -37,12 +37,6 @@
 #include "SimpleEntity.h"
 #include "MiscEntities.h"
 #include "NullEditTool.h"
-#include "Vehicles/VehiclePrototype.h"
-#include "Vehicles/VehicleHelperObject.h"
-#include "Vehicles/VehiclePart.h"
-#include "Vehicles/VehicleSeat.h"
-#include "Vehicles/VehicleWeapon.h"
-#include "Vehicles/VehicleComp.h"
 #include "SmartObjectHelperObject.h"
 
 #include "CameraObject.h"
@@ -264,23 +258,21 @@ void CObjectManager::RegisterObjectClasses()
     cf->RegisterClass(new CTemplateObjectClassDesc<CPrefabObject>(PREFAB_OBJECT_CLASS_NAME, CATEGORY_PREFABS, "Editor/ObjectIcons/prefab.bmp", OBJTYPE_PREFAB, 210, "*Prefabs"));
     cf->RegisterClass(new CTemplateObjectClassDesc<CCloudObject>("CloudVolume", "", "", OBJTYPE_CLOUD, 150));
     cf->RegisterClass(new CTemplateObjectClassDesc<CCloudGroup>("Cloud", "", "", OBJTYPE_CLOUD));
-    cf->RegisterClass(new CTemplateObjectClassDesc<CVehiclePrototype>("VehiclePrototype", "", "", OBJTYPE_OTHER, 100, "Scripts/Entities/Vehicles/Implementations/Xml/*.xml"));
-    cf->RegisterClass(new CTemplateObjectClassDesc<CVehicleHelper>("VehicleHelper", "", "", OBJTYPE_OTHER));
-    cf->RegisterClass(new CTemplateObjectClassDesc<CVehiclePart>("VehiclePart", "", "", OBJTYPE_OTHER));
-    cf->RegisterClass(new CTemplateObjectClassDesc<CVehicleSeat>("VehicleSeat", "", "", OBJTYPE_OTHER));
-    cf->RegisterClass(new CTemplateObjectClassDesc<CVehicleWeapon>("VehicleWeapon", "", "", OBJTYPE_OTHER));
-    cf->RegisterClass(new CTemplateObjectClassDesc<CVehicleComponent>("VehicleComponent", "", "", OBJTYPE_OTHER));
     cf->RegisterClass(new CTemplateObjectClassDesc<CSmartObjectHelperObject>("SmartObjectHelper", "", "", OBJTYPE_OTHER));
     cf->RegisterClass(new CTemplateObjectClassDesc<CDecalObject>("Decal", "Misc", "Editor/ObjectIcons/Decal.bmp", OBJTYPE_DECAL, 150));
     cf->RegisterClass(new CTemplateObjectClassDesc<CSequenceObject>("SequenceObject", "", "Editor/ObjectIcons/sequence.bmp", OBJTYPE_OTHER, 950));
     cf->RegisterClass(new CTemplateObjectClassDesc<CGravityVolumeObject>("GravityVolume", "Misc", "", OBJTYPE_OTHER, 50));
     cf->RegisterClass(new CTemplateObjectClassDesc<CDistanceCloudObject>("DistanceCloud", "Misc", "Editor/ObjectIcons/Clouds.bmp", OBJTYPE_DISTANCECLOUD, 200));
+#if ENABLE_CRY_PHYSICS
     cf->RegisterClass(new CTemplateObjectClassDesc<CRopeObject>("Rope", "Misc", "Editor/ObjectIcons/rope.bmp", OBJTYPE_OTHER, 300));
+#endif
     cf->RegisterClass(new CTemplateObjectClassDesc<CCharacterAttachHelperObject>("CharAttachHelper", "Misc", "Editor/ObjectIcons/Magnet.bmp", OBJTYPE_ENTITY, 200));
     cf->RegisterClass(new CTemplateObjectClassDesc<CEnvironementProbeObject>("EnvironmentProbe", "Misc", "Editor/ObjectIcons/environmentProbe.bmp", OBJTYPE_ENTITY, 202));
     cf->RegisterClass(new CTemplateObjectClassDesc<CRefPicture>("ReferencePicture", "Misc", "", OBJTYPE_REFPICTURE));
+#if ENABLE_CRY_PHYSICS
     cf->RegisterClass(new CTemplateObjectClassDesc<CConstraintEntity>("Entity::Constraint", "", "", OBJTYPE_ENTITY, 203, "*.cgf;*.chr;*.cga;*.cdf"));
     cf->RegisterClass(new CTemplateObjectClassDesc<CWindAreaEntity>("Entity::WindArea", "", "", OBJTYPE_ENTITY, 203, "*.cgf;*.chr;*.cga;*.cdf"));
+#endif // ENABLE_CRY_PHYSICS
     cf->RegisterClass(new CTemplateObjectClassDesc<CNavigationSeedPoint>("NavigationSeedPoint", "AI", "", OBJTYPE_TAGPOINT));
 #if defined(USE_GEOM_CACHES)
     cf->RegisterClass(new CTemplateObjectClassDesc<CGeomCacheEntity>("Entity::GeomCache", "", "", OBJTYPE_GEOMCACHE, 204, "*.cax"));
@@ -3055,6 +3047,7 @@ ICharacterInstance* CObjectManager::GetCharacterFromObject(CBaseObject* pObject)
     return 0;
 }
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 CBaseObject* CObjectManager::FindPhysicalObjectOwner(IPhysicalEntity* pPhysicalEntity)
 {
@@ -3097,6 +3090,7 @@ CBaseObject* CObjectManager::FindPhysicalObjectOwner(IPhysicalEntity* pPhysicalE
     }
     return 0;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::OnObjectModified(CBaseObject* pObject, bool bDelete, bool boModifiedTransformOnly)

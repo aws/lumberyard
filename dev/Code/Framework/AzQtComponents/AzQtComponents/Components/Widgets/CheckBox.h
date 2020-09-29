@@ -22,55 +22,31 @@ namespace AzQtComponents
 {
     class Style;
 
-    /**
-     * Special class to handle styling and painting of Checkboxes, including ToggleSwitches.
-     *
-     * Some of the styling of QCheckBoxes are done via CSS, in CheckBox.qss
-     * Everything else that can be configured is in CheckBoxConfig.ini
-     *
-     * There is currently two built-in styles:
-     *   Plain old checkboxes
-     *   Toggle Switches, specified via CheckBox::applyToggleSwitchStyle(checkBox);
-     *
-     */
+    //! Class to handle styling and painting of Checkboxes, including ToggleSwitches.
+    //! Instantiate a regular QCheckbox, then call this class to change style as needed.
+    //! There are currently two built-in styles:
+    //! - Plain checkboxes
+    //! - Toggle Switches
     class AZ_QT_COMPONENTS_API CheckBox
     {
     public:
-
+        //! Style configuration for the CheckBox class.
         struct Config
         {
         };
 
-        /*!
-        * Applies the ToggleSwitch styling to a QCheckBox.
-        * Same as
-        *   AzQtComponents::Style::addClass(checkBox, "ToggleSwitch");
-        */
+        //! Applies the "ToggleSwitch" style class to a QCheckBox.
         static void applyToggleSwitchStyle(QCheckBox* checkBox);
-
-        /*!
-        * Applies the Expander styling to a QCheckBox.
-        * Same as
-        *   AzQtComponents::Style::addClass(checkBox, "Expander");
-        */
+        //! Applies the "Expander" style class to a QCheckBox.
         static void applyExpanderStyle(QCheckBox* checkBox);
-
-        /*!
-        * Applies the VisibilityMode (eye-ball) styling to checkable
-        * items in an item view.
-        * Same as
-        *   AzQtComponents::Style::addClass(view, "VisibilityMode");
-        */
+        //! Applies the "Visibility" style class to checkable items in an item view.
         static void setVisibilityMode(QAbstractItemView* view, bool enabled);
 
-        /*!
-        * Loads the button config data from a settings object.
-        */
+        //! Sets the CheckBox style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the CheckBox.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default button config data.
-        */
+        //! Gets the default CheckBox style configuration.
         static Config defaultConfig();
 
     private:

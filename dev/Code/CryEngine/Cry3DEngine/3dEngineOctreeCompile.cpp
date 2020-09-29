@@ -465,8 +465,10 @@ bool C3DEngine::LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STer
         {
             log2PODGridSize = 1;
         }
+#if ENABLE_CRY_PHYSICS
         GetPhysicalWorld()->SetupEntityGrid(2, Vec3(0, 0, 0), // this call will destroy all physicalized stuff
             physicsEntityGridSize / nCellSize, physicsEntityGridSize / nCellSize, (float)nCellSize, (float)nCellSize, log2PODGridSize);
+#endif
     }
 
     std::vector<_smart_ptr<IMaterial> >* pMatTable = NULL;

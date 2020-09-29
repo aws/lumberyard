@@ -10,6 +10,7 @@
  *
  */
 
+#include <AssetBuilderApplication.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/ComponentApplication.h>
@@ -29,6 +30,7 @@
 #include <AzFramework/API/BootstrapReaderBus.h>
 #include <AzCore/Memory/AllocatorManager.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Asset/AssetSystemComponent.h>
 
 // Command-line parameter options:
@@ -180,6 +182,16 @@ bool AssetBuilderComponent::Run()
         AZ_Error("AssetBuilder", false, "Failed to establish a network connection to the AssetProcessor. Use -help for options.");
         return false;
     }
+
+    IBuilderApplication* builderApplication = AZ::Interface<IBuilderApplication>::Get();
+
+    if(!builderApplication)
+    {
+        AZ_Error("AssetBuilder", false, "Failed to retreive IBuilderApplication interface");
+        return false;
+    }
+
+    builderApplication->InitializeBuilderComponents();
 
     bool result = false;
 
@@ -538,7 +550,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
                 AZStd::string responseFile;
                 AzFramework::StringFunc::Path::Join(processJobTempDirPath.c_str(),
-                    AZStd::string::format("%i_%s", i, AssetBuilderSDK::s_processJobResponseFileName).c_str(), responseFile);
+                    AZStd::string::format("%zu_%s", i, AssetBuilderSDK::s_processJobResponseFileName).c_str(), responseFile);
                 if (!AZ::Utils::SaveObjectToFile(responseFile, AZ::DataStream::ST_XML, &processResponse))
                 {
                     AZ_Error("AssetBuilder", false, "Failed to serialize response to file: %s", responseFile.c_str());
@@ -774,6 +786,12 @@ void AssetBuilderComponent::JobThread()
 
             AZ_TracePrintf("AssetBuilder", "Source = %s\n", netRequest->m_request.m_fullPath.c_str());
             AZ_TracePrintf("AssetBuilder", "Platform = %s\n", netRequest->m_request.m_jobDescription.GetPlatformIdentifier().c_str());
+            AZ_Warning("AssetBuilder", m_deprecatedAssetBuilderSet.find(netRequest->m_request.m_builderGuid) == m_deprecatedAssetBuilderSet.end(),
+                "This builder was loaded from the deprecated builder dll plugin system.\n"
+                "This system will be removed in the future and will stop functioning.\n"
+                "Please migrate this builder to a gem builder component using the following guide:\n"
+                "https://docs.aws.amazon.com/console/lumberyard/asset-builder/custom"
+            );
 
             ProcessJob(m_assetBuilderDescMap.at(netRequest->m_request.m_builderGuid)->m_processJobFunction, netRequest->m_request, netResponse->m_response);
             break;
@@ -894,6 +912,11 @@ const char* AssetBuilderComponent::GetLibraryExtension()
 
 bool AssetBuilderComponent::LoadBuilders(const AZStd::string& builderFolder)
 {
+    // LUMBERYARD_DEPRECATED(LY-113790)
+    // Builder dll loading is deprecated and will be removed a future release.
+    // All future builders should be placed inside gems following this guide:
+    // https ://docs.aws.amazon.com/lumberyard/latest/userguide/asset-builder-custom.html
+    
     AZ_TracePrintf("AssetBuilderComponent", "LoadBuilders - loading builders in : [%s]\n", builderFolder.c_str());
     auto* fileIO = AZ::IO::FileIOBase::GetInstance();
     bool result = false;
@@ -960,6 +983,7 @@ void AssetBuilderComponent::RegisterBuilderInformation(const AssetBuilderSDK::As
 
     if (m_currentAssetBuilder)
     {
+        m_deprecatedAssetBuilderSet.insert(builderDesc.m_busId);
         m_currentAssetBuilder->RegisterBuilderDesc(builderDesc.m_busId);
     }
 }

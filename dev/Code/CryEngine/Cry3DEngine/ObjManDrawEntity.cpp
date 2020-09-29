@@ -362,14 +362,14 @@ void CObjManager::RenderObject(IRenderNode* pEnt,
     DrawParams.fDistance = fEntDistance;
     DrawParams.AmbientColor = Vec3(0, 0, 0);
     DrawParams.pRenderNode = pEnt;
-    //DrawParams.pInstance = pEnt;
 
     if (eERType != eERType_Light && (pEnt->m_nInternalFlags & IRenderNode::REQUIRES_NEAREST_CUBEMAP))
     {
         uint16 nCubemapTexId = 0;
         if (!(nCubemapTexId = CheckCachedNearestCubeProbe(pEnt)) || !pCVars->e_CacheNearestCubePicking)
         {
-            nCubemapTexId = GetNearestCubeProbe(pVisArea, objBox);
+            const bool getFirstCubeProbe = !(nRndFlags & ERF_USE_NEAREST_ENVPROBE);
+            nCubemapTexId = aznumeric_cast<uint16>(GetNearestCubeProbe(pVisArea, objBox, true, getFirstCubeProbe));
         }
 
         CRNTmpData::SRNUserData* pUserDataRN = (pEnt->m_pRNTmpData) ? &pEnt->m_pRNTmpData->userData : 0;

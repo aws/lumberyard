@@ -77,6 +77,9 @@ namespace PhysX
         CombineMode GetRestitutionCombineMode() const override;
         void SetRestitutionCombineMode(CombineMode mode) override;
 
+        float GetDensity() const override;
+        void SetDensity(float density) override;
+
         AZ::u32 GetCryEngineSurfaceId() const override;
 
         void* GetNativePointer() override;
@@ -88,6 +91,7 @@ namespace PhysX
         AZ::Crc32 m_surfaceType = 0;
         AZ::u32 m_cryEngineSurfaceId = -1;
         AZStd::string m_surfaceString;
+        float m_density = 1000.0f;
     };
 
     /// Bus with requests to MaterialsManager
@@ -99,6 +103,8 @@ namespace PhysX
         : public Physics::PhysicsMaterialRequests
     {
     public:
+        using MutexType = AZStd::mutex;
+
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
@@ -131,6 +137,9 @@ namespace PhysX
         /// @param outMaterials Collection of material weak pointers corresponding to the material selection to be returned.
         void GetMaterials(const Physics::MaterialSelection& materialSelection
             , AZStd::vector<AZStd::weak_ptr<Physics::Material>>& outMaterials) override;
+
+        /// Returns a weak pointer to physics material with the given name.
+        AZStd::weak_ptr<Physics::Material> GetMaterialByName(const AZStd::string& name) override;
 
         /// Returns index of selected material in its material library. 0 is the Default material.
         /// @param materialSelection Selection of materials.

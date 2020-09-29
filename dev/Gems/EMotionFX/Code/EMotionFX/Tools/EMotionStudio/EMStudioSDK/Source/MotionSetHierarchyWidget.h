@@ -68,6 +68,8 @@ namespace EMStudio
         // this calls UpdateSelection() and then returns the member array containing the selected items
         AZStd::vector<MotionSetSelectionItem>& GetSelectedItems();
 
+        void SelectItemsWithText(QString text);
+
         AZStd::vector<AZStd::string> GetSelectedMotionIds(EMotionFX::MotionSet* motionSet);
 
     signals:

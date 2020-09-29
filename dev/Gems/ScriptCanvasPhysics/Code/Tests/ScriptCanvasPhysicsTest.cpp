@@ -96,7 +96,7 @@ namespace ScriptCanvasPhysicsTests
         MOCK_METHOD1(RemoveBody, void(Physics::WorldBody& body));
         MOCK_METHOD1(SetSimFunc, void(std::function<void(void*)> func));
         MOCK_METHOD1(SetEventHandler, void(Physics::WorldEventHandler* eventHandler));
-        MOCK_METHOD0(GetGravity, AZ::Vector3());
+        MOCK_CONST_METHOD0(GetGravity, AZ::Vector3());
         MOCK_METHOD1(SetGravity, void(const AZ::Vector3& gravity));
         MOCK_METHOD1(SetMaxDeltaTime, void(float maxDeltaTime));
         MOCK_METHOD1(SetFixedDeltaTime, void(float fixedDeltaTime));
@@ -143,6 +143,12 @@ namespace ScriptCanvasPhysicsTests
         MOCK_METHOD2(RayCast, Physics::RayCastHit(const Physics::RayCastRequest& worldSpaceRequest, const AZ::Transform& worldTransform));
         MOCK_METHOD1(RayCastLocal, Physics::RayCastHit(const Physics::RayCastRequest& localSpaceRequest));
         MOCK_METHOD3(GetGeometry, void(AZStd::vector<AZ::Vector3>&, AZStd::vector<AZ::u32>&, AZ::Aabb*));
+        MOCK_CONST_METHOD0(GetRestOffset, float());
+        MOCK_METHOD1(SetRestOffset, void(float));
+        MOCK_CONST_METHOD0(GetContactOffset, float());
+        MOCK_METHOD1(SetContactOffset, void(float));
+        MOCK_CONST_METHOD1(GetAabb, AZ::Aabb(const AZ::Transform& worldTransform));
+        MOCK_CONST_METHOD0(GetAabbLocal, AZ::Aabb());
     };
 
     class MockPhysicsMaterial        
@@ -164,6 +170,8 @@ namespace ScriptCanvasPhysicsTests
         MOCK_METHOD1(SetRestitutionCombineMode, void(CombineMode));
         MOCK_CONST_METHOD0(GetCryEngineSurfaceId, AZ::u32());
         MOCK_METHOD0(GetNativePointer, void*());
+        MOCK_CONST_METHOD0(GetDensity, float());
+        MOCK_METHOD1(SetDensity, void(float));
     };
 
     class ScriptCanvasPhysicsTestEnvironment

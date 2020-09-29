@@ -17,7 +17,7 @@
     #include <AzCore/Math/Color.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <SoundCVars.h>
 #include <AudioProxy.h>
@@ -100,26 +100,31 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     bool CAudioTranslationLayer::Initialize()
     {
+#if AUDIO_ENABLE_CRY_PHYSICS
         // Add the callback for the obstruction calculation.
         gEnv->pPhysicalWorld->AddEventClient(
             EventPhysRWIResult::id,
-            &CATLAudioObject::CPropagationProcessor::OnObstructionTest,
+            &CPropagationProcessor::OnObstructionTest,
             1);
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
+        m_lastUpdateTime = AZStd::chrono::system_clock::now();
         return true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     bool CAudioTranslationLayer::ShutDown()
     {
+#if AUDIO_ENABLE_CRY_PHYSICS
         if (gEnv->pPhysicalWorld)
         {
             // remove the callback for the obstruction calculation
             gEnv->pPhysicalWorld->RemoveEventClient(
                 EventPhysRWIResult::id,
-                &CATLAudioObject::CPropagationProcessor::OnObstructionTest,
+                &CPropagationProcessor::OnObstructionTest,
                 1);
         }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
         return true;
     }
@@ -162,16 +167,23 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioTranslationLayer::Update(const float fUpdateIntervalMS)
+    void CAudioTranslationLayer::Update()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
+        auto current = AZStd::chrono::system_clock::now();
+        m_elapsedTime = AZStd::chrono::duration_cast<duration_ms>(current - m_lastUpdateTime);
+        m_lastUpdateTime = current;
+        float elapsedMs = m_elapsedTime.count();
+
         UpdateSharedData();
 
-        m_oAudioEventMgr.Update(fUpdateIntervalMS);
-        m_oAudioObjectMgr.Update(fUpdateIntervalMS, m_oSharedData.m_oActiveListenerPosition);
-        m_oAudioListenerMgr.Update(fUpdateIntervalMS);
+        m_oAudioEventMgr.Update(elapsedMs);
+        m_oAudioObjectMgr.Update(elapsedMs, m_oSharedData.m_oActiveListenerPosition);
+        m_oAudioListenerMgr.Update(elapsedMs);
         m_oFileCacheMgr.Update();
 
-        AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::Update, fUpdateIntervalMS);
+        AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::Update, elapsedMs);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -704,6 +716,7 @@ namespace Audio
                     eResult = eARS_SUCCESS;
                     break;
                 }
+#if AUDIO_ENABLE_CRY_PHYSICS
                 case eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY:
                 {
                     auto const pRequestData = static_cast<const SAudioCallbackManagerRequestDataInternal<eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY>*>(pPassedRequestData);
@@ -712,6 +725,7 @@ namespace Audio
                     eResult = eARS_SUCCESS;
                     break;
                 }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
                 case eACMRT_REPORT_FINISHED_TRIGGER_INSTANCE:
                 case eACMRT_NONE:
                 {
@@ -1279,10 +1293,17 @@ namespace Audio
             // If the AudioObject uses Obstruction/Occlusion then set the values before activating the trigger.
             auto const pPositionedAudioObject = static_cast<CATLAudioObject*>(pAudioObject);
 
-            if (pPositionedAudioObject->CanRunObstructionOcclusion() && !m_oAudioObjectMgr.HasActiveEvents(pPositionedAudioObject))
+#if AUDIO_ENABLE_CRY_PHYSICS
+            if (pPositionedAudioObject->CanRunObstructionOcclusion() && !pPositionedAudioObject->HasActiveEvents())
             {
                 pPositionedAudioObject->ResetObstructionOcclusion(m_oSharedData.m_oActiveListenerPosition);
             }
+#else
+            if (pPositionedAudioObject->CanRunRaycasts() && !pPositionedAudioObject->HasActiveEvents())
+            {
+                pPositionedAudioObject->RunRaycasts(m_oSharedData.m_oActiveListenerPosition);
+            }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
         }
 
         const TAudioControlID nATLTriggerID = pTrigger->GetID();
@@ -1801,9 +1822,15 @@ namespace Audio
 
                 if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OOCStateIDs[eAOOCT_IGNORE])
                 {
-                    pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_IGNORE);
                     SATLSoundPropagationData oPropagationData;
+#if AUDIO_ENABLE_CRY_PHYSICS
+                    pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_IGNORE);
                     pPositionedAudioObject->GetPropagationData(oPropagationData);
+#else
+                    pPositionedAudioObject->SetRaycastCalcType(eAOOCT_IGNORE);
+                    pPositionedAudioObject->GetObstOccData(oPropagationData);
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
                     AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::SetObstructionOcclusion,
                         pPositionedAudioObject->GetImplDataPtr(),
                         oPropagationData.fObstruction,
@@ -1811,11 +1838,19 @@ namespace Audio
                 }
                 else if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OOCStateIDs[eAOOCT_SINGLE_RAY])
                 {
+#if AUDIO_ENABLE_CRY_PHYSICS
                     pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_SINGLE_RAY);
+#else
+                    pPositionedAudioObject->SetRaycastCalcType(eAOOCT_SINGLE_RAY);
+#endif // AUDIO_ENABLE_CRY_PHYSICS
                 }
                 else if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OOCStateIDs[eAOOCT_MULTI_RAY])
                 {
+#if AUDIO_ENABLE_CRY_PHYSICS
                     pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_MULTI_RAY);
+#else
+                    pPositionedAudioObject->SetRaycastCalcType(eAOOCT_MULTI_RAY);
+#endif // AUDIO_ENABLE_CRY_PHYSICS
                 }
                 else
                 {
@@ -1922,18 +1957,19 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioTranslationLayer::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
     {
+#if AUDIO_ENABLE_CRY_PHYSICS
         switch (event)
         {
             case ESYSTEM_EVENT_LEVEL_UNLOAD:
             {
-                CATLAudioObject::CPropagationProcessor::s_canIssueRWIs = false;
+                CPropagationProcessor::s_canIssueRWIs = false;
                 break;
             }
             case ESYSTEM_EVENT_LEVEL_GAMEPLAY_START:
             case ESYSTEM_EVENT_LEVEL_PRECACHE_START:
             {
                 m_oAudioObjectMgr.ReleasePendingRays();
-                CATLAudioObject::CPropagationProcessor::s_canIssueRWIs = true;
+                CPropagationProcessor::s_canIssueRWIs = true;
                 break;
             }
             case ESYSTEM_EVENT_LEVEL_POST_UNLOAD:
@@ -1951,12 +1987,12 @@ namespace Audio
                 {
                     // Game Mode begin or AI/Physics enabled
                     m_oAudioObjectMgr.ReleasePendingRays();
-                    CATLAudioObject::CPropagationProcessor::s_canIssueRWIs = true;
+                    CPropagationProcessor::s_canIssueRWIs = true;
                 }
                 else
                 {
                     // Editor Mode begin or AI/Physics disabled
-                    CATLAudioObject::CPropagationProcessor::s_canIssueRWIs = false;
+                    CPropagationProcessor::s_canIssueRWIs = false;
                 }
                 break;
             }
@@ -1965,6 +2001,23 @@ namespace Audio
                 break;
             }
         }
+#else
+        switch (event)
+        {
+        case ESYSTEM_EVENT_LEVEL_UNLOAD:
+            RaycastProcessor::s_raycastsEnabled = false;
+            break;
+        case ESYSTEM_EVENT_LEVEL_GAMEPLAY_START:
+        case ESYSTEM_EVENT_LEVEL_PRECACHE_START:
+            RaycastProcessor::s_raycastsEnabled = true;
+            break;
+        case ESYSTEM_EVENT_EDITOR_GAME_MODE_CHANGED:
+            RaycastProcessor::s_raycastsEnabled = (wparam != 0);
+            break;
+        default:
+            break;
+        }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
     }
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -2014,7 +2067,7 @@ namespace Audio
             AZStd::string levelControlsPath(controlsPath);
             levelControlsPath.append("levels/");
             levelControlsPath.append(levelName);
-            AzFramework::StringFunc::RelativePath::Normalize(levelControlsPath);
+            AZ::StringFunc::RelativePath::Normalize(levelControlsPath);
 
             eResult = ParseControlsData(levelControlsPath.c_str(), eADS_LEVEL_SPECIFIC);
             AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh level controls data!");
@@ -2101,8 +2154,6 @@ namespace Audio
                 );
 
             static const float SMOOTHING_ALPHA = 0.2f;
-            static float fSyncRays = 0;
-            static float fAsyncRays = 0;
 
             const AZ::Vector3 vPos = m_oSharedData.m_oActiveListenerPosition.GetPositionVec();
             const AZ::Vector3 vFwd = m_oSharedData.m_oActiveListenerPosition.GetForwardVec();
@@ -2111,8 +2162,13 @@ namespace Audio
             const size_t nEvents = m_oAudioEventMgr.GetNumActive();
             const size_t nListeners = m_oAudioListenerMgr.GetNumActive();
             const size_t nNumEventListeners = m_oAudioEventListenerMgr.GetNumEventListeners();
-            fSyncRays += (CATLAudioObject::CPropagationProcessor::s_nTotalSyncPhysRays - fSyncRays) * SMOOTHING_ALPHA;
-            fAsyncRays += (CATLAudioObject::CPropagationProcessor::s_nTotalAsyncPhysRays - fAsyncRays) * SMOOTHING_ALPHA * 0.1f;
+
+#if AUDIO_ENABLE_CRY_PHYSICS
+            static float fSyncRays = 0;
+            static float fAsyncRays = 0;
+            fSyncRays += (CPropagationProcessor::s_nTotalSyncPhysRays - fSyncRays) * SMOOTHING_ALPHA;
+            fAsyncRays += (CPropagationProcessor::s_nTotalAsyncPhysRays - fAsyncRays) * SMOOTHING_ALPHA * 0.1f;
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
             const bool bActive = true;
             const float fColorListener[4] =
@@ -2144,8 +2200,13 @@ namespace Audio
 
             fPosY += fLineHeight;
             pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.35f, fColorNumbers, false,
+#if AUDIO_ENABLE_CRY_PHYSICS
                 "Objects: %3zu/%3zu | Events: %3zu  EventListeners %3zu | Listeners: %zu | SyncRays: %3.1f  AsyncRays: %3.1f",
                 nNumActiveAudioObjects, nNumAudioObjects, nEvents, nNumEventListeners, nListeners, fSyncRays, fAsyncRays);
+#else
+                "Objects: %3zu/%3zu | Events: %3zu  EventListeners %3zu | Listeners: %zu",
+                nNumActiveAudioObjects, nNumAudioObjects, nEvents, nNumEventListeners, nListeners);
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
             fPosY += fLineHeight;
             DrawATLComponentDebugInfo(*pAuxGeom, fPosX, fPosY);

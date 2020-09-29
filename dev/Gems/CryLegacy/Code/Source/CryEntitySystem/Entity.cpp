@@ -485,6 +485,7 @@ bool CEntity::SendEvent(SEntityEvent& event)
     {
         //g_pIEntitySystem->RemoveTimerEvent(GetId(), -1);
         DeallocBindings();
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pPhysics = GetPhysics();
         if (pPhysics && pPhysics->GetForeignData(PHYS_FOREIGN_ID_ENTITY))
         {
@@ -493,6 +494,7 @@ bool CEntity::SendEvent(SEntityEvent& event)
             pfd.iForeignData = -1;
             pPhysics->SetParams(&pfd, 1);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
     break;
 
@@ -1305,6 +1307,7 @@ void CEntity::GetLocalBounds(AABB& bbox) const
     {
         const_cast<IComponentRender*>(pRenderComponent.get())->GetLocalBounds(bbox);
     }
+#if ENABLE_CRY_PHYSICS
     else if (GetComponent<IComponentPhysics>())
     {
         IComponentPhysicsConstPtr pPhysicsComponent = GetComponent<IComponentPhysics>();
@@ -1313,6 +1316,7 @@ void CEntity::GetLocalBounds(AABB& bbox) const
             const_cast<IComponentPhysics*>(pPhysicsComponent.get())->GetLocalBounds(bbox);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
     else
     {
         IComponentTriggerConstPtr triggerComponent = GetComponent<IComponentTrigger>();
@@ -1541,8 +1545,10 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
     if (nFlags & ENTITY_SERIALIZE_GEOMETRIES)
     {
         int i, nSlots;
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pPhysics = GetPhysics();
         pe_params_part pp;
+#endif
         bool bHasIt = false;
         float mass = 0;
 
@@ -1577,6 +1583,7 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
                     ser.Value("flags", pSlot->flags);
                     bool bSlotUpdate = pSlot->bUpdate;
                     ser.Value("update", bSlotUpdate);
+#if ENABLE_CRY_PHYSICS
                     if (pPhysics)
                     {
                         if (pPhysics->GetType() != PE_STATIC)
@@ -1627,6 +1634,7 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
                         ser.Value("noobj", bHasIt = true);
                     }
                     else
+#endif // ENABLE_CRY_PHYSICS
                     {
                         ser.Value("noobj", bHasIt = false);
                         gEnv->p3DEngine->SaveStatObj(pSlot->pStatObj, ser);
@@ -1639,11 +1647,13 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
         else
         {
             bool bClearAfterLoad = false;
+#if ENABLE_CRY_PHYSICS
             pe_action_remove_all_parts arp;
             if (pPhysics)
             {
                 pPhysics->Action(&arp);
             }
+#endif // ENABLE_CRY_PHYSICS
             for (i = GetSlotCount() - 1; i >= 0; i--)
             {
                 FreeSlot(i);
@@ -1678,10 +1688,12 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
                     ser.Value("flags", pSlot->flags);
                     ser.Value("update", bHasIt);
                     pSlot->bUpdate = bHasIt;
+#if ENABLE_CRY_PHYSICS
                     if (pPhysics)
                     {
                         ser.Value("mass", mass);
                     }
+#endif
 
                     ser.Value("noobj", bHasIt);
                     if (bHasIt)
@@ -1690,7 +1702,11 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
                     }
                     else
                     {
+#if ENABLE_CRY_PHYSICS
                         SetStatObj(gEnv->p3DEngine->LoadStatObj(ser), ENTITY_SLOT_ACTUAL | nSlotId, pPhysics != 0, mass);
+#else
+                        SetStatObj(gEnv->p3DEngine->LoadStatObj(ser), ENTITY_SLOT_ACTUAL | nSlotId, false, mass);
+#endif
                     }
 
                     ser.Value("sshidemask", pSlot->nSubObjHideMask);
@@ -1699,10 +1715,12 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
             }
             if (bClearAfterLoad)
             {
+#if ENABLE_CRY_PHYSICS
                 if (pPhysics)
                 {
                     pPhysics->Action(&arp);
                 }
+#endif
                 for (i = GetSlotCount() - 1; i >= 0; i--)
                 {
                     FreeSlot(i);
@@ -1799,23 +1817,31 @@ void CEntity::Serialize(TSerialize ser, int nFlags)
     m_bDirtyForwardDir = true;
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 void CEntity::Physicalize(SEntityPhysicalizeParams& params)
 {
+#if ENABLE_CRY_PHYSICS
     GetOrCreateComponent<IComponentPhysics>()->Physicalize(params);
+#else
+    AZ_UNUSED(params);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CEntity::EnablePhysics(bool enable)
 {
+#if ENABLE_CRY_PHYSICS
     IComponentPhysicsPtr pPhysicsComponent = GetComponent<IComponentPhysics>();
     if (pPhysicsComponent)
     {
         pPhysicsComponent->EnablePhysics(enable);
     }
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CEntity::GetPhysics() const
 {
     IComponentPhysicsConstPtr pPhysicsComponent = GetComponent<IComponentPhysics>();
@@ -1837,9 +1863,10 @@ IPhysicalEntity* CEntity::GetPhysics() const
             return pRopeRenderNode->GetPhysics();
         }
     }
-
     return NULL;
 }
+#endif
+
 
 //////////////////////////////////////////////////////////////////////////
 // Custom entity material.
@@ -1882,6 +1909,7 @@ void CEntity::CheckMaterialFlags()
             {
                 bRaycastProxy = true;
             }
+#if ENABLE_CRY_PHYSICS
             if (IPhysicalEntity* pPhysics = GetPhysics())
             {
                 if (ISurfaceType* pSurf = m_pMaterial->GetSurfaceType())
@@ -1895,11 +1923,13 @@ void CEntity::CheckMaterialFlags()
                     }
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
         }
 
         pRenderNode->SetRndFlags(ERF_COLLISION_PROXY, bCollisionProxy);
         pRenderNode->SetRndFlags(ERF_RAYCAST_PROXY, bRaycastProxy);
 
+#if ENABLE_CRY_PHYSICS
         if (bWasProxy || bRaycastProxy || bCollisionProxy)
         {
             if (IPhysicalEntity* pPhysics = GetPhysics())
@@ -1913,6 +1943,7 @@ void CEntity::CheckMaterialFlags()
                 pPhysics->SetParams(&pp);
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 
@@ -1928,33 +1959,41 @@ void CEntity::OnCharacterBoundsReset()
     m_bBoundsValid = 0;
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 int CEntity::PhysicalizeSlot(int slot, SEntityPhysicalizeParams& params)
 {
+#if ENABLE_CRY_PHYSICS
     if (IComponentPhysicsPtr component = GetComponent<IComponentPhysics>())
     {
         return component->AddSlotGeometry(slot, params);
     }
+#endif // ENABLE_CRY_PHYSICS
     return -1;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CEntity::UnphysicalizeSlot(int slot)
 {
+#if ENABLE_CRY_PHYSICS
     if (IComponentPhysicsPtr component = GetComponent<IComponentPhysics>())
     {
         component->RemoveSlotGeometry(slot);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CEntity::UpdateSlotPhysics(int slot)
 {
+#if ENABLE_CRY_PHYSICS
     if (IComponentPhysicsPtr component = GetComponent<IComponentPhysics>())
     {
         component->UpdateSlotGeometry(slot, GetStatObj(slot));
     }
+#endif // ENABLE_CRY_PHYSICS
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 bool CEntity::IsSlotValid(int nSlot) const
@@ -2150,10 +2189,12 @@ int CEntity::SetCharacter(ICharacterInstance* pCharacter, int nSlot)
     }
 
     nUsedSlot = GetOrCreateComponent<IComponentRender>()->SetSlotCharacter(nSlot, pCharacter);
+#if ENABLE_CRY_PHYSICS
     if (GetComponent<IComponentPhysics>())
     {
         GetComponent<IComponentPhysics>()->UpdateSlotGeometry(nUsedSlot);
     }
+#endif
 
     return nUsedSlot;
 }
@@ -2174,10 +2215,14 @@ int CEntity::SetStatObj(IStatObj* pStatObj, int nSlot, bool bUpdatePhysics, floa
 {
     int bNoSubslots = nSlot >= 0 || nSlot & ENTITY_SLOT_ACTUAL;   // only use statobj's subslot when appending a new subslot
     nSlot = GetOrCreateComponent<IComponentRender>()->SetSlotGeometry(nSlot, pStatObj);
+#if ENABLE_CRY_PHYSICS
     if (bUpdatePhysics && GetComponent<IComponentPhysics>())
     {
         GetComponent<IComponentPhysics>()->UpdateSlotGeometry(nSlot, pStatObj, mass, bNoSubslots);
     }
+#else
+    AZ_UNUSED(bUpdatePhysics);
+#endif
 
     return nSlot;
 }
@@ -2237,9 +2282,12 @@ void CEntity::MoveSlot(IEntity* targetIEnt, int nSlot)
     dstRenderComponent->UpdateLodDistance(gEnv->p3DEngine->GetFrameLodInfo());
 
     //--- Ensure that any associated physics is copied over too
+#if ENABLE_CRY_PHYSICS
     IComponentPhysicsPtr srcPhysicsComponent = GetComponent<IComponentPhysics>();
+#endif
     if (pCharacterInstance)
     {
+#if ENABLE_CRY_PHYSICS
         ISkeletonPose* pSkeletonPose = pCharacterInstance->GetISkeletonPose();
         IPhysicalEntity* pCharacterPhysics = pCharacterInstance->GetISkeletonPose()->GetCharacterPhysics();
         pCharacterInstance->GetISkeletonPose()->SetPostProcessCallback(NULL, NULL);
@@ -2284,6 +2332,7 @@ void CEntity::MoveSlot(IEntity* targetIEnt, int nSlot)
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
         // Register ourselves to listen for animation events coming from the character.
         if (ISkeletonAnim* pSkeletonAnim = pCharacterInstance->GetISkeletonAnim())
         {
@@ -2309,6 +2358,7 @@ int CEntity::LoadGeometry(int nSlot, const char* sFilename, const char* sGeomNam
 
     if (nLoadFlags & EF_AUTO_PHYSICALIZE)
     {
+#if ENABLE_CRY_PHYSICS
         // Also physicalize geometry.
         SEntityPhysicalizeParams params;
         params.nSlot = nSlot;
@@ -2335,6 +2385,9 @@ int CEntity::LoadGeometry(int nSlot, const char* sFilename, const char* sGeomNam
             pfd.iForeignFlagsOR = PFF_UNIMPORTANT;
             pe->SetParams(&pfd);
         }
+#else
+        IStatObj* pStatObj = GetStatObj(ENTITY_SLOT_ACTUAL | nSlot);
+#endif // ENABLE_CRY_PHYSICS
 
         // Mark as AI hideable unless the object flags are preventing it.
         if (pStatObj && (pStatObj->GetFlags() & STATIC_OBJECT_NO_AUTO_HIDEPOINTS) == 0)
@@ -2351,11 +2404,13 @@ int CEntity::LoadCharacter(int nSlot, const char* sFilename, int nLoadFlags)
 {
     IComponentRenderPtr pRenderComponent = GetOrCreateComponent<IComponentRender>();
 
+#if ENABLE_CRY_PHYSICS
     ICharacterInstance* pChar;
     if ((pChar = pRenderComponent->GetCharacter(nSlot)) && GetComponent<IComponentPhysics>() && pChar->GetISkeletonPose()->GetCharacterPhysics() == GetPhysics())
     {
         GetComponent<IComponentPhysics>()->AttachToPhysicalEntity(0);
     }
+#endif
 
     nSlot = pRenderComponent->LoadCharacter(nSlot, sFilename, nLoadFlags);
     if (nLoadFlags & EF_AUTO_PHYSICALIZE)
@@ -2366,6 +2421,7 @@ int CEntity::LoadCharacter(int nSlot, const char* sFilename, int nLoadFlags)
             pCharacter->SetFlags(pCharacter->GetFlags() | CS_FLAG_UPDATE);
         }
 
+#if ENABLE_CRY_PHYSICS
         // Also physicalize geometry.
         SEntityPhysicalizeParams params;
         params.nSlot = nSlot;
@@ -2382,6 +2438,7 @@ int CEntity::LoadCharacter(int nSlot, const char* sFilename, int nLoadFlags)
             pfd.iForeignFlagsOR = PFF_UNIMPORTANT;
             pe->SetParams(&pfd);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     ICharacterInstance* pCharacter = GetCharacter(nSlot);
@@ -2581,9 +2638,11 @@ void CEntity::ActivateForNumUpdates(uint32 numUpdates)
     SetUpdateStatus();
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 void CEntity::SetPhysicsState(XmlNodeRef& physicsState)
 {
+#if ENABLE_CRY_PHYSICS
     if (physicsState)
     {
         IPhysicalEntity* physic = GetPhysics();
@@ -2618,27 +2677,35 @@ void CEntity::SetPhysicsState(XmlNodeRef& physicsState)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 float CEntity::GetObstructionMultiplier() const
 {
+#if ENABLE_CRY_PHYSICS
     // confirm that this is an acceptable way to do this...
     if (const IComponentPhysics* physicsComponent = GetComponent<IComponentPhysics>().get())
     {
         return static_cast<const CComponentPhysics*>(physicsComponent)->GetAudioObstructionMultiplier();
     }
+#endif
     return 1.f;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CEntity::SetObstructionMultiplier(float obstructionMultiplier)
 {
+#if ENABLE_CRY_PHYSICS
     // confirm that this is an acceptable way to do this...
     if (IComponentPhysics* physicsComponent = GetComponent<IComponentPhysics>().get())
     {
         static_cast<CComponentPhysics*>(physicsComponent)->SetAudioObstructionMultiplier(obstructionMultiplier);
     }
+#else
+    AZ_UNUSED(obstructionMultiplier);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////

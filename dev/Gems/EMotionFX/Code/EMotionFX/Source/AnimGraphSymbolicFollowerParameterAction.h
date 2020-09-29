@@ -22,20 +22,20 @@ namespace EMotionFX
     class AnimGraphInstance;
 
     /**
-     * AnimGraphSymbolicServantParameterAction is a specific type of trigger action that send a parameter (change) event to the servant graph.
-     * Compare to AnimGraphServantParameterAction, this action use a parameter from the master graph to sync its value to the servant graph's parameter.
+     * AnimGraphSymbolicFollowerParameterAction is a specific type of trigger action that send a parameter (change) event to the follower graph.
+     * Compare to AnimGraphFollowerParameterAction, this action use a parameter from the main graph to sync its value to the follower graph's parameter.
      */
-    class EMFX_API AnimGraphSymbolicServantParameterAction
+    class EMFX_API AnimGraphSymbolicFollowerParameterAction
         : public AnimGraphTriggerAction
         , private AZ::Data::AssetBus::MultiHandler
     {
     public:
-        AZ_RTTI(AnimGraphSymbolicServantParameterAction, "{1A7A4EB7-759E-4278-ADAF-0CF75516B9CE}", AnimGraphTriggerAction)
+        AZ_RTTI(AnimGraphSymbolicFollowerParameterAction, "{1A7A4EB7-759E-4278-ADAF-0CF75516B9CE}", AnimGraphTriggerAction)
         AZ_CLASS_ALLOCATOR_DECL
 
-        AnimGraphSymbolicServantParameterAction();
-        AnimGraphSymbolicServantParameterAction(AnimGraph* animGraph);
-        ~AnimGraphSymbolicServantParameterAction() override;
+        AnimGraphSymbolicFollowerParameterAction();
+        AnimGraphSymbolicFollowerParameterAction(AnimGraph* animGraph);
+        ~AnimGraphSymbolicFollowerParameterAction() override;
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
@@ -60,9 +60,11 @@ namespace EMotionFX
         void LoadAnimGraphAsset();
         void OnAnimGraphAssetReady();
 
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+
         AZ::Data::Asset<Integration::AnimGraphAsset>  m_refAnimGraphAsset;
-        AZStd::string                                 m_servantParameterName;
-        AZStd::string                                 m_masterParameterName;
+        AZStd::string                                 m_followerParameterName;
+        AZStd::string                                 m_leaderParameterName;
 
         AZStd::vector<AZStd::string>                  m_maskedParameterNames;
     };

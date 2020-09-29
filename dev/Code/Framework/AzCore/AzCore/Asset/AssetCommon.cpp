@@ -64,6 +64,9 @@ namespace AZ
                         ->Attribute(AZ::Script::Attributes::Alias, "is_valid")
                     ->Method("ToString", [](const Data::AssetId* self) { return self->ToString<AZStd::string>(); })
                         ->Attribute(AZ::Script::Attributes::Alias, "to_string")
+                    ->Method("IsEqual", [](const Data::AssetId& self, const Data::AssetId& other) { return self == other; })
+                        ->Attribute(AZ::Script::Attributes::Alias, "is_equal")
+                        ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
                     ;
             }
         }
@@ -160,6 +163,11 @@ namespace AZ
             }
         }
 
+        AssetData::~AssetData()
+        {
+            UnregisterWithHandler();
+        }
+
         void AssetData::Reflect(AZ::ReflectContext* context)
         {
             if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
@@ -211,6 +219,51 @@ namespace AZ
             {
                 AssetManager::Instance().ReleaseAsset(this, assetId, assetType, removeFromHash, creationToken);
             }
+        }
+
+        bool AssetData::IsLoading(bool includeQueued) const
+        {
+            auto curStatus = GetStatus();
+            return(curStatus == AssetStatus::Loading || (includeQueued && curStatus == AssetStatus::Queued));
+        }
+
+        void AssetData::RegisterWithHandler(AssetHandler* handler)
+        {
+            if (!handler)
+            {
+                AZ_Error("AssetData", false, "No handler to register with");
+                return;
+            }
+            m_registeredHandler = handler;
+            m_registeredHandler->m_nActiveAssets++;
+        }
+
+        void AssetData::UnregisterWithHandler()
+        {
+            if (m_registeredHandler)
+            {
+                m_registeredHandler->m_nActiveAssets--;
+                m_registeredHandler = nullptr;
+            }
+        }
+
+        bool AssetData::GetFlag(const AssetDataFlags& checkFlag) const
+        {
+            return m_flags[aznumeric_cast<AZStd::size_t>(checkFlag)];
+        }
+
+        void AssetData::SetFlag(const AssetDataFlags& checkFlag, bool setValue)
+        {
+            m_flags.set(aznumeric_cast<AZStd::size_t>(checkFlag), setValue);
+        }
+
+        bool AssetData::GetRequeue() const
+        {
+            return GetFlag(AssetDataFlags::Requeue);
+        }
+        void AssetData::SetRequeue(bool requeue)
+        {
+            SetFlag(AssetDataFlags::Requeue, requeue);
         }
 
         //=========================================================================
@@ -347,6 +400,40 @@ namespace AZ
         {
             return false;
         }
+        namespace ProductDependencyInfo
+        {
+            AZ::Data::AssetLoadBehavior LoadBehaviorFromFlags(const ProductDependencyFlags& dependencyFlags)
+            {
+                AZ::u8 loadBehaviorValue = 0;
+                for (AZ::u8 thisFlag = aznumeric_cast<AZ::u8>(ProductDependencyFlagBits::LoadBehaviorLow);
+                    thisFlag <= aznumeric_cast<AZ::u8>(ProductDependencyFlagBits::LoadBehaviorHigh); ++thisFlag)
+                {
+                    if (dependencyFlags[thisFlag])
+                    {
+                        loadBehaviorValue |= (1 << thisFlag);
+                    }
+                }
+                return static_cast<AZ::Data::AssetLoadBehavior>(loadBehaviorValue);
+            }
 
+            ProductDependencyFlags CreateFlags(const AZ::Data::Asset<AZ::Data::AssetData>* assetDependency)
+            {
+                AZ::Data::ProductDependencyInfo::ProductDependencyFlags returnFlags;
+                if (!assetDependency)
+                {
+                    return returnFlags;
+                }
+                AZ::u8 loadBehavior = aznumeric_caster(assetDependency->GetAutoLoadBehavior());
+                for (AZ::u8 thisFlag = aznumeric_cast<AZ::u8>(ProductDependencyFlagBits::LoadBehaviorLow);
+                    thisFlag <= aznumeric_cast<AZ::u8>(ProductDependencyFlagBits::LoadBehaviorHigh); ++thisFlag)
+                {
+                    if (loadBehavior & (1 << thisFlag))
+                    {
+                        returnFlags[thisFlag] = 1;
+                    }
+                }
+                return returnFlags;
+            }
+        }
     }   // namespace Data
 }   // namespace AZ

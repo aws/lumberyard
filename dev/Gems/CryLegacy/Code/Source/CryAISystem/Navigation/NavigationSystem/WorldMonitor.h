@@ -26,8 +26,10 @@ public:
     void Start();
     void Stop();
 
+#if ENABLE_CRY_PHYSICS
     static int StateChangeHandler(const EventPhys* pPhysEvent);
     static int EntityRemovedHandler(const EventPhys* pPhysEvent);
+#endif // ENABLE_CRY_PHYSICS
 
 protected:
 

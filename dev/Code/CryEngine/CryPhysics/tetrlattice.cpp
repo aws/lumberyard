@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "intersectionchecks.h"
@@ -1931,4 +1933,4 @@ int* CBreakableGrid2d::BreakIntoChunks(const vector2df& pt, float r, vector2df*&
     } while(j);
 } while(bHasInclusions);*/
 
-
+#endif // ENABLE_CRY_PHYSICS

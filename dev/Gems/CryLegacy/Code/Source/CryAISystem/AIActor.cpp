@@ -640,6 +640,7 @@ void CAIActor::Update(EObjectUpdate type)
             AIAssert(0);
             return;
         }
+#if ENABLE_CRY_PHYSICS
         // There should never be AI Actors without physics.
         if (!GetPhysics())
         {
@@ -647,6 +648,7 @@ void CAIActor::Update(EObjectUpdate type)
             AIAssert(0);
             return;
         }
+#endif
         // dead AI Actors should never be updated
         if (pAIActorProxy->IsDead())
         {
@@ -829,6 +831,7 @@ void CAIActor::UpdateDisabled(EObjectUpdate type)
 //===================================================================
 void CAIActor::UpdateDamageParts(DamagePartVector& parts)
 {
+#if ENABLE_CRY_PHYSICS
     IAIActorProxy* pProxy = GetProxy();
     if (!pProxy)
     {
@@ -917,6 +920,9 @@ void CAIActor::UpdateDamageParts(DamagePartVector& parts)
             parts[statusPos.ipart].damageMult = damage;
         }
     }
+#else
+    AZ_UNUSED(parts);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAIActor::OnAIHandlerSentSignal(const char* signalText, uint32 crc)
@@ -1179,11 +1185,8 @@ void CAIActor::Event(unsigned short eType, SAIEVENT* pEvent)
         break;
     case AIEVENT_SLEEP:
         m_bCheckedBody = false;
-        if (pAIActorProxy->GetLinkedVehicleEntityId() == 0)
-        {
-            m_bEnabled = false;
-            pAISystem->NotifyEnableState(this, m_bEnabled);
-        }
+        m_bEnabled = false;
+        pAISystem->NotifyEnableState(this, m_bEnabled);
         break;
     case AIEVENT_WAKEUP:
         m_bEnabled = true;
@@ -1599,9 +1602,13 @@ void CAIActor::SetAttentionTarget(CWeakRef<CAIObject> refTarget)
 
 Vec3 CAIActor::GetFloorPosition(const Vec3& pos)
 {
+#if ENABLE_CRY_PHYSICS
     Vec3 floorPos = pos;
     return (GetFloorPos(floorPos, pos, WalkabilityFloorUpDist, WalkabilityFloorDownDist, WalkabilityDownRadius, AICE_STATIC))
            ? floorPos : pos;
+#else
+    return pos;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
@@ -1910,6 +1917,7 @@ void CAIActor::GetPhysicalSkipEntities(PhysSkipList& skipList) const
 {
     CAIObject::GetPhysicalSkipEntities(skipList);
 
+#if ENABLE_CRY_PHYSICS
     const SAIBodyInfo& bi = GetBodyInfo();
     if (IEntity* pLinkedVehicleEntity = bi.GetLinkedVehicleEntity())
     {
@@ -1922,6 +1930,7 @@ void CAIActor::GetPhysicalSkipEntities(PhysSkipList& skipList) const
     {
         CheckAndAddPhysEntity(skipList, pGrabbedEntity->GetPhysics());
     }
+#endif
 
     // (Kevin) Adding children in most cases causes us to add too many entities to the skip list (i.e., vehicles)
     // If this is needed, investigate how we can keep this under 5 skippable entities.
@@ -1963,6 +1972,7 @@ void CAIActor::GetLocalBounds(AABB& bbox) const
     bbox.max.zero();
 
     IEntity* pEntity = GetEntity();
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysicalEntity = pEntity->GetPhysics();
     if (pPhysicalEntity)
     {
@@ -1974,6 +1984,7 @@ void CAIActor::GetLocalBounds(AABB& bbox) const
         }
     }
     else
+#endif
     {
         return pEntity->GetLocalBounds(bbox);
     }
@@ -2617,12 +2628,14 @@ void CAIActor::SetSpeed(float fSpeed)
     m_State.fMovementUrgency = fSpeed;
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CAIActor::GetPhysics(bool bWantCharacterPhysics) const
 {
     IAIActorProxy* pAIActorProxy = GetProxy();
     return pAIActorProxy ? pAIActorProxy->GetPhysics(bWantCharacterPhysics)
            : CAIObject::GetPhysics(bWantCharacterPhysics);
 }
+#endif // ENABLE_CRY_PHYSICS
 
 bool CAIActor::CanDamageTarget(IAIObject* target) const
 {

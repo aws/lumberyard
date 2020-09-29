@@ -10,14 +10,26 @@
 #
 
 import boto3
-import service
+
+import ban_handler
 import cgf_lambda_settings
 import cgf_service_client
-import ban_handler
+import errors
 import identity_validator
+import service
+
+UNKNOWN_PLAYER_ERROR_MESSAGE = "User '{}' is not registered with the PlayerAccount Gem or has not sent data to the Leaderboards Gem"
+
 
 @service.api
-def post(request, user = None):
+def post(request, user=None):
+    """
+    Call PlayerAccount to ban the player.
+
+    Player must be a registered uer in the PlayerAccount Gem and Leaderboards must have seen the player
+    via a data request to have a mapping between the user name and the cognition identity (for get_id_from_user)
+    """
+    print("Handling player ban for {}".format(user))
     interface_url = cgf_lambda_settings.get_service_url("CloudGemPlayerAccount_banplayer_1_0_0")
 
     if not interface_url:
@@ -26,23 +38,39 @@ def post(request, user = None):
         }
 
     service_client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
-    result = service_client.navigate('playerban').POST({"id":  identity_validator.get_id_from_user(user)})
+    navigation = service_client.navigate('playerban')
+    cog_id = identity_validator.get_id_from_user(user)
+    if cog_id is None:
+        raise errors.ClientError(UNKNOWN_PLAYER_ERROR_MESSAGE.format(user))
+
+    result = navigation.POST(
+        {"id": cog_id}
+    )
     return result.DATA
 
+
 @service.api
-def delete(request, user = None):
-    interface_url = cgf_lambda_settings.get_service_url(
-        "CloudGemPlayerAccount_banplayer_1_0_0")
+def delete(request, user=None):
+    """
+    Call PlayerAccount to unban the player
+    
+    Player must be a registered uer in the PlayerAccount Gem and Leaderboards must have seen the player
+    via a data request to have a mapping between the user name and the cognition identity (for get_id_from_user)
+    """
+    print("Handling player unban for {}".format(user))
+    interface_url = cgf_lambda_settings.get_service_url("CloudGemPlayerAccount_banplayer_1_0_0")
     if not interface_url:
         return {
             "status": ban_handler.lift_ban(user)
         }
-    service_client = cgf_service_client.for_url(
-        interface_url, verbose=True, session=boto3._get_default_session())
+
+    service_client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
     navigation = service_client.navigate('playerban')
     cog_id = identity_validator.get_id_from_user(user)
+    if cog_id is None:
+        raise errors.ClientError(UNKNOWN_PLAYER_ERROR_MESSAGE.format(user))
+
     result = navigation.DELETE(
-        { "id":  cog_id }
+        {"id": cog_id}
     )
     return result.DATA
-

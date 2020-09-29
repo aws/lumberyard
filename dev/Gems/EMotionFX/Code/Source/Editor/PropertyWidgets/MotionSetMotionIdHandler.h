@@ -21,6 +21,7 @@
 #include <AzCore/std/utils.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/list.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MotionSetSelectionWindow.h>
 
 namespace EMotionFX
 {
@@ -92,7 +93,8 @@ namespace EMotionFX
         void SelectionChanged();
     private slots:
         void OnPickClicked();
-
+        void OnPickDialogAccept();
+        void OnPickDialogReject();
     private:
         void InitializeWidgets();
         void HandleSelectedMotionsUpdate(const AZStd::vector<AZStd::string>& motionIds);
@@ -114,6 +116,7 @@ namespace EMotionFX
         float                                               m_weightsSum = 0.0f;
         bool                                                m_displaySelectionWeights = false;
         static const float                                  s_defaultWeight;
+        EMStudio::MotionSetSelectionWindow*                 m_motionPickWindow = nullptr;
     };
 
 

@@ -1063,7 +1063,9 @@ void CD3D9Renderer::RT_ShutDown(uint32 nFlags)
 {
     m_volumetricFog.DestroyResources(true);
 
+#if ENABLE_CRY_PHYSICS
     CREBreakableGlassBuffer::RT_ReleaseInstance();
+#endif
     SAFE_DELETE(m_pColorGradingControllerD3D);
     SAFE_DELETE(m_pPostProcessMgr);
     SAFE_DELETE(m_pWaterSimMgr);

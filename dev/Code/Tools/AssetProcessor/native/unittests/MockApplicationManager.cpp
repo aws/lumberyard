@@ -60,13 +60,13 @@ namespace AssetProcessor
         {
         }
 
-        bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) override
+        bool Initialize(const QString& /*systemRoot*/, const QString& /*rcExecutableFullPath*/) override
         {
             m_initialize++;
             return m_initializeResult;
         }
-        bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest, 
-            const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const override
+        bool Execute(const QString& /*inputFile*/, const QString& /*watchFolder*/, const QString& /*platformIdentifier*/, const QString& /*params*/, const QString& /*dest*/, 
+            const AssetBuilderSDK::JobCancelListener* /*jobCancelListener*/, Result& result) const override
         {
             m_execute++;
             result = m_executeResultResult;
@@ -385,7 +385,7 @@ namespace AssetProcessor
         AssetProcessor::AssetBuilderInfoBus::Handler::BusDisconnect();
     }
 
-    void MockAssetBuilderInfoHandler::GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList)
+    void MockAssetBuilderInfoHandler::GetMatchingBuildersInfo(const AZStd::string& /*assetPath*/, AssetProcessor::BuilderInfoList& builderInfoList)
     {
         builderInfoList.push_back(m_assetBuilderDesc);
     }

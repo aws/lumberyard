@@ -15,29 +15,29 @@ from errors import ClientError
 
 
 @service.api
-def post(request, stat = None, additional_data = {}):
+def post(request, stat=None, additional_data=None):
+    if additional_data is None:
+        additional_data = {}
     if not stat:
         return {"scores": []}
-    if additional_data == None:
-        additional_data = {}
+
     page = additional_data.get("page", None)
     page_size = additional_data.get("page_size", None)
     has_page = False
 
-    if not page is None and not page_size is None:
-        if not isinstance(page,(int)):
+    if page is not None and page_size is not None:
+        if not isinstance(page, int):
             raise ClientError("Page param is not an integer")
-        if not isinstance(page_size,(int)):
+        if not isinstance(page_size, int):
             raise ClientError("Page size param is not an integer")
         if page_size > 0:
             has_page = True
 
-    leaderboard = score_reader.build_leaderboard(stat,
-        additional_data.get("users", []))
+    leaderboard = score_reader.build_leaderboard(stat, additional_data.get("users", []))
 
     total_entries = len(leaderboard)
     if has_page:
-        leaderboard = leaderboard[page * page_size : (page + 1) * page_size]
+        leaderboard = leaderboard[page * page_size: (page + 1) * page_size]
 
     response = {
         "scores": leaderboard

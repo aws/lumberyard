@@ -63,6 +63,7 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/UI/Logging/LogLine.h>
+#include <xxhash/xxhash.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <windows.h>
@@ -184,11 +185,26 @@ namespace AssetUtilities
     char s_assetServerAddress[AZ_MAX_PATH_LEN] = { 0 };
     char s_cachedEngineRoot[AZ_MAX_PATH_LEN] = { 0 };
     int s_truncateFingerprintTimestampPrecision{ 1 };
+    AZStd::optional<bool> s_fileHashOverride{};
+    AZStd::optional<bool> s_fileHashSetting{};
 
     void SetTruncateFingerprintTimestamp(int precision)
     {
         s_truncateFingerprintTimestampPrecision = precision;
     }
+
+    void SetUseFileHashOverride(bool override, bool enable)
+    {
+        if(override)
+        {
+            s_fileHashOverride = enable ? 1 : 0;
+        }
+        else
+        {
+            s_fileHashOverride.reset();
+        }
+    }
+
 
     void ResetAssetRoot()
     {
@@ -532,7 +548,7 @@ namespace AssetUtilities
             QStringList args = QCoreApplication::arguments();
             for (QString arg : args)
             {
-                if (arg.contains("/gamefolder=", Qt::CaseInsensitive))
+                if (arg.contains(QString("/%1=").arg(GameFolderOverrideParameter), Qt::CaseInsensitive))
                 {
                     QString rawValueString = arg.split("=")[1].trimmed();
                     if (!rawValueString.isEmpty())
@@ -637,35 +653,42 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         return QString();
     }
 
-    // Should we expect our modification times to differ by the offset from the installer
-    int AllowedTimeZoneOffset()
+    bool ShouldUseFileHashing()
     {
-        const char PackageMarkfileName[] = "package_mark.txt";
-        QDir projectCacheRoot;
-        ComputeProjectCacheRoot(projectCacheRoot);
-
-        if (!QFile::exists(projectCacheRoot.absoluteFilePath(PackageMarkfileName)))
+        // Check if the settings file is overridden, if so, use the override instead
+        if(s_fileHashOverride)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "No mark file found at %s\n", projectCacheRoot.absoluteFilePath(PackageMarkfileName).toUtf8().constData());
-            return 0;
+            return *s_fileHashOverride;
         }
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Mark file found at %s\n", projectCacheRoot.absoluteFilePath(PackageMarkfileName).toUtf8().constData());
+
+        // Check if we read the settings file already, if so, use the cached value
+        if(s_fileHashSetting)
+        {
+            return *s_fileHashSetting;
+        }
+
         QDir engineRoot;
         ComputeEngineRoot(engineRoot);
         QString rootConfigFile = engineRoot.absoluteFilePath("AssetProcessorPlatformConfig.ini");
 
         if (QFile::exists(rootConfigFile))
         {
-            QString curValue;
+            bool curValue;
             QSettings loader(rootConfigFile, QSettings::IniFormat);
-            loader.beginGroup("Install");
-            curValue = loader.value("TimeZoneOffset", QString()).toString();
+            loader.beginGroup("Fingerprinting");
+            curValue = loader.value("UseFileHashing", true).toBool();
             loader.endGroup();
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Using TimeZoneOffset %s\n", curValue.toUtf8().constData());
-            return curValue.toInt();
+
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "UseFileHashing: %s\n", curValue ? "True" : "False");
+            s_fileHashSetting = curValue;
+
+            return curValue;
         }
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "No TimeZoneOffset setting found\n");
-        return 0;
+
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "No UseFileHashing setting found\n");
+        s_fileHashSetting = true;
+
+        return *s_fileHashSetting;
     }
 
     QString ReadGameNameFromBootstrap(QString initialFolder /*= QString()*/)
@@ -1254,7 +1277,7 @@ to ensure that the address is correct. Asset Processor won't be running in serve
 
     AZStd::string ComputeJobLogFileName(const AzToolsFramework::AssetSystem::JobInfo& jobInfo)
     {
-        return AZStd::string::format("%s-%u-%u.log", jobInfo.m_sourceFile.c_str(), jobInfo.GetHash(), jobInfo.m_jobRunKey);
+        return AZStd::string::format("%s-%u-%" PRIu64 ".log", jobInfo.m_sourceFile.c_str(), jobInfo.GetHash(), static_cast<uint64_t>(jobInfo.m_jobRunKey));
     }
 
     AZStd::string ComputeJobLogFileName(const AssetBuilderSDK::CreateJobsRequest& createJobsRequest)
@@ -1370,14 +1393,93 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         return digest[0]; // we only currently use 32-bit hashes.  This could be extended if collisions still occur.
     }
 
-    std::uint64_t AdjustTimestamp(QDateTime timestamp)
+    AZ::u64 GetFileHash(const char* filePath, bool force, AZ::IO::SizeType* bytesReadOut, int hashMsDelay)
     {
-        if (timestamp.isDaylightTime())
+#ifndef AZ_TESTS_ENABLED
+        // Only used for unit tests, speed is critical for GetFileHash.
+        AZ_UNUSED(hashMsDelay);
+#endif
+        bool useFileHashing = ShouldUseFileHashing();
+
+        if(!useFileHashing || !filePath)
         {
-            int offsetTimeinSecs = timestamp.timeZone().daylightTimeOffset(timestamp);
-            timestamp = timestamp.addSecs(-1 * offsetTimeinSecs);
+            return 0;
         }
-        
+
+        if(!force)
+        {
+            auto* fileStateInterface = AZ::Interface<AssetProcessor::IFileStateRequests>::Get();
+            AZ::u64 hash = 0;
+
+            if (fileStateInterface && fileStateInterface->GetHash(filePath, &hash))
+            {
+                return hash;
+            }
+        }
+
+        char buffer[FileHashBufferSize];
+
+        constexpr bool ErrorOnReadFailure = true;
+        AZ::IO::FileIOStream readStream(filePath, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, ErrorOnReadFailure);
+
+        if(readStream.IsOpen() && readStream.CanRead())
+        {
+            AZ::IO::SizeType bytesRead;
+
+            auto* state = XXH64_createState();
+
+            if(state == nullptr)
+            {
+                AZ_Assert(false, "Failed to create hash state");
+                return 0;
+            }
+
+            if(XXH64_reset(state, 0) == XXH_ERROR)
+            {
+                AZ_Assert(false, "Failed to reset hash state");
+                return 0;
+            }
+
+            do
+            {
+                // In edge cases where another process is writing to this file while this hashing is occuring and that file wasn't locked,
+                // the following read check can fail because it performs an end of file check, and asserts and shuts down if the read size
+                // was smaller than the buffer and the read is not at the end of the file. The logic used to check end of file internal to read
+                // will be out of date in the edge cases where another process is actively writing to this file while this hash is running.
+                // The stream's length ends up more accurate in this case, preventing this assert and shut down.
+                // One area this occurs is the navigation mesh file (mnmnavmission0.bai) that's temporarily created when exporting a level,
+                // the navigation system can still be writing to this file when hashing begins, causing the EoF marker to change.
+                AZ::IO::SizeType remainingToRead = AZStd::min(readStream.GetLength() - readStream.GetCurPos(), aznumeric_cast<AZ::IO::SizeType>(AZ_ARRAY_SIZE(buffer)));
+                bytesRead = readStream.Read(remainingToRead, buffer);
+                
+                if(bytesReadOut)
+                {
+                    *bytesReadOut += bytesRead;
+                }
+
+                XXH64_update(state, buffer, bytesRead);
+#ifdef AZ_TESTS_ENABLED
+                // Used by unit tests to force the race condition mentioned above, to verify the crash fix.
+                if(hashMsDelay > 0)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(hashMsDelay));
+                }
+#endif
+
+            } while (bytesRead > 0);
+
+            auto hash = XXH64_digest(state);
+
+            XXH64_freeState(state);
+
+            return hash;
+        }
+
+        return 0;
+    }
+
+    std::uint64_t AdjustTimestamp(QDateTime timestamp)
+    {       
         timestamp = timestamp.toUTC();
 
         auto timeMilliseconds = timestamp.toMSecsSinceEpoch();
@@ -1393,7 +1495,12 @@ to ensure that the address is correct. Asset Processor won't be running in serve
     {
         bool fileFound = false;
         AssetProcessor::FileStateInfo fileStateInfo;
-        AssetProcessor::FileStateRequestBus::BroadcastResult(fileFound, &AssetProcessor::FileStateRequestBus::Events::GetFileInfo, QString::fromUtf8(absolutePath.c_str()), &fileStateInfo);
+        
+        auto* fileStateInterface = AZ::Interface<AssetProcessor::IFileStateRequests>::Get();
+        if (fileStateInterface)
+        {
+            fileFound = fileStateInterface->GetFileInfo(QString::fromUtf8(absolutePath.c_str()), &fileStateInfo);
+        }
 
         QDateTime lastModifiedTime = fileStateInfo.m_modTime;
         if (!fileFound || !lastModifiedTime.isValid())
@@ -1405,19 +1512,29 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         }
         else
         {
-            std::uint64_t lastModifiedTimeMilliseconds = AdjustTimestamp(lastModifiedTime);
+            bool useHash = ShouldUseFileHashing();
+            std::uint64_t fileIdentifier;
 
-            // its possible that the dependency has moved to a different file with the same modtime
+            if(useHash)
+            {
+                fileIdentifier = GetFileHash(absolutePath.c_str());
+            }
+            else
+            {
+                fileIdentifier = AdjustTimestamp(lastModifiedTime);
+            }
+            
+            // its possible that the dependency has moved to a different file with the same modtime/hash
             // so we add the size of it too.
-            // its also possible that it moved to a different file with the same modtime AND size,
+            // its also possible that it moved to a different file with the same modtime/hash AND size,
             // but with a different name.  So we add that too.
-            return AZStd::string::format("%" PRIX64 ":%" PRIu64 ":%s", lastModifiedTimeMilliseconds, aznumeric_cast<uint64_t>(fileStateInfo.m_fileSize), nameToUse.c_str());
+            return AZStd::string::format("%" PRIX64 ":%" PRIu64 ":%s", fileIdentifier, aznumeric_cast<uint64_t>(fileStateInfo.m_fileSize), nameToUse.c_str());
         }
     }
 
     AZStd::string ComputeJobLogFileName(const AssetProcessor::JobEntry& jobEntry)
     {
-        return AZStd::string::format("%s-%u-%u.log", jobEntry.m_databaseSourceName.toUtf8().constData(), jobEntry.GetHash(), jobEntry.m_jobRunKey);
+        return AZStd::string::format("%s-%u-%" PRIu64 ".log", jobEntry.m_databaseSourceName.toUtf8().constData(), jobEntry.GetHash(), static_cast<uint64_t>(jobEntry.m_jobRunKey));
     }
 
     bool CreateTempRootFolder(QString startFolder, QDir& tempRoot)
@@ -1573,7 +1690,11 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         // these operating systems use File Systems which are generally not case sensitive, and so we can make this function "early out" a lot faster.
         // by quickly determining the case where it does not exist at all.  Without this assumption, it can be hundreds of times slower.
         bool exists = false;
-        AssetProcessor::FileStateRequestBus::BroadcastResult(exists, &AssetProcessor::FileStateRequestBus::Events::Exists, QDir(rootPath).absoluteFilePath(relativePathFromRoot));
+        auto* fileStateInterface = AZ::Interface<AssetProcessor::IFileStateRequests>::Get();
+        if (fileStateInterface)
+        {
+            exists = fileStateInterface->Exists(QDir(rootPath).absoluteFilePath(relativePathFromRoot));
+        }
 
         if (!exists)
         {

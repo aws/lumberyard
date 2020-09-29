@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_IBREAKABLEMANAGER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 // Forward declaration from physics interface.
 struct EventPhys;
 struct EventPhysRemoveEntityParts;
@@ -240,5 +241,6 @@ struct IBreakableManager
     virtual struct ISurfaceType* GetFirstSurfaceType(IStatObj* pStatObj) = 0;
     virtual struct ISurfaceType* GetFirstSurfaceType(ICharacterInstance* pCharacter) = 0;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_IBREAKABLEMANAGER_H

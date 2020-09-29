@@ -91,6 +91,9 @@ public:
 
     void SaveLayoutSettings(const QByteArray& layout, const QString& toolName);
 
+    AZStd::vector<AZStd::string> BuildSettingsList();
+    void BuildSettingsList_Helper(const XmlNodeRef& nodeList, const AZStd::string_view& previousPath, AZStd::vector<AZStd::string>& result);
+
     void LoadSetting(const QString& path, const QString& attr, bool& val);
     void LoadSetting(const QString& path, const QString& attr, int& iVal);
     void LoadSetting(const QString& path, const QString& attr, float& fVal);

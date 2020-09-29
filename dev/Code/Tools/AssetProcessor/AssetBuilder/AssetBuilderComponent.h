@@ -135,6 +135,9 @@ protected:
     //! Map used to look up the asset builder to handle a request
     AZStd::unordered_map<AZ::Uuid, AZStd::unique_ptr<AssetBuilderSDK::AssetBuilderDesc>> m_assetBuilderDescMap;
 
+    //! Set of builders loaded from the deprecated builder dll system.  Used to add a warning to every job run by the builder to alert users that the system is deprecated and will be removed.  This can be removed once the system is removed
+    AZStd::unordered_set<AZ::Uuid> m_deprecatedAssetBuilderSet;
+
     //! List of loaded builders
     AZStd::vector<AZStd::unique_ptr<AssetBuilder::ExternalModuleAssetBuilderInfo>> m_assetBuilderInfoList;
 

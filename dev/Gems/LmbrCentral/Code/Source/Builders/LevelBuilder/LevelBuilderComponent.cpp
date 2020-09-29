@@ -10,6 +10,7 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "LevelBuilderComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
@@ -45,7 +46,8 @@ namespace LevelBuilder
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<LevelBuilderComponent, AZ::Component>()
-                ->Version(1);
+                ->Version(2)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));
         }
     }
 }

@@ -17,6 +17,7 @@
 #include "CryLegacy_precompiled.h"
 #include "MFXDecalEffect.h"
 #include "Components/IComponentRender.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 CMFXDecalEffect::CMFXDecalEffect()
     : CMFXEffectBase(eMFXPF_Decal)
@@ -97,7 +98,12 @@ void CMFXDecalEffect::Execute(const SMFXRunTimeEffectParams& params)
         CryEngineDecalInfo terrainDecal;
 
         { // 2d terrain
-            const float terrainHeight(gEnv->p3DEngine->GetTerrainElevation(params.pos.x, params.pos.y));
+            float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                , params.pos.x, params.pos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+            const float terrainHeight(elevation);
             const float terrainDelta(params.pos.z - terrainHeight);
 
             if (terrainDelta > 2.0f || terrainDelta < -0.5f)

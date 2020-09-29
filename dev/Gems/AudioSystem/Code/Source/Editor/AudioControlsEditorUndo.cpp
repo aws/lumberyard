@@ -238,8 +238,7 @@ namespace AudioControls
             {
                 m_name = pControl->GetName();
                 m_scope = pControl->GetScope();
-                m_bAutoLoad = pControl->IsAutoLoad();
-                m_groupPerPlatform = pControl->m_groupPerPlatform;
+                m_isAutoLoad = pControl->IsAutoLoad();
                 m_connectedControls = pControl->m_connectedControls;
             }
         }
@@ -269,21 +268,18 @@ namespace AudioControls
             {
                 AZStd::string name = pControl->GetName();
                 AZStd::string scope = pControl->GetScope();
-                bool bAutoLoad = pControl->IsAutoLoad();
-                AZStd::map<AZStd::string, int> groupPerPlatform = pControl->m_groupPerPlatform;
+                bool isAutoLoad = pControl->IsAutoLoad();
                 AZStd::vector<TConnectionPtr> connectedControls = pControl->m_connectedControls;
 
                 pControl->SetName(m_name);
                 pControl->SetScope(m_scope);
-                pControl->SetAutoLoad(m_bAutoLoad);
-                pControl->m_groupPerPlatform = m_groupPerPlatform;
+                pControl->SetAutoLoad(m_isAutoLoad);
                 pControl->m_connectedControls = m_connectedControls;
                 pModel->OnControlModified(pControl);
 
                 m_name = name;
                 m_scope = scope;
-                m_bAutoLoad = bAutoLoad;
-                m_groupPerPlatform = groupPerPlatform;
+                m_isAutoLoad = isAutoLoad;
                 m_connectedControls = connectedControls;
             }
         }

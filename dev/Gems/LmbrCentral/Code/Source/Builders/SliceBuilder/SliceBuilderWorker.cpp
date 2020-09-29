@@ -10,7 +10,9 @@
 *
 */
 
-#include <SliceBuilder/Source/SliceBuilderWorker.h>
+#include <LmbrCentral_precompiled.h>
+#include "SliceBuilderWorker.h"
+
 #include <AssetBuilderSDK/SerializationDependencies.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -197,7 +199,7 @@ namespace SliceBuilder
 
             jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
             jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
-                .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
+                .append(AZStd::string::format("|%" PRIu64, static_cast<AZ::u64>(sourceSliceTypeFingerprint)));
 
             for (const auto& sourceDependency : sourceFileDependencies)
             {
@@ -242,7 +244,16 @@ namespace SliceBuilder
             {
                 jobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_MakeDynamicSlice", 0xa89310ab)), AZStd::string("Create Dynamic Slice")));
             }
+
             response.m_createJobOutputs.push_back(jobDescriptor);
+
+            AssetBuilderSDK::JobDescriptor copyJobDescriptor("", "Editor Slice Copy", info.m_identifier.c_str());
+
+            copyJobDescriptor.m_critical = true;
+            copyJobDescriptor.m_priority = 2;
+            copyJobDescriptor.m_jobParameters.insert(AZStd::make_pair(AZ::u32(AZ_CRC("JobParam_CopyJob", 0x428e33c6)), AZStd::string("Copy Slice")));
+
+            response.m_createJobOutputs.push_back(copyJobDescriptor);
         }
 
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
@@ -292,10 +303,23 @@ namespace SliceBuilder
             platformTags.insert(AZ::Crc32(platformTagString.c_str(), platformTagString.size(), true));
         }
 
+        if (request.m_jobDescription.m_jobParameters.find(AZ_CRC("JobParam_CopyJob", 0x428e33c6)) != request.m_jobDescription.m_jobParameters.end())
+        {
+            if (GetCompiledSliceAsset(&stream, fullPath.c_str(), platformTags, exportSliceAsset))
+            {
+                AssetBuilderSDK::JobProduct jobProduct;
+
+                if (AssetBuilderSDK::OutputObject(exportSliceAsset.Get()->GetEntity(), request.m_fullPath, azrtti_typeid<AZ::SliceAsset>(), AZ::SliceAsset::GetAssetSubId(), jobProduct))
+                {
+                    response.m_outputProducts.push_back(AZStd::move(jobProduct));
+                }
+            }
+        }
+
         // Dynamic Slice Creation
         if (request.m_jobDescription.m_jobParameters.find(AZ_CRC("JobParam_MakeDynamicSlice", 0xa89310ab)) != request.m_jobDescription.m_jobParameters.end())
         {
-            if (GetDynamicSliceAsset(&stream, fullPath.c_str(), platformTags, exportSliceAsset))
+            if (GetCompiledSliceAsset(&stream, fullPath.c_str(), platformTags, exportSliceAsset))
             {
                 AZStd::string dynamicSliceOutputPath;
                 AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), fileNameOnly.c_str(), dynamicSliceOutputPath, true, true, true);
@@ -476,7 +500,7 @@ namespace SliceBuilder
         AZ_TracePrintf(s_sliceBuilder, "Finished processing slice %s\n", fullPath.c_str());
     }
 
-    bool SliceBuilderWorker::GetDynamicSliceAsset(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset)
+    bool SliceBuilderWorker::GetCompiledSliceAsset(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset)
     {
         AssetBuilderSDK::AssertAndErrorAbsorber assertAndErrorAbsorber(true);
 
@@ -508,12 +532,6 @@ namespace SliceBuilder
         {
             AZ_Error(s_sliceBuilder, false, "Failed to find the slice component in the slice asset!");
             return false; // this should fail!
-        }
-
-        if (!sourceSlice->IsDynamic())
-        {
-            AZ_Error(s_sliceBuilder, false, "Slice must be a dynamicslice in order to be processed: %s\n", fullPath);
-            return false;
         }
 
         if (assertAndErrorAbsorber.GetErrorCount() > 0)

@@ -105,7 +105,7 @@ namespace EMotionFX
 
             //////////////////////////////////////////////////////////////////////////
             // AnimGraphComponentRequestBus::Handler
-            EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override { return m_animGraphInstance ? m_animGraphInstance.get() : nullptr; }
+            EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override;
             AZ::u32 FindParameterIndex(const char* parameterName) override;
             const char* FindParameterName(AZ::u32 parameterIndex) override;
             void SetParameterFloat(AZ::u32 parameterIndex, float value) override;
@@ -138,8 +138,8 @@ namespace EMotionFX
             AZ::Vector3 GetNamedParameterRotationEuler(const char* parameterName) override;
             AZ::Quaternion GetNamedParameterRotation(const char* parameterName) override;
             bool GetVisualizeEnabled() override;
-            void SyncAnimGraph(AZ::EntityId masterEntityId) override;
-            void DesyncAnimGraph(AZ::EntityId masterEntityId) override;
+            void SyncAnimGraph(AZ::EntityId leaderEntityId) override;
+            void DesyncAnimGraph(AZ::EntityId leaderEntityId) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -161,8 +161,8 @@ namespace EMotionFX
             AZ::u64 GetNetworkRandomSeed() const override;
             //////////////////////////////////////////////////////////////////////////
             // AnimGraphComponentNotificationBus::Handler
-            void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) override;
-            void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) override;
+            void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Follower)*/) override;
+            void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Follower)*/) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -192,12 +192,14 @@ namespace EMotionFX
             static void Reflect(AZ::ReflectContext* context);
             //////////////////////////////////////////////////////////////////////////
 
-        private:
-
             // AZ::Data::AssetBus::Handler
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
+            void SetAnimGraphAssetId(const AZ::Data::AssetId& assetId);
+            void SetMotionSetAssetId(const AZ::Data::AssetId& assetId);
+
+        private:
             void CheckCreateAnimGraphInstance();
             void DestroyAnimGraphInstance();
 

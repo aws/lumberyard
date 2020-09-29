@@ -488,7 +488,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotJobsInQueueCall);
-    UNIT_TEST_EXPECT_TRUE(jobsInQueueCount = priorJobs + 1);
+    UNIT_TEST_EXPECT_TRUE(jobsInQueueCount == priorJobs + 1);
     priorJobs = jobsInQueueCount;
     gotJobsInQueueCall = false;
 
@@ -504,7 +504,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     QCoreApplication::processEvents(QEventLoop::AllEvents);
 
     UNIT_TEST_EXPECT_TRUE(gotJobsInQueueCall);
-    UNIT_TEST_EXPECT_TRUE(jobsInQueueCount = priorJobs + 1);
+    UNIT_TEST_EXPECT_TRUE(jobsInQueueCount == priorJobs);
 
 
     ////--------------- RCJob Test with critical locking TRUE
@@ -589,7 +589,7 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     m_assetBuilderDesc.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.txt", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
     m_assetBuilderDesc.m_busId = builderUuid;
     m_assetBuilderDesc.m_processJobFunction = []
-    (const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
+    (const AssetBuilderSDK::ProcessJobRequest& /*request*/, AssetBuilderSDK::ProcessJobResponse& response)
     {
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
     };
@@ -763,14 +763,14 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // Test case when source file is deleted before it started processing
     {
         int prevJobCount = rcJobListModel->itemCount();
-        MockRCJob rcJob;
+        MockRCJob rcJobAddAndDelete;
         AssetProcessor::JobDetails jobDetailsToInitWithInsideScope;
         jobDetailsToInitWithInsideScope.m_jobEntry.m_pathRelativeToWatchFolder = jobDetailsToInitWithInsideScope.m_jobEntry.m_databaseSourceName = "someFile0.txt";
         jobDetailsToInitWithInsideScope.m_jobEntry.m_platformInfo = { "pc",{ "tools", "editor" } };
         jobDetailsToInitWithInsideScope.m_jobEntry.m_jobKey = "Text files";
         jobDetailsToInitWithInsideScope.m_jobEntry.m_sourceFileUUID = jobDetailsToInitWith.m_jobEntry.m_sourceFileUUID;
-        rcJob.Init(jobDetailsToInitWithInsideScope);
-        rcJobListModel->addNewJob(&rcJob);
+        rcJobAddAndDelete.Init(jobDetailsToInitWithInsideScope);
+        rcJobListModel->addNewJob(&rcJobAddAndDelete);
         // verify that job was added
         UNIT_TEST_EXPECT_TRUE(rcJobListModel->itemCount() == prevJobCount + 1);
         m_rcController.RemoveJobsBySource("someFile0.txt");

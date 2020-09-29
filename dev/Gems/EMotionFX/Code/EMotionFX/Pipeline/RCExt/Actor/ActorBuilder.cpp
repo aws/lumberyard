@@ -1116,7 +1116,12 @@ namespace EMotionFX
                         AZ_TracePrintf(SceneUtil::ErrorWindow, "Unable to find material named %s in mtl file while building material index map for actor.", nodeName.c_str());
                         index = 0;
                     }
+#ifdef OTHER_ACTIVE
+                    const auto& materialData = AZStd::static_pointer_cast<const SceneDataTypes::IMaterialData>(*it);
+                    m_materialIndexMapForMesh.push_back(aznumeric_cast<AZ::u32>(materialData->GetUniqueId()));
+#else                    
                     m_materialIndexMapForMesh.push_back(aznumeric_cast<AZ::u32>(index));
+#endif
                 }
             }
         }

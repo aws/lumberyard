@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import json
 import boto3
 import hashlib
+import os
 import botocore.config as boto_config
 
 # Python 2.7/3.7 Compatibility
@@ -103,13 +104,16 @@ def handler(event, context):
         constant.STACK_ID_TAG: stack_id
     }
 
+    custom_domain_name = os.environ.get('CustomDomainName', '')
+
     if request_type == 'Create':
 
         props = properties.load(event, PROPERTY_SCHEMA)
         role_arn = role_utils.create_access_control_role(stack_manager, id_data, stack.stack_arn, logical_role_name, API_GATEWAY_SERVICE_NAME)
         swagger_content = get_configured_swagger_content(stack, props, role_arn, rest_api_resource_name)
         rest_api_id = create_api_gateway(rest_api_resource_name, props, swagger_content)
-        service_url = get_service_url(rest_api_id, stack.region)
+        add_api_case_path_mappings(rest_api_id, stack.region, custom_domain_name)
+        service_url = get_service_url(rest_api_id, stack.region, custom_domain_name)
 
         register_service_interfaces(stack, service_url, swagger_content)
         update_api_gateway_tags(rest_api_id, event, project_tags)
@@ -127,7 +131,14 @@ def handler(event, context):
         role_arn = role_utils.get_access_control_role_arn(id_data, logical_role_name)
         swagger_content = get_configured_swagger_content(stack, props, role_arn, rest_api_resource_name)
         update_api_gateway(rest_api_id, props, swagger_content)
-        service_url = get_service_url(rest_api_id, stack.region)
+        old_domain_name = update_api_case_path_mappings(rest_api_id, stack.region, custom_domain_name)
+        
+        if old_domain_name != custom_domain_name:
+            # Unregister service interfaces created with the old service Url
+            old_service_url = get_service_url(rest_api_id, stack.region, old_domain_name)
+            unregister_service_interfaces(stack, old_service_url)
+
+        service_url = get_service_url(rest_api_id, stack.region, custom_domain_name)
         register_service_interfaces(stack, service_url, swagger_content)
 
         update_api_gateway_tags(rest_api_id, event, project_tags)
@@ -155,8 +166,9 @@ def handler(event, context):
             if not rest_api_id:
                 raise RuntimeError('No RestApiId found in id_data: {}'.format(id_data))
 
+            delete_api_case_path_mappings(rest_api_id, stack.region, custom_domain_name)
             delete_api_gateway(rest_api_id)
-            service_url = get_service_url(rest_api_id, stack.region)
+            service_url = get_service_url(rest_api_id, stack.region, custom_domain_name)
             unregister_service_interfaces(stack, service_url)
 
             del id_data['RestApiId']
@@ -248,6 +260,34 @@ def create_api_gateway(rest_api_resource_name, props, swagger_content):
 
     return rest_api_id
 
+def add_api_case_path_mappings(rest_api_id, region, custom_domain_name):
+    """ Creates a new BasePathMapping resource for routing the requests sent to the custom domain name """
+    if not custom_domain_name:
+        return False
+
+    basePath='{region}.{stage_name}.{rest_api_id}'.format(
+        region=region,
+        stage_name=STAGE_NAME,
+        rest_api_id=rest_api_id)
+
+    try:
+        api_gateway.get_base_path_mapping(
+            domainName=custom_domain_name,
+            basePath=basePath
+        )
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NotFoundException':
+            api_gateway.create_base_path_mapping(
+                domainName=custom_domain_name,
+                basePath=basePath,
+                restApiId=rest_api_id,
+                stage=STAGE_NAME)
+
+            return True
+        else:
+            raise e
+
+    return False
 
 def update_api_gateway(rest_api_id, props, swagger_content):
     rest_api_deployment_id = get_rest_api_deployment_id(rest_api_id)
@@ -258,6 +298,26 @@ def update_api_gateway(rest_api_id, props, swagger_content):
     update_rest_api_stage(rest_api_id, props)
     create_documentation_version(rest_api_id)
 
+def update_api_case_path_mappings(rest_api_id, region, custom_domain_name):
+    """ Updates BasePathMapping resources. Remove the existing ones and add new mapping resources. """
+    response = api_gateway.get_domain_names()
+    existing_domain_names = [item.get('domainName', '') for item in response.get('items', [])]
+    position = response.get('position', '')
+
+    while position:
+        response = api_gateway.get_domain_names(position=position)
+        existing_domain_names = existing_domain_names + [item.get('domainName', '') for item in response.get('items', [])]
+        position = response.get('position', '')
+    
+    old_domain_name = ''
+    for existing_domain_name in existing_domain_names:
+        if delete_api_case_path_mappings(rest_api_id, region, existing_domain_name):
+            old_domain_name = existing_domain_name
+            break
+    
+    add_api_case_path_mappings(rest_api_id, region, custom_domain_name)
+
+    return old_domain_name
 
 def delete_api_gateway(rest_api_id):
     delete_rest_api(rest_api_id)
@@ -265,12 +325,42 @@ def delete_api_gateway(rest_api_id):
 
 def delete_rest_api(rest_api_id):
     try:
-        res = api_gateway.delete_rest_api(restApiId=rest_api_id)
+        api_gateway.delete_rest_api(restApiId=rest_api_id)
     except ClientError as e:
         if e.response['Error']['Code'] == 'NotFoundException':
             print('No API found. Skipping delete.')
         else:
             raise e
+
+def delete_api_case_path_mappings(rest_api_id, region, custom_domain_name):
+    """ Deletes the BasePathMapping resource which corresponds to the deleted API """
+    if not custom_domain_name:
+        return False
+
+    basePath='{region}.{stage_name}.{rest_api_id}'.format(
+        region=region,
+        stage_name=STAGE_NAME,
+        rest_api_id=rest_api_id)
+
+    try:
+        res = api_gateway.get_base_path_mapping(
+            domainName=custom_domain_name,
+            basePath=basePath)
+
+        if res:
+            api_gateway.delete_base_path_mapping(
+                domainName=custom_domain_name,
+                basePath=basePath)
+
+            return True
+
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NotFoundException':
+            print('No API base path mappings found. Skipping delete.')
+        else:
+            raise e
+
+    return False
 
 
 def create_documentation_version(rest_api_id, attempt=0):
@@ -494,11 +584,18 @@ def get_rest_api_deployment_id(rest_api_id):
     return res['deploymentId']
 
 
-def get_service_url(rest_api_id, region):
-    return 'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
-        rest_api_id=rest_api_id,
-        region=region,
-        stage_name=STAGE_NAME)
+def get_service_url(rest_api_id, region, custom_domain_name):
+    if custom_domain_name:
+        return 'https://{custom_domain_name}/{region}.{stage_name}.{rest_api_id}'.format(
+            custom_domain_name=custom_domain_name,
+            region=region,
+            stage_name=STAGE_NAME,
+            rest_api_id=rest_api_id)
+    else:
+        return 'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
+            rest_api_id=rest_api_id,
+            region=region,
+            stage_name=STAGE_NAME)
 
 
 def register_service_interfaces(stack, service_url, swagger_content):

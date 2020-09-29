@@ -131,6 +131,8 @@ namespace PhysX
 
         bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
             bool result = false;
 
             AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();

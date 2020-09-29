@@ -12,6 +12,8 @@
 
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <LmbrCentral/Physics/PhysicsComponentBus.h>
 
 namespace LmbrCentral
@@ -65,3 +67,4 @@ namespace LmbrCentral
         };
     } // namespace Internal
 } // namespace LmbrCentral
+#endif // ENABLE_CRY_PHYSICS

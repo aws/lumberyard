@@ -14,7 +14,7 @@
 // Description : Create buffer, copy it into var memory, draw
 
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 
 #include "terrain.h"
 #include "terrain_sector.h"
@@ -240,8 +240,6 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
 
 void CTerrainUpdateDispatcher::SyncAllJobs(bool bForceAll, const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     uint32 nNothingQueued = 0;
     do
     {
@@ -575,8 +573,6 @@ void CTerrainNode::ResetHeightMapGeometry(bool bRecursive, const AABB* pBox)
 // fill vertex buffer
 void CTerrainNode::BuildVertices(int nStep)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     m_MeshData->m_Vertices.Clear();
 
     int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
@@ -748,8 +744,6 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
 
 void CTerrainNode::BuildIndices(InPlaceIndexBuffer& indices, PodArray<ITerrainNode*>* pNeighbourSectors, const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     // 1<<MML_NOT_SET will generate 0;
     if (m_QueuedLOD == MML_NOT_SET)
     {
@@ -800,7 +794,6 @@ void CTerrainNode::BuildIndices(InPlaceIndexBuffer& indices, PodArray<ITerrainNo
 // entry point
 bool CTerrainNode::RenderSector(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
     STerrainNodeLeafData* pLeafData = GetLeafData();
 
     if (!pLeafData)
@@ -1040,8 +1033,6 @@ static int GetVecProjectId(const Vec3& vNorm)
 
 void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceAxisIndexCount[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount][4], BuildMeshData* meshData)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     // Used to quickly iterate unique surfaces.
     static uint8 SurfaceCounts[LegacyTerrain::TerrainNodeSurface::MaxSurfaceCount] = { 0 };
 
@@ -1159,7 +1150,6 @@ void CTerrainNode::UpdateSurfaceRenderMeshes(
     const SRenderingPassInfo& passInfo)
 {
     AZ_TRACE_METHOD();
-    FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
 
     ERenderMeshType eRMType = eRMT_Dynamic;
 

@@ -25,4 +25,15 @@ namespace Maestro
         // Public functions
     };
     using MaestroRequestBus = AZ::EBus<MaestroRequests>;
+
+    class TimeOfDayCacheRequests : public AZ::EBusTraits
+    {
+    public:
+
+        virtual XmlNodeRef Get(const char* path) = 0;
+        virtual void ResetTimeOfDayParams() = 0;
+    };
+
+    using TimeOfDayCacheRequestBus = AZ::EBus<TimeOfDayCacheRequests>;
+
 } // namespace Maestro

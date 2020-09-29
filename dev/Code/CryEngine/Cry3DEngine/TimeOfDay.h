@@ -65,12 +65,16 @@ public:
 
     void SetPaused(bool paused) override { m_bPaused = paused; }
 
+    void MakeCurrentPresetFromCurrentParams() override;
+
     void SetAdvancedInfo(const SAdvancedInfo &advInfo) override;
     void GetAdvancedInfo(SAdvancedInfo &advInfo) override;
 
     float GetHDRMultiplier() const { return m_fHDRMultiplier; }
 
     void Update(bool bInterpolate = true, bool bForceUpdate = false, bool bForceEnvUpdate = true) override;
+    void UpdateValues() override;
+    void UpdateEnvLighting(bool forceUpdate = false) override;
     void SetUpdateCallback(ITimeOfDayUpdateCallback* pCallback) override;
 
     void Serialize(XmlNodeRef& node, bool bLoading) override;
@@ -98,7 +102,6 @@ private:
     CTimeOfDay& operator=(const CTimeOfDay&&);
 
     SVariableInfo& GetVar(ETimeOfDayParamID id);
-    void UpdateEnvLighting(bool forceUpdate);
     void MigrateLegacyData(bool bSunIntensity, const XmlNodeRef& node);
     void LoadValueFromXmlNode(ETimeOfDayParamID destId, const XmlNodeRef& varNode);
 

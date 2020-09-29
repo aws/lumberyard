@@ -72,9 +72,13 @@ namespace AssetBundler
     const char* ComparisonTypeArg = "comparisonType";
     const char* ComparisonFilePatternArg = "filePattern";
     const char* ComparisonFilePatternTypeArg = "filePatternType";
+    const char* ComparisonTokenNameArg = "tokenName";
+    const char* ComparisonFirstInputArg = "firstInput";
+    const char* ComparisonSecondInputArg = "secondInput";
     const char* AddComparisonStepArg = "addComparison";
     const char* RemoveComparisonStepArg = "removeComparison";
     const char* MoveComparisonStepArg = "moveComparison";
+    const char* EditComparisonStepArg = "editComparison";
 
     // Compare
     const char* CompareCommand = "compare";
@@ -110,7 +114,11 @@ namespace AssetBundler
 
     namespace Internal
     {
-        void AddPlatformSeeds(AZStd::string rootFolder, AZStd::vector<AZStd::string>& defaultSeedLists, AzFramework::PlatformFlags platformFlags)
+        void AddPlatformSeeds(
+            AZStd::string rootFolder,
+            const AZStd::string& rootFolderDisplayName,
+            AZStd::unordered_map<AZStd::string, AZStd::string>& defaultSeedLists,
+            AzFramework::PlatformFlags platformFlags)
         {
             AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
             AZStd::vector<AzFramework::PlatformId> platformsIdxList = AzFramework::PlatformHelper::GetPlatformIndicesInterpreted(platformFlags);
@@ -118,7 +126,8 @@ namespace AssetBundler
             for (const AzFramework::PlatformId& platformId : platformsIdxList)
             {
                 AZStd::string platformDirectory;
-                AzFramework::StringFunc::Path::Join(rootFolder.c_str(), AzFramework::PlatformHelper::GetPlatformName(platformId), platformDirectory);
+                auto platformName = AzFramework::PlatformHelper::GetPlatformName(platformId);
+                AzFramework::StringFunc::Path::Join(rootFolder.c_str(), platformName, platformDirectory);
                 if (fileIO->Exists(platformDirectory.c_str()))
                 {
                     bool recurse = true;
@@ -132,14 +141,18 @@ namespace AssetBundler
                         {
                             AZStd::string normalizedFilePath = seedFile;
                             AzFramework::StringFunc::Path::Normalize(seedFile);
-                            defaultSeedLists.emplace_back(seedFile);
+                            defaultSeedLists[seedFile] = AZStd::string::format("%s (%s)", rootFolderDisplayName.c_str(), platformName);
                         }
                     }
                 }
             }
         }
 
-        void AddPlatformsDirectorySeeds(const AZStd::string& rootFolder, AZStd::vector<AZStd::string>& defaultSeedLists, AzFramework::PlatformFlags platformFlags)
+        void AddPlatformsDirectorySeeds(
+            const AZStd::string& rootFolder,
+            const AZStd::string& rootFolderDisplayName,
+            AZStd::unordered_map<AZStd::string, AZStd::string>& defaultSeedLists,
+            AzFramework::PlatformFlags platformFlags)
         {
             AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
             AZ_Assert(fileIO, "AZ::IO::FileIOBase must be ready for use.\n");
@@ -157,12 +170,12 @@ namespace AssetBundler
                     {
                         AZStd::string normalizedFilePath = fileName;
                         AzFramework::StringFunc::Path::Normalize(normalizedFilePath);
-                        defaultSeedLists.emplace_back(normalizedFilePath);
+                        defaultSeedLists[normalizedFilePath] = rootFolderDisplayName;
                         return true;
                     });
             }
 
-            AddPlatformSeeds(platformsDirectory, defaultSeedLists, platformFlags);
+            AddPlatformSeeds(platformsDirectory, rootFolderDisplayName, defaultSeedLists, platformFlags);
         }
     }
 
@@ -283,13 +296,31 @@ namespace AssetBundler
         AzFramework::StringFunc::Path::ReplaceFullName(filePath, fileName.c_str(), extension.c_str());
     }
 
-    AZStd::vector<AZStd::string> GetDefaultSeedListFiles(const char* root, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlag)
+    AzFramework::PlatformFlags GetPlatformsOnDiskForPlatformSpecificFile(const AZStd::string& platformIndependentAbsolutePath)
+    {
+        AzFramework::PlatformFlags platformFlags = AzFramework::PlatformFlags::Platform_NONE;
+
+        AZStd::vector<AZStd::string> allPlatformNames = AzFramework::PlatformHelper::GetPlatforms(AzFramework::PlatformFlags::AllNamedPlatforms);
+        for (const AZStd::string& platformName : allPlatformNames)
+        {
+            AZStd::string filePath = platformIndependentAbsolutePath;
+            AddPlatformIdentifier(filePath, platformName);
+            if (AZ::IO::FileIOBase::GetInstance()->Exists(filePath.c_str()))
+            {
+                platformFlags = platformFlags | AzFramework::PlatformHelper::GetPlatformFlag(platformName);
+            }
+        }
+
+        return platformFlags;
+    }
+
+    AZStd::unordered_map<AZStd::string, AZStd::string> GetDefaultSeedListFiles(const char* root, const char* projectName, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlag)
     {
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         AZ_Assert(fileIO, "AZ::IO::FileIOBase must be ready for use.\n");
 
         // Add all seed list files of enabled gems for the given project
-        AZStd::vector<AZStd::string> defaultSeedLists = GetGemSeedListFiles(gemInfoList, platformFlag);
+        AZStd::unordered_map<AZStd::string, AZStd::string> defaultSeedLists = GetGemSeedListFilePathToGemNameMap(gemInfoList, platformFlag);
 
         // Add the engine seed list file
         AZStd::string engineDirectory;
@@ -298,40 +329,37 @@ namespace AssetBundler
         AzFramework::StringFunc::Path::ConstructFull(engineDirectory.c_str(), EngineSeedFileName, AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteEngineSeedFilePath, true);
         if (fileIO->Exists(absoluteEngineSeedFilePath.c_str()))
         {
-            defaultSeedLists.emplace_back(absoluteEngineSeedFilePath);
+            defaultSeedLists[absoluteEngineSeedFilePath] = EngineDirectoryName;
         }
 
-        Internal::AddPlatformsDirectorySeeds(engineDirectory, defaultSeedLists, platformFlag);
+        // Add Seed Lists from the Platforms directory
+        Internal::AddPlatformsDirectorySeeds(engineDirectory, EngineDirectoryName, defaultSeedLists, platformFlag);
 
-        // Add the current project default seed list file
-        AZStd::string projectName;
-        bool checkPlatform = false;
-        bool result = false;
-        AzFramework::BootstrapReaderRequestBus::BroadcastResult(result, &AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, "sys_game_folder", checkPlatform, projectName);
-        if (result)
+        // Add the current project default seed list file, if it exists
+        AZStd::string absoluteProjectDefaultSeedFilePath;
+        AzFramework::StringFunc::Path::ConstructFull(root, projectName, EngineSeedFileName, AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteProjectDefaultSeedFilePath, true);
+
+        if (fileIO->Exists(absoluteProjectDefaultSeedFilePath.c_str()))
         {
-            AZStd::string absoluteProjectDefaultSeedFilePath;
-            AzFramework::StringFunc::Path::ConstructFull(root, projectName.c_str(), EngineSeedFileName, AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteProjectDefaultSeedFilePath, true);
-            if (fileIO->Exists(absoluteProjectDefaultSeedFilePath.c_str()))
-            {
-                defaultSeedLists.emplace_back(AZStd::move(absoluteProjectDefaultSeedFilePath));
-            }
+            defaultSeedLists[absoluteProjectDefaultSeedFilePath] = projectName;
         }
+
         return defaultSeedLists;
     }
 
-    AZStd::string GetProjectDependenciesFile(const char* root)
+    AZStd::vector<AZStd::string> GetDefaultSeeds(const char* root, const char* projectName)
     {
-        AZ::Outcome<AZStd::string, AZStd::string> outcome = GetCurrentProjectName();
-        if (!outcome.IsSuccess())
-        {
-            AZ_Error(AssetBundler::AppWindowName, false, outcome.TakeError().c_str());
-            return "";
-        }
+        AZStd::vector<AZStd::string> defaultSeeds;
 
-        AZStd::string projectName = outcome.TakeValue();
-        AZStd::string projectDependenciesFilePath = projectName + DependenciesFileSuffix;
-        AzFramework::StringFunc::Path::ConstructFull(root, projectName.c_str(), projectDependenciesFilePath.c_str(), DependenciesFileExtension, projectDependenciesFilePath, true);
+        defaultSeeds.emplace_back(GetProjectDependenciesAssetPath(root, projectName));
+
+        return defaultSeeds;
+    }
+
+    AZStd::string GetProjectDependenciesFile(const char* root, const char* projectName)
+    {
+        AZStd::string projectDependenciesFilePath = AZStd::string::format("%s%s", projectName, DependenciesFileSuffix);
+        AzFramework::StringFunc::Path::ConstructFull(root, projectName, projectDependenciesFilePath.c_str(), DependenciesFileExtension, projectDependenciesFilePath, true);
         return projectDependenciesFilePath;
     }
 
@@ -343,23 +371,33 @@ namespace AssetBundler
         return projectDependenciesFileTemplate;
     }
 
-    AZStd::vector<AZStd::string> GetGemSeedListFiles(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags)
+    AZStd::string GetProjectDependenciesAssetPath(const char* root, const char* projectName)
     {
-        AZStd::vector<AZStd::string> gemSeedListFiles;
-        for (const AzToolsFramework::AssetUtils::GemInfo& gemInfo : gemInfoList)
+        AZStd::string projectDependenciesFile = AZStd::move(GetProjectDependenciesFile(root, projectName));
+        if (!AZ::IO::FileIOBase::GetInstance()->Exists(projectDependenciesFile.c_str()))
         {
-            AZStd::string absoluteGemSeedFilePath;
-            AzFramework::StringFunc::Path::ConstructFull(gemInfo.m_absoluteFilePath.c_str(), GemsSeedFileName, AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteGemSeedFilePath, true);
+            AZ_TracePrintf(AssetBundler::AppWindowName, "Project dependencies file %s doesn't exist.\n", projectDependenciesFile.c_str());
 
-            if (AZ::IO::FileIOBase::GetInstance()->Exists(absoluteGemSeedFilePath.c_str()))
+            AZStd::string projectDependenciesFileTemplate = AZStd::move(GetProjectDependenciesFileTemplate(root));
+            if (AZ::IO::FileIOBase::GetInstance()->Copy(projectDependenciesFileTemplate.c_str(), projectDependenciesFile.c_str()))
             {
-                gemSeedListFiles.emplace_back(absoluteGemSeedFilePath);
+                AZ_TracePrintf(AssetBundler::AppWindowName, "Copied project dependencies file template %s to the current project.\n",
+                    projectDependenciesFile.c_str());
             }
-
-            Internal::AddPlatformsDirectorySeeds(gemInfo.m_absoluteFilePath, gemSeedListFiles, platformFlags);
+            else
+            {
+                AZ_Error(AppWindowName, false, "Failed to copy project dependencies file template %s from default project"
+                    " template to the current project.\n", projectDependenciesFileTemplate.c_str());
+                return {};
+            }
         }
 
-        return gemSeedListFiles;
+        // Turn the absolute path into a cache-relative path
+        AZStd::string relativeProductPath;
+        AzFramework::StringFunc::Path::GetFullFileName(projectDependenciesFile.c_str(), relativeProductPath);
+        AZStd::to_lower(relativeProductPath.begin(), relativeProductPath.end());
+
+        return relativeProductPath;
     }
 
     AZStd::unordered_map<AZStd::string, AZStd::string> GetGemSeedListFilePathToGemNameMap(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags)
@@ -376,12 +414,7 @@ namespace AssetBundler
                 filePathToGemNameMap[absoluteGemSeedFilePath] = gemName;
             }
 
-            AZStd::vector<AZStd::string> platformSpecificSeedListFiles;
-            Internal::AddPlatformsDirectorySeeds(gemInfo.m_absoluteFilePath, platformSpecificSeedListFiles, platformFlags);
-            for (const AZStd::string& platformSpecificSeedListFile : platformSpecificSeedListFiles)
-            {
-                filePathToGemNameMap[platformSpecificSeedListFile] = gemName;
-            }
+            Internal::AddPlatformsDirectorySeeds(gemInfo.m_absoluteFilePath, gemName, filePathToGemNameMap, platformFlags);
         }
 
         return filePathToGemNameMap;
@@ -409,26 +442,20 @@ namespace AssetBundler
 
         for (const AzToolsFramework::AssetUtils::GemInfo& gemInfo : gemInfoList)
         {
-            if (AzFramework::StringFunc::StartsWith(seedAbsoluteFilePath, gemInfo.m_absoluteFilePath))
+            // We want to check the path before going through the effort of creating the default Seed List file map
+            if (!AzFramework::StringFunc::StartsWith(seedAbsoluteFilePath, gemInfo.m_absoluteFilePath))
             {
-                AZStd::vector<AZStd::string> seeds;
-                AZStd::string absoluteGemSeedFilePath;
-                AzFramework::StringFunc::Path::ConstructFull(gemInfo.m_absoluteFilePath.c_str(), GemsSeedFileName, AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteGemSeedFilePath, true);
-
-                seeds.emplace_back(absoluteGemSeedFilePath);
-
-                Internal::AddPlatformsDirectorySeeds(gemInfo.m_absoluteFilePath, seeds, platformFlags);
-
-                for (AZStd::string& seedFile : seeds)
-                {
-                    AzFramework::StringFunc::Path::Normalize(seedFile);
-                    if (AzFramework::StringFunc::Equal(seedFile.c_str(), seedAbsoluteFilePath.c_str()))
-                    {
-                        // this is a valid seed file for the given gem and platform flags
-                        return true;
-                    }
-                }
+                continue;
             }
+
+            AZStd::unordered_map<AZStd::string, AZStd::string> seeds = GetGemSeedListFilePathToGemNameMap({gemInfo}, platformFlags);
+
+            if (seeds.find(seedAbsoluteFilePath) != seeds.end())
+            {
+                return true;
+            }
+            // If we have not validated the input path yet, we need to keep looking, or we will return false negatives
+            //    for Gems that have the same prefix in their name
         }
 
         return false;
@@ -509,7 +536,7 @@ namespace AssetBundler
         if (!success || !AZ::IO::FileIOBase::GetInstance()->Exists(projectCacheFolderPath.c_str()))
         {
             return AZ::Failure(AZStd::string::format(
-                "Unable to locate the Cache in the engine directory: %s. Please run the Asset Processor to generate a Cache and build assets.", 
+                "Unable to locate the Cache in the engine directory: %s. Please run the Lumberyard Asset Processor to generate a Cache and build assets.", 
                 engineRoot.c_str()));
         }
 
@@ -521,7 +548,7 @@ namespace AssetBundler
         else
         {
             return AZ::Failure(AZStd::string::format(
-                "Unable to locate the current Project in the Cache folder: %s. Please run the Asset Processor to generate a Cache and build assets.",
+                "Unable to locate the current Project in the Cache folder: %s. Please run the Lumberyard Asset Processor to generate a Cache and build assets.",
                 projectName.c_str()));
         }
     }
@@ -533,7 +560,7 @@ namespace AssetBundler
 
         if (tempPlatformList.empty())
         {
-            return AZ::Failure(AZStd::string("Cache is empty. Please run the Asset Processor to generate a Cache and build assets."));
+            return AZ::Failure(AZStd::string("Cache is empty. Please run the Lumberyard Asset Processor to generate a Cache and build assets."));
         }
 
         for (const QString& platform : tempPlatformList)
@@ -552,7 +579,7 @@ namespace AssetBundler
         if (!success)
         {
             return AZ::Failure(AZStd::string::format(
-                "Unable to find platform folder %s in cache found at: %s. Please run the Asset Processor to generate platform-specific cache folders and build assets.", 
+                "Unable to find platform folder %s in cache found at: %s. Please run the Lumberyard Asset Processor to generate platform-specific cache folders and build assets.", 
                 platformIdentifier, 
                 pathToCacheFolder));
         }
@@ -565,7 +592,7 @@ namespace AssetBundler
 
         if (!success)
         {
-            return AZ::Failure(AZStd::string("Unable to find the asset catalog. Please run the Asset Processor to generate a Cache and build assets."));
+            return AZ::Failure(AZStd::string("Unable to find the asset catalog. Please run the Lumberyard Asset Processor to generate a Cache and build assets."));
         }
 
         return AZ::Success(assetCatalogFilePath);
@@ -703,6 +730,19 @@ namespace AssetBundler
             AssetBundler::AddPlatformIdentifier(filePath, platformIdentifier);
         }
 
+        const char* appRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        AZStd::string driveString;
+        AzFramework::StringFunc::Path::GetDrive(appRoot, driveString);
+
+        if (AzFramework::StringFunc::FirstCharacter(filePath.c_str()) == AZ_CORRECT_FILESYSTEM_SEPARATOR)
+        {
+            AzFramework::StringFunc::Path::ConstructFull(driveString.c_str(), filePath.c_str(), filePath, true);
+        }
+#endif
+
         if (!AzFramework::StringFunc::Path::IsRelative(filePath.c_str()))
         {
             // it is already an absolute path
@@ -710,8 +750,6 @@ namespace AssetBundler
             return;
         }
 
-        const char* appRoot = nullptr;
-        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
         AzFramework::StringFunc::Path::ConstructFull(appRoot, m_absolutePath.c_str(), m_absolutePath, true);
     }
 
@@ -833,6 +871,19 @@ namespace AssetBundler
         }
         failureMessage.append(AZStd::string::format("and %s.", AssetFileInfoListComparison::FilePatternTypeNames[numTypes - 1]));
         return AZ::Failure(failureMessage);
+    }
+
+    bool LooksLikePath(const AZStd::string& inputString)
+    {
+        return AzFramework::StringFunc::CountCharacters(inputString.c_str(), '.') ||
+            AzFramework::StringFunc::CountCharacters(inputString.c_str(), AZ_CORRECT_FILESYSTEM_SEPARATOR) ||
+            AzFramework::StringFunc::CountCharacters(inputString.c_str(), AZ_WRONG_FILESYSTEM_SEPARATOR);
+    }
+
+    bool LooksLikeWildcardPattern(const AZStd::string& inputPattern)
+    {
+        return AzFramework::StringFunc::CountCharacters(inputPattern.c_str(), '*') ||
+            AzFramework::StringFunc::CountCharacters(inputPattern.c_str(), '?');
     }
 
 }

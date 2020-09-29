@@ -31,7 +31,9 @@
 
 struct IRenderer;
 struct I3DEngine;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct IGeometry;
 struct SpecialArea;
 class CGraph;
@@ -234,7 +236,11 @@ public:
 
 public:
 
+#if ENABLE_CRY_PHYSICS
     CFlightNavRegion2(IPhysicalWorld* pPhysWorld, CGraph* pGraph);
+#else
+    CFlightNavRegion2(CGraph* pGraph);
+#endif // ENABLE_CRY_PHYSICS
     ~CFlightNavRegion2(void);
 
     virtual void Clear();
@@ -282,7 +288,9 @@ public:
 private:
 
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld*             m_pPhysWorld;
+#endif
     CGraph*                             m_pGraph;
 
     static int                      m_DebugDraw;

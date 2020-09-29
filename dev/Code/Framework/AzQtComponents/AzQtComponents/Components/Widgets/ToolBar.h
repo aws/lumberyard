@@ -18,6 +18,7 @@
 class QSettings;
 class QStyleOption;
 class QToolBar;
+class QToolButton;
 class QWidget;
 
 namespace AzQtComponents
@@ -81,6 +82,12 @@ namespace AzQtComponents
         *   AzQtComponents::Style::addClass(toolBar, "{IconNormal, IconLarge}");
         */
         static void setToolBarIconSize(QToolBar* toolbar, ToolBarIconSize size);
+
+        /*!
+        * Returns a pointer to the toolbar's expander button.
+        * Used to override the default toolbar overflow behavior.
+        */
+        static QToolButton* getToolBarExpansionButton(QToolBar* toolBar);
 
     private:
         friend class Style;

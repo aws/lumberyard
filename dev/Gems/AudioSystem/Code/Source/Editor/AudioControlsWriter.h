@@ -20,7 +20,6 @@
 #include <ACETypes.h>
 #include <ATLCommon.h>
 #include <AudioControl.h>
-#include <IAudioConnection.h>
 #include <ISystem.h>
 #include <QModelIndex>
 
@@ -37,42 +36,42 @@ namespace AudioControls
     struct SLibraryScope
     {
         SLibraryScope()
-            : m_isDirty(false)
         {
             m_nodes[eACET_TRIGGER] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::TriggersNodeTag);
             m_nodes[eACET_RTPC] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::RtpcsNodeTag);
             m_nodes[eACET_SWITCH] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::SwitchesNodeTag);
+            m_nodes[eACET_SWITCH_STATE] = nullptr;
             m_nodes[eACET_ENVIRONMENT] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::EnvironmentsNodeTag);
             m_nodes[eACET_PRELOAD] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::PreloadsNodeTag);
         }
+
         XmlNodeRef m_nodes[eACET_NUM_TYPES];
-        bool m_isDirty;
+        bool m_isDirty = false;
     };
 
-    typedef AZStd::map<AZStd::string, SLibraryScope> TLibraryStorage;
+    using TLibraryStorage = AZStd::map<AZStd::string, SLibraryScope>;
 
     //-------------------------------------------------------------------------------------------//
     class CAudioControlsWriter
     {
     public:
-        CAudioControlsWriter(CATLControlsModel* pATLModel, QStandardItemModel* pLayoutModel, IAudioSystemEditor* pAudioSystemImpl, AZStd::set<AZStd::string>& previousLibraryPaths);
+        CAudioControlsWriter(CATLControlsModel* atlModel, QStandardItemModel* layoutModel, IAudioSystemEditor* audioSystemImpl, FilepathSet& previousLibraryPaths);
 
     private:
-        void WriteLibrary(const AZStd::string_view sLibraryName, QModelIndex root);
-        void WriteItem(QModelIndex index, const AZStd::string& sPath, TLibraryStorage& library, bool bParentModified);
-        void WriteControlToXml(XmlNodeRef pNode, CATLControl* pControl, const AZStd::string_view sPath);
-        void WriteConnectionsToXml(XmlNodeRef pNode, CATLControl* pControl, const AZStd::string& sGroup = "");
-        void WritePlatformsToXml(XmlNodeRef pNode, CATLControl* pControl);
+        void WriteLibrary(const AZStd::string_view libraryName, QModelIndex root);
+        void WriteItem(QModelIndex index, const AZStd::string& path, TLibraryStorage& library, bool isParentModified);
+        void WriteControlToXml(XmlNodeRef node, CATLControl* control, const AZStd::string_view path);
+        void WriteConnectionsToXml(XmlNodeRef node, CATLControl* control);
         bool IsItemModified(QModelIndex index);
 
         void CheckOutFile(const AZStd::string& filepath);
         void DeleteLibraryFile(const AZStd::string& filepath);
 
-        CATLControlsModel* m_pATLModel;
-        QStandardItemModel* m_pLayoutModel;
-        IAudioSystemEditor* m_pAudioSystemImpl;
+        CATLControlsModel* m_atlModel;
+        QStandardItemModel* m_layoutModel;
+        IAudioSystemEditor* m_audioSystemImpl;
 
-        AZStd::set<AZStd::string> m_foundLibraryPaths;
+        FilepathSet m_foundLibraryPaths;
     };
 
 } // namespace AudioControls

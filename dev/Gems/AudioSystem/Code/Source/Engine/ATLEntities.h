@@ -14,7 +14,8 @@
 #pragma once
 
 #include <AzCore/IO/StreamerRequest.h>
-#include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -31,13 +32,18 @@
 #include <IMemory.h>
 
 
+#if AUDIO_ENABLE_CRY_PHYSICS
 // external forward declaration
 struct EventPhys;
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
 namespace Audio
 {
     template <typename KeyType, typename ValueType>
-    using ATLMapLookupType = AZStd::map<KeyType, ValueType, AZStd::less<KeyType>, Audio::AudioSystemStdAllocator>;
+    using ATLMapLookupType = AZStd::unordered_map<KeyType, ValueType, AZStd::hash<KeyType>, AZStd::equal_to<KeyType>, AudioSystemStdAllocator>;
+
+    template <typename KeyType>
+    using ATLSetLookupType = AZStd::unordered_set<KeyType, AZStd::hash<KeyType>, AZStd::equal_to<KeyType>, AudioSystemStdAllocator>;
 
     // Forward declarations.
     struct IAudioSystemImplementation;

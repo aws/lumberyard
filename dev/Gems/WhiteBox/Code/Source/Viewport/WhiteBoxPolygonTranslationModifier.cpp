@@ -33,7 +33,6 @@ namespace WhiteBox
         const AZ::Vector3& intersectionPoint)
         : m_entityComponentIdPair(entityComponentIdPair)
         , m_polygonHandle(polygonHandle)
-        , m_intersectionPoint(intersectionPoint)
     {
         WhiteBoxMesh* whiteBox = nullptr;
         EditorWhiteBoxComponentRequestBus::EventResult(
@@ -59,21 +58,25 @@ namespace WhiteBox
             AzToolsFramework::WorldFromLocalWithUniformScale(m_entityComponentIdPair.GetEntityId()));
 
         m_translationManipulator->AddEntityComponentIdPair(m_entityComponentIdPair);
-        m_translationManipulator->SetLocalPosition(m_intersectionPoint);
+        m_translationManipulator->SetLocalPosition(Api::PolygonMidpoint(*whiteBox, m_polygonHandle));
         m_translationManipulator->SetAxis(Api::PolygonNormal(*whiteBox, m_polygonHandle));
 
-        CreateView(m_intersectionPoint);
+        CreateView();
 
         m_translationManipulator->Register(AzToolsFramework::g_mainManipulatorManagerId);
 
         struct SharedState
         {
             AZStd::vector<AZ::Vector3> m_vertexPositions;
+            // what state of appending are we currently in
             AppendStage m_appendStage = AppendStage::None;
-            AZ::Vector3 m_initiateExtrusionPosition = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_activeExtrusionOffset = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_intersectionPoint = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_midpointToIntersection = AZ::Vector3::CreateZero();
+            // the position of the manipulator the moment an append is initiated
+            AZ::Vector3 m_initiateAppendPosition = AZ::Vector3::CreateZero();
+            // the distance the manipulator has moved from where it started when an append begins
+            AZ::Vector3 m_activeAppendOffset = AZ::Vector3::CreateZero();
+            // the midpoint of the edge manipulator
+            AZ::Vector3 m_polygonMidpoint = AZ::Vector3::CreateZero();
+            // has the modifier moved during the action
             bool m_moved = false;
         };
 
@@ -87,11 +90,10 @@ namespace WhiteBox
                     whiteBox, m_entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
 
                 sharedState->m_appendStage = AppendStage::None;
-                sharedState->m_activeExtrusionOffset = AZ::Vector3::CreateZero();
+                sharedState->m_activeAppendOffset = AZ::Vector3::CreateZero();
                 sharedState->m_vertexPositions = Api::VertexPositions(*whiteBox, m_vertexHandles);
-                sharedState->m_intersectionPoint = m_intersectionPoint;
-                sharedState->m_midpointToIntersection =
-                    m_intersectionPoint - Api::PolygonMidpoint(*whiteBox, m_polygonHandle);
+                sharedState->m_polygonMidpoint = Api::PolygonMidpoint(*whiteBox, m_polygonHandle);
+                sharedState->m_moved = false;
             });
 
         m_translationManipulator->InstallMouseMoveCallback(
@@ -115,29 +117,30 @@ namespace WhiteBox
                 if (action.m_modifiers.Ctrl() && sharedState->m_appendStage == AppendStage::None)
                 {
                     sharedState->m_appendStage = AppendStage::Initiated;
-                    sharedState->m_initiateExtrusionPosition = action.LocalPosition();
+                    sharedState->m_initiateAppendPosition = action.LocalPosition();
                 }
 
                 if (sharedState->m_appendStage == AppendStage::Initiated)
                 {
-                    const AZ::Vector3 extrudeVector = action.LocalPosition() - sharedState->m_initiateExtrusionPosition;
+                    const AZ::Vector3 extrudeVector = action.LocalPosition() - sharedState->m_initiateAppendPosition;
                     const float extrudeMagnitude = extrudeVector.Dot(action.m_fixed.m_axis);
                     // only extrude after having moved a small amount (to prevent overlapping verts
                     // and normals being calculated incorrectly)
                     if (fabsf(extrudeMagnitude) > 0.0f)
                     {
                         // extrude the new side
-                        const auto polygonHandle =
-                            Api::TranslatePolygonAppend(*whiteBox, m_polygonHandle, extrudeMagnitude);
+                        const auto appendedPolygonHandles =
+                            Api::TranslatePolygonAppendAdvanced(*whiteBox, m_polygonHandle, extrudeMagnitude);
 
                         // update our shared state to hold the new values after extrusion
-                        m_vertexHandles = Api::PolygonVertexHandles(*whiteBox, polygonHandle);
+                        m_vertexHandles =
+                            Api::PolygonVertexHandles(*whiteBox, appendedPolygonHandles.m_appendedPolygonHandle);
                         sharedState->m_appendStage = AppendStage::Complete;
 
                         // remember the current offset when we start extruding (to stop any snapping)
-                        sharedState->m_activeExtrusionOffset = action.LocalPositionOffset();
-                        sharedState->m_intersectionPoint =
-                            Api::PolygonMidpoint(*whiteBox, polygonHandle) + sharedState->m_midpointToIntersection;
+                        sharedState->m_activeAppendOffset = action.LocalPositionOffset();
+                        sharedState->m_polygonMidpoint =
+                            Api::PolygonMidpoint(*whiteBox, appendedPolygonHandles.m_appendedPolygonHandle);
 
                         // make sure all vertex positions are refreshed and match the correct handle
                         for (size_t vertexIndex = 0; vertexIndex < m_vertexHandles.size(); ++vertexIndex)
@@ -146,12 +149,24 @@ namespace WhiteBox
                             sharedState->m_vertexPositions[vertexIndex] = Api::VertexPosition(*whiteBox, vertexHandle);
                         }
 
-                        EditorWhiteBoxPolygonModifierNotificationBus::Broadcast(
+                        // notify primary polygon modifier has changed
+                        EditorWhiteBoxPolygonModifierNotificationBus::Event(
+                            m_entityComponentIdPair,
                             &EditorWhiteBoxPolygonModifierNotificationBus::Events::
                                 OnPolygonModifierUpdatedPolygonHandle,
-                            m_polygonHandle, polygonHandle);
+                            m_polygonHandle, appendedPolygonHandles.m_appendedPolygonHandle);
 
-                        m_polygonHandle = polygonHandle;
+                        // notify all other restored polygon handle pairs (that may have been removed and added)
+                        for (const auto& restoredPolygonHandlePair : appendedPolygonHandles.m_restoredPolygonHandles)
+                        {
+                            EditorWhiteBoxPolygonModifierNotificationBus::Event(
+                                m_entityComponentIdPair,
+                                &EditorWhiteBoxPolygonModifierNotificationBus::Events::
+                                    OnPolygonModifierUpdatedPolygonHandle,
+                                restoredPolygonHandlePair.m_before, restoredPolygonHandlePair.m_after);
+                        }
+
+                        m_polygonHandle = appendedPolygonHandles.m_appendedPolygonHandle;
                     }
                 }
 
@@ -160,17 +175,17 @@ namespace WhiteBox
                     sharedState->m_appendStage == AppendStage::Complete)
                 {
                     size_t vertexIndex = 0;
-                    for (const Api::VertexHandle vh : m_vertexHandles)
+                    for (const Api::VertexHandle vertexHandle : m_vertexHandles)
                     {
                         const AZ::Vector3 vertexPosition = sharedState->m_vertexPositions[vertexIndex++] +
-                            action.LocalPositionOffset() - sharedState->m_activeExtrusionOffset;
+                            action.LocalPositionOffset() - sharedState->m_activeAppendOffset;
 
-                        Api::SetVertexPosition(*whiteBox, vh, vertexPosition);
+                        Api::SetVertexPosition(*whiteBox, vertexHandle, vertexPosition);
                     }
 
                     m_translationManipulator->SetLocalPosition(
-                        sharedState->m_intersectionPoint + action.LocalPositionOffset() -
-                        sharedState->m_activeExtrusionOffset);
+                        sharedState->m_polygonMidpoint + action.LocalPositionOffset() -
+                        sharedState->m_activeAppendOffset);
 
                     EditorWhiteBoxComponentModeRequestBus::Event(
                         m_entityComponentIdPair,
@@ -263,16 +278,7 @@ namespace WhiteBox
         m_vertexHandles = Api::PolygonVertexHandles(*whiteBox, polygonHandle);
     }
 
-    void PolygonTranslationModifier::UpdateIntersectionPoint(const AZ::Vector3& intersectionPoint)
-    {
-        m_intersectionPoint = intersectionPoint;
-        // set the translation modifier to be the exact location of the intersection
-        m_translationManipulator->SetLocalPosition(intersectionPoint);
-
-        CreateView(intersectionPoint);
-    }
-
-    void PolygonTranslationModifier::CreateView(const AZ::Vector3& intersectionPoint)
+    void PolygonTranslationModifier::CreateView()
     {
         WhiteBoxMesh* whiteBox = nullptr;
         EditorWhiteBoxComponentRequestBus::EventResult(
@@ -281,14 +287,16 @@ namespace WhiteBox
         Api::VertexPositionsCollection outlines = Api::PolygonBorderVertexPositions(*whiteBox, m_polygonHandle);
         AZStd::vector<AZ::Vector3> triangles = Api::PolygonFacesPositions(*whiteBox, m_polygonHandle);
 
+        const AZ::Vector3 polygonMidpoint = Api::PolygonMidpoint(*whiteBox, m_polygonHandle);
+
         // translate points into local space of the manipulator (see UpdateIntersectionPoint)
         // (relative to m_translationManipulator local position)
         for (auto& outline : outlines)
         {
-            TranslatePoints(outline, -intersectionPoint);
+            TranslatePoints(outline, -polygonMidpoint);
         }
 
-        TranslatePoints(triangles, -intersectionPoint);
+        TranslatePoints(triangles, -polygonMidpoint);
 
         if (!m_polygonView)
         {

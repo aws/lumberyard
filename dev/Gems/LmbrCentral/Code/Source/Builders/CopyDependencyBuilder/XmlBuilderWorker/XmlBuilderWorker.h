@@ -18,7 +18,7 @@
 #include <AzFramework/Asset/XmlSchemaAsset.h>
 #include <AzFramework/Dependency/Version.h>
 
-#include <Source/CopyDependencyBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/CopyDependencyBuilderWorker.h>
 
 namespace CopyDependencyBuilder
 {

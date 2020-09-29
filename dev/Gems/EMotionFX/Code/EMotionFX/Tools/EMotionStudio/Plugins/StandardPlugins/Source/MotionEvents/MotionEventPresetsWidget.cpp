@@ -414,5 +414,6 @@ namespace EMStudio
 
         // base class
         QWidget::keyReleaseEvent(event);
+        ReInit();
     }
 } // namespace EMStudio

@@ -214,7 +214,7 @@ namespace PhysX
             , &LmbrCentral::SplineComponentRequestBus::Events::GetSpline);
     }
 
-    RegionParams ForceRegionUtil::CreateRegionParams(const AZ::EntityId& entityId)
+    RegionParams ForceRegionUtil::CreateRegionParams(AZ::EntityId entityId)
     {
         RegionParams regionParams;
         regionParams.m_id = entityId;
@@ -239,7 +239,7 @@ namespace PhysX
         return regionParams;
     }
 
-    EntityParams ForceRegionUtil::CreateEntityParams(const AZ::EntityId& entityId)
+    EntityParams ForceRegionUtil::CreateEntityParams(AZ::EntityId entityId)
     {
         EntityParams entityParams;
         entityParams.m_id = entityId;
@@ -252,12 +252,17 @@ namespace PhysX
         Physics::RigidBodyRequestBus::EventResultReverse(entityParams.m_mass
             , entityId
             , &Physics::RigidBodyRequestBus::Events::GetMass);
+        entityParams.m_aabb = GetForceRegionAabb(entityId);
+        return entityParams;
+    }
+
+    AZ::Aabb ForceRegionUtil::GetForceRegionAabb(AZ::EntityId entityId)
+    {
         AZ::EBusReduceResult<AZ::Aabb, PhysX::TriggerAabbAggregator> triggerAabb;
         triggerAabb.value = AZ::Aabb::CreateNull();
         ColliderShapeRequestBus::EventResult(triggerAabb
             , entityId
             , &ColliderShapeRequestBus::Events::GetColliderShapeAabb);
-        entityParams.m_aabb = triggerAabb.value;
-        return entityParams;
+        return triggerAabb.value;
     }
 }

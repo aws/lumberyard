@@ -196,7 +196,7 @@ namespace Vegetation
         const bool result = bounds.IsValid() && (instanceData.m_position.GetZ() >= bounds.GetMin().GetZ()) && (instanceData.m_position.GetZ() <= bounds.GetMax().GetZ());
         if (!result)
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceAltitudeFilter")));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceAltitudeFilter")));
         }
         return result;
     }

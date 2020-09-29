@@ -24,6 +24,7 @@
 #include <AudioSystemImplCVars.h>
 #include <AudioSystemImpl_wwise.h>
 #include <Common_wwise.h>
+#include <Config_wwise.h>
 
 #if defined(AUDIO_ENGINE_WWISE_EDITOR)
     #include <AudioSystemEditor_wwise.h>
@@ -65,6 +66,8 @@ namespace AudioEngineWwiseGem
                     ;
             }
         }
+
+        Audio::Wwise::ConfigurationSettings::Reflect(context);
     }
 
     void AudioEngineWwiseGemSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -117,11 +120,11 @@ namespace AudioEngineWwiseGem
         g_audioImplCVars_wwise.RegisterVariables();
 
         // initialize audio impl memory pools
-        if (!AZ::AllocatorInstance<Audio::AudioImplAllocator>::IsReady())
+        if (!AZ::AllocatorInstance<AudioImplAllocator>::IsReady())
         {
             const size_t poolSize = g_audioImplCVars_wwise.m_nPrimaryMemoryPoolSize << 10;
 
-            Audio::AudioImplAllocator::Descriptor allocDesc;
+            AudioImplAllocator::Descriptor allocDesc;
 
             // Generic Allocator:
             allocDesc.m_allocationRecords = true;
@@ -130,11 +133,10 @@ namespace AudioEngineWwiseGem
 
             allocDesc.m_heap.m_fixedMemoryBlocks[0] = AZ::AllocatorInstance<AZ::OSAllocator>::Get().Allocate(allocDesc.m_heap.m_fixedMemoryBlocksByteSize[0], allocDesc.m_heap.m_memoryBlockAlignment);
 
-            // Note: This allocator is destroyed in CAudioSystemImpl_wwise::Release() after the impl object has been freed.
-            AZ::AllocatorInstance<Audio::AudioImplAllocator>::Create(allocDesc);
+            AZ::AllocatorInstance<AudioImplAllocator>::Create(allocDesc);
         }
 
-        m_engineWwise = AZStd::make_unique<Audio::CAudioSystemImpl_wwise>();
+        m_engineWwise = AZStd::make_unique<CAudioSystemImpl_wwise>(initParams->assetsPlatform);
         if (m_engineWwise)
         {
         #if AZ_TRAIT_AUDIOENGINEWWISE_PROVIDE_IMPL_SECONDARY_POOL
@@ -151,7 +153,7 @@ namespace AudioEngineWwiseGem
 
             SAudioManagerRequestData<eAMRT_INIT_AUDIO_IMPL> oAMData;
             oAudioRequestData.pData = &oAMData;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
 
             success = true;
         }

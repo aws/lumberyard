@@ -25,6 +25,7 @@
 #include <Source/InstanceSystemComponent.h>
 #include <Source/DebugSystemComponent.h>
 #include <Source/Debugger/AreaDebugComponent.h>
+#include <Vegetation/EmptyInstanceSpawner.h>
 
 #include <AzCore/Component/TickBus.h>
 
@@ -40,16 +41,16 @@ namespace UnitTest
         {
             for (size_t i = 0; i < count; ++i)
             {
-                m_descriptors.emplace_back(CreateDescriptor());
+                m_descriptors.emplace_back(CreateDescriptor(i));
             }
         }
 
-        Vegetation::DescriptorPtr CreateDescriptor()
+        Vegetation::DescriptorPtr CreateDescriptor(size_t id)
         {
             Vegetation::Descriptor descriptor;
-            descriptor.m_autoMerge = true;
-            descriptor.m_meshAsset = AZ::Data::Asset<MockMeshAsset>(&mockMeshAssetData);
-            descriptor.m_meshLoaded = true;
+
+            auto instanceSpawner = AZStd::make_shared<Vegetation::EmptyInstanceSpawner>();
+            descriptor.SetInstanceSpawner(instanceSpawner);
 
             Vegetation::DescriptorPtr descriptorPtr;
             Vegetation::InstanceSystemRequestBus::BroadcastResult(descriptorPtr, &Vegetation::InstanceSystemRequestBus::Events::RegisterUniqueDescriptor, descriptor);

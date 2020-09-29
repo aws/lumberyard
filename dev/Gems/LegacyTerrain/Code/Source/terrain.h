@@ -18,14 +18,15 @@
 #include <ISerialize.h>
 #include <ITerrain.h>
 
-#include "Terrain/LegacyTerrainBase.h"
-#include "Terrain/Texture/MacroTexture.h"
-#include "Terrain/Texture/TexturePool.h"
 #include <Terrain/Bus/LegacyTerrainBus.h>
 #include <AzCore/std/function/function_fwd.h> // for callbacks
 #include <AzFramework/Terrain/TerrainDataRequestBus.h>
-#include "TerrainProfiler.h"
 #include <HeightmapUpdateNotificationBus.h>
+
+#include "LegacyTerrainBase.h"
+#include "Texture/MacroTexture.h"
+#include "Texture/TexturePool.h"
+#include "Debug/TerrainProfiler.h"
 
 #include "terrain_sector.h"
 
@@ -155,9 +156,9 @@ public:
 
     ///////////////////////////////////////////////////////////////////////////
     // Legacy::Terrain LegacyTerrainDataRequestBus START
-    void SetTerrainElevationAndSurfaceWeights(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet) override
+    void SetTerrainElevationAndSurfaceWeights(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet, bool heightsChanged) override
     {
-        SetTerrainElevation(left, bottom, areaSize, heightmap, weightmapSize, surfaceWeightSet);
+        SetTerrainElevation(left, bottom, areaSize, heightmap, weightmapSize, surfaceWeightSet, heightsChanged);
     }
     void LoadTerrainSurfacesFromXML(XmlNodeRef pDoc) override;
     int GetTerrainSectorSize() const override { return GetSectorSize(); }
@@ -195,19 +196,15 @@ public:
     ///////////////////////////////////////////////////////////////////////////
 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // ITerrain START
-    void SetTerrainElevation(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet) override;
-    void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials) override;
+    void SetTerrainElevation(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* surfaceWeightSet, bool heightsChanged);
+    void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials);
 
-    ITerrain::SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const override;
-    Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) const override;
-    void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) const override;
+    ITerrain::SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const;
+    Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) const;
+    void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) const;
 
-    bool IsHole(int x, int y) const override;
-    bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const override;
-    // ITerrain END
-    ///////////////////////////////////////////////////////////////////////////
+    bool IsHole(int x, int y) const;
+    bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const;
 
     inline static const int GetTerrainSize();
     inline static const int GetSectorSize();

@@ -70,7 +70,7 @@ namespace AZ
             m_averageNumSubReads.PushEntry(numSubReads);
         }
 
-        void ReadSplitter::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void ReadSplitter::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             statistics.push_back(Statistic::CreateFloat(m_name, "Avg. num sub reads", m_averageNumSubReads.CalculateAverage()));
             StreamStackEntry::CollectStatistics(statistics);

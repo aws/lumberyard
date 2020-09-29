@@ -12,7 +12,6 @@
 
 #include "CryLegacy_precompiled.h"
 #include "ComponentAudio.h"
-#include <IAudioSystem.h>
 #include <ICryAnimation.h>
 #include <MathConversion.h>
 #include "Entity.h"

@@ -63,7 +63,7 @@ namespace Vegetation
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &SpawnerConfig::m_inheritBehavior, "Inherit Behavior", "Allow shapes, modifiers, filters of a parent to affect this area.")
-                    ->DataElement(0, &SpawnerConfig::m_allowEmptyMeshes, "Allow Empty Meshes", "Allow unspecified meshes to claim space and block other vegetation.")
+                    ->DataElement(0, &SpawnerConfig::m_allowEmptyMeshes, "Allow Empty Assets", "Allow unspecified asset references in the Descriptors to claim space and block other vegetation.")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &SpawnerConfig::m_filterStage, "Filter Stage", "Determines if filter is applied before (PreProcess) or after (PostProcess) modifiers.")
                     ->EnumAttribute(FilterStage::PreProcess, "PreProcess")
                     ->EnumAttribute(FilterStage::PostProcess, "PostProcess")
@@ -269,7 +269,7 @@ namespace Vegetation
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
         instanceData.m_instanceId = InvalidInstanceId;
-        if (instanceData.m_descriptorPtr && instanceData.m_descriptorPtr->m_meshLoaded)
+        if (instanceData.m_descriptorPtr && instanceData.m_descriptorPtr->IsSpawnable())
         {
             InstanceSystemRequestBus::Broadcast(&InstanceSystemRequestBus::Events::CreateInstance, instanceData);
         }
@@ -324,7 +324,7 @@ namespace Vegetation
         }
 
         // If this is an empty mesh asset (no valid id) AND we don't allow empty meshes, skip this descriptor
-        if (!m_configuration.m_allowEmptyMeshes && !descriptorPtr->m_meshAsset.GetId().IsValid())
+        if (!m_configuration.m_allowEmptyMeshes && descriptorPtr->HasEmptyAssetReferences())
         {
             return false;
         }
@@ -395,7 +395,7 @@ namespace Vegetation
             LmbrCentral::ShapeComponentRequestsBus::EventResult(accepted, id, &LmbrCentral::ShapeComponentRequestsBus::Events::IsPointInside, point.m_position);
             if (!accepted)
             {
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("ShapeFilter")));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("ShapeFilter")));
                 return false;
             }
         }
@@ -433,7 +433,7 @@ namespace Vegetation
             SurfaceData::HasValidTags(m_inclusiveTagsToConsider) &&
             !SurfaceData::HasMatchingTags(context.m_masks, m_inclusiveTagsToConsider))
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::MarkAreaRejectedByMask, GetEntityId()));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::MarkAreaRejectedByMask, GetEntityId()));
             return;
         }
 

@@ -15,7 +15,9 @@
 #include "ItemSystem.h"
 #include "IActorSystem.h"
 #include "ScriptBind_ItemSystem.h"
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 
 
 //------------------------------------------------------------------------

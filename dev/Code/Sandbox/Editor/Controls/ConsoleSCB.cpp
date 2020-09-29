@@ -21,6 +21,7 @@
 
 #include <AzQtComponents/Components/StyledLineEdit.h>
 #include <AzQtComponents/Components/StyleManager.h>
+#include <AzQtComponents/Components/Widgets/ScrollBar.h>
 #include <AzQtComponents/Components/Widgets/SliderCombo.h>
 
 #include <Controls/ui_ConsoleSCB.h>
@@ -330,7 +331,7 @@ CConsoleSCB::CConsoleSCB(QWidget* parent)
         << QColor(200, 0, 200) // red+blue
         << QColor(0x000080ff)
         << QColor(0x008f8f8f);
-    OnStyleSettingsChanged();
+    RefreshStyle();
 
     auto findNextAction = new QAction(this);
     findNextAction->setShortcut(QKeySequence::FindNext);
@@ -366,17 +367,20 @@ CConsoleSCB::CConsoleSCB(QWidget* parent)
     });
 
     connect(ui->lineEdit, &ConsoleLineEdit::variableEditorRequested, this, &CConsoleSCB::showVariableEditor);
-    connect(Editor::EditorQtApplication::instance(), &Editor::EditorQtApplication::skinChanged, this, &CConsoleSCB::OnStyleSettingsChanged);
 
     if (GetIEditor()->IsInConsolewMode())
     {
         // Attach / register edit box
         //CLogFile::AttachEditBox(m_edit.GetSafeHwnd()); // FIXME
     }
+
+    EditorPreferencesNotificationBus::Handler::BusConnect();
 }
 
 CConsoleSCB::~CConsoleSCB()
 {
+    EditorPreferencesNotificationBus::Handler::BusDisconnect();
+
     s_consoleSCB = nullptr;
     CLogFile::AttachEditBox(nullptr);
 }
@@ -395,7 +399,12 @@ void CConsoleSCB::RegisterViewClass()
     AzToolsFramework::RegisterViewPane<CConsoleSCB>(LyViewPane::Console, LyViewPane::CategoryTools, opts);
 }
 
-void CConsoleSCB::OnStyleSettingsChanged()
+void CConsoleSCB::OnEditorPreferencesChanged()
+{
+    RefreshStyle();
+}
+
+void CConsoleSCB::RefreshStyle()
 {
     ui->button->setIcon(QIcon(QString(":/controls/img/cvar_dark.bmp")));
     ui->findButton->setIcon(QIcon(QString(":/stylesheet/img/search.png")));
@@ -404,15 +413,17 @@ void CConsoleSCB::OnStyleSettingsChanged()
     // Set the debug/warning text colors appropriately for the background theme
     // (e.g. not have black text on black background)
     QColor textColor = Qt::black;
-    m_colorTable[4] = QColor(200, 0, 0); // red
-    m_colorTable[6] = QColor(128, 112, 0); // yellow
+    m_colorTable[4] = QColor(200, 0, 0);                // Error (Red)
+    m_colorTable[6] = QColor(128, 112, 0);              // Warning (Yellow)
     m_backgroundTheme = gSettings.consoleBackgroundColorTheme;
+
     if (m_backgroundTheme == SEditorSettings::ConsoleColorTheme::Dark)
     {
         textColor = Qt::white;
-        m_colorTable[4] = QColor(0xff, 0xc3, 0x61); // red, error
-        m_colorTable[6] = QColor(0xff, 0xc3, 0x61); // yellow, warning
+        m_colorTable[4] = QColor(0xfa, 0x27, 0x27);     // Error (Red)
+        m_colorTable[6] = QColor(0xff, 0xaa, 0x22);     // Warning (Yellow)
     }
+
     m_colorTable[0] = textColor;
     m_colorTable[1] = textColor;
 
@@ -423,10 +434,12 @@ void CConsoleSCB::OnStyleSettingsChanged()
     if (!GetIEditor()->IsInConsolewMode() && CConsoleSCB::GetCreatedInstance() && m_backgroundTheme == SEditorSettings::ConsoleColorTheme::Dark)
     {
         bgColor = Qt::black;
+        AzQtComponents::ScrollBar::applyLightStyle(ui->textEdit);
     }
     else
     {
         bgColor = Qt::white;
+        AzQtComponents::ScrollBar::applyDarkStyle(ui->textEdit);
     }
     ui->textEdit->setBackgroundVisible(!ui20AndDark);
     ui->textEdit->setStyleSheet(ui20AndDark ? QString() : QString("QPlainTextEdit{ background: %1 }").arg(bgColor.name(QColor::HexRgb)));
@@ -436,7 +449,8 @@ void CConsoleSCB::OnStyleSettingsChanged()
     // new background color
     QString text = ui->textEdit->toPlainText();
     ui->textEdit->clear();
-    ui->textEdit->setPlainText(text);
+    m_lines.push_back({ text, false });
+    FlushText();
 }
 
 void CConsoleSCB::SetInputFocus()
@@ -787,9 +801,6 @@ void ConsoleVariableItemDelegate::setEditorData(QWidget* editor, const QModelInd
 
         lineEdit->setText(index.data().toString());
     }
-
-    // Trigger signal that we've got an edit in progress
-    Q_EMIT editInProgress();
 }
 
 /**
@@ -1167,14 +1178,6 @@ ConsoleVariableEditor::ConsoleVariableEditor(QWidget* parent)
     , m_itemDelegate(new ConsoleVariableItemDelegate(this))
 {
     setWindowTitle(tr("Console Variables"));
-
-    // Disable the vertical scroll bar when we have an edit in progress
-    QObject::connect(m_itemDelegate, &ConsoleVariableItemDelegate::editInProgress, this, [this]() {
-        m_tableView->verticalScrollBar()->setDisabled(true);
-    });
-    QObject::connect(m_itemDelegate, &ConsoleVariableItemDelegate::closeEditor, this, [this]() {
-        m_tableView->verticalScrollBar()->setEnabled(true);
-    });
 
     // Setup our table view, don't show the actual headers
     m_tableView->setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);

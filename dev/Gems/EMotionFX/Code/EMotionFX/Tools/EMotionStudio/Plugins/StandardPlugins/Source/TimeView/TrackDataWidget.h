@@ -95,6 +95,8 @@ namespace EMStudio
     private:
         void RemoveMotionEvent(int32 x, int32 y);
         void AddMotionEvent(int32 x, int32 y);
+        void SetPausedTime(float timeValue, bool emitTimeChangeStart=false);
+        void ClearState();
 
         void wheelEvent(QWheelEvent* event) override;
         void DoPaste(bool useLocation);

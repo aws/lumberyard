@@ -13,15 +13,10 @@
 import os
 
 SUBFOLDERS = [
-    'ExampleBuilder',
-    'MaterialBuilder',
-    'LevelBuilder',
-    'LuaBuilder',
-    'SceneBuilder',
-    'SliceBuilder',
-    'TranslationBuilder',
-    'CopyDependencyBuilder',
-    'WwiseBuilder'
+
+    # Important: do not remove the 'Deprecated' subfolder.
+    # It ensures deprecated builders are being built as stubs.
+    'Deprecated'
 ]
 
 def build(bld):

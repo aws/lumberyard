@@ -67,7 +67,8 @@ namespace AzToolsFramework
         /// \return the EntityId for the created Entity
         virtual AZ::EntityId CreateNewEditorEntity(const char* name) = 0;
         //! LUMBERYARD_DEPRECATED(LY-103316)
-        virtual AZ::Entity* CreateEditorEntity(const char* name) = 0;
+        AZ_DEPRECATED(virtual AZ::Entity* CreateEditorEntity(const char* name) = 0;,
+            "CreateEditorEntity is deprecated, please use CreateNewEditorEntity");
 
         /// Creates an entity in the editor context.
         /// \param name The name to give the newly created entity.
@@ -75,7 +76,9 @@ namespace AzToolsFramework
         /// \return the EntityId for the created Entity
         virtual AZ::EntityId CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;
         //! LUMBERYARD_DEPRECATED(LY-103316)
-        virtual AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;
+        AZ_DEPRECATED(
+            virtual AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;,
+            "CreateEditorEntityWithId is deprecated, please use CreateNewEditorEntityWithId");
 
         /// Registers an existing entity with the editor context.
         virtual void AddEditorEntity(AZ::Entity* entity) = 0;
@@ -182,6 +185,9 @@ namespace AzToolsFramework
         /// Is used to check whether the Editor is running the game simulation or in normal edit mode.
         virtual bool IsEditorRunningGame() = 0;
 
+        /// Has the Editor been requested to move to Game Mode (but may not have fully entered it yet).
+        virtual bool IsEditorRequestingGame() = 0;
+
         /// \return true if the entity is owned by the editor entity context.
         virtual bool IsEditorEntity(AZ::EntityId id) = 0;
 
@@ -217,8 +223,7 @@ namespace AzToolsFramework
         : public AZ::EBusTraits
     {
     public:
-
-        virtual ~EditorEntityContextNotification() {};
+        virtual ~EditorEntityContextNotification() = default;
 
         /// Called before the context is reset.
         virtual void PrepareForContextReset() {}
@@ -282,6 +287,23 @@ namespace AzToolsFramework
     };
 
     using EditorEntityContextNotificationBus = AZ::EBus<EditorEntityContextNotification>;
+
+    //! Notification bus to notify Editor systems when the Legacy Editor
+    //! has been requested to enter Game Mode.
+    class EditorLegacyGameModeNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        //! The initial request has been made to start Game Mode.
+        virtual void OnStartGameModeRequest() {}
+        //! The initial request has been made to stop Game Mode.
+        virtual void OnStopGameModeRequest() {}
+
+    protected:
+        ~EditorLegacyGameModeNotifications() = default;
+    };
+
+    using EditorLegacyGameModeNotificationBus = AZ::EBus<EditorLegacyGameModeNotifications>;
 } // namespace AzToolsFramework
 
 #endif // AZTOOLSFRAMEWORK_EDITORENTITYCONTEXTBUS_H

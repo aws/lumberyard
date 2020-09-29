@@ -14,6 +14,7 @@
 #include <Editor/SkeletonModel.h>
 #include <Editor/SkeletonModelJointWidget.h>
 #include <Editor/Plugins/SkeletonOutliner/SkeletonOutlinerBus.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <QLabel>
 #include <QItemSelectionModel>
 #include <QModelIndex>
@@ -94,7 +95,7 @@ namespace EMotionFX
     {
         m_modelIndex = modelIndex;
 
-        if (!isVisible())
+        if (!EMStudio::GetManager()->GetIgnoreVisibility() && !isVisible())
         {
             return;
         }

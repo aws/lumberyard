@@ -42,8 +42,8 @@ namespace EMotionFX
     {
         m_parameters.clear();
 
-        const size_t numParameters = instance.GetAnimGraph()->GetNumParameters();
-        for (size_t i = 0; i < numParameters; ++i)
+        const size_t numValueParameters = instance.GetAnimGraph()->GetNumValueParameters();
+        for (size_t i = 0; i < numValueParameters; ++i)
         {
             m_parameters.emplace_back(instance.GetParameterValue(static_cast<AZ::u32>(i))->Clone());
         }
@@ -94,7 +94,7 @@ namespace EMotionFX
     void AnimGraphSnapshot::CollectAttributes(const AnimGraphInstance& instance)
     {
         const size_t numParams = m_parameters.size();
-        AZ_Assert(instance.GetAnimGraph()->GetNumParameters() == numParams, "Attribute size mismatch. Did you forget to call init?");
+        AZ_Assert(instance.GetAnimGraph()->GetNumValueParameters() == numParams, "Attribute size mismatch. Did you forget to call init?");
 
         for (size_t i = 0; i < numParams; ++i)
         {
@@ -105,11 +105,11 @@ namespace EMotionFX
     void AnimGraphSnapshot::CollectActiveNodes(AnimGraphInstance& instance)
     {
         m_activeStateNodes.clear();
-        MCore::Array<AnimGraphNode*> stateMachineNodes;
+        AZStd::vector<AnimGraphNode*> stateMachineNodes;
         instance.CollectActiveAnimGraphNodes(&stateMachineNodes, azrtti_typeid<AnimGraphStateMachine>());
 
-        const AZ::u32 numStateMachines = stateMachineNodes.GetLength();
-        for (AZ::u32 i = 0; i < numStateMachines; ++i)
+        const size_t numStateMachines = stateMachineNodes.size();
+        for (size_t i = 0; i < numStateMachines; ++i)
         {
             AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(stateMachineNodes[i]);
             AnimGraphNode* currentState = stateMachine->GetCurrentState(&instance);

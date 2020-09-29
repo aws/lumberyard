@@ -36,6 +36,9 @@ namespace ScriptCanvas
 
                 void OnInputSignal(const SlotId&) override;
 
+                const char* GetBaseTimeSlotName() const override { return "Interval"; }
+                const char* GetBaseTimeSlotToolTip() const override { return "The amount of time between pulses."; }
+
             protected:
 
                 void OnTimeElapsed() override;

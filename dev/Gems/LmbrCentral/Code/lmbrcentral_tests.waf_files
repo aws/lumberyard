@@ -11,6 +11,7 @@
             "Tests/CylinderShapeTest.cpp",
             "Tests/CapsuleShapeTest.cpp",
             "Tests/PolygonPrismShapeTest.cpp",
+            "Tests/QuadShapeTest.cpp",
             "Tests/TubeShapeTest.cpp",
             "Tests/LmbrCentralReflectionTest.h",
             "Tests/LmbrCentralReflectionTest.cpp",

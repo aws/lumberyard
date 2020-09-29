@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 
 #include "terrain.h"
 #include <Terrain/Bus/TerrainProviderBus.h>
@@ -85,8 +85,6 @@ float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
 
 bool CTerrain::RayTrace(Vec3 const& vStart, Vec3 const& vEnd, LegacyTerrain::SRayTrace* prt)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     CTerrain* pTerrain = GetTerrain();
 
     if (!pTerrain->GetRootNode())

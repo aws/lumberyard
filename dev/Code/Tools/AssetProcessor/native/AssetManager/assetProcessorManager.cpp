@@ -19,7 +19,6 @@
 #include <QMutexLocker>
 #include <QDateTime>
 #include <QElapsedTimer>
-#include <QTimeZone>
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Casting/lossy_cast.h>
@@ -29,6 +28,7 @@
 
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Asset/AssetRegistry.h>
+#include <AzFramework/FileFunc/FileFunc.h>
 
 #include <AzToolsFramework/Debug/TraceContext.h>
 
@@ -56,7 +56,6 @@
 #include <utilities/JobDiagnosticTracker.h>
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
-#include <cinttypes>
 
 namespace AssetProcessor
 {
@@ -162,6 +161,7 @@ namespace AssetProcessor
             // Ensure that the source file list is populated before a scan begins
             m_sourceFilesInDatabase.clear();
             m_fileModTimes.clear();
+            m_fileHashes.clear();
 
             auto sourcesFunction = [this](AzToolsFramework::AssetDatabase::SourceAndScanFolderDatabaseEntry& entry)
             {
@@ -211,6 +211,7 @@ namespace AssetProcessor
 
                 QString finalAbsolute = (QString("%1/%2").arg(scanFolderPath).arg(relativeToScanFolderPath));
                 m_fileModTimes.emplace(finalAbsolute.toUtf8().data(), entry.m_modTime);
+                m_fileHashes.emplace(finalAbsolute.toUtf8().constData(), entry.m_hash);
 
                 return true;
             });
@@ -911,7 +912,7 @@ namespace AssetProcessor
                             {
                                 if (AzFramework::StringFunc::Equal(source.m_sourceName.c_str(), itProcessedAsset->m_entry.m_databaseSourceName.toUtf8().constData()))
                                 {
-                                    if (job.m_builderGuid != itProcessedAsset->m_entry.m_builderGuid && !AzFramework::StringFunc::Equal(job.m_jobKey.c_str(), itProcessedAsset->m_entry.m_jobKey.toUtf8().data())
+                                    if (!AzFramework::StringFunc::Equal(job.m_jobKey.c_str(), itProcessedAsset->m_entry.m_jobKey.toUtf8().data())
                                         && AzFramework::StringFunc::Equal(job.m_platform.c_str(), itProcessedAsset->m_entry.m_platformInfo.m_identifier.c_str()))
                                     {
                                         // If we are here it implies that for the same source file we have another job that outputs the same product.
@@ -924,7 +925,7 @@ namespace AssetProcessor
 
                                         AZStd::string autoFailReason = AZStd::string::format(
                                             "Source file ( %s ) and builder (%s) are also outputting the product (%s)."
-                                            "Please ensure that for the same source file, multiple builders do not output the same product file in the cache.\n",
+                                            "Please ensure that the same product file is not output to the cache multiple times by the same or different builders.\n",
                                             source.m_sourceName.c_str(),
                                             job.m_builderGuid.ToString<AZStd::string>().c_str(),
                                             duplicateProduct.toUtf8().data());
@@ -1527,7 +1528,7 @@ namespace AssetProcessor
                     return;
                 }
 
-                // Record the modtime for the metadata file so we don't re-analyize this change again next time AP starts up
+                // Record the modtime for the metadata file so we don't re-analyze this change again next time AP starts up
                 QFileInfo metadataFileInfo(originalName);
                 auto* scanFolder = m_platformConfig->GetScanFolderForFile(originalName);
                 
@@ -1536,7 +1537,9 @@ namespace AssetProcessor
                     QString databaseName;
                     m_platformConfig->ConvertToRelativePath(originalName, scanFolder, databaseName);
 
-                    m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(), AssetUtilities::AdjustTimestamp(metadataFileInfo.lastModified()));
+                    m_stateData->UpdateFileModTimeAndHashByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(),
+                        AssetUtilities::AdjustTimestamp(metadataFileInfo.lastModified()),
+                        AssetUtilities::GetFileHash(metadataFileInfo.absoluteFilePath().toUtf8().constData()));
                 }
                 else
                 {
@@ -2063,6 +2066,8 @@ namespace AssetProcessor
         }
         else
         {
+            CheckMissingJobs(databaseSourceFile.toUtf8().constData(), scanFolder, {});
+
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Non-processed file: %s\n", databaseSourceFile.toUtf8().constData());
             ++m_numSourcesNotHandledByAnyBuilder;
             
@@ -2072,7 +2077,9 @@ namespace AssetProcessor
             QFileInfo fileInfo(absolutePath);
             QDateTime lastModifiedTime = fileInfo.lastModified();
 
-            m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseSourceFile, scanFolder->ScanFolderID(), AssetUtilities::AdjustTimestamp(lastModifiedTime));
+            m_stateData->UpdateFileModTimeAndHashByFileNameAndScanFolderId(databaseSourceFile, scanFolder->ScanFolderID(),
+                AssetUtilities::AdjustTimestamp(lastModifiedTime),
+                AssetUtilities::GetFileHash(fileInfo.absoluteFilePath().toUtf8().constData()));
         }
     }
 
@@ -2341,7 +2348,7 @@ namespace AssetProcessor
         QStringList files;
         ScanFolderInternal(fullSourceFile, files);
 
-        for (const QString fileEntry : files)
+        for (const QString& fileEntry : files)
         {
             AssessModifiedFile(fileEntry);
         }
@@ -2864,6 +2871,7 @@ namespace AssetProcessor
     // this means a file is definitely coming from the file scanner, and not the file monitor.
     // the file scanner does not scan the cache.
     // the scanner should be omitting directory changes.
+
     void AssetProcessorManager::AssessFilesFromScanner(QSet<AssetFileInfo> filePaths)
     {
         int processedFileCount = 0;
@@ -2872,9 +2880,24 @@ namespace AssetProcessor
         {
             if (m_allowModtimeSkippingFeature)
             {
-                if (CanSkipProcessingFile(fileInfo))
+                AZ::u64 fileHash = 0;
+                if (CanSkipProcessingFile(fileInfo, fileHash))
                 {
                     AddKnownFoldersRecursivelyForFile(fileInfo.m_filePath, fileInfo.m_scanFolder->ScanPath());
+
+                    if (fileHash != 0)
+                    {
+                        QString databaseName;
+                        m_platformConfig->ConvertToRelativePath(fileInfo.m_filePath, fileInfo.m_scanFolder, databaseName);
+
+                        // Update the modtime in the db since its possible that the hash is the same, but the modtime is out of date.  Recording the current modtime will allow us to skip hashing the file in the future if no changes are made
+                        bool updated = m_stateData->UpdateFileModTimeAndHashByFileNameAndScanFolderId(databaseName, fileInfo.m_scanFolder->ScanFolderID(), AssetUtilities::AdjustTimestamp(fileInfo.m_modTime), fileHash);
+
+                        if(!updated)
+                        {
+                            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to update modtime for file %s during file scan", fileInfo.m_filePath.toUtf8().constData());
+                        }
+                    }
 
                     continue;
                 }
@@ -2890,50 +2913,7 @@ namespace AssetProcessor
         }
     }
 
-    bool AssetProcessorManager::CheckArchiveTimeZoneOffset(QDateTime fileTimeStamp, AZ::u64 adjustedFileTimeMs, AZ::u64 databaseTimeMs, int timezoneOffset, QString fileName)
-    {
-        // Archived files come with 2 second precision.  If this file has ms precision it's been altered locally and should not pass this check
-        const qint64 ArchivePrecision = 2000;
-        qint64 fileTimeStampMS = fileTimeStamp.toMSecsSinceEpoch();
-
-        if (fileTimeStampMS % ArchivePrecision)
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "File %s has ms precision.  FileTime %" PRId64 "\n", fileName.toUtf8().constData(), fileTimeStampMS);
-            return false;
-        }
-
-        // Assuming the file does not appear to have been altered locally, is the difference in our calculated local time and the time in the DB exactly the difference between local time
-        // Of archiving and our time zone
-        auto currentTime = QDateTime::currentDateTime();
-        int curOffset = currentTime.offsetFromUtc();
-        static const bool unknownTimeZone = (QTimeZone::systemTimeZone().id() == QString("UTC").toUtf8());
-        int allowedOffset = curOffset - timezoneOffset;
-        if (databaseTimeMs == (adjustedFileTimeMs + (allowedOffset * 1000)))
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Found expected offset from UTC: %s\n", fileName.toUtf8().constData());
-
-            return true;
-        }
-        else if (!fileTimeStamp.isDaylightTime() && (databaseTimeMs == (adjustedFileTimeMs + (allowedOffset * 1000) - (1000 * 60 * 60))))
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Found non daylight offset from UTC: %s\n", fileName.toUtf8().constData());
-
-            return true;
-        }
-        else if (unknownTimeZone && (databaseTimeMs == (adjustedFileTimeMs + (allowedOffset * 1000) - (1000 * 60 * 60))))
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "In unknown timezone - file matches with daylight adjustment applied: %s\n", fileName.toUtf8().constData());
-
-            return true;
-        }
-        else
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "File %s doesn't have archive timezone offset from UTC - has %" PRId64 " allowed %" PRId64 "\n", fileName.toUtf8().constData(), databaseTimeMs - adjustedFileTimeMs, allowedOffset * 1000);
-        }
-        return false;
-    }
-
-    bool AssetProcessorManager::CanSkipProcessingFile(const AssetFileInfo &fileInfo)
+    bool AssetProcessorManager::CanSkipProcessingFile(const AssetFileInfo &fileInfo, AZ::u64& fileHashOut)
     {
         // Check to see if the file has changed since the last time we saw it
         // If not, don't even bother processing the file
@@ -2951,26 +2931,52 @@ namespace AssetProcessor
             return false;
         }
 
-        static int allowedTimeZoneOffset = AssetUtilities::AllowedTimeZoneOffset();
-
         AZ::u64 databaseModTime = fileItr->second;
 
         // Remove the file from the list, it's not needed anymore
         m_fileModTimes.erase(fileItr);
 
+        if(databaseModTime == 0)
+        {
+            // Don't bother with any further checks (particularly hashing), this file hasn't been seen before
+            // There should never be a case where we have recorded a hash but not a modtime
+            return false;
+        }
+
         auto thisModTime = aznumeric_cast<decltype(databaseModTime)>(AssetUtilities::AdjustTimestamp(fileInfo.m_modTime));
 
         if (databaseModTime != thisModTime)
         {
-            if (allowedTimeZoneOffset && CheckArchiveTimeZoneOffset(fileInfo.m_modTime, thisModTime, databaseModTime, allowedTimeZoneOffset, fileInfo.m_filePath))
+            // File timestamp has changed since last time
+            // Check if the contents have changed or if its just a timestamp mismatch
+
+            auto hashItr = m_fileHashes.find(fileInfo.m_filePath.toUtf8().constData());
+
+            if(hashItr == m_fileHashes.end())
             {
-                AZ_TracePrintf(AssetProcessor::DebugChannel, "  Valid Archive Offset found for file %s\n", fileInfo.m_filePath.toUtf8().constData());
-            }
-            else
-            {
-                // File has changed since last time
+                // No hash found
                 return false;
             }
+
+            AZ::u64 databaseHashValue = hashItr->second;
+
+            m_fileHashes.erase(hashItr);
+
+            if(databaseHashValue == 0)
+            {
+                // 0 is not a valid hash, don't bother trying to hash the file
+                return false;
+            }
+
+            AZ::u64 fileHash = AssetUtilities::GetFileHash(fileInfo.m_filePath.toUtf8().constData());
+                
+            if(fileHash != databaseHashValue)
+            {
+                // File contents have changed
+                return false;
+            }
+
+            fileHashOut = fileHash;
         }
 
         auto sourceFileItr = m_sourceFilesInDatabase.find(fileInfo.m_filePath.toUtf8().data());
@@ -4374,7 +4380,9 @@ namespace AssetProcessor
         AZ_Error(AssetProcessor::ConsoleChannel, scanFolderPk > -1 && !databaseSourceName.isEmpty(), "FinishAnalysis: Invalid ScanFolderPk (%d) or databaseSourceName (%s) for file %s.  Cannot update file modtime in database.",
             scanFolderPk, databaseSourceName.toUtf8().constData(), fileToCheck.c_str());
 
-        m_stateData->UpdateFileModTimeByFileNameAndScanFolderId(databaseSourceName.toUtf8().constData(), scanFolderPk, AssetUtilities::AdjustTimestamp(lastModifiedTime));
+        m_stateData->UpdateFileModTimeAndHashByFileNameAndScanFolderId(databaseSourceName.toUtf8().constData(), scanFolderPk,
+            AssetUtilities::AdjustTimestamp(lastModifiedTime),
+            AssetUtilities::GetFileHash(fileInfo.absoluteFilePath().toUtf8().constData()));
 
         m_remainingJobsForEachSourceFile.erase(foundTrackingInfo);
     }
@@ -4389,45 +4397,84 @@ namespace AssetProcessor
         m_stateData->SetQueryLogging(enableLogging);
     }
 
-    void AssetProcessorManager::ScanForMissingProductDependencies(QString pattern, int maxScanIteration)
+    void AssetProcessorManager::ScanForMissingProductDependencies(QString dbPattern, QString filePattern, const AZStd::vector<AZStd::string>& dependencyAdditionalScanFolders, int maxScanIteration)
     {
         LyMetricIdType metricEventId = LyMetrics_CreateEvent("missingDependencyScanEvent");
         QElapsedTimer scanTime;
         scanTime.start();
-        AZ_Printf(
-            "AssetProcessor",
-            "\n----------------\nPerforming dependency scan using pattern %s"
-            "\n(This may be a long running operation)\n----------------\n",
-            pattern.toStdString().c_str());
-        // Find all products that match the given pattern.
-        m_stateData->QueryProductLikeProductName(
-            pattern.toStdString().c_str(),
-            AssetDatabaseConnection::LikeType::Raw,
-            [&](AzToolsFramework::AssetDatabase::ProductDatabaseEntry& entry)
-            {
-                // Get the full path to the asset, so that it can be loaded by the scanner.
-                AZStd::string fullPath;
-                AzFramework::StringFunc::Path::Join(
-                    m_normalizedCacheRootPath.toStdString().c_str(),
-                    entry.m_productName.c_str(),
-                    fullPath);
-
-                // Get any existing product dependencies available for the product, so
-                // the scanner can cull results based on these existing dependencies.
-                AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer container;
-                m_stateData->QueryProductDependencyByProductId(
-                    entry.m_productID,
-                    [&](AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry)
+        if (!dbPattern.isEmpty())
+        {
+            AZ_Printf(
+                "AssetProcessor",
+                "\n----------------\nPerforming dependency scan using database pattern ( %s )"
+                "\n(This may be a long running operation)\n----------------\n",
+                dbPattern.toUtf8().data());
+            // Find all products that match the given pattern.
+            m_stateData->QueryProductLikeProductName(
+                dbPattern.toStdString().c_str(),
+                AssetDatabaseConnection::LikeType::Raw,
+                [&](AzToolsFramework::AssetDatabase::ProductDatabaseEntry& entry)
                 {
-                    container.push_back();
-                    container.back() = AZStd::move(entry);
-                    return true; // return true to keep iterating over further rows.
-                });
+                    // Get the full path to the asset, so that it can be loaded by the scanner.
+                    AZStd::string fullPath;
+                    AzFramework::StringFunc::Path::Join(
+                        m_normalizedCacheRootPath.toStdString().c_str(),
+                        entry.m_productName.c_str(),
+                        fullPath);
 
-                // Scan the file to report anything that looks like a missing product dependency.
-                m_missingDependencyScanner.ScanFile(fullPath, maxScanIteration, entry.m_productID, container, m_stateData.get());
-                return true;
-            });
+                    // Get any existing product dependencies available for the product, so
+                    // the scanner can cull results based on these existing dependencies.
+                    AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer container;
+                    m_stateData->QueryProductDependencyByProductId(
+                        entry.m_productID,
+                        [&](AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry)
+                        {
+                            container.push_back();
+                            container.back() = AZStd::move(entry);
+                            return true; // return true to keep iterating over further rows.
+                        });
+
+                    // Scan the file to report anything that looks like a missing product dependency.
+                    // Don't queue results on the main thread, so the tickbus won't need to be pumped.
+                    m_missingDependencyScanner.ScanFile(fullPath, maxScanIteration, entry.m_productID, container, m_stateData, false, [](AZStd::string /*relativeDependencyFilePath*/) {});
+                    return true;
+                });
+        }
+
+        if (dependencyAdditionalScanFolders.size())
+        {
+            AZ_Printf(
+                "AssetProcessor",
+                "\n----------------\nPerforming dependency scan using file pattern ( %s )"
+                "\n(This may be a long running operation)\n----------------\n",
+                filePattern.toUtf8().data());
+
+            for (const auto& scanFolder : dependencyAdditionalScanFolders)
+            {
+                QElapsedTimer scanFolderTime;
+                scanFolderTime.start();
+                AZ_Printf("AssetProcessor", "Scanning folder : ( %s ).\n", scanFolder.c_str());
+                auto filesFoundOutcome = AzFramework::FileFunc::FindFileList(scanFolder.c_str(), filePattern.toUtf8().data(), true);
+                if (filesFoundOutcome.IsSuccess())
+                {
+                    AZStd::string dependencyTokenName;
+                    if (!m_missingDependencyScanner.PopulateRulesForScanFolder(scanFolder, m_platformConfig->GetGemsInformation(), dependencyTokenName))
+                    {
+                        continue;
+                    }
+                    for (const AZStd::string& fullFilePath : filesFoundOutcome.GetValue())
+                    {
+                        char resolvedFilePath[AZ_MAX_PATH_LEN] = { 0 };
+                        AZ::IO::FileIOBase::GetInstance()->ResolvePath(fullFilePath.c_str(), resolvedFilePath, AZ_MAX_PATH_LEN);
+                        // Scan the file to report anything that looks like a missing product dependency.
+                        m_missingDependencyScanner.ScanFile(resolvedFilePath, maxScanIteration, m_stateData, dependencyTokenName, false, [](AZStd::string /*relativeDependencyFilePath*/){});
+                    }
+                }
+
+                AZ_Printf("AssetProcessor", "Scan complete, time taken ( %f ) millisecs.\n", static_cast<double>(scanFolderTime.elapsed()));
+                scanFolderTime.restart();
+            }
+        }
         LyMetrics_AddMetric(metricEventId, "ScanTime", static_cast<double>(scanTime.elapsed()));
         LyMetrics_SubmitEvent(metricEventId);
     }
@@ -4695,6 +4742,66 @@ namespace AssetProcessor
         UpdateAnalysisTrackerForFile(assetIter->m_entry, AnalysisTrackerUpdateType::JobFailed);
 
         Q_EMIT AssetToProcess(jobdetail);// forwarding this job to rccontroller to fail it
+    }
+
+    AZ::u64 AssetProcessorManager::RequestReprocess(const QString& sourcePathRequest)
+    {
+        QFileInfo dirCheck{ sourcePathRequest };
+        auto normalizedSourcePath = AssetUtilities::NormalizeFilePath(sourcePathRequest);
+        QStringList reprocessList;
+        if (dirCheck.isDir())
+        {
+            QString scanFolderName;
+            QString relativePathToFile;
+            if (!m_platformConfig->ConvertToRelativePath(normalizedSourcePath, relativePathToFile, scanFolderName))
+            {
+                return 0;
+            }
+            QString searchPath;
+            // If we have a path beyond the scanFolder we need to keep that as part of our search string
+            if (sourcePathRequest.length() > scanFolderName.length())
+            {
+                searchPath = sourcePathRequest.mid(scanFolderName.length() + 1);
+            }
+            // Forward slash intended regardless of platform, see inside FindWildcardMatches
+            if (searchPath.length() && !searchPath.endsWith('/'))
+            {
+                searchPath += "/*";
+            }
+            else
+            {
+                searchPath += "*";
+            }
+            reprocessList = m_platformConfig->FindWildcardMatches(scanFolderName, searchPath);
+        }
+        else
+        {
+            reprocessList.append(normalizedSourcePath);
+        }
+
+        AZ::u64 filesFound{ 0 };
+        for (const auto& sourcePath : reprocessList)
+        {
+            QString scanFolderName;
+            QString relativePathToFile;
+            if (!m_platformConfig->ConvertToRelativePath(sourcePath, relativePathToFile, scanFolderName))
+            {
+                continue;
+            }
+            AzToolsFramework::AssetDatabase::JobDatabaseEntryContainer jobs; //should only find one when we specify builder, job key, platform
+            m_stateData->GetJobsBySourceName(relativePathToFile, jobs);
+            for (auto& job : jobs)
+            {
+                job.m_fingerprint = 0;
+                m_stateData->SetJob(job);
+            }
+            if (jobs.size())
+            {
+                filesFound++;
+                AssessModifiedFile(sourcePath);
+            }
+        }
+        return filesFound;
     }
 } // namespace AssetProcessor
 

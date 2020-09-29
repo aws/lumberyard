@@ -299,11 +299,11 @@ namespace EMStudio
         AZStd::string windowTitle;
         if (numErrors > 1)
         {
-            windowTitle = AZStd::string::format("%i errors occurred", numErrors);
+            windowTitle = AZStd::string::format("%zu errors occurred", numErrors);
         }
         else
         {
-            windowTitle = AZStd::string::format("%i error occurred", numErrors);
+            windowTitle = AZStd::string::format("%zu error occurred", numErrors);
         }
 
         setWindowTitle(windowTitle.c_str());
@@ -312,7 +312,7 @@ namespace EMStudio
         AZStd::string text;
         for (size_t i = 0; i < numErrors; ++i)
         {
-            text += AZStd::string::format("<font color=\"#F49C1C\"><b>#%i</b>:</font> ", i + 1);
+            text += AZStd::string::format("<font color=\"#F49C1C\"><b>#%zu</b>:</font> ", i + 1);
             text += "<font color=\"#CBCBCB\">";
             text += errors[i];
             text += "</font>";

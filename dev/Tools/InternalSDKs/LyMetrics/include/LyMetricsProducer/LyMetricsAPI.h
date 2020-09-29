@@ -63,7 +63,7 @@ extern "C"
 // Library lifecycle management - TODO: bother with thread safety?
 // doAPIInitShutdown should be true unless you are handling AWSNativeSDK InitAPI (Earlier) and ShutdownAPI (Later) elsewhere
 
-LY_METRICS_PRODUCER_API bool LyMetrics_Initialize(const char* applicationName, uint32_t processIntervalInSeconds, bool doAPIInitShutdown, const char* projectId, const char* statusFilePath, int releaseBuildTime);
+LY_METRICS_PRODUCER_API bool LyMetrics_Initialize(const char* applicationName, uint32_t processIntervalInSeconds, bool doAPIInitShutdown, const char* projectId, const char* statusFilePath, int releaseBuildTime, const char* baseVersion = nullptr);
 LY_METRICS_PRODUCER_API void LyMetrics_Shutdown();
 
 // Metrics event API - threadsafe

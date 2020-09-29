@@ -48,7 +48,7 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QConnectionListWidget" name="m_pConnectionList">
+    <widget class="QConnectionListWidget" name="m_connectionList">
      <property name="contextMenuPolicy">
       <enum>Qt::CustomContextMenu</enum>
      </property>
@@ -73,7 +73,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QFrame" name="m_pConnectionPropertiesFrame">
+    <widget class="QFrame" name="m_connectionPropertiesFrame">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
        <horstretch>0</horstretch>
@@ -96,7 +96,7 @@
       <bool>false</bool>
      </property>
      <property name="styleSheet">
-      <string notr="true">#m_pConnectionPropertiesFrame { border: 1px solid #363636; }</string>
+      <string notr="true">#m_connectionPropertiesFrame { border: 1px solid #363636; }</string>
      </property>
      <property name="frameShape">
       <enum>QFrame::Box</enum>
@@ -121,7 +121,7 @@
        <number>6</number>
       </property>
       <item>
-       <widget class="QPropertyTree" name="m_pConnectionProperties" native="true">
+       <widget class="QPropertyTree" name="m_connectionProperties" native="true">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
           <horstretch>0</horstretch>

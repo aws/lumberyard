@@ -11,6 +11,9 @@
 */
 
 #include <LmbrCentral_precompiled.h>
+
+#if ENABLE_CRY_PHYSICS
+
 #include <Physics/BusForwarding/BusForwarding.h>
 #include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
@@ -110,3 +113,5 @@ namespace LmbrCentral
         }
     } // namespace Internal
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

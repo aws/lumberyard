@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_RAYGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CRayGeom
     : public CGeometry
 {
@@ -81,5 +83,7 @@ public:
     Vec3 m_dirn;
     CRayBV m_Tree;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_RAYGEOM_H

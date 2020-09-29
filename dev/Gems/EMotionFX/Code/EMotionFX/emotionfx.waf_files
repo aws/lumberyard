@@ -357,10 +357,10 @@
             "Source/AnimGraphParameterAction.h",
             "Source/AnimGraphVector2Condition.cpp",
             "Source/AnimGraphVector2Condition.h",
-            "Source/AnimGraphServantParameterAction.cpp",
-            "Source/AnimGraphServantParameterAction.h",
-            "Source/AnimGraphSymbolicServantParameterAction.cpp",
-            "Source/AnimGraphSymbolicServantParameterAction.h"
+            "Source/AnimGraphFollowerParameterAction.cpp",
+            "Source/AnimGraphFollowerParameterAction.h",
+            "Source/AnimGraphSymbolicFollowerParameterAction.cpp",
+            "Source/AnimGraphSymbolicFollowerParameterAction.h"
         ],
         "EmotionFXSDK/EMotionFX/EventSystem":
         [

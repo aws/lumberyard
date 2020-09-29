@@ -497,6 +497,7 @@ void CObjManager::ProcessObjectsStreaming(const SRenderingPassInfo& passInfo)
             vOffset.z *= .5f;
             precachePoint.vPosition = rCamera.GetPosition() + vOffset;
 
+#if ENABLE_CRY_PHYSICS
             ray_hit hit;
             int rayFlags = geom_colltype_player << rwi_colltype_bit | rwi_stop_at_pierceable;
             if (m_pPhysicalWorld->RayWorldIntersection(rCamera.GetPosition(), vOffset,
@@ -504,6 +505,10 @@ void CObjManager::ProcessObjectsStreaming(const SRenderingPassInfo& passInfo)
             {
                 precachePoint.vPosition = hit.pt;
             }
+#else
+            // Raycast for precache points
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
             if (GetFloatCVar(e_StreamPredictionAheadDebug))
             {

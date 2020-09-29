@@ -29,7 +29,8 @@ public:
     virtual ~CEditorPreferencesPage_MannequinGeneral() = default;
 
     virtual const char* GetCategory() override { return "Mannequin"; }
-    virtual const char* GetTitle() override { return "General"; }
+    virtual const char* GetTitle() override { return "Mannequin Settings"; }
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -47,5 +48,6 @@ private:
     };
 
     General m_general;
+    QIcon m_icon;
 };
 #endif //ENABLE_LEGACY_ANIMATION

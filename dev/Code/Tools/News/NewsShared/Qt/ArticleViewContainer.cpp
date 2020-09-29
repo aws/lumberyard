@@ -33,8 +33,6 @@ namespace News
         , m_errorMessage(nullptr)
     {
         m_ui->setupUi(this);
-        connect(m_ui->previewArea, &QBetterScrollArea::scrolled,
-            this, &ArticleViewContainer::scrolled);
         AddLoadingMessage();
 
         m_keepInTouchViewWidget = new KeepInTouchView(this);

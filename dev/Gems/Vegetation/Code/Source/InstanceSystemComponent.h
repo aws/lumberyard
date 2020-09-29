@@ -20,8 +20,9 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/containers/list.h>
+#include <AzCore/std/function/function_fwd.h>
 
-#include "DescriptorRenderGroup.h"
 #include <Vegetation/Descriptor.h>
 #include <Vegetation/InstanceData.h>
 #include <Vegetation/Ebuses/InstanceSystemRequestBus.h>
@@ -37,7 +38,10 @@ namespace AZ
     class Transform;
     class EntityId;
 }
+
 struct IRenderNode;
+struct ISystem;
+struct I3DEngine;
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -112,6 +116,9 @@ namespace Vegetation
         void DestroyAllInstances() override;
         void Cleanup() override;
 
+        void RegisterMergedMeshInstance(InstancePtr instance, IRenderNode* mergedMeshNode) override;
+        void ReleaseMergedMeshInstance(InstancePtr instance) override;
+
         // InstanceSystemStatsRequestBus
         AZ::u32 GetInstanceCount() const override;
         AZ::u32 GetTotalTaskCount() const override;
@@ -146,8 +153,7 @@ namespace Vegetation
         ////////////////////////////////////////////////////////////////
         // vegetation instance management
         bool IsInstanceSkippable(const InstanceData& instanceData) const;
-        void CreateCVegetationInstanceNode(const InstanceData& instanceData);
-        void CreateMergedMeshInstanceNode(const InstanceData& instanceData);
+        void CreateInstanceNode(const InstanceData& instanceData);
 
         void CreateInstanceNodeBegin();
         void CreateInstanceNodeEnd();
@@ -155,16 +161,10 @@ namespace Vegetation
         void ReleaseInstanceNode(InstanceId instanceId);
 
         mutable AZStd::recursive_mutex m_instanceMapMutex;
-        AZStd::unordered_map<InstanceId, IRenderNode*> m_instanceMap;
+        AZStd::unordered_map<InstanceId, AZStd::pair<DescriptorPtr, InstancePtr>> m_instanceMap;
 
         mutable AZStd::recursive_mutex m_instanceDeletionSetMutex;
         AZStd::unordered_set<InstanceId> m_instanceDeletionSet;
-
-        //refresh events can queue the creation and deletion of the same node in the same frame
-        //this map is used to track which nodes remain after all tasks have executed for the frame
-        //registration will only be done on the final set each frame
-        AZStd::unordered_map<IRenderNode*, IRenderNode*> m_instanceNodeToMergedMeshNodeRegistrationMap;
-        AZStd::unordered_set<IRenderNode*> m_mergedMeshNodeRegistrationSet;
 
         ////////////////////////////////////////////////////////////////
         // Task management
@@ -183,19 +183,20 @@ namespace Vegetation
         void ProcessMainThreadTasks();
 
         ////////////////////////////////////////////////////////////////
-        // vegetation render group management
-        DescriptorRenderGroupPtr RegisterRenderGroup(DescriptorPtr descriptorPtr);
-        void ReleaseRenderGroup(DescriptorRenderGroupPtr& groupPtr);
-        void ReleaseAllRenderGroups();
-
+        // vegetation descriptor management
         struct DescriptorDetails
         {
             int m_refCount = 1;
-            DescriptorRenderGroupPtr m_groupPtr;
         };
         mutable AZStd::recursive_mutex m_uniqueDescriptorsMutex;
         AZStd::map<DescriptorPtr, DescriptorDetails> m_uniqueDescriptors;
         AZStd::map<DescriptorPtr, DescriptorDetails> m_uniqueDescriptorsToDelete;
+
+        //refresh events can queue the creation and deletion of the same node in the same frame
+        //this map is used to track which nodes remain after all tasks have executed for the frame
+        //registration will only be done on the final set each frame
+        AZStd::unordered_map<InstancePtr, IRenderNode*> m_instanceNodeToMergedMeshNodeRegistrationMap;
+        AZStd::unordered_set<IRenderNode*> m_mergedMeshNodeRegistrationSet;
 
         ISystem* m_system = nullptr;
         I3DEngine* m_engine = nullptr;

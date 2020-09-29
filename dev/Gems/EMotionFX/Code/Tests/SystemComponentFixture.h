@@ -111,7 +111,10 @@ namespace EMotionFX
 
             PreStart();
 
-            m_app.Start(AZ::ComponentApplication::Descriptor{});
+            AZ::ComponentApplication::StartupParameters startupParameters;
+            startupParameters.m_createEditContext = true;
+
+            m_app.Start(AZ::ComponentApplication::Descriptor{}, startupParameters);
 
             GetSerializeContext()->CreateEditContext();
 

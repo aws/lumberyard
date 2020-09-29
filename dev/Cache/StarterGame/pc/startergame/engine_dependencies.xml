@@ -11,4 +11,6 @@
     <Dependency path="modes/menucommon_sp.pak" optional="true" />
     <Dependency path="modes/menucommon_mp.pak" optional="true" />
     <Dependency path="libs/materialeffects/surfacetypes.xml" optional="true" />
+    <Dependency path="libs/localization/localization.xml" optional="true" />
+    <Dependency path="localization/*xml" optional="true" />
 </EngineDependencies>

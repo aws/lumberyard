@@ -49,8 +49,8 @@ namespace AzToolsFramework
                 return assetPath;
             }
         }
-
-        AZ_Warning("AssetSeedManager", false, "Unable to find path hint for Seed asset (%s) for the given platformFlags (%d).\n", assetId.ToString<AZStd::string>().c_str(), platformFlags);
+        
+        AZ_Warning("AssetSeedManager", false, "Unable to resolve path of Seed asset (%s) for the given platforms (%s).\n", assetId.ToString<AZStd::string>().c_str(), AzFramework::PlatformHelper::GetCommaSeparatedPlatformList(platformFlags).c_str());
 
         return {};
     }
@@ -60,7 +60,7 @@ namespace AzToolsFramework
         m_sourceAssetTypeToRuntimeAssetTypeMap.clear();
     }
 
-    void AssetSeedManager::AddSeedAsset(AZ::Data::AssetId assetId, AzFramework::PlatformFlags platformFlags, AZStd::string path)
+    bool AssetSeedManager::AddSeedAsset(AZ::Data::AssetId assetId, AzFramework::PlatformFlags platformFlags, AZStd::string path, const AZStd::string& seedListFilePath)
     {
         for (auto iter = m_assetSeedList.begin(); iter != m_assetSeedList.end(); ++iter)
         {
@@ -69,12 +69,11 @@ namespace AzToolsFramework
                 if (iter->m_platformFlags == platformFlags)
                 {
                     AZ_TracePrintf("AssetSeedManager", "Seed Asset ( %s ) is already present in the asset seed list.\n", assetId.ToString<AZStd::string>().c_str());
+                    return false;
                 }
-                else
-                {
-                    iter->m_platformFlags = iter->m_platformFlags | platformFlags;
-                }
-                return;
+
+                iter->m_platformFlags = iter->m_platformFlags | platformFlags;
+                return true;
             }
         }
 
@@ -82,7 +81,8 @@ namespace AzToolsFramework
         {
             path = GetSeedPath(assetId, platformFlags);
         }
-        m_assetSeedList.emplace_back(AzFramework::SeedInfo(assetId, platformFlags, path));
+        m_assetSeedList.emplace_back(AzFramework::SeedInfo(assetId, platformFlags, path, seedListFilePath));
+        return true;
     }
 
     void AssetSeedManager::RemoveSeedAsset(AZ::Data::AssetId assetId, AzFramework::PlatformFlags platformFlags)
@@ -106,52 +106,66 @@ namespace AzToolsFramework
         AZ_TracePrintf("AssetSeedManager", "Seed Asset ( %s ) is not present in the asset seed list.\n", assetId.ToString<AZStd::string>().c_str());
     }
 
-    void AssetSeedManager::AddSeedAsset(const AZStd::string& assetPath, AzFramework::PlatformFlags platformFlags)
+    bool AssetSeedManager::AddSeedAsset(const AZStd::string& assetPath, AzFramework::PlatformFlags platformFlags, const AZStd::string& seedListFilePath)
     {
-        if (!m_sourceAssetTypeToRuntimeAssetTypeMap.size())
+        AZStd::string seedPath = AddAssetToSeedListHelper(assetPath);
+        if (seedPath.empty())
         {
-            PopulateAssetTypeMap();
+            // Error has already been thrown
+            return false;
         }
 
-        using namespace AzFramework::FileTag;
-        AZStd::vector<AZStd::string> editorTagsList = { FileTags[static_cast<unsigned int>(FileTagsIndex::EditorOnly)] };
-        bool editorOnlyAsset = false;
-        QueryFileTagsEventBus::EventResult(editorOnlyAsset, FileTagType::Exclude,
-            &QueryFileTagsEventBus::Events::Match, assetPath, editorTagsList);
-
-        AZStd::string seedPath = assetPath;
-
-        if (editorOnlyAsset)
-        {
-            // If we are here it implies that this is an editor only asset type.
-            // Please note that in those cases where we are certain about what the runtime asset type should be for this
-            // source asset type, we will fix the fileextension.
-
-            AZStd::string fileExtension;
-            AzFramework::StringFunc::Path::GetExtension(seedPath.c_str(), fileExtension, false);
-            auto found = m_sourceAssetTypeToRuntimeAssetTypeMap.find(fileExtension);
-
-            if (found != m_sourceAssetTypeToRuntimeAssetTypeMap.end())
-            {
-                AzFramework::StringFunc::Path::ReplaceExtension(seedPath, found->second.c_str());
-                AZ_Warning("AssetSeedManager", false, "( %s ) is an editor only asset. We wil use seed asset( %s ) instead.\n", assetPath.c_str(), seedPath.c_str());
-            }
-            else
-            {
-                AZ_Warning("AssetSeedManager", false, "Invalid seed asset ( %s ). This is an editor only asset. Please note that you can open the asset processor database and find \
-                    all assets associated with this source asset and add those products instead. \n", seedPath.c_str());
-                return;
-            }
-        }
         AZ::Data::AssetId assetId = GetAssetIdByPath(seedPath, platformFlags);
         if (assetId.IsValid())
         {
-            AddSeedAsset(assetId, platformFlags, seedPath);
+            return AddSeedAsset(assetId, platformFlags, seedPath, seedListFilePath);
         }
-        else
+
+        AZ_Warning("AssetSeedManager", false, "Unable to add asset ( %s ) to the seed list, could not find it on all requested platforms.\n", seedPath.c_str());
+        return false;
+    }
+
+    AZStd::pair<AZ::Data::AssetId, AzFramework::PlatformFlags> AssetSeedManager::AddSeedAssetForValidPlatforms(const AZStd::string& assetPath, AzFramework::PlatformFlags platformFlags)
+    {
+        using namespace AzFramework;
+
+        AZStd::pair<AZ::Data::AssetId, AzFramework::PlatformFlags> result = AZStd::make_pair(AZ::Data::AssetId(), AzFramework::PlatformFlags::Platform_NONE);
+
+        if (platformFlags == AzFramework::PlatformFlags::Platform_NONE)
         {
-            AZ_Warning("AssetSeedManager", false, "Unable to add asset ( %s ) to the seed list, could not find it on all requested platforms.\n", seedPath.c_str());
+            AZ_Error("AssetSeedManager", false, "Unable to add asset ( %s ) to the seed list, no platforms were defined.\n", assetPath.c_str());
+            return result;
         }
+
+        AZStd::string seedPath = AddAssetToSeedListHelper(assetPath);
+        if (seedPath.empty())
+        {
+            // Error has already been thrown
+            return result;
+        }
+
+        // Try to add it one platform at a time, that way if any of them fail, the Seed is still added
+        //    to the list for the successes
+        for (AzFramework::PlatformId platformId : AzFramework::PlatformHelper::GetPlatformIndicesInterpreted(platformFlags))
+        {
+            PlatformFlags singlePlatformFlag = AzFramework::PlatformHelper::GetPlatformFlagFromPlatformIndex(platformId);
+
+            auto tempId = GetAssetIdByPath(seedPath, singlePlatformFlag);
+            if (!tempId.IsValid())
+            {
+                // Try another platform
+                continue;
+            }
+
+            result.first = tempId;
+
+            if (AddSeedAsset(tempId, singlePlatformFlag))
+            {
+                result.second = result.second | singlePlatformFlag;
+            }
+        }
+
+        return result;
     }
 
     void AssetSeedManager::RemoveSeedAsset(const AZStd::string& assetKey, AzFramework::PlatformFlags platformFlags)
@@ -277,14 +291,21 @@ namespace AzToolsFramework
     }
 
     // Returns the asset info if it exists and is the same for the platform specified by platformIndex
-    AZ::Data::AssetInfo AssetSeedManager::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AzFramework::PlatformId& platformIndex) const
+    AZ::Data::AssetInfo AssetSeedManager::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AzFramework::PlatformId& platformIndex, const AZStd::string& seedListfilePath)
     {
         using namespace AzToolsFramework::AssetCatalog;
         AZ::Data::AssetInfo assetInfo;
         PlatformAddressedAssetCatalogRequestBus::EventResult(assetInfo, static_cast<AzFramework::PlatformId>(platformIndex), &PlatformAddressedAssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
         if (!assetInfo.m_assetId.IsValid())
         {
-            AZ_Error("AssetSeedManager", false, "Could not find asset with id ( %s ) on platform ( %s ).", assetId.ToString<AZStd::string>().c_str(), AzFramework::PlatformHelper::GetPlatformName(platformIndex));
+            AZStd::string errorMessage = AZStd::string::format("Could not find asset with id (%s) on platform (%s)", assetId.ToString<AZStd::string>().c_str(), AzFramework::PlatformHelper::GetPlatformName(platformIndex));
+
+            if (!seedListfilePath.empty())
+            {
+                errorMessage = AZStd::string::format("%s from Seed List (%s)", errorMessage.c_str(), seedListfilePath.c_str());
+            }
+
+            AZ_Error("AssetSeedManager", false, errorMessage.c_str());
         }
         return assetInfo;
     }
@@ -294,19 +315,61 @@ namespace AzToolsFramework
         const AzFramework::PlatformId& platformIndex,
         const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
         AssetFileDebugInfoList* optionalDebugList,
-        AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet) const
+        AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet,
+        const AZStd::vector<AZStd::string>& wildcardPatternExclusionList) const
     {
         using namespace AzToolsFramework::AssetCatalog;
 
         if (optionalDebugList)
         {
-            return AssetFileDebugInfoList::GetAllProductDependenciesDebug(assetId, platformIndex, optionalDebugList, cyclicalDependencySet, exclusionList);
+            return AssetFileDebugInfoList::GetAllProductDependenciesDebug(assetId, platformIndex, optionalDebugList, cyclicalDependencySet, exclusionList, wildcardPatternExclusionList);
         }
 
         // If not gathering debug info, then the recursion can happen in SQL. Call GetAllProductDependencies for the faster method of gathering.
         AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> getDependenciesResult = AZ::Failure(AZStd::string());
-        PlatformAddressedAssetCatalogRequestBus::EventResult(getDependenciesResult, platformIndex, &PlatformAddressedAssetCatalogRequestBus::Events::GetAllProductDependenciesFilter, assetId, exclusionList);
+        PlatformAddressedAssetCatalogRequestBus::EventResult(getDependenciesResult, platformIndex, &PlatformAddressedAssetCatalogRequestBus::Events::GetAllProductDependenciesFilter, assetId, exclusionList, wildcardPatternExclusionList);
         return getDependenciesResult;
+    }
+
+    AZStd::string AssetSeedManager::AddAssetToSeedListHelper(const AZStd::string& assetPath)
+    {
+        if (!m_sourceAssetTypeToRuntimeAssetTypeMap.size())
+        {
+            PopulateAssetTypeMap();
+        }
+
+        using namespace AzFramework::FileTag;
+        AZStd::vector<AZStd::string> editorTagsList = { FileTags[static_cast<unsigned int>(FileTagsIndex::EditorOnly)] };
+        bool editorOnlyAsset = false;
+        QueryFileTagsEventBus::EventResult(editorOnlyAsset, FileTagType::Exclude,
+            &QueryFileTagsEventBus::Events::Match, assetPath, editorTagsList);
+
+        AZStd::string seedPath = assetPath;
+
+        if (editorOnlyAsset)
+        {
+            // If we are here it implies that this is an editor only asset type.
+            // Please note that in those cases where we are certain about what the runtime asset type should be for this
+            // source asset type, we will fix the fileextension.
+
+            AZStd::string fileExtension;
+            AzFramework::StringFunc::Path::GetExtension(seedPath.c_str(), fileExtension, false);
+            auto found = m_sourceAssetTypeToRuntimeAssetTypeMap.find(fileExtension);
+
+            if (found != m_sourceAssetTypeToRuntimeAssetTypeMap.end())
+            {
+                AzFramework::StringFunc::Path::ReplaceExtension(seedPath, found->second.c_str());
+                AZ_Warning("AssetSeedManager", false, "( %s ) is an editor only asset. We wil use seed asset( %s ) instead.\n", assetPath.c_str(), seedPath.c_str());
+            }
+            else
+            {
+                AZ_Warning("AssetSeedManager", false, "Invalid seed asset ( %s ). This is an editor only asset. Please note that you can open the asset processor database and find \
+                    all assets associated with this source asset and add those products instead. \n", seedPath.c_str());
+                return {};
+            }
+        }
+
+        return seedPath;
     }
 
     void AssetSeedManager::PopulateAssetTypeMap()
@@ -327,7 +390,18 @@ namespace AzToolsFramework
         return m_assetSeedList;
     }
 
-    AssetSeedManager::AssetsInfoList AssetSeedManager::GetDependenciesInfo(AzFramework::PlatformId platformIndex, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, AssetFileDebugInfoList* optionalDebugList) const
+    AZ::Outcome<void, AZStd::string> AssetSeedManager::SetSeedPlatformFlags(int index, AzFramework::PlatformFlags platformFlags)
+    {
+        if (index >= m_assetSeedList.size() || index < 0)
+        {
+            return AZ::Failure(AZStd::string("Index is out of range"));
+        }
+
+        m_assetSeedList[index].m_platformFlags = platformFlags;
+        return AZ::Success();
+    }
+
+    AssetSeedManager::AssetsInfoList AssetSeedManager::GetDependenciesInfo(AzFramework::PlatformId platformIndex, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, AssetFileDebugInfoList* optionalDebugList, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList) const
     {
         if (!m_assetSeedList.size())
         {
@@ -352,7 +426,7 @@ namespace AzToolsFramework
                 continue;
             }
 
-            AZ::Data::AssetInfo seedAssetInfo = GetAssetInfoById(m_assetSeedList[idx].m_assetId, platformIndex);
+            AZ::Data::AssetInfo seedAssetInfo = GetAssetInfoById(m_assetSeedList[idx].m_assetId, platformIndex, m_assetSeedList[idx].m_seedListFilePath);
 
             if (optionalDebugList && 
                 optionalDebugList->m_fileDebugInfoList.find(seedAssetInfo.m_assetId) == optionalDebugList->m_fileDebugInfoList.end())
@@ -371,12 +445,26 @@ namespace AzToolsFramework
                 continue;
             }
 
+            bool wildcardPatternMatch = false;
+            for (const AZStd::string& wildcardPattern : wildcardPatternExclusionList)
+            {
+                AzToolsFramework::AssetCatalog::PlatformAddressedAssetCatalogRequestBus::EventResult(wildcardPatternMatch, platformIndex, &AzToolsFramework::AssetCatalog::PlatformAddressedAssetCatalogRequestBus::Events::DoesAssetIdMatchWildcardPattern, seedAssetInfo.m_assetId, wildcardPattern);
+                if (wildcardPatternMatch)
+                {
+                    break;
+                }
+            }
+            if (wildcardPatternMatch)
+            {
+                continue;
+            }
+
             assetsInfoList.emplace_back(AZStd::move(seedAssetInfo));
             assetIdSet.insert(seedAssetInfo.m_assetId);
 
             cyclicalDependencySet.clear();
             AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> getDependenciesResult =
-                GetAllProductDependencies(m_assetSeedList[idx].m_assetId, platformIndex, exclusionList, optionalDebugList, &cyclicalDependencySet);
+                GetAllProductDependencies(m_assetSeedList[idx].m_assetId, platformIndex, exclusionList, optionalDebugList, &cyclicalDependencySet, wildcardPatternExclusionList);
             if (getDependenciesResult.IsSuccess())
             {
                 AZStd::vector<AZ::Data::ProductDependency> entries = getDependenciesResult.TakeValue();
@@ -399,12 +487,11 @@ namespace AzToolsFramework
         }
 
         return assetsInfoList;
-
     }
 
-    AssetFileInfoList AssetSeedManager::GetDependencyList(AzFramework::PlatformId platformIndex, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, AssetFileDebugInfoList* optionalDebugList) const
+    AssetFileInfoList AssetSeedManager::GetDependencyList(AzFramework::PlatformId platformIndex, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, AssetFileDebugInfoList* optionalDebugList, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList) const
     {     
-        AssetSeedManager::AssetsInfoList  assetInfoList = AZStd::move(GetDependenciesInfo(platformIndex, exclusionList, optionalDebugList));
+        AssetSeedManager::AssetsInfoList  assetInfoList = AZStd::move(GetDependenciesInfo(platformIndex, exclusionList, optionalDebugList, wildcardPatternExclusionList));
 
         AssetFileInfoList assetFileInfoList;
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
@@ -480,52 +567,37 @@ namespace AzToolsFramework
         return assetFileInfoList;
     }
 
-    bool AssetSeedManager::SaveAssetFileInfo(const AZStd::string& destinationFilePath, AzFramework::PlatformFlags platformFlags, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, const AZStd::string& debugFilePath)
+    bool AssetSeedManager::SaveAssetFileInfo(const AZStd::string& destinationFilePath, AzFramework::PlatformFlags platformFlags, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, const AZStd::string& debugFilePath, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList)
     {
-        auto fileExtensionOutcome = ValidateAssetListFileExtension(destinationFilePath);
-        if (!fileExtensionOutcome.IsSuccess())
-        {
-            AZ_Error("AssetSeedManager", false, fileExtensionOutcome.GetError().c_str());
-            return false;
-        }
-
-        if (AZ::IO::FileIOBase::GetInstance()->Exists(destinationFilePath.c_str()) && AZ::IO::FileIOBase::GetInstance()->IsReadOnly(destinationFilePath.c_str()))
-        {
-            AZ_Error("AssetSeedManager", false, "Unable to save asset info file (%s): file is marked Read-Only.\n", destinationFilePath.c_str());
-            return false;
-        }
-
         AZStd::vector<AzFramework::PlatformId> platformIndices = AzFramework::PlatformHelper::GetPlatformIndicesInterpreted(platformFlags);
         if (platformIndices.size() != 1)
         {
-            AZ_Warning("AssetSeedManager", false, "AssetSeedManager::SaveAssetFileInfo can only operate on one platform at a time");
+            AZ_Warning("AssetSeedManager", false, "AssetSeedManager::SaveAssetFileInfo can only operate on one platform at a time.\n");
             return false;
         }
 
         bool useDebugInfoList = !debugFilePath.empty();
         AssetFileDebugInfoList debugInfo;
-        AssetFileInfoList assetFileInfoList = GetDependencyList(platformIndices[0], exclusionList, useDebugInfoList ? &debugInfo : nullptr);
+        AssetFileInfoList assetFileInfoList = GetDependencyList(platformIndices[0], exclusionList, useDebugInfoList ? &debugInfo : nullptr, wildcardPatternExclusionList);
 
-        bool debugSaveResult = true;
+        if (!AssetFileInfoList::Save(assetFileInfoList, destinationFilePath))
+        {
+            // Error has already been thrown
+            return false;
+        }
+
         if (useDebugInfoList)
         {
             debugInfo.BuildHumanReadableString();
-            debugSaveResult = AZ::Utils::SaveObjectToFile(debugFilePath, AZ::DataStream::StreamType::ST_XML, &debugInfo);
+            return AZ::Utils::SaveObjectToFile(debugFilePath, AZ::DataStream::StreamType::ST_XML, &debugInfo);
         }
 
-        if (assetFileInfoList.m_fileInfoList.empty())
-        {
-            // Don't save an empty list
-            return debugSaveResult;
-        }
-
-        bool assetFileInfoListSaveResult = AZ::Utils::SaveObjectToFile(destinationFilePath, AZ::DataStream::StreamType::ST_XML, &assetFileInfoList);
-        return assetFileInfoListSaveResult && debugSaveResult;
+        return true;
     }
 
     AZ::Outcome<AssetFileInfoList, AZStd::string> AssetSeedManager::LoadAssetFileInfo(const AZStd::string& assetListFileAbsolutePath)
     {
-        auto fileExtensionOutcome = ValidateAssetListFileExtension(assetListFileAbsolutePath);
+        auto fileExtensionOutcome = AssetFileInfoList::ValidateAssetListFileExtension(assetListFileAbsolutePath);
         if (!fileExtensionOutcome.IsSuccess())
         {
             return AZ::Failure(fileExtensionOutcome.GetError());
@@ -568,32 +640,16 @@ namespace AzToolsFramework
         return AssetListFileExtension;
     }
 
-    AZ::Outcome<void, AZStd::string> AssetSeedManager::ValidateAssetListFileExtension(const AZStd::string& path)
-    {
-        if (!AzFramework::StringFunc::EndsWith(path, AssetListFileExtension))
-        {
-            return AZ::Failure(AZStd::string::format(
-                "Invalid Asset List file path ( %s ). Invalid file extension, Asset List files can only have ( .%s ) extension.\n",
-                path.c_str(),
-                AssetListFileExtension));
-        }
-
-        return AZ::Success();
-    }
-
     const AZStd::string& AssetSeedManager::GetReadablePlatformList(const AzFramework::SeedInfo& seed)
     {
+        using namespace AzFramework;
         auto readablePlatformListIter = m_platformFlagsToReadablePlatformList.find(seed.m_platformFlags);
         if (readablePlatformListIter != m_platformFlagsToReadablePlatformList.end())
         {
             return readablePlatformListIter->second;
         }
 
-        AZStd::vector<AZStd::string> platformNames = AzFramework::PlatformHelper::GetPlatforms(seed.m_platformFlags);
-        AZStd::string readablePlatformList;
-        AzFramework::StringFunc::Join(readablePlatformList, platformNames.begin(), platformNames.end(), ", ");
-
-        m_platformFlagsToReadablePlatformList[seed.m_platformFlags] = readablePlatformList;
+        m_platformFlagsToReadablePlatformList[seed.m_platformFlags] = PlatformHelper::GetCommaSeparatedPlatformList(seed.m_platformFlags);
         return m_platformFlagsToReadablePlatformList.at(seed.m_platformFlags);
     }
 
@@ -667,7 +723,7 @@ namespace AzToolsFramework
 
         for (AzFramework::SeedInfo& seedInfo : assetSeedList)
         {
-            AddSeedAsset(seedInfo.m_assetId, seedInfo.m_platformFlags, seedInfo.m_assetRelativePath);
+            AddSeedAsset(seedInfo.m_assetId, seedInfo.m_platformFlags, seedInfo.m_assetRelativePath, sourceFilePath.c_str());
         }
 
         return true;
@@ -702,6 +758,44 @@ namespace AzToolsFramework
                 ->Version(1)
                 ->Field("fileInfoList", &AssetFileInfoList::m_fileInfoList);
         }
+    }
+
+    bool AssetFileInfoList::Save(const AssetFileInfoList& assetFileInfoList, const AZStd::string& destinationFilePath)
+    {
+        if (assetFileInfoList.m_fileInfoList.empty())
+        {
+            // Don't save an empty list
+            AZ_Warning("AssetFileInfoList", false, "Unable to save Asset List file (%s): list is empty.\n", destinationFilePath.c_str());
+            return false;
+        }
+
+        auto fileExtensionOutcome = ValidateAssetListFileExtension(destinationFilePath);
+        if (!fileExtensionOutcome.IsSuccess())
+        {
+            AZ_Error("AssetFileInfoList", false, fileExtensionOutcome.GetError().c_str());
+            return false;
+        }
+
+        if (AZ::IO::FileIOBase::GetInstance()->Exists(destinationFilePath.c_str()) && AZ::IO::FileIOBase::GetInstance()->IsReadOnly(destinationFilePath.c_str()))
+        {
+            AZ_Error("AssetFileInfoList", false, "Unable to save Asset List file (%s): file is marked Read-Only.\n", destinationFilePath.c_str());
+            return false;
+        }
+
+        return AZ::Utils::SaveObjectToFile(destinationFilePath, AZ::DataStream::StreamType::ST_XML, &assetFileInfoList);
+    }
+
+    AZ::Outcome<void, AZStd::string> AssetFileInfoList::ValidateAssetListFileExtension(const AZStd::string& path)
+    {
+        if (!AzFramework::StringFunc::EndsWith(path, AssetListFileExtension))
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Invalid Asset List file path ( %s ). Invalid file extension, Asset List files can only have ( .%s ) extension.\n",
+                path.c_str(),
+                AssetListFileExtension));
+        }
+
+        return AZ::Success();
     }
 
 } // namespace AzToolsFramework

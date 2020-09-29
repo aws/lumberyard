@@ -72,6 +72,9 @@ namespace AzToolsFramework
                 AZ::Uuid componentTypeId,
                 const EntitySearchFilter::ComponentProperties& componentProperties,
                 bool mustMatchAllComponents) const;
+
+            AzFramework::EntityContextId m_editorEntityContextId;
+            AzFramework::EntityContextId m_gameEntityContextId;
         };
 
     } // Components

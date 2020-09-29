@@ -208,6 +208,22 @@ namespace PhysX
             Physics::RayCastHit ClosestRayHitAgainstShapes(const Physics::RayCastRequest& request,
                 const AZStd::vector<AZStd::shared_ptr<PhysX::Shape>>& shapes, const AZ::Transform& parentTransform);
         } // namespace RayCast
+
+
+        /// Returns the World transform of an entity with scale. 
+        /// This can be used if ComputeJointLocalTransform will be invoked with the result as an argument since ComputeJointLocalTransform  will remove scale.
+        AZ::Transform GetEntityWorldTransformWithScale(AZ::EntityId entityId);
+
+        /// Returns the World transform of an entity without scale.
+        AZ::Transform GetEntityWorldTransformWithoutScale(AZ::EntityId entityId);
+
+        /// Computes the local transform of joint from an entity given the joint's world transform and the entity's world transform.
+        AZ::Transform ComputeJointLocalTransform(const AZ::Transform& jointWorldTransform,
+            const AZ::Transform& entityWorldTransform);
+
+        /// Computes the world transform of joint given the joint's local transform from an entity and the entity's world transform.
+        AZ::Transform ComputeJointWorldTransform(const AZ::Transform& jointLocalTransform,
+            const AZ::Transform& entityWorldTransform);
     } // namespace Utils
 
     namespace ReflectionUtils

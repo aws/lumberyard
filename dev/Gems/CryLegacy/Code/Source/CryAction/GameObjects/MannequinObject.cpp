@@ -16,6 +16,7 @@
 
 #include "IAnimatedCharacter.h"
 #include "Components/IComponentPhysics.h"
+#include "ICryMannequin.h"
 
 DECLARE_DEFAULT_COMPONENT_FACTORY(CMannequinObject, CMannequinObject)
 
@@ -87,6 +88,7 @@ void CMannequinObject::Reset()
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     // Physicalize
     {
         SEntityPhysicalizeParams physicsParams;
@@ -115,6 +117,7 @@ void CMannequinObject::Reset()
 
         pEntity->Physicalize(physicsParams);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -1055,6 +1055,7 @@ bool AlembicCompiler::CompileStaticMeshData(GeomCache::Node& node, Alembic::AbcG
 
 bool AlembicCompiler::CompilePhysicsGeometry(GeomCache::Node& node, Alembic::AbcGeom::IPolyMesh& mesh)
 {
+#if ENABLE_CRY_PHYSICS
     const uint kSmallMeshNumIndices = 30;
     const int kMinTrisPerNode = 2;
     const int kMaxTrisPerNode = 4;
@@ -1187,8 +1188,11 @@ bool AlembicCompiler::CompilePhysicsGeometry(GeomCache::Node& node, Alembic::Abc
         pGeomManager->UnregisterGeometry(pPhysGeometry);
         return true;
     }
-
     return false;
+
+#else
+    return true;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 XmlNodeRef AlembicCompiler::ReadConfig(const string& configPath, IXMLSerializer* pXMLSerializer)

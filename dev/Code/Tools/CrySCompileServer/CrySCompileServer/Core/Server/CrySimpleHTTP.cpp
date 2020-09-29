@@ -53,7 +53,7 @@ Connection: close\n\
 <html><title>shader compile server %s</title><body>"
 
 #define TABLE_START "<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=2 WIDTH=640>\n\
-<TR bgcolor=lightgrey><TH align=left>Desciption</TH><TH WIDTH=5></TH><TH>Value</TH><TH>Max</TH>\n\
+<TR bgcolor=lightgrey><TH align=left>Description</TH><TH WIDTH=5></TH><TH>Value</TH><TH>Max</TH>\n\
 <TH WIDTH=10>&nbsp;</TH><TH align=center>%</TH></TR>\n"
 #define TABLE_INFO  "<TR><TD>%s</TD><TD>&nbsp;</TD><TD align=left>%s</TD><TD align=center></TD><TD>&nbsp;</TD><TD valign=middle>\n\
 </TD></TR>\n\
@@ -67,7 +67,7 @@ Connection: close\n\
 
 std::string CreateBar(const std::string& rName, int Value, int Max, int Percentage)
 {
-    AZStd::string formattedString = AZStd::string::format(TABLE_BAR, rName.c_str(), Value, Max, Percentage);
+    AZStd::string formattedString = AZStd::string::format(TABLE_BAR, rName.c_str(), Value, Max, Percentage, Percentage);
     return formattedString.c_str();
 }
 

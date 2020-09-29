@@ -11,6 +11,9 @@
 */
 
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "EditorWindVolumeComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>
@@ -195,3 +198,5 @@ namespace LmbrCentral
         }
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

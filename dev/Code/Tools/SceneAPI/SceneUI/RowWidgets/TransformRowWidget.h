@@ -78,6 +78,8 @@ namespace AZ
             protected:
                 ExpandedTransform m_transform;
 
+                bool m_expanded = true;
+
                 AzQtComponents::VectorInput* m_translationWidget;
                 AzQtComponents::VectorInput* m_rotationWidget;
                 AzQtComponents::VectorInput* m_scaleWidget;

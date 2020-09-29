@@ -80,33 +80,28 @@ namespace AZ
 
             bool ManifestWidgetPage::AddObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
             {
-                if (SupportsType(object))
-                {
-                    if (!m_propertyEditor->AddInstance(object.get(), object->RTTI_GetType()))
-                    {
-                        AZ_Assert(false, "Failed to add manifest object to Reflected Property Editor.");
-                        return false;
-                    }
-
-                    // Add new object to the list so it's ready for updating later on.
-                    m_objects.push_back(object);
-
-                    m_propertyEditor->InvalidateAll();
-                    m_propertyEditor->ExpandAll();
-
-                    QTimer::singleShot(0, this,
-                        [this]()
-                        {
-                            ScrollToBottom();
-                        }
-                    );
-
-                    return true;
-                }
-                else
+                AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+                if (!SupportsType(object))
                 {
                     return false;
                 }
+                if (!m_propertyEditor->AddInstance(object.get(), object->RTTI_GetType()))
+                {
+                    AZ_Assert(false, "Failed to add manifest object to Reflected Property Editor.");
+                    return false;
+                }
+
+                // Add new object to the list so it's ready for updating later on.
+                m_objects.push_back(object);
+
+                QTimer::singleShot(0, this,
+                    [this]()
+                    {
+                        ScrollToBottom();
+                    }
+                );
+
+                return true;
             }
 
             bool ManifestWidgetPage::RemoveObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
@@ -151,8 +146,7 @@ namespace AZ
                                     AZ_Assert(false, "Failed to add manifest object to Reflected Property Editor.");
                                 }
                             }
-                            m_propertyEditor->InvalidateAll();
-                            m_propertyEditor->ExpandAll();
+                            RefreshPage();
                         }
                     );
 
@@ -222,6 +216,13 @@ namespace AZ
                 {
                     propertyGridScrollArea->verticalScrollBar()->setSliderPosition(propertyGridScrollArea->verticalScrollBar()->maximum());
                 }
+            }
+
+            void ManifestWidgetPage::RefreshPage()
+            {
+                AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+                m_propertyEditor->InvalidateAll();
+                m_propertyEditor->ExpandAll();
             }
 
             void ManifestWidgetPage::OnSingleGroupAdd()
@@ -378,6 +379,8 @@ namespace AZ
                         {
                             AZ_Assert(false, "Unable to add new object to Reflected Property Editor.");
                         }
+                        // Refresh the page after adding this new object.
+                        RefreshPage();
 
                         EmitObjectChanged();
                     }

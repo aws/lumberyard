@@ -20,6 +20,7 @@
 #include <AzFramework/Physics/Utils.h>
 #include <AzFramework/Physics/Material.h>
 #include <AzFramework/Physics/World.h>
+#include "AzFramework/Terrain/TerrainDataRequestBus.h"
 
 #include <PhysX/ConfigurationBus.h>
 
@@ -92,7 +93,9 @@ namespace PhysX
 
     void TerrainComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
-        (void)dependent;
+        // Depends on TerrainService, but not required. Simply guarantees that if a "TerrainService" component
+        // exists it will be activated before the PhysX Terrain component is activated.
+        dependent.push_back(AZ_CRC_CE("TerrainService"));
     }
 
     TerrainComponent::TerrainComponent(const TerrainConfiguration& configuration)
@@ -102,6 +105,12 @@ namespace PhysX
 
     void TerrainComponent::Activate()
     {
+        bool isTerrainPresent = AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
+        if (!isTerrainPresent)
+        {
+            return;
+        }
+
         m_terrainTiles.clear();
         Physics::TerrainRequestBus::Handler::BusConnect(GetEntityId());
         LoadTerrain();

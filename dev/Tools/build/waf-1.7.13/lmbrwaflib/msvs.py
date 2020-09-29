@@ -101,6 +101,7 @@ from lmbrwaflib import msvc_helper
 from lmbrwaflib import settings_manager
 from lmbrwaflib.cry_utils import append_to_unique_list, split_comma_delimited_string
 from lmbrwaflib.lumberyard_modules import apply_project_settings_for_input
+from lmbrwaflib.utils import copy_folder 
 
 
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl|*.hxx)'
@@ -166,6 +167,7 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 			${if getattr(b, 'output_file_name', None)}
 				<TargetName>${b.output_file_name}</TargetName>
 			${endif}
+			<AdditionalOptions>/std:c++17</AdditionalOptions>
 			${if getattr(b, 'deploy_dir', None)}
 				<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
 			${endif}
@@ -776,7 +778,7 @@ class vsnode_project(vsnode):
 
                 x.preprocessor_definitions = ''
                 x.includes_search_path = ''
-                x.build_targets_path = self.ctx.get_engine_node().make_node(['_WAF_', 'msbuild', 'waf_build.targets']).abspath()
+                x.build_targets_path = self.ctx.get_solution_node().parent.make_node(['msbuild', 'waf_build.targets']).abspath()
 
                 ret.append(x)
         self.build_properties = ret
@@ -1948,6 +1950,11 @@ class msvs_generator(BuildContext):
         sln_str = template1(self)
         sln_str = rm_blank_lines(sln_str)
         node.stealth_write(sln_str)
+
+        # copy the msbuild folder which contains waf build targets and property sheets
+        src_msbuild_path = self.get_engine_node().make_node(['_WAF_', 'msbuild']).abspath()
+        dst_msbuild_path = node.parent.make_node(['msbuild']).abspath()
+        copy_folder(src_msbuild_path, dst_msbuild_path)
 
     def get_solution_node(self):
         """

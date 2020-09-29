@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "overlapchecks.h"
@@ -122,9 +124,6 @@ void CPhysicalWorld::CPhysicalEntityIt::MoveFirst()
     }
     m_pCurEntity = i < 8 ? m_pWorld->m_pTypedEnts[i] : m_pWorld->m_pHiddenEnts;
 }
-
-CPhysicalWorld* g_pPhysWorlds[64];
-int g_nPhysWorlds;
 
 #if MAX_PHYS_THREADS <= 1
 
@@ -329,7 +328,7 @@ CPhysicalWorld::CPhysicalWorld(ILog* pLog)
 {
     m_pLog = pLog;
     g_pPhysWorlds[g_nPhysWorlds] = this;
-    g_nPhysWorlds = min(g_nPhysWorlds + 1, (int)(sizeof(g_pPhysWorlds) / sizeof(g_pPhysWorlds[0])));
+    g_nPhysWorlds = min(g_nPhysWorlds + 1, g_cryPhysicsMaxPhysWorlds);
     m_pEventClient = 0;
     g_pLockIntersect = &m_lockCaller[MAX_PHYS_THREADS];
 
@@ -7524,3 +7523,5 @@ int CPhysicalWorld::GetMaxThreads()
 #if MAX_PHYS_THREADS <= 1
 TLS_DECLARE(int*, g_pidxPhysThread)
 #endif
+
+#endif // ENABLE_CRY_PHYSICS

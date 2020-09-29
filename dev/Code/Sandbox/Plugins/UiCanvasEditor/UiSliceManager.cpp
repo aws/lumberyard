@@ -108,7 +108,7 @@ void UiSliceManager::MakeSliceFromSelectedItems(HierarchyWidget* hierarchy, bool
     QTreeWidgetItemRawPtrQList selectedItems(hierarchy->selectedItems());
 
     HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(hierarchy,
-            selectedItems);
+        selectedItems);
 
     AzToolsFramework::EntityIdList selectedEntities;
     for (auto item : items)
@@ -159,9 +159,9 @@ void UiSliceManager::MakeSliceFromEntities(AzToolsFramework::EntityIdList& entit
 
 //////////////////////////////////////////////////////////////////////////
 bool UiSliceManager::MakeNewSlice(
-    const AzToolsFramework::EntityIdSet& entities, 
-    const char* targetDirectory, 
-    bool inheritSlices, 
+    const AzToolsFramework::EntityIdSet& entities,
+    const char* targetDirectory,
+    bool inheritSlices,
     AZ::SerializeContext* serializeContext)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -194,11 +194,11 @@ bool UiSliceManager::MakeNewSlice(
         if (hasExternalReferences)
         {
             const AZStd::string message = AZStd::string::format(
-                    "Some of the selected entities reference entities not contained in the selection and its children.\n"
-                    "UI slices cannot contain references to outside of the slice.\n");
+                "Some of the selected entities reference entities not contained in the selection and its children.\n"
+                "UI slices cannot contain references to outside of the slice.\n");
 
             QMessageBox::warning(activeWindow, QStringLiteral("Create Slice"),
-                    QString(message.c_str()), QMessageBox::Ok);
+                QString(message.c_str()), QMessageBox::Ok);
 
             return false;
         }
@@ -217,9 +217,9 @@ bool UiSliceManager::MakeNewSlice(
             QMessageBox::warning(activeWindow,
                 QStringLiteral("Cannot Create UI Slice"),
                 QString("The slice cannot be created because there is no single element in the selection that is parent "
-                        "to all other elements in the selection."
-                        "Please make sure your slice contains only one root entity.\n\n"
-                        "You may want to create a new entity, and assign it as the parent of your existing root entities."),
+                    "to all other elements in the selection."
+                    "Please make sure your slice contains only one root entity.\n\n"
+                    "You may want to create a new entity, and assign it as the parent of your existing root entities."),
                 QMessageBox::Ok);
             return false;
         }
@@ -251,16 +251,16 @@ bool UiSliceManager::MakeNewSlice(
         using AzToolsFramework::SliceUtilities::SliceTransaction;
 
         // PostSaveCallback for slice creation: kick off async replacement of source entities with an instance of the new slice.
-        SliceTransaction::PostSaveCallback postSaveCallback = 
+        SliceTransaction::PostSaveCallback postSaveCallback =
             [this, &entitiesToInclude, &commonParent, &insertBefore]
-            (SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& /*asset*/) -> void
-            {
-                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "UiSliceManager::MakeNewSlice:PostSaveCallback");
-                // Once the asset is processed and ready, we can replace the source entities with an instance of the new slice.
-                UiEditorEntityContextRequestBus::Event(m_entityContextId, 
-                    &UiEditorEntityContextRequestBus::Events::QueueSliceReplacement,
-                    fullPath, transaction->GetLiveToAssetEntityIdMap(), entitiesToInclude, commonParent, insertBefore);
-            };
+        (SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& /*asset*/) -> void
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "UiSliceManager::MakeNewSlice:PostSaveCallback");
+            // Once the asset is processed and ready, we can replace the source entities with an instance of the new slice.
+            UiEditorEntityContextRequestBus::Event(m_entityContextId,
+                &UiEditorEntityContextRequestBus::Events::QueueSliceReplacement,
+                fullPath, transaction->GetLiveToAssetEntityIdMap(), entitiesToInclude, commonParent, insertBefore);
+        };
 
         SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginNewSlice(nullptr, serializeContext);
 
@@ -273,22 +273,22 @@ bool UiSliceManager::MakeNewSlice(
                 if (!addResult)
                 {
                     QMessageBox::warning(activeWindow, QStringLiteral("Slice Save Failed"),
-                                QString(addResult.GetError().c_str()), QMessageBox::Ok);
+                        QString(addResult.GetError().c_str()), QMessageBox::Ok);
                     return false;
                 }
             }
         }
 
         SliceTransaction::Result result = transaction->Commit(
-            sliceFilePath.c_str(), 
-            nullptr, 
+            sliceFilePath.c_str(),
+            nullptr,
             postSaveCallback,
             AzToolsFramework::SliceUtilities::SliceTransaction::SliceCommitFlags::DisableUndoCapture);
 
         if (!result)
         {
             QMessageBox::warning(activeWindow, QStringLiteral("Slice Save Failed"),
-                                 QString(result.GetError().c_str()), QMessageBox::Ok);
+                QString(result.GetError().c_str()), QMessageBox::Ok);
             return false;
         }
 
@@ -331,7 +331,7 @@ AzToolsFramework::EntityIdSet UiSliceManager::GatherEntitiesAndAllDescendents(co
         output.insert(id);
 
         LyShine::EntityArray descendants;
-        EBUS_EVENT_ID(id, UiElementBus, FindDescendantElements, [](const AZ::Entity*){ return true; }, descendants);
+        EBUS_EVENT_ID(id, UiElementBus, FindDescendantElements, [](const AZ::Entity*) { return true; }, descendants);
 
         for (auto descendant : descendants)
         {
@@ -350,8 +350,8 @@ AzToolsFramework::EntityIdSet UiSliceManager::GatherEntitiesAndAllDescendents(co
 // - any entities have become orphaned with selected push options
 // - there's more than one root entity
 AzToolsFramework::SliceUtilities::SliceTransaction::Result SlicePreSaveCallbackForUiEntities(
-    AzToolsFramework::SliceUtilities::SliceTransaction::TransactionPtr transaction, 
-    const char* fullPath, 
+    AzToolsFramework::SliceUtilities::SliceTransaction::TransactionPtr transaction,
+    const char* fullPath,
     AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset)
 {
     AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SlicePreSaveCallbackForUiEntities");
@@ -402,12 +402,12 @@ AzToolsFramework::SliceUtilities::SliceTransaction::Result SlicePreSaveCallbackF
 
         AZ::EntityUtils::EnumerateEntityIds(clonedEntity,
             [clonedEntity, &referencedEntities, &referencedChildEntities]
-            (const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* elementData) -> void
+        (const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* elementData) -> void
             {
                 if (!isEntityId && id.IsValid())
                 {
                     // Include this id.
-                    referencedEntities.insert({id, clonedEntity});
+                    referencedEntities.insert({ id, clonedEntity });
 
                     // Check if this is a child reference. We can detect that because the EntityId is in the "ChildEntityId"
                     // member of the ChildEntityIdOrderEntry struct.
@@ -461,7 +461,7 @@ AzToolsFramework::SliceUtilities::SliceTransaction::Result SlicePreSaveCallbackF
             AZStd::string fieldName;
             AZ::EntityUtils::EnumerateEntityIds(referencingEntity,
                 [&referencedEntityId, &fieldName]
-                (const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* elementData) -> void
+            (const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* elementData) -> void
                 {
                     if (!isEntityId && id.IsValid() && id == referencedEntityId)
                     {
@@ -543,8 +543,8 @@ AzToolsFramework::SliceUtilities::SliceTransaction::Result SlicePreSaveCallbackF
 }
 
 //////////////////////////////////////////////////////////////////////////
-void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& entities, 
-                        AZ::SerializeContext* serializeContext)
+void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& entities,
+    AZ::SerializeContext* serializeContext)
 {
     // Use same SlicePushWidget as world entities do
     AzToolsFramework::SlicePushWidgetConfigPtr config = AZStd::make_shared<AzToolsFramework::SlicePushWidgetConfig>();
@@ -554,11 +554,11 @@ void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& ent
     AZ_Warning("UiSlicePush", config->m_rootSlice != nullptr, "Could not find root slice for Slice Push!");
     config->m_preSaveCB = SlicePreSaveCallbackForUiEntities;
     config->m_postSaveCB = nullptr;
-    config->m_deleteEntitiesCB = [this](const AzToolsFramework::EntityIdList& entitiesToRemove) -> void 
+    config->m_deleteEntitiesCB = [this](const AzToolsFramework::EntityIdList& entitiesToRemove) -> void
     {
         EBUS_EVENT_ID(this->GetEntityContextId(), UiEditorEntityContextRequestBus, DeleteElements, entitiesToRemove);
     };
-    config->m_isRootEntityCB = [this](const AZ::Entity* entity) -> bool 
+    config->m_isRootEntityCB = [this](const AZ::Entity* entity) -> bool
     {
         return this->IsRootEntity(*entity);
     };
@@ -574,14 +574,14 @@ void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& ent
     dialog->setLayout(mainLayout);
 
     QWidget::connect(widget, &AzToolsFramework::SlicePushWidget::OnFinished, dialog,
-        [dialog] ()
+        [dialog]()
         {
             dialog->accept();
         }
     );
 
     QWidget::connect(widget, &AzToolsFramework::SlicePushWidget::OnCanceled, dialog,
-        [dialog] ()
+        [dialog]()
         {
             dialog->reject();
         }
@@ -590,7 +590,7 @@ void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& ent
     dialog->exec();
     delete dialog;
 }
-        
+
 //////////////////////////////////////////////////////////////////////////
 void UiSliceManager::DetachSliceEntities(const AzToolsFramework::EntityIdList& entities)
 {
@@ -791,7 +791,7 @@ AZ::Outcome<void, AZStd::string> UiSliceManager::QuickPushSliceInstance(const AZ
     if (!sliceAsset)
     {
         return AZ::Failure(AZStd::string::format("Asset \"%s\" with id %s is not loaded, or is not a slice.",
-            sliceAsset.GetHint().c_str(), 
+            sliceAsset.GetHint().c_str(),
             sliceAsset.GetId().ToString<AZStd::string>().c_str()));
     }
 
@@ -904,7 +904,7 @@ AZ::Outcome<void, AZStd::string> UiSliceManager::QuickPushSliceInstance(const AZ
         AZ::SliceComponent::EntityAncestorList ancestorList;
         AZ::SliceComponent::EntityList assetEntities;
         const AZ::SliceComponent::SliceInstanceAddress& instanceAddr = sliceAddress;
-        if (instanceAddr.IsValid() && instanceAddr.GetReference()->GetSliceAsset() && 
+        if (instanceAddr.IsValid() && instanceAddr.GetReference()->GetSliceAsset() &&
             instanceAddr.GetInstance()->GetInstantiated())
         {
             const AZ::SliceComponent::EntityList& instanceEntities = instanceAddr.GetInstance()->GetInstantiated()->m_entities;
@@ -964,7 +964,7 @@ AZ::Outcome<void, AZStd::string> UiSliceManager::QuickPushSliceInstance(const AZ
 
         const SliceTransaction::Result result = transaction->Commit(
             sliceAsset.GetId(),
-            SlicePreSaveCallbackForUiEntities, 
+            SlicePreSaveCallbackForUiEntities,
             nullptr);
 
         if (result)
@@ -1018,4 +1018,3 @@ bool UiSliceManager::ConfirmDialog_Detach(const QString& title, const QString& t
     questionBox.exec();
     return questionBox.clickedButton() == detachButton;
 }
-

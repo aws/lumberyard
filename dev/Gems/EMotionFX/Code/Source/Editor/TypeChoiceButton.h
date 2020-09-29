@@ -34,8 +34,10 @@ namespace EMotionFX
     signals:
         void ObjectTypeChosen(AZ::TypeId type);
 
-    private slots:
+    public slots:
         void OnCreateContextMenu();
+
+    private slots:
         void OnActionTriggered(bool checked);
 
     protected:

@@ -241,6 +241,27 @@ namespace PhysXCharacters
                             &ragdoll->GetNode(parentIndex)->GetRigidBody(),
                             &ragdoll->GetNode(nodeIndex)->GetRigidBody());
 
+                        // Moving from PhysX 3.4 to 4.1, the allowed range of the twist angle was expanded from -pi..pi
+                        // to -2*pi..2*pi.
+                        // In 3.4, twist angles which were outside the range were wrapped into it, which means that it
+                        // would be possible for a joint to have been authored under 3.4 which would be inside its twist
+                        // limit in 3.4 but violating the limit by up to 2*pi in 4.1.
+                        // If this case is detected, flipping the sign of one of the joint local pose quaternions will
+                        // ensure that the twist angle will have a value which would not lead to wrapping.
+                        auto* jointNativePointer = static_cast<physx::PxJoint*>(joint->GetNativePointer());
+                        if (jointNativePointer && jointNativePointer->getConcreteType() == physx::PxJointConcreteType::eD6)
+                        {
+                            auto* d6Joint = static_cast<physx::PxD6Joint*>(jointNativePointer);
+                            const float twist = d6Joint->getTwistAngle();
+                            const physx::PxJointAngularLimitPair twistLimit = d6Joint->getTwistLimit();
+                            if (twist < twistLimit.lower || twist > twistLimit.upper)
+                            {
+                                physx::PxTransform childLocalTransform = d6Joint->getLocalPose(physx::PxJointActorIndex::eACTOR1);
+                                childLocalTransform.q = -childLocalTransform.q;
+                                d6Joint->setLocalPose(physx::PxJointActorIndex::eACTOR1, childLocalTransform);
+                            }
+                        }
+
                         Physics::RagdollNode* childNode = ragdoll->GetNode(nodeIndex);
                         static_cast<RagdollNode*>(childNode)->SetJoint(joint);
                     }

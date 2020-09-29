@@ -26,8 +26,11 @@ AZ_POP_DISABLE_WARNING
 #include "native/AssetDatabase/AssetDatabase.h"
 #include "native/assetprocessor.h"
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/string/wildcard.h>
+#include <AzCore/XML/rapidxml.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/FileTag/FileTagBus.h>
 #include <AzFramework/FileTag/FileTag.h>
@@ -37,6 +40,34 @@ AZ_POP_DISABLE_WARNING
 
 namespace AssetProcessor
 {
+    const char* EngineFolder = "Engine";
+
+    AZStd::string GetXMLDependenciesFile(const AZStd::string& fullPath, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AZStd::string& tokenName)
+    {
+        AZStd::string xmlDependenciesFileFullPath;
+        tokenName = EngineFolder;
+        for (const AzToolsFramework::AssetUtils::GemInfo& gemElement : gemInfoList)
+        {
+            if (AzFramework::StringFunc::Path::IsASuperFolderOfB(gemElement.m_absoluteFilePath.c_str(), fullPath.c_str()) || AzFramework::StringFunc::Equal(gemElement.m_absoluteFilePath.c_str(), fullPath.c_str()))
+            {
+                AZStd::string fileName = AZStd::string::format("%s_Dependencies.xml", gemElement.m_gemName.c_str());
+                AzFramework::StringFunc::Path::ConstructFull(gemElement.m_absoluteFilePath.c_str(), AzToolsFramework::AssetUtils::GemInfo::GetGemAssetFolder().c_str(), fileName.c_str() , "xml", xmlDependenciesFileFullPath);
+                if (AZ::IO::FileIOBase::GetInstance()->Exists(xmlDependenciesFileFullPath.c_str()))
+                {
+                    tokenName = gemElement.m_gemName;
+                    return xmlDependenciesFileFullPath;
+                }
+            }
+        }
+
+        // if we are here than either the %gemName%_Dependencies.xml file does not exists or the user inputted path is not inside a gems folder,
+        // in both the cases we will return the engine dependencies file
+        const char* devRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devroot@");
+        AzFramework::StringFunc::Path::ConstructFull(devRoot, EngineFolder, "Engine_Dependencies.xml", "xml", xmlDependenciesFileFullPath);
+
+        return xmlDependenciesFileFullPath;
+    }
+
     const int MissingDependencyScanner::DefaultMaxScanIteration = 800;
     class MissingDependency
     {
@@ -61,6 +92,31 @@ namespace AssetProcessor
     MissingDependencyScanner::MissingDependencyScanner()
     {
         m_defaultScanner = AZStd::make_shared<LineByLineDependencyScanner>();
+        ApplicationManagerNotifications::Bus::Handler::BusConnect();
+        MissingDependencyScannerRequestBus::Handler::BusConnect();
+    }
+
+    MissingDependencyScanner::~MissingDependencyScanner()
+    {
+        MissingDependencyScannerRequestBus::Handler::BusDisconnect();
+        ApplicationManagerNotifications::Bus::Handler::BusDisconnect();
+    }
+
+    void MissingDependencyScanner::ApplicationShutdownRequested()
+    {
+        // Do not add any new functions to the SystemTickBus queue
+        m_shutdownRequested = true;
+
+        // Finish up previously queued work
+        AZ::SystemTickBus::ExecuteQueuedEvents();
+    }
+
+    void MissingDependencyScanner::ScanFile(const AZStd::string& fullPath, int maxScanIteration, AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection, const AZStd::string& dependencyTokenName, bool queueDbCommandsOnMainThread, scanFileCallback callback)
+    {
+        AZ::s64 productPK = -1;
+        AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer dependencies = {};
+
+        ScanFile(fullPath, maxScanIteration, productPK, dependencies, databaseConnection, dependencyTokenName, ScannerMatchType::ExtensionOnlyFirstMatch, nullptr, queueDbCommandsOnMainThread, callback);
     }
 
     void MissingDependencyScanner::ScanFile(
@@ -68,29 +124,71 @@ namespace AssetProcessor
         int maxScanIteration,
         AZ::s64 productPK,
         const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencies,
-        AssetDatabaseConnection* databaseConnection,
+        AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection,
+        bool queueDbCommandsOnMainThread,
+        scanFileCallback callback)
+    {
+        ScanFile(fullPath, maxScanIteration, productPK, dependencies, databaseConnection, "", ScannerMatchType::ExtensionOnlyFirstMatch, nullptr, queueDbCommandsOnMainThread, callback);
+    }
+
+    void MissingDependencyScanner::ScanFile(
+        const AZStd::string& fullPath,
+        int maxScanIteration,
+        AZ::s64 productPK,
+        const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencies,
+        AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection,
+        AZStd::string dependencyTokenName,
         ScannerMatchType matchType,
-        AZ::Crc32* forceScanner)
+        AZ::Crc32* forceScanner,
+        bool queueDbCommandsOnMainThread,
+        scanFileCallback callback)
     {
         using namespace AzFramework::FileTag;
         AZ_Printf(AssetProcessor::ConsoleChannel, "Scanning for missing dependencies:\t%s\n", fullPath.c_str());
+        AzToolsFramework::AssetDatabase::SourceDatabaseEntry sourceEntry;
+        if (productPK != -1)
+        {
+            AZStd::vector<AZStd::vector<AZStd::string>> excludedTagsList = {
+            {
+                FileTags[static_cast<unsigned int>(FileTagsIndex::EditorOnly)]
+            },
+            {
+                FileTags[static_cast<unsigned int>(FileTagsIndex::Shader)]
+            } };
+            databaseConnection->GetSourceByProductID(productPK, sourceEntry);
 
-        AZStd::vector<AZStd::vector<AZStd::string>> excludedTagsList = {
+            for (const AZStd::vector<AZStd::string>& tags : excludedTagsList)
+            {
+                bool shouldIgnore = false;
+                QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude,
+                    &QueryFileTagsEventBus::Events::Match, fullPath.c_str(), tags);
+                if (shouldIgnore)
+                {
+                    // Record that this file was ignored in the database, so the asset tab can display this information.
+                    AZStd::string ignoredByTagText("File matches EditorOnly or Shader tag, ignoring for missing dependencies search.");
+                    AZ_Printf(AssetProcessor::ConsoleChannel, "\t%s\n", ignoredByTagText.c_str());
+                    SetDependencyScanResultStatus(
+                        ignoredByTagText,
+                        productPK,
+                        sourceEntry.m_analysisFingerprint,
+                        databaseConnection,
+                        queueDbCommandsOnMainThread,
+                        callback);
+                    return;
+                }
+            }
+        }
+        else
         {
-            FileTags[static_cast<unsigned int>(FileTagsIndex::EditorOnly)]
-        },
-        {
-            FileTags[static_cast<unsigned int>(FileTagsIndex::Shader)]
-        }};
-        
-        for (const AZStd::vector<AZStd::string>& tags : excludedTagsList)
-        {
+            // if we are here than it implies that this file is not an asset
+            AZStd::vector<AZStd::string> tags{
+            FileTags[static_cast<unsigned int>(FileTagsIndex::Ignore)],
+            FileTags[static_cast<unsigned int>(FileTagsIndex::ProductDependency)] };
             bool shouldIgnore = false;
-            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude,
-                &QueryFileTagsEventBus::Events::Match, fullPath.c_str(), tags);
+            QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude, &QueryFileTagsEventBus::Events::Match, fullPath.c_str(), tags);
             if (shouldIgnore)
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, "\tFile matches EditorOnly or Shader tag, ignoring for missing dependencies search.\n");
+                AZ_Printf(AssetProcessor::ConsoleChannel, "File ( %s ) will be skipped by the missing dependency scanner.\n", fullPath.c_str());
                 return;
             }
         }
@@ -99,6 +197,15 @@ namespace AssetProcessor
         if (!fileStream.Open(fullPath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary))
         {
             AZ_Error(AssetProcessor::ConsoleChannel, false, "File at path %s could not be opened.", fullPath.c_str());
+
+            // Record that this file was ignored in the database, so the asset tab can display this information.
+            SetDependencyScanResultStatus(
+                "The file could not be opened.",
+                productPK,
+                sourceEntry.m_analysisFingerprint,
+                databaseConnection,
+                queueDbCommandsOnMainThread,
+                callback);
             return;
         }
 
@@ -109,18 +216,69 @@ namespace AssetProcessor
         if (!scanSuccessful)
         {
             // RunScan will report an error on what caused the scan to fail.
+            SetDependencyScanResultStatus(
+                "An error occured, see log for details.",
+                productPK,
+                sourceEntry.m_analysisFingerprint,
+                databaseConnection,
+                queueDbCommandsOnMainThread,
+                callback);
             return;
         }
 
         MissingDependencies missingDependencies;
         PopulateMissingDependencies(productPK, databaseConnection, dependencies, missingDependencies, potentialDependencies);
 
-        ReportMissingDependencies(productPK, databaseConnection, missingDependencies);
+        if (queueDbCommandsOnMainThread && !m_shutdownRequested)
+        {
+            AZ::SystemTickBus::QueueFunction([=]()
+            {
+                ReportMissingDependencies(productPK, databaseConnection, dependencyTokenName, missingDependencies, callback);
+            });
+        }
+        else
+        {
+            ReportMissingDependencies(productPK, databaseConnection, dependencyTokenName, missingDependencies, callback);
+        }
+    }
+
+    void MissingDependencyScanner::SetDependencyScanResultStatus(
+        AZStd::string status,
+        AZ::s64 productPK,
+        const AZStd::string& analysisFingerprint,
+        AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection,
+        bool queueDbCommandsOnMainThread,
+        scanFileCallback callback)
+    {
+        QDateTime currentTime = QDateTime::currentDateTime();
+        auto finalizeMissingDependency = [=]() {
+            AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry missingDependencyEntry(
+                productPK,
+                /*Scanner*/ "",
+                /*Scanner Version*/ "",
+                analysisFingerprint,
+                AZ::Uuid::CreateNull(),
+                /*Product ID*/ 0,
+                status,
+                currentTime.toString().toUtf8().constData(),
+                currentTime.toSecsSinceEpoch());
+            databaseConnection->SetMissingProductDependency(missingDependencyEntry);
+            callback(missingDependencyEntry.m_missingDependencyString);
+        };
+
+        if (queueDbCommandsOnMainThread && !m_shutdownRequested)
+        {
+            AZ::SystemTickBus::QueueFunction(finalizeMissingDependency);
+        }
+        else
+        {
+            finalizeMissingDependency();
+        }
     }
 
     void MissingDependencyScanner::RegisterSpecializedScanner(AZStd::shared_ptr<SpecializedDependencyScanner> scanner)
     {
-    m_specializedScanners.insert(AZStd::pair<AZ::Crc32, AZStd::shared_ptr<SpecializedDependencyScanner>>(scanner->GetScannerCRC(), scanner));
+        m_specializedScanners.insert(AZStd::pair<AZ::Crc32, AZStd::shared_ptr<SpecializedDependencyScanner>>(scanner->GetScannerCRC(), scanner));
     }
 
     bool MissingDependencyScanner::RunScan(
@@ -189,7 +347,7 @@ namespace AssetProcessor
 
     void MissingDependencyScanner::PopulateMissingDependencies(
         AZ::s64 productPK,
-        AssetDatabaseConnection* databaseConnection,
+        AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection,
         const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencies,
         MissingDependencies& missingDependencies,
         const PotentialDependencies& potentialDependencies)
@@ -483,8 +641,10 @@ namespace AssetProcessor
 
     void MissingDependencyScanner::ReportMissingDependencies(
         AZ::s64 productPK,
-        AssetDatabaseConnection* databaseConnection,
-        const MissingDependencies& missingDependencies)
+        AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection,
+        const AZStd::string& dependencyTokenName,
+        const MissingDependencies& missingDependencies,
+        scanFileCallback callback)
     {
         using namespace AzFramework::FileTag;
         AzToolsFramework::AssetDatabase::SourceDatabaseEntry sourceEntry;
@@ -494,11 +654,43 @@ namespace AssetProcessor
             FileTags[static_cast<unsigned int>(FileTagsIndex::Ignore)],
             FileTags[static_cast<unsigned int>(FileTagsIndex::ProductDependency)] };
 
+        QDateTime currentTime = QDateTime::currentDateTime();
+
+        // If there were no missing dependencies, add a row to the table so we know it was scanned.
+        if (productPK != -1 && missingDependencies.empty())
+        {
+            SetDependencyScanResultStatus(
+                "No missing dependencies found",
+                productPK,
+                sourceEntry.m_analysisFingerprint,
+                databaseConnection,
+                /*queueDbCommandsOnMainThread*/ false, // ReportMissingDependencies was already queued to run on the main thread.
+                callback);
+            return;
+        }
+
         for (const MissingDependency& missingDependency : missingDependencies)
         {
             bool shouldIgnore = false;
             QueryFileTagsEventBus::EventResult(shouldIgnore, FileTagType::Exclude,
                 &QueryFileTagsEventBus::Events::Match, missingDependency.m_metaData.m_sourceString.c_str(), tags);
+
+            if (!shouldIgnore && !dependencyTokenName.empty())
+            {
+                // if one of the rules in the xml dependency file match then skip the missing dependency
+                auto rulesFound = m_dependenciesRulesMap.find(dependencyTokenName);
+                if (rulesFound != m_dependenciesRulesMap.end())
+                {
+                    for (const auto& rule : rulesFound->second)
+                    {
+                        if (AZStd::wildcard_match(rule, missingDependency.m_metaData.m_sourceString))
+                        {
+                            shouldIgnore = true;
+                            break;
+                        }
+                    }
+                }
+            }
             if (!shouldIgnore)
             {
                 AZStd::string assetIdStr = missingDependency.m_assetId.ToString<AZStd::string>();
@@ -508,17 +700,101 @@ namespace AssetProcessor
                     missingDependency.m_metaData.m_sourceString.c_str(),
                     assetIdStr.c_str());
 
-                AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry missingDependencyEntry(
-                    productPK,
-                    missingDependency.m_metaData.m_scanner->GetName(),
-                    missingDependency.m_metaData.m_scanner->GetVersion(),
-                    sourceEntry.m_analysisFingerprint,
-                    missingDependency.m_assetId.m_guid,
-                    missingDependency.m_assetId.m_subId,
-                    missingDependency.m_metaData.m_sourceString);
+                if (productPK != -1)
+                {
+                    AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry missingDependencyEntry(
+                        productPK,
+                        missingDependency.m_metaData.m_scanner->GetName(),
+                        missingDependency.m_metaData.m_scanner->GetVersion(),
+                        sourceEntry.m_analysisFingerprint,
+                        missingDependency.m_assetId.m_guid,
+                        missingDependency.m_assetId.m_subId,
+                        missingDependency.m_metaData.m_sourceString,
+                        currentTime.toString().toUtf8().constData(),
+                        currentTime.toSecsSinceEpoch());
 
-                databaseConnection->SetMissingProductDependency(missingDependencyEntry);
+                    databaseConnection->SetMissingProductDependency(missingDependencyEntry);
+                }
+
+                callback(missingDependency.m_metaData.m_sourceString);
             }
         }
+    }
+
+    bool MissingDependencyScanner::PopulateRulesForScanFolder(const AZStd::string& scanFolderPath, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AZStd::string& dependencyTokenName)
+    {
+        AZStd::string xmlDependenciesFullFilePath = GetXMLDependenciesFile(scanFolderPath, gemInfoList, dependencyTokenName);
+        if (xmlDependenciesFullFilePath.empty())
+        {
+            AZ_Printf(AssetProcessor::ConsoleChannel, "Unable to find xml dependency file for the directory scan %s\n", scanFolderPath.c_str());
+        }
+
+        auto found = m_dependenciesRulesMap.find(dependencyTokenName);
+        if (found != m_dependenciesRulesMap.end())
+        {
+            // this imply that we have already parsed this file and populated the rules,
+            // therefore we can exit early.
+            return true;
+        }
+
+        if (!AZ::IO::FileIOBase::GetInstance()->Exists(xmlDependenciesFullFilePath.c_str()))
+        {
+            AZ_Printf(AssetProcessor::ConsoleChannel, "Unable to find xml dependency file (%s). \n", xmlDependenciesFullFilePath.c_str());
+            return false;
+        }
+
+        AZ::IO::FileIOStream fileStream;
+        AZStd::vector<AZStd::string> dependenciesRuleList;
+        if (fileStream.Open(xmlDependenciesFullFilePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary))
+        {
+            if (!fileStream.CanRead())
+            {
+                return false;
+            }
+
+            AZ::IO::SizeType length = fileStream.GetLength();
+
+            if (length == 0)
+            {
+                return false;
+            }
+
+            AZStd::vector<char> charBuffer;
+
+            charBuffer.resize_no_construct(length + 1);
+            fileStream.Read(length, charBuffer.data());
+            charBuffer.back() = 0;
+
+            AZ::rapidxml::xml_document<char> xmlDoc;
+            xmlDoc.parse<AZ::rapidxml::parse_no_data_nodes>(charBuffer.data());
+            auto engineDependenciesNode = xmlDoc.first_node("EngineDependencies");
+
+            if (!engineDependenciesNode)
+            {
+                return false;
+            }
+
+            auto dependencyNode = engineDependenciesNode->first_node("Dependency");
+
+            while (dependencyNode)
+            {
+                auto pathAttr = dependencyNode->first_attribute("path");
+
+                if (pathAttr)
+                {
+                    dependenciesRuleList.emplace_back(AZStd::string(pathAttr->value()));
+                }
+
+                dependencyNode = dependencyNode->next_sibling();
+            }
+
+            m_dependenciesRulesMap[dependencyTokenName] = dependenciesRuleList;
+
+            return true;
+        }
+
+        return false;
+
+
     }
 }

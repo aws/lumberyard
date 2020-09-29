@@ -28,6 +28,16 @@
 
 namespace EditorPythonBindings
 {
+    namespace Operator
+    {
+        constexpr const char s_isEqual[] = "__eq__";
+        constexpr const char s_notEqual[] = "__ne__";
+        constexpr const char s_greaterThan[] = "__gt__";
+        constexpr const char s_greaterThanOrEqual[] = "__ge__";
+        constexpr const char s_lessThan[] = "__lt__";
+        constexpr const char s_lessThanOrEqual[] = "__le__";
+    }
+
     PythonProxyObject::PythonProxyObject(const AZ::TypeId& typeId)
     {
         const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(typeId);
@@ -66,11 +76,7 @@ namespace EditorPythonBindings
                 {
                     const AZ::BehaviorParameter* behaviorArg = constructor->GetArgument(index + 1);
                     pybind11::object pythonArg = args[index];
-                    const auto traits = static_cast<PythonMarshalTypeRequests::BehaviorTraits>(behaviorArg->m_traits);
-
-                    bool canConvert = false;
-                    PythonMarshalTypeRequestBus::EventResult(canConvert, behaviorArg->m_typeId, &PythonMarshalTypeRequestBus::Events::CanConvertPythonToBehaviorValue, traits, pythonArg);
-                    if (!behaviorArg || !canConvert)
+                    if (!behaviorArg || !CanConvertPythonToBehaviorValue(*behaviorArg, pythonArg))
                     {
                         match = false;
                         break;
@@ -91,6 +97,34 @@ namespace EditorPythonBindings
             }
         }
         return pybind11::cast<pybind11::none>(Py_None);
+    }
+
+    bool PythonProxyObject::CanConvertPythonToBehaviorValue(const AZ::BehaviorParameter& behaviorArg, pybind11::object pythonArg) const
+    {
+        bool canConvert = false;
+        PythonMarshalTypeRequestBus::EventResult(
+            canConvert,
+            behaviorArg.m_typeId,
+            &PythonMarshalTypeRequestBus::Events::CanConvertPythonToBehaviorValue,
+            static_cast<PythonMarshalTypeRequests::BehaviorTraits>(behaviorArg.m_traits),
+            pythonArg);
+
+        if (canConvert)
+        {
+            return true;
+        }
+
+        // is already a wrapped type?
+        if (pybind11::isinstance<PythonProxyObject>(pythonArg))
+        {
+            auto&& proxyObj = pybind11::cast<PythonProxyObject*>(pythonArg);
+            if (proxyObj)
+            {
+                return behaviorArg.m_azRtti->IsTypeOf(proxyObj->GetWrappedType().value());
+            }
+        }
+
+        return false;
     }
 
     PythonProxyObject::PythonProxyObject(const AZ::BehaviorObject& object)
@@ -224,12 +258,13 @@ namespace EditorPythonBindings
         m_ownership = Ownership::Owned;
         m_wrappedObjectTypeName = behaviorClass.m_name;
 
-        // is this Behavior Class flagged to usage for Editor.exe bindings?
+        // is this Behavior Class flagged to usage for tool bindings?
         if (!Scope::IsBehaviorFlaggedForEditor(behaviorClass.m_attributes))
         {
             return;
         }
 
+        PopulateComparisonOperators(behaviorClass);
         PopulateMethodsAndProperties(behaviorClass);
 
         for (auto&& baseClassId : behaviorClass.m_baseClasses)
@@ -238,6 +273,50 @@ namespace EditorPythonBindings
             if (baseClass)
             {
                 PopulateMethodsAndProperties(*baseClass);
+            }
+        }
+    }
+
+    void PythonProxyObject::PopulateComparisonOperators(const AZ::BehaviorClass& behaviorClass)
+    {
+        using namespace AZ::Script;
+        for (auto&& equalMethodCandidatePair : behaviorClass.m_methods)
+        {
+            const AZ::AttributeArray& attributes = equalMethodCandidatePair.second->m_attributes;
+            AZ::Attribute* operatorAttribute = AZ::FindAttribute(Attributes::Operator, attributes);
+            if (!operatorAttribute)
+            {
+                continue;
+            }
+
+            Attributes::OperatorType operatorType;
+            AZ::AttributeReader scopeAttributeReader(nullptr, operatorAttribute);
+            if (!scopeAttributeReader.Read<Attributes::OperatorType>(operatorType))
+            {
+                continue;
+            }
+
+            AZ::Crc32 namedKey;
+            if (operatorType == Attributes::OperatorType::Equal)
+            {
+                namedKey = { Operator::s_isEqual };
+            }
+            else if (operatorType == Attributes::OperatorType::LessThan)
+            {
+                namedKey = { Operator::s_lessThan };
+            }
+            else if (operatorType == Attributes::OperatorType::LessEqualThan)
+            {
+                namedKey = { Operator::s_lessThanOrEqual };
+            }
+            else
+            {
+                continue;
+            }
+
+            if (m_methods.find(namedKey) == m_methods.end())
+            {
+                m_methods[namedKey] = equalMethodCandidatePair.second;
             }
         }
     }
@@ -321,7 +400,77 @@ namespace EditorPythonBindings
         return false;
     }
 
+    bool PythonProxyObject::DoEqualityEvaluation(pybind11::object pythonOther)
+    {
+        constexpr AZ::Crc32 namedEqKey(Operator::s_isEqual);
+        auto&& equalOperatorMethodEntry = m_methods.find(namedEqKey);
+        if (equalOperatorMethodEntry != m_methods.end())
+        {
+            AZ::BehaviorMethod* method = equalOperatorMethodEntry->second;
+            pybind11::object result = Call::ClassMethod(method, m_wrappedObject, pybind11::args(pybind11::make_tuple(pythonOther)));
+            if (result.is_none())
+            {
+                return false;
+            }
+            return result.cast<bool>();
+        }
+        return false;
+    }
 
+    bool PythonProxyObject::DoComparisonEvaluation(pybind11::object pythonOther, Comparison comparison)
+    {
+        bool invertLogic = false;
+        AZ::Crc32 namedKey;
+        if (comparison == Comparison::LessThan)
+        {
+            namedKey = { Operator::s_lessThan };
+        }
+        else if (comparison == Comparison::LessThanOrEquals)
+        {
+            namedKey = { Operator::s_lessThanOrEqual };
+        }
+        else if (comparison == Comparison::GreaterThan)
+        {
+            namedKey = { Operator::s_lessThan };
+            invertLogic = true;
+        }
+        else if (comparison == Comparison::GreaterThanOrEquals)
+        {
+            namedKey = { Operator::s_lessThan };
+            invertLogic = true;
+        }
+        else
+        {
+            return false;
+        }
+
+        auto&& equalOperatorMethodEntry = m_methods.find(namedKey);
+        if (equalOperatorMethodEntry != m_methods.end())
+        {
+            AZ::BehaviorMethod* method = equalOperatorMethodEntry->second;
+            pybind11::object result = Call::ClassMethod(method, m_wrappedObject, pybind11::args(pybind11::make_tuple(pythonOther)));
+            if (result.is_none())
+            {
+                return false;
+            }
+            else if (invertLogic)
+            {
+                const bool greaterThanResult = !result.cast<bool>();
+
+                // an additional check for "GreaterThanOrEquals" if the result of "LessThan" failed since the invert
+                // of '3 <= 3' would fail since the 'or equals' would return true and be inverted to false
+                if (comparison == Comparison::GreaterThanOrEquals && greaterThanResult == false)
+                {
+                    return DoEqualityEvaluation(pythonOther);
+                }
+
+                return greaterThanResult;
+            }
+            return result.cast<bool>();
+        }
+        return false;
+    }
+    
     namespace PythonProxyObjectManagement
     {
         bool IsMemberLike(const AZ::BehaviorMethod& method, const AZ::TypeId& typeId)
@@ -408,7 +557,9 @@ namespace EditorPythonBindings
                 auto moduleName = Module::GetName(behaviorClass->m_attributes);
                 pybind11::module subModule = Module::DeterminePackageModule(modulePackageMap, moduleName ? *moduleName : "", parentModule, defaultModule, false);
 
-                bool exportBehaviorClass = false;
+                // early detection of instance based elements like constructors or properties
+                bool hasMemberMethods = behaviorClass->m_constructors.empty() == false;
+                bool hasMemberProperties = behaviorClass->m_properties.empty() == false;
 
                 // does this class define methods that may be reflected in a Python  module?
                 if (!behaviorClass->m_methods.empty())
@@ -444,16 +595,13 @@ namespace EditorPythonBindings
                         else
                         {
                             // any member method means the class should be exported to Python
-                            exportBehaviorClass = true;
+                            hasMemberMethods = true;
                         }
                     }
                 }
 
-                // if the Behavior Class has any properties, then export it
-                if (!exportBehaviorClass)
-                {
-                    exportBehaviorClass = !behaviorClass->m_properties.empty();
-                }
+                // if the Behavior Class has any properties, methods, or constructors then export it
+                const bool exportBehaviorClass = (hasMemberMethods || hasMemberProperties);
 
                 // register all Behavior Class types with a Python function to construct an instance
                 if (exportBehaviorClass)
@@ -516,6 +664,35 @@ namespace EditorPythonBindings
             return items;
         }
 
+        pybind11::list ListBehaviorClasses(bool onlyIncludeScopedForAutomation)
+        {
+            pybind11::list items;
+            AZ::BehaviorContext* behaviorContext(nullptr);
+            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+            if (!behaviorContext)
+            {
+                AZ_Error("python", false, "A behavior context is required!");
+                return items;
+            }
+
+            for (auto&& classEntry : behaviorContext->m_classes)
+            {
+                auto&& behaviorClass = classEntry.second;
+                if (onlyIncludeScopedForAutomation )
+                {
+                    if (Scope::IsBehaviorFlaggedForEditor(behaviorClass->m_attributes))
+                    {
+                        items.append(pybind11::str(classEntry.first.c_str()));
+                    }
+                }
+                else
+                {
+                    items.append(pybind11::str(classEntry.first.c_str()));
+                }
+            }
+            return items;
+        }
+
         void CreateSubmodule(pybind11::module parentModule, pybind11::module defaultModule)
         {
             ExportStaticBehaviorClassElements(parentModule, defaultModule);
@@ -524,6 +701,7 @@ namespace EditorPythonBindings
             objectModule.def("create", &CreatePythonProxyObjectByTypename);
             objectModule.def("construct", &ConstructPythonProxyObjectByTypename);
             objectModule.def("dir", &ListBehaviorAttributes);
+            objectModule.def("list_classes", &ListBehaviorClasses, pybind11::arg("onlyIncludeScopedForAutomation") = true);
 
             pybind11::class_<PythonProxyObject>(objectModule, "PythonProxyObject", pybind11::dynamic_attr())
                 .def(pybind11::init<>())
@@ -533,6 +711,30 @@ namespace EditorPythonBindings
                 .def("set_property", &PythonProxyObject::SetPropertyValue)
                 .def("get_property", &PythonProxyObject::GetPropertyValue)
                 .def("invoke", &PythonProxyObject::Invoke)
+                .def(Operator::s_isEqual, [](PythonProxyObject& self, pybind11::object rhs)
+                {
+                    return self.DoEqualityEvaluation(rhs);
+                })
+                .def(Operator::s_notEqual, [](PythonProxyObject& self, pybind11::object rhs)
+                {
+                    return self.DoEqualityEvaluation(rhs) == false;
+                })
+                .def(Operator::s_greaterThan, [](PythonProxyObject& self, pybind11::object rhs)
+                {
+                    return self.DoComparisonEvaluation(rhs, PythonProxyObject::Comparison::GreaterThan);
+                })
+                .def(Operator::s_greaterThanOrEqual, [](PythonProxyObject& self, pybind11::object rhs)
+                {
+                    return self.DoComparisonEvaluation(rhs, PythonProxyObject::Comparison::GreaterThanOrEquals);
+                })
+                .def(Operator::s_lessThan, [](PythonProxyObject& self, pybind11::object rhs)
+                {
+                    return self.DoComparisonEvaluation(rhs, PythonProxyObject::Comparison::LessThan);
+                })
+                .def(Operator::s_lessThanOrEqual, [](PythonProxyObject& self, pybind11::object rhs)
+                {
+                    return self.DoComparisonEvaluation(rhs, PythonProxyObject::Comparison::LessThanOrEquals);
+                })
                 .def("__setattr__", &PythonProxyObject::SetPropertyValue)
                 .def("__getattr__", &PythonProxyObject::GetPropertyValue)
                 ;

@@ -393,7 +393,7 @@ namespace ThreadUtils {
         const int numColors = sizeof(g_animColors) / sizeof(g_animColors[0]);
         const int initialThread = trace.m_job.m_debugInitialThread;
         const int index = initialThread % numColors;
-        const float brightness = pow(0.5f, initialThread / numColors);
+        const float brightness = aznumeric_cast<float>(pow(0.5f, initialThread / numColors));
         return InterpolateColor(0, InterpolateColor(g_animColors[index], 0xffffff, 0.5f), brightness);
     }
 

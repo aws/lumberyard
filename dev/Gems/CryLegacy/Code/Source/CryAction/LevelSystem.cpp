@@ -1424,9 +1424,11 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         m_pLoadingLevelInfo = pLevelInfo;
         OnLoadingStart(pLevelInfo);
 
+#if ENABLE_CRY_PHYSICS
         // ensure a physical global area is present
         IPhysicalWorld* pPhysicalWorld = gEnv->pPhysicalWorld;
         pPhysicalWorld->AddGlobalArea();
+#endif
 
         ICryPak* pPak = gEnv->pCryPak;
 
@@ -1491,7 +1493,9 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         CCryAction::GetCryAction()->GetTimeOfDayScheduler()->Reset();
         CCryAction::GetCryAction()->OnActionEvent(SActionEvent(eAE_loadLevel));
 
+#if ENABLE_CRY_PHYSICS
         CCryAction::GetCryAction()->CreatePhysicsQueues();
+#endif
 
         // Reset dialog system
         if (gEnv->pDialogSystem)
@@ -2169,7 +2173,9 @@ void CLevelSystem::UnLoadLevel()
         pCustomEventManager->Clear();
 
         pCryAction->OnActionEvent(SActionEvent(eAE_unloadLevel));
+#if ENABLE_CRY_PHYSICS
         pCryAction->ClearPhysicsQueues();
+#endif
         pCryAction->GetTimeOfDayScheduler()->Reset();
     }
 

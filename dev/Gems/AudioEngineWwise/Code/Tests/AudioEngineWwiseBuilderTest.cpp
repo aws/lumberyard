@@ -11,15 +11,16 @@
 */
 
 #include <AzTest/AzTest.h>
-#include <Source/WwiseBuilderComponent.h>
+
+#include <WwiseBuilderComponent.h>
+
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/IO/LocalFileIO.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 
 using namespace WwiseBuilder;
-using namespace AZ;
 
 class WwiseBuilderTests
     : public ::testing::Test
@@ -43,13 +44,13 @@ protected:
     AZStd::string GetRequestPath(AZStd::string_view fileName)
     {
         constexpr char requestPath[] = "Sounds/wwise/";
-        return AZStd::string::format("%s%.*s", requestPath, fileName.size(), fileName.data());
+        return AZStd::string::format("%s%.*s", requestPath, aznumeric_cast<int>(fileName.size()), fileName.data());
     }
 
     AZStd::string GetTestFileAliasedPath(AZStd::string_view fileName)
     {
-        constexpr char testFileFolder[] = "@root@/../Code/Tools/AssetProcessor/Builders/WwiseBuilder/Tests/Sounds/wwise/";
-        return AZStd::string::format("%s%.*s", testFileFolder, fileName.size(), fileName.data());
+        constexpr char testFileFolder[] = "@root@/../Gems/AudioEngineWwise/Code/Tests/Sounds/wwise/";
+        return AZStd::string::format("%s%.*s", testFileFolder, aznumeric_cast<int>(fileName.size()), fileName.data());
     }
 
     AZStd::string GetTestFileFullPath(AZStd::string_view fileName)
@@ -199,5 +200,3 @@ TEST_F(WwiseBuilderTests, WwiseBuilder_ContentBank_MissingInitBankDependency_Mul
     };
     TestSuccessCase("test_bank9.bnk", expectedPaths, true);
 }
-
-AZ_UNIT_TEST_HOOK();

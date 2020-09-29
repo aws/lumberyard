@@ -3221,6 +3221,7 @@ bool COPTacticalPos::IsBadHiding(CPipeUser* pPipeUser)
 
     Vec3 ai_pos = pPipeUser->GetPos();
     Vec3 target_pos = pTarget->GetPos();
+#if ENABLE_CRY_PHYSICS
     ray_hit hit;
     IPhysicalEntity* skipList[4];
     int skipCount(1);
@@ -3254,12 +3255,14 @@ bool COPTacticalPos::IsBadHiding(CPipeUser* pPipeUser)
         }
         return false;
     }
+#endif // ENABLE_CRY_PHYSICS
 
 
     // try lowering yourself 1 meter
     // no need to lover self - just check if the hide is as high as you are; if not - it is a lowHideSpot
     ai_pos = pPipeUser->GetPos();
     //  ai_pos.z-=1.f;
+#if ENABLE_CRY_PHYSICS
     rayresult = gAIEnv.pWorld->RayWorldIntersection(ai_pos, target_pos - ai_pos, COVER_OBJECT_TYPES, HIT_COVER | HIT_SOFT_COVER, &hit, 1, &skipList[0], skipCount);
     if (!rayresult)
     {
@@ -3273,6 +3276,7 @@ bool COPTacticalPos::IsBadHiding(CPipeUser* pPipeUser)
         }
         return true;
     }
+#endif // ENABLE_CRY_PHYSICS
     return false;
 }
 

@@ -120,6 +120,7 @@ void GroupVoxels(std::vector<int>& voxels, int groupId, int xIdx, int yIdx, int 
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 //====================================================================
 // IsPointInsideGravityModifier
 //====================================================================
@@ -245,6 +246,7 @@ void GetGravityModifiers(GravityModifiers& gravityModifiers, const AABB& aabb)
         pArea = gEnv->pPhysicalWorld->GetNextArea(pArea);
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //====================================================================
 // PathSegmentWorldIntersection
@@ -285,7 +287,13 @@ bool CVolumeNavRegion::PathSegmentWorldIntersection(const Vec3& _start,
             end -= min(radius, segLen) * segDir;
         }
         Vec3 pos = 0.5f * (start + end);
+#if ENABLE_CRY_PHYSICS
         return OverlapSphere(pos, radius, aiCollisionEntities);
+#else
+        // Overlap check against sphere
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        return false;
+#endif // ENABLE_CRY_PHYSICS
     }
     else
     {
@@ -297,7 +305,13 @@ bool CVolumeNavRegion::PathSegmentWorldIntersection(const Vec3& _start,
         {
             start += radius * segDir;
         }
+#if ENABLE_CRY_PHYSICS
         return OverlapCapsule(Lineseg(start, end), radius, aiCollisionEntities);
+#else
+        // Overlap check against capsule
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        return false;
+#endif
     }
 }
 
@@ -313,6 +327,7 @@ static bool MultiRayWorldIntersection(const Vec3& start,
     float radius,
     int numExtraRays = 0)
 {
+#if ENABLE_CRY_PHYSICS
     AIAssert(gEnv->pPhysicalWorld);
     if (!gEnv->pPhysicalWorld)
     {
@@ -394,6 +409,11 @@ static bool MultiRayWorldIntersection(const Vec3& start,
             return true;
         }
     }
+#else
+    // Multiray intersection
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
+
     return false;
 }
 
@@ -404,11 +424,13 @@ bool CVolumeNavRegion::DoesPathIntersectWorld(std::vector<Vec3>& path,
     float radius,
     EAICollisionEntities aiCollisionEntities)
 {
+#if ENABLE_CRY_PHYSICS
     AIAssert(gEnv->pPhysicalWorld);
     if (!gEnv->pPhysicalWorld)
     {
         return false;
     }
+#endif
 
     unsigned numPts = path.size();
     if (numPts <= 1)
@@ -941,6 +963,7 @@ float CVolumeNavRegion::CalculatePassRadius(CPortal& portal, const std::vector<f
 //====================================================================
 Vec3 CVolumeNavRegion::CalcClosestPointFromVolumeToPos(const CVolume& volume, const Vec3& pos, float passRadius) const
 {
+#if ENABLE_CRY_PHYSICS
     float hitDist;
     Lineseg lineseg(volume.Center(m_pGraph->GetNodeManager()), pos);
     if (IntersectSweptSphere(0, hitDist, lineseg, passRadius, AICE_ALL))
@@ -950,6 +973,10 @@ Vec3 CVolumeNavRegion::CalcClosestPointFromVolumeToPos(const CVolume& volume, co
         return frac * lineseg.end + (1.0f - frac) * lineseg.start;
     }
     else
+#else
+    // Swep sphere calculation
+    CRY_PHYSICS_REPLACEMENT_ASSERT()
+#endif // ENABLE_CRY_PHYSICS
     {
         return pos;
     }
@@ -1343,6 +1370,7 @@ bool CVolumeNavRegion::GetNavigableSpacePoint(const Vec3& refPos, Vec3& pos, con
 //====================================================================
 inline bool CVolumeNavRegion::DoesVoxelContainGeometry(SVoxelData& voxelData, int i, int j, int k, primitives::box& boxPrim)
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* pPhysics = gEnv->pPhysicalWorld;
     //  geom_contact *pContact = 0;
     boxPrim.center = voxelData.corner + Vec3(i * voxelData.size, j * voxelData.size, k * voxelData.size);
@@ -1350,6 +1378,11 @@ inline bool CVolumeNavRegion::DoesVoxelContainGeometry(SVoxelData& voxelData, in
             ent_static | ent_sleeping_rigid | ent_rigid | ent_terrain | ent_ignore_noncolliding, 0,
             0, geom_colltype0, 0);
     return (d != 0.0f);
+#else
+    // Primitive world intersection
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //====================================================================
@@ -1693,6 +1726,7 @@ void CVolumeNavRegion::VoxelizeInvert(SRegionData& regionData, const CVolume* pV
     SetVoxelValue(voxelData, ptIndex.x, ptIndex.y, ptIndex.z, 0);
 }
 
+#if ENABLE_CRY_PHYSICS
 //====================================================================
 // CountHits
 //====================================================================
@@ -1751,12 +1785,14 @@ int CountHits(IPhysicalWorld* pWorld, const Vec3& from, const Vec3& to, bool fro
     }
     return count;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //====================================================================
 // CheckVoxel
 //====================================================================
 CVolumeNavRegion::ECheckVoxelResult CVolumeNavRegion::CheckVoxel(const Vec3& pos, const Vec3& definitelyValid) const
 {
+#if ENABLE_CRY_PHYSICS
     static const int maxHits = 16;
     ray_hit hits[maxHits];
 
@@ -1779,8 +1815,12 @@ CVolumeNavRegion::ECheckVoxelResult CVolumeNavRegion::CheckVoxel(const Vec3& pos
     // hit a front-face first - need to count the hits
     int nFront = CountHits(gEnv->pPhysicalWorld, pos, definitelyValid, true);
     int nBack  = CountHits(gEnv->pPhysicalWorld, pos, definitelyValid, false);
-
     return (nFront == nBack) ? VOXEL_VALID : VOXEL_INVALID;
+#else
+    // Voxel validation
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    return VOXEL_INVALID;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //====================================================================

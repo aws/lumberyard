@@ -178,15 +178,6 @@ namespace AZ
         StatInstGroup& vegetGroup = vegetationNode->GetStatObjGroup();
         IStatObj* pBody = vegetGroup.GetStatObj();
         AZ_Assert(pBody && pBody->GetSpineCount() && pBody->GetSpines(), "Invalid StatObj or no spines");
-        phys_geometry* physgeom = pBody->GetArrPhysGeomInfo()[PHYS_GEOM_TYPE_NO_COLLIDE];
-        AZ_Assert(physgeom, "Invalid Physical Geometry");
-
-        IGeometry* const geom = physgeom->pGeom;
-        const int geomType = geom->GetType();
-        if ((geomType != geomtypes::GEOM_CYLINDER) && (geomType != geomtypes::GEOM_CAPSULE) && (geomType != geomtypes::GEOM_SPHERE) && (geomType != geomtypes::GEOM_BOX))
-        {
-            AZ_WarningOnce("Touchbending", false, "Touchbending is being requested for a vegetation asset with a non-performant IGeometry Type (%d), it will use the bounding box for initial physics detection.", geomType);
-        }
 
         //const Matrix34& worldMatrix34, const float scale
         Matrix34A memAlignedWorldMatrix34;
@@ -378,7 +369,11 @@ namespace AZ
 
         pRes->m_pStatObj = pStatObj;
         pRes->m_pTrunk = nullptr; //Supposed to be the Cry Physics Entity, but we are not using Cry Physics.
+
+#if ENABLE_CRY_PHYSICS
         pRes->m_pRopes = nullptr;
+#endif
+
         pRes->m_nRopes = 0;
 
         pRes->m_touchBendingSkeletonProxy = skeletonHandle;

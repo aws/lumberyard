@@ -117,6 +117,8 @@ namespace ScriptCanvas
 
                 TypedNodePropertyInterface<ScriptCanvas::Data::StringType> m_stringInterface;
                 bool m_parsingFormat = false;
+
+                bool m_isHandlingExtension = false;
             };
         }
     }

@@ -10,17 +10,18 @@
 *
 */
 
+#include <AzCore/Component/TransformBus.h>
+#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/string/wildcard.h>
+
 #include <AzToolsFramework/Component/EditorComponentAPIBus.h>
 #include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 
-#include <AzCore/RTTI/BehaviorContext.h>
-
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <AzCore/std/string/wildcard.h>
-#include <AzCore/Component/TransformBus.h>
+#include <AzFramework/Entity/GameEntityContextBus.h>
 
 namespace AzToolsFramework
 {
@@ -80,6 +81,12 @@ namespace AzToolsFramework
         void EditorEntitySearchComponent::Activate()
         {
             EditorEntitySearchBus::Handler::BusConnect();
+
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(m_editorEntityContextId,
+                &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorEntityContextId);
+
+            AzFramework::GameEntityContextRequestBus::BroadcastResult(m_gameEntityContextId,
+                &AzFramework::GameEntityContextRequestBus::Events::GetGameEntityContextId);
         }
 
         void EditorEntitySearchComponent::Deactivate()
@@ -203,10 +210,11 @@ namespace AzToolsFramework
                 return;
             }
 
-            // Only return Editor Entities (for now)
-            bool isEditorEntity = false;
-            EditorEntityContextRequestBus::BroadcastResult(isEditorEntity, &EditorEntityContextRequests::IsEditorEntity, entityId);
-            if (!isEditorEntity)
+            // Only return entities tied to EditorEntity or GameEntity contexts
+            AzFramework::EntityContextId entityContextId = AzFramework::EntityContextId::CreateNull();
+            AzFramework::EntityIdContextQueryBus::EventResult(entityContextId, entityId, &AzFramework::EntityIdContextQueries::GetOwningContextId);
+
+            if ((entityContextId != m_gameEntityContextId) && (entityContextId != m_editorEntityContextId))
             {
                 return;
             }

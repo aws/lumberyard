@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_TETRLATTICE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 enum ltension_type
 {
     LPull, LPush, LShift, LTwist, LBend
@@ -208,5 +210,7 @@ public:
     int* m_pCellQueue;
     int m_szCellQueue;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_TETRLATTICE_H

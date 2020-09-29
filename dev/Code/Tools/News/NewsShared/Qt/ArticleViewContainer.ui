@@ -13,9 +13,6 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">font-family: &quot;Open-sans&quot;;</string>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout_5">
    <property name="spacing">
     <number>0</number>
@@ -33,7 +30,7 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QBetterScrollArea" name="previewArea">
+    <widget class="QScrollArea" name="previewArea">
      <property name="styleSheet">
       <string notr="true"/>
      </property>
@@ -102,14 +99,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QBetterScrollArea</class>
-   <extends>QScrollArea</extends>
-   <header>NewsShared/Qt/QBetterScrollArea.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

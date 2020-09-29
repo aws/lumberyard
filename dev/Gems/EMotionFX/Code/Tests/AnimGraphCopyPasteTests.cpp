@@ -19,10 +19,10 @@
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
 #include <EMotionFX/Source/AnimGraphParameterAction.h>
-#include <EMotionFX/Source/AnimGraphServantParameterAction.h>
+#include <EMotionFX/Source/AnimGraphFollowerParameterAction.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphStateTransition.h>
-#include <EMotionFX/Source/AnimGraphSymbolicServantParameterAction.h>
+#include <EMotionFX/Source/AnimGraphSymbolicFollowerParameterAction.h>
 #include <EMotionFX/Source/BlendTreeBlendNNode.h>
 #include <MCore/Source/CommandGroup.h>
 #include <MCore/Source/ReflectionSerializer.h>
@@ -86,8 +86,8 @@ namespace EMotionFX
 
         // 1. Add transition actions.
         CommandSystem::AddTransitionAction(m_transition, azrtti_typeid<AnimGraphParameterAction>());
-        CommandSystem::AddTransitionAction(m_transition, azrtti_typeid<AnimGraphServantParameterAction>());
-        CommandSystem::AddTransitionAction(m_transition, azrtti_typeid<AnimGraphSymbolicServantParameterAction>());
+        CommandSystem::AddTransitionAction(m_transition, azrtti_typeid<AnimGraphFollowerParameterAction>());
+        CommandSystem::AddTransitionAction(m_transition, azrtti_typeid<AnimGraphSymbolicFollowerParameterAction>());
         EXPECT_EQ(3, m_transition->GetTriggerActionSetup().GetNumActions()) << "There should be exactly three transition actions.";
 
         // 2. Cut & paste both states
@@ -252,6 +252,15 @@ namespace EMotionFX
             copyPasteData,
             /*ignoreTopLevelConnections=*/false);
         EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, result));
+        VerifyAfterOperation();
+
+        // 3. Undo.
+        EXPECT_TRUE(commandManager.Undo(result)) << result.c_str();
+        EXPECT_EQ(m_rootStateMachine->GetNumTransitions(), 1) << "We should be back at only the original transition again.";
+        VerifyTransition(m_rootStateMachine->GetTransition(0));
+
+        // 4. Redo.
+        EXPECT_TRUE(commandManager.Redo(result)) << result.c_str();
         VerifyAfterOperation();
     }
 

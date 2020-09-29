@@ -58,7 +58,9 @@
 #include <IMovieSystem.h>
 #include <IScriptSystem.h>
 #include <ICryPak.h>
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include <IEditorGame.h>
 #include <ITimer.h>
 #include <ICryAnimation.h>
@@ -877,6 +879,7 @@ bool CGameEngine::LoadLevel(
             physicsEntityGridSize = pCvar->GetIVal();
         }
 
+#if ENABLE_CRY_PHYSICS
         if (m_pISystem->GetIPhysicalWorld())
         {
             int nCellSize = physicsEntityGridSize > 2048 ? physicsEntityGridSize >> 10 : 2;
@@ -898,6 +901,7 @@ bool CGameEngine::LoadLevel(
 
             m_pISystem->GetIPhysicalWorld()->SetupEntityGrid(2, Vec3(0, 0, 0), physicsEntityGridSize / nCellSize, physicsEntityGridSize / nCellSize, (float)nCellSize, (float)nCellSize, log2PODGridSize);
         }
+#endif // ENABLE_CRY_PHYSICS
 
         // Resize proximity grid in entity system.
         if (bReleaseResources)
@@ -1078,24 +1082,32 @@ void CGameEngine::SwitchToInGame()
     {
         myPlayer->InvalidateTM(ENTITY_XFORM_POS | ENTITY_XFORM_ROT);
 
+#if ENABLE_CRY_PHYSICS
         pe_player_dimensions dim;
         dim.heightEye = 0;
         if (myPlayer->GetPhysics())
         {
             myPlayer->GetPhysics()->GetParams(&dim);
         }
+#endif // ENABLE_CRY_PHYSICS
 
         if (pGameViewport)
         {
+#if ENABLE_CRY_PHYSICS
             myPlayer->SetPos(pGameViewport->GetViewTM().GetTranslation() - Vec3(0, 0, dim.heightEye));
+#else
+            myPlayer->SetPos(pGameViewport->GetViewTM().GetTranslation() - Vec3(0, 0, 0));
+#endif 
             myPlayer->SetRotation(Quat(Ang3::GetAnglesXYZ(Matrix33(pGameViewport->GetViewTM()))));
         }
     }
 
     // Disable accelerators.
     GetIEditor()->EnableAcceleratos(false);
+#if ENABLE_CRY_PHYSICS
     // Reset physics state before switching to game.
     m_pISystem->GetIPhysicalWorld()->ResetDynamicEntities();
+#endif // ENABLE_CRY_PHYSICS
     // Reset mission script.
     GetIEditor()->GetDocument()->GetCurrentMission()->ResetScript();
     //! Send event to switch into game.
@@ -1195,8 +1207,10 @@ void CGameEngine::SwitchToInEditor()
     GetIEditor()->GetDocument()->GetCurrentMission()->ResetScript();
 
 
+#if ENABLE_CRY_PHYSICS
     // reset movie-system
     m_pISystem->GetIPhysicalWorld()->ResetDynamicEntities();
+#endif
 
     // reset UI system
     if (gEnv->pLyShine)
@@ -1288,10 +1302,16 @@ void CGameEngine::RequestSetGameMode(bool inGame)
     if (m_ePendingGameMode == ePGM_SwitchToInGame)
     {
         EBUS_EVENT(LmbrCentral::SimpleAnimationComponentRequestBus, StartDefaultAnimations);
+
+        AzToolsFramework::EditorLegacyGameModeNotificationBus::Broadcast(
+            &AzToolsFramework::EditorLegacyGameModeNotificationBus::Events::OnStartGameModeRequest);
     }
     else if (m_ePendingGameMode == ePGM_SwitchToInEditor)
     {
         EBUS_EVENT(LmbrCentral::SimpleAnimationComponentRequestBus, StopAllAnimations);
+
+        AzToolsFramework::EditorLegacyGameModeNotificationBus::Broadcast(
+            &AzToolsFramework::EditorLegacyGameModeNotificationBus::Events::OnStopGameModeRequest);
     }
 }
 
@@ -1402,7 +1422,9 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
 
         // [Anton] the order of the next 3 calls changed, since, EVENT_INGAME loads physics state (if any),
         // and Reset should be called before it
+#if ENABLE_CRY_PHYSICS
         m_pISystem->GetIPhysicalWorld()->ResetDynamicEntities();
+#endif
         GetIEditor()->GetObjectManager()->SendEvent(EVENT_INGAME);
 
         if (!bOnlyPhysics && m_pISystem->GetAISystem())
@@ -1438,7 +1460,9 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
             }
         }
 
+#if ENABLE_CRY_PHYSICS
         m_pISystem->GetIPhysicalWorld()->ResetDynamicEntities();
+#endif
 
         GetIEditor()->GetObjectManager()->SendEvent(EVENT_OUTOFGAME);
 
@@ -1908,11 +1932,13 @@ void CGameEngine::ResetResources()
         gEnv->p3DEngine->UnloadLevel();
     }
 
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pPhysicalWorld)
     {
         // Initialize default entity grid in physics
         m_pISystem->GetIPhysicalWorld()->SetupEntityGrid(2, Vec3(0, 0, 0), 128, 128, 4, 4, 1);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CGameEngine::SetPlayerEquipPack(const char* sEqipPackName)

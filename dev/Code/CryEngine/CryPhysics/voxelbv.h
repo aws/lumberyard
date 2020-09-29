@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_VOXELBV_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CVoxelBV
     : public CBVTree
 {
@@ -44,5 +46,8 @@ public:
     Vec3i m_iBBox[2];
     int m_nTris;
 };
+
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_VOXELBV_H

@@ -241,17 +241,6 @@ namespace AZ
             }
             IdHandler& operator=(const IdHandler& rhs)
             {
-#ifdef AZ_COMPILER_MSVC
-#pragma warning(push)
-#pragma warning(disable: 4127) // conditional expression is constant (for Traits::LocklessDispatch in asserts)
-#endif
-
-                AZ_Assert((!AZStd::is_polymorphic<typename BusType::InterfaceType>::value || AZStd::is_same<typename BusType::MutexType, AZ::NullMutex>::value || !BusIsConnected()), "EBus handlers must be disconnected prior to destruction on multi-threaded buses with virtual functions");
-
-#ifdef AZ_COMPILER_MSVC
-#pragma warning(pop)
-#endif
-
                 BusDisconnect();
                 if (rhs.BusIsConnected())
                 {

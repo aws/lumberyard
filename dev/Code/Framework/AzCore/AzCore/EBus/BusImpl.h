@@ -14,11 +14,13 @@
  * @file
  * Header file for internal EBus classes.
  * For more information about EBuses, see AZ::EBus and AZ::EBusTraits in this guide and
- * [Event Bus](http://docs.aws.amazon.com/lumberyard/latest/developerguide/asset-pipeline-ebus.html)
- * in the *Lumberyard Developer Guide*.
+ * [Event Bus](https://docs.aws.amazon.com/lumberyard/latest/userguide/ebus-intro.html)
+ * in the *Lumberyard User Guide*.
  */
 
 #pragma once
+
+#include <AzCore/Debug/Trace.h>
 
 #include <AzCore/EBus/Internal/BusContainer.h>
 #include <AzCore/EBus/Internal/Debug.h>
@@ -376,6 +378,14 @@ namespace AZ
             }
 
             /**
+            * Helper to Queue a Broadcast only when function queueing is available
+            * @param func          Function pointer of the event to dispatch.
+            * @param args          Function arguments that are passed to each handler.
+            */
+            template <class Function, class ... InputArgs>
+            static void TryQueueBroadcast(Function&& func, InputArgs&& ... args);
+
+            /**
              * Enqueues an asynchronous event to dispatch to all handlers.
              * The event is not executed until ExecuteQueuedEvents() is called.
              * @param func          Function pointer of the event to dispatch.
@@ -383,6 +393,14 @@ namespace AZ
              */
             template <class Function, class ... InputArgs>
             static void QueueBroadcast(Function&& func, InputArgs&& ... args);
+
+            /**
+            * Helper to Queue a Reverse Broadcast only when function queueing is available
+            * @param func          Function pointer of the event to dispatch.
+            * @param args          Function arguments that are passed to each handler.
+            */
+            template <class Function, class ... InputArgs>
+            static void TryQueueBroadcastReverse(Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to all handlers in reverse order.
@@ -439,6 +457,15 @@ namespace AZ
             using BusPtr = typename Traits::BusPtr;
 
             /**
+             * Helper to queue an event by BusIdType only when function queueing is enabled 
+             * @param id            Address ID. Handlers that are connected to this ID will receive the event.
+             * @param func          Function pointer of the event to dispatch.
+             * @param args          Function arguments that are passed to each handler.
+             */
+            template <class Function, class ... InputArgs>
+            static void TryQueueEvent(const BusIdType& id, Function&& func, InputArgs&& ... args);
+
+            /**
              * Enqueues an asynchronous event to dispatch to handlers at a specific address.
              * The event is not executed until ExecuteQueuedEvents() is called.
              * @param id            Address ID. Handlers that are connected to this ID will receive the event.
@@ -447,6 +474,15 @@ namespace AZ
              */
             template <class Function, class ... InputArgs>
             static void QueueEvent(const BusIdType& id, Function&& func, InputArgs&& ... args);
+
+            /**
+             * Helper to queue an event by BusPtr only when function queueing is enabled
+             * @param ptr           Cached address ID. Handlers that are connected to this ID will receive the event.
+             * @param func          Function pointer of the event to dispatch.
+             * @param args          Function arguments that are passed to each handler.
+             */
+            template <class Function, class ... InputArgs>
+            static void TryQueueEvent(const BusPtr& ptr, Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to handlers at a cached address.
@@ -459,6 +495,15 @@ namespace AZ
             static void QueueEvent(const BusPtr& ptr, Function&& func, InputArgs&& ... args);
 
             /**
+             * Helper to queue an event in reverse by BusIdType only when funciton queueing is enabled
+             * @param id            Address ID. Handlers that are connected to this ID will receive the event.
+             * @param func          Function pointer of the event to dispatch.
+             * @param args          Function arguments that are passed to each handler.
+             */
+            template <class Function, class ... InputArgs>
+            static void TryQueueEventReverse(const BusIdType& id, Function&& func, InputArgs&& ... args);
+
+            /**
              * Enqueues an asynchronous event to dispatch to handlers at a specific address in reverse order.
              * The event is not executed until ExecuteQueuedEvents() is called.
              * @param id            Address ID. Handlers that are connected to this ID will receive the event.
@@ -467,6 +512,15 @@ namespace AZ
              */
             template <class Function, class ... InputArgs>
             static void QueueEventReverse(const BusIdType& id, Function&& func, InputArgs&& ... args);
+
+            /**
+             * Helper to queue an event in reverse by BusPtr only when function queueing is enabled
+             * @param ptr           Cached address ID. Handlers that are connected to this ID will receive the event.
+             * @param func          Function pointer of the event to dispatch.
+             * @param args          Function arguments that are passed to each handler.
+             */
+            template <class Function, class ... InputArgs>
+            static void TryQueueEventReverse(const BusPtr& ptr, Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to handlers at a cached address in reverse order.
@@ -637,11 +691,31 @@ namespace AZ
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
+        inline void EBusEventQueue<Bus, Traits>::TryQueueEvent(const BusIdType& id, Function&& func, InputArgs&& ... args)
+        {
+            if (EBusEventQueue<Bus, Traits>::IsFunctionQueueing())
+            {
+                EBusEventQueue<Bus, Traits>::QueueEvent(id, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+            }
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
         inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusIdType& id, Function&& func, InputArgs&& ... args)
         {
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
             using Eventer = void(*)(const BusIdType&, Function&&, InputArgs&&...);
             Bus::QueueFunction(static_cast<Eventer>(&Bus::Event), id, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusEventQueue<Bus, Traits>::TryQueueEvent(const BusPtr& ptr, Function&& func, InputArgs&& ... args)
+        {
+            if (EBusEventQueue<Bus, Traits>::IsFunctionQueueing())
+            {
+                EBusEventQueue<Bus, Traits>::QueueEvent(ptr, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+            }
         }
 
         template <class Bus, class Traits>
@@ -655,11 +729,31 @@ namespace AZ
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
+        inline void EBusEventQueue<Bus, Traits>::TryQueueEventReverse(const BusIdType& id, Function&& func, InputArgs&& ... args)
+        {
+            if (EBusEventQueue<Bus, Traits>::IsFunctionQueueing())
+            {
+                EBusEventQueue<Bus, Traits>::QueueEventReverse(id, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+            }
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
         inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusIdType& id, Function&& func, InputArgs&& ... args)
         {
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
             using Eventer = void(*)(const BusIdType&, Function&&, InputArgs&&...);
             Bus::QueueFunction(static_cast<Eventer>(&Bus::EventReverse), id, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusEventQueue<Bus, Traits>::TryQueueEventReverse(const BusPtr& ptr, Function&& func, InputArgs&& ... args)
+        {
+            if (EBusEventQueue<Bus, Traits>::IsFunctionQueueing())
+            {
+                EBusEventQueue<Bus, Traits>::QueueEventReverse(ptr, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+            }
         }
 
         template <class Bus, class Traits>
@@ -685,11 +779,31 @@ namespace AZ
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
+        inline void EBusBroadcastQueue<Bus, Traits>::TryQueueBroadcast(Function&& func, InputArgs&& ... args)
+        {
+            if (EBusEventQueue<Bus, Traits>::IsFunctionQueuing())
+            {
+                EBusEventQueue<Bus, Traits>::QueueBroadcast(AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+            }
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
         inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcast(Function&& func, InputArgs&& ... args)
         {
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
             using Broadcaster = void(*)(Function&&, InputArgs&&...);
             Bus::QueueFunction(static_cast<Broadcaster>(&Bus::Broadcast), AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusBroadcastQueue<Bus, Traits>::TryQueueBroadcastReverse(Function&& func, InputArgs&& ... args)
+        {
+            if (EBusEventQueue<Bus, Traits>::IsFunctionQueuing())
+            {
+                EBusEventQueue<Bus, Traits>::QueueBroadcastReverse(AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+            }
         }
 
         template <class Bus, class Traits>
@@ -720,6 +834,11 @@ namespace AZ
                     AZStd::invoke(AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
                 },
                     typename Traits::AllocatorType()));
+            }
+            else
+            {
+                AZ_Warning("EBus", false, "Unable to queue function onto EBus.  This may be due to a previous call to AllowFunctionQueuing(false)."
+                    "Hint: This is often disabled during shutdown of a ComponentApplication");
             }
         }
     } // namespace BusInternal

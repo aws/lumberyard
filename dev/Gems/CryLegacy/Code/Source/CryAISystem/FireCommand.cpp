@@ -1083,6 +1083,7 @@ bool CFireCommandProjectileFast::ChooseShootPoint(Vec3& outShootPoint, IAIObject
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     // Use floor position if possible
     const bool bHasFloorPos = GetFloorPos(outShootPoint, shootAtPos, WalkabilityFloorUpDist, WalkabilityFloorDownDist, WalkabilityDownRadius, AICE_STATIC);
     if (bHasFloorPos)
@@ -1090,6 +1091,7 @@ bool CFireCommandProjectileFast::ChooseShootPoint(Vec3& outShootPoint, IAIObject
         outShootPoint.z += 0.5f;
     }
     else
+#endif
     {
         outShootPoint = shootAtPos;
     }

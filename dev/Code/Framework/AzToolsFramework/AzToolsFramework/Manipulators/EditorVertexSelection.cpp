@@ -24,6 +24,32 @@
 #include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 #include <QApplication>
 
+using Vertex2LoookupReverseIter = AZStd::reverse_iterator<typename AzToolsFramework::IndexedTranslationManipulator<AZ::Vector2>::VertexLookup*>;
+using Vertex3LoookupReverseIter = AZStd::reverse_iterator<typename AzToolsFramework::IndexedTranslationManipulator<AZ::Vector3>::VertexLookup*>;
+
+namespace std
+{
+    template <>
+    struct iterator_traits<Vertex2LoookupReverseIter>
+    {
+        using difference_type = typename Vertex2LoookupReverseIter::difference_type;
+        using value_type = typename Vertex2LoookupReverseIter::value_type;
+        using iterator_category = typename Vertex2LoookupReverseIter::iterator_category;
+        using pointer = typename Vertex2LoookupReverseIter::pointer;
+        using reference = typename Vertex2LoookupReverseIter::reference;
+    };
+
+    template <>
+    struct iterator_traits<Vertex3LoookupReverseIter>
+    {
+        using difference_type = typename Vertex3LoookupReverseIter::difference_type;
+        using value_type = typename Vertex3LoookupReverseIter::value_type;
+        using iterator_category = typename Vertex3LoookupReverseIter::iterator_category;
+        using pointer = typename Vertex3LoookupReverseIter::pointer;
+        using reference = typename Vertex3LoookupReverseIter::reference;
+    };
+}
+
 namespace AzToolsFramework
 {
     static const char* const s_duplicateVerticesTitle = "Duplicate Vertices";
@@ -788,7 +814,7 @@ namespace AzToolsFramework
                 EditorVertexSelectionBase<Vertex>::m_translationManipulator;
 
             // ensure we remove vertices in reverse order
-            AZStd::sort(translationManipulator->m_vertices.rbegin(), translationManipulator->m_vertices.rend(),
+            std::sort(translationManipulator->m_vertices.rbegin(), translationManipulator->m_vertices.rend(),
                 [](const typename IndexedTranslationManipulator<Vertex>::VertexLookup& lhs,
                     const typename IndexedTranslationManipulator<Vertex>::VertexLookup& rhs)
             {
@@ -1045,19 +1071,23 @@ namespace AzToolsFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
         // setup selection manipulator
-        selectionManipulator->SetView(AzToolsFramework::CreateManipulatorViewSphere(AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
+        const AZStd::shared_ptr<ManipulatorViewSphere> selectionView =
+            AzToolsFramework::CreateManipulatorViewSphere(AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
             g_defaultManipulatorSphereRadius, [&selectionManipulator]
             (const ViewportInteraction::MouseInteraction& /*mouseInteraction*/,
-            const bool mouseOver, const AZ::Color& defaultColor)
-        {
-            if (selectionManipulator->Selected())
+                const bool mouseOver, const AZ::Color& defaultColor)
             {
-                return AZ::Color(1.0f, 1.0f, 0.0f, 1.0f);
-            }
+                if (selectionManipulator->Selected())
+                {
+                    return AZ::Color(1.0f, 1.0f, 0.0f, 1.0f);
+                }
 
-            const float opacity[2] = { 0.5f, 1.0f };
-            return AZ::Color(defaultColor.GetR(), defaultColor.GetG(), defaultColor.GetB(), AZ::VectorFloat(opacity[mouseOver]));
-        }));
+                const float opacity[2] = { 0.5f, 1.0f };
+                return AZ::Color(
+                    defaultColor.GetR(), defaultColor.GetG(), defaultColor.GetB(), AZ::VectorFloat(opacity[mouseOver]));
+            });
+
+        selectionManipulator->SetViews(ManipulatorViews{selectionView});
 
         selectionManipulator->InstallLeftMouseUpCallback([
             this, entityComponentIdPair, vertexIndex, managerId](
@@ -1080,27 +1110,30 @@ namespace AzToolsFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
         // setup selection manipulator
-        selectionManipulator->SetView(AzToolsFramework::CreateManipulatorViewSphere(AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
-            g_defaultManipulatorSphereRadius, [&selectionManipulator]
-            (const ViewportInteraction::MouseInteraction& mouseInteraction,
-            const bool mouseOver, const AZ::Color& defaultColor)
-        {
-            if (mouseInteraction.m_keyboardModifiers.Alt() && mouseOver)
-            {
-                // indicate removal of manipulator
-                return AZ::Color(0.5f, 0.5f, 0.5f, 0.5f);
-            }
+        const AZStd::shared_ptr<ManipulatorViewSphere> manipulatorView =
+            AzToolsFramework::CreateManipulatorViewSphere(AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
+                g_defaultManipulatorSphereRadius, [&selectionManipulator]
+                (const ViewportInteraction::MouseInteraction& mouseInteraction,
+                    const bool mouseOver, const AZ::Color& defaultColor)
+                {
+                    if (mouseInteraction.m_keyboardModifiers.Alt() && mouseOver)
+                    {
+                        // indicate removal of manipulator
+                        return AZ::Color(0.5f, 0.5f, 0.5f, 0.5f);
+                    }
 
-            // highlight or not if mouse is over
-            const float opacity[2] = { 0.5f, 1.0f };
-            if (selectionManipulator->Selected())
-            {
-                return AZ::Color(1.0f, 1.0f, 0.0f, opacity[mouseOver]);
-            }
+                    // highlight or not if mouse is over
+                    const float opacity[2] = { 0.5f, 1.0f };
+                    if (selectionManipulator->Selected())
+                    {
+                        return AZ::Color(1.0f, 1.0f, 0.0f, opacity[mouseOver]);
+                    }
 
-            return AZ::Color(
-                defaultColor.GetR(), defaultColor.GetG(), defaultColor.GetB(), AZ::VectorFloat(opacity[mouseOver]));
-        }));
+                    return AZ::Color(
+                        defaultColor.GetR(), defaultColor.GetG(), defaultColor.GetB(), AZ::VectorFloat(opacity[mouseOver]));
+                });
+
+        selectionManipulator->SetViews(ManipulatorViews{manipulatorView});
 
         selectionManipulator->InstallLeftMouseUpCallback(
             [this, entityComponentIdPair, vertexIndex, managerId](const ViewportInteraction::MouseInteraction& interaction)
@@ -1182,7 +1215,7 @@ namespace AzToolsFramework
         MidpointCalculator midpointCalculator;
 
         // sort in descending order
-        AZStd::sort(manipulators.rbegin(), manipulators.rend(),
+        std::sort(manipulators.rbegin(), manipulators.rend(),
             [](const typename IndexedTranslationManipulator<Vertex>::VertexLookup& lhs,
                const typename IndexedTranslationManipulator<Vertex>::VertexLookup& rhs)
         {

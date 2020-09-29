@@ -11,9 +11,11 @@
 */
 #pragma once
 
+#include <IRenderer.h>  // Required to use mock in gem tests, Must be before IVegetationPoolManager
 #include <IVegetationPoolManager.h>
 #include <AzCore/Math/Aabb.h>
 
+#include <ISerialize.h> // Required to use mock in gem tests, Must be before I3DEngine
 #include <I3DEngine.h>
 #include <gmock/gmock.h>
 
@@ -256,45 +258,12 @@ public:
     MOCK_METHOD4(GetLegacyTerrainLevelData,
         int (uint8*& octreeData, STerrainInfo& terrainInfo, bool& bSectorPalettes, EEndian& eEndian));
 
-    // "Un-mocked" this method so that we could avoid including MacroTexture.h from 3DEngine.
-    bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const override { return true; }
-
-    MOCK_METHOD3(GetTerrainElevation,
-        float(float, float, int));
-    MOCK_METHOD2(GetTerrainZ,
-        float(int x, int y));
-    MOCK_METHOD2(GetTerrainSlope,
-        float(int x, int y));
-    MOCK_METHOD2(GetTerrainSurfaceId,
-        int(int x, int y));
-    MOCK_METHOD2(GetTerrainHole,
-        bool(int x, int y));
-    MOCK_METHOD1(GetTerrainSurfaceNormal,
-        Vec3(Vec3 vPos));
-    MOCK_CONST_METHOD0(GetTerrainAabb,
-        const AZ::Aabb&());
-    MOCK_METHOD0(GetHeightMapUnitSize,
-        int());
-    MOCK_METHOD0(GetTerrainSize,
-        int());
-    MOCK_METHOD0(GetTerrainSectorSize,
-        int());
     MOCK_METHOD1(RemoveAllStaticObjects,
         void(int));
-    MOCK_METHOD5(SetTerrainSectorTexture,
-        void(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY));
-    MOCK_METHOD0(GetTerrainTextureNodeSizeMeters,
-        int());
-    MOCK_METHOD0(IsTerrainActive,
-        bool());
     MOCK_METHOD3(SetStatInstGroup,
         bool(int nGroupId, const IStatInstGroup& siGroup, int nSID));
     MOCK_METHOD3(GetStatInstGroup,
         bool(int, IStatInstGroup&, int));
-    MOCK_METHOD3(SetTerrainBurnedOut,
-        void(int x, int y, bool bBurnedOut));
-    MOCK_METHOD2(IsTerrainBurnedOut,
-        bool(int x, int y));
     MOCK_METHOD3(OnExplosion,
         void(Vec3, float, bool));
     MOCK_METHOD1(SetPhysMaterialEnumerator,
@@ -307,8 +276,6 @@ public:
         void(const char* szMissionName));
     MOCK_METHOD2(LoadEnvironmentSettingsFromXML,
         void(XmlNodeRef, int));
-    MOCK_METHOD3(LoadTerrainSurfacesFromXML,
-        void(XmlNodeRef, bool, int));
     MOCK_METHOD0(LoadCompiledOctreeForEditor,
         bool());
     MOCK_CONST_METHOD0(GetSunDir,
@@ -397,6 +364,8 @@ public:
         const PodArray<ILightSource*>* ());
     MOCK_METHOD3(GetLightVolumes,
         void(threadID nThreadID, SLightVolume*& pLightVols, uint32& nNumVols));
+    MOCK_METHOD4(RegisterVolumeForLighting,
+        uint16(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo));
     MOCK_METHOD1(RestoreTerrainFromDisk,
         bool(int));
     MOCK_METHOD1(GetFilePath,
@@ -431,8 +400,6 @@ public:
         void(uint));
     MOCK_METHOD0(CheckMemoryHeap,
         void());
-    MOCK_METHOD1(CloseTerrainTextureFile,
-        void(int));
     MOCK_METHOD1(DeleteEntityDecals,
         void(IRenderNode* pEntity));
     MOCK_METHOD0(LockCGFResources,
@@ -483,8 +450,6 @@ public:
         void(float fWaterLevel));
     MOCK_METHOD1(InitMaterialDefautMappingAxis
         , void(_smart_ptr<IMaterial> pMat));
-    MOCK_METHOD0(GetITerrain,
-        ITerrain*());
     MOCK_METHOD1(CreateTerrain,
         ITerrain*(const STerrainInfo& TerrainInfo));
     MOCK_METHOD0(DeleteTerrain,
@@ -587,8 +552,6 @@ public:
         void(IRenderNode* pObj, float fEntDistanceReal));
     MOCK_METHOD0(GetDeferredPhysicsEventManager,
         IDeferredPhysicsEventManager*());
-    MOCK_CONST_METHOD0(IsTerrainTextureStreamingInProgress,
-        bool());
     MOCK_METHOD1(SetStreamableListener,
         void(IStreamedObjectListener* pListener));
     MOCK_METHOD1(GetRenderingPassCamera,

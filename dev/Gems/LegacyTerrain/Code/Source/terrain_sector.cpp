@@ -14,7 +14,7 @@
 // Description : sector initialiazilation, objects rendering
 
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 #include "terrain_sector.h"
 #include "terrain.h"
 

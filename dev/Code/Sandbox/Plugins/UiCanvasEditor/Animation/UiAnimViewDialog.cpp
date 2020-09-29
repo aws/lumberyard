@@ -23,8 +23,6 @@
 #include "EditorDefs.h"
 #include "Resource.h"
 
-
-
 #include "UiAnimViewDialog.h"
 
 #include "ViewPane.h"
@@ -60,19 +58,20 @@
 #include "EditorCommon.h"
 
 #include "../../../Plugins/EditorCommon/QtViewPane.h"
-#include <QSplitter>
-#include <QToolBar>
-#include <QLabel>
-#include <QComboBox>
-#include <QVBoxLayout>
+
 #include <QAction>
-#include <QMessageBox>
-#include <QMenuBar>
-#include <QMenu>
-#include <QToolButton>
-#include <QSettings>
+#include <QComboBox>
 #include <QKeyEvent>
+#include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QSettings>
+#include <QSplitter>
 #include <QTimer>
+#include <QToolBar>
+#include <QToolButton>
+#include <QVBoxLayout>
 
 //////////////////////////////////////////////////////////////////////////
 namespace
@@ -101,6 +100,57 @@ namespace
 CUiAnimViewDialog* CUiAnimViewDialog::s_pUiAnimViewDialog = NULL;
 
 //////////////////////////////////////////////////////////////////////////
+class CUiAnimViewExpanderWatcher
+    : public QObject
+{
+public:
+    CUiAnimViewExpanderWatcher(QObject* parent = nullptr)
+        : QObject(parent)
+    {
+    }
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        switch (event->type())
+        {
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+            case QEvent::MouseButtonDblClick:
+            {
+                if (qobject_cast<QToolButton*>(obj))
+                {
+                    auto mouseEvent = static_cast<QMouseEvent*>(event);
+                    auto expansion = qobject_cast<QToolButton*>(obj);
+
+                    expansion->setPopupMode(QToolButton::InstantPopup);
+                    auto menu = new QMenu(expansion);
+
+                    auto toolbar = qobject_cast<QToolBar*>(expansion->parentWidget());
+
+                    for (auto toolbarAction : toolbar->actions())
+                    {
+                        auto actionWidget = toolbar->widgetForAction(toolbarAction);
+                        if (actionWidget && !actionWidget->isVisible() && !toolbarAction->text().isEmpty())
+                        {
+                            QString plainText = QTextDocumentFragment::fromHtml(actionWidget->toolTip()).toPlainText();
+                            toolbarAction->setText(plainText);
+                            menu->addAction(toolbarAction);
+                        }
+                    }
+
+                    menu->exec(mouseEvent->globalPos());
+                    return true;
+                }
+
+                break;
+            }
+        }
+
+        return QObject::eventFilter(obj, event);
+    }
+};
+
+//////////////////////////////////////////////////////////////////////////
 CUiAnimViewDialog::CUiAnimViewDialog(QWidget* pParent /*=NULL*/)
     : QMainWindow(pParent)
     , m_animationSystem(nullptr)
@@ -120,6 +170,7 @@ CUiAnimViewDialog::CUiAnimViewDialog(QWidget* pParent /*=NULL*/)
     m_bEditLock = false;
 
     m_currentToolBarParamTypeId = 0;
+    m_expanderWatcher = new CUiAnimViewExpanderWatcher(this);
 
     UiEditorAnimationStateBus::Handler::BusConnect();
     UiEditorAnimListenerBus::Handler::BusConnect();
@@ -305,6 +356,11 @@ void CUiAnimViewDialog::InitToolbar()
     m_actions[ID_TRACKVIEW_TOGGLE_DISABLE] = qaction;
     connect(qaction, &QAction::triggered, this, &CUiAnimViewDialog::OnToggleDisable);
 
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_mainToolBar))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
+
     m_viewToolBar = addToolBar("View Toolbar");
     m_viewToolBar->setObjectName("m_viewToolBar");
     m_viewToolBar->setFloatable(false);
@@ -327,6 +383,11 @@ void CUiAnimViewDialog::InitToolbar()
     qaction->setShortcut(QKeySequence("Ctrl+B"));
     m_actions[ID_TV_MODE_OPENCURVEEDITOR] = qaction;
     connect(qaction, &QAction::triggered, this, &CUiAnimViewDialog::OnOpenCurveEditor);
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_viewToolBar))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
 
     m_playToolBar = addToolBar("Play Toolbar");
     m_playToolBar->setObjectName("m_playToolBar");
@@ -440,6 +501,11 @@ void CUiAnimViewDialog::InitToolbar()
 
     addToolBarBreak(Qt::TopToolBarArea);
 
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_playToolBar))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
+
     m_keysToolBar = addToolBar("Keys Toolbar");
     m_keysToolBar->setObjectName("m_keysToolBar");
     m_keysToolBar->setFloatable(false);
@@ -490,6 +556,11 @@ void CUiAnimViewDialog::InitToolbar()
     qaction->setData(ID_TV_SNAP_TICK);
     m_actions[ID_TV_SNAP_TICK] = qaction;
     connect(qaction, &QAction::triggered, this, &CUiAnimViewDialog::OnSnapTick);
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_keysToolBar))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
 
     QActionGroup* ag = new QActionGroup(this);
     ag->addAction(m_actions[ID_TV_ADDKEY]);

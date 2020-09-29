@@ -31,8 +31,6 @@ public:
     virtual const char* GetName() const;
     virtual Vec3 GetPos(bool bWorldOnly = true) const;
     virtual void Render(const SRendParams& rParam, const SRenderingPassInfo& passInfo);
-    virtual IPhysicalEntity* GetPhysics() const { return 0; }
-    virtual void SetPhysics(IPhysicalEntity*) {}
     virtual void SetMaterial(_smart_ptr<IMaterial> pMat) { m_pMaterial = pMat; }
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = 0);
     virtual _smart_ptr<IMaterial> GetMaterialOverride() { return m_pMaterial; }

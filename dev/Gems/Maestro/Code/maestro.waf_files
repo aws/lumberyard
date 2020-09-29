@@ -89,6 +89,7 @@
             "Source/Cinematics/LayerNode.cpp",
             "Source/Cinematics/MaterialNode.cpp",
             "Source/Cinematics/SceneNode.cpp",
+            "Source/Cinematics/TimeOfDayNode.cpp",
             "Source/Cinematics/ScriptVarNode.cpp",
             "Source/Cinematics/AnimAZEntityNode.h",
             "Source/Cinematics/AnimNode.h",
@@ -100,7 +101,9 @@
             "Source/Cinematics/EventNode.h",
             "Source/Cinematics/LayerNode.h",
             "Source/Cinematics/MaterialNode.h",
-            "Source/Cinematics/SceneNode.h"
+            "Source/Cinematics/SceneNode.h",
+            "Source/Cinematics/TimeOfDayNode.h",
+            "Source/Cinematics/TimeOfDayNodeDescription.h"
         ],
         "Source/Components": [
             "Source/Components/SequenceComponent.h",
@@ -108,7 +111,8 @@
             "Source/Components/SequenceAgent.h",
             "Source/Components/SequenceAgent.cpp",
             "Source/Components/SequenceAgentComponent.h",
-            "Source/Components/SequenceAgentComponent.cpp"
+            "Source/Components/SequenceAgentComponent.cpp",
+            "Source/Components/TimeOfDayCacheSystemComponent.h"
         ]
     }
 }

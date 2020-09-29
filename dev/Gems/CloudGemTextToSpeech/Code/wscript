@@ -24,9 +24,7 @@ def build(bld):
             file_list.append('lmbraws_unsupported.waf_files')
 
     bld.DefineGem(
-        includes    = [bld.Path('Code/CryEngine/CryCommon'),
-                       bld.Path('Gems/AudioSystem/Code/Source/Engine')
-                      ],
+        includes    = [bld.Path('Code/CryEngine/CryCommon')],
 
         file_list = file_list,
         uselib = ['AWS_CPP_SDK_CORE', 'MD5'],

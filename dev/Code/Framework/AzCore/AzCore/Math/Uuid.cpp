@@ -52,9 +52,13 @@ namespace AZ
 
     //=========================================================================
     // CreateString
-    // [4/10/2012]
     //=========================================================================
     Uuid Uuid::CreateString(const char* string, size_t stringLength)
+    {
+        return CreateStringSkipWarnings(string, stringLength, false);
+    }
+
+    Uuid Uuid::CreateStringSkipWarnings(const char* string, size_t stringLength, [[maybe_unused]] bool skipWarnings)
     {
         if (string == NULL)
         {
@@ -71,7 +75,7 @@ namespace AZ
 
         if (len < 32 || len > 38)
         {
-            AZ_Warning("Math", false, "Invalid UUID format %s (must be) {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} (or without dashes and braces)", string != NULL ? string : "null");
+            AZ_Warning("Math", skipWarnings, "Invalid UUID format %s (must be) {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} (or without dashes and braces)", string != NULL ? string : "null");
             return Uuid::CreateNull();
         }
 
@@ -106,7 +110,7 @@ namespace AZ
                     }
                     else
                     {
-                        AZ_Warning("Math", false, "Invalid UUID format %s (must be) {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} (or without dashes and braces)", string);
+                        AZ_Warning("Math", skipWarnings, "Invalid UUID format %s (must be) {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} (or without dashes and braces)", string);
                         return Uuid::CreateNull();
                     }
                 }
@@ -123,14 +127,83 @@ namespace AZ
         }
 
         // check close brace
-        if (has_open_brace)
-        {
-            AZ_Warning("Math", c == '}', "Invalid UUID format %s (must be) {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} (or without dashes and braces)", string);
-        }
+        AZ_Warning("Math", !has_open_brace || skipWarnings || c == '}', "Invalid UUID format %s (must be) {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} (or without dashes and braces)", string);
 
         return id;
     }
 
+    Uuid Uuid::CreateStringPermissive(const char* uuidString, size_t stringLength, bool skipWarnings)
+    {
+        const size_t MaxPermissiveStringSize = 60;
+        if (stringLength == 0)
+        {
+            stringLength = strlen(uuidString);
+        }
+        if (stringLength > MaxPermissiveStringSize)
+        {
+            if (!skipWarnings)
+            {
+                AZ_Warning("Math", false, "Can't create UUID from string length %zu over maximum %zu", stringLength, MaxPermissiveStringSize);
+            }
+            return Uuid::CreateNull();
+        }
+        size_t newLength{ 0 };
+        char createString[MaxPermissiveStringSize];
+
+        for (size_t curPos = 0; curPos < stringLength; ++curPos)
+        {
+            char curChar = uuidString[curPos];
+            switch (curChar)
+            {
+                // Bail early on expected no op characters
+                case '{':
+                {
+                    break;
+                }
+                case '}':
+                {
+                    break;
+                }
+                case ' ':
+                {
+                    break;
+                }
+                case '-':
+                {
+                    break;
+                }
+                case 'X':
+                    [[fallthrough]];
+                case 'x':
+                {
+                    // If we get 0xdeadbeef ignore the 0x
+                    if (curPos && uuidString[curPos - 1] == '0')
+                    {
+                        --newLength;
+                    }
+                    break;
+                    // If for some reason it's xdeadbeef skip the X because this function is permissive.
+                }
+                default:
+                {
+                    if ((curChar >= '0' && curChar <= '9') || (curChar >= 'a' && curChar <= 'f') || (curChar >= 'A' && curChar <= 'F'))
+                    {
+                        createString[newLength++] = curChar;
+                    }
+                    else
+                    {
+                        // "Other" characters could also just be skipped here if we wanted to be even more permissive
+                        if (!skipWarnings)
+                        {
+                            AZ_Warning("Math", false, "Unknown UUID character %c found at position %zu", curChar, curPos);
+                        }
+                        return Uuid::CreateNull();
+                    }
+                }
+            }
+        }
+        return CreateStringSkipWarnings(createString, newLength, skipWarnings);
+    }
     //=========================================================================
     // ToString
     // [4/11/2012]

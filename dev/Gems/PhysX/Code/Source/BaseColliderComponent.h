@@ -46,16 +46,12 @@ namespace PhysX
         void SetShapeConfigurationList(const Physics::ShapeConfigurationList& shapeConfigList);
 
         // ColliderComponentRequestBus
-        AZStd::shared_ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() override;
-        const Physics::ColliderConfiguration& GetColliderConfig() override;
-        AZStd::shared_ptr<Physics::Shape> GetShape() override;
-        void* GetNativePointer() override;
-
         Physics::ShapeConfigurationList GetShapeConfigurations() override;
         AZStd::vector<AZStd::shared_ptr<Physics::Shape>> GetShapes() override;
-
-        bool IsStaticRigidBody() override;
-        PhysX::RigidBodyStatic* GetStaticRigidBody() override;
+        AZ_DEPRECATED(bool IsStaticRigidBody() override;,
+            "IsStaticRigidBody is deprecated, please use a StaticRigidBodyComponent directly instead.")
+        AZ_DEPRECATED(PhysX::RigidBodyStatic* GetStaticRigidBody() override;,
+            "GetStaticRigidBody is deprecated, please use a StaticRigidBodyComponent directly instead.")
 
         // TransformNotificationsBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;

@@ -63,7 +63,7 @@ namespace EMotionFX
             OBJECTFLAGS_RESYNC                      = 1 << 5,
             OBJECTFLAGS_SYNCINDEX_CHANGED           = 1 << 6,
             OBJECTFLAGS_PLAYMODE_BACKWARD           = 1 << 7,
-            OBJECTFLAGS_IS_SYNCMASTER               = 1 << 8
+            OBJECTFLAGS_IS_SYNCLEADER               = 1 << 8
         };
 
         struct EMFX_API InitSettings
@@ -116,6 +116,7 @@ namespace EMotionFX
         void RemoveParameterValue(uint32 index, bool delFromMem = true);
         void AddParameterValue();       // add the last anim graph parameter to this instance
         void InsertParameterValue(uint32 index);    // add the parameter of the animgraph, at a given index
+        void MoveParameterValue(uint32 oldIndex, uint32 newIndex);   // move the parameter from old index to new index
         void RemoveAllParameters(bool delFromMem);
 
         template <typename T>
@@ -237,7 +238,7 @@ namespace EMotionFX
         void OnStartTransition(AnimGraphStateTransition* transition);
         void OnEndTransition(AnimGraphStateTransition* transition);
 
-        void CollectActiveAnimGraphNodes(MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType = AZ::TypeId::CreateNull()); // MCORE_INVALIDINDEX32 means all node types
+        void CollectActiveAnimGraphNodes(AZStd::vector<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType = AZ::TypeId::CreateNull()); // MCORE_INVALIDINDEX32 means all node types
         void CollectActiveNetTimeSyncNodes(AZStd::vector<AnimGraphNode*>* outNodes);
 
         MCORE_INLINE uint32 GetObjectFlags(uint32 objectIndex) const                                            { return mObjectFlags[objectIndex]; }
@@ -278,9 +279,9 @@ namespace EMotionFX
         const InitSettings& GetInitSettings() const;
         const AnimGraphEventBuffer& GetEventBuffer() const;
 
-        void AddServantGraph(AnimGraphInstance* servant, bool registerMasterInsideServant);
-        void RemoveServantGraph(AnimGraphInstance* servant, bool removeMasterFromServant);
-        AZStd::vector<AnimGraphInstance*>& GetServantGraphs();
+        void AddFollowerGraph(AnimGraphInstance* follower, bool registerLeaderInsideFollower);
+        void RemoveFollowerGraph(AnimGraphInstance* follower, bool removeLeaderFromFollower);
+        AZStd::vector<AnimGraphInstance*>& GetFollowerGraphs();
 
         // Network related functions
         void CreateSnapshot(bool authoritative);
@@ -323,8 +324,8 @@ namespace EMotionFX
         bool                                                m_autoReleaseAllPoses;
         bool                                                m_autoReleaseAllRefDatas;
         
-        AZStd::vector<AnimGraphInstance*>                   m_servantGraphs;
-        AZStd::vector<AnimGraphInstance*>                   m_masterGraphs;
+        AZStd::vector<AnimGraphInstance*>                   m_followerGraphs;
+        AZStd::vector<AnimGraphInstance*>                   m_leaderGraphs;
 
         // Network related members
         AZStd::shared_ptr<AnimGraphSnapshot>                mSnapshot;
@@ -341,8 +342,8 @@ namespace EMotionFX
         void RecursivePrepareNode(AnimGraphNode* node);
         void InitUniqueDatas();
 
-        void AddMasterGraph(AnimGraphInstance* master);
-        void RemoveMasterGraph(AnimGraphInstance* master);
-        AZStd::vector<AnimGraphInstance*>& GetMasterGraphs();
+        void AddLeaderGraph(AnimGraphInstance* leader);
+        void RemoveLeaderGraph(AnimGraphInstance* leader);
+        AZStd::vector<AnimGraphInstance*>& GetLeaderGraphs();
     };
 }   // namespace EMotionFX

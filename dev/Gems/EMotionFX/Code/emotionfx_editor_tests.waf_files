@@ -18,26 +18,41 @@
             "Tests/SystemComponentFixture.h",
             "Tests/Bugs/CanDeleteMotionSetWhenSameMotionInTwoMotionSets.cpp",
             "Tests/UI/CanAddSimulatedObject.cpp",
+            "Tests/UI/CanAddToSimulatedObject.cpp",
             "Tests/UI/CanAddAnimGraph.cpp",
             "Tests/UI/CanAddReferenceNode.cpp",
+            "Tests/UI/CanAddMotionToAnimGraphNode.cpp",
             "Tests/UI/CanAddMotionToMotionSet.cpp",
+            "Tests/UI/CanChangeParametersInSimulatedObject.cpp",
+            "Tests/UI/CanEditParameters.cpp",
+            "Tests/UI/CanMorphManyShapes.cpp",
+            "Tests/UI/CanSeeJoints.cpp",
+            "Tests/UI/CanAutoSaveFile.cpp",
+            "Tests/UI/CanRemoveMotionFromMotionSet.cpp",
             "Tests/UI/CanUseLayoutMenu.cpp",
             "Tests/UI/CanUseViewMenu.cpp",
+            "Tests/UI/CanUseFileMenu.cpp",
             "Tests/UI/ClothColliderTests.cpp",
             "Tests/UI/CanUseEditMenu.cpp",
+            "Tests/UI/CanOpenWorkspace.cpp",
+            "Tests/UI/CanUseHelpMenu.cpp",
             "Tests/UI/CommandRunnerFixture.cpp",
             "Tests/UI/CommandRunnerFixture.h",
             "Tests/UI/LODSkinnedMeshTests.cpp",
             "Tests/UI/RagdollEditTests.cpp",
             "Tests/UI/UIFixture.cpp",
             "Tests/UI/UIFixture.h",
+            "Tests/UI/ModalPopupHandler.cpp",
+            "Tests/UI/ModalPopupHandler.h",
             "Tests/UI/AnimGraphUIFixture.cpp",
             "Tests/UI/AnimGraphUIFixture.h",
             "Tests/UI/MenuUIFixture.cpp",
             "Tests/UI/MenuUIFixture.h",
             "Tests/UI/LY-92269.cpp",
             "Tests/UI/LY-92748.cpp",
-            "Tests/UI/LY-93621.cpp"
+            "Tests/UI/LY-93621.cpp",
+            "Tests/UI/CanAddJointAndChildren.cpp",
+            "Tests/Integration/CanAddActor.cpp"
         ],
         "Tests/Bugs": 
         [
@@ -58,7 +73,10 @@
             "Tests/ProvidesUI/AnimGraph/ParameterWindowTests.cpp",
             "Tests/ProvidesUI/AnimGraph/AnimGraphPreviewMotionTests.cpp",
             "Tests/ProvidesUI/AnimGraph/CanDeleteAnimGraphNode.cpp",
-            "Tests/ProvidesUI/AnimGraph/AnimGraphNodeTests.cpp"
+            "Tests/ProvidesUI/AnimGraph/AnimGraphNodeTests.cpp",
+            "Tests/ProvidesUI/AnimGraph/CanEditAnimGraphNode.cpp",
+            "Tests/ProvidesUI/AnimGraph/PreviewMotionFixture.cpp",
+            "Tests/ProvidesUI/AnimGraph/PreviewMotionFixture.h"
         ],
         "Tests/ProvidesUI/AnimGraph/Parameters": 
         [
@@ -69,7 +87,10 @@
         "Tests/ProvidesUI/AnimGraph/Transitions": 
         [
             "Tests/ProvidesUI/AnimGraph/Transitions/RemoveTransition.cpp",
-            "Tests/ProvidesUI/AnimGraph/Transitions/AddTransition.cpp"
+            "Tests/ProvidesUI/AnimGraph/Transitions/AddTransition.cpp",
+            "Tests/ProvidesUI/AnimGraph/Transitions/AddTransitionCondition.cpp",
+            "Tests/ProvidesUI/AnimGraph/Transitions/EditTransition.cpp",
+            "Tests/ProvidesUI/AnimGraph/Transitions/RemoveTransitionCondition.cpp"
         ],
         "Tests/ProvidesUI/AnimGraph/StateMachine": 
         [
@@ -81,11 +102,13 @@
         ],
         "Tests/ProvidesUI/MotionSet":
         [
-            "Tests/ProvidesUI/MotionSet/CanCreateMotionSet.cpp"
+            "Tests/ProvidesUI/MotionSet/CanCreateMotionSet.cpp",
+            "Tests/ProvidesUI/MotionSet/CanRemoveMotionSet.cpp"
         ],
         "Tests/ProvidesUI/Motions":
         [
-            "Tests/ProvidesUI/Motions/CanAddMotions.cpp"
+            "Tests/ProvidesUI/Motions/CanAddMotions.cpp",
+            "Tests/ProvidesUI/Motions/MotionPlaybacksTests.cpp"
         ],
         "Tests/EMotionFXBuilder": 
         [

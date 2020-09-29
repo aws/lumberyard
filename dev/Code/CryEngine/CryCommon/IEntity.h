@@ -1078,9 +1078,12 @@ struct IEntity
     // Physics.
     //////////////////////////////////////////////////////////////////////////
     virtual void Physicalize(SEntityPhysicalizeParams& params) = 0;
+
+#if ENABLE_CRY_PHYSICS
     // Description:
     //    Returns a physical entity assigned to an entity.
     virtual IPhysicalEntity* GetPhysics() const = 0;
+#endif
 
     virtual int PhysicalizeSlot(int slot, SEntityPhysicalizeParams& params) = 0;
     virtual void UnphysicalizeSlot(int slot) = 0;

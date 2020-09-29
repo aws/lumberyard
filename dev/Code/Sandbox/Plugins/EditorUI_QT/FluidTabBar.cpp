@@ -92,12 +92,8 @@ void FluidTabBar::AddCloseButtonToCurrentOnly()
 
 void FluidTabBar::AddCloseButton(int tabIndex)
 {
-    /*if(tabText(tabIndex).compare("Blank")==0)
-    {
-        RemoveCloseButton(tabIndex);
-        return;
-    }*/
-    QPushButton* closeButton = new QPushButton();
+    QToolButton* closeButton = new QToolButton();
+    closeButton->setIcon(QIcon(":/stylesheet/img/close.svg"));
     closeButton->setObjectName("FluidTabCloseButton");
     setTabButton(tabIndex, QTabBar::RightSide, closeButton);
     connect(closeButton, &QPushButton::clicked, this, [this]()

@@ -27,6 +27,7 @@ namespace ScriptCanvas
         {
             class BaseTimerNode
                 : public Node
+                , public NodePropertyInterfaceListener
                 , public AZ::TickBus::Handler
                 , public AZ::SystemTickBus::Handler
             {
@@ -51,9 +52,14 @@ namespace ScriptCanvas
                 
                 virtual ~BaseTimerNode();
 
+                // Node
                 void OnInit() override;
                 void OnConfigured() override;
                 void OnDeactivate() override;
+
+                void ConfigureVisualExtensions() override;
+                NodePropertyInterface* GetPropertyInterface(AZ::Crc32 propertyId) override;
+                ////
                 
                 // SystemTickBus
                 void OnSystemTick() override;
@@ -84,14 +90,26 @@ namespace ScriptCanvas
                 
                 virtual bool AllowInstantResponse() const;
                 virtual void OnTimeElapsed();
-                
+
+                // Store until versioning is complete
                 virtual const char* GetTimeSlotFormat() const { return "Time (%s)";  }
+                ////
+
+                virtual const char* GetBaseTimeSlotName() const { return "Delay"; }
+                virtual const char* GetBaseTimeSlotToolTip() const { return "The amount of time for the specific action to trigger."; }
                 
                 virtual void ConfigureTimeSlot(DataSlotConfiguration& configuration);
 
-                SlotId              m_timeSlotId;                
+                SlotId              m_timeSlotId;
                 
             private:
+
+                AZ::Crc32 GetTimeUnitsPropertyId() const { return AZ::Crc32("TimeUnitProperty"); }
+
+                // NodePropertyInterface
+                void OnPropertyChanged() override;
+                ////
+
                 ScriptCanvas_EditPropertyWithDefaults(int, m_timeUnits, 0, EditProperty::NameLabelOverride("Units"),
                     EditProperty::DescriptionTextOverride("Units to represent the time in."),
                     EditProperty::UIHandler(AZ::Edit::UIHandlers::ComboBox),
@@ -105,6 +123,8 @@ namespace ScriptCanvas
                     
                 Data::NumberType    m_timerCounter   = 0.0;
                 Data::NumberType    m_timerDuration   = 0.0;
+
+                ScriptCanvas::EnumComboBoxNodePropertyInterface m_timeUnitsInterface;
             };
         }
     }

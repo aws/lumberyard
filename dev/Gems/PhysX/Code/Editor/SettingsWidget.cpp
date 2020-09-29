@@ -32,18 +32,22 @@ namespace PhysX
             CreatePropertyEditor(this);
         }
 
-        void SettingsWidget::SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
-            const PhysX::EditorConfiguration& editorConfiguration)
+        void SettingsWidget::SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary,
+            const Physics::WorldConfiguration& worldConfiguration,
+            const PhysX::EditorConfiguration& editorConfiguration,
+            const PhysX::WindConfiguration& windConfiguration)
         {
             m_defaultPhysicsMaterialLibrary.m_asset = materialLibrary;
             m_worldConfiguration = worldConfiguration;
             m_editorConfiguration = editorConfiguration;
+            m_windConfiguration = windConfiguration;
 
             blockSignals(true);
             m_propertyEditor->ClearInstances();
             m_propertyEditor->AddInstance(&m_defaultPhysicsMaterialLibrary);
             m_propertyEditor->AddInstance(&m_worldConfiguration);
             m_propertyEditor->AddInstance(&m_editorConfiguration);
+            m_propertyEditor->AddInstance(&m_windConfiguration);
             m_propertyEditor->InvalidateAll();
             blockSignals(false);
         }
@@ -60,7 +64,7 @@ namespace PhysX
             AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             AZ_Assert(m_serializeContext, "Failed to retrieve serialize context.");
 
-            static const int propertyLabelWidth = 250;
+            const int propertyLabelWidth = 250;
             m_propertyEditor = new AzToolsFramework::ReflectedPropertyEditor(parent);
             m_propertyEditor->Setup(m_serializeContext, this, true, propertyLabelWidth);
             m_propertyEditor->show();
@@ -84,7 +88,11 @@ namespace PhysX
 
         void SettingsWidget::SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* /*node*/)
         {
-            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset, m_worldConfiguration, m_editorConfiguration);
+            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset,
+                m_worldConfiguration,
+                m_editorConfiguration,
+                m_windConfiguration
+            );
         }
 
         void SettingsWidget::SealUndoStack()

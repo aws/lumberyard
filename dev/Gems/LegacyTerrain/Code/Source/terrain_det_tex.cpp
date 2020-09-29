@@ -14,7 +14,7 @@
 // Description : terrain detail textures
 
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 #include "terrain.h"
 #include "terrain_sector.h"
 
@@ -37,7 +37,7 @@ void CTerrain::SetDetailLayerProperties(int nId, float fScaleX, float fScaleY,
         m_SurfaceTypes[nId].ucThisSurfaceTypeId = nId;
         m_SurfaceTypes[nId].lstnVegetationGroups.Reset();
         m_SurfaceTypes[nId].lstnVegetationGroups.AddList(lstnVegetationGroups);
-        m_SurfaceTypes[nId].pLayerMat = (CMatInfo*)pMat.get();
+        m_SurfaceTypes[nId].pLayerMat = pMat.get();
         if (m_SurfaceTypes[nId].pLayerMat && !IsEditor())
         {
            AZ_Printf("LegacyTerrain", "  Layer %d - %s has material %s", nId, szSurfName, pMat->GetName());
@@ -82,7 +82,7 @@ void CTerrain::LoadSurfaceTypesFromXML(XmlNodeRef pDoc)
             pMat = pMatMan->GetDefaultTerrainLayerMaterial();
         }
 
-        if (CMatInfo* pMatInfo = (CMatInfo*)pMat.get())
+        if (IMaterial* pMatInfo = pMat.get())
         {
             pMatInfo->m_fDefautMappingScale = fScaleX;
             Get3DEngine()->InitMaterialDefautMappingAxis(pMatInfo);

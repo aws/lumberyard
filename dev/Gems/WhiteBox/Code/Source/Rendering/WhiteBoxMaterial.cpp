@@ -31,7 +31,7 @@ namespace WhiteBox
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<WhiteBoxMaterial>("White Box Material ", "White Box material editing")
+                editContext->Class<WhiteBoxMaterial>("White Box Material", "White Box material editing")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Color, &WhiteBoxMaterial::m_tint, "Tint",

@@ -15,6 +15,8 @@
 #define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_PHYSWORLD_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <primitives.h>
 #include <physinterface.h>
@@ -128,5 +130,6 @@ private:
     HMODULE m_hPhysics;
     IPhysicalWorld* m_pPhysWorld;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_PHYSWORLD_H

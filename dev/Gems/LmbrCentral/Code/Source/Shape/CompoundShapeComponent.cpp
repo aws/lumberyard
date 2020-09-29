@@ -101,7 +101,7 @@ namespace LmbrCentral
     bool CompoundShapeComponent::IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
     {
         bool intersection = false;
-        for (const AZ::EntityId childEntity : m_configuration.GetChildEntities())
+        for (AZ::EntityId childEntity : m_configuration.GetChildEntities())
         {
             ShapeComponentRequestsBus::EventResult(intersection, childEntity, &ShapeComponentRequests::IntersectRay, src, dir, distance);
             if (intersection)

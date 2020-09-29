@@ -350,6 +350,7 @@ namespace EMStudio
 
         QTreeWidgetItem* widgetItem = new QTreeWidgetItem(parentWidgetItem);
         widgetItem->setText(0, parameter->GetName().c_str());
+        widgetItem->setToolTip(0, parameter->GetDescription().c_str());
         widgetItem->setData(0, Qt::UserRole, QString(parameter->GetName().c_str()));
         parentWidgetItem->addChild(widgetItem);
 

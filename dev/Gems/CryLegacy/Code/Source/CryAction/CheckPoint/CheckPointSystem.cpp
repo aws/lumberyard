@@ -26,7 +26,6 @@
 #include "IEntityPoolManager.h"
 #include "IActorSystem.h"
 #include "IPlayerProfiles.h"
-#include "IVehicleSystem.h"
 #include "IMovieSystem.h"
 #include "CryPath.h"
 
@@ -212,9 +211,6 @@ bool CCheckpointSystem::SaveGame(EntityId checkpointId, const char* fileName)
     // TODO For now, not saving actor info (AI) - If this happens later, support needs to be added for entity pools
     //WriteActorData(CHECKPOINT_SAVE_XML_NODE);
 
-    //vehicle data
-    WriteVehicleData(CHECKPOINT_SAVE_XML_NODE);
-
     //let game write
     if (m_pGameHandler)
     {
@@ -259,17 +255,6 @@ void CCheckpointSystem::WriteActorData(XmlNodeRef parentNode)
     node->addChild(activatedActors);
 
     parentNode->addChild(node);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CCheckpointSystem::WriteVehicleData(XmlNodeRef parentNode)
-{
-    IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-    IVehicleIteratorPtr pVehIt = pVehicleSystem->CreateVehicleIterator();
-    while (IVehicle* pVehicle = pVehIt->Next())
-    {
-        SaveExternalEntity(pVehicle->GetEntityId());
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -566,14 +551,6 @@ void CCheckpointSystem::ResetEngine()
     event.event = ENTITY_EVENT_RESET;
     event.nParam[0] = 0;
     gEnv->pEntitySystem->SendEventToAll(event);
-
-    //Vehicle System
-    IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-    IVehicleIteratorPtr pVehIt = pVehicleSystem->CreateVehicleIterator();
-    while (IVehicle* pVehicle = pVehIt->Next())
-    {
-        pVehicle->Reset(true);
-    }
 
     //make sure the scripts are clean
     gEnv->pScriptSystem->ForceGarbageCollection();

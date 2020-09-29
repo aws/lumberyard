@@ -45,7 +45,9 @@ namespace ScriptCanvasPhysics
 
     void PhysicsNodeLibrary::InitNodeRegistry(ScriptCanvas::NodeRegistry& nodeRegistry)
     {
+#if ENABLE_CRY_PHYSICS
         RayCastNodes::Registrar::AddToRegistry<PhysicsNodeLibrary>(nodeRegistry);
+#endif
         WorldNodes::Registrar::AddToRegistry<PhysicsNodeLibrary>(nodeRegistry);
     }
 
@@ -53,7 +55,9 @@ namespace ScriptCanvasPhysics
     {
         AZStd::vector<AZ::ComponentDescriptor*> descriptors;
 
+#if ENABLE_CRY_PHYSICS
         RayCastNodes::Registrar::AddDescriptors(descriptors);
+#endif
         WorldNodes::Registrar::AddDescriptors(descriptors);
 
         return descriptors;

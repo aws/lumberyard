@@ -33,21 +33,24 @@ namespace AzToolsFramework
 {
     class EditorVisibleEntityDataCache;
 
+    using EntityIdSet = AZStd::unordered_set<AZ::EntityId>; ///< Alias for unordered_set of EntityIds.
+
+    /// Entity related data required by manipulators during action.
+    struct EntityIdManipulatorLookup
+    {
+        AZ::Transform m_initial; /// Transform of Entity at mouse down on manipulator.
+    };
+
+    /// Alias for a mapping between EntityIds and Entity related data required by manipulators.
+    using EntityIdManipulatorLookups = AZStd::unordered_map<AZ::EntityId, EntityIdManipulatorLookup>;
+
     /// Generic wrapper to handle specific manipulators controlling 1-* entities.
     struct EntityIdManipulators
     {
-        /// Entity related data required by manipulators during action.
-        struct Lookup
-        {
-            AZ::Transform m_initial; /// Transform of Entity at mouse down on manipulator.
-        };
-
-        AZStd::unordered_map<AZ::EntityId, Lookup> m_lookups; ///< Mapping between EntityId and the transform of the
-                                                              ///< entity at the point the manipulator started adjusting it.
-        AZStd::unique_ptr<Manipulators> m_manipulators; ///< The manipulator aggregate currently in use.
+        EntityIdManipulatorLookups m_lookups; ///< Mapping between the EntityId and the transform of the Entity at
+                                              ///< the point a manipulator started adjusting it.
+        AZStd::unique_ptr<Manipulators> m_manipulators; ///< The aggregate manipulator currently in use.
     };
-
-    using EntityIdSet = AZStd::unordered_set<AZ::EntityId>; ///< Alias for unordered_set of EntityIds.
 
     /// Store translation and orientation only (no scale).
     struct Frame
@@ -94,8 +97,9 @@ namespace AzToolsFramework
     /// What frame/space is the manipulator currently operating in.
     enum class ReferenceFrame
     {
-        Local,
-        Parent,
+        Local, /// The local space of the individual entity.
+        Parent, /// The parent space of the individual entity (world space if no parent exists).
+        World, /// World space (space aligned to world axes - identity).
     };
 
     /// Entity selection/interaction handling.
@@ -255,10 +259,41 @@ namespace AzToolsFramework
         OptionalFrame m_pivotOverrideFrame; ///< Has a pivot override been set.
         Mode m_mode = Mode::Translation; ///< Manipulator mode - default to translation.
         Pivot m_pivotMode = Pivot::Object; ///< Entity pivot mode - default to object (authored root).
-        ReferenceFrame m_referenceFrame = ReferenceFrame::Local; ///< What reference frame is the Manipulator currently operating in.
+        ReferenceFrame m_referenceFrame = ReferenceFrame::Parent; ///< What reference frame is the Manipulator currently operating in.
         Frame m_axisPreview; ///< Axes of entity at the time of mouse down to indicate delta of translation.
         bool m_triedToRefresh = false; ///< Did a refresh event occur to recalculate the current Manipulator transform.
         bool m_didSetSelectedEntities = false; ///< Was EditorTransformComponentSelection responsible for the most recent entity selection change.
         bool m_selectedEntityIdsAndManipulatorsDirty = false; ///< Do the active manipulators need to recalculated after a modification (lock/visibility etc).
     };
+
+    /// The ETCS (EntityTransformComponentSelection) namespace contains functions and data used exclusively by
+    /// the EditorTransformComponentSelection type. Functions in this namespace are exposed to facilitate testing
+    /// and should not be used outside of EditorTransformComponentSelection or EditorTransformComponentSelectionTests.
+    namespace ETCS
+    {
+        /// The result from calculating the entity (transform component) orientation.
+        /// Does the entity have a parent or not, and what orientation should the manipulator have when
+        /// displayed at the object pivot (determined by the entity hierarchy and what modifiers are held).
+        struct PivotOrientationResult
+        {
+            AZ::Quaternion m_worldOrientation;
+            AZ::EntityId m_parentId;
+        };
+
+        /// Calculate the orientation for an individual entity based on the incoming reference frame.
+        /// Note: If the entity is in a hierarchy the Parent reference frame will return the orientation of the parent.
+        PivotOrientationResult CalculatePivotOrientation(AZ::EntityId entityId, ReferenceFrame referenceFrame);
+
+        /// Calculate the orientation for a group of entities based on the incoming reference frame.
+        template<typename EntityIdMap>
+        PivotOrientationResult CalculatePivotOrientationForEntityIds(
+            const EntityIdMap& entityIdMap, const ReferenceFrame referenceFrame);
+
+        /// Calculate the orientation for a group of entities based on the incoming
+        /// reference frame with possible pivot override.
+        template<typename EntityIdMap>
+        PivotOrientationResult CalculateSelectionPivotOrientation(
+            const EntityIdMap& entityIdMap, const OptionalFrame& pivotOverrideFrame,
+            const ReferenceFrame referenceFrame);
+    } // namespace ETCS
 } // namespace AzToolsFramework

@@ -64,7 +64,7 @@ void ComponentEntityDebugPrinter::OnTick(float /*deltaTime*/, AZ::ScriptTimePoin
         size_t numEntities = rootSlice->GetInstantiatedEntityCount();
         if (numEntities > 0)
         {
-            GetIEditor()->GetRenderer()->DrawTextQueued(Vec3(x, y, 0), textInfo, AZStd::string::format("Entities: %d", numEntities).c_str());
+            GetIEditor()->GetRenderer()->DrawTextQueued(Vec3(x, y, 0), textInfo, AZStd::string::format("Entities: %zu", numEntities).c_str());
         }
     }
 }

@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYENTITYSYSTEM_BREAKABLEMANAGER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "IBreakableManager.h"
 
 class CEntitySystem;
@@ -116,5 +118,7 @@ private:
     std::vector<IBreakableManager::SBrokenObjRec> m_brokenObjs;
     std::vector<IPhysicalEntity*> m_brokenObjsParticles;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_BREAKABLEMANAGER_H

@@ -35,11 +35,12 @@ class StatusBarItem
     Q_PROPERTY(bool clickable MEMBER m_isClickable)
 
 public:
-    StatusBarItem(const QString& name, MainStatusBar* parent);
-    StatusBarItem(const QString& name, bool isClickable, MainStatusBar* parent);
+    StatusBarItem(const QString& name, MainStatusBar* parent, bool hasLeadingSpacer = false);
+    StatusBarItem(const QString& name, bool isClickable, MainStatusBar* parent, bool hasLeadingSpacer = false);
 
     void SetText(const QString& text);
     void SetIcon(const QPixmap& icon);
+    void SetIcon(const QIcon& icon);
     void SetToolTip(const QString& tip);
 
     QSize sizeHint() const override;
@@ -56,9 +57,10 @@ protected:
     MainStatusBar* StatusBar() const;
 
 private:
-    QPixmap m_icon;
+    QIcon m_icon;
     QString m_text;
     bool m_isClickable;
+    bool m_hasLeadingSpacer;
 };
 
 class MainStatusBar

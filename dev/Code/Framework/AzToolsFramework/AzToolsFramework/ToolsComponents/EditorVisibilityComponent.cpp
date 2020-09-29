@@ -83,15 +83,5 @@ namespace AzToolsFramework
         {
             return m_visibilityFlag;
         }
-
-        void EditorVisibilityComponent::SetCurrentVisibility(const bool visibility)
-        {
-            SetEntityVisibility(GetEntityId(), visibility);
-        }
-
-        bool EditorVisibilityComponent::GetCurrentVisibility()
-        {
-            return IsEntityVisible(GetEntityId());
-        }
     } // namespace Components
 } // namespace AzToolsFramework

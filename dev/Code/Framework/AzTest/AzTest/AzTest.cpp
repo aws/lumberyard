@@ -171,6 +171,24 @@ namespace AZ
                     RemoveParameters(argc, argv, unitTestIndex, unitTestIndex);
                 }
 
+                int waitForDebbugerIndex = GetParameterIndex(argc, argv, "--wait-for-debugger");
+                if (waitForDebbugerIndex != -1)
+                {
+                    RemoveParameters(argc, argv, waitForDebbugerIndex, waitForDebbugerIndex);
+
+                    AZ::Test::Platform& platform = AZ::Test::GetPlatform();
+
+                    if (platform.SupportsWaitForDebugger())
+                    {
+                        std::cout << "Waiting for debugger..." << std::endl;
+                        platform.WaitForDebugger();
+                    }
+                    else
+                    {
+                        std::cerr << "Warning - platform does not support --wait-for-debugger feature" << std::endl;
+                    }
+                }
+
                 ::testing::InitGoogleMock(&argc, argv);
                 AZ::Test::excludeIntegTests();
                 AZ::Test::ApplyGlobalParameters(&argc, argv);

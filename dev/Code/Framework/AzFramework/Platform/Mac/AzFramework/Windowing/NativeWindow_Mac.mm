@@ -60,9 +60,9 @@ namespace AzFramework
         CGRect screenBounds = CGRectMake(geometry.m_posX, geometry.m_posY, geometry.m_width, geometry.m_height);
         
         //Create the window
-        NSUInteger styleMask = NSWindowStyleMaskClosable|NSWindowStyleMaskTitled|NSWindowStyleMaskMiniaturizable;
+        NSUInteger styleMask = NSWindowStyleMaskClosable|NSWindowStyleMaskTitled|NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskResizable;
         m_nativeWindow = [[NSWindow alloc] initWithContentRect: screenBounds styleMask: styleMask backing: NSBackingStoreBuffered defer:false];
-        
+                
         //Make the window active
         [m_nativeWindow makeKeyAndOrderFront:nil];
         m_nativeWindow.title = m_windowTitle;
@@ -73,11 +73,6 @@ namespace AzFramework
             [m_nativeWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
             [m_nativeWindow toggleFullScreen:nil];
             [m_nativeWindow setFrame:screenBounds display: true animate: true];
-        }
-        else
-        {
-            CGRect windowFrame = [m_nativeWindow frame];
-            [m_nativeWindow setFrame:NSMakeRect(0, 0, NSWidth(windowFrame), NSHeight(windowFrame)) display:true];
         }
     }
 

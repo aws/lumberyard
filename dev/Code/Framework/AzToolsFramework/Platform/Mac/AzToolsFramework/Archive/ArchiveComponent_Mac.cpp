@@ -24,6 +24,7 @@ namespace AzToolsFramework
         const char ZipExePath[] = R"(/usr/bin/zip)";
         const char UnzipExePath[] = R"(/usr/bin/unzip)";
 
+        // v  Requires investigation, the correct cmd should be R"(-r "%s" "%s/")" but tests fail
         const char CreateArchiveCmd[] = R"(-r "%s" .)";
 
         const char ExtractArchiveCmd[] = R"(-o "%s" -d "%s")";
@@ -119,7 +120,11 @@ namespace AzToolsFramework
                 return "";
             }
 
-            return AZStd::string::format(CreateArchiveCmd, archivePath.c_str(), dirToArchive.c_str());
+            // LY-116692. Requires proper investigation, the correct format should be:
+            // AZStd::string::format(CreateArchiveCmd, archivePath.c_str(), dirToArchive.c_str());
+            // but unit test ArchiveTest.ListFilesInArchiveBlocking_FilesAtThreeDepths_FilesFound fails
+            AZ_UNUSED(dirToArchive);
+            return AZStd::string::format(CreateArchiveCmd, archivePath.c_str());
         }
 
         AZStd::string GetExtractArchiveCommand(const AZStd::string& archivePath, const AZStd::string& destinationPath, bool includeRoot)

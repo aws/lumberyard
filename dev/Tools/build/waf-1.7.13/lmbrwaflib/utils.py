@@ -190,10 +190,10 @@ def copy_file_if_needed(source_path, dest_path):
     return copy
 
 
-def copy_folder(src_folders, dst_folder, ignore_paths, status_format):
+def copy_folder(src_folder, dst_folder, ignore_paths=[]):
     """
     Copy a folder, overwriting existing files only if needed
-    :param src_folders:  List of source folders to copy
+    :param src_folder:  The source folder to copy
     :param dst_folder:  The target folder destination
     :param ignore_paths:    list of items inside the folders to ignore
     :return:
@@ -222,19 +222,16 @@ def copy_folder(src_folders, dst_folder, ignore_paths, status_format):
             if os.path.isdir(src_item):
                 _copy_folder(src_item,dst_item, ignore_paths)
             else:
+                if os.path.exists(dst_item):
+                    os.chmod(dst_item, stat.S_IWRITE)
                 copy_file_if_needed(src_item, dst_item)
         return
 
     ignore_paths_normalized = [ os.path.normpath(os.path.abspath(ignore_path)) for ignore_path in ignore_paths]
-    src_folders_normalized = [ os.path.normpath(src_folder) for src_folder in src_folders]
-    for src_folder_normalized in src_folders_normalized:
+    source_folder = os.path.abspath(os.path.normpath(src_folder))
 
-        source_folder = os.path.abspath(src_folder_normalized)
-        if source_folder in ignore_paths_normalized:
-            continue
-        target_folder = os.path.abspath(os.path.normpath(os.path.join(dst_folder, src_folder_normalized)))
-        if status_format:
-            print((status_format.format(src_folder_normalized)))
+    if not source_folder in ignore_paths_normalized:
+        target_folder = os.path.abspath(os.path.normpath(dst_folder))
         _copy_folder(source_folder, target_folder, ignore_paths)
 
 
@@ -605,3 +602,57 @@ def read_compile_settings_file(settings_file, configuration):
 
     result = _read_config_section(settings_json, configuration, 'common')
     return result
+
+
+def read_audio_config_file(bld):
+    """
+    Read in a config json file for audio config settings and return the json structure.
+    :param bld: Waf Context
+    :return: Json structure representing parsed file contents, or None if there's a parse error.
+    """
+    # First check if bld context has these members.
+    # They are defined in a Gem's wscript so they may not exist at all.
+    if not (hasattr(bld, 'audio_middleware') and hasattr(bld, 'audio_config_file')):
+        return None
+
+    asset_cache_dir = bld.assets_cache_path.lower()
+    audio_config_json = None
+    if bld.audio_middleware and bld.audio_config_file and (bld.game_platform != bld.assets_platform):
+        file_path = os.path.join(asset_cache_dir, bld.project, 'sounds', bld.audio_middleware, bld.audio_config_file)
+        try:
+            with open(file_path) as config_file:
+                file_contents = config_file.read()
+                try:
+                    audio_config_json = json.loads(file_contents)
+                except json.JSONDecodeError as decode_error:
+                    Logs.warn(f'[WARN] Config file {bld.audio_config_file} has parse error at line: {decode_error.lineno}')
+                    audio_config_json = None
+        except FileNotFoundError as e:
+            # Not an issue if file isn't there, but we must catch it...
+            pass
+
+    return audio_config_json
+
+
+def get_audio_excluded_paths(bld, config_json):
+    """
+    Get a list of file paths (relative to asset cache) to be excluded from packaging.
+    :param bld: Waf Context
+    :param config_json: Json structure representing parsed config file
+    :return: List of asset cache paths to exclude
+    """
+    exclude_patterns = []
+
+    # The following json parsing uses a format defined in the Wwise Gem.
+    # If we added another audio middleware the config file format would need to be made common.
+    # Or, if the new middleware wants its own format, bld.audio_middleware lets us know which one.
+    if config_json and 'platformMaps' in config_json:
+        for p in config_json['platformMaps']:
+            if p['assetPlatform'] != bld.game_platform:
+                pattern = '{}/sounds/{}/{}/*'.format(bld.project,
+                                                     bld.audio_middleware,
+                                                     p['bankSubPath']).lower()
+                exclude_patterns.append(pattern)
+
+    return exclude_patterns
+

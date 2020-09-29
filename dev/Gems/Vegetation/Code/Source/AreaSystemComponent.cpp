@@ -30,9 +30,17 @@
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/sort.h>
 #include <AzCore/std/utils.h>
+#include <AzCore/Component/TransformBus.h>
+
+
+#include <AzFramework/Components/CameraBus.h>
+#ifdef VEGETATION_EDITOR
+#include <AzToolsFramework/API/EditorCameraBus.h>
+#endif
 
 #include <I3DEngine.h>
 #include <ISystem.h>
+#include <cinttypes>
 
 namespace Vegetation
 {
@@ -207,8 +215,9 @@ namespace Vegetation
 
         if (totalInstances > s_maxVegetationInstances)
         {
-            return AZ::Failure(AZStd::string::format("The combination of View Area Grid Size and Sector Point Density will create %lld instances.  Only a max of %lld instances is allowed.",
-                totalInstances, s_maxVegetationInstances));
+            return AZ::Failure(
+                AZStd::string::format("The combination of View Area Grid Size and Sector Point Density will create %" PRId64 " instances.  Only a max of %" PRId64 " instances is allowed.",
+                static_cast<AZ::u64>(totalInstances), static_cast<AZ::u64>(s_maxVegetationInstances)));
         }
 
         return AZ::Success();
@@ -230,8 +239,9 @@ namespace Vegetation
 
         if (totalInstances >= s_maxVegetationInstances)
         {
-            return AZ::Failure(AZStd::string::format("The combination of View Area Grid Size and Sector Point Density will create %lld instances.  Only a max of %lld instances is allowed.",
-                totalInstances, s_maxVegetationInstances));
+            return AZ::Failure(
+                AZStd::string::format("The combination of View Area Grid Size and Sector Point Density will create %" PRId64 " instances.  Only a max of %" PRId64 " instances is allowed.",
+                static_cast<AZ::u64>(totalInstances), static_cast<AZ::u64>(s_maxVegetationInstances)));
         }
 
         const float instancesPerMeter = static_cast<float>(sectorDensity) / static_cast<float>(m_sectorSizeInMeters);
@@ -812,19 +822,49 @@ namespace Vegetation
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        auto engine = m_system ? m_system->GetI3DEngine() : nullptr;
-        if (engine)
+        //Get the active camera.
+        bool cameraPositionIsValid = false;
+        AZ::Vector3 cameraPosition(0.0f);
+
+#ifdef VEGETATION_EDITOR
+        Camera::EditorCameraRequestBus::BroadcastResult(cameraPositionIsValid, &Camera::EditorCameraRequestBus::Events::GetActiveCameraPosition, cameraPosition);
+        if (!cameraPositionIsValid)
+#endif // VEGETATION_EDITOR
         {
-            Vec3 pos = engine->GetRenderingCamera().GetPosition();
+            AZ::EntityId activeCameraId;
+            Camera::CameraSystemRequestBus::BroadcastResult(activeCameraId, &Camera::CameraSystemRequests::GetActiveCamera);
+            if (activeCameraId.IsValid())
+            {
+                AZ::TransformBus::EventResult(cameraPosition, activeCameraId, &AZ::TransformInterface::GetWorldTranslation);
+                cameraPositionIsValid = true;
+            }
+            else
+            {
+                //Go straight to the engine.
+                auto engine = m_system ? m_system->GetI3DEngine() : nullptr;
+                if (engine)
+                {
+                    const Vec3 pos = engine->GetRenderingCamera().GetPosition();
+                    cameraPosition = LYVec3ToAZVec3(pos);
+                    cameraPositionIsValid = true;
+                }
+            }
+        }
+
+        if (cameraPositionIsValid)
+        {
+            float posX = cameraPosition.GetX();
+            float posY = cameraPosition.GetY();
+
             const int sectorSizeInMeters = m_configuration.m_sectorSizeInMeters;
             const int viewSize = m_configuration.m_viewRectangleSize;
             int halfViewSize = viewSize >> 1;
-            pos.x -= halfViewSize * sectorSizeInMeters;
-            pos.y -= halfViewSize * sectorSizeInMeters;
+            posX -= halfViewSize * sectorSizeInMeters;
+            posY -= halfViewSize * sectorSizeInMeters;
 
             auto prevViewRect = m_currViewRect;
-            m_currViewRect.m_x = (int)(pos.x * m_worldToSector);
-            m_currViewRect.m_y = (int)(pos.y * m_worldToSector);
+            m_currViewRect.m_x = (int)(posX * m_worldToSector);
+            m_currViewRect.m_y = (int)(posY * m_worldToSector);
             m_currViewRect.m_width = viewSize;
             m_currViewRect.m_height = viewSize;
             m_currViewRect.m_viewRectBounds =
@@ -935,6 +975,12 @@ namespace Vegetation
         // (see EditorVegetationComponentBase.h) they will trigger a refresh of the vegetation areas which will produce all our instances again.
     }
 
+    void AreaSystemComponent::OnCryEditorCloseScene()
+    {
+        // Clear all our spawned vegetation data
+        ReleaseData();
+    }
+
 
     void AreaSystemComponent::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
     {
@@ -945,6 +991,7 @@ namespace Vegetation
         case ESYSTEM_EVENT_GAME_MODE_SWITCH_START:
         case ESYSTEM_EVENT_LEVEL_LOAD_START:
         case ESYSTEM_EVENT_LEVEL_UNLOAD:
+        case ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_SWITCH_START:
         {
             ReleaseData();
             break;
@@ -1108,7 +1155,7 @@ namespace Vegetation
             if (exists)
             {
                 CreateClaim(sectorInfo, handle, instanceData);
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::CreateInstance, instanceData.m_instanceId, instanceData.m_position, instanceData.m_id));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::CreateInstance, instanceData.m_instanceId, instanceData.m_position, instanceData.m_id));
             }
 
             return exists;
@@ -1265,7 +1312,7 @@ namespace Vegetation
     void AreaSystemComponent::VegetationThreadTasks::FillSector(SectorInfo& sectorInfo, const VegetationAreaVector& activeAreas)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
-        VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FillSectorStart, sectorInfo.GetSectorX(), sectorInfo.GetSectorY(), AZStd::chrono::system_clock::now()));
+        VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FillSectorStart, sectorInfo.GetSectorX(), sectorInfo.GetSectorY(), AZStd::chrono::system_clock::now()));
 
         ReleaseUnregisteredClaims(sectorInfo);
 
@@ -1288,21 +1335,21 @@ namespace Vegetation
             //only consider areas that intersect this sector
             if (!area.m_bounds.IsValid() || area.m_bounds.Overlaps(sectorInfo.m_bounds))
             {
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FillAreaStart, area.m_id, AZStd::chrono::system_clock::now()));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FillAreaStart, area.m_id, AZStd::chrono::system_clock::now()));
 
                 //each area is responsible for removing whatever points it claims from m_availablePoints, so subsequent areas will have fewer points to try to claim.
                 AreaNotificationBus::Event(area.m_id, &AreaNotificationBus::Events::OnAreaConnect);
                 AreaRequestBus::Event(area.m_id, &AreaRequestBus::Events::ClaimPositions, EntityIdStack{}, activeContext);
                 AreaNotificationBus::Event(area.m_id, &AreaNotificationBus::Events::OnAreaDisconnect);
 
-                VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FillAreaEnd, area.m_id, AZStd::chrono::system_clock::now(), activeContext.m_availablePoints.size()));
+                VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FillAreaEnd, area.m_id, AZStd::chrono::system_clock::now(), aznumeric_cast<AZ::u32>(activeContext.m_availablePoints.size())));
             }
         }
         size_t remainingPointCount = activeContext.m_availablePoints.size();
 
         ReleaseUnusedClaims(sectorInfo);
 
-        VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FillSectorEnd, sectorInfo.GetSectorX(), sectorInfo.GetSectorY(), AZStd::chrono::system_clock::now(), remainingPointCount));
+        VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FillSectorEnd, sectorInfo.GetSectorX(), sectorInfo.GetSectorY(), AZStd::chrono::system_clock::now(), aznumeric_cast<AZ::u32>(remainingPointCount)));
     }
 
     void AreaSystemComponent::VegetationThreadTasks::EmptySector(SectorInfo& sectorInfo)
@@ -1560,6 +1607,12 @@ namespace Vegetation
         // updates to add to the queue.  Without it, we wouldn't know if a previous data change caused
         // us to mark any sectors still in view as needing an update.
         m_deleteWorkList.clear();
+
+        // If we're deleting all sectors, make sure we don't have any of them previously queued up for creation / updating.
+        if (deleteAllSectors)
+        {
+            m_updateWorkList.clear();
+        }
 
         // Run through our list of active sectors and determine which ones need adding / updating / deleting
         {

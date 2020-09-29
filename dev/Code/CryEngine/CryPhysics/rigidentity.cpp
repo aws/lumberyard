@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "bvtree.h"
@@ -6749,3 +6751,5 @@ void CRigidEntity::GetMemoryStatistics(ICrySizer* pSizer) const
     pSizer->AddObject(m_pConstraints, m_nConstraintsAlloc * sizeof(m_pConstraints[0]));
     pSizer->AddObject(m_pConstraintInfos, m_nConstraintsAlloc * sizeof(m_pConstraintInfos[0]));
 }
+
+#endif // ENABLE_CRY_PHYSICS

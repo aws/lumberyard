@@ -221,8 +221,10 @@ CScriptBind_System::CScriptBind_System(IScriptSystem* pScriptSystem, ISystem* pS
     SCRIPT_REG_FUNC(SetBudget);
     SCRIPT_REG_FUNC(SetVolumetricFogModifiers);
 
+#if ENABLE_CRY_PHYSICS
     SCRIPT_REG_FUNC(SetWind);
     SCRIPT_REG_FUNC(GetWind);
+#endif // ENABLE_CRY_PHYSICS
 
     SCRIPT_REG_TEMPLFUNC(GetSurfaceTypeIdByName, "surfaceName");
     SCRIPT_REG_TEMPLFUNC(GetSurfaceTypeNameById, "surfaceId");
@@ -1111,6 +1113,7 @@ int CScriptBind_System::DrawLabel(IFunctionHandler* pH)
 */
 int CScriptBind_System::GetPhysicalEntitiesInBox(IFunctionHandler* pH, Vec3 center, float radius)
 {
+#if ENABLE_CRY_PHYSICS
     IEntitySystem* pEntitySystem = gEnv->pEntitySystem;
 
     SEntityProximityQuery query;
@@ -1146,6 +1149,11 @@ int CScriptBind_System::GetPhysicalEntitiesInBox(IFunctionHandler* pH, Vec3 cent
             return pH->EndFunction(tbl);
         }
     }
+#else
+    AZ_UNUSED(pH);
+    AZ_UNUSED(center);
+    AZ_UNUSED(radius);
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -1174,6 +1182,7 @@ int CScriptBind_System::GetPhysicalEntitiesInBoxByClass(IFunctionHandler* pH, Ve
         int k = 0;
         for (int i = 0; i < n; i++)
         {
+#if ENABLE_CRY_PHYSICS
             IEntity* pEntity = query.pEntities[i];
             if (pEntity)
             {
@@ -1188,6 +1197,7 @@ int CScriptBind_System::GetPhysicalEntitiesInBoxByClass(IFunctionHandler* pH, Ve
                     tbl->SetAt(++k, pEntityTable);
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
         }
         if (k)
         {
@@ -2240,6 +2250,7 @@ int CScriptBind_System::GetViewCameraAngles(IFunctionHandler* pH)
 /////////////////////////////////////////////////////////////////////////////////
 int CScriptBind_System::RayWorldIntersection(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     assert(pH->GetParamCount() >= 3 && pH->GetParamCount() <= 6);
 
     Vec3 vPos(0, 0, 0);
@@ -2309,11 +2320,15 @@ int CScriptBind_System::RayWorldIntersection(IFunctionHandler* pH)
     }
 
     return pH->EndFunction(*pObj);
+#else
+    return pH->EndFunction();
+#endif // ENABLE_CRY_PHYSICS
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 int CScriptBind_System::RayTraceCheck(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     SCRIPT_CHECK_PARAMETERS(4);
     Vec3 src, dst;
     int skipId1, skipId2;
@@ -2341,6 +2356,9 @@ int CScriptBind_System::RayTraceCheck(IFunctionHandler* pH)
     int nHits = m_pSystem->GetIPhysicalWorld()->RayWorldIntersection(src, dst - src, ent_static | ent_terrain,  rwi_ignore_noncolliding |  rwi_stop_at_pierceable, &RayHit, 1, skipPhys, 2);
 
     return pH->EndFunction((bool)(nHits == 0));
+#else
+    return pH->EndFunction(false);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -2412,6 +2430,7 @@ int CScriptBind_System::SetVolumetricFogModifiers(IFunctionHandler* pH)
     return pH->EndFunction();
 }
 
+#if ENABLE_CRY_PHYSICS
 /////////////////////////////////////////////////////////////////////////////////
 int CScriptBind_System::SetWind(IFunctionHandler* pH)
 {
@@ -2427,6 +2446,7 @@ int CScriptBind_System::GetWind(IFunctionHandler* pH)
 {
     return pH->EndFunction(m_p3DEngine->GetWind(AABB(ZERO), false));
 }
+#endif // ENABLE_CRY_PHYSICS
 
 /////////////////////////////////////////////////////////////////////////////////
 int CScriptBind_System::GetSurfaceTypeIdByName(IFunctionHandler* pH, const char* surfaceName)

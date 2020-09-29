@@ -18,7 +18,8 @@
             "Lib/Tests/test_VegetationMap.cpp",
             "Lib/Tests/test_VegetationToolPythonBindings.cpp",
             "Lib/Tests/test_ViewPanePythonBindings.cpp",
-            "Lib/Tests/test_ViewportTitleDlgPythonBindings.cpp"
+            "Lib/Tests/test_ViewportTitleDlgPythonBindings.cpp",
+            "Lib/Tests/test_DisplaySettingsPythonBindings.cpp"
         ]
     }
 }

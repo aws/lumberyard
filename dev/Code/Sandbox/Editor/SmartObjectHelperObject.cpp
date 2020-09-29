@@ -22,6 +22,35 @@
 #include "../Viewport.h"
 #include "SmartObjectHelperObject.h"
 
+//////////////////////////////////////////////////////////////////////////
+IVariable* GetChildVar(const IVariable* array, const char* name, bool recursive = false)
+{
+    if (array == 0 || array->IsEmpty())
+    {
+        return 0;
+    }
+
+    // first search top level
+    for (int i = 0; i < array->GetNumVariables(); ++i)
+    {
+        IVariable* var = array->GetVariable(i);
+        if (0 == QString::compare(name, var->GetName()))
+        {
+            return var;
+        }
+    }
+    if (recursive)
+    {
+        for (int i = 0; i < array->GetNumVariables(); ++i)
+        {
+            if (IVariable* pVar = GetChildVar(array->GetVariable(i), name, recursive))
+            {
+                return pVar;
+            }
+        }
+    }
+    return NULL;
+}
 
 //////////////////////////////////////////////////////////////////////////
 // CBase implementation.
@@ -41,9 +70,6 @@ CSmartObjectHelperObject::CSmartObjectHelperObject()
 CSmartObjectHelperObject::~CSmartObjectHelperObject()
 {
 }
-
-//////////////////////////////////////////////////////////////////////////
-extern IVariable* GetChildVar(const IVariable* array, const char* name, bool recursive = false);
 
 //////////////////////////////////////////////////////////////////////////
 void CSmartObjectHelperObject::UpdateVarFromObject()

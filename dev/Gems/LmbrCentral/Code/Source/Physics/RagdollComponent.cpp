@@ -9,7 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "RagdollComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -536,3 +539,5 @@ namespace LmbrCentral
     }
 
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

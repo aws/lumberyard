@@ -201,6 +201,7 @@ public:
     const AABB& GetAABB() const { return m_AABB; }
     void ExportSkeleton();
 
+#if ENABLE_CRY_PHYSICS
     // -------------------------------------------------------------------------
     // Physics
     // -------------------------------------------------------------------------
@@ -232,6 +233,10 @@ public:
     void GetRandomPos(PosNorm& ran, EGeomForm eForm) const;
 
     CSkeletonPhysics m_physics;
+#else
+    float GetExtent(EGeomForm eForm);
+    void GetRandomPos(PosNorm& ran, EGeomForm eForm) const;
+#endif // ENABLE_CRY_PHYSICS
 
 public:
     CCharInstance* m_pInstance;

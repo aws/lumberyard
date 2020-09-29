@@ -64,6 +64,12 @@
             "Default": "true",
             "Description": "If stack was created with the project admin and owner roles",
             "Type": "String"
+        },
+
+        "CustomDomainName": {
+            "Default": "",
+            "Description": "Custom domain name for API Gateway",
+            "Type": "String"
         }
     },
 
@@ -987,7 +993,9 @@
                                     "Resource": [
                                         { "Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/restapis/*"]] },
                                         { "Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/restapis"]] },
-                                        { "Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/tags/*"]] }
+                                        { "Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/tags/*"]] },
+                                        { "Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/domainnames/*"]] },
+                                        { "Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/domainnames"]] }
                                     ],
                                     "Effect": "Allow"
                                 },
@@ -1806,7 +1814,8 @@
                 "Settings": {
                     "ProjectStackArn": { "Ref": "AWS::StackId" },
                     "ProjectConfigurationBucket": { "Ref": "Configuration" },
-                    "CloudGemPortalBucket": { "Ref": "CloudGemPortal" }
+                    "CloudGemPortalBucket": { "Ref": "CloudGemPortal" },
+                    "CustomDomainName": { "Ref": "CustomDomainName" }
                 }
             },
             "Type": "Custom::LambdaConfiguration"

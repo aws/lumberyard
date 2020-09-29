@@ -330,7 +330,7 @@ struct CVisAreaManager
     void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback = nullptr) override;
     void GetObjectsByFlags(uint dwFlags, PodArray<IRenderNode*>& lstObjects);
 
-    void GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox);
+    void GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox, bool bGetFirstProbe = true);
 
     void GetObjects(PodArray<IRenderNode*>& lstObjects, const AABB* pBBox);
     CVisArea* GetCurVisArea() { return m_pCurArea ? m_pCurArea : m_pCurPortal; }

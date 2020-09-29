@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzFramework/Physics/PhysicsSystemComponentBus.h>
 
 namespace LmbrCentral
@@ -20,3 +22,5 @@ namespace LmbrCentral
     using PhysicsSystemRequestBus = AZ::EBus<AzFramework::PhysicsSystemRequests>;
     using PhysicsSystemEventBus = AZ::EBus<AzFramework::PhysicsSystemEvents>;
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

@@ -100,7 +100,7 @@ namespace EMotionFX
                         const SimulatedObject* object = index.data(SimulatedObjectModel::ROLE_OBJECT_PTR).value<SimulatedObject*>();
                         if (object)
                         {
-                            for (const auto jointInObject : object->GetSimulatedJoints())
+                            for (const auto& jointInObject : object->GetSimulatedJoints())
                             {
                                 selectedJointIndices.emplace(jointInObject->GetSkeletonJointIndex());
                             }
@@ -137,7 +137,7 @@ namespace EMotionFX
 
         m_simulatedObjectInspectorDock = new AzQtComponents::StyledDockWidget("Simulated Object Inspector", mDock);
         m_simulatedObjectInspectorDock->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
-        m_simulatedObjectInspectorDock->setObjectName("SimulatedObjectWidget::m_simulatedObjectInspectorDock");
+        m_simulatedObjectInspectorDock->setObjectName("EMFX.SimulatedObjectWidget.SimulatedObjectInspectorDock");
         m_simulatedJointWidget = new SimulatedJointWidget(this);
         m_simulatedObjectInspectorDock->setWidget(m_simulatedJointWidget);
 
@@ -204,6 +204,11 @@ namespace EMotionFX
     SimulatedObjectModel* SimulatedObjectWidget::GetSimulatedObjectModel() const
     {
         return m_simulatedObjectModel.get();
+    }
+
+    SimulatedJointWidget* SimulatedObjectWidget::GetSimulatedJointWidget() const
+    {
+        return m_simulatedJointWidget;
     }
 
     // Called when right-clicked the simulated object widget.
@@ -380,6 +385,7 @@ namespace EMotionFX
         if (ColliderHelpers::AreCollidersReflected())
         {
             QMenu* contextMenu = menu->addMenu("Simulated object collider");
+            contextMenu->setObjectName("EMFX.SimulatedObjectWidget.SimulatedObjectColliderMenu");
 
             if (selectedRowIndices.count() > 0)
             {
@@ -405,6 +411,7 @@ namespace EMotionFX
             if (anySelectedJointHasCollider)
             {
                 QAction* removeCollidersAction = contextMenu->addAction("Remove colliders");
+                removeCollidersAction->setObjectName("EMFX.SimulatedObjectWidget.RemoveCollidersAction");
                 connect(removeCollidersAction, &QAction::triggered, this, &SimulatedObjectWidget::OnClearColliders);
             }
         }

@@ -713,8 +713,10 @@ struct SClothGeometry
 
     // the number of vertices in the sim mesh
     int nVtx;
+#if ENABLE_CRY_PHYSICS
     // registered physical geometry constructed from sim mesh
     phys_geometry* pPhysGeom;
+#endif
     // mapping between original mesh and welded one
     vtx_idx* weldMap;
     // number of non-welded vertices in the sim mesh
@@ -739,7 +741,9 @@ struct SClothGeometry
 
     SClothGeometry()
         : nVtx(0)
+#if ENABLE_CRY_PHYSICS
         , pPhysGeom(NULL)
+#endif
         , weldMap(NULL)
         , nUniqueVtx(0)
         , weights(NULL)
@@ -888,7 +892,9 @@ public:
     }
 
 
+#if ENABLE_CRY_PHYSICS
     bool AddGeometry(phys_geometry* pgeom);
+#endif
     int SetParams(const SVClothParams& params, float* weights);
     void SetSkinnedPositions(const Vector4* points);
     void GetVertices(Vector4* pWorldCoords);
@@ -1110,6 +1116,7 @@ ILINE Vector4 CClothPiece::SkinByTriangle(int i, strided_pointer<Vec3>& pVtx, in
     DynArray<Vector4>& tmpClothVtx = m_buffers->m_tmpClothVtx;
     std::vector<Vector4>& normals = m_buffers->m_normals;
     const SSkinMapEntry& skinMap = m_clothGeom->skinMap[lod][i];
+#if ENABLE_CRY_PHYSICS
     int tri = skinMap.iTri;
     if (tri >= 0)
     {
@@ -1125,6 +1132,7 @@ ILINE Vector4 CClothPiece::SkinByTriangle(int i, strided_pointer<Vec3>& pVtx, in
         return tmpClothVtx[idx] + skinMap.s * u + skinMap.t * v + skinMap.h * n;
     }
     else
+#endif // ENABLE_CRY_PHYSICS
     {
         return tmpClothVtx[skinMap.iMap];
     }

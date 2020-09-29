@@ -166,7 +166,9 @@ IStreamEngine*      g_pIStreamEngine    = NULL; //module implemented in CrySyste
 
 IRenderer*                  g_pIRenderer            = NULL;
 IRenderAuxGeom*         g_pAuxGeom              = NULL;
+#if ENABLE_CRY_PHYSICS
 IPhysicalWorld*         g_pIPhysicalWorld   = NULL;
+#endif
 I3DEngine*                  g_pI3DEngine            = NULL; //Need just for loading of chunks. Should be part of CrySystem
 
 

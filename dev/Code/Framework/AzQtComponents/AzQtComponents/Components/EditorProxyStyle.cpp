@@ -15,53 +15,51 @@
 # pragma warning(disable: 4127) // warning C4127: conditional expression is constant in qvector.h when including qpainter.h
 #endif
 
+#include <AzQtComponents/Components/DockBar.h>
+#include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
-#include <AzQtComponents/Components/StyledSpinBox.h>
-#include <AzQtComponents/Components/ToolButtonComboBox.h>
 #include <AzQtComponents/Components/SearchLineEdit.h>
-#include <AzQtComponents/Components/StyledLineEdit.h>
-#include <AzQtComponents/Components/StyledDetailsTableView.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyledDetailsTableView.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/StyledLineEdit.h>
+#include <AzQtComponents/Components/StyledSpinBox.h>
 #include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
-#include <AzQtComponents/Components/DockBar.h>
-#include <AzQtComponents/Components/DockTabBar.h>
-#include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/ToolButtonComboBox.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 #include <AzQtComponents/Utilities/TextUtilities.h>
 
-#include <QTimer>
 #include <QAbstractItemView>
-#include <QToolBar>
-#include <QTreeView>
-#include <QTableView>
+#include <QAbstractNativeEventFilter>
+#include <QApplication>
+#include <QComboBox>
 #include <QDebug>
+#include <QDockWidget>
+#include <QFile>
+#include <QHeaderView>
+#include <QIcon>
+#include <QLineEdit>
+#include <QMainWindow>
+#include <QMenu>
+#include <QPainter>
 #include <QPushButton>
+#include <QGuiApplication>
+#include <QSpinBox>
+#include <QStyledItemDelegate>
 #include <QStyleOption>
 #include <QStyleOptionButton>
-#include <QLineEdit>
-#include <QComboBox>
-#include <QSpinBox>
-#include <QPainter>
-#include <QAbstractItemView>
-#include <QToolButton>
-#include <QStyledItemDelegate>
-#include <QIcon>
 #include <QStyleOptionToolButton>
-#include <QGuiApplication>
-#include <QDockWidget>
-#include <QMainWindow>
-#include <QVector>
+#include <QTableView>
 #include <QTimeEdit>
-#include <QHeaderView>
-#include <QAbstractNativeEventFilter>
-#include <QWindow>
-#include <QApplication>
-#include <QMenu>
-#include <QPushButton>
 #include <QTimer>
-#include <QFile>
+#include <QTreeView>
+#include <QToolBar>
+#include <QToolButton>
+#include <QVector>
+#include <QWindow>
 
 #include <AzQtComponents/Components/Widgets/ColorPicker.h>
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
@@ -309,17 +307,6 @@ namespace AzQtComponents
         painter->restore();
     }
 
-    static QToolButton* expansionButton(QToolBar* tb)
-    {
-        if (!tb)
-        {
-            return nullptr;
-        }
-
-        auto children = tb->findChildren<QToolButton*>("qt_toolbar_ext_button");
-        return children.isEmpty() ? nullptr : children.first();
-    }
-
     static QObject* UpdateOnMouseEventFilter()
     {
         static struct Filter : public QObject
@@ -350,7 +337,7 @@ namespace AzQtComponents
 
     void EditorProxyStyle::fixToolBarSizeConstraints(QToolBar* tb)
     {
-        QToolButton* expansion = expansionButton(tb);
+        QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(tb);
         const bool expanded = expansion ? expansion->isChecked() : false;
 
         if (expanded)
@@ -457,7 +444,7 @@ namespace AzQtComponents
         int ui10IconSize = iconSizeProp.isValid() ? iconSizeProp.toInt() : ToolBar::g_ui10DefaultIconSize;
         tb->setIconSize({ui10IconSize, ui10IconSize});
 
-        if (QToolButton* expansion = expansionButton(tb))
+        if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(tb))
         {
             connect(expansion, &QAbstractButton::toggled, this, [tb, this](bool)
                 {

@@ -259,7 +259,7 @@ void IrisShafts::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
             m_fAngleRange = 0.65f * occ * occ + 0.35f;
             m_fPrimaryDir = occQuery->GetDirResult() / (2 * PI);
             m_fConcentrationBoost = 2.0f - occ;
-            m_fBrightnessBoost = 1 + 2 * pow(occ - 1, 6);
+            m_fBrightnessBoost = aznumeric_cast<float>(1 + 2 * pow(occ - 1, 6));
 
             m_meshDirty = true;
             m_fPrevOcc = occ;
@@ -267,7 +267,7 @@ void IrisShafts::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SA
         else if (occ < 0.05f)
         {
             m_fAngleRange = 0.33f;
-            m_fBrightnessBoost = 1 + 2 * pow(interpOcc - 1, 6);
+            m_fBrightnessBoost = aznumeric_cast<float>(1 + 2 * pow(interpOcc - 1, 6));
             m_fPrevOcc = 0;
             m_meshDirty = true;
         }

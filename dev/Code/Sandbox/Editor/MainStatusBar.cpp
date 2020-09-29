@@ -37,6 +37,8 @@
 #include <QMouseEvent>
 #include <QMenu>
 #include <QAction>
+#include <QCheckBox>
+#include <QWidgetAction>
 #include <QMessageBox>
 #include <QMutexLocker>
 #include <QStringList>
@@ -47,19 +49,24 @@
 
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/SourceControl/QtSourceControlNotificationHandler.h>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
+#include <AzQtComponents/Components/Style.h>
 
 const int iconTextSpacing = 3;
 const int marginSpacing = 2;
+const int spacerSpacing = 5;
+const int spacerColor = 0x6F6D6D;
 
-StatusBarItem::StatusBarItem(const QString& name, bool isClickable, MainStatusBar* parent)
+StatusBarItem::StatusBarItem(const QString& name, bool isClickable, MainStatusBar* parent, bool hasLeadingSpacer)
     : QWidget(parent)
     , m_isClickable(isClickable)
+    , m_hasLeadingSpacer(hasLeadingSpacer)
 {
     setObjectName(name);
 }
 
-StatusBarItem::StatusBarItem(const QString& name, MainStatusBar* parent)
-    : StatusBarItem(name, false, parent)
+StatusBarItem::StatusBarItem(const QString& name, MainStatusBar* parent, bool hasLeadingSpacer)
+    : StatusBarItem(name, false, parent, hasLeadingSpacer)
 {}
 
 void StatusBarItem::SetText(const QString& text)
@@ -74,7 +81,7 @@ void StatusBarItem::SetText(const QString& text)
 
 void StatusBarItem::SetIcon(const QPixmap& icon)
 {
-    QPixmap origIcon = m_icon;
+    QIcon origIcon = m_icon;
 
     if (icon.isNull())
     {
@@ -92,6 +99,24 @@ void StatusBarItem::SetIcon(const QPixmap& icon)
             m_icon = icon;
         }
     }
+
+    if (icon.isNull() ^ origIcon.isNull())
+    {
+        updateGeometry();
+    }
+
+    // don't generate paintevents unless we absolutely have changed!
+    if (origIcon.cacheKey() != m_icon.cacheKey())
+    {
+        update();
+    }
+}
+
+void StatusBarItem::SetIcon(const QIcon& icon)
+{
+    QIcon origIcon = m_icon;
+
+    m_icon = icon;
 
     if (icon.isNull() ^ origIcon.isNull())
     {
@@ -135,6 +160,8 @@ QSize StatusBarItem::sizeHint() const
     hint.rwidth() += 2 * marginSpacing;
     hint.rheight() += 2 * marginSpacing;
 
+    hint.rwidth() += m_hasLeadingSpacer ? spacerSpacing : 0;
+
     return hint;
 }
 
@@ -153,24 +180,33 @@ void StatusBarItem::paintEvent(QPaintEvent* pe)
     auto rect = contentsRect();
     rect.adjust(marginSpacing, marginSpacing, -marginSpacing, -marginSpacing);
 
-    QRect iconRect;
-    if (!m_icon.isNull())
+    QRect textRect = rect;
+    if (m_hasLeadingSpacer)
     {
-        iconRect = rect;
-        iconRect.setWidth(iconRect.height());
-        painter.drawItemPixmap(iconRect, Qt::AlignCenter, m_icon);
-    }
+        textRect.adjust(spacerSpacing, 0, 0, 0);
 
+    }
     if (!CurrentText().isEmpty())
     {
-        auto textRect = rect;
-        auto iconWidth = iconRect.width();
-        if (iconWidth > 0)
-        {
-            iconWidth += iconTextSpacing; //margin
-        }
-        textRect.setLeft(rect.left() + iconWidth);
         painter.drawItemText(textRect, Qt::AlignLeft | Qt::AlignVCenter, this->palette(), true, CurrentText(), QPalette::Foreground);
+    }
+
+    if (!m_icon.isNull())
+    {
+        auto textWidth = textRect.width();
+        if (textWidth > 0)
+        {
+            textWidth += iconTextSpacing; //margin
+        }
+        QRect iconRect = { textRect.left() + textWidth - textRect.height() - 1, textRect.top() + 2,  textRect.height() - 4, textRect.height() - 4 };
+        m_icon.paint(&painter, iconRect, Qt::AlignCenter);
+    }
+
+    if (m_hasLeadingSpacer)
+    {
+        QPen pen{ spacerColor };
+        painter.setPen(pen);
+        painter.drawLine(spacerSpacing / 2, 3, spacerSpacing / 2, rect.height() + 2);
     }
 }
 
@@ -193,9 +229,9 @@ MainStatusBar::MainStatusBar(QWidget* parent)
 
     addPermanentWidget(new SourceControlItem(QStringLiteral("source_control"), this), 1);
 
-    addPermanentWidget(new StatusBarItem(QStringLiteral("connection"), true, this), 1);
+    addPermanentWidget(new StatusBarItem(QStringLiteral("connection"), true, this, true), 1);
 
-    addPermanentWidget(new StatusBarItem(QStringLiteral("game_info"), this), 1);
+    addPermanentWidget(new StatusBarItem(QStringLiteral("game_info"), this, true), 1);
 
     addPermanentWidget(new MemoryStatusItem(QStringLiteral("memory"), this), 1);
 }
@@ -310,19 +346,27 @@ void SourceControlItem::ConnectivityStateChanged(const AzToolsFramework::SourceC
 
 void SourceControlItem::InitMenu()
 {
+    m_scIconOk = QIcon(":statusbar/res/source_control_connected.svg");
+    m_scIconError = QIcon(":statusbar/res/source_control_error_v2.svg");
+    m_scIconWarning = QIcon(":statusbar/res/source_control-warning_v2.svg");
+    m_scIconDisabled = QIcon(":statusbar/res/source_control-not_setup.svg");
+
     if (m_sourceControlAvailable)
     {
         m_menu = std::make_unique<QMenu>();
 
         m_settingsAction = m_menu->addAction(tr("Settings"));
-        m_enableAction = m_menu->addAction(tr("Enable"));
-        m_disableAction = m_menu->addAction(tr("Disable"));
+        m_checkBox = new QCheckBox(m_menu.get());
+        m_checkBox->setText(tr("Enable"));
+        AzQtComponents::CheckBox::applyToggleSwitchStyle(m_checkBox);
+        m_enableAction = new QWidgetAction(m_menu.get());
+        m_enableAction->setDefaultWidget(m_checkBox);
+        m_menu->addAction(m_settingsAction);
+        m_menu->addAction(m_enableAction);
+        AzQtComponents::Style::addClass(m_menu.get(), "SourceControlMenu");
+        m_enableAction->setCheckable(true);
 
         m_enableAction->setEnabled(true);
-        m_disableAction->setEnabled(true);
-
-        m_scIconOk = QPixmap(":statusbar/res/p4.ico");
-        m_scIconError = QPixmap(":statusbar/res/p4_error.ico");
 
         {
             using namespace AzToolsFramework;
@@ -336,20 +380,21 @@ void SourceControlItem::InitMenu()
             GetIEditor()->GetSourceControl()->ShowSettings();
         });
 
-        connect(m_enableAction, &QAction::triggered, this, [this]() {SetSourceControlEnabledState(true); });
-        connect(m_disableAction, &QAction::triggered, this, [this]() {SetSourceControlEnabledState(false); });
+        connect(m_checkBox, &QCheckBox::stateChanged, this, [this](int state) {SetSourceControlEnabledState(state); });
     }
     else
     {
-        SetIcon(QPixmap(":/statusbar/res/source_control.ico").scaledToHeight(16));
+        SetIcon(m_scIconDisabled);
         SetToolTip(tr("No source control provided"));
     }
+    SetText("P4V");
 }
 
 void SourceControlItem::SetSourceControlEnabledState(bool state)
 {
     using SCRequest = AzToolsFramework::SourceControlConnectionRequestBus;
     SCRequest::Broadcast(&SCRequest::Events::EnableSourceControl, state);
+    m_menu->hide();
 }
 
 void SourceControlItem::UpdateMenuItems()
@@ -361,24 +406,23 @@ void SourceControlItem::UpdateMenuItems()
     switch (m_SourceControlState)
     {
     case AzToolsFramework::SourceControlState::Disabled:
-        toolTip = "Perforce disabled";
+        toolTip = tr("Perforce disabled");
         disabled = true;
         errorIcon = true;
         break;
     case AzToolsFramework::SourceControlState::ConfigurationInvalid:
         errorIcon = true;
-        toolTip = "Perforce configuration invalid";
+        toolTip = tr("Perforce configuration invalid");
         break;
     case AzToolsFramework::SourceControlState::Active:
-        toolTip = "Perforce connected";
+        toolTip = tr("Perforce connected");
         break;
     }
 
     m_settingsAction->setEnabled(!disabled);
-    m_disableAction->setVisible(!disabled);
-    m_enableAction->setVisible(disabled);
-
-    SetIcon(errorIcon ? m_scIconError : m_scIconOk);
+    m_checkBox->setChecked(!disabled);
+    m_checkBox->setText(disabled ? tr("Status: Offline") : tr("Status: Online"));
+    SetIcon(errorIcon ? disabled ? m_scIconDisabled : m_scIconWarning : m_scIconOk);
     SetToolTip(toolTip);
 }
 

@@ -32,6 +32,7 @@ namespace GraphCanvas
         , m_ui(new Ui::AssetEditorToolbar())
         , m_commentPresetActionGroup(nullptr)
         , m_nodeGroupPresetActionGroup(nullptr)
+        , m_viewDisabled(false)
     {
         m_ui->setupUi(this);
 
@@ -47,7 +48,6 @@ namespace GraphCanvas
         QObject::connect(m_commentPresetsMenu, &QMenu::aboutToShow, this, &AssetEditorToolbar::OnCommentMenuAboutToShow);
         QObject::connect(m_commentPresetsMenu, &QMenu::triggered, this, &AssetEditorToolbar::OnPresetActionTriggered);
 
-        m_ui->addComment->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
         m_ui->addComment->setMenu(m_commentPresetsMenu);
         m_ui->addComment->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
         QObject::connect(m_ui->addComment, &QWidget::customContextMenuRequested, this, &AssetEditorToolbar::OnCommentPresetsContextMenu);

@@ -527,12 +527,14 @@ void CSurfaceTypeManager::LoadSurfaceTypes()
                 pSurfaceType->m_nFlags |= SURFACE_TYPE_CAN_SHATTER;
             }
 
+#if ENABLE_CRY_PHYSICS
             if (gEnv->pPhysicalWorld)
             {
                 gEnv->pPhysicalWorld->SetSurfaceParameters(pSurfaceType->GetId(), physParams.bouncyness, physParams.friction, physParams.damage_reduction,
                     physParams.ric_angle, physParams.ric_dam_reduction, physParams.ric_vel_reduction,
                     sf_pierceability(physParams.pierceability) | sf_matbreakable(physParams.breakable_id) | bManuallyBreakable);
             }
+#endif // ENABLE_CRY_PHYSICS
         }
 
         XmlNodeRef break2dNode = matNode->findChild("breakable_2d");

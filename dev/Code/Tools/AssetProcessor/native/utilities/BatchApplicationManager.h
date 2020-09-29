@@ -46,7 +46,10 @@ namespace AssetProcessor
     class AssetServerHandler;
     class FileProcessor;
     class BuilderConfigurationManager;
+
+    extern const char ExcludeMetaDataFiles[];
 }
+
 
 class ApplicationServer;
 class ConnectionManager;
@@ -233,6 +236,8 @@ protected:
 
     QList<QMetaObject::Connection> m_connectionsToRemoveOnShutdown;
     QString m_dependencyScanPattern;
+    QString m_fileDependencyScanPattern;
+    AZStd::vector<AZStd::string> m_dependencyAddtionalScanFolders;
     int m_dependencyScanMaxIteration = AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration; // The maximum number of times to recurse when scanning a file for missing dependencies.
 };
 

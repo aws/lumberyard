@@ -539,6 +539,7 @@ bool CPipeUser::GetBranchCondition(QGoal& Goal)
     break;
     case IF_EXPOSED_TO_TARGET:
     {
+#if ENABLE_CRY_PHYSICS
         if (pAttentionTarget)
         {
             CCCPOINT(CPipeUser_GetBranchCondition_IF_EXPOSED_TO_TARGET);
@@ -558,6 +559,7 @@ bool CPipeUser::GetBranchCondition(QGoal& Goal)
                 return true;
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
     break;
     case IF_CAN_SHOOT_TARGET_PRONED:
@@ -874,6 +876,7 @@ void CPipeUser::Update(EObjectUpdate type)
             AIAssert(0);
             return;
         }
+#if ENABLE_CRY_PHYSICS
         // There should never be Pipe Users without physics.
         if (!GetPhysics())
         {
@@ -881,6 +884,7 @@ void CPipeUser::Update(EObjectUpdate type)
             AIAssert(0);
             return;
         }
+#endif // ENABLE_CRY_PHYSICS
         // dead Pipe Users should never be updated
         if (pAIActorProxy->IsDead())
         {

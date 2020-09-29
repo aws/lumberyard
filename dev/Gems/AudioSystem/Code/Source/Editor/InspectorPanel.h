@@ -36,7 +36,7 @@ namespace AudioControls
     {
         Q_OBJECT
     public:
-        explicit CInspectorPanel(CATLControlsModel* pATLModel);
+        explicit CInspectorPanel(CATLControlsModel* atlControlsModel);
         ~CInspectorPanel();
         void Reload();
 
@@ -47,8 +47,7 @@ namespace AudioControls
     private slots:
         void SetControlName(QString name);
         void SetControlScope(QString scope);
-        void SetAutoLoadForCurrentControl(bool bAutoLoad);
-        void SetControlPlatforms();
+        void SetAutoLoadForCurrentControl(bool isAutoLoad);
         void FinishedEditingName();
 
     private:
@@ -59,25 +58,21 @@ namespace AudioControls
         void UpdateConnectionData();
         void UpdateScopeData();
 
-        void HideScope(bool bHide);
-        void HideAutoLoad(bool bHide);
-        void HideGroupConnections(bool bHide);
+        void HideScope(bool hide);
+        void HideAutoLoad(bool hide);
 
         //////////////////////////////////////////////////////////
-        // IAudioSystemEditor implementation
-        /////////////////////////////////////////////////////////
-        virtual void OnControlModified(AudioControls::CATLControl* pControl) override;
+        // IATLControlModelListener implementation
+        void OnControlModified(CATLControl* control) override;
         //////////////////////////////////////////////////////////
 
-        CATLControlsModel* m_pATLModel;
+        CATLControlsModel* m_atlControlsModel;
 
         EACEControlType m_selectedType;
         AZStd::vector<CATLControl*> m_selectedControls;
-        bool m_bAllControlsSameType;
+        bool m_allControlsSameType;
 
         QColor m_notFoundColor;
-
-        AZStd::vector<QConnectionsWidget*> m_connectionLists;
-        AZStd::vector<QComboBox*> m_platforms;
     };
+
 } // namespace AudioControls

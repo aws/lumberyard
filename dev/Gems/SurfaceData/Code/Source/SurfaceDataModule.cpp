@@ -18,6 +18,7 @@
 
 #include <SurfaceDataModule.h>
 #include <SurfaceDataSystemComponent.h>
+#include <Components/SurfaceDataColliderComponent.h>
 #include <Components/SurfaceDataMeshComponent.h>
 #include <Components/SurfaceDataShapeComponent.h>
 #include <TerrainSurfaceDataSystemComponent.h>
@@ -28,6 +29,7 @@ namespace SurfaceData
     {
         m_descriptors.insert(m_descriptors.end(), {
             SurfaceDataSystemComponent::CreateDescriptor(),
+            SurfaceDataColliderComponent::CreateDescriptor(),
             SurfaceDataMeshComponent::CreateDescriptor(),
             SurfaceDataShapeComponent::CreateDescriptor(),
             TerrainSurfaceDataSystemComponent::CreateDescriptor(),

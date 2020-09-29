@@ -76,7 +76,7 @@ namespace EMotionFX
             float                           m_currentPosition;
             CurrentSegmentInfo              m_currentSegment;
             BlendInfos                      m_blendInfos;
-            AZ::u32                         m_masterMotionIdx; // index of the master motion for syncing
+            AZ::u32                         m_leaderMotionIdx; // index of the leader motion for syncing
             bool                            m_hasOverlappingCoordinates; // indicates if two coordinates are overlapping, to notify the UI
         };
 
@@ -113,8 +113,8 @@ namespace EMotionFX
         void SetCalculationMethod(ECalculationMethod calculationMethod);
         ECalculationMethod GetCalculationMethod() const;
 
-        void SetSyncMasterMotionId(const AZStd::string& syncMasterMotionId);
-        const AZStd::string& GetSyncMasterMotionId() const;
+        void SetSyncLeaderMotionId(const AZStd::string& syncLeaderMotionId);
+        const AZStd::string& GetSyncLeaderMotionId() const;
 
         void SetEvaluatorType(const AZ::TypeId& evaluatorType);
         const AZ::TypeId& GetEvaluatorType() const;
@@ -159,12 +159,14 @@ namespace EMotionFX
         bool FindLineSegmentForCurrentPoint(UniqueData& uniqueData);
         void SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
 
+        static bool NodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+
     private:
         AZ::Crc32 GetEvaluatorVisibility() const;
         AZ::Crc32 GetSyncOptionsVisibility() const;
 
         AZStd::vector<BlendSpaceMotion> m_motions;
-        AZStd::string                   m_syncMasterMotionId;
+        AZStd::string                   m_syncLeaderMotionId;
         BlendSpaceParamEvaluator*       m_evaluator = nullptr;
         AZ::TypeId                      m_evaluatorType = azrtti_typeid<BlendSpaceParamEvaluatorNone>();
         ECalculationMethod              m_calculationMethod = ECalculationMethod::AUTO;

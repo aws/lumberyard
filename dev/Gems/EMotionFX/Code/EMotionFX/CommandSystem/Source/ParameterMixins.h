@@ -217,4 +217,26 @@ namespace EMotionFX
     protected:
         AZStd::optional<AZStd::string> m_contents = AZStd::nullopt;
     };
+
+    class ParameterMixinSerializedMembers
+    {
+    public:
+        AZ_RTTI(ParameterMixinSerializedMembers, "{1D462965-2A60-46F5-B4A1-6F903E4DF53C}")
+        AZ_CLASS_ALLOCATOR_DECL
+
+        virtual ~ParameterMixinSerializedMembers() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        void InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired = true);
+        bool SetCommandParameters(const MCore::CommandLine& parameters);
+
+        void SetSerializedMembers(const AZStd::optional<AZStd::string>& serializedMembers) { m_serializedMembers = serializedMembers; }
+        const AZStd::optional<AZStd::string>& GetSerializedMembers() const { return m_serializedMembers; }
+
+        static const char* s_parameterName;
+
+    protected:
+        AZStd::optional<AZStd::string> m_serializedMembers = AZStd::nullopt;
+    };
 } // namespace EMotionFX

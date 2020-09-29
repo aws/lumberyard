@@ -54,7 +54,6 @@ namespace AzFramework
         Version(const AZStd::array<ComponentType, N>& parts)
             : m_parts(parts) { }
 
-#ifdef AZ_HAS_INITIALIZERS_LIST
         Version(const std::initializer_list<ComponentType>& values)
         {
             AZ_Assert(values.size() == N,
@@ -64,7 +63,6 @@ namespace AzFramework
 
             AZStd::transform(values.begin(), values.end(), m_parts.begin(), [](const ComponentType& c) { return c; });
         }
-#endif
 
         /**
         * Parses a version from a string in the format "[part].[part].[part] ...".
@@ -81,7 +79,7 @@ namespace AzFramework
                 return AZ::Failure(AZStd::string::format(
                     "Failed to parse invalid version string \"%s\". "
                     "Number of parts in the string doesn't match the size. "
-                    "Expected: %u, got: %u"
+                    "Expected: %zu, got: %zu"
                     , versionStr.c_str(), N, partCount));
             }
 

@@ -56,6 +56,9 @@ namespace AZ
         static const Quaternion CreateRotationZ(float angle);
         /*@}*/
 
+        /// Creates a quaternion using rotation in degrees about the axes. First rotated about the X axis, followed by the Y axis, then the Z axis.
+        static const Quaternion CreateFromEulerAnglesDegrees(Vector3& anglesInDegrees);
+
         /// Creates a quaternion using the rotation part of a Transform matrix.
         /// \note If the transform has a scale other than (1,1,1) be sure to extract the scale first
         /// with AZ::Transform::ExtractScale or ::ExtractScaleExact. If you simply want a rotation/orientation

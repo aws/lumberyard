@@ -23,6 +23,7 @@
 #include <RigidBodyComponent.h>
 #include <SphereColliderComponent.h>
 #include <TerrainComponent.h>
+#include <Tests/PhysXTestUtil.h>
 
 namespace PhysX
 {
@@ -79,6 +80,7 @@ namespace PhysX
             configuration.m_scale = AZ::Vector3(width, depth, 1.0);
             configuration.m_heightFieldAsset = CreateHeightField(samples, 2, 2);
             terrain->AddComponent(aznew TerrainComponent(configuration));
+            terrain->AddComponent(aznew DummyTestTerrainComponent);
 
             terrain->Init();
             terrain->Activate();
@@ -101,6 +103,7 @@ namespace PhysX
             configuration.m_terrainSurfaceIdIndexMapping.emplace_back(0);
 
             terrain->AddComponent(aznew TerrainComponent(configuration));
+            terrain->AddComponent(aznew DummyTestTerrainComponent);
 
             terrain->Init();
             terrain->Activate();
@@ -127,6 +130,7 @@ namespace PhysX
             configuration.m_scale = AZ::Vector3(width, depth, height);
             configuration.m_heightFieldAsset = CreateHeightField(samples, 3, 3);
             terrain->AddComponent(aznew TerrainComponent(configuration));
+            terrain->AddComponent(aznew DummyTestTerrainComponent);
 
             terrain->Init();
             terrain->Activate();
@@ -180,7 +184,7 @@ namespace PhysX
             auto boxColliderComponent = entity->CreateComponent<PhysX::BoxColliderComponent>();
             auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
             boxColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
-
+            entity->CreateComponent<PhysX::StaticRigidBodyComponent>();
             entity->Activate();
             return entity;
         }
@@ -196,7 +200,7 @@ namespace PhysX
             VertexIndexData cubeMeshData = GenerateCubeMeshData(halfExtent);
             AZStd::vector<AZ::u8> cookedData;
             bool cookingResult = false;
-            PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookTriangleMeshToMemory,
+            Physics::SystemRequestBus::BroadcastResult(cookingResult, &Physics::SystemRequests::CookTriangleMeshToMemory,
                 cubeMeshData.first.data(), static_cast<AZ::u32>(cubeMeshData.first.size()),
                 cubeMeshData.second.data(), static_cast<AZ::u32>(cubeMeshData.second.size()),
                 cookedData);

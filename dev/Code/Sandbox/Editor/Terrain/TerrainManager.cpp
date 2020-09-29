@@ -751,26 +751,14 @@ QString CTerrainManager::GenerateUniqueLayerName(const QString& name) const
 //////////////////////////////////////////////////////////////////////////
 // LegacyTerrain::LegacyTerrainEditorDataRequestBus
 //////////////////////////////////////////////////////////////////////////
-bool CTerrainManager::CreateTerrainSystemFromEditorData()
+bool CTerrainManager::GetTerrainInfo(STerrainInfo& terrainInfo)
 {
-    bool isInstantiated = false;
-    LegacyTerrain::LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrain::LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
-    if (isInstantiated)
-    {
-        AZ_Warning("LegacyTerrain", false, "The legacy terrain system was already instantiated");
-        return false;
-    }
-
-    STerrainInfo terrainInfo;
     m_heightmap.GetTerrainInfo(terrainInfo);
+    return true;
+}
 
-    LegacyTerrain::LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrain::LegacyTerrainInstanceRequests::CreateUninitializedTerrainSystem, terrainInfo);
-    AZ_Error("LegacyTerrain", isInstantiated, "Failed to initialize the legacy terrain system");
-    if (!isInstantiated)
-    {
-        return false;
-    }
-
+bool CTerrainManager::InitializeTerrainSystemFromEditorData()
+{
     if (!m_heightmap.GetUseTerrain())
     {
         //Before initializing the terrain with heightmap data, the terrain macrotexture must exist.
@@ -804,14 +792,6 @@ void CTerrainManager::RefreshEngineMacroTexture()
 
 void CTerrainManager::DestroyTerrainSystem()
 {
-    bool isInstantiated = false;
-    LegacyTerrain::LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrain::LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
-    if (!isInstantiated)
-    {
-        return;
-    }
-    LegacyTerrain::LegacyTerrainInstanceRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainInstanceRequests::DestroyTerrainSystem);
-
     if (m_heightmap.GetUseTerrain())
     {
         m_heightmap.SetUseTerrain(false);
@@ -830,4 +810,5 @@ int CTerrainManager::GetTerrainSurfaceIdFromSurfaceTag(AZ::Crc32 tag)
     }
     return 0;
 }
+
 //////////////////////////////////////////////////////////////////////////

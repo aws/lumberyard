@@ -879,9 +879,9 @@ void EditorWindow::AddMenu_PreviewView()
 
 void EditorWindow::AddMenu_Help()
 {
-    const char* documentationUrl = "http://docs.aws.amazon.com/lumberyard/latest/userguide/ui-editor-intro.html";
-    const char* tutorialsUrl = "https://www.youtube.com/amazonlumberyardtutorials";
-    const char* forumUrl = "https://gamedev.amazon.com/forums/spaces/141/ui-2d.html";
+    const char* documentationUrl = "http://docs.aws.amazon.com/console/lumberyard/ui/editor";
+    const char* tutorialsUrl = "http://docs.aws.amazon.com/console/lumberyard/tutorials/channel";
+    const char* forumUrl = "http://docs.aws.amazon.com/console/lumberyard/forum";
 
     QMenu* menu = menuBar()->addMenu("&Help");
     menu->setStyleSheet(UICANVASEDITOR_QMENU_ITEM_DISABLED_STYLESHEET);

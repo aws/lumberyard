@@ -100,6 +100,8 @@ namespace AzToolsFramework
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
+        SetBoundsDirty();
+
         EndAction();
         OnLeftMouseUpImpl(interaction);
         EndUndoBatch();
@@ -108,6 +110,8 @@ namespace AzToolsFramework
     void BaseManipulator::OnRightMouseUp(const ViewportInteraction::MouseInteraction& interaction)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        SetBoundsDirty();
 
         EndAction();
         OnRightMouseUpImpl(interaction);

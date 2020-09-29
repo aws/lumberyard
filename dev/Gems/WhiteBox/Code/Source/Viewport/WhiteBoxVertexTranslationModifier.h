@@ -16,12 +16,14 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/Component/TickBus.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <WhiteBox/WhiteBoxToolApi.h>
 
 namespace AzToolsFramework
 {
     class ManipulatorViewSphere;
-    class SelectionManipulator;
+    class MultiLinearManipulator;
 
     namespace ViewportInteraction
     {
@@ -31,16 +33,18 @@ namespace AzToolsFramework
 
 namespace WhiteBox
 {
-    //! VertexSelectionModifier provides the ability to select a vertex in the viewport.
-    class VertexSelectionModifier
+    //! VertexTranslationModifier provides the ability to translate a single vertex in the viewport.
+    class VertexTranslationModifier
+        : private AzFramework::ViewportDebugDisplayEventBus::Handler
+        , private AZ::TickBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR_DECL
 
-        VertexSelectionModifier(
+        VertexTranslationModifier(
             const AZ::EntityComponentIdPair& entityComponentIdPair, Api::VertexHandle vertexHandle,
             const AZ::Vector3& intersectionPoint);
-        ~VertexSelectionModifier();
+        ~VertexTranslationModifier();
 
         bool MouseOver() const;
         void ForwardMouseOverEvent(const AzToolsFramework::ViewportInteraction::MouseInteraction& interaction);
@@ -51,41 +55,51 @@ namespace WhiteBox
         void SetColor(const AZ::Color& color);
 
         void Refresh();
-        void UpdateIntersectionPoint(const AZ::Vector3& intersectionPoint);
+        void CreateView();
         bool PerformingAction() const;
+
+        static const int InvalidAxisIndex = -1;
 
     private:
         void CreateManipulator();
         void DestroyManipulator();
 
-        void CreateView();
+        // ViewportDebugDisplayEventBus ...
+        void DisplayViewport(
+            const AzFramework::ViewportInfo& viewportInfo, AzFramework::DebugDisplayRequests& debugDisplay) override;
+
+        // TickBis ...
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
         Api::VertexHandle m_vertexHandle; //!< The vertex handle this modifier is currently associated with.
         AZ::EntityComponentIdPair
             m_entityComponentIdPair; //!< The entity and component id this modifier is associated with.
-        AZStd::shared_ptr<AzToolsFramework::SelectionManipulator>
-            m_selectionManipulator; //!< Manipulator for performing vertex selection.
+        AZStd::shared_ptr<AzToolsFramework::MultiLinearManipulator>
+            m_translationManipulator; //!< Manipulator for performing vertex translation.
         AZStd::shared_ptr<AzToolsFramework::ManipulatorViewSphere>
             m_vertexView; //!< Manipulator view used to represent a mesh vertex for selection.
         AZ::Color m_color = cl_whiteBoxVertexHoveredColor; //! The current color of the vertex.
+        AZ::Vector3 m_localPositionAtMouseDown; //! The position of the modifier in local space at the time of mouse down.
+        int m_actionIndex = InvalidAxisIndex; //! Which action (axis) are we moving along for the given vertex.
+        float m_pressTime = 0.0f; //! Duration of press and hold of modifier.
     };
 
-    inline Api::VertexHandle VertexSelectionModifier::GetHandle() const
+    inline Api::VertexHandle VertexTranslationModifier::GetHandle() const
     {
         return GetVertexHandle();
     }
 
-    inline Api::VertexHandle VertexSelectionModifier::GetVertexHandle() const
+    inline Api::VertexHandle VertexTranslationModifier::GetVertexHandle() const
     {
         return m_vertexHandle;
     }
 
-    inline void VertexSelectionModifier::SetVertexHandle(const Api::VertexHandle vertexHandle)
+    inline void VertexTranslationModifier::SetVertexHandle(const Api::VertexHandle vertexHandle)
     {
         m_vertexHandle = vertexHandle;
     }
 
-    inline void VertexSelectionModifier::SetColor(const AZ::Color& color)
+    inline void VertexTranslationModifier::SetColor(const AZ::Color& color)
     {
         m_color = color;
     }

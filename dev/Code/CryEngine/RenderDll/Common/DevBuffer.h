@@ -108,6 +108,7 @@ namespace AzRHI
             return m_size;
         }
 
+#if !defined(NULL_RENDERER)
         inline AZ::u64 GetCode() const
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -125,6 +126,7 @@ namespace AzRHI
             return reinterpret_cast<AZ::u64>(m_buffer) | ((AZ::u64)m_offset << 40);
 #endif
         }
+#endif // !NULL_RENDERER
 
         void AddRef();
 

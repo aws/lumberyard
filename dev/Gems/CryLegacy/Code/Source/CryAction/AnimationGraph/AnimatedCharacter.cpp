@@ -253,10 +253,14 @@ void CAnimatedCharacter::InitVars()
     m_prevMoveJump = 0;
     m_collisionFrameID = -1;
     m_collisionNormalCount = 0;
+#if ENABLE_CRY_PHYSICS
     m_pFeetColliderPE = NULL;
+#endif
     m_debugHistoryManager = NULL;
+#if ENABLE_CRY_PHYSICS
     m_pRigidColliderPE = NULL;
     m_characterCollisionFlags = geom_colltype_player;
+#endif
     m_groundAlignmentParams.InitVars();
     m_doMotionParams = true;
     m_pAnimContext = NULL;
@@ -658,6 +662,7 @@ void CAnimatedCharacter::HandleEvent(const SGameObjectEvent& event)
     }
     case eGFE_OnCollision:
     {
+#if ENABLE_CRY_PHYSICS
         const EventPhysCollision* pCollision = static_cast<const EventPhysCollision*>(event.ptr);
 
         // Ignore bullets and insignificant particles, etc.
@@ -714,6 +719,7 @@ void CAnimatedCharacter::HandleEvent(const SGameObjectEvent& event)
             m_collisionFrameID = m_curFrameID;
             m_collisionNormalCount++;
         }
+#endif // ENABLE_CRY_PHYSICS
     }
     break;
 
@@ -735,6 +741,7 @@ void CAnimatedCharacter::HandleEvent(const SGameObjectEvent& event)
 
 void CAnimatedCharacter::ResetInertiaCache()
 {
+#if ENABLE_CRY_PHYSICS
     // Synch our cached inertia values with the living entity values
     pe_player_dynamics dynParams;
     IPhysicalEntity* pPhysEnt = GetEntity()->GetPhysics();
@@ -744,6 +751,7 @@ void CAnimatedCharacter::ResetInertiaCache()
         m_fPrevInertiaAccel = dynParams.kInertiaAccel;
         m_fPrevTimeImpulseRecover = dynParams.timeImpulseRecover;
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAnimatedCharacter::ResetState()
@@ -952,11 +960,13 @@ void CAnimatedCharacter::ResetVars()
     m_collisionNormal[2].zero();
     m_collisionNormal[3].zero();
 
+#if ENABLE_CRY_PHYSICS
     if (m_pFeetColliderPE)
     {
         gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_pFeetColliderPE);
         m_pFeetColliderPE = NULL;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     DisableRigidCollider();
 
@@ -969,6 +979,7 @@ void CAnimatedCharacter::ResetVars()
     {
         // Disable physics as default when reviving/resetting characters.
         // Only a few frames after reset will non-disabled collider be allowed in UpdatePhysicalColliderMode().
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pPhysEnt = pEntity->GetPhysics();
         if (pPhysEnt)
         {
@@ -979,6 +990,7 @@ void CAnimatedCharacter::ResetVars()
             pPhysEnt->SetParams(&pd);
             pPhysEnt->SetParams(&pp);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     DestroyExtraSolidCollider();
@@ -1584,6 +1596,7 @@ void CAnimatedCharacter::SetRagdollizeParams(const SGameObjectEvent& event)
 
 void CAnimatedCharacter::KickOffRagdoll()
 {
+#if ENABLE_CRY_PHYSICS
     if (m_bPendingRagdoll)
     {
         m_groundAlignmentParams.SetFlag(eGA_Enable, false);
@@ -1625,6 +1638,7 @@ void CAnimatedCharacter::KickOffRagdoll()
         triggeredRagdoll.ptr = &m_ragdollParams;
         GetGameObject()->SendEvent(triggeredRagdoll);
     }
+#endif // ENABLE_CRY_PHYSICS
     m_bPendingRagdoll = false;
 
     if (m_blendFromRagollizeParams.m_bPendingBlend)
@@ -1827,6 +1841,7 @@ void CAnimatedCharacter::UpdateGroundAlignment()
             {
                 bNeedUpdate = false;
             }
+#if ENABLE_CRY_PHYSICS
             else if (!m_groundAlignmentParams.IsFlag(eGA_AllowWhenHasGroundCollider))
             {
                 if (IPhysicalEntity* piPhysics = GetEntity()->GetPhysics())
@@ -1841,6 +1856,7 @@ void CAnimatedCharacter::UpdateGroundAlignment()
                     }
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
         }
 
         if (bNeedUpdate)

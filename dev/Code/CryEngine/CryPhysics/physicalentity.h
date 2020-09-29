@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_PHYSICALENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "GeomQuery.h"
 
 struct SRayTraceRes;
@@ -592,3 +594,5 @@ inline bool AllowChangesOnDeleted(const T* pstruct)
 }
 
 #endif // CRYINCLUDE_CRYPHYSICS_PHYSICALENTITY_H
+
+#endif // ENABLE_CRY_PHYSICS

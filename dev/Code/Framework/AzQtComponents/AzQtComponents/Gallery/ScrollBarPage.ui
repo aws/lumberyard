@@ -155,6 +155,118 @@
       </layout>
      </item>
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QScrollArea" name="defaultScrollArea_dark">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="widgetResizable">
+          <bool>false</bool>
+         </property>
+         <widget class="QWidget" name="defaultScrollAreaWidgetContents_dark">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>500</width>
+            <height>500</height>
+           </rect>
+          </property>
+          <widget class="QLabel" name="defaultLabel_dark">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>44</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Default</string>
+           </property>
+          </widget>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="alwaysShowScrollArea_dark">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="widgetResizable">
+          <bool>false</bool>
+         </property>
+         <widget class="QWidget" name="alwaysShowScrollAreaWidgetContents_dark">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>500</width>
+            <height>500</height>
+           </rect>
+          </property>
+          <widget class="QLabel" name="alwaysShowLabel_dark">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>79</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Always Show</string>
+           </property>
+          </widget>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="showOnHoverScrollArea_dark">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="widgetResizable">
+          <bool>false</bool>
+         </property>
+         <widget class="QWidget" name="showOnHoverScrollAreaWidgetContents_dark">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>500</width>
+            <height>500</height>
+           </rect>
+          </property>
+          <widget class="QLabel" name="showOnHoverLabel_dark">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>94</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Show On Hover</string>
+           </property>
+          </widget>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <spacer name="verticalSpacer_2">
        <property name="orientation">
         <enum>Qt::Vertical</enum>

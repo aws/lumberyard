@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 #include "MacroTexture.h"
 #include <AzCore/Math/Color.h>
 #include <AzCore/IO/Streamer.h>

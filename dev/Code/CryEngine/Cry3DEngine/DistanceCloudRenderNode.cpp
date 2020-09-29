@@ -166,18 +166,6 @@ void CDistanceCloudRenderNode::Render(const SRendParams& rParam, const SRenderin
 }
 
 
-
-IPhysicalEntity* CDistanceCloudRenderNode::GetPhysics() const
-{
-    return 0;
-}
-
-
-void CDistanceCloudRenderNode::SetPhysics(IPhysicalEntity*)
-{
-}
-
-
 void CDistanceCloudRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 {
     m_pMaterial = pMat;

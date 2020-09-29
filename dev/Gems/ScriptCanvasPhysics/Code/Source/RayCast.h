@@ -24,6 +24,8 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 
+#if ENABLE_CRY_PHYSICS
+
 namespace ScriptCanvasPhysics
 {
     namespace RayCastNodes
@@ -210,3 +212,5 @@ namespace ScriptCanvasPhysics
                 >;
     } // namespace RayCastNodes
 } // namespace ScriptCanvasPhysics
+
+#endif

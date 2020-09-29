@@ -22,6 +22,7 @@
 #include <Cry_Vector3.h>
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 //===================================================================
 // GetCameraPos
@@ -45,7 +46,12 @@ float CAIDebugRenderer::GetDebugDrawZ(const Vec3& vPoint, bool bUseTerrainOrWate
             return -g_drawOffset;
         }
         I3DEngine* pEngine = gEnv->p3DEngine;
-        float terrainZ = pEngine->GetTerrainElevation(vPoint.x, vPoint.y);
+        float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+            , vPoint.x, vPoint.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+        float terrainZ = elevation;
         float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vPoint) : pEngine->GetWaterLevel(&vPoint);
         return max(terrainZ, waterZ) + g_drawOffset;
     }

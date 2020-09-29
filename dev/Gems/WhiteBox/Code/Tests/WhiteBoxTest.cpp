@@ -539,13 +539,13 @@ namespace UnitTest
     {
         namespace Api = WhiteBox::Api;
 
-        // Given
-        auto polygonHandle = Api::InitializeAsUnitQuad(*m_whiteBox);
-        auto edgeHandles = Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, polygonHandle);
+        // given
+        const auto polygonHandle = Api::InitializeAsUnitQuad(*m_whiteBox);
+        const auto edgeHandles = Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, polygonHandle);
 
         for (const auto edgeHandle : edgeHandles)
         {
-            // When
+            // when
             const auto tail = Api::HalfedgeVertexPositionAtTail(
                 *m_whiteBox, Api::EdgeHalfedgeHandle(*m_whiteBox, edgeHandle, Api::EdgeHalfedge::First));
             const auto tip = Api::HalfedgeVertexPositionAtTip(
@@ -554,9 +554,20 @@ namespace UnitTest
             // computed differently to EdgeMidpoint
             const auto midpoint = tail + (tip - tail) * 0.5f;
 
-            // Then
+            // then
             EXPECT_THAT(midpoint, IsClose(Api::EdgeMidpoint(*m_whiteBox, edgeHandle)));
         }
+    }
+
+    TEST_F(WhiteBoxTestFixture, MeshMidPointOfFace)
+    {
+        namespace Api = WhiteBox::Api;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        const auto faceMidpoint = Api::FaceMidpoint(*m_whiteBox, Api::FaceHandle{0});
+
+        EXPECT_THAT(faceMidpoint, IsClose(AZ::Vector3(0.1666f, -0.1666, 0.5f)));
     }
 
     TEST_F(WhiteBoxTestFixture, MeshFacesReturned)
@@ -586,7 +597,7 @@ namespace UnitTest
     {
         namespace Api = WhiteBox::Api;
 
-        // Given
+        // given
         const auto polygonHandle = Api::InitializeAsUnitQuad(*m_whiteBox);
 
         const auto vertexHandles = Api::PolygonVertexHandles(*m_whiteBox, polygonHandle);
@@ -598,10 +609,10 @@ namespace UnitTest
         // ensure we refresh normals after modifications
         Api::CalculateNormals(*m_whiteBox);
 
-        // When
+        // when
         const auto polygonNormal = PolygonNormal(*m_whiteBox, polygonHandle);
 
-        // Then
+        // then
         const auto faceNormal22 = FaceNormal(*m_whiteBox, polygonHandle.m_faceHandles[0]);
         const auto faceNormal23 = FaceNormal(*m_whiteBox, polygonHandle.m_faceHandles[1]);
         const auto averageNormal = (faceNormal22 + faceNormal23).GetNormalized();
@@ -614,11 +625,11 @@ namespace UnitTest
         namespace Api = WhiteBox::Api;
         using ::testing::Pointwise;
 
-        // Given
+        // given
         // use default position (Y is at origin)
         const auto polygonHandle = Api::InitializeAsUnitQuad(*m_whiteBox);
 
-        // When
+        // when
         Api::TranslatePolygon(*m_whiteBox, polygonHandle, 1.0f);
 
         AZStd::vector<AZ::Vector3> expectedVertexPositions = {
@@ -628,7 +639,7 @@ namespace UnitTest
         const AZStd::vector<AZ::Vector3> polygonVertexPositions =
             Api::PolygonVertexPositions(*m_whiteBox, polygonHandle);
 
-        // Then
+        // then
         EXPECT_THAT(expectedVertexPositions, Pointwise(IsClose(), polygonVertexPositions));
     }
 
@@ -636,14 +647,14 @@ namespace UnitTest
     {
         namespace Api = WhiteBox::Api;
 
-        // Given
+        // given
         const auto polygonHandle = Api::InitializeAsUnitQuad(*m_whiteBox);
 
-        // When
+        // when
         const AZ::Vector3 polygonMidpoint = Api::PolygonMidpoint(*m_whiteBox, polygonHandle);
         const AZ::Transform polygonSpace = Api::PolygonSpace(*m_whiteBox, polygonHandle, polygonMidpoint);
 
-        // Then
+        // then
         EXPECT_TRUE(polygonSpace.IsOrthogonal());
     }
 
@@ -651,15 +662,15 @@ namespace UnitTest
     {
         namespace Api = WhiteBox::Api;
 
-        // Given
+        // given
         const auto polygonHandle = Api::InitializeAsUnitQuad(*m_whiteBox);
         const auto edgeHandles = Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, polygonHandle);
 
-        // When
+        // when
         const AZ::Vector3 edgeMidpoint = Api::EdgeMidpoint(*m_whiteBox, edgeHandles[0]);
         const AZ::Transform edgeSpace = Api::EdgeSpace(*m_whiteBox, edgeHandles[0], edgeMidpoint);
 
-        // Then
+        // then
         EXPECT_TRUE(edgeSpace.IsOrthogonal());
     }
 
@@ -669,7 +680,7 @@ namespace UnitTest
 
         Api::InitializeAsUnitQuad(*m_whiteBox);
 
-        // Given
+        // given
         const auto edgeHandles = Api::MeshEdgeHandles(*m_whiteBox);
         for (const auto edgeHandle : edgeHandles)
         {
@@ -677,11 +688,11 @@ namespace UnitTest
             const auto secondHalfedgeHandle =
                 Api::EdgeHalfedgeHandle(*m_whiteBox, edgeHandle, Api::EdgeHalfedge::First);
 
-            // When
+            // when
             const auto edgeHandleFromFirst = Api::HalfedgeEdgeHandle(*m_whiteBox, firstHalfedgeHandle);
             const auto edgeHandleFromSecond = Api::HalfedgeEdgeHandle(*m_whiteBox, secondHalfedgeHandle);
 
-            // Then
+            // then
             EXPECT_EQ(edgeHandle, edgeHandleFromFirst);
             EXPECT_EQ(edgeHandle, edgeHandleFromSecond);
         }
@@ -876,6 +887,55 @@ namespace UnitTest
         EXPECT_EQ(afterHidePolygonHandleFromFaceHandle_17, afterHidePolygonHandlesFaceHandle_1_0_16_17_Expected);
     }
 
+    TEST_F(WhiteBoxTestFixture, FlipInternalEdgeOfQuadSucceeds)
+    {
+        namespace Api = WhiteBox::Api;
+
+        [[maybe_unused]] auto polygonHandles = Api::InitializeAsUnitQuad(*m_whiteBox);
+
+        const auto beforeFlipVertexHandles =
+            AZStd::array<Api::VertexHandle, 2>{Api::VertexHandle{2}, Api::VertexHandle{0}};
+        const auto afterFlipVertexHandles =
+            AZStd::array<Api::VertexHandle, 2>{Api::VertexHandle{3}, Api::VertexHandle{1}};
+
+        const auto beforeFlipExpectedVertexHandles = Api::EdgeVertexHandles(*m_whiteBox, Api::EdgeHandle{2});
+        EXPECT_EQ(beforeFlipExpectedVertexHandles, beforeFlipVertexHandles);
+
+        // flip diagonal edge
+        bool result = Api::FlipEdge(*m_whiteBox, Api::EdgeHandle{2});
+
+        EXPECT_TRUE(result);
+
+        const auto afterFlipExpectedVertexHandles = Api::EdgeVertexHandles(*m_whiteBox, Api::EdgeHandle{2});
+        EXPECT_EQ(afterFlipExpectedVertexHandles, afterFlipVertexHandles);
+    }
+
+    TEST_F(WhiteBoxTestFixture, FlipOuterEdgeOfQuadReturnsFalse)
+    {
+        namespace Api = WhiteBox::Api;
+
+        [[maybe_unused]] auto polygonHandles = Api::InitializeAsUnitQuad(*m_whiteBox);
+
+        // attempt to flip outer edge
+        bool result = Api::FlipEdge(*m_whiteBox, Api::EdgeHandle{0});
+
+        EXPECT_EQ(result, false);
+    }
+
+    TEST_F(WhiteBoxTestFixture, FlipVisibleEdgeReturnsFalse)
+    {
+        namespace Api = WhiteBox::Api;
+
+        [[maybe_unused]] auto polygonHandles = Api::InitializeAsUnitQuad(*m_whiteBox);
+
+        Api::RestoreEdge(*m_whiteBox, Api::EdgeHandle{2}, Api::EdgeHandles{});
+
+        // attempt to flip outer edge
+        bool result = Api::FlipEdge(*m_whiteBox, Api::EdgeHandle{2});
+
+        EXPECT_EQ(result, false);
+    }
+
     TEST_F(WhiteBoxTestFixture, EdgeCannotBeAppendedWhenPolygonHasMoreThanTwoFaces)
     {
         namespace Api = WhiteBox::Api;
@@ -1039,57 +1099,6 @@ namespace UnitTest
         EXPECT_THAT(
             Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, (*splitPolygons)[1]),
             UnorderedElementsAre(Api::EdgeHandle{2}, Api::EdgeHandle{3}, Api::EdgeHandle{4}));
-    }
-
-    static void Create2x2CubeGrid(WhiteBox::WhiteBoxMesh& whiteBox)
-    {
-        namespace Api = WhiteBox::Api;
-
-        Api::InitializeAsUnitCube(whiteBox);
-
-        // form a 2x2 grid of connected cubes
-        Api::TranslatePolygonAppend(whiteBox, Api::FacePolygonHandle(whiteBox, Api::FaceHandle{4}), 1.0f);
-        Api::HideEdge(whiteBox, Api::EdgeHandle{12});
-        Api::TranslatePolygonAppend(whiteBox, Api::FacePolygonHandle(whiteBox, Api::FaceHandle{5}), 1.0f);
-    }
-
-    static void Create3x3CubeGrid(WhiteBox::WhiteBoxMesh& whiteBox)
-    {
-        namespace Api = WhiteBox::Api;
-
-        Api::InitializeAsUnitCube(whiteBox);
-
-        // form a 3x3 grid of connected cubes
-        Api::TranslatePolygonAppend(whiteBox, Api::FacePolygonHandle(whiteBox, Api::FaceHandle{4}), 1.0f);
-        Api::TranslatePolygonAppend(whiteBox, Api::FacePolygonHandle(whiteBox, Api::FaceHandle{11}), 1.0f);
-        Api::HideEdge(whiteBox, Api::EdgeHandle{21});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{12});
-        Api::TranslatePolygonAppend(whiteBox, Api::FacePolygonHandle(whiteBox, Api::FaceHandle{27}), 1.0f);
-        Api::TranslatePolygonAppend(whiteBox, Api::FacePolygonHandle(whiteBox, Api::FaceHandle{26}), 1.0f);
-    }
-
-    static void HideAllTopUserEdgesFor2x2Grid(WhiteBox::WhiteBoxMesh& whiteBox)
-    {
-        namespace Api = WhiteBox::Api;
-
-        Api::HideEdge(whiteBox, Api::EdgeHandle{43});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{12});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{4});
-    }
-
-    static void HideAllTopUserEdgesFor3x3Grid(WhiteBox::WhiteBoxMesh& whiteBox)
-    {
-        namespace Api = WhiteBox::Api;
-
-        // hide all top 'user' edges (top is one polygon)
-        Api::HideEdge(whiteBox, Api::EdgeHandle{41});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{12});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{59});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{47});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{4});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{48});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{27});
-        Api::HideEdge(whiteBox, Api::EdgeHandle{45});
     }
 
     TEST_F(WhiteBoxTestFixture, MultipleEdgesCanBeRestored)
@@ -1497,6 +1506,46 @@ namespace UnitTest
         EXPECT_THAT(Api::MeshPolygonHandles(*m_whiteBox).size(), Eq(11)); // 11 polygons added (should be 7 before?)
     }
 
+    TEST_F(WhiteBoxTestFixture, AdvancedPolygonAppendReturnsExpectedRestoredPolygonHandles)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::UnorderedElementsAre;
+        using ::testing::UnorderedElementsAreArray;
+        using fh = Api::FaceHandle;
+
+        Create3x3CubeGrid(*m_whiteBox);
+        HideAllTopUserEdgesFor3x3Grid(*m_whiteBox);
+
+        const auto appendedPolygonHandles = Api::TranslatePolygonAppendAdvanced(
+            *m_whiteBox, Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{34}), -1.0f);
+
+        const fh expectedFirstRestoredBefore[] = {fh(54), fh(55), fh(16), fh(17), fh(56), fh(57),
+                                                  fh(0),  fh(1),  fh(5),  fh(4),  fh(52), fh(53),
+                                                  fh(36), fh(37), fh(27), fh(26), fh(25), fh(24)};
+        const fh expectedFirstRestoredAfter[] = {fh(38), fh(39), fh(40), fh(41), fh(42), fh(43),
+                                                 fh(44), fh(45), fh(46), fh(47), fh(48), fh(49),
+                                                 fh(50), fh(51), fh(52), fh(53), fh(54), fh(55)};
+
+        const fh expectedSecondRestoredBefore[] = {fh(32), fh(33)};
+        const fh expectedSecondRestoredAfter[] = {fh(56), fh(57)};
+
+        EXPECT_THAT(
+            appendedPolygonHandles.m_appendedPolygonHandle.m_faceHandles,
+            UnorderedElementsAre(Api::FaceHandle{62}, Api::FaceHandle{63}));
+        EXPECT_THAT(
+            appendedPolygonHandles.m_restoredPolygonHandles[0].m_before.m_faceHandles,
+            UnorderedElementsAreArray(expectedFirstRestoredBefore));
+        EXPECT_THAT(
+            appendedPolygonHandles.m_restoredPolygonHandles[0].m_after.m_faceHandles,
+            UnorderedElementsAreArray(expectedFirstRestoredAfter));
+        EXPECT_THAT(
+            appendedPolygonHandles.m_restoredPolygonHandles[1].m_before.m_faceHandles,
+            UnorderedElementsAreArray(expectedSecondRestoredBefore));
+        EXPECT_THAT(
+            appendedPolygonHandles.m_restoredPolygonHandles[1].m_after.m_faceHandles,
+            UnorderedElementsAreArray(expectedSecondRestoredAfter));
+    }
+
     TEST_F(WhiteBoxTestFixture, EdgeHandlesConnectedToVertex)
     {
         namespace Api = WhiteBox::Api;
@@ -1555,6 +1604,34 @@ namespace UnitTest
         EXPECT_TRUE(!Api::VertexIsHidden(*m_whiteBox, Api::VertexHandle{0}));
     }
 
+    TEST_F(WhiteBoxTestFixture, EdgeCanBeHidden)
+    {
+        namespace Api = WhiteBox::Api;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        EXPECT_FALSE(Api::EdgeIsHidden(*m_whiteBox, Api::EdgeHandle{0}));
+
+        Api::HideEdge(*m_whiteBox, Api::EdgeHandle{0});
+
+        EXPECT_TRUE(Api::EdgeIsHidden(*m_whiteBox, Api::EdgeHandle{0}));
+    }
+
+    TEST_F(WhiteBoxTestFixture, EdgeCanBeRestored)
+    {
+        namespace Api = WhiteBox::Api;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+        Api::HideEdge(*m_whiteBox, Api::EdgeHandle{0});
+
+        // verify precondition
+        EXPECT_TRUE(Api::EdgeIsHidden(*m_whiteBox, Api::EdgeHandle{0}));
+
+        Api::RestoreEdge(*m_whiteBox, Api::EdgeHandle{0}, Api::EdgeHandles{});
+
+        EXPECT_FALSE(Api::EdgeIsHidden(*m_whiteBox, Api::EdgeHandle{0}));
+    }
+
     // note: no boundaries implies the mesh is closed (like a cube) as opposed
     // to having unconnected halfedges in the case of a quad
     TEST_F(WhiteBoxTestFixture, HalfedgeHandlesOfEdgeHandleWithoutBoundaries)
@@ -1592,6 +1669,21 @@ namespace UnitTest
             const auto halfedgeHandles = Api::EdgeHalfedgeHandles(*m_whiteBox, Api::EdgeHandle{2});
             EXPECT_THAT(halfedgeHandles, UnorderedElementsAre(Api::HalfedgeHandle{5}, Api::HalfedgeHandle{4}));
         }
+    }
+
+    TEST_F(WhiteBoxTestFixture, MeshUserEdgeHandlesForDefaultQuad)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::UnorderedElementsAre;
+
+        Api::InitializeAsUnitQuad(*m_whiteBox);
+
+        const auto userMeshEdgeHandles = Api::MeshUserEdgeHandles(*m_whiteBox);
+
+        EXPECT_THAT(userMeshEdgeHandles.m_mesh, UnorderedElementsAre(Api::EdgeHandle{2}));
+        EXPECT_THAT(
+            userMeshEdgeHandles.m_user,
+            UnorderedElementsAre(Api::EdgeHandle{0}, Api::EdgeHandle{1}, Api::EdgeHandle{3}, Api::EdgeHandle{4}));
     }
 
     // no hidden vertices means only a single edge (the one passed in) will be returned
@@ -1714,6 +1806,373 @@ namespace UnitTest
 
         EXPECT_THAT(vertexHandles, UnorderedElementsAreArray(expectedVertexHandles));
         EXPECT_THAT(vertexPositions, Pointwise(IsClose(), expectedVertexPositions));
+    }
+
+    TEST_F(WhiteBoxTestFixture, SplitUserEdgeCausesNewlyFormedFacesToBeAddedToCorrespondingPolygons)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::ElementsAre;
+        using ::testing::Eq;
+        using ::testing::UnorderedElementsAre;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        // verify preconditions
+        const auto edgeFaceHandlesBefore = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{0});
+        const auto edgeVertexHandlesBefore = Api::EdgeVertexHandles(*m_whiteBox, Api::EdgeHandle{0});
+        const auto firstConnectedPolygonHandle = Api::FacePolygonHandle(*m_whiteBox, edgeFaceHandlesBefore[0]);
+        const auto secondConnectedPolygonHandle = Api::FacePolygonHandle(*m_whiteBox, edgeFaceHandlesBefore[1]);
+
+        // given
+        EXPECT_THAT(edgeFaceHandlesBefore, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{0}));
+        EXPECT_THAT(
+            firstConnectedPolygonHandle.m_faceHandles, UnorderedElementsAre(Api::FaceHandle{0}, Api::FaceHandle{1}));
+        EXPECT_THAT(
+            secondConnectedPolygonHandle.m_faceHandles, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{4}));
+        EXPECT_THAT(edgeVertexHandlesBefore, UnorderedElementsAre(Api::VertexHandle{0}, Api::VertexHandle{1}));
+
+        // when
+        const Api::VertexHandle splitVertexHandle =
+            Api::SplitEdge(*m_whiteBox, Api::EdgeHandle{0}, Api::EdgeMidpoint(*m_whiteBox, Api::EdgeHandle{3}));
+
+        // then
+        const auto splitVertexEdgeHandles = Api::VertexEdgeHandles(*m_whiteBox, splitVertexHandle);
+        const auto faceHandlesForEdge20 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{20});
+        const auto faceHandlesForEdge19 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{19});
+        const auto faceHandlesForEdge18 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{18});
+        const auto faceHandlesForEdge0 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{0});
+        const auto polygonHandleForFace0 = Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{0});
+        const auto polygonHandleForFace5 = Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{5});
+        const auto bordedEdgeHandlesPolygon0 =
+            Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, polygonHandleForFace0);
+        const auto bordedEdgeHandlesPolygon5 =
+            Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, polygonHandleForFace5);
+
+        EXPECT_THAT(splitVertexHandle, Eq(Api::VertexHandle{8}));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, splitVertexHandle), Eq(false));
+        EXPECT_THAT(
+            splitVertexEdgeHandles,
+            UnorderedElementsAre(Api::EdgeHandle{0}, Api::EdgeHandle{18}, Api::EdgeHandle{20}, Api::EdgeHandle{19}));
+        EXPECT_THAT(faceHandlesForEdge0, UnorderedElementsAre(Api::FaceHandle{0}, Api::FaceHandle{5}));
+        EXPECT_THAT(faceHandlesForEdge18, UnorderedElementsAre(Api::FaceHandle{12}, Api::FaceHandle{13}));
+        EXPECT_THAT(faceHandlesForEdge19, UnorderedElementsAre(Api::FaceHandle{12}, Api::FaceHandle{0}));
+        EXPECT_THAT(faceHandlesForEdge20, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{13}));
+        EXPECT_THAT(
+            polygonHandleForFace0.m_faceHandles, // top face
+            UnorderedElementsAre(Api::FaceHandle{0}, Api::FaceHandle{12}, Api::FaceHandle{1}));
+        EXPECT_THAT(
+            polygonHandleForFace5.m_faceHandles, // near (side) face
+            UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{4}, Api::FaceHandle{13}));
+        EXPECT_THAT(
+            bordedEdgeHandlesPolygon0,
+            ElementsAre(
+                Api::EdgeHandle{4}, Api::EdgeHandle{18}, Api::EdgeHandle{0}, Api::EdgeHandle{1}, Api::EdgeHandle{3}));
+        EXPECT_THAT(
+            bordedEdgeHandlesPolygon5,
+            ElementsAre(
+                Api::EdgeHandle{12}, Api::EdgeHandle{8}, Api::EdgeHandle{10}, Api::EdgeHandle{0}, Api::EdgeHandle{18}));
+    }
+
+    TEST_F(WhiteBoxTestFixture, SplitMeshEdgeCausesNewlyFormedFacesToBeAddedToCorrespondingPolygons)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::ElementsAre;
+        using ::testing::Eq;
+        using ::testing::UnorderedElementsAre;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        // verify preconditions
+        const auto edgeFaceHandlesBefore = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{0});
+        const auto edgeVertexHandlesBefore = Api::EdgeVertexHandles(*m_whiteBox, Api::EdgeHandle{0});
+        const auto firstConnectedPolygonHandle = Api::FacePolygonHandle(*m_whiteBox, edgeFaceHandlesBefore[0]);
+        const auto secondConnectedPolygonHandle = Api::FacePolygonHandle(*m_whiteBox, edgeFaceHandlesBefore[1]);
+
+        // given
+        EXPECT_THAT(edgeFaceHandlesBefore, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{0}));
+        EXPECT_THAT(
+            firstConnectedPolygonHandle.m_faceHandles, UnorderedElementsAre(Api::FaceHandle{0}, Api::FaceHandle{1}));
+        EXPECT_THAT(
+            secondConnectedPolygonHandle.m_faceHandles, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{4}));
+        EXPECT_THAT(edgeVertexHandlesBefore, UnorderedElementsAre(Api::VertexHandle{0}, Api::VertexHandle{1}));
+
+        // when
+        const Api::VertexHandle splitVertexHandle =
+            Api::SplitEdge(*m_whiteBox, Api::EdgeHandle{11}, Api::EdgeMidpoint(*m_whiteBox, Api::EdgeHandle{11}));
+
+        // then
+        const auto splitVertexEdgeHandles = Api::VertexEdgeHandles(*m_whiteBox, splitVertexHandle);
+        const auto faceHandlesForEdge20 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{20});
+        const auto faceHandlesForEdge19 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{19});
+        const auto faceHandlesForEdge18 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{18});
+        const auto faceHandlesForEdge11 = Api::EdgeFaceHandles(*m_whiteBox, Api::EdgeHandle{11});
+        const auto polygonHandleForFace5 = Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{5});
+        const auto bordedEdgeHandlesPolygon5 =
+            Api::PolygonBorderEdgeHandlesFlattened(*m_whiteBox, polygonHandleForFace5);
+
+        EXPECT_THAT(splitVertexHandle, Eq(Api::VertexHandle{8}));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, splitVertexHandle), Eq(true));
+        EXPECT_THAT(
+            splitVertexEdgeHandles,
+            UnorderedElementsAre(Api::EdgeHandle{20}, Api::EdgeHandle{18}, Api::EdgeHandle{11}, Api::EdgeHandle{19}));
+        EXPECT_THAT(faceHandlesForEdge11, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{4}));
+        EXPECT_THAT(faceHandlesForEdge18, UnorderedElementsAre(Api::FaceHandle{12}, Api::FaceHandle{13}));
+        EXPECT_THAT(faceHandlesForEdge19, UnorderedElementsAre(Api::FaceHandle{12}, Api::FaceHandle{4}));
+        EXPECT_THAT(faceHandlesForEdge20, UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{13}));
+        EXPECT_THAT(
+            polygonHandleForFace5.m_faceHandles, // near (side) face
+            UnorderedElementsAre(Api::FaceHandle{5}, Api::FaceHandle{4}, Api::FaceHandle{13}, Api::FaceHandle{12}));
+        EXPECT_THAT(
+            bordedEdgeHandlesPolygon5,
+            ElementsAre(Api::EdgeHandle{0}, Api::EdgeHandle{12}, Api::EdgeHandle{8}, Api::EdgeHandle{10}));
+    }
+
+    TEST_F(WhiteBoxTestFixture, SplitFaceCausesNewlyFormedFacesToBeAddedToCorrespondingPolygons)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Eq;
+        using ::testing::UnorderedElementsAre;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        const auto polygonHandleForFace0 = Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{0});
+        const auto faceVertexHandles = Api::FaceVertexHandles(*m_whiteBox, Api::FaceHandle{0});
+
+        EXPECT_THAT(
+            polygonHandleForFace0.m_faceHandles, // top face
+            UnorderedElementsAre(Api::FaceHandle{0}, Api::FaceHandle{1}));
+        EXPECT_THAT(
+            faceVertexHandles, UnorderedElementsAre(Api::VertexHandle{0}, Api::VertexHandle{1}, Api::VertexHandle{2}));
+
+        const auto splitVertexHandle =
+            Api::SplitFace(*m_whiteBox, Api::FaceHandle{0}, Api::FaceMidpoint(*m_whiteBox, Api::FaceHandle{0}));
+
+        const auto edgeHandles = Api::VertexEdgeHandles(*m_whiteBox, splitVertexHandle);
+        const auto polygonHandleForFace0After = Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{0});
+        const auto faceVertexHandlesAfter = Api::FaceVertexHandles(*m_whiteBox, Api::FaceHandle{0});
+
+        EXPECT_THAT(splitVertexHandle, Eq(Api::VertexHandle{8}));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, splitVertexHandle), Eq(true));
+        EXPECT_THAT(edgeHandles, UnorderedElementsAre(Api::EdgeHandle{18}, Api::EdgeHandle{19}, Api::EdgeHandle{20}));
+        EXPECT_THAT(
+            polygonHandleForFace0After.m_faceHandles, // top face
+            UnorderedElementsAre(Api::FaceHandle{0}, Api::FaceHandle{1}, Api::FaceHandle{12}, Api::FaceHandle{13}));
+        EXPECT_THAT(
+            faceVertexHandlesAfter,
+            UnorderedElementsAre(Api::VertexHandle{0}, Api::VertexHandle{8}, Api::VertexHandle{2}));
+    }
+
+    TEST_F(WhiteBoxTestFixture, UserEdgeHandlesReturnedForVertexHandle)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::UnorderedElementsAre;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        const auto vertexUserEdgeHandles = Api::VertexUserEdgeHandles(*m_whiteBox, Api::VertexHandle{2});
+
+        // in the unit cube, vertex handle 2 has 5 connected edge handles but only two of these
+        // are user edges (two are internal edges of a cube face)
+        EXPECT_THAT(
+            vertexUserEdgeHandles, UnorderedElementsAre(Api::EdgeHandle{1}, Api::EdgeHandle{3}, Api::EdgeHandle{13}));
+    }
+
+    TEST_F(WhiteBoxTestFixture, UserEdgeAxesReturnedForVertexHandle)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Pointwise;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        const auto vertexUserEdgeVectors = Api::VertexUserEdgeVectors(*m_whiteBox, Api::VertexHandle{2});
+
+        const auto expectedUserEdgeVectors = AZStd::vector<AZ::Vector3>{
+            -AZ::Vector3::CreateAxisZ(), -AZ::Vector3::CreateAxisX(), -AZ::Vector3::CreateAxisY()};
+
+        EXPECT_THAT(vertexUserEdgeVectors, Pointwise(IsClose(), expectedUserEdgeVectors));
+    }
+
+    TEST_F(WhiteBoxTestFixture, EdgeAxisReturnedForEdgeHandle)
+    {
+        namespace Api = WhiteBox::Api;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        Api::TranslatePolygon(*m_whiteBox, Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{11}), 1.0f);
+        Api::TranslatePolygon(*m_whiteBox, Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{1}), 0.5f);
+
+        const auto edgeVector_4 = Api::EdgeVector(*m_whiteBox, Api::EdgeHandle{4});
+        const auto edgeVector_17 = Api::EdgeVector(*m_whiteBox, Api::EdgeHandle{17});
+        const auto edgeVector_12 = Api::EdgeVector(*m_whiteBox, Api::EdgeHandle{12});
+        const auto edgeVector_0 = Api::EdgeVector(*m_whiteBox, Api::EdgeHandle{0});
+        const auto edgeVector_2 = Api::EdgeVector(*m_whiteBox, Api::EdgeHandle{2});
+
+        EXPECT_THAT(edgeVector_4, IsClose(AZ::Vector3(0.0f, -1.0f, 0.0f)));
+        EXPECT_THAT(edgeVector_17, IsClose(AZ::Vector3(0.0f, 1.0f, -1.5f)));
+        EXPECT_THAT(edgeVector_12, IsClose(AZ::Vector3(0.0f, 0.0f, -1.5f)));
+        EXPECT_THAT(edgeVector_0, IsClose(AZ::Vector3(2.0f, 0.0f, 0.0f)));
+        EXPECT_THAT(edgeVector_2, IsClose(AZ::Vector3(-2.0f, -1.0f, 0.0f)));
+    }
+
+    TEST_F(WhiteBoxTestFixture, UserEdgesWithZeroLengthNotReturned)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Pointwise;
+
+        Api::InitializeAsUnitCube(*m_whiteBox);
+
+        // squash a cube to be flat (where certain edges will have zero length)
+        Api::TranslatePolygon(*m_whiteBox, Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{1}), 1.0f);
+        Api::TranslatePolygon(*m_whiteBox, Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{5}), 2.0f);
+        Api::TranslatePolygon(*m_whiteBox, Api::FacePolygonHandle(*m_whiteBox, Api::FaceHandle{11}), -1.0f);
+
+        const auto vertexUserEdgeVectors = Api::VertexUserEdgeVectors(*m_whiteBox, Api::VertexHandle{2});
+        const auto vertexUserEdgeAxes = Api::VertexUserEdgeAxes(*m_whiteBox, Api::VertexHandle{2});
+
+        const auto expectedUserEdgeVectors =
+            AZStd::vector<AZ::Vector3>{-AZ::Vector3::CreateAxisZ(2.0f), -AZ::Vector3::CreateAxisY(3.0f)};
+        const auto expectedUserEdgeAxes =
+            AZStd::vector<AZ::Vector3>{-AZ::Vector3::CreateAxisZ(), -AZ::Vector3::CreateAxisY()};
+
+        EXPECT_THAT(vertexUserEdgeVectors, Pointwise(IsClose(), expectedUserEdgeVectors));
+        EXPECT_THAT(vertexUserEdgeAxes, Pointwise(IsClose(), expectedUserEdgeAxes));
+    }
+
+    TEST_F(WhiteBoxTestFixture, IsolatedVerticesAreHiddenWhenCreatingNewPolygons)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Each;
+        using ::testing::Eq;
+        using vh = Api::VertexHandle;
+
+        Create3x3CubeGrid(*m_whiteBox);
+        HideAllTopUserEdgesFor3x3Grid(*m_whiteBox);
+
+        const Api::VertexHandle internalVertexHandles[] = {vh{0}, vh{11}, vh{20}, vh{16}};
+
+        bool internalVertexHandlesHidden[std::size(internalVertexHandles)];
+        bool internalVertexHandlesIsolated[std::size(internalVertexHandles)];
+
+        AZStd::transform(
+            AZStd::cbegin(internalVertexHandles), AZStd::cend(internalVertexHandles),
+            AZStd::begin(internalVertexHandlesHidden),
+            [&whiteBox = m_whiteBox](const vh vertexHandle)
+            {
+                return Api::VertexIsHidden(*whiteBox, vertexHandle);
+            });
+
+        AZStd::transform(
+            AZStd::cbegin(internalVertexHandles), AZStd::cend(internalVertexHandles),
+            AZStd::begin(internalVertexHandlesIsolated),
+            [&whiteBox = m_whiteBox](const vh vertexHandle)
+            {
+                return Api::VertexIsIsolated(*whiteBox, vertexHandle);
+            });
+
+        EXPECT_THAT(internalVertexHandlesHidden, Each(Eq(true)));
+        EXPECT_THAT(internalVertexHandlesIsolated, Each(Eq(true)));
+    }
+
+    TEST_F(WhiteBoxTestFixture, HiddenVerticesConnectedToRestoredEdgesAreRestored)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Each;
+        using ::testing::Eq;
+        using vh = Api::VertexHandle;
+
+        Create3x3CubeGrid(*m_whiteBox);
+        HideAllTopUserEdgesFor3x3Grid(*m_whiteBox);
+
+        const Api::VertexHandle reconnectedInternalVertexHandles[] = {vh{11}, vh{20}, vh{16}};
+
+        const auto edgeHandlesToRestore = {
+            Api::EdgeHandle{85}, Api::EdgeHandle{45}, Api::EdgeHandle{59}, Api::EdgeHandle{12}};
+
+        bool edgeRestored = false;
+        Api::EdgeHandles restoringEdgeHandles; // inout param
+        for (const Api::EdgeHandle edgeHandleToRestore : edgeHandlesToRestore)
+        {
+            if (Api::RestoreEdge(*m_whiteBox, edgeHandleToRestore, restoringEdgeHandles))
+            {
+                edgeRestored = true;
+                break;
+            }
+        }
+
+        bool internalVertexHandlesHidden[std::size(reconnectedInternalVertexHandles)];
+        bool internalVertexHandlesIsolated[std::size(reconnectedInternalVertexHandles)];
+
+        AZStd::transform(
+            AZStd::cbegin(reconnectedInternalVertexHandles), AZStd::cend(reconnectedInternalVertexHandles),
+            AZStd::begin(internalVertexHandlesHidden),
+            [&whiteBox = m_whiteBox](const vh vertexHandle)
+            {
+                return Api::VertexIsHidden(*whiteBox, vertexHandle);
+            });
+
+        AZStd::transform(
+            AZStd::cbegin(reconnectedInternalVertexHandles), AZStd::cend(reconnectedInternalVertexHandles),
+            AZStd::begin(internalVertexHandlesIsolated),
+            [&whiteBox = m_whiteBox](const vh vertexHandle)
+            {
+                return Api::VertexIsIsolated(*whiteBox, vertexHandle);
+            });
+
+        // ensure the edge was correctly restored
+        EXPECT_THAT(edgeRestored, Eq(true));
+
+        // vertex handles connected to restored edges will be no longer be hidden or isolated
+        EXPECT_THAT(internalVertexHandlesHidden, Each(Eq(false)));
+        EXPECT_THAT(internalVertexHandlesIsolated, Each(Eq(false)));
+
+        // unaffected vertex will remain hidden and isolated
+        EXPECT_THAT(Api::VertexIsIsolated(*m_whiteBox, vh{0}), Eq(true));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, vh{0}), Eq(true));
+    }
+
+    TEST_F(WhiteBoxTestFixture, TryingToRestoreIsolatedHidddenVerticesFails)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Each;
+        using ::testing::Eq;
+        using vh = Api::VertexHandle;
+
+        Create3x3CubeGrid(*m_whiteBox);
+        HideAllTopUserEdgesFor3x3Grid(*m_whiteBox);
+
+        // precondition check
+        EXPECT_THAT(Api::VertexIsIsolated(*m_whiteBox, vh{0}), Eq(true));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, vh{0}), Eq(true));
+
+        const bool vertexRestored = Api::TryRestoreVertex(*m_whiteBox, vh{0});
+
+        // postcondition check - values remain the same
+        EXPECT_THAT(vertexRestored, Eq(false));
+        EXPECT_THAT(Api::VertexIsIsolated(*m_whiteBox, vh{0}), Eq(true));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, vh{0}), Eq(true));
+    }
+
+    TEST_F(WhiteBoxTestFixture, TryingToRestoreConnectedHidddenVerticesSucceeds)
+    {
+        namespace Api = WhiteBox::Api;
+        using ::testing::Each;
+        using ::testing::Eq;
+        using vh = Api::VertexHandle;
+
+        Create3x3CubeGrid(*m_whiteBox);
+
+        // precondition check
+        Api::HideVertex(*m_whiteBox, vh{0});
+
+        EXPECT_THAT(Api::VertexIsIsolated(*m_whiteBox, vh{0}), Eq(false));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, vh{0}), Eq(true));
+
+        const bool vertexRestored = Api::TryRestoreVertex(*m_whiteBox, vh{0});
+
+        // postcondition check - values have changed
+        EXPECT_THAT(vertexRestored, Eq(true));
+        EXPECT_THAT(Api::VertexIsIsolated(*m_whiteBox, vh{0}), Eq(false));
+        EXPECT_THAT(Api::VertexIsHidden(*m_whiteBox, vh{0}), Eq(false));
     }
 
     AZ_UNIT_TEST_HOOK();

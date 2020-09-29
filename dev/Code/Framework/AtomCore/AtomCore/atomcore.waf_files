@@ -18,10 +18,6 @@
             "Math/ShapeIntersection.cpp",
             "Math/Sphere.h"
         ],
-        "Serialization": [
-            "Serialization/JsonReader.h",
-            "Serialization/JsonReader.cpp"
-        ],
         "Serialization/Json": [
             "Serialization/Json/Utils.h",
             "Serialization/Json/Utils.cpp"

@@ -88,6 +88,31 @@ namespace UnitTest
             return claimContext;
         }
 
+        template <typename Component>
+        AZStd::unique_ptr<AZ::Entity> CreateEntity(Component** ppComponent)
+        {
+            m_app.RegisterComponentDescriptor(Component::CreateDescriptor());
+
+            auto entity = AZStd::make_unique<AZ::Entity>();
+
+            if (ppComponent)
+            {
+                *ppComponent = entity->CreateComponent<Component>();
+            }
+            else
+            {
+                entity->CreateComponent<Component>();
+            }
+
+            entity->Init();
+            EXPECT_EQ(AZ::Entity::ES_INIT, entity->GetState());
+
+            entity->Activate();
+            EXPECT_EQ(AZ::Entity::ES_ACTIVE, entity->GetState());
+
+            return entity;
+        }
+
         template <typename Component, typename Configuration>
         AZStd::unique_ptr<AZ::Entity> CreateEntity(const Configuration& config, Component** ppComponent)
         {

@@ -108,10 +108,12 @@ public:
                 pObjManager->UnloadObjects(true);
             }
 
+#if ENABLE_CRY_PHYSICS
             if (IGeomManager* pGeomManager = Cry3DEngineBase::GetPhysicalWorld()->GetGeomManager())
             {
                 pGeomManager->ShutDownGeoman();
             }
+#endif
 
             if (Cry3DEngineBase::GetMatMan())
             {

@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "raybv.h"
@@ -2471,3 +2473,5 @@ void CWheeledVehicleEntity::GetMemoryStatistics(ICrySizer* pSizer) const
         pSizer->AddObject(this, sizeof(CWheeledVehicleEntity));
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

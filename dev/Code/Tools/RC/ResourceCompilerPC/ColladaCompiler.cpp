@@ -46,12 +46,16 @@ ColladaCompiler::ColladaCompiler(ICryXML* pCryXML, IPakSystem* pPakSystem)
     , m_refCount(1)
 {
     this->pCryXML->AddRef();
+#if ENABLE_CRY_PHYSICS
     this->pPhysicsInterface = 0;
+#endif
 }
 
 ColladaCompiler::~ColladaCompiler()
 {
+#if ENABLE_CRY_PHYSICS
     delete this->pPhysicsInterface;
+#endif
     this->pCryXML->Release();
 }
 
@@ -178,6 +182,7 @@ bool ColladaCompiler::CompileToCGF(
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     // Make a compiler object to compile the nodes.
     if (!this->pPhysicsInterface)
     {
@@ -188,6 +193,9 @@ bool ColladaCompiler::CompileToCGF(
         return false;
     }
     CStaticObjectCompiler compiler(this->pPhysicsInterface, false);
+#else
+    CStaticObjectCompiler compiler(false);
+#endif // ENABLE_CRY_PHYSICS
 
     // Compile the cgf.
     CContentCGF* const pCompiledCGF = compiler.MakeCompiledCGF(pCGF);

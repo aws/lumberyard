@@ -246,10 +246,10 @@ bool MannequinConfigFileHelper::CreateNewConfig(AZStd::string& generatedPreviewF
             //iterate through contexts. Add to ScopeContextDefs element and aggregate all scopes underneath
             XmlNodeRef scopeContextDefs = defsXML->newChild(g_scopeContextDefsElement);
             AZStd::vector<AZStd::pair<AZStd::string, MannequinConfig::ScopeDefinition>> allScopes;
-            for (const auto context : config.contextList)
+            for (const auto& context : config.contextList)
             {
                 scopeContextDefs->newChild(context.name.c_str());
-                for (const auto scope : context.scopeList)
+                for (const auto& scope : context.scopeList)
                 {
                     allScopes.push_back(AZStd::pair<AZStd::string, MannequinConfig::ScopeDefinition>(context.name, scope));
                 }
@@ -329,18 +329,13 @@ CMannequinConfigFileEditor::CMannequinConfigFileEditor(const AZStd::string &pref
     m_propEditor->InvalidateAll();
     m_propEditor->ExpandAll();
 
-    QPushButton *helpButton = new QPushButton(tr("?"));
     QPushButton *createButton = new QPushButton(tr("Create"));
     QPushButton *cancelButton = new QPushButton(tr("Cancel"));
 
-    //TODO: style the pushbutton
-    connect(helpButton, &QPushButton::clicked, this, []() { QDesktopServices::openUrl(QUrl(QStringLiteral("http://docs.aws.amazon.com/lumberyard/latest/userguide/mannequin-intro.html"))); });
     connect(createButton, &QPushButton::clicked, this, &CMannequinConfigFileEditor::OnCreateClicked);
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout;
-    buttonLayout->addWidget(helpButton);
-    buttonLayout->addStretch(1);
     buttonLayout->addWidget(createButton);
     buttonLayout->addWidget(cancelButton);
     QVBoxLayout *mainlayout = new QVBoxLayout(this);
@@ -716,9 +711,9 @@ AZStd::vector<AZStd::string> MannequinConfig::GetAvailableContexts() const
 AZStd::vector<AZStd::string> MannequinConfig::GetAllScopes() const
 {
     AZStd::vector<AZStd::string> scopeNames;
-    for (const auto context : contextList)
+    for (const auto& context : contextList)
     {
-        for (const auto scope : context.scopeList)
+        for (const auto& scope : context.scopeList)
         {
             scopeNames.push_back(scope.name);
         }

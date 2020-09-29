@@ -28,65 +28,24 @@
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    CInspectorPanel::CInspectorPanel(CATLControlsModel* pATLModel)
-        : m_pATLModel(pATLModel)
+    CInspectorPanel::CInspectorPanel(CATLControlsModel* atlControlsModel)
+        : m_atlControlsModel(atlControlsModel)
         , m_selectedType(eACET_NUM_TYPES)
         , m_notFoundColor(QColor(255, 128, 128))
-        , m_bAllControlsSameType(true)
+        , m_allControlsSameType(true)
     {
-        AZ_Assert(m_pATLModel, "CInspectorPanel - The ATL Controls model is null!");
+        AZ_Assert(m_atlControlsModel, "CInspectorPanel - The ATL Controls model is null!");
 
         setupUi(this);
 
-        connect(m_pNameLineEditor, SIGNAL(editingFinished()), this, SLOT(FinishedEditingName()));
-        connect(m_pScopeDropDown, SIGNAL(activated(QString)), this, SLOT(SetControlScope(QString)));
-        connect(m_pAutoLoadCheckBox, SIGNAL(clicked(bool)), this, SLOT(SetAutoLoadForCurrentControl(bool)));
+        connect(m_nameLineEditor, SIGNAL(editingFinished()), this, SLOT(FinishedEditingName()));
+        connect(m_scopeDropDown, SIGNAL(activated(QString)), this, SLOT(SetControlScope(QString)));
+        connect(m_autoLoadCheckBox, SIGNAL(clicked(bool)), this, SLOT(SetAutoLoadForCurrentControl(bool)));
 
         // data validators
-        m_pNameLineEditor->setValidator(new QRegExpValidator(QRegExp("^[a-zA-Z0-9_]*$"), m_pNameLineEditor));
+        m_nameLineEditor->setValidator(new QRegExpValidator(QRegExp("^[a-zA-Z0-9_]*$"), m_nameLineEditor));
 
-        uint size = m_pATLModel->GetPlatformCount();
-        for (uint i = 0; i < size; ++i)
-        {
-            QLabel* pLabel = new QLabel(m_pPlatformsWidget);
-            pLabel->setText(QString(m_pATLModel->GetPlatformAt(i).c_str()));
-            pLabel->setAlignment(Qt::AlignLeading | Qt::AlignLeft | Qt::AlignVCenter);
-            pLabel->setIndent(3);
-            QComboBox* pPlatformComboBox = new QComboBox(this);
-            if (pPlatformComboBox)
-            {
-                m_platforms.push_back(pPlatformComboBox);
-                QVBoxLayout* pLayout = new QVBoxLayout();
-                pLayout->setSpacing(0);
-                pLayout->setContentsMargins(-1, 0, 0, -1);
-                pLayout->addWidget(pLabel);
-                pLayout->addWidget(pPlatformComboBox);
-                m_pPlatformsLayout->addLayout(pLayout);
-                connect(pPlatformComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(SetControlPlatforms()));
-            }
-        }
-        m_pPlatformsLayout->addItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-
-        size = m_pATLModel->GetConnectionGroupCount();
-        for (uint i = 0; i < size; ++i)
-        {
-            QConnectionsWidget* pConnectionWidget = new QConnectionsWidget(nullptr);
-            pConnectionWidget->Init(m_pATLModel->GetConnectionGroupAt(i));
-            pConnectionWidget->layout()->setContentsMargins(3, 3, 3, 3);
-            pConnectionWidget->setMinimumSize(QSize(0, 300));
-            pConnectionWidget->setMaximumSize(QSize(16777215, 300));
-            m_connectionLists.push_back(pConnectionWidget);
-            m_pPlatformGroupsTabWidget->addTab(pConnectionWidget, GetGroupIcon(i), QString());
-
-            const size_t nPlatformCount = m_platforms.size();
-            for (size_t j = 0; j < nPlatformCount; ++j)
-            {
-                m_platforms[j]->addItem(GetGroupIcon(i), QString());
-            }
-        }
-
-        m_pATLModel->AddListener(this);
-        m_pConnectionList->Init("");
+        m_atlControlsModel->AddListener(this);
 
         Reload();
     }
@@ -94,7 +53,7 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     CInspectorPanel::~CInspectorPanel()
     {
-        m_pATLModel->RemoveListener(this);
+        m_atlControlsModel->RemoveListener(this);
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -110,21 +69,21 @@ namespace AudioControls
     {
         m_selectedType = eACET_NUM_TYPES;
         m_selectedControls.clear();
-        m_bAllControlsSameType = true;
+        m_allControlsSameType = true;
         const size_t size = selectedControls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            CATLControl* pControl = m_pATLModel->GetControlByID(selectedControls[i]);
-            if (pControl)
+            CATLControl* control = m_atlControlsModel->GetControlByID(selectedControls[i]);
+            if (control)
             {
-                m_selectedControls.push_back(pControl);
+                m_selectedControls.push_back(control);
                 if (m_selectedType == eACET_NUM_TYPES)
                 {
-                    m_selectedType = pControl->GetType();
+                    m_selectedType = control->GetType();
                 }
-                else if (m_bAllControlsSameType && (m_selectedType != pControl->GetType()))
+                else if (m_allControlsSameType && (m_selectedType != control->GetType()))
                 {
-                    m_bAllControlsSameType = false;
+                    m_allControlsSameType = false;
                 }
             }
         }
@@ -136,35 +95,24 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CInspectorPanel::UpdateConnectionListControl()
     {
-        if ((m_selectedControls.size() == 1) && m_bAllControlsSameType && m_selectedType != eACET_SWITCH)
+        if ((m_selectedControls.size() == 1) && m_allControlsSameType && m_selectedType != eACET_SWITCH)
         {
             if (m_selectedType == eACET_PRELOAD)
             {
-                m_pConnectedControlsLabel->setHidden(true);
-                m_pConnectionList->setHidden(true);
-                m_pConnectedSoundbanksLabel->setHidden(false);
-                m_pPlatformGroupsTabWidget->setHidden(false);
-                m_pPlatformsLabel->setHidden(false);
-                m_pPlatformsWidget->setHidden(false);
+                m_connectedControlsLabel->setText(QString(tr("Sound Banks:")));
             }
             else
             {
-                m_pConnectedSoundbanksLabel->setHidden(true);
-                m_pPlatformGroupsTabWidget->setHidden(true);
-                m_pPlatformsLabel->setHidden(true);
-                m_pPlatformsWidget->setHidden(true);
-                m_pConnectedControlsLabel->setHidden(false);
-                m_pConnectionList->setHidden(false);
+                m_connectedControlsLabel->setText(QString(tr("Connected Controls:")));
             }
+
+            m_connectedControlsLabel->setHidden(false);
+            m_connectionList->setHidden(false);
         }
         else
         {
-            m_pConnectedControlsLabel->setHidden(true);
-            m_pConnectionList->setHidden(true);
-            m_pConnectedSoundbanksLabel->setHidden(true);
-            m_pPlatformGroupsTabWidget->setHidden(true);
-            m_pPlatformsLabel->setHidden(true);
-            m_pPlatformsWidget->setHidden(true);
+            m_connectedControlsLabel->setHidden(true);
+            m_connectionList->setHidden(true);
         }
     }
 
@@ -172,12 +120,12 @@ namespace AudioControls
     void CInspectorPanel::UpdateScopeControl()
     {
         const size_t size = m_selectedControls.size();
-        if (m_bAllControlsSameType)
+        if (m_allControlsSameType)
         {
             if (size == 1)
             {
-                CATLControl* pControl = m_selectedControls[0];
-                if (pControl)
+                CATLControl* control = m_selectedControls[0];
+                if (control)
                 {
                     if (m_selectedType == eACET_SWITCH_STATE)
                     {
@@ -185,15 +133,15 @@ namespace AudioControls
                     }
                     else
                     {
-                        QString scope = QString(pControl->GetScope().c_str());
+                        QString scope = QString(control->GetScope().c_str());
                         if (scope.isEmpty())
                         {
-                            m_pScopeDropDown->setCurrentIndex(0);
+                            m_scopeDropDown->setCurrentIndex(0);
                         }
                         else
                         {
-                            int index = m_pScopeDropDown->findText(scope);
-                            m_pScopeDropDown->setCurrentIndex(index);
+                            int index = m_scopeDropDown->findText(scope);
+                            m_scopeDropDown->setCurrentIndex(index);
                         }
                         HideScope(false);
                     }
@@ -201,34 +149,36 @@ namespace AudioControls
             }
             else
             {
-                bool bSameScope = true;
-                AZStd::string sScope;
+                bool isSameScope = true;
+                AZStd::string scope;
                 for (int i = 0; i < size; ++i)
                 {
-                    CATLControl* pControl = m_selectedControls[i];
-                    if (pControl)
+                    CATLControl* control = m_selectedControls[i];
+                    if (control)
                     {
-                        AZStd::string sControlScope = pControl->GetScope();
-                        if (sControlScope.empty())
+                        AZStd::string controlScope = control->GetScope();
+                        if (controlScope.empty())
                         {
-                            sControlScope = "Global";
+                            controlScope = "Global";
                         }
-                        if (!sScope.empty() && sControlScope != sScope)
+
+                        if (!scope.empty() && controlScope != scope)
                         {
-                            bSameScope = false;
+                            isSameScope = false;
                             break;
                         }
-                        sScope = sControlScope;
+                        scope = controlScope;
                     }
                 }
-                if (bSameScope)
+
+                if (isSameScope)
                 {
-                    int index = m_pScopeDropDown->findText(QString(sScope.c_str()));
-                    m_pScopeDropDown->setCurrentIndex(index);
+                    int index = m_scopeDropDown->findText(QString(scope.c_str()));
+                    m_scopeDropDown->setCurrentIndex(index);
                 }
                 else
                 {
-                    m_pScopeDropDown->setCurrentIndex(-1);
+                    m_scopeDropDown->setCurrentIndex(-1);
                 }
             }
         }
@@ -242,27 +192,27 @@ namespace AudioControls
     void CInspectorPanel::UpdateNameControl()
     {
         const size_t size = m_selectedControls.size();
-        if (m_bAllControlsSameType)
+        if (m_allControlsSameType)
         {
             if (size == 1)
             {
-                CATLControl* pControl = m_selectedControls[0];
-                if (pControl)
+                CATLControl* control = m_selectedControls[0];
+                if (control)
                 {
-                    m_pNameLineEditor->setText(QString(pControl->GetName().c_str()));
-                    m_pNameLineEditor->setEnabled(true);
+                    m_nameLineEditor->setText(QString(control->GetName().c_str()));
+                    m_nameLineEditor->setEnabled(true);
                 }
             }
             else
             {
-                m_pNameLineEditor->setText(" <" +  QString::number(size) + tr(" items selected>"));
-                m_pNameLineEditor->setEnabled(false);
+                m_nameLineEditor->setText(" <" +  QString::number(size) + tr(" items selected>"));
+                m_nameLineEditor->setEnabled(false);
             }
         }
         else
         {
-            m_pNameLineEditor->setText(" <" +  QString::number(size) + tr(" items selected>"));
-            m_pNameLineEditor->setEnabled(false);
+            m_nameLineEditor->setText(" <" +  QString::number(size) + tr(" items selected>"));
+            m_nameLineEditor->setEnabled(false);
         }
     }
 
@@ -271,8 +221,8 @@ namespace AudioControls
     {
         if (!m_selectedControls.empty())
         {
-            m_pPropertiesPanel->setHidden(false);
-            m_pEmptyInspectorLabel->setHidden(true);
+            m_propertiesPanel->setHidden(false);
+            m_emptyInspectorLabel->setHidden(true);
             UpdateNameControl();
             UpdateScopeControl();
             UpdateAutoLoadControl();
@@ -280,8 +230,8 @@ namespace AudioControls
         }
         else
         {
-            m_pPropertiesPanel->setHidden(true);
-            m_pEmptyInspectorLabel->setHidden(false);
+            m_propertiesPanel->setHidden(true);
+            m_emptyInspectorLabel->setHidden(false);
         }
     }
 
@@ -290,62 +240,51 @@ namespace AudioControls
     {
         if ((m_selectedControls.size() == 1) && m_selectedType != eACET_SWITCH)
         {
-            if (m_selectedType == eACET_PRELOAD)
-            {
-                const size_t size = m_connectionLists.size();
-                for (size_t i = 0; i < size; ++i)
-                {
-                    m_connectionLists[i]->SetControl(m_selectedControls[0]);
-                }
-            }
-            else
-            {
-                m_pConnectionList->SetControl(m_selectedControls[0]);
-            }
+            m_connectionList->SetControl(m_selectedControls[0]);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
     void CInspectorPanel::UpdateAutoLoadControl()
     {
-        if (!m_selectedControls.empty() && m_bAllControlsSameType && m_selectedType == eACET_PRELOAD)
+        if (!m_selectedControls.empty() && m_allControlsSameType && m_selectedType == eACET_PRELOAD)
         {
             HideAutoLoad(false);
-            bool bHasAutoLoad = false;
-            bool bHasNonAutoLoad = false;
+            bool hasAutoLoad = false;
+            bool hasNonAutoLoad = false;
             const size_t size = m_selectedControls.size();
             for (int i = 0; i < size; ++i)
             {
-                CATLControl* pControl = m_selectedControls[i];
-                if (pControl)
+                CATLControl* control = m_selectedControls[i];
+                if (control)
                 {
-                    if (pControl->IsAutoLoad())
+                    if (control->IsAutoLoad())
                     {
-                        bHasAutoLoad = true;
+                        hasAutoLoad = true;
                     }
                     else
                     {
-                        bHasNonAutoLoad = true;
+                        hasNonAutoLoad = true;
                     }
                 }
             }
 
-            if (bHasAutoLoad && bHasNonAutoLoad)
+            if (hasAutoLoad && hasNonAutoLoad)
             {
-                m_pAutoLoadCheckBox->setTristate(true);
-                m_pAutoLoadCheckBox->setCheckState(Qt::PartiallyChecked);
+                m_autoLoadCheckBox->setTristate(true);
+                m_autoLoadCheckBox->setCheckState(Qt::PartiallyChecked);
             }
             else
             {
-                if (bHasAutoLoad)
+                if (hasAutoLoad)
                 {
-                    m_pAutoLoadCheckBox->setChecked(true);
+                    m_autoLoadCheckBox->setChecked(true);
                 }
                 else
                 {
-                    m_pAutoLoadCheckBox->setChecked(false);
+                    m_autoLoadCheckBox->setChecked(false);
                 }
-                m_pAutoLoadCheckBox->setTristate(false);
+                m_autoLoadCheckBox->setTristate(false);
             }
         }
         else
@@ -357,41 +296,41 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CInspectorPanel::UpdateScopeData()
     {
-        m_pScopeDropDown->clear();
-        for (int j = 0; j < m_pATLModel->GetScopeCount(); ++j)
+        m_scopeDropDown->clear();
+        for (int j = 0; j < m_atlControlsModel->GetScopeCount(); ++j)
         {
-            SControlScope scope = m_pATLModel->GetScopeAt(j);
-            m_pScopeDropDown->insertItem(0, QString(scope.name.c_str()));
+            SControlScope scope = m_atlControlsModel->GetScopeAt(j);
+            m_scopeDropDown->insertItem(0, QString(scope.name.c_str()));
             if (scope.bOnlyLocal)
             {
-                m_pScopeDropDown->setItemData(0, m_notFoundColor, Qt::ForegroundRole);
-                m_pScopeDropDown->setItemData(0, "Level not found but it is referenced by some audio controls", Qt::ToolTipRole);
+                m_scopeDropDown->setItemData(0, m_notFoundColor, Qt::ForegroundRole);
+                m_scopeDropDown->setItemData(0, "Level not found but it is referenced by some audio controls", Qt::ToolTipRole);
             }
             else
             {
-                m_pScopeDropDown->setItemData(0, "", Qt::ToolTipRole);
+                m_scopeDropDown->setItemData(0, "", Qt::ToolTipRole);
             }
         }
-        m_pScopeDropDown->insertItem(0, tr("Global"));
+        m_scopeDropDown->insertItem(0, tr("Global"));
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::SetControlName(QString sName)
+    void CInspectorPanel::SetControlName(QString name)
     {
         if (m_selectedControls.size() == 1)
         {
-            if (!sName.isEmpty())
+            if (!name.isEmpty())
             {
                 CUndo undo("Audio Control Name Changed");
-                AZStd::string newName = sName.toUtf8().data();
-                CATLControl* pControl = m_selectedControls[0];
-                if (pControl && pControl->GetName() != newName)
+                AZStd::string newName = name.toUtf8().data();
+                CATLControl* control = m_selectedControls[0];
+                if (control && control->GetName() != newName)
                 {
-                    if (!m_pATLModel->IsNameValid(newName, pControl->GetType(), pControl->GetScope(), pControl->GetParent()))
+                    if (!m_atlControlsModel->IsNameValid(newName, control->GetType(), control->GetScope(), control->GetParent()))
                     {
-                        newName = m_pATLModel->GenerateUniqueName(newName, pControl->GetType(), pControl->GetScope(), pControl->GetParent());
+                        newName = m_atlControlsModel->GenerateUniqueName(newName, control->GetType(), control->GetScope(), control->GetParent());
                     }
-                    pControl->SetName(newName);
+                    control->SetName(newName);
                 }
             }
             else
@@ -408,19 +347,19 @@ namespace AudioControls
         size_t size = m_selectedControls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            CATLControl* pControl = m_selectedControls[i];
-            if (pControl)
+            CATLControl* control = m_selectedControls[i];
+            if (control)
             {
-                QString currentScope = QString(pControl->GetScope().c_str());
+                QString currentScope = QString(control->GetScope().c_str());
                 if (currentScope != scope && (scope != tr("Global") || currentScope != ""))
                 {
                     if (scope == tr("Global"))
                     {
-                        pControl->SetScope("");
+                        control->SetScope("");
                     }
                     else
                     {
-                        pControl->SetScope(scope.toUtf8().data());
+                        control->SetScope(scope.toUtf8().data());
                     }
                 }
             }
@@ -428,33 +367,16 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::SetAutoLoadForCurrentControl(bool bAutoLoad)
+    void CInspectorPanel::SetAutoLoadForCurrentControl(bool isAutoLoad)
     {
         CUndo undo("Audio Control Auto-Load Property Changed");
         size_t size = m_selectedControls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            CATLControl* pControl = m_selectedControls[i];
-            if (pControl)
+            CATLControl* control = m_selectedControls[i];
+            if (control)
             {
-                pControl->SetAutoLoad(bAutoLoad);
-            }
-        }
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::SetControlPlatforms()
-    {
-        if (m_selectedControls.size() == 1)
-        {
-            CATLControl* pControl = m_selectedControls[0];
-            if (pControl)
-            {
-                const size_t size = m_platforms.size();
-                for (size_t i = 0; i < size; ++i)
-                {
-                    pControl->SetGroupForPlatform(m_pATLModel->GetPlatformAt(i), m_platforms[i]->currentIndex());
-                }
+                control->SetAutoLoad(isAutoLoad);
             }
         }
     }
@@ -462,16 +384,16 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CInspectorPanel::FinishedEditingName()
     {
-        SetControlName(m_pNameLineEditor->text());
+        SetControlName(m_nameLineEditor->text());
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::OnControlModified(AudioControls::CATLControl* pControl)
+    void CInspectorPanel::OnControlModified(AudioControls::CATLControl* control)
     {
         size_t size = m_selectedControls.size();
         for (size_t i = 0; i < size; ++i)
         {
-            if (m_selectedControls[i] == pControl)
+            if (m_selectedControls[i] == control)
             {
                 UpdateInspector();
                 UpdateConnectionData();
@@ -481,24 +403,19 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::HideScope(bool bHide)
+    void CInspectorPanel::HideScope(bool hide)
     {
-        m_pScopeLabel->setHidden(bHide);
-        m_pScopeDropDown->setHidden(bHide);
+        m_scopeLabel->setHidden(hide);
+        m_scopeDropDown->setHidden(hide);
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::HideAutoLoad(bool bHide)
+    void CInspectorPanel::HideAutoLoad(bool hide)
     {
-        m_pAutoLoadLabel->setHidden(bHide);
-        m_pAutoLoadCheckBox->setHidden(bHide);
+        m_autoLoadLabel->setHidden(hide);
+        m_autoLoadCheckBox->setHidden(hide);
     }
 
-    //-------------------------------------------------------------------------------------------//
-    void CInspectorPanel::HideGroupConnections(bool bHide)
-    {
-        m_pPlatformGroupsTabWidget->setHidden(bHide);
-    }
 } // namespace AudioControls
 
 #include <Source/Editor/InspectorPanel.moc>

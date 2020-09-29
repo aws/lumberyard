@@ -13,6 +13,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzQtComponents/Components/Widgets/Card.h>
 #include <AzQtComponents/Components/Widgets/CardHeader.h>
+#include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphMotionCondition.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
@@ -20,6 +21,7 @@
 #include <EMotionFX/Source/AnimGraphStateCondition.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphTriggerAction.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphTriggerActionCommands.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
@@ -27,6 +29,7 @@
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AttributesWindow.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphWidget.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNodeFactory.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
@@ -84,6 +87,7 @@ namespace EMStudio
 
                 // 2. Create object card
                 m_objectEditor = new EMotionFX::ObjectEditor(serializeContext, m_mainReflectedWidget);
+                m_objectEditor->setObjectName("EMFX.AttributesWindow.ObjectEditor");
 
                 m_objectCard = new AzQtComponents::Card(m_mainReflectedWidget);
                 m_objectCard->setTitle("");
@@ -101,6 +105,7 @@ namespace EMStudio
                 m_conditionsWidget = new QWidget();
                 QVBoxLayout* conditionsVerticalLayout = new QVBoxLayout();
                 m_conditionsWidget->setLayout(conditionsVerticalLayout);
+                m_conditionsWidget->setObjectName("EMFX.AttributesWindowWidget.NodeTransition.ConditionsWidget");
                 conditionsVerticalLayout->setAlignment(Qt::AlignTop);
                 conditionsVerticalLayout->setMargin(0);
                 conditionsVerticalLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
@@ -111,13 +116,14 @@ namespace EMStudio
                 m_conditionsLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
                 conditionsVerticalLayout->addLayout(m_conditionsLayout);
 
-                AddConditionButton* addConditionButton = new AddConditionButton(mPlugin, m_conditionsWidget);
-                connect(addConditionButton, &AddConditionButton::ObjectTypeChosen, this, [=](AZ::TypeId conditionType)
+                m_addConditionButton = new AddConditionButton(mPlugin, m_conditionsWidget);
+                m_addConditionButton->setObjectName("EMFX.AttributesWindowWidget.NodeTransition.AddConditionsWidget");
+                connect(m_addConditionButton, &AddConditionButton::ObjectTypeChosen, this, [=](AZ::TypeId conditionType)
                     {
                         AddCondition(conditionType);
                     });
 
-                conditionsVerticalLayout->addWidget(addConditionButton);
+                conditionsVerticalLayout->addWidget(m_addConditionButton);
 
                 verticalLayout->addWidget(m_conditionsWidget);
                 m_conditionsWidget->setVisible(false);
@@ -453,27 +459,49 @@ namespace EMStudio
         const AzQtComponents::Card* card = static_cast<AzQtComponents::Card*>(sender());
         const int conditionIndex = card->property("conditionIndex").toInt();
 
-        QMenu contextMenu(this);
+        QMenu* contextMenu = new QMenu(this);
 
-        QAction* deleteAction = contextMenu.addAction("Delete condition");
+        QAction* deleteAction = contextMenu->addAction("Delete condition");
         deleteAction->setProperty("conditionIndex", conditionIndex);
         connect(deleteAction, &QAction::triggered, this, &AttributesWindow::OnRemoveCondition);
 
-        QAction* copyAction = contextMenu.addAction("Copy conditions");
-        connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopyConditions);
+        AddTransitionCopyPasteMenuEntries(contextMenu);
 
-        if (!m_copyPasteClipboard.empty())
+        if (!contextMenu->isEmpty())
         {
-            QAction* pasteAction = contextMenu.addAction("Paste conditions");
-            connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
-
-            QAction* pasteSelectiveAction = contextMenu.addAction("Paste conditions selective");
-            connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
+            contextMenu->popup(position);
         }
 
-        if (!contextMenu.isEmpty())
+        connect(contextMenu, &QMenu::triggered, contextMenu, &QMenu::deleteLater);
+    }
+
+    void AttributesWindow::AddTransitionCopyPasteMenuEntries(QMenu* menu)
+    {
+        const NodeGraph* activeGraph = mPlugin->GetGraphWidget()->GetActiveGraph();
+        if (!activeGraph)
         {
-            contextMenu.exec(position);
+            return;
+        }
+
+        QAction* copyAction = menu->addAction("Copy transition");
+        connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopy);
+
+        if (!activeGraph->IsInReferencedGraph())
+        {
+            if (m_copyPasteClipboard.m_transition.IsSuccess())
+            {
+                QAction* pasteAction = menu->addAction("Paste transition properties including conditions");
+                connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteFullTransition);
+            }
+
+            if (!m_copyPasteClipboard.m_conditions.empty())
+            {
+                QAction* pasteAction = menu->addAction("Paste conditions only");
+                connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
+
+                QAction* pasteSelectiveAction = menu->addAction("Paste conditions selective");
+                connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
+            }
         }
     }
 
@@ -562,6 +590,10 @@ namespace EMStudio
         }
     }
 
+    EMotionFX::AnimGraphEditor* AttributesWindow::GetAnimGraphEditor() const
+    {
+        return m_animGraphEditor;
+    }
 
     void AttributesWindow::AddCondition(const AZ::TypeId& conditionType)
     {
@@ -667,20 +699,7 @@ namespace EMStudio
 
         QMenu menu(this);
 
-        if (transition->GetNumConditions() > 0)
-        {
-            QAction* copyAction = menu.addAction("Copy conditions");
-            connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopyConditions);
-        }
-
-        if (!m_copyPasteClipboard.empty())
-        {
-            QAction* pasteAction = menu.addAction("Paste conditions");
-            connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
-
-            QAction* pasteSelectiveAction = menu.addAction("Paste conditions selective");
-            connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
-        }
+        AddTransitionCopyPasteMenuEntries(&menu);
 
         // show the menu at the given position
         if (menu.isEmpty() == false)
@@ -689,9 +708,10 @@ namespace EMStudio
         }
     }
 
-
-    void AttributesWindow::OnCopyConditions()
+    void AttributesWindow::OnCopy()
     {
+        m_copyPasteClipboard.Clear();
+
         if (!m_displayingModelIndex.isValid()
             || m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::TRANSITION)
         {
@@ -699,7 +719,13 @@ namespace EMStudio
         }
 
         EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
-        m_copyPasteClipboard.clear();
+
+        // Serialize all attributes that can be manipulated in the RPE.
+        m_copyPasteClipboard.m_transition = MCore::ReflectionSerializer::SerializeMembersExcept(transition, {
+            "conditions", "actionSetup",
+            "id", "sourceNodeId", "targetNodeId", "isWildcard",
+            "startOffsetX", "startOffsetY",
+            "endOffsetX", "endOffsetY"});
 
         // iterate through the conditions and put them into the clipboard
         const size_t numConditions = transition->GetNumConditions();
@@ -715,13 +741,22 @@ namespace EMStudio
                 copyPasteObject.mContents = contents.GetValue();
                 copyPasteObject.mConditionType = azrtti_typeid(condition);
                 condition->GetSummary(&copyPasteObject.mSummary);
-                m_copyPasteClipboard.push_back(copyPasteObject);
+                m_copyPasteClipboard.m_conditions.push_back(copyPasteObject);
             }
         }
     }
 
-
     void AttributesWindow::OnPasteConditions()
+    {
+        PasteTransition(/*pasteTransitionProperties=*/false, /*pasteConditions=*/true);
+    }
+
+    void AttributesWindow::OnPasteFullTransition()
+    {
+        PasteTransition(/*pasteTransitionProperties=*/true, /*pasteConditions=*/true);
+    }
+
+    void AttributesWindow::PasteTransition(bool pasteTransitionProperties, bool pasteConditions)
     {
         if (!m_displayingModelIndex.isValid()
             || m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::TRANSITION)
@@ -729,17 +764,32 @@ namespace EMStudio
             return;
         }
         EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
-
         MCore::CommandGroup commandGroup;
-        for (const CopyPasteConditionObject& copyPasteObject : m_copyPasteClipboard)
+
+        if (pasteTransitionProperties &&
+            m_copyPasteClipboard.m_transition.IsSuccess())
         {
-            CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
-                transition->GetAnimGraph()->GetID(),
-                transition->GetId(),
-                copyPasteObject.mConditionType,
-                /*insertAt=*/AZStd::nullopt,
-                copyPasteObject.mContents);
-            commandGroup.AddCommand(addConditionCommand);
+            CommandSystem::AdjustTransition(transition,
+                /*isDisabled=*/AZStd::nullopt,
+                /*sourceNode=*/AZStd::nullopt, /*targetNode=*/AZStd::nullopt,
+                /*startOffsetX=*/AZStd::nullopt, /*startOffsetY=*/AZStd::nullopt,
+                /*endOffsetX=*/AZStd::nullopt, /*endOffsetY=*/AZStd::nullopt,
+                /*attributesString=*/AZStd::nullopt, /*serializedMembers=*/m_copyPasteClipboard.m_transition.GetValue(),
+                &commandGroup);
+        }
+
+        if (pasteConditions)
+        {
+            for (const CopyPasteConditionObject& copyPasteObject : m_copyPasteClipboard.m_conditions)
+            {
+                CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
+                    transition->GetAnimGraph()->GetID(),
+                    transition->GetId(),
+                    copyPasteObject.mConditionType,
+                    /*insertAt=*/AZStd::nullopt,
+                    copyPasteObject.mContents);
+                commandGroup.AddCommand(addConditionCommand);
+            }
         }
 
         AZStd::string result;
@@ -747,15 +797,10 @@ namespace EMStudio
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
-        else
-        {
-            m_copyPasteClipboard.clear();
-        }
 
         // Send LyMetrics event.
-        MetricsEventSender::SendPasteConditionsEvent(static_cast<AZ::u32>(m_copyPasteClipboard.size()));
+        MetricsEventSender::SendPasteConditionsEvent(static_cast<AZ::u32>(m_copyPasteClipboard.m_conditions.size()));
     }
-
 
     void AttributesWindow::OnPasteConditionsSelective()
     {
@@ -781,7 +826,7 @@ namespace EMStudio
         MCore::CommandGroup commandGroup;
 
         AZ::u32 numPastedConditions = 0;
-        const size_t numConditions = m_copyPasteClipboard.size();
+        const size_t numConditions = m_copyPasteClipboard.m_conditions.size();
         for (size_t i = 0; i < numConditions; ++i)
         {
             // check if the condition was selected in the window, if not skip it
@@ -793,9 +838,9 @@ namespace EMStudio
             CommandSystem::CommandAddTransitionCondition* addConditionCommand = aznew CommandSystem::CommandAddTransitionCondition(
                 transition->GetAnimGraph()->GetID(),
                 transition->GetId(),
-                m_copyPasteClipboard[i].mConditionType,
+                m_copyPasteClipboard.m_conditions[i].mConditionType,
                 /*insertAt=*/AZStd::nullopt,
-                m_copyPasteClipboard[i].mContents);
+                m_copyPasteClipboard.m_conditions[i].mContents);
             commandGroup.AddCommand(addConditionCommand);
 
             numPastedConditions++;
@@ -805,10 +850,6 @@ namespace EMStudio
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
-        }
-        else
-        {
-            m_copyPasteClipboard.clear();
         }
 
         // Send LyMetrics event.
@@ -877,8 +918,8 @@ namespace EMStudio
         layout->addWidget(new QLabel("Please select the conditions you want to paste:"));
 
         mCheckboxes.clear();
-        const AZStd::vector<AttributesWindow::CopyPasteConditionObject>& copyPasteClipboard = attributeWindow->GetCopyPasteConditionClipboard();
-        for (const AttributesWindow::CopyPasteConditionObject& copyPasteObject : copyPasteClipboard)
+        const AttributesWindow::CopyPasteClipboard& copyPasteClipboard = attributeWindow->GetCopyPasteConditionClipboard();
+        for (const AttributesWindow::CopyPasteConditionObject& copyPasteObject : copyPasteClipboard.m_conditions)
         {
             QCheckBox* checkbox = new QCheckBox(copyPasteObject.mSummary.c_str());
             mCheckboxes.push_back(checkbox);
@@ -948,4 +989,11 @@ namespace EMStudio
 
         SetTypes(types);
     }
+
+    void AttributesWindow::CopyPasteClipboard::Clear()
+    {
+        m_conditions.clear();
+        m_transition = AZ::Failure();
+    }
+
 } // namespace EMStudio

@@ -532,7 +532,9 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_nUpdateCounter = 0;
     m_iApplicationInstance = -1;
 
+#if ENABLE_CRY_PHYSICS
     m_pPhysRenderer = 0;
+#endif
 
     m_pXMLUtils = new CXmlUtils(this);
     m_pArchiveHost = Serialization::CreateArchiveHost();
@@ -606,7 +608,10 @@ CSystem::~CSystem()
     SAFE_DELETE(m_pSystemEventDispatcher);
     //  SAFE_DELETE(m_pMemoryManager);
 
-    gEnv->pThreadManager->UnRegisterThirdPartyThread("Main");
+    if (gEnv && gEnv->pThreadManager)
+    {
+        gEnv->pThreadManager->UnRegisterThirdPartyThread("Main");
+    }
     ShutDownThreadSystem();
 
     SAFE_DELETE(g_pPakHeap);
@@ -737,7 +742,7 @@ void CSystem::ShutDown()
     SAFE_DELETE(m_pTextModeConsole);
 
     KillPhysicsThread();
-    
+
     if (m_sys_firstlaunch)
     {
         m_sys_firstlaunch->Set("0");
@@ -782,11 +787,13 @@ void CSystem::ShutDown()
         m_env.pEntitySystem->Unload();
     }
 
+#if ENABLE_CRY_PHYSICS
     if (m_env.pPhysicalWorld)
     {
         m_env.pPhysicalWorld->SetPhysicsStreamer(0);
         m_env.pPhysicalWorld->SetPhysicsEventClient(0);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
     // Clear 3D Engine resources.
@@ -807,7 +814,7 @@ void CSystem::ShutDown()
         SAFE_DELETE(m_env.pGame);
     }
 
-    if (gEnv->pLyShine)
+    if (gEnv && gEnv->pLyShine)
     {
         gEnv->pLyShine->Release();
         gEnv->pLyShine = nullptr;
@@ -824,7 +831,9 @@ void CSystem::ShutDown()
     //  SAFE_RELEASE(m_env.pCharacterManager);
     SAFE_RELEASE(m_env.p3DEngine); // depends on EntitySystem
     SAFE_RELEASE(m_env.pEntitySystem);
+#if ENABLE_CRY_PHYSICS
     SAFE_RELEASE(m_env.pPhysicalWorld);
+#endif
     if (m_env.pConsole)
     {
         ((CXConsole*)m_env.pConsole)->FreeRenderResources();
@@ -921,7 +930,9 @@ void CSystem::ShutDown()
     SAFE_DELETE(m_pDefaultValidator);
     m_pValidator = nullptr;
 
+#if ENABLE_CRY_PHYSICS
     SAFE_DELETE(m_pPhysRenderer);
+#endif
 
     SAFE_DELETE(m_pGemManager);
     SAFE_DELETE(m_crypto);
@@ -978,7 +989,7 @@ void CSystem::ShutDown()
 void CSystem::Quit()
 {
     CryLogAlways("CSystem::Quit invoked from thread %" PRI_THREADID " (main is %" PRI_THREADID ")", GetCurrentThreadId(), gEnv->mMainThreadId);
-    
+
     AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
 
     // If this was set from anywhere but the main thread, bail and let the main thread handle shutdown
@@ -1005,13 +1016,13 @@ void CSystem::Quit()
 
     /*
     * TODO: This call to _exit, _Exit, TerminateProcess etc. needs to
-    * eventually be removed. This causes an extremely early exit before we 
-    * actually perform cleanup. When this gets called most managers are 
+    * eventually be removed. This causes an extremely early exit before we
+    * actually perform cleanup. When this gets called most managers are
     * simply never deleted and we leave it to the OS to clean up our mess
     * which is just really bad practice. However there are LOTS of issues
-    * with shutdown at the moment. Removing this will simply cause 
-    * a crash when either the Editor or Launcher initiate shutdown. Both 
-    * applications crash differently too. Bugs will be logged about those 
+    * with shutdown at the moment. Removing this will simply cause
+    * a crash when either the Editor or Launcher initiate shutdown. Both
+    * applications crash differently too. Bugs will be logged about those
     * issues.
     */
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -1145,26 +1156,34 @@ public:
                 m_bProcessing = 1;
                 m_doZeroStep = 0;
 
+#if ENABLE_CRY_PHYSICS
                 PhysicsVars* pVars = gEnv->pPhysicalWorld->GetPhysVars();
                 pVars->bMultithreaded = 1;
                 gEnv->pPhysicalWorld->TracePendingRays();
+#endif // ENABLE_CRY_PHYSICS
                 if (kSlowdown != 1.0f)
                 {
                     step = max(1, FtoI(step * kSlowdown * 50 - 0.5f)) * 0.02f;
+#if ENABLE_CRY_PHYSICS
                     pVars->timeScalePlayers = 1.0f / max(kSlowdown, 0.2f);
+#endif
                 }
+#if ENABLE_CRY_PHYSICS
                 else
                 {
                     pVars->timeScalePlayers = 1.0f;
                 }
                 step = min(step, pVars->maxWorldStep);
+#endif
                 timeStart = CryGetTicks();
                 IGameFramework* pIGameFramework = gEnv->pGame ? gEnv->pGame->GetIGameFramework() : nullptr;
                 if (pIGameFramework)
                 {
                     pIGameFramework->PrePhysicsTimeStep(step);
                 }
+#if ENABLE_CRY_PHYSICS
                 gEnv->pPhysicalWorld->TimeStep(step);
+#endif
                 timeTaken = gEnv->pTimer->TicksToSeconds(CryGetTicks() - timeStart);
                 if (timeTaken > step * 0.9f)
                 {
@@ -1177,7 +1196,9 @@ public:
                 {
                     kSlowdown = 1.0f, nSlowFrames = 0;
                 }
+#if ENABLE_CRY_PHYSICS
                 gEnv->pPhysicalWorld->TracePendingRays(2);
+#endif
                 m_bProcessing = 0;
                 //int timeSleep = (int)((m_timeTarget-gEnv->pTimer->GetAsyncTime()).GetMilliSeconds()*0.9f);
                 //Sleep(max(0,timeSleep));
@@ -1206,17 +1227,23 @@ public:
         if (m_bIsActive)
         {
             AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::System);
+#if ENABLE_CRY_PHYSICS
             PhysicsVars* vars = gEnv->pPhysicalWorld->GetPhysVars();
             vars->lastTimeStep = 0;
+#endif
             m_bIsActive = 0;
+#if ENABLE_CRY_PHYSICS
             m_stepRequested = min((float)m_stepRequested, 2.f * vars->maxWorldStep);
+#endif
             while (m_bProcessing)
             {
                 ;
             }
             return 1;
         }
+#if ENABLE_CRY_PHYSICS
         gEnv->pPhysicalWorld->GetPhysVars()->lastTimeStep = 0;
+#endif
         return 0;
     }
     int Resume()
@@ -1234,7 +1261,9 @@ public:
         if (m_bIsActive && dt > FLT_EPSILON)
         {
             m_stepRequested += dt;
+#if ENABLE_CRY_PHYSICS
             m_stepRequested = min((float)m_stepRequested, 10.f * gEnv->pPhysicalWorld->GetPhysVars()->maxWorldStep);
+#endif
             if (dt <= 0.0f)
             {
                 m_doZeroStep = 1;
@@ -1305,17 +1334,19 @@ void CSystem::CreatePhysicsThread()
     #endif
 #endif
 
-        {            
+        {
             m_PhysThread = new CPhysicsThreadTask;
             GetIThreadTaskManager()->RegisterTask(m_PhysThread, threadParams);
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     if (g_cvars.sys_limit_phys_thread_count)
     {
         PhysicsVars* pVars = gEnv->pPhysicalWorld->GetPhysVars();
         pVars->numThreads = max(1, min(pVars->numThreads, (int)m_pCpu->GetPhysCPUCount() - 1));
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CSystem::KillPhysicsThread()
@@ -1438,12 +1469,7 @@ void CSystem::SleepIfInactive()
         return;
     }
 
-    if (gEnv->pRenderer->GetRenderType() == ERenderType::eRT_Other)
-    {
-        return;
-    }
-
-#if defined(WIN32)
+#if defined(WIN32) && !defined(OTHER_ACTIVE)
     WIN_HWND hRendWnd = GetIRenderer()->GetHWND();
     if (!hRendWnd)
     {
@@ -1706,7 +1732,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         ti.xscale = ti.yscale = 1.2f;
 
         const int viewportHeight = GetViewCamera().GetViewSurfaceZ();
-        
+
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_8
     #if defined(AZ_PLATFORM_XENIA)
@@ -1728,7 +1754,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             switch (stat.GetType())
             {
             case AZ::IO::Statistic::Type::FloatingPoint:
-                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, 
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti,
                     AZStd::string::format("%s/%s: %.3f", stat.GetOwner().data(), stat.GetName().data(), stat.GetFloatValue()).c_str());
                 break;
             case AZ::IO::Statistic::Type::Integer:
@@ -1878,6 +1904,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         EBUS_EVENT(AZ::VR::HMDDeviceRequestBus, UpdateInternalState);
     }
 
+#if ENABLE_CRY_PHYSICS
     if (m_env.pPhysicalWorld && m_env.pPhysicalWorld->GetPhysVars()->bForceSyncPhysics)
     {
         if (m_PhysThread)
@@ -1886,6 +1913,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             static_cast<CPhysicsThreadTask*>(m_PhysThread)->EnsureStepDone();
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
     //update the dynamic response system.
@@ -1966,8 +1994,10 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     }
 
     static int g_iPausedPhys = 0;
+#if ENABLE_CRY_PHYSICS
     PhysicsVars* pVars = m_env.pPhysicalWorld->GetPhysVars();
     pVars->threadLag = 0;
+#endif // ENABLE_CRY_PHYSICS
 
     CPhysicsThreadTask* pPhysicsThreadTask = ((CPhysicsThreadTask*)m_PhysThread);
     if (!pPhysicsThreadTask)
@@ -2012,13 +2042,17 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         }
         int maxSteps = 1;
         float fCurTime = m_Time.GetCurrTime();
+#if ENABLE_CRY_PHYSICS
         float fPrevTime = m_env.pPhysicalWorld->GetPhysicsTime();
+#endif
         float timeToDo = m_Time.GetFrameTime();//fCurTime - fPrevTime;
         if (m_env.bMultiplayer)
         {
             timeToDo = m_Time.GetRealFrameTime();
         }
+#if ENABLE_CRY_PHYSICS
         m_env.pPhysicalWorld->TracePendingRays();
+#endif
 
 
 
@@ -2027,6 +2061,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             float thisStep = min(maxTimeStep, timeToDo);
             timeToDo -= thisStep;
 
+#if ENABLE_CRY_PHYSICS
             if ((nPauseMode != 1) && !(updateFlags & ESYSUPDATE_IGNORE_PHYSICS) && g_cvars.sys_physics && !bNoUpdate)
             {
                 FRAME_PROFILER("SysUpdate:Physics", this, PROFILE_SYSTEM);
@@ -2080,6 +2115,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
                 CRYPROFILE_SCOPE_PROFILE_MARKER("PumpLoggedEvents");
                 m_env.pPhysicalWorld->PumpLoggedEvents();
             }
+#endif // ENABLE_CRY_PHYSICS
 
             EBUS_EVENT(CrySystemEventBus, OnCrySystemPostPhysicsUpdate);
 
@@ -2096,6 +2132,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             }
         }
 
+#if ENABLE_CRY_PHYSICS
         // Make sure we don't lag too far behind
         if ((nPauseMode != 1) && !(updateFlags & ESYSUPDATE_IGNORE_PHYSICS))
         {
@@ -2105,15 +2142,18 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
                 m_env.pPhysicalWorld->SetPhysicsTime(fCurTime);
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
     else
     {
+#if ENABLE_CRY_PHYSICS
         {
             FRAME_PROFILER_LEGACYONLY("SysUpdate:PumpLoggedEvents", this, PROFILE_SYSTEM);
             CRYPROFILE_SCOPE_PROFILE_MARKER("PumpLoggedEvents");
             AZ_TRACE_METHOD_NAME("PumpLoggedEvents");
             m_env.pPhysicalWorld->PumpLoggedEvents();
         }
+#endif // ENABLE_CRY_PHYSICS
 
         // In multithreaded physics mode, post physics fires after physics events are dispatched on the main thread.
         EBUS_EVENT(CrySystemEventBus, OnCrySystemPostPhysicsUpdate);
@@ -2143,6 +2183,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             }
         }
 
+#if ENABLE_CRY_PHYSICS
         if ((nPauseMode != 1) && !(updateFlags & ESYSUPDATE_IGNORE_PHYSICS))
         {
             pPhysicsThreadTask->Resume();
@@ -2161,6 +2202,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             m_env.pPhysicalWorld->TracePendingRays(2);
             m_env.pPhysicalWorld->TimeStep(0);
         }
+#endif // ENABLE_CRY_PHYSICS
         if ((nPauseMode == 0) && !(updateFlags & ESYSUPDATE_IGNORE_AI) && g_cvars.sys_ai && !bNoUpdate)
         {
             FRAME_PROFILER("SysUpdate:AI", this, PROFILE_SYSTEM);
@@ -2172,9 +2214,11 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
             }
         }
     }
+#if ENABLE_CRY_PHYSICS
     pe_params_waterman pwm;
     pwm.posViewer = GetViewCamera().GetPosition();
     m_env.pPhysicalWorld->SetWaterManagerParams(&pwm);
+#endif // ENABLE_CRY_PHYSICS
 
     // Use UI timer for CryMovie, because it should not be affected by pausing game time
     const float fMovieFrameTime = m_Time.GetFrameTime(ITimer::ETIMER_UI);
@@ -2212,6 +2256,13 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
         const float fMovieFrameTime = m_Time.GetFrameTime(ITimer::ETIMER_UI);
         FRAME_PROFILER("SysUpdate:UpdateMovieSystem", this, PROFILE_SYSTEM);
         UpdateMovieSystem(updateFlags, fMovieFrameTime, false);
+
+        ITimeOfDay* timeOfDay = m_env.p3DEngine->GetTimeOfDay();
+        if (timeOfDay)
+        {
+            FRAME_PROFILER("SysUpdate:UpdateLighting", this, PROFILE_SYSTEM);
+            timeOfDay->UpdateEnvLighting(false);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -2955,6 +3006,7 @@ void CSystem::UpdateUpdateTimes()
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicsDebugRenderer* CSystem::GetIPhysicsDebugRenderer()
 {
     return m_pPhysRenderer;
@@ -2964,6 +3016,7 @@ IPhysRenderer* CSystem::GetIPhysRenderer()
 {
     return m_pPhysRenderer;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 #ifndef _RELEASE
 void CSystem::GetCheckpointData(ICheckpointData& data)
@@ -3305,10 +3358,10 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
     {
     // System event translation
     case WM_CLOSE:
-        /* 
+        /*
             Trigger CSystem to call Quit() the next time
             it calls Update(). HandleMessages can get messages
-            pumped to it from SyncMainWithRender which would 
+            pumped to it from SyncMainWithRender which would
             be called recurively by Quit(). Doing so would
             cause the render thread to deadlock and the main
             thread to spin in SRenderThread::WaitFlushFinishedCond.

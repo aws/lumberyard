@@ -9,7 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "StaticPhysicsComponent.h"
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -83,3 +87,5 @@ namespace LmbrCentral
     }
 
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

@@ -230,6 +230,12 @@
             "_comment": "LegacyTerrain"
         },
         {
+            "Path": "Gems/PhysX",
+            "Uuid": "4e08125824434932a0fe3717259caa47",
+            "Version": "0.1.0",
+            "_comment": "PhysX"
+        },
+		{
             "Path" : "${ProjectName}/Gem",
             "Uuid" : "${GemId}",
             "Version" : "${GemVersion}",

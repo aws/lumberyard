@@ -21,8 +21,6 @@
 #include "PNoise3.h"
 #include "AnimSequence.h"
 
-#include <IAudioSystem.h>
-#include <ILipSync.h>
 #include <ICryAnimation.h>
 #include <CryCharMorphParams.h>
 #include <Cry_Camera.h>
@@ -35,7 +33,6 @@
 
 #include <IEntityHelper.h>
 #include "Components/IComponentEntityNode.h"
-#include "Components/IComponentAudio.h"
 #include "Components/IComponentPhysics.h"
 
 #include <AzCore/Serialization/SerializeContext.h>

@@ -96,6 +96,7 @@ bool CMFXParticleEffect::AttachToTarget(const SMFXParticleEntry& particleParams,
     }
 
     IEntity* pTargetEntity = gEnv->pEntitySystem->GetEntity(params.trg);
+#if ENABLE_CRY_PHYSICS
     if (pTargetEntity)
     {
         //Try to figure out if it's a character using physics type
@@ -113,6 +114,7 @@ bool CMFXParticleEffect::AttachToTarget(const SMFXParticleEntry& particleParams,
         //return AttachToEntity(*pTargetEntity, particleParams, params, pParticleEffect, dir, scale);
         //}
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }

@@ -60,6 +60,12 @@ namespace AzFramework
             GetIncompatibleServicesHelper<TController>(services, typename AZ::HasComponentIncompatibleServices<TController>::type());
         }
 
+        template<typename TController, typename TConfiguration>
+        void ComponentAdapter<TController, TConfiguration>::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& services)
+        {
+            GetDependentServicesHelper<TController>(services, typename AZ::HasComponentDependentServices<TController>::type());
+        }
+
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
 

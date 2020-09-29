@@ -314,7 +314,7 @@ namespace ScriptCanvasEditor
         }
 
         // Returns the string used to display the currently selected value[Used in the non-editable format]
-        const QString& GetDisplayString() const override
+        QString GetDisplayString() const override
         {
             const ScriptCanvas::Datum* datum = GetSlotObject();
 
@@ -512,7 +512,7 @@ namespace ScriptCanvasEditor
         }
 
         // Returns the string used to display the currently selected value[Used in the non-editable format]
-        const QString& GetDisplayString() const override
+        QString GetDisplayString() const override
         {
             ScriptCanvas::Slot* slot = GetSlot();
 

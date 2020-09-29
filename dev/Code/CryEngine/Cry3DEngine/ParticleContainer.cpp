@@ -16,6 +16,7 @@
 #include "ParticleContainerGPU.h"
 #include "ParticleEmitter.h"
 #include "Particle.h"
+#include <AzFramework/Physics/SystemBus.h>
 
 #define fMAX_STATIC_BB_RADIUS                   4096.f  // Static bounding box above this size forces dynamic BB
 #define fMAX_RELATIVE_TAIL_DEVIATION    0.1f
@@ -194,6 +195,24 @@ void CParticleContainer::OnEffectChange()
     {
         m_ExternalStatObjs.push_back(GetParams().pStatObj);
     }
+
+#if !PARTICLES_USE_CRY_PHYSICS
+    if (Physics::System* system = AZ::Interface<Physics::System>::Get())
+    {
+        const Physics::MaterialId thisMaterialId = Physics::MaterialId::FromUUID(GetParams().sPhysicsMaterial.material);
+        if (!thisMaterialId.IsNull())
+        {
+            if (Physics::MaterialLibraryAsset* defMaterialLib = system->GetDefaultMaterialLibraryAssetPtr()->Get())
+            {
+                Physics::MaterialFromAssetConfiguration materialFromAsset;
+                if (defMaterialLib->GetDataForMaterialId(thisMaterialId, materialFromAsset))
+                {
+                    m_materialConfiguration = materialFromAsset.m_configuration;
+                }
+            }
+        }
+    }
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 CParticleSubEmitter* CParticleContainer::AddEmitter(CParticleSource* pSource)

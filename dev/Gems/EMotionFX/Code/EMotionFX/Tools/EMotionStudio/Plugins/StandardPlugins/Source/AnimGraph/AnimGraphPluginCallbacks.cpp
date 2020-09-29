@@ -109,18 +109,25 @@ namespace EMStudio
         MCORE_UNUSED(command);
         if (CommandSystem::CheckIfHasAnimGraphSelectionParameter(commandLine) == false)
         {
+            EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
             return true;
         }
-        return SetFirstSelectedAnimGraphActive();
+        const bool result = SetFirstSelectedAnimGraphActive();
+        EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
+        return result;
     }
     bool AnimGraphPlugin::CommandSelectCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
         MCORE_UNUSED(command);
+        EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
         if (CommandSystem::CheckIfHasAnimGraphSelectionParameter(commandLine) == false)
         {
+            EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
             return true;
         }
-        return SetFirstSelectedAnimGraphActive();
+        const bool result = SetFirstSelectedAnimGraphActive();
+        EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
+        return result;
     }
     bool AnimGraphPlugin::CommandUnselectCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {

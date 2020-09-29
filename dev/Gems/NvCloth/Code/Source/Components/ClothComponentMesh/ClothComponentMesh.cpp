@@ -12,6 +12,8 @@
 
 #include <NvCloth_precompiled.h>
 
+#include <AzCore/Interface/Interface.h>
+
 #include <Cry_Geo.h> // Needed for AABB used in IIndexedMesh.h included from QTangent.h
 #include <QTangent.h>
 #include <VertexFormats.h>
@@ -98,6 +100,11 @@ namespace NvCloth
                 AZ::TransformNotificationBus::Handler::BusConnect(m_entityId);
                 SystemNotificationsBus::Handler::BusConnect();
                 LmbrCentral::MeshModificationNotificationBus::Handler::BusConnect(m_entityId);
+
+                if (!m_config.m_useCustomWindVelocity)
+                {
+                    Physics::WindNotificationsBus::Handler::BusConnect();
+                }
             }
             else
             {
@@ -110,6 +117,7 @@ namespace NvCloth
     {
         if (m_clothSimulation)
         {
+            Physics::WindNotificationsBus::Handler::BusDisconnect();
             AZ::TransformNotificationBus::Handler::BusDisconnect();
             SystemNotificationsBus::Handler::BusDisconnect();
             LmbrCentral::MeshModificationNotificationBus::Handler::BusDisconnect();
@@ -122,6 +130,29 @@ namespace NvCloth
             }
         }
         ClearData();
+    }
+
+    void ClothComponentMesh::UpdateConfiguration(AZ::EntityId entityId, const ClothConfiguration& config)
+    {
+        if (entityId != m_entityId || m_config.m_meshNode != config.m_meshNode)
+        {
+            Setup(entityId, config);
+        }
+        else if (m_clothSimulation)
+        {
+            m_config = config;
+            m_clothSimulation->SetConfiguration(config);
+
+            // Subscribe to WindNotificationsBus only if custom wind velocity flag is not set
+            if (!m_config.m_useCustomWindVelocity)
+            {
+                Physics::WindNotificationsBus::Handler::BusConnect();
+            }
+            else
+            {
+                Physics::WindNotificationsBus::Handler::BusDisconnect();
+            }
+        }
     }
 
     void ClothComponentMesh::OnPreUpdateClothSimulation(
@@ -157,10 +188,9 @@ namespace NvCloth
         }
     }
 
-    void ClothComponentMesh::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
+    void ClothComponentMesh::OnTransformChanged([[maybe_unused]] const AZ::Transform& local, const AZ::Transform& world)
     {
-        AZ_UNUSED(local);
-        m_clothSimulation->SetTransform(world);
+        SetTransform(world);
     }
 
     void ClothComponentMesh::ModifyMesh(size_t lodIndex, size_t primitiveIndex, IRenderMesh* renderMesh)
@@ -337,6 +367,13 @@ namespace NvCloth
         m_clothDebugDisplay.reset();
     }
 
+    void ClothComponentMesh::SetTransform(const AZ::Transform& worldTransform)
+    {
+        m_clothSimulation->SetTransform(worldTransform);
+
+        UpdateWindVelocity(worldTransform.GetPosition());
+    }
+
     void ClothComponentMesh::UpdateSimulationCollisions()
     {
         if (m_actorClothColliders)
@@ -390,6 +427,41 @@ namespace NvCloth
         const auto& renderParticles = GetRenderParticles();
         auto& renderTangentSpaces = GetRenderTangentSpaces();
         renderTangentSpaces.Calculate(renderParticles, m_clothSimulation->GetInitialIndices(), m_meshInitialUVs);
+    }
+
+    void ClothComponentMesh::OnGlobalWindChanged()
+    {
+        UpdateWindVelocity();
+    }
+
+    void ClothComponentMesh::OnWindChanged([[maybe_unused]] const AZ::Aabb& aabb)
+    {
+        UpdateWindVelocity();
+    }
+
+    void ClothComponentMesh::UpdateWindVelocity()
+    {
+        AZ::Vector3 position = AZ::Vector3::CreateZero();
+        AZ::TransformBus::EventResult(position, m_entityId, &AZ::TransformBus::Events::GetWorldTranslation);
+
+        UpdateWindVelocity(position);
+    }
+
+    void ClothComponentMesh::UpdateWindVelocity(const AZ::Vector3& position)
+    {
+        if (!m_clothSimulation)
+        {
+            return;
+        }
+
+        const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+        if (windRequests)
+        {
+            const AZ::Vector3 globalWind = windRequests->GetGlobalWind();
+            const AZ::Vector3 localWind = windRequests->GetWind(position);
+            const AZ::Vector3 windVelocity = globalWind + localWind;
+            m_clothSimulation->SetWindVelocity(windVelocity);
+        }
     }
 
     bool ClothComponentMesh::IsClothFullySimulated() const

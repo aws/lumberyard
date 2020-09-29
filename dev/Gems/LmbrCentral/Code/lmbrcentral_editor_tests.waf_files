@@ -1,7 +1,8 @@
 {
     "none":
     {
-        "Tests": [
+        "Tests":
+        [
             "Tests/EditorRigidPhysicsComponentTest.cpp",
             "Tests/EditorStaticPhysicsComponentTest.cpp",
             "Tests/LmbrCentralReflectionTest.h",
@@ -15,6 +16,16 @@
             "Tests/EditorCylinderShapeComponentTests.cpp",
             "Tests/EditorPolygonPrismShapeComponentTests.cpp",
             "Tests/EditorMeshComponentTests.cpp"
+        ],
+        "Tests/Builders":
+        [
+            "Tests/Builders/CopyDependencyBuilderTest.cpp",
+            "Tests/Builders/SliceBuilderTests.cpp",
+            "Tests/Builders/LevelBuilderTest.cpp",
+            "Tests/Builders/MaterialBuilderTests.cpp",
+            "Tests/Builders/LuaBuilderTests.cpp",
+            "Tests/Builders/TranslationBuilderTests.cpp",
+            "Tests/Builders/SeedBuilderTests.cpp"
         ]
     }
 }

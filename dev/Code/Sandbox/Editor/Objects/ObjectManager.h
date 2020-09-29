@@ -187,9 +187,11 @@ public:
     virtual void FindObjectsInAABB(const AABB& aabb, std::vector<CBaseObject*>& result) const;
 
 
+#if ENABLE_CRY_PHYSICS
     //////////////////////////////////////////////////////////////////////////
     // Find object from in game physical entity.
     CBaseObject* FindPhysicalObjectOwner(struct IPhysicalEntity* pPhysicalEntity);
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
     //! Find BaseObject who is owner of specified animation node.

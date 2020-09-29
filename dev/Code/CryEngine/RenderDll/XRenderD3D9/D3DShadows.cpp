@@ -989,11 +989,11 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
             depthTarget.nHeight = lof->nTextureHeight;
             depthTarget.nFrameAccess = -1;
             depthTarget.bBusy = false;
-            depthTarget.pTex = lof->pDepthTex;
-            depthTarget.pTarget = lof->pDepthTex->GetDevTexture()->Get2DTexture();
+            depthTarget.pTex = static_cast<CTexture*>(lof->pDepthTex.get());
+            depthTarget.pTarget = depthTarget.pTex->GetDevTexture()->Get2DTexture();
             depthTarget.pSurf = lof->bOmniDirectionalShadow && !(lof->bUnwrapedOmniDirectional)
-                ? static_cast<D3DDepthSurface*>(lof->pDepthTex->GetDeviceDepthStencilSurf(sideIndex, 1))
-                : static_cast<D3DDepthSurface*>(lof->pDepthTex->GetDeviceDepthStencilSurf());
+                ? static_cast<D3DDepthSurface*>(depthTarget.pTex->GetDeviceDepthStencilSurf(sideIndex, 1))
+                : static_cast<D3DDepthSurface*>(depthTarget.pTex->GetDeviceDepthStencilSurf());
 
             CCamera tmpCamera;
             if (!lof->bOmniDirectionalShadow)
@@ -1419,9 +1419,9 @@ void CD3D9Renderer::ConfigShadowTexgen(int Num, ShadowMapFrustum* pFr, int nFrus
                 nID = CTexture::s_ptexRT_ShadowPool->GetID();
             }
             else
-            if (pFr->pDepthTex != NULL)
+            if (pFr->pDepthTex != nullptr)
             {
-                nID = pFr->pDepthTex->GetID();
+                nID = static_cast<CTexture*>(pFr->pDepthTex.get())->GetID();
             }
 
             m_RP.m_ShadowCustomTexBind[Num * 2 + 0] = nID;
@@ -1920,9 +1920,9 @@ void CD3D9Renderer::FX_MergeShadowMaps(ShadowMapFrustum* pDst, const ShadowMapFr
         depthSurface.nHeight = pDst->nTextureHeight;
         depthSurface.nFrameAccess = -1;
         depthSurface.bBusy = false;
-        depthSurface.pTex = pDst->pDepthTex;
-        depthSurface.pSurf = pDst->pDepthTex->GetDeviceDepthStencilSurf();
-        depthSurface.pTarget = pDst->pDepthTex->GetDevTexture()->Get2DTexture();
+        depthSurface.pTex = static_cast<CTexture*>(pDst->pDepthTex.get());
+        depthSurface.pSurf = depthSurface.pTex->GetDeviceDepthStencilSurf();
+        depthSurface.pTarget = depthSurface.pTex->GetDevTexture()->Get2DTexture();
 
         if (bEmptyCachedFrustum)
         {
@@ -1955,7 +1955,7 @@ void CD3D9Renderer::FX_MergeShadowMaps(ShadowMapFrustum* pDst, const ShadowMapFr
             static CCryNameR paramReprojMatSrcToDst("g_mReprojSrcToDst");
             CShaderMan::s_ShaderShadowMaskGen->FXSetPSFloat(paramReprojMatSrcToDst, (Vec4*) mReprojSrcToDst.GetData(), 4);
 
-            pSrc->pDepthTex->Apply(0, CTexture::GetTexState(STexState(FILTER_POINT, true)));
+            pSrc->pDepthTex->ApplyTexture(0, CTexture::GetTexState(STexState(FILTER_POINT, true)));
 
             SPostEffectsUtils::DrawFullScreenTri(depthSurface.nWidth, depthSurface.nHeight);
             SPostEffectsUtils::ShEndPass();

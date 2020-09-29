@@ -151,6 +151,7 @@ namespace Vegetation
         void OnCrySystemShutdown(ISystem& system) override;
         void OnCryEditorBeginLevelExport() override;
         void OnCryEditorEndLevelExport(bool /*success*/) override;
+        void OnCryEditorCloseScene() override;
 
         //////////////////////////////////////////////////////////////////////////
         // ISystemEventListener

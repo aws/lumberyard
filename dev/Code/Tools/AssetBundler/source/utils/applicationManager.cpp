@@ -76,7 +76,6 @@ namespace AssetBundler
         AZ_Assert(fileIO != nullptr, "AZ::IO::FileIOBase must be ready for use.\n");
 
         m_assetSeedManager = AZStd::make_unique<AzToolsFramework::AssetSeedManager>();
-
         AZ_TracePrintf(AssetBundler::AppWindowName, "\n");
     }
 
@@ -117,6 +116,14 @@ namespace AssetBundler
 
         ComputeEngineRoot();
 
+        const char* devRoot = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(devRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+        if (devRoot)
+        {
+            AZ_TracePrintf(AssetBundler::AppWindowNameVerbose, "Setting devroot alias to ( %s ).\n", devRoot);
+            AZ::IO::FileIOBase::GetInstance()->SetAlias("@devroot@", devRoot);
+        }
+
         AZStd::string platformName(AzToolsFramework::AssetSystem::GetHostAssetPlatform());
         AZStd::string assetsAlias;
         AZStd::string assetCatalogFile;
@@ -136,7 +143,7 @@ namespace AssetBundler
         if (!AzToolsFramework::AssetUtils::GetGemsInfo(g_cachedEngineRoot, appRoot, m_currentProjectName.c_str(), m_gemInfoList))
         {
             SendErrorMetricEvent("Failed to read Gems.");
-            AZ_Error(AppWindowName, false, "Failed to read Gems for project: %s\n", m_currentProjectName);
+            AZ_Error(AppWindowName, false, "Failed to read Gems for project: %s\n", m_currentProjectName.c_str());
             return false;
         }
 
@@ -246,7 +253,7 @@ namespace AssetBundler
         }
         else
         {
-            AZ_Error(AppWindowName, false, "( %s ) is not a valid sub-command", subCommand);
+            AZ_Error(AppWindowName, false, "( %s ) is not a valid sub-command", subCommand.c_str());
             return CommandType::Invalid;
         }
     }
@@ -297,7 +304,14 @@ namespace AssetBundler
             ComparisonTypeArg,
             ComparisonFilePatternArg,
             ComparisonFilePatternTypeArg,
-            AllowOverwritesFlag,
+            ComparisonTokenNameArg,
+            ComparisonFirstInputArg,
+            ComparisonSecondInputArg,
+            AddComparisonStepArg,
+            RemoveComparisonStepArg,
+            MoveComparisonStepArg,
+            EditComparisonStepArg,
+            PrintFlag,
             VerboseFlag
         };
 
@@ -550,11 +564,120 @@ namespace AssetBundler
         {
             return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" cannot be empty.", ComparisonRulesFileArg));
         }
-        
-        auto parseComparisonTypesOutcome = ParseComparisonTypesAndPatterns(parser, params);
-        if (!parseComparisonTypesOutcome.IsSuccess())
+
+        // Read in Add Comparison Step arg
+        if (parser->HasSwitch(AddComparisonStepArg))
         {
-            return AZ::Failure(parseComparisonTypesOutcome.GetError());
+            size_t numInputs = parser->GetNumSwitchValues(AddComparisonStepArg);
+            switch (numInputs)
+            {
+            case 0:
+                params.m_comparisonRulesStepAction = ComparisonRulesStepAction::AddToEnd;
+                break;
+            case 1:
+                params.m_comparisonRulesStepAction = ComparisonRulesStepAction::Add;
+                params.m_destinationLine = static_cast<size_t>(AzFramework::StringFunc::ToInt(parser->GetSwitchValue(AddComparisonStepArg, 0).c_str()));
+                break;
+            default:
+                return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" cannot have more than one input value.", AddComparisonStepArg));
+            }
+            AddFlagAttribute("Add Comparison Step arg", true);
+
+            // Read in what the user wants to add
+            auto parseComparisonTypesOutcome = ParseComparisonTypesAndPatterns(parser, params);
+            if (!parseComparisonTypesOutcome.IsSuccess())
+            {
+                return AZ::Failure(parseComparisonTypesOutcome.GetError());
+            }
+        }
+
+        // Read in Remove Comparison Step arg
+        if (parser->HasSwitch(RemoveComparisonStepArg))
+        {
+            if (params.m_comparisonRulesStepAction != ComparisonRulesStepAction::Default)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: Only one of the following args may be used in a single command: \"--%s\", \"--%s\", \"--%s\", \"--%s\".",
+                    AddComparisonStepArg, RemoveComparisonStepArg, MoveComparisonStepArg, EditComparisonStepArg));
+            }
+
+            if (parser->GetNumSwitchValues(RemoveComparisonStepArg) != 1)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: \"--%s\" requires exatly one input value (the line number you wish to remove).",
+                    RemoveComparisonStepArg));
+            }
+
+            params.m_comparisonRulesStepAction = ComparisonRulesStepAction::Remove;
+            params.m_initialLine = static_cast<size_t>(AzFramework::StringFunc::ToInt(parser->GetSwitchValue(RemoveComparisonStepArg, 0).c_str()));
+            AddFlagAttribute("Remove Comparison Step arg", true);
+        }
+
+        // Read in Move Comparison Step arg
+        if (parser->HasSwitch(MoveComparisonStepArg))
+        {
+            if (params.m_comparisonRulesStepAction != ComparisonRulesStepAction::Default)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: Only one of the following args may be used in a single command: \"--%s\", \"--%s\", \"--%s\", \"--%s\".",
+                    AddComparisonStepArg, RemoveComparisonStepArg, MoveComparisonStepArg, EditComparisonStepArg));
+            }
+
+            if (parser->GetNumSwitchValues(MoveComparisonStepArg) != 2)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: \"--%s\" requires exatly two input values (the line number of the Comparison Step you wish to move, and the destination line)",
+                    MoveComparisonStepArg));
+            }
+
+            params.m_comparisonRulesStepAction = ComparisonRulesStepAction::Move;
+            params.m_initialLine = static_cast<size_t>(AzFramework::StringFunc::ToInt(parser->GetSwitchValue(MoveComparisonStepArg, 0).c_str()));
+            params.m_destinationLine = static_cast<size_t>(AzFramework::StringFunc::ToInt(parser->GetSwitchValue(MoveComparisonStepArg, 1).c_str()));
+            AddFlagAttribute("Move Comparison Step arg", true);
+        }
+
+        // Read in Edit Comparison Step arg
+        if (parser->HasSwitch(EditComparisonStepArg))
+        {
+            if (params.m_comparisonRulesStepAction != ComparisonRulesStepAction::Default)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: Only one of the following args may be used in a single command: \"--%s\", \"--%s\", \"--%s\", \"--%s\".",
+                    AddComparisonStepArg, RemoveComparisonStepArg, MoveComparisonStepArg, EditComparisonStepArg));
+            }
+
+            if (parser->GetNumSwitchValues(EditComparisonStepArg) != 1)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: \"--%s\" requires exatly one input value (the line number of the Comparison Step you wish to edit)",
+                    EditComparisonStepArg));
+            }
+
+            params.m_comparisonRulesStepAction = ComparisonRulesStepAction::Edit;
+            params.m_initialLine = static_cast<size_t>(AzFramework::StringFunc::ToInt(parser->GetSwitchValue(EditComparisonStepArg, 0).c_str()));
+            AddFlagAttribute("Edit Comparison Step arg", true);
+
+            // When editing a Comparison Step, we can only accept one input for every value type
+            auto parseComparisonTypesForEditOutcome = ParseComparisonTypesAndPatternsForEditCommand(parser, params);
+            if (!parseComparisonTypesForEditOutcome.IsSuccess())
+            {
+                return AZ::Failure(parseComparisonTypesForEditOutcome.GetError());
+            }
+        }
+
+        auto parseFirstAndSecondInputsOutcome = ParseComparisonRulesFirstAndSecondInputArgs(parser, params);
+        if (!parseFirstAndSecondInputsOutcome.IsSuccess())
+        {
+            return AZ::Failure(parseFirstAndSecondInputsOutcome.GetError());
+        }
+
+        if (parser->HasSwitch(ComparisonTypeArg) &&
+            !parser->HasSwitch(AddComparisonStepArg) &&
+            !parser->HasSwitch(EditComparisonStepArg))
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Invalid command: \"--%s\" cannot be used without one of the following operations: \"--%s\", \"--%s\".",
+                ComparisonTypeArg, AddComparisonStepArg, EditComparisonStepArg));
         }
 
         for (const auto& comparisonType : params.m_comparisonTypeList)
@@ -565,9 +688,9 @@ namespace AssetBundler
             }
         }
 
-        // Read in Allow Overwrites flag
-        params.m_allowOverwrites = parser->HasSwitch(AllowOverwritesFlag);
-        AddMetric("Allow Overwrites flag", params.m_allowOverwrites);
+        // Read in Print flag
+        params.m_print = parser->HasSwitch(PrintFlag);
+        AddMetric("Print flag", params.m_print);
 
         return AZ::Success(params);
     }
@@ -588,9 +711,18 @@ namespace AssetBundler
 
         params.m_intersectionCount = AZStd::stoi(parser->GetSwitchValue(IntersectionCountArg, 0));
 
+        size_t numTokenNames = parser->GetNumSwitchValues(ComparisonTokenNameArg);
+
+        if (numTokenNames > 0 && numComparisonTypes != numTokenNames)
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Number of comparisonTypes ( %zu ) and tokenNames ( %zu ) must match. Token values can always be edited later using the \"--%s\" and \"--%s\" args.",
+                numComparisonTypes, numTokenNames, EditComparisonStepArg, ComparisonTokenNameArg));
+        }
+
         if (numPatternTypes != numFilePatterns)
         {
-            return AZ::Failure(AZStd::string::format("Number of filePatternTypes ( %i ) and filePatterns ( %i ) must match.", numPatternTypes, numFilePatterns));
+            return AZ::Failure(AZStd::string::format("Number of filePatternTypes ( %zu ) and filePatterns ( %zu ) must match.", numPatternTypes, numFilePatterns));
         }
 
         for (size_t comparisonTypeIndex = 0; comparisonTypeIndex < numComparisonTypes; ++comparisonTypeIndex)
@@ -606,7 +738,7 @@ namespace AssetBundler
             {
                 if (filePatternsConsumed >= numFilePatterns)
                 {
-                    return AZ::Failure(AZStd::string::format("Number of file patterns comparisons exceeded number of file patterns provided ( %i ).", numFilePatterns));
+                    return AZ::Failure(AZStd::string::format("Number of file patterns comparisons exceeded number of file patterns provided ( %zu ).", numFilePatterns));
                 }
 
                 params.m_filePatternList.emplace_back(parser->GetSwitchValue(ComparisonFilePatternArg, filePatternsConsumed));
@@ -624,12 +756,186 @@ namespace AssetBundler
                 params.m_filePatternList.emplace_back("");
                 params.m_filePatternTypeList.emplace_back(AzToolsFramework::AssetFileInfoListComparison::FilePatternType::Default);
             }
+
+            if (numTokenNames > 0)
+            {
+                AZStd::string tokenName = parser->GetSwitchValue(ComparisonTokenNameArg, comparisonTypeIndex);
+                AzToolsFramework::AssetFileInfoListComparison::FormatOutputToken(tokenName);
+                params.m_tokenNamesList.emplace_back(tokenName);
+            }
+            else
+            {
+                params.m_tokenNamesList.emplace_back("");
+            }
+
             params.m_comparisonTypeList.emplace_back(comparisonType);
         }
 
         if (filePatternsConsumed != numFilePatterns)
         {
-            return AZ::Failure(AZStd::string::format("Number of provided file patterns exceeded the number of file pattern comparisons ( %i ).", numFilePatterns));
+            return AZ::Failure(AZStd::string::format("Number of provided file patterns exceeded the number of file pattern comparisons ( %zu ).", numFilePatterns));
+        }
+
+        return AZ::Success();
+    }
+
+    AZ::Outcome<void, AZStd::string> ApplicationManager::ParseComparisonTypesAndPatternsForEditCommand(const AzFramework::CommandLine* parser, ComparisonRulesParams& params)
+    {
+        if (parser->HasSwitch(ComparisonTypeArg))
+        {
+            size_t numComparisonTypes = parser->GetNumSwitchValues(ComparisonTypeArg);
+            if (numComparisonTypes > 1)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: when using the \"--%s\" arg, the \"--%s\" arg can accept no more than one input value.",
+                    EditComparisonStepArg, ComparisonTypeArg));
+            }
+
+            auto comparisonTypeOutcome = ParseComparisonType(parser->GetSwitchValue(ComparisonTypeArg, 0));
+            if (!comparisonTypeOutcome.IsSuccess())
+            {
+                return AZ::Failure(comparisonTypeOutcome.GetError());
+            }
+            params.m_comparisonTypeList.emplace_back(comparisonTypeOutcome.GetValue());
+            AddFlagAttribute("ComparisonType arg", true);
+        }
+
+        if (parser->HasSwitch(ComparisonFilePatternTypeArg))
+        {
+            size_t numPatternTypes = parser->GetNumSwitchValues(ComparisonFilePatternTypeArg);
+            if (numPatternTypes > 1)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: when using the \"--%s\" arg, the \"--%s\" arg can accept no more than one input value.",
+                    EditComparisonStepArg, ComparisonFilePatternTypeArg));
+            }
+
+            auto filePatternTypeOutcome = ParseFilePatternType(parser->GetSwitchValue(ComparisonFilePatternTypeArg, 0));
+            if (!filePatternTypeOutcome.IsSuccess())
+            {
+                return AZ::Failure(filePatternTypeOutcome.GetError());
+            }
+            params.m_filePatternTypeList.emplace_back(filePatternTypeOutcome.GetValue());
+            AddFlagAttribute("FilePatternType arg", true);
+        }
+
+        if (parser->HasSwitch(ComparisonFilePatternArg))
+        {
+            size_t numFilePatterns = parser->GetNumSwitchValues(ComparisonFilePatternArg);
+
+            switch (numFilePatterns)
+            {
+            case 0:
+                // Our CLI parser will not return empty strings, so we need an extra case to check if a user wants to remove a FilePattern
+                params.m_filePatternList.emplace_back("");
+                break;
+            case 1:
+                params.m_filePatternList.emplace_back(parser->GetSwitchValue(ComparisonFilePatternArg, 0));
+                break;
+            default:
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: when using the \"--%s\" arg, the \"--%s\" arg can accept no more than one input value.",
+                    EditComparisonStepArg, ComparisonFilePatternArg));
+                break;
+            }
+            AddFlagAttribute("FilePattern arg", true);
+        }
+
+        if (parser->HasSwitch(ComparisonTokenNameArg))
+        {
+            AZStd::string tokenName;
+            size_t numTokenNames = parser->GetNumSwitchValues(ComparisonTokenNameArg);
+            switch (numTokenNames)
+            {
+            case 0:
+                // Our CLI parser will not return empty strings, so we need an extra case to check if a user wants to remove a Token altogether
+                params.m_tokenNamesList.emplace_back("");
+                break;
+            case 1:
+                tokenName = parser->GetSwitchValue(ComparisonTokenNameArg, 0);
+                AzToolsFramework::AssetFileInfoListComparison::FormatOutputToken(tokenName);
+                params.m_tokenNamesList.emplace_back(tokenName);
+                break;
+            default:
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: when using the \"--%s\" arg, the \"--%s\" arg can accept no more than one input value.",
+                    EditComparisonStepArg, ComparisonTokenNameArg));
+                break;
+            }
+            AddFlagAttribute("TokenName arg", true);
+        }
+
+        return AZ::Success();
+    }
+
+    AZ::Outcome<void, AZStd::string> ApplicationManager::ParseComparisonRulesFirstAndSecondInputArgs(const AzFramework::CommandLine* parser, ComparisonRulesParams& params)
+    {
+        if (params.m_comparisonTypeList.size() > 1 && (parser->HasSwitch(ComparisonFirstInputArg) || parser->HasSwitch(ComparisonSecondInputArg)))
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Invalid command: the \"--%s\" and \"--%s\" args can only operate on one Comparison Step at a time.",
+                ComparisonFirstInputArg, ComparisonSecondInputArg));
+        }
+
+        size_t numInputs;
+        AZStd::string inputStr;
+
+        if (parser->HasSwitch(ComparisonFirstInputArg))
+        {
+            numInputs = parser->GetNumSwitchValues(ComparisonFirstInputArg);
+            switch (numInputs)
+            {
+            case 0:
+                // Our CLI parser will not return empty strings, so we need an extra case to check if a user wants to remove an input altogether
+                params.m_firstInputList.emplace_back("");
+                break;
+            case 1:
+                inputStr = parser->GetSwitchValue(ComparisonFirstInputArg, 0);
+                if (LooksLikePath(inputStr))
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Invalid command: the \"--%s\" arg only accepts Tokens as inputs. Paths are not valid inputs.",
+                        ComparisonFirstInputArg));
+                }
+                AzToolsFramework::AssetFileInfoListComparison::FormatOutputToken(inputStr);
+                params.m_firstInputList.emplace_back(inputStr);
+                break;
+            default:
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: when using the \"--%s\" arg, the \"--%s\" arg can accept no more than one input value.",
+                    EditComparisonStepArg, ComparisonFirstInputArg));
+                break;
+            }
+            AddFlagAttribute("ComparisonRules firstInput arg", true);
+        }
+
+        if (parser->HasSwitch(ComparisonSecondInputArg))
+        {
+            numInputs = parser->GetNumSwitchValues(ComparisonSecondInputArg);
+            switch (numInputs)
+            {
+            case 0:
+                // Our CLI parser will not return empty strings, so we need an extra case to check if a user wants to remove an input altogether
+                params.m_secondInputList.emplace_back("");
+                break;
+            case 1:
+                inputStr = parser->GetSwitchValue(ComparisonSecondInputArg, 0);
+                if (LooksLikePath(inputStr))
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Invalid command: the \"--%s\" arg only accepts Tokens as inputs. Paths are not valid inputs.",
+                        ComparisonSecondInputArg));
+                }
+                AzToolsFramework::AssetFileInfoListComparison::FormatOutputToken(inputStr);
+                params.m_secondInputList.emplace_back(inputStr);
+                break;
+            default:
+                return AZ::Failure(AZStd::string::format(
+                    "Invalid command: when using the \"--%s\" arg, the \"--%s\" arg can accept no more than one input value.",
+                    EditComparisonStepArg, ComparisonSecondInputArg));
+                break;
+            }
+            AddFlagAttribute("ComparisonRules secondInput arg", true);
         }
 
         return AZ::Success();
@@ -690,6 +996,10 @@ namespace AssetBundler
         {
             return AZ::Failure(pathArgOutcome.GetError());
         }
+        else
+        {
+            AddFlagAttribute("Compare subcommand ComparisonRulesFile arg", true);
+        }
 
         params.m_comparisonRulesFile = FilePath(pathArgOutcome.GetValue());
 
@@ -716,7 +1026,7 @@ namespace AssetBundler
         if (params.m_comparisonRulesParams.m_intersectionCount && (params.m_outputs.size() != 0 && params.m_outputs.size() != 1))
         {
             SendErrorMetricEvent("Invalid number of arguements for comparison outputs.");
-            return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" must have either be 0 or 1 value for compare operation of type (%s).",
+            return AZ::Failure(AZStd::string::format("Invalid command: \"--%s\" must have either be 0 or 1 value for compare operation of type ( %s ).",
                 CompareOutputFileArg, AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::IntersectionCount)]));
         }
 
@@ -894,11 +1204,11 @@ namespace AssetBundler
         {
             if (expectedListSize != 1)
             {
-                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" can either be zero, one or %d. Actual size detected %d.", BundleVersionArg, expectedListSize, bundleVersionListSize));
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" can either be zero, one or %zu. Actual size detected %zu.", BundleVersionArg, expectedListSize, bundleVersionListSize));
             }
             else
             {
-                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" is %d. Expected number of args is one.", BundleVersionArg, bundleVersionListSize ));
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" is %zu. Expected number of args is one.", BundleVersionArg, bundleVersionListSize ));
             }
         }
 
@@ -920,11 +1230,11 @@ namespace AssetBundler
         {
             if (expectedListSize != 1)
             {
-                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" can either be zero, one or %d. Actual size detected %d.", MaxBundleSizeArg, expectedListSize, maxBundleListSize));
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" can either be zero, one or %zu. Actual size detected %zu.", MaxBundleSizeArg, expectedListSize, maxBundleListSize));
             }
             else
             {
-                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" is %d. Expected number of args is one.", MaxBundleSizeArg, maxBundleListSize));
+                return AZ::Failure(AZStd::string::format("Invalid command: Number of args in \"--%s\" is %zu. Expected number of args is one.", MaxBundleSizeArg, maxBundleListSize));
             }
         }
 
@@ -1113,10 +1423,7 @@ namespace AssetBundler
         AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
 
         AzFramework::PlatformFlags platformFlags = GetEnabledPlatformFlags(g_cachedEngineRoot, appRoot, m_currentProjectName.c_str());
-
-        AZStd::vector<AZStd::string> platformNames = AzFramework::PlatformHelper::GetPlatforms(platformFlags);
-        AZStd::string platformsString;
-        AzFramework::StringFunc::Join(platformsString, platformNames.begin(), platformNames.end(), ", ");
+        AZStd::string platformsString = AzFramework::PlatformHelper::GetCommaSeparatedPlatformList(platformFlags);
 
         AZ_TracePrintf(AppWindowName, "No platform specified, defaulting to platforms ( %s ).\n", platformsString.c_str());
         return platformFlags;
@@ -1283,10 +1590,16 @@ namespace AssetBundler
         // Add Default Seed List Files
         if (params.m_addDefaultSeedListFiles)
         {
-            AZStd::vector<AZStd::string> defaultSeedListFiles = GetDefaultSeedListFiles(AssetBundler::g_cachedEngineRoot, m_gemInfoList, params.m_platformFlags);
-            for (const AZStd::string& seedListFile : defaultSeedListFiles)
+            AZStd::unordered_map<AZStd::string, AZStd::string> defaultSeedListFiles = GetDefaultSeedListFiles(AssetBundler::g_cachedEngineRoot, m_currentProjectName.c_str(), m_gemInfoList, params.m_platformFlags);
+            if (defaultSeedListFiles.empty())
             {
-                seedListOutcome = LoadSeedListFile(seedListFile, params.m_platformFlags);
+                // Error has already been thrown
+                return false;
+            }
+
+            for (const auto& seedListFile : defaultSeedListFiles)
+            {
+                seedListOutcome = LoadSeedListFile(seedListFile.first, params.m_platformFlags);
                 if (!seedListOutcome.IsSuccess())
                 {
                     // Metric event has already been sent
@@ -1295,12 +1608,16 @@ namespace AssetBundler
                 }
             }
 
-            seedListOutcome = LoadProjectDependenciesFile(params.m_platformFlags);
-            if (!seedListOutcome.IsSuccess())
+            AZStd::vector<AZStd::string> defaultSeeds = GetDefaultSeeds(AssetBundler::g_cachedEngineRoot, m_currentProjectName.c_str());
+            if (defaultSeeds.empty())
             {
-                // Metric event has already been sent
-                AZ_Error(AppWindowName, false, seedListOutcome.GetError().c_str());
+                // Error has already been thrown
                 return false;
+            }
+
+            for (const auto& seed : defaultSeeds)
+            {
+                m_assetSeedManager->AddSeedAsset(seed, params.m_platformFlags);
             }
         }
 
@@ -1325,33 +1642,80 @@ namespace AssetBundler
         }
 
         ComparisonRulesParams params = paramsOutcome.GetValue();
-        AssetFileInfoListComparison assetFileInfoListComparison;
+        AssetFileInfoListComparison comparisonOperations;
 
-        ConvertRulesParamsToComparisonData(params, assetFileInfoListComparison);
-
-        // Check if we are performing a destructive overwrite that the user did not approve 
-        if (!params.m_allowOverwrites && AZ::IO::FileIOBase::GetInstance()->Exists(params.m_comparisonRulesFile.AbsolutePath().c_str()))
+        // Read the input ComparisonRules file into memory. If it does not already exist, we are going to create a new file.
+        if (AZ::IO::FileIOBase::GetInstance()->Exists(params.m_comparisonRulesFile.AbsolutePath().c_str()))
         {
-            SendErrorMetricEvent("Unapproved destructive overwrite on an Comparison Rules file.");
-            AZ_Error(AssetBundler::AppWindowName, false, "Comparison Rules file ( %s ) already exists, running this command would perform a destructive overwrite.\n\n"
-                "Run your command again with the ( --%s ) arg if you want to save over the existing file.", params.m_comparisonRulesFile.AbsolutePath().c_str(), AllowOverwritesFlag);
-            return false;
+            auto rulesFileLoadOutcome = AssetFileInfoListComparison::Load(params.m_comparisonRulesFile.AbsolutePath());
+            if (!rulesFileLoadOutcome.IsSuccess())
+            {
+                SendErrorMetricEvent("Failed to load comparison rules file.");
+                AZ_Error(AppWindowName, false, rulesFileLoadOutcome.GetError().c_str());
+                return false;
+            }
+            comparisonOperations = rulesFileLoadOutcome.GetValue();
+        }
+
+        // Perform any editing operations (no need to throw errors on failure, they are already thrown elsewhere)
+        switch (params.m_comparisonRulesStepAction)
+        {
+        case(ComparisonRulesStepAction::Add):
+            if (!ConvertRulesParamsToComparisonData(params, comparisonOperations, params.m_destinationLine))
+            {
+                return false;
+            }
+            break;
+        case(ComparisonRulesStepAction::AddToEnd):
+            if (!ConvertRulesParamsToComparisonData(params, comparisonOperations, comparisonOperations.GetNumComparisonSteps()))
+            {
+                return false;
+            }
+            break;
+        case(ComparisonRulesStepAction::Remove):
+            if (!comparisonOperations.RemoveComparisonStep(params.m_initialLine))
+            {
+                SendErrorMetricEvent("Failed to remove ComparisonStep from Comparison Rules file.");
+                return false;
+            }
+            break;
+        case(ComparisonRulesStepAction::Move):
+            if (!comparisonOperations.MoveComparisonStep(params.m_initialLine, params.m_destinationLine))
+            {
+                SendErrorMetricEvent("Failed to move ComparisonStep in Comparison Rules file.");
+                return false;
+            }
+            break;
+        case(ComparisonRulesStepAction::Edit):
+            if (!EditComparisonData(params, comparisonOperations, params.m_initialLine))
+            {
+                return false;
+            }
+            break;
+        }
+
+        if (params.m_print)
+        {
+            PrintComparisonRules(comparisonOperations, params.m_comparisonRulesFile.AbsolutePath());
         }
 
         // Attempt to save
-        AZ_TracePrintf(AssetBundler::AppWindowName, "Saving Comparison Rules file to ( %s )...\n", params.m_comparisonRulesFile.AbsolutePath().c_str());
-        if (!assetFileInfoListComparison.Save(params.m_comparisonRulesFile.AbsolutePath().c_str()))
+        if (params.m_comparisonRulesStepAction != ComparisonRulesStepAction::Default)
         {
-            SendErrorMetricEvent("Failed to save comparison rules file.");
-            AZ_Error(AssetBundler::AppWindowName, false, "Failed to save Comparison Rules file ( %s ).", params.m_comparisonRulesFile.AbsolutePath().c_str());
-            return false;
+            AZ_TracePrintf(AssetBundler::AppWindowName, "Saving Comparison Rules file to ( %s )...\n", params.m_comparisonRulesFile.AbsolutePath().c_str());
+            if (!comparisonOperations.Save(params.m_comparisonRulesFile.AbsolutePath().c_str()))
+            {
+                SendErrorMetricEvent("Failed to save comparison rules file.");
+                AZ_Error(AssetBundler::AppWindowName, false, "Failed to save Comparison Rules file ( %s ).", params.m_comparisonRulesFile.AbsolutePath().c_str());
+                return false;
+            }
+            AZ_TracePrintf(AssetBundler::AppWindowName, "Save successful!\n");
         }
-        AZ_TracePrintf(AssetBundler::AppWindowName, "Save successful!\n");
 
         return true;
     }
 
-    void ApplicationManager::ConvertRulesParamsToComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison)
+    bool ApplicationManager::ConvertRulesParamsToComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison, size_t startingIndex)
     {
         using namespace AzToolsFramework;
 
@@ -1361,10 +1725,113 @@ namespace AssetBundler
             comparisonData.m_comparisonType = params.m_comparisonTypeList[idx];
             comparisonData.m_filePattern = params.m_filePatternList[idx];
             comparisonData.m_filePatternType = params.m_filePatternTypeList[idx];
+            comparisonData.m_output = params.m_tokenNamesList[idx];
             comparisonData.m_intersectionCount = params.m_intersectionCount;
 
-            assetListComparison.AddComparisonStep(comparisonData);
+            if (!params.m_firstInputList.empty())
+            {
+                comparisonData.m_firstInput = params.m_firstInputList[idx];
+            }
+
+            if (comparisonData.m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern)
+            {
+                if (!params.m_secondInputList.empty())
+                {
+                    comparisonData.m_secondInput = params.m_secondInputList[idx];
+                }
+            }
+
+            if (!assetListComparison.AddComparisonStep(comparisonData, startingIndex))
+            {
+                SendErrorMetricEvent("Failed to add ComparisonStep to Comparison Rules file.");
+                // Error has already been thrown
+                return false;
+            }
+
+            ++startingIndex;
         }
+
+        return true;
+    }
+
+    bool ApplicationManager::EditComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison, size_t index)
+    {
+        using namespace AzToolsFramework;
+
+        // Errors are thrown by the Asset List Comparison functions, no need to write our own here
+
+        if (!params.m_comparisonTypeList.empty() && !assetListComparison.SetComparisonType(index, params.m_comparisonTypeList[0]))
+        {
+            SendErrorMetricEvent("Failed to edit ComparisonType in Comparison Rules file.");
+            return false;
+        }
+
+        if (!params.m_filePatternTypeList.empty() && !assetListComparison.SetFilePatternType(index, params.m_filePatternTypeList[0]))
+        {
+            SendErrorMetricEvent("Failed to edit FilePatternType in Comparison Rules file.");
+            return false;
+        }
+
+        if (!params.m_filePatternList.empty() && !assetListComparison.SetFilePattern(index, params.m_filePatternList[0]))
+        {
+            SendErrorMetricEvent("Failed to edit FilePattern in Comparison Rules file.");
+            return false;
+        }
+
+        if (!params.m_tokenNamesList.empty() && !assetListComparison.SetOutput(index, params.m_tokenNamesList[0]))
+        {
+            SendErrorMetricEvent("Failed to edit TokenName in Comparison Rules file.");
+            return false;
+        }
+
+        if (!params.m_firstInputList.empty() && !assetListComparison.SetFirstInput(index, params.m_firstInputList[0]))
+        {
+            SendErrorMetricEvent("Failed to edit FirstInput in Comparison Rules file.");
+            return false;
+        }
+
+        if (!params.m_secondInputList.empty() && !assetListComparison.SetSecondInput(index, params.m_secondInputList[0]))
+        {
+            SendErrorMetricEvent("Failed to edit SecondInput in Comparison Rules file.");
+            return false;
+        }
+
+        return true;
+    }
+
+    void ApplicationManager::PrintComparisonRules(const AzToolsFramework::AssetFileInfoListComparison& assetListComparison, const AZStd::string& comparisonRulesAbsoluteFilePath)
+    {
+        AZ_Printf(AppWindowName, "\nContents of: %s\n\n", comparisonRulesAbsoluteFilePath.c_str());
+
+        const char* inputVariableMessage = "[input at runtime]";
+
+        int lineNum = 0;
+        for (const auto& comparisonData : assetListComparison.GetComparisonList())
+        {
+            const char* comparisonTypeName = AzToolsFramework::AssetFileInfoListComparison::ComparisonTypeNames[aznumeric_cast<AZ::u8>(comparisonData.m_comparisonType)];
+            AZ_Printf(AppWindowName, "%-10i %-15s (%s", lineNum, comparisonTypeName, comparisonData.m_firstInput.empty() ? inputVariableMessage : comparisonData.m_firstInput.c_str());
+
+            if (comparisonData.m_filePatternType != AzToolsFramework::AssetFileInfoListComparison::FilePatternType::Default)
+            {
+                AZ_Printf(AppWindowName, ")\n");
+
+                const char* filePatternTypeName = AzToolsFramework::AssetFileInfoListComparison::FilePatternTypeNames[aznumeric_cast<AZ::u8>(comparisonData.m_filePatternType)];
+                AZ_Printf(AppWindowName, "%-14s %s    \"%s\"\n", "", filePatternTypeName, comparisonData.m_filePattern.c_str());
+            }
+            else
+            {
+                AZ_Printf(AppWindowName, ", %s )\n", comparisonData.m_secondInput.empty() ? inputVariableMessage : comparisonData.m_secondInput.c_str());
+            }
+
+            AZ_Printf(AppWindowName, "%-14s Output Token: %s\n", "", comparisonData.m_output.empty() ? "[No Token Set]" : comparisonData.m_output.c_str());
+            ++lineNum;
+        }
+        AZ_Printf(AppWindowName, "\n");
+    }
+
+    bool ApplicationManager::IsDefaultToken(const AZStd::string& pathOrToken)
+    {
+        return pathOrToken.size() == 1 && pathOrToken.at(0) == compareVariablePrefix;
     }
 
     bool ApplicationManager::RunCompareCommand(const AZ::Outcome<ComparisonParams, AZStd::string>& paramsOutcome)
@@ -1396,9 +1863,7 @@ namespace AssetBundler
         }
 
         // generate comparisons from additional commands and add it to comparisonOperations
-        ConvertRulesParamsToComparisonData(params.m_comparisonRulesParams, comparisonOperations);
-
-        int expectedSecondInputs = 0;
+        ConvertRulesParamsToComparisonData(params.m_comparisonRulesParams, comparisonOperations, comparisonOperations.GetNumComparisonSteps());
 
         if (params.m_comparisonRulesParams.m_intersectionCount)
         {
@@ -1420,45 +1885,66 @@ namespace AssetBundler
 
             if (params.m_outputs.size())
             {
-                comparisonOperations.SetDestinationPath(0, params.m_outputs[0]);
+                comparisonOperations.SetOutput(0, params.m_outputs[0]);
             }
         }
         else
         {
-            // Verify that inputs match # and content of comparisons
-            if (comparisonOperations.GetComparisonList().size() != params.m_firstCompareFile.size())
+            //Store input and output values alongside the Comparison Steps they relate to
+            size_t secondInputIdx = 0;
+            for (size_t idx = 0; idx < comparisonOperations.GetComparisonList().size(); ++idx)
             {
-                SendErrorMetricEvent("Mismatch in number of comparisons and comparison files.");
-                AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons defined ( %u ).", CompareFirstFileArg, comparisonOperations.GetComparisonList().size());
-                return false;
-            }
-
-            // Verify that outputs match # and content of comparisons
-            if (comparisonOperations.GetComparisonList().size() != params.m_outputs.size())
-            {
-                SendErrorMetricEvent("Mismatch in number of comparisons and comparison outputs.");
-                AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons defined ( %i ).", CompareOutputFileArg, comparisonOperations.GetComparisonList().size());
-                return false;
-            }
-
-            for (int idx = 0; idx < comparisonOperations.GetComparisonList().size(); idx++)
-            {
-                comparisonOperations.SetDestinationPath(idx, params.m_outputs[idx]);
-                if (comparisonOperations.GetComparisonList()[idx].m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern) // file pattern operations do not use a second input file
+                if (idx >= params.m_firstCompareFile.size())
                 {
-                    expectedSecondInputs++;
+                    AZ_Error(AppWindowName, false,
+                        "Invalid command: The number of \"--%s\" inputs ( %i ) must match the number of Comparison Steps ( %i ).",
+                        CompareFirstFileArg, params.m_firstCompareFile.size(), comparisonOperations.GetComparisonList().size());
+                    return false;
+                }
+
+                // Set the first input
+                if (!IsDefaultToken(params.m_firstCompareFile.at(idx)))
+                {
+                    comparisonOperations.SetFirstInput(idx, params.m_firstCompareFile.at(idx));
+                }
+
+                // Set the second input (if needed)
+                if (comparisonOperations.GetComparisonList().at(idx).m_comparisonType != AssetFileInfoListComparison::ComparisonType::FilePattern)
+                {
+                    if (secondInputIdx >= params.m_secondCompareFile.size())
+                    {
+                        AZ_Error(AppWindowName, false,
+                            "Invalid command: The number of \"--%s\" inputs ( %i ) must match the number of Comparison Steps that take two inputs.",
+                            CompareSecondFileArg, params.m_secondCompareFile.size());
+                        return false;
+                    }
+
+                    if (!IsDefaultToken(params.m_secondCompareFile.at(secondInputIdx)))
+                    {
+                        comparisonOperations.SetSecondInput(idx, params.m_secondCompareFile.at(secondInputIdx));
+                    }
+
+                    ++secondInputIdx;
+                }
+
+                // Set the output
+                if (idx >= params.m_outputs.size())
+                {
+                    AZ_Error(AppWindowName, false,
+                        "Invalid command: The number of \"--%s\" values ( %i ) must match the number of Comparison Steps ( %i ).",
+                        CompareOutputFileArg, params.m_outputs.size(), comparisonOperations.GetComparisonList().size());
+                    return false;
+                }
+
+                if (!IsDefaultToken(params.m_outputs.at(idx)))
+                {
+                    comparisonOperations.SetOutput(idx, params.m_outputs.at(idx));
                 }
             }
         }
 
-        if (params.m_secondCompareFile.size() != expectedSecondInputs)
-        {
-            SendErrorMetricEvent("Mismatch in number of comparisons and second comparison files.");
-            AZ_Error(AppWindowName, false, "The number of ( --%s ) values must be the same as the number of comparisons that require two files ( %i ).", CompareSecondFileArg, expectedSecondInputs);
-            return false;
-        }
 
-        auto compareOutcome = comparisonOperations.Compare(params.m_firstCompareFile, params.m_secondCompareFile);
+        AZ::Outcome<AssetFileInfoList, AZStd::string> compareOutcome = comparisonOperations.Compare(params.m_firstCompareFile);
         if (!compareOutcome.IsSuccess())
         {
             SendErrorMetricEvent("Comparison operation failed");
@@ -1655,7 +2141,7 @@ namespace AssetBundler
             if (params.m_bundleSettingsFile.AbsolutePath().empty())
             {
                 // Verify input file path formats before looking for platform-specific versions 
-                auto fileExtensionOutcome = AssetSeedManager::ValidateAssetListFileExtension(params.m_assetListFile.AbsolutePath());
+                auto fileExtensionOutcome = AssetFileInfoList::ValidateAssetListFileExtension(params.m_assetListFile.AbsolutePath());
                 if (!fileExtensionOutcome.IsSuccess())
                 {
                     SendErrorMetricEvent("Invalid Asset List file extension");
@@ -1940,35 +2426,6 @@ namespace AssetBundler
         return AZ::Success();
     }
 
-    AZ::Outcome<void, AZStd::string> ApplicationManager::LoadProjectDependenciesFile(AzFramework::PlatformFlags platformFlags)
-    {
-        AZStd::string projectDependenciesFile = AZStd::move(GetProjectDependenciesFile(g_cachedEngineRoot));
-        if (!AZ::IO::FileIOBase::GetInstance()->Exists(projectDependenciesFile.c_str()))
-        {
-            AZ_TracePrintf(AssetBundler::AppWindowName, "Project dependencies file %s doesn't exist.\n", projectDependenciesFile.c_str());
-
-            AZStd::string projectDependenciesFileTemplate = AZStd::move(GetProjectDependenciesFileTemplate(g_cachedEngineRoot));
-            if (AZ::IO::FileIOBase::GetInstance()->Copy(projectDependenciesFileTemplate.c_str(), projectDependenciesFile.c_str()))
-            {
-                AZ_TracePrintf(AssetBundler::AppWindowName, "Copied project dependencies file template %s to the current project.\n",
-                    projectDependenciesFile.c_str());
-            }
-            else
-            {
-                return AZ::Failure(AZStd::string::format("Failed to copy project dependencies file template %s from default project"
-                    " template to the current project.\n", projectDependenciesFileTemplate.c_str()));
-            }
-        }
-
-        // Add the project dependencies file to the seed list
-        AZStd::string relativeProductPath;
-        AzFramework::StringFunc::Path::GetFullFileName(projectDependenciesFile.c_str(), relativeProductPath);
-        AZStd::to_lower(relativeProductPath.begin(), relativeProductPath.end());
-        m_assetSeedManager->AddSeedAsset(relativeProductPath, platformFlags);
-
-        return AZ::Success();
-    }
-
     void ApplicationManager::PrintSeedList(const AZStd::string& seedListFileAbsolutePath)
     {
         AZ_Printf(AppWindowName, "\nContents of ( %s ):\n\n", seedListFileAbsolutePath.c_str());
@@ -1997,11 +2454,19 @@ namespace AssetBundler
         }
 
         AZStd::unordered_set<AZ::Data::AssetId> exclusionList;
+        AZStd::vector<AZStd::string> wildcardPatternExclusionList;
 
         for (const AZStd::string& asset : params.m_skipList)
         {
-            AZ::Data::AssetId assetId = m_assetSeedManager->GetAssetIdByPath(asset, platformFlags);
+            // Is input a wildcard pattern?
+            if (LooksLikeWildcardPattern(asset))
+            {
+                wildcardPatternExclusionList.emplace_back(asset);
+                continue;
+            }
 
+            // Is input a valid asset in the cache?
+            AZ::Data::AssetId assetId = m_assetSeedManager->GetAssetIdByPath(asset, platformFlags);
             if (assetId.IsValid())
             {
                 exclusionList.emplace(assetId);
@@ -2016,7 +2481,7 @@ namespace AssetBundler
                 && params.m_seedListFiles.empty()
                 && params.m_addSeedList.empty()
                 && !params.m_addDefaultSeedListFiles;
-            PrintAssetLists(params, platformIdsInterpreted, printExistingFiles, exclusionList);
+            PrintAssetLists(params, platformIdsInterpreted, printExistingFiles, exclusionList, wildcardPatternExclusionList);
         }
 
         // Dry Run
@@ -2030,7 +2495,7 @@ namespace AssetBundler
         AZStd::atomic_uint failureCount = 0;
 
         // Save 
-        AZ::parallel_for_each(platformIdsInterpreted.begin(), platformIdsInterpreted.end(), [this, &params, &failureCount, &exclusionList](AzFramework::PlatformId platformId)
+        AZ::parallel_for_each(platformIdsInterpreted.begin(), platformIdsInterpreted.end(), [this, &params, &failureCount, &exclusionList, &wildcardPatternExclusionList](AzFramework::PlatformId platformId)
         {
             AzFramework::PlatformFlags platformFlag = AzFramework::PlatformHelper::GetPlatformFlagFromPlatformIndex(platformId);
 
@@ -2058,7 +2523,7 @@ namespace AssetBundler
                 AZ_TracePrintf(AssetBundler::AppWindowName, "Saving Asset List Debug file to ( %s )...\n", debugListFileAbsolutePath.c_str());
             }
 
-            if (!m_assetSeedManager->SaveAssetFileInfo(assetListFileAbsolutePath, platformFlag, exclusionList, debugListFileAbsolutePath))
+            if (!m_assetSeedManager->SaveAssetFileInfo(assetListFileAbsolutePath, platformFlag, exclusionList, debugListFileAbsolutePath, wildcardPatternExclusionList))
             {
                 SendErrorMetricEvent("Failed to save Asset List file.");
                 AZ_Error(AssetBundler::AppWindowName, false, "Unable to save Asset List file to ( %s ).\n", assetListFileAbsolutePath.c_str());
@@ -2072,7 +2537,7 @@ namespace AssetBundler
         return failureCount == 0;
     }
 
-    void ApplicationManager::PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles,const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
+    void ApplicationManager::PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles,const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList)
     {
         using namespace AzToolsFramework;
 
@@ -2104,9 +2569,7 @@ namespace AssetBundler
         // The user wants to print the contents of a recently-modified Asset List file
         for (const AzFramework::PlatformId platformId : platformIds)
         {
-            AzFramework::PlatformFlags platformFlag = AzFramework::PlatformHelper::GetPlatformFlagFromPlatformIndex(platformId);
-
-            AssetSeedManager::AssetsInfoList assetsInfoList = m_assetSeedManager->GetDependenciesInfo(platformId, exclusionList);
+            AssetSeedManager::AssetsInfoList assetsInfoList = m_assetSeedManager->GetDependenciesInfo(platformId, exclusionList, nullptr, wildcardPatternExclusionList);
 
             AZ_Printf(AssetBundler::AppWindowName, "\nPrinting assets for Platform ( %s ):\n", AzFramework::PlatformHelper::GetPlatformName(platformId));
 
@@ -2291,7 +2754,7 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Seed(s) to use as root(s) when generating this Asset List File.\n", AddSeedArg);
         AZ_Printf(AppWindowName, "%-31s---Takes in a cache path to a pre-processed asset. A cache path is a path relative to \"...\\dev\\Cache\\ProjectName\\platform\\projectname\\\"\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-The specified files and all dependencies will be ignored when generating the Asset List file.\n", SkipArg);
-        AZ_Printf(AppWindowName, "%-31s---Takes in a comma-separated list of cache paths to pre-processed assets.\n", "");
+        AZ_Printf(AppWindowName, "%-31s---Takes in a comma-separated list of either: cache paths to pre-processed assets, or wildcard patterns.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Automatically include all default Seed List files in generated Asset List File.\n", AddDefaultSeedListFilesFlag);
         AZ_Printf(AppWindowName, "%-31s---This will include Seed List files for the Lumberyard Engine and all enabled Gems.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the platform(s) to generate an Asset List file for.\n", PlatformArg);
@@ -2310,6 +2773,13 @@ namespace AssetBundler
         using namespace AzToolsFramework;
         AZ_Printf(AppWindowName, "\n%-25s-Subcommand for generating Comparison Rules files.\n", ComparisonRulesCommand);
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Comparison Rules file to operate on by path.\n", ComparisonRulesFileArg);
+        AZ_Printf(AppWindowName, "    --%-25s-Adds a Comparison Step to the given Comparison Rules file at the specified line number.\n", AddComparisonStepArg);
+        AZ_Printf(AppWindowName, "%-31s---Takes in a non-negative integer. If no input is supplied, the Comparison Step will be added to the end.\n", "");
+        AZ_Printf(AppWindowName, "    --%-25s-Removes the Comparison Step present at the input line number from the given Comparison Rules file.\n", RemoveComparisonStepArg);
+        AZ_Printf(AppWindowName, "    --%-25s-Moves a Comparison Step from one line number to another line number in the given Comparison Rules file.\n", MoveComparisonStepArg);
+        AZ_Printf(AppWindowName, "%-31s---Takes in a comma-separated pair of non-negative integers: the original line number and the destination line number.\n", "");
+        AZ_Printf(AppWindowName, "    --%-25s-Edits the Comparison Step at the input line number using values from other input arguments.\n", EditComparisonStepArg);
+        AZ_Printf(AppWindowName, "%-31s---When editing, other input arguments may only contain one input value.\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of Comparison types.\n", ComparisonTypeArg);
         AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Delta), 1 (Union), 2 (Intersection), 3 (Complement), 4 (FilePattern).\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file pattern matching types.\n", ComparisonFilePatternTypeArg);
@@ -2317,7 +2787,11 @@ namespace AssetBundler
         AZ_Printf(AppWindowName, "%-31s---Must match the number of FilePattern comparisons specified in ( --%s ) argument list.\n", "", ComparisonTypeArg);
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file patterns.\n", ComparisonFilePatternArg);
         AZ_Printf(AppWindowName, "%-31s---Must match the number of FilePattern comparisons specified in ( --%s ) argument list.\n", "", ComparisonTypeArg);
-        AZ_Printf(AppWindowName, "    --%-25s-Allow destructive overwrites of files. Include this arg in automation.\n", AllowOverwritesFlag);
+        AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of output Token names.\n", ComparisonTokenNameArg);
+        AZ_Printf(AppWindowName, "    --%-25s-The Token name of the Comparison Step you wish to use as the first input of this Comparison Step.\n", ComparisonFirstInputArg);
+        AZ_Printf(AppWindowName, "    --%-25s-The Token name of the Comparison Step you wish to use as the second input of this Comparison Step.\n", ComparisonSecondInputArg);
+        AZ_Printf(AppWindowName, "%-31s---Comparison Steps of the ( FilePattern ) type only accept one input Token, and cannot be used with this arg.\n", "");
+        AZ_Printf(AppWindowName, "    --%-25s-Outputs the contents of the Comparison Rules file after performing any specified operations.\n", PrintFlag);
     }
 
     void ApplicationManager::OutputHelpCompare()
@@ -2325,7 +2799,8 @@ namespace AssetBundler
         using namespace AzToolsFramework;
         AZ_Printf(AppWindowName, "\n%-25s-Subcommand for performing comparisons between asset list files.\n", CompareCommand);
         AZ_Printf(AppWindowName, "    --%-25s-Specifies the Comparison Rules file to load rules from.\n", ComparisonRulesFileArg);
-        AZ_Printf(AppWindowName, "%-31s---All additional comparison rules specified in this command will be done after the comparison operations loaded from the rules file.\n", "");
+        AZ_Printf(AppWindowName, "%-31s---When entering input and output values, input the single '$' character to use the default values defined in the file.\n", "");
+        AZ_Printf(AppWindowName, "%-31s---All additional comparison rules specified in this command will be done after the comparison operations loaded from the rules file.", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of comparison types.\n", ComparisonTypeArg);
         AZ_Printf(AppWindowName, "%-31s---Valid inputs: 0 (Delta), 1 (Union), 2 (Intersection), 3 (Complement), 4 (FilePattern), 5 (IntersectionCount).\n", "");
         AZ_Printf(AppWindowName, "    --%-25s-A comma seperated list of file pattern matching types.\n", ComparisonFilePatternTypeArg);
@@ -2400,7 +2875,7 @@ namespace AssetBundler
     // Formatting for Output Text
     ////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool ApplicationManager::OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message)
+    bool ApplicationManager::OnPreError(const char* window, const char* fileName, int line, const char* /*func*/, const char* message)
     {
         printf("\n");
         printf("[ERROR] - %s:\n", window);
@@ -2415,7 +2890,7 @@ namespace AssetBundler
         return true;
     }
 
-    bool ApplicationManager::OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message)
+    bool ApplicationManager::OnPreWarning(const char* window, const char* fileName, int line, const char* /*func*/, const char* message)
     {
         printf("\n");
         printf("[WARN] - %s:\n", window);

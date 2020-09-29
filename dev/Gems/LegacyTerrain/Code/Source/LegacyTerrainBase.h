@@ -29,7 +29,9 @@ public:
     float GetCurAsyncTimeSec() { return m_pTimer->GetAsyncTime().GetSeconds(); }
     static IVisAreaManager* GetVisAreaManager() { return m_p3DEngine->GetIVisAreaManager(); }
     static IRenderer* GetRenderer() { return m_pRenderer; }
+#if ENABLE_CRY_PHYSICS
     static IPhysicalWorld* GetPhysicalWorld() { return m_pPhysicalWorld; }
+#endif
     static ICryPak* GetPak() { return m_pCryPak; }
     static ILog* GetLog() { return m_pLog; }
     static bool IsEditor() { return m_bEditor; }
@@ -57,7 +59,9 @@ private:
     static IObjManager* m_pObjManager;
     static ITimer* m_pTimer;
     static IRenderer* m_pRenderer;
+#if ENABLE_CRY_PHYSICS
     static IPhysicalWorld* m_pPhysicalWorld;
+#endif
     static ICryPak* m_pCryPak;
     static ILog* m_pLog;
     static IConsole* m_pConsole;

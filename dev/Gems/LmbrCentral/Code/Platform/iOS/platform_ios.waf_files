@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "LmbrCentral_Traits_Platform.h",
+            "LmbrCentral_Traits_iOS.h"
+        ]
+    }
+}

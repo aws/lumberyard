@@ -19,6 +19,7 @@
 #include <QScopedPointer>
 #include <QSet>
 #include <QStack>
+#include <QMap>
 
 class QFileSystemWatcher;
 class QRegExp;
@@ -26,6 +27,7 @@ class QRegExp;
 namespace AzQtComponents
 {
     class StyleManager;
+    class StyleSheetCacheTests;
 
     class AZ_QT_COMPONENTS_API StyleSheetCache
         : public QObject
@@ -33,6 +35,7 @@ namespace AzQtComponents
         Q_OBJECT
 
         friend StyleManager;
+        friend StyleSheetCacheTests;
 
         explicit StyleSheetCache(QObject* parent);
         ~StyleSheetCache();
@@ -55,6 +58,8 @@ namespace AzQtComponents
         void fileOnDiskChanged(const QString& filePath);
 
     private:
+        void registerPathsFoundOnDisk(const QString& pathOnDisk, const QString& qrcPrefix);
+
         QString preprocess(QString styleFileName, QString loadedStyleSheet);
         QString findStyleSheetPath(const QString& styleFileName);
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::StyleSheetCache::m_styleSheetCache': class 'QHash<QString,QString>' needs to have dll-interface to be used by clients of class 'AzQtComponents::StyleSheetCache'
@@ -68,6 +73,7 @@ namespace AzQtComponents
         QScopedPointer<QRegExp> m_importExpression;
 
         QSet<QString> m_prefixes;
+        QMap<QString, QString> m_diskToQrcMap;
 
         QString m_fallbackPrefix;
         AZ_POP_DISABLE_WARNING

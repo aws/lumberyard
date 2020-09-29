@@ -12,9 +12,19 @@
 
 #pragma once
 
-#ifdef AZ_TESTS_ENABLED
-
 #include <AzTest/AzTest.h>
+#include <WhiteBox/WhiteBoxToolApi.h>
+
+namespace WhiteBox
+{
+    std::ostream& operator<<(std::ostream& os, Api::FaceHandle faceHandle);
+    std::ostream& operator<<(std::ostream& os, Api::VertexHandle vertexHandle);
+    std::ostream& operator<<(std::ostream& os, Api::PolygonHandle& polygonHandle);
+    std::ostream& operator<<(std::ostream& os, Api::EdgeHandle edgeHandle);
+    std::ostream& operator<<(std::ostream& os, Api::HalfedgeHandle halfedgeHandle);
+    std::ostream& operator<<(std::ostream& os, Api::FaceVertHandles& faceVertHandles);
+    std::ostream& operator<<(std::ostream& os, Api::FaceVertHandlesList& faceVertHandlesList);
+} // namespace WhiteBox
 
 namespace UnitTest
 {
@@ -23,6 +33,9 @@ namespace UnitTest
     {
         return std::get<0>(arg).IsClose(std::get<1>(arg));
     }
-} // namespace UnitTest
 
-#endif
+    void Create2x2CubeGrid(WhiteBox::WhiteBoxMesh& whiteBox);
+    void Create3x3CubeGrid(WhiteBox::WhiteBoxMesh& whiteBox);
+    void HideAllTopUserEdgesFor2x2Grid(WhiteBox::WhiteBoxMesh& whiteBox);
+    void HideAllTopUserEdgesFor3x3Grid(WhiteBox::WhiteBoxMesh& whiteBox);
+} // namespace UnitTest

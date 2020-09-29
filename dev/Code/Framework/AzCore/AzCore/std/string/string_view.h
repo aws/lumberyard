@@ -12,8 +12,10 @@
 #pragma once
 
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/hash.h>
+
 
 namespace AZStd
 {
@@ -857,7 +859,7 @@ namespace AZStd
 
 //! Use this macro to simplify safe printing of a string_view which may not be null-terminated.
 //! Example: AZStd::string::format("Safely formatted: %.*s", AZ_STRING_ARG(myString));
-#define AZ_STRING_ARG(str) static_cast<int>(str.size()), str.data()
+#define AZ_STRING_ARG(str) aznumeric_cast<int>(str.size()), str.data()
 
 //! Can be used with AZ_STRING_ARG for convenience, rather than manually including "%.*s" in format strings
 //! Example: AZStd::string::format("Safely formatted: " AZ_STRING_FORMAT, AZ_STRING_ARG(myString));

@@ -32,7 +32,7 @@ public:
 TEST_F(GameLiftClientServiceTest, StartGameLiftClientSuccess)
 {
     GameLiftClientMock* gameLiftClientMock = (GameLiftClientMock*)m_clientService->GetClient().get();
-    EXPECT_CALL(*gameLiftClientMock, ListBuildsCallable(_)).Times(1);
+    EXPECT_CALL(*gameLiftClientMock, DescribeGameSessionsCallable(_)).Times(1);
     EXPECT_CALL(*m_glClientServiceEventBusMock, OnGameLiftSessionServiceReady(_)).Times(1);
     EXPECT_CALL(*m_glClientServiceEventBusMock, OnGameLiftSessionServiceFailed(_, _)).Times(0);
     EXPECT_CALL(*m_sessionEventBusMock, OnSessionServiceReady()).Times(1);
@@ -42,12 +42,12 @@ TEST_F(GameLiftClientServiceTest, StartGameLiftClientSuccess)
     m_clientService->Update();
 }
 
-TEST_F(GameLiftClientServiceTest, StartGameLiftClientFail_ListBuildsCallableError)
+TEST_F(GameLiftClientServiceTest, StartGameLiftClientFail_DescribeGameSessionsCallableError)
 {
     GameLiftClientMock* gameLiftClientMock = (GameLiftClientMock*)m_clientService->GetClient().get();
-    EXPECT_CALL(*gameLiftClientMock, ListBuildsCallable(_)).Times(1)
-        .WillOnce(Invoke(m_gameLiftClient.get(), &GameLiftClientMock::CallableErrorMock<Model::ListBuildsOutcome
-            , Model::ListBuildsRequest>));
+    EXPECT_CALL(*gameLiftClientMock, DescribeGameSessionsCallable(_)).Times(1)
+        .WillOnce(Invoke(m_gameLiftClient.get(), &GameLiftClientMock::CallableErrorMock<Model::DescribeGameSessionsOutcome
+            , Model::DescribeGameSessionsRequest>));
     EXPECT_CALL(*m_glClientServiceEventBusMock, OnGameLiftSessionServiceReady(_)).Times(0);
     EXPECT_CALL(*m_glClientServiceEventBusMock, OnGameLiftSessionServiceFailed(_, _)).Times(1);
     EXPECT_CALL(*m_sessionEventBusMock, OnSessionServiceReady()).Times(0);
@@ -61,7 +61,7 @@ TEST_F(GameLiftClientServiceTest, RequestSession_UsingQueueName)
 {
     GameLiftClientMock* gameLiftClientMock = (GameLiftClientMock*)m_clientService->GetClient().get();
     
-    EXPECT_CALL(*gameLiftClientMock, ListBuildsCallable(_)).Times(1);
+    EXPECT_CALL(*gameLiftClientMock, DescribeGameSessionsCallable(_)).Times(1);
     EXPECT_CALL(*gameLiftClientMock, StartGameSessionPlacementCallable(_)).Times(1);
 
     EXPECT_CALL(*m_glClientServiceEventBusMock, OnGameLiftSessionServiceReady(_)).Times(1);
@@ -88,7 +88,7 @@ TEST_F(GameLiftClientServiceTest, RequestSession_WithoutUsingQueueName)
 {
     GameLiftClientMock* gameLiftClientMock = (GameLiftClientMock*)m_clientService->GetClient().get();
 
-    EXPECT_CALL(*gameLiftClientMock, ListBuildsCallable(_)).Times(1);
+    EXPECT_CALL(*gameLiftClientMock, DescribeGameSessionsCallable(_)).Times(1);
     EXPECT_CALL(*gameLiftClientMock, CreateGameSessionCallable(_)).Times(1);
 
     EXPECT_CALL(*m_glClientServiceEventBusMock, OnGameLiftSessionServiceReady(_)).Times(1);

@@ -357,7 +357,7 @@ namespace CommandSystem
         const int32 motionID = parameters.GetValueAsInt("motionID", this);
 
         AZStd::string command;
-        command = AZStd::string::format("CreateMotionEventTrack -motionID %i -eventTrackName \"%s\" -index %d -enabled %s", motionID, eventTrackName.c_str(), mOldTrackIndex, mOldEnabled ? "true" : "false");
+        command = AZStd::string::format("CreateMotionEventTrack -motionID %i -eventTrackName \"%s\" -index %zu -enabled %s", motionID, eventTrackName.c_str(), mOldTrackIndex, mOldEnabled ? "true" : "false");
         return GetCommandManager()->ExecuteCommandInsideCommand(command.c_str(), outResult);
     }
 
@@ -608,7 +608,7 @@ namespace CommandSystem
     {
         AZ_UNUSED(parameters);
 
-        const AZStd::string command = AZStd::string::format("RemoveMotionEvent -motionID %i -eventTrackName \"%s\" -eventNr %i", m_motionID, m_eventTrackName.c_str(), mMotionEventNr);
+        const AZStd::string command = AZStd::string::format("RemoveMotionEvent -motionID %i -eventTrackName \"%s\" -eventNr %zu", m_motionID, m_eventTrackName.c_str(), mMotionEventNr);
         return GetCommandManager()->ExecuteCommandInsideCommand(command.c_str(), outResult);
     }
 
@@ -985,11 +985,11 @@ namespace CommandSystem
         size_t trackNr = motionEventTable->GetNumTracks() + 1;
 
         AZStd::string eventTrackName;
-        eventTrackName = AZStd::string::format("Event Track %i", trackNr);
+        eventTrackName = AZStd::string::format("Event Track %zu", trackNr);
         while (motionEventTable->FindTrackByName(eventTrackName.c_str()))
         {
             ++trackNr;
-            eventTrackName = AZStd::string::format("Event Track %i", trackNr);
+            eventTrackName = AZStd::string::format("Event Track %zu", trackNr);
         }
 
         AZStd::string outResult;

@@ -12,46 +12,12 @@
 #include "stdafx.h"
 #include <ResourceCompiler.h>
 #include <AzTest/AzTest.h>
-#include <AzCore/Memory/AllocatorScope.h>
-#include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/StringFunc/StringFunc.h>
 #include <Tests/Utils/Utils.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <fstream>
 
-class ResourceCompilerTestEnvironment
-    : public AZ::Test::ITestEnvironment
-{
-public:
-    virtual ~ResourceCompilerTestEnvironment()
-    {}
-
-protected:
-    void SetupEnvironment() override
-    {
-        m_allocatorScope.ActivateAllocators();
-        AZ::IO::FileIOBase::SetInstance(nullptr); // The API requires the old instance to be destroyed first
-        AZ::IO::FileIOBase::SetInstance(new AZ::IO::LocalFileIO());
-    }
-
-    void TeardownEnvironment() override
-    {
-        m_allocatorScope.DeactivateAllocators();
-    }
-    AZ::AllocatorScope<AZ::OSAllocator, AZ::SystemAllocator, AZ::LegacyAllocator, CryStringAllocator> m_allocatorScope;
-};
-
-AZ_UNIT_TEST_HOOK(new ResourceCompilerTestEnvironment)
-
-int AzMainUnitTests(int argc, char** argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-
-    int result = AzRunUnitTests(0, nullptr);
-
-    return result;
-}
 
 TEST(RCSanityTest, Sanity)
 {

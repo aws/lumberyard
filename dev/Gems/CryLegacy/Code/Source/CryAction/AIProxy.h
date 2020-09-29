@@ -83,10 +83,6 @@ public:
     virtual void QueryBodyInfo(SAIBodyInfo& bodyInfo);
     virtual bool QueryBodyInfo(const SAIBodyInfoQuery& query, SAIBodyInfo& bodyInfo);
     virtual void QueryWeaponInfo(SAIWeaponInfo& weaponInfo);
-    virtual EntityId GetLinkedDriverEntityId();
-    virtual bool IsDriver();
-    virtual EntityId GetLinkedVehicleEntityId();
-    virtual bool GetLinkedVehicleVisionHelper(Vec3& outHelperPos) const;
     virtual void Reset(EObjectResetType type);
 
     virtual IAICommunicationHandler* GetCommunicationHandler();
@@ -98,7 +94,9 @@ public:
     virtual bool IsForcedExecute() const;
 
     virtual void Serialize(TSerialize ser);
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics(bool wantCharacterPhysics = false);
+#endif
     virtual void DebugDraw(int iParam = 0);
     virtual void GetWorldBoundingRect(Vec3& FL, Vec3& FR, Vec3& BL, Vec3& BR, float extra = 0) const;
     virtual bool SetAGInput(EAIAGInput input, const char* value, const bool isUrgent = false);
@@ -196,7 +194,9 @@ protected:
     static float QuadraticInterp(float x, float k, float A, float B, float C);
     static float GetTofPointOnParabula(const Vec3& A, const Vec3& V, const Vec3& P, float g);
     static Vec3  GetPointOnParabula(const Vec3& A, const Vec3& V, float t, float g);
+#if ENABLE_CRY_PHYSICS
     static bool  IntersectSweptSphereWrapper(Vec3* hitPos, float& hitDist, const Lineseg& lineseg, float radius, IPhysicalEntity** pSkipEnts = 0, int nSkipEnts = 0, int additionalFilter = 0);
+#endif
 
     // (MATT) We currently have no way to serialise this. It may be possible to recovery from the entity. Currently must keep between serialisations {2009/04/30}
     IGameObject* m_pGameObject;

@@ -15,6 +15,13 @@
 
 
 #include "StdAfx.h"
+
+#ifndef ENABLE_CRY_PHYSICS
+#error "ENABLE_CRY_PHYSICS must be defined for CryPhysics module"
+#endif
+
+#if ENABLE_CRY_PHYSICS
+
 //#include <float.h>
 #include "IPhysics.h"
 #include "geoman.h"
@@ -38,11 +45,6 @@
 
 #undef GetClassName
 
-float g_sintab[SINCOSTABSZ + 1];
-int g_szParams[ePE_Params_Count], g_szAction[ePE_Action_Count], g_szGeomParams[ePE_GeomParams_Count];
-subref g_subrefBuf[19];
-subref* g_subrefParams[ePE_Params_Count], * g_subrefAction[ePE_Action_Count], * g_subrefGeomParams[ePE_GeomParams_Count];
-
 void TestbedPlaceholder() {}
 
 /*
@@ -53,6 +55,12 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserve
 }
 #endif
 */
+
+
+float g_sintab[SINCOSTABSZ + 1];
+int g_szParams[ePE_Params_Count], g_szAction[ePE_Action_Count], g_szGeomParams[ePE_GeomParams_Count];
+subref g_subrefBuf[19];
+subref* g_subrefParams[ePE_Params_Count], * g_subrefAction[ePE_Action_Count], * g_subrefGeomParams[ePE_GeomParams_Count];
 
 //////////////////////////////////////////////////////////////////////////
 struct CSystemEventListner_Physics
@@ -204,6 +212,10 @@ public:
 
 InitPhysicsGlobals Now;
 
+const int g_cryPhysicsMaxPhysWorlds = 64;
+IPhysicalWorld* g_pPhysWorlds[g_cryPhysicsMaxPhysWorlds];
+int g_nPhysWorlds;
+int g_bHasSSE;
 
 CRYPHYSICS_API IPhysicalWorld* CreatePhysicalWorld(ISystem* pSystem)
 {
@@ -234,7 +246,7 @@ class CEngineModule_CryPhysics
     virtual const char* GetCategory() const { return "CryEngine"; };
 
     //////////////////////////////////////////////////////////////////////////
-    virtual bool Initialize(SSystemGlobalEnvironment& env, const SSystemInitParams& initParams)
+    virtual bool Initialize(SSystemGlobalEnvironment& env, const SSystemInitParams&)
     {
         ISystem* pSystem = env.pSystem;
 
@@ -276,4 +288,7 @@ TYPE_INFO_PLAIN(primitives::getSurfTypeCallback)
 #include "aabbtree_info.h"
 #include "obbtree_info.h"
 #include "geoman_info.h"
-#endif
+
+#endif // STANDALONE_PHYSICS
+
+#endif // ENABLE_CRY_PHYSICS

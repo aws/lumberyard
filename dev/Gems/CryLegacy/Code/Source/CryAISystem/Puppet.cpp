@@ -481,6 +481,7 @@ void CPuppet::Update(EObjectUpdate type)
         AIAssert(0);
         return;
     }
+#if ENABLE_CRY_PHYSICS
     // There should never be Puppets without physics.
     if (!GetPhysics())
     {
@@ -488,6 +489,7 @@ void CPuppet::Update(EObjectUpdate type)
         AIAssert(0);
         return;
     }
+#endif // ENABLE_CRY_PHYSICS
     // dead Puppets should never be updated
     if (pAIActorProxy->IsDead())
     {
@@ -1395,11 +1397,8 @@ void CPuppet::Event(unsigned short eType, SAIEVENT* pEvent)
     case AIEVENT_SLEEP:
         m_fireMode = FIREMODE_OFF;
         m_bCheckedBody = false;
-        if (GetProxy()->GetLinkedVehicleEntityId() == 0)
-        {
-            m_bEnabled = false;
-            pAISystem->NotifyEnableState(this, m_bEnabled);
-        }
+        m_bEnabled = false;
+        pAISystem->NotifyEnableState(this, m_bEnabled);
         break;
     case AIEVENT_WAKEUP:
         ClearActiveGoals();
@@ -2264,6 +2263,7 @@ bool CPuppet::NavigateAroundObjects(const Vec3& targetPos, bool fullUpdate)
         static EAICollisionEntities colfilter = static_cast<EAICollisionEntities>(ent_living | AICE_DYNAMIC);
 
         int32 ent[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+#if ENABLE_CRY_PHYSICS
         //Gather up to 10 entities surrounding this puppet
         if (OverlapCylinder(lseg, radius, colfilter, GetPhysics(), 0, ent, 10))
         {
@@ -2283,6 +2283,7 @@ bool CPuppet::NavigateAroundObjects(const Vec3& targetPos, bool fullUpdate)
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
 
@@ -3097,6 +3098,7 @@ float CPuppet::GetAccuracy(const CAIObject* pTarget) const
     }
 
     // scale down accuracy if shooter moves
+#if ENABLE_CRY_PHYSICS
     if (GetPhysics())
     {
         static pe_status_dynamics  dSt;
@@ -3115,6 +3117,7 @@ float CPuppet::GetAccuracy(const CAIObject* pTarget) const
             curAccuracy *= 3.f / (3.f + fSpeed);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (distance < nominalAccuracyStartDistance)   // 1->nominal interpolation
     {
@@ -3770,6 +3773,8 @@ void CPuppet::HandleWeaponEffectBurstSnipe(CAIObject* pTarget, Vec3& aimTarget, 
     // Make it look like the sniper is aiming for headshots.
     float headHeight = aimTarget.z;
     const CAIActor* pLiveTarget = GetLiveTarget(GetWeakRef(pTarget)).GetAIObject();
+
+#if ENABLE_CRY_PHYSICS
     if (pLiveTarget && pLiveTarget->GetProxy())
     {
         IPhysicalEntity* pPhys = pLiveTarget->GetProxy()->GetPhysics(true);
@@ -3791,6 +3796,7 @@ void CPuppet::HandleWeaponEffectBurstSnipe(CAIObject* pTarget, Vec3& aimTarget, 
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //  GetAISystem()->AddDebugLine(Vec3(aimTarget.x-1, aimTarget.y, headHeight),
     //      Vec3(aimTarget.x+1, aimTarget.y, headHeight), 255,255,255, 0.2f);
@@ -3927,6 +3933,7 @@ void CPuppet::HandleWeaponEffectAimSweep(CAIObject* pTarget, Vec3& aimTarget, bo
     // Make it look like the sniper is aiming for headshots.
     float headHeight = aimTarget.z;
     const CAIActor* pLiveTarget = GetLiveTarget(GetWeakRef(pTarget)).GetAIObject();
+#if ENABLE_CRY_PHYSICS
     if (pLiveTarget && pLiveTarget->GetProxy())
     {
         IPhysicalEntity* pPhys = pLiveTarget->GetProxy()->GetPhysics(true);
@@ -3948,6 +3955,7 @@ void CPuppet::HandleWeaponEffectAimSweep(CAIObject* pTarget, Vec3& aimTarget, bo
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (m_burstEffectTime < 0)
     {
@@ -4202,6 +4210,7 @@ void CPuppet::CheckAwarenessPlayer()
         if (m_fLastTimeAwareOfPlayer == 0 && bCheckPlayerLooking)
         {
             IEntity* pEntity = NULL;
+#if ENABLE_CRY_PHYSICS
             IPhysicalEntity* pPlayerPhE = (pPlayer->GetProxy() ? pPlayer->GetPhysics() : NULL);
 
             if (RayCastResult result = gAIEnv.pRayCaster->Cast(RayCastRequest(pPlayer->GetPos(), lookDir * (dist + 0.5f),
@@ -4210,6 +4219,7 @@ void CPuppet::CheckAwarenessPlayer()
                 IPhysicalEntity* pCollider =  result[0].pCollider;
                 pEntity = (IEntity*) pCollider->GetForeignData(PHYS_FOREIGN_ID_ENTITY);
             }
+#endif // ENABLE_CRY_PHYSICS
 
             if (!(pEntity && pEntity == GetEntity()))
             {
@@ -4512,6 +4522,7 @@ void CPuppet::AdjustSpeed(CAIObject* pNavTarget, float distance)
     Vec3 targetVel(ZERO);
     Vec3 targetPos = pNavTarget->GetPos();
     IPhysicalEntity* pPhysicalEntity(NULL);
+#if ENABLE_CRY_PHYSICS
     if (pNavTarget->GetProxy() && pNavTarget->GetPhysics())
     {
         pPhysicalEntity = pNavTarget->GetPhysics();
@@ -4524,6 +4535,7 @@ void CPuppet::AdjustSpeed(CAIObject* pNavTarget, float distance)
             pPhysicalEntity = pOwner->GetPhysics();
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (pPhysicalEntity)
     {
@@ -5123,6 +5135,7 @@ bool CPuppet::CheckFriendsInLineOfFire(const Vec3& fireDirection, bool cheapTest
 
         size_t activeActorCount = lookUp.GetActiveCount();
 
+#if ENABLE_CRY_PHYSICS
         for (size_t actorIndex = 0; actorIndex < activeActorCount; ++actorIndex)
         {
             CAIActor* pFriend = lookUp.GetActor<CAIActor>(actorIndex);
@@ -5155,12 +5168,6 @@ bool CPuppet::CheckFriendsInLineOfFire(const Vec3& fireDirection, bool cheapTest
                 continue;
             }
 
-            // Skip friends in vehicles.
-            if (proxy->GetLinkedVehicleEntityId())
-            {
-                continue;
-            }
-
             if (IsHostile(pFriend))
             {
                 continue;
@@ -5172,6 +5179,7 @@ bool CPuppet::CheckFriendsInLineOfFire(const Vec3& fireDirection, bool cheapTest
                 break;
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     if (friendOnWay)
@@ -5191,6 +5199,7 @@ bool CPuppet::CheckFriendsInLineOfFire(const Vec3& fireDirection, bool cheapTest
 //===================================================================
 bool CPuppet::IsFriendInLineOfFire(CAIObject* pFriend, const Vec3& firePos, const Vec3& fireDirection, bool cheapTest)
 {
+#if ENABLE_CRY_PHYSICS
     if (!pFriend->GetProxy())
     {
         return false;
@@ -5222,6 +5231,7 @@ bool CPuppet::IsFriendInLineOfFire(CAIObject* pFriend, const Vec3& firePos, cons
 
         return Overlap::Lineseg_AABB(Lineseg(firePos, firePos + fireDirection), bounds);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
@@ -5356,12 +5366,14 @@ float CPuppet::GetDistanceAlongPath(const Vec3& pos, bool bInit)
         }
         // check just positions, object is on the same path segment
         Vec3 myOrientation(ZERO);
+#if ENABLE_CRY_PHYSICS
         if (GetPhysics())
         {
             pe_status_dynamics  dSt;
             GetPhysics()->GetStatus(&dSt);
             myOrientation = dSt.v;
         }
+#endif // ENABLE_CRY_PHYSICS
         if (myOrientation.IsEquivalent(Vec3_Zero))
         {
             myOrientation = GetViewDir();
@@ -5632,6 +5644,7 @@ DamagePartVector* CPuppet::GetDamageParts()
 //===================================================================
 bool CPuppet::GetValidPositionNearby(const Vec3& proposedPosition, Vec3& adjustedPosition) const
 {
+#if ENABLE_CRY_PHYSICS
     adjustedPosition = proposedPosition;
     if (!GetFloorPos(adjustedPosition, proposedPosition, 1.0f, 2.0f, WalkabilityDownRadius, AICE_ALL))
     {
@@ -5651,6 +5664,9 @@ bool CPuppet::GetValidPositionNearby(const Vec3& proposedPosition, Vec3& adjuste
 
     const Vec3 pushUp(.0f, .0f, .2f);
     return gAIEnv.pNavigationSystem->IsLocationValidInNavigationMesh(GetNavigationTypeID(), adjustedPosition + pushUp);
+#else
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //===================================================================

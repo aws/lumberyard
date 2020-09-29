@@ -31,6 +31,10 @@
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/std/sort.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#endif
+
 DECLARE_DEFAULT_COMPONENT_FACTORY(CComponentRender, IComponentRender)
 
 #if defined(PLATFORM_64BIT) // the parameters for the particle geometry render job are too large for the infoblock on 32 bit systems, there only use it on 64 bit
@@ -2511,6 +2515,7 @@ void CComponentRender::GetMemoryUsage(ICrySizer* pSizer) const
 
 bool CComponentRender::IsMovableByGame() const
 {
+#if ENABLE_CRY_PHYSICS
     if (IPhysicalEntity* pPhysEnt = m_pEntity->GetPhysics())
     {
         if (pe_type eType = pPhysEnt->GetType())
@@ -2518,6 +2523,7 @@ bool CComponentRender::IsMovableByGame() const
             return !(eType == PE_NONE || eType == PE_STATIC || eType == PE_AREA);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
@@ -2564,9 +2570,11 @@ void CComponentRender::DebugDraw(const SGeometryDebugDrawInfo& info)
     }
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 bool CComponentRender::PhysicalizeFoliage(bool bPhysicalize, int iSource, int nSlot)
 {
+#if ENABLE_CRY_PHYSICS
     CEntityObject* pSlot = GetSlot(0);
     IStatObj::SSubObject* pSubObj;
     static ICVar* g_pLifetime = gEnv->pConsole->GetCVar("e_FoliageBranchesTimeout");
@@ -2600,9 +2608,13 @@ bool CComponentRender::PhysicalizeFoliage(bool bPhysicalize, int iSource, int nS
             return true;
         }
     }
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
+
 
 IFoliage* CComponentRender::GetFoliage(int nSlot)
 {
@@ -2621,10 +2633,12 @@ IFoliage* CComponentRender::GetFoliage(int nSlot)
     return 0;
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CComponentRender::GetPhysics() const
 {
     return m_pEntity->GetPhysics();
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 void CComponentRender::SetSubObjHideMask(int nSlot, uint64 nSubObjHideMask)

@@ -110,6 +110,10 @@ public:
     ILINE const CParticleEmitter& GetMain() const                       { return *m_pMainEmitter; }
     ILINE CParticleContainerGPU* GetGPUData()                           { return m_pGPUData; }
     ILINE ResourceParticleParams const& GetParams() const               { return *m_pParams; }
+#if !PARTICLES_USE_CRY_PHYSICS
+    ILINE const Physics::MaterialConfiguration& GetMaterialConfig()     { return m_materialConfiguration; }
+#endif
+
 
     float GetAge() const;
 
@@ -283,6 +287,9 @@ public:
 
 private:
     const ResourceParticleParams*                               m_pParams;                  // Pointer to particle params (effect or code).
+#if !PARTICLES_USE_CRY_PHYSICS
+    Physics::MaterialConfiguration m_materialConfiguration;
+#endif
     _smart_ptr<CParticleEffect>                                 m_pEffect;                  // Particle effect used for this emitter.
     uint32                                                      m_nEnvFlags;
     uint32                                                      m_nChildFlags;              // Summary of rendering/environment info for child containers.

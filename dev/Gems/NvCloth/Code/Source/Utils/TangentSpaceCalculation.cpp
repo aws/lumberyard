@@ -15,10 +15,17 @@
 #include <AzCore/std/containers/array.h>
 
 #include <Utils/TangentSpaceCalculation.h>
-#include <Utils/MathConversion.h>
 
 namespace NvCloth
 {
+    namespace
+    {
+        Vec3 PxVec4ToVec3(const physx::PxVec4& pxVec)
+        {
+            return Vec3(pxVec.x, pxVec.y, pxVec.z);
+        }
+    }
+
     void TangentSpaceCalculation::Calculate(
         const AZStd::vector<SimParticleType>& vertices,
         const AZStd::vector<SimIndexType>& indices,
@@ -36,7 +43,7 @@ namespace NvCloth
 
         using TriangleIndices = AZStd::array<SimIndexType, 3>;
         using TrianglePositions = AZStd::array<Vec3, 3>;
-        using TriangleUVs = AZStd::array<Vec3, 3>;
+        using TriangleUVs = AZStd::array<SimUVType, 3>;
         using TriangleEdges = AZStd::array<Vec3, 2>;
 
         AZStd::vector<TriangleIndices> trianglesIndices;
@@ -60,15 +67,15 @@ namespace NvCloth
             }};
             const TrianglePositions trianglePositions =
             {{
-                PxMathConvert(vertices[triangleIndices[0]]),
-                PxMathConvert(vertices[triangleIndices[1]]),
-                PxMathConvert(vertices[triangleIndices[2]])
+                PxVec4ToVec3(vertices[triangleIndices[0]]),
+                PxVec4ToVec3(vertices[triangleIndices[1]]),
+                PxVec4ToVec3(vertices[triangleIndices[2]])
             }};
             const TriangleUVs triangleUVs =
             {{
-                PxMathConvert(uvs[triangleIndices[0]]),
-                PxMathConvert(uvs[triangleIndices[1]]),
-                PxMathConvert(uvs[triangleIndices[2]])
+                uvs[triangleIndices[0]],
+                uvs[triangleIndices[1]],
+                uvs[triangleIndices[2]]
             }};
             const TriangleEdges triangleEdges =
             {{
@@ -116,10 +123,10 @@ namespace NvCloth
 
                 normal.normalize();
 
-                const float deltaU1 = triangleUVs[1].x - triangleUVs[0].x;
-                const float deltaU2 = triangleUVs[2].x - triangleUVs[0].x;
-                const float deltaV1 = triangleUVs[1].y - triangleUVs[0].y;
-                const float deltaV2 = triangleUVs[2].y - triangleUVs[0].y;
+                const float deltaU1 = triangleUVs[1].GetX() - triangleUVs[0].GetX();
+                const float deltaU2 = triangleUVs[2].GetX() - triangleUVs[0].GetX();
+                const float deltaV1 = triangleUVs[1].GetY() - triangleUVs[0].GetY();
+                const float deltaV2 = triangleUVs[2].GetY() - triangleUVs[0].GetY();
 
                 const float div = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
 

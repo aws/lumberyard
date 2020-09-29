@@ -25,8 +25,6 @@
 #include <AzToolsFramework/Process/ProcessWatcher.h>
 #include <AzToolsFramework/SourceControl/PerforceConnection.h>
 
-#define SCC_WINDOW "Source Control"
-
 namespace AzToolsFramework
 {
     namespace
@@ -140,12 +138,12 @@ namespace AzToolsFramework
         incompatible.push_back(AZ_CRC("PerforceService", 0x74b25961));
     }
 
-    void PerforceComponent::GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& callbackFn)
+    void PerforceComponent::GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
     {
         AZ_Assert(fullFilePath, "Must specify a file path");
-        AZ_Assert(callbackFn, "Must specify a callback!");
+        AZ_Assert(respCallback, "Must specify a callback!");
 
-        PerforceJobRequest topReq(PerforceJobRequest::PJR_Stat, fullFilePath, callbackFn);
+        PerforceJobRequest topReq(PerforceJobRequest::PJR_Stat, fullFilePath, respCallback);
         QueueJobRequest(AZStd::move(topReq));
     }
 
@@ -158,73 +156,97 @@ namespace AzToolsFramework
         QueueJobRequest(AZStd::move(topReq));
     }
 
-    void PerforceComponent::RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& callbackFn)
+    void PerforceComponent::RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& respCallback)
     {
         AZ_Assert(fullFilePath, "Must specify a file path");
-        AZ_Assert(callbackFn, "Must specify a callback!");
+        AZ_Assert(respCallback, "Must specify a callback!");
 
-        PerforceJobRequest topReq(PerforceJobRequest::PJR_Edit, fullFilePath, callbackFn);
+        PerforceJobRequest topReq(PerforceJobRequest::PJR_Edit, fullFilePath, respCallback);
         topReq.m_allowMultiCheckout = allowMultiCheckout;
         QueueJobRequest(AZStd::move(topReq));
     }
 
-    void PerforceComponent::RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, const SourceControlResponseCallbackBulk& respCallback)
+    void PerforceComponent::RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, bool allowMultiCheckout, const SourceControlResponseCallbackBulk& respCallback)
     {
         AZ_Assert(!fullFilePaths.empty(), "Must specify a file path");
         AZ_Assert(respCallback, "Must specify a callback!");
 
         PerforceJobRequest topReq(PerforceJobRequest::PJR_EditBulk, fullFilePaths, respCallback);
+        topReq.m_allowMultiCheckout = allowMultiCheckout;
         QueueJobRequest(AZStd::move(topReq));
     }
 
-    void PerforceComponent::RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& callbackFn)
+    void PerforceComponent::RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
+    {
+        RequestDeleteExtended(fullFilePath, false, respCallback);
+    }
+
+    void PerforceComponent::RequestDeleteExtended(const char* fullFilePath, bool skipReadOnly, const SourceControlResponseCallback& respCallback)
     {
         AZ_Assert(fullFilePath, "Must specify a file path");
-        AZ_Assert(callbackFn, "Must specify a callback!");
+        AZ_Assert(respCallback, "Must specify a callback!");
 
-        PerforceJobRequest topReq(PerforceJobRequest::PJR_Delete, fullFilePath, callbackFn);
+        PerforceJobRequest topReq(PerforceJobRequest::PJR_Delete, fullFilePath, respCallback);
+        topReq.m_skipReadonly = skipReadOnly;
         QueueJobRequest(AZStd::move(topReq));
     }
 
     void PerforceComponent::RequestDeleteBulk(const char* fullFilePath, const SourceControlResponseCallbackBulk& respCallback)
     {
+        RequestDeleteBulkExtended(fullFilePath, false, respCallback);
+    }
+
+    void PerforceComponent::RequestDeleteBulkExtended(const char* fullFilePath, bool skipReadOnly, const SourceControlResponseCallbackBulk& respCallback)
+    {
         AZ_Assert(fullFilePath, "Must specify a file path");
         AZ_Assert(respCallback, "Must specify a callback!");
 
         PerforceJobRequest topReq(PerforceJobRequest::PJR_DeleteBulk, fullFilePath, respCallback);
+        topReq.m_skipReadonly = skipReadOnly;
         QueueJobRequest(AZStd::move(topReq));
     }
 
-    void PerforceComponent::RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& callbackFn)
+    void PerforceComponent::RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
     {
         AZ_Assert(fullFilePath, "Must specify a file path");
-        AZ_Assert(callbackFn, "Must specify a callback!");
+        AZ_Assert(respCallback, "Must specify a callback!");
 
-        PerforceJobRequest topReq(PerforceJobRequest::PJR_Revert, fullFilePath, callbackFn);
+        PerforceJobRequest topReq(PerforceJobRequest::PJR_Revert, fullFilePath, respCallback);
         QueueJobRequest(AZStd::move(topReq));
     }
 
-    void PerforceComponent::RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& callbackFn)
+    void PerforceComponent::RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
     {
         AZ_Assert(fullFilePath, "Must specify a file path");
-        AZ_Assert(callbackFn, "Must specify a callback!");
+        AZ_Assert(respCallback, "Must specify a callback!");
 
-        PerforceJobRequest topReq(PerforceJobRequest::PJR_Sync, fullFilePath, callbackFn);
+        PerforceJobRequest topReq(PerforceJobRequest::PJR_Sync, fullFilePath, respCallback);
         QueueJobRequest(AZStd::move(topReq));
     }
 
-    void PerforceComponent::RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& callbackFn)
+    void PerforceComponent::RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback)
+    {
+        RequestRenameExtended(sourcePathFull, destPathFull, false, respCallback);
+    }
+
+    void PerforceComponent::RequestRenameExtended(const char* sourcePathFull, const char* destPathFull, bool skipReadOnly, const SourceControlResponseCallback& respCallback)
     {
         AZ_Assert(sourcePathFull, "Must specify a source file path");
         AZ_Assert(destPathFull, "Must specify a destination file path");
-        AZ_Assert(callbackFn, "Must specify a callback!");
+        AZ_Assert(respCallback, "Must specify a callback!");
 
-        PerforceJobRequest topReq(PerforceJobRequest::PJR_Rename, sourcePathFull, callbackFn);
+        PerforceJobRequest topReq(PerforceJobRequest::PJR_Rename, sourcePathFull, respCallback);
         topReq.m_targetPath = destPathFull;
+        topReq.m_skipReadonly = skipReadOnly;
         QueueJobRequest(AZStd::move(topReq));
     }
 
     void PerforceComponent::RequestRenameBulk(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallbackBulk& respCallback)
+    {
+        RequestRenameBulkExtended(sourcePathFull, destPathFull, false, respCallback);
+    }
+
+    void PerforceComponent::RequestRenameBulkExtended(const char* sourcePathFull, const char* destPathFull, bool skipReadOnly, const SourceControlResponseCallbackBulk& respCallback)
     {
         AZ_Assert(sourcePathFull, "Must specify a source file path");
         AZ_Assert(destPathFull, "Must specify a destination file path");
@@ -232,6 +254,7 @@ namespace AzToolsFramework
 
         PerforceJobRequest topReq(PerforceJobRequest::PJR_RenameBulk, sourcePathFull, respCallback);
         topReq.m_targetPath = destPathFull;
+        topReq.m_skipReadonly = skipReadOnly;
         QueueJobRequest(AZStd::move(topReq));
     }
 
@@ -382,14 +405,14 @@ namespace AzToolsFramework
         return ExecuteEdit(filePath, allowMultiCheckout, true);
     }
 
-    bool PerforceComponent::RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePath)
+    bool PerforceComponent::RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePath, bool allowMultiCheckout)
     {
         if (!CheckConnectivityForAction("checkout", fullFilePath.begin()->c_str()))
         {
             return false;
         }
 
-        return ExecuteEditBulk(fullFilePath, false, true);
+        return ExecuteEditBulk(fullFilePath, allowMultiCheckout, true);
     }
 
     bool PerforceComponent::RequestDelete(const char* filePath)
@@ -634,8 +657,21 @@ namespace AzToolsFramework
         return true;
     }
 
-    bool PerforceComponent::ExecuteEditBulk(const AZStd::unordered_set<AZStd::string>& filePaths, bool /*allowMultiCheckout*/, bool /*allowAdd*/)
+    bool PerforceComponent::ExecuteEditBulk(const AZStd::unordered_set<AZStd::string>& filePaths, bool allowMultiCheckout, bool allowAdd)
     {
+        AZStd::vector<PerforceMap> commandMap;
+        ExecuteAndParseFstat(filePaths, commandMap);
+
+        for (const PerforceMap& map : commandMap)
+        {
+            if(s_perforceConn->m_command.IsOpenByOtherUsers(&map) && !allowMultiCheckout)
+            {
+                AZ_Warning(SCC_WINDOW, false, "Perforce - Unable to edit file %s, it's already checked out by %s\n",
+                    s_perforceConn->m_command.GetOutputValue("clientFile", &map).c_str(), s_perforceConn->m_command.GetOtherUserCheckedOut(&map).c_str());
+                return false;
+            }
+        }
+
         int changeListNumber = GetOrCreateOurChangelist();
         if (changeListNumber <= 0)
         {
@@ -643,6 +679,11 @@ namespace AzToolsFramework
         }
 
         AZStd::string changeListNumberStr = AZStd::to_string(changeListNumber);
+
+        if (allowAdd)
+        {
+            s_perforceConn->m_command.ExecuteAdd(changeListNumberStr, filePaths);
+        }
 
         s_perforceConn->m_command.ExecuteEdit(changeListNumberStr, filePaths);
 
@@ -1358,7 +1399,7 @@ namespace AzToolsFramework
         break;
         case PerforceJobRequest::PJR_EditBulk:
         {
-            resp.m_succeeded = RequestEditBulk(request.m_bulkFilePaths);
+            resp.m_succeeded = RequestEditBulk(request.m_bulkFilePaths, request.m_allowMultiCheckout);
             resp.m_bulkFileInfo = GetBulkFileInfo(request.m_bulkFilePaths);
         }
         break;
@@ -1520,26 +1561,29 @@ namespace AzToolsFramework
         case PerforceJobRequest::PJR_Stat:
             m_localFileSCComponent.GetFileInfo(request.m_requestPath.c_str(), request.m_callback);
             break;
+        case PerforceJobRequest::PJR_StatBulk:
+            m_localFileSCComponent.GetBulkFileInfo(request.m_bulkFilePaths, request.m_bulkCallback);
+            break;
         case PerforceJobRequest::PJR_Edit:
             m_localFileSCComponent.RequestEdit(request.m_requestPath.c_str(), request.m_allowMultiCheckout, request.m_callback);
             break;
         case PerforceJobRequest::PJR_EditBulk:
-            m_localFileSCComponent.RequestEditBulk(request.m_bulkFilePaths, request.m_bulkCallback);
+            m_localFileSCComponent.RequestEditBulk(request.m_bulkFilePaths, request.m_allowMultiCheckout, request.m_bulkCallback);
             break;
         case PerforceJobRequest::PJR_Delete:
-            m_localFileSCComponent.RequestDelete(request.m_requestPath.c_str(), request.m_callback);
+            m_localFileSCComponent.RequestDeleteExtended(request.m_requestPath.c_str(), request.m_skipReadonly, request.m_callback);
             break;
         case PerforceJobRequest::PJR_DeleteBulk:
-            m_localFileSCComponent.RequestDeleteBulk(request.m_requestPath.c_str(), request.m_bulkCallback);
+            m_localFileSCComponent.RequestDeleteBulkExtended(request.m_requestPath.c_str(), request.m_skipReadonly, request.m_bulkCallback);
             break;
         case PerforceJobRequest::PJR_Revert:
             m_localFileSCComponent.RequestRevert(request.m_requestPath.c_str(), request.m_callback);
             break;
         case PerforceJobRequest::PJR_Rename:
-            m_localFileSCComponent.RequestRename(request.m_requestPath.c_str(), request.m_targetPath.c_str(), request.m_callback);
+            m_localFileSCComponent.RequestRenameExtended(request.m_requestPath.c_str(), request.m_targetPath.c_str(), request.m_skipReadonly, request.m_callback);
             break;
         case PerforceJobRequest::PJR_RenameBulk:
-            m_localFileSCComponent.RequestRenameBulk(request.m_requestPath.c_str(), request.m_targetPath.c_str(), request.m_bulkCallback);
+            m_localFileSCComponent.RequestRenameBulkExtended(request.m_requestPath.c_str(), request.m_targetPath.c_str(), request.m_skipReadonly, request.m_bulkCallback);
             break;
         case PerforceJobRequest::PJR_Sync:
             m_localFileSCComponent.RequestLatest(request.m_requestPath.c_str(), request.m_callback);

@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_AABBTREE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 struct AABBnode
 {
@@ -127,5 +128,8 @@ public:
     float m_maxSkipDim;
     int m_maxDepth;
 };
+
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_AABBTREE_H

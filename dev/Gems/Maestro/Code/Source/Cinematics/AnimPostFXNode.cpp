@@ -459,3 +459,9 @@ void CAnimPostFXNode::Reflect(AZ::SerializeContext* serializeContext)
     serializeContext->Class<CAnimPostFXNode, CAnimNode>()
         ->Version(1);
 }
+
+//////////////////////////////////////////////////////////////////////////
+/*static*/ void CAnimPostFXNode::ClearControlParams()
+{
+    s_fxNodeDescriptions.clear();
+}

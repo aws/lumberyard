@@ -37,6 +37,10 @@
 #include <AzFramework/IO/LocalFileIO.h>
 #endif
 
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Anonymous namespace
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -840,6 +844,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
         rayDirection = rayVec * rayLength;
     }
 
+#if ENABLE_CRY_PHYSICS
     // do a ray world intersection test
     ray_hit rayhit;
     // NOTE: these flags may need some tuning. After a fix from physics setup rwi_colltype_any may work.
@@ -874,6 +879,10 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
             }
         }
     }
+#else
+    // Raycast using graphics 
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
@@ -1354,7 +1363,7 @@ void UiCanvasManager::DebugReportDrawCalls(const AZStd::string& name) const
         }
     }
 
-    logLine = AZStd::string::format("There are %d loaded UI canvases, %d of which are enabled.\r\nThe below report only includes the enabled canvases\r\n",
+    logLine = AZStd::string::format("There are %zu loaded UI canvases, %d of which are enabled.\r\nThe below report only includes the enabled canvases\r\n",
         m_loadedCanvases.size(), numEnabledCanvases);
     AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
 

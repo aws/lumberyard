@@ -69,18 +69,20 @@ namespace AZ
         {
             DumpContextStack();
             
+            // "%.*s" specifier only supports int for its size
+            int messageLineLen = aznumeric_cast<int>(CalculateLineLength(message));
             if (AzFramework::StringFunc::Equal(window, SceneAPI::Utilities::ErrorWindow))
             {
                 m_errorCount++;
-                RCLogError("%.*s", CalculateLineLength(message), message);
+                RCLogError("%.*s", messageLineLen, message);
             }
             else if (AzFramework::StringFunc::Equal(window, SceneAPI::Utilities::WarningWindow))
             {
-                RCLogWarning("%.*s", CalculateLineLength(message), message);
+                RCLogWarning("%.*s", messageLineLen, message);
             }
             else
             {
-                RCLog("%.*s", CalculateLineLength(message), message);
+                RCLog("%.*s", messageLineLen, message);
             }
             return true;
         }

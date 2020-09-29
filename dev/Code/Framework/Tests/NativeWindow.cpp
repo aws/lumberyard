@@ -173,9 +173,13 @@ namespace UnitTest
 
         nativeWindow->Activate();
 
+        WindowSize windowSize;
+        WindowRequestBus::EventResult(windowSize, windowHandle, &WindowRequestBus::Events::GetClientAreaSize);
+        bool windowSizeChanged = windowSize.m_width != geometry.m_width || windowSize.m_height != geometry.m_height;
+
         EXPECT_TRUE(nativeWindow->IsActive()) << "NativeWindow was in inactive state after activation.";
 
-        EXPECT_TRUE(listener.m_wasOnWindowResizedReceived) << "Expected the OnWindowResized notification to have occurred.";   
+        EXPECT_TRUE(listener.m_wasOnWindowResizedReceived || !windowSizeChanged) << "Expected the OnWindowResized notification to have occurred.";
         EXPECT_FALSE(listener.m_wasOnWindowClosedReceived) << "Did not expect the OnWindowClosed notification to have occurred.";
         listener.m_wasOnWindowResizedReceived = false;
 

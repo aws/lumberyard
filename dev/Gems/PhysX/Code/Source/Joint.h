@@ -42,6 +42,8 @@ namespace PhysX
         Joint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
             Physics::WorldBody* childBody);
 
+        virtual ~Joint() = default;
+
         Physics::WorldBody* GetParentBody() const override;
         Physics::WorldBody* GetChildBody() const override;
         void SetParentBody(Physics::WorldBody* parentBody) override;
@@ -90,6 +92,142 @@ namespace PhysX
         float m_swingAngleY;
         float m_swingAngleZ;
         float m_twistAngle;
+    };
+
+    /// A fixed joint locks 2 bodies relative to one another on all axes of freedom.
+    class FixedJoint : public Joint
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(FixedJoint, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(FixedJoint, "{203FB99C-7DC5-478A-A52C-A1F2AAF61FB8}");
+
+        FixedJoint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
+            Physics::WorldBody* childBody)
+            : Joint(pxJoint, parentBody, childBody)
+        {
+        }
+
+        const AZ::Crc32 GetNativeType() const override;
+        void GenerateJointLimitVisualizationData(
+            float /*scale*/,
+            AZ::u32 /*angularSubdivisions*/,
+            AZ::u32 /*radialSubdivisions*/,
+            AZStd::vector<AZ::Vector3>& /*vertexBufferOut*/,
+            AZStd::vector<AZ::u32>& /*indexBufferOut*/,
+            AZStd::vector<AZ::Vector3>& /*lineBufferOut*/,
+            AZStd::vector<bool>& /*lineValidityBufferOut*/) override {}
+    };
+
+    /// A hinge joint locks 2 bodies relative to one another except about the x-axis of the joint between them.
+    class HingeJoint : public Joint
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(HingeJoint, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(HingeJoint, "{8EFF1002-B08C-47CE-883C-82F0CF3736E0}");
+
+        HingeJoint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
+            Physics::WorldBody* childBody)
+            : Joint(pxJoint, parentBody, childBody)
+        {
+        }
+
+        const AZ::Crc32 GetNativeType() const override;
+        void GenerateJointLimitVisualizationData(
+            float /*scale*/,
+            AZ::u32 /*angularSubdivisions*/,
+            AZ::u32 /*radialSubdivisions*/,
+            AZStd::vector<AZ::Vector3>& /*vertexBufferOut*/,
+            AZStd::vector<AZ::u32>& /*indexBufferOut*/,
+            AZStd::vector<AZ::Vector3>& /*lineBufferOut*/,
+            AZStd::vector<bool>& /*lineValidityBufferOut*/) override {}
+    };
+
+    /// A ball joint locks 2 bodies relative to one another except about the y and z axes of the joint between them.
+    class BallJoint : public Joint
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(BallJoint, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(BallJoint, "{9FADA1C2-0E2F-4E1B-9E83-6292A1606372}");
+
+        BallJoint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
+            Physics::WorldBody* childBody)
+            : Joint(pxJoint, parentBody, childBody)
+        {
+        }
+
+        const AZ::Crc32 GetNativeType() const override;
+        void GenerateJointLimitVisualizationData(
+            float /*scale*/,
+            AZ::u32 /*angularSubdivisions*/,
+            AZ::u32 /*radialSubdivisions*/,
+            AZStd::vector<AZ::Vector3>& /*vertexBufferOut*/,
+            AZStd::vector<AZ::u32>& /*indexBufferOut*/,
+            AZStd::vector<AZ::Vector3>& /*lineBufferOut*/,
+            AZStd::vector<bool>& /*lineValidityBufferOut*/) override {}
+    };
+
+    /// Common parameters for all physics joint types.
+    class GenericJointConfiguration
+    {
+    public:
+        enum class GenericJointFlag : AZ::u16
+        {
+            None = 0,
+            Breakable = 1,
+            SelfCollide = 1 << 1
+        };
+
+        AZ_CLASS_ALLOCATOR(GenericJointConfiguration, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(GenericJointConfiguration, "{AB2E2F92-0248-48A8-9DDD-21284AF0C1DF}");
+        static void Reflect(AZ::ReflectContext* context);
+        static bool VersionConverter(
+            AZ::SerializeContext& context,
+            AZ::SerializeContext::DataElementNode& classElement);
+
+        GenericJointConfiguration() = default;
+        GenericJointConfiguration(float forceMax,
+            float torqueMax,
+            AZ::Transform localTransformFromFollower,
+            AZ::EntityId leadEntity,
+            AZ::EntityId followerEntity,
+            GenericJointFlag flags);
+
+        bool GetFlag(GenericJointFlag flag); ///< Returns if a particular flag is set as a bool.
+
+        GenericJointFlag m_flags = GenericJointFlag::None; ///< Flags that indicates if joint is breakable, self-colliding, etc.. Converting joint between breakable/non-breakable at game time is allowed.
+        float m_forceMax = 1.0f; ///< Max force joint can tolerate before breaking.
+        float m_torqueMax = 1.0f; ///< Max torque joint can tolerate before breaking.
+        AZ::EntityId m_leadEntity; ///< EntityID for entity containing body that is lead to this joint constraint.
+        AZ::EntityId m_followerEntity; ///< EntityID for entity containing body that is follower to this joint constraint.
+        AZ::Transform m_localTransformFromFollower; ///< Joint's location and orientation in the frame (coordinate system) of the follower entity.
+    };
+    AZ_DEFINE_ENUM_BITWISE_OPERATORS(PhysX::GenericJointConfiguration::GenericJointFlag)
+
+    /// Generic pair of limit values for joint types, e.g. a pair of angular values.
+    /// This is different from JointLimitConfiguration used in non-generic joints for character/ragdoll/animation.
+    class GenericJointLimitsConfiguration
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(GenericJointLimitsConfiguration, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(GenericJointLimitsConfiguration, "{9D129B49-F4E6-4F2A-B94D-AC2D6AC6CE02}");
+        static void Reflect(AZ::ReflectContext* context);
+
+        GenericJointLimitsConfiguration() = default;
+        GenericJointLimitsConfiguration(float damping
+            , bool isLimited
+            , bool isSoftLimit
+            , float limitFirst
+            , float limitSecond
+            , float stiffness
+            , float tolerance);
+
+        bool m_isLimited = true; ///< Specifies if limits are applied to the joint constraints. E.g. if the swing angles are limited.
+        bool m_isSoftLimit = false; ///< If limit is soft, spring and damping are used, otherwise tolerance is used. Converting between soft/hard limit at game time is allowed.
+        float m_damping = 20.0f; ///< The damping strength of the drive, the force proportional to the velocity error. Used if limit is soft.
+        float m_limitFirst = 45.0f; ///< Positive angle limit in the case of twist angle limits, Y-axis swing limit in the case of cone limits.
+        float m_limitSecond = 45.0f; ///< Negative angle limit in the case of twist angle limits, Z-axis swing limit in the case of cone limits.
+        float m_stiffness = 100.0f; ///< The spring strength of the drive, the force proportional to the position error. Used if limit is soft.
+        float m_tolerance = 0.1f; ///< Distance from the joint at which limits becomes enforced. Used if limit is hard.
     };
 
     class JointUtils

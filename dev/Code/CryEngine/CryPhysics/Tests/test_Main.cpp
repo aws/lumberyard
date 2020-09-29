@@ -10,6 +10,7 @@
 *
 */
 #include "StdAfx.h"
+
 #include <AzTest/AzTest.h>
 
 AZ_UNIT_TEST_HOOK();

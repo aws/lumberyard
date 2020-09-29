@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_PARTICLEENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CParticleEntity
     : public CPhysicalEntity
 {
@@ -100,3 +102,4 @@ public:
 };
 
 #endif // CRYINCLUDE_CRYPHYSICS_PARTICLEENTITY_H
+#endif

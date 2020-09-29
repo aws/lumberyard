@@ -78,6 +78,16 @@ namespace GradientSignal
         return new GradientPreviewDataWidget(pParent);
     }
 
+    void GradientPreviewDataWidgetHandler::PreventRefresh(QWidget* GUI, bool preventRefresh)
+    {
+        // Notify our preview widget to disable / enable itself during refreshes.  Because it uses
+        // delayed, threaded logic it's possible for it to query a component during a time that the component
+        // is deactivated / deleted.  This notification tells the preview widget to immediately cancel any
+        // refreshes, or restart them when it's safe again.
+        auto previewWidget = reinterpret_cast<GradientPreviewDataWidget*>(GUI);
+        previewWidget->PreventRefresh(preventRefresh);
+    }
+
     void GradientPreviewDataWidgetHandler::Register()
     {
         using namespace AzToolsFramework;
@@ -146,6 +156,25 @@ namespace GradientSignal
         delete m_previewWindow;
     }
 
+    void GradientPreviewDataWidget::PreventRefresh(bool preventRefresh)
+    {
+        m_preventRefresh = preventRefresh;
+        if (m_preventRefresh)
+        {
+            // If we're trying to prevent refreshes, cancel any existing or pending refreshes.
+            CancelRefresh();
+        }
+        else
+        {
+            // If we're allowing refreshes again, start one up if it has been requested during
+            // the time that we weren't allowing them.
+            if (m_refreshQueued)
+            {
+                Refresh();
+            }
+        }
+    }
+
     void GradientPreviewDataWidget::SetGradientSampler(const GradientSampler& sampler)
     {
         m_sampler = sampler;
@@ -181,6 +210,14 @@ namespace GradientSignal
 
     void GradientPreviewDataWidget::Refresh()
     {
+        // If we currently aren't allowing refreshes, just note that it's been requested so that
+        // we can start it up once refreshes are allowed again.
+        if (m_preventRefresh)
+        {
+            m_refreshQueued = true;
+            return;
+        }
+
         if (!m_refreshInProgress)
         {
             m_refreshInProgress = true;
@@ -203,6 +240,7 @@ namespace GradientSignal
                 }
             }
             m_refreshInProgress = false;
+            m_refreshQueued = false;
         }
     }
 

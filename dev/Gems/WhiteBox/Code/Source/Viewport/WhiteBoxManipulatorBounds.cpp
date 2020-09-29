@@ -41,15 +41,15 @@ namespace WhiteBox
 
     bool IntersectRayPolygon(
         const PolygonBound& polygonBound, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
-        float& rayIntersectionDistance)
+        float& rayIntersectionDistance, int64_t& intersectedTriangleIndex)
     {
         AZ_Assert(polygonBound.m_triangles.size() % 3 == 0, "Invalid number of points to represent triangles");
 
-        for (size_t i = 0; i < polygonBound.m_triangles.size(); i += 3)
+        for (size_t triangleIndex = 0; triangleIndex < polygonBound.m_triangles.size(); triangleIndex += 3)
         {
-            AZ::Vector3 p0 = polygonBound.m_triangles[i];
-            AZ::Vector3 p1 = polygonBound.m_triangles[i + 1];
-            AZ::Vector3 p2 = polygonBound.m_triangles[i + 2];
+            AZ::Vector3 p0 = polygonBound.m_triangles[triangleIndex];
+            AZ::Vector3 p1 = polygonBound.m_triangles[triangleIndex + 1];
+            AZ::Vector3 p2 = polygonBound.m_triangles[triangleIndex + 2];
 
             AZ::VectorFloat time;
             AZ::Vector3 normal;
@@ -60,6 +60,7 @@ namespace WhiteBox
             if (intersected != 0)
             {
                 rayIntersectionDistance = time * rayLength;
+                intersectedTriangleIndex = triangleIndex / 3;
                 return true;
             }
         }
@@ -70,7 +71,9 @@ namespace WhiteBox
     bool ManipulatorBoundPolygon::IntersectRay(
         const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float& rayIntersectionDistance)
     {
-        return WhiteBox::IntersectRayPolygon(m_polygonBound, rayOrigin, rayDirection, rayIntersectionDistance);
+        int64_t intersectedTriangleIndex = 0;
+        return IntersectRayPolygon(
+            m_polygonBound, rayOrigin, rayDirection, rayIntersectionDistance, intersectedTriangleIndex);
     }
 
     void ManipulatorBoundPolygon::SetShapeData(const AzToolsFramework::Picking::BoundRequestShapeBase& shapeData)
@@ -115,8 +118,7 @@ namespace WhiteBox
     bool ManipulatorBoundEdge::IntersectRay(
         const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float& rayIntersectionDistance)
     {
-        return WhiteBox::IntersectRayEdge(
-            m_edgeBound, m_edgeBound.m_radius, rayOrigin, rayDirection, rayIntersectionDistance);
+        return IntersectRayEdge(m_edgeBound, m_edgeBound.m_radius, rayOrigin, rayDirection, rayIntersectionDistance);
     }
 
     void ManipulatorBoundEdge::SetShapeData(const AzToolsFramework::Picking::BoundRequestShapeBase& shapeData)

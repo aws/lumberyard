@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "singleboxtree.h"
@@ -3338,3 +3340,5 @@ Vec3 CLivingEntity::GetGravity() const
 {
     return m_useCustomGravity ? m_customGravity : m_areaGravity;
 }
+
+#endif

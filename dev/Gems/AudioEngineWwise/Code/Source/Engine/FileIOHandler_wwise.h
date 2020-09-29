@@ -82,26 +82,25 @@ namespace Audio
         CFileIOHandler_wwise();
         ~CFileIOHandler_wwise() override = default;
 
-        CFileIOHandler_wwise(const CFileIOHandler_wwise&) = delete;         // Copy protection
-        CFileIOHandler_wwise& operator=(const CFileIOHandler_wwise&) = delete; // Copy protection
+        CFileIOHandler_wwise(const CFileIOHandler_wwise&) = delete;
+        CFileIOHandler_wwise& operator=(const CFileIOHandler_wwise&) = delete;
 
         AKRESULT Init(size_t poolSize);
         void ShutDown();
 
         // IAkFileLocationResolver overrides.
-        AKRESULT Open(const AkOSChar* sFileName, AkOpenMode eOpenMode, AkFileSystemFlags* pFlags, bool& rSyncOpen, AkFileDesc& rFileDesc) override;
-        AKRESULT Open(AkFileID nFileID, AkOpenMode eOpenMode, AkFileSystemFlags* pFlags, bool& rSyncOpen, AkFileDesc& rFileDesc) override;
+        AKRESULT Open(const AkOSChar* fileName, AkOpenMode openMode, AkFileSystemFlags* flags, bool& syncOpen, AkFileDesc& fileDesc) override;
+        AKRESULT Open(AkFileID fileID, AkOpenMode openMode, AkFileSystemFlags* flags, bool& syncOpen, AkFileDesc& fileDesc) override;
         // ~IAkFileLocationResolver overrides.
 
-        void SetBankPath(const AkOSChar* const sBankPath);
-        void SetLanguageFolder(const AkOSChar* const sLanguageFolder);
+        void SetBankPath(const char* const bankPath);
+        void SetLanguageFolder(const char* const languageFolder);
 
     private:
         CStreamingDevice_wwise m_streamingDevice;
         CBlockingDevice_wwise m_blockingDevice;
-        AkOSChar m_sBankPath[AK_MAX_PATH];
-        AkOSChar m_sLanguageFolder[AK_MAX_PATH];
-        bool m_bAsyncOpen;
-        AkDeviceID m_nDeviceID;
+        AkOSChar m_bankPath[AK_MAX_PATH];
+        AkOSChar m_languageFolder[AK_MAX_PATH];
+        bool m_useAsyncOpen;
     };
 } // namespace Audio

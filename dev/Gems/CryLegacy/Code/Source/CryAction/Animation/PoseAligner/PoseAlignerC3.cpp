@@ -66,12 +66,14 @@ ILINE bool InitializePoseAlignerBipedHuman(PoseAligner::CPose& pose, IEntity* en
     chainDesc.offsetMin = Vec3(0.0f, 0.0f, 0.0f);
     chainDesc.offsetMax = Vec3(0.0f, 0.0f, 0.6f);
     {
+#if ENABLE_CRY_PHYSICS
         PoseAligner::CContactRaycastPtr pContactRaycast = new PoseAligner::CContactRaycast(entity);
         if (pContactRaycast)
         {
             pContactRaycast->SetLength(1.0f);
             chainDesc.pContactReporter = pContactRaycast;
         }
+#endif // ENABLE_CRY_PHYSICS
         if (!pose.CreateChain(chainDesc))
         {
             return false;
@@ -88,12 +90,14 @@ ILINE bool InitializePoseAlignerBipedHuman(PoseAligner::CPose& pose, IEntity* en
     chainDesc.offsetMin = Vec3(0.0f, 0.0f, 0.0f);
     chainDesc.offsetMax = Vec3(0.0f, 0.0f, 0.6f);
     {
+#if ENABLE_CRY_PHYSICS
         PoseAligner::CContactRaycastPtr pContactRaycast = new PoseAligner::CContactRaycast(entity);
         if (pContactRaycast)
         {
             pContactRaycast->SetLength(1.0f);
             chainDesc.pContactReporter = pContactRaycast;
         }
+#endif // ENABLE_CRY_PHYSICS
         if (!pose.CreateChain(chainDesc))
         {
             return false;

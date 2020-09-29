@@ -720,7 +720,7 @@ namespace AZ
     bool SerializeContext::CanDowncast(const Uuid& fromClassId, const Uuid& toClassId, const IRttiHelper* fromClassHelper, const IRttiHelper* toClassHelper) const
     {
         // Same type
-        if (fromClassId == toClassId)
+        if (fromClassId == toClassId || GetUnderlyingTypeId(fromClassId) == toClassId)
         {
             return true;
         }
@@ -772,7 +772,7 @@ namespace AZ
     void* SerializeContext::DownCast(void* instance, const Uuid& fromClassId, const Uuid& toClassId, const IRttiHelper* fromClassHelper, const IRttiHelper* toClassHelper) const
     {
         // Same type
-        if (fromClassId == toClassId)
+        if (fromClassId == toClassId || GetUnderlyingTypeId(fromClassId) == toClassId)
         {
             return instance;
         }

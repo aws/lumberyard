@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYANIMATION_SKELETONPHYSICS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #include "Memory/Memory.h"
 #include "Memory/Pool.h"
 #include "Model.h"
@@ -430,5 +431,6 @@ public:
         pSizer->AddContainer(m_auxPhys);
     }
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYANIMATION_SKELETONPHYSICS_H

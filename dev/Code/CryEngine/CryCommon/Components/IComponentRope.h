@@ -13,6 +13,8 @@
 #define CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTROPE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <IComponent.h>
 #include <ComponentType.h>
 
@@ -36,5 +38,7 @@ struct IComponentRope
 };
 
 DECLARE_SMART_POINTERS(IComponentRope);
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTROPE_H

@@ -10,14 +10,14 @@
  *
  */
 
+#include <LmbrCentral_precompiled.h>
 #include <AzTest/AzTest.h>
-#include <Source/LevelBuilderWorker.h>
+#include <Builders/LevelBuilder/LevelBuilderWorker.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
-#include <QCoreApplication>
 #include <Tests/AZTestShared/Utils/Utils.h>
 #include "AzCore/Slice/SliceAssetHandler.h"
 
@@ -137,8 +137,8 @@ protected:
 
     AZStd::string GetTestFileAliasedPath(AZStd::string_view fileName)
     {
-        constexpr char testFileFolder[] = "@root@/../Code/Tools/AssetProcessor/Builders/LevelBuilder/Tests/";
-        return AZStd::string::format("%s%.*s", testFileFolder, fileName.size(), fileName.data());
+        constexpr char testFileFolder[] = "@root@/../Gems/LmbrCentral/Code/Tests/Levels/";
+        return AZStd::string::format("%s%.*s", testFileFolder, aznumeric_cast<int>(fileName.size()), fileName.data());
     }
 
 
@@ -160,54 +160,6 @@ protected:
     AZ::ComponentApplication::Descriptor m_descriptor;
     AZ::ComponentDescriptor* m_simpleAssetRefDescriptor;
 };
-
-TEST_F(LevelBuilderTest, TestAudioControl_MultipleDependencies)
-{
-    AZ::IO::FileIOBase::GetInstance()->SetAlias("@devassets@", GetTestFileFullPath("audiocontrol_test1").c_str());
-
-    LevelBuilderWorker worker;
-    ProductPathDependencySet productDependencies;
-
-    worker.PopulateLevelAudioControlDependenciesHelper("testlevel", productDependencies);
-    AZ::IO::FileIOBase::GetInstance()->ClearAlias("@devassets@");
-
-    ASSERT_THAT(productDependencies,
-        testing::UnorderedElementsAre(
-            ProductPathDependency("libs/gameaudio/wwise/levels/testlevel/testcontrol.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile),
-            ProductPathDependency("libs/gameaudio/wwise/levels/testlevel/very_specific_testcontrol.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile)
-        )
-    );
-}
-
-TEST_F(LevelBuilderTest, TestAudioControl_OnlyLevelControls_SingleDependency)
-{
-    AZ::IO::FileIOBase::GetInstance()->SetAlias("@devassets@", GetTestFileFullPath("audiocontrol_test3").c_str());
-
-    LevelBuilderWorker worker;
-    ProductPathDependencySet productDependencies;
-
-    worker.PopulateLevelAudioControlDependenciesHelper("testlevel", productDependencies);
-    AZ::IO::FileIOBase::GetInstance()->ClearAlias("@devassets@");
-
-    ASSERT_THAT(productDependencies,
-        testing::UnorderedElementsAre(
-            ProductPathDependency("libs/gameaudio/wwise/levels/testlevel/testcontrol.xml", AssetBuilderSDK::ProductPathDependencyType::ProductFile)
-        )
-    );
-}
-
-TEST_F(LevelBuilderTest, TestAudioControl_NoAudioControls_NoDependencies)
-{
-    AZ::IO::FileIOBase::GetInstance()->SetAlias("@devassets@", GetTestFileFullPath("audiocontrol_test4").c_str());
-
-    LevelBuilderWorker worker;
-    ProductPathDependencySet productDependencies;
-
-    worker.PopulateLevelAudioControlDependenciesHelper("testlevel", productDependencies);
-    AZ::IO::FileIOBase::GetInstance()->ClearAlias("@devassets@");
-
-    ASSERT_EQ(productDependencies.size(), 0);
-}
 
 TEST_F(LevelBuilderTest, TestLevelData_RequestOptionalLevelDependencies_ExpectedDependenciesAdded)
 {
@@ -560,5 +512,3 @@ TEST_F(LevelBuilderTest, VegetationMap_HasNoFileReference_HasCorrectProductDepen
     worker.PopulateVegetationMapDataDependenciesHelper(&fileStream, productPathDependencies);
     ASSERT_EQ(productPathDependencies.size(), 0);
 }
-
-AZ_UNIT_TEST_HOOK();

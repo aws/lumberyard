@@ -23,12 +23,13 @@ AZ_POP_DISABLE_WARNING
 namespace AzToolsFramework
 {
     //////////////////////////////////////////////////////////////////////////
-
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     PropertyVectorCtrl::PropertyVectorCtrl(QWidget* parent, int elementCount, int elementsPerRow, QString customLabels)
         : AzQtComponents::VectorInput(parent, elementCount, elementsPerRow, customLabels)
     {
 
     }
+    AZ_POP_DISABLE_WARNING
 
     //////////////////////////////////////////////////////////////////////////
 

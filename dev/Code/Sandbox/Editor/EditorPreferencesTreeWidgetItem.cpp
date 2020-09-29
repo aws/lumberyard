@@ -15,6 +15,7 @@
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzQtComponents/Components/StyleManager.h>
 
 EditorPreferencesTreeWidgetItem::EditorPreferencesTreeWidgetItem(IPreferencesPage* page, const QPixmap& selectedImage, QPixmap& unselectedImage)
     : QTreeWidgetItem(EditorPreferencesPage)
@@ -22,6 +23,22 @@ EditorPreferencesTreeWidgetItem::EditorPreferencesTreeWidgetItem(IPreferencesPag
     , m_selectedImage(selectedImage)
     , m_unselectedImage(unselectedImage)
     , m_entirePageMatchesFilter(true)
+{
+    Setup(page);
+}
+
+EditorPreferencesTreeWidgetItem::EditorPreferencesTreeWidgetItem(IPreferencesPage* page, const QIcon& icon)
+    : QTreeWidgetItem(EditorPreferencesPage)
+    , m_preferencesPage(page)
+    , m_entirePageMatchesFilter(true)
+{
+    setIcon(0, icon);
+
+    setData(0, Qt::DecorationRole, icon);
+    Setup(page);
+}
+
+void EditorPreferencesTreeWidgetItem::Setup(IPreferencesPage* page)
 {
     setData(0, Qt::DisplayRole, m_preferencesPage->GetTitle());
     SetActivePage(false);
@@ -56,7 +73,6 @@ EditorPreferencesTreeWidgetItem::EditorPreferencesTreeWidgetItem(IPreferencesPag
     visitNode(hierarchy);
 }
 
-
 EditorPreferencesTreeWidgetItem::~EditorPreferencesTreeWidgetItem()
 {
 }
@@ -64,13 +80,16 @@ EditorPreferencesTreeWidgetItem::~EditorPreferencesTreeWidgetItem()
 
 void EditorPreferencesTreeWidgetItem::SetActivePage(bool active)
 {
-    if (active)
+    if (AzQtComponents::StyleManager::isUi10())
     {
-        setData(0, Qt::DecorationRole, m_selectedImage);
-    }
-    else
-    {
-        setData(0, Qt::DecorationRole, m_unselectedImage);
+        if (active)
+        {
+            setData(0, Qt::DecorationRole, m_selectedImage);
+        }
+        else
+        {
+            setData(0, Qt::DecorationRole, m_unselectedImage);
+        }
     }
 }
 

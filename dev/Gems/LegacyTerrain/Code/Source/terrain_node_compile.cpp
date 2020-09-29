@@ -13,7 +13,7 @@
 
 // Description : terrain node
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 #include "terrain_sector.h"
 #include "terrain.h"
 #include <PakLoadDataUtils.h>

@@ -14,6 +14,7 @@
 #define _CRE_BREAKABLE_GLASS_
 
 #pragma once
+#if ENABLE_CRY_PHYSICS
 
 // Includes
 #include "CREBreakableGlassHelpers.h"
@@ -309,5 +310,6 @@ private:
     volatile uint8                      m_dirtyGeomBufferCount; // Accessed by MT and RT
     volatile uint32                     m_geomUpdateFrame;
 };//------------------------------------------------------------------------------------------------
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // _CRE_BREAKABLE_GLASS_

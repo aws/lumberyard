@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "LmbrCentral_Traits_Platform.h",
+            "LmbrCentral_Traits_Windows.h"
+        ]
+    }
+}

@@ -17,6 +17,8 @@
 #define CRYINCLUDE_CRYPHYSICS_SOFTENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 enum sentity_flags_int
 {
     sef_volumetric = 0x08
@@ -200,5 +202,7 @@ public:
 
     mutable volatile int m_lockSoftBody;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_SOFTENTITY_H

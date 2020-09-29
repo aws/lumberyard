@@ -45,9 +45,9 @@ namespace AssetBuilder
         AZ::u32 GetWarningCount() override;
         AZ::u32 GetErrorCount() override;
 
-        void DumpTraceContext(FILE* stream);
+        void DumpTraceContext(FILE* stream) const;
 
-        static void CleanMessage(FILE* stream, const char* prefix, const char* message, bool forceFlush);
+        void CleanMessage(FILE* stream, const char* prefix, const char* message, bool forceFlush, const char* extraPrefix = nullptr, bool includeTraceContext = true) const;
 
     protected:
         AzToolsFramework::Debug::TraceContextMultiStackHandler* m_stacks;

@@ -14,12 +14,17 @@
 // Description : terrain node
 
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 #include "terrain_sector.h"
 #include "terrain.h"
 #include <AABBSV.h>
+#define OBJMAN_STREAM_STATS
+#include <IObjManager.h>
 #include <IVegetationPoolManager.h>
 #include <Terrain/Bus/TerrainProviderBus.h>
+
+//From RenderDLL
+#include <Common/Shadow_Renderer.h>
 
 void CTerrainNode::PropagateChangesToRoot()
 {
@@ -119,8 +124,6 @@ float GetPointToBoxDistance(Vec3 vPos, AABB bbox)
 
 bool CTerrainNode::CheckVis(bool bAllInside, bool bAllowRenderIntoCBuffer, const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     m_QueuedLOD = MML_NOT_SET;
 
     const AABB& worldBox = GetBBox();
@@ -359,8 +362,6 @@ void CTerrainNode::CheckLeafData()
 
 void CTerrainNode::CheckNodeGeomUnload(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     float fDistanse = GetPointToBoxDistance(passInfo.GetCamera().GetPosition(), GetBBox()) * passInfo.GetZoomFactor();
 
     int nTime = fastftol_positive(GetCurTimeSec());
@@ -376,8 +377,6 @@ void CTerrainNode::CheckNodeGeomUnload(const SRenderingPassInfo& passInfo)
 
 void CTerrainNode::RemoveProcObjects(bool bRecursive)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     // remove procedurally placed objects
     if (m_bProcObjectsReady)
     {
@@ -430,7 +429,6 @@ int CTerrainNode::GetAreaLOD(const SRenderingPassInfo& passInfo) const
 
 bool CTerrainNode::RenderNodeHeightmap(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
     if (m_DistanceToCamera[passInfo.GetRecursiveLevel()] < 8) // make sure near sectors are always potentially visible
     {
         m_nLastTimeUsed = fastftol_positive(GetCurTimeSec());
@@ -503,7 +501,7 @@ bool CTerrainNode::RenderNodeHeightmap(const SRenderingPassInfo& passInfo)
 
             for (int p = 0; p < 3; p++)
             {
-                if (CMatInfo* pMatInfo = (CMatInfo*)pSurf->GetMaterialOfProjection(szProj[p]).get())
+                if (IMaterial* pMatInfo = pSurf->GetMaterialOfProjection(szProj[p]).get())
                 {
                     pMatInfo->PrecacheMaterial(GetDistance(passInfo), NULL, GetDistance(passInfo) < 32.f);
                 }
@@ -563,8 +561,6 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
     {
         return false;
     }
-
-    FUNCTION_PROFILER_3DENGINE;
 
     int nInstancesCounter = 0;
 
@@ -755,8 +751,6 @@ void CTerrainNode::IntersectTerrainAABB(const AABB& aabbBox, PodArray<CTerrainNo
 
 void CTerrainNode::UpdateDetailLayersInfo(bool bRecursive)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     if (m_Children)
     {
         if (bRecursive)
@@ -1042,8 +1036,6 @@ void CTerrainNode::GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& cstAABB
 //
 void CTerrainNode::Render(const SRendParams& RendParams, const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     // Disable legacy terrain shadow rendering if new terrain is active.
     // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
     if (Terrain::TerrainProviderRequestBus::HasHandlers())
@@ -1122,7 +1114,6 @@ void CTerrainNode::FillBBox(AABB& aabb)
 
 ITerrainNode* CTerrain::FindMinNodeContainingBox(const AABB& someBox)
 {
-    FUNCTION_PROFILER_3DENGINE;
     if (m_RootNode)
     {
         return m_RootNode->FindMinNodeContainingBox(someBox);

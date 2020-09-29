@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "intersectionchecks.h"
@@ -344,3 +346,5 @@ void CVoxelGeom::GetMemoryStatistics(ICrySizer* pSizer)
         pSizer->AddObject(m_grid.pTriBuf, sizeof(m_grid.pTriBuf[0]) * m_grid.pCellTris[m_grid.size.GetVolume()]);
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

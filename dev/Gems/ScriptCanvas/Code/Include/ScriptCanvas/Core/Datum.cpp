@@ -1338,10 +1338,15 @@ namespace ScriptCanvas
         }
     }
 
-    ComparisonOutcome Datum::CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass& behaviorClass, const Datum& lhs, const Datum& rhs)
+    ComparisonOutcome Datum::CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass* behaviorClass, const Datum& lhs, const Datum& rhs)
     {
+        if (!behaviorClass)
+        {
+            return AZ::Failure(AZStd::string("Failed to perform Comparison operation"));
+        }
+
         // depending on when this gets called, check for null operands, they could be possible
-        for (auto& methodIt : behaviorClass.m_methods)
+        for (auto& methodIt : behaviorClass->m_methods)
         {
             auto* method = methodIt.second;
 
@@ -1869,7 +1874,10 @@ namespace ScriptCanvas
                 InitializeOverloadedStorage(source.m_type, m_originality);
                 m_class = AZStd::move(source.m_class);
                 m_type = AZStd::move(source.m_type);
-                m_storage = AZStd::move(source.m_storage);
+                if (!source.m_storage.empty())
+                {
+                    m_storage = AZStd::move(source.m_storage);
+                }
             }
             else if (!ConvertImplicitlyChecked(source.GetType(), source.GetValueAddress(), m_type, m_storage, m_class))
             {
@@ -1925,7 +1933,7 @@ namespace ScriptCanvas
         {
             if (m_type.GetType() == Data::eType::BehaviorContextObject)
             {
-                return CallComparisonOperator(AZ::Script::Attributes::OperatorType::Equal, *m_class, *this, other);
+                return CallComparisonOperator(AZ::Script::Attributes::OperatorType::Equal, m_class, *this, other);
             }
             else
             {
@@ -1967,7 +1975,7 @@ namespace ScriptCanvas
         {
             if (m_type.GetType() == Data::eType::BehaviorContextObject)
             {
-                return CallComparisonOperator(AZ::Script::Attributes::OperatorType::LessThan, *m_class, *this, other);
+                return CallComparisonOperator(AZ::Script::Attributes::OperatorType::LessThan, m_class, *this, other);
             }
             else 
             {
@@ -1992,7 +2000,7 @@ namespace ScriptCanvas
         {
             if (m_type.GetType() == Data::eType::BehaviorContextObject)
             {
-                return CallComparisonOperator(AZ::Script::Attributes::OperatorType::LessEqualThan, *m_class, *this, other);
+                return CallComparisonOperator(AZ::Script::Attributes::OperatorType::LessEqualThan, m_class, *this, other);
             }
             else
             {

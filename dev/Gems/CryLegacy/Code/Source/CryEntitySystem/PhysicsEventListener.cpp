@@ -12,10 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "CryLegacy_precompiled.h"
+#include "Entity.h"
+#if ENABLE_CRY_PHYSICS
+
 #include "PhysicsEventListener.h"
 #include "IBreakableManager.h"
 #include "EntityObject.h"
-#include "Entity.h"
+
 #include "EntitySystem.h"
 #include "EntityCVars.h"
 #include "BreakableManager.h"
@@ -412,7 +415,6 @@ int CPhysicsEventListener::OnRevealPhysEntityPart(const EventPhys* pEvent)
 
     return 1;
 }
-
 //////////////////////////////////////////////////////////////////////////
 IEntity* MatchPartId(IEntity* pent, int partid)
 {
@@ -431,18 +433,22 @@ IEntity* MatchPartId(IEntity* pent, int partid)
     }
     return 0;
 }
+#endif
+
 
 IEntity* CEntity::UnmapAttachedChild(int& partId)
 {
+#if ENABLE_CRY_PHYSICS
     CEntity* pChild;
     if (partId >= PARTID_LINKED && (pChild = static_cast<CEntity*>(MatchPartId(this, partId))))
     {
         partId -= pChild->GetComponent<IComponentPhysics>()->GetPartId0();
         return pChild;
     }
+#endif // ENABLE_CRY_PHYSICS
     return this;
 }
-
+#if ENABLE_CRY_PHYSICS
 int CPhysicsEventListener::OnCollision(const EventPhys* pEvent)
 {
     EventPhysCollision* pCollision = (EventPhysCollision*)pEvent;
@@ -700,3 +706,4 @@ void CPhysicsEventListener::UnregisterPhysicCallbacks()
         stl::free_container(m_physVisAreaUpdateVector);
     }
 }
+#endif // ENABLE_CRY_PHYSICS

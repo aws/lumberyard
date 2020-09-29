@@ -19,18 +19,11 @@
 
 namespace AssetProcessor
 {
-    class SourceAssetTreeModel : public AssetTreeModel,
-        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler,
-        AssetProcessor::ApplicationManagerNotifications::Bus::Handler
+    class SourceAssetTreeModel : public AssetTreeModel
     {
     public:
-        SourceAssetTreeModel(QObject *parent = nullptr);
+        SourceAssetTreeModel(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> sharedDbConnection, QObject *parent = nullptr);
         ~SourceAssetTreeModel();
-
-        void DoCleanup();
-
-        /// ApplicationManagerNotifications::Bus::Handler
-        void ApplicationShutdownRequested() override;
 
         // AssetDatabaseNotificationBus::Handler
         void OnSourceFileChanged(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& entry) override;

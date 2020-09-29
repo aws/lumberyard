@@ -18,11 +18,26 @@
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include "AssetBuilderInfo.h"
 
+struct IBuilderApplication
+{
+    AZ_RTTI(IBuilderApplication, "{FEDD188E-D5FF-4852-B945-F82F7CC1CA5F}");
+
+    IBuilderApplication() = default;
+    virtual ~IBuilderApplication() = default;
+
+    virtual void InitializeBuilderComponents() = 0;
+
+    AZ_DISABLE_COPY_MOVE(IBuilderApplication);
+};
+
 class AssetBuilderApplication
     : public AzToolsFramework::ToolsApplication
+    , public IBuilderApplication
 {
 public:
     AssetBuilderApplication(int* argc, char*** argv);
+    ~AssetBuilderApplication();
+
     AZ::ComponentTypeList GetRequiredSystemComponents() const override;
     void RegisterCoreComponents() override;
     void StartCommon(AZ::Entity* systemEntity) override;
@@ -30,6 +45,8 @@ public:
     bool IsInDebugMode() const;
 
     bool GetOptionalAppRootArg(char destinationRootArgBuffer[], size_t destinationRootArgBufferSize) const;
+
+    void InitializeBuilderComponents() override;
 
 protected:
     void ResolveModulePath(AZ::OSString& modulePath) override;

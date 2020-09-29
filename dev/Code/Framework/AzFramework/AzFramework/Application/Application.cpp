@@ -61,6 +61,7 @@
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 #include <AzFramework/Terrain/TerrainDataRequestBus.h>
+#include <AzFramework/Viewport/ScreenGeometry.h>
 #include <AzCore/Console/Console.h>
 #include <AzFramework/Viewport/ViewportBus.h>
 #include <GridMate/Memory.h>
@@ -230,7 +231,7 @@ namespace AzFramework
             {
                 AZStd::string testPath = AZStd::string::format("%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING AZ_DYNAMIC_LIBRARY_PREFIX "%s", searchPath, binSubfolder, modulePathStr);
                 AzFramework::StringFunc::Path::Normalize(testPath);
-                AZStd::string testPathWithPrefixAndExt = AZStd::string::format("%s" AZ_DYNAMIC_LIBRARY_EXTENSION, testPath.c_str(), modulePathStr);
+                AZStd::string testPathWithPrefixAndExt = AZStd::string::format("%s" AZ_DYNAMIC_LIBRARY_EXTENSION, testPath.c_str());
                 if (AZ::IO::SystemFile::Exists(testPathWithPrefixAndExt.c_str()))
                 {
                     StringFunc::Path::Normalize(testPath);
@@ -538,6 +539,7 @@ namespace AzFramework
         AzFramework::ConsoleRequests::Reflect(context);
         AzFramework::ConsoleNotifications::Reflect(context);
         AzFramework::ViewportRequests::Reflect(context);
+        AzFramework::ScreenGeometryReflect(context);
 
         Physics::ReflectionUtils::ReflectPhysicsApi(context);
         AzFramework::Terrain::TerrainDataRequests::Reflect(context);

@@ -1046,15 +1046,24 @@ namespace CommandSystem
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void CreateAnimGraphNode(EMotionFX::AnimGraph* animGraph, const AZ::TypeId& type, const AZStd::string& namePrefix, EMotionFX::AnimGraphNode* parentNode, int32 offsetX, int32 offsetY, const AZStd::string& serializedContents)
+    void CreateAnimGraphNode(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* animGraph, const AZ::TypeId& type, const AZStd::string& namePrefix, EMotionFX::AnimGraphNode* parentNode, int32 offsetX, int32 offsetY, const AZStd::string& serializedContents)
     {
-        AZStd::string commandString, commandResult;
+        AZStd::string commandString;
+        MCore::CommandGroup internalGroup;
+
+        // Add the newly generated commands to the commandGroup parameter in case it is valid, add it to the internal group and execute it otherwise.
+        bool executeGroup = false;
+        if (!commandGroup)
+        {
+            executeGroup = true;
+            commandGroup = &internalGroup;
+        }
 
         // if we want to add a blendtree, we also should automatically add a final node
         if (type == azrtti_typeid<EMotionFX::BlendTree>())
         {
             MCORE_ASSERT(parentNode);
-            MCore::CommandGroup group("Create blend tree");
+            commandGroup->SetGroupName("Create blend tree");
 
             commandString = AZStd::string::format("AnimGraphCreateNode -animGraphID %i -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"",
                 animGraph->GetID(),
@@ -1069,7 +1078,7 @@ namespace CommandSystem
                 commandString += AZStd::string::format(" -contents {%s} ", serializedContents.c_str());
             }
 
-            group.AddCommandString(commandString);
+            commandGroup->AddCommandString(commandString);
 
             // auto create the final node
             commandString = AZStd::string::format("AnimGraphCreateNode -animGraphID %i -type \"%s\" -parentName \"%%LASTRESULT%%\" -xPos %d -yPos %d -name GENERATE -namePrefix \"FinalNode\"",
@@ -1077,22 +1086,13 @@ namespace CommandSystem
                 azrtti_typeid<EMotionFX::BlendTreeFinalNode>().ToString<AZStd::string>().c_str(),
                 0,
                 0);
-            group.AddCommandString(commandString);
-
-            // execute the command
-            if (!GetCommandManager()->ExecuteCommandGroup(group, commandResult))
-            {
-                if (!commandResult.empty())
-                {
-                    MCore::LogError(commandResult.c_str());
-                }
-            }
+            commandGroup->AddCommandString(commandString);
         }
         // if we want to add a state machine, we also should automatically add an exit node
         else if (type == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
         {
             MCORE_ASSERT(parentNode);
-            MCore::CommandGroup group("Create child state machine");
+            commandGroup->SetGroupName("Create child state machine");
 
             commandString = AZStd::string::format("AnimGraphCreateNode -animGraphID %i -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"",
                 animGraph->GetID(),
@@ -1107,7 +1107,7 @@ namespace CommandSystem
                 commandString += AZStd::string::format(" -contents {%s} ", serializedContents.c_str());
             }
 
-            group.AddCommandString(commandString);
+            commandGroup->AddCommandString(commandString);
 
             // auto create an exit node in case we're not creating a state machine inside a blend tree
             if (azrtti_typeid(parentNode) != azrtti_typeid<EMotionFX::BlendTree>())
@@ -1117,23 +1117,14 @@ namespace CommandSystem
                     azrtti_typeid<EMotionFX::AnimGraphEntryNode>().ToString<AZStd::string>().c_str(),
                     -200,
                     0);
-                group.AddCommandString(commandString);
+                commandGroup->AddCommandString(commandString);
 
                 commandString = AZStd::string::format("AnimGraphCreateNode -animGraphID %i -type \"%s\" -parentName \"%%LASTRESULT2%%\" -xPos %d -yPos %d -name GENERATE -namePrefix \"ExitNode\"",
                     animGraph->GetID(),
                     azrtti_typeid<EMotionFX::AnimGraphExitNode>().ToString<AZStd::string>().c_str(),
                     200,
                     0);
-                group.AddCommandString(commandString);
-            }
-
-            // execute the command
-            if (GetCommandManager()->ExecuteCommandGroup(group, commandResult) == false)
-            {
-                if (!commandResult.empty())
-                {
-                    MCore::LogError(commandResult.c_str());
-                }
+                commandGroup->AddCommandString(commandString);
             }
         }
         else
@@ -1163,13 +1154,17 @@ namespace CommandSystem
                 commandString += AZStd::string::format(" -contents {%s} ", serializedContents.c_str());
             }
 
-            // execute the command
-            if (GetCommandManager()->ExecuteCommand(commandString, commandResult) == false)
+            commandGroup->AddCommandString(commandString);
+        }
+
+        // Execute the command group in case the command group parameter was not set.
+        if (executeGroup &&
+            !commandGroup->IsEmpty())
+        {
+            AZStd::string result;
+            if (!GetCommandManager()->ExecuteCommandGroup(*commandGroup, result))
             {
-                if (!commandResult.empty())
-                {
-                    MCore::LogError(commandResult.c_str());
-                }
+                AZ_Error("EMotionFX", false, result.c_str());
             }
         }
     }

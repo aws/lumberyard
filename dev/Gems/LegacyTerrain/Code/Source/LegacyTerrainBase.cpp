@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 
 #include "LegacyTerrainBase.h"
 
@@ -19,7 +19,9 @@ I3DEngine* LegacyTerrainBase::m_p3DEngine = nullptr;
 IObjManager* LegacyTerrainBase::m_pObjManager = nullptr;
 ITimer* LegacyTerrainBase::m_pTimer = nullptr;
 IRenderer* LegacyTerrainBase::m_pRenderer = nullptr;
+#if ENABLE_CRY_PHYSICS
 IPhysicalWorld* LegacyTerrainBase::m_pPhysicalWorld = nullptr;
+#endif
 ICryPak* LegacyTerrainBase::m_pCryPak = nullptr;
 ILog* LegacyTerrainBase::m_pLog = nullptr;
 IConsole* LegacyTerrainBase::m_pConsole = nullptr;
@@ -37,7 +39,9 @@ void LegacyTerrainBase::SetSystem(ISystem* pSystem)
     m_pObjManager = m_p3DEngine->GetObjManager();
     m_pTimer = env->pTimer;
     m_pRenderer = env->pRenderer;
+#if ENABLE_CRY_PHYSICS
     m_pPhysicalWorld = env->pPhysicalWorld;
+#endif
     m_pCryPak = env->pCryPak;
     m_pLog = env->pLog;
     m_pConsole = env->pConsole;

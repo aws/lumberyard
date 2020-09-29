@@ -207,7 +207,19 @@ namespace EMotionFX
                 OnEntityVisibilityChanged(m_renderCharacter);
             }
         }
+        
+        //////////////////////////////////////////////////////////////////////////
+        size_t EditorActorComponent::GetNumJoints() const
+        {
+            const Actor* actor = m_actorAsset->GetActor();
+            if (actor)
+            {
+                return actor->GetNumNodes();
+            }
 
+            return 0;
+        }
+        
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::CreateActorInstance()
         {
@@ -246,7 +258,7 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
-        // ActorComponentRequestBus::Handler
+        // EditorActorComponentRequestBus::Handler
         //////////////////////////////////////////////////////////////////////////
         const AZ::Data::AssetId& EditorActorComponent::GetActorAssetId()
         {
@@ -536,12 +548,17 @@ namespace EMotionFX
             m_actorInstance->UpdateTransformations(0.0f, true, false);
 
             RenderBackend* renderBackend = AZ::Interface<RenderBackendManager>::Get()->GetRenderBackend();
+
+            // If there is already a RenderActorInstance, destroy it before creating the new one so there are not two instances potentially handling events for the same entityId
+            m_renderActorInstance.reset(nullptr);
+            // Create the new RenderActorInstance
             m_renderActorInstance.reset(renderBackend->CreateActorInstance(GetEntityId(),
                     m_actorInstance,
                     m_actorAsset,
                     m_materialPerLOD,
                     m_skinningMethod,
                     transform));
+
             if (m_renderActorInstance)
             {
                 m_renderActorInstance->SetIsVisible(m_entityVisible && m_renderCharacter);
@@ -727,8 +744,11 @@ namespace EMotionFX
                         continue;
                     }
 
+                    // Use the actor instance transform for skinned meshes (as the vertices are pre-transformed and in model space) and the node world transform otherwise.
+                    const Transform meshTransform = currentPose->GetMeshNodeWorldSpaceTransform(lod, nodeIndex);
+
                     AZ::Vector3 hitPoint;
-                    if (mesh->Intersects(currentPose->GetWorldSpaceTransform(nodeIndex), ray, &hitPoint))
+                    if (mesh->Intersects(meshTransform, ray, &hitPoint))
                     {
                         isHit = true;
                         float hitDistance = (src - hitPoint).GetLength();

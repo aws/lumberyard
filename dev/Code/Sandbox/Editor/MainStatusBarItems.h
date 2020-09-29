@@ -42,7 +42,6 @@ public:
     SourceControlItem(QString name, MainStatusBar* parent);
     ~SourceControlItem();
 
-    // AzToolsFramework::SourceControlNotificationBus::Handler:
     void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;
 
 private:
@@ -54,12 +53,13 @@ private:
 private:
     std::unique_ptr<QMenu> m_menu;
     QAction* m_settingsAction;
-    QAction* m_enableAction;
-    QAction* m_disableAction;
+    QWidgetAction* m_enableAction;
+    QCheckBox* m_checkBox;
 
-    QPixmap m_scIconOk;
-    QPixmap m_scIconError;
-
+    QIcon m_scIconOk;
+    QIcon m_scIconError;
+    QIcon m_scIconWarning;
+    QIcon m_scIconDisabled;
     bool m_sourceControlAvailable;
     AzToolsFramework::SourceControlState m_SourceControlState; 
 };

@@ -20,7 +20,6 @@
 #include <AzCore/Debug/Profiler.h>
 
 #include <ImageProcessing/PixelFormats.h>
-#include <ImageProcessing/ImageProcessingBus.h>
 #include <GradientSignal/Util.h>
 #include <numeric>
 

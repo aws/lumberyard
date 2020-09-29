@@ -14,12 +14,14 @@
 // Description : terrain texture management
 
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
+
+#include <AzCore/std/functional.h>
+#include <Terrain/Bus/LegacyTerrainBus.h>
+
 #include "terrain_sector.h"
 #include "terrain.h"
-#include <AzCore/std/functional.h>
-#include "Terrain/Texture/MacroTextureImporter.h"
-#include <Terrain/Bus/LegacyTerrainBus.h>
+#include "Texture/MacroTextureImporter.h"
 
 
 uint8 CTerrainNode::GetTextureLOD(float fDistance, const SRenderingPassInfo& passInfo)
@@ -121,8 +123,6 @@ void CTerrainNode::RequestTextures(const SRenderingPassInfo& passInfo)
 
 void CTerrainNode::SetSectorTexture(unsigned int nEditorDiffuseTex, unsigned int nEditorDiffuseTexSizeX, unsigned int nEditorDiffuseTexSizeY)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     // assign new diffuse texture
     m_TextureSet.nTex0 = nEditorDiffuseTex;
 
@@ -143,8 +143,6 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
     }
 
     assert(GetLeafData());
-
-    FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
 
     SSectorTextureSet renderSet = m_TextureSet;
 
@@ -286,8 +284,6 @@ bool CTerrain::ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTe
 
 bool CTerrain::OpenTerrainTextureFile(const char* szFileName)
 {
-    FUNCTION_PROFILER_3DENGINE;
-
     AZ_Assert(!m_MacroTexture, "Attempting to open already open terrain texture");
 
     // unlock all nodes

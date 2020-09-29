@@ -66,7 +66,6 @@ struct IConsole;
 struct IRemoteConsole;
 struct IInput;
 struct IRenderer;
-struct IConsole;
 namespace Telemetry {
     struct ITelemetrySystem;
 }
@@ -83,7 +82,9 @@ struct ICryLobby;
 struct ICryFont;
 class ICrypto;
 struct IMovieSystem;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct IMemoryManager;
 namespace Audio
 {
@@ -128,8 +129,10 @@ struct IZLibDecompressor;
 struct ILZ4Decompressor;
 class IZStdDecompressor;
 struct IOutputPrintSink;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicsDebugRenderer;
 struct IPhysRenderer;
+#endif
 struct IOverloadSceneManager;
 struct IThreadManager;
 struct IServiceNetwork;
@@ -507,6 +510,14 @@ enum ESystemEvent
     //      Sent when a new audio implementation is loaded
     ESYSTEM_EVENT_AUDIO_IMPLEMENTATION_LOADED,
 
+    // Description:
+    //      Sent when simulation mode switch begins
+    ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_SWITCH_START,
+
+    // Description:
+    //      Sent when simluation mode switch ends
+    ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_SWITCH_END,
+
     ESYSTEM_EVENT_USER = 0x1000,
 
     ESYSTEM_BEAM_PLAYER_TO_CAMERA_POS
@@ -581,7 +592,7 @@ struct ISystemUserCallback
     // </interfuscator:shuffle>
 
     //   Post console load, for cvar setting
-    virtual void OnConsoleCreated(IConsole* pConsole) {}
+    virtual void OnConsoleCreated(::IConsole* pConsole) {}
 };
 
 // Description:
@@ -938,7 +949,9 @@ struct SSystemGlobalEnvironment
     // DEPRECATED: This object is currently deprecated and will be removed in release 1.13
     // **************************************************************************************
     IScriptSystem*             pScriptSystem;
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld*            pPhysicalWorld;
+#endif
     IInput*                    pInput;
     IStatoscope*        pStatoscope;
     ICryPak*                   pCryPak;
@@ -953,7 +966,7 @@ struct SSystemGlobalEnvironment
     IGame*                     pGame;
     ILocalMemoryUsage*     pLocalMemoryUsage;
     IEntitySystem*             pEntitySystem;
-    IConsole*                  pConsole;
+    ::IConsole*                  pConsole;
     Telemetry::ITelemetrySystem* pTelemetrySystem;
     ISystem*                   pSystem = nullptr;
     ICharacterManager*         pCharacterManager;
@@ -1299,8 +1312,10 @@ struct ISystem
     //   Host application (Editor) doesn't employ the Render cycle in ISystem,
     //   it may call this method to render the essential statistics.
     virtual void RenderStatistics() = 0;
+#if ENABLE_CRY_PHYSICS
     virtual void RenderPhysicsHelpers() = 0;
     virtual void RenderPhysicsStatistics(IPhysicalWorld* pWorld) = 0;
+#endif
 
     // Summary:
     //   Returns the current used memory.
@@ -1403,8 +1418,10 @@ struct ISystem
     virtual IDiskProfiler* GetIDiskProfiler() = 0;
     virtual IFrameProfileSystem* GetIProfileSystem() = 0;
     virtual IValidator* GetIValidator() = 0;
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicsDebugRenderer* GetIPhysicsDebugRenderer() = 0;
     virtual IPhysRenderer* GetIPhysRenderer() = 0;
+#endif
     virtual ICharacterManager* GetIAnimationSystem() = 0;
     virtual IStreamEngine* GetStreamEngine() = 0;
     virtual ICmdLine* GetICmdLine() = 0;
@@ -1415,13 +1432,15 @@ struct ISystem
     virtual IMemoryManager* GetIMemoryManager() = 0;
     virtual IAISystem* GetAISystem() = 0;
     virtual IMovieSystem* GetIMovieSystem() = 0;
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalWorld* GetIPhysicalWorld() = 0;
+#endif
     virtual I3DEngine* GetI3DEngine() = 0;
     // **************************************************************************************
     // DEPRECATED: This method is currently deprecated and will be removed in release 1.13
     // **************************************************************************************
     virtual IScriptSystem* GetIScriptSystem() = 0;
-    virtual IConsole* GetIConsole() = 0;
+    virtual ::IConsole* GetIConsole() = 0;
     virtual IRemoteConsole* GetIRemoteConsole() = 0;
     virtual ICrypto* GetCrypto() = 0;
     // Returns:
@@ -1719,6 +1738,10 @@ struct ISystem
     virtual int GetApplicationInstance() = 0;
 
     // Summary:
+    //   Get log index of the currently running lumberyard application. (0 = first instance, 1 = second instance, etc)
+    virtual int GetApplicationLogInstance(const char* logFilePath) = 0;
+
+    // Summary:
     //      Retrieves the current stats for systems to update the respective time taken
     virtual sUpdateTimes& GetCurrentUpdateTimeStats() = 0;
 
@@ -1852,7 +1875,7 @@ struct ISystem
 #define SYNCHRONOUS_LOADING_TICK() do { if (gEnv && gEnv->pSystem) {gEnv->pSystem->SynchronousLoadingTick(__FUNC__, __LINE__); } \
 } while (0)
 
-#if defined(ENABLE_LOADING_PROFILER)
+#if defined(USE_DISK_PROFILER)
 
 struct DiskOperationInfo
 {
@@ -1901,6 +1924,10 @@ struct DiskOperationInfo
     }
 };
 
+#endif
+
+#if defined(ENABLE_LOADING_PROFILER)
+
 struct CLoadingTimeProfiler
 {
     CLoadingTimeProfiler(ISystem* pSystem, const char* szFuncName)
@@ -1932,12 +1959,18 @@ public:
     CSYSBootProfileBlock(ISystem* pSystem, const char* name, const char* args = NULL)
         : m_pSystem(pSystem)
     {
-        m_pRecord = m_pSystem->StartBootSectionProfiler(name, args);
+        if (m_pSystem)
+        {
+            m_pRecord = m_pSystem->StartBootSectionProfiler(name, args);
+        }
     }
 
     ~CSYSBootProfileBlock()
     {
-        m_pSystem->StopBootSectionProfiler(m_pRecord);
+        if (m_pSystem)
+        {
+            m_pSystem->StopBootSectionProfiler(m_pRecord);
+        }
     }
 };
 
@@ -1950,7 +1983,7 @@ public:
 
 #else
 
-#define LOADING_TIME_PROFILE_SECTION CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, __FUNCTION__);
+#define LOADING_TIME_PROFILE_SECTION CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv && gEnv->pSystem ? gEnv->pSystem : nullptr, __FUNCTION__);
 #define LOADING_TIME_PROFILE_SECTION_ARGS(args) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, __FUNCTION__, args);
 #define LOADING_TIME_PROFILE_SECTION_NAMED(sectionName) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, sectionName);
 #define LOADING_TIME_PROFILE_SECTION_NAMED_ARGS(sectionName, args) CSYSBootProfileBlock AZ_JOIN(_profileBlockLine, __LINE__)(gEnv->pSystem, sectionName, args);

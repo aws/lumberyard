@@ -30,10 +30,15 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Components/TransformComponent.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Physics/RigidBodyBus.h>
+#endif
 
 namespace LmbrCentral
 {
+#if ENABLE_CRY_PHYSICS
     using AzFramework::PhysicsComponentRequestBus;
+#endif
     
     bool RenameElement(AZ::SerializeContext::DataElementNode& classElement, AZ::Crc32 srcCrc, const char* newName)
     {
@@ -644,6 +649,7 @@ namespace LmbrCentral
         
         // Spawn the particle emitter
         SpawnParams spawnParams = GetPropertiesAsSpawnParams(settings);
+        spawnParams.azEntityId = m_attachedToEntityId;
         m_emitter = m_effect->Spawn(QuatTS(AZTransformToLYTransform(parentTransform)), emmitterFlags, &spawnParams);
 
 
@@ -732,7 +738,11 @@ namespace LmbrCentral
         target.vTarget.Set(targetEntityTransform.GetPosition().GetX(), targetEntityTransform.GetPosition().GetY(), targetEntityTransform.GetPosition().GetZ());
 
         AZ::Vector3 velocity(0);
+#if ENABLE_CRY_PHYSICS
         PhysicsComponentRequestBus::EventResult(velocity, m_targetEntity, &AzFramework::PhysicsComponentRequests::GetVelocity);
+#else
+        Physics::RigidBodyRequestBus::EventResult(velocity, m_targetEntity, &Physics::RigidBodyRequests::GetLinearVelocity);
+#endif
         target.vVelocity.Set(velocity.GetX(), velocity.GetY(), velocity.GetZ());
         
         AZ::Aabb bounds = AZ::Aabb::CreateNull();

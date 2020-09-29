@@ -71,7 +71,8 @@ namespace CodeGenerator
         static cl::opt<bool> isAndroidBuild("is-android-build", cl::desc("Configure clang to simulate an android ndk build for parsing"), cl::cat(codeParserCategory), cl::Optional);
         static cl::opt<std::string> androidToolchain("android-toolchain", cl::desc("Specify toolchain folder to use for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
         static cl::opt<std::string> androidTarget("android-target", cl::desc("Specify clang target to use for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
-        static cl::opt<std::string> androidSysroot("android-sysroot", cl::desc("Specify clang sysroot to us for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
+        static cl::opt<std::string> androidSysroot("android-sysroot", cl::desc("Specify clang sysroot to use for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
+        static cl::opt<std::string> androidStdlib("android-stdlib", cl::desc("Specify the stdlib for clang sysroot to use when parsing for android, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
 
         static cl::opt<bool> noScripts("noscripts", cl::desc("Disable running codegen scripts"), cl::Optional, cl::init(false));
 
@@ -194,7 +195,7 @@ int main(int argc, char** argv)
 #endif // AZCG_PLATFORM_DARWIN
 
                 // Platform-agnostic default settings
-                settings += "-std=c++1z"; // Enable C++14 support
+                settings += "-std=c++1z"; // Enable C++17 support
                 settings += "-w";  // Inhibit all warning messages.
                 settings += "-DAZ_CODE_GENERATOR"; // Used to toggle code gen macros
                 if (Configuration::annotationErrorChecking)
@@ -209,7 +210,7 @@ int main(int argc, char** argv)
                 // Platform-specific default settings
                 if (Configuration::isAndroidBuild)
                 {
-                    if (Configuration::androidTarget.length())
+                    if (!Configuration::androidTarget.empty())
                     {
                         settings += "--target=" + Configuration::androidTarget;
                     }
@@ -220,14 +221,31 @@ int main(int argc, char** argv)
                     }
 
                     // No explicit default toolchain
-                    if (Configuration::androidToolchain.length())
+                    if (!Configuration::androidToolchain.empty())
                     {
                         settings += "--gcc-toolchain=" + Configuration::androidToolchain;
                     }
 
-                    if (Configuration::androidSysroot.length())
+                    if (!Configuration::androidSysroot.empty())
                     {
                         settings += "--sysroot=" + Configuration::androidSysroot;
+                    }
+
+                    if (!Configuration::resourceDir.empty())
+                    {
+                        settings += "-resource-dir";
+                        settings += Configuration::resourceDir;
+                    }
+
+                    if (!Configuration::androidStdlib.empty())
+                    {
+                        settings += "-stdlib=" + Configuration::androidStdlib;
+                    }
+                    
+                    if (!Configuration::androidSysroot.empty() && Configuration::androidTarget.find("aarch64") != -1)
+                    {
+                        settings += "-isystem";
+                        settings += Configuration::androidSysroot + "/usr/include/aarch64-linux-android";
                     }
                 }
                 else

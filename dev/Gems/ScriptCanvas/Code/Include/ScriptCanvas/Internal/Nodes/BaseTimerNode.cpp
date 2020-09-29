@@ -64,6 +64,32 @@ namespace ScriptCanvas
                 {
                     m_timeSlotId = slot->GetId();
                 }
+                // Versioning to deal with slot name needing to update
+                // based on old version of the slot name
+                else
+                {
+                    AZStd::string slotName = CreateTimeSlotName(GetTimeSlotFormat(), static_cast<TimeUnits>(m_timeUnits));
+
+                    slot = GetSlotByName(slotName);
+
+                    if (slot)
+                    {
+                        slot->SetToolTip(GetBaseTimeSlotToolTip());
+                        m_timeSlotId = slot->GetId();
+                    }
+                }
+
+                UpdateTimeName();
+                ////
+
+                m_timeUnitsInterface.SetPropertyReference(&m_timeUnits);
+
+                for (TimeUnits timeUnit : { TimeUnits::Ticks, TimeUnits::Milliseconds, TimeUnits::Seconds})
+                {
+                    m_timeUnitsInterface.RegisterValueType(StringifyUnits(timeUnit), static_cast<int>(timeUnit));
+                }
+
+                m_timeUnitsInterface.RegisterListener(this);
             }
             
             void BaseTimerNode::OnConfigured()
@@ -74,6 +100,31 @@ namespace ScriptCanvas
             void BaseTimerNode::OnDeactivate()
             {
                 StopTimer();
+            }
+
+            void BaseTimerNode::ConfigureVisualExtensions()
+            {
+                {
+                    VisualExtensionSlotConfiguration visualExtensions(VisualExtensionSlotConfiguration::VisualExtensionType::PropertySlot);
+
+                    visualExtensions.m_name = "Units";
+                    visualExtensions.m_tooltip = "";
+                    visualExtensions.m_connectionType = ConnectionType::Input;
+
+                    visualExtensions.m_identifier = GetTimeUnitsPropertyId();
+
+                    RegisterExtension(visualExtensions);
+                }
+            }
+
+            NodePropertyInterface* BaseTimerNode::GetPropertyInterface(AZ::Crc32 propertyId)
+            {
+                if (propertyId == GetTimeUnitsPropertyId())
+                {
+                    return &m_timeUnitsInterface;
+                }
+
+                return nullptr;
             }
             
             void BaseTimerNode::OnSystemTick()
@@ -134,6 +185,7 @@ namespace ScriptCanvas
                     // Must have the known name.
                     // Must be a number
                     slotConfiguration.m_name = slotName;
+                    slotConfiguration.m_toolTip = GetBaseTimeSlotToolTip();
                     slotConfiguration.SetConnectionType(ConnectionType::Input);
                     slotConfiguration.SetDefaultValue(1.0);
 
@@ -207,7 +259,7 @@ namespace ScriptCanvas
 
             AZStd::string BaseTimerNode::GetTimeSlotName() const
             {
-                return CreateTimeSlotName(GetTimeSlotFormat(), static_cast<TimeUnits>(m_timeUnits));
+                return GetBaseTimeSlotName();
             }
             
             BaseTimerNode::TimeUnits BaseTimerNode::GetTimeUnits() const
@@ -260,6 +312,11 @@ namespace ScriptCanvas
             void BaseTimerNode::ConfigureTimeSlot(DataSlotConfiguration& configuration)
             {
                 AZ_UNUSED(configuration);
+            }
+
+            void BaseTimerNode::OnPropertyChanged()
+            {
+                OnTimeUnitsChanged(m_timeUnits);
             }
         }
     }

@@ -368,6 +368,7 @@ void CAIPlayer::Update(EObjectUpdate type)
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     // There should never be player without physics (except in multiplayer, this case is valid).
     if (!GetPhysics())
     {
@@ -539,6 +540,7 @@ void CAIPlayer::Update(EObjectUpdate type)
     }
 
     m_damagePartsUpdated = false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAIPlayer::OnObjectRemoved(CAIObject* pObject)
@@ -577,6 +579,7 @@ void CAIPlayer::UpdatePlayerStuntActions()
     for (unsigned i = 0; i < m_lastThrownItems.size(); )
     {
         IEntity* pEnt = gEnv->pEntitySystem->GetEntity(m_lastThrownItems[i].id);
+#if ENABLE_CRY_PHYSICS
         if (pEnt)
         {
             if (IPhysicalEntity* pPhysEnt = pEnt->GetPhysics())
@@ -591,6 +594,7 @@ void CAIPlayer::UpdatePlayerStuntActions()
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         m_lastThrownItems[i].time += dt;
         if (!pEnt || m_lastThrownItems[i].time > 1.0f)
@@ -907,12 +911,14 @@ void CAIPlayer::AddThrownEntity(EntityId id)
     pEnt->GetWorldBounds(bounds);
     m_lastThrownItems.back().r = bounds.GetRadius();
 
+#if ENABLE_CRY_PHYSICS
     if (IPhysicalEntity* pPhysEnt = pEnt->GetPhysics())
     {
         pe_status_dynamics statDyn;
         pPhysEnt->GetStatus(&statDyn);
         m_lastThrownItems.back().vel = statDyn.v;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // Limit the number of hot entities.
     if (m_lastThrownItems.size() > 4)

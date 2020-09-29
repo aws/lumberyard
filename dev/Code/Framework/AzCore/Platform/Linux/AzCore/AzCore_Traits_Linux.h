@@ -25,6 +25,7 @@
 #define AZ_TRAIT_OS_DELETE_THROW noexcept
 #define AZ_TRAIT_OS_DLL_EXPORT_CLANG __attribute__ ((visibility ("default")))
 #define AZ_TRAIT_OS_DLL_IMPORT_CLANG __attribute__ ((visibility ("default")))
+#define AZ_TRAIT_OS_ATTRIBUTE_MARK_USED UNUSED_TRAIT
 #define AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION ".so"
 #define AZ_TRAIT_OS_DYNAMIC_LIBRARY_PREFIX "lib"
 #define AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT 0
@@ -45,6 +46,7 @@
 #define AZ_TRAIT_OS_USE_WINDOWS_SET_EVENT 0
 #define AZ_TRAIT_OS_USE_WINDOWS_SOCKETS 0
 #define AZ_TRAIT_OS_USE_WINDOWS_THREADS 0
+#define AZ_TRAIT_OS_USE_WINDOWS_MUTEX 0
 #define AZ_TRAIT_SUPPORT_IPC 0
 
 // Compiler traits ...

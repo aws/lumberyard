@@ -3,13 +3,15 @@
     "visual_studio_name": "All",
     "comment" : "modules must contain only modules that are to be linked together for every platform and config. in release, these will be linked in statically to the executable",
 
-    "modules": 
+    "modules":
     [
         "AmazonStyle",
         "AzCore",
         "AzCoreTests",
         "AzCoreTestDLL",
         "AzFramework",
+        "AzManipulatorTestFramework",
+        "AzManipulatorTestFrameworkTests",
         "FrameworkTests",
         "AzPhysicsTests",
         "AzGameFramework",
@@ -48,11 +50,9 @@
         "AssetProcessor",
         "AssetProcessorBatch",
         "AssetBuilderSDK",
-        "ExampleBuilder",
         "LevelBuilder",
         "LuaBuilder",
         "MaterialBuilder",
-        "SceneBuilder",
         "SliceBuilder",
         "TranslationBuilder",
         "CopyDependencyBuilder",
@@ -88,6 +88,7 @@
         "MetricsPlugin",
         "ParticleEditorPlugin",
         "PerforcePlugin",
+        "PythonBindingsExample",
         "ResourceCompiler",
         "ResourceCompilerABC",
         "ResourceCompilerImage",

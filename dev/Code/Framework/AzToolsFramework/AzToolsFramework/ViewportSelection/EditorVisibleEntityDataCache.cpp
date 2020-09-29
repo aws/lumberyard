@@ -210,7 +210,7 @@ namespace AzToolsFramework
 
             // for newly added entities, request their initial state when first cached
             // and add them to our tracked entity data
-            for (const AZ::EntityId entityId : added)
+            for (AZ::EntityId entityId : added)
             {
                 m_impl->m_visibleEntityDatas.push_back(EntityDataFromEntityId(entityId));
             }

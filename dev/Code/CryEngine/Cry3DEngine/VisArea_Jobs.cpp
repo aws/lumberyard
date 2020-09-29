@@ -23,6 +23,7 @@
 #include "ILMSerializationManager.h"
 #include "TimeOfDay.h"
 #include "AABBSV.h"
+#include "Cry_LegacyPhysUtils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -94,7 +95,7 @@ bool InsideSpherePolygon(Vec3* polygon, int N, Sphere& S)
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void CVisAreaManager::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox)
+void CVisAreaManager::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox, bool bGetFirstProbe)
 {
     {
         uint32 dwSize = m_lstVisAreas.Count();
@@ -105,7 +106,7 @@ void CVisAreaManager::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority
             {
                 if (!pBBox || Overlap::AABB_AABB(*m_lstVisAreas[dwI]->GetAABBox(), *pBBox))
                 {
-                    m_lstVisAreas[dwI]->m_pObjectsTree->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, pBBox);
+                    m_lstVisAreas[dwI]->m_pObjectsTree->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, pBBox, bGetFirstProbe);
                 }
             }
         }
@@ -120,7 +121,7 @@ void CVisAreaManager::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority
             {
                 if (!pBBox || Overlap::AABB_AABB(*m_lstPortals[dwI]->GetAABBox(), *pBBox))
                 {
-                    m_lstPortals[dwI]->m_pObjectsTree->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, pBBox);
+                    m_lstPortals[dwI]->m_pObjectsTree->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, pBBox, bGetFirstProbe);
                 }
             }
         }
@@ -296,7 +297,7 @@ void CVisArea::UpdateClipVolume()
     triangleIndices.resize((nPoints - 2) * 3);
     MARK_UNUSED triangleIndices[triangleIndices.size() - 1];
 
-    int nTris = gEnv->pPhysicalWorld->GetPhysUtils()->TriangulatePoly(&triangulationPoints[0], triangulationPoints.size(), &triangleIndices[0], triangleIndices.size());
+    int nTris = LegacyCryPhysicsUtils::TriangulatePoly(&triangulationPoints[0], triangulationPoints.size(), &triangleIndices[0], triangleIndices.size());
 
     if (nTris == nPoints - 2) // triangulation success?
     {

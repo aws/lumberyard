@@ -56,7 +56,8 @@ namespace {
         }
         else
         {
-            reflectedVar->m_maxVal = std::numeric_limits<int>::max();
+              reflectedVar->m_maxVal = std::numeric_limits<int>::max();
+            reflectedVar->m_maxVal = static_cast<float>(std::numeric_limits<int>::max());
         }
         reflectedVar->m_stepSize = step;
     }

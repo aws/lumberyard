@@ -126,7 +126,6 @@ class AwsCredentials(object):
 
 
 class ClientWrapper(object):
-
     def __init__(self, wrapped_client, verbose):
         self.__wrapped_client = wrapped_client
         self.__client_type = type(wrapped_client).__name__
@@ -162,7 +161,6 @@ class ClientWrapper(object):
             return orig_attr
 
     def log(self, method_name, log_msg):
-
         msg = '\nAWS '
         msg += self.__client_type
         msg += '.'
@@ -174,7 +172,6 @@ class ClientWrapper(object):
         print(msg)
 
     def __log_attempt(self, method_name, args, kwargs):
-
         msg = 'attempt: '
         comma_needed = False
         for arg in args:
@@ -272,6 +269,9 @@ class AWSContext(object):
         # If region is provided then use it, otherwise defer to project region
         # If thats missing, boto3 will use AWS cli default region in session
         region = self.region if region is None else region
+
+        if self.__args is None:
+            raise HandledError("AWSContext is not correctly initialized")
 
         if self.__args.aws_access_key or self.__args.aws_secret_key:
             if self.__args.profile:
@@ -433,9 +433,19 @@ class AWSContext(object):
         else:
             return self.__context.config.project_region
 
-    def set_default_profile(self, profile):
+    def set_default_profile(self, profile, profile_only=False):
+        """
+        Set the default AWS credentials profile to use for AWS calls.
+
+        profile: The named profile to default to
+        profile_only: Clear any direct credentials and prefer to use profile name. Prevents
+        having both creds and profile name set at the same time
+        """
         self.__default_profile = profile
         self.__session = None
+        if profile_only:
+            self.__args.aws_access_key = None
+            self.__args.aws_secret_key = None
 
     def get_default_profile(self):
         return self.__default_profile

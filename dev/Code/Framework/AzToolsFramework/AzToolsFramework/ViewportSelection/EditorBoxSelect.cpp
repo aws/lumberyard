@@ -36,7 +36,8 @@ namespace AzToolsFramework
 
             m_boxSelectRegion = QRect
             {
-                QPointFromScreenPoint(mouseInteraction.m_mouseInteraction.m_mousePick.m_screenCoordinates),
+                ViewportInteraction::QPointFromScreenPoint(
+                    mouseInteraction.m_mouseInteraction.m_mousePick.m_screenCoordinates),
                 QSize { 0, 0 }
             };
         }

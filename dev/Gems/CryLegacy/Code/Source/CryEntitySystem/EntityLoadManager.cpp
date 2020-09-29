@@ -692,10 +692,12 @@ bool CEntityLoadManager::CreateEntity(SEntityLoadParams& loadParams, EntityId& o
             {
                 pSpawnedEntity->GetOrCreateComponent<IComponentArea>();
             }
+#if ENABLE_CRY_PHYSICS
             if (entityNode->findChild("Rope"))
             {
                 pSpawnedEntity->GetOrCreateComponent<IComponentRope>();
             }
+#endif
             if (entityNode->findChild("ClipVolume"))
             {
                 pSpawnedEntity->GetOrCreateComponent<IComponentClipVolume>();

@@ -10,7 +10,9 @@
 *
 */
 
-#include <SliceBuilder/Source/SliceBuilderComponent.h>
+#include <LmbrCentral_precompiled.h>
+#include "SliceBuilderComponent.h"
+
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Component/ComponentApplication.h>
@@ -49,7 +51,7 @@ namespace SliceBuilder
 
         AzToolsFramework::Fingerprinting::TypeFingerprinter fingerprinter(*serializeContext);
         AzToolsFramework::Fingerprinting::TypeFingerprint allComponents = fingerprinter.GenerateFingerprintForAllTypes(types);
-        AZStd::string builderAnalysisFingerprint = AZStd::string::format("%llu", allComponents);
+        AZStd::string builderAnalysisFingerprint = AZStd::string::format("%zu", allComponents);
 
         // Include slice builder settings in the fingerprint so changes trigger job reruns
         if (!m_sliceBuilder->SliceUpgradesAllowed())
@@ -59,7 +61,7 @@ namespace SliceBuilder
 
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Slice Builder";
-        builderDescriptor.m_version = 6;
+        builderDescriptor.m_version = 7;
         builderDescriptor.m_analysisFingerprint = builderAnalysisFingerprint;
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZ::SliceAsset::GetFileFilter(), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = SliceBuilderWorker::GetUUID();
@@ -88,7 +90,8 @@ namespace SliceBuilder
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<BuilderPluginComponent, AZ::Component>()
-                ->Version(1)
+                ->Version(2)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }))
                 ;
         }
     }

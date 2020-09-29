@@ -233,6 +233,8 @@ def __add_project_stack_commands(stack_subparser):
                            help='Initializes the {game}\\AWS directory and exit. If this option is given the project stack is not created. If the directory already exists and contains any files, no new files are created.')
     subparser.add_argument('--region', required=True, help='The AWS region where the project stack will be located.')
     subparser.add_argument('--record-cognito-pools', action='store_true', help='Record the Cognito pools that are stood up during deployment access updates')
+    subparser.add_argument('--custom-domain-name', help='Custom domain name to use for API Gateway endpoints to provide \
+        simpler and more intuitive URLs. Supports advanced use cases including security configurations when using APIGateway.')
 
     # Add an optionally exclusive set of controls around create_admin_roles
     feature_parser = subparser.add_mutually_exclusive_group(required=False)
@@ -251,6 +253,12 @@ def __add_project_stack_commands(stack_subparser):
                            help='Confirms that you know this command will permanently delete resources.')
     subparser.add_argument('--confirm-security-change', '-S', action='store_true',
                            help='Confirms that you know this command will make security related changes.')
+    subparser.add_argument('--custom-domain-name', help='Custom domain name to use for API Gateway endpoints to provide \
+        simpler and more intuitive URLs. Supports advanced use cases including security configurations when using APIGateway. \
+        Note that updating custom domain name for an existing project will create a new version of custom resources. \
+        You need to update the project and deployment templates manually to take advantage of this new version. \
+        Check the following document for more details: \
+        https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-cgf-adding-aws-resources-versioning.html')
     __add_common_args(subparser)
     subparser.set_defaults(func=project.update_stack)
 

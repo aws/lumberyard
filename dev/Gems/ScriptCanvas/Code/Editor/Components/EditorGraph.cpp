@@ -12,10 +12,12 @@
 
 #include "precompiled.h"
 
+AZ_PUSH_DISABLE_WARNING(4251 4800 4244, "-Wunknown-warning-option")
 #include <QScopedValueRollback>
 #include <QInputDialog>
 #include <QFile>
 #include <qmimedata.h>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Serialization/IdUtils.h>
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -61,6 +63,7 @@
 #include <Editor/GraphCanvas/DataInterfaces/ScriptCanvasVariableDataInterface.h>
 #include <Editor/GraphCanvas/DataInterfaces/ScriptCanvasQuaternionDataInterface.h>
 
+#include <Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasEnumComboBoxPropertyDataInterface.h>
 #include <Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasStringPropertyDataInterface.h>
 
 #include <Editor/Metrics.h>
@@ -905,14 +908,33 @@ namespace ScriptCanvasEditor
                 GraphCanvas::DataInterface* dataInterface = nullptr;
                 GraphCanvas::NodePropertyDisplay* dataDisplay = nullptr;
 
-                switch (propertyInterface->GetDataType().GetType())
+                if (auto comboBoxPropertyInterface = azrtti_cast<ScriptCanvas::ComboBoxPropertyInterface*>(propertyInterface))
                 {
-                case ScriptCanvas::Data::eType::String:
-                    dataInterface = aznew ScriptCanvasStringPropertyDataInterface(scriptCanvasNodeId, static_cast<ScriptCanvas::TypedNodePropertyInterface<ScriptCanvas::Data::StringType>*>(propertyInterface));
-                    GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateStringNodePropertyDisplay, static_cast<GraphCanvas::StringDataInterface*>(dataInterface));
-                    break;
-                default:
-                    break;
+                    GraphCanvas::ComboBoxDataInterface* comboBoxInterface = nullptr;
+
+                    if (propertyInterface->GetDataType() == ScriptCanvas::Data::Type::BehaviorContextObject(ScriptCanvas::EnumComboBoxNodePropertyInterface::k_EnumUUID))
+                    {
+                        comboBoxInterface = aznew ScriptCanvasEnumComboBoxPropertyDataInterface(scriptCanvasNodeId, static_cast<ScriptCanvas::EnumComboBoxNodePropertyInterface*>(propertyInterface));
+                    }
+
+                    if (comboBoxInterface)
+                    {
+                        dataInterface = comboBoxInterface;
+                        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateComboBoxNodePropertyDisplay, comboBoxInterface);
+                    }
+                }
+                else
+                {
+                    switch (propertyInterface->GetDataType().GetType())
+                    {
+                    case ScriptCanvas::Data::eType::String:
+                        dataInterface = aznew ScriptCanvasStringPropertyDataInterface(scriptCanvasNodeId, static_cast<ScriptCanvas::TypedNodePropertyInterface<ScriptCanvas::Data::StringType>*>(propertyInterface));
+                        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(dataDisplay, &GraphCanvas::GraphCanvasRequests::CreateStringNodePropertyDisplay, static_cast<GraphCanvas::StringDataInterface*>(dataInterface));
+                        break;
+                    default:
+                        break;
+                    }
+
                 }
 
                 if (dataDisplay != nullptr)
@@ -2811,10 +2833,10 @@ namespace ScriptCanvasEditor
 
             // SceneComponent
             for (const AZ::Uuid& componentType : {
-                "{3F71486C-3D51-431F-B904-DA070C7A0238}", // GraphCanvas::SceneComponent
-                "{486B009F-632B-44F6-81C2-3838746190AE}", // ColorPaletteManagerComponent
-                "{A8F08DEA-0F42-4236-9E1E-B93C964B113F}", // BookmarkManagerComponent
-                "{34B81206-2C69-4886-945B-4A9ECC0FDAEE}"  // StyleSheet
+                AZ::Uuid("{3F71486C-3D51-431F-B904-DA070C7A0238}"), // GraphCanvas::SceneComponent
+                AZ::Uuid("{486B009F-632B-44F6-81C2-3838746190AE}"), // ColorPaletteManagerComponent
+                AZ::Uuid("{A8F08DEA-0F42-4236-9E1E-B93C964B113F}"), // BookmarkManagerComponent
+                AZ::Uuid("{34B81206-2C69-4886-945B-4A9ECC0FDAEE}")  // StyleSheet
             }
                 )
             {
@@ -3040,9 +3062,12 @@ namespace ScriptCanvasEditor
             
             AZStd::unordered_set<ScriptCanvas::Node*> outOfDateNodes;
             AZStd::unordered_set<AZ::EntityId> deletedNodes;
+            AZStd::unordered_set<AZ::EntityId> assetSanitizationSet;
 
             for (const AZ::EntityId& scriptCanvasNodeId : nodeList)
             {
+                assetSanitizationSet.insert(scriptCanvasNodeId);
+
                 ScriptCanvas::Node* scriptCanvasNode = FindNode(scriptCanvasNodeId);
 
                 if (scriptCanvasNode)
@@ -3223,6 +3248,22 @@ namespace ScriptCanvasEditor
                 else
                 {
                     ++mapIter;
+                }
+            }
+
+            auto currentIter = GetGraphData()->m_scriptEventAssets.begin();
+
+            while (currentIter != GetGraphData()->m_scriptEventAssets.end())
+            {
+                if (assetSanitizationSet.find(currentIter->first) == assetSanitizationSet.end())
+                {
+                    currentIter->second = {};
+                    currentIter = GetGraphData()->m_scriptEventAssets.erase(currentIter);
+                    graphNeedsDirtying = true;
+                }
+                else
+                {
+                    ++currentIter;
                 }
             }
 

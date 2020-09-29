@@ -133,10 +133,13 @@ namespace AzToolsFramework
             const AZ::SerializeContext::ClassElement* m_valueElement = nullptr;
         };
 
+        bool SetSimpleAssetPath(const AZ::Data::AssetId& assetId, const PropertyTreeEditorNode& pteNode);
+        bool SetAssetData(const AZ::Data::AssetId& assetId, const PropertyTreeEditorNode& pteNode);
+
         void HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node, AZStd::vector<ChangeNotification>& notifier);
 
         void PopulateNodeMap(AZStd::list<InstanceDataNode>& nodeList, const AZStd::string_view& previousPath = "");
-
+        
         PropertyModificationRefreshLevel PropertyNotify(const PropertyTreeEditorNode* node, size_t optionalIndex = 0);
 
         AZStd::optional<ContainerData> FetchContainerData(AZStd::string_view propertyPath) const;

@@ -48,14 +48,12 @@ namespace WhiteBox
         void SetColors(const AZ::Color& fillColor, const AZ::Color& outlineColor);
 
         void Refresh();
-        void UpdateIntersectionPoint(const AZ::Vector3& intersectionPoint);
+        void CreateView();
         bool PerformingAction() const;
 
     private:
         void CreateManipulator();
         void DestroyManipulator();
-
-        void CreateView(const AZ::Vector3& intersectionPoint);
 
         AZ::EntityComponentIdPair
             m_entityComponentIdPair; //!< The entity and component id this modifier is associated with.
@@ -63,7 +61,6 @@ namespace WhiteBox
             m_translationManipulator; //!< The manipulator used to modify the position of the polygon (triangles).
         AZStd::vector<Api::VertexHandle> m_vertexHandles; //!< The vertex handles associated with this polygon.
         Api::PolygonHandle m_polygonHandle; //!< The polygon handle this modifier is associated with.
-        AZ::Vector3 m_intersectionPoint; //!< The point where the polygon was picked.
         AZStd::shared_ptr<ManipulatorViewPolygon>
             m_polygonView; //!< Manipulator view used to represent a mesh polygon for translation.
         AZ::Color m_fillColor =

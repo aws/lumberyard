@@ -61,6 +61,7 @@
 #include "GameSpecific/GoalOp_G02.h"        //TODO move these out of AISystem
 #include "GameSpecific/GoalOp_G04.h"        //TODO move these out of AISystem
 #include "GameSpecific/GoalOp_Crysis2.h"    //TODO move these out of AISystem
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 #ifdef CRYAISYSTEM_DEBUG
 #include "AIBubblesSystem/AIBubblesSystem.h"
@@ -300,7 +301,9 @@ bool CAISystem::PostInit()
     Reset(IAISystem::RESET_INTERNAL);
 
     m_nTickCount = 0;
+#if ENABLE_CRY_PHYSICS
     gAIEnv.pWorld = gEnv->pPhysicalWorld;
+#endif
 
     m_frameStartTime = gEnv->pTimer->GetFrameStartTime();
     m_fLastPuppetUpdateTime = m_frameStartTime;
@@ -3645,7 +3648,11 @@ IAIObject* CAISystem::GetNearestToObjectInRange(IAIObject* pRef, unsigned short 
                 if (bSeesAttTarget && pAttTarget)
                 {
                     ray_hit hit;
-                    float terrainZ = gEnv->p3DEngine->GetTerrainElevation(ob_pos.x, ob_pos.y);
+                    float terrainZ = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainZ
+                        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                        , ob_pos.x, ob_pos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
                     Vec3 startTracePos(ob_pos.x, ob_pos.y, terrainZ + eyeOffset);
                     Vec3 ob_at_dir = pAttTarget->GetPos() - startTracePos;
 
@@ -3656,11 +3663,13 @@ IAIObject* CAISystem::GetNearestToObjectInRange(IAIObject* pRef, unsigned short 
                         pAttTarget->CastToCAIActor()->GetPhysicalSkipEntities(skipList);
                     }
 
+#if ENABLE_CRY_PHYSICS
                     if (gAIEnv.pWorld->RayWorldIntersection(startTracePos, ob_at_dir, ent_static | ent_terrain | ent_sleeping_rigid,
                             rwi_stop_at_pierceable, &hit, 1, &skipList[0], skipList.size()))
                     {
                         continue;
                     }
+#endif // ENABLE_CRY_PHYSICS
                 }
                 pRet = pObject;
                 maxdist = f;
@@ -4037,11 +4046,13 @@ IAIObject* CAISystem::GetNearestObjectOfTypeInRange(IAIObject* pRequester, unsig
                 {
                     ray_hit rh;
                     int colliders(0);
+#if ENABLE_CRY_PHYSICS
                     colliders = gAIEnv.pWorld->RayWorldIntersection(objPos, reqPos - objPos, COVER_OBJECT_TYPES, HIT_COVER | HIT_SOFT_COVER, &rh, 1);
                     if (colliders)
                     {
                         continue;
                     }
+#endif // ENABLE_CRY_PHYSICS
                 }
                 if (nOption & (AIFAF_LEFT_FROM_REFPOINT | AIFAF_RIGHT_FROM_REFPOINT))
                 {
@@ -4655,7 +4666,9 @@ void CAISystem::NotifyTargetDead(IAIObject* pDeadObject)
             // Skip the nearest thrown entity, since it is potentially blocking the view to the corpse.
             EntityId nearestThrownEntId = pPlayer->GetNearestThrownEntity(pDeadActor->GetPos());
             IEntity* pNearestThrownEnt = nearestThrownEntId ? gEnv->pEntitySystem->GetEntity(nearestThrownEntId) : 0;
+#if ENABLE_CRY_PHYSICS
             IPhysicalEntity* pNearestThrownEntPhys = pNearestThrownEnt ? pNearestThrownEnt->GetPhysics() : 0;
+#endif
 
             short gid = (short)pDeadObject->GetGroupId();
             AIObjects::iterator aiIt = m_mapGroups.find(gid);
@@ -4674,11 +4687,13 @@ void CAISystem::NotifyTargetDead(IAIObject* pDeadObject)
                     continue;
                 }
 
+#if ENABLE_CRY_PHYSICS
                 float dist = FLT_MAX;
                 if (!CheckVisibilityToBody(pPuppet, pDeadActor, dist, pNearestThrownEntPhys))
                 {
                     continue;
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 pPuppet->SetSignal(1, "OnGroupMemberMutilated", pDeadObject->GetEntity(), 0);
             }
@@ -5694,12 +5709,14 @@ void CAISystem::SerializeInternal(TSerialize ser)
         ser.Value("m_frameStartTimeSeconds", m_frameStartTimeSeconds);
         ser.Value("m_frameDeltaTime", m_frameDeltaTime);
         ser.Value("m_fLastPuppetUpdateTime", m_fLastPuppetUpdateTime);
+#if ENABLE_CRY_PHYSICS
         if (ser.IsReading())
         {
             // Danny: physics doesn't serialise its time (it doesn't really use it) so we can
             // set it here.
             GetISystem()->GetIPhysicalWorld()->SetPhysicsTime(m_frameStartTime.GetSeconds());
         }
+#endif
 
         AIObjectOwners::iterator itobjend = gAIEnv.pAIObjectManager->m_Objects.end();
 
@@ -6296,6 +6313,7 @@ MultimapRangeHideSpots& CAISystem::GetHideSpotsInRange(MultimapRangeHideSpots& h
 void CAISystem::AdjustDirectionalCoverPosition(Vec3& pos, const Vec3& dir, float agentRadius, float testHeight)
 {
     Vec3    floorPos(pos);
+#if ENABLE_CRY_PHYSICS
     // Add fudge to the initial position in case the point is very near to ground.
     GetFloorPos(floorPos, pos + Vec3(0.0f, 0.0f, max(0.5f, testHeight * 0.5f)), WalkabilityFloorUpDist,
         WalkabilityFloorDownDist, WalkabilityDownRadius, AICE_ALL);
@@ -6308,6 +6326,7 @@ void CAISystem::AdjustDirectionalCoverPosition(Vec3& pos, const Vec3& dir, float
         pos = floorPos + dir * (hitDist - distToWall);
     }
     else
+#endif // ENABLE_CRY_PHYSICS
     {
         pos = floorPos;
     }
@@ -6799,25 +6818,6 @@ float CAISystem::ProcessBalancedDamage(IEntity* pShooterEntity, IEntity* pTarget
         return damage;
     }
 
-    if (IAIActorProxy* proxy = pShooterActor->GetProxy())
-    {
-        if (proxy->IsDriver())
-        {
-            if (EntityId vehicleId = proxy->GetLinkedVehicleEntityId())
-            {
-                IEntity* pVehicleEnt = gEnv->pEntitySystem->GetEntity(vehicleId);
-                if (IAIObject* vehicleAIObject = pVehicleEnt ? pVehicleEnt->GetAI() : 0)
-                {
-                    if (vehicleAIObject->CastToCAIActor())
-                    {
-                        pShooterEntity = pVehicleEnt;
-                        pShooterActor = pShooterAI->CastToCAIActor();
-                    }
-                }
-            }
-        }
-    }
-
     IAIObject* pTargetAI = pTargetEntity->GetAI();
     CAIActor* pTargetActor = pTargetAI ? pTargetAI->CastToCAIActor() : 0;
     if (!pTargetActor)
@@ -6945,7 +6945,11 @@ bool CAISystem::GetNearestPunchableObjectPosition(IAIObject* pRef, const Vec3& s
 
     AABB aabb(searchPos - Vec3(searchRad, searchRad, searchRad / 2), searchPos + Vec3(searchRad, searchRad, searchRad / 2));
     PhysicalEntityListAutoPtr entities;
+#if ENABLE_CRY_PHYSICS
     unsigned nEntities = GetEntitiesFromAABB(entities, aabb, AICE_DYNAMIC);
+#else
+    unsigned nEntities = 0;
+#endif
 
     const CPathObstacles& pathAdjustmentObstacles = pPuppet->GetPathAdjustmentObstacles();
     IAISystem::tNavCapMask navCapMask = pPuppet->GetMovementAbility().pathfindingProperties.navCapMask;
@@ -7011,7 +7015,7 @@ bool CAISystem::GetNearestPunchableObjectPosition(IAIObject* pRef, const Vec3& s
     }
 
     std::sort(objects.begin(), objects.end());
-
+#if ENABLE_CRY_PHYSICS
     for (unsigned i = 0; i < objects.size(); ++i)
     {
         // check the altitude
@@ -7085,7 +7089,7 @@ bool CAISystem::GetNearestPunchableObjectPosition(IAIObject* pRef, const Vec3& s
 
         return true;
     }
-
+#endif
     return false;
 }
 

@@ -143,16 +143,16 @@ namespace ImageProcessing
         {
             if (image->HasImageFlags(EIF_SRGBRead))
             {
-                output += AZStd::string("Color Space: sRGB\r\n");
+                output += "Color Space: sRGB\r\n";
             }
             else
             {
-                output += AZStd::string("Color Space: Linear\r\n");
+                output += "Color Space: Linear\r\n";
             }
 
             if (image->HasImageFlags(EIF_Cubemap))
             {
-                output += AZStd::string::format("Cubemap\r\n", memSize);
+                output += "Cubemap\r\n";
             }
         }
 

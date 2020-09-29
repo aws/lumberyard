@@ -505,13 +505,15 @@ namespace EMStudio
             NodeGraph* nodeGraph = blendGraphWidget->GetActiveGraph();
             if (nodeGraph)
             {
-                // try zooming on the selection rect
+                // Try zooming on the selection rect
                 const QRect selectionRect = nodeGraph->CalcRectFromSelection(true);
-                if (selectionRect.isEmpty() == false)
+                if (!selectionRect.isEmpty())
                 {
-                    nodeGraph->ZoomOnRect(selectionRect, geometry().width(), blendGraphWidget->geometry().height(), true);
+                    // Always use the blend graph widget size in the viewport splitter, so it will center correctly if navigateWidget is open.
+                    QList<int> sizes = m_viewportSplitter->sizes();
+                    nodeGraph->ZoomOnRect(selectionRect, sizes[0], blendGraphWidget->geometry().height(), true);
                 }
-                else // zoom on the full scene
+                else // Zoom on the full scene
                 {
                     nodeGraph->FitGraphOnScreen(blendGraphWidget->geometry().width(), blendGraphWidget->geometry().height(), blendGraphWidget->GetMousePos(), true);
                 }

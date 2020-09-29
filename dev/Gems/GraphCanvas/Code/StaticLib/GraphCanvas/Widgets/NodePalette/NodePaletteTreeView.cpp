@@ -220,13 +220,20 @@ namespace GraphCanvas
     {        
         clearSelection();
 
-        if (m_lastIndex.parent() == parentIndex)
+        QModelIndex lastParentIndex = m_lastIndex;
+
+        while (lastParentIndex.isValid())
         {
-            if (m_lastIndex.row() >= first && m_lastIndex.row() <= last)
+            if (lastParentIndex.parent() == parentIndex)
             {
-                m_lastItem = nullptr;
-                m_lastIndex = QModelIndex();
+                if (lastParentIndex.row() >= first && lastParentIndex.row() <= last)
+                {
+                    m_lastItem = nullptr;
+                    m_lastIndex = QModelIndex();
+                }
             }
+
+            lastParentIndex = lastParentIndex.parent();
         }
     }
 

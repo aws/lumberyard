@@ -234,7 +234,7 @@ namespace Vegetation
         }
 
         // if we get here instance is marked filtered
-        VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceDepthMaskFilter")));
+        VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceDepthMaskFilter")));
         return false;
     }
 

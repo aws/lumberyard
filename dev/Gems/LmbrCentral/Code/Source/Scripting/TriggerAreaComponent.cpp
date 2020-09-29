@@ -11,6 +11,8 @@
 */
 #include "LmbrCentral_precompiled.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Math/Transform.h>
@@ -735,3 +737,5 @@ namespace LmbrCentral
     }
 
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

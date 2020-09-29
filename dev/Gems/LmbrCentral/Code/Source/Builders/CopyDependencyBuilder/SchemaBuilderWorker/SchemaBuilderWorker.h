@@ -13,8 +13,7 @@
 #pragma once
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-
-#include <Source/CopyDependencyBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/CopyDependencyBuilderWorker.h>
 
 namespace CopyDependencyBuilder
 {

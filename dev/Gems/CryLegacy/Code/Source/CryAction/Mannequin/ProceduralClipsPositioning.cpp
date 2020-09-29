@@ -439,6 +439,7 @@ private:
                 }
             }
 
+#if ENABLE_CRY_PHYSICS
             if (!slaveProceduralContexts.empty())
             {
                 Vec3 totalSize = totalAABB.GetSize();
@@ -510,6 +511,7 @@ private:
                     }
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
         }
     }
 

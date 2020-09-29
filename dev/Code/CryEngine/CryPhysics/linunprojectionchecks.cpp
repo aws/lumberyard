@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "unprojectionchecks.h"
@@ -3765,3 +3767,5 @@ int capsule_ray_lin_unprojection(unprojection_mode* pmode, const capsule* pcaps,
 }
 
 #undef UPDATE_IDBEST
+
+#endif // ENABLE_CRY_PHYSICS

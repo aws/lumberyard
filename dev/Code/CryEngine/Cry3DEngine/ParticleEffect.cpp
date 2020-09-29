@@ -16,7 +16,6 @@
 #include "ParticleEmitter.h"
 #include "ParticleManager.h"
 #include <IStatoscope.h>
-#include <IAudioSystem.h>
 
 #include <StringUtils.h>
 //////////////////////////////////////////////////////////////////////////
@@ -677,7 +676,7 @@ void ResourceParticleParams::ComputeEnvironmentFlags()
             nEnvFlags |= ENV_COLLIDE_INFO;
         }
     }
-    else if (ePhysicsType >= EPhysics::SimplePhysics)
+    else if (ePhysicsType > EPhysics::SimpleCollision)
     {
         nEnvFlags |= ENV_COLLIDE_INFO;
     }
@@ -730,7 +729,7 @@ void ResourceParticleParams::ComputeEnvironmentFlags()
     if (!fParticleLifeTime || bRemainWhileVisible                       // Infinite particle lifetime
         || bDynamicCulling
         || bBindEmitterToCamera                                                             // Visible every frame
-        || ePhysicsType >= EPhysics::SimplePhysics)                     // Physicalized particles
+        || ePhysicsType > EPhysics::SimpleCollision)                     // Physicalized particles
     {
         nEnvFlags |= EFF_DYNAMIC_BOUNDS;
     }

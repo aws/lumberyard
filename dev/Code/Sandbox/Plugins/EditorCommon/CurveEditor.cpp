@@ -35,8 +35,8 @@
 #endif
 
 #define NO_BUFFER_OVERRUN PREFAST_SUPPRESS_WARNING(6385 6386)
-#include "../CryPhysics/polynomial.h"
 #include <ISplines.h>
+#include "../Cry3DEngine/Cry_LegacyPhysUtils.h"
 
 namespace CurveEditorHelpers
 {
@@ -413,6 +413,8 @@ namespace
 
     Vec2 ClosestPointOnBezierSegment(const Vec2 point, const float t0, const float t1, const float p0, const float p1, const float p2, const float p3)
     {
+        using namespace LegacyCryPhysicsUtils;
+
         // If values are too close the distance function is too flat to be useful. We just assume the curve is flat then
         if ((p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3) < 1e-10f)
         {
@@ -460,6 +462,8 @@ namespace
 
     Range GetBezierSegmentValueRange(const SCurveEditorKey& startKey, const SCurveEditorKey& endKey)
     {
+        using namespace LegacyCryPhysicsUtils;
+
         const float p0 = startKey.m_value;
         const float p1 = p0 + startKey.m_outTangent.y;
         const float p3 = endKey.m_value;
@@ -987,6 +991,8 @@ CCurveEditor::CCurveEditor(QWidget* parent)
     ZoomToTimeRange(-0.1f, 1.1f);
     ZoomToValueRange(-0.1f, 1.1f);
     SetRulerVisible(true);
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(sizePolicy);
 }
 
 CCurveEditor::~CCurveEditor()

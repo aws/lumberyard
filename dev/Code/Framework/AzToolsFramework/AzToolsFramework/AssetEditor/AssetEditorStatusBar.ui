@@ -27,7 +27,7 @@
     <number>5</number>
    </property>
    <item>
-    <widget class="QTextEdit" name="textEdit">
+    <widget class="QLabel" name="textEdit">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -41,21 +41,6 @@
       </size>
      </property>
      <property name="acceptDrops">
-      <bool>false</bool>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Sunken</enum>
-     </property>
-     <property name="verticalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOff</enum>
-     </property>
-     <property name="horizontalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOff</enum>
-     </property>
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-     <property name="acceptRichText">
       <bool>false</bool>
      </property>
     </widget>

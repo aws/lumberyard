@@ -14,12 +14,6 @@
             "_comment": "AudioAnimationEvents"
         },
         {
-            "Path": "Gems/GraphModel",
-            "Uuid": "0844f64a3acf4f5abf3a535dc9b63bc9",
-            "Version": "0.1.0",
-            "_comment": "GraphModel"
-        },
-        {
             "Path": "Gems/StartingPointInput",
             "Uuid": "09f4bedeee614358bc36788e77f97e51",
             "Version": "0.1.0",
@@ -35,12 +29,6 @@
             "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
             "Version": "0.1.0",
             "_comment": "LyShine"
-        },
-        {
-            "Path": "Gems/LandscapeCanvas",
-            "Uuid": "19c2b2d5018940108baf252934b8e6bf",
-            "Version": "0.1.0",
-            "_comment": "LandscapeCanvas"
         },
         {
             "Path": "Gems/GameState",
@@ -277,6 +265,12 @@
             "_comment": "PhysicsEntities"
         },
         {
+            "Path": "Gems/EditorPythonBindings",
+            "Uuid": "b658359393884c4381c2fe2952b1472a",
+            "Version": "0.1.0",
+            "_comment": "EditorPythonBindings"
+        },
+        {
             "Path": "Gems/RoadsAndRivers",
             "Uuid": "b7c7bf6c8acf4c33acb5f2a372760d3b",
             "Version": "0.1.0",
@@ -323,6 +317,12 @@
             "Uuid": "c87f9fc3e7054f3482311da444e84456",
             "Version": "0.1.0",
             "_comment": "LegacyTerrain"
+        },
+        {
+            "Path": "Gems/QtForPython",
+            "Uuid": "cd50c7a1e31f4c9495dcffdacc3bde92",
+            "Version": "0.1.0",
+            "_comment": "QtForPython"
         },
         {
             "Path": "Gems/GameEffectSystem",

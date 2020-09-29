@@ -13,54 +13,38 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AssetBuilderSDK/AssetBuilderBusses.h>
-#include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <WwiseBuilderWorker.h>
 
 namespace WwiseBuilder
 {
-    //! Wwise builder is responsible for building material files
-    class WwiseBuilderWorker
-        : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
-    {
-    public:
-        WwiseBuilderWorker();
-        ~WwiseBuilderWorker();
-
-        //! Asset Builder Callback Functions
-        void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response);
-        void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
-
-        //!AssetBuilderSDK::AssetBuilderCommandBus interface
-        void ShutDown() override;
-
-        //! Returns the UUID for this builder
-        static AZ::Uuid GetUUID();
-
-        AZ::Outcome<AZStd::string, AZStd::string> GatherProductDependencies(const AZStd::string& fullPath, const AZStd::string& relativePath, AssetBuilderSDK::ProductPathDependencySet& dependencies);
-    
-    private:
-        bool m_isShuttingDown = false;
-    };
-
     class BuilderPluginComponent
         : public AZ::Component
     {
     public:
         AZ_COMPONENT(BuilderPluginComponent, "{8630414A-0BA6-4759-809A-C6903994AE30}");
-        static void Reflect(AZ::ReflectContext* context);
 
-        BuilderPluginComponent();
+        BuilderPluginComponent() = default;
+        ~BuilderPluginComponent() override = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC_CE("WwiseBuilderService"));
+        }
+
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC_CE("WwiseBuilderService"));
+        }
 
         //////////////////////////////////////////////////////////////////////////
-        // AZ::Component
-        void Init() override;
-        void Activate() override; 
+        // AZ::Component interface
+        void Activate() override;
         void Deactivate() override;
         //////////////////////////////////////////////////////////////////////////
-
-        virtual ~BuilderPluginComponent();
 
     private:
         WwiseBuilderWorker m_wwiseBuilder;
     };
-}
+
+} // namespace WwiseBuilder

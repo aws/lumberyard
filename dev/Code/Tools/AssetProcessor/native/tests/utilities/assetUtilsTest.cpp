@@ -201,7 +201,7 @@ TEST_F(AssetUtilitiesTest, GenerateFingerprint_BasicTest)
 TEST_F(AssetUtilitiesTest, GenerateFingerprint_Empty_Asserts)
 {
     AssetProcessor::JobDetails jobDetail;
-    AZ::u32 fingerprint = AssetUtilities::GenerateFingerprint(jobDetail);
+    AssetUtilities::GenerateFingerprint(jobDetail);
     
     EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 1);
     m_errorAbsorber->Clear();

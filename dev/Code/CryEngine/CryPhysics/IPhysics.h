@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_IPHYSICS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #ifdef PHYSICS_EXPORTS
     #define CRYPHYSICS_API DLL_EXPORT
 #else
@@ -33,5 +34,6 @@
 #include "primitives.h"
 
 extern "C" CRYPHYSICS_API IPhysicalWorld * CreatePhysicalWorld(struct ISystem* pLog);
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_IPHYSICS_H

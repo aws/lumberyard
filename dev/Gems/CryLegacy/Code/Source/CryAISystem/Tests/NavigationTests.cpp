@@ -28,7 +28,11 @@ namespace AINavigationTests
     {
         friend class GTEST_TEST_CLASS_NAME_(NavigationTests, Voxelizer_GetsAzPhysicsCollidersInAabb_FT);
         friend class GTEST_TEST_CLASS_NAME_(NavigationTests, Voxelizer_RasterizesAzPhysicsGeometry_FT);
+#if ENABLE_CRY_PHYSICS
         friend class GTEST_TEST_CLASS_NAME_(NavigationTests, Voxelizer_UsesCorrectPhysicsSystem_FT);
+#else
+        friend class GTEST_TEST_CLASS_NAME_(NavigationTests, Voxelizer_ProcessesGeometry_FT);
+#endif
     };
 
     struct MockGlobalEnvironment
@@ -38,7 +42,9 @@ namespace AINavigationTests
             m_stubEnv.pConsole = &m_stubConsole;
             m_stubEnv.pSystem = &m_stubSystem;
             m_stubEnv.p3DEngine = nullptr;
+#if ENABLE_CRY_PHYSICS
             m_stubEnv.pPhysicalWorld = nullptr;
+#endif // ENABLE_CRY_PHYSICS
 
             gEnv = &m_stubEnv;
         }
@@ -72,6 +78,12 @@ namespace AINavigationTests
         MOCK_METHOD0(DetachedFromActor, void());
         MOCK_METHOD2(RayCast, Physics::RayCastHit(const Physics::RayCastRequest& worldSpaceRequest, const AZ::Transform& worldTransform));
         MOCK_METHOD1(RayCastLocal, Physics::RayCastHit(const Physics::RayCastRequest& localSpaceRequest));
+        MOCK_CONST_METHOD0(GetRestOffset, float());
+        MOCK_METHOD1(SetRestOffset, void(float));
+        MOCK_CONST_METHOD0(GetContactOffset, float());
+        MOCK_METHOD1(SetContactOffset, void(float));
+        MOCK_CONST_METHOD1(GetAabb, AZ::Aabb(const AZ::Transform& worldTrasform));
+        MOCK_CONST_METHOD0(GetAabbLocal, AZ::Aabb());
 
         void GetGeometry(AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, AZ::Aabb* optionalBounds) override
         {
@@ -126,7 +138,7 @@ namespace AINavigationTests
         MOCK_METHOD1(RemoveBody, void(Physics::WorldBody& body));
         MOCK_METHOD1(SetSimFunc, void(std::function<void(void*)> func));
         MOCK_METHOD1(SetEventHandler, void(Physics::WorldEventHandler* eventHandler));
-        MOCK_METHOD0(GetGravity, AZ::Vector3());
+        MOCK_CONST_METHOD0(GetGravity, AZ::Vector3());
         MOCK_METHOD1(SetGravity, void(const AZ::Vector3& gravity));
         MOCK_METHOD1(SetMaxDeltaTime, void(float maxDeltaTime));
         MOCK_METHOD1(SetFixedDeltaTime, void(float fixedDeltaTime));
@@ -203,7 +215,10 @@ namespace AINavigationTests
         overlapHits.clear();
         m_voxelizer.GetAZCollidersInAABB(aabb, overlapHits);
         EXPECT_EQ(overlapHits.size(),1);
-        EXPECT_EQ(overlapHits[0].m_body,&defaultWorldBody);
+        if (overlapHits.size() > 0)
+        {
+            EXPECT_EQ(overlapHits[0].m_body, &defaultWorldBody);
+        }
 
         // set to editor world
         gEnv->SetIsEditor(true);
@@ -216,7 +231,10 @@ namespace AINavigationTests
         overlapHits.clear();
         m_voxelizer.GetAZCollidersInAABB(aabb, overlapHits);
         EXPECT_EQ(overlapHits.size(),1);
-        EXPECT_EQ(overlapHits[0].m_body,&editorWorldBody);
+        if (overlapHits.size() > 0)
+        {
+            EXPECT_EQ(overlapHits[0].m_body, &editorWorldBody);
+        }
     }
 
     TEST_F(NavigationTests, Voxelizer_RasterizesAzPhysicsGeometry_FT)
@@ -243,6 +261,8 @@ namespace AINavigationTests
         EXPECT_GE(triCount,1);
     }
 
+#if ENABLE_CRY_PHYSICS
+    // this test is only valid when CryPhysics code exists, otherwise ai_NavPhysicsMode cvar is meaningless
     TEST_F(NavigationTests, Voxelizer_UsesCorrectPhysicsSystem_FT)
     {
         m_voxelizer.m_volumeAABB = AABB(Vec3_Zero, 100.f);
@@ -293,3 +313,29 @@ namespace AINavigationTests
         EXPECT_EQ(triCount,1);
     }
 }
+#else
+    TEST_F(NavigationTests, Voxelizer_ProcessesGeometry_FT)
+    {
+        m_voxelizer.m_volumeAABB = AABB(Vec3_Zero, 100.f);
+
+        // set up default physics world 
+        gEnv->SetIsEditor(false);
+
+        uint32 hashValueSeed{ 0 };
+        uint32 hashTest{ 0 };
+        uint32 hashValue{ 0 };
+
+        size_t triCount = m_voxelizer.ProcessGeometry(hashValueSeed, hashTest, &hashValue);
+
+        // expect we rasterized no geometry yet 
+        EXPECT_EQ(triCount, 0);
+
+        AZStd::vector<Physics::OverlapHit> overlapHits;
+        PrepareSingleTriangleGeometry(overlapHits);
+
+        // expect we rasterized geometry 
+        triCount = m_voxelizer.ProcessGeometry(hashValueSeed, hashTest, &hashValue);
+        EXPECT_EQ(triCount, 1);
+    }
+}
+#endif // ENABLE_CRY_PHYSICS

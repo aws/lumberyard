@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "RopeObject.h"
 #include <I3DEngine.h>
 #include "Material/Material.h"
@@ -988,3 +990,4 @@ void CRopeObject::UpdateSoundData()
 }
 
 #include <Objects/RopeObject.moc>
+#endif // ENABLE_CRY_PHYSICS

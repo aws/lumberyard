@@ -1025,11 +1025,22 @@ void    CXConsole::ShowConsole(bool show, const int iRequestScrollMax)
 
     if (show && !m_bConsoleActive)
     {
-      UiCursorBus::Broadcast(&UiCursorBus::Events::IncrementVisibleCounter);
+        UiCursorBus::Broadcast(&UiCursorBus::Events::IncrementVisibleCounter);
+
+        AzFramework::InputSystemCursorRequestBus::EventResult(m_previousSystemCursorState,
+            AzFramework::InputDeviceMouse::Id,
+            &AzFramework::InputSystemCursorRequests::GetSystemCursorState);
+        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+            &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+            AzFramework::SystemCursorState::UnconstrainedAndVisible);
     }
     else if (!show && m_bConsoleActive)
     {
         UiCursorBus::Broadcast(&UiCursorBus::Events::DecrementVisibleCounter);
+
+        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
+            &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+            m_previousSystemCursorState);
     }
 
     SetStatus(show);

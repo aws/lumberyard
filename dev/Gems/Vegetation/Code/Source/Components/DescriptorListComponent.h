@@ -19,6 +19,7 @@
 #include <Vegetation/DescriptorListAsset.h>
 #include <Vegetation/Ebuses/DescriptorListRequestBus.h>
 #include <Vegetation/Ebuses/DescriptorProviderRequestBus.h>
+#include <Vegetation/Ebuses/DescriptorNotificationBus.h>
 
 namespace LmbrCentral
 {
@@ -64,6 +65,7 @@ namespace Vegetation
         , private DescriptorListRequestBus::Handler
         , private DescriptorProviderRequestBus::Handler
         , private SurfaceData::SurfaceDataTagEnumeratorRequestBus::Handler
+        , private DescriptorNotificationBus::MultiHandler
     {
     public:
         template<typename, typename> friend class LmbrCentral::EditorWrappedComponentBase;
@@ -104,6 +106,12 @@ namespace Vegetation
         DescriptorListSourceType GetDescriptorListSourceType() const override;
         void SetDescriptorListSourceType(DescriptorListSourceType sourceType) override;
 
+        //////////////////////////////////////////////////////////////////////////
+        // DescriptorNotificationBus
+        void OnDescriptorAssetsLoaded() override;
+        void OnDescriptorAssetsUnloaded() override;
+
+
         AZStd::string GetDescriptorAssetPath() const override;
         void SetDescriptorAssetPath(const AZStd::string& assetPath) override;
 
@@ -113,13 +121,12 @@ namespace Vegetation
         void SetDescriptor(int index, Descriptor* descriptor) override;
         void AddDescriptor(Descriptor* descriptor) override;
 
-        void AssignMeshAssets(AZStd::vector<Descriptor>& descriptors, AZ::Data::Asset<AZ::Data::AssetData> asset);
-
         void LoadAssets(AZStd::vector<Descriptor>& descriptors);
         void LoadAssets();
+        void LoadAssetsFromDescriptorList();
 
         void RegisterUniqueDescriptors(AZStd::vector<Descriptor>& descriptors);
-        void RegisterUniqueDescriptors();
+        void ProcessDescriptorLoadingStatus();
 
         void ReleaseUniqueDescriptors();
 

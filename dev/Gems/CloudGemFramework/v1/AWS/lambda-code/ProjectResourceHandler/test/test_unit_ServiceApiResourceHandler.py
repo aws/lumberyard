@@ -13,6 +13,7 @@ import unittest
 from unittest import mock
 import os
 import json
+from botocore.exceptions import ClientError
 
 # Need to patch the environment before loading ServiceApiResourceHandler
 TEST_REGION = 'test-region'
@@ -38,6 +39,9 @@ CONFIGURATION_KEY = 'test-key'
 INPUT_SWAGGER_KEY = CONFIGURATION_KEY + '/swagger.json'
 REST_API_ID = 'TestRestApiId'
 EXPECTED_URL = 'https://{}.execute-api.{}.amazonaws.com/{}'.format(REST_API_ID, MockResourceGroupInfo.MOCK_REGION, Custom_ServiceApi.STAGE_NAME)
+CUSTOM_DOMAIN_NAME_A = 'TestCustomDomainName_A'
+CUSTOM_DOMAIN_NAME_B = 'TestCustomDomainName_B'
+EXPECTED_ALTERNATIVE_URL = 'https://{}/{}.{}.{}'.format(CUSTOM_DOMAIN_NAME_A, MockResourceGroupInfo.MOCK_REGION, Custom_ServiceApi.STAGE_NAME, REST_API_ID)
 SWAGGER_CONTENT = 'TestSwaggerContent'
 RESOURCE_GROUP_INFO = MockResourceGroupInfo()
 SWAGGER_DIGEST = 'TestSwaggerDigest'
@@ -92,7 +96,22 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
     @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value=[])
-    def test_Create_with_full_properties(self, *args):
+    def test_Create_with_full_properties_and_no_custom_domain_name(self, *args):
+        self.__test_Create_with_full_properties()
+
+    @mock.patch.object(custom_resource_response, 'success_response')
+    @mock.patch.object(role_utils, 'create_access_control_role', return_value=ROLE_ARN)
+    @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
+    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value=SWAGGER_CONTENT)
+    @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value=REST_API_ID)
+    @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
+    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value=[])
+    @mock.patch.object(Custom_ServiceApi, 'add_api_case_path_mappings')
+    def test_Create_with_full_properties_and_custom_domain_name(self, *args):
+        self.__test_Create_with_full_properties(CUSTOM_DOMAIN_NAME_A)
+
+    def __test_Create_with_full_properties(self, custom_domain_name = ''):
 
         # Setup
         event = {
@@ -110,12 +129,17 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
         context = {}
 
         expected_data = {
-            'Url': EXPECTED_URL
+            'Url': EXPECTED_ALTERNATIVE_URL if custom_domain_name else EXPECTED_URL
         }
 
         # Execute
 
         with mock.patch('resource_manager_common.stack_info.StackInfoManager', return_value=STACK_MANAGER) as mock_stack_info_manager:
+
+            # Setup
+
+            os.environ['CustomDomainName'] = custom_domain_name
+
             Custom_ServiceApi.handler(event, context)
 
             # Validate
@@ -149,13 +173,24 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 expected_data,
                 expected_physical_resource_id)
 
-            Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
-                RESOURCE_GROUP_INFO, 
-                'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
-                    rest_api_id=REST_API_ID,
-                    region=RESOURCE_GROUP_INFO.region,
-                    stage_name=Custom_ServiceApi.STAGE_NAME
-                ), 
+            if custom_domain_name:
+                Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+                    RESOURCE_GROUP_INFO, 
+                    'https://{custom_domain_name}/{region}.{stage_name}.{rest_api_id}'.format(
+                        custom_domain_name=custom_domain_name,
+                        region=RESOURCE_GROUP_INFO.region,
+                        stage_name=Custom_ServiceApi.STAGE_NAME,
+                        rest_api_id=REST_API_ID
+                    ), 
+                    SWAGGER_CONTENT)
+            else:
+                Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+                    RESOURCE_GROUP_INFO, 
+                    'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
+                        rest_api_id=REST_API_ID,
+                        region=RESOURCE_GROUP_INFO.region,
+                        stage_name=Custom_ServiceApi.STAGE_NAME
+                    ),
                 SWAGGER_CONTENT)
 
     @mock.patch.object(custom_resource_response, 'success_response')
@@ -166,7 +201,22 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
     @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value=[])
-    def test_Create_with_minimal_properties(self, *args):
+    def test_Create_with_minimal_properties_and_no_custom_domain_name(self, *args):
+        self.__test_Create_with_minimal_properties()
+
+    @mock.patch.object(custom_resource_response, 'success_response')
+    @mock.patch.object(role_utils, 'create_access_control_role', return_value=ROLE_ARN)
+    @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
+    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value=SWAGGER_CONTENT)
+    @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value=REST_API_ID)
+    @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
+    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value=[])
+    @mock.patch.object(Custom_ServiceApi, 'add_api_case_path_mappings')
+    def test_Create_with_minimal_properties_and_custom_domain_name(self, *args):
+        self.__test_Create_with_minimal_properties(CUSTOM_DOMAIN_NAME_A)
+
+    def __test_Create_with_minimal_properties(self, custom_domain_name = ''):
 
         # Setup
         event = {
@@ -184,12 +234,17 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
         context = {}
 
         expected_data = {
-            'Url': EXPECTED_URL
+            'Url': EXPECTED_ALTERNATIVE_URL if custom_domain_name else EXPECTED_URL
         }
 
         # Execute
 
         with mock.patch('resource_manager_common.stack_info.StackInfoManager', return_value=STACK_MANAGER) as mock_stack_info_manager:
+
+            # Setup
+
+            os.environ['CustomDomainName'] = custom_domain_name
+
             Custom_ServiceApi.handler(event, context)
 
             # Validate
@@ -223,7 +278,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 event,
                 expected_tags)
 
-            Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+            if custom_domain_name:
+                Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+                    RESOURCE_GROUP_INFO, 
+                    'https://{custom_domain_name}/{region}.{stage_name}.{rest_api_id}'.format(
+                        custom_domain_name=custom_domain_name,
+                        region=RESOURCE_GROUP_INFO.region,
+                        stage_name=Custom_ServiceApi.STAGE_NAME,
+                        rest_api_id=REST_API_ID
+                    ), 
+                    SWAGGER_CONTENT)
+            else:
+                Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
                 RESOURCE_GROUP_INFO, 
                 'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
                     rest_api_id=REST_API_ID,
@@ -240,7 +306,24 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
-    def test_Update_with_full_properties(self, *args):
+    @mock.patch.object(Custom_ServiceApi, 'update_api_case_path_mappings', return_value='')
+    def test_Update_with_full_properties_and_no_custom_domain_name(self, *args):
+        self.__test_Update_with_full_properties()
+
+    @mock.patch.object(custom_resource_response, 'success_response')
+    @mock.patch.object(role_utils, 'get_access_control_role_arn', return_value=ROLE_ARN)
+    @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
+    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value=SWAGGER_CONTENT)
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
+    @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
+    @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_case_path_mappings')
+    @mock.patch.object(Custom_ServiceApi, 'unregister_service_interfaces')
+    def test_Update_with_full_properties_and_custom_domain_name(self, *args):
+        self.__test_Update_with_full_properties(CUSTOM_DOMAIN_NAME_A)
+
+    def __test_Update_with_full_properties(self, custom_domain_name = ''):
 
         # Setup
         id_data = {'AbstractRoleMappings': {LOGICAL_RESOURCE_ID: ROLE_NAME}, 'RestApiId': REST_API_ID}
@@ -267,8 +350,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
         context = {}
 
         expected_data = {
-            'Url': EXPECTED_URL
+            'Url': EXPECTED_ALTERNATIVE_URL if custom_domain_name else EXPECTED_URL
         }
+
+        os.environ['CustomDomainName'] = custom_domain_name
 
         # Execute
 
@@ -300,7 +385,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
             event,
             expected_tags)
 
-        Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+        if custom_domain_name:
+            Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+                RESOURCE_GROUP_INFO, 
+                'https://{custom_domain_name}/{region}.{stage_name}.{rest_api_id}'.format(
+                    custom_domain_name=custom_domain_name,
+                    region=RESOURCE_GROUP_INFO.region,
+                    stage_name=Custom_ServiceApi.STAGE_NAME,
+                    rest_api_id=REST_API_ID
+                ), 
+                SWAGGER_CONTENT)
+        else:
+            Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
             RESOURCE_GROUP_INFO, 
             'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
                 rest_api_id=REST_API_ID,
@@ -317,7 +413,24 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
-    def test_Update_with_minimal_properties(self, *args):
+    @mock.patch.object(Custom_ServiceApi, 'update_api_case_path_mappings', return_value='')
+    def test_Update_with_minimal_properties_and_no_custom_domain_name(self, *args):
+        self.__test_Update_with_minimal_properties()
+
+    @mock.patch.object(custom_resource_response, 'success_response')
+    @mock.patch.object(role_utils, 'get_access_control_role_arn', return_value=ROLE_ARN)
+    @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
+    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value=SWAGGER_CONTENT)
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
+    @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
+    @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_case_path_mappings')
+    @mock.patch.object(Custom_ServiceApi, 'unregister_service_interfaces')
+    def test_Update_with_minimal_properties_and_custom_domain_name(self, *args):
+        self.__test_Update_with_minimal_properties(CUSTOM_DOMAIN_NAME_A)
+
+    def __test_Update_with_minimal_properties(self, custom_domain_name = ''):
 
         # Setup
         id_data = {'AbstractRoleMappings': {LOGICAL_RESOURCE_ID: ROLE_NAME}, 'RestApiId': REST_API_ID}
@@ -344,8 +457,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
         context = {}
 
         expected_data = {
-            'Url': EXPECTED_URL
+            'Url': EXPECTED_ALTERNATIVE_URL if custom_domain_name else EXPECTED_URL
         }
+
+        os.environ['CustomDomainName'] = custom_domain_name
 
         # Execute
 
@@ -377,7 +492,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
             event,
             expected_tags)
 
-        Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+        if custom_domain_name:
+            Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
+                RESOURCE_GROUP_INFO, 
+                'https://{custom_domain_name}/{region}.{stage_name}.{rest_api_id}'.format(
+                    custom_domain_name=custom_domain_name,
+                    region=RESOURCE_GROUP_INFO.region,
+                    stage_name=Custom_ServiceApi.STAGE_NAME,
+                    rest_api_id=REST_API_ID
+                ), 
+                SWAGGER_CONTENT)
+        else:
+            Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
             RESOURCE_GROUP_INFO, 
             'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
                 rest_api_id=REST_API_ID,
@@ -386,13 +512,24 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
             ), 
             SWAGGER_CONTENT)
 
+    @mock.patch.object(custom_resource_response, 'success_response')
+    @mock.patch.object(role_utils, 'delete_access_control_role')
+    @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
+    @mock.patch.object(Custom_ServiceApi, 'delete_api_gateway')
+    @mock.patch.object(Custom_ServiceApi, 'unregister_service_interfaces')
+    def test_Delete_with_no_custom_domain_name(self, *args):
+        self.__test_Delete()
 
     @mock.patch.object(custom_resource_response, 'success_response')
     @mock.patch.object(role_utils, 'delete_access_control_role')
     @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
     @mock.patch.object(Custom_ServiceApi, 'delete_api_gateway')
     @mock.patch.object(Custom_ServiceApi, 'unregister_service_interfaces')
-    def test_Delete(self, *args):
+    @mock.patch.object(Custom_ServiceApi, 'delete_api_case_path_mappings')
+    def test_Delete_with_custom_domain_name(self, *args):
+        self.__test_Delete(CUSTOM_DOMAIN_NAME_A)
+
+    def __test_Delete(self, custom_domain_name = ''):
 
         # Setup
         id_data = {'AbstractRoleMappings': { LOGICAL_RESOURCE_ID : ROLE_NAME }, 'RestApiId': REST_API_ID}
@@ -413,6 +550,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
         context = {}
 
         expected_data = {}
+
+        os.environ['CustomDomainName'] = custom_domain_name
 
         # Execute
 
@@ -437,14 +576,23 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
             expected_data,
             expected_physical_resource_id)
 
-        Custom_ServiceApi.unregister_service_interfaces.assert_called_once_with(
+        if custom_domain_name:
+            Custom_ServiceApi.unregister_service_interfaces.assert_called_once_with(
+                RESOURCE_GROUP_INFO, 
+                'https://{custom_domain_name}/{region}.{stage_name}.{rest_api_id}'.format(
+                    custom_domain_name=custom_domain_name,
+                    region=RESOURCE_GROUP_INFO.region,
+                    stage_name=Custom_ServiceApi.STAGE_NAME,
+                    rest_api_id=REST_API_ID
+                ))
+        else:
+            Custom_ServiceApi.unregister_service_interfaces.assert_called_once_with(
             RESOURCE_GROUP_INFO, 
             'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
                 rest_api_id=REST_API_ID,
                 region=RESOURCE_GROUP_INFO.region,
                 stage_name=Custom_ServiceApi.STAGE_NAME
             ))
-
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_SwaggerConfiguration(unittest.TestCase):
 
@@ -822,6 +970,93 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_ApiGat
         }
 
         Custom_ServiceApi.api_gateway.get_stage.assert_called_once_with(**kwargs)
+
+    @mock.patch.object(Custom_ServiceApi.api_gateway, 'get_base_path_mapping')
+    @mock.patch.object(Custom_ServiceApi.api_gateway, 'create_base_path_mapping')
+    def test_add_api_case_path_mappings(self, *args):
+
+        # Setup
+        Custom_ServiceApi.api_gateway.get_base_path_mapping.side_effect = ClientError({'Error': {'Code' :'NotFoundException'}}, '')
+
+        # Execute
+
+        response = Custom_ServiceApi.add_api_case_path_mappings(REST_API_ID, MockResourceGroupInfo.MOCK_REGION, CUSTOM_DOMAIN_NAME_A)
+
+        # Verify
+        base_path='{region}.{stage_name}.{rest_api_id}'.format(
+            region=MockResourceGroupInfo.MOCK_REGION,
+            stage_name=Custom_ServiceApi.STAGE_NAME,
+            rest_api_id=REST_API_ID)
+
+        kwargs = {
+            'domainName': CUSTOM_DOMAIN_NAME_A,
+            'basePath': base_path
+        }
+
+        Custom_ServiceApi.api_gateway.get_base_path_mapping.assert_called_once_with(**kwargs)
+
+        kwargs = {
+            'domainName': CUSTOM_DOMAIN_NAME_A,
+            'basePath': base_path,
+            'restApiId': REST_API_ID,
+            'stage': Custom_ServiceApi.STAGE_NAME
+        }
+
+        Custom_ServiceApi.api_gateway.create_base_path_mapping.assert_called_once_with(**kwargs)
+
+        self.assertTrue(response)
+
+    @mock.patch.object(Custom_ServiceApi, 'api_gateway')
+    @mock.patch.object(Custom_ServiceApi.api_gateway, 'get_domain_names')
+    @mock.patch.object(Custom_ServiceApi, 'add_api_case_path_mappings')
+    @mock.patch.object(Custom_ServiceApi, 'delete_api_case_path_mappings', return_value=True)
+    def test_update_api_case_path_mappings(self, *args):
+
+        # Setup
+
+        Custom_ServiceApi.api_gateway.get_domain_names.return_value = {'position': '', 'items': [{'domainName': CUSTOM_DOMAIN_NAME_A}]}
+
+        # Execute
+
+        response = Custom_ServiceApi.update_api_case_path_mappings(REST_API_ID, MockResourceGroupInfo.MOCK_REGION, CUSTOM_DOMAIN_NAME_B)
+
+        # Verify
+        args = ()
+        Custom_ServiceApi.api_gateway.get_domain_names.assert_called_once_with(*args)
+
+        args = (REST_API_ID, MockResourceGroupInfo.MOCK_REGION, CUSTOM_DOMAIN_NAME_A)
+        Custom_ServiceApi.delete_api_case_path_mappings.assert_called_once_with(*args)
+
+        args = (REST_API_ID, MockResourceGroupInfo.MOCK_REGION, CUSTOM_DOMAIN_NAME_B)
+        Custom_ServiceApi.add_api_case_path_mappings.assert_called_once_with(*args)
+
+        self.assertEqual(response, CUSTOM_DOMAIN_NAME_A)
+
+    @mock.patch.object(Custom_ServiceApi, 'api_gateway')
+    @mock.patch.object(Custom_ServiceApi.api_gateway, 'get_base_path_mapping')
+    @mock.patch.object(Custom_ServiceApi.api_gateway, 'delete_base_path_mapping')
+    def test_delete_api_case_path_mappings(self, *args):
+
+        # Execute
+
+        response = Custom_ServiceApi.delete_api_case_path_mappings(REST_API_ID, MockResourceGroupInfo.MOCK_REGION, CUSTOM_DOMAIN_NAME_A)
+
+        # Verify
+        base_path='{region}.{stage_name}.{rest_api_id}'.format(
+            region=MockResourceGroupInfo.MOCK_REGION,
+            stage_name=Custom_ServiceApi.STAGE_NAME,
+            rest_api_id=REST_API_ID)
+
+        kwargs = {
+            'domainName': CUSTOM_DOMAIN_NAME_A,
+            'basePath': base_path
+        }
+
+        Custom_ServiceApi.api_gateway.get_base_path_mapping.assert_called_once_with(**kwargs)
+
+        Custom_ServiceApi.api_gateway.delete_base_path_mapping.assert_called_once_with(**kwargs)
+
+        self.assertTrue(response)
 
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Interfaces(unittest.TestCase):

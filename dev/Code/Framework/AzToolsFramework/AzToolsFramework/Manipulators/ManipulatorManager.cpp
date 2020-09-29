@@ -13,6 +13,7 @@
 #include "BaseManipulator.h"
 #include "ManipulatorManager.h"
 
+#include <AzCore/std/tuple.h>
 #include <AzToolsFramework/Picking/BoundInterface.h>
 
 namespace AzToolsFramework
@@ -126,31 +127,26 @@ namespace AzToolsFramework
         }
     }
 
-    void ManipulatorManager::CheckModifierKeysChanged(
-        const ViewportInteraction::KeyboardModifiers keyboardModifiers,
-        const ViewportInteraction::MousePick& mousePick)
+    void ManipulatorManager::RefreshMouseOverState(const ViewportInteraction::MousePick& mousePick)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
-        if (m_keyboardModifiers != keyboardModifiers)
+        if (!Interacting())
         {
-            if (!Interacting())
+            auto [pickedManipulatorId, _] = PickManipulatorId(mousePick);
+
+            for (auto& pair : m_manipulatorIdToPtrMap)
             {
-                float rayIntersectionDistance = 0.0f;
-                const AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
-                    mousePick.m_rayOrigin, mousePick.m_rayDirection, rayIntersectionDistance);
-                const ManipulatorId manipulatorId = manipulator
-                    ? manipulator->GetManipulatorId()
-                    : InvalidManipulatorId;
-
-                for (auto& pair : m_manipulatorIdToPtrMap)
-                {
-                    pair.second->UpdateMouseOver(manipulatorId);
-                }
+                pair.second->UpdateMouseOver(pickedManipulatorId);
             }
-
-            m_keyboardModifiers.m_keyModifiers = keyboardModifiers.m_keyModifiers;
         }
+    }
+
+    void ManipulatorManager::CheckModifierKeysChanged(
+        [[maybe_unused]] const ViewportInteraction::KeyboardModifiers keyboardModifiers,
+        const ViewportInteraction::MousePick& mousePick)
+    {
+        RefreshMouseOverState(mousePick);
     }
 
     void ManipulatorManager::DrawManipulators(
@@ -165,7 +161,7 @@ namespace AzToolsFramework
             pair.second->Draw({ Interacting() }, debugDisplay, cameraState, mouseInteraction);
         }
 
-        CheckModifierKeysChanged(mouseInteraction.m_keyboardModifiers, mouseInteraction.m_mousePick);
+        RefreshMouseOverState(mouseInteraction.m_mousePick);
     }
 
     AZStd::shared_ptr<BaseManipulator> ManipulatorManager::PerformRaycast(
@@ -198,13 +194,14 @@ namespace AzToolsFramework
 
     bool ManipulatorManager::ConsumeViewportMousePress(const ViewportInteraction::MouseInteraction& interaction)
     {
-        float rayIntersectionDistance = 0.0f;
-        if (AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
-            interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance))
+        if (auto pickedManipulator = PickManipulator(interaction.m_mousePick);
+            pickedManipulator.has_value())
         {
+            auto[manipulator, intersectionDistance] = pickedManipulator.value();
+
             if (interaction.m_mouseButtons.Left())
             {
-                if (manipulator->OnLeftMouseDown(interaction, rayIntersectionDistance))
+                if (manipulator->OnLeftMouseDown(interaction, intersectionDistance))
                 {
                     m_activeManipulator = manipulator;
                     return true;
@@ -213,7 +210,7 @@ namespace AzToolsFramework
 
             if (interaction.m_mouseButtons.Right())
             {
-                if (manipulator->OnRightMouseDown(interaction, rayIntersectionDistance))
+                if (manipulator->OnRightMouseDown(interaction, intersectionDistance))
                 {
                     m_activeManipulator = manipulator;
                     return true;
@@ -248,6 +245,30 @@ namespace AzToolsFramework
         return false;
     }
 
+    AZStd::optional<ManipulatorManager::PickedManipulator> ManipulatorManager::PickManipulator(
+        const ViewportInteraction::MousePick& mousePick)
+    {
+        float intersectionDistance = 0.0f;
+        const AZStd::shared_ptr<BaseManipulator> pickedManipulator = PerformRaycast(
+            mousePick.m_rayOrigin, mousePick.m_rayDirection, intersectionDistance);
+
+        return pickedManipulator.get() != nullptr
+            ? AZStd::make_optional(AZStd::make_tuple(pickedManipulator, intersectionDistance))
+            : AZStd::nullopt;
+    }
+
+    ManipulatorManager::PickedManipulatorId ManipulatorManager::PickManipulatorId(
+        const ViewportInteraction::MousePick& mousePick)
+    {
+        auto [manipulator, intersectionDistance] =
+            PickManipulator(mousePick).value_or(PickedManipulator(nullptr, 0.0f));
+        const ManipulatorId pickedManipulatorId = manipulator
+            ? manipulator->GetManipulatorId()
+            : InvalidManipulatorId;
+
+        return PickedManipulatorId{pickedManipulatorId, intersectionDistance};
+    }
+
     ManipulatorManager::ConsumeMouseMoveResult ManipulatorManager::ConsumeViewportMouseMove(
         const ViewportInteraction::MouseInteraction& interaction)
     {
@@ -259,23 +280,7 @@ namespace AzToolsFramework
             return ConsumeMouseMoveResult::Interacting;
         }
 
-        float rayIntersectionDistance = 0.0f;
-        const AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
-            interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance);
-        const ManipulatorId manipulatorId = manipulator
-            ? manipulator->GetManipulatorId()
-            : InvalidManipulatorId;
-
-        ConsumeMouseMoveResult mouseMoveResult = ConsumeMouseMoveResult::None;
-        for (auto& pair : m_manipulatorIdToPtrMap)
-        {
-            if (pair.second->OnMouseOver(manipulatorId, interaction))
-            {
-                mouseMoveResult = ConsumeMouseMoveResult::Hovering;
-            }
-        }
-
-        return mouseMoveResult;
+        return ConsumeMouseMoveResult::None;
     }
 
     bool ManipulatorManager::ConsumeViewportMouseWheel(const ViewportInteraction::MouseInteraction& interaction)
@@ -284,21 +289,6 @@ namespace AzToolsFramework
         {
             m_activeManipulator->OnMouseWheel(interaction);
             return true;
-        }
-
-        float rayIntersectionDistance = 0.0f;
-        const AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
-            interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance);
-        const ManipulatorId manipulatorId = manipulator
-            ? manipulator->GetManipulatorId()
-            : InvalidManipulatorId;
-
-        // when scrolling the mouse wheel, the view may change so the mouse falls over a manipulator
-        // without actually moving, ensure we refresh its bounds and call OnMouseOver when this happens
-        for (auto& pair : m_manipulatorIdToPtrMap)
-        {
-            pair.second->SetBoundsDirty();
-            pair.second->OnMouseOver(manipulatorId, interaction);
         }
 
         return false;

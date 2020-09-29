@@ -189,7 +189,7 @@ namespace EMStudio
         NodeGroupsPlugin* nodeGroupsWindow = (NodeGroupsPlugin*)plugin;
 
         // is the plugin visible? only update it if it is visible
-        if (nodeGroupsWindow->GetDockWidget()->visibleRegion().isEmpty() == false)
+        if (GetManager()->GetIgnoreVisibility() || nodeGroupsWindow->GetDockWidget()->visibleRegion().isEmpty() == false)
         {
             nodeGroupsWindow->ReInit();
         }

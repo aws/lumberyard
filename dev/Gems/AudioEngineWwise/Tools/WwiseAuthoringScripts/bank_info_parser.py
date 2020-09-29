@@ -9,23 +9,28 @@ remove or modify any license notices. This file is distributed on an "AS IS" BAS
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-import argparse
+from argparse import ArgumentParser
 import glob
 import json
 import os
-import xml.etree.ElementTree
+import sys
+from xml.etree import ElementTree
+
+
+__version__ = '0.1.0'
+__copyright__ = 'Copyright (c) Amazon.com, Inc.'
 
 metadata_file_extension = '.bankdeps'
 metadata_version = '1.0'
 init_bank_path = 'Init.bnk'
-no_info_xml_error = 'SoundBanksInfo.xml does not exist, and there is more than \
-one bank aside from Init.bnk, so complete dependency info of banks cannot be \
-determined. Please ensure "Project > Project Settings > SoundBanks > Generate \
-Metadata File" is enabled in your Wwise project to generate complete \
-dependencies. Limited dependency info will be generated.'
-no_init_bank_error = 'There is no Init.bnk that exists at path {}. Init.bnk is \
-necessary for other soundbanks to work properly. Please regenerate soundbanks \
-from the Wwise project.'
+no_info_xml_error = 'SoundBanksInfo.xml does not exist, and there is more than ' \
+                    'one bank (aside from Init.bnk), so complete dependency info of banks cannot be ' \
+                    'determined. Please ensure "Project > Project Settings > SoundBanks > Generate ' \
+                    'Metadata File" is enabled in your Wwise project to generate complete ' \
+                    'dependencies. Limited dependency info will be generated.'
+no_init_bank_error = 'There is no Init.bnk that exists at path {}. Init.bnk is ' \
+                     'necessary for other soundbanks to work properly. Please regenerate soundbanks ' \
+                     'from the Wwise project.'
 
 
 class Bank:
@@ -40,10 +45,15 @@ class Bank:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Generate metadata files for all banks referenced in a SoundBankInfo.xml')
-    parser.add_argument('soundbank_info_path', help='path to a SoundBankInfo.xml to parse')
-    parser.add_argument('output_path', help='path that the banks have been output to, where these metadata files will live as well.')
-    return parser.parse_args()
+    parser = ArgumentParser(description='Generate metadata files for all banks referenced in a SoundBankInfo.xml')
+    parser.add_argument('soundbank_info_path', help='Path to a SoundBankInfo.xml to parse')
+    parser.add_argument('output_path', help='Path that the banks have been output to, where these metadata files will live as well.')
+    options = parser.parse_args()
+
+    if not os.path.exists(options.output_path):
+        sys.exit('Output path {} does not exist'.format(options.output_path))
+
+    return options
 
 
 def parse_bank_info_xml(root):
@@ -145,7 +155,7 @@ def generate_metadata(soundbank_info_path, output_path):
 
     # Check to see if the soundbankinfo file exists. If it doesn't then there are no streamed files.
     if soundbank_xml_exists:
-        root = xml.etree.ElementTree.parse(soundbank_info_path).getroot()
+        root = ElementTree.parse(soundbank_info_path).getroot()
         banks = parse_bank_info_xml(root)
         media_dictionary = build_media_to_bank_dictionary(banks)
         banks_with_metadata = generate_bank_metadata(banks, media_dictionary, output_path)
@@ -177,6 +187,10 @@ def generate_metadata(soundbank_info_path, output_path):
 
 
 def main():
+    print('Wwise Bank Info Parser v{}'.format(__version__))
+    print(__copyright__)
+    print()
+
     args = parse_args()
     banks, error_code = generate_metadata(args.soundbank_info_path, args.output_path)
 

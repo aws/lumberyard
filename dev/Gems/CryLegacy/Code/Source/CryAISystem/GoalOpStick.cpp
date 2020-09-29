@@ -619,7 +619,9 @@ bool COPStick::TryToTeleport(CPipeUser* pPipeUser)
         AILogEvent("COPStick::TryToTeleport teleporting %s to (%5.2f, %5.2f, %5.2f)",
             GetNameSafe(pPipeUser), m_teleportEnd.x, m_teleportEnd.y, m_teleportEnd.z);
         Vec3 floorPos = m_teleportEnd;
+#if ENABLE_CRY_PHYSICS
         GetFloorPos(floorPos, m_teleportEnd, 0.0f, 3.0f, 0.1f, AICE_ALL);
+#endif
         pPipeUser->GetEntity()->SetPos(floorPos);
         pPipeUser->m_State.fDesiredSpeed = 0;
         pPipeUser->m_State.vMoveDir.zero();

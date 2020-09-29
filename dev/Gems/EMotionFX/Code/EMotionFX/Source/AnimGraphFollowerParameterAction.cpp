@@ -16,36 +16,36 @@
 #include <EMotionFX/Source/AnimGraphBus.h>
 #include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
-#include <EMotionFX/Source/AnimGraphServantParameterAction.h>
+#include <EMotionFX/Source/AnimGraphFollowerParameterAction.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/AttributeBool.h>
 #include <MCore/Source/AttributeFloat.h>
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphServantParameterAction, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphFollowerParameterAction, AnimGraphAllocator, 0)
 
-    AnimGraphServantParameterAction::AnimGraphServantParameterAction()
+    AnimGraphFollowerParameterAction::AnimGraphFollowerParameterAction()
         : AnimGraphTriggerAction()
         , m_triggerValue(0.0f)
     {
     }
 
 
-    AnimGraphServantParameterAction::AnimGraphServantParameterAction(AnimGraph* animGraph)
-        : AnimGraphServantParameterAction()
+    AnimGraphFollowerParameterAction::AnimGraphFollowerParameterAction(AnimGraph* animGraph)
+        : AnimGraphFollowerParameterAction()
     {
         InitAfterLoading(animGraph);
     }
 
 
-    AnimGraphServantParameterAction::~AnimGraphServantParameterAction()
+    AnimGraphFollowerParameterAction::~AnimGraphFollowerParameterAction()
     {
         AZ::Data::AssetBus::MultiHandler::BusDisconnect();
     }
 
 
-    bool AnimGraphServantParameterAction::InitAfterLoading(AnimGraph* animGraph)
+    bool AnimGraphFollowerParameterAction::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphTriggerAction::InitAfterLoading(animGraph))
         {
@@ -58,19 +58,19 @@ namespace EMotionFX
     }
 
 
-    const char* AnimGraphServantParameterAction::GetPaletteName() const
+    const char* AnimGraphFollowerParameterAction::GetPaletteName() const
     {
-        return "Servant Parameter Action";
+        return "Follower Parameter Action";
     }
 
 
-    void AnimGraphServantParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
+    void AnimGraphFollowerParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
     {
-        const AZStd::vector<AnimGraphInstance*>& servantGraphs = animGraphInstance->GetServantGraphs();
+        const AZStd::vector<AnimGraphInstance*>& followerGraphs = animGraphInstance->GetFollowerGraphs();
 
-        for (AnimGraphInstance* servantGraph : servantGraphs)
+        for (AnimGraphInstance* followerGraph : followerGraphs)
         {
-            MCore::Attribute* attribute = servantGraph->FindParameter(m_parameterName);
+            MCore::Attribute* attribute = followerGraph->FindParameter(m_parameterName);
             if (attribute)
             {
                 switch (attribute->GetType())
@@ -94,8 +94,8 @@ namespace EMotionFX
                 }
                 }
 
-                AZ::Outcome<size_t> index = servantGraph->FindParameterIndex(m_parameterName);
-                const ValueParameter* valueParameter = servantGraph->GetAnimGraph()->FindValueParameter(index.GetValue());
+                AZ::Outcome<size_t> index = followerGraph->FindParameterIndex(m_parameterName);
+                const ValueParameter* valueParameter = followerGraph->GetAnimGraph()->FindValueParameter(index.GetValue());
 
                 AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, valueParameter);
             }
@@ -103,27 +103,27 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphServantParameterAction::SetParameterName(const AZStd::string& parameterName)
+    void AnimGraphFollowerParameterAction::SetParameterName(const AZStd::string& parameterName)
     {
         m_parameterName = parameterName;
     }
 
 
-    const AZStd::string& AnimGraphServantParameterAction::GetParameterName() const
+    const AZStd::string& AnimGraphFollowerParameterAction::GetParameterName() const
     {
         return m_parameterName;
     }
 
 
     // Construct and output the information summary string for this object
-    void AnimGraphServantParameterAction::GetSummary(AZStd::string* outResult) const
+    void AnimGraphFollowerParameterAction::GetSummary(AZStd::string* outResult) const
     {
         *outResult = AZStd::string::format("%s: Parameter Name='%s", RTTI_GetTypeName(), m_parameterName.c_str());
     }
 
 
     // Construct and output the tooltip for this object
-    void AnimGraphServantParameterAction::GetTooltip(AZStd::string* outResult) const
+    void AnimGraphFollowerParameterAction::GetTooltip(AZStd::string* outResult) const
     {
         AZStd::string columnName, columnValue;
 
@@ -138,7 +138,7 @@ namespace EMotionFX
     }
 
 
-    AnimGraph* AnimGraphServantParameterAction::GetRefAnimGraph() const
+    AnimGraph* AnimGraphFollowerParameterAction::GetRefAnimGraph() const
     {
         if (m_refAnimGraphAsset.GetId().IsValid() && m_refAnimGraphAsset.IsReady())
         {
@@ -148,7 +148,7 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphServantParameterAction::Reflect(AZ::ReflectContext* context)
+    void AnimGraphFollowerParameterAction::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (!serializeContext)
@@ -156,11 +156,11 @@ namespace EMotionFX
             return;
         }
 
-        serializeContext->Class<AnimGraphServantParameterAction, AnimGraphTriggerAction>()
+        serializeContext->Class<AnimGraphFollowerParameterAction, AnimGraphTriggerAction>()
             ->Version(1)
-            ->Field("animGraphAsset", &AnimGraphServantParameterAction::m_refAnimGraphAsset)
-            ->Field("parameterName", &AnimGraphServantParameterAction::m_parameterName)
-            ->Field("triggerValue", &AnimGraphServantParameterAction::m_triggerValue)
+            ->Field("animGraphAsset", &AnimGraphFollowerParameterAction::m_refAnimGraphAsset)
+            ->Field("parameterName", &AnimGraphFollowerParameterAction::m_parameterName)
+            ->Field("triggerValue", &AnimGraphFollowerParameterAction::m_triggerValue)
             ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -169,23 +169,23 @@ namespace EMotionFX
             return;
         }
 
-        editContext->Class<AnimGraphServantParameterAction>("Servant Parameter Action", "Servant parameter action attributes")
+        editContext->Class<AnimGraphFollowerParameterAction>("Follower Parameter Action", "Follower parameter action attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphServantParameterAction::m_refAnimGraphAsset, "Servant anim graph", "Servant anim graph that we want to pick a parameter from")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphServantParameterAction::OnAnimGraphAssetChanged)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphFollowerParameterAction::m_refAnimGraphAsset, "Follower anim graph", "Follower anim graph that we want to pick a parameter from")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphFollowerParameterAction::OnAnimGraphAssetChanged)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphServantParameterAction::m_parameterName, "Servant parameter", "The servant parameter that we want to sync to.")
+            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphFollowerParameterAction::m_parameterName, "Follower parameter", "The follower parameter that we want to sync to.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphServantParameterAction::GetRefAnimGraph)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphServantParameterAction::m_triggerValue, "Trigger value", "The value that the parameter will be override to.")
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphFollowerParameterAction::GetRefAnimGraph)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphFollowerParameterAction::m_triggerValue, "Trigger value", "The value that the parameter will be override to.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ;
     }
 
 
-    void AnimGraphServantParameterAction::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    void AnimGraphFollowerParameterAction::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         if (asset == m_refAnimGraphAsset)
         {
@@ -199,7 +199,7 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphServantParameterAction::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    void AnimGraphFollowerParameterAction::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         if (asset == m_refAnimGraphAsset)
         {
@@ -211,12 +211,12 @@ namespace EMotionFX
         }
     }
 
-    void AnimGraphServantParameterAction::OnAnimGraphAssetChanged()
+    void AnimGraphFollowerParameterAction::OnAnimGraphAssetChanged()
     {
         LoadAnimGraphAsset();
     }
 
-    void AnimGraphServantParameterAction::LoadAnimGraphAsset()
+    void AnimGraphFollowerParameterAction::LoadAnimGraphAsset()
     {
         if (m_refAnimGraphAsset.GetId().IsValid())
         {
@@ -244,7 +244,7 @@ namespace EMotionFX
         }
     }
 
-    void AnimGraphServantParameterAction::OnAnimGraphAssetReady()
+    void AnimGraphFollowerParameterAction::OnAnimGraphAssetReady()
     {
         // Verify if the m_parameterName is valid in the ref anim graph
         AnimGraph* refAnimGraph = GetRefAnimGraph();

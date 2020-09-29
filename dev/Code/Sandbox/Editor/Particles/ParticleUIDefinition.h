@@ -21,6 +21,7 @@
 class CVarBlock;
 struct IVariable;
 struct SLodInfo;
+struct IParticleEffect;
 
 class EDITOR_CORE_API CParticleUIDefinition
 {

@@ -175,7 +175,7 @@ protected:
 AZStd::string GetTestFileAliasedPath(AZStd::string_view fileName)
 {
     constexpr char testFileFolder[] = "@root@/../Gems/LyShine/Code/Tests/";
-    return AZStd::string::format("%s%.*s", testFileFolder, fileName.size(), fileName.data());
+    return AZStd::string::format("%s%.*s", testFileFolder, aznumeric_cast<int>(fileName.size()), fileName.data());
 }
 
 AZStd::string GetTestFileFullPath(AZStd::string_view fileName)

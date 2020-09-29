@@ -33,6 +33,6 @@ enum EMiddlewareDataRole
 {
     eMDR_TYPE = Qt::UserRole + 1,
     eMDR_ID,
-    eMDR_LOCALISED,
+    eMDR_LOCALIZED,
     eMDR_CONNECTED,
 };

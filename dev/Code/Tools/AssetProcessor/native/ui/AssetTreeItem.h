@@ -16,10 +16,10 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string.h>
+#include <QIcon>
 #include <QString>
 
 class QFileIconProvider;
-class QIcon;
 class QVariant;
 
 namespace AssetProcessor
@@ -37,6 +37,8 @@ namespace AssetProcessor
         QString m_extension;
         AZ::Uuid m_uuid;
         bool m_isFolder = false;
+        bool m_assetHasUnresolvedIssue = false;
+        QString m_unresolvedIssuesTooltip;
     };
 
     enum class AssetTreeColumns
@@ -49,7 +51,10 @@ namespace AssetProcessor
     class AssetTreeItem
     {
     public:
-        explicit AssetTreeItem(AZStd::shared_ptr<AssetTreeItemData> data, AssetTreeItem* parentItem = nullptr);
+        explicit AssetTreeItem(
+            AZStd::shared_ptr<AssetTreeItemData> data,
+            QIcon errorIcon,
+            AssetTreeItem* parentItem = nullptr);
         virtual ~AssetTreeItem();
 
         AssetTreeItem* CreateChild(AZStd::shared_ptr<AssetTreeItemData> data);
@@ -71,5 +76,6 @@ namespace AssetProcessor
         AZStd::vector<AZStd::unique_ptr<AssetTreeItem>> m_childItems;
         AZStd::shared_ptr<AssetTreeItemData> m_data;
         AssetTreeItem* m_parent = nullptr;
+        QIcon m_errorIcon;
     };
 }

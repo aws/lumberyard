@@ -61,6 +61,9 @@ namespace AzToolsFramework
         /// This should be called whenever a manipulator is moved.
         virtual void SetBoundDirty(Picking::RegisteredBoundId boundId) = 0;
 
+        /// Returns true if the manipulator manager is currently interacting, otherwise false.
+        virtual bool Interacting() const = 0;
+
         /// Update the bound for a manipulator.
         /// If \ref boundId hasn't been registered before or it's invalid, a new bound is created and set using \ref boundShapeData
         /// @param manipulatorId The id of the manipulator whose bound needs to update.

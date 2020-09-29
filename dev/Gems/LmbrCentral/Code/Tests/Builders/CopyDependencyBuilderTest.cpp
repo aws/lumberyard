@@ -10,6 +10,7 @@
  *
  */
 
+#include <LmbrCentral_precompiled.h>
 #include <AzTest/AzTest.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzFramework/IO/LocalFileIO.h>
@@ -21,12 +22,12 @@
 
 #include <LyShine/UiAssetTypes.h>
 
-#include <Source/AudioControlBuilderWorker/AudioControlBuilderWorker.h>
-#include <Source/CfgBuilderWorker/CfgBuilderWorker.h>
-#include <Source/FontBuilderWorker/FontBuilderWorker.h>
-#include <Source/ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.h>
-#include <Source/SchemaBuilderWorker/SchemaBuilderWorker.h>
-#include <Source/XmlBuilderWorker/XmlBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/CfgBuilderWorker/CfgBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/FontBuilderWorker/FontBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/SchemaBuilderWorker/SchemaBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/XmlBuilderWorker/XmlBuilderWorker.h>
+#include <Builders/CopyDependencyBuilder/EmfxWorkspaceBuilderWorker/EmfxWorkspaceBuilderWorker.h>
 
 using namespace CopyDependencyBuilder;
 using namespace AZ;
@@ -101,8 +102,8 @@ protected:
 
     AZStd::string GetFullPath(AZStd::string_view fileName)
     {
-        constexpr char testFileFolder[] = "@root@/../Code/Tools/AssetProcessor/Builders/CopyDependencyBuilder/Tests/";
-        return AZStd::string::format("%s%.*s", testFileFolder, fileName.size(), fileName.data());
+        constexpr char testFileFolder[] = "@root@/../Gems/LmbrCentral/Code/Tests/";
+        return AZStd::string::format("%s%.*s", testFileFolder, aznumeric_cast<int>(fileName.size()), fileName.data());
     }
 
     void TestFailureCase(CopyDependencyBuilderWorker* worker, AZStd::string_view fileName, bool expectedResult = false)
@@ -120,6 +121,15 @@ protected:
         ASSERT_EQ(resolvedPaths.size(), 0);
         ASSERT_EQ(productDependencies.size(), 0);
     }
+
+    void TestSuccessCase(
+        CopyDependencyBuilderWorker* worker,
+        AZStd::string_view fileName,
+        const AZStd::vector<const char*>& expectedPathDependencies)
+        {
+            AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+            TestSuccessCase(worker, fileName, expectedPathDependencies, expectedProductDependencies);
+        }
 
     void TestSuccessCase(
         CopyDependencyBuilderWorker* worker,
@@ -461,122 +471,6 @@ TEST_F(CopyDependencyBuilderTest, TestFontAsset_EmptyFile_OutputNoProductDepende
 
     FontBuilderWorker builderWorker;
     TestFailureCase(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_EmptyFile_NoProductDependencies)
-{
-    // Tests passing an empty file in
-    // Should output 0 dependency and return false
-    AZStd::string fileName = "AudioControls/EmptyControl.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestFailureCase(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_NoPreloadsDefined_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlNoPreloads.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MissingConfigGroupNameAttribute_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlMissingConfigGroupNameAttribute.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MissingPlatformNameAttribute_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlMissingPlatformNameAttributeOnePreload.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MissingAtlPlatformsNode_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlMissingAtlPlatformsNode.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MissingPlatformNode_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlMissingPlatformNode.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MissingWwiseFileNode_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlMissingWwiseFileNode.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_OnePreloadOneBank_OneProductDependency)
-{
-    AZStd::string fileName = "AudioControls/TestControlOnePreloadOneBank.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, "sounds/wwise/test_bank1.bnk");
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_OnePreloadMultipleBanks_MultipleProductDependencies)
-{
-    AZStd::vector<const char*> expectedPaths = {
-        "sounds/wwise/test_bank1.bnk",
-        "sounds/wwise/test_bank2.bnk"
-    };
-    AZStd::string fileName = "AudioControls/TestControlOnePreloadMultipleBanks.xml";
-    AudioControlBuilderWorker builderWorker;
-
-    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
-
-    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MultiplePreloadsOneBankEach_MultipleProductDependencies)
-{
-    AZStd::vector<const char*> expectedPaths = {
-        "sounds/wwise/test_bank1.bnk",
-        "sounds/wwise/test_bank2.bnk"
-    };
-    AZStd::string fileName = "AudioControls/TestControlMultiplePreloadOneBank.xml";
-    AudioControlBuilderWorker builderWorker;
-
-    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
-
-    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_MultiplePreloadsMultipleBanksEach_MultipleProductDependencies)
-{
-    AZStd::vector<const char*> expectedPaths = {
-        "sounds/wwise/test_bank1.bnk",
-        "sounds/wwise/test_bank2.bnk",
-        "sounds/wwise/test_bank3.bnk",
-        "sounds/wwise/test_bank4.bnk"
-    };
-    AZStd::string fileName = "AudioControls/TestControlMultiplePreloadsMultipleBanks.xml";
-    AudioControlBuilderWorker builderWorker;
-
-    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
-
-    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_NoConfigGroups_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlNoConfigGroups.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
-}
-
-TEST_F(CopyDependencyBuilderTest, TestAudioControl_WrongConfigGroup_NoProductDependencies)
-{
-    AZStd::string fileName = "AudioControls/TestControlWrongConfigGroup.xml";
-    AudioControlBuilderWorker builderWorker;
-    TestSuccessCaseNoDependencies(&builderWorker, fileName);
 }
 
 // Verifies that preload files can depend on other preload files.
@@ -1138,7 +1032,7 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_CreateJobsWithValidSourceFile_Out
     AssetBuilderSDK::CreateJobsResponse response;
 
     request.m_sourceFile = "Tests/Xmls/XmlExampleWithoutVersion.xml";
-    request.m_watchFolder = "@root@/../Code/Tools/AssetProcessor/Builders/CopyDependencyBuilder";
+    request.m_watchFolder = "@root@/../Gems/LmbrCentral/Code/";
 
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/FullFeatured"));
@@ -1182,6 +1076,39 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ProductDependencyWithAssetId_Outp
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/ProductDependencyWithAssetId"));
     TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
+}
+
+TEST_F(CopyDependencyBuilderTest, TestXmlAsset_MatchRegexMatches_OutputProductDependencies)
+{
+    AZStd::vector<const char*> expectedPaths = {
+        "Extension1.ext1"
+    };
+
+    AZStd::string fileName = "Xmls/XmlExampleMultipleMatchingExtensions.xml";
+    XmlBuilderWorker builderWorker;
+    builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/MatchPattern"));
+    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+}
+
+TEST_F(CopyDependencyBuilderTest, TestXmlAsset_MatchRegexNoMatches_NoProductDependencies)
+{
+    AZStd::string fileName = "Xmls/XmlExample.xml";
+    XmlBuilderWorker builderWorker;
+    builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/MatchPattern"));
+    TestSuccessCaseNoDependencies(&builderWorker, fileName);
+}
+
+TEST_F(CopyDependencyBuilderTest, TestXmlAsset_FindAndReplace_OutputProductDependencies)
+{
+    AZStd::vector<const char*> expectedPaths = {
+        "hello.ext1",
+        "hello.ext2"
+    };
+
+    AZStd::string fileName = "Xmls/XmlExampleMultipleMatchingExtensions.xml";
+    XmlBuilderWorker builderWorker;
+    builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/FindAndReplace"));
+    TestSuccessCase(&builderWorker, fileName, expectedPaths);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestSchemaAsset_ValidMatchingRules_OutputReverseSourceDependencies)
@@ -1255,8 +1182,54 @@ TEST_F(CopyDependencyBuilderTest, TestSchemaAsset_SchemaMissingRules_OutputRever
     AZ_TEST_START_TRACE_SUPPRESSION;
     builderWorker.ProcessJob(request, response);
     AZ_TEST_STOP_TRACE_SUPPRESSION(SuppressedErrorMultiplier);
-     
+
     ASSERT_TRUE(response.m_sourcesToReprocess.size() == 0);
 }
 
-AZ_UNIT_TEST_HOOK();
+TEST_F(CopyDependencyBuilderTest, TestEmfxWorkSpace_ProductDependencies_Valid)
+{
+    AZStd::set<AZStd::string> expectedProductPathDependencies = {
+        "foo.actor",
+        "foo.motionset",
+        "foo.animgraph",
+    };
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+    AZStd::string fileName = "EmfxWorkSpace/productdependencies.emfxworkspace";
+    EmfxWorkspaceBuilderWorker builderWorker;
+    AssetBuilderSDK::ProcessJobRequest request;
+    AssetBuilderSDK::ProcessJobResponse response;
+    request.m_fullPath = GetFullPath("EmfxWorkSpace/productdependencies.emfxworkspace");
+    request.m_sourceFile = "EmfxWorkSpace/productdependencies.emfxworkspace";
+    request.m_platformInfo.m_identifier = m_currentPlatform;
+
+    builderWorker.ProcessJob(request, response);
+
+    ASSERT_EQ(response.m_outputProducts.size(), 1);
+
+    ASSERT_EQ(response.m_outputProducts[0].m_pathDependencies.size(), 3);
+
+    for (const auto& productDependenciesPath : response.m_outputProducts[0].m_pathDependencies)
+    {
+        ASSERT_TRUE(expectedProductPathDependencies.find(productDependenciesPath.m_dependencyPath) != expectedProductPathDependencies.end());
+        ASSERT_TRUE(productDependenciesPath.m_dependencyType == ProductPathDependencyType::ProductFile);
+    }
+}
+
+TEST_F(CopyDependencyBuilderTest, TestEmfxWorkSpace_NoProductDependencies_Valid)
+{
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+    AZStd::string fileName = "EmfxWorkSpace/noproductdependencies.emfxworkspace";
+    EmfxWorkspaceBuilderWorker builderWorker;
+    AssetBuilderSDK::ProcessJobRequest request;
+    AssetBuilderSDK::ProcessJobResponse response;
+    request.m_fullPath = GetFullPath("EmfxWorkSpace/noproductdependencies.emfxworkspace");
+    request.m_sourceFile = "EmfxWorkSpace/noproductdependencies.emfxworkspace";
+    request.m_platformInfo.m_identifier = m_currentPlatform;
+
+    builderWorker.ProcessJob(request, response);
+
+    ASSERT_EQ(response.m_outputProducts.size(), 1);
+
+    ASSERT_EQ(response.m_outputProducts[0].m_pathDependencies.size(), 0);
+}

@@ -134,6 +134,7 @@ namespace EMotionFX
         void Update(Actor* actor, Node* joint, PhysicsSetup::ColliderConfigType colliderType, const Physics::ShapeConfigurationList& colliders, AZ::SerializeContext* serializeContext);
         void Update();
         void Reset();
+        PhysicsSetup::ColliderConfigType ColliderType() { return m_colliderType; }
 
         /**
          * Render the given colliders.

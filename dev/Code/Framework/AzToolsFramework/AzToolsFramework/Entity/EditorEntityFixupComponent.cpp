@@ -21,7 +21,9 @@ namespace AzToolsFramework
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<EditorEntityFixupComponent, AZ::Component>();
+            serializeContext->Class<EditorEntityFixupComponent, AZ::Component>()
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }));
         }
     }
 

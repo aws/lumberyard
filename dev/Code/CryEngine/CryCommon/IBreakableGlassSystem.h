@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_IBREAKABLEGLASSSYSTEM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 struct EventPhysCollision;
 
 struct IBreakableGlassSystem
@@ -26,5 +27,6 @@ struct IBreakableGlassSystem
     virtual void    ResetAll() = 0;
     virtual void    GetMemoryUsage(ICrySizer* pSizer) const = 0;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_IBREAKABLEGLASSSYSTEM_H

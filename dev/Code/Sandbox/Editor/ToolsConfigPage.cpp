@@ -447,6 +447,7 @@ ToolsConfigDialog::ToolsConfigDialog(QWidget* parent)
     setWindowTitle(tr("Configure ToolBox Macros"));
     setLayout(new QVBoxLayout);
     AzQtComponents::TabWidget* tabs = new AzQtComponents::TabWidget;
+    AzQtComponents::TabWidget::applySecondaryStyle(tabs, false);
     layout()->addWidget(tabs);
     CToolsConfigPage* page = new CToolsConfigPage;
     tabs->addTab(page, page->windowTitle());

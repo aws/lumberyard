@@ -16,7 +16,6 @@
 #pragma once
 
 
-
 #include "DeferredActionQueue.h"
 
 
@@ -34,6 +33,8 @@ struct IntersectionTestResult
     int partId;
     int idxMat;
 };
+
+#if ENABLE_CRY_PHYSICS
 
 struct IntersectionTestRequest
 {
@@ -161,6 +162,116 @@ private:
     aligned_buffer<MaxPrimitiveAlignment, MaxPrimitiveSize> primitiveBuf;
 };
 
+#else // !ENABLE_CRY_PHYSICS
+
+struct IntersectionTestRequest
+{
+    enum
+    {
+        MaxSkipListCount = 64,
+    };
+
+    enum Priority
+    {
+        LowPriority = 0,
+        MediumPriority,
+        HighPriority,
+        HighestPriority,
+    };
+
+    IntersectionTestRequest()
+    {
+    }
+
+    IntersectionTestRequest(int _primitiveType, const primitives::primitive& _primitive, const Vec3& _sweepDir, int _objTypes,
+        int _flagsAll = 0, int _flagsAny = geom_colltype0 | geom_colltype_player)
+        : primitiveType(_primitiveType)
+        , sweepDir(_sweepDir)
+        , objTypes(_objTypes)
+        , flagsAll(_flagsAll)
+        , flagsAny(_flagsAny)
+    {
+
+        switch (primitiveType)
+        {
+        case primitives::box::type:
+            new (&primitiveBuf) primitives::box((primitives::box&)_primitive);
+            break;
+        case primitives::cylinder::type:
+            new (&primitiveBuf) primitives::cylinder((primitives::cylinder&)_primitive);
+            break;
+        case primitives::capsule::type:
+            new (&primitiveBuf) primitives::capsule((primitives::capsule&)_primitive);
+            break;
+        case primitives::sphere::type:
+            new (&primitiveBuf) primitives::sphere((primitives::sphere&)_primitive);
+            break;
+        default:
+        {
+            assert(0);
+        };
+        }
+    }
+
+    ~IntersectionTestRequest()
+    {
+        switch (primitiveType)
+        {
+        case primitives::box::type:
+            (*(primitives::box*&)primitiveBuf).~box();
+            break;
+        case primitives::cylinder::type:
+            (*(primitives::cylinder*) & primitiveBuf).~cylinder();
+            break;
+        case primitives::capsule::type:
+            (*(primitives::capsule*) & primitiveBuf).~capsule();
+            break;
+        case primitives::sphere::type:
+            (*(primitives::sphere*) & primitiveBuf).~sphere();
+            break;
+        default:
+        {
+            assert(0);
+        }
+        break;
+        }
+    }
+
+    template<typename PrimitiveType>
+    PrimitiveType& primitive()
+    {
+        return *(PrimitiveType*)&primitiveBuf;
+    }
+
+    template<typename PrimitiveType>
+    const PrimitiveType& primitive() const
+    {
+        return *(PrimitiveType*)&primitiveBuf;
+    }
+
+    int primitiveType;
+
+    Vec3 sweepDir;
+    int objTypes;
+    int flagsAll;
+    int flagsAny;
+
+private:
+    enum
+    {
+        _MaxCapsuleSphereSize = static_max<sizeof(primitives::capsule), sizeof(primitives::sphere)>::value,
+        _MaxCapsuleSphereCylinderSize = static_max<sizeof(primitives::cylinder), _MaxCapsuleSphereSize>::value,
+        MaxPrimitiveSize = static_max<sizeof(primitives::box), _MaxCapsuleSphereCylinderSize>::value,
+
+        _MaxCapsuleSphereAlignment = static_max<alignof(primitives::capsule), alignof(primitives::sphere)>::value,
+        _MaxCapsuleSphereCylinderAlignment = static_max<alignof(primitives::cylinder), _MaxCapsuleSphereAlignment>::value,
+        MaxPrimitiveAlignment = static_max<alignof(primitives::box), _MaxCapsuleSphereCylinderAlignment>::value,
+    };
+
+    aligned_buffer<MaxPrimitiveAlignment, MaxPrimitiveSize> primitiveBuf;
+};
+#endif // ENABLE_CRY_PHYSICS
+
 
 template<int IntersectionTesterID>
 struct DefaultIntersectionTester
@@ -180,20 +291,25 @@ protected:
 
     ILINE void Acquire(IntersectionTestRequest& request)
     {
+#if ENABLE_CRY_PHYSICS
         for (size_t i = 0; i < request.skipListCount; ++i)
         {
             request.skipList[i]->AddRef();
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     ILINE void Release(IntersectionTestRequest& request)
     {
+#if ENABLE_CRY_PHYSICS
         for (size_t i = 0; i < request.skipListCount; ++i)
         {
             request.skipList[i]->Release();
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld::SPWIParams GetPWIParams(const IntersectionTestRequest& request)
     {
         IPhysicalWorld::SPWIParams params;
@@ -209,9 +325,11 @@ protected:
 
         return params;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     inline const IntersectionTestResult& Cast(const IntersectionTestRequest& request)
     {
+#if ENABLE_CRY_PHYSICS
         IPhysicalWorld::SPWIParams params = GetPWIParams(request);
 
         geom_contact* contact = 0;
@@ -225,12 +343,14 @@ protected:
         m_resultBuf.normal = contact->n;
         m_resultBuf.partId = contact->iPrim[1];
         m_resultBuf.idxMat = contact->id[1];
+#endif // ENABLE_CRY_PHYSICS
 
         return m_resultBuf;
     }
 
     inline void Queue(uint32 testID, const IntersectionTestRequest& request)
     {
+#if ENABLE_CRY_PHYSICS
         IPhysicalWorld::SPWIParams params = GetPWIParams(request);
         params.entTypes |= rwi_queue;
         params.pForeignData = this;
@@ -238,6 +358,7 @@ protected:
         params.OnEvent = OnPWIResult;
 
         gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params);
+#endif // ENABLE_CRY_PHYSICS
     }
 
     inline void SetCallback(const Callback& _callback)
@@ -245,6 +366,7 @@ protected:
         callback = _callback;
     }
 
+#if ENABLE_CRY_PHYSICS
     static int OnPWIResult(const EventPhysPWIResult* result)
     {
         Type* _this = static_cast<Type*>(result->pForeignData);
@@ -260,6 +382,7 @@ protected:
 
         return 1;
     }
+#endif // ENABLE_CRY_PHYSICS
 
 private:
     Callback callback;
@@ -279,6 +402,5 @@ public:
     typedef DeferredActionQueue<DefaultIntersectionTester<IntersectionTesterID>,
         IntersectionTestRequest, IntersectionTestResult> BaseType;
 };
-
 
 #endif // CRYINCLUDE_CRYCOMMON_INTERSECTIONTESTQUEUE_H

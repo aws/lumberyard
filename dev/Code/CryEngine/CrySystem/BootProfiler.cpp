@@ -26,7 +26,7 @@ namespace
     StaticInstance<CBootProfiler, AZStd::no_destruct<CBootProfiler>> gProfilerInstance;
     enum
     {
-        eMAX_THREADS_TO_PROFILE = 32,
+        eMAX_THREADS_TO_PROFILE = 128,
         eNUM_RECORDS_PER_POOL = 2048, // so, eNUM_RECORDS_PER_POOL * sizeof(CBootProfilerRecord) == mem consumed by pool item
         // sizeof(CProfileBlockTimes)==152,
         // poolmem = 304Kb for 1 pool per thread

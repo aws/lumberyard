@@ -10,9 +10,11 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "MaterialBuilderComponent.h"
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/Debug/Trace.h>
@@ -372,6 +374,12 @@ namespace MaterialBuilder
 
     void BuilderPluginComponent::Reflect(AZ::ReflectContext* context)
     {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<BuilderPluginComponent, AZ::Component>()
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));
+        }
     }
 
     MaterialBuilderWorker::MaterialBuilderWorker()

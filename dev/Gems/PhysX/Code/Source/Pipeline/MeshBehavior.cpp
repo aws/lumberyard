@@ -29,6 +29,7 @@
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneData/Groups/MeshGroup.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
+#include <SceneAPI/SceneData/Rules/OriginRule.h>
 
 #include <Source/Pipeline/MeshBehavior.h>
 #include <Source/Pipeline/MeshGroup.h>
@@ -133,6 +134,26 @@ namespace PhysX
             scene.GetManifest().AddEntry(AZStd::move(group));
 
             return AZ::SceneAPI::Events::ProcessingResult::Success;
+        }
+
+        void MeshBehavior::GetAvailableModifiers(AZ::SceneAPI::Events::ManifestMetaInfo::ModifiersList& modifiers,
+            const AZ::SceneAPI::Containers::Scene& /*scene*/,
+            const AZ::SceneAPI::DataTypes::IManifestObject& target)
+        {
+            if (!target.RTTI_IsTypeOf(PhysX::Pipeline::MeshGroup::TYPEINFO_Uuid()))
+            {
+                return;
+            }
+
+            const PhysX::Pipeline::MeshGroup* group = azrtti_cast<const PhysX::Pipeline::MeshGroup*>(&target);
+            const AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainerConst();
+
+            if (rules.ContainsRuleOfType<AZ::SceneAPI::DataTypes::IOriginRule>())
+            {
+                return;
+            }
+
+            modifiers.push_back(AZ::SceneAPI::SceneData::OriginRule::TYPEINFO_Uuid());
         }
 
         AZ::SceneAPI::Events::ProcessingResult MeshBehavior::UpdatePhysXMeshGroups(AZ::SceneAPI::Containers::Scene& scene) const

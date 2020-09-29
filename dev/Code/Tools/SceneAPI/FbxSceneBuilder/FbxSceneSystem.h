@@ -39,8 +39,18 @@ namespace AZ
             FBX_SCENE_BUILDER_API void ConvertUnit(Transform& inOutTransform) const;
             FBX_SCENE_BUILDER_API void ConvertBoneUnit(Transform& inOutTransform) const;
 
+            //! Get effect unit size in meters of this Fbx Scene, internally FBX saves it in the following manner
+            //! GlobalSettings:  {
+            //!     P : "UnitScaleFactor", "double", "Number", "", 2.54
+            FBX_SCENE_BUILDER_API float GetUnitSizeInMeters() const { return m_unitSizeInMeters; }
+            //! Get original unit size in meters of this Fbx Scene, internally FBX saves it in the following manner
+            //! GlobalSettings:  {
+            //!     P : "OriginalUnitScaleFactor", "double", "Number", "", 2.54
+            FBX_SCENE_BUILDER_API float GetOriginalUnitSizeInMeters() const { return m_originalUnitSizeInMeters; }
+
         protected:
             float m_unitSizeInMeters;
+            float m_originalUnitSizeInMeters;
             AZStd::unique_ptr<Transform> m_adjustTransform;
             AZStd::unique_ptr<Transform> m_adjustTransformInverse;
         };

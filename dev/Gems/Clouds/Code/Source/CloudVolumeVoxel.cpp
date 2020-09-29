@@ -19,6 +19,8 @@
 #include "CloudVolumePerlinNoise.h"
 #include "CloudVolumeRenderElement.h"
 
+#include "Cry_LegacyPhysUtils.h"
+
 namespace CloudsGem
 {
     static const int s_volumeShadowSize = 32;
@@ -58,8 +60,8 @@ namespace CloudsGem
             size_t numPoints = points.size();
 
             // compute convex hull
-            index_t* pIndices = nullptr;
-            int numTris = gEnv->pPhysicalWorld->GetPhysUtils()->qhull(pPoints, static_cast<int>(numPoints), pIndices, AllocHull);
+            LegacyCryPhysicsUtils::index_t* pIndices = nullptr;
+            int numTris = LegacyCryPhysicsUtils::qhull(pPoints, static_cast<int>(numPoints), pIndices, AllocHull);
             if (pIndices && numTris > 6)
             {
                 // Determine the minimum set of vertices required.

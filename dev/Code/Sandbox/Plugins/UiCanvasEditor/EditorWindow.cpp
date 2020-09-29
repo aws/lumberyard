@@ -637,7 +637,10 @@ void EditorWindow::HandleCanvasDisplayNameChanged(const UiCanvasMetadata& canvas
         tabText.append("*");
     }
     int tabIndex = GetTabIndexForCanvasEntityId(canvasMetadata.m_canvasEntityId);
-    m_canvasTabWidget->setTabText(tabIndex, tabText.c_str());
+    if (m_canvasTabWidget->tabText(tabIndex) != QString(tabText.c_str()))
+    {
+        m_canvasTabWidget->setTabText(tabIndex, tabText.c_str());
+    }
     m_canvasTabWidget->setTabToolTip(tabIndex, canvasMetadata.m_canvasSourceAssetPathname.empty() ? canvasMetadata.m_canvasDisplayName.c_str() : canvasMetadata.m_canvasSourceAssetPathname.c_str());
 }
 
@@ -709,8 +712,7 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
             QString(),
             dir,
             "*." UICANVASEDITOR_CANVAS_EXTENSION,
-            nullptr,
-            QFileDialog::DontConfirmOverwrite);
+            nullptr);
         if (filename.isEmpty())
         {
             return false;

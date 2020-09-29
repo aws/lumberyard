@@ -41,7 +41,7 @@ namespace ScriptedEntityTweener
             return;
         }
 
-        for (const auto it : params.m_animationParameters)
+        for (const auto& it : params.m_animationParameters)
         {
             const AnimationParameterAddressData& addressData = it.first;
             if (IsTimelineIdValid(params.m_animationProperties.m_timelineId))
@@ -136,7 +136,7 @@ namespace ScriptedEntityTweener
                 if (queuedIter->HasInitialValue())
                 {
                     auto& queuedAnimParams = queuedIter->GetParameters();
-                    for (const auto it : queuedAnimParams.m_animationParameters)
+                    for (const auto& it : queuedAnimParams.m_animationParameters)
                     {
                         const AnimationParameterAddressData& addressData = it.first;
                         
@@ -384,7 +384,7 @@ namespace ScriptedEntityTweener
     {
         AZStd::vector<int> callbackIds = { animationProperties.m_onCompleteCallbackId, animationProperties.m_onLoopCallbackId, animationProperties.m_onUpdateCallbackId };
 
-        for (const auto callbackId : callbackIds)
+        for (const auto& callbackId : callbackIds)
         {
             if (callbackId != AnimationProperties::InvalidCallbackId)
             {

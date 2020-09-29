@@ -33,11 +33,10 @@ namespace AudioControls
     {
         Q_OBJECT
     public:
-        QConnectionsWidget(QWidget* pParent = nullptr, const AZStd::string& sGroup = "");
+        QConnectionsWidget(QWidget* parent = nullptr);
 
     public slots:
-        void SetControl(CATLControl* pControl);
-        void Init(const AZStd::string& sGroup);
+        void SetControl(CATLControl* control);
 
     private slots:
         void ShowConnectionContextMenu(const QPoint& pos);
@@ -46,14 +45,14 @@ namespace AudioControls
         void RemoveSelectedConnection();
 
     private:
-        bool eventFilter(QObject* pObject, QEvent* pEvent) override;
-        void MakeConnectionTo(IAudioSystemControl* pAudioMiddlewareControl);
+        bool eventFilter(QObject* object, QEvent* event) override;
+        void MakeConnectionTo(IAudioSystemControl* middlewareControl);
         void UpdateConnections();
-        void CreateItemFromConnection(IAudioSystemControl* pAudioSystemControl);
+        void CreateItemFromConnection(IAudioSystemControl* middlewareControl);
 
-        AZStd::string m_sGroup;
-        CATLControl* m_pControl;
+        CATLControl* m_control;
         QColor m_notFoundColor;
-        QColor m_localisedColor;
+        QColor m_localizedColor;
     };
+
 } // namespace AudioControls

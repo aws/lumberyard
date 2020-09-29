@@ -21,6 +21,7 @@ namespace AZ
     {
         FbxSceneSystem::FbxSceneSystem() :
             m_unitSizeInMeters(1.0f),
+            m_originalUnitSizeInMeters(1.0f),
             m_adjustTransform(nullptr),
             m_adjustTransformInverse(nullptr)
         {
@@ -30,6 +31,8 @@ namespace AZ
         {
             // Get unit conversion factor to meter.
             m_unitSizeInMeters = fbxScene.GetSystemUnit()->GetConversionFactorTo(FbxSDKWrapper::FbxSystemUnitWrapper::m);
+            const FbxGlobalSettings& globalSettings = fbxScene.GetFbxScene()->GetGlobalSettings();
+            m_originalUnitSizeInMeters = static_cast<float>(globalSettings.GetOriginalSystemUnit().GetConversionFactorTo(FbxSystemUnit::m));
             
             int sign = 0;
             FbxSDKWrapper::FbxAxisSystemWrapper::UpVector upVector = fbxScene.GetAxisSystem()->GetUpVector(sign);

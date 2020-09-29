@@ -10,12 +10,16 @@
 *
 */
 
-#include <TranslationBuilder/Source/TranslationBuilderComponent.h>
+#include <LmbrCentral_precompiled.h>
+#include "TranslationBuilderComponent.h"
+
+#include <LmbrCentral_Traits_Platform.h>
 
 #include <sys/stat.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/std/containers/array.h>
 
 #include <AzFramework/API/ApplicationAPI.h>
@@ -27,21 +31,6 @@
 
 namespace TranslationBuilder
 {
-    BuilderPluginComponent::BuilderPluginComponent()
-    {
-        // AZ Components should only initialize their members to null and empty in constructor
-        // after construction, they may be deserialized from file.
-    }
-
-    BuilderPluginComponent::~BuilderPluginComponent()
-    {
-    }
-
-    void BuilderPluginComponent::Init()
-    {
-        // init is where you'd actually allocate memory or create objects since it happens after deserialization.
-    }
-
     void BuilderPluginComponent::Activate()
     {
         // activate is where you'd perform registration with other objects and systems.
@@ -70,16 +59,12 @@ namespace TranslationBuilder
 
     void BuilderPluginComponent::Reflect(AZ::ReflectContext* context)
     {
-        // components also get Reflect called automatically
-        // this is your opportunity to perform static reflection or type registration of any types you want the serializer to know about
-    }
-
-    
-    TranslationBuilderWorker::TranslationBuilderWorker()
-    {
-    }
-    TranslationBuilderWorker::~TranslationBuilderWorker()
-    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<BuilderPluginComponent, AZ::Component>()
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));
+        }
     }
 
     void TranslationBuilderWorker::ShutDown()
@@ -111,7 +96,7 @@ namespace TranslationBuilder
 
     // later on, this function will be called for jobs that actually need doing.
     // the request will contain the CreateJobResponse you constructed earlier, including any keys and values you placed into the hash table
-    void TranslationBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
+    void TranslationBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const
     {
         // Here's an example of listening for cancellation requests.  You should listen for cancellation requests and then cancel work if possible.
         //You can always derive from the Job Cancel Listener and reimplement Cancel() if you need to do more things such as signal a semaphore or other threading work.
@@ -186,7 +171,7 @@ namespace TranslationBuilder
                         }
                     }
 
-#if defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_LMBRCENTRAL_TRANSLATION_BUILDER_SHOULD_CHECK_QT_PROCESS
                     // the process ran, but was it successful in its run?
                     bool wasRunning = watcher->IsProcessRunning(&exitCode);
 #else
@@ -249,7 +234,7 @@ namespace TranslationBuilder
         AZStd::string_view engineRoot;
         AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::Bus::Events::GetEngineRoot);
 
-#if defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
         //
         // search for the utility in the sandbox SDKs first, then the windows path 
         // to find the lrelease tool, if it does not exist then return with a empty path.
@@ -261,10 +246,10 @@ namespace TranslationBuilder
         
         fileToSearchFor += ".exe";
 
-#elif defined(AZ_PLATFORM_MAC)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
         otherPaths.push_back(AZStd::string::format(R"(%s/Code/Sandbox/SDKs/Qt/clang_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
         otherPaths.push_back(AZStd::string::format(R"(%s/Gems/ScriptCanvas/Tools/qt/clang_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
-#elif defined(AZ_PLATFORM_LINUX)        
+#else
         otherPaths.push_back(AZStd::string::format(R"(%s/Code/Sandbox/SDKs/Qt/gcc_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
         otherPaths.push_back(AZStd::string::format(R"(%s/Gems/ScriptCanvas/Tools/qt/gcc_64/bin/)", engineRoot.empty() ? "" : engineRoot.data()) );
 #endif

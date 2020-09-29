@@ -12,6 +12,7 @@
 
 #include "ComponentModeDelegate.h"
 
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
@@ -20,6 +21,32 @@ namespace AzToolsFramework
 {
     namespace ComponentModeFramework
     {
+        namespace Internal
+        {
+            struct EditorComponentModeNotificationBusHandler final
+                : public EditorComponentModeNotificationBus::Handler
+                , public AZ::BehaviorEBusHandler
+            {
+                AZ_EBUS_BEHAVIOR_BINDER(EditorComponentModeNotificationBusHandler, "{AD2F4204-0913-4FC9-9A10-492538F60C70}", AZ::SystemAllocator,
+                    EnteredComponentMode, LeftComponentMode, ActiveComponentModeChanged);
+
+                void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentTypes) override
+                {
+                    Call(FN_EnteredComponentMode, componentTypes);
+                }
+
+                void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentTypes) override
+                {
+                    Call(FN_LeftComponentMode, componentTypes);
+                }
+
+                void ActiveComponentModeChanged(const AZ::Uuid& componentType) override
+                {
+                    Call(FN_ActiveComponentModeChanged, componentType);
+                }
+            };
+        }
+
         static const char* const s_componentModeEnterDescription =
             "In this mode, you can only edit properties for this component. "
             "All other components on the entity are locked.";
@@ -78,6 +105,15 @@ namespace AzToolsFramework
                 mouseInteraction.m_mouseEvent == ViewportInteraction::MouseEvent::DoubleClick;
         }
 
+        static bool EditorRequestingGame()
+        {
+            bool requestingGame = false;
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+                requestingGame, &AzToolsFramework::EditorEntityContextRequestBus::Events::IsEditorRequestingGame);
+
+            return requestingGame;
+        }
+
         void ComponentModeDelegate::Reflect(AZ::ReflectContext* context)
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -102,6 +138,27 @@ namespace AzToolsFramework
                             ;
                 }
             }
+
+            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<ComponentModeSystemRequestBus>("ComponentModeSystemRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Event("EnterComponentMode", &ComponentModeSystemRequests::AddSelectedComponentModesOfType)
+                    ->Event("EndComponentMode", &ComponentModeSystemRequests::EndComponentMode)
+                    ;
+
+                behaviorContext->EBus<EditorComponentModeNotificationBus>("EditorComponentModeNotificationBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Handler<Internal::EditorComponentModeNotificationBusHandler>()
+                    ->Event("EnteredComponentMode", &EditorComponentModeNotifications::EnteredComponentMode)
+                    ->Event("LeftComponentMode", &EditorComponentModeNotifications::LeftComponentMode)
+                    ->Event("ActiveComponentModeChanged", &EditorComponentModeNotifications::ActiveComponentModeChanged)
+                    ;
+            }
         }
 
         bool ComponentModeDelegate::AddedToComponentMode()
@@ -122,7 +179,8 @@ namespace AzToolsFramework
 
         void ComponentModeDelegate::OnComponentModeEnterButtonPressed()
         {
-            if (!InComponentMode())
+            // ensure we aren't already in ComponentMode and are not also attempting to enter game mode
+            if (!InComponentMode() && !EditorRequestingGame())
             {
                 // move all selected components into ComponentMode
                 ComponentModeSystemRequestBus::Broadcast(
@@ -184,7 +242,7 @@ namespace AzToolsFramework
         {
             if (ShouldDetectEnterLeaveComponentMode(mouseInteraction))
             {
-                if (!IsSelectableInViewport(m_entityComponentIdPair.GetEntityId()))
+                if (EditorRequestingGame() || !IsSelectableInViewport(m_entityComponentIdPair.GetEntityId()))
                 {
                     return false;
                 }
@@ -201,7 +259,7 @@ namespace AzToolsFramework
                     components.reserve(8);
                     componentTypes.reserve(8);
                     // build a list of all components on each entity in the current selection
-                    for (const AZ::EntityId entityId : entityIds)
+                    for (AZ::EntityId entityId : entityIds)
                     {
                         components.clear();
 
@@ -275,7 +333,7 @@ namespace AzToolsFramework
 
             if (canBegin)
             {
-                for (const AZ::EntityId selectedEntityId : selectedEntityIds)
+                for (AZ::EntityId selectedEntityId : selectedEntityIds)
                 {
                     // if any entities in the selection are not selectable (invisible/locked)
                     // then still make it impossible to enter begin ComponentMode

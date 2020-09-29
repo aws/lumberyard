@@ -23,6 +23,7 @@
 #include <Terrain/Bus/LegacyTerrainBus.h>
 
 #include <LegacyTerrainLevelComponent.h>
+#include "terrain.h"
 
 namespace LegacyTerrain
 {
@@ -88,63 +89,100 @@ namespace LegacyTerrain
 
     void LegacyTerrainLevelComponent::Init()
     {
+        if (!LegacyTerrainBase::GetSystem())
+        {
+            AZ_Assert(gEnv, "gEnv is required to initialize the Legacy Terrain level component");
+            LegacyTerrainBase::SetSystem(gEnv->pSystem);
+            LegacyTerrainBase::GetCVars()->RegisterCVars();
+        }
     }
 
     void LegacyTerrainLevelComponent::Activate()
     {
-        bool isInstantiated = false;
-        LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
-        if (isInstantiated)
-        {
-            AZ_Warning("LegacyTerrain", false, "The legacy terrain system was already instantiated");
-            return;
-        }
-
-        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateBegin);
+        AZ_Assert(CTerrain::GetTerrain() == nullptr, "The Terrain System was already initialized");
 
         // If we're running in the Editor in Game Mode, make sure the Editor version of terrain data is used to instantiate our runtime terrain.
         // This allows us to see edited but unsaved data.  Otherwise, we'll see the last exported version of the runtime terrain.
         if (LegacyTerrainEditorDataRequestBus::HasHandlers())
         {
-            LegacyTerrainEditorDataRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainEditorDataRequests::CreateTerrainSystemFromEditorData);
+            ActivateTerrainSystemWithEditor();
+            return;
         }
-        else
+
+        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateBegin);
+
+        STerrainInfo terrainInfo;
+        XmlNodeRef surfaceTypes = nullptr;
+        AZ::IO::HandleType octreeFileHandle = AZ::IO::InvalidHandle;
+        bool bSectorPalettes = false;
+        EEndian eEndian = eLittleEndian;
+        int nBytesLeft = 0;
+
+        nBytesLeft = Get3DEngine()->GetLegacyTerrainLevelData(octreeFileHandle, terrainInfo, bSectorPalettes, eEndian, surfaceTypes);
+
+        if ((nBytesLeft < 1) || (terrainInfo.TerrainSize() == 0))
         {
-            LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainInstanceRequests::CreateTerrainSystem, (uint8*)nullptr, 0);
+            GetPak()->FClose(octreeFileHandle);
+            AZ_Error("LegacyTerrain", false, "Failed to read legacy terrain info from the engine.");
+            return;
         }
 
-        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateEnd);
+        if (!CTerrain::CreateTerrain(terrainInfo))
+        {
+            AZ_Error("LegacyTerrain", false, "Failed to allocate the terrain instance.");
+            GetPak()->FClose(octreeFileHandle);
+            return;
+        }
 
-        AZ_Error("LegacyTerrain", isInstantiated, "Failed to initialize the legacy terrain system");
+
+        int nNodesLoaded = 0;
+
+        //Loading terrain data from a file handle is an operation that occurs during game client runtime.
+        AZ_Assert(surfaceTypes != nullptr, "Missing terrain surface layers");
+        const bool loadMacroTexture = true;
+        nNodesLoaded = CTerrain::GetTerrain()->Load_T(surfaceTypes, octreeFileHandle, nBytesLeft, terrainInfo, false, true, bSectorPalettes, eEndian, nullptr, loadMacroTexture);
+
+        AZ_TracePrintf("LegacyTerrain", "Terrain loaded with %d nodes", nNodesLoaded);
+        GetPak()->FClose(octreeFileHandle);
+
+        if (nNodesLoaded > 0)
+        {
+            AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateNull());
+            AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateEnd);
+            return;
+        }
+
+        AZ_Error("LegacyTerrain", false, "Failed to load terrain heightmap data.");
+        CTerrain::DestroyTerrain();
     }
 
     void LegacyTerrainLevelComponent::Deactivate()
     {
-        bool isInstantiated = false;
-        LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
-        if (!isInstantiated)
+        if (CTerrain::GetTerrain() == nullptr)
         {
             return;
         }
 
-        //Before removing the terrain system from memory, it is important to make sure
-        //there are no pending culling jobs because removing the terrain causes the Octree culling jobs
-        //to recalculate and those jobs may access Octree nodes that don't exist anymore.
-        if (gEnv)
+        // If we're running in the Editor in Game Mode, the Editor terrain data needs to know that we're destroying the terrain system too.
+        if (LegacyTerrainEditorDataRequestBus::HasHandlers())
         {
-            gEnv->p3DEngine->WaitForCullingJobsCompletion();
+            DeactivateTerrainSystemWithEditor();
+            return;
         }
 
         AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyBegin);
 
-        // If we're running in the Editor in Game Mode, the Editor terrain data needs to know that we're destroying the terrain system too.
-        if (LegacyTerrainEditorDataRequestBus::HasHandlers())
+        //Before removing the terrain system from memory, it is important to make sure
+        //there are no pending culling jobs because removing the terrain causes the Octree culling jobs
+        //to recalculate and those jobs may access Octree nodes that don't exist anymore.
+        Get3DEngine()->WaitForCullingJobsCompletion();
+
+        CTerrain::DestroyTerrain();
+
+        // Make sure the Octree doesn't retain any pointers into the terrain structures
+        if (LegacyTerrainBase::Get3DEngine()->IsObjectTreeReady())
         {
-            LegacyTerrainEditorDataRequestBus::Broadcast(&LegacyTerrainEditorDataRequests::DestroyTerrainSystem);
-        }
-        else
-        {
-            LegacyTerrainInstanceRequestBus::Broadcast(&LegacyTerrainInstanceRequests::DestroyTerrainSystem);
+            LegacyTerrainBase::Get3DEngine()->GetIObjectTree()->UpdateTerrainNodes();
         }
 
         AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyEnd);
@@ -168,5 +206,59 @@ namespace LegacyTerrain
             return true;
         }
         return false;
+    }
+
+    bool LegacyTerrainLevelComponent::ActivateTerrainSystemWithEditor()
+    {
+        //Let's get the terrain info from the Editor's TerrainManager
+        STerrainInfo terrainInfo;
+        bool success = false;
+        LegacyTerrainEditorDataRequestBus::BroadcastResult(success, &LegacyTerrainEditorDataRequests::GetTerrainInfo, terrainInfo);
+        AZ_Assert(success, "Failed to get terrain info.");
+
+        // Announce to those who care that the terrain system will be created. 
+        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateBegin);
+
+        success = CTerrain::CreateTerrain(terrainInfo);
+        AZ_Assert(success, "Failed to allocate the terrain instance.");
+
+        LegacyTerrainEditorDataRequestBus::BroadcastResult(success, &LegacyTerrainEditorDataRequests::InitializeTerrainSystemFromEditorData);
+        AZ_Error("LegacyTerrain", success, "Failed to initialize the legacy terrain system");
+
+        if (success)
+        {
+            // Announce to those who care that the terrain system was created. 
+            AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateEnd);
+        }
+        else
+        {
+            CTerrain::DestroyTerrain();
+        }
+
+        return success;
+    }
+
+    void LegacyTerrainLevelComponent::DeactivateTerrainSystemWithEditor()
+    {
+        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyBegin);
+
+        //Before removing the terrain system from memory, it is important to make sure
+        //there are no pending culling jobs because removing the terrain causes the Octree culling jobs
+        //to recalculate and those jobs may access Octree nodes that don't exist anymore.
+        LegacyTerrainBase::Get3DEngine()->WaitForCullingJobsCompletion();
+
+        LegacyTerrainEditorDataRequestBus::Broadcast(&LegacyTerrainEditorDataRequests::DestroyTerrainSystem);
+
+        CTerrain::DestroyTerrain();
+
+        // Make sure the Octree doesn't retain any pointers into the terrain structures
+        if (LegacyTerrainBase::Get3DEngine()->IsObjectTreeReady())
+        {
+            LegacyTerrainBase::Get3DEngine()->GetIObjectTree()->UpdateTerrainNodes();
+        }
+
+        AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateNull());
+
+        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyEnd);
     }
 }

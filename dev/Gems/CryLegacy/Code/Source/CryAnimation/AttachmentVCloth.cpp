@@ -1577,6 +1577,7 @@ struct SEdgeInfo
         , m_skip(false) { }
 };
 
+#if ENABLE_CRY_PHYSICS
 // copied form StatObjPhys.cpp
 static inline int GetEdgeByBuddy(mesh_data* pmd, int itri, int itri_buddy)
 {
@@ -1851,6 +1852,7 @@ bool CClothSimulator::AddGeometry(phys_geometry* pgeom)
 
     return true;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 int CClothSimulator::SetParams(const SVClothParams& params, float* weights)
 {
@@ -2595,7 +2597,9 @@ bool CClothPiece::Initialize(const CAttachmentVCLOTH* pVClothAttachment)
     }
 
     // init simulator
+#if ENABLE_CRY_PHYSICS
     m_simulator.AddGeometry(m_clothGeom->pPhysGeom);
+#endif
     m_simulator.SetParams(m_clothParams, &m_clothGeom->weights[0]);
     //m_simulator.m_pAttachmentManager = pAttachmentManager;
 
@@ -2856,6 +2860,7 @@ void CClothPiece::SkinSimulationToRenderMesh(int lod, CVertexData& vertexData, c
     std::vector<Vector4>& normals = m_buffers->m_normals;
     std::vector<STangents>& tangents = m_buffers->m_tangents;
 
+#if ENABLE_CRY_PHYSICS
     // compute sim normals
     mesh_data* md = (mesh_data*)m_clothGeom->pPhysGeom->pGeom->GetData();
     for (int i = 0; i < md->nVertices; i++)
@@ -2880,6 +2885,7 @@ void CClothPiece::SkinSimulationToRenderMesh(int lod, CVertexData& vertexData, c
     {
         normals[i].normalize();
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // set the positions
     SMemVec newPos;
@@ -3041,11 +3047,13 @@ void SClothGeometry::ReleaseBuffers(int idx)
 
 void SClothGeometry::Cleanup()
 {
+#if ENABLE_CRY_PHYSICS
     if (pPhysGeom)
     {
         g_pIPhysicalWorld->GetGeomManager()->UnregisterGeometry(pPhysGeom);
         pPhysGeom = NULL;
     }
+#endif
     SAFE_DELETE_ARRAY(weldMap);
     SAFE_DELETE_ARRAY(weights);
     for (int i = 0; i < MAX_LODS; i++)

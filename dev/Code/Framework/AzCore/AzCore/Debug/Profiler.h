@@ -55,6 +55,9 @@ namespace AZ
             // must match EProfiledSubsystem::PROFILE_LAST_SUBSYSTEM
             LegacyLast,
 
+            // Bulk category via AZ_TRACE_METHOD
+            AzTrace,
+
             AzCore,
             AzRender,
             AzFramework,
@@ -68,6 +71,8 @@ namespace AZ
             RendererDetailed = FirstDetailedCategory,
             ThreeDEngineDetailed,
             JobManagerDetailed,
+
+            AzRenderDetailed,
             // Add new detailed categories here (and add names to the parallel position in ProfileCategoryNames) -- these categories are disabled by default
             
             // Internal reserved categories, not for use with performance events
@@ -111,6 +116,7 @@ namespace AZ
 
             "LegacyLast",
 
+            "AzTrace",
             "AzCore",
             "AzRender",
             "AzFramework",
@@ -122,6 +128,7 @@ namespace AZ
             "RendererDetailed",
             "3DEngineDetailed",
             "JobManagerDetailed",
+            "AzRenderDetailed",
 
             "MemoryReserved",
             "Global"

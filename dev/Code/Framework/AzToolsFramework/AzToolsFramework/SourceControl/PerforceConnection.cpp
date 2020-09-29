@@ -215,6 +215,18 @@ namespace AzToolsFramework
         ExecuteCommand();
     }
 
+    void PerforceCommand::ExecuteAdd(const AZStd::string& changelist, const AZStd::unordered_set<AZStd::string>& filePaths)
+    {
+        m_commandArgs = "add -c " + changelist + " ";
+
+        for (const AZStd::string& filePath : filePaths)
+        {
+            m_commandArgs += "\"" + filePath + "\" ";
+        }
+
+        ExecuteCommand();
+    }
+
     void PerforceCommand::ExecuteClaimChangedFile(const AZStd::string& filePath, const AZStd::string& changeList)
     {
         m_commandArgs = "reopen -c " + changeList + " \"" + filePath + "\"";

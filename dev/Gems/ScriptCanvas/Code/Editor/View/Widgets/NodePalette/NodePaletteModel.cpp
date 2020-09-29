@@ -1005,7 +1005,7 @@ namespace ScriptCanvasEditor
         return identifiers;
     }
 
-    AZStd::vector<ScriptCanvas::NodeTypeIdentifier> NodePaletteModel::RegisterFunctionInformation(ScriptCanvas::ScriptCanvasFunctionAsset* functionAsset)
+    AZStd::vector<ScriptCanvas::NodeTypeIdentifier> NodePaletteModel::RegisterFunctionInformation(ScriptCanvas::RuntimeFunctionAsset* functionAsset)
     {
         const AZ::Data::AssetId& assetId = functionAsset->GetId();
 
@@ -1239,16 +1239,16 @@ namespace ScriptCanvasEditor
                         AZ_TracePrintf("NodePaletteModel", "Could not refresh node palette properly, the asset failed to load correctly.");
                     }
                 }
-                else if (productEntry->GetAssetType() == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
+                else if (productEntry->GetAssetType() == azrtti_typeid<ScriptCanvas::RuntimeFunctionAsset>())
                 {
                     const AZ::Data::AssetId& assetId = productEntry->GetAssetId();
 
                     const bool loadBlocking = true;
-                    auto functionAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
+                    auto functionAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, azrtti_typeid<ScriptCanvas::RuntimeFunctionAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
 
                     if (functionAsset.IsReady())
                     {
-                        ScriptCanvas::ScriptCanvasFunctionAsset* data = functionAsset.GetAs<ScriptCanvas::ScriptCanvasFunctionAsset>();
+                        ScriptCanvas::RuntimeFunctionAsset* data = functionAsset.GetAs<ScriptCanvas::RuntimeFunctionAsset>();
 
                         return RegisterFunctionInformation(data);
                     }

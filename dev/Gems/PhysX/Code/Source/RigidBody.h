@@ -22,6 +22,8 @@ namespace PhysX
     class RigidBodyComponent;
     class Shape;
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+
     /// PhysX specific implementation of generic physics API RigidBody class.
     class RigidBody
         : public Physics::RigidBody
@@ -41,8 +43,8 @@ namespace PhysX
         AZ::u32 GetShapeCount() override;
         AZStd::shared_ptr<Physics::Shape> GetShape(AZ::u32 index) override;
 
-        virtual AZ::Vector3 GetCenterOfMassWorld() const override;
-        virtual AZ::Vector3 GetCenterOfMassLocal() const override;
+        AZ::Vector3 GetCenterOfMassWorld() const override;
+        AZ::Vector3 GetCenterOfMassLocal() const override;
 
         AZ::Matrix3x3 GetInverseInertiaWorld() const override;
         AZ::Matrix3x3 GetInverseInertiaLocal() const override;
@@ -81,8 +83,8 @@ namespace PhysX
         Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;
 
         // Physics::ReferenceBase
-        virtual AZ::Crc32 GetNativeType() const override;
-        virtual void* GetNativePointer() const override;
+        AZ::Crc32 GetNativeType() const override;
+        void* GetNativePointer() const override;
 
         // Not in API but needed to support PhysicsComponentBus
         float GetLinearDamping() const override;
@@ -109,6 +111,11 @@ namespace PhysX
         void UpdateCenterOfMassAndInertia(bool computeCenterOfMass, const AZ::Vector3& centerOfMassOffset,
             bool computeInertia, const AZ::Matrix3x3& inertiaTensor) override;
 
+        void UpdateMassProperties(Physics::MassComputeFlags flags = Physics::MassComputeFlags::DEFAULT,
+            const AZ::Vector3* centerOfMassOffsetOverride = nullptr,
+            const AZ::Matrix3x3* inertiaTensorOverride = nullptr,
+            const float* massOverride = nullptr) override;
+
     private:
         AZStd::shared_ptr<physx::PxRigidDynamic> m_pxRigidActor;
         AZStd::vector<AZStd::shared_ptr<PhysX::Shape>> m_shapes;
@@ -124,4 +131,6 @@ namespace PhysX
         void CreatePhysXActor(const Physics::RigidBodyConfiguration& configuration);
         void ReleasePhysXActor();
     };
+
+    AZ_POP_DISABLE_WARNING
 } // namespace PhysX

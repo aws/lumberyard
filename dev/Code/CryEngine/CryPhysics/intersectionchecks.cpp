@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "intersectionchecks.h"
@@ -2353,3 +2355,5 @@ int ray_capsule_intersection(const ray* pray, const capsule* pcaps, prim_inters*
     pinters->iFeature[1][0] = iFeature;
     return res;
 }
+
+#endif // ENABLE_CRY_PHYSICS

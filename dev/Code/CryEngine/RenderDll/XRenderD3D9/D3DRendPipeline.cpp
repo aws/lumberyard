@@ -6707,10 +6707,12 @@ void CD3D9Renderer::EF_Scene3D(SViewport& VP, int nFlags, const SRenderingPassIn
             gEnv->pAISystem->DebugDraw();
         }
 
+#if ENABLE_CRY_PHYSICS
         if (gEnv->pSystem)
         {
             gEnv->pSystem->RenderPhysicsHelpers();
         }
+#endif
 
         //Draws all aux geometry
         GetIRenderAuxGeom()->Flush();

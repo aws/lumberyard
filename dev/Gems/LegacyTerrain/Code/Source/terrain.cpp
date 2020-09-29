@@ -11,10 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// Description : check vis
-
-
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 
 #include "terrain.h"
 #include "terrain_sector.h"
@@ -24,6 +21,9 @@
 #include <IVegetationPoolManager.h>
 #include <MathConversion.h>
 #include <OceanConstants.h>
+
+//From dev/Code/CryEngine/RenderDll
+#include <Common/Shadow_Renderer.h>
 
 CTerrain* CTerrain::m_pTerrain = nullptr;
 int CTerrain::m_nUnitSize = 2;
@@ -281,6 +281,7 @@ AZ::Vector3 CTerrain::GetNormalFromFloats(float x, float y, Sampler sampleFilter
 
 void CTerrain::InitHeightfieldPhysics()
 {
+#if ENABLE_CRY_PHYSICS
     // for phys engine
     primitives::heightfield hf;
     hf.Basis.SetIdentity();
@@ -314,16 +315,19 @@ void CTerrain::InitHeightfieldPhysics()
     pe_params_foreign_data pfd;
     pfd.iForeignData = PHYS_FOREIGN_ID_TERRAIN;
     pPhysTerrain->SetParams(&pfd);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CTerrain::ClearHeightfieldPhysics()
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* physWorld = GetPhysicalWorld();
 
     if (physWorld)
     {
         IPhysicalEntity* pPhysTerrain = physWorld->SetHeightfieldData(nullptr);
     }
+#endif
 }
 
 void CTerrain::SendLegacyTerrainUpdateNotifications(int tileMinX, int tileMinY, int tileMaxX, int tileMaxY)
@@ -408,7 +412,6 @@ void CTerrain::AddVisSector(ITerrainNode* newsec)
 
 void CTerrain::CheckVis(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
     AZ_TRACE_METHOD(); 
     TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::LegacyTerrain, LegacyTerrain::Debug::StatisticCheckVisibility);
 
@@ -550,7 +553,6 @@ void CTerrain::CheckNodesGeomUnload(const SRenderingPassInfo& passInfo)
 
 void CTerrain::UpdateNodesIncrementally(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
     AZ_TRACE_METHOD();
     TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::LegacyTerrain, LegacyTerrain::Debug::StatisticUpdateNodes);
 
@@ -765,7 +767,6 @@ private:
 
 void CTerrain::DrawVisibleSectors(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
     AZ_TRACE_METHOD();
     TERRAIN_SCOPE_PROFILE(AZ::Debug::ProfileCategory::LegacyTerrain, LegacyTerrain::Debug::StatisticDrawVisibleSectors);
 
@@ -987,8 +988,6 @@ bool CTerrain::RenderArea(Vec3 vPos, float fRadius, _smart_ptr<IRenderMesh>& pRe
     {
         return false;
     }
-
-    FUNCTION_PROFILER_3DENGINE;
 
     bool bREAdded = false;
 

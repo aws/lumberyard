@@ -49,7 +49,7 @@ namespace AzToolsFramework
     /// This class serves to manage all relevant mouse events and coordinate all registered manipulators to function properly.
     /// ManipulatorManager does not manage the life cycle of specific manipulators. The users of manipulators are responsible
     /// for creating and deleting them at right time, as well as registering and unregistering accordingly.
-    class ManipulatorManager final
+    class ManipulatorManager
         : private ManipulatorManagerRequestBus::Handler
         , private EditorEntityInfoNotificationBus::Handler
     {
@@ -63,12 +63,12 @@ namespace AzToolsFramework
         enum class ConsumeMouseMoveResult
         {
             None,
-            Hovering,
+            Hovering, // Note: unused
             Interacting,
         };
 
-        // NOTE: These are NOT EBus messages. They are called by the owner of the manipulator manager and they will return TRUE
-        // if they have gobbled up the interaction. If this is the case you should not process it yourself.
+        // Note: These are not EBus messages, they are called by the owner of the manipulator manager and they will
+        // return true if they have handled the interaction - if this is the case you should not process it yourself.
         bool ConsumeViewportMousePress(const ViewportInteraction::MouseInteraction&);
         ConsumeMouseMoveResult ConsumeViewportMouseMove(const ViewportInteraction::MouseInteraction&);
         bool ConsumeViewportMouseRelease(const ViewportInteraction::MouseInteraction&);
@@ -79,23 +79,25 @@ namespace AzToolsFramework
         void UnregisterManipulator(BaseManipulator* manipulator) override;
         void DeleteManipulatorBound(Picking::RegisteredBoundId boundId) override;
         void SetBoundDirty(Picking::RegisteredBoundId boundId) override;
-        Picking::RegisteredBoundId UpdateBound(ManipulatorId manipulatorId,
-            Picking::RegisteredBoundId boundId, const Picking::BoundRequestShapeBase& boundShapeData) override;
-
+        Picking::RegisteredBoundId UpdateBound(
+            ManipulatorId manipulatorId, Picking::RegisteredBoundId boundId,
+            const Picking::BoundRequestShapeBase& boundShapeData) override;
+     
         void DrawManipulators(
             AzFramework::DebugDisplayRequests& debugDisplay,
             const AzFramework::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction);
 
+        // LUMBERYARD_DEPRECATED(LY-117150)
         /// Check if the modifier key state has changed - if so we may need to refresh
         /// certain manipulator bounds.
         void CheckModifierKeysChanged(
             ViewportInteraction::KeyboardModifiers keyboardModifiers,
             const ViewportInteraction::MousePick& mousePick);
 
-        bool Interacting() const { return m_activeManipulator != nullptr; }
+        bool Interacting() const override { return m_activeManipulator != nullptr; }
 
-    private:
+    protected:
         /// @param rayOrigin The origin of the ray to test intersection with.
         /// @param rayDirection The direction of the ray to test intersection with.
         /// @param[out] rayIntersectionDistance The result intersecting point equals "rayOrigin + rayIntersectionDistance * rayDirection".
@@ -103,8 +105,22 @@ namespace AzToolsFramework
         AZStd::shared_ptr<BaseManipulator> PerformRaycast(
             const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float& rayIntersectionDistance);
 
-        // EditorEntityInfoNotifications
+        // EditorEntityInfoNotifications ...
         void OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool visible) override;
+
+        /// Alias for a Manipulator and intersection distance.
+        using PickedManipulator = AZStd::tuple<AZStd::shared_ptr<BaseManipulator>, float>;
+        /// Alias for a ManipulatorId and intersection distance.
+        using PickedManipulatorId = AZStd::tuple<ManipulatorId, float>;
+
+        /// Return the picked manipulator and intersection distance if a manipulator was intersected.
+        AZStd::optional<PickedManipulator> PickManipulator(const ViewportInteraction::MousePick& mousePick);
+        /// Wrapper for PickManipulator to return the ManipulatorId directly.
+        PickedManipulatorId PickManipulatorId(const ViewportInteraction::MousePick& mousePick);
+
+        /// Called once per frame after all manipulators have been drawn (and their
+        /// bounds updated if required).
+        void RefreshMouseOverState(const ViewportInteraction::MousePick& mousePick);
 
         ManipulatorManagerId m_manipulatorManagerId; ///< This manipulator manager's id.
         ManipulatorId m_nextManipulatorIdToGenerate; ///< Id to use for the next manipulator that is registered with this manager.
@@ -114,8 +130,6 @@ namespace AzToolsFramework
 
         AZStd::shared_ptr<BaseManipulator> m_activeManipulator; ///< The manipulator we are currently interacting with.
         Picking::ManipulatorBoundManager m_boundManager; ///< All active manipulator bounds that could be interacted with.
-
-        ViewportInteraction::KeyboardModifiers m_keyboardModifiers; ///< Our recorded state of the modifier keys.
     };
 
     // The main/default ManipulatorManagerId to be used for

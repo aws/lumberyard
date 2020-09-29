@@ -37,11 +37,13 @@ void WorldMonitor::Start()
 {
     if (IsEnabled())
     {
+#if ENABLE_CRY_PHYSICS
         if (m_callback)
         {
             gEnv->pPhysicalWorld->AddEventClient(EventPhysStateChange::id, WorldMonitor::StateChangeHandler, 1, 1.0f);
             gEnv->pPhysicalWorld->AddEventClient(EventPhysEntityDeleted::id, WorldMonitor::EntityRemovedHandler, 1, 1.0f);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 
@@ -49,11 +51,13 @@ void WorldMonitor::Stop()
 {
     if (IsEnabled())
     {
+#if ENABLE_CRY_PHYSICS
         if (m_callback)
         {
             gEnv->pPhysicalWorld->RemoveEventClient(EventPhysStateChange::id, WorldMonitor::StateChangeHandler, 1);
             gEnv->pPhysicalWorld->RemoveEventClient(EventPhysEntityDeleted::id, WorldMonitor::EntityRemovedHandler, 1);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 
@@ -62,6 +66,7 @@ bool WorldMonitor::IsEnabled() const
     return m_enabled;
 }
 
+#if ENABLE_CRY_PHYSICS
 int WorldMonitor::StateChangeHandler(const EventPhys* pPhysEvent)
 {
     WorldMonitor* pthis = gAIEnv.pNavigationSystem->GetWorldMonitor();
@@ -159,3 +164,4 @@ int WorldMonitor::EntityRemovedHandler(const EventPhys* pPhysEvent)
 
     return 1;
 }
+#endif // ENABLE_CRY_PHYSICS

@@ -43,13 +43,6 @@ namespace LegacyProceduralVegetation
     class VegetationPoolManager;
 }
 
-//REMARK: Please remove this declaration once the legacy terrain system
-//becomes a Gem. [LY-106934]
-namespace LegacyTerrain
-{
-    class LegacyTerrainInstanceManager;
-}
-
 struct SEntInFoliage
 {
     int id;
@@ -716,23 +709,6 @@ public:
     int GetLegacyTerrainLevelData(uint8*& octreeData, STerrainInfo& terrainInfo
                                   , bool& bSectorPalettes, EEndian& eEndian) override;
 
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::ReadMacroTextureFile instead
-    bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const override;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus instead
-    //! START
-    virtual float GetTerrainElevation(float x, float y, int nSID = GetDefSID());
-    virtual float GetTerrainZ(int x, int y);
-    virtual float GetTerrainSlope(int x, int y);
-    virtual int GetTerrainSurfaceId(int x, int y);
-    virtual bool GetTerrainHole(int x, int y);
-    virtual int GetHeightMapUnitSize();
-    virtual int GetTerrainSize();
-    virtual int GetTerrainSectorSize();
-    virtual bool IsTerrainActive();
-    //! END
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus instead
-
     virtual void SetSunDir(const Vec3& newSunOffset);
     virtual Vec3 GetSunDir() const;
     virtual Vec3 GetSunDirNormalized() const;
@@ -757,9 +733,6 @@ public:
     virtual void OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain = true);
     //! For editor
     virtual void RemoveAllStaticObjects(int nSID);
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::SetTerrainSectorTexture instead.
-    virtual void SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY);
 
     virtual void SetPhysMaterialEnumerator(IPhysMaterialEnumerator* pPhysMaterialEnumerator);
     virtual IPhysMaterialEnumerator* GetPhysMaterialEnumerator();
@@ -810,14 +783,6 @@ public:
     virtual void FreeRenderNodeState(IRenderNode* pEnt);
     virtual const char* GetLevelFilePath(const char* szFileName);
 
-    //! LUMBERYARD_DEPRECATED(LY-107351) Will be deleted in an upcoming release.
-    virtual void SetTerrainBurnedOut(int x, int y, bool bBurnedOut);
-    //! LUMBERYARD_DEPRECATED(LY-107351) Will be deleted in an upcoming release.
-    virtual bool IsTerrainBurnedOut(int x, int y);
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::LoadTerrainSurfacesFromXML instead.
-    virtual void LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID);
-
     bool LoadCompiledOctreeForEditor() override;
     virtual bool SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID);
     virtual bool GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID);
@@ -834,7 +799,9 @@ public:
     virtual void ResetParticlesAndDecals();
     virtual IRenderNode* CreateRenderNode(EERType type);
     virtual void DeleteRenderNode(IRenderNode* pRenderNode);
+#if ENABLE_CRY_PHYSICS
     virtual void SetWind(const Vec3& vWind);
+#endif // ENABLE_CRY_PHYSICS
     virtual Vec3 GetWind(const AABB& box, bool bIndoors) const;
     virtual Vec3 GetGlobalWind(bool bIndoors) const;
     virtual bool SampleWind(Vec3* pSamples, int nSamples, const AABB& volume, bool bIndoors) const;
@@ -852,9 +819,6 @@ public:
     virtual void DeleteLightSource(ILightSource* pLightSource);
     virtual bool RestoreTerrainFromDisk(int nSID);
     virtual void CheckMemoryHeap();
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::CloseTerrainTextureFile instead.
-    virtual void CloseTerrainTextureFile(int nSID);
 
     virtual int GetLoadedObjectCount();
     virtual void GetLoadedStatObjArray(IStatObj** pObjectsArray, int& nCount);
@@ -940,9 +904,6 @@ public:
     void ObjectsTreeMarkAsUncompiled(const IRenderNode* pRenderNode);
 
     //////////////////////////////////////////////////////////////////////////
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize
-    int GetTerrainTextureNodeSizeMeters() override;
 
     const char* GetLevelFolder() { return m_szLevelFolder; }
 
@@ -1073,7 +1034,6 @@ public:
     Vec3 m_vSunDirNormalized;
     float m_fSunDirUpdateTime;
     Vec3 m_vSunDirRealtime;
-    Vec3 m_vWindSpeed;
 
     Vec3 m_volFogRamp;
     Vec3 m_volFogShadowRange;
@@ -1207,17 +1167,14 @@ public:
 
     int m_nDeferredLightsNum;
 
-    Vec3* m_pWindSamplePositions;
-    size_t m_nWindSamplePositions;
+    mutable Vec3* m_pWindSamplePositions;
+    mutable size_t m_nWindSamplePositions;
 
     // functions SRenderingPass
     virtual CCamera* GetRenderingPassCamera(const CCamera& rCamera);
 
     virtual void GetSvoStaticTextures(I3DEngine::SSvoStaticTexInfo& svoInfo, PodArray<I3DEngine::SLightTI>* pLightsTI_S, PodArray<I3DEngine::SLightTI>* pLightsTI_D);
     virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, bool getDynamic);
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::IsTerrainTextureStreamingInProgress
-    bool IsTerrainTextureStreamingInProgress() const override;
 
     bool IsTerrainSyncLoad() override { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheTerrainAndProcVeget; }
     bool IsShadersSyncLoad() { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheTexturesAndShaders; }
@@ -1243,6 +1200,8 @@ public:
     ///////////////////////////////////////////////////////////////////////////////
 
     virtual void GetLightVolumes(threadID nThreadID, SLightVolume*& pLightVols, uint32& nNumVols);
+    virtual uint16 RegisterVolumeForLighting(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo);
+
     CLightVolumesMgr m_LightVolumesMgr;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -1295,8 +1254,10 @@ public:
     bool LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable);
     bool LoadUsedShadersList();
     bool PrecreateDecals();
+#if ENABLE_CRY_PHYSICS
     void LoadPhysicsData();
     void UnloadPhysicsData();
+#endif
     void LoadFlaresData();
     void FreeFoliages();
 
@@ -1556,7 +1517,10 @@ private:
     Vec3 m_vAmbGroundCol;
     float m_fAmbMaxHeight;
     float m_fAmbMinHeight;
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* m_pGlobalWind;
+    Vec3 m_vWindSpeed;
+#endif
     uint8 m_nOceanRenderFlags;
     Vec3  m_vPrevMainFrameCamPos;
     float m_fAverageCameraSpeed;
@@ -1607,6 +1571,9 @@ private:
     ITexture*   m_ptexIconEditorConnectedToConsole;
 
     std::vector<IDecalRenderNode*> m_decalRenderNodes; // list of registered decal render nodes, used to clean up longer not drawn decals
+
+    class PhysicsAreaUpdatesHandler;
+    AZStd::unique_ptr<PhysicsAreaUpdatesHandler> m_physicsAreaUpdatesHandler;
 
     PhysicsAreaUpdates m_PhysicsAreaUpdates;
 
@@ -1730,9 +1697,6 @@ private:
     ///////////////////////////////////////////////////////////////////////////
     // Octree Loading/Saving related END
     ///////////////////////////////////////////////////////////////////////////
-
-    //REMARK: Remove once the legacy terrain system becomes a Gem. [LY-106934]
-    LegacyTerrain::LegacyTerrainInstanceManager* m_legacyTerrainInstanceManager;
 };
 
 #endif // CRYINCLUDE_CRY3DENGINE_3DENGINE_H

@@ -303,14 +303,13 @@ bool QViewport::CreateRenderContext()
     HWND windowHandle = reinterpret_cast<HWND>(QWidget::winId());
 
     ERenderType renderType = GetIEditor()->GetEnv()->pRenderer->GetRenderType();
-    if (renderType == eRT_Other)
+#ifdef OTHER_ACTIVE
+    if (m_renderContextCreated && windowHandle == m_lastHwnd)
     {
-        if (m_renderContextCreated && windowHandle == m_lastHwnd)
-        {
-            // the hwnd has not changed, no need to destroy and recreate context (and swap chain etc)
-            return false;
-        }
+        // the hwnd has not changed, no need to destroy and recreate context (and swap chain etc)
+        return false;
     }
+#endif
 
     m_creatingRenderContext = true;
     DestroyRenderContext();
@@ -318,13 +317,12 @@ bool QViewport::CreateRenderContext()
     {
         m_renderContextCreated = true;
 
-        if (renderType == eRT_Other)
-        {
-            AzFramework::WindowRequestBus::Handler::BusConnect(windowHandle);
-            AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, windowHandle);
+#ifdef OTHER_ACTIVE
+        AzFramework::WindowRequestBus::Handler::BusConnect(windowHandle);
+        AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, windowHandle);
 
-            m_lastHwnd = windowHandle;
-        }
+        m_lastHwnd = windowHandle;
+#endif
 
         StorePreviousContext();
         GetIEditor()->GetEnv()->pRenderer->CreateContext(windowHandle);
@@ -946,7 +944,9 @@ void QViewport::Render()
         GetIEditor()->GetEnv()->pRenderer->Draw2dLabel(12.0f, 12.0f, 1.25f, ColorF(1, 1, 1, 1), false, "FPS: %.2f", 1.0f / m_averageFrameTime);
     }
 
+#if ENABLE_CRY_PHYSICS
     GetIEditor()->GetEnv()->pSystem->GetIPhysicsDebugRenderer()->Flush(m_lastFrameTime);
+#endif
     GetIEditor()->GetEnv()->pRenderer->EF_EndEf3D(SHDF_STREAM_SYNC, -1, -1, passInfo);
 
     if (m_mouseMovementsSinceLastFrame > 0)

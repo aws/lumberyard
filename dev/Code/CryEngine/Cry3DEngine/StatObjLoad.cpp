@@ -843,7 +843,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
                 m_nRenderMeshMemoryUsage = CMesh::ApproximateRenderMeshMemoryUsage(pFirstMeshNode->meshInfo.nVerts, pFirstMeshNode->meshInfo.nIndices);
                 CalcRadiuses();
             }
-
+#if ENABLE_CRY_PHYSICS
             //////////////////////////////////////////////////////////////////////////
             // Physicalize merged geometry.
             //////////////////////////////////////////////////////////////////////////
@@ -851,6 +851,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
             {
                 PhysicalizeCompiled(pFirstMeshNode);
             }
+#endif // ENABLE_CRY_PHYSICS
         }
     }
     //////////////////////////////////////////////////////////////////////////
@@ -1172,7 +1173,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
         m_vBoxMax = commonBBox.max;
         CalcRadiuses();
     }
-
+#if ENABLE_CRY_PHYSICS
     //////////////////////////////////////////////////////////////////////////
     // Physicalize physics proxy nodes.
     //////////////////////////////////////////////////////////////////////////
@@ -1199,6 +1200,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
     // Analyze foliage info.
@@ -1236,7 +1238,12 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
         CPhysicalizeInfoCGF* pPi = pCGF->GetPhysicalizeInfo();
         if (pPi->nRetTets)
         {
+#if ENABLE_CRY_PHYSICS
             m_pLattice = GetPhysicalWorld()->GetGeomManager()->CreateTetrLattice(pPi->pRetVtx, pPi->nRetVtx, pPi->pRetTets, pPi->nRetTets);
+#else
+            // Lattice support?
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
         }
     }
 
@@ -1397,7 +1404,9 @@ CStatObj* CStatObj::MakeStatObjFromCgfNode(CContentCGF* pCGF, CNodeCGF* pNode, b
 
     if (!bLod)
     {
+#if ENABLE_CRY_PHYSICS
         pStatObj->PhysicalizeCompiled(pNode);
+#endif
         pStatObj->AnalyzeFoliage(pStatObj->m_pRenderMesh, pCGF);
     }
     if (pNode->pSkinInfo)
@@ -1564,7 +1573,9 @@ static bool CreateNodeCGF(CContentCGF* pCGF, CStatObj* pStatObj, const char* nam
         pNode->pParent = pParent;
         pNode->pMaterial = pMaterial;
         pNode->nPhysicalizeFlags = 0;
+#if ENABLE_CRY_PHYSICS
         pStatObj->SavePhysicalizeData(pNode);
+#endif
         pCGF->AddNode(pNode);
     }
 

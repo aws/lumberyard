@@ -68,24 +68,28 @@ namespace EMStudio
         vLayout->addLayout(layout);
 
         m_actorCheckbox = new QCheckBox("Actors");
+        m_actorCheckbox->setObjectName("EMFX.ResetSettingsDialog.Actors");
         const bool hasActors = HasEntityInEditor(
             EMotionFX::GetActorManager(), &EMotionFX::ActorManager::GetNumActors, &EMotionFX::ActorManager::GetActor);
         m_actorCheckbox->setChecked(hasActors);
         m_actorCheckbox->setDisabled(!hasActors);
 
         m_motionCheckbox = new QCheckBox("Motions");
+        m_motionCheckbox->setObjectName("EMFX.ResetSettingsDialog.Motions");
         const bool hasMotions = HasEntityInEditor(
             EMotionFX::GetMotionManager(), &EMotionFX::MotionManager::GetNumMotions, &EMotionFX::MotionManager::GetMotion);
         m_motionCheckbox->setChecked(hasMotions);
         m_motionCheckbox->setDisabled(!hasMotions);
 
         m_motionSetCheckbox = new QCheckBox("Motion Sets");
+        m_motionSetCheckbox->setObjectName("EMFX.ResetSettingsDialog.MotionSets");
         const bool hasMotionSets = HasEntityInEditor(
             EMotionFX::GetMotionManager(), &EMotionFX::MotionManager::GetNumMotionSets, &EMotionFX::MotionManager::GetMotionSet);
         m_motionSetCheckbox->setChecked(hasMotionSets);
         m_motionSetCheckbox->setDisabled(!hasMotionSets);
 
         m_animGraphCheckbox = new QCheckBox("Anim Graphs");
+        m_animGraphCheckbox->setObjectName("EMFX.ResetSettingsDialog.AnimGraphs");
         const bool hasAnimGraphs = HasEntityInEditor(
             EMotionFX::GetAnimGraphManager(), &EMotionFX::AnimGraphManager::GetNumAnimGraphs, &EMotionFX::AnimGraphManager::GetAnimGraph);
         m_animGraphCheckbox->setChecked(hasAnimGraphs);

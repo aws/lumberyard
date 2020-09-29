@@ -33,7 +33,7 @@ namespace EMotionFX
 
     void TypeChoiceButton::OnCreateContextMenu()
     {
-        QMenu contextMenu(this);
+        QMenu* contextMenu = new QMenu(this);
 
         AZStd::string actionName;
         for (const AZStd::pair<AZ::TypeId, AZStd::string>& typePair : m_types)
@@ -50,13 +50,14 @@ namespace EMotionFX
                 actionName = AZStd::string::format("%s %s", m_typePrefix.c_str(), GetNameByType(type).c_str());
             }
 
-            QAction* addBoxAction = contextMenu.addAction(actionName.c_str());
+            QAction* addBoxAction = contextMenu->addAction(actionName.c_str());
             addBoxAction->setProperty("type", type.ToString<AZStd::string>().c_str());
             connect(addBoxAction, &QAction::triggered, this, &TypeChoiceButton::OnActionTriggered);
         }
 
-        contextMenu.setFixedWidth(width());
-        contextMenu.exec(mapToGlobal(QPoint(0, height())));
+        contextMenu->setFixedWidth(width());
+        connect(contextMenu, &QMenu::triggered, contextMenu, &QMenu::deleteLater);
+        contextMenu->popup(mapToGlobal(QPoint(0, height())));
     }
 
     void TypeChoiceButton::OnActionTriggered(bool checked)

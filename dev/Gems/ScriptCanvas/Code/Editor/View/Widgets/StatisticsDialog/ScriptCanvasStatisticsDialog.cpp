@@ -21,6 +21,7 @@
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
+#include <ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
 
 namespace
@@ -185,9 +186,10 @@ namespace ScriptCanvasEditor
     {
         AZ::Data::AssetInfo assetInfo;
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
-        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>())
+        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>()
+            || assetInfo.m_assetType == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
         {
-            m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId);
+            m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId, assetInfo.m_assetType);
         }
     }
 
@@ -195,7 +197,8 @@ namespace ScriptCanvasEditor
     {
         AZ::Data::AssetInfo assetInfo;
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
-        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>())
+        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>()
+            || assetInfo.m_assetType == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
         {
             m_scriptCanvasAssetTreeRoot->RemoveAsset(assetId);
         }
@@ -437,11 +440,12 @@ namespace ScriptCanvasEditor
             {
                 const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productEntry = static_cast<const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(entry);
 
-                if (productEntry->GetAssetType() == azrtti_typeid<ScriptCanvasAsset>())
+                if (productEntry->GetAssetType() == azrtti_typeid<ScriptCanvasAsset>()
+                    || productEntry->GetAssetType() == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
                 {
                     const AZ::Data::AssetId& assetId = productEntry->GetAssetId();
 
-                    m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId);
+                    m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId, productEntry->GetAssetType());
                 }
             }
         }

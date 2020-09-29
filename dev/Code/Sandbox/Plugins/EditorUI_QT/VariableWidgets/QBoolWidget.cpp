@@ -16,6 +16,7 @@
 #include "Utils.h"
 #include "AttributeItem.h"
 
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 #include <Util/Variable.h>
 #include "AttributeView.h"
 #include "IEditorParticleUtils.h"
@@ -27,6 +28,7 @@ QBoolWidget::QBoolWidget(CAttributeItem* parent)
 {
     setCheckable(true);
     setChecked(QString(m_var->GetDisplayValue()) == "true");
+    AzQtComponents::CheckBox::applyToggleSwitchStyle(this);
 
     connect(this, &QCheckBox::clicked, this, [this](int changedTo)
         {
@@ -36,7 +38,7 @@ QBoolWidget::QBoolWidget(CAttributeItem* parent)
         });
 
     m_tooltip = new QToolTipWidget(this);
-    setLayoutDirection(Qt::RightToLeft);
+    setLayoutDirection(Qt::LeftToRight);
 }
 
 QBoolWidget::~QBoolWidget()

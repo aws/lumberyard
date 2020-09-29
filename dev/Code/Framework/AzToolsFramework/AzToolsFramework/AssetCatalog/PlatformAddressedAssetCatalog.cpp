@@ -211,9 +211,15 @@ namespace AzToolsFramework
         return AssetCatalog::GetAllProductDependencies(asset);
     }
 
-    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> PlatformAddressedAssetCatalog::GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> PlatformAddressedAssetCatalog::GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList)
     {
-        return AzFramework::AssetCatalog::GetAllProductDependenciesFilter(id, exclusionList);
+        return AzFramework::AssetCatalog::GetAllProductDependenciesFilter(id, exclusionList, wildcardPatternExclusionList);
+    }
+
+
+    bool PlatformAddressedAssetCatalog::DoesAssetIdMatchWildcardPattern(const AZ::Data::AssetId& assetId, const AZStd::string& wildcardPattern)
+    {
+        return AzFramework::AssetCatalog::DoesAssetIdMatchWildcardPattern(assetId, wildcardPattern);
     }
 
     void PlatformAddressedAssetCatalog::EnumerateAssets(BeginAssetEnumerationCB beginCB, AssetEnumerationCB enumerateCB, EndAssetEnumerationCB endCB)

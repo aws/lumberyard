@@ -1016,7 +1016,7 @@ void CFragmentBrowser::OnMenuCopy()
     m_copiedItems.clear();
     m_copiedFragmentIDs.clear();
 
-    for (const auto item : UniqueSelectedItems())
+    for (const auto& item : UniqueSelectedItems())
     {
         CopyItem(item);
     }
@@ -1028,7 +1028,7 @@ QList<QTreeWidgetItem*> CFragmentBrowser::UniqueSelectedItems() const
 
     auto it = selectedItems.begin();
 
-    for (const auto item : selectedItems)
+    for (const auto& item : selectedItems)
     {
         // check if one of the predecessors of item is already in the list
 

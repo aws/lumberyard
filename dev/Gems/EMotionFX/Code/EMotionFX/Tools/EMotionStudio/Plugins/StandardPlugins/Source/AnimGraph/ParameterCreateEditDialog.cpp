@@ -51,6 +51,7 @@ namespace EMStudio
             m_createButton = new QPushButton("Apply", this);
             m_originalName = editParameter->GetName();
         }
+        m_createButton->setObjectName("EMFX.ParameterCreateEditDialog.CreateApplyButton");
         QVBoxLayout* mainLayout = new QVBoxLayout(this);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
@@ -72,6 +73,7 @@ namespace EMStudio
 
         // Add the RPE for the parameter
         m_parameterEditorWidget = aznew AzToolsFramework::ReflectedPropertyEditor(this);
+        m_parameterEditorWidget->setObjectName("EMFX.ParameterCreateEditDialog.ReflectedPropertyEditor.ParameterEditorWidget");
         m_parameterEditorWidget->SetAutoResizeLabels(false);
         m_parameterEditorWidget->setSizePolicy(QSizePolicy::Policy::MinimumExpanding, QSizePolicy::Policy::MinimumExpanding);
         m_parameterEditorWidget->SetSizeHintOffset(QSize(0, 0));

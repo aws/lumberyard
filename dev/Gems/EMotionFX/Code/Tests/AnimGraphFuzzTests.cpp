@@ -51,7 +51,8 @@ namespace EMotionFX
                 std::regex("^ObjectStream XML parse error\\."),
                 std::regex("^Unknown stream tag \\(first byte\\): '\\\\0' binary, '<' xml or '\\{' json!"),
                 std::regex("^ObjectStream JSON load error: Stream is a newer version than object stream supports\\. ObjectStream version: .*"),
-                std::regex("^Element .* in class .* is of type .* but needs to be type .*\\.")
+                std::regex("^Element .* in class .* is of type .* but needs to be type .*\\."),
+                std::regex("^Serializer failed for .* '.*'\\(0x.*\\).")
             };
 
             return IsIgnored(ignoredErrorMessages, message);

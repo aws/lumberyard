@@ -47,6 +47,7 @@ namespace PoseAligner {
         int m_forceLock;
     };
 
+#if ENABLE_CRY_PHYSICS
     class CContactReporter
         : public _i_reference_target<uint>
     {
@@ -73,6 +74,7 @@ namespace PoseAligner {
         float m_length;
     };
     typedef _smart_ptr<CContactRaycast> CContactRaycastPtr;
+#endif // ENABLE_CRY_PHYSICS
 
     struct SChainDesc
     {
@@ -89,7 +91,9 @@ namespace PoseAligner {
         bool bForceNoIntersection;
         bool bTargetSmoothing;
 
+#if ENABLE_CRY_PHYSICS
         CContactReporterPtr pContactReporter;
+#endif
         int contactJointIndex;
 
     public:
@@ -110,6 +114,7 @@ namespace PoseAligner {
     public:
         ILINE bool IsValid() const
         {
+#if ENABLE_CRY_PHYSICS
             if (!solver)
             {
                 return false;
@@ -123,6 +128,9 @@ namespace PoseAligner {
                 return false;
             }
             return true;
+#else
+            return false;
+#endif // ENABLE_CRY_PHYSICS
         }
     };
 
@@ -145,7 +153,9 @@ namespace PoseAligner {
         const Vec3& GetTargetPositionFiltered() const { return m_targetPositionFiltered; }
 
         void UpdateFromAnimations(ICharacterInstance& character, const QuatT& location, const float time);
+#if ENABLE_CRY_PHYSICS
         void FindContact(const QuatT& location, IPhysicalEntity* physicalEntity);
+#endif
         void FilterTargetLocation(const float time);
         float ComputeTargetBlendValue(ISkeletonPose& skeletonPose, const float time, const float weight);
         bool ComputeRootOffsetExtents(float& offsetMin, float& offsetMax);

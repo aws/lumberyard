@@ -22,19 +22,19 @@ namespace EMotionFX
     class AnimGraphInstance;
 
     /**
-     * AnimGraphServantParameterAction is a specific type of trigger action that send a parameter (change) event to the servant graph.
+     * AnimGraphFollowerParameterAction is a specific type of trigger action that send a parameter (change) event to the follower graph.
      */
-    class EMFX_API AnimGraphServantParameterAction
+    class EMFX_API AnimGraphFollowerParameterAction
         : public AnimGraphTriggerAction
         , private AZ::Data::AssetBus::MultiHandler
     {
     public:
-        AZ_RTTI(AnimGraphServantParameterAction, "{F24D01FF-C245-402E-877B-2ED29B952979}", AnimGraphTriggerAction)
+        AZ_RTTI(AnimGraphFollowerParameterAction, "{F24D01FF-C245-402E-877B-2ED29B952979}", AnimGraphTriggerAction)
         AZ_CLASS_ALLOCATOR_DECL
 
-        AnimGraphServantParameterAction();
-        AnimGraphServantParameterAction(AnimGraph* animGraph);
-        ~AnimGraphServantParameterAction() override;
+        AnimGraphFollowerParameterAction();
+        AnimGraphFollowerParameterAction(AnimGraph* animGraph);
+        ~AnimGraphFollowerParameterAction() override;
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
 

@@ -22,10 +22,6 @@ def build(bld):
 
         editor = dict(
             platforms   = ['win', 'darwin', 'linux'],
-            features    = ['qt5'],
-            uselib      = ['QT5CORE','QT5GUI','QT5WIDGETS',
-                           'QT5NETWORK' # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
-                          ],
             defines     = ['SURFACEDATA_EDITOR'],
             includes    = ['.', 
                            'Include',
@@ -34,12 +30,6 @@ def build(bld):
                            bld.Path('Code/Sandbox/Editor/Include'),
                            bld.Path('Code/CryEngine/CryCommon')
                            ],
-            use         = ['EditorUI_QT',
-                           'EditorCommon',
-                           'EditorLib', 
-                           'AssetBuilderSDK',
-                           'AzToolsFramework', 
-                           'AzQtComponents'],
             use_required_gems = True,
         ),
     )

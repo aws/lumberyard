@@ -99,12 +99,14 @@ public:
     uint32 RemoveAllAttachments();
     uint32 ProjectAllAttachment();
 
+#if ENABLE_CRY_PHYSICS
     void PhysicalizeAttachment(int idx, int nLod, IPhysicalEntity* pent, const Vec3& offset);
     int UpdatePhysicalizedAttachment(int idx, IPhysicalEntity* pent, const QuatT& offset);
     int UpdatePhysAttachmentHideState(int idx, IPhysicalEntity* pent, const Vec3& offset);
 
     virtual void PhysicalizeAttachment(int idx, IPhysicalEntity* pent = 0, int nLod = 0);
     virtual void DephysicalizeAttachment(int idx, IPhysicalEntity* pent = 0);
+#endif // ENABLE_CRY_PHYSICS
 
     void Serialize(TSerialize ser);
 

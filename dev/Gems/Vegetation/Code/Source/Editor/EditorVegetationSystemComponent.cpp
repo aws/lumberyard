@@ -17,6 +17,8 @@
 
 #include <CrySystemBus.h>
 
+#include <AzToolsFramework/UI/PropertyEditor/GenericComboBoxCtrl.h>
+
 namespace Vegetation
 {
     void EditorVegetationSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services)
@@ -55,12 +57,15 @@ namespace Vegetation
 
     void EditorVegetationSystemComponent::Activate()
     {
-
+        // This is necessary for the m_spawnerType in Descriptor.cpp to display properly as a ComboBox
+        m_propertyHandler = aznew AzToolsFramework::GenericComboBoxHandler<AZ::TypeId>();
+        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, m_propertyHandler);
     }
 
     void EditorVegetationSystemComponent::Deactivate()
     {
-
+        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, m_propertyHandler);
+        delete m_propertyHandler;
     }
 
 }

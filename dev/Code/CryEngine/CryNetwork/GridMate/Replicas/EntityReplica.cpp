@@ -716,6 +716,7 @@ namespace GridMate
             FRAME_PROFILER("SerializeAspect.NetSerialize", GetISystem(), PROFILE_NETWORK);
             gameObject->NetSerialize(ser, aspect, 0, 0);
         }
+#if ENABLE_CRY_PHYSICS
         else if (aspect == eEA_Physics)
         {
             FRAME_PROFILER("SerializeAspect.eEA_Physics", GetISystem(), PROFILE_NETWORK);
@@ -725,6 +726,7 @@ namespace GridMate
                 serializationComponent->SerializeOnly(ser, { IComponentPhysics::Type() });
             }
         }
+#endif
         else if (aspect == eEA_Script)
         {
             FRAME_PROFILER("SerializationAspect.eEA_Script",GetISystem(),PROFILE_NETWORK);

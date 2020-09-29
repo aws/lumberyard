@@ -28,6 +28,10 @@
 #include <Source/EditorColliderComponent.h>
 #include <Source/EditorShapeColliderComponent.h>
 #include <Source/EditorForceRegionComponent.h>
+#include <Source/EditorJointComponent.h>
+#include <Source/EditorBallJointComponent.h>
+#include <Source/EditorFixedJointComponent.h>
+#include <Source/EditorHingeJointComponent.h>
 #include <Source/Pipeline/MeshExporter.h>
 #include <Source/Pipeline/MeshBehavior.h>
 #include <Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.h>
@@ -59,6 +63,10 @@ namespace PhysX
                     EditorColliderComponent::CreateDescriptor(),
                     EditorShapeColliderComponent::CreateDescriptor(),
                     EditorForceRegionComponent::CreateDescriptor(),
+                    EditorJointComponent::CreateDescriptor(),
+                    EditorBallJointComponent::CreateDescriptor(),
+                    EditorFixedJointComponent::CreateDescriptor(),
+                    EditorHingeJointComponent::CreateDescriptor(),
                     Pipeline::MeshExporter::CreateDescriptor(),
                     Pipeline::MeshBehavior::CreateDescriptor(),
                     Pipeline::CgfMeshAssetBuilderComponent::CreateDescriptor()

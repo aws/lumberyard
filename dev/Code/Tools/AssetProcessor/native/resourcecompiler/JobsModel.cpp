@@ -356,6 +356,50 @@ namespace AssetProcessor
         endResetModel();
     }
 
+    QModelIndex JobsModel::GetJobFromProduct(const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry, AzToolsFramework::AssetDatabase::AssetDatabaseConnection& assetDatabaseConnection)
+    {
+        AZStd::string sourceForProduct;
+        assetDatabaseConnection.QuerySourceByProductID(
+            productEntry.m_productID,
+            [&](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry)
+        {
+            sourceForProduct = sourceEntry.m_sourceName;
+            return false;
+        });
+
+        if (sourceForProduct.empty())
+        {
+            return QModelIndex();
+        }
+
+        AzToolsFramework::AssetDatabase::JobDatabaseEntry foundJobEntry;
+        assetDatabaseConnection.QueryJobByProductID(
+            productEntry.m_productID,
+            [&](AzToolsFramework::AssetDatabase::JobDatabaseEntry& jobEntry)
+        {
+            foundJobEntry = jobEntry;
+            return false;
+        });
+
+        if (foundJobEntry.m_jobID == AzToolsFramework::AssetDatabase::InvalidEntryId)
+        {
+            return QModelIndex();
+        }
+        return GetJobFromSourceAndJobInfo(sourceForProduct, foundJobEntry.m_platform, foundJobEntry.m_jobKey);
+    }
+
+    QModelIndex JobsModel::GetJobFromSourceAndJobInfo(const AZStd::string& source, const AZStd::string& platform, const AZStd::string& jobKey)
+    {
+        QueueElementID elementId(source.c_str(), platform.c_str(), jobKey.c_str());
+        auto iter = m_cachedJobsLookup.find(elementId);
+        if (iter == m_cachedJobsLookup.end())
+        {
+            return QModelIndex();
+        }
+
+        return index(iter.value(), 0, QModelIndex());
+    }
+
     void JobsModel::OnJobStatusChanged(JobEntry entry, AzToolsFramework::AssetSystem::JobStatus status)
     {
         QueueElementID elementId(entry.m_databaseSourceName, entry.m_platformInfo.m_identifier.c_str(), entry.m_jobKey);

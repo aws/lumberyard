@@ -9,8 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "WindVolumeComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Math/Transform.h>
@@ -49,7 +51,7 @@ namespace LmbrCentral
                 ->Field("Configuration", &WindVolumeComponent::m_configuration)
             ;
         }
-
+#if ENABLE_CRY_PHYSICS
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<WindVolumeRequestBus>("WindVolumeRequestBus")
@@ -67,6 +69,7 @@ namespace LmbrCentral
                 ->Event("GetWindDirection", &WindVolumeRequestBus::Events::GetWindDirection)
             ;
         }
+#endif
     }
 
     WindVolumeComponent::WindVolumeComponent(const WindVolumeConfiguration& configuration)
@@ -84,3 +87,5 @@ namespace LmbrCentral
         WindVolume::Deactivate();
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

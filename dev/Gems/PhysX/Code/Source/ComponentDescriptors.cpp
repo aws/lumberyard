@@ -24,6 +24,10 @@
 #include <Source/ShapeColliderComponent.h>
 #include <Source/ForceRegionComponent.h>
 #include <Source/StaticRigidBodyComponent.h>
+#include <Source/JointComponent.h>
+#include <Source/BallJointComponent.h>
+#include <Source/FixedJointComponent.h>
+#include <Source/HingeJointComponent.h>
 
 namespace PhysX
 {
@@ -41,7 +45,11 @@ namespace PhysX
             CapsuleColliderComponent::CreateDescriptor(),
             ShapeColliderComponent::CreateDescriptor(),
             ForceRegionComponent::CreateDescriptor(),
-            StaticRigidBodyComponent::CreateDescriptor()
+            StaticRigidBodyComponent::CreateDescriptor(),
+            JointComponent::CreateDescriptor(),
+            BallJointComponent::CreateDescriptor(),
+            FixedJointComponent::CreateDescriptor(),
+            HingeJointComponent::CreateDescriptor()
         };
 
         return descriptors;

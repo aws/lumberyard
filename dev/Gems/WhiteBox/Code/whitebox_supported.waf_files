@@ -7,7 +7,8 @@
     },
     "auto": {
         "Include": [
-            "Include/WhiteBox/WhiteBoxBus.h"
+            "Include/WhiteBox/WhiteBoxBus.h",
+            "Include/WhiteBox/WhiteBoxComponentBus.h"
         ],
         "Source": [
             "Source/WhiteBoxAllocator.cpp",
@@ -30,8 +31,10 @@
             "Source/Rendering/WhiteBoxRenderMeshInterface.h",
             "Source/Rendering/WhiteBoxRenderData.cpp",
             "Source/Rendering/WhiteBoxRenderData.h",
+            "Source/Rendering/WhiteBoxMaterial.cpp",
             "Source/Rendering/WhiteBoxMaterial.h",
-            "Source/Rendering/WhiteBoxMaterial.cpp"
+            "Source/Rendering/WhiteBoxNullRenderMesh.cpp",
+            "Source/Rendering/WhiteBoxNullRenderMesh.h"
         ],
         "Source/Rendering/Legacy": [
             "Source/Rendering/Legacy/WhiteBoxLegacyRenderMesh.cpp",

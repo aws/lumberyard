@@ -32,8 +32,6 @@ namespace PhysX
             QToolButton* GetEditButton();
 
         private:
-            bool eventFilter(QObject *object, QEvent *event) override;
-
             QComboBox* m_comboBox = nullptr;
             QToolButton* m_editButton = nullptr;
         };

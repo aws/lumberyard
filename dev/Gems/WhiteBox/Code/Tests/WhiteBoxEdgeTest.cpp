@@ -21,7 +21,6 @@
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <WhiteBox/WhiteBoxToolApi.h>
-#include <gmock/gmock-matchers.h>
 
 namespace UnitTest
 {

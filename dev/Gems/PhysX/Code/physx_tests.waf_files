@@ -16,7 +16,9 @@
             "Tests/PhysXTestUtil.h",
             "Tests/PhysXTestUtil.cpp",
             "Tests/PhysXMultithreadingTest.cpp",
-            "Tests/PhysXBenchmarks.cpp"
+            "Tests/PhysXBenchmarks.cpp",
+            "Tests/PhysXWindTest.cpp",
+            "Tests/PhysXJointsTest.cpp"
         ]
     }
 }

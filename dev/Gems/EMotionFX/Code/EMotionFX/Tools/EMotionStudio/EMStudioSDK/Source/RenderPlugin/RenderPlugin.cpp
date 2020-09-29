@@ -768,7 +768,7 @@ namespace EMStudio
             {
                 RenderViewWidget* renderView = m_viewWidgets[i];
 
-                groupName = AZStd::string::format("%s_%d", m_currentLayout->GetName(), i);
+                groupName = AZStd::string::format("%s_%zu", m_currentLayout->GetName(), i);
 
                 settings.beginGroup(groupName.c_str());
                 renderView->SaveOptions(&settings);
@@ -793,7 +793,7 @@ namespace EMStudio
             {
                 RenderViewWidget* renderView = m_viewWidgets[i];
 
-                groupName = AZStd::string::format("%s_%d", m_currentLayout->GetName(), i);
+                groupName = AZStd::string::format("%s_%zu", m_currentLayout->GetName(), i);
 
                 settings.beginGroup(groupName.c_str());
                 renderView->LoadOptions(&settings);

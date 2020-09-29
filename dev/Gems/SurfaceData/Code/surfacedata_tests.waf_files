@@ -1,6 +1,8 @@
 {
     "auto": {
         "Tests": [
+            "Include/SurfaceData/Tests/SurfaceDataTestMocks.h",
+            "Tests/SurfaceDataColliderComponentTest.cpp",
             "Tests/SurfaceDataTest.cpp"
         ]
     }

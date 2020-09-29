@@ -44,6 +44,7 @@ namespace AZ
 
             void ManifestWidget::BuildFromScene(const AZStd::shared_ptr<Containers::Scene>& scene)
             {
+                AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
                 ui->m_tabs->clear();
                 m_pages.clear();
                 
@@ -61,6 +62,10 @@ namespace AZ
                     AddObject(value);
                 }
 
+                for (ManifestWidgetPage* page : m_pages)
+                {
+                    page->RefreshPage();
+                }
 
                 // Make sure to reset the active tab if the active tab is now empty
                 ManifestWidgetPage* currentPage = qobject_cast<ManifestWidgetPage*>(ui->m_tabs->currentWidget());
@@ -79,6 +84,7 @@ namespace AZ
 
             bool ManifestWidget::AddObject(const AZStd::shared_ptr<DataTypes::IManifestObject>& object)
             {
+                AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
                 for (ManifestWidgetPage* page : m_pages)
                 {
                     if (page->SupportsType(object))

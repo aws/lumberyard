@@ -15,6 +15,9 @@
 
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "System.h"
 #include "PhysRenderer.h"
 #include "IRenderAuxGeom.h"
@@ -739,3 +742,4 @@ void CPhysRenderer::DrawGeometry(int itype, const void* pGeomData, geom_world_da
 }
 
 
+#endif // ENABLE_CRY_PHYSICS

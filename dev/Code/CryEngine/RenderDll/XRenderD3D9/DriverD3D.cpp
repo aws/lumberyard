@@ -4641,9 +4641,11 @@ void CD3D9Renderer::RT_EndFrame(bool isLoading)
         }
 
         ++nIconIndex;
-
-        Draw2dImageList();
     }
+
+    // The C3DEngine::DisplayInfo may draw a memory usage icon which in the same frame but happens before r_DisplayInfo is turned off
+    // Always call Draw2dImageList() to draw and clear the 2d image lists. 
+    Draw2dImageList();
 
     m_prevCamera = m_RP.m_TI[m_RP.m_nProcessThreadID].m_cam;
 

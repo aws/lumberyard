@@ -14,9 +14,6 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/Entity.h>
-#include <AzCore/Math/ToString.h>
-#include <AzCore/Math/Vector3.h>
-#include <AzCore/Math/Quaternion.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
@@ -28,20 +25,6 @@
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 
 #include <QAction>
-
-// make gtest/gmock aware of these types so when a failure occurs we get more useful output
-namespace AZ
-{
-    std::ostream& operator<<(std::ostream& os, const AZ::Vector3& vec)
-    {
-        return os << AZ::ToString(vec).c_str();
-    }
-
-    std::ostream& operator<<(std::ostream& os, const AZ::Quaternion& quat)
-    {
-        return os << AZ::ToString(quat).c_str();
-    }
-} // namespace AZ
 
 using namespace AzToolsFramework;
 
@@ -147,11 +130,157 @@ namespace UnitTest
         m_propertyDisplayInvalidated = true;
     }
 
+    void MockPerforceCommand::ExecuteCommand()
+    {
+        m_rawOutput.Clear();
+        m_applicationFound = true;
+
+        if (m_commandArgs == "set")
+        {
+            m_rawOutput.outputResult = 
+                R"(P4PORT=ssl:unittest.amazon.com:1666 (set))" "\r\n"
+                "\r\n";
+        }
+        else if (m_commandArgs == "info")
+        {
+            m_rawOutput.outputResult =
+                R"(... userName unittest)" "\r\n"
+                R"(... clientName unittest)" "\r\n"
+                R"(... clientRoot c:\depot)" "\r\n"
+                R"(... clientLock none)" "\r\n"
+                R"(... clientCwd c:\depot\dev\Engine\Fonts)" "\r\n"
+                R"(... clientHost unittest)" "\r\n"
+                R"(... clientCase insensitive)" "\r\n"
+                R"(... peerAddress 127.0.0.1:64565)" "\r\n"
+                R"(... clientAddress 127.0.0.1)" "\r\n"
+                R"(... serverName unittest)" "\r\n"
+                R"(... lbr.replication readonly)" "\r\n"
+                R"(... monitor enabled)" "\r\n"
+                R"(... security enabled)" "\r\n"
+                R"(... externalAuth enabled)" "\r\n"
+                R"(... serverAddress unittest.amazon.com:1666)" "\r\n"
+                R"(... serverRoot /data/repos/p4root/root)" "\r\n"
+                R"(... serverDate 2020/01/01 10:00:00 -0500 PST)" "\r\n"
+                R"(... tzoffset -28800)" "\r\n"
+                R"(... serverUptime 1234:12:34)" "\r\n"
+                R"(... serverVersion P4D/LINUX33X86_64/2020.4/1234567 (2020/06/06))" "\r\n"
+                R"(... serverEncryption encrypted)" "\r\n"
+                R"(... serverCertExpires Dec 24 04:10:00 3030 GMT)" "\r\n"
+                R"(... ServerID unittest)" "\r\n"
+                R"(... serverServices edge-server)" "\r\n"
+                R"(... authServer ssl:127.0.0.1:1666)" "\r\n"
+                R"(... changeServer ssl:127.0.0.1:1666)" "\r\n"
+                R"(... serverLicense ssl:127.0.0.1:1666)" "\r\n"
+                R"(... caseHandling insensitive)" "\r\n"
+                R"(... replica ssl:127.0.0.1:1666)" "\r\n"
+                "\r\n";
+        }
+        else if (m_commandArgs.starts_with("changes"))
+        {
+            m_rawOutput.outputResult =
+                R"(... change 12345)" "\r\n"
+                R"(... time 1234565432)" "\r\n"
+                R"(... user unittest)" "\r\n"
+                R"(... client unittest_workspace)" "\r\n"
+                R"(... status pending)" "\r\n"
+                R"(... changeType public)" "\r\n"
+                R"(... desc *Lumberyard Auto)" "\r\n"
+                "\r\n";
+        }
+        else if (m_commandArgs.starts_with("fstat"))
+        {
+            m_rawOutput.outputResult = m_fstatResponse;
+            m_rawOutput.errorResult = m_fstatErrorResponse;
+
+            if (!m_persistFstatResponse)
+            {
+                m_fstatResponse = m_fstatErrorResponse = "";
+            }
+        }
+        else if (m_commandArgs.starts_with("add"))
+        {
+            if (m_addCallback)
+            {
+                m_addCallback(m_commandArgs);
+            }
+        }
+        else if (m_commandArgs.starts_with("edit"))
+        {
+            if (m_editCallback)
+            {
+                m_editCallback(m_commandArgs);
+            }
+        }
+        else if (m_commandArgs.starts_with("move"))
+        {
+            if (m_moveCallback)
+            {
+                m_moveCallback(m_commandArgs);
+            }
+        }
+        else if (m_commandArgs.starts_with("delete"))
+        {
+            if (m_deleteCallback)
+            {
+                m_deleteCallback(m_commandArgs);
+            }
+        }
+    }
+
+    void MockPerforceCommand::ExecuteRawCommand()
+    {
+        ExecuteCommand();
+    }
+
+    void WaitForSourceControl(AZStd::binary_semaphore& waitSignal)
+    {
+        constexpr int WaitTimeMS = 2;
+        constexpr int TimeLimitMS = 5000;
+
+        int retryLimit = TimeLimitMS / WaitTimeMS;
+
+        do
+        {
+            AZ::TickBus::ExecuteQueuedEvents();
+            --retryLimit;
+        }
+        while (!waitSignal.try_acquire_for(AZStd::chrono::milliseconds(WaitTimeMS)) && retryLimit >= 0);
+
+        ASSERT_GE(retryLimit, 0);
+    }
+
+    SourceControlTest::SourceControlTest()
+    {
+        BusConnect();
+    }
+
+    SourceControlTest::~SourceControlTest()
+    {
+        BusDisconnect();
+    }
+
+    void SourceControlTest::ConnectivityStateChanged(const AzToolsFramework::SourceControlState state)
+    {
+        m_connected = (state == AzToolsFramework::SourceControlState::Active);
+        m_connectSignal.release();
+    }
+
+    void SourceControlTest::EnableSourceControl()
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(
+            &AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, true);
+
+        WaitForSourceControl(m_connectSignal);
+        ASSERT_TRUE(m_connected);
+    }
+
     AZ::EntityId CreateDefaultEditorEntity(const char* name, AZ::Entity** outEntity /*= nullptr*/)
     {
-        AZ::Entity* entity = nullptr;
+        AZ::EntityId entityId;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            entity, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity, name);
+            entityId, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntity, name);
+
+        AZ::Entity* entity = GetEntityById(entityId);
 
         entity->Deactivate();
 
@@ -185,8 +314,8 @@ namespace UnitTest
 
         EntityCompositionRequests::AddExistingComponentsOutcome componentAddResult;
         EntityCompositionRequestBus::BroadcastResult(
-            componentAddResult, &EntityCompositionRequests::AddExistingComponentsToEntity,
-            entity, newComponents);
+            componentAddResult, &EntityCompositionRequests::AddExistingComponentsToEntityById,
+            entity->GetId(), newComponents);
 
         if (outEntity)
         {

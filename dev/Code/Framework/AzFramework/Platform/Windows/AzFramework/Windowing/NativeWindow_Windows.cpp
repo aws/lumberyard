@@ -86,7 +86,20 @@ namespace AzFramework
             }
         }
 
-        // These will change from the external size to the client area size once we receive a WM_Size message
+        const DWORD windowStyle = WS_OVERLAPPEDWINDOW;
+        const BOOL windowHasMenu = FALSE;
+
+        // Adjust the window size so that the geometry we were given is the size of the client area.
+        RECT windowRect =
+        {
+            static_cast<LONG>(geometry.m_posX),
+            static_cast<LONG>(geometry.m_posY),
+            static_cast<LONG>(geometry.m_posX + geometry.m_width),
+            static_cast<LONG>(geometry.m_posY + geometry.m_height)
+        };
+        AdjustWindowRect(&windowRect, windowStyle, windowHasMenu);
+
+        // These are to store the client sizes, which will be smaller or equal to the window size
         m_width = geometry.m_width;
         m_height = geometry.m_height;
 
@@ -94,7 +107,7 @@ namespace AzFramework
         m_win32Handle = CreateWindow(
             s_defaultClassName, title.c_str(),
             WS_OVERLAPPEDWINDOW,
-            geometry.m_posX, geometry.m_posY, geometry.m_width, geometry.m_height,
+            geometry.m_posX, geometry.m_posY, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top,
             NULL, NULL, hInstance, NULL);
 
         if (m_win32Handle == nullptr)
@@ -192,12 +205,15 @@ namespace AzFramework
 
     void NativeWindowImpl_Win32::WindowSizeChanged(const uint32_t width, const uint32_t height)
     {
-        m_width = width;
-        m_height = height;
-
-        if (m_activated)
+        if (m_width != width || m_height != height)
         {
-            WindowNotificationBus::Event(m_win32Handle, &WindowNotificationBus::Events::OnWindowResized, width, height);
+            m_width = width;
+            m_height = height;
+
+            if (m_activated)
+            {
+                WindowNotificationBus::Event(m_win32Handle, &WindowNotificationBus::Events::OnWindowResized, width, height);
+            }
         }
     }
 

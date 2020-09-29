@@ -21,7 +21,7 @@ namespace AzToolsFramework
 {
     /// The default selection/input handler for the editor (includes handling ComponentMode).
     class EditorDefaultSelection
-        : public ViewportInteraction::ViewportSelectionRequests
+        : public ViewportInteraction::InternalViewportSelectionRequests
         , private ActionOverrideRequestBus::Handler
         , private ComponentModeFramework::ComponentModeSystemRequestBus::Handler
     {
@@ -41,8 +41,10 @@ namespace AzToolsFramework
         void SetOverridePhantomWidget(QWidget* phantomOverrideWidget);
 
     private:
-        // ViewportInteraction::ViewportSelectionRequests ...
-        bool HandleMouseInteraction(
+        // ViewportInteraction::InternalMouseViewportRequests ...
+        bool InternalHandleMouseViewportInteraction(
+            const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
+        bool InternalHandleMouseManipulatorInteraction(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
         void DisplayViewportSelection(
             const AzFramework::ViewportInfo& viewportInfo,
@@ -108,5 +110,8 @@ namespace AzToolsFramework
 
         AZStd::vector<AZStd::shared_ptr<ActionOverrideMapping>> m_actions; ///< Currently bound actions (corresponding to those set
                                                                            ///< on the override widget).
+
+        AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> m_manipulatorManager; ///< The default manipulator manager.
+        ViewportInteraction::MouseInteraction m_currentInteraction; ///< Current mouse interaction to be used for drawing manipulators.
     };
 } // namespace AzToolsFramework

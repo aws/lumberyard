@@ -212,7 +212,7 @@ namespace SceneUnitTest
         {
             AZ::Outcome<Scene*, AZStd::string> createSceneOutcome = AZ::Failure<AZStd::string>("");
 
-            AZStd::string sceneName = AZStd::string::format("scene %u", i);
+            AZStd::string sceneName = AZStd::string::format("scene %zu", i);
             AzFramework::SceneSystemRequestBus::BroadcastResult(createSceneOutcome, &AzFramework::SceneSystemRequestBus::Events::CreateScene, sceneName);
             scenes[i] = createSceneOutcome.GetValue();
         }

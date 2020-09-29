@@ -39,6 +39,32 @@ namespace AssetProcessor
         return itr != m_fileInfoMap.end();
     }
 
+    bool FileStateCache::GetHash(const QString& absolutePath, FileHash* foundHash)
+    {
+        LockGuardType scopeLock(m_mapMutex);
+        auto fileInfoItr = m_fileInfoMap.find(PathToKey(absolutePath));
+
+        if(fileInfoItr == m_fileInfoMap.end())
+        {
+            // No info on this file, return false
+            return false;
+        }
+
+        auto itr = m_fileHashMap.find(PathToKey(absolutePath));
+
+        if (itr != m_fileHashMap.end())
+        {
+            *foundHash = itr.value();
+            return true;
+        }
+
+        // There's no hash stored yet or its been invalidated, calculate it
+        *foundHash = AssetUtilities::GetFileHash(absolutePath.toUtf8().constData(), true);
+
+        m_fileHashMap[PathToKey(absolutePath)] = *foundHash;
+        return true;
+    }
+
     void FileStateCache::AddInfoSet(QSet<AssetFileInfo> infoSet)
     {
         LockGuardType scopeLock(m_mapMutex);
@@ -54,6 +80,7 @@ namespace AssetProcessor
         LockGuardType scopeLock(m_mapMutex);
 
         AddOrUpdateFileInternal(fileInfo);
+        InvalidateHash(absolutePath);
 
         if(fileInfo.isDir())
         {
@@ -67,6 +94,7 @@ namespace AssetProcessor
         LockGuardType scopeLock(m_mapMutex);
 
         AddOrUpdateFileInternal(fileInfo);
+        InvalidateHash(absolutePath);
     }
 
     void FileStateCache::RemoveFile(const QString& absolutePath)
@@ -91,9 +119,21 @@ namespace AssetProcessor
                         continue;
                     }
 
-                    itr++;
+                    ++itr;
                 }
             }
+        }
+
+        InvalidateHash(absolutePath);
+    }
+
+    void FileStateCache::InvalidateHash(const QString& absolutePath)
+    {
+        auto fileHashItr = m_fileHashMap.find(PathToKey(absolutePath));
+
+        if (fileHashItr != m_fileHashMap.end())
+        {
+            m_fileHashMap.erase(fileHashItr);
         }
     }
 
@@ -151,6 +191,18 @@ namespace AssetProcessor
     bool FileStatePassthrough::Exists(const QString& absolutePath) const
     {
         return QFile(absolutePath).exists();
+    }
+
+    bool FileStatePassthrough::GetHash(const QString& absolutePath, FileHash* foundHash)
+    {
+        if(!Exists(absolutePath))
+        {
+            return false;
+        }
+
+        *foundHash = AssetUtilities::GetFileHash(absolutePath.toUtf8().constData(), true);
+
+        return true;
     }
 
     bool FileStateInfo::operator==(const FileStateInfo& rhs) const

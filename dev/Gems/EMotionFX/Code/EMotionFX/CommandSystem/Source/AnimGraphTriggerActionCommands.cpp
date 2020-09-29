@@ -44,7 +44,7 @@ namespace CommandSystem
 
         if (insertAt)
         {
-            command += AZStd::string::format(" -insertAt %d", insertAt.value());
+            command += AZStd::string::format(" -insertAt %zu", insertAt.value());
         }
 
         if (contents)
@@ -202,7 +202,7 @@ namespace CommandSystem
     void RemoveTransitionAction(const EMotionFX::AnimGraphStateTransition* transition, const size_t actionIndex,
         MCore::CommandGroup* commandGroup, bool executeInsideCommand)
     {
-        AZStd::string command = AZStd::string::format("%s -%s %i -%s %s -actionIndex %d",
+        AZStd::string command = AZStd::string::format("%s -%s %i -%s %s -actionIndex %zu",
             CommandAnimGraphRemoveTransitionAction::s_commandName,
             EMotionFX::ParameterMixinAnimGraphId::s_parameterName, transition->GetAnimGraph()->GetID(),
             EMotionFX::ParameterMixinTransitionId::s_parameterName, transition->GetId().ToString().c_str(),
@@ -317,7 +317,7 @@ namespace CommandSystem
 
         if (insertAt)
         {
-            command += AZStd::string::format(" -insertAt %d", insertAt.value());
+            command += AZStd::string::format(" -insertAt %zu", insertAt.value());
         }
 
         if (contents)
@@ -489,7 +489,7 @@ namespace CommandSystem
     void RemoveStateAction(const EMotionFX::AnimGraphNode* state, const size_t actionIndex,
         MCore::CommandGroup* commandGroup, bool executeInsideCommand)
     {
-        AZStd::string command = AZStd::string::format("%s -%s %i -%s %s -actionIndex %d",
+        AZStd::string command = AZStd::string::format("%s -%s %i -%s %s -actionIndex %zu",
             CommandAnimGraphRemoveStateAction::s_commandName,
             EMotionFX::ParameterMixinAnimGraphId::s_parameterName, state->GetAnimGraph()->GetID(),
             EMotionFX::ParameterMixinAnimGraphNodeId::s_parameterName, state->GetId().ToString().c_str(),

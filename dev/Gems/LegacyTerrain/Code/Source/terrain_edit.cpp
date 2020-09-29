@@ -14,7 +14,7 @@
 // Description : add/remove static objects, modify hmap (used by editor)
 
 
-#include "StdAfx.h"
+#include "LegacyTerrain_precompiled.h"
 
 #include "terrain.h"
 #include "terrain_sector.h"
@@ -114,10 +114,9 @@ static float GetHeight(const float* heightmap, int heightmapSize, int x, int y)
     return heightmap[x * heightmapSize + y];
 }
 
-void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* weightmap)
+void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const float* heightmap, int weightmapSize, const ITerrain::SurfaceWeight* weightmap, bool heightsChanged)
 {
     LOADING_TIME_PROFILE_SECTION;
-    FUNCTION_PROFILER_3DENGINE;
 
     const float StartTime = GetCurAsyncTimeSec();
     const Meter MetersPerUnit = CTerrain::GetHeightMapUnitSize();
@@ -213,6 +212,8 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
             }
 
             // Build height-based error metrics for sector.
+            // We only need to do this if the heights actually changed (versus just painting layers, etc)
+            if (heightsChanged)
             {
                 if (!leafNode->m_ZErrorFromBaseLOD)
                 {
@@ -228,13 +229,16 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
                     sectorHasMeshData);
 
                 assert(leafNode->m_ZErrorFromBaseLOD[0] == 0);
-            }
 
-            leafNode->PropagateChangesToRoot();
+                leafNode->PropagateChangesToRoot();
+            }
         }
     }
 
-    InitHeightfieldPhysics();
+    if (heightsChanged)
+    {
+        InitHeightfieldPhysics();
+    }
 
     if (GetCurAsyncTimeSec() - StartTime > 1)
     {

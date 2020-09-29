@@ -272,7 +272,7 @@ namespace Driller
 
             for (VRAM::CategoryInfo* currentCategory : m_categories)
             {
-                const AZStd::string categoryInfo = AZStd::string::format("%s,%u,%u,\n", currentCategory->m_categoryName, currentCategory->m_allocations.size(), currentCategory->m_allocatedMemory);
+                const AZStd::string categoryInfo = AZStd::string::format("%s,%zu,%zu,\n", currentCategory->m_categoryName, currentCategory->m_allocations.size(), currentCategory->m_allocatedMemory);
                 file.Write(categoryInfo.c_str(), categoryInfo.size());
             }
 
@@ -358,11 +358,11 @@ namespace Driller
                 {
                     if (isDeallocation)
                     {
-                        field = AZStd::string::format("-%u", allocationInformation->m_size);
+                        field = AZStd::string::format("-%llu", allocationInformation->m_size);
                     }
                     else
                     {
-                        field = AZStd::string::format("%u", allocationInformation->m_size);
+                        field = AZStd::string::format("%llu", allocationInformation->m_size);
                     }
                     break;
                 }

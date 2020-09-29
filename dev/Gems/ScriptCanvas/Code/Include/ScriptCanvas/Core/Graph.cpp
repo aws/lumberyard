@@ -831,10 +831,7 @@ namespace ScriptCanvas
             {
                 if (Nodes::Core::Internal::ScriptEventBase* scriptEventBase = azrtti_cast<Nodes::Core::Internal::ScriptEventBase*>(node))
                 {
-                    if (m_graphData.m_dependentAssets.find(scriptEventBase->GetAssetId()) == m_graphData.m_dependentAssets.end())
-                    {
-                        m_graphData.m_scriptEventAssets.push_back(AZStd::make_pair(nodeId, scriptEventBase->GetAsset()));
-                    }
+                    m_graphData.m_scriptEventAssets.push_back(AZStd::make_pair(nodeId, scriptEventBase->GetAsset()));
                     return true;
                 }
             }
@@ -846,11 +843,11 @@ namespace ScriptCanvas
     {
         auto assetIter = AZStd::find_if(m_graphData.m_scriptEventAssets.begin(), m_graphData.m_scriptEventAssets.end(), [nodeId](const GraphData::DependentScriptEvent::value_type& value) { return nodeId == value.first; });
         if (assetIter != m_graphData.m_scriptEventAssets.end())
-            {
+        {
             assetIter->second = {};
             m_graphData.m_scriptEventAssets.erase(assetIter);
-                return true;
-            }
+            return true;
+        }
 
         return false;
     }

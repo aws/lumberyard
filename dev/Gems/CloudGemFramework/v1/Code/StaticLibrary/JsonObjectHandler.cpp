@@ -121,7 +121,7 @@ namespace CloudGemFramework
             else
             {
                 // Doesn't support embedded \0, which rapidjson allows.
-                *m_targetString = AZStd::string::format("%.*s", length, str);
+                *m_targetString = AZStd::string::format("%.*s", aznumeric_cast<int>(length), str);
                 return true;
             }
 
@@ -432,7 +432,7 @@ namespace CloudGemFramework
                 break;
             }
 
-            msg += AZStd::string::format(" at character %i: ", result.Offset());
+            msg += AZStd::string::format(" at character %zu: ", result.Offset());
 
             const int snippet_size = 40;
             int start = result.Offset() - snippet_size / 2;

@@ -22,6 +22,8 @@ namespace WhiteBox
         AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Color& color,
         const AZStd::vector<EdgeBoundWithHandle>& edgeBoundsWithHandle, const Api::EdgeHandles& excludedEdgeHandles)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         debugDisplay.SetColor(color);
         for (const EdgeBoundWithHandle& edge : edgeBoundsWithHandle)
         {

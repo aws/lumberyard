@@ -1,4 +1,4 @@
-<ATLConfig atl_name="TestControlOnePreloadMultipleBanks">
+<ATLConfig atl_name="WrongConfigGroup">
  <AudioTriggers>
   <ATLTrigger atl_name="test_trigger"/>
  </AudioTriggers>
@@ -13,6 +13,7 @@
     <Platform atl_name="appletv" atl_config_group_name="default"/>
     <Platform atl_name="xenia" atl_config_group_name="default"/>
     <Platform atl_name="provo" atl_config_group_name="default"/>
+    <Platform atl_name="salem" atl_config_group_name="default"/>
    </ATLPlatforms>
    <ATLConfigGroup atl_name="default">
     <WwiseFile wwise_name="test_bank6.bnk"/>

@@ -58,7 +58,11 @@ void CVegetation::Init()
     m_nObjectTypeIndex = 0;
     m_vPos.Set(0, 0, 0);
     m_ucScale = 0;
+
+#if ENABLE_CRY_PHYSICS
     m_pPhysEnt = 0;
+#endif
+
     m_ucAngle = 0;
     m_ucAngleX = 0;
     m_ucAngleY = 0;
@@ -66,7 +70,10 @@ void CVegetation::Init()
     m_pRNTmpData = nullptr;
     m_pDeformable = nullptr;
     m_touchBendingTriggerProxy = nullptr;
+
+#if ENABLE_CRY_PHYSICS
     m_bApplyPhys = false;
+#endif
 
     // By default, we assume that we're a static vegetation instance.  Dynamic instances will explicitly 
     // set this flag.
@@ -446,6 +453,8 @@ void CVegetation::Physicalize(bool bInstant)
         return;
     }
 
+#if ENABLE_CRY_PHYSICS
+
     bool bHideability = vegetGroup.bHideability;
     bool bHideabilitySecondary = vegetGroup.bHideabilitySecondary;
 
@@ -615,10 +624,18 @@ void CVegetation::Physicalize(bool bInstant)
         foreignData.iForeignFlags |= PFF_HIDABLE_SECONDARY;
         m_pPhysEnt->SetParams(&foreignData, 1);
     }
+#else // !ENABLE_CRY_PHYSICS
+    if (pBody->GetSpineCount())
+    {
+        AZ::TouchBendingCVegetationAgent* agent = AZ::TouchBendingCVegetationAgent::GetInstance();
+        agent->Physicalize(this);
+    }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 bool CVegetation::PhysicalizeFoliage(bool bPhysicalize, int iSource, int nSlot)
 {
+#if ENABLE_CRY_PHYSICS
     IStatObj* pBody = GetStatObj();
     if (!pBody || !pBody->GetSpines())
     {
@@ -648,6 +665,10 @@ bool CVegetation::PhysicalizeFoliage(bool bPhysicalize, int iSource, int nSlot)
     }
 
     return m_pRNTmpData && m_pRNTmpData->userData.m_pFoliage;
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 IRenderNode* CVegetation::Clone() const
@@ -716,6 +737,7 @@ void CVegetation::Dematerialize()
 
 void CVegetation::Dephysicalize(bool bKeepIfReferenced)
 {
+#if ENABLE_CRY_PHYSICS
     // delete old physics
     //  WriteLock lock(g_lockVegetationPhysics);
     if (m_pPhysEnt && GetSystem()->GetIPhysicalWorld()->DestroyPhysicalEntity(m_pPhysEnt, 4 * (int)bKeepIfReferenced))
@@ -727,6 +749,7 @@ void CVegetation::Dephysicalize(bool bKeepIfReferenced)
             m_pRNTmpData->userData.m_pFoliage = NULL;
         }
     }
+#endif //#if ENABLE_CRY_PHYSICS
 
     AZ::TouchBendingCVegetationAgent::GetInstance()->Dephysicalize(this);
 }
@@ -879,8 +902,13 @@ IFoliage* CVegetation::GetFoliage(int nSlot)
 
 IPhysicalEntity* CVegetation::GetBranchPhys(int idx, int nSlot)
 {
+#if ENABLE_CRY_PHYSICS
     IFoliage* pFoliage = GetFoliage();
     return pFoliage && (unsigned int)idx < (unsigned int)((CStatObjFoliage*)pFoliage)->m_nRopes ? ((CStatObjFoliage*)pFoliage)->m_pRopes[idx] : 0;
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    return nullptr;
+#endif
 }
 
 void CVegetation::SetStatObjGroupIndex(int nVegetationanceGroupId)
@@ -927,16 +955,19 @@ void CVegetation::OffsetPosition(const Vec3& delta)
     }
     // GetBBox before moving position
     AABB aabb = GetBBox();
+#if ENABLE_CRY_PHYSICS
     if (m_bApplyPhys)
     {
         gEnv->pPhysicalWorld->UnregisterBBoxInPODGrid(&aabb.min);
     }
+#endif
 
     m_vPos += delta;
     aabb.Move(delta);
 
     // SetBBox after new position is applied
     SetBBox(aabb);
+#if ENABLE_CRY_PHYSICS
     if (m_bApplyPhys)
     {
         gEnv->pPhysicalWorld->RegisterBBoxInPODGrid(&aabb.min);
@@ -949,6 +980,7 @@ void CVegetation::OffsetPosition(const Vec3& delta)
         par_pos.pos = m_vPos;
         m_pPhysEnt->SetParams(&par_pos);
     }
+#endif //#if ENABLE_CRY_PHYSICS
 }
 
 bool CVegetation::GetLodDistances(const SFrameLodInfo& frameLodInfo, float* distances) const

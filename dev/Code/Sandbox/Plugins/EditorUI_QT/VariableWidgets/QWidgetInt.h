@@ -18,7 +18,7 @@
 
 #include <QWidget>
 #include <QtWidgets/QSpinBox>
-#include <QtWidgets/QSlider>
+#include <AzQtComponents/Components/Widgets/Slider.h>
 #include <QHBoxLayout>
 #include <QValidator>
 #include <Controls/QToolTipWidget.h>
@@ -47,10 +47,10 @@ protected:
     virtual bool event(QEvent* e) override;
 
 private:
-    QHBoxLayout layout;
-    QSpinBox edit;
-    QSlider slider;
-    int stepResolution;
+    QHBoxLayout m_layout;
+    QSpinBox m_edit;
+    AzQtComponents::SliderInt m_slider;
+    int m_stepResolution;
     QToolTipWidget* m_tooltip;
     int m_StoredValue;  // Value stored for undo
 };

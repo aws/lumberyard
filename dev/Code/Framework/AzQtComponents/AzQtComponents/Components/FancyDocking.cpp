@@ -10,14 +10,20 @@
 *
 */
 
-#include <AzQtComponents/Components/FancyDocking.h>
 #include <cmath>
-#include <AzQtComponents/Components/RepolishMinimizer.h>
+
+#include <AzCore/Casting/numeric_cast.h>
+
+#include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
+#include <AzQtComponents/Components/FancyDocking.h>
+#include <AzQtComponents/Components/FancyDockingGhostWidget.h>
+#include <AzQtComponents/Components/FancyDockingDropZoneWidget.h>
+#include <AzQtComponents/Components/RepolishMinimizer.h>
+#include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
-#include <AzCore/Casting/numeric_cast.h>
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -37,11 +43,10 @@
 #include <QStyleOptionToolButton>
 #include <QVBoxLayout>
 #include <QWindow>
-#include <AzQtComponents/Components/FancyDockingGhostWidget.h>
-#include <AzQtComponents/Components/FancyDockingDropZoneWidget.h>
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
+#include <QtGui/private/qhighdpiscaling_p.h>
 
-static void opimizedSetParent(QWidget* widget, QWidget* parent)
+
+static void OptimizedSetParent(QWidget* widget, QWidget* parent)
 {
     AzQtComponents::RepolishMinimizer minimizer; // Blocks useless polish requests caused by setParent()
     widget->setParent(parent);
@@ -53,6 +58,10 @@ namespace AzQtComponents
 
     // Constant for the threshold in pixels for snapping to edges while dragging for docking
     static const int g_snapThresholdInPixels = 15;
+
+    static QString g_minimizeButtonObjectName =     "minimizeButton";
+    static QString g_maximizeButtonObjectName =     "maximizeButton";
+    static QString g_closeButtonObjectName =        "closeButton";
 
     static Qt::Orientation orientation(Qt::DockWidgetArea area)
     {
@@ -166,10 +175,6 @@ namespace AzQtComponents
             m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
         }
         dockWidget->setFloating(true);
-        if (!geometry.isNull())
-        {
-            dockWidget->setGeometry(geometry);
-        }
 
         // Make sure the floating dock container is deleted when closed so that
         // its children can be restored properly when re-opened (otherwise they
@@ -188,8 +193,14 @@ namespace AzQtComponents
         mainWindow->SetFancyDockingOwner(this);
         mainWindow->setWindowFlags(Qt::Widget);
         mainWindow->installEventFilter(this);
+
         dockWidget->setWidget(mainWindow);
         dockWidget->show();
+        if (!geometry.isNull())
+        {
+            dockWidget->setGeometry(geometry);
+        }
+
         return mainWindow;
     }
 
@@ -218,6 +229,7 @@ namespace AzQtComponents
         QObject::connect(tabWidget, &DockTabWidget::tabIndexPressed, this, &FancyDocking::onTabIndexPressed);
         QObject::connect(tabWidget, &DockTabWidget::tabWidgetInserted, this, &FancyDocking::onTabWidgetInserted);
         QObject::connect(tabWidget, &DockTabWidget::tabCountChanged, this, &FancyDocking::onTabCountChanged);
+        QObject::connect(tabWidget, &DockTabWidget::currentChanged, this, &FancyDocking::onCurrentTabIndexChanged);
         QObject::connect(tabWidget, &DockTabWidget::undockTab, this, &FancyDocking::onUndockTab);
 
         // Set our tab widget as the widget for our tab container docking widget
@@ -331,9 +343,268 @@ namespace AzQtComponents
     }
 
     /**
+     * Update the window title for the specified floating dock widget based on
+     * one of its child dock widgets. This window title appears in the taskbar.
+     * The update occurs on a SingleShot timer after any actions have completed.
+     * Otherwise the dock widget may not be visible yet or the dock widget could
+     * be a tab widget container that has not set its tab widget yet. Also, the
+     * dock positioning may not yet be final
+     */
+    void FancyDocking::QueueUpdateFloatingWindowTitle(QMainWindow* mainWindow)
+    {
+        if (!mainWindow || mainWindow == m_mainWindow)
+        {
+            return;
+        }
+
+        StyledDockWidget* floatingDockWidget = qobject_cast<StyledDockWidget*>(mainWindow->parentWidget());
+        if (!floatingDockWidget)
+        {
+            return;
+        }
+
+        QString floatingDockWidgetName = floatingDockWidget->objectName();
+        QTimer::singleShot(0, m_mainWindow, [this, floatingDockWidgetName] {
+
+            StyledDockWidget* floatingDockWidget = m_mainWindow->findChild<StyledDockWidget*>(floatingDockWidgetName, Qt::FindDirectChildrenOnly);
+            if (!floatingDockWidget)
+            {
+                return;
+            }
+
+            QMainWindow* mainWindow = qobject_cast<QMainWindow*>(floatingDockWidget->widget());
+            if (!mainWindow || mainWindow == m_mainWindow)
+            {
+                return;
+            }
+
+            const QDockWidget* topLeftWidget = nullptr;
+            int topLeftWidgetManhattanDist = 0;
+            for (QDockWidget* childDockWidget : mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
+            {
+                if (!childDockWidget->isVisible())
+                {
+                    continue;
+                }
+
+                int childDockManhattanDist = childDockWidget->pos().manhattanLength();
+                if (!topLeftWidget || childDockManhattanDist < topLeftWidgetManhattanDist)
+                {
+                    topLeftWidget = childDockWidget;
+                    topLeftWidgetManhattanDist = childDockManhattanDist;
+                }
+            }
+
+            QString title;
+            if (topLeftWidget)
+            {
+                // Check if the child dock widget is a tab widget container
+                DockTabWidget* tabWidget = qobject_cast<DockTabWidget*>(topLeftWidget->widget());
+                if (tabWidget)
+                {
+                    int currentTabIndex = tabWidget->currentIndex();
+                    if (currentTabIndex >= 0)
+                    {
+                        title = tabWidget->tabText(currentTabIndex);
+                    }
+                }
+                else
+                {
+                    title = topLeftWidget->windowTitle();
+                }
+            }
+            floatingDockWidget->setWindowTitle(title);
+        });
+    }
+    
+    /**
+     * Adds close, maximize and minimize buttons from the DockTabWidget
+     */
+    void FancyDocking::AddTitleBarButtons(AzQtComponents::DockTabWidget* tabWidget, AzQtComponents::TitleBar* titleBar)
+    {
+        if (tabWidget->actions().count() > 0)
+        {
+            return;
+        }
+
+        // Show Action Toolbar
+        tabWidget->setActionToolBarVisible(true);
+
+        // Minimize Icon
+        QAction* minimizeAction = new QAction(tr("Minimize"));
+        minimizeAction->setObjectName(g_minimizeButtonObjectName);
+
+        connect(minimizeAction, &QAction::triggered, this, [titleBar]() {
+            titleBar->handleMinimize();
+        });
+
+        tabWidget->addAction(minimizeAction);
+
+        // Maximize Icon
+        QAction* maximizeAction = new QAction(tr("Maximize"));
+        maximizeAction->setObjectName(g_maximizeButtonObjectName);
+
+        connect(maximizeAction, &QAction::triggered, this, [titleBar]() {
+            titleBar->handleMaximize();
+        });
+
+        tabWidget->addAction(maximizeAction);
+
+        // Close Icon
+        QAction* closeAction = new QAction(tr("Close"));
+        closeAction->setObjectName(g_closeButtonObjectName);
+
+        connect(closeAction, &QAction::triggered, this, [titleBar]() {
+            titleBar->handleClose();
+        });
+
+        tabWidget->addAction(closeAction);
+
+        QObject::connect(tabWidget, &DockTabWidget::tabBarDoubleClicked, this, &FancyDocking::onTabBarDoubleClicked);
+
+        // Toggle the TabBar and TitleBar to show the Window context menus
+        auto dockTabBar = qobject_cast<AzQtComponents::DockTabBar*>(tabWidget->tabBar());
+        if (dockTabBar)
+        {
+            dockTabBar->setIsShowingWindowControls(true);
+        }
+
+        titleBar->setIsShowingWindowControls(true);
+    }
+    
+    /**
+     * Remove close, maximize and minimize buttons from the DockTabWidget
+     */
+    void FancyDocking::RemoveTitleBarButtons(AzQtComponents::DockTabWidget* tabWidget, AzQtComponents::TitleBar* titleBar)
+    {
+        if (tabWidget->actions().count() == 0)
+        {
+            return;
+        }
+
+        // Hide Action Toolbar
+        tabWidget->setActionToolBarVisible(false);
+
+        for (QAction* action : tabWidget->actions())
+        {
+            tabWidget->removeAction(action);
+        }
+
+        QObject::disconnect(tabWidget, &DockTabWidget::tabBarDoubleClicked, this, &FancyDocking::onTabBarDoubleClicked);
+        qobject_cast<DockTabBar*>(tabWidget->tabBar())->setIsShowingWindowControls(false);
+
+        if (titleBar)
+        {
+            titleBar->setIsShowingWindowControls(false);
+        }
+    }
+    
+    /**
+     * Update TitleBars for docked and floating widgets
+     */
+    void FancyDocking::UpdateTitleBars(QMainWindow* mainWindow)
+    {
+        if (!mainWindow)
+        {
+            return;
+        }
+
+        QList<QDockWidget*> childrenDockWidgets = mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly);
+
+        if (mainWindow == m_mainWindow)
+        {
+            // Main Window: remove all titlebar buttons from all widgets
+
+            for (QDockWidget* dockWidget : childrenDockWidgets)
+            {
+                // Skip floating windows (as they also are direct children of the mainwindow)
+                if (IsFloatingDockWidget(dockWidget))
+                {
+                    continue;
+                }
+
+                // TabWidgets
+                for (auto tabWidget : dockWidget->findChildren<AzQtComponents::DockTabWidget*>(QString(), Qt::FindDirectChildrenOnly))
+                {
+                    RemoveTitleBarButtons(tabWidget);
+                }
+
+                // Regular DockWidgets
+                if (auto innerTitleBar = qobject_cast<AzQtComponents::TitleBar*>(dockWidget->titleBarWidget()))
+                {
+                    innerTitleBar->setButtons({ });
+                    innerTitleBar->setIsShowingWindowControls(false);
+                }
+            }
+        }
+        else
+        {
+            // Floating Window
+
+            AzQtComponents::TitleBar* floatingWindowTitleBar = qobject_cast<StyledDockWidget*>(mainWindow->parentWidget())->customTitleBar();
+
+            if (childrenDockWidgets.count() == 1)
+            {
+                // If there's just one child, TabWidgets and DockWidgets get the buttons and we hide the TitleBar
+
+                // Hide TitleBar
+                floatingWindowTitleBar->setDrawMode(AzQtComponents::TitleBar::TitleBarDrawMode::Hidden);
+
+                // Show Buttons on TabWidgets
+                auto tabWidgets = childrenDockWidgets[0]->findChildren<AzQtComponents::DockTabWidget*>(QString(), Qt::FindDirectChildrenOnly);
+                for (auto tabWidget : tabWidgets)
+                {
+                    AddTitleBarButtons(tabWidget, floatingWindowTitleBar);
+                }
+
+                // Show Buttons on DockWidgets
+                if (auto innerTitleBar = qobject_cast<AzQtComponents::TitleBar*>(childrenDockWidgets[0]->titleBarWidget()))
+                {
+                    innerTitleBar->setButtons({ DockBarButton::MinimizeButton, DockBarButton::MaximizeButton, DockBarButton::CloseButton });
+                    innerTitleBar->setIsShowingWindowControls(true);
+                }
+            }
+            else
+            {
+                // If multiple children are found, show the TitleBar and remove buttons from TabWidgets and DockWidgets
+
+                // Show TitleBar with buttons
+                floatingWindowTitleBar->setDrawMode(AzQtComponents::TitleBar::TitleBarDrawMode::Simple);
+                floatingWindowTitleBar->setButtons({ DockBarButton::MinimizeButton, DockBarButton::MaximizeButton, DockBarButton::CloseButton });
+
+                // Remove buttons from widgets
+                for (QDockWidget* dockWidget : childrenDockWidgets)
+                {
+                    // TabWidgets
+                    for (auto tabWidget : dockWidget->findChildren<AzQtComponents::DockTabWidget*>(QString(), Qt::FindDirectChildrenOnly))
+                    {
+                        RemoveTitleBarButtons(tabWidget, floatingWindowTitleBar);
+                    }
+                    
+                    // DockWidget
+                    if (auto innerTitleBar = qobject_cast<AzQtComponents::TitleBar*>(dockWidget->titleBarWidget()))
+                    {
+                        innerTitleBar->setButtons({ });
+                        innerTitleBar->setIsShowingWindowControls(false);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Returns true if the DockWidget is a FancyDocking floating window
+     */
+    bool FancyDocking::IsFloatingDockWidget(QDockWidget* dockWidget)
+    {
+        QString dockName = dockWidget->objectName();
+        return dockName.startsWith(m_floatingWindowIdentifierPrefix);
+    }
+
+    /**
      * Adjust mapFromGlobal to account for DPI scaling on multiple screens
      */
-    QPoint FancyDocking::multiscreenMapFromGlobal(const QPoint& point)
+    QPoint FancyDocking::multiscreenMapFromGlobal(const QPoint& point) const
     {
 #ifdef AZ_PLATFORM_WINDOWS
         for (int i = 0; i < m_desktopWidget->screenCount(); i++) {
@@ -350,6 +621,24 @@ namespace AzQtComponents
 #else
         return mapFromGlobal(point);
 #endif
+    }
+
+    bool FancyDocking::WidgetContainsPoint(QWidget* widget, const QPoint& pos) const
+    {
+        if (!widget)
+        {
+            return false;
+        }
+
+        QPoint globalPos = multiscreenMapFromGlobal(pos);
+
+        // Find out the true global position of the widgets top left coordinate
+        QPoint widgetTopLeft = multiscreenMapFromGlobal(widget->mapToGlobal(QPoint(0, 0)));
+
+        // Construct the global rect given our widgets top left coordinate plus size
+        QRect widgetGlobalRect(widgetTopLeft, QSize(widget->width(), widget->height()));
+
+        return widgetGlobalRect.contains(globalPos);
     }
 
     /**
@@ -375,10 +664,18 @@ namespace AzQtComponents
         // Avoid a recursion
         mainWindow->removeEventFilter(this);
 
+        // Verify the parent is a styled dock widget
+        auto floatingDockWidget = qobject_cast<AzQtComponents::StyledDockWidget*>(mainWindow->parentWidget());
+
+        if (!floatingDockWidget)
+        {
+            AZ_Warning("FancyDocking", false, "Error - Floating dock widget parent isn't a StyledDockWidget.");
+            return;
+        }
+
         // Save the state of this floating dock widget that's about to be destroyed
         // so that we can re-create it if necessary when restoring any panes whose
         // last location was in this floating dock widget
-        QDockWidget* floatingDockWidget = static_cast<QDockWidget*>(mainWindow->parentWidget());
         QString floatingDockWidgetName = floatingDockWidget->objectName();
         if (!floatingDockWidgetName.isEmpty())
         {
@@ -392,7 +689,7 @@ namespace AzQtComponents
         // open them on the floating main window that no longer exists.
         for (QDockWidget* dockWidget : mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
         {
-            opimizedSetParent(dockWidget, m_mainWindow);
+            OptimizedSetParent(dockWidget, m_mainWindow);
             dockWidget->setVisible(false);
         }
 
@@ -887,7 +1184,7 @@ namespace AzQtComponents
         {
             // If the mouse is over our excluded widget, then return its parent
             // instead so we can still evaluate for absolute drop zones
-            if (widget->rect().contains(widget->mapFromGlobal(globalPos)))
+            if (WidgetContainsPoint(widget, globalPos))
             {
                 return qobject_cast<QMainWindow*>(widget->parentWidget());
             }
@@ -897,7 +1194,7 @@ namespace AzQtComponents
             }
         }
 
-        if (widget->rect().contains(widget->mapFromGlobal(globalPos)))
+        if (WidgetContainsPoint(widget, globalPos))
         {
             return widget;
         }
@@ -924,7 +1221,7 @@ namespace AzQtComponents
             {
                 // If we're still hovered over the same dock widget, this shortcuts
                 // all the logic below
-                if (dropOnto->rect().contains(dropOnto->mapFromGlobal(globalPos)))
+                if (WidgetContainsPoint(dropOnto, globalPos))
                 {
                     return dropOnto;
                 }
@@ -1210,6 +1507,12 @@ namespace AzQtComponents
             }
             if (singleFloatingDockWidget)
             {
+                // Restore window if maximized when dragging
+                if (singleFloatingDockWidget->isMaximized())
+                {
+                    singleFloatingDockWidget->showNormal();
+                }
+
                 singleFloatingDockWidget->hide();
             }
             // Otherwise, we need to hide the original widget while we are dragging
@@ -1723,7 +2026,7 @@ namespace AzQtComponents
         // Remove the dock widget tab container from the main window and then delete it since
         // it is no longer needed (this will also delete the dock tab widget since it is a child)
         mainWindow->removeDockWidget(dockWidget);
-        opimizedSetParent(dockWidget, nullptr);
+        OptimizedSetParent(dockWidget, nullptr);
         dockWidget->deleteLater();
 
         // If this tab widget was on a floating window, run the check if this main
@@ -1732,6 +2035,25 @@ namespace AzQtComponents
         if (mainWindow != m_mainWindow)
         {
             destroyIfUseless(mainWindow);
+        }
+    }
+
+    /**
+     * Handle tab index changes from our DockTabWidgets so we can update
+     * the floating widget's window title based on the current tab name
+     */
+    void FancyDocking::onCurrentTabIndexChanged(int /*index*/)
+    {
+        QDockWidget* tabWidgetContainer = getTabWidgetContainer(sender());
+        if (!tabWidgetContainer)
+        {
+            return;
+        }
+
+        QMainWindow* mainWindow = qobject_cast<QMainWindow*>(tabWidgetContainer->parentWidget());
+        if (mainWindow && mainWindow != m_mainWindow)
+        {
+            QueueUpdateFloatingWindowTitle(mainWindow);
         }
     }
 
@@ -1793,6 +2115,33 @@ namespace AzQtComponents
         }
 
         undockDockWidget(dockWidget, tabWidgetContainer);
+    }
+
+    /**
+     * Handle double clicking a tab bar to maximize/restore when the tab bar
+     * is shown as a title bar
+     */
+    void FancyDocking::onTabBarDoubleClicked()
+    {
+        QDockWidget* tabWidgetContainer = getTabWidgetContainer(sender());
+        if (!tabWidgetContainer)
+        {
+            return;
+        }
+
+        QMainWindow* mainWindow = qobject_cast<QMainWindow*>(tabWidgetContainer->parentWidget());
+        if (mainWindow && mainWindow != m_mainWindow)
+        {
+            StyledDockWidget* floatingDockWidget = qobject_cast<StyledDockWidget*>(mainWindow->parentWidget());
+            if (floatingDockWidget)
+            {
+                TitleBar* titleBar = floatingDockWidget->customTitleBar();
+                if (titleBar)
+                {
+                    titleBar->handleMaximize();
+                }
+            }
+        }
     }
 
     /**
@@ -1913,7 +2262,7 @@ namespace AzQtComponents
             // Create a floating window container for this dock widget
             QScopedValueRollback<bool> guard(m_state.updateInProgress, true); // Don't let mainWindow get deleted while we do this
             QMainWindow* mainWindow = createFloatingMainWindow(getUniqueDockWidgetName(m_floatingWindowIdentifierPrefix), geometry, shouldSkipTitleBarOverdraw(dock));
-            opimizedSetParent(dock, mainWindow);
+            OptimizedSetParent(dock, mainWindow);
             mainWindow->addDockWidget(Qt::LeftDockWidgetArea, dock);
             dock->show();
         }
@@ -2119,7 +2468,7 @@ namespace AzQtComponents
 
                 if (mainWindow)
                 {
-                    opimizedSetParent(dock, onto);
+                    OptimizedSetParent(dock, onto);
                     if (area == Qt::AllDockWidgetAreas)
                     {
                         // should not happen
@@ -2144,7 +2493,7 @@ namespace AzQtComponents
                     if (dockWidget)
                     {
                         mainWindow = static_cast<QMainWindow*>(dockWidget->parentWidget());
-                        opimizedSetParent(dock, mainWindow);
+                        OptimizedSetParent(dock, mainWindow);
                         if (area == Qt::AllDockWidgetAreas)
                         {
                             tabifyDockWidget(dockWidget, dock, mainWindow, &m_state.dockWidgetScreenGrab);
@@ -2417,20 +2766,45 @@ namespace AzQtComponents
                         return true;
                     }
                     break;
+                case QEvent::ShowToParent:
+                    {
+                        QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dockWidget->parent());
+                        if (mainWindow)
+                        {
+                            UpdateTitleBars(mainWindow);
+
+                            if (mainWindow != m_mainWindow)
+                            {
+                                QueueUpdateFloatingWindowTitle(mainWindow);
+                            }
+                        }
+                    }
+                    break;
                 case QEvent::HideToParent:
                     {
-                        // The dockwidget was hidden, we the parent floating mainwindow might need to be
-                        // destroyed. But delay the call to destroyIfUseless to the next iteration of the
-                        // event loop, as the it might only be temporarily hidden (e.g. reparenting).
                         QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dockWidget->parent());
-                        if (!m_state.updateInProgress)
+                        if (mainWindow)
                         {
-                            QTimer::singleShot(0, mainWindow, [this, mainWindow] {
-                                destroyIfUseless(mainWindow);
-                            });
+                            UpdateTitleBars(mainWindow);
+
+                            // Update the floating widget's window title
+                            if (mainWindow != m_mainWindow)
+                            {
+                                QueueUpdateFloatingWindowTitle(mainWindow);
+                            }
+
+                            // The dockwidget was hidden, we the parent floating mainwindow might need to be
+                            // destroyed. But delay the call to destroyIfUseless to the next iteration of the
+                            // event loop, as the it might only be temporarily hidden (e.g. reparenting).
+                            if (!m_state.updateInProgress)
+                            {
+                                QTimer::singleShot(0, mainWindow, [this, mainWindow] {
+                                    destroyIfUseless(mainWindow);
+                                });
+                            }
                         }
-                        break;
                     }
+                    break;
                 case QEvent::Close:
                     // If the user tries to close an entire floating window using
                     // the top title bar, we need to handle the close ourselves
@@ -2494,7 +2868,21 @@ namespace AzQtComponents
                     QDockWidget* eventChildDockWidget = nullptr;
                     switch (event->type())
                     {
+                    case QEvent::ChildAdded:
+                    {
+                        eventChildDockWidget = qobject_cast<QDockWidget*>(static_cast<QChildEvent*>(event)->child());
+                        if (eventChildDockWidget)
+                        {
+                            QueueUpdateFloatingWindowTitle(mainWindow);
+                            UpdateTitleBars(mainWindow);
+                        }
+                    }
+                    break;
                     case QEvent::ChildRemoved:
+                    {
+                        QueueUpdateFloatingWindowTitle(mainWindow);
+                        UpdateTitleBars(mainWindow);
+
                         SetDragOrDockOnFloatingMainWindow(mainWindow);
                         destroyIfUseless(mainWindow);
                         eventChildDockWidget = qobject_cast<QDockWidget*>(static_cast<QChildEvent*>(event)->child());
@@ -2508,7 +2896,8 @@ namespace AzQtComponents
                                 m_placeholders.remove(eventChildDockWidget->objectName());
                             }
                         }
-                        break;
+                    }
+                    break;
                     case QEvent::ChildPolished:
                         // Queue this call since the dock widget won't be visible yet
                         QTimer::singleShot(0, this, [this, mainWindow] {
@@ -2839,7 +3228,7 @@ namespace AzQtComponents
             }
             for (QDockWidget* subDockWidget : mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
             {
-                opimizedSetParent(subDockWidget, m_mainWindow);
+                OptimizedSetParent(subDockWidget, m_mainWindow);
                 if (!m_mainWindow->restoreDockWidget(subDockWidget))
                 {
                     m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, subDockWidget);
@@ -2905,7 +3294,7 @@ namespace AzQtComponents
             for (auto t = childDockWidgets.begin(); t != childDockWidgets.end(); t++)
             {
                 QDockWidget* child = *t;
-                opimizedSetParent(child, mainWindow);
+                OptimizedSetParent(child, mainWindow);
                 mainWindow->addDockWidget(Qt::LeftDockWidgetArea, child);
             }
 
@@ -3014,6 +3403,13 @@ namespace AzQtComponents
             }
         }
 
+        // Update the TitleBars for the Main Editor Window and all floating windows
+        UpdateTitleBars(m_mainWindow);
+        for (auto it = floatingMainWindows.begin(); it != floatingMainWindows.end(); ++it)
+        {
+            UpdateTitleBars(it.key());
+        }
+
         return ok;
     }
 
@@ -3040,6 +3436,8 @@ namespace AzQtComponents
                 if (tabWidget)
                 {
                     tabWidget->addTab(dock);
+                    UpdateTitleBars(qobject_cast<QMainWindow*>(dockWidget->widget()));
+
                     return true;
                 }
             }
@@ -3058,8 +3456,18 @@ namespace AzQtComponents
                 QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dockWidget->widget());
                 if (mainWindow)
                 {
-                    opimizedSetParent(dock, mainWindow);
-                    return mainWindow->restoreDockWidget(dock);
+                    OptimizedSetParent(dock, mainWindow);
+
+                    if (mainWindow->restoreDockWidget(dock))
+                    {
+                        UpdateTitleBars(mainWindow);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    
                 }
             }
             else
@@ -3069,11 +3477,20 @@ namespace AzQtComponents
                 auto it2 = m_restoreFloatings.find(floatingDockWidgetName);
                 if (it2 != m_restoreFloatings.end())
                 {
-                    QMainWindow* mainWindow = createFloatingMainWindow(floatingDockWidgetName, it2->second, shouldSkipTitleBarOverdraw(dock));
+                    QMainWindow* mainWindow = createFloatingMainWindow(floatingDockWidgetName, it2->second, true);
                     mainWindow->restoreState(it2->first);
-                    opimizedSetParent(dock, mainWindow);
+                    OptimizedSetParent(dock, mainWindow);
                     m_restoreFloatings.erase(it2);
-                    return mainWindow->restoreDockWidget(dock);
+
+                    if (mainWindow->restoreDockWidget(dock))
+                    {
+                        UpdateTitleBars(mainWindow);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
             }
             m_placeholders.erase(it);

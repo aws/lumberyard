@@ -444,6 +444,7 @@ namespace Audio
         const TAudioControlID nAudioTriggerID;
     };
 
+#if AUDIO_ENABLE_CRY_PHYSICS
     //////////////////////////////////////////////////////////////////////////
     template<>
     struct SAudioCallbackManagerRequestDataInternal<eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY>
@@ -460,6 +461,7 @@ namespace Audio
         const TAudioObjectID nObjectID;
         const size_t nRayID;
     };
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -824,7 +826,9 @@ namespace Audio
                 { eACMRT_REPORT_STARTED_EVENT, "STARTED EVENT" },
                 { eACMRT_REPORT_FINISHED_EVENT, "FINISHED EVENT" },
                 { eACMRT_REPORT_FINISHED_TRIGGER_INSTANCE, "FINISHED TRIGGER INSTANCE" },
+#if AUDIO_ENABLE_CRY_PHYSICS
                 { eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY, "OBSTRUCTION RAY" },
+#endif // AUDIO_ENABLE_CRY_PHYSICS
             };
             static const AZStd::unordered_map<const EAudioListenerRequestType, const AZStd::string> listenerRequests
             {

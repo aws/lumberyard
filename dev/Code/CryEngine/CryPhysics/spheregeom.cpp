@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "unprojectionchecks.h"
@@ -324,3 +326,5 @@ void CSphereGeom::Load(CMemStream& stm)
     m_minVtxDist = m_sphere.r * 1E-4f;
     m_Tree.Load(stm, this);
 }
+
+#endif // ENABLE_CRY_PHYSICS

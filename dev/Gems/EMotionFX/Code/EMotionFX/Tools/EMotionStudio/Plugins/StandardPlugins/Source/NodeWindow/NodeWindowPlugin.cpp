@@ -88,14 +88,14 @@ namespace EMStudio
 
         // add the node hierarchy
         mHierarchyWidget = new NodeHierarchyWidget(mDock, false);
-        mHierarchyWidget->setObjectName("EMFX.NodeWindowPlugin.NodeHierarchyWidget.HierArchyWidget");
+        mHierarchyWidget->setObjectName("EMFX.NodeWindowPlugin.NodeHierarchyWidget.HierarchyWidget");
         mHierarchyWidget->GetTreeWidget()->setMinimumWidth(100);
         mDialogStack->Add(mHierarchyWidget, "Hierarchy", false, true);
 
         // add the node attributes widget
         m_propertyWidget = aznew AzToolsFramework::ReflectedPropertyEditor(mDialogStack);
         m_propertyWidget->setObjectName("EMFX.NodeWindowPlugin.ReflectedPropertyEditor.PropertyWidget");
-        m_propertyWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
+        m_propertyWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
         m_propertyWidget->SetAutoResizeLabels(true);
         mDialogStack->Add(m_propertyWidget, "Node Attributes", false, true, true, false);
 

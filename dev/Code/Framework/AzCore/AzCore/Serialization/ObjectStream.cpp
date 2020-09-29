@@ -132,6 +132,8 @@ namespace AZ
             bool WriteElement(const void* elemPtr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement);
             bool CloseElement();
 
+            const char* GetStreamFilename() const;
+
             enum class StorageAddressResult
             {
                 Success,
@@ -444,8 +446,9 @@ namespace AZ
 
                         if (classData->m_converter)
                         {
-                            AZStd::string error = AZStd::string::format("Converter failed for element '%s'(0x%x) with deprecated class ID '%s'.",
-                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str());
+                            AZStd::string error = AZStd::string::format("Converter failed for element '%s'(0x%x) with deprecated class ID '%s'.  File %s",
+                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str(),
+                                GetStreamFilename());
                             
                             m_errorLogger.ReportError(error.c_str());
                             
@@ -476,8 +479,9 @@ namespace AZ
                             // we're not ignoring unknown classes.
                             AZStd::string error = AZStd::string::format(
                                 "Element '%s'(0x%x) with class ID '%s' found in '%s' is not registered with the serializer!\n"
-                                "If this class was removed, consider using serializeContext->ClassDeprecate(...) to register classes as having been deprecated to avoid this error\n",
-                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str(), parentClassInfo ? parentClassInfo->m_name : "ROOT");
+                                "If this class was removed, consider using serializeContext->ClassDeprecate(...) to register classes as having been deprecated to avoid this error.  File %s\n",
+                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str(), parentClassInfo ? parentClassInfo->m_name : "ROOT",
+                                GetStreamFilename());
                             m_errorLogger.ReportError(error.c_str());
 
                             // its not just a deprecated class.  Its unregistered
@@ -550,8 +554,9 @@ namespace AZ
 
                                 if (!isCastableToClassElement && !isConvertableToClassElement)
                                 {
-                                    AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of pointers to type %s!"
-                                        , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
+                                    AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of pointers to type %s!  File %s"
+                                        , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str(),
+                                        GetStreamFilename());
                                     
 
                                     result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
@@ -572,8 +577,9 @@ namespace AZ
 
                                 if (!isCastableToClassElement && !isConvertableToClassElement)
                                 {
-                                    AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of type %s!"
-                                        , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
+                                    AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of type %s!  File %s"
+                                        , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str(),
+                                        GetStreamFilename());
                                     
                                     result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                                     m_errorLogger.ReportError(error.c_str());
@@ -622,9 +628,10 @@ namespace AZ
                                     else
                                     {
                                         // Name matched but wrong type, this is an error when conversion function is not supplied.
-                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s and cannot be downcasted to type %s.",
+                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s and cannot be downcasted to type %s.  File %s",
                                             element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
-                                            element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
+                                            element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str(),
+                                            GetStreamFilename());
 
                                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                                         m_errorLogger.ReportError(error.c_str());
@@ -647,9 +654,10 @@ namespace AZ
                                     else
                                     {
                                         // Name matched but wrong type, this is an error when conversion function is not supplied.
-                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s but needs to be type %s.",
+                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s but needs to be type %s.  File %s",
                                             element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
-                                            element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
+                                            element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str(),
+                                            GetStreamFilename());
 
                                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                                         m_errorLogger.ReportError(error.c_str());
@@ -663,8 +671,9 @@ namespace AZ
                         // We can continue safely, but this constitutes loss of old data that users should be aware of.
                         if (classElement == nullptr)
                         {
-                            AZStd::string error = AZStd::string::format("Element '%s'(0x%x) of type %s is not registered as part of class '%s'. Data will be discarded.", 
-                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str(), parentClassInfo->m_name);
+                            AZStd::string error = AZStd::string::format("Element '%s'(0x%x) of type %s is not registered as part of class '%s'. Data will be discarded.  File %s", 
+                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str(), parentClassInfo->m_name,
+                                GetStreamFilename());
                             
                             if (m_filterDesc.m_flags & FILTERFLAG_STRICT)
                             {
@@ -715,8 +724,9 @@ namespace AZ
                         if (illegalClassChange)
                         {
                             AZStd::string error = AZStd::string::format("Converter changed element from type %s to type %s. Version converters cannot change the base type. "
-                                "Instead use DeprecateClass for the old Uuid, provide a converter, and use that converter to designate a new type/uuid.",
-                                convertedClassElement.m_classData->m_typeId.ToString<AZStd::string>().c_str(), classData->m_typeId.ToString<AZStd::string>().c_str());
+                                "Instead use DeprecateClass for the old Uuid, provide a converter, and use that converter to designate a new type/uuid.  File %s",
+                                convertedClassElement.m_classData->m_typeId.ToString<AZStd::string>().c_str(), classData->m_typeId.ToString<AZStd::string>().c_str(),
+                                GetStreamFilename());
                             
                             result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                             m_errorLogger.ReportError(error.c_str());
@@ -729,11 +739,10 @@ namespace AZ
                 else if (element.m_version > classData->m_version)
                 {
                     // This is a future version so we don't know how to read this. Skip it, but preserve the data!
-                    AZ_Warning("Serialization", false, 
-                        "Data element %s is version %u, but reflected field is version %u. "
-                        "Serializer will attempt to load, but forward-compatibility is not guaranteed.",
+                    AZ_Warning("Serialization", false, "Data element %s is version %u, but reflected field is version %u. "
+                        "Serializer will attempt to load, but forward-compatibility is not guaranteed.  File %s",
                         element.m_name ? element.m_name : classData->m_name,
-                        element.m_version, classData->m_version);
+                        element.m_version, classData->m_version, GetStreamFilename());
                 }
 
                 StorageAddressElement storageElement{ nullptr, nullptr, result, classContainer, currentContainerElementIndex };
@@ -801,8 +810,9 @@ namespace AZ
                     if (dataAddress == nullptr || 
                         !classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
                     {
-                        AZStd::string error = AZStd::string::format("Serializer failed for %s '%s'(0x%x).", 
-                            classData->m_name, element.m_name ? element.m_name : "NULL", element.m_nameCrc);
+                        AZStd::string error = AZStd::string::format("Serializer failed for %s '%s'(0x%x).  File %s", 
+                            classData->m_name, element.m_name ? element.m_name : "NULL", element.m_nameCrc,
+                            GetStreamFilename());
 
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                         m_errorLogger.ReportError(error.c_str());
@@ -2164,7 +2174,14 @@ namespace AZ
             delete this;
             return success;
         }
+
+        const char* ObjectStreamImpl::GetStreamFilename() const
+        {
+            return m_stream ? m_stream->GetFilename() : "None";
+        }
     }   // namespace ObjectStreamInternal
+
+
 
     //=========================================================================
     // LoadBlocking

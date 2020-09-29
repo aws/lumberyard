@@ -9,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#include "LmbrCentral_precompiled.h"
 #include <AzTest/AzTest.h>
 
 class TranslationBuilderTests
@@ -20,5 +22,3 @@ TEST_F(TranslationBuilderTests, Sanity)
 {
     ASSERT_TRUE(true);
 }
-
-AZ_UNIT_TEST_HOOK();

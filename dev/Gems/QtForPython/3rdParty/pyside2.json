@@ -40,7 +40,7 @@
         "windows/debug/shiboken2"
       ],
       "import_debug": [
-        "pyside2.cp37-win_amd64.lib"
+        "pyside2_d.cp37-win_amd64.lib"
       ],
       "shared_debug": [
         "pyside2_d.cp37-win_amd64.dll",

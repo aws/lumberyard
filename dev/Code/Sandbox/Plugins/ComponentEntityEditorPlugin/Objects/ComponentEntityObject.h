@@ -102,7 +102,9 @@ public:
     // For now, dont allow Component entities to be grouped
     bool IsGroupable() override { return false; }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* GetCollisionEntity() const override;
+#endif
 
 
     //////////////////////////////////////////////////////////////////////////

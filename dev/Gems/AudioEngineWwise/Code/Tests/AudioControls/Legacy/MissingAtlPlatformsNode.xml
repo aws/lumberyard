@@ -1,4 +1,4 @@
-<ATLConfig atl_name="TestControlMissingAtlPlatformsNode">
+<ATLConfig atl_name="MissingAtlPlatformsNode">
  <AudioTriggers>
   <ATLTrigger atl_name="test_event_2_bank1_streamed_target">
    <WwiseEvent wwise_name="test_event_2_bank1_streamed_target"/>

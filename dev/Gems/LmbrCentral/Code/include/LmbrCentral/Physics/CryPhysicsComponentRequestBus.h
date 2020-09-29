@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Aabb.h>
@@ -106,3 +108,5 @@ namespace LmbrCentral
     using CryPhysicsComponentRequestBus = AZ::EBus<CryPhysicsComponentRequests>;
 
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

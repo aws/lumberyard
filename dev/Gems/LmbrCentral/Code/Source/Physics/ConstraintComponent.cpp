@@ -9,7 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/TransformBus.h>
@@ -177,7 +181,6 @@ namespace LmbrCentral
                 ->Field("ConstraintConfiguration", &ConstraintComponent::m_config);
             ;
         }
-
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
@@ -696,3 +699,5 @@ namespace LmbrCentral
         return m_constraintId != 0;
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

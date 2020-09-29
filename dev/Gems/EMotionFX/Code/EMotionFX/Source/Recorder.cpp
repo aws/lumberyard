@@ -106,7 +106,6 @@ namespace EMotionFX
         mCurrentPlayTime = 0.0f;
 
         mObjects.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
-        mActiveNodes.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
 
         GetEMotionFX().GetEventManager()->AddEventHandler(this);
     }
@@ -929,7 +928,7 @@ namespace EMotionFX
             MCore::Array<NodeHistoryItem*>& historyItems = actorInstanceData->mNodeHistoryItems;
 
             // finalize items
-            const uint32 numActiveNodes = mActiveNodes.GetLength();
+            const size_t numActiveNodes = mActiveNodes.size();
             const uint32 numHistoryItems = historyItems.GetLength();
             for (uint32 h = 0; h < numHistoryItems; ++h)
             {
@@ -940,8 +939,8 @@ namespace EMotionFX
                 }
 
                 // check if we have an active node for the given item
-                uint32 index = MCORE_INVALIDINDEX32;
-                for (uint32 x = 0; x < numActiveNodes; ++x)
+                size_t index = MCORE_INVALIDINDEX32;
+                for (size_t x = 0; x < numActiveNodes; ++x)
                 {
                     if (mActiveNodes[x]->GetId() == curItem->mNodeId)
                     {
@@ -963,7 +962,7 @@ namespace EMotionFX
             }
 
             // iterate over all active nodes
-            for (uint32 i = 0; i < numActiveNodes; ++i)
+            for (size_t i = 0; i < numActiveNodes; ++i)
             {
                 AnimGraphNode* activeNode = mActiveNodes[i];
                 if (activeNode == animGraphInstance->GetRootNode()) // skip the root node

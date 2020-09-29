@@ -572,29 +572,29 @@ namespace EMotionFX
                         const ESyncMode syncMode = activeTransition->GetSyncMode();
 
                         // Calculate the playspeed and factors based on the source and the target states for the given transition.
-                        float masterFactor;
-                        float servantFactor;
+                        float leaderFactor;
+                        float followerFactor;
                         float playSpeed;
-                        AnimGraphNode::CalcSyncFactors(animGraphInstance, sourceState, targetState, syncMode, transitionWeight, &masterFactor, &servantFactor, &playSpeed);
+                        AnimGraphNode::CalcSyncFactors(animGraphInstance, sourceState, targetState, syncMode, transitionWeight, &leaderFactor, &followerFactor, &playSpeed);
 
                         // Sync to the shared source state.
                         if (i == 0)
                         {
-                            // Store the new interpolated playspeed as well as the interpolated duration ratio (masterFactor)
+                            // Store the new interpolated playspeed as well as the interpolated duration ratio (leaderFactor)
                             // for the oldest transition on the stack. This is the transition where the first interruption happened.
                             newPlaySpeed = playSpeed;
-                            newFactor = masterFactor;
+                            newFactor = leaderFactor;
                         }
                         else
                         {
-                            const AnimGraphNodeData* servantUniqueData = targetState->FindOrCreateUniqueNodeData(animGraphInstance);
+                            const AnimGraphNodeData* followerUniqueData = targetState->FindOrCreateUniqueNodeData(animGraphInstance);
 
                             // Interpolate the in-between factor from the previous iteration with the interpolated factor from the given transition.
-                            newFactor = AZ::Lerp(newFactor, masterFactor, transitionWeight);
+                            newFactor = AZ::Lerp(newFactor, leaderFactor, transitionWeight);
 
                             // Interpolate the in-between factor from the previous iteration with the target state's playspeed based on the weight
-                            // of the given transition. As we're syncing to the source node, the target node acts as servant.
-                            newPlaySpeed = AZ::Lerp(newPlaySpeed, servantUniqueData->GetPlaySpeed(), transitionWeight);
+                            // of the given transition. As we're syncing to the source node, the target node acts as follower.
+                            newPlaySpeed = AZ::Lerp(newPlaySpeed, followerUniqueData->GetPlaySpeed(), transitionWeight);
                         }
                     }
                 }
@@ -1383,7 +1383,7 @@ namespace EMotionFX
                         if (animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_SYNCED) == false)
                         {
                             sourceNode->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_SYNCED, true);
-                            animGraphInstance->SetObjectFlags(sourceNode->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCMASTER, true);
+                            animGraphInstance->SetObjectFlags(sourceNode->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCLEADER, true);
                             targetNode->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_SYNCED, true);
                         }
 
@@ -1479,14 +1479,14 @@ namespace EMotionFX
         }
     }
 
-    void AnimGraphStateMachine::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
+    void AnimGraphStateMachine::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
     {
         // check and add this node
         if (azrtti_typeid(this) == nodeType || nodeType.IsNull())
         {
             if (animGraphInstance->GetIsOutputReady(mObjectIndex)) // if we processed this node
             {
-                outNodes->Add(const_cast<AnimGraphStateMachine*>(this));
+                outNodes->emplace_back(const_cast<AnimGraphStateMachine*>(this));
             }
         }
 

@@ -190,8 +190,10 @@ namespace AzToolsFramework
             mainLayout->addWidget(m_propertyEditor);
 
             QWidget* statusBarWidget = new QWidget(this);
+            statusBarWidget->setObjectName("AssetEditorStatusBar");
             m_statusBar->setupUi(statusBarWidget);
-            m_statusBar->textEdit->setPlainText(Status::emptyString);
+            m_statusBar->textEdit->setText(Status::emptyString);
+            m_statusBar->textEdit->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
             mainLayout->addWidget(statusBarWidget);
 
@@ -410,9 +412,19 @@ namespace AzToolsFramework
 
             const QString saveAs = QFileDialog::getSaveFileName(nullptr, tr("Save As..."), m_userSettings->m_lastSavePath.c_str(), filter);
 
-            if (!saveAs.isEmpty())
+            return SaveImpl(asset, saveAs);
+        }
+
+        bool AssetEditorWidget::SaveAssetToPath(AZStd::string_view assetPath)
+        {
+            return SaveImpl(m_inMemoryAsset, assetPath.data());
+        }
+
+        bool AssetEditorWidget::SaveImpl(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const QString& saveAsPath)
+        {
+            if (!saveAsPath.isEmpty())
             {
-                AZStd::string targetFilePath(saveAs.toUtf8().constData());
+                AZStd::string targetFilePath(saveAsPath.toUtf8().constData());
 
                 m_propertyEditor->ForceQueuedInvalidation();
 
@@ -423,45 +435,48 @@ namespace AzToolsFramework
                 if (assetHandler->SaveAssetData(asset, &byteStream))
                 {
                     AZ::IO::FileIOStream fileStream(targetFilePath.c_str(), AZ::IO::OpenMode::ModeWrite);
-                    if (fileStream.IsOpen())
+                    if (!fileStream.IsOpen())
                     {
-                        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, targetFilePath);
-                        m_expectedAddedAssetPath = targetFilePath;
-
-                        SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestEdit, targetFilePath.c_str(), true, [](bool, const SourceControlFileInfo&) {});
-
-                        fileStream.Write(byteBuffer.size(), byteBuffer.data());
-
-                        AZStd::string watchFolder;
-                        AZ::Data::AssetInfo assetInfo;
-                        bool sourceInfoFound{};
-                        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, targetFilePath.c_str(), assetInfo, watchFolder);
-
-                        if (sourceInfoFound)
-                        {
-                            m_sourceAssetId = assetInfo.m_assetId;
-                        }
-
-                        AZStd::string fileName = targetFilePath;
-
-                        if (AzFramework::StringFunc::Path::Normalize(fileName))
-                        {
-                            AzFramework::StringFunc::Path::StripPath(fileName);
-                            m_currentAsset = fileName.c_str();
-
-                            m_userSettings->m_lastSavePath = targetFilePath;
-                            AZStd::size_t findIndex = m_userSettings->m_lastSavePath.find(fileName.c_str());
-
-                            if (findIndex != AZStd::string::npos)
-                            {
-                                m_userSettings->m_lastSavePath = m_userSettings->m_lastSavePath.substr(0, findIndex);
-                            }
-                        }
-
-                        AddRecentPath(targetFilePath);
-
-                        SetStatusText(Status::assetCreated);
+                        AZ_Warning("Asset Editor Widget", false, "Could not open file for writing - invalid path (%s).", targetFilePath.c_str());
+                        return false;
                     }
+
+                    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, targetFilePath);
+                    m_expectedAddedAssetPath = targetFilePath;
+
+                    SourceControlCommandBus::Broadcast(&SourceControlCommandBus::Events::RequestEdit, targetFilePath.c_str(), true, [](bool, const SourceControlFileInfo&) {});
+
+                    fileStream.Write(byteBuffer.size(), byteBuffer.data());
+
+                    AZStd::string watchFolder;
+                    AZ::Data::AssetInfo assetInfo;
+                    bool sourceInfoFound{};
+                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, targetFilePath.c_str(), assetInfo, watchFolder);
+
+                    if (sourceInfoFound)
+                    {
+                        m_sourceAssetId = assetInfo.m_assetId;
+                    }
+
+                    AZStd::string fileName = targetFilePath;
+
+                    if (AzFramework::StringFunc::Path::Normalize(fileName))
+                    {
+                        AzFramework::StringFunc::Path::StripPath(fileName);
+                        m_currentAsset = fileName.c_str();
+
+                        m_userSettings->m_lastSavePath = targetFilePath;
+                        AZStd::size_t findIndex = m_userSettings->m_lastSavePath.find(fileName.c_str());
+
+                        if (findIndex != AZStd::string::npos)
+                        {
+                            m_userSettings->m_lastSavePath = m_userSettings->m_lastSavePath.substr(0, findIndex);
+                        }
+                    }
+
+                    AddRecentPath(targetFilePath);
+
+                    SetStatusText(Status::assetCreated);
 
                     return true;
                 }
@@ -880,7 +895,7 @@ namespace AzToolsFramework
                 statusString.append(m_queuedAssetStatus);
             }
 
-            m_statusBar->textEdit->setPlainText(statusString);
+            m_statusBar->textEdit->setText(statusString);
 
             m_queuedAssetStatus.clear();
 

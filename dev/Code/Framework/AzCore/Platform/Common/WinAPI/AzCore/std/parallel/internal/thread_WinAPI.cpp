@@ -22,6 +22,7 @@ namespace AZStd
         void PostThreadRun();
         HANDLE CreateThread(unsigned stackSize, unsigned (__stdcall* threadRunFunction)(void*), AZStd::Internal::thread_info* ti, unsigned int* id);
         unsigned HardwareConcurrency();
+        void SetThreadName(HANDLE hThread, const char* threadName);
     }
 
     // Since we avoid including windows.h in header files in the code, we are declaring storage for CRITICAL_SECTION and CONDITION_VARIABLE
@@ -40,7 +41,8 @@ namespace AZStd
             ti->execute();
             destroy_thread_info(ti);
 
-            EBUS_EVENT(ThreadEventBus, OnThreadExit, this_thread::get_id());
+            ThreadEventBus::Broadcast(&ThreadEventBus::Events::OnThreadExit, this_thread::get_id()); // goes to client listeners
+            ThreadDrillerEventBus::Broadcast(&ThreadDrillerEventBus::Events::OnThreadExit, this_thread::get_id()); // goes to the profiler.
 
             Platform::PostThreadRun();
 
@@ -76,36 +78,14 @@ namespace AZStd
                 SetThreadAffinityMask(hThread, DWORD_PTR(desc->m_cpuId));
             }
 
-            EBUS_EVENT(ThreadEventBus, OnThreadEnter, thread::id(*id), desc);
+            ThreadEventBus::Broadcast(&ThreadEventBus::Events::OnThreadEnter, thread::id(*id), desc);
+            ThreadDrillerEventBus::Broadcast(&ThreadDrillerEventBus::Events::OnThreadEnter, thread::id(*id), desc);
 
             ::ResumeThread(hThread);
 
             if (desc && desc->m_name)
             {
-                #pragma pack(push,8)
-                typedef struct tagTHREADNAME_INFO
-                {
-                    DWORD dwType;     // Must be 0x1000
-                    LPCSTR szName;    // Pointer to name (in user address space)
-                    DWORD dwThreadID; // Thread ID (-1 for caller thread)
-                    DWORD dwFlags;    // Reserved for future use; must be zero
-                } THREADNAME_INFO;
-                #pragma pack(pop)
-
-                THREADNAME_INFO info;
-
-                info.dwType = 0x1000;
-                info.szName = desc->m_name;
-                info.dwThreadID = *id;
-                info.dwFlags = 0;
-
-                __try
-                {
-                    RaiseException(0x406D1388, 0, sizeof(info) / sizeof(ULONG_PTR), (const ULONG_PTR*)&info);
-                }
-                __except (GetExceptionCode() == 0x406D1388 ? EXCEPTION_CONTINUE_EXECUTION : EXCEPTION_EXECUTE_HANDLER)
-                {
-                }
+                Platform::SetThreadName(hThread, desc->m_name);
             }
 
             return hThread;

@@ -9,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#include "LmbrCentral_precompiled.h"
 #include <AssetBuilderSDK/SerializationDependencies.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzTest/AzTest.h>
@@ -18,7 +20,7 @@
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
-#include <Source/SliceBuilderWorker.h>
+#include <Builders/SliceBuilder/SliceBuilderWorker.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Slice/SliceMetadataInfoComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
@@ -97,29 +99,32 @@ namespace AZ
     AZ_TYPE_INFO_SPECIALIZE(AzFramework::SimpleAssetReference<MockSimpleAsset>, "{E21666E3-1943-4C55-BBBF-FA6E62E15942}")
 }
 
-struct MockSimpleAssetRefComponent
-    : public AZ::Component
+namespace SliceBuilder
 {
-    AZ_COMPONENT(MockSimpleAssetRefComponent, "{C3B2F100-D08C-4912-AC16-57506B190C2F}");
-
-    static void Reflect(ReflectContext* reflection)
+    struct MockSimpleAssetRefComponent
+        : public AZ::Component
     {
-        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+        AZ_COMPONENT(MockSimpleAssetRefComponent, "{C3B2F100-D08C-4912-AC16-57506B190C2F}");
 
-        AzFramework::SimpleAssetReference<MockSimpleAsset>::Register(*serializeContext);
-
-        if (serializeContext)
+        static void Reflect(ReflectContext* reflection)
         {
-            serializeContext->Class<MockSimpleAssetRefComponent, AZ::Component>()
-                ->Field("asset", &MockSimpleAssetRefComponent::m_asset);
+            SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+            AzFramework::SimpleAssetReference<MockSimpleAsset>::Register(*serializeContext);
+
+            if (serializeContext)
+            {
+                serializeContext->Class<MockSimpleAssetRefComponent, AZ::Component>()
+                    ->Field("asset", &MockSimpleAssetRefComponent::m_asset);
+            }
         }
-    }
 
-    void Activate() override {}
-    void Deactivate() override {}
+        void Activate() override {}
+        void Deactivate() override {}
 
-    AzFramework::SimpleAssetReference<MockSimpleAsset> m_asset;
-};
+        AzFramework::SimpleAssetReference<MockSimpleAsset> m_asset;
+    };
+}
 
 struct MockEditorComponent
     : public AzToolsFramework::Components::EditorComponentBase
@@ -271,8 +276,8 @@ public:
     void UnregisterComponentDescriptor(const ComponentDescriptor*) override { }
     bool AddEntity(Entity*) override { return true; }
     bool RemoveEntity(Entity*) override { return true; }
-    bool DeleteEntity(const EntityId&) override { return true; }
-    Entity* FindEntity(const EntityId&) override { return nullptr; }
+    bool DeleteEntity(const AZ::EntityId&) override { return true; }
+    Entity* FindEntity(const AZ::EntityId&) override { return nullptr; }
     SerializeContext* GetSerializeContext() override { return m_serializeContext; }
     BehaviorContext*  GetBehaviorContext() override { return nullptr; }
     JsonRegistrationContext* GetJsonRegistrationContext() override { return nullptr; }
@@ -342,7 +347,7 @@ public:
         AZ::PlatformTagSet platformTags;
         AZ::Data::Asset<SliceAsset> exportSliceAsset;
 
-        bool result = SliceBuilderWorker::GetDynamicSliceAsset(charStream, "MockAsset.slice", platformTags, exportSliceAsset);
+        bool result = SliceBuilderWorker::GetCompiledSliceAsset(charStream, "MockAsset.slice", platformTags, exportSliceAsset);
         ASSERT_TRUE(result);
 
         AssetBuilderSDK::JobProduct jobProduct;
@@ -375,7 +380,7 @@ public:
         AZ::PlatformTagSet platformTags;
         AZ::Data::Asset<SliceAsset> exportSliceAsset;
 
-        bool result = SliceBuilderWorker::GetDynamicSliceAsset(&charStream, "MockAsset.slice", platformTags, exportSliceAsset);
+        bool result = SliceBuilderWorker::GetCompiledSliceAsset(&charStream, "MockAsset.slice", platformTags, exportSliceAsset);
         ASSERT_TRUE(result);
 
         AssetBuilderSDK::JobProduct jobProduct;
@@ -620,5 +625,3 @@ TEST_F(DependencyTest, SliceFingerprint_ChangesWhenComponentServicesChange)
         ASSERT_EQ(fingerprintNoService, fingerprintNoServiceDoubleCheck);
     }
 }
-
-AZ_UNIT_TEST_HOOK();

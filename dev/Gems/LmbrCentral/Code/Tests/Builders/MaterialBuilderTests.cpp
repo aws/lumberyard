@@ -9,8 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#include <LmbrCentral_precompiled.h>
 #include <AzTest/AzTest.h>
-#include <Source/MaterialBuilderComponent.h>
+#include <Builders/MaterialBuilder/MaterialBuilderComponent.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -43,8 +45,8 @@ protected:
 
     AZStd::string GetTestFileAliasedPath(AZStd::string_view fileName)
     {
-        constexpr char testFileFolder[] = "@root@/../Code/Tools/AssetProcessor/Builders/MaterialBuilder/Tests/";
-        return AZStd::string::format("%s%.*s", testFileFolder, fileName.size(), fileName.data());
+        constexpr char testFileFolder[] = "@root@/../Gems/LmbrCentral/Code/Tests/Materials/";
+        return AZStd::string::format("%s%.*s", testFileFolder, aznumeric_cast<int>(fileName.size()), fileName.data());
     }
 
     AZStd::string GetTestFileFullPath(AZStd::string_view fileName)
@@ -240,5 +242,3 @@ TEST_F(MaterialBuilderTests, MaterialBuilder_SubMaterialMultipleTexture)
     };
     TestSuccessCase("test_mat19.mtl", expectedPaths);
 }
-
-AZ_UNIT_TEST_HOOK();

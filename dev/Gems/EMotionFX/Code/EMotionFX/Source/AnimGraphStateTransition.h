@@ -246,6 +246,7 @@ namespace EMotionFX
         void SetStateIds(const AZStd::vector<AnimGraphNodeId>& stateIds);
 
         void SetInterpolationType(AnimGraphStateTransition::EInterpolationType interpolationType);
+        EInterpolationType GetInterpolationType() { return m_interpolationType; }
         void SetEaseInSmoothness(float easeInSmoothness);
         void SetEaseOutSmoothness(float easeInSmoothness);
 

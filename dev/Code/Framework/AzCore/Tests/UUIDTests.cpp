@@ -205,4 +205,49 @@ namespace UnitTest
         EXPECT_TRUE(left <= right);
     }
 
+    TEST_F(UuidTests, CreateStringPermissive_HexAndSpacesGiven_Success)
+    {
+        const char uuidStr[] = "{34D44249-E599-4B30-811F-4215C2DEA269}";
+        Uuid left = Uuid::CreateString(uuidStr);
+
+        const char permissiveStr[] = "{ 0x34D44249 - 0xE5994B30 - 0x811F4215 - 0xC2DEA269 }";
+        Uuid right = Uuid::CreateStringPermissive(permissiveStr);
+        EXPECT_EQ(left, right);
+
+        const char permissiveStr2[] = "{ 0x34D44249-0xE5994B30  0x811F4215 - C2DEA269 }";
+        right = Uuid::CreateStringPermissive(permissiveStr2);
+        EXPECT_EQ(left, right);
+
+        const char permissiveStr3[] = "34D44249-0xE5994B30  0x811F4215 - C2DEA269 }";
+        right = Uuid::CreateStringPermissive(permissiveStr3);
+        EXPECT_EQ(left, right);
+
+        const char permissiveStr4[] = "{ x34D44249 - xE5994B30 - x811F4215  xC2DEA269 }";
+        right = Uuid::CreateStringPermissive(permissiveStr4);
+        EXPECT_EQ(left, right);
+
+        const char permissiveStr5[] = "{ 0X34D44249 - 0XE5994B30 - 0X811F4215  0XC2DEA269 }";
+        right = Uuid::CreateStringPermissive(permissiveStr5);
+        EXPECT_EQ(left, right);
+    }
+
+    TEST_F(UuidTests, CreateStringPermissive_InvalidHexAndSpacesGiven_Fails)
+    {
+        const char uuidStr[] = "{8FDDE7B1 - C332 - 4EBA - BD85 - 2898E7440E4C}";
+        Uuid left = Uuid::CreateStringPermissive(uuidStr);
+
+        const char permissiveStr1[] = "{ 8FDDE7B1 - 0 xC332 - 4EBA - BD85 - 2898E7440E4C}";
+        Uuid right = Uuid::CreateStringPermissive(permissiveStr1);
+        EXPECT_NE(left, right);
+    }
+
+    TEST_F(UuidTests, CreateStringPermissive_InvalidCharacterGiven_Fails)
+    {
+        Uuid left = Uuid::CreateNull();
+
+        // The below check should just give an empty uuid due to the g
+        const char permissiveStr1[] = "{CCF8AB1E- gA04A-43D1-AD8A-70725BC3392E}";
+        Uuid right = Uuid::CreateStringPermissive(permissiveStr1);
+        EXPECT_EQ(left, right);
+    }
 }

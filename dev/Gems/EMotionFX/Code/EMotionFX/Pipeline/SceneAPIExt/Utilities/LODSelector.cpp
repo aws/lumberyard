@@ -48,7 +48,7 @@ namespace EMotionFX
                 // There's two ways for user to create LOD for now. 
                 // 1. Use soft naming (_lod1, _lod2...) as suffix on the meshes
                 // 2. Use LOD group (LOD_1, LOD_2...) and put lod meshes in each group.
-                AZStd::string lodGroupName = AZStd::string::format("LOD_%d", lodRuleIndex + 1);
+                AZStd::string lodGroupName = AZStd::string::format("LOD_%zu", lodRuleIndex + 1);
 
                 // Loop through all the mesh data.
                 auto contentStorage = graph.GetContentStorage();
@@ -144,7 +144,7 @@ namespace EMotionFX
                 const SceneContainers::SceneGraph& graph = scene.GetGraph();
                 const auto nameStorage = graph.GetNameStorage();
 
-                AZStd::string lodGroupName = AZStd::string::format("LOD_%d", lodLevel);
+                AZStd::string lodGroupName = AZStd::string::format("LOD_%zu", lodLevel);
 
                 // First, find if there's any node in the graph matches the LOD Group name.
                 for (auto it = nameStorage.begin(); it != nameStorage.end(); ++it)

@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #ifdef PHYSWORLD_SERIALIZATION
 #include "vector"
 #include "map"
@@ -3186,4 +3188,6 @@ void SerializeWorld(CPhysicalWorld* pWorld, const char* fname, int bSave)
     fclose(ctx.f);
 }
 
-#endif
+#endif // PHYSWORLD_SERIALIZATION
+
+#endif // ENABLE_CRY_PHYSICS

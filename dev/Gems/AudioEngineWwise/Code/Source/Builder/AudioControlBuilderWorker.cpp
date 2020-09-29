@@ -10,263 +10,277 @@
 *
 */
 
-#include "AudioControlBuilderWorker.h"
+#include <AudioControlBuilderWorker.h>
 
+#include <AzCore/AzCore_Traits_Platform.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/document.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 
-namespace CopyDependencyBuilder
+#include <ATLCommon.h>
+#include <Common_wwise.h>
+#include <Config_wwise.h>
+
+namespace AudioControlBuilder
 {
     namespace Internal
     {
-        const char NodeNameAudioPreloads[] = "AudioPreloads";
-        const char NodeNamePreloadRequest[] = "ATLPreloadRequest";
-        const char NodeNameAtlPlatforms[] = "ATLPlatforms";
-        const char NodeNamePlatform[] = "Platform";
-        const char AttributeNameAtlName[] = "atl_name";
-        const char AttributeNameConfigGroupName[] = "atl_config_group_name";
-        const char NodeNameConfigGroup[] = "ATLConfigGroup";
-        const char NodeNameWwiseFile[] = "WwiseFile";
-        const char AttributeNameWwiseName[] = "wwise_name";
-        const char SoundsDirectoryPrefix[] = "sounds/wwise/";
-        const char NodeNameAudioTriggers[] = "AudioTriggers";
-        const char NodeNameTrigger[] = "ATLTrigger";
-        const char NodeNameWwiseEvent[] = "WwiseEvent";
         const char JsonEventsKey[] = "includedEvents";
         const char SoundbankDependencyFileExtension[] = ".bankdeps";
 
-        const char NodeDoesNotExistMessage[] = "%s node does not exist. Please be sure that you have defined at least one %s for this Audio Control file.";
-        const char MalformedNodeMissingAttributeMessage[] = "%s node is malformed: does not have an attribute %s defined. This is likely the result of manual editing. Please resave the Audio Control file.";
-        const char MalformedNodeMissingChildNodeMessage[] = "%s node does not contain a child %s node. This is likely the result of manual editing. Please resave the Audio Control file.";
+        const char NodeDoesNotExistMessage[] = "%s node does not exist. Please be sure that you have defined at least one %s for this Audio Control file.\n";
+        const char MalformedNodeMissingAttributeMessage[] = "%s node is malformed: does not have an attribute %s defined. This is likely the result of manual editing. Please resave the Audio Control file.\n";
+        const char MalformedNodeMissingChildNodeMessage[] = "%s node does not contain a child %s node. This is likely the result of manual editing. Please resave the Audio Control file.\n";
 
-        using AtlConfigGroupMap = AZStd::unordered_map<AZStd::string, const AZ::rapidxml::xml_node<char>*>;
-
-        AZStd::string GetAtlPlatformName(const AZStd::string& requestPlatform)
+        namespace Legacy
         {
-            AZStd::string atlPlatform;
-            AZStd::string platform = requestPlatform;
-            // When debugging a builder using a debug task, it replaces platform tags with "debug platform". Make sure the builder
-            //  actually uses the host platform identifier when going through this function in this case.
-            if (platform == "debug platform")
+            using AtlConfigGroupMap = AZStd::unordered_map<AZStd::string, const AZ::rapidxml::xml_node<char>*>;
+
+            AZStd::string GetAtlPlatformName(const AZStd::string& requestPlatform)
             {
-                if (AZ::g_currentPlatform == AZ::PlatformID::PLATFORM_WINDOWS_32
-                    || AZ::g_currentPlatform == AZ::PlatformID::PLATFORM_WINDOWS_64)
+                AZStd::string atlPlatform;
+                AZStd::string platform = requestPlatform;
+
+                // When debugging a builder using a debug task, it replaces platform tags with "debug platform". Make sure the builder
+                //  actually uses the host platform identifier when going through this function in this case.
+                if (platform == "debug platform")
                 {
-                    platform = "pc";
+                    atlPlatform = AZ_TRAIT_OS_PLATFORM_NAME;
+                    AZStd::to_lower(atlPlatform.begin(), atlPlatform.end());
                 }
                 else
                 {
-                    platform = AZ::GetPlatformName(AZ::g_currentPlatform);
-                    AZStd::to_lower(platform.begin(), platform.end());
+                    if (platform == "pc")
+                    {
+                        atlPlatform = "windows";
+                    }
+                    else if (platform == "es3")
+                    {
+                        atlPlatform = "android";
+                    }
+                    else if (platform == "osx_gl")
+                    {
+                        atlPlatform = "mac";
+                    }
+                    else
+                    {
+                        atlPlatform = AZStd::move(platform);
+                    }
                 }
+                return AZStd::move(atlPlatform);
             }
 
-            if (platform == "pc")
+            AZ::Outcome<void, AZStd::string> BuildConfigGroupMap(const AZ::rapidxml::xml_node<char>* preloadRequestNode, AtlConfigGroupMap& configGroupMap)
             {
-                atlPlatform = "windows";
-            }
-            else if (platform == "osx")
-            {
-                atlPlatform = "mac";
-            }
-            else if (platform == "linux")
-            {
-                atlPlatform = "linux";
-            }
-            else if (platform == "android")
-            {
-                atlPlatform = "android";
-            }
-            else if (platform == "ios")
-            {
-                atlPlatform = "ios";
-            }
-            else if (platform == "appletv")
-            {
-                atlPlatform == "appletv";
-            }
-            else
-            {
-                atlPlatform = "unknown";
-            }
-            return AZStd::move(atlPlatform);
-        }
+                AZ_Assert(preloadRequestNode != nullptr, NodeDoesNotExistMessage, Audio::ATLXmlTags::ATLPreloadRequestTag, "preload request");
 
-        AZ::Outcome<void, AZStd::string> BuildConfigGroupMap(const AZ::rapidxml::xml_node<char>* preloadRequestNode, AtlConfigGroupMap& configGroupMap)
-        {
-            if (!preloadRequestNode)
-            {
-                return AZ::Failure(AZStd::string::format(NodeDoesNotExistMessage, NodeNamePreloadRequest, "preload request"));
-            }
+                auto configGroupNode = preloadRequestNode->first_node(Audio::ATLXmlTags::ATLConfigGroupTag);
+                while (configGroupNode)
+                {
+                    // Populate the config group map by iterating over all ATLConfigGroup nodes, and place each one in the map keyed by the group's atl_name attribute...
+                    if (const auto configGroupNameAttr = configGroupNode->first_attribute(Audio::ATLXmlTags::ATLNameAttribute))
+                    {
+                        configGroupMap.emplace(configGroupNameAttr->value(), configGroupNode);
+                    }
+                    else
+                    {
+                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage,
+                            Audio::ATLXmlTags::ATLConfigGroupTag, Audio::ATLXmlTags::ATLNameAttribute));
+                    }
 
-            AZ::rapidxml::xml_node<char>* configGroupNode = preloadRequestNode->first_node(NodeNameConfigGroup);
-            if (!configGroupNode)
-            {
-                // if no config groups are defined, then this is just an empty preload request with no banks referenced, which is 
-                //  valid. return a success here.
+                    configGroupNode = configGroupNode->next_sibling(Audio::ATLXmlTags::ATLConfigGroupTag);
+                }
+
+                // If no config groups are defined, this is an empty preload request with no banks referenced, which is valid.
                 return AZ::Success();
             }
 
-            // Populate the config group map by iterating over all ATLConfigGroup nodes, and place each one in the map keyed by the 
-            //  group's atl_name attribute
-            do
+            AZ::Outcome<void, AZStd::string> GetBanksFromAtlPreloads(const AZ::rapidxml::xml_node<char>* preloadsNode, const AZStd::string& atlPlatformIdentifier, AZStd::vector<AZStd::string>& banksReferenced)
             {
-                AZ::rapidxml::xml_attribute<char>* configGroupNameAttr = configGroupNode->first_attribute(AttributeNameAtlName);
-                if (!configGroupNameAttr)
-                {
-                    return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage, NodeNameConfigGroup, AttributeNameAtlName));
-                }
-                
-                configGroupMap.emplace(configGroupNameAttr->value(), configGroupNode);
+                AZ_Assert(preloadsNode != nullptr, NodeDoesNotExistMessage, Audio::ATLXmlTags::PreloadsNodeTag, "preload request");
 
-                configGroupNode = configGroupNode->next_sibling(NodeNameConfigGroup);
-            } while (configGroupNode);
-            
-            return AZ::Success();
-        }
+                auto preloadRequestNode = preloadsNode->first_node(Audio::ATLXmlTags::ATLPreloadRequestTag);
+                if (!preloadRequestNode)
+                {
+                    return AZ::Failure(AZStd::string::format(NodeDoesNotExistMessage,
+                        Audio::ATLXmlTags::ATLPreloadRequestTag, "preload request"));
+                }
+
+                // For each preload request in the control file, determine which config group is used for this platform and register each 
+                // bank listed in that preload request as a dependency.
+                while (preloadRequestNode)
+                {
+                    AtlConfigGroupMap configGroupMap;
+                    auto configGroupMapResult = BuildConfigGroupMap(preloadRequestNode, configGroupMap);
+
+                    // If the returned map is empty, there are not banks referenced in the preload request, return the result here.
+                    if (!configGroupMapResult.IsSuccess() || configGroupMap.size() == 0)
+                    {
+                        return configGroupMapResult;
+                    }
+
+                    const auto platformsNode = preloadRequestNode->first_node(Audio::ATLXmlTags::ATLPlatformsTag);
+                    if (!platformsNode)
+                    {
+                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage,
+                            Audio::ATLXmlTags::ATLPreloadRequestTag, Audio::ATLXmlTags::ATLPlatformsTag));
+                    }
+
+                    auto platformNode = platformsNode->first_node(Audio::ATLXmlTags::PlatformNodeTag);
+                    if (!platformNode)
+                    {
+                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage,
+                            Audio::ATLXmlTags::ATLPlatformsTag, Audio::ATLXmlTags::PlatformNodeTag));
+                    }
+
+                    AZStd::string configGroupName;
+                    // For each platform node in the platform list, check the atl_name to see if it matches the platform the request is
+                    //  intended for. If it is, grab the name of the config group that is used for that platform to load it.
+                    while (platformNode)
+                    {
+                        const auto atlNameAttr = platformNode->first_attribute(Audio::ATLXmlTags::ATLNameAttribute);
+                        if (!atlNameAttr)
+                        {
+                            return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage,
+                                Audio::ATLXmlTags::PlatformNodeTag, Audio::ATLXmlTags::ATLNameAttribute));
+                        }
+                        else if (atlPlatformIdentifier == atlNameAttr->value())
+                        {
+                            // We've found the right platform that matches the request, so grab the group name and stop looking through
+                            //  the list
+                            const auto configGroupNameAttr = platformNode->first_attribute(Audio::ATLXmlTags::ATLConfigGroupAttribute);
+                            if (!configGroupNameAttr)
+                            {
+                                return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage,
+                                    Audio::ATLXmlTags::PlatformNodeTag, Audio::ATLXmlTags::ATLConfigGroupAttribute));
+                            }
+                            configGroupName = configGroupNameAttr->value();
+                            break;
+                        }
+
+                        platformNode = platformNode->next_sibling(Audio::ATLXmlTags::PlatformNodeTag);
+                    }
+
+                    const AZ::rapidxml::xml_node<char>* configGroupNode = configGroupMap[configGroupName];
+                    if (!configGroupNode)
+                    {
+                        // The config group this platform uses isn't defined in the control file. This might be intentional, so just 
+                        //  generate a warning and keep going to the next preload node.
+                        AZ_TracePrintf("Audio Control Builder", "%s node for config group %s is not defined, so no banks are referenced.",
+                            Audio::ATLXmlTags::ATLConfigGroupTag, configGroupName.c_str());
+                    }
+                    else
+                    {
+                        auto wwiseFileNode = configGroupNode->first_node(Audio::WwiseXmlTags::WwiseFileTag);
+                        if (!wwiseFileNode)
+                        {
+                            return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage,
+                                Audio::ATLXmlTags::ATLConfigGroupTag, Audio::WwiseXmlTags::WwiseFileTag));
+                        }
+
+                        // For each WwiseFile (soundbank) referenced in the config group, grab the file name and add it to the reference list
+                        while (wwiseFileNode)
+                        {
+                            const auto bankNameAttribute = wwiseFileNode->first_attribute(Audio::WwiseXmlTags::WwiseNameAttribute);
+                            if (!bankNameAttribute)
+                            {
+                                return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage,
+                                    Audio::WwiseXmlTags::WwiseFileTag, Audio::WwiseXmlTags::WwiseNameAttribute));
+                            }
+
+                            // Prepend the bank name with the relative path to the wwise sounds folder to get relative path to the bank from
+                            //  the @assets@ alias and push that into the list of banks referenced.
+                            AZStd::string soundsPrefix = Audio::Wwise::DefaultBanksPath;
+                            banksReferenced.emplace_back(soundsPrefix + bankNameAttribute->value());
+
+                            wwiseFileNode = wwiseFileNode->next_sibling(Audio::WwiseXmlTags::WwiseFileTag);
+                        }
+                    }
+
+                    preloadRequestNode = preloadRequestNode->next_sibling(Audio::ATLXmlTags::ATLPreloadRequestTag);
+                }
+
+                return AZ::Success();
+            }
+
+        } // namespace Legacy
+
 
         AZ::Outcome<void, AZStd::string> BuildAtlEventList(const AZ::rapidxml::xml_node<char>* triggersNode, AZStd::vector<AZStd::string>& eventNames)
         {
-            if (!triggersNode)
-            {
-                return AZ::Failure(AZStd::string::format(NodeDoesNotExistMessage, NodeNameAudioTriggers, "trigger"));
-            }
+            AZ_Assert(triggersNode != nullptr, NodeDoesNotExistMessage, Audio::ATLXmlTags::TriggersNodeTag, "trigger");
 
-            const AZ::rapidxml::xml_node<char>* triggerNode = triggersNode->first_node(NodeNameTrigger);
-            if (!triggerNode)
+            auto triggerNode = triggersNode->first_node(Audio::ATLXmlTags::ATLTriggerTag);
+            while (triggerNode)
             {
-                return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage, NodeNameAudioTriggers, NodeNameTrigger));
-            }
-
-            // For each audio trigger defined, if it has been assigned a wwise event to invoke, push the name of the wwise event into
-            //  the list passed in.
-            do 
-            {
-                const AZ::rapidxml::xml_node<char>* eventNode = triggerNode->first_node(NodeNameWwiseEvent);
-                // it's okay for an ATLTrigger node to not have a wwise event associated with it, as the ATL trigger was defined
-                //  but not assigned a wwise event yet.
-                if (eventNode)
+                // For each audio trigger, push the name of the Wwise event (if assigned) into the list.
+                // It's okay for an ATLTrigger node to not have a Wwise event associated with it.
+                if (const auto eventNode = triggerNode->first_node(Audio::WwiseXmlTags::WwiseEventTag))
                 {
-                    const AZ::rapidxml::xml_attribute<char>* eventNameAttribute = eventNode->first_attribute(AttributeNameWwiseName);
-                    if (!eventNameAttribute)
+                    if (const auto eventNameAttr = eventNode->first_attribute(Audio::WwiseXmlTags::WwiseNameAttribute))
                     {
-                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage, NodeNameWwiseEvent, AttributeNameWwiseName));
+                        eventNames.push_back(eventNameAttr->value());
                     }
-                    eventNames.push_back(eventNameAttribute->value());
+                    else
+                    {
+                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage,
+                            Audio::WwiseXmlTags::WwiseEventTag, Audio::WwiseXmlTags::WwiseNameAttribute));
+                    }
                 }
 
-                triggerNode = triggerNode->next_sibling(NodeNameTrigger);
-            } while (triggerNode);
+                triggerNode = triggerNode->next_sibling(Audio::ATLXmlTags::ATLTriggerTag);
+            }
 
             return AZ::Success();
         }
 
-        AZ::Outcome<void, AZStd::string> GetBanksFromAtlPreloads(const AZ::rapidxml::xml_node<char>* preloadsNode, const AZStd::string& atlPlatformIdentifier, AZStd::vector<AZStd::string>& banksReferenced)
+        AZ::Outcome<void, AZStd::string> GetBanksFromAtlPreloads(const AZ::rapidxml::xml_node<char>* preloadsNode, AZStd::vector<AZStd::string>& banksReferenced)
         {
-            if (!preloadsNode)
-            {
-                return AZ::Failure(AZStd::string::format(NodeDoesNotExistMessage, NodeNameAudioPreloads, "preload request"));
-            }
+            AZ_Assert(preloadsNode != nullptr, NodeDoesNotExistMessage, Audio::ATLXmlTags::PreloadsNodeTag, "preload request");
 
-            AZ::rapidxml::xml_node<char>* preloadRequestNode = preloadsNode->first_node(NodeNamePreloadRequest);
+            auto preloadRequestNode = preloadsNode->first_node(Audio::ATLXmlTags::ATLPreloadRequestTag);
             if (!preloadRequestNode)
             {
-                return AZ::Failure(AZStd::string::format(NodeDoesNotExistMessage, NodeNamePreloadRequest, "preload request"));
+                return AZ::Failure(AZStd::string::format(NodeDoesNotExistMessage, Audio::ATLXmlTags::ATLPreloadRequestTag, "preload request"));
             }
 
-            // For each preload request in the control file, determine which config group is used for this platform and register each 
-            //  bank listed in that preload request as a dependency.
-            do
+            // Loop through the ATLPreloadRequest nodes...
+            // Find any Wwise banks listed and add them to the banksReferenced vector.
+            while (preloadRequestNode)
             {
-                AtlConfigGroupMap configGroupMap;
-                AZ::Outcome<void, AZStd::string> configGroupMapResult = BuildConfigGroupMap(preloadRequestNode, configGroupMap);
-                // If the map returned is empty, then there are no banks that are referenced in the preload request, so 
-                //  return the result here.
-                if (!configGroupMapResult.IsSuccess() || configGroupMap.size() == 0)
+                // Attempt to find the child node in the New Xml format...
+                if (auto wwiseFileNode = preloadRequestNode->first_node(Audio::WwiseXmlTags::WwiseFileTag))
                 {
-                    return configGroupMapResult;
-                }
-
-                AZStd::string configGroupName;
-                const AZ::rapidxml::xml_node<char>* platformsNode = preloadRequestNode->first_node(NodeNameAtlPlatforms);
-                if (!platformsNode)
-                {
-                    return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage, NodeNamePreloadRequest, NodeNameAtlPlatforms));
-                }
-
-                const AZ::rapidxml::xml_node<char>* platformNode = platformsNode->first_node(NodeNamePlatform);
-                if (!platformNode)
-                {
-                    return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage, NodeNameAtlPlatforms, NodeNamePlatform));
-                }
-
-                // For each platform node in the platform list, check the atl_name to see if it matches the platform the request is
-                //  intended for. If it is, grab the name of the config group that is used for that platform to load it.
-                do
-                {
-                    const AZ::rapidxml::xml_attribute<char>* atlNameAttr = platformNode->first_attribute(AttributeNameAtlName);
-                    if (!atlNameAttr)
+                    while (wwiseFileNode)
                     {
-                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage, NodeNamePlatform, AttributeNameAtlName));
-                    }
-                    else if (atlPlatformIdentifier == atlNameAttr->value())
-                    {
-                        // We've found the right platform that matches the request, so grab the group name and stop looking through
-                        //  the list
-                        const AZ::rapidxml::xml_attribute<char>* configGroupNameAttr = platformNode->first_attribute(AttributeNameConfigGroupName);
-                        if (!configGroupNameAttr)
+                        const auto bankNameAttr = wwiseFileNode->first_attribute(Audio::WwiseXmlTags::WwiseNameAttribute);
+                        if (bankNameAttr)
                         {
-                            return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage, NodeNamePlatform, AttributeNameConfigGroupName));
+                            AZStd::string soundsPrefix = Audio::Wwise::DefaultBanksPath;
+                            banksReferenced.emplace_back(soundsPrefix + bankNameAttr->value());
                         }
-                        configGroupName = configGroupNameAttr->value();
-                        break;
+                        else
+                        {
+                            return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage,
+                                Audio::WwiseXmlTags::WwiseFileTag, Audio::WwiseXmlTags::WwiseNameAttribute));
+                        }
+
+                        wwiseFileNode = wwiseFileNode->next_sibling(Audio::WwiseXmlTags::WwiseFileTag);
                     }
-                    
-                    platformNode = platformNode->next_sibling(NodeNamePlatform);
-                } while (platformNode);
-                
-                const AZ::rapidxml::xml_node<char>* configGroupNode = configGroupMap[configGroupName];
-                if (!configGroupNode)
-                {
-                    // The config group this platform uses isn't defined in the control file. This might be intentional, so just 
-                    //  generate a warning and keep going to the next preload node.
-                    AZ_TracePrintf("Audio Control Builder", "%s node for config group %s is not defined, so no banks are referenced.", NodeNameConfigGroup, configGroupName.c_str());
                 }
                 else
                 {
-                    const AZ::rapidxml::xml_node<char>* wwiseFileNode = configGroupNode->first_node(NodeNameWwiseFile);
-                    if (!wwiseFileNode)
-                    {
-                        return AZ::Failure(AZStd::string::format(MalformedNodeMissingChildNodeMessage, NodeNameConfigGroup, NodeNameWwiseFile));
-                    }
-
-                    // For each WwiseFile (soundbank) referenced in the config group, grab the file name and add it to the reference list
-                    do
-                    {
-                        const AZ::rapidxml::xml_attribute<char>* bankNameAttribute = wwiseFileNode->first_attribute(AttributeNameWwiseName);
-                        if (!bankNameAttribute)
-                        {
-                            return AZ::Failure(AZStd::string::format(MalformedNodeMissingAttributeMessage, NodeNameWwiseFile, AttributeNameWwiseName));
-                        }
-
-                        // Prepend the bank name with the relative path to the wwise sounds folder to get relative path to the bank from
-                        //  the @assets@ alias and push that into the list of banks referenced.
-                        AZStd::string soundsPrefix = SoundsDirectoryPrefix;
-                        banksReferenced.emplace_back(soundsPrefix + bankNameAttribute->value());
-
-                        wwiseFileNode = wwiseFileNode->next_sibling(NodeNameWwiseFile);
-                    } while (wwiseFileNode);
+                    return AZ::Failure(AZStd::string::format("Preloads Xml appears to be in an older format, trying Legacy parsing.\n"));
                 }
-                
-                preloadRequestNode = preloadRequestNode->next_sibling(Internal::NodeNamePreloadRequest);
-            } while (preloadRequestNode);
+
+                preloadRequestNode = preloadRequestNode->next_sibling(Audio::ATLXmlTags::ATLPreloadRequestTag);
+            }
 
             return AZ::Success();
         }
-        
+
         AZ::Outcome<void, AZStd::string> GetEventsFromBankMetadata(const rapidjson::Value& rootObject, AZStd::set<AZStd::string>& eventNames)
         {
             if (!rootObject.IsObject())
@@ -290,6 +304,7 @@ namespace CopyDependencyBuilder
             {
                 eventNames.emplace(eventsArray[eventIndex].GetString());
             }
+
             return AZ::Success();
         }
 
@@ -322,128 +337,199 @@ namespace CopyDependencyBuilder
 
             return GetEventsFromBankMetadata(bankMetadataDoc, eventNames);
         }
-    }
+
+    } // namespace Internal
+
+
 
     AudioControlBuilderWorker::AudioControlBuilderWorker()
-        : XmlFormattedAssetBuilderWorker("Audio Control", true, true)
-        , m_globalScopeControlsPath("libs/gameaudio/")
+        : m_globalScopeControlsPath("libs/gameaudio/")
+        , m_isShuttingDown(false)
     {
-        AzFramework::StringFunc::Path::Normalize(m_globalScopeControlsPath);
+        AZ::StringFunc::Path::Normalize(m_globalScopeControlsPath);
     }
 
-    void AudioControlBuilderWorker::RegisterBuilderWorker()
+    void AudioControlBuilderWorker::ShutDown()
     {
-        AssetBuilderSDK::AssetBuilderDesc audioControlBuilderDescriptor;
-        audioControlBuilderDescriptor.m_name = "AudioControlBuilderWorker";
-        // pattern finds all Audio Control xml files in the libs/gameaudio folder and any of its subfolders.
-        audioControlBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("(.*libs\\/gameaudio\\/).*\\.xml", AssetBuilderSDK::AssetBuilderPattern::PatternType::Regex));
-        audioControlBuilderDescriptor.m_busId = azrtti_typeid<AudioControlBuilderWorker>();
-        audioControlBuilderDescriptor.m_version = 2;
-        audioControlBuilderDescriptor.m_createJobFunction =
-            AZStd::bind(&AudioControlBuilderWorker::CreateJobs, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
-        audioControlBuilderDescriptor.m_processJobFunction =
-            AZStd::bind(&AudioControlBuilderWorker::ProcessJob, this, AZStd::placeholders::_1, AZStd::placeholders::_2);
-
-        BusConnect(audioControlBuilderDescriptor.m_busId);
-
-        AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, audioControlBuilderDescriptor);
+        m_isShuttingDown = true;
     }
 
-    void AudioControlBuilderWorker::UnregisterBuilderWorker()
+    void AudioControlBuilderWorker::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
     {
-        BusDisconnect();
+        if (m_isShuttingDown)
+        {
+            response.m_result = AssetBuilderSDK::CreateJobsResultCode::ShuttingDown;
+            return;
+        }
+
+        for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
+        {
+            if (info.m_identifier == "server")
+            {
+                continue;
+            }
+
+            AssetBuilderSDK::JobDescriptor descriptor;
+            descriptor.m_jobKey = "Audio Control";
+            descriptor.m_critical = true;
+            descriptor.SetPlatformIdentifier(info.m_identifier.c_str());
+            descriptor.m_priority = 0;
+            response.m_createJobOutputs.push_back(descriptor);
+        }
+
+        response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
     }
 
-    AZ::Data::AssetType AudioControlBuilderWorker::GetAssetType(const AZStd::string& fileName) const
+    void AudioControlBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
     {
-        return AZ::Data::AssetType::CreateNull();
+        AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "AudioControlBuilderWorker Starting Job.\n");
+
+        if (m_isShuttingDown)
+        {
+            AZ_TracePrintf(AssetBuilderSDK::WarningWindow, "Cancelled job %s because shutdown was requested.\n", request.m_fullPath.c_str());
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
+            return;
+        }
+
+        AZStd::string fileName;
+        AZ::StringFunc::Path::GetFullFileName(request.m_fullPath.c_str(), fileName);
+
+        AssetBuilderSDK::JobProduct jobProduct(request.m_fullPath);
+
+        if (!ParseProductDependencies(request, jobProduct.m_dependencies, jobProduct.m_pathDependencies))
+        {
+            AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Error during parsing product dependencies for asset %s.\n", fileName.c_str());
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            return;
+        }
+
+        response.m_outputProducts.push_back(jobProduct);
+        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
     }
 
-    bool AudioControlBuilderWorker::ParseXmlFile(
-        const AZ::rapidxml::xml_node<char>* node,
-        const AZStd::string& fullPath,
-        const AZStd::string& sourceFile,
-        const AZStd::string& platformIdentifier,
+    bool AudioControlBuilderWorker::ParseProductDependencies(
+        const AssetBuilderSDK::ProcessJobRequest& request,
         AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
         AssetBuilderSDK::ProductPathDependencySet& pathDependencies)
     {
-        if (!node)
+        AZ::IO::FileIOStream fileStream;
+        if (!fileStream.Open(request.m_fullPath.c_str(), AZ::IO::OpenMode::ModeRead))
         {
             return false;
         }
 
-        AddProductDependencies(node, fullPath, sourceFile, platformIdentifier, productDependencies, pathDependencies);
+        AZ::IO::SizeType length = fileStream.GetLength();
+        if (length == 0)
+        {
+            return false;
+        }
+
+        AZStd::vector<char> charBuffer;
+        charBuffer.resize_no_construct(length + 1);
+        fileStream.Read(length, charBuffer.data());
+        charBuffer.back() = 0;
+
+        // Get the XML root node
+        AZ::rapidxml::xml_document<char> xmlDoc;
+        if (!xmlDoc.parse<AZ::rapidxml::parse_no_data_nodes>(charBuffer.data()))
+        {
+            return false;
+        }
+
+        AZ::rapidxml::xml_node<char>* xmlRootNode = xmlDoc.first_node();
+        if (!xmlRootNode)
+        {
+            return false;
+        }
+
+        ParseProductDependenciesFromXmlFile(xmlRootNode,
+            request.m_fullPath,
+            request.m_sourceFile,
+            request.m_platformInfo.m_identifier,
+            productDependencies,
+            pathDependencies);
+
         return true;
     }
 
-    void AudioControlBuilderWorker::AddProductDependencies(
+    void AudioControlBuilderWorker::ParseProductDependenciesFromXmlFile(
         const AZ::rapidxml::xml_node<char>* node,
         const AZStd::string& fullPath,
         const AZStd::string& sourceFile,
         const AZStd::string& platformIdentifier,
-        AZStd::vector<AssetBuilderSDK::ProductDependency>& /*productDependencies*/,
+        [[maybe_unused]] AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
         AssetBuilderSDK::ProductPathDependencySet& pathDependencies)
     {
-        // Convert platform name to platform name that is used by wwise and ATL.
-        AZStd::string atlPlatformName = AZStd::move(Internal::GetAtlPlatformName(platformIdentifier));
-        
-        AZStd::vector<AZStd::string> banksReferenced;
-        const AZ::rapidxml::xml_node<char>* preloadsNode = node->first_node(Internal::NodeNameAudioPreloads);
+        AZ_Assert(node != nullptr, "AudioControlBuilderWorker::ParseProductDependenciesFromXmlFile - null xml root node!\n");
+
+        const auto preloadsNode = node->first_node(Audio::ATLXmlTags::PreloadsNodeTag);
         if (!preloadsNode)
         {
             // No preloads were defined in this control file, so we can return. If triggers are defined in this preload file, we can't
             // validate that they'll be playable because we are unsure of what other control files for the given scope are defined.
             return;
         }
-        
-        AZ::Outcome<void, AZStd::string> gatherBankReferencesResult = Internal::GetBanksFromAtlPreloads(preloadsNode, atlPlatformName, banksReferenced);
-        if (!gatherBankReferencesResult.IsSuccess())
+
+        // Collect any references to soundbanks, initially use the newer parsing format...
+        AZStd::vector<AZStd::string> banksReferenced;
+        AZ::Outcome<void, AZStd::string> gatherBankReferencesResult = Internal::GetBanksFromAtlPreloads(preloadsNode, banksReferenced);
+        if (!gatherBankReferencesResult)
         {
-            AZ_Warning("Audio Control Builder", false, "Failed to gather product dependencies for Audio Control file %s. %s", sourceFile.c_str(), gatherBankReferencesResult.GetError().c_str());
+            // Legacy...
+            // Convert platform name to platform name that is used by wwise and ATL.
+            AZStd::string atlPlatformName = AZStd::move(Internal::Legacy::GetAtlPlatformName(platformIdentifier));
+            gatherBankReferencesResult = Internal::Legacy::GetBanksFromAtlPreloads(preloadsNode, atlPlatformName, banksReferenced);
+        }
+
+        if (!gatherBankReferencesResult)
+        {
+            AZ_Warning("Audio Control Builder", false, "Failed to gather product dependencies for Audio Control file %s.  %s\n",
+                sourceFile.c_str(), gatherBankReferencesResult.GetError().c_str());
             return;
         }
-        else if (banksReferenced.size() == 0)
+
+        if (banksReferenced.size() == 0)
         {
-            // If there are no banks referenced, then there are no dependencies to register, so just return.
+            // If there are no banks referenced, then there are no dependencies to register, so return.
             return;
         }
-        
+
         for (const AZStd::string& relativeBankPath : banksReferenced)
         {
             pathDependencies.emplace(relativeBankPath, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
         }
 
-
         // For each bank figure out what events are included in the bank, then run through every event referenced in the file and 
         //  make sure it is in the list gathered from the banks.
-        AZStd::vector<AZStd::string> eventsReferenced;
-        const AZ::rapidxml::xml_node<char>* triggersNode = node->first_node(Internal::NodeNameAudioTriggers);
+        const auto triggersNode = node->first_node(Audio::ATLXmlTags::TriggersNodeTag);
         if (!triggersNode)
         {
             // No triggers were defined in this file, so we don't need to do any event validation.
             return;
         }
 
+        AZStd::vector<AZStd::string> eventsReferenced;
         AZ::Outcome<void, AZStd::string> gatherEventReferencesResult = Internal::BuildAtlEventList(triggersNode, eventsReferenced);
         if (!gatherEventReferencesResult.IsSuccess())
         {
-            AZ_Warning("Audio Control Builder", false, "Failed to gather list of events referenced by Audio Control file %s. %s", sourceFile.c_str(), gatherEventReferencesResult.GetError().c_str());
+            AZ_Warning("Audio Control Builder", false, "Failed to gather list of events referenced by Audio Control file %s. %s",
+                sourceFile.c_str(), gatherEventReferencesResult.GetError().c_str());
             return;
         }
 
         AZStd::string projectSourcePath = fullPath;
-        AZ::u64 firstSubDirectoryIndex = AzFramework::StringFunc::Find(projectSourcePath, m_globalScopeControlsPath);
-        AzFramework::StringFunc::LKeep(projectSourcePath, firstSubDirectoryIndex);
+        AZ::u64 firstSubDirectoryIndex = AZ::StringFunc::Find(projectSourcePath, m_globalScopeControlsPath);
+        AZ::StringFunc::LKeep(projectSourcePath, firstSubDirectoryIndex);
 
         AZStd::set<AZStd::string> wwiseEventsInReferencedBanks;
-        
+
         // Load all bankdeps files for all banks referenced and aggregate the list of events in those files. 
         for (const AZStd::string& relativeBankPath : banksReferenced)
         {
             // Create the full path to the bankdeps file from the bank file.
             AZStd::string bankMetadataPath;
-            AzFramework::StringFunc::Path::Join(projectSourcePath.c_str(), relativeBankPath.c_str(), bankMetadataPath);
-            AzFramework::StringFunc::Path::ReplaceExtension(bankMetadataPath, Internal::SoundbankDependencyFileExtension);
+            AZ::StringFunc::Path::Join(projectSourcePath.c_str(), relativeBankPath.c_str(), bankMetadataPath);
+            AZ::StringFunc::Path::ReplaceExtension(bankMetadataPath, Internal::SoundbankDependencyFileExtension);
 
             AZ::Outcome<void, AZStd::string> getReferencedEventsResult = Internal::GetEventsFromBank(bankMetadataPath, wwiseEventsInReferencedBanks);
             if (!getReferencedEventsResult.IsSuccess())
@@ -463,4 +549,5 @@ namespace CopyDependencyBuilder
             }
         }
     }
-}
+
+} // namespace AudioControlBuilder

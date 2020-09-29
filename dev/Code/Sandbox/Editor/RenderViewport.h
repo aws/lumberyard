@@ -41,8 +41,10 @@
 class CBaseObject;
 class QMenu;
 class QKeyEvent;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalEntity;
 typedef IPhysicalEntity* PIPhysicalEntity;
+#endif
 
 namespace AzToolsFramework
 {
@@ -167,6 +169,7 @@ public:
     void SetViewFromEntityPerspective(const AZ::EntityId& entityId) override;
     void SetViewAndMovementLockFromEntityPerspective(const AZ::EntityId& entityId, bool lockCameraMovement) override;
     AZ::EntityId GetCurrentViewEntityId() override { return m_viewEntityId; }
+    bool GetActiveCameraPosition(AZ::Vector3& cameraPos) override;
 
     // AzToolsFramework::EditorEntityContextNotificationBus
     void OnStartPlayInEditor() override;
@@ -534,8 +537,10 @@ protected:
 
     DisplayContext m_displayContext;
 
+#if ENABLE_CRY_PHYSICS
     mutable PIPhysicalEntity * m_pSkipEnts = nullptr;
     mutable int m_numSkipEnts = 0;
+#endif
 
     bool m_isOnPaint = false;
     static CRenderViewport* m_pPrimaryViewport;

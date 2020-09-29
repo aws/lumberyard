@@ -31,8 +31,10 @@ public:
     // Add the variables to the object properties
     void AddToObject(CVarObject* object, IVariable::OnSetCallback func);
 
+#if ENABLE_CRY_PHYSICS
     // Helper to add the filtering to the physical entity
     void ApplyToPhysicalEntity(IPhysicalEntity* pPhysics);
+#endif
 
     const SCollisionClass& GetCollisionClass() { return m_collisionClass; }
     int GetCollisionClassExportId();

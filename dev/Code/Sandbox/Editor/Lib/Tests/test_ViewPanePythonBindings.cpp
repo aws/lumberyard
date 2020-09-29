@@ -57,5 +57,10 @@ namespace ViewPaneFuncsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("bind_viewport") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("get_viewport_expansion_policy") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("set_viewport_expansion_policy") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_viewport_count") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_active_viewport") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("set_active_viewport") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("get_view_pane_layout") != behaviorContext->m_methods.end());
+        EXPECT_TRUE(behaviorContext->m_methods.find("set_view_pane_layout") != behaviorContext->m_methods.end());
     }
 }

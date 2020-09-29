@@ -22,12 +22,14 @@
 
 #include <QtUtil.h>
 
-#include <QFont>
 #include <QCompleter>
+#include <QDesktopServices>
+#include <QFont>
 #include <QStringListModel>
 #include <QStringBuilder>
 
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
+#include <AzQtComponents/Components/Widgets/ScrollBar.h>
 
 CScriptTermDialog::CScriptTermDialog(QWidget* parent)
     : QWidget(parent)
@@ -38,15 +40,22 @@ CScriptTermDialog::CScriptTermDialog(QWidget* parent)
 
     ui->SCRIPT_INPUT->installEventFilter(this);
 
-    connect(ui->SCRIPT_HELP, &QToolButton::clicked, this, &CScriptTermDialog::OnScriptHelp);
     connect(ui->SCRIPT_INPUT, &QLineEdit::returnPressed, this, &CScriptTermDialog::OnOK);
     connect(ui->SCRIPT_INPUT, &QLineEdit::textChanged, this, &CScriptTermDialog::OnScriptInputTextChanged);
+    connect(ui->SCRIPT_HELP, &QToolButton::clicked, this, &CScriptTermDialog::OnScriptHelp);
+    connect(ui->SCRIPT_DOCS, &QToolButton::clicked, this, []() {
+        QDesktopServices::openUrl(QUrl("https://docs.aws.amazon.com/lumberyard/latest/tutorials/tutorials-python.html"));
+    });
 
     InitCompleter();
+    RefreshStyle();
+    
+    EditorPreferencesNotificationBus::Handler::BusConnect();
 }
 
 CScriptTermDialog::~CScriptTermDialog()
 {
+    EditorPreferencesNotificationBus::Handler::BusDisconnect();
     AzToolsFramework::EditorPythonConsoleNotificationBus::Handler::BusDisconnect();
 }
 
@@ -56,6 +65,42 @@ void CScriptTermDialog::RegisterViewClass()
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
     AzToolsFramework::RegisterViewPane<CScriptTermDialog>(SCRIPT_TERM_WINDOW_NAME, LyViewPane::CategoryOther, options);
+}
+
+void CScriptTermDialog::RefreshStyle()
+{
+    // Set the debug/warning text colors appropriately for the background theme
+    // (e.g. not have black text on black background)
+    m_textColor = Qt::black;
+    m_errorColor = QColor(200, 0, 0);                   // Error (Red)
+    m_warningColor = QColor(128, 112, 0);               // Warning (Yellow)
+
+    if (gSettings.consoleBackgroundColorTheme == SEditorSettings::ConsoleColorTheme::Dark)
+    {
+        m_textColor = Qt::white;
+        m_errorColor = QColor(0xfa, 0x27, 0x27);        // Error (Red)
+        m_warningColor = QColor(0xff, 0xaa, 0x22);      // Warning (Yellow)
+    }
+
+    QColor bgColor;
+    if (gSettings.consoleBackgroundColorTheme == SEditorSettings::ConsoleColorTheme::Dark)
+    {
+        bgColor = QColor(0x22, 0x22, 0x22);
+        AzQtComponents::ScrollBar::applyLightStyle(ui->SCRIPT_OUTPUT);
+    }
+    else
+    {
+        bgColor = Qt::white;
+        AzQtComponents::ScrollBar::applyDarkStyle(ui->SCRIPT_OUTPUT);
+    }
+    ui->SCRIPT_OUTPUT->setStyleSheet(QString("QPlainTextEdit{ background: %1 }").arg(bgColor.name(QColor::HexRgb)));
+
+    // Clear out the console text when we change our background color since
+    // some of the previous text colors may not be appropriate for the
+    // new background color
+    QString text = ui->SCRIPT_OUTPUT->toPlainText();
+    ui->SCRIPT_OUTPUT->clear();
+    AppendToConsole(text, m_textColor);
 }
 
 void CScriptTermDialog::InitCompleter()
@@ -85,7 +130,7 @@ void CScriptTermDialog::OnOK()
     QString command2 = QLatin1String("] ")
         % ui->SCRIPT_INPUT->text()
         % QLatin1String("\r\n");
-    AppendToConsole(command2);
+    AppendToConsole(command2, m_textColor);
 
     // Add the command to the history.
     m_lastCommands.removeOne(command);
@@ -107,7 +152,6 @@ void CScriptTermDialog::OnScriptInputTextChanged(const QString& text)
     }
 }
 
-
 void CScriptTermDialog::OnScriptHelp()
 {
     CScriptHelpDialog::GetInstance()->show();
@@ -117,7 +161,7 @@ void CScriptTermDialog::ExecuteAndPrint(const char* cmd)
 {
     if (AzToolsFramework::EditorPythonRunnerRequestBus::HasHandlers())
     {
-        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, cmd);
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, cmd, true);
     }
     else
     {
@@ -127,29 +171,38 @@ void CScriptTermDialog::ExecuteAndPrint(const char* cmd)
 
 void CScriptTermDialog::AppendText(const char* pText)
 {
-    AppendToConsole(QtUtil::ToQString(pText));
+    AppendToConsole(QtUtil::ToQString(pText), m_textColor);
 }
 
 void CScriptTermDialog::OnTraceMessage(AZStd::string_view message)
 {
-    AppendToConsole(QtUtil::ToQString(message.data()));
+    AppendToConsole(QtUtil::ToQString(message.data()), m_textColor);
 }
 
 void CScriptTermDialog::OnErrorMessage(AZStd::string_view message)
 {
-    AppendToConsole(QtUtil::ToQString(message.data()), QColor(255, 64, 64));
+    AppendToConsole(QtUtil::ToQString(message.data()), m_errorColor, true);
 }
 
 void CScriptTermDialog::OnExceptionMessage(AZStd::string_view message)
 {
-    AppendToConsole(QtUtil::ToQString(message.data()), QColor(128, 64, 64));
+    AppendToConsole(QtUtil::ToQString(message.data()), m_warningColor, true);
 }
 
-void CScriptTermDialog::AppendToConsole(const QString& string, const QColor& color)
+void CScriptTermDialog::OnEditorPreferencesChanged()
+{
+    RefreshStyle();
+}
+
+void CScriptTermDialog::AppendToConsole(const QString& string, const QColor& color, bool bold)
 {
     QTextCharFormat format;
     format.setForeground(color);
-
+    if (bold)
+    {
+        format.setFontWeight(QFont::Bold);
+    }
+    
     QTextCursor cursor(ui->SCRIPT_OUTPUT->document());
     cursor.movePosition(QTextCursor::End);
     cursor.insertText(string, format);

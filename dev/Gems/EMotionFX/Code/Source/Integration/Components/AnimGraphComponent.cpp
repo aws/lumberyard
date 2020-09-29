@@ -255,6 +255,16 @@ namespace EMotionFX
             CheckCreateAnimGraphInstance();
         }
 
+        void AnimGraphComponent::SetAnimGraphAssetId(const AZ::Data::AssetId& assetId)
+        {
+            m_configuration.m_animGraphAsset = AZ::Data::Asset<AnimGraphAsset>(assetId, azrtti_typeid<AnimGraphAsset>());
+        }
+
+        void AnimGraphComponent::SetMotionSetAssetId(const AZ::Data::AssetId& assetId)
+        {
+            m_configuration.m_motionSetAsset = AZ::Data::Asset<MotionSetAsset>(assetId, azrtti_typeid<MotionSetAsset>());
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void AnimGraphComponent::OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance)
         {
@@ -276,7 +286,7 @@ namespace EMotionFX
         {
             if (m_animGraphInstance)
             {
-                m_animGraphInstance->AddServantGraph(animGraphInstance, true);
+                m_animGraphInstance->AddFollowerGraph(animGraphInstance, true);
             }
         }
 
@@ -285,7 +295,7 @@ namespace EMotionFX
         {
             if (m_animGraphInstance)
             {
-                m_animGraphInstance->RemoveServantGraph(animGraphInstance, true);
+                m_animGraphInstance->RemoveFollowerGraph(animGraphInstance, true);
             }
         }
 
@@ -472,6 +482,11 @@ namespace EMotionFX
                 m_actorInstance->SetAnimGraphInstance(nullptr);
                 m_animGraphInstance->DecreaseReferenceCount();
             }
+        }
+
+        EMotionFX::AnimGraphInstance* AnimGraphComponent::GetAnimGraphInstance()
+        {
+            return m_animGraphInstance ? m_animGraphInstance.get() : nullptr;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1139,23 +1154,23 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
-        void AnimGraphComponent::SyncAnimGraph(AZ::EntityId masterEntityId)
+        void AnimGraphComponent::SyncAnimGraph(AZ::EntityId leaderEntityId)
         {
             if (m_animGraphInstance)
             {
                 AnimGraphComponentNotificationBus::Event(
-                    masterEntityId,
+                    leaderEntityId,
                     &AnimGraphComponentNotificationBus::Events::OnAnimGraphSynced,
                     m_animGraphInstance.get());
             }
         }
 
-        void AnimGraphComponent::DesyncAnimGraph(AZ::EntityId masterEntityId)
+        void AnimGraphComponent::DesyncAnimGraph(AZ::EntityId leaderEntityId)
         {
             if (m_animGraphInstance)
             {
                 AnimGraphComponentNotificationBus::Event(
-                    masterEntityId,
+                    leaderEntityId,
                     &AnimGraphComponentNotificationBus::Events::OnAnimGraphDesynced,
                     m_animGraphInstance.get());
             }

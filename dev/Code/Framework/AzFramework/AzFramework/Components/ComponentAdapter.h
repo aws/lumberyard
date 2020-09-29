@@ -56,6 +56,7 @@ namespace AzFramework
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& services);
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             void Init();
         @endcode
 
@@ -76,6 +77,7 @@ namespace AzFramework
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& services);
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& services);
 
             // AZ::Component overrides ...
             void Init() override;

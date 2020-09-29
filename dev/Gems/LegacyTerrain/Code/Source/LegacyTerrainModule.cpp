@@ -16,13 +16,13 @@
 #include <platform_impl.h> // must be included once per DLL so things from CryCommon will function
 #endif
 
-#include <LegacyTerrainModule.h>
-#include <LegacyTerrainLevelComponent.h>
+#include "LegacyTerrainModule.h"
+#include "LegacyTerrainLevelComponent.h"
 
 namespace LegacyTerrain
 {
     LegacyTerrainModule::LegacyTerrainModule()
-        : AZ::Module()
+        : CryHooksModule()
     {
         // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
         m_descriptors.insert(m_descriptors.end(), {

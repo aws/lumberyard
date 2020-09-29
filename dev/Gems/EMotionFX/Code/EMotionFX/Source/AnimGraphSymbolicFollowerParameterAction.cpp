@@ -16,35 +16,35 @@
 #include <EMotionFX/Source/AnimGraphBus.h>
 #include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
-#include <EMotionFX/Source/AnimGraphSymbolicServantParameterAction.h>
+#include <EMotionFX/Source/AnimGraphSymbolicFollowerParameterAction.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/AttributeBool.h>
 #include <MCore/Source/AttributeFloat.h>
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSymbolicServantParameterAction, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSymbolicFollowerParameterAction, AnimGraphAllocator, 0)
 
-    AnimGraphSymbolicServantParameterAction::AnimGraphSymbolicServantParameterAction()
+    AnimGraphSymbolicFollowerParameterAction::AnimGraphSymbolicFollowerParameterAction()
         : AnimGraphTriggerAction()
     {
     }
 
 
-    AnimGraphSymbolicServantParameterAction::AnimGraphSymbolicServantParameterAction(AnimGraph* animGraph)
-        : AnimGraphSymbolicServantParameterAction()
+    AnimGraphSymbolicFollowerParameterAction::AnimGraphSymbolicFollowerParameterAction(AnimGraph* animGraph)
+        : AnimGraphSymbolicFollowerParameterAction()
     {
         InitAfterLoading(animGraph);
     }
 
 
-    AnimGraphSymbolicServantParameterAction::~AnimGraphSymbolicServantParameterAction()
+    AnimGraphSymbolicFollowerParameterAction::~AnimGraphSymbolicFollowerParameterAction()
     {
         AZ::Data::AssetBus::MultiHandler::BusDisconnect();
     }
 
 
-    bool AnimGraphSymbolicServantParameterAction::InitAfterLoading(AnimGraph* animGraph)
+    bool AnimGraphSymbolicFollowerParameterAction::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphTriggerAction::InitAfterLoading(animGraph))
         {
@@ -57,39 +57,43 @@ namespace EMotionFX
     }
 
 
-    const char* AnimGraphSymbolicServantParameterAction::GetPaletteName() const
+    const char* AnimGraphSymbolicFollowerParameterAction::GetPaletteName() const
     {
-        return "Symbolic Servant Parameter Action";
+        return "Symbolic Follower Parameter Action";
     }
 
 
-    void AnimGraphSymbolicServantParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
+    void AnimGraphSymbolicFollowerParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
     {
-        MCore::Attribute* masterAttribute = animGraphInstance->FindParameter(m_masterParameterName);
-        if (!masterAttribute)
+        if (m_leaderParameterName.empty())
         {
-            AZ_Assert(false, "Can't find a parameter named %s in the master graph.", m_masterParameterName.c_str());
+            return;
+        }
+        MCore::Attribute* leaderAttribute = animGraphInstance->FindParameter(m_leaderParameterName);
+        if (!leaderAttribute)
+        {
+            AZ_Assert(false, "Can't find a parameter named %s in the leader graph.", m_leaderParameterName.c_str());
             return;
         }
 
-        const AZStd::vector<AnimGraphInstance*>& servantGraphs = animGraphInstance->GetServantGraphs();
+        const AZStd::vector<AnimGraphInstance*>& followerGraphs = animGraphInstance->GetFollowerGraphs();
 
-        for (AnimGraphInstance* servantGraph : servantGraphs)
+        for (AnimGraphInstance* followerGraph : followerGraphs)
         {
-            MCore::Attribute* servantAttribute = servantGraph->FindParameter(m_servantParameterName);
-            if (servantAttribute)
+            MCore::Attribute* followerAttribute = followerGraph->FindParameter(m_followerParameterName);
+            if (followerAttribute)
             {
-                if (servantAttribute->InitFrom(masterAttribute))
+                if (followerAttribute->InitFrom(leaderAttribute))
                 {
-                    // If the name matches and the type matches, we sync the attribute from master to servant.
-                    AZ::Outcome<size_t> index = servantGraph->FindParameterIndex(m_servantParameterName);
-                    const ValueParameter* valueParameter = servantGraph->GetAnimGraph()->FindValueParameter(index.GetValue());
+                    // If the name matches and the type matches, we sync the attribute from leader to follower.
+                    AZ::Outcome<size_t> index = followerGraph->FindParameterIndex(m_followerParameterName);
+                    const ValueParameter* valueParameter = followerGraph->GetAnimGraph()->FindValueParameter(index.GetValue());
                     AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, valueParameter);
                 }
                 else
                 {
                     // If the name matches and but type doesn't, warns the user.
-                    AZ_Warning("EMotionFX", false, "Servant parameter %s does not match master parameter %s", m_servantParameterName.c_str(), m_masterParameterName.c_str());
+                    AZ_Warning("EMotionFX", false, "Follower parameter %s does not match leader parameter %s", m_followerParameterName.c_str(), m_leaderParameterName.c_str());
                 }
 
             }
@@ -98,14 +102,14 @@ namespace EMotionFX
 
 
     // Construct and output the information summary string for this object
-    void AnimGraphSymbolicServantParameterAction::GetSummary(AZStd::string* outResult) const
+    void AnimGraphSymbolicFollowerParameterAction::GetSummary(AZStd::string* outResult) const
     {
-        *outResult = AZStd::string::format("%s: Servant Parameter Name='%s, Master Parameter Name='%s.", RTTI_GetTypeName(), m_servantParameterName.c_str(), m_masterParameterName.c_str());
+        *outResult = AZStd::string::format("%s: Follower Parameter Name='%s, Leader Parameter Name='%s.", RTTI_GetTypeName(), m_followerParameterName.c_str(), m_leaderParameterName.c_str());
     }
 
 
     // Construct and output the tooltip for this object
-    void AnimGraphSymbolicServantParameterAction::GetTooltip(AZStd::string* outResult) const
+    void AnimGraphSymbolicFollowerParameterAction::GetTooltip(AZStd::string* outResult) const
     {
         AZStd::string columnName, columnValue;
 
@@ -114,17 +118,17 @@ namespace EMotionFX
         columnValue = RTTI_GetTypeName();
         *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"120\"><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
-        // Add servant parameter
-        columnName = "Servant Parameter Name: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_servantParameterName.c_str());
+        // Add follower parameter
+        columnName = "Follower Parameter Name: ";
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_followerParameterName.c_str());
 
-        // Add master parameter
-        columnName = "Master Parameter Name: ";
-        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_masterParameterName.c_str());
+        // Add leader parameter
+        columnName = "Leader Parameter Name: ";
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), m_leaderParameterName.c_str());
     }
 
 
-    AnimGraph* AnimGraphSymbolicServantParameterAction::GetRefAnimGraph() const
+    AnimGraph* AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraph() const
     {
         if (m_refAnimGraphAsset.GetId().IsValid() && m_refAnimGraphAsset.IsReady())
         {
@@ -134,7 +138,45 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphSymbolicServantParameterAction::Reflect(AZ::ReflectContext* context)
+    bool AnimGraphSymbolicFollowerParameterAction::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        const unsigned int version = classElement.GetVersion();
+        if (version < 2)
+        {
+            // Convert 'servantParameterName' into 'followerParameterName'.
+            int index = classElement.FindElement(AZ_CRC("servantParameterName", 0xe6070940));
+            if (index > 0)
+            {
+                AZStd::string oldValue;
+                AZ::SerializeContext::DataElementNode& dataElementNode = classElement.GetSubElement(index);
+                const bool result = dataElementNode.GetData<AZStd::string>(oldValue);
+                if (!result)
+                {
+                    return false;
+                }
+                classElement.RemoveElement(index);
+                classElement.AddElementWithData(context, "followerParameterName", oldValue);
+            }
+
+            // Convert 'masterParameterName' into 'leaderParameterName'.
+            index = classElement.FindElement(AZ_CRC("masterParameterName", 0xd0d333e3));
+            if (index > 0)
+            {
+                AZStd::string oldValue;
+                AZ::SerializeContext::DataElementNode& dataElementNode = classElement.GetSubElement(index);
+                const bool result = dataElementNode.GetData<AZStd::string>(oldValue);
+                if (!result)
+                {
+                    return false;
+                }
+                classElement.RemoveElement(index);
+                classElement.AddElementWithData(context, "leaderParameterName", oldValue);
+            }
+        }
+        return true;
+    }
+
+    void AnimGraphSymbolicFollowerParameterAction::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (!serializeContext)
@@ -142,11 +184,11 @@ namespace EMotionFX
             return;
         }
 
-        serializeContext->Class<AnimGraphSymbolicServantParameterAction, AnimGraphTriggerAction>()
-            ->Version(1)
-            ->Field("animGraphAsset", &AnimGraphSymbolicServantParameterAction::m_refAnimGraphAsset)
-            ->Field("servantParameterName", &AnimGraphSymbolicServantParameterAction::m_servantParameterName)
-            ->Field("masterParameterName", &AnimGraphSymbolicServantParameterAction::m_masterParameterName)
+        serializeContext->Class<AnimGraphSymbolicFollowerParameterAction, AnimGraphTriggerAction>()
+            ->Version(2, VersionConverter)
+            ->Field("animGraphAsset", &AnimGraphSymbolicFollowerParameterAction::m_refAnimGraphAsset)
+            ->Field("followerParameterName", &AnimGraphSymbolicFollowerParameterAction::m_followerParameterName)
+            ->Field("leaderParameterName", &AnimGraphSymbolicFollowerParameterAction::m_leaderParameterName)
             ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -155,24 +197,24 @@ namespace EMotionFX
             return;
         }
 
-        editContext->Class<AnimGraphSymbolicServantParameterAction>("Servant Parameter Action", "Servant parameter action attributes")
+        editContext->Class<AnimGraphSymbolicFollowerParameterAction>("Follower Parameter Action", "Follower parameter action attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphSymbolicServantParameterAction::m_refAnimGraphAsset, "Servant anim graph", "Servant anim graph that we want to pick a parameter from")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphSymbolicServantParameterAction::OnAnimGraphAssetChanged)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphSymbolicFollowerParameterAction::m_refAnimGraphAsset, "Follower anim graph", "Follower anim graph that we want to pick a parameter from")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphSymbolicFollowerParameterAction::OnAnimGraphAssetChanged)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphSymbolicServantParameterAction::m_servantParameterName, "Servant parameter", "The servant parameter that we want to sync to.")
+            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphSymbolicFollowerParameterAction::m_followerParameterName, "Follower parameter", "The follower parameter that we want to sync to.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphSymbolicServantParameterAction::GetRefAnimGraph)
-            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphSymbolicServantParameterAction::m_masterParameterName, "Master parameter", "The master parameter that we want to sync from.")
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphSymbolicFollowerParameterAction::GetRefAnimGraph)
+            ->DataElement(AZ_CRC("AnimGraphParameter", 0x778af55a), &AnimGraphSymbolicFollowerParameterAction::m_leaderParameterName, "Leader parameter", "The leader parameter that we want to sync from.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphSymbolicServantParameterAction::GetAnimGraph)
+                ->Attribute(AZ_CRC("AnimGraph", 0x0d53d4b3), &AnimGraphSymbolicFollowerParameterAction::GetAnimGraph)
             ;
     }
 
 
-    void AnimGraphSymbolicServantParameterAction::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    void AnimGraphSymbolicFollowerParameterAction::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         if (asset == m_refAnimGraphAsset)
         {
@@ -186,7 +228,7 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphSymbolicServantParameterAction::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    void AnimGraphSymbolicFollowerParameterAction::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         if (asset == m_refAnimGraphAsset)
         {
@@ -198,12 +240,12 @@ namespace EMotionFX
         }
     }
 
-    void AnimGraphSymbolicServantParameterAction::OnAnimGraphAssetChanged()
+    void AnimGraphSymbolicFollowerParameterAction::OnAnimGraphAssetChanged()
     {
         LoadAnimGraphAsset();
     }
 
-    void AnimGraphSymbolicServantParameterAction::LoadAnimGraphAsset()
+    void AnimGraphSymbolicFollowerParameterAction::LoadAnimGraphAsset()
     {
         if (m_refAnimGraphAsset.GetId().IsValid())
         {
@@ -231,25 +273,25 @@ namespace EMotionFX
         }
     }
 
-    void AnimGraphSymbolicServantParameterAction::OnAnimGraphAssetReady()
+    void AnimGraphSymbolicFollowerParameterAction::OnAnimGraphAssetReady()
     {
-        // Verify if the servant parameter is valid in the ref anim graph
+        // Verify if the follower parameter is valid in the ref anim graph
         AnimGraph* refAnimGraph = GetRefAnimGraph();
         if (refAnimGraph)
         {
-            if (!refAnimGraph->FindParameterByName(m_servantParameterName))
+            if (!refAnimGraph->FindParameterByName(m_followerParameterName))
             {
-                m_servantParameterName.clear();
+                m_followerParameterName.clear();
             }
         }
 
-        // Verify if the master parameter is valid in the master anim graph
-        AnimGraph* masterAnimGraph = GetAnimGraph();
-        if (masterAnimGraph)
+        // Verify if the leader parameter is valid in the leader anim graph
+        AnimGraph* leaderAnimGraph = GetAnimGraph();
+        if (leaderAnimGraph)
         {
-            if (!refAnimGraph->FindParameterByName(m_masterParameterName))
+            if (!refAnimGraph->FindParameterByName(m_leaderParameterName))
             {
-                m_masterParameterName.clear();
+                m_leaderParameterName.clear();
             }
         }
     }

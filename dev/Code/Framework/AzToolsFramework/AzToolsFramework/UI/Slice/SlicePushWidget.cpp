@@ -1258,7 +1258,7 @@ namespace AzToolsFramework
                 sliceItem->setToolTip(1, tooltip);
 
                 const size_t instanceCount = CalculateReferenceCount(sliceAssetId, m_config->m_rootSlice);
-                const AZStd::string instanceCountDescription = AZStd::string::format("%u", instanceCount);
+                const AZStd::string instanceCountDescription = AZStd::string::format("%zu", instanceCount);
                 sliceItem->setText(2, instanceCountDescription.c_str());
 
                 QRadioButton* selectButton = sliceItem->m_selectButton;

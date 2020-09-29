@@ -210,6 +210,29 @@ namespace MCore
         return result;
     }
 
+    bool CommandManager::ShouldDeleteCommand(Command* commandObject, bool commandExecutionResult, bool callFromCommandGroup, bool addToHistory)
+    {
+        // Remove failed commands.
+        if (!commandExecutionResult)
+        {
+            return true;
+        }
+
+        // Remove commands that are NOT undoable.
+        if (!commandObject->GetIsUndoable())
+        {
+            return true;
+        }
+
+        // Remove individually executed commands that are NOT added to the history (e.g. calling commands inside commands).
+        if (!callFromCommandGroup && (!addToHistory))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     // parse and execute command
     bool CommandManager::ExecuteCommand(const char* command, AZStd::string& outCommandResult, bool addToHistory, Command** outExecutedCommand, CommandLine* outExecutedParameters, bool callFromCommandGroup, bool clearErrors, bool handleErrors)
     {
@@ -295,11 +318,17 @@ namespace MCore
         // create and execute the command
         Command* newCommand = commandObject->Create();
         newCommand->SetCommandParameters(commandLine);
-        const bool result = ExecuteCommand(newCommand, commandLine, outCommandResult, addToHistory, clearErrors, handleErrors);
+        const bool result = ExecuteCommand(newCommand,
+            commandLine,
+            outCommandResult,
+            addToHistory,
+            callFromCommandGroup,
+            clearErrors,
+            handleErrors,
+            /*autoDeleteCommand=*/false);
 
         // delete the command object directly if we don't want to store it in the history
-        if ((callFromCommandGroup == false && (result == false || commandObject->GetIsUndoable() == false || addToHistory == false)) ||
-            (callFromCommandGroup  && (result == false || commandObject->GetIsUndoable() == false)))
+        if (ShouldDeleteCommand(newCommand, result, callFromCommandGroup, addToHistory))
         {
             delete newCommand;
             if (outExecutedCommand)
@@ -339,12 +368,11 @@ namespace MCore
 
     bool CommandManager::ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult)
     {
-        return ExecuteCommand(command.c_str(),
+        return ExecuteCommand(command,
             outCommandResult,
             /*addToHistory=*/false,
             /*outExecutedCommand=*/nullptr,
             /*outExecutedParameters=*/nullptr,
-            /*callFromCommandGroup=*/false,
             /*clearErrors=*/false,
             /*handleErrors=*/false);
     }
@@ -352,10 +380,13 @@ namespace MCore
     bool CommandManager::ExecuteCommandInsideCommand(Command* command, AZStd::string& outCommandResult)
     {
         return ExecuteCommand(command,
+            CommandLine(),
             outCommandResult,
             /*addToHistory=*/false,
+            /*callFromCommandGroup=*/false,
             /*clearErrors=*/false,
-            /*handleErrors=*/false);
+            /*handleErrors=*/false,
+            /*autoDeleteCommand=*/true);
     }
 
     bool CommandManager::ExecuteCommandOrAddToGroup(const AZStd::string& command, MCore::CommandGroup* commandGroup, bool executeInsideCommand)
@@ -427,7 +458,14 @@ namespace MCore
                 MCore::Command* orgCommand = FindCommand(executedCommand->GetNameString());
                 executedCommand->SetOriginalCommand(orgCommand);
 
-                result = ExecuteCommand(executedCommand, intermediateCommandResults[i], /*addToHistory=*/false, /*clearErrors=*/false, /*handleErrors=*/false);
+                result = ExecuteCommand(executedCommand,
+                    CommandLine(),
+                    intermediateCommandResults[i],
+                    /*addToHistory=*/false,
+                    /*callFromCommandGroup=*/true,
+                    /*clearErrors=*/false,
+                    /*handleErrors=*/false,
+                    /*autoDeleteCommand=*/false);
 
                 // Ownership transfer, move the command object from the former to the new command group.
                 commandGroup.SetCommand(i, nullptr);
@@ -812,7 +850,14 @@ namespace MCore
         if (lastEntry.mExecutedCommand)
         {
             // redo the command, get the result and reset it
-            result = ExecuteCommand(lastEntry.mExecutedCommand, lastEntry.mParameters, outCommandResult, false);
+            result = ExecuteCommand(lastEntry.mExecutedCommand,
+                lastEntry.mParameters,
+                outCommandResult,
+                /*addToHistory=*/false,
+                /*callFromCommandGroup=*/false,
+                /*clearErrors=*/true,
+                /*handleErrors=*/true,
+                /*autoDeleteCommand=*/false);
         }
         // Redo command group
         else
@@ -832,7 +877,14 @@ namespace MCore
             {
                 if (group->GetCommand(g))
                 {
-                    if (ExecuteCommand(group->GetCommand(g), group->GetParameters(g), outCommandResult, false) == false)
+                    if (!ExecuteCommand(group->GetCommand(g),
+                        group->GetParameters(g),
+                        outCommandResult,
+                        /*addToHistory=*/false,
+                        /*callFromCommandGroup=*/false,
+                        /*clearErrors=*/true,
+                        /*handleErrors=*/true,
+                        /*autoDeleteCommand=*/false))
                     {
                         result = false;
                     }
@@ -933,12 +985,19 @@ namespace MCore
     }
 
     // execute command object and store the history entry if the command is undoable
-    bool CommandManager::ExecuteCommand(Command* command, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
+    bool CommandManager::ExecuteCommand(Command* command, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors, bool autoDeleteCommand)
     {
-        return ExecuteCommand(command, CommandLine(), outCommandResult, addToHistory, clearErrors, handleErrors);
+        return ExecuteCommand(command, CommandLine(), outCommandResult, addToHistory, /*callFromCommandGroup=*/false, clearErrors, handleErrors, autoDeleteCommand);
     }
 
-    bool CommandManager::ExecuteCommand(Command* command, const CommandLine& commandLine, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
+    bool CommandManager::ExecuteCommand(Command* command,
+        const CommandLine& commandLine,
+        AZStd::string& outCommandResult,
+        bool addToHistory,
+        bool callFromCommandGroup,
+        bool clearErrors,
+        bool handleErrors,
+        bool autoDeleteCommand)
     {
 #ifdef MCORE_COMMANDMANAGER_PERFORMANCE
         Timer commandTimer;
@@ -1024,6 +1083,13 @@ namespace MCore
 #endif
         --m_commandsInExecution;
 
+        // Delete the command in case we
+        if (autoDeleteCommand &&
+            ShouldDeleteCommand(command, result, callFromCommandGroup, addToHistory))
+        {
+            delete command;
+        }
+
         return result;
     }
 
@@ -1039,7 +1105,7 @@ namespace MCore
         // print the command history entries
         for (size_t i = 0; i < numHistoryEntries; ++i)
         {
-            AZStd::string text = AZStd::string::format("%.3d: name='%s', num parameters=%d", i, mCommandHistory[i].mExecutedCommand->GetName(), mCommandHistory[i].mParameters.GetNumParameters());
+            AZStd::string text = AZStd::string::format("%.3zu: name='%s', num parameters=%u", i, mCommandHistory[i].mExecutedCommand->GetName(), mCommandHistory[i].mParameters.GetNumParameters());
             if (i == (uint32)mHistoryIndex)
             {
                 LogDetailedInfo("-> %s", text.c_str());

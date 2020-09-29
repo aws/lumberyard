@@ -18,6 +18,8 @@
 #include <AudioInternalInterfaces.h>
 #include <FileCacheManager.h>
 
+#include <ISystem.h>
+
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +41,7 @@ namespace Audio
         bool ShutDown();
 
         void ProcessRequest(CAudioRequestInternal& rRequest);
-        void Update(const float fUpdateIntervalMS);
+        void Update();
 
         TAudioControlID GetAudioTriggerID(const char* const sAudioTriggerName) const;
         TAudioControlID GetAudioRtpcID(const char* const sAudioRtpcName) const;
@@ -172,6 +174,10 @@ namespace Audio
         TATLEnumFlagsType m_nFlags;
 
         AZStd::string m_implSubPath;
+
+        using duration_ms = AZStd::chrono::duration<float, AZStd::milli>;
+        AZStd::chrono::system_clock::time_point m_lastUpdateTime;
+        duration_ms m_elapsedTime;
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     public:

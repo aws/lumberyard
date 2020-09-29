@@ -198,15 +198,19 @@ struct SEntityHits
 struct STreeBreakInst;
 struct STreePieceThunk
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEntNew;
+#endif
     STreePieceThunk* pNext;
     STreeBreakInst* pParent;
 };
 
 struct STreeBreakInst
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEntSrc;
     IPhysicalEntity* pPhysEntNew0;
+#endif
     STreePieceThunk* pNextPiece;
     STreeBreakInst* pThis;
     STreeBreakInst* pNext;
@@ -216,15 +220,26 @@ struct STreeBreakInst
 
 struct SBrokenMeshSize
 {
+#if ENABLE_CRY_PHYSICS
     SBrokenMeshSize() { pent = 0; }
     SBrokenMeshSize(IPhysicalEntity* _pent, int _size, int _partid, float _timeout, const char* _fractureFX)
     { (pent = _pent)->AddRef(); size = _size; partid = _partid; timeout = _timeout; fractureFX = _fractureFX; }
+#else
+    SBrokenMeshSize() {}
+    SBrokenMeshSize(int _size, int _partid, float _timeout, const char* _fractureFX)
+    {
+        size = _size; partid = _partid; timeout = _timeout; fractureFX = _fractureFX;
+    }
+#endif
+
     SBrokenMeshSize(const SBrokenMeshSize& src)
     {
+#if ENABLE_CRY_PHYSICS
         if (pent = src.pent)
         {
             pent->AddRef();
         }
+#endif
         partid = src.partid;
         size = src.size;
         timeout = src.timeout;
@@ -232,13 +247,16 @@ struct SBrokenMeshSize
     }
     ~SBrokenMeshSize()
     {
+#if ENABLE_CRY_PHYSICS
         if (pent)
         {
             pent->Release();
         }
+#endif
     }
     void Serialize(TSerialize ser)
     {
+#if ENABLE_CRY_PHYSICS
         int id;
         if (ser.IsReading())
         {
@@ -249,10 +267,13 @@ struct SBrokenMeshSize
         {
             ser.Value("id", id = gEnv->pPhysicalWorld->GetPhysicalEntityId(pent));
         }
+#endif
         ser.Value("partid", partid);
         ser.Value("size", size);
     }
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pent;
+#endif
     int partid;
     int size;
     float timeout;
@@ -301,15 +322,19 @@ public:
     // returns true if should be let go
     bool Update();
 
+#if ENABLE_CRY_PHYSICS
     void AddGlobalPhysicsCallback(int event, void (*)(const EventPhys*, void*), void*);
     void RemoveGlobalPhysicsCallback(int event, void (*)(const EventPhys*, void*), void*);
+#endif
 
     void Serialize(TSerialize ser);
     void SerializeBreakableObjects(TSerialize ser);
     void FlushBreakableObjects();
     void ClearBreakHistory();
 
+#if ENABLE_CRY_PHYSICS
     void OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity);
+#endif
 
     void OnEditorSetGameMode(bool bGameMode);
 
@@ -320,7 +345,9 @@ public:
     //
     void ReleaseGameStats();
 
+#if ENABLE_CRY_PHYSICS
     void FreeBrokenMeshesForEntity(IPhysicalEntity* pEntity);
+#endif
 
     void OnEntitySystemReset();
 
@@ -330,7 +357,9 @@ public:
 
     // helper functions
     static IGameObject* GetEntityGameObject(IEntity* pEntity);
+#if ENABLE_CRY_PHYSICS
     static IGameObject* GetPhysicalEntityGameObject(IPhysicalEntity* pPhysEntity);
+#endif
 
     static void PerformPlaneBreak(const EventPhysCollision&epc, SBreakEvent * pRecordedEvent, int flags, class CDelayedPlaneBreak * pDelayedTask);
 
@@ -352,12 +381,15 @@ private:
         return NULL;
     }
 
+#if ENABLE_CRY_PHYSICS
     void EnablePhysicsEvents(bool enable);
+#endif
 
     void CreateGameStats();
     void ApplyBreakToClonedObjectFromEvent(const SRenderNodeCloneLookup& renderNodeLookup, int iBrokenObjIndex, int i);
 
     void LogModeInformation(const bool isMultiplayer, const char* hostname) const;
+#if ENABLE_CRY_PHYSICS
     static int OnBBoxOverlap(const EventPhys* pEvent);
     static int OnCollisionLogged(const EventPhys* pEvent);
     static int OnPostStepLogged(const EventPhys* pEvent);
@@ -372,11 +404,13 @@ private:
     static int OnStateChangeImmediate(const EventPhys* pEvent);
     static int OnCreatePhysicalEntityImmediate(const EventPhys* pEvent);
     static int OnUpdateMeshImmediate(const EventPhys* pEvent);
+#endif // ENABLE_CRY_PHYSICS
 
     virtual void OnHit(const HitInfo&) {}
     virtual void OnExplosion(const ExplosionInfo&);
     virtual void OnServerExplosion(const ExplosionInfo&){}
 
+#if ENABLE_CRY_PHYSICS
     static void OnCollisionLogged_MaterialFX(const EventPhys* pEvent);
     static void OnCollisionLogged_Breakable(const EventPhys* pEvent);
     static void OnPostStepLogged_MaterialFX(const EventPhys* pEvent);
@@ -385,13 +419,18 @@ private:
     bool ProcessHitpoints(const Vec3& pt, IPhysicalEntity* pent, int partid, ISurfaceType* pMat, int iDamage = 1);
     SBreakEvent& RegisterBreakEvent(const EventPhysCollision* pColl, float energy);
     int ReuseBrokenTrees(const EventPhysCollision* pCEvent, float size, int flags);
+#endif
     EntityId UpdateEntityIdForBrokenPart(EntityId idSrc);
     EntityId UpdateEntityIdForVegetationBreak(IRenderNode* pVeg);
+#if ENABLE_CRY_PHYSICS
     void RegisterEntsForBreakageReuse(IPhysicalEntity* pPhysEnt, int partid, IPhysicalEntity* pPhysEntNew, float h, float size);
     void RemoveEntFromBreakageReuse(IPhysicalEntity* pEntity, int bRemoveOnlyIfSecondary);
+#endif
     void ClearTreeBreakageReuseLog();
+#if ENABLE_CRY_PHYSICS
     int FreeBrokenMesh(IPhysicalEntity* pent, SBrokenMeshSize& bm);
     void RegisterBrokenMesh(IPhysicalEntity*, IGeometry*, int partid = 0, IStatObj* pStatObj = 0, IGeometry* pSkel = 0, float timeout = 0.0f, const char* fractureFX = 0);
+#endif
     void DrawBrokenMeshes();
     static void AddBroken2DChunkId(int id);
     void UpdateBrokenMeshes(float dt);
@@ -436,7 +475,9 @@ private:
     CGameContext* m_pGameContext;
     IEntitySystem* m_pEntitySystem;
     INetwork* m_pNetwork;
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* m_pPhysicalWorld;
+#endif
     IMaterialEffects* m_pMaterialEffects;
 
     typedef std::pair<void (*)(const EventPhys*, void*), void*> TGlobalPhysicsCallback;
@@ -456,12 +497,18 @@ private:
     std::vector<SBrokenVegPart> m_brokenVegParts;
     std::vector<EntityId> m_broken2dChunkIds;
     std::map<EntityId, int> m_entPieceIdx;
+#if ENABLE_CRY_PHYSICS
     std::map<IPhysicalEntity*, STreeBreakInst*> m_mapBrokenTreesByPhysEnt;
+#endif
     std::map<IStatObj*, STreeBreakInst*> m_mapBrokenTreesByCGF;
+#if ENABLE_CRY_PHYSICS
     std::map<IPhysicalEntity*, STreePieceThunk*> m_mapBrokenTreesChunks;
+#endif
     std::map<int, SBrokenMeshSize> m_mapBrokenMeshes;
     std::vector<int> m_brokenMeshRemovals;
+#if ENABLE_CRY_PHYSICS
     std::vector<CDelayedPlaneBreak> m_pendingPlaneBreaks;
+#endif
     bool m_bLoading;
     int m_iCurBreakEvent;
     int m_totBreakageSize;

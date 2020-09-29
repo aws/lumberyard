@@ -120,8 +120,8 @@ namespace EMotionFX
         QComboBox* motionSetPreviewSelector = qobject_cast<QComboBox*>(PopulatedAnimGraphFixture::FindTopLevelWidget("EMFX.AttributesWindowWidget.AnimGraph.MotionSetComboBox"));
 
         // Set Preview motionset as created MotionSet
-        motionSetPreviewSelector->setCurrentIndex(1);
-        ASSERT_EQ(motionSetPreviewSelector->currentText(), "motionSet0") << "Preveiw Motionset could not be set";
+        motionSetPreviewSelector->setCurrentIndex(0);
+        ASSERT_EQ(motionSetPreviewSelector->currentText(), "motionSet0") << "Preview Motionset could not be set";
 
         // Find activate animigraph button
         auto toolBar = m_animGraphPlugin->GetViewWidget()->findChild<QToolBar*>("EMFX.BlendGraphViewWidget.TopToolBar");
@@ -134,6 +134,5 @@ namespace EMotionFX
         // Confirm that the animigraph instance was created and is active
         ASSERT_TRUE(m_animGraphPlugin->GetActiveAnimGraph()) << "Anim graph should be activated.";
         ASSERT_EQ(1, EMotionFX::GetAnimGraphManager().GetNumAnimGraphs()) << "Anim graph manager should contain 1 anim graphs.";
-
     }
 } // namespace EMotionFX

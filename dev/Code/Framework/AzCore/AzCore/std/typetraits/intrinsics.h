@@ -90,6 +90,7 @@
 #   define AZSTD_IS_ABSTRACT(T) __is_abstract(T)
 #   define AZSTD_IS_BASE_OF(T, U) (__is_base_of(T, U) && !is_same<T, U>::value)
 #   define AZSTD_IS_CLASS(T) __is_class(T)
+#   define AZSTD_IS_CONVERTIBLE(_From, _To) __is_convertible_to(_From, _To)
 #   define AZSTD_IS_ENUM(T) __is_enum(T)
 #   define AZSTD_IS_POLYMORPHIC(T) __is_polymorphic(T)
 #endif

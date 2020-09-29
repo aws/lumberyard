@@ -10,6 +10,7 @@
 *
 */
 
+#include <LmbrCentral_precompiled.h>
 #include "ParticlePreloadLibsBuilderWorker.h"
 
 #include <AzFramework/IO/LocalFileIO.h>

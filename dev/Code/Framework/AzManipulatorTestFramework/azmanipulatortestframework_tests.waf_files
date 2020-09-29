@@ -1,0 +1,17 @@
+{
+    "none":
+    {
+      "Tests": [
+        "Tests/AzManipulatorTestFrameworkDirectCallTest.h",
+        "Tests/AzManipulatorTestFrameworkDirectCallTest.cpp",
+        "Tests/AzManipulatorTestFrameworkBusCallTest.h",
+        "Tests/AzManipulatorTestFrameworkBusCallTest.cpp",
+        "Tests/AzManipulatorTestFrameworkWorldSpaceBuilderTest.h",
+        "Tests/AzManipulatorTestFrameworkWorldSpaceBuilderTest.cpp",
+        "Tests/GridSnappingTest.h",
+        "Tests/GridSnappingTest.cpp",
+        "Tests//ManipulatorTestViewportInteractionTest.cpp",
+        "Tests/Main.cpp"
+      ]
+    }
+}

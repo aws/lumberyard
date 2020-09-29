@@ -1,4 +1,4 @@
-<ATLConfig atl_name="TestControlMissingConfigGroupNameAttribute">
+<ATLConfig atl_name="MissingConfigGroupNameAttribute">
  <AudioTriggers>
   <ATLTrigger atl_name="test_event_2_bank1_streamed_target">
    <WwiseEvent wwise_name="test_event_2_bank1_streamed_target"/>
@@ -18,6 +18,7 @@
     <Platform atl_name="appletv" atl_config_group_name="default"/>
     <Platform atl_name="xenia" atl_config_group_name="default"/>
     <Platform atl_name="provo" atl_config_group_name="default"/>
+    <Platform atl_name="salem" atl_config_group_name="default"/>
    </ATLPlatforms>
    <ATLConfigGroup>
     <WwiseFile wwise_name="test_bank1.bnk"/>

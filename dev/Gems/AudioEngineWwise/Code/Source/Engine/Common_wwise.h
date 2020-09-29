@@ -32,10 +32,6 @@
 #endif // AZ_TRAIT_AUDIOENGINEWWISE_PROVIDE_IMPL_SECONDARY_POOL
 
 
-#define WWISE_IMPL_BASE_PATH "sounds/wwise/"
-#define WWISE_IMPL_BANK_PATH "" // No further sub folders necessary.
-#define WWISE_IMPL_BANK_FULL_PATH WWISE_IMPL_BASE_PATH WWISE_IMPL_BANK_PATH
-
 #if defined(WWISE_LTX)
     #define WWISE_FLAVOR_STRING     "Wwise LTX"
 #else
@@ -43,9 +39,6 @@
 #endif // WWISE_LTX
 
 #define WWISE_IMPL_VERSION_STRING   WWISE_FLAVOR_STRING " " AK_WWISESDK_VERSIONNAME
-
-#define WWISE_IMPL_EXTERNAL_PATH "external/"
-#define WWISE_IMPL_EXTERNAL_FULL_PATH WWISE_IMPL_BASE_PATH WWISE_IMPL_EXTERNAL_PATH
 
 #define ASSERT_WWISE_OK(x) (AKASSERT((x) == AK_Success))
 #define IS_WWISE_OK(x)     ((x) == AK_Success)
@@ -69,7 +62,12 @@ namespace Audio
         static constexpr const char* WwiseValueAttribute = "wwise_value";
         static constexpr const char* WwiseMutiplierAttribute = "atl_mult";
         static constexpr const char* WwiseShiftAttribute = "atl_shift";
-        static constexpr const char* WwiseLocalizedAttribute = "wwise_localised";
+        static constexpr const char* WwiseLocalizedAttribute = "wwise_localized";
+
+        namespace Legacy
+        {
+            static constexpr const char* WwiseLocalizedAttribute = "wwise_localised";
+        }
 
     } // namespace WwiseXmlTags
 

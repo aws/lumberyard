@@ -47,7 +47,7 @@ namespace AzQtComponents
         config.menuIndicatorWidth = 10;
         config.menuIndicatorIcon = QStringLiteral(":/stylesheet/img/UI20/menu-indicator.svg");
         config.menuIndicatorIconSize = QSize(6, 3);
-        config.hoverBackgroundColor = QStringLiteral("#222222");
+        config.hoverBackgroundColor = QStringLiteral("#11FFFFFF");
         config.closeHoverBackgroundColor = QStringLiteral("#B80D1C");
         config.selectedBackgroundColor = QStringLiteral("#1A1A1A");
         config.closeSelectedBackgroundColor = QStringLiteral("#850914");

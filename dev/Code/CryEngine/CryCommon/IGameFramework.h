@@ -135,7 +135,6 @@ struct IActionMapManager;
 struct IGameChannel;
 struct IViewSystem;
 struct IVehicle;
-struct IVehicleSystem;
 struct IGameRulesSystem;
 struct IEffectSystem;
 struct IGameObject;
@@ -500,7 +499,6 @@ struct IGameFramework
     DECLARE_GAMEOBJECT_FACTORY(ILoadGame);
     DECLARE_GAMEOBJECTEXTENSION_FACTORY(Actor);
     DECLARE_GAMEOBJECTEXTENSION_FACTORY(Item);
-    DECLARE_GAMEOBJECTEXTENSION_FACTORY(Vehicle);
     DECLARE_GAMEOBJECTEXTENSION_FACTORY(GameObjectExtension);
 
     typedef uint32 TimerID;
@@ -644,11 +642,6 @@ struct IGameFramework
     // Return Value:
     //      Pointer to IGameplayRecorder interface.
     virtual IGameplayRecorder* GetIGameplayRecorder() = 0;
-    // Description:
-    //      Returns a pointer to the IVehicleSystem interface.
-    // Return Value:
-    //      Pointer to IVehicleSystem interface.
-    virtual IVehicleSystem* GetIVehicleSystem() = 0;
     // Description:
     //      Returns a pointer to the IGameRulesSystem interface.
     // Return Value:
@@ -951,9 +944,11 @@ struct IGameFramework
     //   bEnforceAll - true to ensure all possible assets become registered (list should not be too conservative - to support level stripification)
     virtual void PrefetchLevelAssets(const bool bEnforceAll) = 0;
 
+#if ENABLE_CRY_PHYSICS
     // Description:
     //    Inform that an IEntity was spawned from breakage
     virtual void OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity) = 0;
+#endif
 
     // Description:
     //      Adds a timer that will trigger a callback function passed by parameter. Allows to pass some user data pointer

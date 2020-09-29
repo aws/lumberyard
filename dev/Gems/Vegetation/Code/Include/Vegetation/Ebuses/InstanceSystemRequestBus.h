@@ -15,11 +15,10 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <Vegetation/Descriptor.h>
 
+struct IRenderNode;
+
 namespace Vegetation
 {
-    using InstanceId = AZ::u64;
-    static const InstanceId MaxInstanceId = std::numeric_limits<InstanceId>::max()-1;
-    static const InstanceId InvalidInstanceId = std::numeric_limits<InstanceId>::max();
     struct InstanceData;
 
     /**
@@ -49,6 +48,12 @@ namespace Vegetation
         virtual void DestroyAllInstances() = 0;
 
         virtual void Cleanup() = 0;
+
+        // Notify the instance system whenever a merged mesh instance is created / destroyed.
+        // This is necessary because we only want to refresh a full merged mesh once per set of
+        // changes, not once per instance change.
+        virtual void RegisterMergedMeshInstance(InstancePtr instance, IRenderNode* mergedMeshNode) = 0;
+        virtual void ReleaseMergedMeshInstance(InstancePtr instance) = 0;
     };
 
     using InstanceSystemRequestBus = AZ::EBus<InstanceSystemRequests>;
@@ -67,7 +72,7 @@ namespace Vegetation
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~InstanceSystemStatsRequests() AZ_DEFAULT_METHOD;
+        virtual ~InstanceSystemStatsRequests() = default;
 
         virtual AZ::u32 GetInstanceCount() const = 0;
         virtual AZ::u32 GetTotalTaskCount() const = 0;

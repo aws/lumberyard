@@ -175,7 +175,7 @@ namespace EMotionFX
     }
 
 
-    // find the master actor record for a given actor
+    // find the leader actor record for a given actor
     uint32 ActorManager::FindActorIndex(Actor* actor) const
     {
         const auto found = AZStd::find_if(m_actors.begin(), m_actors.end(), [actor](const AZStd::shared_ptr<Actor>& a)

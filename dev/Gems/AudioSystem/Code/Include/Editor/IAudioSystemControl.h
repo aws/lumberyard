@@ -13,11 +13,9 @@
 
 #pragma once
 
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 
 #include <ACETypes.h>
-#include <IAudioConnection.h>
 
 namespace AudioControls
 {
@@ -25,38 +23,42 @@ namespace AudioControls
     class IAudioSystemControl
     {
     public:
-        IAudioSystemControl()
-            : m_name()
-            , m_parent(nullptr)
-            , m_id(ACE_INVALID_CID)
-            , m_type(AUDIO_IMPL_INVALID_TYPE)
-            , m_bPlaceholder(false)
-            , m_bLocalised(false)
-            , m_isConnected(false)
-        {
-        }
+        IAudioSystemControl() = default;
 
         IAudioSystemControl(const AZStd::string& name, CID id, TImplControlType type)
             : m_name(name)
-            , m_parent(nullptr)
             , m_id(id)
             , m_type(type)
-            , m_bPlaceholder(false)
-            , m_bLocalised(false)
-            , m_isConnected(false)
-        {
-        }
+        {}
 
-        virtual ~IAudioSystemControl() {}
+        virtual ~IAudioSystemControl() = default;
 
         // unique id for this control
-        CID GetId() const { return m_id; }
-        void SetId(CID id) { m_id = id; }
+        CID GetId() const
+        {
+            return m_id;
+        }
 
-        TImplControlType GetType() const { return m_type; }
-        void SetType(TImplControlType type) { m_type = type; }
+        void SetId(CID id)
+        {
+            m_id = id;
+        }
 
-        const AZStd::string& GetName() const { return m_name; }
+        TImplControlType GetType() const
+        {
+            return m_type;
+        }
+
+        void SetType(TImplControlType type)
+        {
+            m_type = type;
+        }
+
+        const AZStd::string& GetName() const
+        {
+            return m_name;
+        }
+
         void SetName(const AZStd::string_view name)
         {
             if (m_name != name)
@@ -65,30 +67,72 @@ namespace AudioControls
             }
         }
 
-        bool IsPlaceholder() const { return m_bPlaceholder; }
-        void SetPlaceholder(bool bIsPlaceholder) { m_bPlaceholder = bIsPlaceholder; }
+        bool IsPlaceholder() const
+        {
+            return m_isPlaceholder;
+        }
 
-        bool IsLocalised() const { return m_bLocalised; }
-        void SetLocalised(bool bIsLocalised) { m_bLocalised = bIsLocalised; }
+        void SetPlaceholder(bool isPlaceholder)
+        {
+            m_isPlaceholder = isPlaceholder;
+        }
 
-        bool IsConnected() const { return m_isConnected; }
-        void SetConnected(bool isConnected) { m_isConnected = isConnected; }
+        bool IsLocalized() const
+        {
+            return m_isLocalized;
+        }
 
-        size_t ChildCount() const { return m_children.size(); }
-        void AddChild(IAudioSystemControl* pChild) { m_children.push_back(pChild); pChild->SetParent(this); }
-        IAudioSystemControl* GetChildAt(uint index) const { return m_children[index]; }
-        void SetParent(IAudioSystemControl* pParent) { m_parent = pParent; }
-        IAudioSystemControl* GetParent() const { return m_parent; }
+        void SetLocalized(bool isLocalized)
+        {
+            m_isLocalized = isLocalized;
+        }
+
+        bool IsConnected() const
+        {
+            return m_isConnected;
+        }
+
+        void SetConnected(bool isConnected)
+        {
+            m_isConnected = isConnected;
+        }
+
+        size_t ChildCount() const
+        {
+            return m_children.size();
+        }
+
+        void AddChild(IAudioSystemControl* pChild)
+        {
+            m_children.push_back(pChild);
+            pChild->SetParent(this);
+        }
+
+        IAudioSystemControl* GetChildAt(size_t index) const
+        {
+            return (index < m_children.size() ? m_children[index] : nullptr);
+        }
+
+        void SetParent(IAudioSystemControl* pParent)
+        {
+            m_parent = pParent;
+        }
+
+        IAudioSystemControl* GetParent() const
+        {
+            return m_parent;
+        }
 
     private:
         AZStd::vector<IAudioSystemControl*> m_children;
 
         AZStd::string m_name;
-        IAudioSystemControl* m_parent;
-        CID m_id;
-        TImplControlType m_type;
-        bool m_bPlaceholder;
-        bool m_bLocalised;
-        bool m_isConnected;
+        IAudioSystemControl* m_parent = nullptr;
+        CID m_id = ACE_INVALID_CID;
+        TImplControlType m_type = AUDIO_IMPL_INVALID_TYPE;
+        bool m_isPlaceholder = false;
+        bool m_isLocalized = false;
+        bool m_isConnected = false;
     };
+
 } // namespace AudioControls

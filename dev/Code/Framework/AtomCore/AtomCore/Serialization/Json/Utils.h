@@ -16,6 +16,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/JSON/document.h>
+#include <AzCore/JSON/writer.h>
 #include <AzCore/Serialization/Json/JsonSerializationResult.h>
 
 namespace AZ
@@ -31,8 +32,22 @@ namespace AZ
     // Utility functions which use json serializer/deserializer to save/load object to file/stream 
     namespace JsonSerializationUtils
     {
+        struct WriteJsonSettings
+        {
+            int m_maxDecimalPlaces = -1; // -1 means use default
+        };
+
         ///////////////////////////////////////////////////////////////////////////////////
         // Save functions
+
+        //! Save a json document to text. Otherwise returns a failure with error message.
+        AZ::Outcome<void, AZStd::string> WriteJsonString(const rapidjson::Document& document, AZStd::string& jsonText, WriteJsonSettings settings = WriteJsonSettings{});
+
+        //! Save a json document to a file. Otherwise returns a failure with error message.
+        AZ::Outcome<void, AZStd::string> WriteJsonFile(const rapidjson::Document& document, AZStd::string_view filePath, WriteJsonSettings settings = WriteJsonSettings{});
+
+        //! Save a json document to a stream. Otherwise returns a failure with error message.
+        AZ::Outcome<void, AZStd::string> WriteJsonStream(const rapidjson::Document& document, IO::GenericStream& stream, WriteJsonSettings settings = WriteJsonSettings{});
 
         AZ::Outcome<void, AZStd::string> SaveObjectToStreamByType(const void* objectPtr, const Uuid& objectType, IO::GenericStream& stream,
             const void* defaultObjectPtr = nullptr, const JsonSerializerSettings* settings = nullptr);
@@ -57,13 +72,13 @@ namespace AZ
         // Load functions
 
         //! Parse json text. Returns a failure with error message if the content is not valid JSON.
-        AZ::Outcome<rapidjson::Document, AZStd::string> ParseJson(AZStd::string_view jsonText);
+        AZ::Outcome<rapidjson::Document, AZStd::string> ReadJsonString(AZStd::string_view jsonText);
 
         //! Parse a json file. Returns a failure with error message if the content is not valid JSON.
-        AZ::Outcome<rapidjson::Document, AZStd::string> LoadJson(AZStd::string_view filePath);
+        AZ::Outcome<rapidjson::Document, AZStd::string> ReadJsonFile(AZStd::string_view filePath);
 
         //! Parse a json stream. Returns a failure with error message if the content is not valid JSON.
-        AZ::Outcome<rapidjson::Document, AZStd::string> LoadJson(IO::GenericStream& stream);
+        AZ::Outcome<rapidjson::Document, AZStd::string> ReadJsonStream(IO::GenericStream& stream);
         
         //! Load object with known class type
         AZ::Outcome<void, AZStd::string> LoadObjectFromStreamByType(void* objectToLoad, const Uuid& objectType, IO::GenericStream& stream,
@@ -89,12 +104,6 @@ namespace AZ
         //! Load any object
         AZ::Outcome<AZStd::any, AZStd::string> LoadAnyObjectFromStream(IO::GenericStream& stream, const JsonDeserializerSettings* settings = nullptr);
         AZ::Outcome<AZStd::any, AZStd::string> LoadAnyObjectFromFile(const AZStd::string& filePath,const JsonDeserializerSettings* settings = nullptr);
-
-        ///////////////////////////////////////////////////////////////////////////////////
-        // Reporting functions
-
-        //! Reporting callback that can be used in JsonSerializerSettings to report AZ_Waring when fields are Skipped or Unsupported or processing is not Completed.
-        AZ::JsonSerializationResult::ResultCode ReportCommonWarnings(AZStd::string_view message, AZ::JsonSerializationResult::ResultCode result, AZStd::string_view path);
 
     } // namespace JsonSerializationUtils
 } // namespace Az

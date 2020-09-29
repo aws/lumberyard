@@ -46,19 +46,24 @@ namespace Physics
 
         virtual ~WorldConfiguration() = default;
 
+        AZ::Crc32 GetCcdVisibility() const;
+
         AZ::Aabb m_worldBounds = AZ::Aabb::CreateFromMinMax(-AZ::Vector3(1000.f, 1000.f, 1000.f), AZ::Vector3(1000.f, 1000.f, 1000.f));
         float m_maxTimeStep = 1.f / 20.f;
         float m_fixedTimeStep = s_defaultFixedTimeStep;
         AZ::Vector3 m_gravity = AZ::Vector3(0.f, 0.f, -9.81f);
         void* m_customUserData = nullptr;
-        AZ::u64 m_raycastBufferSize = 32; //!< Maximum number of hits that will be returned from a raycast
-        AZ::u64 m_sweepBufferSize = 32; //!< Maximum number of hits that can be returned from a shapecast
-        AZ::u64 m_overlapBufferSize = 32; //!< Maximum number of overlaps that can be returned from an overlap query
-        bool m_enableCcd = false; //!< Enables continuous collision detection in the world
-        bool m_enableActiveActors = false; //!< Enables pxScene::getActiveActors method
-        bool m_enablePcm = true; //!< Enables the persistent contact manifold algorithm to be used as the narrow phase algorithm
+        AZ::u64 m_raycastBufferSize = 32; //!< Maximum number of hits that will be returned from a raycast.
+        AZ::u64 m_sweepBufferSize = 32; //!< Maximum number of hits that can be returned from a shapecast.
+        AZ::u64 m_overlapBufferSize = 32; //!< Maximum number of overlaps that can be returned from an overlap query.
+        bool m_enableCcd = false; //!< Enables continuous collision detection in the world.
+        AZ::u32 m_maxCcdPasses = 1; //!< Maximum number of continuous collision detection passes.
+        bool m_enableCcdResweep = true; //!< Use a more accurate but more expensive continuous collision detection method.
+        bool m_enableActiveActors = false; //!< Enables pxScene::getActiveActors method.
+        bool m_enablePcm = true; //!< Enables the persistent contact manifold algorithm to be used as the narrow phase algorithm.
         bool m_kinematicFiltering = true; //!< Enables filtering between kinematic/kinematic  objects.
         bool m_kinematicStaticFiltering = true; //!< Enables filtering between kinematic/static objects.
+        float m_bounceThresholdVelocity = 2.0f; //!< Relative velocity below which colliding objects will not bounce.
 
     private:
         static bool VersionConverter(AZ::SerializeContext& context,
@@ -76,7 +81,7 @@ namespace Physics
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::Crc32;
-        using MutexType = AZStd::mutex;
+        using MutexType = AZStd::recursive_mutex;
 
         AZ_CLASS_ALLOCATOR(World, AZ::SystemAllocator, 0);
         AZ_RTTI(World, "{61832612-9F5C-4A2E-8E11-00655A6DDDD2}");
@@ -173,7 +178,7 @@ namespace Physics
 
         virtual void SetEventHandler(WorldEventHandler* eventHandler) = 0;
 
-        virtual AZ::Vector3 GetGravity() = 0;
+        virtual AZ::Vector3 GetGravity() const = 0;
         virtual void SetGravity(const AZ::Vector3& gravity) = 0;
 
         virtual void SetMaxDeltaTime(float maxDeltaTime) = 0;
@@ -214,6 +219,7 @@ namespace Physics
             Animation = 100, //!< Animation system (ragdolls).
             Components = 200, //!< C++ components (force region).
             Scripting = 300, //!< Scripting systems (script canvas).
+            Audio = 400, //!< Audio systems (occlusion).
             Default = 1000 //!< All other systems (Game code).
         };
 

@@ -10,78 +10,41 @@
  *
  */
 
-#include "LuaBuilderWorker.h"
+#include "LmbrCentral_precompiled.h"
+#include "LuaBuilderComponent.h"
 
-#include <AzCore/Component/Entity.h>
 #include <AzCore/Script/ScriptAsset.h>
-#include <AzCore/Serialization/SerializeContext.h>
+#include "AzCore/Serialization/EditContextConstants.inl"
 
-#include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include <AssetBuilderSDK/AssetBuilderBusses.h>
-
-namespace LuaBuilder
+void LuaBuilder::BuilderPluginComponent::Reflect(AZ::ReflectContext* context)
 {
-    class BuilderPluginComponent
-        : public AZ::Component
+    if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
     {
-    public:
-        ~BuilderPluginComponent() override = default;
+        serializeContext->Class<BuilderPluginComponent, AZ::Component>()
+            ->Version(2)
+            ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));;
+    }
+}
 
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Component
-        AZ_COMPONENT(BuilderPluginComponent, "{F85990CF-BF5F-4C02-9188-4C8698F20843}");
-        
-        static void Reflect(AZ::ReflectContext* context)
-        {
-            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-            {
-                serializeContext->Class<BuilderPluginComponent, AZ::Component>()
-                    ->Version(1)
-                    ;
-            }
-        }
-
-        void Activate() override
-        {
-            AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
-            builderDescriptor.m_name = "Lua Worker Builder";
-            builderDescriptor.m_version = 5;
+void LuaBuilder::BuilderPluginComponent::Activate()
+{
+    AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
+    builderDescriptor.m_name = "Lua Worker Builder";
+    builderDescriptor.m_version = 5;
             builderDescriptor.m_analysisFingerprint = AZStd::string::format("%d", static_cast<AZ::u8>(AZ::ScriptAsset::AssetVersion));
-            builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.lua", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
-            builderDescriptor.m_busId = azrtti_typeid<LuaBuilderWorker>();
-            builderDescriptor.m_createJobFunction = AZStd::bind(&LuaBuilderWorker::CreateJobs, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-            builderDescriptor.m_processJobFunction = AZStd::bind(&LuaBuilderWorker::ProcessJob, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-            m_luaBuilder.BusConnect(builderDescriptor.m_busId);
+    builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.lua", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+    builderDescriptor.m_busId = azrtti_typeid<LuaBuilderWorker>();
+    builderDescriptor.m_createJobFunction = AZStd::bind(&LuaBuilderWorker::CreateJobs, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+    builderDescriptor.m_processJobFunction = AZStd::bind(&LuaBuilderWorker::ProcessJob, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+    m_luaBuilder.BusConnect(builderDescriptor.m_busId);
 
-            // (optimization) this builder does not emit source dependencies:
-            builderDescriptor.m_flags |= AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies;
+    // (optimization) this builder does not emit source dependencies:
+    builderDescriptor.m_flags |= AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies;
 
-            AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, builderDescriptor);
-        }
-
-        void Deactivate() override
-        {
-            m_luaBuilder.BusDisconnect();
-        }
-        //////////////////////////////////////////////////////////////////////////
-
-    private:
-        LuaBuilderWorker m_luaBuilder;
-    };
+    AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, builderDescriptor);
 }
 
-void BuilderOnInit() { }
-
-void BuilderDestroy() { }
-
-void BuilderRegisterDescriptors()
+void LuaBuilder::BuilderPluginComponent::Deactivate()
 {
-    EBUS_EVENT(AssetBuilderSDK::AssetBuilderBus, RegisterComponentDescriptor, LuaBuilder::BuilderPluginComponent::CreateDescriptor());
+    m_luaBuilder.BusDisconnect();
 }
-
-void BuilderAddComponents(AZ::Entity* entity)
-{
-    entity->CreateComponentIfReady<LuaBuilder::BuilderPluginComponent>();
-}
-
-REGISTER_ASSETBUILDER

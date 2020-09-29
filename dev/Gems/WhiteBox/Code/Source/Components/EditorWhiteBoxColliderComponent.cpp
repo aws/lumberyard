@@ -46,7 +46,7 @@ namespace WhiteBox
                     ->Attribute(
                         AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/WhiteBox_collider.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "NONE")
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/whitebox-collider")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default, &EditorWhiteBoxColliderComponent::m_physicsColliderConfiguration,
@@ -120,9 +120,14 @@ namespace WhiteBox
         }
     }
 
-    void EditorWhiteBoxColliderComponent::GeneratePhysics(const WhiteBoxMesh& whiteBoxMesh)
+    void EditorWhiteBoxColliderComponent::GeneratePhysics(const WhiteBoxMesh& whiteBox)
     {
-        ConvertToPhysicsMesh(whiteBoxMesh);
+        if (Api::MeshFaceCount(whiteBox) == 0)
+        {
+            return;
+        }
+
+        ConvertToPhysicsMesh(whiteBox);
 
         Physics::WorldBodyConfiguration bodyConfiguration;
         bodyConfiguration.m_debugName = GetEntity()->GetName().c_str();
@@ -143,13 +148,18 @@ namespace WhiteBox
         Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
     }
 
-    void ConvertToTriangles(
+    static bool ConvertToTriangles(
         const WhiteBoxMesh& whiteBox, AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices)
     {
-        const size_t verticesCount = Api::MeshHalfedgeCount(whiteBox);
         const size_t triangleCount = Api::MeshFaceCount(whiteBox);
+        if (triangleCount == 0)
+        {
+            return false;
+        }
 
-        vertices.resize(verticesCount);
+        const size_t vertexCount = Api::MeshHalfedgeCount(whiteBox);
+
+        vertices.resize(vertexCount);
         indices.resize(triangleCount * 3);
 
         // fill vertex position array
@@ -169,14 +179,20 @@ namespace WhiteBox
 
         // fill index array - this will have to change at some point probably
         std::iota(indices.begin(), indices.end(), 0);
+
+        return true;
     }
 
     void EditorWhiteBoxColliderComponent::ConvertToPhysicsMesh(const WhiteBoxMesh& whiteBox)
     {
-        // convert white box mesh to vertices
         AZStd::vector<AZ::Vector3> vertices;
         AZStd::vector<AZ::u32> indices;
-        ConvertToTriangles(whiteBox, vertices, indices);
+        // convert white box mesh to vertices
+        if (!ConvertToTriangles(whiteBox, vertices, indices))
+        {
+            // if there are no valid triangles then do not attempt to create a physics mesh
+            return;
+        }
 
         if (auto* physicsSystem = AZ::Interface<Physics::System>::Get())
         {

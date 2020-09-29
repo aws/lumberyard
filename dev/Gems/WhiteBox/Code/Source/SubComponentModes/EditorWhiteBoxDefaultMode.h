@@ -44,7 +44,7 @@ namespace WhiteBox
     class PolygonTranslationModifier;
     class PolygonScaleModifier;
     class EdgeScaleModifier;
-    class VertexSelectionModifier;
+    class VertexTranslationModifier;
 
     //! The default mode of the EditorWhiteBoxComponentMode - this state allows immediate
     //! interaction of polygons and edges.
@@ -60,7 +60,7 @@ namespace WhiteBox
         //! or a vertex selection modifier - default is empty (monostate).
         using SelectedTranslationModifier = AZStd::variant<
             AZStd::monostate, AZStd::unique_ptr<PolygonTranslationModifier>, AZStd::unique_ptr<EdgeTranslationModifier>,
-            AZStd::unique_ptr<VertexSelectionModifier>>;
+            AZStd::unique_ptr<VertexTranslationModifier>>;
 
         explicit DefaultMode(const AZ::EntityComponentIdPair& entityComponentIdPair);
         DefaultMode(DefaultMode&&) = default;
@@ -104,7 +104,7 @@ namespace WhiteBox
             Api::EdgeHandle previousEdgeHandle, Api::EdgeHandle nextEdgeHandle) override;
 
         //! Find all potentially interactive edge handles the user can select and manipulate.
-        Api::EdgeHandles FindInteractiveEdgeHandles(const AZ::EntityComponentIdPair& entityComponentIdPair);
+        Api::EdgeHandles FindInteractiveEdgeHandles(const WhiteBoxMesh& whiteBox);
 
         //! The entity component id of the component mode this sub-mode is associated with.
         AZ::EntityComponentIdPair m_entityComponentIdPair;
@@ -116,8 +116,8 @@ namespace WhiteBox
         AZStd::unique_ptr<PolygonScaleModifier>
             m_polygonScaleModifier; //!< The currently instantiated polygon scale modifier.
         AZStd::unique_ptr<EdgeScaleModifier> m_edgeScaleModifier; //!< The currently instantiated edge scale modifier.
-        AZStd::unique_ptr<VertexSelectionModifier>
-            m_vertexSelectionModifier; //!< The currently instantiated vertex selection modifier.
+        AZStd::unique_ptr<VertexTranslationModifier>
+            m_vertexTranslationModifier; //!< The currently instantiated vertex selection modifier.
         SelectedTranslationModifier m_selectedModifier; //!< The type of selected translation modifier.
     };
 } // namespace WhiteBox

@@ -26,6 +26,7 @@
 // Used to keep a set of ignored asserts for CRC checking
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/Module/Environment.h>
+#include <AzCore/Console/IConsole.h>
 
 namespace AZ 
 {
@@ -73,6 +74,9 @@ namespace AZ
     static AZ::EnvironmentVariable<int> g_assertVerbosityLevel;
     static AZ::EnvironmentVariable<int> g_logVerbosityLevel;
 
+    constexpr LogLevel DefaultLogLevel = LogLevel::Info;
+
+    AZ_CVAR_EXTERNABLE(int, bg_traceLogLevel, DefaultLogLevel, nullptr, ConsoleFunctorFlags::Null, "Enable trace message logging in release mode.  0=disabled, 1=errors, 2=warnings, 3=info.");
 
     /**
      * If any listener returns true, store the result so we don't outputs detailed information.
@@ -183,6 +187,11 @@ namespace AZ
     void Debug::Trace::Terminate(int exitCode)
     {
         Platform::Terminate(exitCode);
+    }
+
+    bool Trace::IsTraceLoggingEnabledForLevel(LogLevel level)
+    {
+        return bg_traceLogLevel >= level;
     }
 
     //=========================================================================
@@ -306,6 +315,11 @@ namespace AZ
     void
     Trace::Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
     {
+        if (!IsTraceLoggingEnabledForLevel(LogLevel::Errors))
+        {
+            return;
+        }
+
         using namespace DebugInternal;
         if (!window)
         {
@@ -360,6 +374,11 @@ namespace AZ
     void
     Trace::Warning(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...)
     {
+        if (!IsTraceLoggingEnabledForLevel(LogLevel::Warnings))
+        {
+            return;
+        }
+
         char message[g_maxMessageLength];
         char header[g_maxMessageLength];
 

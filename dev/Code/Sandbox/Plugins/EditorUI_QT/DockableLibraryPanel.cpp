@@ -66,8 +66,8 @@ DockableLibraryPanel::DockableLibraryPanel(QWidget* parent)
     , m_panelName("")
     , m_titleBarMenu(nullptr)
     , m_dockableArea(nullptr)
-    , m_enabledItemTextColor(Qt::magenta)
-    , m_disabledItemTextColor(Qt::magenta)
+    , m_enabledItemTextColor(QColor("#FFFFFF"))
+    , m_disabledItemTextColor(QColor("#CCCCCC"))
     , m_searchArea(nullptr)
     , m_searchField(nullptr)
     , m_AddNewLibraryButton(nullptr)
@@ -116,7 +116,10 @@ void DockableLibraryPanel::Init(const QString& panelName, CBaseLibraryManager* l
     m_dockableArea->setAcceptDrops(true);
 
     m_searchField->setObjectName("LibrarySearchField");
-    m_AddNewLibraryButton->setIcon(QIcon(":/particleQT/icons/libraries_icon.png"));
+
+    m_AddNewLibraryButton->setIcon(QIcon(":/particleQT/icons/libraries_icon.svg"));
+    m_AddNewLibraryButton->setObjectName("LibrarySearchIcon");
+    m_AddNewLibraryButton->setFlat(true);
     m_AddNewLibraryButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     //search area set up

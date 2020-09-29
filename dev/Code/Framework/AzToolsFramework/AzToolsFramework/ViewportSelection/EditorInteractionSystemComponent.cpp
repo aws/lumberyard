@@ -30,10 +30,16 @@ namespace AzToolsFramework
         EditorInteractionSystemViewportSelectionRequestBus::Handler::BusDisconnect();
     }
 
-    bool EditorInteractionSystemComponent::HandleMouseInteraction(
+    bool EditorInteractionSystemComponent::InternalHandleMouseViewportInteraction(
         const ViewportInteraction::MouseInteractionEvent& mouseInteraction)
     {
-        return m_interactionRequests->HandleMouseInteraction(mouseInteraction);
+        return m_interactionRequests->InternalHandleMouseViewportInteraction(mouseInteraction);
+    }
+
+    bool EditorInteractionSystemComponent::InternalHandleMouseManipulatorInteraction(
+        const ViewportInteraction::MouseInteractionEvent& mouseInteraction)
+    {
+        return m_interactionRequests->InternalHandleMouseManipulatorInteraction(mouseInteraction);
     }
 
     void EditorInteractionSystemComponent::SetHandler(

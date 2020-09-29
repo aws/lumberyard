@@ -123,6 +123,7 @@ namespace PhysX
         boxColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfiguration, boxShapeConfiguration) });
 
         Physics::RigidBodyConfiguration rigidBodyConfig;
+        rigidBodyConfig.m_computeMass = false;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
         entity->Init();

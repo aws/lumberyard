@@ -116,9 +116,9 @@ namespace ScriptCanvasEditor
         AZ::EntityId GetScriptCanvasId() const { return m_scriptCanvasId; }
 
         AZ::EntityId GetGraphId();
-        Tracker::ScriptCanvasFileState GetFileState() const { return m_fileState; }
+        Tracker::ScriptCanvasFileState GetFileState() const;
 
-        void SetFileState(Tracker::ScriptCanvasFileState fileState) { m_fileState = fileState; }
+        void SetFileState(Tracker::ScriptCanvasFileState fileState);
 
         void CloneTo(ScriptCanvasMemoryAsset& memoryAsset);
 
@@ -217,6 +217,8 @@ namespace ScriptCanvasEditor
 
     private:
 
+        void SignalFileStateChanged();
+
         AZStd::string MakeTemporaryFilePathForSave(AZStd::string_view targetFilename);
 
         //! Finds the appropriate asset handler for the type of Script Canvas asset given
@@ -257,6 +259,7 @@ namespace ScriptCanvasEditor
         //! The Save is officially complete after SourceFileChange is handled.
         Callbacks::OnSave m_onSaveCallback;
 
+        bool m_sourceRemoved = false;
         Tracker::ScriptCanvasFileState m_fileState = Tracker::ScriptCanvasFileState::INVALID;
 
         //! We need to track the filename of the file being saved because we need to match it when we handle SourceFileChange (see SourceFileChange for details)
@@ -279,6 +282,14 @@ namespace ScriptCanvasEditor
 
         bool m_sourceInError;
         bool m_triggerSaveCallback;
+
+        // Callback flag to avoid the SourceFileChange callback, since there are situations
+        // where that won't be called and we still need to complete our save loop
+        bool m_triggerSourceChangedFromTickBus = false;
+        AZStd::string m_relativePath;
+        AZStd::string m_scanFolder;
+        AZ::Data::AssetId m_sourceUuid;
+        
 
     public:
 

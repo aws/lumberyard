@@ -24,7 +24,6 @@
 #include "VariableWidgets/QWidgetInt.h"
 #include "VariableWidgets/QColumnWidget.h"
 #include "VariableWidgets/QCollapsePanel.h"
-#include "VariableWidgets/QCollapseWidget.h"
 #include "VariableWidgets/QColorCurve.h"
 #include "VariableWidgets/QCurveEditorImp.h"
 #include "VariableWidgets/QColorWidgetImp.h"

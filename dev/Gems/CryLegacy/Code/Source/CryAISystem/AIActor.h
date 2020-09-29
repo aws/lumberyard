@@ -85,7 +85,9 @@ public:
     virtual bool CanDamageTarget(IAIObject* target = 0) const;
     virtual bool CanDamageTargetWithMelee() const;
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics(bool bWantCharacterPhysics = false) const;
+#endif
 
     void SetBehaviorVariable(const char* variableName, bool value);
     bool GetBehaviorVariable(const char* variableName) const;

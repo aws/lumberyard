@@ -54,6 +54,7 @@ class ConfigContext(object):
         self.__deployment_access_template_aggregator = None
         self.__deployment_template_aggregator = None
         self.__create_admin_roles = None  # Needs to be loaded from local project settings
+        self.__custom_domain_name = None
         self.__assume_role_name = None
 
         # Need to call bootstrap/initialize to use these values
@@ -316,6 +317,17 @@ class ConfigContext(object):
                 self.__create_admin_roles = bool(project_owner or project_admin)
         return self.__create_admin_roles
 
+    @property
+    def custom_domain_name(self):
+        if not self.__custom_domain_name:
+            metadata = self.local_project_settings.get(constant.METADATA, {})
+            # if stack is newer and has value set then use metadata value
+            if constant.CUSTOM_DOMAIN_NAME in metadata:
+                self.__custom_domain_name = metadata[constant.CUSTOM_DOMAIN_NAME]
+            else:
+                self.__custom_domain_name = ''
+        return self.__custom_domain_name
+
     def __initialize_project_settings(self):
         if self.project_initialized:
 
@@ -451,6 +463,12 @@ class ConfigContext(object):
         self.__create_admin_roles = value
         self.set_project_metadata(metadata)
 
+    def set_custom_domain_name(self, custom_domain_name):
+        metadata = self.local_project_settings.get(constant.METADATA, {})
+        metadata[constant.CUSTOM_DOMAIN_NAME] = custom_domain_name
+        self.__custom_domain_name = custom_domain_name
+        self.set_project_metadata(metadata)
+
     def set_pending_project_stack_id(self, project_stack_id):
         self.local_project_settings[constant.PENDING_PROJECT_STACK_ID] = project_stack_id
         self.local_project_settings.save()
@@ -491,7 +509,7 @@ class ConfigContext(object):
             self.user_settings[constant.DEFAULT_PROFILE_NAME] = profile
         else:
             self.user_settings.pop(constant.DEFAULT_PROFILE_NAME, None)  # safe delete
-        self.context.aws.set_default_profile(profile)
+        self.context.aws.set_default_profile(profile, profile_only=True)
         self.user_default_profile = profile
         self.__save_user_settings()
 

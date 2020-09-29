@@ -47,6 +47,8 @@ namespace GradientSignal
         void Refresh() override;
         AZ::EntityId CancelRefresh() override;
 
+        void PreventRefresh(bool preventRefresh);
+
     private:
         GradientPreviewWidget::SampleFilterFunc m_sampleFilterFunc;
         GradientSampler m_sampler;
@@ -56,6 +58,8 @@ namespace GradientSignal
         AZ::EntityId m_observerEntityStub;
         LmbrCentral::DependencyMonitor m_dependencyMonitor;
         bool m_refreshInProgress = false;
+        bool m_preventRefresh = false;
+        bool m_refreshQueued = false;
     };
 
     class GradientPreviewDataWidgetHandler
@@ -68,6 +72,7 @@ namespace GradientSignal
         bool ReadValueIntoGUI(size_t index, GradientPreviewDataWidget* GUI, void* value, const AZ::Uuid& propertyType) override;
         void ConsumeAttribute(GradientPreviewDataWidget* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName);
         QWidget* CreateGUI(QWidget* pParent) override;
+        void PreventRefresh(QWidget* widget, bool shouldPrevent) override;
 
         static void Register();
         static void Unregister();

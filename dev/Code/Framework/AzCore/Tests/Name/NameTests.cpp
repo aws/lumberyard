@@ -56,24 +56,30 @@ namespace UnitTest
 
         static const AZStd::unordered_map<AZ::Name::Hash, AZ::Internal::NameData*>& GetDictionary()
         {
-            return AZ::NameDictionary::Instance().GetNames();
+            return AZ::NameDictionary::Instance().m_dictionary;
         }
         
         static size_t GetEntryCount()
         {
             return GetDictionary().size();
         }
+
+        //! Directly calculate the hash value for a string without collision resolution
+        static AZ::Name::Hash CalcDirectHashValue(AZStd::string_view name)
+        {
+            return AZ::NameDictionary::Instance().CalcHash(name);
+        }
     };
     
-    class DictionaryAllocatorThread
+    class ThreadCreatesOneName
     {
     public:
-        DictionaryAllocatorThread(AZStd::string_view name) : m_originalName(name)
+        ThreadCreatesOneName(AZStd::string_view name) : m_originalName(name)
         { }
 
         void Start()
         {
-            m_thread = std::thread(&DictionaryAllocatorThread::ThreadJob, this);
+            m_thread = AZStd::thread([this]() { ThreadJob(); });
         }
 
         void Join()
@@ -88,15 +94,55 @@ namespace UnitTest
 
         void ThreadJob()
         {
-            m_azName = AZ::Name(m_originalName.c_str());
+            m_azName = AZ::Name(m_originalName);
         }
                 
     private:
-        std::thread m_thread;
+        AZStd::thread m_thread;
         AZ::Name m_azName;
         AZStd::string m_originalName;
     };
-    
+
+    template<size_t N>
+    class ThreadRepeatedlyCreatesAndReleasesOneName
+    {
+    public:
+        ThreadRepeatedlyCreatesAndReleasesOneName(AZStd::string_view name) : m_originalName(name)
+        { }
+
+        void Start()
+        {
+            m_thread = AZStd::thread([this]() { ThreadJob(); });
+        }
+
+        void Join()
+        {
+            m_thread.join();
+        }
+
+        const AZ::Name& GetAzName() const
+        {
+            return m_azName;
+        }
+
+        void ThreadJob()
+        {
+            m_azName = AZ::Name(m_originalName);
+
+            for (int i = 0; i < N; ++i)
+            {
+                m_azName = AZ::Name();
+                m_azName = AZ::Name(m_originalName);
+            }
+
+        }
+
+    private:
+        AZStd::thread m_thread;
+        AZ::Name m_azName;
+        AZStd::string m_originalName;
+    };
+
     class NameTest : public AllocatorsFixture
     {
     protected:
@@ -119,7 +165,7 @@ namespace UnitTest
             azsnprintf(buffer, RandomStringBufferSize, "%d", m_random.GetRandom());
             return buffer;
         }
-
+        
         AZ::SimpleLcgRandom m_random;
     };
 
@@ -167,24 +213,18 @@ namespace UnitTest
         run();
     }
 
-    void RunConcurrencyTest(uint32_t nameCount)
-    {
-        auto& globalDictionary = NameDictionaryTester::GetDictionary();
-        
-        AZStd::vector<DictionaryAllocatorThread> threads;
+    template<class ConcurrentcyTestThreadT>
+    void RunConcurrencyTest(uint32_t nameCount, uint32_t threadsPerName)
+    {        
+        AZStd::vector<ConcurrentcyTestThreadT> threads;
         AZStd::set<AZStd::string> localDictionary;
 
-        // Copy any existing entries into the localDictionary because later we need
-        // to check that localDictionary and globalDictionary match exactly.
-        for (auto& keyValuePair : globalDictionary)
-        {
-            localDictionary.emplace(keyValuePair.second->GetName());
-        }
+        EXPECT_EQ(NameDictionaryTester::GetEntryCount(), 0);
 
         // Use a fixed seed.
         srand(123456);
         
-        for (unsigned int i = 0; i < nameCount; i++)
+        for (uint32_t i = 0; i < nameCount; i++)
         {
             int length = rand() % 5 + 10;
             char* name = new char[length + 1];
@@ -203,28 +243,28 @@ namespace UnitTest
 
         for (const AZStd::string& nameString: localDictionary)
         {
-            // Adding two readers and one writer (the first to run will write in the dictionary)
-            threads.push_back(DictionaryAllocatorThread(nameString));
-            threads.push_back(DictionaryAllocatorThread(nameString));
-            threads.push_back(DictionaryAllocatorThread(nameString));
+            for (uint32_t i = 0; i < threadsPerName; ++i)
+            {
+                threads.push_back(ConcurrentcyTestThreadT(nameString));
+            }
         }
 
-        for (DictionaryAllocatorThread& th : threads)
+        for (ConcurrentcyTestThreadT& th : threads)
         {
             th.Start();
         }
 
-        for (DictionaryAllocatorThread& th : threads)
+        for (ConcurrentcyTestThreadT& th : threads)
         {
             th.Join();
         }
 
-        // Number of static initialized names + manually added names.
-        EXPECT_EQ(globalDictionary.size(), localDictionary.size());
+        EXPECT_EQ(NameDictionaryTester::GetEntryCount(), localDictionary.size());
 
         // Make sure all entries in the localDictionary got copied into the globalDictionary
         for (const AZStd::string& nameString : localDictionary)
         {
+            auto& globalDictionary = NameDictionaryTester::GetDictionary();
             auto it = AZStd::find_if(globalDictionary.begin(), globalDictionary.end(), [&nameString](AZStd::pair<AZ::Name::Hash, AZ::Internal::NameData*> entry) {
                 return entry.second->GetName() == nameString;
             });
@@ -232,13 +272,13 @@ namespace UnitTest
         }
 
         // Make sure all the threads got an accurate Name object
-        for (DictionaryAllocatorThread& th : threads)
+        for (ConcurrentcyTestThreadT& th : threads)
         {
             AZ::Name lookupName = AZ::NameDictionary::Instance().FindName(th.GetAzName().GetHash());
             EXPECT_EQ(th.GetAzName().GetStringView(), lookupName.GetStringView());
         }
     }
-
+    
     TEST_F(NameTest, NameConstructorTest)
     {
         AZ::Name a("a");
@@ -392,6 +432,65 @@ namespace UnitTest
         EXPECT_TRUE(b != AZ::Name{});
     }
 
+    TEST_F(NameTest, CollisionResolutionsArePersistent)
+    {
+        // When hash calculations collide, the resolved hash value is order-dependent and therefore is not guaranteed
+        // be the same between runs of the application. However, the resolved hash values ARE guaranteed to be preserved
+        // during the dictionary lifetime. This is a precautionary measure to avoid possible edge cases.
+
+        const uint32_t maxUniqueHashes = 50;
+        AZ::NameDictionary::Destroy();
+        AZ::NameDictionary::Create(maxUniqueHashes);
+
+        // We need this number of names to collide for the test to be valid
+        const size_t requiredCollisionCount = 3;
+
+        // Find a set of names that collide
+        AZStd::map<uint32_t, AZStd::vector<AZStd::string>> hashTable;
+        AZStd::vector<AZStd::string>* collidingNameSet = nullptr;
+        for (int i = 0; i < 1000; ++i)
+        {
+            AZStd::string nameText = AZStd::string::format("name%d", i);
+            uint32_t hash = NameDictionaryTester::CalcDirectHashValue(nameText);
+
+            collidingNameSet = &hashTable[hash];
+
+            collidingNameSet->push_back(nameText);
+
+            if (collidingNameSet->size() >= requiredCollisionCount)
+            {
+                break;
+            }
+        }
+
+        ASSERT_NE(collidingNameSet, nullptr);
+        ASSERT_GE(collidingNameSet->size(), requiredCollisionCount);
+
+        AZStd::unique_ptr<AZ::Name> nameA = AZStd::make_unique<AZ::Name>((*collidingNameSet)[0]);
+        AZStd::unique_ptr<AZ::Name> nameB = AZStd::make_unique<AZ::Name>((*collidingNameSet)[1]);
+        AZStd::unique_ptr<AZ::Name> nameC = AZStd::make_unique<AZ::Name>((*collidingNameSet)[2]);
+
+        // Even though we destroy nameA and nameB, we should still be able to retrieve nameC.
+        nameA.reset();
+        nameB.reset();
+
+        AZ::Name newNameC{(*collidingNameSet)[2]};
+
+        EXPECT_EQ(newNameC, *nameC);
+        EXPECT_EQ(newNameC.GetStringView(), nameC->GetStringView());
+    }
+
+    TEST_F(NameTest, ReportLeakedNames)
+    {
+        AZ::Name leakedName{"hello"};
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        AZ::NameDictionary::Destroy();
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        // Create the dictionary again to avoid error in TearDown()
+        AZ::NameDictionary::Create();
+    }
+
     TEST_F(NameTest, NullTerminatedTest)
     {
         const char* buffer = "There is a name in here";
@@ -475,20 +574,46 @@ namespace UnitTest
         EXPECT_EQ(0, nameSet.count(AZ::Name{ "d" }));
     }
 
-    TEST_F(NameTest, ConcurrencyDataTest_NoCollision)
+    TEST_F(NameTest, ConcurrencyDataTest_EachThreadCreatesOneName_NoCollision)
     {
         const uint32_t maxUniqueHashes = std::numeric_limits<uint32_t>::max();
         AZ::NameDictionary::Destroy();
         AZ::NameDictionary::Create(maxUniqueHashes);
-        RunConcurrencyTest(1000);
+
+        // 3 threads per name effectively makes two readers and one writer (the first to run will write in the dictionary)
+        RunConcurrencyTest<ThreadCreatesOneName>(1000, 3);
     }
 
-    TEST_F(NameTest, ConcurrencyDataTest_HighCollisions)
+    TEST_F(NameTest, ConcurrencyDataTest_EachThreadCreatesOneName_HighCollisions)
     {
         const uint32_t maxUniqueHashes = 25;
         AZ::NameDictionary::Destroy();
         AZ::NameDictionary::Create(maxUniqueHashes);
-        RunConcurrencyTest(1000);
+
+        // 3 threads per name effectively makes two readers and one writer (the first to run will write in the dictionary)
+        RunConcurrencyTest<ThreadCreatesOneName>(1000, 3);
+    }
+
+    TEST_F(NameTest, ConcurrencyDataTest_EachThreadRepeatedlyCreatesAndReleasesOneName_NoCollision)
+    {
+        const uint32_t maxUniqueHashes = std::numeric_limits<uint32_t>::max();
+        AZ::NameDictionary::Destroy();
+        AZ::NameDictionary::Create(maxUniqueHashes);
+
+        // We use only 2 threads for each name to try and maximize how much names are added and removed,
+        // instead of letting shared references cause the name to stay in the dictionary.
+        RunConcurrencyTest<ThreadRepeatedlyCreatesAndReleasesOneName<100>>(100, 2);
+    }
+
+    TEST_F(NameTest, ConcurrencyDataTest_EachThreadRepeatedlyCreatesAndReleasesOneName_HighCollisions)
+    {
+        const uint32_t maxUniqueHashes = 25;
+        AZ::NameDictionary::Destroy();
+        AZ::NameDictionary::Create(maxUniqueHashes);
+
+        // We use only 2 threads for each name to try and maximize how much names are added and removed,
+        // instead of letting shared references cause the name to stay in the dictionary.
+        RunConcurrencyTest<ThreadRepeatedlyCreatesAndReleasesOneName<100>>(100, 2);
     }
 
     TEST_F(NameTest, NameVsStringPerf_Creation)

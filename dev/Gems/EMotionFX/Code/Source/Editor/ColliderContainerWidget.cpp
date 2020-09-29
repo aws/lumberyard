@@ -326,15 +326,19 @@ namespace EMotionFX
         const AzQtComponents::Card* card = static_cast<AzQtComponents::Card*>(sender());
         const int colliderIndex = card->property("colliderIndex").toInt();
 
-        QMenu contextMenu(this);
+        QMenu* contextMenu = new QMenu(this);
+        contextMenu->setObjectName("EMFX.ColliderContainerWidget.ContextMenu");
 
-        QAction* deleteAction = contextMenu.addAction("Delete collider");
+        QAction* deleteAction = contextMenu->addAction("Delete collider");
+        deleteAction->setObjectName("EMFX.ColliderContainerWidget.DeleteColliderAction");
         deleteAction->setProperty("colliderIndex", colliderIndex);
         connect(deleteAction, &QAction::triggered, this, &ColliderWidget::OnRemoveCollider);
 
-        if (!contextMenu.isEmpty())
+        QObject::connect(contextMenu, &QMenu::triggered, contextMenu, &QObject::deleteLater);
+
+        if (!contextMenu->isEmpty())
         {
-            contextMenu.exec(position);
+            contextMenu->popup(position);
         }
     }
 

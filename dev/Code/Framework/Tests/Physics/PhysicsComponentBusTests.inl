@@ -584,6 +584,67 @@ namespace Physics
         delete sphere;
     }
 
+    TEST_F(PhysicsComponentBusTest, Shape_Box_GetAabbIsCorrect)
+    {
+        Physics::ColliderConfiguration colliderConfig;
+        Physics::BoxShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_dimensions = AZ::Vector3(20.f, 20.f, 20.f);
+        AZStd::shared_ptr<Shape> shape;
+        SystemRequestBus::BroadcastResult(shape, &SystemRequests::CreateShape, colliderConfig, shapeConfiguration);
+        const AZ::Aabb localAabb = shape->GetAabbLocal();
+        EXPECT_TRUE(localAabb.GetMin().IsClose(-shapeConfiguration.m_dimensions / 2.f)
+            && localAabb.GetMax().IsClose(shapeConfiguration.m_dimensions / 2.f));
+
+        AZ::Vector3 worldOffset = AZ::Vector3(0, 0, 40.f);
+        AZ::Transform worldTransform = AZ::Transform::Identity();
+        worldTransform.SetTranslation(worldOffset);
+        const AZ::Aabb worldAabb = shape->GetAabb(worldTransform);
+        EXPECT_TRUE(worldAabb.GetMin().IsClose((-shapeConfiguration.m_dimensions / 2.f) + worldOffset)
+            && worldAabb.GetMax().IsClose((shapeConfiguration.m_dimensions / 2.f) + worldOffset));
+    }
+
+    TEST_F(PhysicsComponentBusTest, Shape_Sphere_GetAabbIsCorrect)
+    {
+        const float radius = 20.f;
+        Physics::ColliderConfiguration colliderConfig;
+        Physics::SphereShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_radius = radius;
+        AZStd::shared_ptr<Shape> shape;
+        SystemRequestBus::BroadcastResult(shape, &SystemRequests::CreateShape, colliderConfig, shapeConfiguration);
+        const AZ::Aabb localAabb = shape->GetAabbLocal();
+        EXPECT_TRUE(localAabb.GetMin().IsClose(AZ::Vector3(-radius, -radius, -radius))
+                    && localAabb.GetMax().IsClose(AZ::Vector3(radius, radius, radius)));
+
+        AZ::Vector3 worldOffset = AZ::Vector3(0, 0, 40.f);
+        AZ::Transform worldTransform = AZ::Transform::Identity();
+        worldTransform.SetTranslation(worldOffset);
+        const AZ::Aabb worldAabb = shape->GetAabb(worldTransform);
+        EXPECT_TRUE(worldAabb.GetMin().IsClose(AZ::Vector3(-radius, -radius, -radius) + worldOffset)
+                    && worldAabb.GetMax().IsClose(AZ::Vector3(radius, radius, radius) + worldOffset));
+    }
+
+    TEST_F(PhysicsComponentBusTest, Shape_Capsule_GetAabbIsCorrect)
+    {
+        const float radius = 20.f;
+        const float height = 80.f;
+        Physics::ColliderConfiguration colliderConfig;
+        Physics::CapsuleShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_radius = radius;
+        shapeConfiguration.m_height = height;
+        AZStd::shared_ptr<Shape> shape;
+        SystemRequestBus::BroadcastResult(shape, &SystemRequests::CreateShape, colliderConfig, shapeConfiguration);
+        const AZ::Aabb localAabb = shape->GetAabbLocal();
+        EXPECT_TRUE(localAabb.GetMin().IsClose(AZ::Vector3(-radius, -radius, -height / 2.f))
+            && localAabb.GetMax().IsClose(AZ::Vector3(radius, radius, height / 2.f)));
+
+        AZ::Vector3 worldOffset = AZ::Vector3(0, 0, 40.f);
+        AZ::Transform worldTransform = AZ::Transform::Identity();
+        worldTransform.SetTranslation(worldOffset);
+        const AZ::Aabb worldAabb = shape->GetAabb(worldTransform);
+        EXPECT_TRUE(worldAabb.GetMin().IsClose(AZ::Vector3(-radius, -radius, -height / 2.f) + worldOffset)
+            && worldAabb.GetMax().IsClose(AZ::Vector3(radius, radius, height / 2.f) + worldOffset));
+    }
+
     TEST_F(PhysicsComponentBusTest, WorldBodyBus_RigidBodyColliders_AABBAreCorrect)
     {
         // Create 3 colliders, one of each type and check that the AABB of their body is the expected
@@ -706,7 +767,6 @@ namespace Physics
     }
 
     using RayCastFunc = AZStd::function<Physics::RayCastHit(AZ::EntityId, const Physics::RayCastRequest&)>;
-
     class PhysicsRigidBodyRayBusTest
         : public Physics::GenericPhysicsInterfaceTest
         , public ::testing::WithParamInterface<RayCastFunc>
@@ -923,4 +983,6 @@ namespace Physics
             }
             return name;
         });
+
+
 } // namespace Physics

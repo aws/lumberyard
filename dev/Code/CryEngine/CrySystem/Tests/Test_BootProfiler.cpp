@@ -18,6 +18,8 @@
 #include <AzCore/std/string/string.h>
 #include <BootProfiler.h>
 
+#if defined(ENABLE_LOADING_PROFILER)
+
 namespace UnitTests
 {
     using BootProfilerTestAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
@@ -110,4 +112,4 @@ namespace UnitTests
     }
 } // namespace UnitTests
 
-
+#endif

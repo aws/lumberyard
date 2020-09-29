@@ -10,7 +10,6 @@
 *
 */
 
-// include the required headers
 #include "OpenGLRenderPlugin.h"
 #include "GLWidget.h"
 #include "../../../../EMStudioSDK/Source/EMStudioCore.h"
@@ -26,53 +25,28 @@
 
 namespace EMStudio
 {
-    // constructor
     OpenGLRenderPlugin::OpenGLRenderPlugin()
         : EMStudio::RenderPlugin()
     {
         mGraphicsManager = nullptr;
     }
 
-
-    // destructor
     OpenGLRenderPlugin::~OpenGLRenderPlugin()
     {
         // get rid of the OpenGL graphics manager
         delete mGraphicsManager;
     }
 
-
     // init after the parent dock window has been created
     bool OpenGLRenderPlugin::Init()
     {
         MCore::LogInfo("Initializing OpenGL rendering");
-        /*
-            // create our OpenGL format
-            QGLFormat oglFormat = QGLFormat::defaultFormat();
-            oglFormat.setDoubleBuffer( true );
-            oglFormat.setRgba( true );
-            oglFormat.setDepth( true );
-            oglFormat.setDirectRendering( true );
-            oglFormat.setSampleBuffers(true);
-            oglFormat.setSamples( 4 );
-            QGLFormat::setDefaultFormat( oglFormat );
-
-            if (QGLFormat::hasOpenGL() == false)
-            {
-                LogError( "System does not support OpenGL." );
-                return false;
-            }
-        */
-        // set the callback
-        //mUpdateCallback = new GLUpdateCallBack(this);
-        //EMotionFX::GetActorManager().SetCallBack( mUpdateCallback );
 
         RenderPlugin::Init();
 
         MCore::LogInfo("Render plugin initialized successfully");
         return true;
     }
-
 
     // initialize the OpenGL engine
     bool OpenGLRenderPlugin::InitializeGraphicsManager()
@@ -92,8 +66,6 @@ namespace EMStudio
         if (mGraphicsManager->Init(shaderPath.c_str()) == false)
         {
             MCore::LogError("Could not initialize OpenGL graphics manager.");
-            //      delete mGraphicsManager;
-            //      mGraphicsManager = nullptr;
             return false;
         }
 
@@ -106,7 +78,6 @@ namespace EMStudio
         return true;
     }
 
-
     // overloaded version to create a OpenGL render actor
     bool OpenGLRenderPlugin::CreateEMStudioActor(EMotionFX::Actor* actor)
     {
@@ -118,7 +89,6 @@ namespace EMStudio
         }
 
         // create a new OpenGL actor and try to initialize it
-        //GetMainWindow()->GetOpenGLShareWidget()->makeCurrent();
         RenderGL::GLActor* glActor = RenderGL::GLActor::Create();
         if (glActor->Init(actor, "", true, false) == false)
         {
@@ -134,7 +104,6 @@ namespace EMStudio
         AddEMStudioActor(emstudioActor);
         return true;
     }
-
 
     // overloaded version to render a visible actor instance using OpenGL
     void OpenGLRenderPlugin::RenderActorInstance(EMotionFX::ActorInstance* actorInstance, float timePassedInSeconds)
@@ -192,7 +161,6 @@ namespace EMStudio
 
         RenderPlugin::RenderActorInstance(actorInstance, timePassedInSeconds);
     }
-
 
     // overloaded version which created a OpenGL render widget
     void OpenGLRenderPlugin::CreateRenderWidget(RenderViewWidget* renderViewWidget, RenderWidget** outRenderWidget, QWidget** outWidget)

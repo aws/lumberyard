@@ -28,7 +28,9 @@
 #include "Include/ITransformManipulator.h"
 #include "QtUI/WaitCursor.h"
 #include "I3DEngine.h"
+#if ENABLE_CRY_PHYSICS
 #include "IPhysics.h"
+#endif
 #include "MainWindow.h"
 
 #include <AzFramework/Terrain/TerrainDataRequestBus.h>
@@ -1073,6 +1075,7 @@ CVegetationInstance* CVegetationTool::SelectThingAtPoint(CViewport* view, const 
     Vec3 pos = view->ViewToWorld(point, &bCollideTerrain, true);
     float fTerrainHitDistance = raySrc.GetDistance(pos);
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* pPhysics = GetIEditor()->GetSystem()->GetIPhysicalWorld();
     if (pPhysics)
     {
@@ -1090,6 +1093,9 @@ CVegetationInstance* CVegetationTool::SelectThingAtPoint(CViewport* view, const 
             }
         }
     }
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     // Find closest thing to this point.
     CVegetationInstance* obj = m_vegetationMap->GetNearestInstance(pos, 1.0f);

@@ -3,7 +3,8 @@
         "Tests": [
             "tests/main.cpp",
             "tests/applicationManagerTests.cpp",
-            "tests/main.h"
+            "tests/main.h",
+            "tests/UtilsTests.cpp"
         ]
     }   
 }

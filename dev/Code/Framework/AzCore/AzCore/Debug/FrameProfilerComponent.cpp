@@ -57,9 +57,6 @@ namespace AZ
 
             TickBus::Handler::BusConnect();
             AZ_Assert(m_numFramesStored >= 1, "We must have at least one frame to store, otherwise this component is useless!");
-
-
-            //  AZStd::ThreadEventBus::Handler::BusConnect();
         }
 
         //=========================================================================
@@ -69,7 +66,6 @@ namespace AZ
         void FrameProfilerComponent::Deactivate()
         {
             TickBus::Handler::BusDisconnect();
-            //  AZStd::ThreadEventBus::Handler::BusDisconnect();
 
             Profiler::ReleaseReference();
         }
@@ -129,31 +125,6 @@ namespace AZ
             // Even it's not critical we should tick last to capture the current frame
             // so TICK_LAST (since it's not the last int +1 is a valid assumption)
             return TICK_LAST + 1;
-        }
-
-        //=========================================================================
-        // OnThreadEnter
-        // [12/6/2012]
-        //=========================================================================
-        void FrameProfilerComponent::OnThreadEnter(const AZStd::thread::id& id, const AZStd::thread_desc* desc)
-        {
-            // TODO: Here we can capture the thread debug name (if there is one) or any extra thread related
-            // information. Keep in mind that this message is called from whatever thread is starting... so
-            // a synchronization is needed.
-            (void)id;
-            (void)desc;
-        }
-
-        //=========================================================================
-        //
-        // [12/6/2012]
-        //=========================================================================
-        void FrameProfilerComponent::OnThreadExit(const AZStd::thread::id& id)
-        {
-            // TODO: Here we remove thread associated data and free the memory (as this thread
-            // is no longer active. Keep in mind that this message is called from whatever thread is starting... so
-            // a synchronization is needed.
-            (void)id;
         }
 
         //=========================================================================

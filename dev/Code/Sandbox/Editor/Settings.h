@@ -35,6 +35,8 @@
 #include <QRect>
 #include <QSettings>
 
+#include <AzToolsFramework/Editor/EditorSettingsAPIBus.h>
+
 #include <AzQtComponents/Components/Widgets/ToolBar.h>
 
 class CGrid;
@@ -322,14 +324,33 @@ struct SSmartOpenDialogSettings
 };
 
 //////////////////////////////////////////////////////////////////////////
+/** Different methods for sorting particle libraries by name
+*/
+enum class ParticlesNameSortingMode
+{
+    Off,
+    Ascending,
+    Descending
+};
+
+//////////////////////////////////////////////////////////////////////////
 /** Various editor settings.
 */
 struct SANDBOX_API SEditorSettings
+    : AzToolsFramework::EditorSettingsAPIBus::Handler
 {
     SEditorSettings();
+    ~SEditorSettings();
     void    Save();
     void    Load();
     void    LoadCloudSettings();
+
+    // EditorSettingsAPIBus...
+    AZStd::vector<AZStd::string> BuildSettingsList() override;
+    SettingOutcome GetValue(const AZStd::string_view path) override;
+    SettingOutcome SetValue(const AZStd::string_view path, const AZStd::any& value) override;
+
+    void ConvertPath(const AZStd::string_view sourcePath, AZStd::string& category, AZStd::string& attribute);
 
     // needs to be called after crysystem has been loaded
     void    LoadDefaultGamePaths();
@@ -536,6 +557,8 @@ struct SANDBOX_API SEditorSettings
     bool bEnableUI2;
 
     bool newViewportInteractionModel = false; ///< Toggle for new Viewport Interaction Model.
+
+    ParticlesNameSortingMode particlesNameSortingMode{ ParticlesNameSortingMode::Ascending };
 
 private:
     void SaveValue(const char* sSection, const char* sKey, int value);

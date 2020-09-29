@@ -130,11 +130,13 @@ def register_win_x64_external_optional_cuda(self, target_platform):
     cuda_includes = os.path.join(cuda_sdk_root, 'include')
     cude_libpath = os.path.join(cuda_sdk_root, 'lib', 'x64')
     cuda_lib = 'cuda.lib'
+    cuda_lib_file_path = os.path.join(cude_libpath, cuda_lib)
     
-    folders_to_validate = [cuda_includes, cude_libpath]
-    for folder in folders_to_validate:
-        if not os.path.isdir(folder) or not os.path.exists(folder):
-            Logs.warn('[WARN] Missing NVIDIA CUDA SDK folder {}'.format(folder))
+    paths_to_validate = [cuda_includes, cude_libpath, cuda_lib_file_path]
+    for path in paths_to_validate:
+        if not os.path.exists(path):
+            path_type = "folder" if os.path.isdir(path) else "file"
+            Logs.warn('[WARN] Missing NVIDIA CUDA SDK {} {}'.format(path_type, path))
             Logs.warn('[WARN] NVIDIA CUDA SDK will not be used.')
             return;
 

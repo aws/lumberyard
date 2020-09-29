@@ -14,7 +14,7 @@
 
 namespace AzToolsFramework
 {
-
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     DHQSpinbox::DHQSpinbox(QWidget* parent) 
         : AzQtComponents::SpinBox(parent)
     {
@@ -26,6 +26,7 @@ namespace AzToolsFramework
     {
 
     }
+    AZ_POP_DISABLE_WARNING
 }
 
 #include <UI/PropertyEditor/DHQSpinbox.moc>

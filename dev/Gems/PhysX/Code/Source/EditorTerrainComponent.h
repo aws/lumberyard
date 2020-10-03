@@ -14,6 +14,7 @@
 #pragma once
 
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <TerrainComponent.h>
@@ -37,6 +38,7 @@ namespace PhysX
         , protected AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private PhysX::ConfigurationNotificationBus::Handler
         , private AzToolsFramework::ToolsApplicationNotificationBus::Handler
+        , private AzFramework::Terrain::TerrainDataNotificationBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorTerrainComponent, EditorTerrainComponentTypeId, AzToolsFramework::Components::EditorComponentBase);
@@ -87,7 +89,11 @@ namespace PhysX
         void OnDeselected() override;
 
         // PhysX::ConfigurationNotificationBus
-        virtual void OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration) override;
+        void OnPhysXConfigurationRefreshed(const PhysX::PhysXConfiguration& configuration) override;
+
+        // AzFramework::Terrain::TerrainDataNotificationBus
+        void OnTerrainDataCreateEnd() override;
+        void OnTerrainDataDestroyBegin() override;
 
     private:
         // ToolsApplicationNotificationBus
@@ -100,6 +106,9 @@ namespace PhysX
         void CreateEditorTerrain();
         bool ShouldUpdateTerrain(const char* commandName) const;
         AZStd::string GetExportPath();
+
+        void EnableTerrain();
+        void DisableTerrain();
 
         AZ::Data::Asset<Pipeline::HeightFieldAsset> CreateHeightFieldAsset();
 

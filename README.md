@@ -19,7 +19,7 @@ For more information about branching, see the [GitHub documentation](https://gui
 ### Clone the repository
 Cloning the repository copies your fork onto your computer. To clone the repository, click the "Clone or download" button on the GitHub website, and copy the resultant URL to the clipboard. In a command line window, type ```git clone [URL]```, where ```[URL]``` is the URL that you copied in the previous step.
 
-For more information about cloning a reposity, see the [GitHub documentation](https://help.github.com/articles/cloning-a-repository/).
+For more information about cloning a repository, see the [GitHub documentation](https://help.github.com/articles/cloning-a-repository/).
 
 
 ### Downloading additive files

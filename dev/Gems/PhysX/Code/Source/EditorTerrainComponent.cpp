@@ -22,7 +22,6 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
-#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
@@ -168,19 +167,32 @@ namespace PhysX
 
     void EditorTerrainComponent::Activate()
     {
-        bool isTerrainPresent = AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
-        if (!isTerrainPresent)
-        {
-            return;
-        }
-
         AzToolsFramework::Components::EditorComponentBase::Activate();
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
+
+        bool isTerrainPresent = AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
+        if (isTerrainPresent)
+        {
+            EnableTerrain();
+        }
+    }
+
+    void EditorTerrainComponent::Deactivate()
+    {
+        DisableTerrain();
+
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
+        AzToolsFramework::Components::EditorComponentBase::Deactivate();
+    }
+
+    void EditorTerrainComponent::EnableTerrain()
+    {
         Physics::EditorTerrainComponentRequestsBus::Handler::BusConnect(GetEntityId());
         Physics::EditorTerrainMaterialRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
         PhysX::Utils::LogWarningIfMultipleComponents<Physics::EditorTerrainComponentRequestsBus>(
-            "EditorTerrainComponent", 
+            "EditorTerrainComponent",
             "Multiple EditorTerrainComponents found in the editor scene on these entities:");
 
         if (!m_configuration.m_heightFieldAsset.GetId().IsValid())
@@ -201,7 +213,7 @@ namespace PhysX
         Physics::EditorTerrainComponentNotificationBus::Broadcast(&Physics::EditorTerrainComponentNotifications::OnTerrainComponentActive);
     }
 
-    void EditorTerrainComponent::Deactivate()
+    void EditorTerrainComponent::DisableTerrain()
     {
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
         Physics::EditorTerrainComponentRequestsBus::Handler::BusDisconnect();
@@ -210,7 +222,6 @@ namespace PhysX
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
 
         UnregisterForEditorEvents();
-        AzToolsFramework::Components::EditorComponentBase::Deactivate();
         m_editorTerrain.reset(nullptr);
     }
 
@@ -634,5 +645,15 @@ namespace PhysX
         AZ_UNUSED(configuration);
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
             AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
+    }
+
+    void EditorTerrainComponent::OnTerrainDataCreateEnd()
+    {
+        EnableTerrain();
+    }
+
+    void EditorTerrainComponent::OnTerrainDataDestroyBegin()
+    {
+        DisableTerrain();
     }
 }

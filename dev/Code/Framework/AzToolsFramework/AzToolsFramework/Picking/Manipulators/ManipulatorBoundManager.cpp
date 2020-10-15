@@ -25,8 +25,8 @@ namespace AzToolsFramework
                 boundId = m_nextBoundId++;
             }
 
-            auto result = m_boundIdToShapeMap.find(boundId);
-            if (result == m_boundIdToShapeMap.end())
+            if (auto result = m_boundIdToShapeMap.find(boundId);
+                result == m_boundIdToShapeMap.end())
             {
                 if (AZStd::shared_ptr<BoundShapeInterface> createdShape = CreateShape(shapeData, boundId))
                 {
@@ -49,8 +49,8 @@ namespace AzToolsFramework
 
         void ManipulatorBoundManager::UnregisterBound(const RegisteredBoundId boundId)
         {
-            const auto findIter = m_boundIdToShapeMap.find(boundId);
-            if (findIter != m_boundIdToShapeMap.end())
+            if (const auto findIter = m_boundIdToShapeMap.find(boundId);
+                findIter != m_boundIdToShapeMap.end())
             {
                 DeleteShape(findIter->second.get());
                 m_boundIdToShapeMap.erase(findIter);
@@ -60,36 +60,31 @@ namespace AzToolsFramework
         void ManipulatorBoundManager::SetBoundValidity(
             const RegisteredBoundId boundId, const bool valid)
         {
-            auto found = m_boundIdToShapeMap.find(boundId);
-            if (found != m_boundIdToShapeMap.end())
+            if (auto found = m_boundIdToShapeMap.find(boundId);
+                found != m_boundIdToShapeMap.end())
             {
                 found->second->SetValidity(valid);
             }
         }
 
         AZStd::shared_ptr<BoundShapeInterface> ManipulatorBoundManager::CreateShape(
-            const BoundRequestShapeBase& shapeData, const RegisteredBoundId id)
+            const BoundRequestShapeBase& shapeData, const RegisteredBoundId boundId)
         {
-            AZ_Assert(id != InvalidBoundId, "Invalid Bound Id!");
+            AZ_Assert(boundId != InvalidBoundId, "Invalid Bound Id!");
 
-            AZStd::shared_ptr<BoundShapeInterface> shape = shapeData.MakeShapeInterface(id);
+            AZStd::shared_ptr<BoundShapeInterface> shape = shapeData.MakeShapeInterface(boundId);
             m_bounds.push_back(shape);
             return shape;
         }
 
         void ManipulatorBoundManager::DeleteShape(const BoundShapeInterface* boundShape)
         {
-            const auto found = AZStd::find_if(
-                m_bounds.begin(), m_bounds.end(),
-                [boundShape](const AZStd::shared_ptr<BoundShapeInterface>& storedBoundShape)
+            const auto boundShapeCompare = [boundShape](const auto& storedBoundShape)
             {
                 return boundShape == storedBoundShape.get();
-            });
+            };
 
-            if (found != m_bounds.end())
-            {
-                m_bounds.erase(found);
-            }
+            m_bounds.erase(AZStd::remove_if(m_bounds.begin(), m_bounds.end(), boundShapeCompare), m_bounds.end());
         }
 
         void ManipulatorBoundManager::RaySelect(RaySelectInfo& rayInfo)

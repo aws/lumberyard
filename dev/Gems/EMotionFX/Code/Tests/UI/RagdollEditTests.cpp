@@ -80,7 +80,7 @@ namespace EMotionFX
             // Get the SkeletonOutlinerPlugin and find its treeview
             m_skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
             EXPECT_TRUE(m_skeletonOutliner);
-            m_treeView = m_skeletonOutliner->GetDockWidget()->findChild<ReselectingTreeView*>("skeletonOutlinerTreeView");
+            m_treeView = m_skeletonOutliner->GetDockWidget()->findChild<ReselectingTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
 
             m_indexList.clear();
             m_treeView->RecursiveGetAllChildren(m_treeView->model()->index(0, 0), m_indexList);

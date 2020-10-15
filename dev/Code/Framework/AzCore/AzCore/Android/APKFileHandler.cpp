@@ -55,6 +55,48 @@ namespace AZ
             s_instance.Reset();
         }
 
+        bool APKFileHandler::ShouldLoadFileToMemory(const char* filePath)
+        {
+            if (!filePath)
+            {
+                return false;
+            }
+
+            for (const AZStd::string& fileName : m_memFileNames)
+            {
+                if (strstr(filePath, fileName.c_str()))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        MemoryBuffer* APKFileHandler::GetInMemoryFileBuffer(void* asset)
+        {
+            for (auto it = m_memFileBuffers.begin(); it != m_memFileBuffers.end(); it++)
+            {
+                if (it->m_asset == asset)
+                {
+                    return &(*it);
+                }
+            }
+
+            return nullptr;
+        }
+
+        void APKFileHandler::RemoveInMemoryFileBuffer(void* asset)
+        {
+            for (auto it = m_memFileBuffers.begin(); it != m_memFileBuffers.end(); it++)
+            {
+                if (it->m_asset == asset)
+                {
+                    m_memFileBuffers.erase(it);
+                    break;
+                }
+            }
+        }
 
         FILE* APKFileHandler::Open(const char* filename, const char* mode, AZ::u64& size)
         {
@@ -65,11 +107,32 @@ namespace AZ
             {
                 FILE_IO_LOG("******* Attempting to open file in APK:[%s] ", filename);
 
-                AAsset* asset = AAssetManager_open(Utils::GetAssetManager(), Utils::StripApkPrefix(filename), AASSET_MODE_UNKNOWN);
+                AAsset* asset = nullptr;
+                bool loadFileToMemory = Get().ShouldLoadFileToMemory(filename);
+                int assetMode = loadFileToMemory ? AASSET_MODE_BUFFER : AASSET_MODE_UNKNOWN;
+
+                asset = AAssetManager_open(Utils::GetAssetManager(), Utils::StripApkPrefix(filename), assetMode);
+
                 if (asset != nullptr)
                 {
                     // the pointer returned by funopen will allow us to use fread, fseek etc
                     fileHandle = funopen(asset, APKFileHandler::Read, APKFileHandler::Write, APKFileHandler::Seek, APKFileHandler::Close);
+
+                    if (loadFileToMemory)
+                    {
+                        MemoryBuffer buf;
+                        buf.m_buffer = (char*)AAsset_getBuffer(asset);
+                        buf.m_totalSize = AAsset_getLength(asset);
+                        buf.m_asset = asset;
+                        if (buf.m_buffer)
+                        {
+                            Get().m_memFileBuffers.push_back(buf);
+                        }
+                        else
+                        {
+                            AZ_Assert(false, "Failed to load %s to memory", filename)
+                        }
+                    }
 
                     // the file pointer we return from funopen can't be used to get the length of the file so we need to capture that info while we have the AAsset pointer available
                     size = static_cast<AZ::u64>(AAsset_getLength64(asset));
@@ -86,6 +149,13 @@ namespace AZ
         int APKFileHandler::Read(void* asset, char* buffer, int size)
         {
             ANDROID_IO_PROFILE_SECTION_ARGS("APK Read");
+            MemoryBuffer* buf = Get().GetInMemoryFileBuffer(asset);
+            if (buf)
+            {
+                const char* tempBuf = buf->m_buffer + buf->m_offset;
+                memcpy(buffer, tempBuf, size);
+                return size;
+            }
 
             APKFileHandler& apkHandler = Get();
 
@@ -106,11 +176,41 @@ namespace AZ
         fpos_t APKFileHandler::Seek(void* asset, fpos_t offset, int origin)
         {
             ANDROID_IO_PROFILE_SECTION_ARGS("APK Seek");
+            MemoryBuffer* buf = Get().GetInMemoryFileBuffer(asset);
+            if (buf)
+            {
+                if (origin == SEEK_SET)
+                {
+                    buf->m_offset = offset;
+                }
+                else if (origin == SEEK_CUR)
+                {
+                    buf->m_offset += offset;
+                }
+                else if (origin == SEEK_END)
+                {
+                    buf->m_offset = buf->m_totalSize - offset;
+                }
+            
+                if (buf->m_offset > buf->m_totalSize)
+                {
+                    buf->m_offset = buf->m_totalSize;
+                }
+                if (buf->m_offset < 0)
+                {
+                    buf->m_offset = 0;
+                }
+
+                return buf->m_offset;
+            }
+
             return AAsset_seek(static_cast<AAsset*>(asset), offset, origin);
         }
 
         int APKFileHandler::Close(void* asset)
         {
+            Get().RemoveInMemoryFileBuffer(asset);
+
             AAsset_close(static_cast<AAsset*>(asset));
             return 0;
         }
@@ -250,6 +350,32 @@ namespace AZ
             apkHandler.m_numBytesToRead = numBytesToRead;
         }
 
+        void APKFileHandler::SetLoadFilesToMemory(const char* fileNames)
+        {
+            AZStd::string names(fileNames);
+            size_t pos = 0;
+            bool stringProcessed = false;
+            APKFileHandler& apkHandler = Get();
+
+            while (!stringProcessed)
+            {
+                size_t newPos = names.find_first_of(',', pos);
+                size_t len = 0;
+                if (newPos == AZStd::string::npos)
+                {
+                    len = newPos;
+                    stringProcessed = true;
+                }
+                else
+                {
+                    len = newPos - pos;
+                }
+                AZStd::string fileName = names.substr(pos, len);
+                pos = newPos + 1;
+                apkHandler.m_memFileNames.push_back(fileName);
+            }
+        }
+
 
         APKFileHandler::APKFileHandler()
                 : m_javaInstance()
@@ -260,6 +386,9 @@ namespace AZ
 
         APKFileHandler::~APKFileHandler()
         {
+            m_memFileBuffers.set_capacity(0);
+            m_memFileNames.set_capacity(0);
+
             if (s_instance)
             {
                 AZ_Assert(s_instance.IsOwner(), "The Android APK file handler instance is being destroyed by someone other than the owner.");

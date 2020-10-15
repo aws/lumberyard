@@ -22,6 +22,8 @@
 #include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
 #include <ScriptCanvas/Execution/RuntimeComponent.h>
 #include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Color.h>
 
 using namespace ScriptCanvasTests;
 using namespace TestNodes;
@@ -2042,4 +2044,38 @@ TEST_F(ScriptCanvasTestFixture, ExecutionLength)
 TEST_F(ScriptCanvasTestFixture, AnyNode)
 {
     RunUnitTestGraph("LY_SC_UnitTest_Any");
+}
+
+TEST_F(ScriptCanvasTestFixture, IsDataEqual)
+{
+    using namespace ScriptCanvas;
+
+    Datum number0(Datum(0));
+    Datum number00(Datum(0));
+    Datum number1(Datum(1));
+
+    auto number0Test = (number0 == number0);
+    EXPECT_TRUE(number0Test.GetValue());
+
+    auto number00Test = (number0 == number00);
+    EXPECT_TRUE(number00Test.GetValue());
+
+    auto number1Test = (number0 == number1);
+    EXPECT_FALSE(number1Test.GetValue());
+
+    Datum boolTrue(Datum(true));
+    Datum boolFalse(Datum(false));
+
+    auto boolTest = (boolTrue == boolFalse);
+    EXPECT_FALSE(boolTest.GetValue()); 
+
+    AZ::Vector3 v = AZ::Vector3::CreateZero();
+    Datum vector3 = Datum(v);
+
+    AZ::Color c = AZ::Color::CreateOne();
+    Datum color(c);
+
+    auto vector3ColorTest = (vector3 == color);
+    EXPECT_FALSE(vector3ColorTest.IsSuccess()); // The call to the operator == itself will fail (if this happens, Outcomes return garbage)
+
 }

@@ -64,9 +64,11 @@ void CSkeletonPose::InitSkeletonPose(CCharInstance* pInstance, CSkeletonAnim* pS
     //---------------------------------------------------------------------
     //SetDefaultPoseExecute(false);
 
+#if ENABLE_CRY_PHYSICS
     m_physics.Initialize(*this);
     m_physics.InitializeAnimToPhysIndexArray();
     m_physics.InitPhysicsSkeleton();
+#endif // ENABLE_CRY_PHYSICS
 
 
     if (m_pInstance->m_pDefaultSkeleton->m_poseBlenderLookDesc.m_error == 0)
@@ -192,6 +194,7 @@ void CSkeletonPose::SetDefaultPosePerInstance(bool bDataPoseForceWriteable)
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     if (m_physics.m_pCharPhysics != NULL)
     {
         if (m_pInstance->m_pDefaultSkeleton->m_ObjectType == CGA)
@@ -203,6 +206,7 @@ void CSkeletonPose::SetDefaultPosePerInstance(bool bDataPoseForceWriteable)
             m_physics.SynchronizeWithPhysicalEntity(poseDataWriteable, m_physics.m_pCharPhysics, Vec3(ZERO), Quat(IDENTITY), QuatT(IDENTITY), 0);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CSkeletonPose::SetDefaultPoseExecute(bool bDataPoseForceWriteable)

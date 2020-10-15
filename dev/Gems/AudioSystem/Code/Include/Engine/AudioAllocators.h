@@ -66,7 +66,8 @@ namespace Audio
 
     using AudioImplStdAllocator = AZ::AZStdAlloc<AudioImplAllocator>;
 
+} // namespace Audio
+
+
 #define AUDIO_SYSTEM_CLASS_ALLOCATOR(type)      AZ_CLASS_ALLOCATOR(type, Audio::AudioSystemAllocator, 0)
 #define AUDIO_IMPL_CLASS_ALLOCATOR(type)        AZ_CLASS_ALLOCATOR(type, Audio::AudioImplAllocator, 0)
-
-} // namespace Audio

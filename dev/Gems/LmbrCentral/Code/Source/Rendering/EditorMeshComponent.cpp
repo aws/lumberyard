@@ -17,6 +17,7 @@
 #include "EditorMeshComponent.h"
 #include <AzFramework/Viewport/ViewportColors.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -32,8 +33,18 @@
 #include <IEditor.h>
 #include <Settings.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <AzCore/Interface/Interface.h>
+#include <AzFramework/Render/GeometryIntersectionBus.h>
+#include <AzCore/Console/IConsole.h>
+#endif
+
 namespace LmbrCentral
 {
+#if !ENABLE_CRY_PHYSICS
+    AZ_CVAR(bool, cl_editorMeshIntersectionDebug, false, nullptr, AZ::ConsoleFunctorFlags::Null, "Enable editor mesh intersection debugging");
+#endif
+
     void EditorMeshComponent::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -169,10 +180,17 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(m_entity->GetId());
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+#if ENABLE_CRY_PHYSICS
         CryPhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
+#endif
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusConnect(GetEntityId());
+        AzFramework::AssetCatalogEventBus::Handler::BusConnect();
+#if !ENABLE_CRY_PHYSICS
+        AzFramework::EntityIdContextQueryBus::EventResult(m_contextId, GetEntityId(), &AzFramework::EntityIdContextQueries::GetOwningContextId);
+        AzFramework::RenderGeometry::IntersectionRequestBus::Handler::BusConnect({ GetEntityId(), m_contextId });
+#endif
 
         m_mesh.m_renderOptions.m_changeCallback =
             [this]()
@@ -186,8 +204,11 @@ namespace LmbrCentral
 
     void EditorMeshComponent::Deactivate()
     {
+        AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
         AZ::Data::AssetBus::Handler::BusDisconnect();
+#if ENABLE_CRY_PHYSICS
         CryPhysicsComponentRequestBus::Handler::BusDisconnect();
+#endif
         MaterialOwnerRequestBus::Handler::BusDisconnect();
         RenderBoundsRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
@@ -201,7 +222,11 @@ namespace LmbrCentral
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
         AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusDisconnect();
 
+#if ENABLE_CRY_PHYSICS
         DestroyEditorPhysics();
+#else
+        AzFramework::RenderGeometry::IntersectionRequestBus::Handler::BusDisconnect();
+#endif // ENABLE_CRY_PHYSICS
 
         m_mesh.m_renderOptions.m_changeCallback = nullptr;
 
@@ -211,6 +236,7 @@ namespace LmbrCentral
         EditorComponentBase::Deactivate();
     }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* EditorMeshComponent::GetPhysicalEntity()
     {
         return m_physicalEntity;
@@ -247,23 +273,35 @@ namespace LmbrCentral
             m_physicalEntity->Action(&action, threadSafe);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     void EditorMeshComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
     {
+        AZ::Data::AssetBus::Handler::BusDisconnect();
         AZ::Data::AssetBus::Handler::BusConnect(asset.GetId());
 
+#if ENABLE_CRY_PHYSICS
         CreateEditorPhysics();
 
         if (m_physicalEntity)
         {
             OnTransformChanged(GetTransform()->GetLocalTM(), GetTransform()->GetWorldTM());
         }
+#else
+        using namespace AzFramework::RenderGeometry;
+        IntersectionNotificationBus::Event(m_contextId, &IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif
     }
 
     void EditorMeshComponent::OnMeshDestroyed()
     {
+#if ENABLE_CRY_PHYSICS
         AZ::Data::AssetBus::Handler::BusDisconnect();
         DestroyEditorPhysics();
+#else
+        using namespace AzFramework::RenderGeometry;
+        IntersectionNotificationBus::Event(m_contextId, &IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif
     }
 
     IRenderNode* EditorMeshComponent::GetRenderNode()
@@ -278,6 +316,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+#if ENABLE_CRY_PHYSICS
         if (!m_physicalEntity)
         {
             CreateEditorPhysics();
@@ -308,6 +347,12 @@ namespace LmbrCentral
                 PhysicsTransformWarning();
             }
         }
+#else
+        AZ_UNUSED(world);
+
+        using namespace AzFramework::RenderGeometry;
+        IntersectionNotificationBus::Event(m_contextId, &IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif
     }
 
     void EditorMeshComponent::OnStaticChanged(bool isStatic)
@@ -329,6 +374,45 @@ namespace LmbrCentral
     {
         return m_mesh.CalculateLocalAABB();
     }
+
+#if! ENABLE_CRY_PHYSICS
+    AzFramework::RenderGeometry::RayResult EditorMeshComponent::RenderGeometryIntersect(const AzFramework::RenderGeometry::RayRequest& ray)
+    {
+        AzFramework::RenderGeometry::RayResult result;
+        if (!GetVisibility() && ray.m_onlyVisible)
+        {
+            return result;
+        }
+
+        if (IStatObj* geometry = GetStatObj())
+        {
+            const AZ::Vector3 rayDirection = (ray.m_endWorldPosition - ray.m_startWorldPosition);
+            const AZ::Transform& transform = GetTransform()->GetWorldTM();
+            const AZ::Transform inverseTransform = transform.GetInverseFull();
+
+            const AZ::Vector3 rayStartLocal = inverseTransform * ray.m_startWorldPosition;
+            const AZ::Vector3 rayDistNormLocal  = inverseTransform.Multiply3x3(rayDirection).GetNormalized();
+
+            SRayHitInfo hi;
+            hi.inReferencePoint = AZVec3ToLYVec3(rayStartLocal);
+            hi.inRay = Ray(hi.inReferencePoint, AZVec3ToLYVec3(rayDistNormLocal));
+            if (geometry->RayIntersection(hi))
+            {
+                result.m_worldPosition = transform * LYVec3ToAZVec3(hi.vHitPos);
+                result.m_worldNormal = inverseTransform.GetTranspose3x3().Multiply3x3(LYVec3ToAZVec3(hi.vHitNormal)).GetNormalized();
+                result.m_distance = (result.m_worldPosition - ray.m_startWorldPosition).GetLength();
+                result.m_entityAndComponent = { GetEntityId(), GetId() };
+                if (cl_editorMeshIntersectionDebug)
+                {
+                    m_debugPos = result.m_worldPosition;
+                    m_debugNormal = result.m_worldNormal;
+                }
+            }
+        }
+
+        return result;
+    }
+#endif // ENABLE_CRY_PHYSICS
 
     void EditorMeshComponent::SetMeshAsset(const AZ::Data::AssetId& id)
     {
@@ -397,7 +481,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::DisplayEntityViewport(
         const AzFramework::ViewportInfo& viewportInfo,
-        AzFramework::DebugDisplayRequests& /*debugDisplay*/)
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const bool mouseHovered = m_accentType == AzToolsFramework::EntityAccentType::Hover;
 
@@ -427,6 +511,17 @@ namespace LmbrCentral
                 geometry->DebugDraw(dd);
             }
         }
+
+#if !ENABLE_CRY_PHYSICS
+        if (cl_editorMeshIntersectionDebug)
+        {
+            debugDisplay.DrawArrow(m_debugPos, m_debugPos + (0.1f * m_debugNormal), 0.1f);
+            debugDisplay.DrawBall(m_debugPos, 0.03f);
+            debugDisplay.DrawWireBox(GetWorldBounds().GetMin(), GetWorldBounds().GetMax());
+        }
+#else
+        AZ_UNUSED(debugDisplay);
+#endif
     }
 
     void EditorMeshComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -439,6 +534,7 @@ namespace LmbrCentral
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     void EditorMeshComponent::CreateEditorPhysics()
     {
         DestroyEditorPhysics();
@@ -511,6 +607,7 @@ namespace LmbrCentral
             "to physicalize mesh (probably as a result of parenting entities with non-uniform scale).", GetEntity()->GetName().c_str());
         m_physicsTransformWarningIssued = true;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     IStatObj* EditorMeshComponent::GetStatObj()
     {
@@ -529,6 +626,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::AffectNavmesh()
     {
+#if ENABLE_CRY_PHYSICS
         if ( m_physicalEntity )
         {
             pe_params_foreign_data foreignData;
@@ -551,7 +649,16 @@ namespace LmbrCentral
                 pNavigationSystem->WorldChanged(AZAabbToLyAABB(GetWorldBounds()));
             }
         }
+#else
+        // Refresh the nav tile when the flag changes.
+        INavigationSystem* pNavigationSystem = gEnv->pAISystem ? gEnv->pAISystem->GetNavigationSystem() : nullptr;
+        if (pNavigationSystem)
+        {
+            pNavigationSystem->WorldChanged(AZAabbToLyAABB(GetWorldBounds()));
+        }
+#endif // ENABLE_CRY_PHYSICS
     }
+
     AZStd::string_view staticViewportIcon = "Editor/Icons/Components/Viewport/StaticMesh.png";
     AZStd::string_view dynamicViewportIcon = "Editor/Icons/Components/Viewport/DynamicMesh.png";
     AZStd::string EditorMeshComponent::GetMeshViewportIconPath() const
@@ -566,8 +673,44 @@ namespace LmbrCentral
 
     void EditorMeshComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> /*asset*/)
     {
+#if ENABLE_CRY_PHYSICS
         CreateEditorPhysics();
+#else
+        using namespace AzFramework::RenderGeometry;
+        IntersectionNotificationBus::Event(m_contextId, &IntersectionNotifications::OnGeometryChanged, GetEntityId());
+#endif
     }
+
+    void EditorMeshComponent::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
+    {
+        if (m_mesh.m_meshAsset.GetId() != assetId)
+        {
+            return;
+        }
+        // If this editor mesh component is loaded and active in the level, it's referencing an asset that was just removed.
+        // Clearing this asset reference will help visualize this change. Note that this won't clear all references to this
+        // asset automatically, any levels that aren't loaded won't have the reference removed.
+
+        // Set the mesh asset to invalid on the main thread.
+        AZ::TickBus::QueueFunction([this, assetId]()
+        {
+            // Emit a warning so users know this has occured, it may not be intentional because the asset was removed before
+            // the references were cleared. Do this on the main thread.
+            AZ_Warning("EditorMeshComponent", false, "asset with ID %s referenced by entity named '%s' with ID %s was removed, this reference will be cleared on the associated component.",
+                assetId.ToString<AZStd::string>().c_str(),
+                GetEntity() ? GetEntity()->GetName().c_str() : "Invalid entity",
+                GetEntityId().ToString().c_str());
+
+            m_mesh.DestroyMesh();
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity,
+                GetEntityId());
+            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+                AzToolsFramework::Refresh_AttributesAndValues);
+        });
+    }
+
 
     AZ::Aabb EditorMeshComponent::GetEditorSelectionBoundsViewport(
         const AzFramework::ViewportInfo& /*viewportInfo*/)
@@ -647,6 +790,7 @@ namespace LmbrCentral
         return true;
     }
 
+#if ENABLE_CRY_PHYSICS
     bool IsPhysicalizable(const AZ::Transform& transform)
     {
         Matrix34 cryTransform = AZTransformToLYTransform(transform);
@@ -657,4 +801,6 @@ namespace LmbrCentral
         }
         return cryTransform.IsOrthonormalRH(0.1f);
     }
+#endif // ENABLE_CRY_PHYSICS
+
 } // namespace LmbrCentral

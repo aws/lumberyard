@@ -10,12 +10,15 @@
             "Mocks/ILogMock.h",
             "Mocks/IMaterialManagerMock.h",
             "Mocks/IMemoryManagerMock.h",
+            "Mocks/IMergedMeshesManagerMock.h",
             "Mocks/ISystemMock.h",
             "Mocks/ITimerMock.h",
             "Mocks/ICVarMock.h",
+            "Mocks/IRenderAuxGeomMock.h",
             "Mocks/IRendererMock.h",
             "Mocks/ITextureMock.h",
-            "Mocks/IRemoteConsoleMock.h"
+            "Mocks/IRemoteConsoleMock.h",
+            "Mocks/ITimeOfDayMock.h"
         ],
         "Mocks/Common_h":
         [

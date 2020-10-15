@@ -1,7 +1,8 @@
 {
   "auto": {
     "Platform/iOS": [
-      "../../CAFile_Default.cpp"
+      "../../CAFile_Default.cpp",
+      "GameLift_Traits.h"
     ]
   }
 }

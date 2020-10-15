@@ -509,7 +509,7 @@ namespace ExpressionEvaluation
         if (!treeOutcome.IsSuccess())
         {
             ParsingError parsingError = treeOutcome.GetError();
-            return AZ::Failure(treeOutcome.GetError());
+            return AZ::Failure(parsingError);
         }
 
         return AZ::Success(Evaluate(treeOutcome.GetValue()));
@@ -571,7 +571,7 @@ namespace ExpressionEvaluation
         ParsingError parsingError;
 
         parsingError.m_offsetIndex = offset;
-        parsingError.m_errorString = AZStd::string::format("Unexpected Operator '%s' found at character %i. Expected a Value.", substring.c_str(), offset);
+        parsingError.m_errorString = AZStd::string::format("Unexpected Operator '%s' found at character %zu. Expected a Value.", substring.c_str(), offset);
 
         return AZ::Failure(parsingError);
     }
@@ -583,7 +583,7 @@ namespace ExpressionEvaluation
         ParsingError parsingError;
 
         parsingError.m_offsetIndex = offset;
-        parsingError.m_errorString = AZStd::string::format("Unexpected Value '%s' found at character %i. Expected an Operator or end of expression.", substring.c_str(), offset);
+        parsingError.m_errorString = AZStd::string::format("Unexpected Value '%s' found at character %zu. Expected an Operator or end of expression.", substring.c_str(), offset);
 
         return AZ::Failure(parsingError);
     }
@@ -595,7 +595,7 @@ namespace ExpressionEvaluation
         ParsingError parsingError;
 
         parsingError.m_offsetIndex = offset;
-        parsingError.m_errorString = AZStd::string::format("Unexpected Symbol '%s' found at character %i.", substring.c_str(), offset);
+        parsingError.m_errorString = AZStd::string::format("Unexpected Symbol '%s' found at character %zu.", substring.c_str(), offset);
 
         return AZ::Failure(parsingError);
     }

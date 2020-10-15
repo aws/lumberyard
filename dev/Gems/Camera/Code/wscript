@@ -31,7 +31,9 @@ def build(bld):
             darwin_uselib = ['AWS_CPP_SDK_CORE',
                              'AWS_CPP_SDK_COGNITO_IDENTITY',
                              'AWS_CPP_SDK_MOBILEANALYTICS',
-                             'AWS_CPP_SDK_IDENTITY_MANAGEMENT']
+                             'AWS_CPP_SDK_IDENTITY_MANAGEMENT'],
+
+            win_enable_rtti = True,
         ),
 
         win_features        = ['crcfix'],

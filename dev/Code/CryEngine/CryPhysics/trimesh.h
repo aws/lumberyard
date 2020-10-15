@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_TRIMESH_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "GeomQuery.h"
 
 const int    mesh_force_AABB = 0x10000000;
@@ -300,5 +302,6 @@ struct InitTriMeshGlobals
     InitTriMeshGlobals();
 };
 
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_TRIMESH_H

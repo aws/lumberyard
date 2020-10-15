@@ -12,20 +12,32 @@
 
 #include "WhiteBox_precompiled.h"
 
+#include "EditorWhiteBoxComponentModeCommon.h"
 #include "EditorWhiteBoxDefaultMode.h"
 #include "Viewport/WhiteBoxEdgeScaleModifier.h"
 #include "Viewport/WhiteBoxEdgeTranslationModifier.h"
 #include "Viewport/WhiteBoxPolygonScaleModifier.h"
 #include "Viewport/WhiteBoxPolygonTranslationModifier.h"
-#include "Viewport/WhiteBoxVertexSelectionModifier.h"
+#include "Viewport/WhiteBoxVertexTranslationModifier.h"
 #include "Viewport/WhiteBoxViewportConstants.h"
 
 #include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 #include <QKeySequence>
 #include <WhiteBox/EditorWhiteBoxComponentBus.h>
 
 namespace WhiteBox
 {
+    AZ_CVAR(
+        float, cl_whiteBoxVertexIndicatorLength, 0.1f, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "The length of each vertex indicator axis");
+    AZ_CVAR(
+        float, cl_whiteBoxVertexIndicatorWidth, 5.0f, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "The width/thickness of each vertex indicator axis");
+    AZ_CVAR(
+        AZ::Color, cl_whiteBoxVertexIndicatorColor, AZ::Color::CreateFromRgba(0, 0, 0, 102), nullptr,
+        AZ::ConsoleFunctorFlags::Null, "The color of the vertex indicator");
+
     static const AZ::Crc32 HideEdge = AZ_CRC("com.amazon.action.whitebox.hide_edge", 0x6a60ae23);
     static const AZ::Crc32 HideVertex = AZ_CRC("com.amazon.action.whitebox.hide_vertex", 0x4a4bd092);
 
@@ -52,11 +64,6 @@ namespace WhiteBox
     {
         if (auto modifier = AZStd::get_if<AZStd::unique_ptr<TranslationModifier>>(&selectedTranslationModifier))
         {
-            if (geometryIntersection.has_value())
-            {
-                (*modifier)->UpdateIntersectionPoint(geometryIntersection->m_intersection.m_localIntersectionPoint);
-            }
-
             // handle clicking off of selected geometry
             if (mouseInteraction.m_mouseInteraction.m_mouseButtons.Left() &&
                 mouseInteraction.m_mouseEvent == AzToolsFramework::ViewportInteraction::MouseEvent::Up &&
@@ -84,14 +91,6 @@ namespace WhiteBox
         // if we have a valid mouse ray intersection with the geometry (e.g. edge or polygon)
         if (geometryIntersection.has_value())
         {
-            // update intersection point of existing hovered translation
-            // modifier (does not have to be selected)
-            if (translationModifier)
-            {
-                translationModifier->UpdateIntersectionPoint(
-                    geometryIntersection->m_intersection.m_localIntersectionPoint);
-            }
-
             // does the geometry the mouse is hovering over match the currently selected geometry
             const bool matchesSelected = [&geometryIntersection, &selectedTranslationModifier]()
             {
@@ -145,6 +144,7 @@ namespace WhiteBox
         m_edgeScaleModifier.reset();
         m_polygonTranslationModifier.reset();
         m_edgeTranslationModifier.reset();
+        m_vertexTranslationModifier.reset();
         m_selectedModifier = AZStd::monostate{};
     }
 
@@ -173,18 +173,11 @@ namespace WhiteBox
                             Api::HideEdge(*whiteBox, (*modifier)->GetEdgeHandle());
                             (*modifier)->SetEdgeHandle(Api::EdgeHandle{});
 
-                            AzToolsFramework::ScopedUndoBatch undoBatch(HideEdgeUndoRedoDesc);
-                            AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entityComponentIdPair.GetEntityId());
-
-                            EditorWhiteBoxComponentRequestBus::Event(
-                                entityComponentIdPair, &EditorWhiteBoxComponentRequests::SerializeWhiteBox);
-
-                            ComponentModeRequestBus::Event(
-                                entityComponentIdPair, &ComponentModeRequestBus::Events::Refresh);
+                            RecordWhiteBoxAction(*whiteBox, entityComponentIdPair, HideEdgeUndoRedoDesc);
                         })};
         }
         // vertex selection test - ensure a vertex is selected before allowing this shortcut
-        else if (auto modifier = AZStd::get_if<AZStd::unique_ptr<VertexSelectionModifier>>(&m_selectedModifier))
+        else if (auto modifier = AZStd::get_if<AZStd::unique_ptr<VertexTranslationModifier>>(&m_selectedModifier))
         {
             return AZStd::vector<AzToolsFramework::ActionOverride>{
                 AzToolsFramework::ActionOverride()
@@ -203,14 +196,7 @@ namespace WhiteBox
                             Api::HideVertex(*whiteBox, (*modifier)->GetVertexHandle());
                             (*modifier)->SetVertexHandle(Api::VertexHandle{});
 
-                            AzToolsFramework::ScopedUndoBatch undoBatch(HideVertexUndoRedoDesc);
-                            AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entityComponentIdPair.GetEntityId());
-
-                            EditorWhiteBoxComponentRequestBus::Event(
-                                entityComponentIdPair, &EditorWhiteBoxComponentRequests::SerializeWhiteBox);
-
-                            ComponentModeRequestBus::Event(
-                                entityComponentIdPair, &ComponentModeRequestBus::Events::Refresh);
+                            RecordWhiteBoxAction(*whiteBox, entityComponentIdPair, HideVertexUndoRedoDesc);
                         })};
         }
         else
@@ -229,41 +215,86 @@ namespace WhiteBox
         }
     }
 
+    static void DrawVertices(
+        AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Transform& worldFromLocal,
+        const AzFramework::CameraState& cameraState, const IntersectionAndRenderData& renderData)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        const float vertexIndicatorLength = cl_whiteBoxVertexIndicatorLength;
+        const float vertexIndicatorWidth = cl_whiteBoxVertexIndicatorWidth;
+        const AZ::Color vertexIndicatorColor = cl_whiteBoxVertexIndicatorColor;
+
+        debugDisplay.SetLineWidth(vertexIndicatorWidth);
+        debugDisplay.SetColor(vertexIndicatorColor);
+
+        const auto drawVertIndicator = [&debugDisplay, &worldFromLocal, &cameraState, vertexIndicatorLength](
+                                           const AZ::Vector3& start, const AZ::Vector3& axis, const float length)
+        {
+            const auto scale = AzToolsFramework::CalculateScreenToWorldMultiplier(worldFromLocal * start, cameraState);
+            debugDisplay.DrawLine(start, start + axis * AZ::GetMin<float>(length, scale * vertexIndicatorLength));
+        };
+
+        for (const auto edgeBound : renderData.m_whiteBoxEdgeRenderData.m_bounds.m_user)
+        {
+            const auto& start = edgeBound.m_bound.m_start;
+            const auto& end = edgeBound.m_bound.m_end;
+            const auto edge = end - start;
+            const auto length = edge.GetLength();
+
+            if (length > 0.0f)
+            {
+                const auto axis = edge / length;
+                drawVertIndicator(start, axis, length);
+                drawVertIndicator(end, -axis, length);
+            }
+        }
+
+        debugDisplay.SetLineWidth(1.0f);
+    }
+
     void DefaultMode::Display(
         const AZ::EntityComponentIdPair& entityComponentIdPair, const AZ::Transform& worldFromLocal,
         const IntersectionAndRenderData& renderData, const AzFramework::ViewportInfo& viewportInfo,
         AzFramework::DebugDisplayRequests& debugDisplay)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         TryDestroyModifier(m_polygonTranslationModifier);
         TryDestroyModifier(m_edgeTranslationModifier);
-        TryDestroyModifier(m_vertexSelectionModifier);
+        TryDestroyModifier(m_vertexTranslationModifier);
+
+        WhiteBoxMesh* whiteBox = nullptr;
+        EditorWhiteBoxComponentRequestBus::EventResult(
+            whiteBox, entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
 
         debugDisplay.PushMatrix(worldFromLocal);
 
         DrawEdges(
             debugDisplay, cl_whiteBoxEdgeUserColor, renderData.m_whiteBoxIntersectionData.m_edgeBounds,
-            FindInteractiveEdgeHandles(entityComponentIdPair));
+            FindInteractiveEdgeHandles(*whiteBox));
+
+        DrawVertices(
+            debugDisplay, worldFromLocal, AzToolsFramework::GetCameraState(viewportInfo.m_viewportId), renderData);
 
         debugDisplay.PopMatrix();
     }
 
-    Api::EdgeHandles DefaultMode::FindInteractiveEdgeHandles(const AZ::EntityComponentIdPair& entityComponentIdPair)
+    Api::EdgeHandles DefaultMode::FindInteractiveEdgeHandles(const WhiteBoxMesh& whiteBox)
     {
-        WhiteBoxMesh* whiteBox = nullptr;
-        EditorWhiteBoxComponentRequestBus::EventResult(
-            whiteBox, entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
         // get all edge handles for hovered polygon
         const Api::EdgeHandles polygonHoveredEdgeHandles = m_polygonTranslationModifier
-            ? Api::PolygonBorderEdgeHandlesFlattened(*whiteBox, m_polygonTranslationModifier->GetPolygonHandle())
+            ? Api::PolygonBorderEdgeHandlesFlattened(whiteBox, m_polygonTranslationModifier->GetPolygonHandle())
             : Api::EdgeHandles{};
 
         // find edge handles being used by active modifiers
-        const Api::EdgeHandles selectedEdgeHandles = [whiteBox, this]()
+        const Api::EdgeHandles selectedEdgeHandles = [&whiteBox, this]()
         {
             if (auto modifier = AZStd::get_if<AZStd::unique_ptr<PolygonTranslationModifier>>(&m_selectedModifier))
             {
-                return Api::PolygonBorderEdgeHandlesFlattened(*whiteBox, (*modifier)->GetPolygonHandle());
+                return Api::PolygonBorderEdgeHandlesFlattened(whiteBox, (*modifier)->GetPolygonHandle());
             }
 
             if (auto modifier = AZStd::get_if<AZStd::unique_ptr<EdgeTranslationModifier>>(&m_selectedModifier))
@@ -294,10 +325,12 @@ namespace WhiteBox
     // at the same position as a vertex) should take priority, so do not attempt to create
     // a vertex selection modifier for those vertices that currently have a scale modifier
     static bool IgnoreVertexHandle(
-        const WhiteBoxMesh* whiteBox, const PolygonScaleModifier* polygonScaleModifier,
+        const WhiteBoxMesh& whiteBox, const PolygonScaleModifier* polygonScaleModifier,
         const EdgeScaleModifier* edgeScaleModifier, const Api::VertexHandle vertexHandle)
     {
-        if (Api::VertexIsHidden(*whiteBox, vertexHandle))
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        if (Api::VertexIsHidden(whiteBox, vertexHandle))
         {
             return true;
         }
@@ -307,7 +340,7 @@ namespace WhiteBox
         if (polygonScaleModifier)
         {
             const auto polygonVertexHandles =
-                Api::PolygonVertexHandles(*whiteBox, polygonScaleModifier->GetPolygonHandle());
+                Api::PolygonVertexHandles(whiteBox, polygonScaleModifier->GetPolygonHandle());
 
             vertexHandlesToIgnore.insert(
                 vertexHandlesToIgnore.end(), polygonVertexHandles.cbegin(), polygonVertexHandles.cend());
@@ -315,7 +348,7 @@ namespace WhiteBox
 
         if (edgeScaleModifier)
         {
-            const auto edgeVertexHandles = Api::EdgeVertexHandles(*whiteBox, edgeScaleModifier->GetEdgeHandle());
+            const auto edgeVertexHandles = Api::EdgeVertexHandles(whiteBox, edgeScaleModifier->GetEdgeHandle());
 
             vertexHandlesToIgnore.insert(
                 vertexHandlesToIgnore.end(), edgeVertexHandles.cbegin(), edgeVertexHandles.cend());
@@ -325,6 +358,18 @@ namespace WhiteBox
             vertexHandlesToIgnore.cend();
     }
 
+    // only return a valid optional if the vertex intersection is valid and it is not hidden
+    static AZStd::optional<VertexIntersection> FilterHiddenVertexIntersection(
+        const AZStd::optional<VertexIntersection>& vertexIntersection, const WhiteBoxMesh& whiteBox)
+    {
+        if (!vertexIntersection.has_value() || Api::VertexIsHidden(whiteBox, vertexIntersection->GetHandle()))
+        {
+            return AZStd::nullopt;
+        }
+
+        return vertexIntersection;
+    }
+
     bool DefaultMode::HandleMouseInteraction(
         const AzToolsFramework::ViewportInteraction::MouseInteractionEvent& mouseInteraction,
         const AZ::EntityComponentIdPair& entityComponentIdPair,
@@ -332,6 +377,12 @@ namespace WhiteBox
         const AZStd::optional<PolygonIntersection>& polygonIntersection,
         const AZStd::optional<VertexIntersection>& vertexIntersection)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        WhiteBoxMesh* whiteBox = nullptr;
+        EditorWhiteBoxComponentRequestBus::EventResult(
+            whiteBox, entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
+
         // polygon
         HandleMouseInteractionForModifier<PolygonTranslationModifier, PolygonIntersection>(
             mouseInteraction, m_selectedModifier,
@@ -350,11 +401,14 @@ namespace WhiteBox
             },
             edgeIntersection);
 
-        // vertex
-        HandleMouseInteractionForModifier<VertexSelectionModifier, VertexIntersection>(
-            mouseInteraction, m_selectedModifier, [] { /*noop*/ }, vertexIntersection);
+        // do not allow intersections with hidden vertices in the default mode
+        const auto allowedVertexIntersection = FilterHiddenVertexIntersection(vertexIntersection, *whiteBox);
 
-        switch (FindClosestGeometryIntersection(edgeIntersection, polygonIntersection, vertexIntersection))
+        // vertex
+        HandleMouseInteractionForModifier<VertexTranslationModifier, VertexIntersection>(
+            mouseInteraction, m_selectedModifier, [] { /*noop*/ }, allowedVertexIntersection);
+
+        switch (FindClosestGeometryIntersection(edgeIntersection, polygonIntersection, allowedVertexIntersection))
         {
         case GeometryIntersection::Edge:
             {
@@ -363,7 +417,7 @@ namespace WhiteBox
                     [this]
                     {
                         m_polygonTranslationModifier.reset();
-                        m_vertexSelectionModifier.reset();
+                        m_vertexTranslationModifier.reset();
                     },
                     edgeIntersection, entityComponentIdPair);
             }
@@ -375,29 +429,26 @@ namespace WhiteBox
                     [this]
                     {
                         m_edgeTranslationModifier.reset();
-                        m_vertexSelectionModifier.reset();
+                        m_vertexTranslationModifier.reset();
                     },
                     polygonIntersection, entityComponentIdPair);
             }
             break;
         case GeometryIntersection::Vertex:
             {
-                WhiteBoxMesh* whiteBox = nullptr;
-                EditorWhiteBoxComponentRequestBus::EventResult(
-                    whiteBox, entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
-
                 if (!IgnoreVertexHandle(
-                        whiteBox, m_polygonScaleModifier.get(), m_edgeScaleModifier.get(),
-                        vertexIntersection->GetHandle()))
+                        *whiteBox, m_polygonScaleModifier.get(), m_edgeScaleModifier.get(),
+                        allowedVertexIntersection->GetHandle()))
                 {
-                    HandleCreatingDestroyingModifiersOnIntersectionChange<VertexIntersection, VertexSelectionModifier>(
-                        mouseInteraction, m_selectedModifier, m_vertexSelectionModifier,
+                    HandleCreatingDestroyingModifiersOnIntersectionChange<
+                        VertexIntersection, VertexTranslationModifier>(
+                        mouseInteraction, m_selectedModifier, m_vertexTranslationModifier,
                         [this]
                         {
                             m_edgeTranslationModifier.reset();
                             m_polygonTranslationModifier.reset();
                         },
-                        vertexIntersection, entityComponentIdPair);
+                        allowedVertexIntersection, entityComponentIdPair);
                 }
             }
             break;
@@ -438,10 +489,11 @@ namespace WhiteBox
                         static_cast<AZ::Color>(cl_whiteBoxSelectedModifierColor).GetAsVector3(), 0.5f),
                     AZ::Color::CreateFromVector3AndFloat(
                         static_cast<AZ::Color>(cl_whiteBoxSelectedModifierColor).GetAsVector3(), 1.0f));
+                (*modifier)->CreateView();
             }
 
             m_edgeScaleModifier.reset();
-            m_vertexSelectionModifier.reset();
+            m_vertexTranslationModifier.reset();
 
             m_polygonTranslationModifier = nullptr;
         }
@@ -460,10 +512,11 @@ namespace WhiteBox
             {
                 (*modifier)->SetColors(cl_whiteBoxSelectedModifierColor, cl_whiteBoxSelectedModifierColor);
                 (*modifier)->SetWidths(cl_whiteBoxSelectedEdgeVisualWidth, cl_whiteBoxSelectedEdgeVisualWidth);
+                (*modifier)->CreateView();
             }
 
             m_polygonScaleModifier.reset();
-            m_vertexSelectionModifier.reset();
+            m_vertexTranslationModifier.reset();
 
             m_edgeTranslationModifier = nullptr;
         }
@@ -471,22 +524,23 @@ namespace WhiteBox
 
     void DefaultMode::AssignSelectedVertexSelectionModifier()
     {
-        if (m_vertexSelectionModifier)
+        if (m_vertexTranslationModifier)
         {
-            m_selectedModifier = AZStd::move(m_vertexSelectionModifier);
+            m_selectedModifier = AZStd::move(m_vertexTranslationModifier);
 
             AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
                 &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::RefreshActions);
 
-            if (auto modifier = AZStd::get_if<AZStd::unique_ptr<VertexSelectionModifier>>(&m_selectedModifier))
+            if (auto modifier = AZStd::get_if<AZStd::unique_ptr<VertexTranslationModifier>>(&m_selectedModifier))
             {
                 (*modifier)->SetColor(cl_whiteBoxVertexSelectedModifierColor);
+                (*modifier)->CreateView();
             }
 
             m_polygonScaleModifier.reset();
             m_edgeScaleModifier.reset();
 
-            m_vertexSelectionModifier = nullptr;
+            m_vertexTranslationModifier = nullptr;
         }
     }
 
@@ -540,7 +594,7 @@ namespace WhiteBox
 
     void DefaultMode::RefreshVertexSelectionModifier()
     {
-        if (auto modifier = AZStd::get_if<AZStd::unique_ptr<VertexSelectionModifier>>(&m_selectedModifier))
+        if (auto modifier = AZStd::get_if<AZStd::unique_ptr<VertexTranslationModifier>>(&m_selectedModifier))
         {
             if (!(*modifier)->PerformingAction())
             {
@@ -548,9 +602,9 @@ namespace WhiteBox
             }
         }
 
-        if (m_vertexSelectionModifier && !m_vertexSelectionModifier->PerformingAction())
+        if (m_vertexTranslationModifier && !m_vertexTranslationModifier->PerformingAction())
         {
-            m_vertexSelectionModifier->Refresh();
+            m_vertexTranslationModifier->Refresh();
         }
     }
 

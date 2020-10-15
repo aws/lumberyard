@@ -511,6 +511,7 @@ void CAnimatedCharacter::DebugRenderCurLocations() const
 
     IEntity* pEntity = GetEntity();
     CRY_ASSERT(pEntity != NULL);
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEnt = pEntity->GetPhysics();
     if (pPhysEnt)
     {
@@ -523,6 +524,7 @@ void CAnimatedCharacter::DebugRenderCurLocations() const
             upLength *= scaleLength;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     pPD->Begin(UNIQUE("AnimatedCharacter.Locations"), true);
 

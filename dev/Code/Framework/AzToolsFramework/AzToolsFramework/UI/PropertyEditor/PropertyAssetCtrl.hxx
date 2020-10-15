@@ -141,6 +141,9 @@ namespace AzToolsFramework
         //  If set to false, trying to clear the value of the field will result in the current value being restored.
         bool m_allowEmptyValue = true;
 
+        //! Assets can be either source or product assets generated from source assets. By default, source assets are shown in the property asset. You can override that with this flag.
+        bool m_showProductAssetName = true;
+
         // ! Default suffix used in the field's placeholder text when a default value is set.
         const char* m_DefaultSuffix = " (default)";
 
@@ -176,6 +179,11 @@ namespace AzToolsFramework
         void SetBrowseButtonIcon(const QIcon& icon);
         void SetClearButtonEnabled(bool enable);
         void SetClearButtonVisible(bool visible);
+
+        // Otherwise source asset name will shown.
+        void SetShowProductAssetName(bool enable);
+        bool GetShowProductAssetName() const;
+
         void SetSelectedAssetID(const AZ::Data::AssetId& newID);
         void SetCurrentAssetType(const AZ::Data::AssetType& newType);
         void SetSelectedAssetID(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType);
@@ -186,6 +194,7 @@ namespace AzToolsFramework
         void UpdateAssetDisplay();
         void OnLineEditFocus(bool focus);
         virtual void OnEditButtonClicked();
+        void OnCompletionModelReset();
         void OnAutocomplete(const QModelIndex& index);
         void OnTextChange(const QString& text);
         void OnReturnPressed();

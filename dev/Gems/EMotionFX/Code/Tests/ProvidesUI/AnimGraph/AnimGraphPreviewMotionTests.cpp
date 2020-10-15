@@ -32,57 +32,10 @@
 #include <Tests/TestAssetCode/JackActor.h>
 #include <Tests/TestAssetCode/TestMotionAssets.h>
 #include <Tests/UI/AnimGraphUIFixture.h>
+#include <Tests/ProvidesUI/AnimGraph/PreviewMotionFixture.h>
 
 namespace EMotionFX
-{   
-    class PreviewMotionFixture:
-        public AnimGraphUIFixture
-    {
-    public:
-        void SetUp()
-        {
-            AnimGraphUIFixture::SetUp();
-            
-            //Create one motion set, and import one motion and add to the motion set.
-            ExecuteCommands({
-            R"str(CreateMotionSet -name MotionSet0)str"
-                });
-
-            EMStudio::MotionSetsWindowPlugin* motionSetsWindowPlugin = static_cast<EMStudio::MotionSetsWindowPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMStudio::MotionSetsWindowPlugin::CLASS_ID));
-            ASSERT_TRUE(motionSetsWindowPlugin) << "Motion Window plugin not loaded";
-
-            EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(0);
-            ASSERT_TRUE(motionSet) << "Motion set with id 0 does not exist";
-            motionSetsWindowPlugin->SetSelectedSet(motionSet);
-
-            ExecuteCommands({
-            R"str(ImportMotion -filename Gems/EMotionFX/Code/Tests/TestAssets/Rin/rin_idle.motion)str",
-            R"str(MotionSetAddMotion -motionSetID 0 -motionFilenamesAndIds Gems/EMotionFX/Code/Tests/TestAssets/Rin/rin_idle.motion;rin_idle)str"
-            });
-        }
-
-        static void ExecuteCommands(std::vector<std::string> commands)
-        {
-            AZStd::string result;
-            for (const auto& commandStr : commands)
-            {
-                if (commandStr == "UNDO")
-                {
-                    EXPECT_TRUE(CommandSystem::GetCommandManager()->Undo(result)) << "Undo: " << result.c_str();
-                }
-                else if (commandStr == "REDO")
-                {
-                    EXPECT_TRUE(CommandSystem::GetCommandManager()->Redo(result)) << "Redo: " << result.c_str();
-                }
-                else
-                {
-                    EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommand(commandStr.c_str(), result)) << commandStr.c_str() << ": " << result.c_str();
-                }
-            }
-        }
-    };
-    
-
+{
     TEST_F(PreviewMotionFixture, PreviewMotionTests)
     {
         AnimGraph* animGraph = CreateAnimGraph();
@@ -98,7 +51,7 @@ namespace EMotionFX
         
         EMotionFX::AnimGraphNode* currentNode = nodeGraph->GetModelIndex().data(EMStudio::AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
         ASSERT_TRUE(currentNode) << "No current AnimGraphNode found";
-        CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, 0, 0, serializedMotionNode.GetValue());
+        CommandSystem::CreateAnimGraphNode(/*commandGroup=*/nullptr, currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, 0, 0, serializedMotionNode.GetValue());
 
         // Check motion node has been created.
         AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(animGraph->GetNode(1));

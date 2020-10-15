@@ -42,7 +42,7 @@ namespace AZ
             void FlushCache(const RequestPath& filePath) override;
             void FlushEntireCache() override;
 
-            void CollectStatistics(AZStd::vector<Statistic>& statistics) const override;
+            void CollectStatistics(AZStd::vector<Statistic>& statistics) override;
 
         protected:
             static constexpr size_t s_fileNotFound = static_cast<size_t>(-1);

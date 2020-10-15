@@ -39,6 +39,7 @@ public:
             QString advanced;
             QString visibility;
             QString onUpdateCallback;
+            QString physics;
 
             void* tag;
 

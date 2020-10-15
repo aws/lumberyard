@@ -18,13 +18,18 @@
 
 namespace EditorPythonBindings
 {
+    namespace Internal
+    {
+        struct StaticPropertyHolderMap;
+    }
+
     //! Inspects the Behavior Context for methods to expose as Python bindings
     class PythonReflectionComponent
         : public AZ::Component
         , private EditorPythonBindings::EditorPythonBindingsNotificationBus::Handler
     {
     public:
-        AZ_COMPONENT(PythonReflectionComponent, "{CBF32BE1-292C-4988-9E64-25127A8525A7}");
+        AZ_COMPONENT(PythonReflectionComponent, "{CBF32BE1-292C-4988-9E64-25127A8525A7}", AZ::Component);
 
         static void Reflect(AZ::ReflectContext* context);
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
@@ -40,10 +45,12 @@ namespace EditorPythonBindings
 
         ////////////////////////////////////////////////////////////////////////
         // EditorPythonBindings::EditorPythonBindingsNotificationBus interface implementation
+        void OnPreFinalize() override;
         void OnImportModule(PyObject* module) override;
         ////////////////////////////////////////////////////////////////////////
 
     private:
         void ExportGlobalsFromBehaviorContext(pybind11::module parentModule);
+        AZStd::shared_ptr<Internal::StaticPropertyHolderMap> m_staticPropertyHolderMap;
     };
 }

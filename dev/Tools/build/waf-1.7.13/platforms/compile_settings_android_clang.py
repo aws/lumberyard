@@ -64,6 +64,9 @@ def load_android_clang_toolchains(ctx, architecture, host_platform):
                 arch_override = target_abi)
         ]
 
+        common_flags += [
+            '--gcc-toolchain={}'.format(llvm_toolchain_root)
+        ]
     else:
         gcc_toolchain_root = os.path.join(ndk_root, 'toolchains', '{}-4.9'.format(target_triple), 'prebuilt', host_platform)
 

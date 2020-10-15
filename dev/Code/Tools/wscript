@@ -39,6 +39,7 @@ SUBFOLDERS = [
     'RemoteConsole',
     'SerializeContextTools',
     'DeltaCataloger',
+    'PythonBindingsExample',
     'AssetBundler'
 ]
 

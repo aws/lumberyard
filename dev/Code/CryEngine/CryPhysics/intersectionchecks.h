@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_INTERSECTIONCHECKS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 typedef int (* intersection_check)(const primitive*, const primitive*, prim_inters*);
 int default_intersection(const primitive*, const primitive*, prim_inters* pinters);
@@ -84,3 +85,5 @@ public:
 extern CIntersectionChecker g_Intersector;
 
 #endif // CRYINCLUDE_CRYPHYSICS_INTERSECTIONCHECKS_H
+
+#endif // ENABLE_CRY_PHYSICS

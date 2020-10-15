@@ -14,11 +14,22 @@
 #pragma once
 
 #include <IAudioSystem.h>
+#include <AzCore/Console/IConsole.h>
 
 struct IConsoleCmdArgs;
 
 namespace Audio
 {
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // AZ CVars (new)
+#if !AUDIO_ENABLE_CRY_PHYSICS
+    AZ_CVAR_EXTERNED(bool, s_EnableRaycasts);
+    AZ_CVAR_EXTERNED(float, s_RaycastMinDistance);
+    AZ_CVAR_EXTERNED(float, s_RaycastMaxDistance);
+    AZ_CVAR_EXTERNED(float, s_RaycastCacheTimeMs);
+    AZ_CVAR_EXTERNED(float, s_RaycastSmoothFactor);
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CSoundCVars
     {
@@ -38,16 +49,19 @@ namespace Audio
         int m_nAudioEventPoolSize;
         int m_nAudioProxiesInitType;
 
+#if AUDIO_ENABLE_CRY_PHYSICS
         float m_fOcclusionMaxDistance;
         float m_fOcclusionMaxSyncDistance;
         float m_fFullObstructionMaxDistance;
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
         float m_fPositionUpdateThreshold;
         float m_fVelocityTrackingThreshold;
 
         float m_audioListenerTranslationZOffset;
         float m_audioListenerTranslationPercentage;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         int m_nIgnoreWindowFocus;
         int m_nDrawAudioDebug;
         int m_nFileCacheManagerDebugFilter;
@@ -61,11 +75,13 @@ namespace Audio
         static void CmdStopTrigger(IConsoleCmdArgs* pCmdArgs);
         static void CmdSetRtpc(IConsoleCmdArgs* pCmdArgs);
         static void CmdSetSwitchState(IConsoleCmdArgs* pCmdArgs);
+        static void CmdLoadPreload(IConsoleCmdArgs* pCmdArgs);
+        static void CmdUnloadPreload(IConsoleCmdArgs* pCmdArgs);
         static void CmdPlayFile(IConsoleCmdArgs* pCmdArgs);
         static void CmdMicrophone(IConsoleCmdArgs* pCmdArgs);
         static void CmdPlayExternalSource(IConsoleCmdArgs* pCmdArgs);
         static void CmdSetPanningMode(IConsoleCmdArgs* pCmdArgs);
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 
     extern CSoundCVars g_audioCVars;

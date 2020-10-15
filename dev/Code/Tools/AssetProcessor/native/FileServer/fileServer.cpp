@@ -403,7 +403,7 @@ void FileServer::ProcessReadRequest(unsigned int connId, unsigned int, unsigned 
     response.m_data.resize_no_construct(request.m_bytesToRead);
     AZ::u64 bytesRead = 0;
     auto fileIO = m_fileIOs[connId];
-    AZStd::string moreInfo = AZStd::string::format("%llu bytes", size);
+    AZStd::string moreInfo = AZStd::string::format("%llu bytes", static_cast<AZ::u64>(size));
     RecordFileOp(fileIO.get(), "READ", fileHandle, moreInfo.c_str());
 
     AZ::IO::Result res = fileIO->Read(fileHandle, response.m_data.data(), response.m_data.size(), failOnFewerRead, &bytesRead);
@@ -445,7 +445,7 @@ void FileServer::ProcessWriteRequest(unsigned int connId, unsigned int, unsigned
 
     AZ::u64 bytesWritten = 0;
     auto fileIO = m_fileIOs[connId];
-    AZStd::string moreInfo = AZStd::string::format("%llu bytes", request.m_data.size());
+    AZStd::string moreInfo = AZStd::string::format("%zu bytes", request.m_data.size());
     RecordFileOp(fileIO.get(), "WRITE", fileHandle, moreInfo.c_str());
 
     AZ::IO::Result res = fileIO->Write(fileHandle, request.m_data.data(), static_cast<uint64_t>(request.m_data.size()), &bytesWritten);
@@ -524,7 +524,7 @@ void FileServer::ProcessSeekRequest(unsigned int connId, unsigned int, unsigned 
     int64_t offset = request.m_offset;
 
     auto fileIO = m_fileIOs[connId];
-    AZStd::string moreInfo = AZStd::string::format("offset: %llu, mode: %d", offset, static_cast<AZ::u32>(seekType));
+    AZStd::string moreInfo = AZStd::string::format("offset: %lld, mode: %d", static_cast<AZ::s64>(offset), static_cast<AZ::u32>(seekType));
     RecordFileOp(fileIO.get(), "SEEK", fileHandle, moreInfo.c_str());
 
     AZ::IO::Result res = fileIO->Seek(fileHandle, offset, seekType);

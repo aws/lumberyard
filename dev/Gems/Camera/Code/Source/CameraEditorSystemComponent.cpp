@@ -101,7 +101,7 @@ namespace Camera
         AZ::EntityId newEntityId;
         AZ::EBusAggregateResults<AZ::EntityId> cameras;
         Camera::CameraBus::BroadcastResult(cameras, &CameraBus::Events::GetCameras);
-        AZStd::string newCameraName = AZStd::string::format("Camera%d", cameras.values.size() + 1);
+        AZStd::string newCameraName = AZStd::string::format("Camera%zu", cameras.values.size() + 1);
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(newEntityId, &AzToolsFramework::EditorEntityContextRequests::CreateNewEditorEntity, newCameraName.c_str());
 
         // Add CameraComponent

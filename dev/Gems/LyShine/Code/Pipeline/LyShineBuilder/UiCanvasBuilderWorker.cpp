@@ -371,7 +371,7 @@ namespace LyShine
             void* instancePointer,
             const AZ::SerializeContext::ClassData* classData,
             const AZ::SerializeContext::ClassElement* classElement,
-            AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet,
+            AssetBuilderSDK::UniqueDependencyList& productDependencySet,
             AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet,
             bool enumerateChildren)
         {

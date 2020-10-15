@@ -29,6 +29,7 @@ namespace EMStudio
         , m_eventDataEditor(nullptr, nullptr, &m_preset.GetEventDatas(), this)
     {
         Init();
+        resize(450, 300);
     }
 
     MotionEventPreset& MotionEventPresetCreateDialog::GetPreset()

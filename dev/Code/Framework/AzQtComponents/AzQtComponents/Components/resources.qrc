@@ -448,6 +448,7 @@
     <file>Widgets/ComboBoxConfig.ini</file>
     <file>Widgets/Menu.qss</file>
     <file>Widgets/MenuBar.qss</file>
+    <file>Widgets/ParticleEditor.qss</file>
     <file>Widgets/ProgressBarConfig.ini</file>
     <file>Widgets/ProgressBar.qss</file>
     <file>Widgets/PushButton.qss</file>
@@ -455,6 +456,7 @@
     <file>Widgets/QDockWidget.qss</file>
     <file>Widgets/RadioButton.qss</file>
     <file>Widgets/RadioButtonConfig.ini</file>
+    <file>Widgets/ReflectedPropertyEditor.qss</file>
     <file>Widgets/SegmentControl.qss</file>
     <file>Widgets/Slider.qss</file>
     <file>Widgets/SliderConfig.ini</file>
@@ -600,6 +602,8 @@
 <qresource prefix="/TreeView">
     <file alias="open.svg">img/UI20/TreeView/open.svg</file>
     <file alias="closed.svg">img/UI20/TreeView/closed.svg</file>
+    <file alias="open_small.svg">img/UI20/TreeView/open_small.svg</file>
+    <file alias="closed_small.svg">img/UI20/TreeView/closed_small.svg</file>
     <file alias="default-icon.svg">img/UI20/TreeView/default-icon.svg</file>
     <file alias="folder-icon.svg">img/UI20/TreeView/folder-icon.svg</file>
 </qresource>
@@ -610,6 +614,8 @@
     <file alias="Delete.svg">img/UI20/Delete.svg</file>
     <file alias="Folder.svg">img/UI20/Folder.svg</file>
     <file alias="Folder-small.svg">img/UI20/Folder-small.svg</file>
+    <file alias="Goto-next-level.svg">img/UI20/Goto-next-level.svg</file>
+    <file alias="Goto-previous-level.svg">img/UI20/Goto-previous-level.svg</file>
     <file alias="Grid-large.svg">img/UI20/Grid-large.svg</file>
     <file alias="Grid-small.svg">img/UI20/Grid-small.svg</file>
     <file alias="Move.svg">img/UI20/Move.svg</file>

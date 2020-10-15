@@ -68,7 +68,7 @@ namespace AssetProcessor
         m_completedWithWarningsFilter = false;
         m_activeTypeFilters.clear();
 
-        for (const auto filter : activeTypeFilters)
+        for (const auto& filter : activeTypeFilters)
         {
             if (filter.metadata.canConvert<AzToolsFramework::AssetSystem::JobStatus>())
             {

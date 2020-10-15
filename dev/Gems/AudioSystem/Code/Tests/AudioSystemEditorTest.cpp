@@ -29,6 +29,8 @@ namespace CustomMocks
         : public CryPakMock
     {
     public:
+        AZ_TEST_CLASS_ALLOCATOR(AudioControlsEditorTest_CryPakMock)
+
         AudioControlsEditorTest_CryPakMock(const char* levelName)
             : m_levelName(levelName)
         {}
@@ -60,7 +62,7 @@ class AudioControlsEditorTestEnvironment
     : public AZ::Test::ITestEnvironment
 {
 public:
-    AZ_TEST_CLASS_ALLOCATOR(AudioControlsEditorTestEnvironment);
+    AZ_TEST_CLASS_ALLOCATOR(AudioControlsEditorTestEnvironment)
 
     ~AudioControlsEditorTestEnvironment() override = default;
 

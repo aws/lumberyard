@@ -1199,13 +1199,13 @@ namespace AzFramework
 
             m_shouldQueueHandlerChanges = false;
 
-            for (const auto removeHandler : m_responseHandlersToRemove)
+            for (const auto& removeHandler : m_responseHandlersToRemove)
             {
                 RemoveResponseHandler(removeHandler.first, removeHandler.second);
             }
             m_responseHandlersToRemove.clear();
 
-            for (const auto callbackPair : m_responseHandlersToAdd)
+            for (const auto& callbackPair : m_responseHandlersToAdd)
             {
                 const auto& keyPair = callbackPair.first;
                 AddResponseHandler(keyPair.first, keyPair.second, callbackPair.second);

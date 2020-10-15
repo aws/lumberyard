@@ -337,6 +337,7 @@ bool CPersonalInterestManager::CheckVisibility(const SEntityInterest& interestin
                 vPoint2 = pTargetEntity->GetWorldTM() * vOffset;
             }
 
+#if ENABLE_CRY_PHYSICS
             ray_hit hits;
             int intersections = gEnv->pPhysicalWorld->RayWorldIntersection(vEyePos, vPoint2 - vEyePos, ent_all,
                     rwi_stop_at_pierceable | rwi_colltype_any, &hits, 1, pAIActor->GetPhysics());
@@ -345,9 +346,11 @@ bool CPersonalInterestManager::CheckVisibility(const SEntityInterest& interestin
             {
                 return true;
             }
-
             IEntity* pCollider = gEnv->pEntitySystem->GetEntityFromPhysics(hits.pCollider);
             return (pTargetEntity == pCollider);
+#else
+            return true;
+#endif
         }
     }
 

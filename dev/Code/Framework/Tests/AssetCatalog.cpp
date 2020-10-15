@@ -10,19 +10,28 @@
 *
 */
 
+#include <FileIOBaseTestTypes.h>
+
+#include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Interface/Interface.h>
+#include <AzCore/IO/Streamer.h>
+#include <AzCore/Jobs/JobManager.h>
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/PoolAllocator.h>
-#include <AzCore/Math/Uuid.h>
-#include <AzCore/Component/TickBus.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/UnitTest/TestTypes.h>
+
 #include <AzFramework/Asset/AssetCatalog.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Asset/GenericAssetHandler.h>
 #include <AzFramework/Asset/NetworkAssetNotification_private.h>
-#include <AzCore/Asset/AssetManagerBus.h>
-#include <AzCore/std/containers/vector.h>
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+
 #include "AZTestShared/Utils/Utils.h"
 
 using namespace AZStd;
@@ -58,6 +67,13 @@ namespace UnitTest
         AzFramework::AssetCatalog* m_assetCatalog;
 
     public:
+
+        const char* path1 = "SomeFolder/Asset1Path";
+        const char* path2 = "SomeFolder/Asset2Path";
+        const char* path3 = "OtherFolder/Asset3Path";
+        const char* path4 = "OtherFolder/Asset4Path";
+        const char* path5 = "OtherFolder/Asset5Path";
+
         void SetUp() override
         {
             AllocatorsFixture::SetUp();
@@ -79,10 +95,23 @@ namespace UnitTest
             asset4 = AssetId(AZ::Uuid::CreateRandom(), 0);
             asset5 = AssetId(AZ::Uuid::CreateRandom(), 0);
 
+            AZ::Data::AssetInfo info1, info2, info3, info4, info5;
+            info1.m_relativePath = path1;
+            info1.m_sizeBytes = 1; // Need to initialize m_sizeBytes to non-zero number to avoid a FileIO call
+            info2.m_relativePath = path2;
+            info2.m_sizeBytes = 1;
+            info3.m_relativePath = path3;
+            info3.m_sizeBytes = 1;
+            info4.m_relativePath = path4;
+            info4.m_sizeBytes = 1;
+            info5.m_relativePath = path5;
+            info5.m_sizeBytes = 1;
+
             // asset1 -> asset2 -> asset3 -> asset5
             //                 --> asset4
 
             {
+                m_assetCatalog->RegisterAsset(asset1, info1);
                 AzFramework::AssetSystem::AssetNotificationMessage message("test", AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged, AZ::Uuid::CreateRandom(), "");
                 message.m_assetId = asset1;
                 message.m_dependencies.emplace_back(asset2, 0);
@@ -90,6 +119,7 @@ namespace UnitTest
             }
 
             {
+                m_assetCatalog->RegisterAsset(asset2, info2);
                 AzFramework::AssetSystem::AssetNotificationMessage message("test", AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged, AZ::Uuid::CreateRandom(), "");
                 message.m_assetId = asset2;
                 message.m_dependencies.emplace_back(asset3, 0);
@@ -98,6 +128,7 @@ namespace UnitTest
             }
 
             {
+                m_assetCatalog->RegisterAsset(asset3, info3);
                 AzFramework::AssetSystem::AssetNotificationMessage message("test", AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged, AZ::Uuid::CreateRandom(), "");
                 message.m_assetId = asset3;
                 message.m_dependencies.emplace_back(asset5, 0);
@@ -105,12 +136,14 @@ namespace UnitTest
             }
 
             {
+                m_assetCatalog->RegisterAsset(asset4, info4);
                 AzFramework::AssetSystem::AssetNotificationMessage message("test", AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged, AZ::Uuid::CreateRandom(), "");
                 message.m_assetId = asset4;
                 notificationInterface->AssetChanged(message);
             }
 
             {
+                m_assetCatalog->RegisterAsset(asset5, info5);
                 AzFramework::AssetSystem::AssetNotificationMessage message("test", AzFramework::AssetSystem::AssetNotificationMessage::AssetChanged, AZ::Uuid::CreateRandom(), "");
                 message.m_assetId = asset5;
                 notificationInterface->AssetChanged(message);
@@ -167,10 +200,10 @@ namespace UnitTest
             }
         }
 
-        void CheckAllDependenciesFilter(AssetId assetId, AssetId filter, AZStd::initializer_list<AssetId> expectedDependencies)
+        void CheckAllDependenciesFilter(AssetId assetId, const AZStd::unordered_set<AssetId>& filterSet, const AZStd::vector<AZStd::string>& wildcardList, AZStd::initializer_list<AssetId> expectedDependencies)
         {
             AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> result = AZ::Failure<AZStd::string>("No response");
-            AssetCatalogRequestBus::BroadcastResult(result, &AssetCatalogRequestBus::Events::GetAllProductDependenciesFilter, assetId, AZStd::unordered_set<AssetId>{ filter });
+            AssetCatalogRequestBus::BroadcastResult(result, &AssetCatalogRequestBus::Events::GetAllProductDependenciesFilter, assetId, filterSet, wildcardList);
 
             EXPECT_TRUE(result.IsSuccess());
 
@@ -203,11 +236,26 @@ namespace UnitTest
         CheckAllDependencies(asset5, {});
     }
 
-    TEST_F(AssetCatalogDependencyTest, allDependenciesFilter)
+    TEST_F(AssetCatalogDependencyTest, allDependenciesFilter_AssetIdFilter)
     {
-        CheckAllDependenciesFilter(asset1, asset2, { });
-        CheckAllDependenciesFilter(asset1, asset3, { asset2 });
-        CheckAllDependenciesFilter(asset1, asset5, { asset2, asset3, asset4 });
+        CheckAllDependenciesFilter(asset1, { asset2 }, { }, { });
+        CheckAllDependenciesFilter(asset1, { asset3 }, { }, { asset2 });
+        CheckAllDependenciesFilter(asset1, { asset5 }, { }, { asset2, asset3, asset4 });
+        CheckAllDependenciesFilter(asset1, { asset4, asset5 }, { }, { asset2, asset3 });
+    }
+
+    TEST_F(AssetCatalogDependencyTest, allDependenciesFilter_WildcardFilter)
+    {
+        CheckAllDependenciesFilter(asset1, { }, { "*/*" }, { });
+        CheckAllDependenciesFilter(asset1, { }, { "*/Asset?Path" }, {});
+        CheckAllDependenciesFilter(asset1, { }, { "other*" }, { asset2 });
+        CheckAllDependenciesFilter(asset1, { }, { "*4*" }, { asset2, asset3, asset5 });
+        CheckAllDependenciesFilter(asset1, { }, { "*4*", "*5*" }, { asset2, asset3 });
+    }
+
+    TEST_F(AssetCatalogDependencyTest, allDependenciesFilter_AssetIdAndWildcardFilter)
+    {
+        CheckAllDependenciesFilter(asset1, { asset5 }, { "*4*" }, { asset2, asset3 });
     }
 
     TEST_F(AssetCatalogDependencyTest, unregisterTest)
@@ -272,7 +320,6 @@ namespace UnitTest
             azstrcpy(deltaCatalogPath2, AZ_MAX_PATH_LEN, (GetTestFolderPath() + "AssetCatalogDelta2.xml").c_str());
             azstrcpy(deltaCatalogPath3, AZ_MAX_PATH_LEN, (GetTestFolderPath() + "AssetCatalogDelta3.xml").c_str());
 
-
             AZ::Data::AssetInfo info1, info2, info3, info4, info5, info6;
 
             info1.m_relativePath = path1;
@@ -282,13 +329,10 @@ namespace UnitTest
             info5.m_relativePath = path5;
             info6.m_relativePath = path6;
 
-            
-
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset1, info1);
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset2, info2);
             // baseCatalog - asset1 path1, asset2 path2
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::SaveCatalog, baseCatalogPath);
-
 
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset1, info3);
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset4, info4);
@@ -331,7 +375,6 @@ namespace UnitTest
             deltaCatalogFiles2.push_back(path5);
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::SaveCatalog, deltaCatalogPath2);
             
-
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset1, info6);
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset2, info2);
             AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::RegisterAsset, asset5, info4);
@@ -717,6 +760,7 @@ namespace UnitTest
         CheckNoDependencies(asset4);
         CheckDirectDependencies(asset5, { asset2 });
     }
+
     TEST_F(AssetCatalogDeltaTest, DeltaCatalogCreationTest)
     {
         bool result = false;
@@ -823,7 +867,6 @@ namespace UnitTest
         AZStd::string m_assetRoot;
     };
 
-
     TEST_F(AssetCatalogAPITest, GetAssetPathById_AbsolutePath_Valid)
     {
         AZStd::string absPath;
@@ -860,5 +903,225 @@ namespace UnitTest
         ASSERT_THAT(assetPaths, testing::ElementsAre(
             "AssetA.txt",
             "Foo/AssetA.txt"));
+    }
+    
+    class AssetType1
+        : public AssetData
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(AssetType1, AZ::SystemAllocator, 0);
+        AZ_RTTI(AssetType1, "{64ECE3AE-2BEB-4502-9243-D17425249E08}", AssetData);
+
+        AssetType1()
+            : m_data(nullptr)
+        {
+        }
+        explicit AssetType1(const AZ::Data::AssetId& assetId, const AZ::Data::AssetData::AssetStatus assetStatus = AZ::Data::AssetData::AssetStatus::NotLoaded)
+            : AssetData(assetId, assetStatus)
+            , m_data(nullptr)
+        {
+        }
+        ~AssetType1() override
+        {
+            if (m_data)
+            {
+                azfree(m_data);
+            }
+        }
+
+        char* m_data;
+    };
+    
+    class AssetType2
+        : public AssetData
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(AssetType2, AZ::SystemAllocator, 0);
+        AZ_RTTI(AssetType2, "{F5EDAAAB-2398-4967-A2C7-6B7C9421C1CE}", AssetData);
+
+        AssetType2()
+            : m_data(nullptr)
+        {
+        }
+        explicit AssetType2(const AZ::Data::AssetId& assetId, const AZ::Data::AssetData::AssetStatus assetStatus = AZ::Data::AssetData::AssetStatus::NotLoaded)
+            : AssetData(assetId, assetStatus)
+            , m_data(nullptr)
+        {
+        }
+        ~AssetType2() override
+        {
+            if (m_data)
+            {
+                azfree(m_data);
+            }
+        }
+
+        char* m_data;
+    };
+
+    class AssetCatalogDisplayNameTest
+        : public AllocatorsFixture
+    {
+        AZ::IO::FileIOBase* m_prevFileIO{
+            nullptr
+        };
+        TestFileIOBase m_fileIO;
+        AzFramework::AssetCatalog* m_assetCatalog;
+
+    public:
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+
+            m_prevFileIO = AZ::IO::FileIOBase::GetInstance();
+            AZ::IO::FileIOBase::SetInstance(&m_fileIO);
+            AZ::IO::Streamer::Descriptor streamerDesc;
+            AZ::IO::Streamer::Create(streamerDesc);
+
+            // create the database
+            AssetManager::Descriptor desc;
+            AssetManager::Create(desc);
+
+            m_assetCatalog = aznew AzFramework::AssetCatalog();
+        }
+
+        void TearDown() override
+        {
+            delete m_assetCatalog;
+
+            // destroy the database
+            AssetManager::Destroy();
+
+            if (AZ::IO::Streamer::IsReady())
+            {
+                AZ::IO::Streamer::Destroy();
+            }
+
+            AZ::IO::FileIOBase::SetInstance(m_prevFileIO);
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+    };
+
+    TEST_F(AssetCatalogDisplayNameTest, GetAssetTypeByDisplayName_GetRegistered)
+    {
+        // Register an asset type
+        AZ::TypeId assetTypeId = AZ::AzTypeInfo<AssetType1>::Uuid();
+        AZStd::string assetTypeName = "Test Asset Type";
+        auto handler = aznew AzFramework::GenericAssetHandler<AssetType1>(assetTypeName.data(), "SomeGroup", "someextension", assetTypeId);
+        handler->Register();
+
+        {
+            // Get the Asset Type from the Display Name
+            AssetType id;
+            AssetCatalogRequestBus::BroadcastResult(id, &AssetCatalogRequestBus::Events::GetAssetTypeByDisplayName, assetTypeName);
+
+            EXPECT_EQ(id, assetTypeId);
+        }
+
+        // Delete the handler
+        handler->Unregister();
+        delete handler;
+    }
+
+    TEST_F(AssetCatalogDisplayNameTest, GetAssetTypeByDisplayName_GetNotRegistered)
+    {
+        // Register an asset type
+        AZ::TypeId assetTypeId = AZ::AzTypeInfo<AssetType1>::Uuid();
+        AZStd::string assetTypeName = "Test Asset Type";
+        auto handler = aznew AzFramework::GenericAssetHandler<AssetType1>(assetTypeName.data(), "SomeGroup", "someextension", assetTypeId);
+        handler->Register();
+
+        {
+            // Try to get an Asset Type with a Display Name that was never registered
+            AssetType id;
+            AssetCatalogRequestBus::BroadcastResult(id, &AssetCatalogRequestBus::Events::GetAssetTypeByDisplayName, "Some Asset Type We Did Not Register");
+
+            EXPECT_EQ(id, AssetType::CreateNull());
+        }
+
+        // Delete the handler
+        handler->Unregister();
+        delete handler;
+    }
+
+    TEST_F(AssetCatalogDisplayNameTest, GetAssetTypeByDisplayName_GetWrongCasing)
+    {
+        // Register an asset type
+        AZ::TypeId assetTypeId = AZ::AzTypeInfo<AssetType1>::Uuid();
+        AZStd::string assetTypeName = "Test Asset Type";
+        auto handler = aznew AzFramework::GenericAssetHandler<AssetType1>(assetTypeName.data(), "SomeGroup", "someextension", assetTypeId);
+        handler->Register();
+
+        {
+            // Try to get the Asset Type we registered, but with a lowercase Display Name
+            AssetType id;
+            AssetCatalogRequestBus::BroadcastResult(id, &AssetCatalogRequestBus::Events::GetAssetTypeByDisplayName, "test asset type");
+
+            EXPECT_EQ(id, AssetType::CreateNull());
+        }
+
+        // Delete the handler
+        handler->Unregister();
+        delete handler;
+    }
+    
+    TEST_F(AssetCatalogDisplayNameTest, GetAssetTypeByDisplayName_NoRegisteredType)
+    {
+        // Get the Asset Type from a Display Name we did not register
+        AssetType id;
+        AssetCatalogRequestBus::BroadcastResult(id, &AssetCatalogRequestBus::Events::GetAssetTypeByDisplayName, "Some Asset Type We Did Not Register");
+
+        EXPECT_EQ(id, AssetType::CreateNull());
+    }
+
+    TEST_F(AssetCatalogDisplayNameTest, GetAssetTypeByDisplayName_MultiRegisteredType_SameDisplayName)
+    {
+        AZStd::string assetTypeName = "Test Asset Type";
+
+        // Register an asset type
+        AZ::TypeId asset1TypeId = AZ::AzTypeInfo<AssetType1>::Uuid();
+        auto handler1 = aznew AzFramework::GenericAssetHandler<AssetType1>(assetTypeName.data(), "SomeGroup", "someextension", asset1TypeId);
+        handler1->Register();
+
+        // Register a different type handler with the same Display Name
+        AZ::TypeId asset2TypeId = AZ::AzTypeInfo<AssetType2>::Uuid();
+        auto handler2 = aznew AzFramework::GenericAssetHandler<AssetType2>(assetTypeName.data(), "SomeGroup", "someextension", asset2TypeId);
+        handler2->Register();
+
+        // Verify one of the types is returned.
+        // Note that we have no control over which one is returned as it's an implementation detail of the AssetCatalog
+        {
+            AssetType id;
+            AssetCatalogRequestBus::BroadcastResult(id, &AssetCatalogRequestBus::Events::GetAssetTypeByDisplayName, assetTypeName);
+
+            EXPECT_TRUE((id == asset1TypeId) || (id == asset2TypeId));
+        }
+
+        // Delete both handlers
+        handler1->Unregister();
+        handler2->Unregister();
+        delete handler1;
+        delete handler2;
+    }
+
+    TEST_F(AssetCatalogAPITest, DoesAssetIdMatchWildcardPattern_Matches)
+    {
+        EXPECT_TRUE(m_assetCatalog->DoesAssetIdMatchWildcardPattern(m_firstAssetId, "*.txt"));
+        EXPECT_TRUE(m_assetCatalog->DoesAssetIdMatchWildcardPattern(m_firstAssetId, "asset?.txt"));
+    }
+
+    TEST_F(AssetCatalogAPITest, DoesAssetIdMatchWildcardPattern_DoesNotMatch)
+    {
+        AZ::Data::AssetId invalidAssetId;
+        EXPECT_FALSE(m_assetCatalog->DoesAssetIdMatchWildcardPattern(invalidAssetId, "*.txt"));
+        EXPECT_FALSE(m_assetCatalog->DoesAssetIdMatchWildcardPattern(m_firstAssetId, "*.xml"));
+        EXPECT_FALSE(m_assetCatalog->DoesAssetIdMatchWildcardPattern(m_firstAssetId, ""));
     }
 }

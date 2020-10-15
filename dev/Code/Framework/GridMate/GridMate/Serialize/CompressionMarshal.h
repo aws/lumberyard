@@ -17,6 +17,7 @@
 #include <GridMate/Serialize/MarshalerTypes.h>
 #include <GridMate/Serialize/MathMarshal.h>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/containers/bitset.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/algorithm.h>
@@ -256,7 +257,7 @@ namespace GridMate
                 float quantScale = (integerQuant - Min) / quantRange;
                 quantScale = AZ::GetClamp(quantScale, 0.0f, 1.0f);
 
-                SerializedType quantizedValue = static_cast<SerializedType>(quantScale * RatioMax);
+                SerializedType quantizedValue = static_cast<SerializedType>(quantScale * aznumeric_cast<double>(RatioMax));
                 wb.Write(quantizedValue);
             }
 

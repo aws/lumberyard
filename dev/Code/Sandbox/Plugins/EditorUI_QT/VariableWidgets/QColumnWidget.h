@@ -24,6 +24,7 @@ class CAttributeItem;
 struct IVariable;
 class QBitmapPreviewDialogImp;
 class QToolTipWidget;
+class QCheckBox;
 
 class QColumnWidget
     : public QCopyableWidget
@@ -58,9 +59,16 @@ class QColumnWidget
     };
 
 public:
-    QColumnWidget(CAttributeItem* parent, const QString& label, QWidget* widget, bool collapsible = false);
+    QColumnWidget(CAttributeItem* parent, const QString& label, QWidget* widget, bool collapsible = false, bool fullWidth = true);
     ~QColumnWidget();
     void SetCollapsible(bool val);
+    QVBoxLayout* GetChildLayout() { return m_layoutChildren; }
+    QHBoxLayout* GetLeftLayout() { return m_leftLayout; }
+    void SetAsCollapsible(CAttributeItem* item);
+    void SetCollapsed(bool state);
+private slots:
+    void CollapseButton_clicked();
+
 private:
     QCustomLabel* lbl;
     void mousePressEvent(QMouseEvent* e);
@@ -69,9 +77,17 @@ private:
     void RecursiveStyleUpdate(QWidget* root);
     virtual void paintEvent(QPaintEvent*) override;
     CAttributeItem* m_parent;
-    QHBoxLayout layout;
+    QVBoxLayout* m_topLayout;
+    QHBoxLayout* m_containerLayout;
+    QHBoxLayout* m_leftLayout;
+    QHBoxLayout* m_rightLayout;
+    QWidget* m_widgetChildren;
+    QVBoxLayout* m_layoutChildren;
+    QCheckBox* m_collapseButton;
     IVariable* m_variable;
     bool m_canReset; // Used to ignore redundant changes
+    bool m_isCollapsible = false;
+    CAttributeItem* m_attributeItem = nullptr;
 };
 
 #endif // CRYINCLUDE_EDITORUI_QT_VARIABLE_WIDGETS_QCOLUMNWIDGET_H

@@ -14,13 +14,19 @@
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/StringFunc/StringFunc.h>
+#include <AzFramework/IO/LocalFileIO.h>
 
 #include <AudioAllocators.h>
+#include <ATLComponents.h>
 #include <ATLUtils.h>
 #include <ATL.h>
 
+#include <Mocks/ATLEntitiesMock.h>
 #include <Mocks/IAudioSystemImplementationMock.h>
 #include <Mocks/IAudioSystemMock.h>
+#include <Mocks/FileCacheManagerMock.h>
+
 #include <Mocks/IConsoleMock.h>
 #include <Mocks/ISystemMock.h>
 
@@ -33,14 +39,14 @@ void CreateAudioAllocators()
     if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
     {
         AZ::SystemAllocator::Descriptor systemAllocDesc;
-        systemAllocDesc.m_allocationRecords = true;
+        systemAllocDesc.m_allocationRecords = false;
         AZ::AllocatorInstance<AZ::SystemAllocator>::Create(systemAllocDesc);
     }
 
     if (!AZ::AllocatorInstance<Audio::AudioSystemAllocator>::IsReady())
     {
         Audio::AudioSystemAllocator::Descriptor allocDesc;
-        allocDesc.m_allocationRecords = true;
+        allocDesc.m_allocationRecords = false;
         allocDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = 0;
         AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Create(allocDesc);
     }
@@ -203,6 +209,176 @@ TEST(ATLWorldPositionTest, TransformNormalize_NormalizeZeroVectors_GivesBasisVec
 }
 
 
+// Tests related to new PhysX-compatible raycast code.
+#if !AUDIO_ENABLE_CRY_PHYSICS
+
+constexpr TAudioObjectID testAudioObjectId = 123;
+
+
+TEST(ATLAudioObjectTest, SetRaycastCalcType_SetAllTypes_AffectsCanRunRaycasts)
+{
+    RaycastProcessor::s_raycastsEnabled = true;
+    CATLAudioObject audioObject(testAudioObjectId, nullptr);
+
+    audioObject.SetRaycastCalcType(eAOOCT_SINGLE_RAY);
+    EXPECT_TRUE(audioObject.CanRunRaycasts());
+
+    audioObject.SetRaycastCalcType(eAOOCT_IGNORE);
+    EXPECT_FALSE(audioObject.CanRunRaycasts());
+
+    audioObject.SetRaycastCalcType(eAOOCT_MULTI_RAY);
+    EXPECT_TRUE(audioObject.CanRunRaycasts());
+}
+
+
+TEST(ATLAudioObjectTest, OnAudioRaycastResults_MultiRaycastZeroDistanceHits_ZeroObstructionAndOcclusion)
+{
+    RaycastProcessor::s_raycastsEnabled = true;
+    CATLAudioObject audioObject(testAudioObjectId, nullptr);
+    RaycastProcessor& raycastProcessor = audioObject.GetRaycastProcessor();
+
+    audioObject.SetRaycastCalcType(eAOOCT_MULTI_RAY);
+    for (AZStd::decay_t<decltype(Audio::s_maxRaysPerObject)> i = 0; i < Audio::s_maxRaysPerObject; ++i)
+    {
+        raycastProcessor.SetupTestRay(i);
+    }
+
+    // maximum number of hits, but we don't set the distance in any of them.
+    AZStd::vector<Physics::RayCastHit> hits(Audio::s_maxHitResultsPerRaycast);
+
+    AudioRaycastResult hitResults(AZStd::move(hits), testAudioObjectId, 0);
+    audioObject.OnAudioRaycastResults(hitResults);
+
+    raycastProcessor.Update(17.f);
+
+    // Now get the contribution amounts.  In this case multiple hits w/ zero distance,
+    // both obstruction & occlusion should be zero.
+    SATLSoundPropagationData data;
+    audioObject.GetObstOccData(data);
+
+    EXPECT_NEAR(data.fObstruction, 0.f, AZ_FLT_EPSILON);
+    EXPECT_NEAR(data.fOcclusion, 0.f, AZ_FLT_EPSILON);
+}
+
+
+TEST(ATLAudioObjectTest, OnAudioRaycastResults_SingleRaycastHit_NonZeroObstruction)
+{
+    RaycastProcessor::s_raycastsEnabled = true;
+    CATLAudioObject audioObject(testAudioObjectId, nullptr);
+    RaycastProcessor& raycastProcessor = audioObject.GetRaycastProcessor();
+
+    audioObject.SetRaycastCalcType(eAOOCT_SINGLE_RAY);
+    raycastProcessor.SetupTestRay(0);
+
+    AZStd::vector<Physics::RayCastHit> hits(3);     // three hits
+    hits[0].m_distance = 10.f;
+    hits[1].m_distance = 11.f;
+    hits[2].m_distance = 12.f;
+    AudioRaycastResult hitResults(AZStd::move(hits), testAudioObjectId, 0);
+
+    audioObject.OnAudioRaycastResults(hitResults);
+
+    raycastProcessor.Update(0.17f);
+
+    // Now get the contribution amounts.  In this case a single ray had three hits,
+    // and the obstruction value will be non-zero.
+    SATLSoundPropagationData data;
+    audioObject.GetObstOccData(data);
+
+    EXPECT_GT(data.fObstruction, 0.f);
+    EXPECT_LE(data.fObstruction, 1.f);
+    EXPECT_NEAR(data.fOcclusion, 0.f, AZ_FLT_EPSILON);
+}
+
+
+TEST(ATLAudioObjectTest, OnAudioRaycastResults_MultiRaycastHit_NonZeroOcclusion)
+{
+    RaycastProcessor::s_raycastsEnabled = true;
+    CATLAudioObject audioObject(testAudioObjectId, nullptr);
+    RaycastProcessor& raycastProcessor = audioObject.GetRaycastProcessor();
+
+    audioObject.SetRaycastCalcType(eAOOCT_MULTI_RAY);
+    for (AZStd::decay_t<decltype(Audio::s_maxRaysPerObject)> i = 1; i < Audio::s_maxRaysPerObject; ++i)
+    {
+        raycastProcessor.SetupTestRay(i);
+    }
+
+    AZStd::vector<Physics::RayCastHit> hits(3);     // three hits
+    hits[0].m_distance = 10.f;
+    hits[1].m_distance = 11.f;
+    hits[2].m_distance = 12.f;
+    AudioRaycastResult hitResults(AZStd::move(hits), testAudioObjectId, 1);
+
+    audioObject.OnAudioRaycastResults(hitResults);
+    hitResults.m_rayIndex++;    // 2
+    audioObject.OnAudioRaycastResults(hitResults);
+    hitResults.m_rayIndex++;    // 3
+    audioObject.OnAudioRaycastResults(hitResults);
+    hitResults.m_rayIndex++;    // 4
+    audioObject.OnAudioRaycastResults(hitResults);
+
+    raycastProcessor.Update(17.f);
+
+    // Now get the contribution amounts.  In this case a single ray had three hits,
+    // and the obstruction value will be non-zero.
+    SATLSoundPropagationData data;
+    audioObject.GetObstOccData(data);
+
+    EXPECT_NEAR(data.fObstruction, 0.f, AZ_FLT_EPSILON);
+    EXPECT_GT(data.fOcclusion, 0.f);
+    EXPECT_LE(data.fOcclusion, 1.f);
+}
+
+
+class AudioRaycastManager_Test
+    : public AudioRaycastManager
+{
+public:
+    // Helpers
+    size_t GetNumRequests() const
+    {
+        return m_raycastRequests.size();
+    }
+
+    size_t GetNumResults() const
+    {
+        return m_raycastResults.size();
+    }
+};
+
+
+TEST(AudioRaycastManagerTest, AudioRaycastRequest_FullProcessFlow_CorrectRequestAndResultCounts)
+{
+    AudioRaycastManager_Test raycastManager;
+
+    Physics::RayCastRequest physicsRequest;
+    physicsRequest.m_direction = AZ::Vector3::CreateAxisX();
+    physicsRequest.m_distance = 5.f;
+    physicsRequest.m_maxResults = Audio::s_maxHitResultsPerRaycast;
+
+    AudioRaycastRequest raycastRequest(AZStd::move(physicsRequest), testAudioObjectId, 0);
+
+    EXPECT_EQ(0, raycastManager.GetNumRequests());
+    EXPECT_EQ(0, raycastManager.GetNumResults());
+
+    raycastManager.PushAudioRaycastRequest(raycastRequest);
+
+    EXPECT_EQ(1, raycastManager.GetNumRequests());
+    EXPECT_EQ(0, raycastManager.GetNumResults());
+
+    raycastManager.OnPostPhysicsUpdate(0.017f);     // seconds
+
+    EXPECT_EQ(0, raycastManager.GetNumRequests());
+    EXPECT_EQ(1, raycastManager.GetNumResults());
+
+    raycastManager.ProcessRaycastResults(17.f);     // milliseconds
+
+    EXPECT_EQ(0, raycastManager.GetNumRequests());
+    EXPECT_EQ(0, raycastManager.GetNumResults());
+}
+
+
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
 
 
 //---------------//
@@ -843,4 +1019,146 @@ TEST_F(ATLDebugNameStoreTestFixture, ATLDebugNameStore_LookupAudioEnvironmentNam
     m_atlNames.AddAudioEnvironment(audioEnvironmentID, m_audioEnvironmentName.c_str());
 
     EXPECT_STREQ(m_atlNames.LookupAudioEnvironmentName(audioEnvironmentID), m_audioEnvironmentName.c_str());
+}
+
+
+
+
+class ATLPreloadXmlParsingTestFixture
+    : public ::testing::Test
+{
+public:
+    AZ_TEST_CLASS_ALLOCATOR(ATLPreloadXmlParsingTestFixture)
+
+    ATLPreloadXmlParsingTestFixture()
+        : m_triggers()
+        , m_rtpcs()
+        , m_switches()
+        , m_environments()
+        , m_preloads()
+        , m_mockFileCacheManager(m_preloads)
+        , m_xmlProcessor(m_triggers, m_rtpcs, m_switches, m_environments, m_preloads, m_mockFileCacheManager)
+    {
+        m_xmlProcessor.SetDebugNameStore(&m_mockDebugNameStore);
+    }
+
+    void SetUp() override
+    {
+        m_prevFileIO = AZ::IO::FileIOBase::GetInstance();
+        if (m_prevFileIO)
+        {
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+        }
+
+        // Replace with a new LocalFileIO...
+        m_fileIO = AZStd::make_unique<AZ::IO::LocalFileIO>();
+        AZ::IO::FileIOBase::SetInstance(m_fileIO.get());
+
+        AZStd::string rootFolder(__FILE__);
+        AZ::StringFunc::Path::StripFullName(rootFolder);
+        AZ::StringFunc::Path::Join(rootFolder.c_str(), "ATLData", rootFolder);
+
+        // Set up paths...
+        m_xmlProcessor.SetRootPath(m_audioTestAlias);
+        m_fileIO->SetAlias(m_audioTestAlias, rootFolder.c_str());
+    }
+
+    void TearDown() override
+    {
+        // Destroy our LocalFileIO...
+        m_fileIO->ClearAlias(m_audioTestAlias);
+        m_fileIO.reset();
+
+        // Replace the old fileIO (if any)...
+        AZ::IO::FileIOBase::SetInstance(nullptr);
+        if (m_prevFileIO)
+        {
+            AZ::IO::FileIOBase::SetInstance(m_prevFileIO);
+            m_prevFileIO = nullptr;
+        }
+    }
+
+    void TestSuccessfulPreloadParsing(const char* controlsFolder, int numExpectedPreloads, int numExpectedBanksPerPreload)
+    {
+        using ::testing::_;
+        using ::testing::InvokeWithoutArgs;
+        ON_CALL(m_mockFileCacheManager, TryAddFileCacheEntry(_, eADS_GLOBAL, _))
+            .WillByDefault(InvokeWithoutArgs(GenerateNewId));
+
+        m_xmlProcessor.ParsePreloadsData(controlsFolder, eADS_GLOBAL);
+
+        EXPECT_EQ(m_preloads.size(), numExpectedPreloads);
+        for (auto preloadPair : m_preloads)
+        {
+            EXPECT_EQ(preloadPair.second->m_cFileEntryIDs.size(), numExpectedBanksPerPreload);
+        }
+
+        m_xmlProcessor.ClearPreloadsData(eADS_ALL);
+    }
+
+protected:
+    TATLTriggerLookup m_triggers;
+    TATLRtpcLookup m_rtpcs;
+    TATLSwitchLookup m_switches;
+    TATLEnvironmentLookup m_environments;
+    TATLPreloadRequestLookup m_preloads;
+    CATLXmlProcessor m_xmlProcessor;
+    NiceMock<FileCacheManagerMock> m_mockFileCacheManager;
+
+private:
+    NiceMock<ATLDebugNameStoreMock> m_mockDebugNameStore;
+
+    const char* m_audioTestAlias { "@audiotestroot@" };
+    AZ::IO::FileIOBase* m_prevFileIO { nullptr };
+    AZStd::unique_ptr<AZ::IO::LocalFileIO> m_fileIO;
+
+    static TAudioFileEntryID GenerateNewId()
+    {
+        static TAudioFileEntryID s_id = INVALID_AUDIO_FILE_ENTRY_ID;
+        return ++s_id;
+    }
+};
+
+
+// Legacy Preload Xml Format...
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_LegacyOnePreloadOneBank_Success)
+{
+    TestSuccessfulPreloadParsing("Legacy/OneOne", 1, 1);
+}
+
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_LegacyMultiplePreloadsMultipleBanks_Success)
+{
+    TestSuccessfulPreloadParsing("Legacy/MultipleMultiple", 2, 2);
+}
+
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_LegacyMultiplePreloadsOneBank_Success)
+{
+    TestSuccessfulPreloadParsing("Legacy/MultipleOne", 2, 1);
+}
+
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_LegacyOnePreloadMultipleBanks_Success)
+{
+    TestSuccessfulPreloadParsing("Legacy/OneMultiple", 1, 2);
+}
+
+
+// New Preload Xml Format...
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_OnePreloadOneBank_Success)
+{
+    TestSuccessfulPreloadParsing("OneOne", 1, 1);
+}
+
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_MultiplePreloadsMultipleBanks_Success)
+{
+    TestSuccessfulPreloadParsing("MultipleMultiple", 2, 2);
+}
+
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_MultiplePreloadsOneBank_Success)
+{
+    TestSuccessfulPreloadParsing("MultipleOne", 2, 1);
+}
+
+TEST_F(ATLPreloadXmlParsingTestFixture, ParsePreloadsXml_OnePreloadMultipleBanks_Success)
+{
+    TestSuccessfulPreloadParsing("OneMultiple", 1, 2);
 }

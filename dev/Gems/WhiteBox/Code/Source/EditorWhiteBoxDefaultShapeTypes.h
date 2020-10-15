@@ -15,7 +15,7 @@
 namespace WhiteBox
 {
     //! Enum containing default shape types for the white box mesh.
-    enum class DefaultShapeType
+    enum class DefaultShapeType : int
     {
         Cube,
         Tetrahedron,

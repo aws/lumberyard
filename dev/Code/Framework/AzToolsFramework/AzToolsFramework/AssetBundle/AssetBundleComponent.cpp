@@ -408,6 +408,9 @@ namespace AzToolsFramework
             return false;
         }
 
+        // Surface any errors during the renames
+        ScopedIOEventBusHandler renameHandler;
+
         // Rename all the temp files to the actual bundle names
         for (int idx = 0; idx < bundlePathDeltaCatalogPair.size(); ++idx)
         {
@@ -416,10 +419,17 @@ namespace AzToolsFramework
             if (destinationBundleFullPath.ends_with(tempBundleFileSuffix))
             {
                 destinationBundleFullPath = destinationBundleFullPath.substr(0, destinationBundleFullPath.length() - strlen(tempBundleFileSuffix));
-                if (!fileIO->Rename(bundlePathDeltaCatalogPair[idx].first.c_str(), destinationBundleFullPath.c_str()))
+                int numRetries = 3;
+                while(!fileIO->Rename(bundlePathDeltaCatalogPair[idx].first.c_str(), destinationBundleFullPath.c_str()))
                 {
-                    AZ_Error(logWindowName, false, "Failed to rename temporary bundle file (%s) to (%s)", bundlePathDeltaCatalogPair[idx].first.c_str(), destinationBundleFullPath.c_str());
-                    return false;
+                    --numRetries;
+                    AZ_Error(logWindowName, false, "Failed to rename temporary bundle file (%s) to (%s)%s", bundlePathDeltaCatalogPair[idx].first.c_str(), destinationBundleFullPath.c_str(), numRetries ? "  Retrying.." : "");
+                    if (!numRetries)
+                    {
+                        return false;
+                    }
+                    constexpr auto SleepDuration = AZStd::chrono::seconds(1);
+                    AZStd::this_thread::sleep_for(SleepDuration);
                 }
             }
         }
@@ -735,6 +745,21 @@ namespace AzToolsFramework
             }
         }
         return true;
+    }
+
+    ScopedIOEventBusHandler::ScopedIOEventBusHandler()
+    {
+        BusConnect();
+    }
+
+    ScopedIOEventBusHandler::~ScopedIOEventBusHandler()
+    {
+        BusDisconnect();
+    }
+
+    void ScopedIOEventBusHandler::OnError([[maybe_unused]] const AZ::IO::SystemFile* file, [[maybe_unused]] const char* fileName, [[maybe_unused]] int errorCode)
+    {
+        AZ_Error("AssetBundleComponent", false, "FileIO Error for file %s (errorCode %d)", file && file->Name() ? file->Name() : fileName, errorCode);
     }
 }
 

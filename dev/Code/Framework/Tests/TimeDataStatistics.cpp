@@ -178,13 +178,6 @@ namespace UnitTest
            EXPECT_GE(m_statsManager->GetStatistic(child1StatName)->GetAverage(), minimumExpectDurationOfChildFunctionMicros);
            EXPECT_GE(m_statsManager->GetStatistic(child1StatName)->GetMaximum(), minimumExpectDurationOfChildFunctionMicros);
 
-           EXPECT_GE(m_statsManager->GetStatistic(parentStatName)->GetMinimum(),
-               m_statsManager->GetStatistic(child0StatName)->GetMinimum() + m_statsManager->GetStatistic(child1StatName)->GetMinimum());
-           EXPECT_GE(m_statsManager->GetStatistic(parentStatName)->GetAverage(),
-               m_statsManager->GetStatistic(child0StatName)->GetAverage() + m_statsManager->GetStatistic(child1StatName)->GetAverage());
-           EXPECT_GE(m_statsManager->GetStatistic(parentStatName)->GetMaximum(),
-               m_statsManager->GetStatistic(child0StatName)->GetMaximum() + m_statsManager->GetStatistic(child1StatName)->GetMaximum());
-
            //Let's validate TimeDataStatisticsManager::RemoveStatistics()
            m_statsManager->RemoveStatistic(child1StatName);
            ASSERT_TRUE(m_statsManager->GetStatistic(parentStatName) != nullptr);

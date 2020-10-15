@@ -99,8 +99,6 @@ public:
     const char* GetName() const override;
     Vec3 GetPos(bool bWorldOnly = true) const override;
     void Render(const struct SRendParams& rParam, const SRenderingPassInfo& passInfo) override;
-    IPhysicalEntity* GetPhysics() const override;
-    void SetPhysics(IPhysicalEntity*) override;
     void SetMaterial(_smart_ptr<IMaterial> pMat) override;
     _smart_ptr<IMaterial>  GetMaterial(Vec3* pHitPos = 0) override;
     _smart_ptr<IMaterial>  GetMaterialOverride() override;

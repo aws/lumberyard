@@ -1,0 +1,11 @@
+{
+    "name": "xxhash",
+    "source": "@3P:xxhash@",
+    "description": "xxHash header only library",
+    "header_only": "True",
+    "system_includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "False"
+}

@@ -187,7 +187,7 @@ protected:
             if (allValidReparenting && !nodes.isEmpty())
             {
                 // By default here the drop action is a CopyAction. That is what we want in case
-                // some other random control accepts this drop (and then does nothing with the data). 
+                // some other random control accepts this drop (and then does nothing with the data).
                 // If that happens we will not receive any notifications. If the Action default was MoveAction,
                 // the dragged items in the tree would be deleted out from under us causing a crash.
                 // Since we are here, we know this drop is on the same control so we can
@@ -347,6 +347,20 @@ enum EMenuItem
     eMI_AddScreenfader = 511,
     eMI_AddShadowSetup = 513,
     eMI_AddEnvironment = 514,
+    eMI_AddTOD_Sun = 515,
+    eMI_AddTOD_Fog = 516,
+    eMI_AddTOD_VolumetricFog = 517,
+    eMI_AddTOD_SkyLight = 518,
+    eMI_AddTOD_NightSky = 519,
+    eMI_AddTOD_NightSkyMultiplier = 520,
+    eMI_AddTOD_CloudShading = 521,
+    eMI_AddTOD_SunRaysEffect = 522,
+    eMI_AddTOD_AdvancedTOD = 523,
+    eMI_AddTOD_Filters = 524,
+    eMI_AddTOD_DepthOfField = 525,
+    eMI_AddTOD_Shadows = 526,
+    eMI_AddTOD_Obsolete = 527,
+    eMI_AddTOD_HDR = 528,
     eMI_EditEvents = 550,
     eMI_SaveToFBX = 12,
     eMI_ImportFromFBX = 14,
@@ -797,9 +811,9 @@ void CTrackViewNodesCtrl::UpdateAnimNodeRecord(CRecord* record, CTrackViewAnimNo
     {
         // get the component icon from cached component icons
         bool searchCompleted = false;
-        
+
         AZ::Entity* azEntity = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(azEntity, &AZ::ComponentApplicationBus::Events::FindEntity, 
+        AZ::ComponentApplicationBus::BroadcastResult(azEntity, &AZ::ComponentApplicationBus::Events::FindEntity,
                                                         static_cast<CTrackViewAnimNode*>(animNode->GetParentNode())->GetAzEntityId());
         if (azEntity)
         {
@@ -811,8 +825,8 @@ void CTrackViewNodesCtrl::UpdateAnimNodeRecord(CRecord* record, CTrackViewAnimNo
                 {
                     record->setIcon(0, findIter->second);
                 }
-            }           
-        }     
+            }
+        }
     }
     else
     {
@@ -822,7 +836,7 @@ void CTrackViewNodesCtrl::UpdateAnimNodeRecord(CRecord* record, CTrackViewAnimNo
 
         record->setIcon(0, m_imageList[nNodeImage]);
     }
-    
+
 
     const bool disabled = animNode->IsDisabled();
     record->setData(0, CRecord::EnableRole, !disabled);
@@ -991,6 +1005,29 @@ void CTrackViewNodesCtrl::OnSelectionChanged()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void BroadcastUndoStart(const char* undoName, bool& changeMade)
+{
+    // Pointer is set so the undo can be accessed but that is not necessary here
+    AzToolsFramework::UndoSystem::URSequencePoint* fakeUndoBatch = nullptr;
+
+    AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+        fakeUndoBatch,
+        &AzToolsFramework::ToolsApplicationRequests::Bus::Events::BeginUndoBatch,
+        undoName
+    );
+
+    changeMade = true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CreateSubNodeAndRecordUndo(const char* undoName, const char* nodeName, AnimNodeType nodeType, CTrackViewAnimNode* groupNode)
+{
+    AzToolsFramework::ScopedUndoBatch undoBatch(undoName);
+    groupNode->CreateSubNode(nodeName, nodeType);
+    undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
 {
     CRecord* record = 0;
@@ -1138,10 +1175,14 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
             EndUndoTransaction();
         }
 
+        // Group operations not applicable to AZEntities
         if (!isOnAzEntity)
         {
-            // Group operations not applicable to AZEntities
-            if (cmd == eMI_AddSelectedEntities)
+            bool trackedChangeMade = false;
+
+            switch (cmd)
+            {
+            case eMI_AddSelectedEntities:
             {
                 AzToolsFramework::ScopedUndoBatch undoBatch("Add Entities to Track View");
                 CTrackViewAnimNodeBundle addedNodes = groupNode->AddSelectedEntities(m_pTrackViewDialog->GetDefaultTracksForEntityNode());
@@ -1187,181 +1228,190 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 }
 
                 groupNode->BindToEditorObjects();
+                break;
             }
-            else if (cmd == eMI_AddCurrentLayer)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Current Layer to Track View");
+            case eMI_CreateFolder:
+                CreateFolder(groupNode);
+                break;
+            case eMI_AddCurrentLayer:
+                BroadcastUndoStart("Add Current Layer to Track View", trackedChangeMade);
                 groupNode->AddCurrentLayer();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddScreenfader)
+                break;
+            case eMI_AddCommentNode:
             {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Screen Fader Node");
-                groupNode->CreateSubNode("ScreenFader", AnimNodeType::ScreenFader);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddCommentNode)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Comment Node");
+                BroadcastUndoStart("Add Track View Comment Node", trackedChangeMade);
                 QString commentNodeName = groupNode->GetAvailableNodeNameStartingWith("Comment");
                 groupNode->CreateSubNode(commentNodeName, AnimNodeType::Comment);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
+                break;
             }
-            else if (cmd == eMI_AddRadialBlur)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Radial Blur Node");
-                groupNode->CreateSubNode("RadialBlur", AnimNodeType::RadialBlur);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddColorCorrection)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Color Correction Node");
-                groupNode->CreateSubNode("ColorCorrection", AnimNodeType::ColorCorrection);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddDOF)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Depth of Field Node");
-                groupNode->CreateSubNode("DepthOfField", AnimNodeType::DepthOfField);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddShadowSetup)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Shadow Setup Node");
-                groupNode->CreateSubNode("ShadowsSetup", AnimNodeType::ShadowSetup);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddEnvironment)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Environment Node");
-                groupNode->CreateSubNode("Environment", AnimNodeType::Environment);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_AddDirectorNode)
+            case eMI_AddScreenfader:
+                CreateSubNodeAndRecordUndo("Add Track View Screen Fader Node", "ScreenFader", AnimNodeType::ScreenFader, groupNode);
+                break;
+            case eMI_AddRadialBlur:
+                CreateSubNodeAndRecordUndo("Add Track View Radial Blur Node", "RadialBlur", AnimNodeType::RadialBlur, groupNode);
+                break;
+            case eMI_AddColorCorrection:
+                CreateSubNodeAndRecordUndo("Add Track View Color Correction Node", "ColorCorrection", AnimNodeType::ColorCorrection, groupNode);
+                break;
+            case eMI_AddDOF:
+                CreateSubNodeAndRecordUndo("Add Track View Depth of Field Node", "DepthOfField", AnimNodeType::DepthOfField, groupNode);
+                break;
+            case eMI_AddShadowSetup:
+                CreateSubNodeAndRecordUndo("Add Track View Shadow Setup Node", "ShadowsSetup", AnimNodeType::ShadowSetup, groupNode);
+                break;
+            case eMI_AddEnvironment:
+                CreateSubNodeAndRecordUndo("Add Track View Environment Node", "Environment", AnimNodeType::Environment, groupNode);
+                break;
+            case eMI_AddTOD_Sun:
+                CreateSubNodeAndRecordUndo("Add Time of Day Sun", "Sun", AnimNodeType::TOD_Sun, groupNode);
+                break;
+            case eMI_AddTOD_Fog:
+                CreateSubNodeAndRecordUndo("Add Time of Day Fog", "Fog", AnimNodeType::TOD_Fog, groupNode);
+                break;
+            case eMI_AddTOD_VolumetricFog:
+                CreateSubNodeAndRecordUndo("Add Time of Day Volumetric Fog", "Volumetric Fog", AnimNodeType::TOD_VolumetricFog, groupNode);
+                break;
+            case eMI_AddTOD_SkyLight:
+                CreateSubNodeAndRecordUndo("Add Time of Day Sky Light", "Sky Light", AnimNodeType::TOD_SkyLight, groupNode);
+                break;
+            case eMI_AddTOD_NightSky:
+                CreateSubNodeAndRecordUndo("Add Time of Day Night Sky", "Night Sky", AnimNodeType::TOD_NightSky, groupNode);
+                break;
+            case eMI_AddTOD_NightSkyMultiplier:
+                CreateSubNodeAndRecordUndo("Add Time of Day Night Sky Multiplier", "Night Sky Multiplier", AnimNodeType::TOD_NightSkyMultiplier, groupNode);
+                break;
+            case eMI_AddTOD_CloudShading:
+                CreateSubNodeAndRecordUndo("Add Time of Day Cloud Shading", "Cloud Shading", AnimNodeType::TOD_CloudShading, groupNode);
+                break;
+            case eMI_AddTOD_SunRaysEffect:
+                CreateSubNodeAndRecordUndo("Add Time of Day Sun Rays Effect", "Sun Rays Effect", AnimNodeType::TOD_SunRaysEffect, groupNode);
+                break;
+            case eMI_AddTOD_AdvancedTOD:
+                CreateSubNodeAndRecordUndo("Add Time of Day Advanced", "Advanced", AnimNodeType::TOD_AdvancedTOD, groupNode);
+                break;
+            case eMI_AddTOD_Filters:
+                CreateSubNodeAndRecordUndo("Add Time of Day Filters", "Filters", AnimNodeType::TOD_Filters, groupNode);
+                break;
+            case eMI_AddTOD_DepthOfField:
+                CreateSubNodeAndRecordUndo("Add Time of Day Depth of Field", "Time of Day Depth of Field", AnimNodeType::TOD_DepthOfField, groupNode);
+                break;
+            case eMI_AddTOD_Shadows:
+                CreateSubNodeAndRecordUndo("Add Time of Day Shadows", "Time of Day Shadows", AnimNodeType::TOD_Shadows, groupNode);
+                break;
+            case eMI_AddTOD_Obsolete:
+                CreateSubNodeAndRecordUndo("Add Time of Day Obsolete", "Obsolete", AnimNodeType::TOD_Obsolete, groupNode);
+                break;
+            case eMI_AddTOD_HDR:
+                CreateSubNodeAndRecordUndo("Add Time of Day HDR", "HDR", AnimNodeType::TOD_HDR, groupNode);
+                break;
+            case eMI_AddDirectorNode:
             {
                 QString name = groupNode->GetAvailableNodeNameStartingWith("Director");
-                AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Director Node");
+                BroadcastUndoStart("Add Track View Director Node", trackedChangeMade);
                 groupNode->CreateSubNode(name, AnimNodeType::Director);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
+                break;
             }
-            else if (cmd == eMI_AddConsoleVariable)
+            case eMI_AddConsoleVariable:
             {
                 StringDlg dlg(tr("Console Variable Name"));
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
                     QString name = groupNode->GetAvailableNodeNameStartingWith(dlg.GetString());
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Console (CVar) Node");
+                    BroadcastUndoStart("Add Track View Console (CVar) Node", trackedChangeMade);
                     groupNode->CreateSubNode(name, AnimNodeType::CVar);
-                    undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
+                break;
             }
-            else if (cmd == eMI_AddScriptVariable)
+            case eMI_AddScriptVariable:
             {
                 StringDlg dlg(tr("Script Variable Name"));
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
                     QString name = groupNode->GetAvailableNodeNameStartingWith(dlg.GetString());
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Script Variable Node");
+                    BroadcastUndoStart("Add Track View Script Variable Node", trackedChangeMade);
                     groupNode->CreateSubNode(name, AnimNodeType::ScriptVar);
-                    undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
+                break;
             }
-            else if (cmd == eMI_AddMaterial)
+            case eMI_AddMaterial:
             {
                 StringDlg dlg(tr("Material Name"));
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
                     if (groupNode->GetAnimNodesByName(dlg.GetString().toUtf8().data()).GetCount() == 0)
                     {
-                        AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Material Node");
+                        BroadcastUndoStart("Add Track View Material Node", trackedChangeMade);
                         groupNode->CreateSubNode(dlg.GetString(), AnimNodeType::Material);
-                        undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
                     }
                 }
+                break;
             }
-            else if (cmd == eMI_AddEvent)
+            case eMI_AddEvent:
             {
                 StringDlg dlg(tr("Track Event Name"));
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Add Track View Event Node");
+                    BroadcastUndoStart("Add Track View Event Node", trackedChangeMade);
                     groupNode->CreateSubNode(dlg.GetString(), AnimNodeType::Event);
-                    undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
                 }
+                break;
             }
-            else if (cmd == eMI_PasteNodes)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Paste Track View Nodes");
+            case eMI_PasteNodes:
+                BroadcastUndoStart("Paste Track View Nodes", trackedChangeMade);
                 groupNode->PasteNodesFromClipboard(this);
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_CreateFolder)
-            {
-                CreateFolder(groupNode);
-            }
-            else if (cmd == eMI_ExpandFolders)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Expand Track View folders");
+                break;
+            case eMI_ExpandFolders:
+                BroadcastUndoStart("Expand Track View folders", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Group).ExpandAll();
                 groupNode->GetAnimNodesByType(AnimNodeType::Director).ExpandAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_CollapseFolders)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Collapse Track View folders");
+                break;
+            case eMI_CollapseFolders:
+                BroadcastUndoStart("Collapse Track View folders", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Group).CollapseAll();
                 groupNode->GetAnimNodesByType(AnimNodeType::Director).CollapseAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_ExpandEntities)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Expand Track View entities");
+                break;
+            case eMI_ExpandEntities:
+                BroadcastUndoStart("Expand Track View entities", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::AzEntity).ExpandAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_CollapseEntities)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Collapse Track View entities");
+                break;
+            case eMI_CollapseEntities:
+                BroadcastUndoStart("Collapse Track View entities", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::AzEntity).CollapseAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_ExpandCameras)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Expand Track View cameras");
+                break;
+            case eMI_ExpandCameras:
+                BroadcastUndoStart("Expand Track View cameras", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Camera).ExpandAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_CollapseCameras)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Collapse Track View cameras");
+                break;
+            case eMI_CollapseCameras:
+                BroadcastUndoStart("Collapse Track View cameras", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Camera).CollapseAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_ExpandMaterials)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Expand Track View materials");
+                break;
+            case eMI_ExpandMaterials:
+                BroadcastUndoStart("Expand Track View materials", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Material).ExpandAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_CollapseMaterials)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Collapse Track View materials");
+                break;
+            case eMI_CollapseMaterials:
+                BroadcastUndoStart("Collapse Track View materials", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Material).CollapseAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_ExpandEvents)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Expand Track View events");
+                break;
+            case eMI_ExpandEvents:
+                BroadcastUndoStart("Expand Track View events", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Event).ExpandAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
-            }
-            else if (cmd == eMI_CollapseEvents)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Collapse Track View events");
+                break;
+            case eMI_CollapseEvents:
+                BroadcastUndoStart("Collapse Track View events", trackedChangeMade);
                 groupNode->GetAnimNodesByType(AnimNodeType::Event).CollapseAll();
-                undoBatch.MarkEntityDirty(groupNode->GetSequence()->GetSequenceComponentEntityId());
+                break;
             }
-        }  
+
+            if (trackedChangeMade)
+            {
+                AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+                    groupNode->GetSequence()->GetSequenceComponentEntityId()
+                );
+            }
+        }
     }
 
     if (cmd == eMI_EditEvents)
@@ -1397,7 +1447,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                     {
                         QMessageBox::warning(
                             this,
-                            tr("New entity name is too long"), 
+                            tr("New entity name is too long"),
                             QString(tr("New entity name is over the maximum of %1.\n\nPlease reduce the length.")).arg(maxLenth)
                         );
                         return false;
@@ -1428,7 +1478,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
         if (animNode)
         {
             UINT_PTR menuId = cmd - eMI_AddTrackBase;
-            
+
             if (animNode->GetType() != AnimNodeType::AzEntity)
             {
                 // add track
@@ -1439,7 +1489,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                     animNode->CreateTrack(findIter->second);
                     undoBatch.MarkEntityDirty(animNode->GetSequence()->GetSequenceComponentEntityId());
                 }
-            }                   
+            }
         }
     }
     else if (cmd == eMI_RemoveTrack)
@@ -1837,6 +1887,7 @@ struct SContextMenu
     QMenu setLayerSub;
     STrackMenuTreeNode addTrackSub;
     QMenu addComponentSub;
+    QMenu TimeOfDay;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -1891,6 +1942,65 @@ void CTrackViewNodesCtrl::AddGroupNodeAddItems(SContextMenu& contextMenu, CTrack
     {
         contextMenu.main.addAction("Add Environment Node")->setData(eMI_AddEnvironment);
     }
+
+    contextMenu.TimeOfDay.setTitle("Time of day");
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_Sun).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Sun Node")->setData(eMI_AddTOD_Sun);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_Fog).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Fog Node")->setData(eMI_AddTOD_Fog);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_VolumetricFog).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Volumetric Fog Node")->setData(eMI_AddTOD_VolumetricFog);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_SkyLight).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Sky Light")->setData(eMI_AddTOD_SkyLight);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_NightSky).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Night Sky")->setData(eMI_AddTOD_NightSky);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_NightSkyMultiplier).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Night Sky Multiplier")->setData(eMI_AddTOD_NightSkyMultiplier);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_CloudShading).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Cloud Shading")->setData(eMI_AddTOD_CloudShading);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_SunRaysEffect).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Sun Rays Effect")->setData(eMI_AddTOD_SunRaysEffect);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_AdvancedTOD).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Advanced Time Of Day Effects")->setData(eMI_AddTOD_AdvancedTOD);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_Filters).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Filters Effect")->setData(eMI_AddTOD_Filters);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_DepthOfField).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Depth of Field")->setData(eMI_AddTOD_DepthOfField);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_Shadows).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Shadows")->setData(eMI_AddTOD_Shadows);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_Obsolete).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add Obsolete effects")->setData(eMI_AddTOD_Obsolete);
+    }
+    if (pDirector->GetAnimNodesByType(AnimNodeType::TOD_HDR).GetCount() == 0)
+    {
+        contextMenu.TimeOfDay.addAction("Add HDR")->setData(eMI_AddTOD_HDR);
+    }
+    contextMenu.main.addMenu(&contextMenu.TimeOfDay);
 
     // A director node cannot have another director node as a child.
     if (animNode->GetType() != AnimNodeType::Director)
@@ -2340,7 +2450,7 @@ bool CTrackViewNodesCtrl::FillAddTrackMenu(STrackMenuTreeNode& menuAddTrack, con
     int paramCount = 0;
     IAnimNode::AnimParamInfos animatableProperties;
     CTrackViewNode* parentNode = animNode->GetParentNode();
-   
+
     // all AZ::Entity entities are animated through components. Component nodes always have a parent - the containing AZ::Entity
     if (nodeType == AnimNodeType::Component && parentNode)
     {
@@ -2353,22 +2463,22 @@ bool CTrackViewNodesCtrl::FillAddTrackMenu(STrackMenuTreeNode& menuAddTrack, con
             const AZ::EntityId azEntityId = static_cast<CTrackViewAnimNode*>(parentNode)->GetAzEntityId();
 
             // query the animatable component properties from the Sequence Component
-            Maestro::EditorSequenceComponentRequestBus::Event(const_cast<CTrackViewAnimNode*>(animNode)->GetSequence()->GetSequenceComponentEntityId(), 
-                                                                    &Maestro::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent, 
+            Maestro::EditorSequenceComponentRequestBus::Event(const_cast<CTrackViewAnimNode*>(animNode)->GetSequence()->GetSequenceComponentEntityId(),
+                                                                    &Maestro::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent,
                                                                     animatableProperties, azEntityId, animNode->GetComponentId());
 
             // also add any properties handled in CryMovie
             animNode->AppendNonBehaviorAnimatableProperties(animatableProperties);
 
             paramCount = animatableProperties.size();
-        }       
+        }
     }
     else
     {
         // legacy Entity
-        paramCount = animNode->GetParamCount(); 
+        paramCount = animNode->GetParamCount();
     }
-    
+
     for (int i = 0; i < paramCount; ++i)
     {
         CAnimParamType paramType;
@@ -2431,9 +2541,9 @@ bool CTrackViewNodesCtrl::FillAddTrackMenu(STrackMenuTreeNode& menuAddTrack, con
             pParamNode->paramType = paramType;
 
             bTracksToAdd = true;
-        }  
+        }
     }
-    
+
     return bTracksToAdd;
 }
 
@@ -2633,10 +2743,10 @@ void CTrackViewNodesCtrl::Update()
             {
                 const CTrackViewAnimNode* track = static_cast<const CTrackViewAnimNode*>(node);
                 if (track)
-                { 
+                {
                     record->setText(0, track->GetName());
                 }
-            }            
+            }
         }
     }
 }
@@ -2772,7 +2882,7 @@ void CTrackViewNodesCtrl::ClearCustomTrackColor(CTrackViewTrack* pTrack)
     }
 
     AzToolsFramework::ScopedUndoBatch undoBatch("Clear Custom Track Color");
-    
+
     pTrack->ClearCustomColor();
     undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
 

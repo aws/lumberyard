@@ -268,6 +268,7 @@ class CShaderMan
     , public CShaderSerialize
 #endif
     , public Terrain::TerrainShaderRequestBus::Handler
+    , public AZ::MaterialNotificationEventBus::Handler
 {
     friend class CShader;
     friend class CParserBin;
@@ -277,6 +278,8 @@ class CShaderMan
     //////////////////////////////////////////////////////////////////////////
     virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
     //////////////////////////////////////////////////////////////////////////
+
+    void OnShaderLoaded(IShader* shader) override;
 
 private:
     CTexAnim* mfReadTexSequence(const char *name, int Flags, bool bFindOnly);
@@ -408,6 +411,8 @@ public:
     static SShaderItem s_DefaultShaderItem;
 #endif
 
+    AZStd::unordered_set<IShader*> m_systemShaders;
+
     const SInputShaderResources* m_pCurInputResources;
     SShaderGen* m_pGlobalExt;
     SShaderGen* m_staticExt;    // Shader gen info for static flags (Statics.ext)
@@ -507,6 +512,7 @@ public:
         m_nFrameSubmit = 1;
 
         Terrain::TerrainShaderRequestBus::Handler::BusConnect();
+        AZ::MaterialNotificationEventBus::Handler::BusConnect();
     }
 
     void ShutDown();
@@ -563,6 +569,7 @@ public:
                     return false;
                 }
                 CryComment("ok");
+                m_systemShaders.emplace(pSysShader);
                 return true;
             }
         }
@@ -614,6 +621,7 @@ public:
     void mfGatherFilesList(const char* szPath, std::vector<CCryNameR>& Names, int nLevel, bool bUseFilter, bool bMaterial = false);
     int  mfInitShadersList(std::vector<string>* ShaderNames);
     void mfSetDefaults(void);
+    void mfLoadSystemShader(const char* szName, CShader*& pStorage);
     void mfReleaseSystemShaders ();
     void mfLoadBasicSystemShaders ();
     void mfLoadDefaultSystemShaders ();

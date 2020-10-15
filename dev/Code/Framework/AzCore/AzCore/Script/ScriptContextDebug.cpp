@@ -936,7 +936,7 @@ ScriptContextDebug::ReadValue(DebugValue& value, VoidPtrArray& tablesVisited, bo
                 }
                 else
                 {
-                    subValue.m_name = OSString::format("[%d]", lua_tointeger(l, -2));
+                    subValue.m_name = OSString::format("[%td]", lua_tointeger(l, -2));
                 }
                 ReadValue(subValue, tablesVisited, isReadOnly);
                 lua_pop(l, 1);    // pop the value and leave the key for next iteration

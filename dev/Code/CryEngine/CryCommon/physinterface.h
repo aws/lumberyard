@@ -34,6 +34,9 @@
 // Physics defines.
 //////////////////////////////////////////////////////////////////////////
 
+// Assert if CryPhysics is disabled and still used
+#define ENABLE_CRY_PHYSICS_USAGE_ASSERT 0
+
 enum EPE_Params
 {
     ePE_params_pos = 0,
@@ -145,7 +148,9 @@ enum sim_class
 struct IGeometry;
 struct IPhysicalEntity;
 struct IGeomManager;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct IPhysRenderer;
 class ICrySizer;
 struct IDeferredPhysicsEvent;
@@ -3088,7 +3093,9 @@ struct IPhysicalEntity
     virtual int DoStep(float time_interval, int iCaller) = 0;
     virtual void StartStep(float time_interval) = 0; // must be called before DoStep
     virtual void StepBack(float time_interval) = 0;
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalWorld* GetWorld() const = 0;   // returns physical world this entity belongs to
+#endif // ENABLE_CRY_PHYSICS
 
     virtual void GetMemoryStatistics(ICrySizer* pSizer) const = 0;
     // </interfuscator:shuffle>
@@ -3681,6 +3688,7 @@ struct IPhysicalEntityIt
 };
 
 
+#if ENABLE_CRY_PHYSICS
 //-------------------------------------------------------------------------
 struct IPhysicalWorld
 {
@@ -3852,6 +3860,8 @@ struct IPhysicalWorld
     virtual int SetPhysicalEntityId(IPhysicalEntity* pent, int id, int bReplace = 1, int bThreadSafe = 0) = 0;
     virtual int GetPhysicalEntityId(IPhysicalEntity* pent) = 0;
     virtual IPhysicalEntity* GetPhysicalEntityById(int id) = 0;
+    virtual int IsPlaceholder(const IPhysicalEntity* pent) = 0;
+    virtual phys_job_info& GetJobProfileInst(int ijob) = 0;
 
     // SetSurfaceParameters: sets parameters for surface_idx (0..511 currently)
     // bounciness - restitution coefficient (for pair of surfaces k = sum of their coefficients, clamped to [0..1]
@@ -3861,6 +3871,9 @@ struct IPhysicalWorld
     virtual int GetSurfaceParameters(int surface_idx, float& bounciness, float& friction, unsigned int& flags) = 0;
     virtual int SetSurfaceParameters(int surface_idx, float bounciness, float friction, float damage_reduction, float ric_angle, float ric_dam_reduction, float ric_vel_reduction, unsigned int flags = 0) = 0;
     virtual int GetSurfaceParameters(int surface_idx, float& bounciness, float& friction, float& damage_reduction, float& ric_angle, float& ric_dam_reduction, float& ric_vel_reduction, unsigned int& flags) = 0;
+
+    virtual volatile threadID& IdThread() = 0;
+    virtual volatile threadID& IdPODThread() = 0;
 
     // TimeStep - the main world's function
     // flags - entity types to update (ent_..; ent_deleted to purge deletion physics-on-demand state monitoring)
@@ -3937,6 +3950,7 @@ struct IPhysicalWorld
     virtual float PrimitiveWorldIntersection(const SPWIParams& pp, WriteLockCond* pLockContacts = 0, const char* pNameTag = PWI_NAME_TAG) = 0;
     virtual void GetMemoryStatistics(ICrySizer* pSizer) = 0;
 
+    virtual IPhysicsStreamer* GetPhysicsStreamer() = 0;
     virtual void SetPhysicsStreamer(IPhysicsStreamer* pStreamer) = 0;   // sets the callbacks for on-demand creation
     virtual void SetPhysicsEventClient(IPhysicsEventClient* pEventClient) = 0; // obsolete
     virtual float GetLastEntityUpdateTime(IPhysicalEntity* pent) = 0;   // simulation class-based, not actually per-entity
@@ -3969,6 +3983,7 @@ struct IPhysicalWorld
     // GetNextArea: iterates through all registered areas, if prevarea==0 returns the global area
     virtual IPhysicalEntity* GetNextArea(IPhysicalEntity* pPrevArea = 0) = 0;
     virtual int CheckAreas(const Vec3& ptc, Vec3& gravity, pe_params_buoyancy* pb, int nMaxBuoys = 1, int iMedium = -1, const Vec3& vec = Vec3(ZERO), IPhysicalEntity* pent = 0, int iCaller = GetMaxPhysThreads()) = 0;    // checks areas for a given point (ptc)
+    virtual void SortThunks() = 0;
 
     virtual void SetWaterMat(int imat) = 0; // material to use for water hits in RWI with ent_water
     virtual int GetWaterMat() = 0;
@@ -4063,9 +4078,14 @@ struct IPhysicalWorld
 protected:
     static int GetMaxPhysThreads()
     {
+#if ENABLE_CRY_PHYSICS
         CRY_ASSERT(gEnv && gEnv->pPhysicalWorld);
         return gEnv->pPhysicalWorld->GetMaxThreads();
+#else
+        return 1;
+#endif // ENABLE_CRY_PHYSICS
     }
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_PHYSINTERFACE_H

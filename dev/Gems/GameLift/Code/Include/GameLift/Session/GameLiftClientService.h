@@ -115,7 +115,7 @@ namespace GridMate
         GameLiftClientServiceDesc m_serviceDesc;
         GameLiftStatus m_clientStatus;
         AZStd::shared_ptr<Aws::GameLift::GameLiftClient> m_clientSharedPtr;
-        Aws::GameLift::Model::ListBuildsOutcomeCallable m_listBuildsOutcomeCallable;
+        Aws::GameLift::Model::DescribeGameSessionsOutcomeCallable m_describeGameSessionsOutcomeCallable;
         Aws::SDKOptions m_optionsSdk;
 
     };

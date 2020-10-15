@@ -17,6 +17,8 @@
 #include "CryAction.h"
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
+
 
 const float InvalidRayWorldIntersectDistance = -1.0f;
 
@@ -51,7 +53,9 @@ CGroundEffect::~CGroundEffect()
 
     if (m_raycastID != 0)
     {
+#if ENABLE_CRY_PHYSICS
         CCryAction::GetCryAction()->GetPhysicQueues().GetRayCaster().Cancel(m_raycastID);
+#endif
         m_raycastID = 0;
     }
 }
@@ -132,6 +136,7 @@ void CGroundEffect::SetInteraction(const char* pName)
 
 void CGroundEffect::Update()
 {
+#if ENABLE_CRY_PHYSICS
     if (!m_stopped)
     {
         bool    prevActive = m_active;
@@ -142,7 +147,12 @@ void CGroundEffect::Update()
 
         Vec3    entityPos(m_pEntity->GetWorldPos());
 
-        float   refHeight = (m_flags & eGEF_AlignToGround) ? gEnv->p3DEngine->GetTerrainElevation(entityPos.x, entityPos.y) : 0.0f;
+        float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+            , entityPos.x, entityPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+        float   refHeight = (m_flags & eGEF_AlignToGround) ? elevation : 0.0f;
 
         if (m_flags & eGEF_AlignToOcean)
         {
@@ -291,6 +301,7 @@ void CGroundEffect::Update()
             gEnv->pRenderer->DrawLabel(pos + Vec3(0.0f, 0.0f, 0.0f), 1.25f, "height %.1f/%.1f, base size/count scale %.2f/%.2f", rayPos.z - m_rayWorldIntersectHeight, m_height, m_sizeScale, m_countScale);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CGroundEffect::Stop(bool stop)
@@ -303,6 +314,7 @@ void CGroundEffect::Stop(bool stop)
     m_stopped = stop;
 }
 
+#if ENABLE_CRY_PHYSICS
 void CGroundEffect::OnRayCastDataReceived(const QueuedRayID& rayID, const RayCastResult& result)
 {
     CRY_ASSERT_MESSAGE(rayID == m_raycastID, "CGroundEffect: Received raycast data with mismatching id");
@@ -317,6 +329,7 @@ void CGroundEffect::OnRayCastDataReceived(const QueuedRayID& rayID, const RayCas
 
     m_raycastID = 0;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CGroundEffect::SetSpawnParams(const SpawnParams& params)
 {

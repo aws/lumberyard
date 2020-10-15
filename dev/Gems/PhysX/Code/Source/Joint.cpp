@@ -180,6 +180,117 @@ namespace PhysX
         lineBufferOut.push_back(childAxis);
     }
 
+    const AZ::Crc32 FixedJoint::GetNativeType() const
+    {
+        return NativeTypeIdentifiers::FixedJoint;
+    }
+
+    const AZ::Crc32 HingeJoint::GetNativeType() const
+    {
+        return NativeTypeIdentifiers::HingeJoint;
+    }
+
+    const AZ::Crc32 BallJoint::GetNativeType() const
+    {
+        return NativeTypeIdentifiers::BallJoint;
+    }
+
+    void GenericJointConfiguration::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<GenericJointConfiguration>()
+                ->Version(2, &VersionConverter)
+                ->Field("Follower Local Transform", &GenericJointConfiguration::m_localTransformFromFollower)
+                ->Field("Maximum Force", &GenericJointConfiguration::m_forceMax)
+                ->Field("Maximum Torque", &GenericJointConfiguration::m_torqueMax)
+                ->Field("Lead Entity", &GenericJointConfiguration::m_leadEntity)
+                ->Field("Follower Entity", &GenericJointConfiguration::m_followerEntity)
+                ->Field("Flags", &GenericJointConfiguration::m_flags)
+                ;
+        }
+    }
+
+    bool GenericJointConfiguration::VersionConverter(
+        AZ::SerializeContext& context,
+        AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() <= 1)
+        {
+            // Convert bool breakable to GenericJointConfiguration::GenericJointFlag
+            const int breakableElementIndex = classElement.FindElement(AZ_CRC("Breakable", 0xb274ecd4));
+            if (breakableElementIndex >= 0)
+            {
+                bool breakable = false;
+                AZ::SerializeContext::DataElementNode& breakableNode = classElement.GetSubElement(breakableElementIndex);
+                breakableNode.GetData(breakable);
+                if (!breakableNode.GetData<bool>(breakable))
+                {
+                    return false;
+                }
+                classElement.RemoveElement(breakableElementIndex);
+                GenericJointConfiguration::GenericJointFlag flags = breakable ? GenericJointConfiguration::GenericJointFlag::Breakable : GenericJointConfiguration::GenericJointFlag::None;
+                classElement.AddElementWithData(context, "Flags", flags);
+            }
+        }
+
+        return true;
+    }
+
+    GenericJointConfiguration::GenericJointConfiguration(float forceMax,
+        float torqueMax,
+        AZ::Transform localTransformFromFollower,
+        AZ::EntityId leadEntity,
+        AZ::EntityId followerEntity,
+        GenericJointFlag flags)
+        : m_forceMax(forceMax)
+        , m_torqueMax(torqueMax)
+        , m_localTransformFromFollower(localTransformFromFollower)
+        , m_leadEntity(leadEntity)
+        , m_followerEntity(followerEntity)
+        , m_flags(flags)
+    {
+    }
+
+    bool GenericJointConfiguration::GetFlag(GenericJointFlag flag)
+    {
+        return static_cast<bool>(m_flags & flag);
+    }
+
+    void GenericJointLimitsConfiguration::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<GenericJointLimitsConfiguration>()
+                ->Version(1)
+                ->Field("First Limit", &GenericJointLimitsConfiguration::m_limitFirst)
+                ->Field("Second Limit", &GenericJointLimitsConfiguration::m_limitSecond)
+                ->Field("Tolerance", &GenericJointLimitsConfiguration::m_tolerance)
+                ->Field("Is Limited", &GenericJointLimitsConfiguration::m_isLimited)
+                ->Field("Is Soft Limit", &GenericJointLimitsConfiguration::m_isSoftLimit)
+                ->Field("Damping", &GenericJointLimitsConfiguration::m_damping)
+                ->Field("Spring", &GenericJointLimitsConfiguration::m_stiffness)
+                ;
+        }
+    }
+
+    GenericJointLimitsConfiguration::GenericJointLimitsConfiguration(float damping
+        , bool isLimited
+        , bool isSoftLimit
+        , float limitFirst
+        , float limitSecond
+        , float stiffness
+        , float tolerance)
+        : m_damping(damping)
+        , m_isLimited(isLimited)
+        , m_isSoftLimit(isSoftLimit)
+        , m_limitFirst(limitFirst)
+        , m_limitSecond(limitSecond)
+        , m_stiffness(stiffness)
+        , m_tolerance(tolerance)
+    {
+    }
+
     AZStd::vector<AZ::TypeId> JointUtils::GetSupportedJointTypes()
     {
         return AZStd::vector<AZ::TypeId>

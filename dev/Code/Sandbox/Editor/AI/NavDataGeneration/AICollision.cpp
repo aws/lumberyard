@@ -33,6 +33,7 @@ static EAICollisionEntities aiCollisionEntitiesTable[] =
     AICE_ALL_INLUDING_LIVING
 };
 
+#if ENABLE_CRY_PHYSICS
 //====================================================================
 // IntersectSweptSphere
 // hitPos is optional - may be faster if 0
@@ -126,6 +127,7 @@ bool OverlapCylinder(const Lineseg& lineseg, float radius, const std::vector<IPh
     }
     return false;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 // Passability parameters
 
@@ -169,6 +171,7 @@ struct STimeChecker
 };
 
 unsigned g_CheckWalkabilityCalls;
+#if ENABLE_CRY_PHYSICS
 //====================================================================
 // CheckWalkability
 //====================================================================
@@ -629,6 +632,7 @@ bool CheckWalkabilitySimple(/*Vec3 from, Vec3 to,*/ SWalkPosition fromPos, SWalk
 
     return true;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 //===================================================================

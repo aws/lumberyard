@@ -75,7 +75,6 @@ namespace UnitTest
             ON_CALL(m_data->m_mockSystem, GetI3DEngine()).WillByDefault(::testing::Return(&(m_data->m_mock3DEngine)));
 
             ON_CALL(m_data->m_mock3DEngine, GetWaterLevel()).WillByDefault(::testing::Return(0.0f));
-            ON_CALL(m_data->m_mock3DEngine, GetTerrainElevation(::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(0.0f));
 
 #ifdef LY_TERRAIN_EDITOR
             ON_CALL(m_data->m_mockEditor, GetHeightmap()).WillByDefault(::testing::Return((CHeightmap*)&(m_data->m_mockHeightmap)));

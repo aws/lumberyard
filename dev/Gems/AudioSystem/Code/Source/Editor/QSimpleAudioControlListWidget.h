@@ -36,10 +36,10 @@ namespace AudioControls
         void Refresh(bool reload = true);
 
         //
-        QTreeWidgetItem* GetItem(CID id, bool bLocalised);
+        QTreeWidgetItem* GetItem(CID id, bool bLocalized);
         TImplControlType GetControlType(QTreeWidgetItem* item);
         CID GetItemId(QTreeWidgetItem* item);
-        bool IsLocalised(QTreeWidgetItem* item);
+        bool IsLocalized(QTreeWidgetItem* item);
         ControlList GetSelectedIds();
         bool IsConnected(QTreeWidgetItem* item);
 
@@ -65,6 +65,6 @@ namespace AudioControls
         // Icons and colours
         QColor m_connectedColor;
         QColor m_disconnectedColor;
-        QColor m_localisedColor;
+        QColor m_localizedColor;
     };
 } // namespace AudioControls

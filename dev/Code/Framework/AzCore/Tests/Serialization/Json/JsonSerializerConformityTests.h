@@ -10,6 +10,8 @@
 *
 */
 
+#pragma once
+
 #include <iostream> // Used for pretty printing.
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/std/containers/vector.h>

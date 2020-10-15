@@ -178,12 +178,14 @@ namespace WhiteBox
         // find closest polygon bound
         for (const auto& polygonBound : whiteBoxIntersectionData.m_polygonBounds)
         {
+            int64_t pickedTriangleIndex;
             float polygonDistance = std::numeric_limits<float>::max();
-            const bool intersection =
-                IntersectRayPolygon(polygonBound.m_bound, localRayOrigin, localRayDirection, polygonDistance);
+            const bool intersection = IntersectRayPolygon(
+                polygonBound.m_bound, localRayOrigin, localRayDirection, polygonDistance, pickedTriangleIndex);
 
             if (intersection && polygonDistance < polygonIntersection.m_intersection.m_closestDistance)
             {
+                polygonIntersection.m_pickedFaceHandle = polygonBound.m_handle.m_faceHandles[pickedTriangleIndex];
                 polygonIntersection.m_closestPolygonWithHandle = polygonBound;
                 polygonIntersection.m_intersection.m_closestDistance = polygonDistance;
                 polygonIntersection.m_intersection.m_localIntersectionPoint =
@@ -265,10 +267,10 @@ namespace WhiteBox
 
         // handle mode switch
         {
-            auto normalMode = AZStd::get_if<AZStd::unique_ptr<DefaultMode>>(&m_modes);
+            auto defaultMode = AZStd::get_if<AZStd::unique_ptr<DefaultMode>>(&m_modes);
             auto edgeRestoreMode = AZStd::get_if<AZStd::unique_ptr<EdgeRestoreMode>>(&m_modes);
 
-            if (RestoreModifier(modifiers) && normalMode)
+            if (RestoreModifier(modifiers) && defaultMode)
             {
                 m_modes = AZStd::make_unique<EdgeRestoreMode>();
                 m_intersectionAndRenderData = {};
@@ -309,6 +311,16 @@ namespace WhiteBox
         m_intersectionAndRenderData = {};
     }
 
+    // combine user and mesh edge handles into a single collection
+    static Api::EdgeHandles BuildAllEdgeHandles(const Api::EdgeTypes edgeHandlesPair)
+    {
+        Api::EdgeHandles allEdgeHandles;
+        allEdgeHandles.reserve(edgeHandlesPair.m_mesh.size() + edgeHandlesPair.m_user.size());
+        allEdgeHandles.insert(allEdgeHandles.end(), edgeHandlesPair.m_mesh.cbegin(), edgeHandlesPair.m_mesh.cend());
+        allEdgeHandles.insert(allEdgeHandles.end(), edgeHandlesPair.m_user.cbegin(), edgeHandlesPair.m_user.cend());
+        return allEdgeHandles;
+    }
+
     void EditorWhiteBoxComponentMode::RecalculateWhiteBoxIntersectionData(const EdgeSelectionType edgeSelectionMode)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -332,14 +344,16 @@ namespace WhiteBox
                 PolygonBoundWithHandle{{triangles}, polygonHandle});
         }
 
-        const auto edgeHandles = [whiteBox, edgeSelectionMode]()
+        const auto edgeHandlesPair = Api::MeshUserEdgeHandles(*whiteBox);
+
+        const auto edgeHandles = [whiteBox, edgeSelectionMode, &edgeHandlesPair]()
         {
             switch (edgeSelectionMode)
             {
             case EdgeSelectionType::Polygon:
-                return Api::MeshPolygonEdgeHandles(*whiteBox);
+                return edgeHandlesPair.m_user;
             case EdgeSelectionType::All:
-                return Api::MeshEdgeHandles(*whiteBox);
+                return BuildAllEdgeHandles(edgeHandlesPair);
             default:
                 return Api::EdgeHandles{};
             }
@@ -354,7 +368,6 @@ namespace WhiteBox
         }
 
         // handle drawing 'user' and 'mesh' edges slightly differently
-        const auto edgeHandlesPair = Api::MeshUserEdgeHandles(*whiteBox);
         for (const auto edgeHandle : edgeHandlesPair.m_user)
         {
             const auto edge = Api::EdgeVertexPositions(*whiteBox, edgeHandle);

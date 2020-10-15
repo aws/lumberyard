@@ -19,6 +19,7 @@
 #include <GridMate/VoiceChat/VoiceChatServiceBus.h>
 
 #include <GridMate/Session/Session_Platform.h>
+#include <cinttypes>
 
 namespace GridMate
 {
@@ -1222,7 +1223,8 @@ GridSession::OnDriverError(Carrier* carrier, ConnectionID id, const DriverError&
     {
         return; // not for us
     }
-    string errorMsg = string::format("Carrier driver error ConnectionID: %d ErrorCode: 0x%08x", id, error.m_errorCode);
+    uintptr_t idInt = reinterpret_cast<uintptr_t>(static_cast<void*>(id));
+    string errorMsg = string::format("Carrier driver error ConnectionID: %" PRIuPTR "ErrorCode: 0x%08x", idInt, error.m_errorCode);
     EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionError, this, errorMsg);
     EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionError, this, errorMsg);
 
@@ -1249,7 +1251,8 @@ GridSession::OnSecurityError(Carrier* carrier, ConnectionID id, const SecurityEr
     {
         return; // not for us
     }
-    string errorMsg = string::format("Carrier security error ConnectionID: %d ErrorCode: 0x%08x", id, error.m_errorCode);
+    uintptr_t idInt = reinterpret_cast<uintptr_t>(static_cast<void*>(id));
+    string errorMsg = string::format("Carrier security error ConnectionID: %" PRIuPTR " ErrorCode: 0x%08x", idInt, error.m_errorCode);
     EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionError, this, errorMsg);
 }
 

@@ -6,6 +6,7 @@
             "Source/CameraEditorSystemComponent.h",
             "Source/CameraEditorSystemComponent.cpp",
             "Source/ViewportCameraSelectorWindow.h",
+            "Source/ViewportCameraSelectorWindow_Internals.h",
             "Source/ViewportCameraSelectorWindow.cpp"
         ]
     }

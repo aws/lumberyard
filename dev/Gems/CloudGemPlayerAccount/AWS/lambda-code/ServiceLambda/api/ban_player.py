@@ -10,35 +10,37 @@
 #
 
 import account_utils
-import errors
 import service
-import CloudCanvas
 from . import admin_accounts
+
 
 @service.api
 def post(request, request_data):
     account = get_player_account(request_data["id"])
-    if account == None:
-        return { "status": "player not found"}
+    if account is None:
+        return {"status": "player not found"}
 
     do_ban_operation(account['AccountId'], True)
-    return { "status": "BANNED" }
+    return {"status": "BANNED"}
+
 
 @service.api
 def delete(request, request_data):
     account = get_player_account(request_data["id"])
-    if account == None:
-        return { "status": "player not found"}
+    if account is None:
+        return {"status": "player not found"}
 
     do_ban_operation(account['AccountId'], False)
-    return { "status": "UNBANNED" }
+    return {"status": "UNBANNED"}
 
 
 def do_ban_operation(acc_id, ban):
-    update_player_account(acc_id, { "AccountBlacklisted": ban })
+    update_player_account(acc_id, {"AccountBlacklisted": ban})
+
 
 def get_player_account(cog_id):
     return account_utils.get_account_for_identity(cog_id)
+
 
 def update_player_account(acc_id, model):
     admin_accounts.put_account(acc_id, model, create_account=False)

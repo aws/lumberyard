@@ -28,7 +28,6 @@
 #if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
 extern "C"
 {
-    #pragma warning( disable : 4244 )   //Disable warning for libav
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
     #include <libswscale/swscale.h>

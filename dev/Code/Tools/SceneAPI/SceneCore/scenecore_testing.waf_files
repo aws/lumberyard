@@ -19,6 +19,11 @@
         [
             "Mocks/DataTypes/ManifestBase/MockISceneNodeSelectionList.h"
         ], 
+        "Mocks/DataTypes/Rules": 
+        [
+            "Mocks/DataTypes/Rules/MockIMeshAdvancedRule.h",
+            "Mocks/DataTypes/Rules/MockIOriginRule.h"
+        ],        
         "Mocks/Events":
         [
             "Mocks/Events/MockAssetImportRequest.h"
@@ -50,7 +55,8 @@
         ],
         "Tests/Containers/Utilities": 
         [
-            "Tests/Containers/Utilities/FiltersTests.cpp"
+            "Tests/Containers/Utilities/FiltersTests.cpp",
+            "Tests/Containers/Utilities/SceneGraphUtilitiesTests.cpp"
         ],
         "Tests/Utilities":
         [

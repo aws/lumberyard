@@ -53,9 +53,12 @@
 #include "Scripting/EditorRandomTimedSpawnerComponent.h"
 #include "Scripting/EditorSpawnerComponent.h"
 #include "Scripting/EditorTagComponent.h"
+#if ENABLE_CRY_PHYSICS
 #include "Scripting/EditorTriggerAreaComponent.h"
+#endif
 
 #include "Shape/EditorBoxShapeComponent.h"
+#include "Shape/EditorQuadShapeComponent.h"
 #include "Shape/EditorSphereShapeComponent.h"
 #include "Shape/EditorDiskShapeComponent.h"
 #include "Shape/EditorCylinderShapeComponent.h"
@@ -69,6 +72,13 @@
 
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 #include <AzToolsFramework/ToolsComponents/EditorSelectionAccentSystemComponent.h>
+#include <Builders/LevelBuilder/LevelBuilderComponent.h>
+#include <Builders/LuaBuilder/LuaBuilderComponent.h>
+#include <Builders/MaterialBuilder/MaterialBuilderComponent.h>
+#include <Builders/SliceBuilder/SliceBuilderComponent.h>
+#include <Builders/TranslationBuilder/TranslationBuilderComponent.h>
+#include "Builders/CopyDependencyBuilder/CopyDependencyBuilderComponent.h"
+#include <Builders/DependencyBuilder/DependencyBuilderComponent.h>
 
 namespace LmbrCentral
 {
@@ -85,7 +95,14 @@ namespace LmbrCentral
             EditorAudioRtpcComponent::CreateDescriptor(),
             EditorAudioSwitchComponent::CreateDescriptor(),
             EditorAudioTriggerComponent::CreateDescriptor(),
+#if ENABLE_CRY_PHYSICS
             EditorConstraintComponent::CreateDescriptor(),
+            EditorRigidPhysicsComponent::CreateDescriptor(),
+            EditorStaticPhysicsComponent::CreateDescriptor(),
+            EditorWindVolumeComponent::CreateDescriptor(),
+            EditorForceVolumeComponent::CreateDescriptor(),
+            EditorTriggerAreaComponent::CreateDescriptor(),
+#endif // ENABLE_CRY_PHYSICS
             EditorDecalComponent::CreateDescriptor(),
             EditorLensFlareComponent::CreateDescriptor(),
             EditorLightComponent::CreateDescriptor(),
@@ -99,17 +116,13 @@ namespace LmbrCentral
             EditorParticleComponent::CreateDescriptor(),
             EditorSimpleAnimationComponent::CreateDescriptor(),
             EditorTagComponent::CreateDescriptor(),
-            EditorTriggerAreaComponent::CreateDescriptor(),
             EditorMannequinScopeComponent::CreateDescriptor(),
             EditorMannequinComponent::CreateDescriptor(),
             EditorSphereShapeComponent::CreateDescriptor(),
             EditorDiskShapeComponent::CreateDescriptor(),
             EditorTubeShapeComponent::CreateDescriptor(),
-            EditorRigidPhysicsComponent::CreateDescriptor(),
-            EditorStaticPhysicsComponent::CreateDescriptor(),
-            EditorWindVolumeComponent::CreateDescriptor(),
-            EditorForceVolumeComponent::CreateDescriptor(),
             EditorBoxShapeComponent::CreateDescriptor(),
+            EditorQuadShapeComponent::CreateDescriptor(),
             EditorLookAtComponent::CreateDescriptor(),
             EditorCylinderShapeComponent::CreateDescriptor(),
             EditorCapsuleShapeComponent::CreateDescriptor(),
@@ -123,6 +136,14 @@ namespace LmbrCentral
             EditorRandomTimedSpawnerComponent::CreateDescriptor(),
             EditorGeometryCacheComponent::CreateDescriptor(),
             EditorSpawnerComponent::CreateDescriptor(),
+
+            CopyDependencyBuilder::CopyDependencyBuilderComponent::CreateDescriptor(),
+            DependencyBuilder::DependencyBuilderComponent::CreateDescriptor(),
+            LevelBuilder::LevelBuilderComponent::CreateDescriptor(),
+            MaterialBuilder::BuilderPluginComponent::CreateDescriptor(),
+            SliceBuilder::BuilderPluginComponent::CreateDescriptor(),
+            TranslationBuilder::BuilderPluginComponent::CreateDescriptor(),
+            LuaBuilder::BuilderPluginComponent::CreateDescriptor(),
             #ifdef METRICS_SYSTEM_COMPONENT_ENABLED
                 LyEditorMetrics::LyEditorMetricsSystemComponent::CreateDescriptor(),
             #endif // #ifdef METRICS_SYSTEM_COMPONENT_ENABLED

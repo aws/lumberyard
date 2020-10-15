@@ -23,7 +23,6 @@
 
 #include <IEntitySystem.h>
 #include <ICryAnimation.h>
-#include <IVehicleSystem.h>
 #include "ItemParams.h"
 #include "EquipmentManager.h"
 #include "CryActionCVars.h"

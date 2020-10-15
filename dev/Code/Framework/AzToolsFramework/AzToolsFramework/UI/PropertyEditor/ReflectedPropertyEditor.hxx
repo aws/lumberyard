@@ -91,8 +91,8 @@ namespace AzToolsFramework
         InstanceDataNode* GetNodeFromWidget(QWidget* pTarget) const;
         PropertyRowWidget* GetWidgetFromNode(InstanceDataNode* node) const;
 
-        void ExpandAll();
-        void CollapseAll();
+        void ExpandAll(bool saveExpansionState = true);
+        void CollapseAll(bool saveExpansionState = true);
 
         const WidgetList& GetWidgets() const;
 

@@ -170,6 +170,9 @@ namespace AZ
 
             /// Specifies which system components to create & activate. If no tags specified, all system components are used. Specify as comma separated list.
             const char* m_systemComponentTags = nullptr;
+
+            /// Used by test fixtures to ensure reflection occurs to edit context.
+            bool m_createEditContext = false;
         };
 
         ComponentApplication();

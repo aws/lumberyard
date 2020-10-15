@@ -39,6 +39,7 @@
 #include <QToolBar>
 #include <QComboBox>
 #include <QWidgetAction>
+#include <QTextDocumentFragment>
 
 static const char* SUBSTANCE_GEM_UUID = "a2f08ba9713f485a8485d7588e5b120f";
 static const char* SUBSTANCE_TOOLBAR_NAME = "Substance";
@@ -169,10 +170,61 @@ static QDataStream& operator>>(QDataStream& in, InternalAmazonToolbarList& list)
     return in;
 }
 
+class AmazonToolBarExpanderWatcher
+    : public QObject
+{
+public:
+    AmazonToolBarExpanderWatcher(QObject* parent = nullptr)
+        : QObject(parent)
+    {
+    }
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        switch (event->type())
+        {
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+            case QEvent::MouseButtonDblClick:
+            {
+                if (qobject_cast<QToolButton*>(obj))
+                {
+                    auto mouseEvent = static_cast<QMouseEvent*>(event);
+                    auto expansion = qobject_cast<QToolButton*>(obj);
+
+                    expansion->setPopupMode(QToolButton::InstantPopup);
+                    auto menu = new QMenu(expansion);
+
+                    auto toolbar = qobject_cast<QToolBar*>(expansion->parentWidget());
+
+                    for (auto toolbarAction : toolbar->actions())
+                    {
+                        auto actionWidget = toolbar->widgetForAction(toolbarAction);
+                        if (actionWidget && !actionWidget->isVisible())
+                        {
+                            QString plainText = QTextDocumentFragment::fromHtml(actionWidget->toolTip()).toPlainText();
+                            toolbarAction->setText(plainText);
+                            menu->addAction(toolbarAction);
+                        }
+                    }
+
+                    menu->exec(mouseEvent->globalPos());
+                    return true;
+                }
+
+                break;
+            }
+        }
+
+        return QObject::eventFilter(obj, event);
+    }
+};
+
 ToolbarManager::ToolbarManager(ActionManager* actionManager, MainWindow* mainWindow)
     : m_mainWindow(mainWindow)
     , m_actionManager(actionManager)
     , m_settings("amazon", "lumberyard")
+    , m_expanderWatcher(new AmazonToolBarExpanderWatcher())
 {
     // Note that we don't actually save/load from AmazonToolbar::List
     // The data saved for existing users had that name, and it can't be changed now without ignoring user's data.
@@ -184,6 +236,11 @@ ToolbarManager::ToolbarManager(ActionManager* actionManager, MainWindow* mainWin
 ToolbarManager::~ToolbarManager()
 {
     SaveToolbars();
+
+    if (m_expanderWatcher)
+    {
+        delete m_expanderWatcher;
+    }
 }
 
 EditableQToolBar* ToolbarManager::ToolbarParent(QObject* o) const
@@ -564,20 +621,19 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Editors", QObject::tr("Editors Toolbar"));
 
+#ifndef OTHER_ACTIVE
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
-        if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-        {
             t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-        }
     }
+#endif
 
     t.AddAction(ID_OPEN_AIDEBUGGER, ORIGINAL_TOOLBAR_VERSION);
 
     t.AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, ORIGINAL_TOOLBAR_VERSION);
 
-#ifdef LY_TERRAIN_EDITOR
-    if (!GetIEditor()->IsNewViewportInteractionModelEnabled() && gEnv->pRenderer->GetRenderType() != eRT_Other)
+#if defined(LY_TERRAIN_EDITOR) && !defined(OTHER_ACTIVE)
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         t.AddAction(ID_OPEN_TERRAIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
@@ -585,12 +641,10 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 #endif // #ifdef LY_TERRAIN_EDITOR
 
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-        t.AddAction(ID_GENERATORS_LIGHTING, ORIGINAL_TOOLBAR_VERSION);
-    }
-
+#ifndef OTHER_ACTIVE
+    t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+    t.AddAction(ID_GENERATORS_LIGHTING, ORIGINAL_TOOLBAR_VERSION);
+#endif
     t.AddAction(ID_OPEN_DATABASE, ORIGINAL_TOOLBAR_VERSION);
 
     return t;
@@ -811,6 +865,11 @@ ActionManager* ToolbarManager::GetActionManager() const
     return m_actionManager;
 }
 
+AmazonToolBarExpanderWatcher* ToolbarManager::GetExpanderWatcher() const
+{
+    return m_expanderWatcher;
+}
+
 bool ToolbarManager::DeleteAction(QAction* action, EditableQToolBar* toolbar)
 {
     if (!action)
@@ -991,7 +1050,7 @@ EditableQToolBar::EditableQToolBar(const QString& title, ToolbarManager* manager
 
     connect(this, &QToolBar::orientationChanged, this, [this](Qt::Orientation orientation)
     {
-        for (const auto widget : findChildren<QWidget*>())
+        for (const auto& widget : findChildren<QWidget*>())
             layout()->setAlignment(widget, orientation == Qt::Horizontal ? Qt::AlignVCenter : Qt::AlignHCenter);
     });
 }
@@ -1290,6 +1349,10 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     if (IsMainToolbar())
     {
         AzQtComponents::ToolBar::addMainToolBarStyle(m_toolbar);
+    }
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_toolbar))
+    {
+        expansion->installEventFilter(manager->GetExpanderWatcher());
     }
     mainWindow->addToolBar(m_toolbar);
 

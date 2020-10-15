@@ -67,7 +67,6 @@ namespace AssetBuilder
     {
         if (m_skipErrorsCount == 0)
         {
-            DumpTraceContext(stderr);
             CleanMessage(stderr, "E", message, true);
             std::fflush(stderr);
             ++m_totalErrorCount;
@@ -84,16 +83,12 @@ namespace AssetBuilder
     {
         if(m_skipErrorsCount == 0)
         {
-            char messageOutput[MaxMessageLength];
             char header[MaxMessageLength];
-
-            DumpTraceContext(stderr);
 
             azsnprintf(header, MaxMessageLength, "%s: Trace::Error\n>\t%s(%d): '%s'\n", window, fileName, line, func);
             CleanMessage(stderr, "E", header, false);
 
-            azsnprintf(messageOutput, MaxMessageLength, ">\t%s", message);
-            CleanMessage(stderr, "E", messageOutput, true);
+            CleanMessage(stderr, "E", message, true, ">\t");
 
             ++m_totalErrorCount;
         }
@@ -109,16 +104,12 @@ namespace AssetBuilder
     {
         if (m_skipWarningsCount == 0)
         {
-            char messageOutput[MaxMessageLength];
             char header[MaxMessageLength];
-
-            DumpTraceContext(stdout);
 
             azsnprintf(header, MaxMessageLength, "%s: Trace::Warning\n>\t%s(%d): '%s'\n", window, fileName, line, func);
             CleanMessage(stdout, "W", header, false);
 
-            azsnprintf(messageOutput, MaxMessageLength, ">\t%s", message);
-            CleanMessage(stdout, "W", messageOutput, true);
+            CleanMessage(stdout, "W", message, true, ">\t");
 
             ++m_totalWarningCount;
         }
@@ -133,7 +124,6 @@ namespace AssetBuilder
     bool TraceMessageHook::OnException(const char* message)
     {
         m_isInException = true;
-        DumpTraceContext(stderr);
         CleanMessage(stderr, "E", message, true);
         ++m_totalErrorCount;
         AZ::Debug::Trace::HandleExceptions(false);
@@ -166,7 +156,6 @@ bool TraceMessageHook::OnOutput(const char* /*window*/, const char* message)
     {
         if (m_skipPrintfsCount == 0)
         {
-            DumpTraceContext(stdout);
             CleanMessage(stdout, window, message, false);
         }
         else
@@ -212,7 +201,7 @@ bool TraceMessageHook::OnOutput(const char* /*window*/, const char* message)
         return m_totalErrorCount;
     }
 
-    void TraceMessageHook::DumpTraceContext(FILE* stream)
+    void TraceMessageHook::DumpTraceContext(FILE* stream) const
     {
         if (m_stacks)
         {
@@ -225,13 +214,13 @@ bool TraceMessageHook::OnOutput(const char* /*window*/, const char* message)
                 {
                     line.clear();
                     AzToolsFramework::Debug::TraceContextLogFormatter::PrintLine(line, *stack, i);
-                    CleanMessage(stream, "C", line.c_str(), false);
+                    CleanMessage(stream, "C", line.c_str(), false, nullptr, false);
                 }
             }
         }
     }
 
-    void TraceMessageHook::CleanMessage(FILE* stream, const char* prefix, const char* message, bool forceFlush)
+    void TraceMessageHook::CleanMessage(FILE* stream, const char* prefix, const char* message, bool forceFlush, const char* extraPrefix, bool includeTraceContext) const
     {
         if (message && message[0])
         {
@@ -246,9 +235,19 @@ bool TraceMessageHook::OnOutput(const char* /*window*/, const char* message)
 
             for (const AZStd::string& line : lines)
             {
+                if(includeTraceContext)
+                {
+                    DumpTraceContext(stream);
+                }
+
                 if (prefix && prefix[0])
                 {
                     fprintf(stream, "%s: ", prefix);
+                }
+
+                if(extraPrefix && extraPrefix[0])
+                {
+                    fprintf(stream, "%s", extraPrefix);
                 }
 
                 fprintf(stream, "%s\n", line.c_str());

@@ -63,5 +63,10 @@ void AssetEditorRequestsHandler::OpenAssetEditor(const AZ::Data::Asset<AZ::Data:
     auto& assetName = asset.GetHint();
     const char* paneName = assetName.c_str();
     auto&& pane = QtViewPaneManager::instance()->OpenPane(paneName, QtViewPane::OpenMode::RestoreLayout);
+}
 
+void AssetEditorRequestsHandler::OpenAssetEditorById(const AZ::Data::AssetId assetId)
+{
+    AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::Data::AssetData>(assetId, false);
+    OpenAssetEditor(asset);
 }

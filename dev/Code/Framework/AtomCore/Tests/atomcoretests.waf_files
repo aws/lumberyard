@@ -4,7 +4,6 @@
             "Math/FrustumTests.cpp",
             "ArrayView.cpp",
             "InstanceDatabase.cpp",
-            "JsonReaderTests.cpp",
             "JsonSerializationUtilsTests.cpp",
             "lru_cache.cpp",
             "Main.cpp",

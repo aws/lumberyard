@@ -161,7 +161,12 @@ def get_index(s3_client, bucket_id):
     return content
 
 def get_index_url(context, region):
-    return "https://{}.execute-api.{}.amazonaws.com/api/open-cloud-gem-portal".format(get_service_api_id(context), region)
+    if context.config.custom_domain_name:
+        service_url = 'https://{}/{}.api.{}'.format(context.config.custom_domain_name, region, get_service_api_id(context))
+    else:
+        service_url = 'https://{}.execute-api.{}.amazonaws.com/api'.format(get_service_api_id(context), region)
+
+    return "{}/open-cloud-gem-portal".format(service_url)
 
 def get_bootstrap(s3_client, bucket_id):
     content = get_index(s3_client, bucket_id)

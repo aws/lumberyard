@@ -86,7 +86,7 @@ namespace EMotionFX
             aznew EMotionFX::SimulatedObjectSelectionHandler()
         };
 
-        for (const auto handler : propertyHandlers)
+        for (const auto& handler : propertyHandlers)
         {
             AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, handler);
         }

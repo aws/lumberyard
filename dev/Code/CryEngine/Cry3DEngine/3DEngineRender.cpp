@@ -837,6 +837,7 @@ void C3DEngine::DebugDraw_UpdateDebugNode()
 {
 #ifndef _RELEASE
 
+#if ENABLE_CRY_PHYSICS
     ray_hit rayHit;
 
     // use cam, no need for firing pos/dir
@@ -883,6 +884,8 @@ void C3DEngine::DebugDraw_UpdateDebugNode()
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
+
 #endif //_RELEASE
 }
 
@@ -959,21 +962,17 @@ void C3DEngine::RenderInternal(const int nRenderFlags, const SRenderingPassInfo&
     assert(m_pPartManager);
 
 
-    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
-    {
-        GetRenderer()->EF_EndEf3D(
-            IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,
-            GetObjManager()->GetUpdateStreamingPrioriryRoundId(),
-            GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast(),
-            passInfo);
-    }
-    else
-    {
-        UpdatePreRender(passInfo);
-        RenderScene(nRenderFlags, passInfo);
-        UpdatePostRender(passInfo);
-    }
-
+#ifdef OTHER_ACTIVE
+    GetRenderer()->EF_EndEf3D(
+        IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,
+        GetObjManager()->GetUpdateStreamingPrioriryRoundId(),
+        GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast(),
+        passInfo);
+#else
+    UpdatePreRender(passInfo);
+    RenderScene(nRenderFlags, passInfo);
+    UpdatePostRender(passInfo);
+#endif
 }
 
 
@@ -2473,6 +2472,17 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 #endif
     GetRenderer()->SetState(GS_NODEPTHTEST);
 
+    fTextPosY = -10;
+    fTextStepY = 13;
+    fTextPosX = (float)GetRenderer()->GetOverlayWidth() - 5.0f;
+
+    const char* description = GetRenderer()->GetRenderDescription();
+    if (description && description[0] != 0)
+    {
+        DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, 1.5f, ColorF(1.0f, 1.0f, 0.5f, 1.0f),
+            "%s", description);
+    }
+
     // If stat averaging is on, compute blend amount for current stats.
     float fFPS = GetTimer()->GetFrameRate();
 
@@ -2487,10 +2497,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     float fBlendTime = GetTimer()->GetCurrTime();
     int iBlendMode = 0;
     float fBlendCur = GetTimer()->GetProfileFrameBlending(&fBlendTime, &iBlendMode);
-
-    fTextPosY = -10;
-    fTextStepY = 13;
-    fTextPosX = (float)GetRenderer()->GetOverlayWidth() - 5.0f;
 
     if (pDisplayInfo && pDisplayInfo->GetIVal() == 3)
     {
@@ -2596,6 +2602,9 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 
     const char* pRenderType(0);
 
+#ifdef OTHER_ACTIVE
+    pRenderType = "DX11";
+#else
     switch (gEnv->pRenderer->GetRenderType())
     {
     case eRT_OpenGL:
@@ -2616,9 +2625,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     case eRT_Metal:
         pRenderType = "Metal";
         break;
-    case eRT_Other:
-        pRenderType = "Other";
-        break;
     case eRT_Null:
         pRenderType = "Null";
         break;
@@ -2628,7 +2634,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         pRenderType = "Undefined";
         break;
     }
-
+#endif
     assert(gEnv->pSystem);
     bool bTextureStreamingEnabled = false;
     m_pRenderer->EF_Query(EFQ_TextureStreamingEnabled, bTextureStreamingEnabled);
@@ -3191,11 +3197,13 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         const float curPhysWaitTime = TICKS_TO_MS(gUpdateTimes[gUpdateTimeIdx].physWaitTime);
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, DISPLAY_INFO_SCALE_SMALL, curPhysTime > MAX_PHYS_TIME ? Col_Red : Col_White, "%3.1f ms   WaitPhys", curPhysWaitTime);
 
+#if ENABLE_CRY_PHYSICS
         IF (gEnv->pPhysicalWorld, 1)
         {
             const float curPLETime = TICKS_TO_MS(gEnv->pPhysicalWorld->GetPumpLoggedEventsTicks());
             DrawTextRightAligned(fTextPosX, fTextPosY += (fTextStepY - STEP_SMALL_DIFF), DISPLAY_INFO_SCALE_SMALL, curPLETime > MAX_PLE_TIME ? Col_Red : Col_White, "%3.1f ms    PhysEv", curPLETime);
         }
+#endif // ENABLE_CRY_PHYSICS
         float partTicks = 0;
 
         IParticleManager* pPartMan = gEnv->p3DEngine->GetParticleManager();

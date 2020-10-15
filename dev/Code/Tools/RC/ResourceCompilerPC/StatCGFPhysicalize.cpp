@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "StatCGFPhysicalize.h"
 #include "../../CryEngine/Cry3DEngine/MeshCompiler/MeshCompiler.h"
 #include "Util.h"
@@ -947,3 +949,4 @@ void CPhysicsInterface::RephysicalizeNode(CNodeCGF* pNode, CContentCGF* pCGF)
         GetGeomManager()->UnregisterGeometry(pPhysGeom);
     }
 }
+#endif // ENABLE_CRY_PHYSICS

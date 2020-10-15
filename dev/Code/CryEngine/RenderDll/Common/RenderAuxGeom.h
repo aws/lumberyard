@@ -66,6 +66,8 @@ public:
     virtual void DrawTriangles(const Vec3* v, uint32 numPoints, const vtx_idx* ind, uint32 numIndices, const ColorB& col);
     virtual void DrawTriangles(const Vec3* v, uint32 numPoints, const vtx_idx* ind, uint32 numIndices, const ColorB* col);
 
+    virtual void DrawQuad(float width, float height, const Matrix34& matWorld, const ColorB& col, bool drawShaded = true);
+
     virtual void DrawAABB(const AABB& aabb, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle);
     virtual void DrawAABBs(const AABB* aabbs, uint32 aabbCount, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle);
     virtual void DrawAABB(const AABB& aabb, const Matrix34& matWorld, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle);
@@ -108,6 +110,7 @@ public:
         eDOT_Cone,
         eDOT_Cylinder,
         eDOT_Disk,
+        eDOT_Quad,
     };
 
     struct SAuxDrawObjParams
@@ -540,6 +543,11 @@ inline CAuxGeomCB::EAuxDrawObjType CAuxGeomCB::GetAuxObjType(const SAuxGeomRende
         assert(eDOT_Disk == objType);
         return(eDOT_Disk);
     }
+    case eDOT_Quad:
+    {
+        assert(eDOT_Quad == objType);
+        return(eDOT_Quad);
+    }
     case eDOT_Cone:
     {
         assert(eDOT_Cone == objType);
@@ -596,6 +604,8 @@ public:
     virtual void DrawTriangles(const Vec3* v, uint32 numPoints, const ColorB* col) {}
     virtual void DrawTriangles(const Vec3* v, uint32 numPoints, const vtx_idx* ind, uint32 numIndices, const ColorB& col) {}
     virtual void DrawTriangles(const Vec3* v, uint32 numPoints, const vtx_idx* ind, uint32 numIndices, const ColorB* col) {}
+
+    virtual void DrawQuad(float width, float height, const Matrix34& matWorld, const ColorB& col, bool drawShaded = true) {}
 
     virtual void DrawAABB(const AABB& aabb, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle) {}
     virtual void DrawAABBs(const AABB* aabbs, uint32 aabbCount, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle) {}

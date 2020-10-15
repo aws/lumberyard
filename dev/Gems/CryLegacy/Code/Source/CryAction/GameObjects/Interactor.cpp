@@ -249,6 +249,7 @@ bool CInteractor::PerformDotFilteredProximityQuery(SQueryResult& r, float minDot
 
 bool CInteractor::PerformRayCastQuery(SQueryResult& r)
 {
+#if ENABLE_CRY_PHYSICS
     if (const ray_hit* pHit = m_pQuery->RaycastQuery())
     {
         EntityId targetId = m_pQuery->GetLookAtEntityId();
@@ -260,6 +261,9 @@ bool CInteractor::PerformRayCastQuery(SQueryResult& r)
             return PerformUsableTestAndCompleteIds(pTargetEntity, r);
         }
     }
+#else
+    AZ_UNUSED(r);
+#endif // ENABLE_CRY_PHYSICS
     return false;
 }
 
@@ -323,6 +327,7 @@ bool CInteractor::PerformMergedQuery(SQueryResult& r, float minDot)
 
     //1. - Raycast query
     EntityId lookAtEntityId = 0;
+#if ENABLE_CRY_PHYSICS
     if (const ray_hit* pHit = m_pQuery->RaycastQuery())
     {
         if (IEntity* pTargetEntity = m_pEntitySystem->GetEntity(m_pQuery->GetLookAtEntityId()))
@@ -339,6 +344,7 @@ bool CInteractor::PerformMergedQuery(SQueryResult& r, float minDot)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //2. - Proximity query
     SQueryResult tempQuery;

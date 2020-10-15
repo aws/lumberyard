@@ -105,7 +105,7 @@ namespace EMotionFX
         CommandSystem::AdjustTransition(m_transitionLeft,
             /*isDisabled*/AZStd::nullopt, /*sourceNode*/AZStd::nullopt, /*targetNode*/AZStd::nullopt,
             /*startOffsetX*/AZStd::nullopt, /*startOffsetY*/AZStd::nullopt, /*endOffsetX*/AZStd::nullopt, /*endOffsetY*/AZStd::nullopt,
-            attributesString,
+            attributesString, /*serializedMembers=*/AZStd::nullopt,
             &commandGroup);
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
@@ -176,7 +176,7 @@ namespace EMotionFX
         CommandSystem::AdjustTransition(m_transitionLeft,
             /*isDisabled*/AZStd::nullopt, /*sourceNode*/AZStd::nullopt, /*targetNode*/AZStd::nullopt,
             /*startOffsetX*/AZStd::nullopt, /*startOffsetY*/AZStd::nullopt, /*endOffsetX*/AZStd::nullopt, /*endOffsetY*/AZStd::nullopt,
-            attributesString,
+            attributesString, /*serializedMembers=*/AZStd::nullopt,
             &commandGroup);
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result))

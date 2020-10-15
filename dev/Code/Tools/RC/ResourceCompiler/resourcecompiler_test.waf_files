@@ -4,6 +4,7 @@
         "Tests":
         [
           "Tests/test_Main.cpp",
+          "Tests/ResourceCompilerTestHelper.h",
           "Tests/ZipEncryptorTests.cpp"
         ],
 		"PathHelpers/UnitTests":

@@ -17,6 +17,8 @@
 #define CRYINCLUDE_CRYPHYSICS_QUOTIENT_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 // warning: all comparisons assume quotent's y>=0, use fixsign() to ensure this is the case
 #define sgnnz_result_type(F) int
 #define isneg_result_type(F) int
@@ -219,5 +221,7 @@ ILINE quotient_tpl<ftype> fake_atan2(ftype y, ftype x)
 typedef quotient_tpl<float> quotientf;
 typedef quotient_tpl<real> quotient;
 typedef quotient_tpl<int> quotienti;
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_QUOTIENT_H

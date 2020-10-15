@@ -266,7 +266,16 @@ bool FromString(signed char& val, const char* s)            {   return ClampedIn
 string ToString(unsigned char const& val)                           { return ToString((unsigned long)(val)); }
 bool FromString(unsigned char& val, const char* s)      {   return ClampedIntFromString(val, s); }
 
+string ToString(const AZ::Uuid& val)
+{
+    return val.ToString<string>();
+}
 
+bool FromString(AZ::Uuid& val, const char* s)
+{
+    val = AZ::Uuid(s);
+    return true;
+}
 
 float NumToFromString(float val, int digits, bool floating, char buffer[], int buf_size)
 {
@@ -1388,3 +1397,84 @@ cstr CEnumDef::ToName(TValue value) const
 
 LegacyDynArray<CEnumDef::SElem>* CEnumDef::SInit::s_pElems = 0;
 
+void CEnumDefUuid::Init(Array<SElem> elems, char* enum_str)
+{
+    Elems = elems;
+    bRegular = false;
+    nPrefixLength = 0;
+
+    if (enum_str)
+    {
+        // Parse enum names from str
+        int i = 0;
+        while (cstr se = ParseNextEnum(enum_str))
+        {
+            Elems[i++].Name = se;
+        }
+    }
+
+    // Analyse names and values.
+    if (!elems.empty())
+    {
+        cstr sPrefix = "";
+        for (int i = 0; i < elems.size(); i++)
+        {
+            // Find common prefix.
+            cstr sElem = Elems[i].Name;
+            if (*sElem)
+            {
+                if (!*sPrefix)
+                {
+                    sPrefix = sElem;
+                    nPrefixLength = static_cast<uint>(strlen(sPrefix));
+                }
+                else
+                {
+                    uint p = 0;
+                    while (p < nPrefixLength && sElem[p] == sPrefix[p])
+                    {
+                        p++;
+                    }
+                    nPrefixLength = p;
+                }
+            }
+        }
+
+        // Ensure prefix is on underscore boundary.
+        while (nPrefixLength > 0 && sPrefix[nPrefixLength - 1] != '_')
+        {
+            nPrefixLength--;
+        }
+    }
+}
+
+bool CEnumDefUuid::MatchName(uint i, cstr str) const
+{
+    cstr name = Elems[i].Name;
+    if (*name && nPrefixLength)
+    {
+        if (azstricmp(name + nPrefixLength, str) == 0)
+        {
+            return true;
+        }
+    }
+    if (*name == '_')
+    {
+        name++;
+    }
+    return azstricmp(name, str) == 0;
+}
+
+cstr CEnumDefUuid::ToName(AZ::Uuid value) const
+{
+    // Find matching element.
+    for (int i = 0; i < Elems.size(); ++i)
+    {
+        if (Elems[i].Value == value)
+        {
+            return Elems[i].Name;
+        }
+    }
+    // No match
+    return 0;
+}

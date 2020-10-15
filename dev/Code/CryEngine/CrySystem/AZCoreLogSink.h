@@ -16,8 +16,14 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/Console/IConsole.h>
 
 #include <CryAssert.h>
+
+namespace AZ
+{
+    AZ_CVAR_EXTERNED(int, bg_traceLogLevel);
+}
 
 /**
  * Hook Trace bus so we can funnel AZ asserts, warnings, etc to CryEngine.
@@ -49,7 +55,21 @@ public:
 
     static bool IsCryLogReady()
     {
-        return gEnv && gEnv->pSystem && gEnv->pLog;
+        static bool hasSetCVar = false;
+        bool ready = gEnv && gEnv->pSystem && gEnv->pLog;
+
+#ifdef _RELEASE
+        if(!hasSetCVar && ready)
+        {
+            // AZ logging only has a concept of 3 levels (error, warning, info) but cry logging has 4 levels (..., messaging).  If info level is set, we'll turn on messaging as well
+            int logLevel = AZ::bg_traceLogLevel == AZ::Debug::LogLevel::Info ? 4 : AZ::bg_traceLogLevel;
+
+            gEnv->pConsole->GetCVar("log_WriteToFileVerbosity")->Set(logLevel);
+            hasSetCVar = true;
+        }
+#endif
+
+        return ready;
     }
 
     bool OnPreAssert(const char* fileName, int line, const char* func, const char* message) override

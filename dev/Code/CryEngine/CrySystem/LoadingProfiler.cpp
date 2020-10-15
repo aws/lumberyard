@@ -299,7 +299,10 @@ void CLoadingProfilerSystem::Init()
 //////////////////////////////////////////////////////////////////////////
 void CLoadingProfilerSystem::ShutDown()
 {
-    gEnv->pSystem->GetISystemEventDispatcher()->RemoveListener(&g_system_event_listener_loadingProfiler);
+    if (gEnv && gEnv->pSystem && gEnv->pSystem->GetISystemEventDispatcher())
+    {
+        gEnv->pSystem->GetISystemEventDispatcher()->RemoveListener(&g_system_event_listener_loadingProfiler);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

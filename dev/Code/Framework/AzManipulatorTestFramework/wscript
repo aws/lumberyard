@@ -1,0 +1,54 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    
+
+    bld.CryEngineStaticLibrary(
+        target              = 'AzManipulatorTestFramework',
+        vs_filter           = 'AZ Framework',
+        file_list           = ['azmanipulatortestframework.waf_files'],
+        platforms           = ['all'],
+        configurations      = ['all'],
+        disable_pch         = True,
+        use                 = ['AzFramework', 'AzToolsFramework', 'AzCore'],
+        includes            = ['Include'],
+        export_includes     = ['Include'],
+        test_only           = True,
+        # Compiler Specific
+        msvc_cxxflags       = ['/W4'],
+
+        # Platform Specific
+        #win_features        = ['crcfix'],
+    )
+
+    bld.CryEngineSharedLibrary(
+
+       # Platform Specific
+       win_features        = ['crcfix'],
+       # Settings
+       target              = 'AzManipulatorTestFrameworkTests',
+       vs_filter           = 'AZ Framework/TestSuites',
+       file_list           = 'azmanipulatortestframework_tests.waf_files',
+       platforms           = ['all'],
+       configurations      = ['all'],
+       disable_pch         = True,
+       use                 = ['AzFramework', 'AzToolsFramework', 'AzManipulatorTestFramework'],
+       test_use            = ['AzToolsFrameworkTestCommon'],
+       export_includes     = ['..'],
+       test_only           = True,
+       # Test Specific
+       #test_use           = ['AzTest'],
+       #test_file_list     = ['azmanipulatortestframework_tests.waf_files'],
+       test_includes       = ['Tests'],
+    )

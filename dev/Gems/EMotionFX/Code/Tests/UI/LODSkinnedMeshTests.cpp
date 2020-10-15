@@ -131,7 +131,7 @@ namespace EMotionFX
         AZStd::string result;
         EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommand(AZStd::string{ "Select -actorInstanceID " } +AZStd::to_string(actorInstance->GetID()), result)) << result.c_str();
 
-        QTreeWidget* treeWidget = nodeWindow->GetDockWidget()->findChild<EMStudio::NodeHierarchyWidget*>("EMFX.NodeWindowPlugin.NodeHierarchyWidget.HierArchyWidget")->GetTreeWidget();
+        QTreeWidget* treeWidget = nodeWindow->GetDockWidget()->findChild<EMStudio::NodeHierarchyWidget*>("EMFX.NodeWindowPlugin.NodeHierarchyWidget.HierarchyWidget")->GetTreeWidget();
         EXPECT_TRUE(treeWidget);
 
         // Select the node containing the mesh

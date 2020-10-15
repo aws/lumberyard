@@ -119,6 +119,11 @@ namespace ScriptCanvasEditor
         return m_sourceAssetId;
     }
 
+    const AZ::Data::AssetId& FunctionPaletteTreeItem::GetRuntimeAssetId() const
+    {
+        return m_runtimeAssetId;
+    }
+
     void FunctionPaletteTreeItem::OnHoverStateChanged()
     {
         SignalDataChanged();

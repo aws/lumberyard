@@ -228,3 +228,7 @@ struct TriangleIndex
 #   define INCLUDE_SAVECGF
 #endif
 
+
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#endif

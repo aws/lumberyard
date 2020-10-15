@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 
 vector2df g_BoolPtBufThread[MAX_PHYS_THREADS + 1][4096];
@@ -435,3 +437,5 @@ int boolean2d(booltype type, vector2df* ptbuf1, int npt1, vector2df* ptbuf2, int
 
     return nptres;
 }
+
+#endif // ENABLE_CRY_PHYSICS

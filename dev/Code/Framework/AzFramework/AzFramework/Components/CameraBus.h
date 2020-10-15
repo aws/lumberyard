@@ -12,9 +12,19 @@
 #pragma once
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Math/Transform.h>
 
 namespace Camera
 {
+    struct Configuration
+    {
+        float m_fovRadians = 0.f;
+        float m_nearClipDistance = 0.f;
+        float m_farClipDistance = 0.f;
+        float m_frustumWidth = 0.f;
+        float m_frustumHeight = 0.f;
+    };
+
     /** 
      * Use this bus to send messages to a camera component on an entity
      * If you create your own camera you should implement this bus
@@ -122,6 +132,18 @@ namespace Camera
         * Makes the camera the active view
         */
         virtual void MakeActiveView() = 0;
+
+        virtual Configuration GetConfiguration() 
+        {
+            return Configuration
+            {
+                GetFovRadians(),
+                GetNearClipDistance(),
+                GetFarClipDistance(),
+                GetFrustumWidth(),
+                GetFrustumHeight()
+            };
+        }
     };
     using CameraRequestBus = AZ::EBus<CameraComponentRequests>;
 
@@ -159,6 +181,22 @@ namespace Camera
         virtual AZ::EntityId GetActiveCamera() = 0;
     };
     using CameraSystemRequestBus = AZ::EBus<CameraSystemRequests>;
+
+    //! This system broadcast offer the active camera information
+    //! even when the camera is not attached to an entity.
+    class ActiveCameraRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~ActiveCameraRequests() = default;
+
+        //! This returns the transform of the active view
+        virtual const AZ::Transform& GetActiveCameraTransform() = 0;
+
+        //! This returns the configuration of the active camera.
+        virtual const Configuration& GetActiveCameraConfiguration() = 0;
+    };
+    using ActiveCameraRequestBus = AZ::EBus<ActiveCameraRequests>;
 
     /**
     * Handle this bus if you want to know when cameras are added or removed during edit or run time

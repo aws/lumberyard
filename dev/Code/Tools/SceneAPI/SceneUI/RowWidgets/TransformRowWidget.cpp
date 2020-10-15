@@ -16,6 +16,7 @@
 #include <SceneAPI/SceneUI/RowWidgets/TransformRowWidget.h>
 #include <AzQtComponents/Components/Widgets/VectorInput.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyRowWidget.hxx>
 
 namespace AZ
 {
@@ -105,8 +106,16 @@ namespace AZ
             TransformRowWidget::TransformRowWidget(QWidget* parent)
                 : QWidget(parent)
             {
+                QWidget* hider = new QWidget();
                 QGridLayout* layout = new QGridLayout();
+                layout->setMargin(0);
+                QGridLayout* layout2 = new QGridLayout();
                 setLayout(layout);
+                AzToolsFramework::PropertyRowWidget* parentWidget = reinterpret_cast<AzToolsFramework::PropertyRowWidget*>(parent);
+                QToolButton* toolButton = parentWidget->GetIndicatorButton();
+                QVBoxLayout* layoutOriginal = parentWidget->GetLeftHandSideLayoutParent();
+                parentWidget->SetAsCustom(true);
+                parentWidget->GetNameLabel()->setContentsMargins(0, 0, 0, 0);
 
                 m_translationWidget = new AzQtComponents::VectorInput(this, 3);
                 m_translationWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -127,12 +136,38 @@ namespace AZ
                 m_scaleWidget->setMinimum(0);
                 m_scaleWidget->setMaximum(10000);
                 
-                layout->addWidget(new QLabel("Position"), 0, 0);
-                layout->addWidget(m_translationWidget, 0, 1);
-                layout->addWidget(new QLabel("Rotation"), 1, 0);
-                layout->addWidget(m_rotationWidget, 1, 1);
-                layout->addWidget(new QLabel("Scale"), 2, 0);
-                layout->addWidget(m_scaleWidget, 2, 1);
+                layout2->addWidget(new  AzQtComponents::ElidingLabel("Position"), 0, 1);
+                layout->addWidget(m_translationWidget, 1, 1);
+                layout2->addWidget(new  AzQtComponents::ElidingLabel("Rotation"), 1, 1);
+                layout->addWidget(m_rotationWidget, 2, 1);
+                layout2->addWidget(new  AzQtComponents::ElidingLabel("Scale"), 2, 1);
+                layout->addWidget(m_scaleWidget, 3, 1);
+                layout->setRowMinimumHeight(0,16);
+                layout2->setColumnMinimumWidth(0, 30);
+
+                toolButton->setArrowType(Qt::DownArrow);
+                parentWidget->SetIndentSize(1);
+                toolButton->setVisible(true);
+
+                hider->setLayout(layout2);
+                layoutOriginal->addWidget(hider);
+
+                connect(toolButton, &QToolButton::clicked, this, [this, hider, parentWidget, toolButton]
+                {
+                    m_expanded = !m_expanded;
+                    if (m_expanded)
+                    {
+                        this->show();
+                        hider->show();
+                        toolButton->setArrowType(Qt::DownArrow);
+                    }
+                    else
+                    {
+                        this->hide();
+                        hider->hide();
+                        toolButton->setArrowType(Qt::RightArrow);
+                    }
+                });
 
                 QObject::connect(m_translationWidget, &AzQtComponents::VectorInput::valueChanged, this, [this]
                 {

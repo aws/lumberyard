@@ -31,6 +31,7 @@ def build(bld):
             darwin_disable_tests    = True,
             disable_pch             = True,
             use                     = ['EditorCommon'],
+            test_use                = ['AzToolsFrameworkTestCommon'],
             uselib                  = ['OPENMESH'],
             defines                 = ['WHITE_BOX_EDITOR'],
             win_features            = ['crcfix'],

@@ -149,8 +149,10 @@ public:
     virtual void SendEventToAll(SEntityEvent& event);
     virtual int QueryProximity(SEntityProximityQuery& query);
     virtual void ResizeProximityGrid(int nWidth, int nHeight);
+#if ENABLE_CRY_PHYSICS
     virtual int GetPhysicalEntitiesInBox(const Vec3& origin, float radius, IPhysicalEntity**& pList, int physFlags) const;
     virtual IEntity* GetEntityFromPhysics(IPhysicalEntity* pPhysEntity) const;
+#endif
     virtual void AddSink(IEntitySystemSink* pSink, uint32 subscriptions, uint64 onEventSubscriptions);
     virtual void RemoveSink(IEntitySystemSink* pSink);
     virtual void PauseTimers(bool bPause, bool bResume = false);
@@ -204,8 +206,10 @@ public:
     virtual void EnableLayer(const char* layer, bool isEnable, bool isSerialized = true);
     virtual bool IsLayerEnabled(const char* layer, bool bMustBeLoaded) const;
     virtual bool ShouldSerializedEntity(IEntity* pEntity);
+#if ENABLE_CRY_PHYSICS
     virtual void RegisterPhysicCallbacks();
     virtual void UnregisterPhysicCallbacks();
+#endif
     CEntityLayer* FindLayer(const char* layer);
 
     // ------------------------------------------------------------------------
@@ -253,8 +257,10 @@ public:
     // Access to area manager.
     IAreaManager* GetAreaManager() const { return (IAreaManager*)(m_pAreaManager); }
 
+#if ENABLE_CRY_PHYSICS
     // Access to breakable manager.
     virtual IBreakableManager* GetBreakableManager() const { return m_pBreakableManager; };
+#endif
 
     // Access to entity pool manager.
     virtual IEntityPoolManager* GetIEntityPoolManager() const { return (IEntityPoolManager*)m_pEntityPoolManager; }
@@ -383,7 +389,9 @@ private: // -----------------------------------------------------------------
     CEntityClassRegistry*                  m_pClassRegistry;
 
     CComponentFactoryRegistry*              m_pComponentFactoryRegistry;
+#if ENABLE_CRY_PHYSICS
     CPhysicsEventListener*                 m_pPhysicsEventListener;
+#endif
 
     CAreaManager*                                  m_pAreaManager;
 
@@ -398,7 +406,10 @@ private: // -----------------------------------------------------------------
     EntityGuidMap m_guidMap;
     EntityGuidMap m_genIdMap;
 
+#if ENABLE_CRY_PHYSICS
     IBreakableManager* m_pBreakableManager;
+#endif
+
     CEntityArchetypeManager* m_pEntityArchetypeManager;
     CGeomCacheAttachmentManager* m_pGeomCacheAttachmentManager;
     CCharacterBoneAttachmentManager* m_pCharacterBoneAttachmentManager;

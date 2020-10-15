@@ -11,6 +11,7 @@
 */
 #include <AzCore/Android/Utils.h>
 #include <AzCore/Android/AndroidEnv.h>
+#include <AzCore/Android/APKFileHandler.h>
 #include <AzCore/Android/JNI/Object.h>
 
 #include <AzCore/Debug/Trace.h>
@@ -189,6 +190,12 @@ namespace AZ
                     return (widthPixels > 0 && heightPixels > 0);
                 }
                 return false;
+            }
+
+            ////////////////////////////////////////////////////////////////
+            void SetLoadFilesToMemory(const char* fileNames)
+            {
+                APKFileHandler::SetLoadFilesToMemory(fileNames);
             }
         }
     }

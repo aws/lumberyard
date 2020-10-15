@@ -158,7 +158,6 @@ namespace UnitTest
         AZ_TEST_VALIDATE_DEQUE(int_deque1, 29);
         AZ_TEST_ASSERT(int_deque1[3] == 1);
 
-#ifdef AZ_HAS_INITIALIZERS_LIST
         int_deque1.insert(int_deque1.begin(), { 42 });
         AZ_TEST_VALIDATE_DEQUE(int_deque1, 30);
         AZ_TEST_ASSERT(int_deque1.front() == 42);
@@ -174,7 +173,6 @@ namespace UnitTest
         AZ_TEST_VALIDATE_DEQUE(int_deque1, 37);
         int_deque1.erase(int_deque1.begin(), int_deque1.begin() + 8);
         AZ_TEST_VALIDATE_DEQUE(int_deque1, 29);
-#endif // #ifdef AZ_HAS_INITIALIZERS_LIST
 
         int_deque1.erase(int_deque1.begin());
         AZ_TEST_VALIDATE_DEQUE(int_deque1, 28);

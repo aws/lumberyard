@@ -78,10 +78,12 @@ void CCharInstance::Render(const struct SRendParams& RendParams, const QuatTS& O
 
     Matrix33 orientation;
     orientation = Matrix33(*RendParams.pMatrix);
+#if ENABLE_CRY_PHYSICS
     if (m_SkeletonPose.m_physics.m_bPhysicsRelinquished)
     {
         orientation = Matrix33(m_location.q);
     }
+#endif
 
     Matrix34 RenderMat34(orientation, position);
 
@@ -139,12 +141,14 @@ void CCharInstance::Render(const struct SRendParams& RendParams, const QuatTS& O
     }
     else
     {
+#if ENABLE_CRY_PHYSICS
         pe_params_flags pf;
         IPhysicalEntity* pCharPhys = m_SkeletonPose.GetCharacterPhysics();
         if (pCharPhys && pCharPhys->GetType() == PE_ARTICULATED && pCharPhys->GetParams(&pf) && pf.flags & aef_recorded_physics)
         {
             RenderMat34 = RenderMat34 * Matrix34(Offset);
         }
+#endif
         RenderCHR (RendParams, RenderMat34, passInfo);
     }
 

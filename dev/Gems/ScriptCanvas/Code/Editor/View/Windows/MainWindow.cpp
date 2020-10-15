@@ -247,7 +247,8 @@ namespace ScriptCanvasEditor
                     AZ::Data::AssetId assetId = tabBar->FindAssetId(i);
 
                     const Tracker::ScriptCanvasFileState& fileState = m_mainWindow->GetAssetFileState(assetId);
-                    if (fileState != Tracker::ScriptCanvasFileState::INVALID && fileState != Tracker::ScriptCanvasFileState::NEW)
+
+                    if (fileState == Tracker::ScriptCanvasFileState::MODIFIED || fileState == Tracker::ScriptCanvasFileState::UNMODIFIED)
                     {
                         AZ::Data::AssetId sourceId = GetSourceAssetId(assetId);
                         if (sourceId.IsValid())
@@ -339,10 +340,7 @@ namespace ScriptCanvasEditor
                     {
                         if (fileAssetId == m_queuedAssetFocus)
                         {
-                            if (!m_loadingAssets.empty())
-                            {
-                                m_queuedAssetFocus = m_loadingAssets.front();
-                            }
+                            m_queuedAssetFocus = AZ::Data::AssetId();
                         }
 
                         SignalAssetComplete(fileAssetId);
@@ -418,7 +416,7 @@ namespace ScriptCanvasEditor
         , m_allowAutoSave(true) 
         , m_systemTickActions(0)
         , m_closeCurrentGraphAfterSave(false)
-        , m_batchConverter(nullptr)
+        , m_batchTool(nullptr)
         , m_styleManager(ScriptCanvasEditor::AssetEditorId, "ScriptCanvas/StyleSheet/graphcanvas_style.json")
     {
         VariablePaletteRequestBus::Handler::BusConnect();
@@ -567,9 +565,10 @@ namespace ScriptCanvasEditor
             connect(m_tabBar, &QTabBar::tabCloseRequested, this, &MainWindow::OnTabCloseButtonPressed);
             connect(m_tabBar, &Widget::GraphTabBar::TabCloseNoButton, this, &MainWindow::OnTabCloseRequest);
             connect(m_tabBar, &Widget::GraphTabBar::SaveTab, this, &MainWindow::SaveTab);
-            connect(m_tabBar, &Widget::GraphTabBar::CloseAllTabs, this, &MainWindow::CloseAllTabs);
-            connect(m_tabBar, &Widget::GraphTabBar::CloseAllTabsBut, this, &MainWindow::CloseAllTabsBut);
+            connect(m_tabBar, &Widget::GraphTabBar::CloseAllTabsSignal, this, &MainWindow::CloseAllTabs);
+            connect(m_tabBar, &Widget::GraphTabBar::CloseAllTabsButSignal, this, &MainWindow::CloseAllTabsBut);
             connect(m_tabBar, &Widget::GraphTabBar::CopyPathToClipboard, this, &MainWindow::CopyPathToClipboard);
+            connect(m_tabBar, &Widget::GraphTabBar::OnActiveFileStateChanged, this, &MainWindow::OnActiveFileStateChanged);
 
             AzQtComponents::TabWidget::applySecondaryStyle(m_tabWidget, false);
             m_tabWidget->setObjectName("ScriptCanvasTabs");
@@ -719,12 +718,12 @@ namespace ScriptCanvasEditor
 
         Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendMetric, ScriptCanvasEditor::Metrics::Events::Editor::Close);
 
-        delete m_batchConverter;
+        delete m_batchTool;
         delete m_nodePalette;
 
         delete m_unitTestDockWidget;
         delete m_statisticsDialog;
-        delete m_presetEditor;        
+        delete m_presetEditor;
 
         delete m_workspace;
 
@@ -976,7 +975,8 @@ namespace ScriptCanvasEditor
                 
                 return;
             }
-            else if (shouldSaveResults == UnsavedChangesOptions::CONTINUE_WITHOUT_SAVING && fileState == Tracker::ScriptCanvasFileState::NEW)
+            else if (shouldSaveResults == UnsavedChangesOptions::CONTINUE_WITHOUT_SAVING &&
+                    (fileState == Tracker::ScriptCanvasFileState::NEW || fileState == Tracker::ScriptCanvasFileState::SOURCE_REMOVED))
             {
                 CloseScriptCanvasAsset(assetId);
                 --tabCounter;
@@ -1103,9 +1103,7 @@ namespace ScriptCanvasEditor
             const Tracker::ScriptCanvasFileState& fileState = GetAssetFileState(memoryAssetId);
             if (fileState != Tracker::ScriptCanvasFileState::NEW)
             {
-                AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::UpdateFileState, memoryAssetId, Tracker::ScriptCanvasFileState::MODIFIED);
-                m_tabBar->SetFileState(memoryAsset->GetFileAssetId(), Tracker::ScriptCanvasFileState::MODIFIED);
-                UpdateSaveState();
+                AssetTrackerRequestBus::Broadcast(&AssetTrackerRequests::UpdateFileState, memoryAssetId, Tracker::ScriptCanvasFileState::MODIFIED); 
 
                 if (memoryAsset->GetView())
                 {
@@ -1121,25 +1119,6 @@ namespace ScriptCanvasEditor
                         EnableAssetView(memoryAsset);
                         
                     }
-                }
-            }
-
-            int tabIndex = m_tabBar->FindTab(memoryAsset->GetFileAssetId());
-            if (tabIndex >= 0 && tabIndex < m_tabBar->count())
-            {
-                QVariant data = m_tabBar->tabData(tabIndex);
-
-                if (data.isValid())
-                {
-                    auto tabAssetId = data.value<AZ::Data::AssetId>();
-
-                    AZStd::string rootFilePath;
-                    AZ::Data::AssetInfo assetInfo = AssetHelpers::GetAssetInfo(tabAssetId, rootFilePath);
-
-                    AZStd::string tabName;
-                    AzFramework::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), tabName);
-
-                    m_tabBar->SetTabText(tabIndex, tabName.c_str(), Tracker::ScriptCanvasFileState::MODIFIED);
                 }
             }
         }
@@ -1210,7 +1189,7 @@ namespace ScriptCanvasEditor
         {
             if (!asset.IsSourceInError())
             {
-                outTabIndex = CreateAssetTab(asset.GetId());
+                outTabIndex = CreateAssetTab(asset.GetFileAssetId());
 
                 if (!m_isRestoringWorkspace)
                 {
@@ -1257,6 +1236,11 @@ namespace ScriptCanvasEditor
                 if (errorPath.empty())
                 {
                     errorPath = m_errorFilePath;
+                }
+
+                if (m_queuedFocusOverride == fileAssetId)
+                {
+                    m_queuedFocusOverride.SetInvalid();
                 }
 
                 QMessageBox::warning(this, "Unable to open source file", QString("Source File(%1) is in error and cannot be opened").arg(errorPath.c_str()), QMessageBox::StandardButton::Ok);
@@ -1736,11 +1720,14 @@ namespace ScriptCanvasEditor
 
         bool saveSuccessful = false;
 
-        if (GetAssetFileState(assetId) == Tracker::ScriptCanvasFileState::NEW)
+        Tracker::ScriptCanvasFileState fileState = GetAssetFileState(assetId);
+
+        if (fileState == Tracker::ScriptCanvasFileState::NEW)
         {
             saveSuccessful = SaveAssetAsImpl(assetId, saveCB);
         }
-        else if (GetAssetFileState(assetId) == Tracker::ScriptCanvasFileState::MODIFIED)
+        else if (fileState == Tracker::ScriptCanvasFileState::MODIFIED
+            || fileState == Tracker::ScriptCanvasFileState::SOURCE_REMOVED)
         {
             SaveAsset(assetId, saveCB);
             saveSuccessful = true;
@@ -1803,9 +1790,18 @@ namespace ScriptCanvasEditor
 
         if (isValidFileName)
         {
-            SaveNewAsset(selectedFile.toUtf8().data(), inMemoryAssetId, saveCB);
+            AZStd::string internalStringFile = selectedFile.toUtf8().data();            
 
-            m_newlySavedFile = selectedFile.toUtf8().data();
+            if (!AssetHelpers::IsValidSourceFile(internalStringFile, GetActiveScriptCanvasId()))
+            {
+                QMessageBox::warning(this, "Unable to Save", QString("File\n'%1'\n\nDoes not match the asset type of the current Graph.").arg(selectedFile));
+                return false;
+            }
+
+
+            SaveNewAsset(internalStringFile, inMemoryAssetId, saveCB);
+
+            m_newlySavedFile = internalStringFile;
 
             // Forcing the file add here, since we are creating a new file
             AddRecentFile(m_newlySavedFile.c_str());
@@ -1858,8 +1854,7 @@ namespace ScriptCanvasEditor
             AzFramework::StringFunc::Path::GetFileName(memoryAsset->GetAbsolutePath().c_str(), tabName);
 
             // Update the tab's assetId to the file asset Id (necessary when saving a new asset)
-            m_tabBar->setTabData(saveTabIndex, QVariant::fromValue(fileAssetId));
-            m_tabBar->SetTabText(saveTabIndex, tabName.c_str(), Tracker::ScriptCanvasFileState::UNMODIFIED);
+            m_tabBar->ConfigureTab(saveTabIndex, fileAssetId, tabName);
 
             GeneralAssetNotificationBus::Event(memoryAsset->GetId(), &GeneralAssetNotifications::OnAssetVisualized);
 
@@ -2731,7 +2726,7 @@ namespace ScriptCanvasEditor
 
     void MainWindow::Clear()
     {
-        m_tabBar->RemoveAllBars();
+        m_tabBar->CloseAllTabs();
 
         AssetTrackerRequests::AssetList assets;
         AssetTrackerRequestBus::BroadcastResult(assets, &AssetTrackerRequests::GetAssets);
@@ -2764,7 +2759,7 @@ namespace ScriptCanvasEditor
             }
 
             UnsavedChangesOptions saveDialogResults = UnsavedChangesOptions::CONTINUE_WITHOUT_SAVING;
-            if (!isSaving && (fileState == Tracker::ScriptCanvasFileState::NEW || fileState == Tracker::ScriptCanvasFileState::MODIFIED))
+            if (!isSaving && (fileState == Tracker::ScriptCanvasFileState::NEW || fileState == Tracker::ScriptCanvasFileState::MODIFIED || fileState == Tracker::ScriptCanvasFileState::SOURCE_REMOVED))
             {
                 SetActiveAsset(fileAssetId);
 
@@ -2865,7 +2860,13 @@ namespace ScriptCanvasEditor
             {
                 clipBoard->setText(m_tabBar->tabText(index));
             }
-        }        
+        }
+    }
+
+    void MainWindow::OnActiveFileStateChanged()
+    {
+        UpdateSaveState();
+        UpdateAssignToSelectionState();
     }
 
     void MainWindow::CloseNextTab()
@@ -2883,14 +2884,14 @@ namespace ScriptCanvasEditor
             int tab = 0;
 
             while (tab < m_tabBar->count())
-            {                
+            {
                 QVariant data = m_tabBar->tabData(tab);
                 if (data.isValid())
                 {
                     auto assetId = data.value<AZ::Data::AssetId>();
 
                     if (assetId != m_skipTabOnClose)
-                    {                        
+                    {
                         break;
                     }
                 }
@@ -2926,13 +2927,15 @@ namespace ScriptCanvasEditor
             m_tabBar->update();
             RemoveScriptCanvasAsset(tabAssetId);
 
-            // Handling various close all events because the save is async need to deal with this in a bunch of different ways
-            CloseNextTab();
-
             if (m_tabBar->count() == 0)
             {
                 // The last tab has been removed.
                 SetActiveAsset({});
+            }
+            else
+            {
+                // Handling various close all events because the save is async need to deal with this in a bunch of different ways
+                AddSystemTickAction(SystemTickActionFlag::CloseNextTabAction);
             }
         }
     }
@@ -3360,7 +3363,7 @@ namespace ScriptCanvasEditor
 
     void MainWindow::RunBatchConversion()
     {
-        if (m_batchConverter == nullptr)
+        if (m_batchTool == nullptr)
         {
             QFileDialog directoryDialog(this);
             directoryDialog.setFileMode(QFileDialog::FileMode::Directory);
@@ -3369,7 +3372,7 @@ namespace ScriptCanvasEditor
             {
                 QStringList directories = directoryDialog.selectedFiles();
 
-                m_batchConverter = aznew ScriptCanvasBatchConverter(this, directories);
+                m_batchTool = aznew ScriptCanvasBatchConverter(this, directories);
             }
         }
     }
@@ -3518,7 +3521,7 @@ namespace ScriptCanvasEditor
         if (buttonEnabled)
         {
             const Tracker::ScriptCanvasFileState& fileState = GetAssetFileState(m_activeAssetId);
-            if (fileState == Tracker::ScriptCanvasFileState::INVALID || fileState == Tracker::ScriptCanvasFileState::NEW)
+            if (fileState == Tracker::ScriptCanvasFileState::INVALID || fileState == Tracker::ScriptCanvasFileState::NEW || fileState == Tracker::ScriptCanvasFileState::SOURCE_REMOVED)
             {
                 buttonEnabled = false;
             }
@@ -3528,6 +3531,10 @@ namespace ScriptCanvasEditor
             }
 
             m_assignToSelectedEntity->setEnabled(buttonEnabled);
+        }
+        else
+        {
+            m_assignToSelectedEntity->setEnabled(false);
         }
     }
 
@@ -3554,7 +3561,8 @@ namespace ScriptCanvasEditor
         {
             Tracker::ScriptCanvasFileState fileState = GetAssetFileState(m_activeAssetId);
             hasModifications = (    fileState == Tracker::ScriptCanvasFileState::MODIFIED
-                                || fileState == Tracker::ScriptCanvasFileState::NEW);
+                                || fileState == Tracker::ScriptCanvasFileState::NEW
+                                || fileState == Tracker::ScriptCanvasFileState::SOURCE_REMOVED);
             
             AssetTrackerRequestBus::BroadcastResult(isSaving, &AssetTrackerRequests::IsSaving, m_activeAssetId);
         }
@@ -4097,6 +4105,12 @@ namespace ScriptCanvasEditor
             }
         }
 
+        if (HasSystemTickAction(SystemTickActionFlag::CloseNextTabAction))
+        {
+            RemoveSystemTickAction(SystemTickActionFlag::CloseNextTabAction);
+            CloseNextTab();
+        }
+
         AZ::SystemTickBus::Handler::BusDisconnect();
     }
 
@@ -4112,10 +4126,10 @@ namespace ScriptCanvasEditor
 
     void MainWindow::SignalBatchOperationComplete(BatchOperatorTool* batchTool)
     {
-        if (m_batchConverter == batchTool)
+        if (m_batchTool == batchTool)
         {
-            delete m_batchConverter;
-            m_batchConverter = nullptr;
+            delete m_batchTool;
+            m_batchTool = nullptr;
         }
     }
 
@@ -4267,7 +4281,7 @@ namespace ScriptCanvasEditor
         bool isDocumentOpen = false;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(isDocumentOpen, &AzToolsFramework::EditorRequests::IsLevelDocumentOpen);
 
-        if (fileState == Tracker::ScriptCanvasFileState::NEW || !isDocumentOpen)
+        if (fileState == Tracker::ScriptCanvasFileState::NEW || fileState == Tracker::ScriptCanvasFileState::SOURCE_REMOVED || !isDocumentOpen)
         {
             return;
         }
@@ -4291,18 +4305,18 @@ namespace ScriptCanvasEditor
 
     void MainWindow::OnAssignToEntity(const AZ::EntityId& entityId)
     {
-        Tracker::ScriptCanvasFileState fileState = Tracker::ScriptCanvasFileState::INVALID;
-        AssetTrackerRequestBus::BroadcastResult(fileState, &AssetTrackerRequests::GetFileState, m_activeAssetId);
+        Tracker::ScriptCanvasFileState fileState = GetAssetFileState(m_activeAssetId);
 
-        if (fileState != Tracker::ScriptCanvasFileState::INVALID && fileState != Tracker::ScriptCanvasFileState::NEW)
+        if (fileState == Tracker::ScriptCanvasFileState::MODIFIED
+            || fileState == Tracker::ScriptCanvasFileState::UNMODIFIED)
         {
             AssignGraphToEntityImpl(entityId);
-        }        
+        }
     }
 
     ScriptCanvasEditor::Tracker::ScriptCanvasFileState MainWindow::GetAssetFileState(AZ::Data::AssetId assetId) const
     {
-        Tracker::ScriptCanvasFileState fileState;
+        Tracker::ScriptCanvasFileState fileState = Tracker::ScriptCanvasFileState::INVALID;
         AssetTrackerRequestBus::BroadcastResult(fileState, &AssetTrackerRequests::GetFileState, assetId);
         return fileState;
     }

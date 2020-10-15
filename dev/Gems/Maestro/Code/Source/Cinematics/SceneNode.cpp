@@ -843,7 +843,7 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
 
     float t = 1 - ((secondKey.time - time) / firstKey.fBlendTime);
     t = min(t, 1.0f);
-    t = pow(t, 3) * (t * (t * 6 - 15) + 10);                // use a cubic curve for the camera blend
+    t = aznumeric_cast<float>(pow(t, 3) * (t * (t * 6 - 15) + 10));                // use a cubic curve for the camera blend
 
     bool haveStashedInterpData = (m_InterpolatingCameraStartStates.find(m_CurrentSelectTrackKeyNumber) != m_InterpolatingCameraStartStates.end());
 

@@ -41,6 +41,60 @@
 #include <QShortcutEvent>
 #include <QMessageBox>
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Components/Widgets/PushButton.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
+
+PreviewToolButton::PreviewToolButton(QWidget* parent)
+    : QToolButton(parent)
+{
+    connect(this, &QToolButton::pressed, this, [this]() { HandlePressedEvent(); });
+    connect(this, &QToolButton::released, this, [this]() { HandleReleasedEvent(); });
+}
+
+void PreviewToolButton::SetIconsForType(const QString& iconBaseName, int level)
+{
+    m_normalIcon[level] = QIcon(iconBaseName + ".svg");
+    m_hoverIcon[level] = QIcon(iconBaseName + "_blue.svg");
+    m_selectedIcon[level] = QIcon(iconBaseName + "_back.svg");
+}
+
+void PreviewToolButton::SetLevel(int level)
+{
+    m_iconLevelSet = level;
+    setIcon(m_normalIcon[level]);
+}
+
+void PreviewToolButton::RefreshIcon()
+{
+    setIcon(m_clicked ? m_selectedIcon[m_iconLevelSet] : m_hovering ? m_hoverIcon[m_iconLevelSet] : m_normalIcon[m_iconLevelSet]);
+}
+
+void PreviewToolButton::enterEvent(QEvent* event)
+{
+    setIcon(m_clicked ? m_selectedIcon[m_iconLevelSet] : m_hoverIcon[m_iconLevelSet]);
+    QToolButton::enterEvent(event);
+    m_hovering = true;
+}
+
+void PreviewToolButton::leaveEvent(QEvent* event)
+{
+    setIcon(m_clicked ? m_selectedIcon[m_iconLevelSet] : m_normalIcon[m_iconLevelSet]);
+    QToolButton::leaveEvent(event);
+    m_hovering = false;
+}
+
+void PreviewToolButton::HandlePressedEvent()
+{
+    setIcon(m_selectedIcon[m_iconLevelSet]);
+}
+
+void PreviewToolButton::HandleReleasedEvent()
+{
+    setIcon(m_hovering ? m_hoverIcon[m_iconLevelSet] : m_clicked ? m_selectedIcon[m_iconLevelSet] : m_normalIcon[m_iconLevelSet]);
+}
+
 CPreviewWindowView::CPreviewWindowView(QWidget* parent)
     : QWidget(parent)
     , m_pActiveItem(nullptr)
@@ -51,8 +105,8 @@ CPreviewWindowView::CPreviewWindowView(QWidget* parent)
     HandleEmitterViewChange(ShowEmitterSetting::EmitterOnly);
 
     /////////////////////////////////////////////////////////////////////////////////////////////
-    customEmitterMenu = new ContextMenu(this);
-    loadEmitterMenu = new ContextMenu(this);
+    m_customEmitterMenu = new ContextMenu(this);
+    m_loadEmitterMenu = new ContextMenu(this);
     m_PreviewMenu = new QMenu;
     connect(m_PreviewMenu, SIGNAL(triggered(QAction*)), this, SLOT(OnMenuActionClicked(QAction*)));
 }
@@ -324,11 +378,18 @@ void CPreviewWindowView::BuildPreviewWindowUI()
     m_botFrame->setMaximumHeight(75);
 
     //top Layout
-    QHBoxLayout* topFrameLayout = new QHBoxLayout();
-    m_topFrame->setLayout(topFrameLayout);
+    QHBoxLayout* topFrameLayoutParent = new QHBoxLayout();
+    QGridLayout* topFrameLayout = new QGridLayout();
+    topFrameLayoutParent->addLayout(topFrameLayout);
 
-    cameraDropdownButton = new QPushButton(this);
-    cameraDropdownButton->setProperty("previewIconButton", true);
+    QHBoxLayout* column1Layout = new QHBoxLayout();
+    QHBoxLayout* column2Layout = new QHBoxLayout();
+
+    topFrameLayout->addLayout(column1Layout, 0, 1);
+    topFrameLayout->addLayout(column2Layout, 0, 2);
+
+    m_cameraDropdownButton = new PreviewToolButton(this);
+    m_cameraDropdownButton->setPopupMode(QToolButton::InstantPopup);
     QMenu* cameraDropdownMenu = new QMenu(this);
     m_showEmitterOnly = cameraDropdownMenu->addAction(tr("show Emitter only"));
     m_showEmitterOnly->setCheckable(true);
@@ -338,41 +399,51 @@ void CPreviewWindowView::BuildPreviewWindowUI()
     m_showEmitterChildren->setData(1);
     m_showEmitterChildrenParents = cameraDropdownMenu->addAction(tr("show Emitter with all children and parents "));
     m_showEmitterChildrenParents->setData(2);
-    cameraDropdownButton->setMenu(cameraDropdownMenu);
-    cameraDropdownButton->setIcon(QIcon(":/particleQT/icons/emitteronly.png"));
-    topFrameLayout->addWidget(cameraDropdownButton, Qt::AlignLeft);
+    m_cameraDropdownButton->setMenu(cameraDropdownMenu);
+    m_cameraDropdownButton->SetIconsForType(QString(":/particleQT/icons/emitteronly"));
+    m_cameraDropdownButton->SetIconsForType(QString(":/particleQT/icons/emitterchildren"), 1);
+    m_cameraDropdownButton->SetIconsForType(QString(":/particleQT/icons/allrelated"), 2);
+    m_cameraDropdownButton->SetLevel(0);
+    column1Layout->addWidget(m_cameraDropdownButton, Qt::AlignHCenter);
+    static const QString& st = m_cameraDropdownButton->styleSheet();
 
     //ZoomButton
-    m_focusButton = new QPushButton(this);
-    m_focusButton->setProperty("previewIconButton", true);
-    m_focusButton->setIcon(QIcon(":/particleQT/icons/Zoom.png"));
-    topFrameLayout->addWidget(m_focusButton, Qt::AlignLeft);
+    m_focusButton = new PreviewToolButton(this);
+    m_focusButton->SetIconsForType(QString(":/particleQT/icons/Zoom"));
+    m_focusButton->SetLevel(0);
+    column1Layout->addWidget(m_focusButton, Qt::AlignHCenter);
 
     //Time of day button
-    m_timeOfDayButton = new QPushButton(this);
-    m_timeOfDayButton->setProperty("previewIconButton", true);
-    m_timeOfDayButton->setIcon(QIcon(":/particleQT/icons/TimeOfDay.png"));
-    topFrameLayout->addWidget(m_timeOfDayButton, Qt::AlignLeft);
+    m_timeOfDayButton = new PreviewToolButton(this);
+    m_timeOfDayButton->SetIconsForType(QString(":/particleQT/icons/TimeOfDay"));
+    m_timeOfDayButton->SetLevel(0);
+    column1Layout->addWidget(m_timeOfDayButton, Qt::AlignHCenter);
 
     m_numOfParticle = new QLabel("0P", this);
+    m_numOfParticle->setObjectName("NumParticlesLabel");
     m_numOfParticle->setAlignment(Qt::AlignRight);
     QFont particleNumberFont = m_numOfParticle->font();
     particleNumberFont.setPointSize(14);
     m_numOfParticle->setFont(particleNumberFont);
-    topFrameLayout->addWidget(m_numOfParticle);
+    column2Layout->addWidget(m_numOfParticle, Qt::AlignHCenter);
 
-    m_wireframeButton = new QPushButton(this);
-    m_wireframeButton->setProperty("previewIconButton", true);
-    m_wireframeButton->setIcon(QIcon(":/particleQT/icons/wireframe.png"));
-    topFrameLayout->addWidget(m_wireframeButton);
+    m_wireframeButton = new PreviewToolButton(this);
+    m_wireframeButton->SetIconsForType(QString(":/particleQT/icons/wireframe"));
+    m_wireframeButton->SetLevel(0);
+    column2Layout->addWidget(m_wireframeButton, Qt::AlignHCenter);
 
+    topFrameLayout->setColumnStretch(0, 1);
+    topFrameLayout->setColumnStretch(1, 1);
+    topFrameLayout->setColumnStretch(2, 1);
+
+    m_topFrame->setLayout(topFrameLayoutParent);
     //bottom layout
     QGridLayout* bottomFrameLayout = new QGridLayout();
     m_botFrame->setLayout(bottomFrameLayout);
 
-    m_resetButton = new QPushButton(this);
-    m_resetButton->setProperty("previewIconButton", true);
-    m_resetButton->setIcon(QIcon(":/particleQT/icons/reset.png"));
+    m_resetButton = new PreviewToolButton(this);
+    m_resetButton->SetIconsForType(QString(":/particleQT/icons/reset"));
+    m_resetButton->SetLevel(0);
     bottomFrameLayout->addWidget(m_resetButton, 1, 0, Qt::AlignLeft);
 
     QLabel* speedButton = new QLabel(this);
@@ -381,7 +452,7 @@ void CPreviewWindowView::BuildPreviewWindowUI()
     speedButton->setMaximumWidth(28);
     bottomFrameLayout->addWidget(speedButton, 0, 0);
 
-    m_playSpeedButton = new QAmazonDoubleSpinBox(this);
+    m_playSpeedButton = new AzQtComponents::DoubleSpinBox(this);
     m_playSpeedButton->setValue(1.0f);
     m_playSpeedButton->setMinimum(0);
     m_playSpeedButton->setMaximum(10.0f);
@@ -398,23 +469,23 @@ void CPreviewWindowView::BuildPreviewWindowUI()
     m_timeLabel->setMaximumWidth(73);
     bottomFrameLayout->addWidget(m_timeLabel, 0, 5);
 
-    m_playPauseButton = new QPushButton(this);
-    m_playPauseButton->setProperty("previewIconButton", true);
-    m_playPauseButton->setIcon(QIcon(":/particleQT/icons/play.png"));
+    m_playPauseButton = new PreviewToolButton(this);
+    m_playPauseButton->SetIconsForType(QString(":/particleQT/icons/Play"));
+    m_playPauseButton->SetIconsForType(QString(":/particleQT/icons/pause"), 1);
+    m_playPauseButton->SetLevel(0);
     bottomFrameLayout->addWidget(m_playPauseButton, 1, 3, Qt::AlignRight);
 
-    m_stepButton = new QPushButton(this);
-    m_stepButton->setProperty("previewIconButton", true);
-    m_stepButton->setIcon(QIcon(":/particleQT/icons/stepforward.png"));
+    m_stepButton = new PreviewToolButton(this);
+    m_stepButton->SetIconsForType(QString(":/particleQT/icons/stepforward"));
+    m_stepButton->SetLevel(0);
     bottomFrameLayout->addWidget(m_stepButton, 1, 4, 1, 2, Qt::AlignLeft);
 
-    m_loopButton = new QPushButton(this);
-    m_loopButton->setIcon(QIcon(":/particleQT/icons/loop.png"));
-    m_loopButton->setProperty("previewIconButton", true);
+    m_loopButton = new PreviewToolButton(this);
+    m_loopButton->SetIconsForType(QString(":/particleQT/icons/loop"));
+    m_loopButton->SetLevel(0);
     bottomFrameLayout->addWidget(m_loopButton, 1, 5, Qt::AlignRight);
 
-    m_timeSlider = new QSlider(Qt::Horizontal, this);
-    m_timeSlider->setSingleStep(1);
+    m_timeSlider = new AzQtComponents::SliderDouble(Qt::Horizontal, this);
     bottomFrameLayout->addWidget(m_timeSlider, 0, 3, 1, 2);
 
     connect(m_playPauseButton, SIGNAL(clicked()), this, SLOT(OnPlayPauseClicked()));
@@ -424,7 +495,6 @@ void CPreviewWindowView::BuildPreviewWindowUI()
     connect(m_wireframeButton, SIGNAL(clicked()), this, SLOT(OnWireframeClicked()));
     connect(m_timeOfDayButton, SIGNAL(clicked()), this, SLOT(OnTimeOfDayClicked()));
     connect(m_focusButton, &QPushButton::clicked, this, &CPreviewWindowView::FocusCameraOnEmitter);
-
     connect(cameraDropdownMenu, SIGNAL(triggered(QAction*)), this, SLOT(OnCameraMenuActionClicked(QAction*)));
     PostBuildUI();
 }
@@ -485,7 +555,7 @@ void CPreviewWindowView::SetActiveEffect(CParticleItem* pParticle, SLodInfo* lod
         m_previewModelView->ClearEmitter();
         return;
     }
-    if (ShowEmitterSettingState == ShowEmitterSetting::EmitterOnly)
+    if (m_showEmitterSettingState == ShowEmitterSetting::EmitterOnly)
     {
         m_previewModelView->SetFlag(CPreviewModelView::PreviewModelViewFlag::SHOW_FIRST_CONTAINER);
         if (pParticle->GetEffect())
@@ -493,12 +563,12 @@ void CPreviewWindowView::SetActiveEffect(CParticleItem* pParticle, SLodInfo* lod
             m_previewModelView->LoadParticleEffect(pParticle->GetEffect(), pParticle, m_activeLod);
         }
     }
-    else if (ShowEmitterSettingState == ShowEmitterSetting::EmitterAndAllChildren)
+    else if (m_showEmitterSettingState == ShowEmitterSetting::EmitterAndAllChildren)
     {
         m_previewModelView->UnSetFlag(CPreviewModelView::PreviewModelViewFlag::SHOW_FIRST_CONTAINER);
         m_previewModelView->LoadParticleEffect(pParticle->GetEffect(), pParticle, m_activeLod);
     }
-    else if (ShowEmitterSettingState == ShowEmitterSetting::EmitterAndAllChildrenAndParents)
+    else if (m_showEmitterSettingState == ShowEmitterSetting::EmitterAndAllChildrenAndParents)
     {
         m_previewModelView->UnSetFlag(CPreviewModelView::PreviewModelViewFlag::SHOW_FIRST_CONTAINER);
         SpawnAllEffect(pParticle->GetEffect(), pParticle);
@@ -521,11 +591,15 @@ void CPreviewWindowView::UpdatePlaybackUI()
     {
         if (m_previewModelView->GetPlayState() == CPreviewModelView::PlayState::PLAY && m_previewModelView->IsParticleEmitterAlive())
         {
-            m_playPauseButton->setIcon(QIcon(":/particleQT/icons/pauseOrange.png"));
+            m_playPauseButton->SetLevel(1);
+            m_playPauseButton->SetClicked(true);
+            m_playPauseButton->RefreshIcon();
         }
         else
         {
-            m_playPauseButton->setIcon(QIcon(":/particleQT/icons/play.png"));
+            m_playPauseButton->SetLevel(0);
+            m_playPauseButton->SetClicked(false);
+            m_playPauseButton->RefreshIcon();
         }
     }
 }
@@ -584,11 +658,11 @@ bool CPreviewWindowView::eventFilter(QObject* obj, QEvent* event)
             widgetRect.setTop(widgetRect.top() + m_botFrame->pos().y());
             widgetRect.setSize(m_timeLabel->size());
         }
-        else if (objWidget == cameraDropdownButton)
+        else if (objWidget == m_cameraDropdownButton)
         {
             GetIEditor()->GetParticleUtils()->ToolTip_BuildFromConfig(m_tooltip, "Preview Control.Camera Dropdown", "Button");
-            widgetRect.setTopLeft(mapToGlobal(cameraDropdownButton->pos()));
-            widgetRect.setSize(cameraDropdownButton->size());
+            widgetRect.setTopLeft(mapToGlobal(m_cameraDropdownButton->pos()));
+            widgetRect.setSize(m_cameraDropdownButton->size());
         }
         else if (objWidget == m_wireframeButton)
         {
@@ -654,7 +728,7 @@ void CPreviewWindowView::PostBuildUI()
     m_timeSlider->installEventFilter(this);
     m_numOfParticle->installEventFilter(this);
     m_timeLabel->installEventFilter(this);
-    cameraDropdownButton->installEventFilter(this);
+    m_cameraDropdownButton->installEventFilter(this);
     m_wireframeButton->installEventFilter(this);
     m_resetButton->installEventFilter(this);
     m_stepButton->installEventFilter(this);
@@ -891,14 +965,14 @@ QMenu* CPreviewWindowView::ExecPreviewMenu()
 
 void CPreviewWindowView::HandleEmitterViewChange(ShowEmitterSetting showState)
 {
-    ShowEmitterSettingState = showState;
+    m_showEmitterSettingState = showState;
     if (m_pActiveItem)
     {
-        SetActiveEffect(m_pActiveItem, m_activeLod); //should be after ShowEmitterSettingState assignment so the value is correct ... this refreshes the current effect that is drawing.
+        SetActiveEffect(m_pActiveItem, m_activeLod); //should be after m_showEmitterSettingState assignment so the value is correct ... this refreshes the current effect that is drawing.
     }
 
     //Update the UI state
-    switch (ShowEmitterSettingState)
+    switch (m_showEmitterSettingState)
     {
     case ShowEmitterSetting::EmitterOnly:
     {
@@ -906,7 +980,7 @@ void CPreviewWindowView::HandleEmitterViewChange(ShowEmitterSetting showState)
         m_showEmitterOnly->setChecked(true);
         m_showEmitterChildren->setCheckable(false);
         m_showEmitterChildrenParents->setCheckable(false);
-        cameraDropdownButton->setIcon(QIcon(":/particleQT/icons/emitteronly.png"));
+        m_cameraDropdownButton->SetLevel(0);
         break;
     }
     case ShowEmitterSetting::EmitterAndAllChildren:
@@ -915,7 +989,7 @@ void CPreviewWindowView::HandleEmitterViewChange(ShowEmitterSetting showState)
         m_showEmitterChildren->setCheckable(true);
         m_showEmitterChildren->setChecked(true);
         m_showEmitterChildrenParents->setCheckable(false);
-        cameraDropdownButton->setIcon(QIcon(":/particleQT/icons/emitterchildren.png"));
+        m_cameraDropdownButton->SetLevel(1);
         break;
     }
     case ShowEmitterSetting::EmitterAndAllChildrenAndParents:
@@ -924,7 +998,7 @@ void CPreviewWindowView::HandleEmitterViewChange(ShowEmitterSetting showState)
         m_showEmitterChildren->setCheckable(false);
         m_showEmitterChildrenParents->setCheckable(true);
         m_showEmitterChildrenParents->setChecked(true);
-        cameraDropdownButton->setIcon(QIcon(":/particleQT/icons/allrelated.png"));
+        m_cameraDropdownButton->SetLevel(2);
         break;
     }
     default:
@@ -954,7 +1028,9 @@ void CPreviewWindowView::HandleMenuAction(MenuActions action)
             else
             {
                 m_previewModelView->SetPlayState(CPreviewModelView::PlayState::PLAY);
-                m_playPauseButton->setIcon(QIcon(":/particleQT/icons/pauseOrange.png"));
+                m_playPauseButton->SetClicked(true);
+                m_playPauseButton->SetLevel(1);
+                m_playPauseButton->RefreshIcon();
             }
         }
         break;
@@ -1017,12 +1093,15 @@ void CPreviewWindowView::HandleMenuAction(MenuActions action)
     {
         //If the grid color change
         int nGridAlpha = 40;
-        ColorF color = m_previewModelView->GetGridColor();
+        ColorF color = m_previewModelView->GetBackgroundColor();
         QColor temp(color.r * 255, color.g * 255, color.b * 255);
-        QCustomColorDialog* dlg = UIFactory::GetColorPicker(temp);
-        if (dlg->exec() == QDialog::Accepted)
+        const QColor newColor = AzQtComponents::toQColor(
+            AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB,
+                AzQtComponents::fromQColor(temp),
+                tr("Select Color")));
+        if (newColor != temp)
         {
-            m_previewModelView->SetBackgroundColor(ColorF(dlg->GetColor().redF(), dlg->GetColor().greenF(), dlg->GetColor().blueF(), nGridAlpha));
+            m_previewModelView->SetBackgroundColor(ColorF(newColor.redF(), newColor.greenF(), newColor.blueF(), nGridAlpha));
         }
     }
     break;
@@ -1032,10 +1111,13 @@ void CPreviewWindowView::HandleMenuAction(MenuActions action)
         int nGridAlpha = 40;
         ColorF color = m_previewModelView->GetGridColor();
         QColor temp(color.r * 255, color.g * 255, color.b * 255);
-        QCustomColorDialog* dlg = UIFactory::GetColorPicker(temp);
-        if (dlg->exec() == QDialog::Accepted)
+        const QColor newColor = AzQtComponents::toQColor(
+            AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB,
+                AzQtComponents::fromQColor(temp),
+                tr("Select Color")));
+        if (newColor != temp)
         {
-            m_previewModelView->SetGridColor(ColorF(dlg->GetColor().redF(), dlg->GetColor().greenF(), dlg->GetColor().blueF(), nGridAlpha));
+            m_previewModelView->SetGridColor(ColorF(newColor.redF(), newColor.greenF(), newColor.blueF(), nGridAlpha));
         }
     }
     break;
@@ -1067,7 +1149,9 @@ void CPreviewWindowView::HandleMenuAction(MenuActions action)
                 if (m_previewModelView->IsParticleEmitterAlive())
                 {
                     m_previewModelView->SetPlayState(CPreviewModelView::PlayState::PAUSE);
-                    m_playPauseButton->setIcon(QIcon(":/particleQT/icons/play.png"));
+                    m_playPauseButton->SetClicked(false);
+                    m_playPauseButton->SetLevel(0);
+                    m_playPauseButton->RefreshIcon();
                 }
                 else
                 {
@@ -1077,7 +1161,9 @@ void CPreviewWindowView::HandleMenuAction(MenuActions action)
             else
             {
                 m_previewModelView->SetPlayState(CPreviewModelView::PlayState::PLAY);
-                m_playPauseButton->setIcon(QIcon(":/particleQT/icons/pauseOrange.png"));
+                m_playPauseButton->SetClicked(true);
+                m_playPauseButton->SetLevel(1);
+                m_playPauseButton->RefreshIcon();
             }
         }
     }
@@ -1189,29 +1275,35 @@ void CPreviewWindowView::RefreshUIStates()
 {
     if (m_previewModelView->IsFlagSet(CPreviewModelView::PreviewModelViewFlag::DRAW_WIREFRAME))
     {
-        m_wireframeButton->setIcon(QIcon(":/particleQT/icons/wireframeOrange.png"));
+        m_wireframeButton->SetClicked(true);
+        m_wireframeButton->RefreshIcon();
     }
     else
     {
-        m_wireframeButton->setIcon(QIcon(":/particleQT/icons/wireframe.png"));
+        m_wireframeButton->SetClicked(false);
+        m_wireframeButton->RefreshIcon();
     }
 
     if (m_previewModelView->IsFlagSet(CPreviewModelView::PreviewModelViewFlag::LOOPING_PLAY))
     {
-        m_loopButton->setIcon(QIcon(":/particleQT/icons/loopOrange.png"));
+        m_loopButton->SetClicked(true);
+        m_loopButton->RefreshIcon();
     }
     else
     {
-        m_loopButton->setIcon(QIcon(":/particleQT/icons/loop.png"));
+        m_loopButton->SetClicked(false);
+        m_loopButton->RefreshIcon();
     }
 
     if (m_previewModelView->IsFlagSet(CPreviewModelView::PreviewModelViewFlag::ENABLE_TIME_OF_DAY))
     {
-        m_timeOfDayButton->setIcon(QIcon(":/particleQT/icons/TimeOfDayOrange.png"));
+        m_timeOfDayButton->SetClicked(true);
+        m_timeOfDayButton->RefreshIcon();
     }
     else
     {
-        m_timeOfDayButton->setIcon(QIcon(":/particleQT/icons/TimeOfDay.png"));
+        m_timeOfDayButton->SetClicked(false);
+        m_timeOfDayButton->RefreshIcon();
     }
 }
 
@@ -1246,7 +1338,7 @@ void CPreviewWindowView::SaveSessionState(QByteArray& out)
     stream << back.g;
     stream << back.b;
 
-    stream << static_cast<quint64>(ShowEmitterSettingState);
+    stream << static_cast<quint64>(m_showEmitterSettingState);
     stream << m_numOfParticle->isHidden();
     stream << m_botFrame->isHidden();
 }
@@ -1306,7 +1398,7 @@ void CPreviewWindowView::SaveSessionState(QString path)
             //WindowView
             settings.beginGroup("WindowView");
             {
-                settings.setValue("ShowEmitterSettingState", static_cast<int>(ShowEmitterSettingState));
+                settings.setValue("m_showEmitterSettingState", static_cast<int>(m_showEmitterSettingState));
                 settings.setValue("HideParticleCount", m_numOfParticle->isHidden());
                 settings.setValue("HidePlaybackControls", m_botFrame->isHidden());
             }
@@ -1529,7 +1621,7 @@ void CPreviewWindowView::LoadSessionState(QString path)
             //WindowView
             settings.beginGroup("WindowView");
             {
-                HandleEmitterViewChange(static_cast<ShowEmitterSetting>(settings.value("ShowEmitterSettingState", static_cast<int>(ShowEmitterSettingState)).toInt()));
+                HandleEmitterViewChange(static_cast<ShowEmitterSetting>(settings.value("m_showEmitterSettingState", static_cast<int>(m_showEmitterSettingState)).toInt()));
                 if (settings.value("HideParticleCount", m_numOfParticle->isHidden()).toBool())
                 {
                     m_numOfParticle->hide();
@@ -1565,8 +1657,8 @@ void CPreviewWindowView::ResetToDefaultLayout()
 {
     HandleEmitterViewChange(ShowEmitterSetting::EmitterOnly);
     m_playSpeedButton->setValue(m_previewModelView->GetTimeScale());
-    m_loopButton->setIcon(QIcon(":/particleQT/icons/loop.png"));
-    m_wireframeButton->setIcon(QIcon(":/particleQT/icons/wireframe.png"));
+    m_loopButton->RefreshIcon();
+    m_wireframeButton->RefreshIcon();
     m_botFrame->show();
     m_numOfParticle->show();
     m_previewModelView->ResetAll();

@@ -20,11 +20,17 @@
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Render/GeometryIntersectionBus.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#endif
+
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 #include "MeshComponent.h"
+
 
 struct IPhysicalEntity;
 
@@ -38,8 +44,13 @@ namespace LmbrCentral
     class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::Data::AssetBus::Handler
+        , private AzFramework::AssetCatalogEventBus::Handler
         , private RenderBoundsRequestBus::Handler
+#if ENABLE_CRY_PHYSICS
         , private CryPhysicsComponentRequestBus::Handler
+#else
+        , private AzFramework::RenderGeometry::IntersectionRequestBus::Handler
+#endif
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
@@ -64,12 +75,14 @@ namespace LmbrCentral
         void Activate() override;
         void Deactivate() override;
 
+#if ENABLE_CRY_PHYSICS
         // CryPhysicsComponentRequests
         IPhysicalEntity* GetPhysicalEntity() override;
         void GetPhysicsParameters(pe_params& outParameters) override;
         void SetPhysicsParameters(const pe_params& parameters) override;
         void GetPhysicsStatus(pe_status& outStatus) override;
         void ApplyPhysicsAction(const pe_action& action, bool threadSafe) override;
+#endif // ENABLE_CRY_PHYSICS
 
         //////////////////////////////////////////////////////////////////////////
         // RenderBoundsRequestBus interface implementation
@@ -77,6 +90,17 @@ namespace LmbrCentral
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
         //////////////////////////////////////////////////////////////////////////
+
+#if !ENABLE_CRY_PHYSICS
+        //////////////////////////////////////////////////////////////////////////
+        // IntersectionNotificationBus interface implementation
+        AzFramework::RenderGeometry::RayResult RenderGeometryIntersect(const AzFramework::RenderGeometry::RayRequest& ray) override;
+
+        AZ::Aabb GetGeometryBounds() override
+        {
+            return GetWorldBounds();
+        }
+#endif // !ENABLE_CRY_PHYSICS
 
         //////////////////////////////////////////////////////////////////////////
         // MeshComponentRequestBus interface implementation
@@ -121,6 +145,9 @@ namespace LmbrCentral
         // AZ::Data::AssetBus
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
+        // AzFramework::AssetCatalogEventBus
+        void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+
         // EditorComponentSelectionRequestsBus
         AZ::Aabb GetEditorSelectionBoundsViewport(
             const AzFramework::ViewportInfo& viewportInfo) override;
@@ -161,6 +188,7 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     protected:
+#if ENABLE_CRY_PHYSICS
         // Editor-specific physicalization for the attached mesh. This is needed to support
         // features in the editor that rely on edit-time collision info (i.e. object snapping).
         void CreateEditorPhysics();
@@ -168,6 +196,7 @@ namespace LmbrCentral
 
         /// Issues a warning once each time the transform changes from being physicalizable to being too skewed to physicalize.
         void PhysicsTransformWarning() const;
+#endif
 
         // Decides if this mesh affects the navmesh or not.
         void AffectNavmesh();
@@ -177,15 +206,24 @@ namespace LmbrCentral
         AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None; ///< State of the entity selection in the viewport.
         MeshComponentRenderNode m_mesh; ///< IRender node implementation.
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
         AZ::Vector3 m_physScale; ///< To track scale changes, which requires re-physicalizing.
         mutable bool m_physicsTransformWarningIssued = false; ///< Tracks whether a warning has been issued for the transform being too skewed to physicalize.
+#else
+        AzFramework::EntityContextId m_contextId;
+        AZ::Vector3 m_debugPos = AZ::Vector3(0);
+        AZ::Vector3 m_debugNormal = AZ::Vector3(0);
+#endif // ENABLE_CRY_PHYSICS
     };
 
     // Helper function useful for automation.
     bool AddMeshComponentWithMesh(const AZ::EntityId& targetEntity, const AZ::Uuid& meshAssetId);
 
+#if ENABLE_CRY_PHYSICS
     /// Tests if the transform allows the mesh to be physicalized, or if it is too skewed to allow physicalization.
     /// Note that this is CryPhysics specific, and CryPhysics will be deprecated in future.
     bool IsPhysicalizable(const AZ::Transform& transform);
+#endif // ENABLE_CRY_PHYSICS
+
 } // namespace LmbrCentral

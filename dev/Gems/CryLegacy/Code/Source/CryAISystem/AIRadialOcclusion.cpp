@@ -491,7 +491,9 @@ void CAIRadialOcclusionRaycast::InitPhysCallback(CAIRadialOcclusionRaycast* occ)
 {
     if (!m_physListenerInit)
     {
+#if ENABLE_CRY_PHYSICS
         gEnv->pPhysicalWorld->AddEventClient(EventPhysRWIResult::id, OnRwiResult, 1);
+#endif
         for (unsigned i = 0; i < MAX_QUERIES; ++i)
         {
             m_queries[i].id = 0;
@@ -766,6 +768,7 @@ void CAIRadialOcclusionRaycast::Update(const Vec3& center, const Vec3& target, f
 
             SSample* pSample = &m_samples[idx];
 
+#if ENABLE_CRY_PHYSICS
     #ifdef USE_ASYNC_RAYCASTS
             pSample->dist = m_depthRange * 2.0f;
             pSample->height = m_center.z + up.z + dir.z;
@@ -790,6 +793,7 @@ void CAIRadialOcclusionRaycast::Update(const Vec3& center, const Vec3& target, f
             }
             pSample->pending = false;
     #endif
+#endif // ENABLE_CRY_PHYSICS
 
             // Update indices
             m_cx++;

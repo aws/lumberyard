@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_LOSSY_CAST_H
-#define AZCORE_LOSSY_CAST_H
+
+#pragma once
 
 #include "AzCore/std/typetraits/conditional.h"
 #include "AzCore/std/typetraits/is_arithmetic.h"
@@ -22,10 +22,10 @@
 // used with other types.
 */
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr AZStd::enable_if_t<
     (AZStd::is_arithmetic<FromType>::value || AZStd::is_enum<FromType>::value)
     && (AZStd::is_arithmetic<ToType>::value || AZStd::is_enum<ToType>::value)
-    , ToType > ::type azlossy_cast(FromType value)
+    , ToType > azlossy_cast(FromType value)
 {
     return static_cast<ToType>(value);
 }
@@ -38,10 +38,10 @@ namespace AZ
     class LossyCasted
     {
     public:
-        explicit LossyCasted(FromType value)
+        explicit constexpr LossyCasted(FromType value)
             : m_value(value) { }
         template <typename ToType>
-        operator ToType() const { return azlossy_cast<ToType>(m_value); }
+        constexpr operator ToType() const { return azlossy_cast<ToType>(m_value); }
 
     private:
         LossyCasted() = delete;
@@ -54,10 +54,7 @@ namespace AZ
 // This is the primary function we should use when lossy casting, since it induces the type we need
 // to cast to from the code rather than requiring an explicit coupling in the source.
 template <typename FromType>
-inline AZ::LossyCasted<FromType> azlossy_caster(FromType value)
+inline constexpr AZ::LossyCasted<FromType> azlossy_caster(FromType value)
 {
     return AZ::LossyCasted<FromType>(value);
 }
-
-#endif // AZCORE_LOSSY_CAST_H
-#pragma once

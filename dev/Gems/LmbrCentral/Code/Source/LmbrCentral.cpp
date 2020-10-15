@@ -131,6 +131,7 @@
 #include "Shape/SphereShapeComponent.h"
 #include "Shape/DiskShapeComponent.h"
 #include "Shape/BoxShapeComponent.h"
+#include "Shape/QuadShapeComponent.h"
 #include "Shape/CylinderShapeComponent.h"
 #include "Shape/CapsuleShapeComponent.h"
 #include "Shape/TubeShapeComponent.h"
@@ -254,7 +255,6 @@ namespace LmbrCentral
             AudioTriggerComponent::CreateDescriptor(),
             BehaviorTreeComponent::CreateDescriptor(),
             BundlingSystemComponent::CreateDescriptor(),
-            ConstraintComponent::CreateDescriptor(),
             DecalComponent::CreateDescriptor(),
             LensFlareComponent::CreateDescriptor(),
             LightComponent::CreateDescriptor(),
@@ -266,20 +266,24 @@ namespace LmbrCentral
             SkinnedMeshComponent::CreateDescriptor(),
             NavigationComponent::CreateDescriptor(),
             ParticleComponent::CreateDescriptor(),
+#if ENABLE_CRY_PHYSICS
+            ConstraintComponent::CreateDescriptor(),
             PhysicsSystemComponent::CreateDescriptor(),
             CharacterPhysicsComponent::CreateDescriptor(),
             RagdollComponent::CreateDescriptor(),
             RigidPhysicsComponent::CreateDescriptor(),
+            WindVolumeComponent::CreateDescriptor(),
+            ForceVolumeComponent::CreateDescriptor(),
+            StaticPhysicsComponent::CreateDescriptor(),
+            MeshColliderComponent::CreateDescriptor(),
+            PrimitiveColliderComponent::CreateDescriptor(),
+            TriggerAreaComponent::CreateDescriptor(),
+#endif // ENABLE_CRY_PHYSICS
             SimpleAnimationComponent::CreateDescriptor(),
             SimpleStateComponent::CreateDescriptor(),
             SpawnerComponent::CreateDescriptor(),
-            StaticPhysicsComponent::CreateDescriptor(),
-            WindVolumeComponent::CreateDescriptor(),
-            ForceVolumeComponent::CreateDescriptor(),
             LookAtComponent::CreateDescriptor(),
-            TriggerAreaComponent::CreateDescriptor(),
             TagComponent::CreateDescriptor(),
-            MeshColliderComponent::CreateDescriptor(),
             MannequinScopeComponent::CreateDescriptor(),
             MannequinComponent::CreateDescriptor(),
             MotionParameterSmoothingComponent::CreateDescriptor(),
@@ -287,10 +291,10 @@ namespace LmbrCentral
             SphereShapeComponent::CreateDescriptor(),
             DiskShapeComponent::CreateDescriptor(),
             BoxShapeComponent::CreateDescriptor(),
+            QuadShapeComponent::CreateDescriptor(),
             CylinderShapeComponent::CreateDescriptor(),
             CapsuleShapeComponent::CreateDescriptor(),
             TubeShapeComponent::CreateDescriptor(),
-            PrimitiveColliderComponent::CreateDescriptor(),
             CompoundShapeComponent::CreateDescriptor(),
             SplineComponent::CreateDescriptor(),
             PolygonPrismShapeComponent::CreateDescriptor(),
@@ -303,6 +307,7 @@ namespace LmbrCentral
             SphereShapeDebugDisplayComponent::CreateDescriptor(),
             DiskShapeDebugDisplayComponent::CreateDescriptor(),
             BoxShapeDebugDisplayComponent::CreateDescriptor(),
+            QuadShapeDebugDisplayComponent::CreateDescriptor(),
             CapsuleShapeDebugDisplayComponent::CreateDescriptor(),
             CylinderShapeDebugDisplayComponent::CreateDescriptor(),
             PolygonPrismShapeDebugDisplayComponent::CreateDescriptor(),
@@ -331,7 +336,9 @@ namespace LmbrCentral
                    azrtti_typeid<LmbrCentralAllocatorComponent>(),
                    azrtti_typeid<LmbrCentralAssetBuilderAllocatorComponent>(),
                    azrtti_typeid<LmbrCentralSystemComponent>(),
+#if ENABLE_CRY_PHYSICS
                    azrtti_typeid<PhysicsSystemComponent>(),
+#endif // ENABLE_CRY_PHYSICS
                    azrtti_typeid<CharacterAnimationManagerComponent>(),
                    azrtti_typeid<StereoRendererComponent>(),
                    azrtti_typeid<NavigationSystemComponent>(),

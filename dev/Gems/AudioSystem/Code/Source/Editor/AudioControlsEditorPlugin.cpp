@@ -36,7 +36,7 @@ using namespace PathUtil;
 
 CATLControlsModel CAudioControlsEditorPlugin::ms_ATLModel;
 QATLTreeModel CAudioControlsEditorPlugin::ms_layoutModel;
-AZStd::set<AZStd::string> CAudioControlsEditorPlugin::ms_currentFilenames;
+FilepathSet CAudioControlsEditorPlugin::ms_currentFilenames;
 Audio::IAudioProxy* CAudioControlsEditorPlugin::ms_pIAudioProxy = nullptr;
 Audio::TAudioControlID CAudioControlsEditorPlugin::ms_nAudioTriggerID = INVALID_AUDIO_CONTROL_ID;
 CImplementationManager CAudioControlsEditorPlugin::ms_implementationManager;
@@ -90,7 +90,7 @@ void CAudioControlsEditorPlugin::Release()
 //-----------------------------------------------------------------------------------------------//
 void CAudioControlsEditorPlugin::SaveModels()
 {
-    AudioControls::IAudioSystemEditor* pImpl = ms_implementationManager.GetImplementation();
+    IAudioSystemEditor* pImpl = GetAudioSystemEditorImpl();
     if (pImpl)
     {
         CAudioControlsWriter writer(&ms_ATLModel, &ms_layoutModel, pImpl, ms_currentFilenames);
@@ -103,7 +103,7 @@ void CAudioControlsEditorPlugin::ReloadModels()
     GetIEditor()->SuspendUndo();
     ms_ATLModel.SetSuppressMessages(true);
 
-    AudioControls::IAudioSystemEditor* pImpl = ms_implementationManager.GetImplementation();
+    IAudioSystemEditor* pImpl = GetAudioSystemEditorImpl();
     if (pImpl)
     {
         ms_layoutModel.clear();
@@ -121,7 +121,7 @@ void CAudioControlsEditorPlugin::ReloadModels()
 //-----------------------------------------------------------------------------------------------//
 void CAudioControlsEditorPlugin::ReloadScopes()
 {
-    AudioControls::IAudioSystemEditor* pImpl = ms_implementationManager.GetImplementation();
+    IAudioSystemEditor* pImpl = GetAudioSystemEditorImpl();
     if (pImpl)
     {
         ms_ATLModel.ClearScopes();
@@ -137,7 +137,7 @@ CATLControlsModel* CAudioControlsEditorPlugin::GetATLModel()
 }
 
 //-----------------------------------------------------------------------------------------------//
-AudioControls::IAudioSystemEditor* CAudioControlsEditorPlugin::GetAudioSystemEditorImpl()
+IAudioSystemEditor* CAudioControlsEditorPlugin::GetAudioSystemEditorImpl()
 {
     return ms_implementationManager.GetImplementation();
 }

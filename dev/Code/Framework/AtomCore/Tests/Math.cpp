@@ -11,6 +11,7 @@
 */
 
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AtomCore/Math/Frustum.h>
 #include <AtomCore/Math/Sphere.h>
 #include <AtomCore/Math/ShapeIntersection.h>
@@ -126,6 +127,13 @@ namespace UnitTest
         AZ::Vector3 point(0.f, 0.f, 0.f);
         AZ::Vector3 point1(10.f, 10.f, 10.f);
 
+        {
+            AZ::Vector3 intersectionPoint;
+            EXPECT_TRUE(AZ::ShapeIntersection::IntersectThreePlanes(near, left, bottom, intersectionPoint));
+            EXPECT_TRUE(intersectionPoint.IsClose(AZ::Vector3(-5.f, -5.f, -5.f)));
+            EXPECT_FALSE(AZ::ShapeIntersection::IntersectThreePlanes(near, far, bottom, intersectionPoint));
+        }
+
         EXPECT_TRUE(AZ::ShapeIntersection::Overlaps(unitSphere, unitBox));
         EXPECT_TRUE(AZ::ShapeIntersection::Overlaps(unitSphere, aabb1));
         EXPECT_TRUE(AZ::ShapeIntersection::Overlaps(unitSphere, frustum));
@@ -156,18 +164,66 @@ namespace UnitTest
         EXPECT_FALSE(AZ::ShapeIntersection::Contains(unitSphere, point1));
         EXPECT_FALSE(AZ::ShapeIntersection::Contains(frustum, point1));
 
-        //The following tests are not yet implemented.
-        AZ_TEST_START_ASSERTTEST;
-        AZ::Obb obb;
-        AZ::Plane plane;
-        AZ::ShapeIntersection::Overlaps(sphere1, obb);
-        AZ::ShapeIntersection::Overlaps(frustum, plane);
-        AZ::ShapeIntersection::Overlaps(frustum, frustum1);
+        {
+            AZ::Sphere s(AZ::Vector3(0.0f, -4.4f, 0.0f), 0.5f);
+            AZ::Sphere s1(AZ::Vector3(0.0f, -5.1f, 0.0f), 0.5f);
+            AZ::Sphere s2(AZ::Vector3(0.0f, -5.6f, 0.0f), 0.5f);
 
-        AZ::ShapeIntersection::Contains(sphere1, frustum);
-        AZ::ShapeIntersection::Contains(sphere1, obb);
-        AZ::ShapeIntersection::Contains(frustum, obb);
-        AZ::ShapeIntersection::Contains(frustum, frustum1);
-        AZ_TEST_STOP_ASSERTTEST(7);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(near, s) == AZ::ShapeIntersection::InFront);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(near, s1) == AZ::ShapeIntersection::Intersects);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(near, s2) == AZ::ShapeIntersection::Behind);
+
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(frustum, s) == AZ::ShapeIntersection::Inside);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(frustum, s1) == AZ::ShapeIntersection::Touches);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(frustum, s2) == AZ::ShapeIntersection::Outside);
+        }
+
+        AZ::Vector3 axisX = AZ::Vector3::CreateAxisX();
+        AZ::Vector3 axisY = AZ::Vector3::CreateAxisY();
+        AZ::Vector3 axisZ = AZ::Vector3::CreateAxisZ();
+        {
+            AZ::Obb obb = AZ::Obb::CreateFromPositionAndAxes(AZ::Vector3(0.0f, -3.9f, 0.0f),
+                axisX, 1.0f,
+                axisY, 1.0f,
+                axisZ, 1.0f);
+            AZ::Obb obb1 = AZ::Obb::CreateFromPositionAndAxes(AZ::Vector3(0.0f, -5.1f, 0.0f),
+                axisX, 1.0f,
+                axisY, 1.0f,
+                axisZ, 1.0f);
+            AZ::Obb obb2 = AZ::Obb::CreateFromPositionAndAxes(AZ::Vector3(0.0f, -6.1f, 0.0f),
+                axisX, 1.0f,
+                axisY, 1.0f,
+                axisZ, 1.0f);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(near, obb) == AZ::ShapeIntersection::InFront);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(near, obb1) == AZ::ShapeIntersection::Intersects);
+            EXPECT_TRUE(AZ::ShapeIntersection::Classify(near, obb2) == AZ::ShapeIntersection::Behind);
+        }
+
+        //Test a bunch of different rotations with the OBBs
+        AZ::Vector3 rotationAxis = AZ::Vector3(1.0f, 1.0f, 1.0f);
+        rotationAxis.Normalize();
+        float rotation = 0.0f;
+        for(int i = 0; i < 50; ++i, rotation += (2.0f*3.1415/50.0f))
+        {
+            AZ::Vector3 x(1.0f, 0.0f, 0.0f);
+            AZ::Vector3 y(0.0f, 1.0f, 0.0f);
+            AZ::Vector3 z(0.0f, 0.0f, 1.0f);            
+            AZ::Quaternion rot = AZ::Quaternion::CreateFromAxisAngle(rotationAxis, AZ::VectorFloat(rotation));
+            x = rot * x;
+            y = rot * y;
+            z = rot * z;
+
+            AZ::Obb obb = AZ::Obb::CreateFromPositionAndAxes(AZ::Vector3(0.7f, 0.7f, 0.7f),
+                x, 1.0f,
+                y, 1.0f,
+                z, 1.0f);
+            AZ::Obb obb1 = AZ::Obb::CreateFromPositionAndAxes(AZ::Vector3(6.8f, 6.8f, 6.8f),
+                x, 1.0f,
+                y, 1.0f,
+                z, 1.0f);
+
+            EXPECT_TRUE(AZ::ShapeIntersection::Overlaps(frustum, obb));
+            EXPECT_FALSE(AZ::ShapeIntersection::Overlaps(frustum, obb1));
+        }
     }
 }

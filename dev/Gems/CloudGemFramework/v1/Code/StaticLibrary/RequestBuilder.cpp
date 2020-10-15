@@ -64,12 +64,12 @@ namespace CloudGemFramework
 
     bool RequestBuilder::SetPathParameter(const char* key, int64_t value)
     {
-        return SetPathParameterUnescaped(key, AZStd::string::format("%" PRId64, value).c_str());
+        return SetPathParameterUnescaped(key, AZStd::string::format("%" PRId64, static_cast<AZ::s64>(value)).c_str());
     }
 
     bool RequestBuilder::SetPathParameter(const char* key, uint64_t value)
     {
-        return SetPathParameterUnescaped(key, AZStd::string::format("%" PRIu64, value).c_str());
+        return SetPathParameterUnescaped(key, AZStd::string::format("%" PRIu64, static_cast<AZ::u64>(value)).c_str());
     }
 
     bool RequestBuilder::AddQueryParameterUnescaped(const char* name, const char* value)
@@ -113,12 +113,12 @@ namespace CloudGemFramework
 
     bool RequestBuilder::AddQueryParameter(const char* name, int64_t value)
     {
-        return AddQueryParameterUnescaped(name, AZStd::string::format("%" PRId64, value).c_str());
+        return AddQueryParameterUnescaped(name, AZStd::string::format("%" PRId64, static_cast<AZ::s64>(value)).c_str());
     }
 
     bool RequestBuilder::AddQueryParameter(const char* name, uint64_t value)
     {
-        return AddQueryParameterUnescaped(name, AZStd::string::format("%" PRIu64, value).c_str());
+        return AddQueryParameterUnescaped(name, AZStd::string::format("%" PRIu64, static_cast<AZ::u64>(value)).c_str());
     }
 
     Aws::String RequestBuilder::escape(const char* value)

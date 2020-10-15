@@ -40,7 +40,11 @@
 #include "AreaManager.h"
 #include "Area.h"
 #include <IFacialAnimation.h>
-#include "CryTypeInfo.h"
+
+#if !defined(OTHER_ACTIVE)
+#   include "CryTypeInfo.h"
+#endif
+
 #include "math.h"
 #include "IAIObjectManager.h"
 #include "IGoalPipe.h"
@@ -489,6 +493,7 @@ CScriptBind_Entity::CScriptBind_Entity(IScriptSystem* pSS, ISystem* pSystem, IEn
     pSS->SetGlobalValue("PHYSICPARAM_FOREIGNDATA", PHYSICPARAM_FOREIGNDATA);
     pSS->SetGlobalValue("PHYSICPARAM_AUTO_DETACHMENT", PHYSICPARAM_AUTO_DETACHMENT);
 
+#if ENABLE_CRY_PHYSICS
     //////////////////////////////////////////////////////////////////////////
     // Remapped physical flags.
     pSS->SetGlobalValue("pef_pushable_by_players", pef_pushable_by_players);
@@ -540,6 +545,7 @@ CScriptBind_Entity::CScriptBind_Entity(IScriptSystem* pSS, ISystem* pSystem, IEn
     pSS->SetGlobalValue("AREA_SHAPE", SEntityPhysicalizeParams::AreaDefinition::AREA_SHAPE);
     pSS->SetGlobalValue("AREA_CYLINDER", SEntityPhysicalizeParams::AreaDefinition::AREA_CYLINDER);
     pSS->SetGlobalValue("AREA_SPLINE", SEntityPhysicalizeParams::AreaDefinition::AREA_SPLINE);
+#endif // ENABLE_CRY_PHYSICS
 
     pSS->SetGlobalValue("FOREIGNFLAGS_MOVING_PLATFORM", PFF_MOVING_PLATFORM);
 
@@ -580,6 +586,7 @@ CScriptBind_Entity::CScriptBind_Entity(IScriptSystem* pSS, ISystem* pSystem, IEn
     SCRIPT_REG_GLOBAL(ENTITY_UPDATE_PHYSICS_VISIBLE);
     SCRIPT_REG_GLOBAL(ENTITY_UPDATE_ALWAYS);
 
+#if ENABLE_CRY_PHYSICS
     SCRIPT_REG_GLOBAL(PE_NONE);
     SCRIPT_REG_GLOBAL(PE_STATIC);
     SCRIPT_REG_GLOBAL(PE_LIVING);
@@ -590,6 +597,7 @@ CScriptBind_Entity::CScriptBind_Entity(IScriptSystem* pSS, ISystem* pSystem, IEn
     SCRIPT_REG_GLOBAL(PE_ROPE);
     SCRIPT_REG_GLOBAL(PE_SOFT);
     SCRIPT_REG_GLOBAL(PE_AREA);
+#endif // ENABLE_CRY_PHYSICS
 
     pSS->SetGlobalValue("ATTACHMENT_KEEP_TRANSFORMATION", IEntity::ATTACHMENT_KEEP_TRANSFORMATION);
 }
@@ -710,6 +718,7 @@ int CScriptBind_Entity::GetPos(IFunctionHandler* pH)
 int CScriptBind_Entity::GetCenterOfMassPos(IFunctionHandler* pH)
 {
     GET_ENTITY;
+#if ENABLE_CRY_PHYSICS
     pe_status_dynamics sd;
     IPhysicalEntity* pent = pEntity->GetPhysics();
     if (pent)
@@ -722,6 +731,9 @@ int CScriptBind_Entity::GetCenterOfMassPos(IFunctionHandler* pH)
     }
 
     return pH->EndFunction(Script::SetCachedVector(sd.centerOfMass, pH, 1));
+#else
+    return pH->EndFunction(Script::SetCachedVector(pEntity->GetPos(), pH, 1));
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1260,6 +1272,7 @@ int CScriptBind_Entity::LoadObjectWithFlags(IFunctionHandler* pH, int nSlot, con
 
 int CScriptBind_Entity::LoadObjectLattice(IFunctionHandler* pH, int nSlot)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IStatObj* pStatObj = pEntity->GetStatObj(nSlot);
@@ -1276,6 +1289,7 @@ int CScriptBind_Entity::LoadObjectLattice(IFunctionHandler* pH, int nSlot)
             pPE->SetParams(&pp);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(nSlot);
 }
@@ -1519,13 +1533,17 @@ int CScriptBind_Entity::LoadParticleEffect(IFunctionHandler* pH, int nSlot, cons
         const char* sType = "";
         if (chain.GetValue("esAttachType", sType))
         {
+#if !defined(OTHER_ACTIVE)
             TypeInfo(&params.eAttachType).FromString(&params.eAttachType, sType);
+#endif
         }
 
         const char* sForm = "";
         if (chain.GetValue("esAttachForm", sForm))
         {
+#if !defined(OTHER_ACTIVE)
             TypeInfo(&params.eAttachForm).FromString(&params.eAttachForm, sForm);
+#endif
         }
 
         bool bPrime = false;
@@ -1875,12 +1893,14 @@ int CScriptBind_Entity::DrawSlot(IFunctionHandler* pH, int nSlot, int nEnable)
 
     pEntity->SetSlotFlags(nSlot, flags);
 
+#if ENABLE_CRY_PHYSICS
     IBreakableManager* pBreakableManager = m_pEntitySystem->GetBreakableManager();
 
     if (pBreakableManager)
     {
         pBreakableManager->EntityDrawSlot(pEntity, nSlot, flags);
     }
+#endif
 
     return pH->EndFunction();
 }
@@ -1926,6 +1946,7 @@ int CScriptBind_Entity::FreeAllSlots(IFunctionHandler* pH)
 */
 int CScriptBind_Entity::DestroyPhysics(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>();
     if (pPhysicsComponent)
@@ -1934,12 +1955,14 @@ int CScriptBind_Entity::DestroyPhysics(IFunctionHandler* pH)
         params.type = PE_NONE;
         pPhysicsComponent->Physicalize(params);
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::EnablePhysics(IFunctionHandler* pH, bool bEnable)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IComponentPhysicsPtr pPhysicsComponent = pEntity->GetOrCreateComponent<IComponentPhysics>();
@@ -1951,6 +1974,7 @@ int CScriptBind_Entity::EnablePhysics(IFunctionHandler* pH, bool bEnable)
     {
         pPhysicsComponent->EnablePhysics(bEnable);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -1958,6 +1982,7 @@ int CScriptBind_Entity::EnablePhysics(IFunctionHandler* pH, bool bEnable)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::Physicalize(IFunctionHandler* pH, int nSlot, int nPhysicsType, SmartScriptTable physicsParams)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     SEntityPhysicalizeParams params;
@@ -1989,6 +2014,7 @@ int CScriptBind_Entity::Physicalize(IFunctionHandler* pH, int nSlot, int nPhysic
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -1996,6 +2022,7 @@ int CScriptBind_Entity::Physicalize(IFunctionHandler* pH, int nSlot, int nPhysic
 
 int CScriptBind_Entity::ReattachSoftEntityVtx(IFunctionHandler* pH, ScriptHandle entityId, int partId)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     EntityId attachEntityToId = (EntityId)entityId.n;
@@ -2004,6 +2031,7 @@ int CScriptBind_Entity::ReattachSoftEntityVtx(IFunctionHandler* pH, ScriptHandle
 
     IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>();
     pPhysicsComponent->ReattachSoftEntityVtx(pPhysEntityAttach, partId);
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -2012,6 +2040,7 @@ int CScriptBind_Entity::ReattachSoftEntityVtx(IFunctionHandler* pH, ScriptHandle
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::PhysicalizeSlot(IFunctionHandler* pH, int slot, SmartScriptTable physicsParams)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     SEntityPhysicalizeParams params;
@@ -2045,6 +2074,7 @@ int CScriptBind_Entity::PhysicalizeSlot(IFunctionHandler* pH, int slot, SmartScr
 
         pe->SetParams(&partParams);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -2052,9 +2082,11 @@ int CScriptBind_Entity::PhysicalizeSlot(IFunctionHandler* pH, int slot, SmartScr
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::UpdateSlotPhysics(IFunctionHandler* pH, int slot)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     pEntity->UpdateSlotPhysics(slot);
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -2612,6 +2644,7 @@ int CScriptBind_Entity::HideAttachmentMaster(IFunctionHandler* pH, int character
 
 int CScriptBind_Entity::PhysicalizeAttachment(IFunctionHandler* pH, int characterSlot, const char* attachmentName, bool physicalize)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     if (ICharacterInstance* pCharacter = pEntity->GetCharacter(characterSlot))
@@ -2633,6 +2666,11 @@ int CScriptBind_Entity::PhysicalizeAttachment(IFunctionHandler* pH, int characte
             }
         }
     }
+#else
+    AZ_UNUSED(characterSlot);
+    AZ_UNUSED(attachmentName);
+    AZ_UNUSED(physicalize);
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -3493,6 +3531,7 @@ int CScriptBind_Entity::SetRegisterInSectors(IFunctionHandler* pH)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::AwakePhysics(IFunctionHandler* pH, int nAwake)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IPhysicalEntity* pe = pEntity->GetPhysics();
@@ -3502,12 +3541,14 @@ int CScriptBind_Entity::AwakePhysics(IFunctionHandler* pH, int nAwake)
         aa.bAwake = nAwake;
         pe->Action(&aa);
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::ResetPhysics(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IPhysicalEntity* pe = pEntity->GetPhysics();
@@ -3516,6 +3557,7 @@ int CScriptBind_Entity::ResetPhysics(IFunctionHandler* pH)
         pe_action_reset ra;
         pe->Action(&ra);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -3523,6 +3565,7 @@ int CScriptBind_Entity::ResetPhysics(IFunctionHandler* pH)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::AwakeCharacterPhysics(IFunctionHandler* pH, int nSlot, const char* sRootBoneName, int nAwake)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     pe_action_awake aa;
@@ -3534,6 +3577,7 @@ int CScriptBind_Entity::AwakeCharacterPhysics(IFunctionHandler* pH, int nSlot, c
     {
         pe->Action(&aa);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -3544,13 +3588,18 @@ int CScriptBind_Entity::SetCharacterPhysicParams(IFunctionHandler* pH)
 
     int nSlot;
     const char* pRootBoneName;
+#if ENABLE_CRY_PHYSICS
     int nType = PE_NONE;
+#else
+    int nType = 0;
+#endif
     SmartScriptTable pTable;
     if (!pH->GetParams(nSlot, pRootBoneName, nType, pTable))
     {
         return pH->EndFunction();
     }
 
+#if ENABLE_CRY_PHYSICS
     // need to find entity's physics
     IPhysicalEntity* pPhysicalEntity = nullptr;
 
@@ -3591,6 +3640,7 @@ int CScriptBind_Entity::SetCharacterPhysicParams(IFunctionHandler* pH)
         return pH->EndFunction(SetEntityPhysicParams(pH, pPhysicalEntity, nType, pTable, pCharacter));
     }
     else
+#endif // ENABLE_CRY_PHYSICS
     {
         return pH->EndFunction();
     }
@@ -3598,6 +3648,7 @@ int CScriptBind_Entity::SetCharacterPhysicParams(IFunctionHandler* pH)
 
 int CScriptBind_Entity::SetPhysicParams(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     int nType = PE_NONE;
@@ -3615,6 +3666,9 @@ int CScriptBind_Entity::SetPhysicParams(IFunctionHandler* pH)
     }
 
     return pH->EndFunction(SetEntityPhysicParams(pH, pe, nType, pTable));
+#else
+    return pH->EndFunction();
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
@@ -3623,6 +3677,7 @@ int CScriptBind_Entity::SetEntityPhysicParams(IFunctionHandler* pH, IPhysicalEnt
     SmartScriptTable pTempObj;
     Vec3 vec(0, 0, 0);
     int res = 1;
+#if ENABLE_CRY_PHYSICS
 
     pe_params_particle particle_params;
     pe_simulation_params sim_params;
@@ -4393,12 +4448,14 @@ int CScriptBind_Entity::SetEntityPhysicParams(IFunctionHandler* pH, IPhysicalEnt
         pe->Action(&aapd);
         break;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return res;
 }
 
 int CScriptBind_Entity::IsColliding(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IPhysicalEntity* pParticle = pEntity->GetPhysics();
@@ -4455,6 +4512,7 @@ int CScriptBind_Entity::IsColliding(IFunctionHandler* pH)
             */
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(false);
 }
@@ -4486,6 +4544,7 @@ int CScriptBind_Entity::IsAnimationRunning(IFunctionHandler* pH, int characterSl
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::AddImpulse(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     //return pH->EndFunction();
@@ -4574,6 +4633,7 @@ int CScriptBind_Entity::AddImpulse(IFunctionHandler* pH)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -4581,6 +4641,7 @@ int CScriptBind_Entity::AddImpulse(IFunctionHandler* pH)
 
 int CScriptBind_Entity::AddConstraint(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     SmartScriptTable params(m_pSS, true);
@@ -4632,6 +4693,7 @@ int CScriptBind_Entity::AddConstraint(IFunctionHandler* pH)
 
     IPhysicalEntity* pSelf = pEntity->GetPhysics();
     pSelf->Action(&constraint);
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -4790,18 +4852,18 @@ int CScriptBind_Entity::SetAudioObstructionCalcType(IFunctionHandler* pH, const 
     {
         switch (nObstructionCalcType)
         {
-        case Audio::eAOOCT_IGNORE:
-        case Audio::eAOOCT_SINGLE_RAY:
-        case Audio::eAOOCT_MULTI_RAY:
-        {
-            pAudioComponent->SetObstructionCalcType(static_cast<Audio::EAudioObjectObstructionCalcType>(nObstructionCalcType), HandleToInt<Audio::TAudioProxyID>(hAudioProxyLocalID));
-            break;
-        }
-        default:
-        {
-            pAudioComponent->SetObstructionCalcType(Audio::eAOOCT_NONE, HandleToInt<Audio::TAudioProxyID>(hAudioProxyLocalID));
-            break;
-        }
+            case Audio::eAOOCT_IGNORE:
+            case Audio::eAOOCT_SINGLE_RAY:
+            case Audio::eAOOCT_MULTI_RAY:
+            {
+                pAudioComponent->SetObstructionCalcType(static_cast<Audio::EAudioObjectObstructionCalcType>(nObstructionCalcType), HandleToInt<Audio::TAudioProxyID>(hAudioProxyLocalID));
+                break;
+            }
+            default:
+            {
+                pAudioComponent->SetObstructionCalcType(Audio::eAOOCT_IGNORE, HandleToInt<Audio::TAudioProxyID>(hAudioProxyLocalID));
+                break;
+            }
         }
     }
 
@@ -5065,11 +5127,13 @@ int CScriptBind_Entity::SetLocalBBox(IFunctionHandler* pH, Vec3 vMin, Vec3 vMax)
     {
         pRenderComponent->SetLocalBounds(AABB(vMin, vMax), true);
     }
+#if ENABLE_CRY_PHYSICS
     else if (IComponentRopePtr pRope = pEntity->GetComponent<IComponentRope>())
     {
         Vec3 pos = pEntity->GetWorldPos();
         pRope->GetRopeRenderNode()->SetBBox(AABB(pos + vMin, pos + vMax));
     }
+#endif
     return pH->EndFunction();
 }
 
@@ -6080,6 +6144,7 @@ int CScriptBind_Entity::GetBoneVelocity(IFunctionHandler* pH, int characterSlot,
 
     Vec3 v(0, 0, 0);
 
+#if ENABLE_CRY_PHYSICS
     ICharacterInstance* pCharacter = pEntity->GetCharacter(characterSlot);
     if (pCharacter)
     {
@@ -6098,6 +6163,7 @@ int CScriptBind_Entity::GetBoneVelocity(IFunctionHandler* pH, int characterSlot,
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(Script::SetCachedVector(v, pH, 3));
 }
@@ -6109,6 +6175,7 @@ int CScriptBind_Entity::GetBoneAngularVelocity(IFunctionHandler* pH, int charact
 
     Vec3 w(0, 0, 0);
 
+#if ENABLE_CRY_PHYSICS
     ICharacterInstance* pCharacter = pEntity->GetCharacter(characterSlot);
     if (pCharacter)
     {
@@ -6127,6 +6194,7 @@ int CScriptBind_Entity::GetBoneAngularVelocity(IFunctionHandler* pH, int charact
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(Script::SetCachedVector(w, pH, 3));
 }
@@ -6154,6 +6222,7 @@ int CScriptBind_Entity::GetBoneNameFromTable(IFunctionHandler* pH)
 */
 int CScriptBind_Entity::GetTouchedSurfaceID(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     IPhysicalEntity* pe;
 
@@ -6172,6 +6241,7 @@ int CScriptBind_Entity::GetTouchedSurfaceID(IFunctionHandler* pH)
             return pH->EndFunction(hItem.idmat[1]);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction(-1);
 }
 
@@ -6179,6 +6249,7 @@ int CScriptBind_Entity::GetTouchedSurfaceID(IFunctionHandler* pH)
 //!retrieves point of collision for rigid body
 int CScriptBind_Entity::GetTouchedPoint(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     IPhysicalEntity* pe;
 
@@ -6199,6 +6270,7 @@ int CScriptBind_Entity::GetTouchedPoint(IFunctionHandler* pH)
             return pH->EndFunction(*oVec);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction(-1);
 }
 
@@ -6223,6 +6295,7 @@ int CScriptBind_Entity::Damage(IFunctionHandler* pH)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::GetExplosionObstruction(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IPhysicalEntity* pPE = pEntity->GetPhysics();
@@ -6231,6 +6304,7 @@ int CScriptBind_Entity::GetExplosionObstruction(IFunctionHandler* pH)
     {
         return pH->EndFunction(1.0f - m_pISystem->GetIPhysicalWorld()->IsAffectedByExplosion(pPE));
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(1.0f);
 }
@@ -6238,6 +6312,7 @@ int CScriptBind_Entity::GetExplosionObstruction(IFunctionHandler* pH)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::GetExplosionImpulse(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IPhysicalEntity* pPE = pEntity->GetPhysics();
@@ -6252,11 +6327,15 @@ int CScriptBind_Entity::GetExplosionImpulse(IFunctionHandler* pH)
     }
 
     return pH->EndFunction(impulse);
+#else
+    return pH->EndFunction(0.f);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::ActivatePlayerPhysics(IFunctionHandler* pH, bool bEnable)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     IPhysicalEntity* pPhysicalEntity = pEntity->GetPhysics();
@@ -6266,12 +6345,14 @@ int CScriptBind_Entity::ActivatePlayerPhysics(IFunctionHandler* pH, bool bEnable
         pd.bActive = bEnable;
         pPhysicalEntity->SetParams(&pd);
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::GetEntitiesInContact(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     AABB bbox;
@@ -6313,6 +6394,7 @@ int CScriptBind_Entity::GetEntitiesInContact(IFunctionHandler* pH)
             return pH->EndFunction(pObj);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -6933,6 +7015,7 @@ int CScriptBind_Entity::GetVelocity(IFunctionHandler* pH)
     GET_ENTITY;
     //  SCRIPT_CHECK_PARAMETERS(0);
     Vec3 velocity(0, 0, 0);
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* phys = pEntity->GetPhysics();
     if (phys)
     {
@@ -6940,6 +7023,7 @@ int CScriptBind_Entity::GetVelocity(IFunctionHandler* pH)
         phys->GetStatus(&dyn);
         velocity = dyn.v;
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction(Script::SetCachedVector(velocity, pH, 1));
 }
 
@@ -6954,6 +7038,7 @@ int CScriptBind_Entity::GetVelocityEx(IFunctionHandler* pH)
 
     Vec3 velocity(0, 0, 0);
     Vec3 angularVelocity(0, 0, 0);
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* phys = pEntity->GetPhysics();
     if (phys)
     {
@@ -6962,6 +7047,7 @@ int CScriptBind_Entity::GetVelocityEx(IFunctionHandler* pH)
         velocity = dyn.v;
         angularVelocity = dyn.w;
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction(Script::SetCachedVector(velocity, pH, 1), Script::SetCachedVector(angularVelocity, pH, 2));
 }
 
@@ -6973,6 +7059,7 @@ int CScriptBind_Entity::SetVelocity(IFunctionHandler* pH, Vec3 velocity)
 {
     GET_ENTITY;
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* phys = pEntity->GetPhysics();
     if (phys)
     {
@@ -6980,6 +7067,7 @@ int CScriptBind_Entity::SetVelocity(IFunctionHandler* pH, Vec3 velocity)
         request.v = velocity;
         phys->Action(&request);
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
@@ -6991,6 +7079,7 @@ int CScriptBind_Entity::SetVelocityEx(IFunctionHandler* pH, Vec3 velocity, Vec3 
 {
     GET_ENTITY;
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* phys = pEntity->GetPhysics();
     if (phys)
     {
@@ -6999,6 +7088,7 @@ int CScriptBind_Entity::SetVelocityEx(IFunctionHandler* pH, Vec3 velocity, Vec3 
         request.w = angularVelocity;
         phys->Action(&request);
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
@@ -7011,6 +7101,7 @@ int CScriptBind_Entity::GetSpeed(IFunctionHandler* pH)
     GET_ENTITY;
     SCRIPT_CHECK_PARAMETERS(0);
     Vec3 velocity(0, 0, 0);
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* phys = pEntity->GetPhysics();
     if (phys)
     {
@@ -7018,6 +7109,7 @@ int CScriptBind_Entity::GetSpeed(IFunctionHandler* pH)
         phys->GetStatus(&dyn);
         velocity = dyn.v;
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction(velocity.GetLength());
 }
 
@@ -7027,6 +7119,7 @@ int CScriptBind_Entity::GetSpeed(IFunctionHandler* pH)
 */
 int CScriptBind_Entity::GetMass(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     SCRIPT_CHECK_PARAMETERS(0);
     IPhysicalEntity* phys = pEntity->GetPhysics();
@@ -7039,6 +7132,9 @@ int CScriptBind_Entity::GetMass(IFunctionHandler* pH)
     }
 
     return pH->EndFunction(mass);
+#else
+    return pH->EndFunction(0);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
@@ -7047,6 +7143,7 @@ int CScriptBind_Entity::GetVolume(IFunctionHandler* pH, int slot)
     GET_ENTITY;
 
     float volume = 0.0f;
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysics = pEntity->GetPhysics();
 
     if (pPhysics)
@@ -7059,6 +7156,7 @@ int CScriptBind_Entity::GetVolume(IFunctionHandler* pH, int slot)
             volume = part.pPhysGeom->V;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(volume);
 }
@@ -7069,8 +7167,10 @@ int CScriptBind_Entity::GetGravity(IFunctionHandler* pH)
     SCRIPT_CHECK_PARAMETERS(1);
 
     Vec3 gravity(0.0f, 0.0f, -9.8f);
+#if ENABLE_CRY_PHYSICS
     pe_params_buoyancy pb;
     gEnv->pPhysicalWorld->CheckAreas(pEntity->GetWorldPos(), gravity, &pb);
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(Script::SetCachedVector(gravity, pH, 1));
 }
@@ -7081,6 +7181,7 @@ int CScriptBind_Entity::GetSubmergedVolume(IFunctionHandler* pH, int slot, Vec3 
     GET_ENTITY;
 
     float volume = 0.0f;
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysics = pEntity->GetPhysics();
 
     if (pPhysics)
@@ -7109,6 +7210,7 @@ int CScriptBind_Entity::GetSubmergedVolume(IFunctionHandler* pH, int slot, Vec3 
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction(volume);
 }
@@ -7536,6 +7638,7 @@ int CScriptBind_Entity::Hide(IFunctionHandler* pH)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::CheckCollisions(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     assert(pH->GetParamCount() <= 2);
     int iEntTypes = ent_sleeping_rigid | ent_rigid | ent_living, iCollTypes = -1;
@@ -7653,6 +7756,7 @@ int CScriptBind_Entity::CheckCollisions(IFunctionHandler* pH)
 
         return pH->EndFunction(psoRes);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
@@ -7660,6 +7764,7 @@ int CScriptBind_Entity::CheckCollisions(IFunctionHandler* pH)
 
 int CScriptBind_Entity::AwakeEnvironment(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     pe_params_bbox pbb;
     pe_action_awake aa;
@@ -7686,12 +7791,14 @@ int CScriptBind_Entity::AwakeEnvironment(IFunctionHandler* pH)
     {
         ppEnts[i]->Action(&aa);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return pH->EndFunction();
 }
 
 int CScriptBind_Entity::NoExplosionCollision(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     SCRIPT_CHECK_PARAMETERS(0);
 
@@ -7706,11 +7813,13 @@ int CScriptBind_Entity::NoExplosionCollision(IFunctionHandler* pH)
             ++ppart.ipart;
         } while (pPhysicalEntity->SetParams(&ppart));
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
 int CScriptBind_Entity::NoBulletForce(IFunctionHandler* pH, bool state)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     //  SCRIPT_CHECK_PARAMETERS(0);
 
@@ -7738,12 +7847,14 @@ int CScriptBind_Entity::NoBulletForce(IFunctionHandler* pH, bool state)
             } while (pPhysicalEntity->SetParams(&ppart));
         }
     }
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
 //get some physical infos such mass and gravity
 int CScriptBind_Entity::GetPhysicalStats(IFunctionHandler* pH)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
     IPhysicalEntity* pEnt = pEntity->GetPhysics();
 
@@ -7790,6 +7901,7 @@ int CScriptBind_Entity::GetPhysicalStats(IFunctionHandler* pH)
         return pH->EndFunction(*m_pStats);
     }
     else
+#endif // ENABLE_CRY_PHYSICS
     {
         return pH->EndFunction();
     }
@@ -8519,6 +8631,7 @@ bool CScriptBind_Entity::ParseVolumeObjectMovementProperties(IScriptTable* pTabl
 //////////////////////////////////////////////////////////////////////////
 bool CScriptBind_Entity::ParsePhysicsParams(IScriptTable* pTable, SEntityPhysicalizeParams& params)
 {
+#if ENABLE_CRY_PHYSICS
     CScriptSetGetChain chain(pTable);
     chain.GetValue("mass", params.mass);
     chain.GetValue("density", params.density);
@@ -8865,6 +8978,7 @@ bool CScriptBind_Entity::ParsePhysicsParams(IScriptTable* pTable, SEntityPhysica
         }
     }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return true;
 }
@@ -9233,6 +9347,7 @@ int CScriptBind_Entity::CreateCameraComponent(IFunctionHandler* pH)
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Entity::BreakToPieces(IFunctionHandler* pH, int nSlot, int nPiecesSlot, float fExplodeImp, Vec3 vHitPt, Vec3 vHitImp, float fLifeTime, bool bMaterialEffects)
 {
+#if ENABLE_CRY_PHYSICS
     GET_ENTITY;
 
     CBreakableManager::BreakageParams bp;
@@ -9242,6 +9357,7 @@ int CScriptBind_Entity::BreakToPieces(IFunctionHandler* pH, int nSlot, int nPiec
     bp.vHitPoint = vHitPt;
     bp.vHitImpulse = vHitImp;
     m_pEntitySystem->GetBreakableManager()->BreakIntoPieces(pEntity, nSlot, nPiecesSlot, bp);
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
@@ -9270,8 +9386,10 @@ int CScriptBind_Entity::AttachSurfaceEffect(IFunctionHandler* pH, int nSlot, con
     SpawnParams params;
     params.bCountPerUnit = countPerUnit;
 
+#if !defined(OTHER_ACTIVE)
     TypeInfo(&params.eAttachForm).FromString(&params.eAttachForm, form);
     TypeInfo(&params.eAttachType).FromString(&params.eAttachType, typ);
+#endif
 
     params.fCountScale = countScale;
     params.fSizeScale = sizeScale;
@@ -9290,6 +9408,7 @@ int CScriptBind_Entity::RagDollize(IFunctionHandler* pH, int slot)
     {
         return pH->EndFunction();
     }
+#if ENABLE_CRY_PHYSICS
 
     pEntity->SetSlotLocalTM(slot, Matrix34::CreateTranslationMat(Vec3(ZERO)));
 
@@ -9339,6 +9458,7 @@ int CScriptBind_Entity::RagDollize(IFunctionHandler* pH, int slot)
         pPhysEnt->GetStatus(&stats);
         CryLog("RagDollized with mass %f", stats.mass);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     ICharacterInstance* pCharacter = pEntity->GetCharacter(slot);
     if (pCharacter)

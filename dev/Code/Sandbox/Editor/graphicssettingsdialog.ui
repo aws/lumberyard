@@ -159,7 +159,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="SoundDropdown">
+              <widget class="QToolButton" name="SoundDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -229,7 +229,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="TextureDropdown">
+              <widget class="QToolButton" name="TextureDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -312,7 +312,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="ShadowsDropdown">
+              <widget class="QToolButton" name="ShadowsDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -382,7 +382,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="ObjectDetailDropdown">
+              <widget class="QToolButton" name="ObjectDetailDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -487,7 +487,7 @@
               </spacer>
              </item>
              <item row="0" column="0">
-              <widget class="QPushButton" name="WaterDropdown">
+              <widget class="QToolButton" name="WaterDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -522,7 +522,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="VolumetricEffectsDropdown">
+              <widget class="QToolButton" name="VolumetricEffectsDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -627,7 +627,7 @@
               </widget>
              </item>
              <item row="0" column="0">
-              <widget class="QPushButton" name="GameEffectsDropdown">
+              <widget class="QToolButton" name="GameEffectsDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -662,7 +662,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="ShadingDropdown">
+              <widget class="QToolButton" name="ShadingDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -732,7 +732,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="LightDropdown">
+              <widget class="QToolButton" name="LightDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -802,7 +802,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="ParticlesDropdown">
+              <widget class="QToolButton" name="ParticlesDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -872,7 +872,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="QualityDropdown">
+              <widget class="QToolButton" name="QualityDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -942,7 +942,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="PhysicsDropdown">
+              <widget class="QToolButton" name="PhysicsDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -1012,7 +1012,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="PostProcessingDropdown">
+              <widget class="QToolButton" name="PostProcessingDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -1082,7 +1082,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="MiscellaneousDropdown">
+              <widget class="QToolButton" name="MiscellaneousDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -1152,7 +1152,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPushButton" name="TextureResolutionDropdown">
+              <widget class="QToolButton" name="TextureResolutionDropdown">
                <property name="enabled">
                 <bool>true</bool>
                </property>
@@ -1282,7 +1282,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QPushButton" name="SelectCustomSpecButton">
+      <widget class="QToolButton" name="SelectCustomSpecButton">
        <property name="minimumSize">
         <size>
          <width>20</width>
@@ -1297,12 +1297,6 @@
        </property>
        <property name="text">
         <string>Add...</string>
-       </property>
-       <property name="default">
-        <bool>false</bool>
-       </property>
-       <property name="flat">
-        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -1320,7 +1314,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="ApplyButton">
+      <widget class="QToolButton" name="ApplyButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -1336,7 +1330,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="CancelButton">
+      <widget class="QToolButton" name="CancelButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
          <horstretch>0</horstretch>

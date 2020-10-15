@@ -80,6 +80,7 @@ struct SBadFloorPosRecord
 };
 
 
+#if ENABLE_CRY_PHYSICS
 /// Return the closest intersection point on surface of the swept sphere
 /// and distance along the linesegment. hitPos can be zero - may be faster
 bool IntersectSweptSphere(Vec3* hitPos, float& hitDist, const Lineseg& lineseg,
@@ -88,6 +89,7 @@ bool IntersectSweptSphere(Vec3* hitPos, float& hitDist, const Lineseg& lineseg,
     float radius, const std::vector<IPhysicalEntity*>& entities);
 
 bool OverlapCylinder(const Lineseg& lineseg, float radius, const std::vector<IPhysicalEntity*>& entities);
+#endif // ENABLE_CRY_PHYSICS
 
 /// Count of calls to CheckWalkability - for profiling
 extern unsigned g_CheckWalkabilityCalls;
@@ -154,6 +156,7 @@ struct SWalkPosition
 /// better make sure all the other params are the same between calls with the same
 /// state pointer (it's OK to CheckWalkability with other or no state pointers inbetween)
 //====================================================================
+#if ENABLE_CRY_PHYSICS
 bool CheckWalkability(SWalkPosition f, SWalkPosition t, float paddingRadius, bool checkStart, const ListPositions& boundary,
     EAICollisionEntities aiCollisionEntities,
     SCachedPassabilityResult* pCachedResult = 0,
@@ -306,6 +309,7 @@ inline bool IntersectSegment(Vec3& hitPos, const Lineseg& lineseg, const std::ve
     }
     return bestDist < std::numeric_limits<float>::max();
 }
+#endif // ENABLE_CRY_PHYSICS
 
 typedef std::set<SBadFloorPosRecord> TBadFloorRecords;
 const TBadFloorRecords& GetBadFloorRecords();
@@ -313,6 +317,7 @@ void ClearBadFloorRecords();
 void AddBadFloorRecord(const SBadFloorPosRecord& record);
 
 
+#if ENABLE_CRY_PHYSICS
 //====================================================================
 // GetFloorPos
 /// returns false if no valid floor found. Checks from upDist above pos to
@@ -397,6 +402,7 @@ inline bool CheckBodyPos(const Vec3& floorPos, EAICollisionEntities aiCollisionE
     Lineseg torsoSeg(segStart, segEnd);
     return !OverlapCapsule(torsoSeg, walkabilityRadius, aiCollisionEntities);
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //===================================================================
 // CalcPolygonArea

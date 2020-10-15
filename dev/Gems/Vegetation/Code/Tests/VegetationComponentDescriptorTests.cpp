@@ -43,9 +43,6 @@ namespace UnitTest
             Vegetation::DescriptorListComponent* component = nullptr;
             auto entity = CreateEntity(config, &component);
 
-            AZ::Data::Asset<Vegetation::DescriptorListAsset> readyAsset;
-            component->OnAssetReady(readyAsset);
-
             return entity;
         }
     };
@@ -75,7 +72,6 @@ namespace UnitTest
         MockDescriptorBus mockDescriptorBus;
 
         Vegetation::Descriptor descriptor;
-        descriptor.m_autoMerge = false;
         descriptor.m_weight = 123.0f;
 
         Vegetation::DescriptorListAsset descriptorListAssetData;
@@ -91,8 +87,7 @@ namespace UnitTest
         Vegetation::DescriptorListComponent* component = nullptr;
         auto entity = CreateEntity(config, &component);
 
-        AZ::Data::Asset<Vegetation::DescriptorListAsset> readyAsset;
-        component->OnAssetReady(readyAsset);
+        component->OnAssetReady(&descriptorListAssetData);
 
         Vegetation::DescriptorPtrVec descriptorCollection;
         Vegetation::DescriptorProviderRequestBus::Event(entity->GetId(), &Vegetation::DescriptorProviderRequestBus::Events::GetDescriptors, descriptorCollection);
@@ -109,12 +104,7 @@ namespace UnitTest
         MockDescriptorBus mockDescriptorBus;
 
         Vegetation::Descriptor descriptor;
-        descriptor.m_autoMerge = false;
         descriptor.m_weight = 123.0f;
-        descriptor.m_windBending = 123.4f;
-        descriptor.m_variance = 5.67f;
-        descriptor.m_damping = 22.33f;
-        descriptor.m_airResistance = 99.77f;
 
         Vegetation::DescriptorListConfig config;
         config.m_sourceType = Vegetation::DescriptorListSourceType::EMBEDDED;
@@ -123,8 +113,6 @@ namespace UnitTest
         Vegetation::DescriptorListComponent* component = nullptr;
         auto entity = CreateEntity(config, &component);
 
-        AZ::Data::Asset<Vegetation::DescriptorListAsset> readyAsset;
-        component->OnAssetReady(readyAsset);
         EXPECT_EQ(1, mockDescriptorBus.m_descriptorSet.size());
 
         Vegetation::DescriptorPtrVec descriptorCollection;
@@ -132,7 +120,6 @@ namespace UnitTest
 
         ASSERT_EQ(1, descriptorCollection.size());
         EXPECT_EQ(123.0f, descriptorCollection[0]->m_weight);
-        EXPECT_EQ(false, descriptorCollection[0]->m_autoMerge);
 
         // clear up memory before leaving
         mockDescriptorBus.m_descriptorSet.clear();

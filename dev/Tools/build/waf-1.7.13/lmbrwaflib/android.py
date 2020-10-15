@@ -1165,19 +1165,19 @@ def set_key_and_store_pass(ctx):
 
 ################################################################
 ################################################################
-class strip_debug_symbols_base(Task):
+class strip_symbols_base(Task):
     """
-    Strips the debug symbols from a shared library
+    Strips symbols from a shared library
     """
     color = 'CYAN'
     vars = [ 'STRIP' ]
 
     def __str__(self):
-        task_description = super(strip_debug_symbols_base, self).__str__()
-        return task_description.replace(self.__class__.__name__, 'strip_debug_symbols')
+        task_description = super(strip_symbols_base, self).__str__()
+        return task_description.replace(self.__class__.__name__, 'strip_symbols')
 
     def runnable_status(self):
-        if super(strip_debug_symbols_base, self).runnable_status() == ASK_LATER:
+        if super(strip_symbols_base, self).runnable_status() == ASK_LATER:
             return ASK_LATER
 
         src = self.inputs[0].abspath()
@@ -1205,27 +1205,27 @@ class strip_debug_symbols_base(Task):
         return SKIP_ME
 
 
-class strip_debug_symbols_gcc(strip_debug_symbols_base):
-    run_str = '${STRIP} --strip-debug -o ${TGT} ${SRC}'
+class strip_symbols_gcc(strip_symbols_base):
+    run_str = '${STRIP} --strip-all -o ${TGT} ${SRC}'
 
-class strip_debug_symbols_llvm_ndk_r18(strip_debug_symbols_base):
-    run_str = '${STRIP} -strip-debug ${SRC} ${TGT}'
+class strip_symbols_llvm_ndk_r18(strip_symbols_base):
+    run_str = '${STRIP} -strip-all ${SRC} ${TGT}'
 
-class strip_debug_symbols_llvm_ndk_r19(strip_debug_symbols_base):
-    run_str = '${STRIP} ${SRC} -strip-debug -o ${TGT}'
+class strip_symbols_llvm_ndk_r19(strip_symbols_base):
+    run_str = '${STRIP} ${SRC} -strip-all -o ${TGT}'
 
 
 @taskgen_method
-def create_strip_debug_symbols_task(self, src, tgt):
+def create_strip_symbols_task(self, src, tgt):
     # ndk r18 introduced the llvm based symbol stripper and in r19 they changed the usage
     ndk_rev = self.env['ANDROID_NDK_REV_MAJOR']
 
     if ndk_rev >= 19:
-        symbol_stripper = 'strip_debug_symbols_llvm_ndk_r19'
+        symbol_stripper = 'strip_symbols_llvm_ndk_r19'
     if ndk_rev == 18:
-        symbol_stripper = 'strip_debug_symbols_llvm_ndk_r18'
+        symbol_stripper = 'strip_symbols_llvm_ndk_r18'
     else:
-        symbol_stripper = 'strip_debug_symbols_gcc'
+        symbol_stripper = 'strip_symbols_gcc'
 
     return self.create_task(symbol_stripper, src, tgt)
 
@@ -1420,14 +1420,14 @@ class zipalign(Task):
 ################################################################
 ################################################################
 @taskgen_method
-def create_debug_strip_task(self, source_file, dest_location):
+def create_strip_task(self, source_file, dest_location):
 
     lib_name = os.path.basename(source_file.abspath())
     output_node = dest_location.make_node(lib_name)
 
     # For Android Studio we should just copy the libs because stripping is part of the build process.
     # But we have issues with long path names that makes the stripping process to fail in Android Studio.
-    self.create_strip_debug_symbols_task(source_file, output_node)
+    self.create_strip_symbols_task(source_file, output_node)
 
 
 ################################################################
@@ -1481,7 +1481,7 @@ def android_natives_processing(self):
     for src in link_task.outputs:
         src_lib = output_node.make_node(src.name)
         for builder_node in game_project_builder_nodes:
-            self.create_debug_strip_task(src_lib, builder_node)
+            self.create_strip_task(src_lib, builder_node)
 
     third_party_artifacts = getattr(self.env, 'COPY_3RD_PARTY_ARTIFACTS', [])
     for artifact in third_party_artifacts:
@@ -1494,7 +1494,7 @@ def android_natives_processing(self):
             continue
 
         for builder_node in game_project_builder_nodes:
-            self.create_debug_strip_task(artifact, builder_node)
+            self.create_strip_task(artifact, builder_node)
 
 
     external_artifacts = getattr(self.env, 'COPY_DEPENDENT_FILES_{}'.format(self.target.upper()), [])
@@ -1891,7 +1891,7 @@ def apply_android_java(self):
 
                     tgt = apk_native_lib_dir.make_node(rel_path)
 
-                    strip_task = self.create_strip_debug_symbols_task(lib, tgt)
+                    strip_task = self.create_strip_symbols_task(lib, tgt)
                     self.bld.add_to_group(strip_task, self.bld.default_group_name)
 
     Logs.debug('android: -> Android use libs added {}'.format(use_libs_added))

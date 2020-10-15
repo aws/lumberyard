@@ -14,6 +14,10 @@
 
 namespace AZ
 {
+    Module::Module()
+    {
+    }
+
     Module::~Module()
     {
         for (AZ::ComponentDescriptor* descriptor : m_descriptors)

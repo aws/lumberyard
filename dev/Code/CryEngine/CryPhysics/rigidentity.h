@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_RIGIDENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 typedef uint64 masktype;
 #define getmask(i) ((uint64)1 << (i))
 const int NMASKBITS = 64;
@@ -348,5 +350,7 @@ extern REdata g_REdata[];
 #define g_idx0NoColl      g_REdata[iCaller].idx0NoColl
 #define g_nLastContacts g_REdata[iCaller].nLastContacts
 
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_RIGIDENTITY_H

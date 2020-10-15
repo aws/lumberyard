@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYACTION_DELAYEDPLANEBREAK_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "IIndexedMesh.h"
 #include "IPhysics.h"
 #include "IDeferredCollisionEvent.h"
@@ -80,5 +82,6 @@ public:
     EventPhysCollision m_epc;
     SThreadTaskInfo m_threadTaskInfo;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYACTION_DELAYEDPLANEBREAK_H

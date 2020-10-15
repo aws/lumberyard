@@ -252,7 +252,7 @@ namespace JsonSerializationTests
         EXPECT_EQ(42, value);
     }
 
-    TEST_F(BaseJsonSerializerTests, ContinueLoadingFromJsonObjectField_MemberNotFound_FieldIsSkipped)
+    TEST_F(BaseJsonSerializerTests, ContinueLoadingFromJsonObjectField_MemberNotFound_DefaultsUsed)
     {
         using namespace AZ::JsonSerializationResult;
 
@@ -264,7 +264,7 @@ namespace JsonSerializationTests
         ResultCode result = ContinueLoadingFromJsonObjectField(&value, azrtti_typeid<int>(), *m_jsonDocument,
             "Value", *m_jsonDeserializationContext);
 
-        EXPECT_EQ(Outcomes::Skipped, result.GetOutcome());
+        EXPECT_EQ(Outcomes::DefaultsUsed, result.GetOutcome());
         EXPECT_EQ(0, value);
     }
 

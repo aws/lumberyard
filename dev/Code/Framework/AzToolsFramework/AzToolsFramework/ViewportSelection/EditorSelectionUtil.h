@@ -30,8 +30,6 @@ namespace AzFramework
 
 namespace AzToolsFramework
 {
-    static const AZ::VectorFloat s_tenRecip = AZ::VectorFloat(1.0f / 10.0f);
-
     /// Is the pivot at the center of the object (middle of extents) or at the
     /// exported authored object root position.
     inline bool Centered(const EditorTransformComponentSelectionRequests::Pivot pivot)
@@ -43,14 +41,8 @@ namespace AzToolsFramework
     AZ::Vector3 CalculateCenterOffset(AZ::EntityId entityId, EditorTransformComponentSelectionRequests::Pivot pivot);
 
     /// Calculate scale factor based on distance from camera
-    inline AZ::VectorFloat CalculateScreenToWorldMultiplier(
-        const AZ::Vector3& worldPosition, const AzFramework::CameraState& cameraState)
-    {
-        // author sizes of bounds/manipulators as they would appear
-        // in perspective 10 meters from the camera.
-        return GetMax(cameraState.m_position.GetDistance(worldPosition),
-            AZ::VectorFloat(cameraState.m_nearClip)) * s_tenRecip;
-    }
+    AZ::VectorFloat CalculateScreenToWorldMultiplier(
+        const AZ::Vector3& worldPosition, const AzFramework::CameraState& cameraState);
 
     /// Map from world space to screen space.
     QPoint GetScreenPosition(int viewportId, const AZ::Vector3& worldTranslation);

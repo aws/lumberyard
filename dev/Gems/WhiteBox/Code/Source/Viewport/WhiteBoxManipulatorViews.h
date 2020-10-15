@@ -31,6 +31,8 @@ namespace WhiteBox
 
         AZ_RTTI(ManipulatorViewPolygon, "{B2290233-1D42-4AF5-8949-7CF9601832E2}", AzToolsFramework::ManipulatorView)
 
+        ManipulatorViewPolygon();
+
         void Draw(
             AzToolsFramework::ManipulatorManagerId managerId,
             const AzToolsFramework::ManipulatorManagerState& managerState,
@@ -52,6 +54,8 @@ namespace WhiteBox
 
         AZ_RTTI(ManipulatorViewEdge, "{42F07925-5B2F-4CC6-9033-CF2FE548BF8A}", AzToolsFramework::ManipulatorView)
 
+        ManipulatorViewEdge();
+
         void Draw(
             AzToolsFramework::ManipulatorManagerId managerId,
             const AzToolsFramework::ManipulatorManagerState& managerState,
@@ -66,6 +70,8 @@ namespace WhiteBox
         AZ::Vector3 m_end;
         AZStd::array<float, 2> m_width;
         AZStd::array<AZ::Color, 2> m_color;
+        AZStd::array<bool, 2> m_vertexStartEndHidden; //!< When this manipulator view was created, were the adjoining
+                                                      //!< vertex handles hidden or not.
     };
 
     void TranslatePoints(AZStd::vector<AZ::Vector3>& points, const AZ::Vector3& offset);

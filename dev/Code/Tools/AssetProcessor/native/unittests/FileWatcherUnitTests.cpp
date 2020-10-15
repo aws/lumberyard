@@ -28,9 +28,9 @@ using namespace AssetProcessor;
 
 void FileWatcherUnitTestRunner::StartTest()
 {
-    // QTemporaryDir returns a path that may hvae symbolic links in it. for macOS
-    // this fails because the file events use paths with no symoblic links. Use
-    // QDir's canonicalPath to remove the symoblic links.
+    // QTemporaryDir returns a path that may have symbolic links in it. for macOS
+    // this fails because the file events use paths with no symbolic links. Use
+    // QDir's canonicalPath to remove the symbolic links.
     QTemporaryDir tempDir;
     QDir dir(tempDir.path());
     QString tempPath = dir.canonicalPath();
@@ -45,10 +45,10 @@ void FileWatcherUnitTestRunner::StartTest()
     { // test a single file create/write
         bool foundFile = false;
         auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, this, [&](QString filename)
-                {
-                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Single file test Found asset: %s.\n", filename.toUtf8().data());
-                    foundFile = true;
-                });
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Single file test Found asset: %s.\n", filename.toUtf8().data());
+            foundFile = true;
+        });
 
         // give the file watcher thread a moment to get started
         QThread::sleep(1);
@@ -80,9 +80,9 @@ void FileWatcherUnitTestRunner::StartTest()
         QSet<QString> outstandingFiles;
 
         auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, this, [&](QString filename)
-                {
-                    outstandingFiles.remove(filename);
-                });
+        {
+            outstandingFiles.remove(filename);
+        });
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Performing multi-file test...\n");
 
         // give the file watcher thread a moment to get started
@@ -134,10 +134,10 @@ void FileWatcherUnitTestRunner::StartTest()
     { // test deletion
         bool foundFile = false;
         auto connection = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileRemoved, this, [&](QString filename)
-                {
-                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Deleted asset: %s...\n", filename.toUtf8().data());
-                    foundFile = true;
-                });
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Deleted asset: %s...\n", filename.toUtf8().data());
+            foundFile = true;
+        });
 
         // give the file watcher thread a moment to get started
         QThread::sleep(1);
@@ -167,26 +167,26 @@ void FileWatcherUnitTestRunner::StartTest()
         bool fileAddCalled = false;
         QString fileAddName;
         auto connectionAdd = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileAdded, this, [&](QString filename)
-                {
-                    fileAddCalled = true;
-                    fileAddName = filename;
-                });
+        {
+            fileAddCalled = true;
+            fileAddName = filename;
+        });
 
         bool fileRemoveCalled = false;
         QString fileRemoveName;
         auto connectionRemove = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileRemoved, this, [&](QString filename)
-                {
-                    fileRemoveCalled = true;
-                    fileRemoveName = filename;
-                });
+        {
+            fileRemoveCalled = true;
+            fileRemoveName = filename;
+        });
 
         QStringList fileModifiedNames;
         bool fileModifiedCalled = false;
         auto connectionModified = QObject::connect(&folderWatch, &FolderWatchCallbackEx::fileModified, this, [&](QString filename)
-                {
-                    fileModifiedCalled = true;
-                    fileModifiedNames.append(filename);
-                });
+        {
+            fileModifiedCalled = true;
+            fileModifiedNames.append(filename);
+        });
 
         // give the file watcher thread a moment to get started
         QThread::sleep(1);

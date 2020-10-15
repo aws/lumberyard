@@ -32,7 +32,9 @@
 #include <I3DEngine.h>
 #include <IEntitySystem.h>
 #include <IEntityRenderState.h>
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include "IBreakableManager.h"
 #include "IGamePhysicsSettings.h"
 
@@ -243,7 +245,11 @@ bool CBrushObject::CreateGameObject()
         }
         UpdateEngineNode();
 
+#if ENABLE_CRY_PHYSICS
         m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial(), m_pRenderNode->GetPhysics());
+#else
+        m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial());
+#endif
     }
 
     return true;
@@ -592,7 +598,9 @@ bool CBrushObject::HitTest(HitContext& hc)
             return true;
         }
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* physics = 0;
+#endif
 
         if (m_pRenderNode)
         {
@@ -613,6 +621,7 @@ bool CBrushObject::HitTest(HitContext& hc)
                 return false;
             }
 
+#if ENABLE_CRY_PHYSICS
             physics = m_pRenderNode->GetPhysics();
             if (physics)
             {
@@ -622,8 +631,10 @@ bool CBrushObject::HitTest(HitContext& hc)
                     physics = 0;
                 }
             }
+#endif
         }
 
+#if ENABLE_CRY_PHYSICS
         if (physics)
         {
             Vec3r origin = hc.raySrc;
@@ -638,6 +649,7 @@ bool CBrushObject::HitTest(HitContext& hc)
                 return true;
             }
         }
+#endif
 
         hc.dist = hc.raySrc.GetDistance(GetWorldTM().TransformPoint(pnt));
         hc.object = this;
@@ -707,7 +719,11 @@ void CBrushObject::OnGeometryChange(IVariable* var)
     CreateBrushFromMesh(objName.toUtf8().data());
     InvalidateTM(0);
 
+#if ENABLE_CRY_PHYSICS
     m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial(), m_pRenderNode ? m_pRenderNode->GetPhysics() : 0);
+#else
+    m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial());
+#endif
 
     if (NULL != s_treePanelPtr)
     {
@@ -841,6 +857,7 @@ void CBrushObject::OnRenderVarChange(IVariable* var)
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 IPhysicalEntity* CBrushObject::GetCollisionEntity() const
 {
@@ -851,6 +868,7 @@ IPhysicalEntity* CBrushObject::GetCollisionEntity() const
     }
     return 0;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 bool CBrushObject::ConvertFromObject(CBaseObject* object)
@@ -1044,8 +1062,10 @@ void CBrushObject::UpdateEngineNode(bool bOnlyTransform)
 
     m_pRenderNode->SetLayerId(0);
 
+#if ENABLE_CRY_PHYSICS
     // Apply collision class filtering
     m_collisionFiltering.ApplyToPhysicalEntity(m_pRenderNode ? m_pRenderNode->GetPhysics() : 0);
+#endif 
 
     // Setting the objects layer modified, this is to ensure that if this object is embedded in a prefab that it is properly saved.
     this->SetLayerModified();
@@ -1343,7 +1363,11 @@ void CBrushObject::OnMaterialChanged(MaterialChangeFlags change)
 {
     if (change & MATERIALCHANGE_SURFACETYPE)
     {
+#if ENABLE_CRY_PHYSICS
         m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial(), m_pRenderNode ? m_pRenderNode->GetPhysics() : 0);
+#else
+        m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial());
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 

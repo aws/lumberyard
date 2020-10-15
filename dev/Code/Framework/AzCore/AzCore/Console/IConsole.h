@@ -169,9 +169,9 @@ static constexpr AZ::ThreadSafety ConsoleThreadSafety<_TYPE, std::enable_if_t<st
 //! Implements a console functor for a non-member function.
 //! 
 //! @param _FUNCTION the method to invoke
-//!        ** YOU HAVE NO GUARANTEES AS TO WHAT THREAD WILL INVOKE YOUR FUNCION ** It is the responsibility of the implementor of the console function to ensure thread safety
+//!        ** YOU HAVE NO GUARANTEES AS TO WHAT THREAD WILL INVOKE YOUR FUNCTION ** It is the responsibility of the implementor of the console function to ensure thread safety
 //! @param _FLAGS a set of AzFramework::ConsoleFunctorFlags used to mutate behaviour
 //! @param _DESC a description of the cvar
 #define AZ_CONSOLEFREEFUNC(_FUNCTION, _FLAGS, _DESC) \
     static AZ::ConsoleFunctor<void, false> \
-        Functor##_NAME(#_FUNCTION, _DESC, _FLAGS, &_FUNCTION)
+        Functor##_FUNCTION(#_FUNCTION, _DESC, _FLAGS, &_FUNCTION)

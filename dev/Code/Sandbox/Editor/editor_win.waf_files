@@ -5,7 +5,7 @@
 		[
 			"Resource.h",
 			"EditorCryEdit.rc",
-			"res/editor_icon.ico"
+			"res/lyeditor.ico"
 		]
 	}
 }

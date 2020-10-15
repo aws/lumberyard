@@ -167,6 +167,9 @@
    </item>
    <item>
     <widget class="QToolButton" name="m_toggleDisplayInfoBtn">
+      <property name="text">
+        <string>Toggle display info</string>
+      </property>
      <property name="toolTip">
       <string>Toggle display info</string>
      </property>
@@ -181,6 +184,9 @@
    </item>
    <item>
     <widget class="QToolButton" name="m_toggleHelpersBtn">
+     <property name="text">
+      <string>Toggle display helpers</string>
+     </property>
      <property name="toolTip">
       <string>Toggle display helpers</string>
      </property>

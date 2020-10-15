@@ -258,6 +258,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Module/Environment.h>
+#include <AzToolsFramework/Undo/UndoSystem.h>
 
 #include <Amazon/Login.h>
 #include <CloudCanvas/ICloudCanvasEditor.h>
@@ -279,6 +280,7 @@
 #include "EditorToolsApplication.h"
 
 #include "../Plugins/EditorUI_QT/EditorUI_QTAPI.h"
+#include "../ComponentEntityEditorPlugin/Objects/ComponentEntityObject.h"
 
 #include <Engines/EnginesAPI.h> // For LyzardSDK
 
@@ -291,6 +293,9 @@
 #endif
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Render/Intersector.h>
+#endif
 
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
@@ -383,6 +388,38 @@ namespace
 {
     static const char* s_CryEditAppInstanceName = "CryEditAppInstanceName";
 
+    //! We have explicitly not exposed this CloseCurrentLevel API to Python Scripting since the Editor
+    //! doesn't officially support it (it doesn't exist in the File menu). It is used for cases
+    //! where a level with legacy entities are unable to be converted and so the level that has
+    //! been opened needs to be closed, but it hasn't been fully tested for a normal workflow.
+    void CloseCurrentLevel()
+    {
+        CCryEditDoc* currentLevel = GetIEditor()->GetDocument();
+        if (currentLevel && currentLevel->IsDocumentReady())
+        {
+            // This closes the current document (level)
+            currentLevel->OnNewDocument();
+
+            // Then we freeze the viewport's input
+            AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Broadcast(
+                &AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Events::FreezeViewportInput, true);
+
+            // Then we need to tell the game engine there is no level to render anymore
+            if (GetIEditor()->GetGameEngine())
+            {
+                GetIEditor()->GetGameEngine()->SetLevelPath("");
+                GetIEditor()->GetGameEngine()->SetLevelLoaded(false);
+
+                CViewManager* pViewManager = GetIEditor()->GetViewManager();
+                CViewport* pGameViewport = pViewManager ? pViewManager->GetGameViewport() : nullptr;
+                if (pGameViewport)
+                {
+                    pGameViewport->SetViewTM(Matrix34::CreateIdentity());
+                }
+            }
+        }
+    }
+
     const char* PyGetGameFolder()
     {
         return Path::GetEditingGameDataFolder().c_str();
@@ -457,6 +494,20 @@ namespace
         return PyOpenLevel(pLevelName);
     }
 
+    bool PyReloadCurrentLevel()
+    {
+        if (GetIEditor()->IsLevelLoaded())
+        {
+            // Close the current level so that the subsequent call to open the same level will be allowed
+            QString currentLevelPath = GetIEditor()->GetDocument()->GetLevelPathName();
+            CloseCurrentLevel();
+
+            return PyOpenLevel(currentLevelPath.toUtf8().constData());
+        }
+
+        return false;
+    }
+
     int PyCreateLevel(const char* levelName, int resolution, int unitSize, bool bUseTerrain)
     {
         QString qualifiedName;
@@ -466,6 +517,12 @@ namespace
 
     int PyCreateLevelNoPrompt(const char* levelName, int heightmapResolution, int heightmapUnitSize, int terrainExportTextureSize, bool useTerrain)
     {
+        // If a level was open, ignore any unsaved changes if it had been modified
+        if (GetIEditor()->IsLevelLoaded())
+        {
+            GetIEditor()->GetDocument()->SetModifiedFlag(false);
+        }
+
         QString qualifiedName;
         CCryEditApp::TerrainTextureExportSettings exportSettings(CCryEditApp::TerrainTextureExportTechnique::UseDefault, terrainExportTextureSize);
         return CCryEditApp::instance()->CreateLevel(levelName, heightmapResolution, heightmapUnitSize, useTerrain, qualifiedName, exportSettings);
@@ -1047,6 +1104,7 @@ public:
             {{"runpythonargs", "Command-line argument string to pass to the python script if --runpython or --runpythontest was used.", "runpythonargs"}, m_pythonArgs},
             {{"exec", "cfg file to run on startup, used for systems like automation", "exec"}, m_execFile},
             {{"rhi", "Command-line argument to force which rhi to use", "dummyString"}, dummyString },
+            {{"rhi-device-validation", "Command-line argument to configure rhi validation", "dummyString"}, dummyString },
             {{"exec_line", "command to run on startup, used for systems like automation", "exec_line"}, m_execLineCmd}
             // add dummy entries here to prevent QCommandLineParser error-ing out on cmd line args that will be parsed later
         };
@@ -1421,7 +1479,7 @@ bool CCryEditApp::ShowEnableDisableCryEntityRemovalDialog()
 
 bool CCryEditApp::ShowEnableDisableGemDialog(const QString& title, const QString& message, bool restartEditor)
 {
-    const QString informativeMessage = QObject::tr("Please follow the instructions <a href=\"http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html\">here</a>, after which the Editor will be re-launched automatically.");
+    const QString informativeMessage = QObject::tr("Please follow the instructions <a href=\"http://docs.aws.amazon.com/console/lumberyard/gems\">here</a>, after which the Editor will be re-launched automatically.");
 
     QMessageBox box(AzToolsFramework::GetActiveWindow());
     box.addButton(QObject::tr("Continue"), QMessageBox::AcceptRole);
@@ -2630,6 +2688,12 @@ void CCryEditApp::InitLevel(const CEditCommandLineInfo& cmdInfo)
             // load level
             if (doLevelNeedLoading && !levelName.isEmpty())
             {
+                if (!CFileUtil::Exists(levelName, false))
+                {
+                    QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("Missing level"), QObject::tr("Failed to auto-load last opened level. Level file does not exist:\n\n%1").arg(levelName));
+                    return;
+                }
+
                 QString str;
                 str = tr("Loading level %1 ...").arg(levelName);
                 OutputStartupMessage(str);
@@ -3420,25 +3484,25 @@ void CCryEditApp::OnAppAbout()
 // App command to open online documentation page
 void CCryEditApp::OnDocumentationGettingStartedGuide()
 {
-    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/gettingstartedguide");
+    QString webLink = tr("https://docs.aws.amazon.com/console/lumberyard/welcome");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
 void CCryEditApp::OnDocumentationTutorials()
 {
-    QString webLink = tr("https://www.youtube.com/amazonlumberyardtutorials");
+    QString webLink = tr("https://docs.aws.amazon.com/console/lumberyard/tutorials/channel");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
 void CCryEditApp::OnDocumentationGlossary()
 {
-    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/userguide/glossary");
+    QString webLink = tr("https://docs.aws.amazon.com/console/lumberyard/glossary");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
 void CCryEditApp::OnDocumentationLumberyard()
 {
-    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/userguide");
+    QString webLink = tr("https://docs.aws.amazon.com/console/lumberyard/userguide");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
@@ -3450,7 +3514,7 @@ void CCryEditApp::OnDocumentationGamelift()
 
 void CCryEditApp::OnDocumentationReleaseNotes()
 {
-    QString webLink = tr("https://docs.aws.amazon.com/lumberyard/releasenotes");
+    QString webLink = tr("https://docs.aws.amazon.com/console/lumberyard/releasenotes");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
@@ -3593,7 +3657,7 @@ void CCryEditApp::OnAWSLaunchUpdate(QAction* action)
 
 void CCryEditApp::OnHowToSetUpCloudCanvas()
 {
-    QString setupLink = tr("https://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-intro.html");
+    QString setupLink = tr("https://docs.aws.amazon.com/console/lumberyard/cloudcanvas");
     QDesktopServices::openUrl(QUrl(setupLink));
 }
 
@@ -4145,6 +4209,7 @@ bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSet
         if (exportSettings.m_exportType != TerrainTextureExportTechnique::NoExport)
         {
             uint32 textureResolution = exportSettings.m_defaultResolution;
+            bool exportSurfaceTexture = true;
 
             if (exportSettings.m_exportType == TerrainTextureExportTechnique::PromptUser)
             {
@@ -4154,16 +4219,19 @@ bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSet
                 // Query the size of the preview
                 if (dimensionDialog.exec() != QDialog::Accepted)
                 {
-                    return false;
+                    exportSurfaceTexture = false;
                 }
 
                 textureResolution = dimensionDialog.GetDimensions();
             }
 
-            SGameExporterSettings& settings = gameExporter.GetSettings();
-            settings.iExportTexWidth = textureResolution;
+            if (exportSurfaceTexture)
+            {
+                SGameExporterSettings& settings = gameExporter.GetSettings();
+                settings.iExportTexWidth = textureResolution;
 
-            flags |= eExp_SurfaceTexture;
+                flags |= eExp_SurfaceTexture;
+            }
         }
 
         // Change the cursor to show that we're busy.
@@ -4180,7 +4248,14 @@ bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSet
                 }
                 else
                 {
-                    QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The terrain texture was successfully generated"));
+                    if (flags & eExp_SurfaceTexture)
+                    {
+                        QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The terrain texture was successfully generated"));
+                    }
+                    else
+                    {
+                        QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The terrain texture generation was canceled"));
+                    }
                 }
             }
             m_bIsExportingLegacyData = false;
@@ -4898,36 +4973,27 @@ void CCryEditApp::OnObjectSetArea()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnObjectSetHeight()
 {
+#if ENABLE_CRY_PHYSICS
+    IPhysicalWorld* pPhysics = GetIEditor()->GetSystem()->GetIPhysicalWorld();
+#else
+    AzFramework::EntityContextId editorContextId;
+    AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+        editorContextId, &AzToolsFramework::EditorEntityContextRequests::GetEditorEntityContextId);
+#endif
+
     CSelectionGroup* sel = GetIEditor()->GetObjectManager()->GetSelection();
+
     if (!sel->IsEmpty())
     {
-        float height = 0;
-        if (sel->GetCount() == 1)
+        // Retrieve the Z origin from where height is messured from
+        auto getZOrigin = [&](const Vec3& pos, AZ::EntityId entityId)
         {
-            Vec3 pos = sel->GetObject(0)->GetWorldPos();
-            height = pos.z - GetIEditor()->GetTerrainElevation(pos.x, pos.y);
-        }
-
-        bool ok = false;
-        int fractionalDigitCount = 2;
-        height = aznumeric_caster(QInputDialog::getDouble(AzToolsFramework::GetActiveWindow(), QObject::tr("Enter Height"), QStringLiteral(""), height, -10000, 10000, fractionalDigitCount, &ok));
-        if (!ok)
-        {
-            return;
-        }
-
-        CUndo undo("Set Height");
-        IPhysicalWorld* pPhysics = GetIEditor()->GetSystem()->GetIPhysicalWorld();
-        for (int i = 0; i < sel->GetCount(); i++)
-        {
-            CBaseObject* obj = sel->GetObject(i);
-            Matrix34 wtm = obj->GetWorldTM();
-            Vec3 pos = wtm.GetTranslation();
             float z = GetIEditor()->GetTerrainElevation(pos.x, pos.y);
             if (z != pos.z)
             {
                 float zdown = FLT_MAX;
                 float zup = FLT_MAX;
+#if ENABLE_CRY_PHYSICS
                 ray_hit hit;
                 if (pPhysics->RayWorldIntersection(pos, Vec3(0, 0, -4000), ent_all, rwi_stop_at_pierceable | rwi_ignore_noncolliding, &hit, 1) > 0)
                 {
@@ -4937,6 +5003,37 @@ void CCryEditApp::OnObjectSetHeight()
                 {
                     zup = hit.pt.z;
                 }
+#else
+                AzFramework::RenderGeometry::RayRequest ray;
+                ray.m_startWorldPosition = LYVec3ToAZVec3(pos);
+                ray.m_onlyVisible = true;
+                if (entityId.IsValid()) // Don't check height against self
+                {
+                    ray.m_entityFilter.m_ignoreEntities.insert(entityId);
+                }
+                // Down
+                ray.m_endWorldPosition = LYVec3ToAZVec3(pos - Vec3(0, 0, 4000));
+                {
+                    AzFramework::RenderGeometry::RayResult result;
+                    AzFramework::RenderGeometry::IntersectorBus::EventResult(result, editorContextId,
+                        &AzFramework::RenderGeometry::IntersectorInterface::RayIntersect, ray);
+                    if (result)
+                    {
+                        zdown = result.m_worldPosition.GetZ();
+                    }
+                }
+                // Up
+                ray.m_endWorldPosition = LYVec3ToAZVec3(pos + Vec3(0, 0, 4000));
+                {
+                    AzFramework::RenderGeometry::RayResult result;
+                    AzFramework::RenderGeometry::IntersectorBus::EventResult(result, editorContextId,
+                        &AzFramework::RenderGeometry::IntersectorInterface::RayIntersect, ray);
+                    if (result)
+                    {
+                        zup = result.m_worldPosition.GetZ();
+                    }
+                }
+#endif
                 if (zdown != FLT_MAX && zup != FLT_MAX)
                 {
                     if (fabs(zup - z) < fabs(zdown - z))
@@ -4957,10 +5054,48 @@ void CCryEditApp::OnObjectSetHeight()
                     z = zdown;
                 }
             }
+            return z;
+        };
+
+
+        float height = 0;
+        if (sel->GetCount() == 1)
+        {
+            CBaseObject* obj = sel->GetObject(0);
+            Vec3 pos = obj->GetWorldPos();
+            AZ::EntityId entityId;
+            if (obj->GetType() == OBJTYPE_AZENTITY)
+            {
+                entityId = static_cast<CComponentEntityObject*>(obj)->GetAssociatedEntityId();
+            }
+            height = pos.z - getZOrigin(pos, entityId);
+        }
+
+        bool ok = false;
+        int fractionalDigitCount = 2;
+        height = aznumeric_caster(QInputDialog::getDouble(AzToolsFramework::GetActiveWindow(), QObject::tr("Enter Height"), QStringLiteral(""), height, -10000, 10000, fractionalDigitCount, &ok));
+        if (!ok)
+        {
+            return;
+        }
+
+        CUndo undo("Set Height");
+        for (int i = 0; i < sel->GetCount(); i++)
+        {
+            CBaseObject* obj = sel->GetObject(i);
+            Matrix34 wtm = obj->GetWorldTM();
+            Vec3 pos = wtm.GetTranslation();
+            AZ::EntityId entityId;
+            if (obj->GetType() == OBJTYPE_AZENTITY)
+            {
+                entityId = static_cast<CComponentEntityObject*>(obj)->GetAssociatedEntityId();
+            }
+            float z = getZOrigin(pos, entityId);
             pos.z = z + height;
             wtm.SetTranslation(pos);
             obj->SetWorldTM(wtm, eObjectUpdateFlags_UserInput);
         }
+
         GetIEditor()->SetModifiedFlag();
         GetIEditor()->SetModifiedModule(eModifiedBrushes);
     }
@@ -6144,10 +6279,79 @@ void CCryEditApp::OnTerrainCollisionUpdate(QAction* action)
     action->setChecked(!(flags & SETTINGS_NOCOLLISION));
 }
 
+/// Undo command to track entering and leaving Simulation Mode.
+class SimulationModeCommand
+    : public AzToolsFramework::UndoSystem::URSequencePoint
+{
+public:
+    AZ_CLASS_ALLOCATOR(SimulationModeCommand, AZ::SystemAllocator, 0);
+    AZ_RTTI(SimulationModeCommand, "{FB9FB958-5C56-47F6-B168-B5F564F70E69}");
+
+    SimulationModeCommand(const AZStd::string& friendlyName);
+
+    void Undo() override;
+    void Redo() override;
+
+    bool Changed() const override { return true; } // State will always have changed.
+
+private:
+    void UndoRedo()
+    {
+        if (ActionManager* actionManager = MainWindow::instance()->GetActionManager())
+        {
+            if (auto* action = actionManager->GetAction(ID_SWITCH_PHYSICS))
+            {
+                action->trigger();
+            }
+        }
+    }
+};
+
+SimulationModeCommand::SimulationModeCommand(const AZStd::string& friendlyName)
+    : URSequencePoint(friendlyName)
+{
+}
+
+void SimulationModeCommand::Undo()
+{
+    UndoRedo();
+}
+
+void SimulationModeCommand::Redo()
+{
+    UndoRedo();
+}
+
+namespace UndoRedo
+{
+    static bool IsHappening()
+    {
+        bool undoRedo = false;
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
+            undoRedo, &AzToolsFramework::ToolsApplicationRequests::IsDuringUndoRedo);
+
+        return undoRedo;
+    }
+} // namespace UndoRedo
+
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnSwitchPhysics()
 {
     QWaitCursor wait;
+
+    AZStd::unique_ptr<AzToolsFramework::ScopedUndoBatch> undoBatch;
+    if (!UndoRedo::IsHappening())
+    {
+        undoBatch = AZStd::make_unique<AzToolsFramework::ScopedUndoBatch>("Switching Physics Simulation");
+
+        auto simulationModeCommand = AZStd::make_unique<SimulationModeCommand>(AZStd::string("Switch Physics"));
+        // simulationModeCommand managed by undoBatch
+        simulationModeCommand->SetParent(undoBatch->GetUndoBatch());
+        simulationModeCommand.release();
+    }
+
+    GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_SWITCH_START, 0, 0);
+
     uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
     if (flags & SETTINGS_PHYSICS)
     {
@@ -6157,6 +6361,7 @@ void CCryEditApp::OnSwitchPhysics()
     {
         flags |= SETTINGS_PHYSICS;
     }
+
     GetIEditor()->GetDisplaySettings()->SetSettings(flags);
 
     if ((flags & SETTINGS_PHYSICS) == 0)
@@ -6169,6 +6374,8 @@ void CCryEditApp::OnSwitchPhysics()
         GetIEditor()->GetGameEngine()->SetSimulationMode(true);
         GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 1, 0);
     }
+
+    GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_SWITCH_END, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6560,34 +6767,6 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     return ECLR_OK;
 }
 
-void CCryEditApp::CloseCurrentLevel()
-{
-    CCryEditDoc* currentLevel = GetIEditor()->GetDocument();
-    if (currentLevel && currentLevel->IsDocumentReady())
-    {
-        // This closes the current document (level)
-        currentLevel->OnNewDocument();
-
-        // Then we freeze the viewport's input
-        AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Broadcast(
-            &AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Events::FreezeViewportInput, true);
-
-        // Then we need to tell the game engine there is no level to render anymore
-        if (GetIEditor()->GetGameEngine())
-        {
-            GetIEditor()->GetGameEngine()->SetLevelPath("");
-            GetIEditor()->GetGameEngine()->SetLevelLoaded(false);
-
-            CViewManager* pViewManager = GetIEditor()->GetViewManager();
-            CViewport* pGameViewport = pViewManager ? pViewManager->GetGameViewport() : nullptr;
-            if (pGameViewport)
-            {
-                pGameViewport->SetViewTM(Matrix34::CreateIdentity());
-            }
-        }
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnCreateLevel()
 {
@@ -6685,7 +6864,7 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
 
     QString fullyQualifiedLevelName;
     ECreateLevelResult result = CreateLevel(levelNameWithPath, resolution, unitSize, bUseTerrain, 
-                                            fullyQualifiedLevelName, TerrainTextureExportSettings(TerrainTextureExportTechnique::PromptUser));
+                                            fullyQualifiedLevelName, TerrainTextureExportSettings(TerrainTextureExportTechnique::UseDefault));
 
     if (result == ECLR_ALREADY_EXISTS)
     {
@@ -9489,6 +9668,7 @@ namespace AzToolsFramework
             };
             addLegacyGeneral(behaviorContext->Method("open_level", PyOpenLevel, nullptr, "Opens a level."));
             addLegacyGeneral(behaviorContext->Method("open_level_no_prompt", PyOpenLevelNoPrompt, nullptr, "Opens a level. Doesn't prompt user about saving a modified level."));
+            addLegacyGeneral(behaviorContext->Method("reload_current_level", PyReloadCurrentLevel, nullptr, "Re-loads the current level. If no level is loaded, then does nothing."));
             addLegacyGeneral(behaviorContext->Method("create_level", PyCreateLevel, nullptr, "Creates a level with the parameters of 'levelName', 'resolution', 'unitSize' and 'bUseTerrain'."));
             addLegacyGeneral(behaviorContext->Method("create_level_no_prompt", PyCreateLevelNoPrompt, nullptr, "Creates a level with the parameters of 'levelName', 'resolution', 'unitSize' and 'bUseTerrain'."));
             addLegacyGeneral(behaviorContext->Method("get_game_folder", PyGetGameFolderAsString, nullptr, "Gets the path to the Game folder of current project."));

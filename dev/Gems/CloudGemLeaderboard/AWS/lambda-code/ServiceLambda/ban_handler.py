@@ -19,6 +19,8 @@ import identity_validator
 
 
 BAN_TABLE = None
+
+
 def __init_globals():
     global BAN_TABLE
     if BAN_TABLE:
@@ -27,6 +29,7 @@ def __init_globals():
         BAN_TABLE = boto3.resource('dynamodb').Table(CloudCanvas.get_setting("BannedPlayerTable"))
     except ValueError as e:
         raise Exception("Error getting table reference")
+
 
 def __get_player_ban(user):
     global BAN_TABLE
@@ -37,6 +40,7 @@ def __get_player_ban(user):
     table_response = BAN_TABLE.get_item(Key=table_key)
     player_ban = table_response.get("Item", {})
     return player_ban
+
 
 def ban(user):
     global BAN_TABLE
@@ -58,6 +62,7 @@ def ban(user):
 
     return "Ban of {} succeeded".format(user)
 
+
 def lift_ban(user):
     global BAN_TABLE
     __init_globals()
@@ -76,17 +81,19 @@ def lift_ban(user):
 
     return "Ban of {} has been lifted".format(user)
 
+
 def is_player_banned(user):
     global BAN_TABLE
-    interface_url = cgf_lambda_settings.get_service_url(
-        "CloudGemPlayerAccount_banplayer_1_0_0")
+    interface_url = cgf_lambda_settings.get_service_url("CloudGemPlayerAccount_banplayer_1_0_0")
     if interface_url:
         return check_player_account_gem_for_ban(interface_url, user)
+
     __init_globals()
     player_ban = __get_player_ban(user)
     if not player_ban:
         return False
     return True
+
 
 def get_banned_players():
     __init_globals()
@@ -104,8 +111,7 @@ def get_banned_players():
 def check_player_account_gem_for_ban(interface_url, user):
     # get cognito id from identity map
     cognito_id = identity_validator.get_id_from_user(user)
-    client = cgf_service_client.for_url(
-        interface_url, verbose=True, session=boto3._get_default_session())
+    client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
     result = client.navigate('accountinfo', cognito_id).GET()
     # ask player account if that player is banned
     return result.DATA.get('AccountBlacklisted', False)

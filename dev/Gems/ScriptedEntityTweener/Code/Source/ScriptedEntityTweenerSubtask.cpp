@@ -16,7 +16,10 @@
 #include <ScriptedEntityTweener/ScriptedEntityTweenerBus.h>
 
 #include "ScriptedEntityTweenerSubtask.h"
+
+AZ_PUSH_DISABLE_WARNING(4244, "-Wunknown-warning-option")
 #include "ScriptedEntityTweenerMath.h"
+AZ_POP_DISABLE_WARNING
 
 namespace ScriptedEntityTweener
 {

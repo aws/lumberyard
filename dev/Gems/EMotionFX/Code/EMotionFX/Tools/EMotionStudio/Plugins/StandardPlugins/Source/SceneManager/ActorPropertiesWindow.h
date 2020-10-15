@@ -15,11 +15,8 @@
 #include "../StandardPluginsConfig.h"
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <EMotionFX/Source/Node.h>
-#include <EMotionFX/Source/PlayBackInfo.h>
 #include <Editor/ActorJointBrowseEdit.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
-#include "CollisionMeshesSetupWindow.h"
 #include <QWidget>
 #include <QLabel>
 #include <QPushButton>
@@ -31,7 +28,6 @@ namespace EMStudio
     // forward declaration
     class SceneManagerPlugin;
     class MirrorSetupWindow;
-    class RetargetSetupWindow;
 
     class ActorPropertiesWindow
         : public QWidget
@@ -62,12 +58,8 @@ namespace EMStudio
 
         void OnMotionExtractionJointSelected(const AZStd::vector<SelectionItem>& selectedJoints);
         void OnFindBestMatchingNode();
-
         void OnRetargetRootJointSelected(const AZStd::vector<SelectionItem>& selectedJoints);
-
         void OnMirrorSetup();
-        //void OnRetargetSetup();
-        void OnCollisionMeshesSetup();
 
         // nodes excluded from bounding volume calculations
         void OnExcludedJointsFromBoundsSelectionDone(const AZStd::vector<SelectionItem>& selectedJoints);
@@ -78,17 +70,10 @@ namespace EMStudio
         QPushButton* m_findBestMatchButton = nullptr;
 
         ActorJointBrowseEdit* m_retargetRootJointBrowseEdit = nullptr;
-
         ActorJointBrowseEdit* m_excludeFromBoundsBrowseEdit = nullptr;
-
-        AzQtComponents::BrowseEdit*     mCollisionMeshesSetupLink = nullptr;
-        CollisionMeshesSetupWindow*     mCollisionMeshesSetupWindow = nullptr;
 
         AzQtComponents::BrowseEdit*     mMirrorSetupLink = nullptr;
         MirrorSetupWindow*              mMirrorSetupWindow = nullptr;
-
-        //MysticQt::LinkWidget*         mRetargetSetupLink = nullptr;
-        //RetargetSetupWindow*          mRetargetSetupWindow = nullptr;
 
         // actor name
         QLineEdit*                      mNameEdit = nullptr;

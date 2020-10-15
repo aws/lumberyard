@@ -214,7 +214,7 @@ namespace AZ
             }
         }
 
-        void FullFileDecompressor::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void FullFileDecompressor::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             constexpr double bytesToMB = 1.0 / (1024.0 * 1024.0);
             constexpr double usToSec = 1.0 / (1000.0 * 1000.0);

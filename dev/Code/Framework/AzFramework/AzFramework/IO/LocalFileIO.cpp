@@ -408,7 +408,7 @@ namespace AZ
             return DestroyPath_Recurse(this, resolvedPath);
         }
 
-        static void ToUnixSlashes(char *path, AZ::u64 size)
+        static void ToUnixSlashes(char* path, AZ::u64 size)
         {
             for (AZ::u64 i = 0; i < size && path[i] != '\0'; i++)
             {
@@ -650,7 +650,11 @@ namespace AZ
                 }
             }
 
-            AZ_Assert(path[0] != '@', "Failed to resolve an alias:%s", path); // it is a failure to fail to resolve an alias!
+            // warn on failing to resolve an alias
+            AZ_Warning(
+                "LocalFileIO::ResolveAlias", path && path[0] != '@',
+                "Failed to resolve an alias: %s", path ? path : "(null)");
+
             return false;
         }
 

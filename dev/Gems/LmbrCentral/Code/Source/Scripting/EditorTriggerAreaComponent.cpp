@@ -10,6 +10,9 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "EditorTriggerAreaComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>
@@ -38,7 +41,7 @@ namespace LmbrCentral
             AZ::EditContext* edit = serialize->GetEditContext();
             if (edit)
             {
-                edit->Class<TriggerAreaComponent>("Trigger Area", "")
+                edit->Class<TriggerAreaComponent>("Trigger Area (Legacy)", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Activation")
@@ -52,7 +55,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Visibility, &TriggerAreaComponent::UseSpecificEntityList)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
-                edit->Class<EditorTriggerAreaComponent>("Trigger Area", "The Trigger Area component provides generic triggering services by using Shape components as its bounds")
+                edit->Class<EditorTriggerAreaComponent>("Trigger Area (Legacy)", "The Trigger Area component provides generic triggering services by using Shape components as its bounds")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
@@ -134,3 +137,5 @@ namespace LmbrCentral
         return true;
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

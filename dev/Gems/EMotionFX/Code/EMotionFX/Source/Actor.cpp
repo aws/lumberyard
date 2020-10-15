@@ -1483,8 +1483,13 @@ namespace EMotionFX
             UpdateNodeBindPoseOBBs(0);
         }
 
+        if (!GetHasMirrorInfo())
+        {
+            AllocateNodeMirrorInfos();
+        }
+
         // auto detect mirror axes
-        if (GetHasMirrorInfo() && GetHasMirrorAxesDetected() == false)
+        if(GetHasMirrorAxesDetected() == false)
         {
             AutoDetectMirrorAxes();
         }

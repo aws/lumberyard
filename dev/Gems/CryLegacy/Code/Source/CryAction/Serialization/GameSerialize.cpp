@@ -23,7 +23,6 @@
 #include "IActorSystem.h"
 #include "IItemSystem.h"
 #include "IGameRulesSystem.h"
-#include "IVehicleSystem.h"
 #include "IMovieSystem.h"
 #include "IPlayerProfiles.h"
 #include "IStreamEngine.h"
@@ -415,10 +414,17 @@ bool CGameSerialize::RepositionEntities(const TBasicEntityDatas& basicEntityData
     TBasicEntityDatas::const_iterator end = basicEntityData.end();
     for (; iter != end; ++iter)
     {
+#if ENABLE_CRY_PHYSICS
         if (iter->ignorePosRotScl || iter->iPhysType == PE_SOFT)
         {
             continue;
         }
+#else
+        if (iter->ignorePosRotScl)
+        {
+            continue;
+        }
+#endif // ENABLE_CRY_PHYSICS
 
         IEntity* pEntity = pEntitySystem->GetEntity(iter->id);
         if (pEntity)
@@ -646,6 +652,7 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
     Checkpoint total(CHECKPOINT_OUTPUT, "TotalTime");
     Checkpoint checkpoint(CHECKPOINT_OUTPUT);
 
+#if ENABLE_CRY_PHYSICS
     // stop all deferred physics events in the fly
     if (gEnv->p3DEngine)
     {
@@ -655,6 +662,7 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
             pDeferredPhysicsEventManager->ClearDeferredEvents();
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     Clean();
 
@@ -930,7 +938,6 @@ ELoadGameResult CGameSerialize::LoadGame(CCryAction* pCryAction, const char* met
     //clear old entities from the systems [could become obsolete]
     //gEnv->pGame->GetIGameFramework()->GetIItemSystem()->Reset(); //this respawns ammo, moved before serialization
     gEnv->pGame->GetIGameFramework()->GetIActorSystem()->Reset();
-    gEnv->pGame->GetIGameFramework()->GetIVehicleSystem()->Reset();
     checkpoint.Check("ResetSubSystems");
 
     if (GetISystem()->IsSerializingFile() == 1)      //general quickload fix-ups
@@ -1143,6 +1150,7 @@ bool CGameSerialize::SaveEntities(SSaveEnvironment& savEnv)
                 bed.aiObjectId = pEntity->GetAIObjectID();
 
                 IEntity* pParentEntity = pEntity->GetParent();
+#if ENABLE_CRY_PHYSICS
                 IPhysicalEntity* pPhysEnt;
                 pe_status_awake sa;
                 pe_status_pos sp;
@@ -1154,6 +1162,7 @@ bool CGameSerialize::SaveEntities(SSaveEnvironment& savEnv)
                     bed.rot = sp.q;
                 }
                 else
+#endif // ENABLE_CRY_PHYSICS
                 {
                     bed.pos = pEntity->GetPos();
                     bed.rot = pEntity->GetRotation();
@@ -1165,17 +1174,21 @@ bool CGameSerialize::SaveEntities(SSaveEnvironment& savEnv)
                 bed.isActive = pEntity->IsActive();
                 bed.isInvisible = pEntity->IsInvisible();
 
+#if ENABLE_CRY_PHYSICS
                 if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
                 {
                     bed.isPhysicsEnabled = pPhysicsComponent->IsPhysicsEnabled();
                 }
                 else
+#endif // ENABLE_CRY_PHYSICS
                 {
                     bed.isPhysicsEnabled = false;
                 }
 
                 bed.parentEntity = pParentEntity ? pParentEntity->GetId() : 0;
+#if ENABLE_CRY_PHYSICS
                 bed.iPhysType = pEntity->GetPhysics() ? pEntity->GetPhysics()->GetType() : PE_NONE;
+#endif
 
                 entities.push_back(pEntity);
 
@@ -1271,10 +1284,12 @@ bool CGameSerialize::SaveGameData(SSaveEnvironment& savEnv, TSerialize& gameStat
                     //gameState.EndGroup();
                     continue;
                 }
+#if ENABLE_CRY_PHYSICS
                 if ((pEntity->GetPhysics() && pEntity->GetPhysics()->GetType() == PE_ROPE) == !pass)
                 {
                     continue;
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 // c++ entity data
                 gameState.BeginGroup("Entity");
@@ -1305,10 +1320,12 @@ bool CGameSerialize::SaveGameData(SSaveEnvironment& savEnv, TSerialize& gameStat
                 //  so we can skip them here
                 if (pEntity && !pEntity->IsFromPool())
                 {
+#if ENABLE_CRY_PHYSICS
                     if ((pEntity->GetPhysics() && pEntity->GetPhysics()->GetType() == PE_ROPE) == !pass)
                     {
                         continue;
                     }
+#endif // ENABLE_CRY_PHYSICS
                     CRY_ASSERT_TRACE(!(pEntity->GetFlags() & ENTITY_FLAG_LOCAL_PLAYER), ("%s has ENTITY_FLAG_LOCAL_PLAYER - local player should not be in m_serializeEntities!", pEntity->GetEntityTextDescription()));
 
                     // c++ entity data
@@ -1336,10 +1353,12 @@ bool CGameSerialize::SaveGameData(SSaveEnvironment& savEnv, TSerialize& gameStat
             {
                 IEntity* pEntity = gEnv->pEntitySystem->GetEntity(*iter);
                 CRY_ASSERT(pEntity);
+#if ENABLE_CRY_PHYSICS
                 if ((pEntity->GetPhysics() && pEntity->GetPhysics()->GetType() == PE_ROPE) == !pass)
                 {
                     continue;
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 // c++ entity data
                 gameState.BeginGroup("Entity");
@@ -1555,11 +1574,13 @@ bool CGameSerialize::LoadLevel(SLoadEnvironment& loadEnv, SGameStartParams& star
             gEnv->p3DEngine->ResetPostEffects();
         }
 
+#if ENABLE_CRY_PHYSICS
         // [AlexMcC|18.03.10] Taken from CEntitySytem::Reset:
         // This fixes physics crashes caused by old update events
         // Flush the physics linetest and events queue, but don't pump events (on Anton's recommendation)
         gEnv->pPhysicalWorld->TracePendingRays(0);
         gEnv->pPhysicalWorld->ClearLoggedEvents();
+#endif // ENABLE_CRY_PHYSICS
 
         pEntitySystem->DeletePendingEntities();
         loadEnv.m_failure = eLGR_FailedAndDestroyedState;
@@ -1839,10 +1860,12 @@ void CGameSerialize::LoadGameData(SLoadEnvironment& loadEnv)
         // unhide and activate so that physicalization works (will be corrected after extra entity data is loaded)
         pEntity->SetUpdatePolicy((EEntityUpdatePolicy) iter->updatePolicy);
 
+#if ENABLE_CRY_PHYSICS
         if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
         {
             pPhysicsComponent->EnablePhysics(true);
         }
+#endif // ENABLE_CRY_PHYSICS
 
         pEntity->Hide(false);
         pEntity->Invisible(false);
@@ -1862,12 +1885,14 @@ void CGameSerialize::LoadGameData(SLoadEnvironment& loadEnv)
             continue;
         }
 
+#if ENABLE_CRY_PHYSICS
         if (pEntity->CheckFlags(ENTITY_FLAG_SPAWNED | ENTITY_FLAG_MODIFIED_BY_PHYSICS) && iter->iPhysType != PE_NONE)
         {
             SEntityPhysicalizeParams epp;
             epp.type = iter->iPhysType;
             pEntity->Physicalize(epp);
         }
+#endif // ENABLE_CRY_PHYSICS
         if ((iter->flags & (ENTITY_FLAG_MODIFIED_BY_PHYSICS | ENTITY_FLAG_SPAWNED)) == ENTITY_FLAG_MODIFIED_BY_PHYSICS)
         {
             pEntity->AddFlags(iter->flags & ENTITY_FLAG_MODIFIED_BY_PHYSICS);
@@ -1915,19 +1940,23 @@ void CGameSerialize::LoadGameData(SLoadEnvironment& loadEnv)
             IEntity* pEntity = pEntitySystem->GetEntity(iter->id);
             if (pEntity)
             {
+#if ENABLE_CRY_PHYSICS
                 if ((pEntity->GetPhysics() && pEntity->GetPhysics()->GetType() == PE_ROPE) != !pass)
                 {
                     continue;
                 }
+#endif // ENABLE_CRY_PHYSICS
                 // moved to after serialize so physicalization works as expected
                 pEntity->Hide(iter->isHidden);
                 pEntity->Invisible(iter->isInvisible);
                 pEntity->Activate(iter->isActive);
 
+#if ENABLE_CRY_PHYSICS
                 if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
                 {
                     pPhysicsComponent->EnablePhysics(iter->isPhysicsEnabled);
                 }
+#endif // ENABLE_CRY_PHYSICS
                 static SEntitySpawnParams dummySpawnParams;
 
                 if (IComponentAudioPtr pAudioComponent = pEntity->GetComponent<IComponentAudio>())

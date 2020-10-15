@@ -322,12 +322,15 @@ namespace EMStudio
 
         // file actions
         QMenu* menu = menuBar->addMenu(tr("&File"));
+        menu->setObjectName("EMFX.MainWindow.FileMenu");
 
         // reset action
         mResetAction = menu->addAction(tr("&Reset"), this, &MainWindow::OnReset, QKeySequence::New);
-
+        mResetAction->setObjectName("EMFX.MainWindow.ResetAction");
+        
         // save all
         mSaveAllAction = menu->addAction(tr("Save All..."), this, &MainWindow::OnSaveAll, QKeySequence::Save);
+        mSaveAllAction->setObjectName("EMFX.MainWindow.SaveAllAction");
 
         // disable the reset and save all menus until one thing is loaded
         mResetAction->setDisabled(true);
@@ -337,8 +340,11 @@ namespace EMStudio
 
         // actor file actions
         QAction* openAction = menu->addAction(tr("&Open Actor"), this, &MainWindow::OnFileOpenActor, QKeySequence::Open);
+        openAction->setObjectName("EMFX.MainWindow.OpenActorAction");
         mMergeActorAction = menu->addAction(tr("&Merge Actor"), this, &MainWindow::OnFileMergeActor, Qt::CTRL + Qt::Key_I);
+        mMergeActorAction->setObjectName("EMFX.MainWindow.MergeActorAction");
         mSaveSelectedActorsAction = menu->addAction(tr("&Save Selected Actors"), this, &MainWindow::OnFileSaveSelectedActors);
+        mSaveSelectedActorsAction->setObjectName("EMFX.MainWindow.SaveActorAction");
 
         // disable the merge actor menu until one actor is in the scene
         DisableMergeActorMenu();
@@ -353,9 +359,13 @@ namespace EMStudio
         // workspace file actions
         menu->addSeparator();
         QAction* newWorkspaceAction = menu->addAction(tr("New Workspace"), this, &MainWindow::OnFileNewWorkspace);
+        newWorkspaceAction->setObjectName("EMFX.MainWindow.NewWorkspaceAction");
         QAction* openWorkspaceAction = menu->addAction(tr("Open Workspace"), this, &MainWindow::OnFileOpenWorkspace);
+        openWorkspaceAction->setObjectName("EMFX.MainWindow.OpenWorkspaceAction");
         QAction* saveWorkspaceAction = menu->addAction(tr("Save Workspace"), this, &MainWindow::OnFileSaveWorkspace);
+        saveWorkspaceAction->setObjectName("EMFX.MainWindow.SaveWorkspaceAction");
         QAction* saveWorkspaceAsAction = menu->addAction(tr("Save Workspace As"), this, &MainWindow::OnFileSaveWorkspaceAs);
+        saveWorkspaceAsAction->setObjectName("EMFX.MainWindow.SaveWorkspaceAsAction");
 
         // recent workspace submenu
         mRecentWorkspaces.Init(menu, mOptions.GetMaxRecentFiles(), "Recent Workspaces", "recentWorkspaces");
@@ -401,6 +411,7 @@ namespace EMStudio
 
         // help menu
         menu = menuBar->addMenu(tr("&Help"));
+        menu->setObjectName("EMFX.MainWindow.HelpMenu");
 
         menu->addAction("Documentation", this, []
         {
@@ -415,6 +426,7 @@ namespace EMStudio
         menu->addSeparator();
 
         QMenu* folders = menu->addMenu("Folders");
+        folders->setObjectName("EMFX.MainWindow.FoldersMenu");
         folders->addAction("Open autosave folder", this, &MainWindow::OnOpenAutosaveFolder);
         folders->addAction("Open settings folder", this, &MainWindow::OnOpenSettingsFolder);
 
@@ -1187,6 +1199,10 @@ namespace EMStudio
         mLoadingOptions = false;
     }
 
+    void MainWindow::AddRecentActorFile(const QString& fileName)
+    {
+        mRecentActors.AddRecentFile(fileName.toUtf8().data());
+    }
 
     void MainWindow::LoadActor(const char* fileName, bool replaceCurrentScene)
     {
@@ -2088,19 +2104,6 @@ namespace EMStudio
 
         //--------------------
 
-        if (!motionFilenames.empty())
-        {
-            CommandSystem::LoadMotionsCommand(motionFilenames, reload);
-        }
-        if (!motionSetFilenames.empty())
-        {
-            CommandSystem::LoadMotionSetsCommand(motionSetFilenames, reload, false);
-        }
-
-        CommandSystem::LoadAnimGraphsCommand(animGraphFilenames, reload);
-
-        //--------------------
-
         const size_t actorCount = actorFilenames.size();
         if (actorCount == 1)
         {
@@ -2139,6 +2142,21 @@ namespace EMStudio
                 LoadActor(actorFilename.c_str(), false);
             }
         }
+
+
+
+        //--------------------
+
+        if (!motionFilenames.empty())
+        {
+            CommandSystem::LoadMotionsCommand(motionFilenames, reload);
+        }
+        if (!motionSetFilenames.empty())
+        {
+            CommandSystem::LoadMotionSetsCommand(motionSetFilenames, reload, false);
+        }
+
+        CommandSystem::LoadAnimGraphsCommand(animGraphFilenames, reload);
 
         //--------------------
 

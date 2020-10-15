@@ -53,7 +53,7 @@ namespace EMotionFX
 
                 for (size_t i = 0; i < numMorphTargets; ++i)
                 {
-                    MorphTargetStandard* morphTarget = MorphTargetStandard::Create(AZStd::string::format("MT#%d", i).c_str());
+                    MorphTargetStandard* morphTarget = MorphTargetStandard::Create(AZStd::string::format("MT#%zu", i).c_str());
                     morphTarget->SetRangeMin(0.0f);
                     morphTarget->SetRangeMax(1.0f);
                     morphSetup->AddMorphTarget(morphTarget);

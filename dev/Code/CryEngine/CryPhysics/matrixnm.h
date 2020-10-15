@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_MATRIXNM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 enum    mtxflags
 {
     mtx_invalid = 1, mtx_normal = 2, mtx_orthogonal = 4, mtx_PSD = 8, mtx_PD_flag = 16, mtx_PD = mtx_PSD | mtx_PD_flag, mtx_symmetric = 32,
@@ -444,6 +446,8 @@ inline void matrix_product_tpl<float>::assign_to(float* pdst) const
         }
     }
 }
-#endif
+#endif // PIII_SSE
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_MATRIXNM_H

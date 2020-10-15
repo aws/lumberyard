@@ -70,6 +70,12 @@ namespace AzToolsFramework
             AzFramework::Components::GetIncompatibleServicesHelper<TController>(services, typename AZ::HasComponentIncompatibleServices<TController>::type());
         }
 
+        template<typename TController, typename TRuntimeComponent, typename TConfiguration>
+        void EditorComponentAdapter<TController, TRuntimeComponent, TConfiguration>::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& services)
+        {
+            AzFramework::Components::GetDependentServicesHelper<TController>(services, typename AZ::HasComponentDependentServices<TController>::type());
+        }
+
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
 

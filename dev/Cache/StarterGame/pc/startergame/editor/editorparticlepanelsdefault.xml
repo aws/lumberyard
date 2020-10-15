@@ -204,12 +204,16 @@
   <item name="Collide Static Objects" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Collision.Collide_Static_Objects"/>
   <item name="Collide Dynamic Objects" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Collision.Collide_Dynamic_Objects"/>
   <item name="On Collide" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Collision.Final_Collision"/>
+  <item name="Use Self Collision" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Use_Self_Collision" physics="azphysics" />
+  <item name="Collision Layer" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Collision.Collision_Layer" physics="azphysics" />
+  <item name="Collides With" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Collision.Collision_Group" physics="azphysics" />
+  <item name="Physics Material" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Physics_Material" physics="azphysics" />
   <item name="Max Collision Events" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Collision.Max_Collision_Events"/>
-  <item name="Bounciness" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Collision.Elasticity"/>
+  <item name="Bounciness" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Collision.Elasticity" physics="cryphysics"/>
   <item name="Collision Fraction" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Collision_Fraction"/>
   <item name="Collision Cutoff Distance" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Collision_Cutoff_Distance"/>
-  <item name="Surface Type" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Surface_Type"/>
-  <item name="Dynamic Friction" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Dynamic_Friction"/>
+  <item name="Surface Type" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Surface_Type" physics="cryphysics" />
+  <item name="Dynamic Friction" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Dynamic_Friction" physics="cryphysics"/>
   <item name="Thickness" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Thickness"/>
   <item name="Density" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Collision.Density"/>
  </panel>

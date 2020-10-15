@@ -152,8 +152,6 @@ namespace EMotionFX
         // clear the motion set combobox
         m_motionSetComboBox->clear();
 
-        m_motionSetComboBox->addItem("Select a motion set");
-
         // add each motion set name
         const uint32 numMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets();
         for (uint32 i = 0; i < numMotionSets; ++i)
@@ -190,12 +188,12 @@ namespace EMotionFX
                 if (animGraphInstance)
                 {
                     EMotionFX::MotionSet* motionSet = animGraphInstance->GetMotionSet();
-                    if (AZStd::find(usedMotionSets.begin(), usedMotionSets.end(), motionSet) == usedMotionSets.end())
+                    if (motionSet && AZStd::find(usedMotionSets.begin(), usedMotionSets.end(), motionSet) == usedMotionSets.end())
                     {
                         usedMotionSets.push_back(motionSet);
                     }
 
-                    if (AZStd::find(usedAnimGraphs.begin(), usedAnimGraphs.end(), animGraphInstance) == usedAnimGraphs.end())
+                    if (animGraphInstance && AZStd::find(usedAnimGraphs.begin(), usedAnimGraphs.end(), animGraphInstance) == usedAnimGraphs.end())
                     {
                         usedAnimGraphs.push_back(animGraphInstance);
                     }
@@ -215,6 +213,16 @@ namespace EMotionFX
                 else
                 {
                     m_motionSetComboBox->setCurrentText(currentSelectedItem);
+                }
+
+                if (m_motionSetComboBox->count() == 1)
+                {
+                    m_motionSetComboBox->setCurrentIndex(0);
+                }
+                else if (m_motionSetComboBox->count() == 0)
+                {
+                    m_motionSetComboBox->addItem("Select a motion set");
+                    m_motionSetComboBox->setCurrentIndex(0);
                 }
 
                 // enable the combo box in case it was disabled before
@@ -268,6 +276,16 @@ namespace EMotionFX
                 m_motionSetComboBox->setCurrentText(currentSelectedItem);
             }
 
+            if (m_motionSetComboBox->count() == 1)
+            {
+                m_motionSetComboBox->setCurrentIndex(0);
+            }
+            else if (m_motionSetComboBox->count() == 0)
+            {
+                m_motionSetComboBox->addItem("Select a motion set");
+                m_motionSetComboBox->setCurrentIndex(0);
+            }
+
             // enable the combo box in case it was disabled before
             m_motionSetComboBox->setEnabled(true);
         }
@@ -278,6 +296,10 @@ namespace EMotionFX
         m_motionSetComboBox->setObjectName("EMFX.AttributesWindowWidget.AnimGraph.MotionSetComboBox");
     }
 
+    QComboBox* AnimGraphEditor::GetMotionSetComboBox() const
+    {
+        return m_motionSetComboBox;
+    }
 
     void AnimGraphEditor::OnMotionSetChanged(int index)
     {
@@ -385,29 +407,24 @@ namespace EMotionFX
 
     AZ::Outcome<uint32> AnimGraphEditor::GetMotionSetIndex(int comboBoxIndex) const
     {
-        // 0 means no motion set selected.
-        if (comboBoxIndex > 0)
+        const uint32 targetEditorMotionSetIndex = comboBoxIndex;
+        uint32 currentEditorMotionSet = 0;
+        const uint32 numMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets();
+        for (uint32 i = 0; i < numMotionSets; ++i)
         {
-            const uint32 targetEditorMotionSetIndex = comboBoxIndex - 1;
+            const EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().GetMotionSet(i);
 
-            uint32 currentEditorMotionSet = 0;
-            const uint32 numMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets();
-            for (uint32 i = 0; i < numMotionSets; ++i)
+            if (motionSet->GetIsOwnedByRuntime())
             {
-                EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().GetMotionSet(i);
-
-                if (motionSet->GetIsOwnedByRuntime())
-                {
-                    continue;
-                }
-
-                if (currentEditorMotionSet == targetEditorMotionSetIndex)
-                {
-                    return AZ::Success(i);
-                }
-
-                currentEditorMotionSet++;
+                continue;
             }
+
+            if (currentEditorMotionSet == targetEditorMotionSetIndex)
+            {
+                return AZ::Success(i);
+            }
+
+            currentEditorMotionSet++;
         }
 
         return AZ::Failure();

@@ -12,25 +12,39 @@
 
 #include "AssetTreeModel.h"
 #include "AssetTreeItem.h"
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
 namespace AssetProcessor
 {
 
-    AssetTreeModel::AssetTreeModel(QObject *parent) :
-        QAbstractItemModel(parent)
+    AssetTreeModel::AssetTreeModel(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> sharedDbConnection, QObject *parent) :
+        QAbstractItemModel(parent),
+        m_sharedDbConnection(sharedDbConnection),
+        m_errorIcon(QStringLiteral(":/stylesheet/img/logging/error.svg"))
     {
-        m_dbConnection.OpenDatabase();
+        ApplicationManagerNotifications::Bus::Handler::BusConnect();
+        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusConnect();
     }
 
     AssetTreeModel::~AssetTreeModel()
     {
+        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
+        ApplicationManagerNotifications::Bus::Handler::BusDisconnect();
+    }
+
+    void AssetTreeModel::ApplicationShutdownRequested()
+    {
+        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
+        // AssetTreeModels can queue functions on the systemTickBus for processing on the main thread in response to asset changes
+        // We need to clear out any left pending before we go away
+        AZ::SystemTickBus::ExecuteQueuedEvents();
     }
 
     void AssetTreeModel::Reset()
     {
         beginResetModel();
-        m_root.reset(new AssetTreeItem(AZStd::make_shared<AssetTreeItemData>("", "", true, AZ::Uuid::CreateNull())));
+        m_root.reset(new AssetTreeItem(AZStd::make_shared<AssetTreeItemData>("", "", true, AZ::Uuid::CreateNull()), m_errorIcon));
 
         ResetModel();
 
@@ -93,6 +107,16 @@ namespace AssetProcessor
                 return item->GetIcon(m_fileProvider);
             }
             break;
+        case Qt::ToolTipRole:
+            {
+                QString toolTip = item->GetData()->m_unresolvedIssuesTooltip;
+                if (!toolTip.isEmpty())
+                {
+                    return toolTip;
+                }
+                // Purposely return an empty string, so mousing over rows clear out.
+                return QString("");
+            }
         }
         return QVariant();
     }

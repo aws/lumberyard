@@ -31,6 +31,7 @@ QLineEdit[HasSearchAction=true]
 
 QTextEdit:disabled,
 QPlainText:disabled,
+QPlainTextEdit:disabled,
 QLineEdit:disabled
 {
     background-color: #777777;

@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_BVTREE_H
 #pragma once
 
-
+#if ENABLE_CRY_PHYSICS
 
 ////////////////////////// bounding volumes ////////////////////////
 
@@ -169,5 +169,7 @@ public:
     virtual int GetNodeContentsIdx(int iNode, int& iStartPrim) { iStartPrim = 0; return 1; }
     virtual void MarkUsedTriangle(int itri, geometry_under_test* pGTest) {}
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_BVTREE_H

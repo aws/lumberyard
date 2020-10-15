@@ -12,6 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "CryLegacy_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "BreakablePlane.h"
 #include "ParticleParams.h"
 #include "IParticles.h"
@@ -916,6 +919,7 @@ int CBreakablePlane::ProcessImpact(const SProcessImpactIn& in, SProcessImpactOut
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_ENTITY);
 
+#if PARTICLES_USE_CRY_PHYSICS
     out.pStatObjNew = 0;
     out.pStatObjAux = in.pStatObjAux;
 
@@ -1352,4 +1356,8 @@ int CBreakablePlane::ProcessImpact(const SProcessImpactIn& in, SProcessImpactOut
         out.pStatObjAux = in.pStatObjAux;
     }
     return result;
+#else
+    return eProcessImpact_Done;
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
+#endif // ENABLE_CRY_PHYSICS

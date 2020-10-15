@@ -13,9 +13,45 @@
 #include "CameraState.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Math/Transform.h>
 
 namespace AzFramework
 {
+    void SetCameraClippingVolume(
+        AzFramework::CameraState& cameraState, const float nearPlane, const float farPlane, const float fovRad)
+    {
+        cameraState.m_nearClip = nearPlane;
+        cameraState.m_farClip = farPlane;
+        cameraState.m_fovOrZoom = fovRad;
+    }
+
+    static void SetDefaultCameraClippingVolume(AzFramework::CameraState& cameraState)
+    {
+        SetCameraClippingVolume(cameraState, 0.1f, 1000.0f, AZ::DegToRad(60.0f));
+    }
+
+    AzFramework::CameraState CreateDefaultCamera(
+         const AZ::Transform& transform, const AZ::Vector2& viewportSize)
+    {
+        AzFramework::CameraState cameraState;
+
+        SetDefaultCameraClippingVolume(cameraState);
+
+        cameraState.m_side = transform.GetBasisX();
+        cameraState.m_forward = transform.GetBasisY();
+        cameraState.m_up = transform.GetBasisZ();
+        cameraState.m_position = transform.GetTranslation();
+        cameraState.m_viewportSize = viewportSize;
+
+        return cameraState;
+    }
+
+    AzFramework::CameraState CreateIdentityDefaultCamera(
+        const AZ::Vector3& position, const AZ::Vector2& viewportSize)
+    {
+        return CreateDefaultCamera(AZ::Transform::CreateTranslation(position), viewportSize);
+    }
+
     void CameraState::Reflect(AZ::SerializeContext& serializeContext)
     {
         serializeContext.Class<CameraState>()->

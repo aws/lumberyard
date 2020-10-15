@@ -14,7 +14,6 @@
 
 #include <AzQtComponents/Components/Widgets/ToolButton.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <AzQtComponents/Components/Style.h>
 
 #include <QPainter>
@@ -22,6 +21,7 @@
 #include <QSize>
 #include <QStyleOptionToolButton>
 #include <QToolButton>
+#include <QtWidgets/private/qstylehelper_p.h>
 
 namespace AzQtComponents
 {
@@ -243,8 +243,8 @@ bool ToolButton::drawIndicatorArrowDown(const Style* style, const QStyleOption* 
                         : QIcon::Disabled;
 
     const QSize size = config.menuIndicatorIconSize;
-    const int arrowWidth = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(size.width(), AzQStyleHelper::dpi(option)));
-    const int arrowHeight = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(size.height(), AzQStyleHelper::dpi(option)));
+    const int arrowWidth = aznumeric_cast<int>(QStyleHelper::dpiScaled(size.width(), QStyleHelper::dpi(option)));
+    const int arrowHeight = aznumeric_cast<int>(QStyleHelper::dpiScaled(size.height(), QStyleHelper::dpi(option)));
 
     const QIcon icon = QIcon(config.menuIndicatorIcon);
     const QSize requestedSize = QSize(arrowWidth, arrowHeight);

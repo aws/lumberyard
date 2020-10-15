@@ -23,6 +23,7 @@
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 
 namespace UnitTest
@@ -102,8 +103,11 @@ namespace UnitTest
     {
         // Start by creating and registering a new loose entity with the editor entity context
         // This call also adds required components onto the entity
-        AZ::Entity* newEntity = nullptr;
-        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(newEntity, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity, entityName);
+        AZ::EntityId newEntityId;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            newEntityId, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntity, entityName);
+
+        AZ::Entity* newEntity = AzToolsFramework::GetEntityById(newEntityId);
 
         // If newEntity is nullptr still then there was a failure in the above EBus call and we cannot proceed
         if (!newEntity)

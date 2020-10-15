@@ -129,34 +129,27 @@ namespace ImageProcessing
         //determinate compression quality
         pvrtexture::ECompressorQuality internalQuality = pvrtexture::eETCFast;
         ICompressor::EQuality quality = ICompressor::eQuality_Normal;
-        AZ::Vector3 uniformWeights = AZ::Vector3(0.3333f, 0.3334f, 0.3333f);
-        AZ::Vector3 weights = uniformWeights;
-        bool isUniform = true;
+        
         //get setting from compression option
         if (compressOption)
         {
             quality = compressOption->compressQuality;
-            weights = compressOption->rgbWeight;
-            isUniform = (weights == uniformWeights);
         }
 
         if (IsETCFormat(fmtDst))
         {
-            if ((quality <= eQuality_Normal) && isUniform)
+            if ((quality == eQuality_Preview) ||
+                (quality == eQuality_Fast))
             {
                 internalQuality = pvrtexture::eETCFast;
             }
-            else if (quality <= eQuality_Normal)
+            else if (quality == eQuality_Normal)
             {
-                internalQuality = pvrtexture::eETCFastPerceptual;
-            }
-            else if (isUniform)
-            {
-                internalQuality = pvrtexture::eETCSlow;
+                internalQuality = pvrtexture::eETCNormal;
             }
             else
             {
-                internalQuality = pvrtexture::eETCSlowPerceptual;
+                internalQuality = pvrtexture::eETCSlow;
             }
         }
         else if (IsASTCFormat(fmtDst))

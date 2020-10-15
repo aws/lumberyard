@@ -1,0 +1,20 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "lib/Windows/Debug"
+            ],
+            "libpath_release": [
+                "lib/Windows/Release"
+            ],
+            "lib_debug": [
+                "${openexr_libs}_d.lib",
+                "${ilmbase_libs}_d.lib"
+            ],
+            "lib_release": [
+                "${openexr_libs}.lib",
+                "${ilmbase_libs}.lib"
+            ]
+        }
+    }
+}

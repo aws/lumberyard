@@ -33,6 +33,9 @@ namespace AZ
                 SCENE_DATA_API MaterialData();
                 SCENE_DATA_API virtual ~MaterialData() = default;
 
+                SCENE_DATA_API void SetMaterialName(AZStd::string materialName);
+                SCENE_DATA_API const AZStd::string& GetMaterialName() const override;
+
                 SCENE_DATA_API virtual void SetTexture(TextureMapType mapType, const char* textureFileName);
                 SCENE_DATA_API virtual void SetTexture(TextureMapType mapType, const AZStd::string& textureFileName);
                 SCENE_DATA_API virtual void SetTexture(TextureMapType mapType, AZStd::string&& textureFileName);
@@ -76,7 +79,10 @@ namespace AZ
                 // A unique id which is used to identify a material in a fbx. 
                 // This is the same as the ID in the fbx file's FbxNode
                 uint64_t m_uniqueId;
+
+                //! Material name from FbxNode's Object name
+                AZStd::string m_materialName;
             };
-        } // namespace GraphData
-    } // namespace SceneData
-} // namespace AZ
+            } // namespace GraphData
+            } // namespace SceneData
+            } // namespace AZ

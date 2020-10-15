@@ -12,12 +12,14 @@
 
 #include <PhysX_precompiled.h>
 
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/EBus/Results.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+#include <AzFramework/Physics/SystemBus.h>
 
 #include <PhysX/ColliderShapeBus.h>
 #include <PhysX/SystemComponentBus.h>
@@ -30,6 +32,7 @@
 #include <Source/StaticRigidBodyComponent.h>
 #include <Source/TerrainComponent.h>
 #include <Source/RigidBodyStatic.h>
+#include <Source/Joint.h>
 #include <Source/Utils.h>
 #include <PhysX/PhysXLocks.h>
 
@@ -211,12 +214,13 @@ namespace PhysX
                         shape->setLocalPose(physx::PxTransform(pxQuat));
                     }
 
-                    if (colliderConfiguration.m_isTrigger)
-                    {
-                        shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, false);
-                        shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, true);
-                        shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, false);
-                    }
+                    // Handle a possible misconfiguration when a shape is set to be both simulated & trigger. This is illegal in PhysX.
+                    shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, colliderConfiguration.m_isSimulated && !colliderConfiguration.m_isTrigger);
+                    shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, colliderConfiguration.m_isInSceneQueries);
+                    shape->setFlag(physx::PxShapeFlag::eTRIGGER_SHAPE, colliderConfiguration.m_isTrigger);
+
+                    shape->setRestOffset(colliderConfiguration.m_restOffset);
+                    shape->setContactOffset(colliderConfiguration.m_contactOffset);
 
                     physx::PxTransform pxShapeTransform = PxMathConvert(colliderConfiguration.m_position, colliderConfiguration.m_rotation);
                     shape->setLocalPose(pxShapeTransform * shape->getLocalPose());
@@ -246,7 +250,7 @@ namespace PhysX
             
             AZStd::vector<AZ::u8> cookedData;
             bool cookingResult = false;
-            PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookConvexMeshToMemory,
+            Physics::SystemRequestBus::BroadcastResult(cookingResult, &Physics::SystemRequests::CookConvexMeshToMemory,
                 points.data(), aznumeric_cast<AZ::u32>(points.size()), cookedData);
             shapeConfig.SetCookedMeshData(cookedData.data(), cookedData.size(),
                 Physics::CookedMeshShapeConfiguration::MeshType::Convex);
@@ -895,7 +899,7 @@ namespace PhysX
                 {
                     float phi = ((i + 1) % nSamples) * increment;
                     float y = ((i * offset) - 1) + (offset / 2.f);
-                    float r = sqrt(1 - pow(y, 2));
+                    float r = aznumeric_cast<float>(sqrt(1 - pow(y, 2)));
                     float x = cos(phi) * r;
                     float z = sin(phi) * r;
                     points.emplace_back(x * radius, y * radius, z * radius);
@@ -1265,6 +1269,50 @@ namespace PhysX
                 return closestHit;
             }
         } // namespace RayCast
+
+        AZ::Transform GetEntityWorldTransformWithScale(AZ::EntityId entityId)
+        {
+            AZ::Transform worldTransformWithoutScale = AZ::Transform::CreateIdentity();
+            AZ::TransformBus::EventResult(worldTransformWithoutScale
+                , entityId
+                , &AZ::TransformInterface::GetWorldTM);
+            return worldTransformWithoutScale;
+        }
+
+        AZ::Transform GetEntityWorldTransformWithoutScale(AZ::EntityId entityId)
+        {
+            AZ::Transform worldTransformWithoutScale = AZ::Transform::CreateIdentity();
+            AZ::TransformBus::EventResult(worldTransformWithoutScale
+                , entityId
+                , &AZ::TransformInterface::GetWorldTM);
+            worldTransformWithoutScale.ExtractScale();
+            return worldTransformWithoutScale;
+        }
+
+        AZ::Transform ComputeJointLocalTransform(const AZ::Transform& jointWorldTransform,
+            const AZ::Transform& entityWorldTransform)
+        {
+            AZ::Transform jointWorldTransformWithoutScale = jointWorldTransform;
+            jointWorldTransformWithoutScale.ExtractScale();
+
+            AZ::Transform entityWorldTransformWithoutScale = entityWorldTransform;
+            entityWorldTransformWithoutScale.ExtractScale();
+            AZ::Transform entityWorldTransformInverse = entityWorldTransformWithoutScale.GetInverseFull();
+
+            return entityWorldTransformInverse * jointWorldTransformWithoutScale;
+        }
+
+        AZ::Transform ComputeJointWorldTransform(const AZ::Transform& jointLocalTransform,
+            const AZ::Transform& entityWorldTransform)
+        {
+            AZ::Transform jointLocalTransformWithoutScale = jointLocalTransform;
+            jointLocalTransformWithoutScale.ExtractScale();
+
+            AZ::Transform entityWorldTransformWithoutScale = entityWorldTransform;
+            entityWorldTransformWithoutScale.ExtractScale();
+
+            return entityWorldTransformWithoutScale * jointLocalTransformWithoutScale;
+        }
     } // namespace Utils
 
     namespace ReflectionUtils
@@ -1291,6 +1339,9 @@ namespace PhysX
         void ReflectPhysXOnlyApi(AZ::ReflectContext* context)
         {
             ForceRegionBusBehaviorHandler::Reflect(context);
+
+            GenericJointConfiguration::Reflect(context);
+            GenericJointLimitsConfiguration::Reflect(context);
         }
 
         void ForceRegionBusBehaviorHandler::Reflect(AZ::ReflectContext* context)

@@ -39,9 +39,9 @@ namespace EditorPythonBindings
         , private AzToolsFramework::EditorPythonConsoleInterface
     {
     public:
-        AZ_COMPONENT(PythonLogSymbolsComponent, "{F1873D04-C472-41A2-8AA4-48B0CE4A5979}");
+        AZ_COMPONENT(PythonLogSymbolsComponent, "{F1873D04-C472-41A2-8AA4-48B0CE4A5979}", AZ::Component);
 
-        static void Reflect(AZ::ReflectContext* context) {}
+        static void Reflect(AZ::ReflectContext* context);
 
     protected:
         ////////////////////////////////////////////////////////////////////////
@@ -67,16 +67,27 @@ namespace EditorPythonBindings
         void GetModuleList(AZStd::vector<AZStd::string_view>& moduleList) const override;
         void GetGlobalFunctionList(GlobalFunctionCollection& globalFunctionCollection) const override;
 
+        ////////////////////////////////////////////////////////////////////////
+        // Python type deduction
+        AZStd::string_view FetchPythonTypeAndTraits(const AZ::TypeId& typeId, AZ::u32 traits);
+        AZStd::string_view FetchPythonType(const AZ::BehaviorParameter& param);
+
     private:
         using ModuleSet = AZStd::unordered_set<AZStd::string>;
         using GlobalFunctionEntry = AZStd::pair<const AZ::BehaviorMethod*, AZStd::string>;
         using GlobalFunctionList = AZStd::vector<GlobalFunctionEntry>;
         using GlobalFunctionMap = AZStd::unordered_map<AZStd::string_view, GlobalFunctionList>;
+        using TypeMap = AZStd::unordered_map<AZ::TypeId, AZStd::string>;
 
         AZStd::string m_basePath;
         ModuleSet m_moduleSet;
         GlobalFunctionMap m_globalFunctionMap;
+        TypeMap m_typeCache;
 
+        AZStd::string FetchListType(const AZ::TypeId& typeId);
+        AZStd::string FetchMapType(const AZ::TypeId& typeId);
+        AZStd::string FetchOutcomeType(const AZ::TypeId& typeId);
+        AZStd::string TypeNameFallback(const AZ::TypeId& typeId);
         AZ::IO::HandleType OpenInitFileAt(AZStd::string_view moduleName);
         AZ::IO::HandleType OpenModuleAt(AZStd::string_view moduleName);
         void WriteMethod(AZ::IO::HandleType handle, AZStd::string_view methodName, const AZ::BehaviorMethod& behaviorMethod, const AZ::BehaviorClass* behaviorClass);

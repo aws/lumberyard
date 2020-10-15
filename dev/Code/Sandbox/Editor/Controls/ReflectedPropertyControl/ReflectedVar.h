@@ -232,7 +232,7 @@ public:
     AZStd::vector < AZStd::string> GetEnums() const
     {
         AZStd::vector < AZStd::string> returnVal;
-        for (const auto i : m_enums)
+        for (const auto& i : m_enums)
         {
             returnVal.push_back(i.second);
         }

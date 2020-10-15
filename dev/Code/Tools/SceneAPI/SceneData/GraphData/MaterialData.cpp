@@ -37,6 +37,16 @@ namespace AZ
             {
             }
 
+            void MaterialData::SetMaterialName(AZStd::string materialName)
+            {
+                m_materialName = AZStd::move(materialName);
+            }
+
+            const AZStd::string& MaterialData::GetMaterialName() const
+            {
+                return m_materialName;
+            }
+
             void MaterialData::SetTexture(TextureMapType mapType, const char* textureFileName)
             {
                 if (textureFileName)

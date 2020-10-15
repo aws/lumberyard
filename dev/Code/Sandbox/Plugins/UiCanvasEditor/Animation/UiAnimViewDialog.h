@@ -36,6 +36,7 @@ class CUiAnimViewKeyPropertiesDlg;
 
 class CUiAnimationCallback;
 class CUiAnimViewFindDlg;
+class CUiAnimViewExpanderWatcher;
 
 class CUiAnimViewDialog
     : public QMainWindow
@@ -202,6 +203,7 @@ private:
     QToolBar* m_keysToolBar;
     QToolBar* m_playToolBar;
     QToolBar* m_viewToolBar;
+    CUiAnimViewExpanderWatcher* m_expanderWatcher;
     QComboBox* m_sequencesComboBox;
 
     QLabel* m_cursorPos;

@@ -30,8 +30,8 @@ namespace EMStudio
 {
     void SaveDirtyActorFilesCallback::GetDirtyFileNames(AZStd::vector<AZStd::string>* outFileNames, AZStd::vector<ObjectPointer>* outObjects)
     {
-        const uint32 numMasterActors = EMotionFX::GetActorManager().GetNumActors();
-        for (uint32 i = 0; i < numMasterActors; ++i)
+        const uint32 numLeaderActors = EMotionFX::GetActorManager().GetNumActors();
+        for (uint32 i = 0; i < numLeaderActors; ++i)
         {
             EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
 

@@ -15,7 +15,7 @@
 #include <QAction>
 #include <QActionEvent>
 #include <QHBoxLayout>
-#include <QPushButton>
+#include <QToolButton>
 
 namespace AzQtComponents
 {
@@ -32,16 +32,22 @@ namespace AzQtComponents
     {
         switch (event->type())
         {
-            QPushButton* actionButton;
+            QToolButton* actionButton;
             QActionEvent* actionEvent;
 
             case QEvent::ActionAdded:
                 actionEvent = static_cast<QActionEvent*>(event);
-                actionButton = new QPushButton(actionEvent->action()->icon(), actionEvent->action()->text(), this);
+                actionButton = new QToolButton(this);
+                actionButton->setIcon(actionEvent->action()->icon());
+                actionButton->setToolTip(actionEvent->action()->text());
+                if (!actionEvent->action()->objectName().isEmpty())
+                {
+                    actionButton->setObjectName(actionEvent->action()->objectName());
+                }
                 // Forcing styled background to allow using background-color from QSS
                 actionButton->setAttribute(Qt::WA_StyledBackground, true);
                 layout()->addWidget(actionButton);
-                connect(actionButton, &QPushButton::clicked, actionEvent->action(), &QAction::trigger);
+                connect(actionButton, &QToolButton::clicked, actionEvent->action(), &QAction::trigger);
                 m_actionButtons[actionEvent->action()] = actionButton;
                 emit actionsChanged();
                 return true;

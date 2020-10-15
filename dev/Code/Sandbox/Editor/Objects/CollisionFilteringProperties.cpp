@@ -100,6 +100,7 @@ void CCollisionFilteringProperties::OnVarChange(IVariable* var)
     m_callbackFunc(var);
 }
 
+#if ENABLE_CRY_PHYSICS
 void CCollisionFilteringProperties::ApplyToPhysicalEntity(IPhysicalEntity* pPhysics)
 {
     if (pPhysics)
@@ -110,6 +111,7 @@ void CCollisionFilteringProperties::ApplyToPhysicalEntity(IPhysicalEntity* pPhys
         pPhysics->SetParams(&pcc);
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 int CCollisionFilteringProperties::GetCollisionClassExportId()
 {

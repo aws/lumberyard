@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_GEOMAN_INFO_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "geoman.h"
 
 STRUCT_INFO_BEGIN(phys_geometry_serialize)
@@ -29,5 +31,6 @@ STRUCT_VAR_INFO(dummy1, TYPE_INFO(int))
 STRUCT_VAR_INFO(nMats, TYPE_INFO(int))
 STRUCT_INFO_END(phys_geometry_serialize)
 
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_GEOMAN_INFO_H

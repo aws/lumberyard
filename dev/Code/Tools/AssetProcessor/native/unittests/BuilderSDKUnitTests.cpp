@@ -275,7 +275,7 @@ public:
         UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::GetSubID_LOD(tester) == 10);
         tester |= 0xFFF00000;
 
-        for (int idx = 0; idx < 9; ++idx)
+        for (AZ::u32 idx = 0; idx < 9; ++idx)
         {
             UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::GetSubID_ID(AssetBuilderSDK::ConstructSubID(0, idx)) == 0);
             UNIT_TEST_EXPECT_TRUE(AssetBuilderSDK::GetSubID_LOD(AssetBuilderSDK::ConstructSubID(0, idx)) == idx);
@@ -338,7 +338,7 @@ public:
         UNIT_TEST_EXPECT_TRUE((AssetBuilderSDK::JobProduct::InferSubIDFromProductFileName(textureAssetType, "whatever.dds") & AssetBuilderSDK::SUBID_FLAG_ALPHA) == 0);
         
         // check each possible LOD and Alpha LOD:
-        for (int idx = 1; idx <= 9; ++idx)
+        for (AZ::u32 idx = 1; idx <= 9; ++idx)
         {
             AZStd::string check;
 

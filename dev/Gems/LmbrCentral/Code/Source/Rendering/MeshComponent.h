@@ -118,8 +118,6 @@ namespace LmbrCentral
         const AABB GetBBox() const override;
         void SetBBox(const AABB& WSBBox) override;
         void OffsetPosition(const Vec3& delta) override;
-        struct IPhysicalEntity* GetPhysics() const override;
-        void SetPhysics(IPhysicalEntity* pPhys) override;
         void SetMaterial(_smart_ptr<IMaterial> pMat) override;
         _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = nullptr) override;
         _smart_ptr<IMaterial> GetMaterialOverride() override;

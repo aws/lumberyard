@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -130,3 +132,5 @@ void CSingleBoxTree::Load(CMemStream& stm, CGeometry* pGeom)
     stm.Read(m_Box);
     stm.Read(m_nPrims);
 }
+
+#endif // ENABLE_CRY_PHYSICS

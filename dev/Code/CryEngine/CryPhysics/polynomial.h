@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_POLYNOMIAL_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 template<class ftype, int degree>
 class polynomial_tpl
 {
@@ -673,5 +675,7 @@ typedef polynomial_tpl<real, 1> P1;
 typedef polynomial_tpl<float, 3> P3f;
 typedef polynomial_tpl<float, 2> P2f;
 typedef polynomial_tpl<float, 1> P1f;
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_POLYNOMIAL_H

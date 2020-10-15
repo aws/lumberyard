@@ -11,13 +11,16 @@
 */
 
 #include "StdAfx.h"
-#include <AzToolsFramework/Asset/AssetSystemComponent.h>
 
 #include <AzCore/IO/FileIO.h>
-#include <AzFramework/Network/AssetProcessorConnection.h>
-#include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Network/AssetProcessorConnection.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+#include <AzToolsFramework/Asset/AssetSystemComponent.h>
+#include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 
 #ifdef AZ_PLATFORM_WINDOWS
 // needed for GetCurrentProcessId() for activating the Editor and setting it to the Foreground
@@ -206,10 +209,31 @@ namespace AzToolsFramework
             AzToolsFramework::AssetSystem::JobInfo::Reflect(context);
 
             //AssetSystemComponent
-            AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
-            if (serialize)
+            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serialize->Class<AssetSystemComponent, AZ::Component>()
+                serializeContext->Class<AssetSystemComponent, AZ::Component>()
+                    ;
+            }
+
+            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<AssetEditor::AssetEditorRequestsBus>("AssetEditorRequestsBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                    ->Event("CreateNewAsset", &AssetEditor::AssetEditorRequests::CreateNewAsset)
+                    ->Event("OpenAssetEditorById", &AssetEditor::AssetEditorRequests::OpenAssetEditorById)
+                    ;
+
+                behaviorContext->EBus<AssetEditor::AssetEditorWidgetRequestsBus>("AssetEditorWidgetRequestsBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                    ->Event("CreateAsset", &AssetEditor::AssetEditorWidgetRequests::CreateAsset)
+                    ->Event("SaveAssetAs", &AssetEditor::AssetEditorWidgetRequests::SaveAssetAs)
+                    ->Event("OpenAssetById", &AssetEditor::AssetEditorWidgetRequests::OpenAssetById)
                     ;
             }
         }

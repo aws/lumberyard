@@ -28,6 +28,7 @@
 #include <limits>
 #include <IConsole.h>
 #include <ISerialize.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 
 //
@@ -605,6 +606,7 @@ Vec3 CLeader::GetHidePoint(const CAIObject* pAIObject, const CObstacleRef& obsta
     ray_hit hit;
     while (1)
     {
+#if ENABLE_CRY_PHYSICS
         int rayresult(0);
         rayresult = gAIEnv.pWorld->RayWorldIntersection(vHidePos - vHideDir * 0.5f, vHideDir * 5.f, COVER_OBJECT_TYPES, HIT_COVER | HIT_SOFT_COVER, &hit, 1);
 
@@ -621,6 +623,7 @@ Vec3 CLeader::GetHidePoint(const CAIObject* pAIObject, const CObstacleRef& obsta
             }
         }
         else
+#endif // ENABLE_CRY_PHYSICS
         {
             vHidePos += vHideDir * 3.0f;
             break;
@@ -939,7 +942,12 @@ int CLeader::AssignFormationPoints(bool bIncludeLeader, uint32 unitProp)
                     Vec3 otherPos(unit.m_refUnit.GetAIObject()->GetPos());
                     if (bOwnerInTriangularRegion)
                     {
-                        endPos.z = gEnv->p3DEngine->GetTerrainElevation(endPos.x, endPos.y);
+                        float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                            , endPos.x, endPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+                        endPos.z = elevation;
                     }
 
                     float fDist = Distance::Point_PointSq(pPoint->GetPos(), endPos);

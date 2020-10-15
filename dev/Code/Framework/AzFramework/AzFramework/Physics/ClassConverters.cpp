@@ -213,6 +213,35 @@ namespace Physics
                 dataElement.AddElementWithData<bool>(context, "Exclusive", true);
             }
 
+            // version 3->4
+            if (dataElement.GetVersion() <= 3)
+            {
+                const int elementIndex = dataElement.FindElement(AZ_CRC("Trigger", 0x1a6b0f5d));
+
+                if (elementIndex >= 0)
+                {
+                    bool isTrigger = false;
+                    AZ::SerializeContext::DataElementNode& triggerElement = dataElement.GetSubElement(elementIndex);
+                    const bool found = triggerElement.GetData<bool>(isTrigger);
+
+                    if (found && isTrigger)
+                    {
+                        // Version 4 added "InSceneQueries" field set to true by default.
+                        // The field is applicable to both trigger and simulated shapes.
+                        // However before all trigger shapes were always invisible to scene queries.
+                        // Setting "In Scene Queries" to false for all existing triggers to avoid breaking the existing content.
+                        const int idx = dataElement.AddElement<bool>(context, "InSceneQueries");
+                        if (idx != -1)
+                        {
+                            if (!dataElement.GetSubElement(idx).SetData<bool>(context, false))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -253,6 +282,32 @@ namespace Physics
                         // Version 2 includes a new m_computeCenterOfMass boolean flag to specify the automatic calculation of COM.
                         // In this case set m_computeCenterOfMass to false so that the existing center of mass offset value is utilized correctly.
                         const int idx = classElement.AddElement<bool>(context, "Compute COM");
+                        if (idx != -1)
+                        {
+                            if (!classElement.GetSubElement(idx).SetData<bool>(context, false))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (classElement.GetVersion() <= 2)
+            {
+                const int elementIndex = classElement.FindElement(AZ_CRC("Mass", 0x6c035b66));
+
+                if (elementIndex >= 0)
+                {
+                    float existingMass = 0;
+                    AZ::SerializeContext::DataElementNode& massElement = classElement.GetSubElement(elementIndex);
+                    const bool found = massElement.GetData<float>(existingMass);
+
+                    if (found && existingMass > 0)
+                    {
+                        // Keeping the existing mass and disabling auto-compute of the mass for this rigid body.
+                        // Version 3 includes a new m_computeMass boolean flag to specify the automatic calculation of mass.
+                        const int idx = classElement.AddElement<bool>(context, "Compute Mass");
                         if (idx != -1)
                         {
                             if (!classElement.GetSubElement(idx).SetData<bool>(context, false))

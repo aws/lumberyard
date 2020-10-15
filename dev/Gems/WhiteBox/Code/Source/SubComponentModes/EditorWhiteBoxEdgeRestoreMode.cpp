@@ -12,6 +12,7 @@
 
 #include "WhiteBox_precompiled.h"
 
+#include "EditorWhiteBoxComponentModeCommon.h"
 #include "EditorWhiteBoxEdgeRestoreMode.h"
 #include "Viewport/WhiteBoxModifierUtil.h"
 #include "Viewport/WhiteBoxViewportConstants.h"
@@ -27,6 +28,7 @@
 
 namespace WhiteBox
 {
+    static const char* const FlipEdgeUndoRedoDesc = "Flip an edge to divide quad across different diagonal";
     static const char* const RestoreEdgeUndoRedoDesc = "Restore an edge to split two connected polygons";
     static const char* const RestoreVertexUndoRedoDesc = "Restore a vertex to split two connected edges";
 
@@ -50,8 +52,6 @@ namespace WhiteBox
         [[maybe_unused]] const AZStd::optional<PolygonIntersection>& polygonIntersection,
         const AZStd::optional<VertexIntersection>& vertexIntersection)
     {
-        using ComponentModeRequestBus = AzToolsFramework::ComponentModeFramework::ComponentModeRequestBus;
-
         WhiteBoxMesh* whiteBox = nullptr;
         EditorWhiteBoxComponentRequestBus::EventResult(
             whiteBox, entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
@@ -77,8 +77,7 @@ namespace WhiteBox
             break;
         }
 
-        if (mouseInteraction.m_mouseInteraction.m_mouseButtons.Left() &&
-            mouseInteraction.m_mouseEvent == AzToolsFramework::ViewportInteraction::MouseEvent::Down)
+        if (InputRestore(mouseInteraction))
         {
             switch (closestIntersection)
             {
@@ -90,18 +89,7 @@ namespace WhiteBox
                     if (Api::RestoreEdge(
                             *whiteBox, edgeIntersection->m_closestEdgeWithHandle.m_handle, m_edgeHandlesBeingRestored))
                     {
-                        // record an undo step
-                        AzToolsFramework::ScopedUndoBatch undoBatch(RestoreEdgeUndoRedoDesc);
-                        AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entityComponentIdPair.GetEntityId());
-
-                        // notify the component things have changed
-                        EditorWhiteBoxComponentRequestBus::Event(
-                            entityComponentIdPair, &EditorWhiteBoxComponentRequests::SerializeWhiteBox);
-
-                        // notify the component mode things have changed
-                        ComponentModeRequestBus::Event(
-                            entityComponentIdPair, &ComponentModeRequestBus::Events::Refresh);
-
+                        RecordWhiteBoxAction(*whiteBox, entityComponentIdPair, RestoreEdgeUndoRedoDesc);
                         return true;
                     }
                 }
@@ -109,20 +97,33 @@ namespace WhiteBox
             // ensure we were actually hovering over a vertex when clicking
             case GeometryIntersection::Vertex:
                 {
-                    Api::RestoreVertex(*whiteBox, vertexIntersection->m_closestVertexWithHandle.m_handle);
-
-                    // record an undo step
-                    AzToolsFramework::ScopedUndoBatch undoBatch(RestoreVertexUndoRedoDesc);
-                    AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entityComponentIdPair.GetEntityId());
-
-                    // notify the component things have changed
-                    EditorWhiteBoxComponentRequestBus::Event(
-                        entityComponentIdPair, &EditorWhiteBoxComponentRequests::SerializeWhiteBox);
-
-                    // notify the component mode things have changed
-                    ComponentModeRequestBus::Event(entityComponentIdPair, &ComponentModeRequestBus::Events::Refresh);
+                    // note: operation may fail if the vertex is isolated
+                    if (Api::TryRestoreVertex(*whiteBox, vertexIntersection->m_closestVertexWithHandle.m_handle))
+                    {
+                        RecordWhiteBoxAction(*whiteBox, entityComponentIdPair, RestoreVertexUndoRedoDesc);
+                    }
 
                     return true;
+                }
+                break;
+            default:
+                return false;
+            }
+        }
+
+        if (InputFlipEdge(mouseInteraction))
+        {
+            switch (closestIntersection)
+            {
+            // ensure we were actually hovering over an edge when clicking
+            case GeometryIntersection::Edge:
+                {
+                    // attempt to flip an edge
+                    if (Api::FlipEdge(*whiteBox, edgeIntersection->m_closestEdgeWithHandle.m_handle))
+                    {
+                        RecordWhiteBoxAction(*whiteBox, entityComponentIdPair, FlipEdgeUndoRedoDesc);
+                        return true;
+                    }
                 }
                 break;
             default:

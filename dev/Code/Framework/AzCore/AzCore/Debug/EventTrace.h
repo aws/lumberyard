@@ -47,11 +47,11 @@ namespace AZ
 #ifdef AZ_PROFILE_TELEMETRY
 #   define AZ_TRACE_METHOD_NAME(name) \
         AZ_TRACE_METHOD_NAME_CATEGORY(name, "") \
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzRender, name)
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzTrace, name)
 
 #   define AZ_TRACE_METHOD() \
         AZ_TRACE_METHOD_NAME_CATEGORY(AZ_FUNCTION_SIGNATURE, "") \
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzRender)
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzTrace)
 #else
 #   define AZ_TRACE_METHOD_NAME(name) AZ_TRACE_METHOD_NAME_CATEGORY(name, "")
 #   define AZ_TRACE_METHOD() AZ_TRACE_METHOD_NAME(AZ_FUNCTION_SIGNATURE)

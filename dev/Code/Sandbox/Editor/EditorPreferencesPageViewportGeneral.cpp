@@ -12,6 +12,7 @@
 #include "StdAfx.h"
 #include "EditorPreferencesPageViewportGeneral.h"
 #include "DisplaySettings.h"
+#include <AzQtComponents/Components/StyleManager.h>
 
 void CEditorPreferencesPage_ViewportGeneral::Reflect(AZ::SerializeContext& serialize)
 {
@@ -159,6 +160,22 @@ void CEditorPreferencesPage_ViewportGeneral::Reflect(AZ::SerializeContext& seria
 CEditorPreferencesPage_ViewportGeneral::CEditorPreferencesPage_ViewportGeneral()
 {
     InitializeSettings();
+    m_icon = QIcon(":/res/Viewport.svg");
+}
+
+const char* CEditorPreferencesPage_ViewportGeneral::GetTitle()
+{
+    if (AzQtComponents::StyleManager::isUi10())
+    {
+        return "General";
+    }
+
+    return "Viewport";
+}
+
+QIcon& CEditorPreferencesPage_ViewportGeneral::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_ViewportGeneral::OnApply()

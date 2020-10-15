@@ -46,6 +46,10 @@ namespace AZ
             bool OnError(const char* window, const char* message) override;
             bool OnWarning(const char* window, const char* message) override;
             bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message) override;
+
+            AZ::u32 m_errorCount{ 0 };
+            AZ::u32 m_warningCount{ 0 };
+            AZ::u32 m_assertCount{ 0 };
         };
 
     } //namespace Test

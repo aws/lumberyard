@@ -93,14 +93,28 @@ namespace AZ
 
     NameDictionary::~NameDictionary()
     {
+        bool leaksDetected = false;
+
         for (const auto& keyValue : m_dictionary)
         {
+            Internal::NameData* nameData = keyValue.second;
             const int useCount = keyValue.second->m_useCount;
-            AZ_TracePrintf("NameDictionary", "\tLeaked Name [%3d reference(s)]: hash 0x%08X, '%.*s'\n", useCount, keyValue.first, AZ_STRING_ARG(keyValue.second->GetName()));
+            const bool hadCollision = keyValue.second->m_hashCollision;
+
+            if (useCount == 0)
+            {
+                // Entries that had resolved hash collisions are allowed to remain in the dictionary until shutdown.
+                AZ_Assert(hadCollision, "Only colliding names are allowed to remain in the dictionary");
+                delete nameData;
+            }
+            else
+            {
+                leaksDetected = true;
+                AZ_TracePrintf("NameDictionary", "\tLeaked Name [%3d reference(s)]: hash 0x%08X, '%.*s'\n", useCount, keyValue.first, AZ_STRING_ARG(keyValue.second->GetName()));
+            }
         }
 
-        AZ_Error("NameDictionary", m_dictionary.empty(),
-            "AZ::NameDictionary still has active name references. See debug output for the list of leaked names.");
+        AZ_Assert(!leaksDetected, "AZ::NameDictionary still has active name references. See debug output for the list of leaked names.");
     }
 
     Name NameDictionary::FindName(Name::Hash hash) const
@@ -122,7 +136,7 @@ namespace AZ
             return Name();
         }
 
-        Name::Hash hash = MakeHash(nameString);
+        Name::Hash hash = CalcHash(nameString);
 
         // If we find the same name with the same hash, just return it. 
         // This path is faster than the loop below because FindName() takes a shared_lock whereas the
@@ -137,12 +151,14 @@ namespace AZ
         AZStd::unique_lock<AZStd::shared_mutex> lock(m_sharedMutex);
 
         auto iter = m_dictionary.find(hash);
+        bool collisionDetected = false;
         while (true)
         {
             // No existing entry, add a new one and we're done
             if (iter == m_dictionary.end())
             {
                 Internal::NameData* nameData = aznew Internal::NameData(nameString, hash);
+                nameData->m_hashCollision = collisionDetected;
                 m_dictionary.emplace(hash, nameData);
                 return Name(nameData);
             }
@@ -154,6 +170,8 @@ namespace AZ
             // Hash collision, try a new hash
             else
             {
+                collisionDetected = true;
+                iter->second->m_hashCollision = true; // Make sure the existing entry is flagged as colliding too
                 ++hash;
                 iter = m_dictionary.find(hash);
             }
@@ -162,15 +180,36 @@ namespace AZ
 
     void NameDictionary::TryReleaseName(Internal::NameData* nameData)
     {
+        // Note that we don't remove NameData from the dictionary if it has been involved in a collision.
+        // This avoids specific edge cases where a Name object could get an incorrect hash value. Consider
+        // the following scenario, supposing that "hello" and "world" hash to the to same value [1000]...
+        //    - Create "hello" ... insert with hash 1000
+        //    - Create "world" ... insert with hash 1001
+        //    - Release "hello" ... removed and now 1000 is empty
+        //    - Invoke the Name constructor by string with "world". It will hash the string to value 1000,
+        //      try to find that hash in the dictionary, and nothing is found. So now "world" is added to
+        //      the dictionary *again*, this time with hash value 1000. Name objects pointing to the original
+        //      entry and Name objects pointing to the new entry will fail comparison operations.
+
+        // Early exit to avoid locking the mutex unnecessarily.
+        if (nameData->m_hashCollision)
+        {
+            return;
+        }
+
         AZStd::unique_lock<AZStd::shared_mutex> lock(m_sharedMutex);
 
-        /**
-         * need to check the count again in here in case
-         * someone was trying to get the name on another thread
-         * Set it to -1 so only this thread will attempt to clean up the
-         * dictionary and delete the name.
-         */
+        // Check m_hashCollision again inside the m_sharedMutex because a new collision could have happened
+        // on another thread before taking the lock.
+        if (nameData->m_hashCollision)
+        {
+            return;
+        }
 
+        // We need to check the count again in here in case
+        // someone was trying to get the name on another thread.
+        // Set it to -1 so only this thread will attempt to clean up the
+        // dictionary and delete the name.
         int32_t expectedRefCount = 0;
         if (nameData->m_useCount.compare_exchange_strong(expectedRefCount, -1))
         {
@@ -246,7 +285,7 @@ namespace AZ
 #endif // AZ_DEBUG_BUILD
     }
 
-    Name::Hash NameDictionary::MakeHash(AZStd::string_view name)
+    Name::Hash NameDictionary::CalcHash(AZStd::string_view name)
     {
         // AZStd::hash<AZStd::string_view> returns 64 bits but we want 32 bit hashes for the sake
         // of network synchronization. So just take the low 32 bits.

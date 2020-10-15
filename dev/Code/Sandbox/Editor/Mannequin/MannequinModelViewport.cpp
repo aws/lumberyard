@@ -165,12 +165,15 @@ CMannequinModelViewport::CMannequinModelViewport(EMannequinEditorMode editorMode
     , m_tweenToFocusTime(0.0f)
     , m_editorMode(editorMode)
     , m_pActionController(NULL)
+#if ENABLE_CRY_PHYSICS
     , m_piGroundPlanePhysicalEntity(NULL)
+#endif
     , m_TickerMode(SEQTICK_INFRAMES)
     , m_attachCameraToEntity(NULL)
     , m_lastEntityPos(ZERO)
     , m_pHoverBaseObject(NULL)
 {
+#if ENABLE_CRY_PHYSICS
     primitives::box box;
     box.center = Vec3(0.f, 0.f, -0.2f);
     box.size = Vec3(1000.f, 1000.f, 0.2f);
@@ -190,6 +193,7 @@ CMannequinModelViewport::CMannequinModelViewport(EMannequinEditorMode editorMode
     m_piGroundPlanePhysicalEntity->SetParams(&posParams);
 
     pPrimGeom->Release();
+#endif // ENABLE_CRY_PHYSICS
 
     gEnv->pParticleManager->AddEventListener(this);
     gEnv->pGame->GetIGameFramework()->GetMannequinInterface().AddMannequinGameListener(this);
@@ -217,21 +221,26 @@ CMannequinModelViewport::CMannequinModelViewport(EMannequinEditorMode editorMode
 CMannequinModelViewport::~CMannequinModelViewport()
 {
     gEnv->pParticleManager->RemoveEventListener(this);
+#if ENABLE_CRY_PHYSICS
     m_piGroundPlanePhysicalEntity->Release();
     gEnv->pPhysicalWorld->RemoveEventClient(EventPhysPostStep::id, OnPostStepLogged, 1);
+#endif
     gEnv->pGame->GetIGameFramework()->GetMannequinInterface().RemoveMannequinGameListener(this);
 }
 
 int CMannequinModelViewport::OnPostStepLogged(const EventPhys* pEvent)
 {
+#if ENABLE_CRY_PHYSICS
     const EventPhysPostStep* pPostStep = static_cast<const EventPhysPostStep*>(pEvent);
     IEntity* piEntity = gEnv->pEntitySystem->GetEntityFromPhysics(pPostStep->pEntity);
     piEntity->SetPosRotScale(pPostStep->pos, pPostStep->q, Vec3(1.f, 1.f, 1.f));
+#endif
     return 1;
 }
 
 bool CMannequinModelViewport::UseAnimationDrivenMotionForEntity(const IEntity* piEntity)
 {
+#if ENABLE_CRY_PHYSICS
     static bool addedClientEvent = false;
     if (piEntity)
     {
@@ -249,6 +258,9 @@ bool CMannequinModelViewport::UseAnimationDrivenMotionForEntity(const IEntity* p
     }
 
     addedClientEvent = false;
+#else
+    AZ_UNUSED(piEntity);
+#endif // ENABLE_CRY_PHYSICS
     return true;
 }
 
@@ -1914,6 +1926,7 @@ void CMannequinModelViewport::OnSequenceRestart(float timePassed)
             ICharacterInstance* charInst = pEntity->GetCharacter(0);
             if (charInst)
             {
+#if ENABLE_CRY_PHYSICS
                 if (pEntity->GetPhysics())
                 {
                     // Physicalizing with default params destroys the physical entity in the physical proxy.
@@ -1922,6 +1935,7 @@ void CMannequinModelViewport::OnSequenceRestart(float timePassed)
                 }
 
                 charInst->GetISkeletonPose()->DestroyCharacterPhysics();
+#endif // ENABLE_CRY_PHYSICS
                 charInst->GetISkeletonPose()->SetDefaultPose();
 
                 SAnimationProcessParams params;
@@ -2039,7 +2053,9 @@ void CMannequinModelViewport::LoadObject(const QString& fileName, float)
     }
     m_loadedFile = file;
 
+#if ENABLE_CRY_PHYSICS
     m_pPhysicalEntity = NULL;
+#endif
 
     SetName(tr("Model View - %1").arg(file));
     ReleaseObject();

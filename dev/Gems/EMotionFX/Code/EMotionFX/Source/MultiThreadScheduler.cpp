@@ -87,7 +87,7 @@ namespace EMotionFX
         const uint32 numSteps = mSteps.GetLength();
         for (uint32 i = 0; i < numSteps; ++i)
         {
-            AZ_Printf("EMotionFX", "STEP %.3d - %d", i, mSteps[i].mActorInstances.GetLength());
+            AZ_Printf("EMotionFX", "STEP %.3d - %d", i, mSteps[i].mActorInstances.size());
         }
 
         AZ_Printf("EMotionFX", "---------");
@@ -99,8 +99,8 @@ namespace EMotionFX
         // process all steps
         for (uint32 s = 0; s < mSteps.GetLength(); )
         {
-            // if the step �sn't empty
-            if (mSteps[s].mActorInstances.GetLength() > 0)
+            // if the step isn't empty
+            if (mSteps[s].mActorInstances.size() > 0)
             {
                 s++;
             }
@@ -158,7 +158,7 @@ namespace EMotionFX
             const ScheduleStep& currentStep = mSteps[s];
 
             // skip empty steps
-            const uint32 numStepEntries = currentStep.mActorInstances.GetLength();
+            const size_t numStepEntries = currentStep.mActorInstances.size();
             if (numStepEntries == 0)
             {
                 continue;
@@ -240,11 +240,25 @@ namespace EMotionFX
         return false;
     }
 
+    bool MultiThreadScheduler::HasActorInstanceInSteps(const ActorInstance* actorInstance) const
+    {
+        const uint32 numSteps = mSteps.GetLength();
+        for (uint32 s = 0; s < numSteps; ++s)
+        {
+            const ScheduleStep& step = mSteps[s];
+            if (AZStd::find(step.mActorInstances.begin(), step.mActorInstances.end(), actorInstance) != step.mActorInstances.end())
+            {
+                return true;
+            }
+        }
 
+        return false;
+    }
 
     void MultiThreadScheduler::RecursiveInsertActorInstance(ActorInstance* instance, uint32 startStep)
     {
         MCore::LockGuardRecursive guard(mMutex);
+        AZ_Assert(!HasActorInstanceInSteps(instance), "Expected the actor instance not being part of another step already.");
 
         // find the first free location that doesn't conflict
         uint32 outStep = startStep;
@@ -256,9 +270,9 @@ namespace EMotionFX
         }
 
         // pre-allocate step size
-        if (mSteps[outStep].mActorInstances.GetLength() % 10 == 0)
+        if (mSteps[outStep].mActorInstances.size() % 10 == 0)
         {
-            mSteps[outStep].mActorInstances.Reserve(mSteps[outStep].mActorInstances.GetLength() + 10);
+            mSteps[outStep].mActorInstances.reserve(mSteps[outStep].mActorInstances.size() + 10);
         }
 
         if (mSteps[outStep].mDependencies.GetLength() % 5 == 0)
@@ -267,8 +281,8 @@ namespace EMotionFX
         }
 
         // add the actor instance and its dependencies
-        mSteps[ outStep ].mActorInstances.Reserve(GetEMotionFX().GetNumThreads());
-        mSteps[ outStep ].mActorInstances.Add(instance);
+        mSteps[ outStep ].mActorInstances.reserve(GetEMotionFX().GetNumThreads());
+        mSteps[ outStep ].mActorInstances.emplace_back(instance);
         AddDependenciesToStep(instance, &mSteps[outStep]);
 
         // recursively add all attachments too
@@ -293,21 +307,27 @@ namespace EMotionFX
         const uint32 numSteps = mSteps.GetLength();
         for (uint32 s = startStep; s < numSteps; ++s)
         {
+            ScheduleStep& step = mSteps[s];
+
+            // Remove all occurrences of the actor instance.
+            const size_t numActorInstancesPreRemove = step.mActorInstances.size();
+            step.mActorInstances.erase(AZStd::remove(step.mActorInstances.begin(), step.mActorInstances.end(), actorInstance), step.mActorInstances.end());
+
             // try to see if there is anything to remove in this step
             // and if so, reconstruct the dependencies of this step
-            if (mSteps[s].mActorInstances.RemoveByValue(actorInstance))
+            if (step.mActorInstances.size() < numActorInstancesPreRemove)
             {
                 // clear the dependencies (but don't delete the memory)
-                mSteps[s].mDependencies.Clear(false);
+                step.mDependencies.Clear(false);
 
                 // calculate the new dependencies for this step
-                const uint32 numInstances = mSteps[s].mActorInstances.GetLength();
-                for (uint32 i = 0; i < numInstances; ++i)
+                for (ActorInstance* actorInstance : step.mActorInstances)
                 {
-                    AddDependenciesToStep(mSteps[s].mActorInstances[i], &mSteps[s]);
+                    AddDependenciesToStep(actorInstance, &step);
                 }
 
                 // assume that there is only one of the same actor instance in the whole schedule
+                RemoveEmptySteps();
                 return s;
             }
         }

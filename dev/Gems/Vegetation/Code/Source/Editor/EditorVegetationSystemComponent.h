@@ -13,6 +13,8 @@
 
 #include <AzCore/Component/Component.h>
 
+namespace AzToolsFramework { class PropertyHandlerBase; }
+
 namespace Vegetation
 {
     /**
@@ -33,6 +35,9 @@ namespace Vegetation
 
         void Activate() override;
         void Deactivate() override;
+
+    private:
+        AzToolsFramework::PropertyHandlerBase* m_propertyHandler{ nullptr };
     };
 
 } // namespace Vegetation

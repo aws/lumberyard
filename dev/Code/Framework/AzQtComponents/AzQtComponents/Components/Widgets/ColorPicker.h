@@ -34,6 +34,7 @@ class QSettings;
 class QDialogButtonBox;
 class QUndoStack;
 class QCheckBox;
+class QLabel;
 
 namespace AzQtComponents
 {
@@ -54,7 +55,6 @@ namespace AzQtComponents
     class PaletteCard;
     class QuickPaletteCard;
     class ColorValidator;
-    class GammaEdit;
 
     namespace Internal
     {
@@ -119,6 +119,9 @@ namespace AzQtComponents
 
         explicit ColorPicker(Configuration configuration, const QString& context = QString(), QWidget* parent = nullptr);
         ~ColorPicker() override;
+
+        //! Sets a comment string that will be included in the UI as a custom message that may provide some context for the user
+        void setComment(QString comment);
 
         AZ::Color currentColor() const;
         AZ::Color selectedColor() const;
@@ -263,11 +266,12 @@ namespace AzQtComponents
         QAction* m_importPaletteAction = nullptr;
         QAction* m_newPaletteAction = nullptr;
         QAction* m_toggleQuickPaletteAction = nullptr;
-        QWidget* m_gammaSeparator = nullptr;
-        GammaEdit* m_gammaEdit = nullptr;
         QDialogButtonBox* m_dialogButtonBox = nullptr;
         qreal m_defaultVForHsMode = 0.0f;
         qreal m_defaultLForHsMode = 0.0f;
+
+        QWidget* m_commentSeparator = nullptr;
+        QLabel* m_commentLabel = nullptr;
 
         QString m_lastSaveDirectory;
         QVector<QWidget*> m_separators;

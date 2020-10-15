@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include "LegacyTerrainBase.h"
 
 namespace LmbrCentral
 {
@@ -32,6 +33,7 @@ namespace LegacyTerrain
 
     class LegacyTerrainLevelComponent
         : public AZ::Component
+        , public LegacyTerrainBase
     {
     public:
         template<typename, typename>
@@ -47,6 +49,9 @@ namespace LegacyTerrain
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
+
+        bool ActivateTerrainSystemWithEditor();
+        void DeactivateTerrainSystemWithEditor();
 
     protected:
         ////////////////////////////////////////////////////////////////////////

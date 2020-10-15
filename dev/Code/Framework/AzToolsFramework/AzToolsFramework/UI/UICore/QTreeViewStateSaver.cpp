@@ -125,26 +125,25 @@ namespace AzToolsFramework
 
             _q_CurrentChanged(treeView->currentIndex(), QModelIndex());
 
-            //This code crashes when closing MaterialEditor and when closing ShaderCanvas
-            //QScrollBar* pScroll = treeView->verticalScrollBar();
-            //if (pScroll)
-            //{
-            //    m_vertScrollLast = pScroll->value();
-            //}
-            //else
-            //{
-            //    m_vertScrollLast = 0;
-            //}
+            QScrollBar* pScroll = treeView->verticalScrollBar();
+            if (pScroll)
+            {
+                m_vertScrollLast = pScroll->value();
+            }
+            else
+            {
+                m_vertScrollLast = 0;
+            }
 
-            //pScroll = treeView->horizontalScrollBar();
-            //if (pScroll)
-            //{
-            //    m_horizScrollLast = pScroll->value();
-            //}
-            //else
-            //{
-            //    m_horizScrollLast = 0;
-            //}
+            pScroll = treeView->horizontalScrollBar();
+            if (pScroll)
+            {
+                m_horizScrollLast = pScroll->value();
+            }
+            else
+            {
+                m_horizScrollLast = 0;
+            }
         }
 
         static void ExpandRow(QTreeView* treeView, const QModelIndex& rowIdx)

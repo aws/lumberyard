@@ -44,6 +44,7 @@ public:
 
     // Toggle the mute audio button
     void ToggleAudio() { OnBnClickedMuteAudio(); }
+    void SetSpeedComboBox(double value);
 
 Q_SIGNALS:
     void ActionTriggered(int command);
@@ -134,9 +135,6 @@ protected:
     QScopedPointer<Ui::CInfoBar> ui;
 
     bool m_idleUpdateEnabled = true;
-
-private:
-    void SetSpeedComboBox(double value);
 };
 
 #endif // CRYINCLUDE_EDITOR_INFOBAR_H

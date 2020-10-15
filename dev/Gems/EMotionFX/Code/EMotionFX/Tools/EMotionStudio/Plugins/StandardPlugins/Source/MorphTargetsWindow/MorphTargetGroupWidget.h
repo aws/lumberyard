@@ -39,8 +39,18 @@ namespace EMStudio
         MorphTargetGroupWidget(const char* name, EMotionFX::ActorInstance* actorInstance, const AZStd::vector<EMotionFX::MorphTarget*>& morphTargets, const AZStd::vector<EMotionFX::MorphSetupInstance::MorphTarget*>& morphTargetInstances, QWidget* parent);
         ~MorphTargetGroupWidget();
 
+        struct MorphTarget
+        {
+            EMotionFX::MorphTarget*                     mMorphTarget;
+            EMotionFX::MorphSetupInstance::MorphTarget* mMorphTargetInstance;
+            QCheckBox*                                  mManualMode;
+            AzQtComponents::SliderDoubleCombo*          mSliderWeight = nullptr;
+            float                                       mOldWeight;
+        };
+
         void UpdateInterface();
         void UpdateMorphTarget(const char* name);
+        const MorphTarget* GetMorphTarget(size_t index){ return &mMorphTargets[index]; }
 
     public slots:
         void SetManualModeForAll(int value);
@@ -49,16 +59,6 @@ namespace EMStudio
         void SliderWeightReleased();
         void EditClicked();
         void ResetAll();
-
-    private:
-        struct MorphTarget
-        {
-            EMotionFX::MorphTarget*                     mMorphTarget;
-            EMotionFX::MorphSetupInstance::MorphTarget* mMorphTargetInstance;
-            QCheckBox*                                  mManualMode;
-            AzQtComponents::SliderDoubleCombo*          mSliderWeight;
-            float                                       mOldWeight;
-        };
 
     private:
         AZStd::string               mName;

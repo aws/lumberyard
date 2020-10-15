@@ -90,7 +90,7 @@ namespace AzToolsFramework
 
         /// This function changes the state indicating whether the manipulator is under the mouse pointer.
         /// It is called in the event of OnMouseMove and OnMouseWheel only when there is no manipulator currently performing actions.
-        bool OnMouseOver(ManipulatorId /*manipulatorId*/, const ViewportInteraction::MouseInteraction& interaction);
+        bool OnMouseOver(ManipulatorId manipulatorId, const ViewportInteraction::MouseInteraction& interaction);
 
         /// Register itself to a manipulator manager so that it can receive various mouse events and perform manipulations.
         /// @param managerId The id identifying a unique manipulator manager.
@@ -138,7 +138,7 @@ namespace AzToolsFramework
         EntityComponentIds::iterator RemoveEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
 
         /// Is this entity currently being tracked by this manipulator.
-        bool HasEntityId(AZ::EntityId entityId) const ;
+        bool HasEntityId(AZ::EntityId entityId) const;
 
         /// Is this entity component pair currently being tracked by this manipulator.
         bool HasEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair) const;
@@ -212,12 +212,12 @@ namespace AzToolsFramework
         /// Member function pointers to OnLeftMouseDownImpl and OnRightMouseDownImpl.
         /// Set in AttachLeft/RightMouseDownImpl.
         void (BaseManipulator::*m_onLeftMouseDownImpl)(
-            const ViewportInteraction::MouseInteraction& /*interaction*/, float /*rayIntersectionDistance*/) = nullptr;
+            const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance) = nullptr;
         void (BaseManipulator::*m_onRightMouseDownImpl)(
-            const ViewportInteraction::MouseInteraction& /*interaction*/, float /*rayIntersectionDistance*/) = nullptr;
+            const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance) = nullptr;
 
         /// Update the mouseOver state for this manipulator.
-        void UpdateMouseOver(const ManipulatorId manipulatorId);
+        void UpdateMouseOver(ManipulatorId manipulatorId);
 
         /// Manage correctly ending the undo batch.
         void EndUndoBatch();

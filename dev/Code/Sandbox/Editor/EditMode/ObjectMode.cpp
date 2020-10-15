@@ -898,18 +898,22 @@ bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& poi
             {
                 if (CRenderViewport* renderViewport = viewport_cast<CRenderViewport*>(view))
                 {
-                    // if we double clicked on an AZ::Entity/Component, build a mouse interaction
-                    // and send a double click event to the EditorInteractionSystemViewportSelectionRequestBus.
-                    // if we have double clicked on a component supporting ComponentMode, we will enter it.
-                    // note: this is to support entering ComponentMode with a double click using the old viewport interaction model
+                    // if we double clicked on an AZ::Entity/Component, build a mouse interaction and send a double
+                    // click event to the EditorInteractionSystemViewportSelectionRequestBus. if we have double clicked
+                    // on a component supporting ComponentMode, we will enter it. note: this is to support entering
+                    // ComponentMode with a double click using the old viewport interaction model
                     const auto mouseInteraction = renderViewport->BuildMouseInteraction(
-                        Qt::LeftButton, QGuiApplication::queryKeyboardModifiers(), point);
-                    
-                    AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::Event(
+                        Qt::LeftButton, QGuiApplication::queryKeyboardModifiers(),
+                        renderViewport->ViewportToWidget(point));
+
+                    using AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus;
+                    using AzToolsFramework::ViewportInteraction::MouseInteractionEvent;
+                    using AzToolsFramework::ViewportInteraction::MouseEvent;
+
+                    EditorInteractionSystemViewportSelectionRequestBus::Event(
                         AzToolsFramework::GetEntityContextId(),
-                        &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
-                        AzToolsFramework::ViewportInteraction::MouseInteractionEvent(
-                            mouseInteraction, AzToolsFramework::ViewportInteraction::MouseEvent::DoubleClick));
+                        &EditorInteractionSystemViewportSelectionRequestBus::Events::InternalHandleMouseViewportInteraction,
+                        MouseInteractionEvent(mouseInteraction, MouseEvent::DoubleClick));
                 }
             }
 
@@ -1084,6 +1088,7 @@ void CObjectMode::AwakeObjectAtPoint(CViewport* view, const QPoint& point)
     CBaseObject* hitObj = hitInfo.object;
     if (hitObj)
     {
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pent = hitObj->GetCollisionEntity();
         if (pent)
         {
@@ -1091,6 +1096,7 @@ void CObjectMode::AwakeObjectAtPoint(CViewport* view, const QPoint& point)
             pa.bAwake = true;
             pent->Action(&pa);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/containers/vector.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <Editor/TypeChoiceButton.h>
@@ -100,7 +101,7 @@ namespace EMStudio
         AttributesWindow(AnimGraphPlugin* plugin, QWidget* parent = nullptr);
         ~AttributesWindow();
 
-        // copy & paste conditions
+        // copy & paste
         struct CopyPasteConditionObject
         {
             AZStd::string   mContents;
@@ -108,26 +109,39 @@ namespace EMStudio
             AZ::TypeId      mConditionType;
         };
 
-        const AZStd::vector<CopyPasteConditionObject>& GetCopyPasteConditionClipboard() const { return m_copyPasteClipboard; }
+        struct CopyPasteClipboard
+        {
+            void Clear();
+
+            AZStd::vector<CopyPasteConditionObject> m_conditions;
+            AZ::Outcome<AZStd::string> m_transition;
+        };
+
+        const CopyPasteClipboard& GetCopyPasteConditionClipboard() const { return m_copyPasteClipboard; }
 
         void Init(const QModelIndex& modelIndex = QModelIndex(), bool forceUpdate = false);
 
         void Lock() { m_isLocked = true; }
         void Unlock() { m_isLocked = false; }
-
         // AttributesWindowRequestBus overrides
         bool IsLocked() const override { return m_isLocked; }
         QModelIndex GetModelIndex() const override { return m_displayingModelIndex; }
+        AddConditionButton* GetAddConditionButton() { return m_addConditionButton; }
+        void AddTransitionCopyPasteMenuEntries(QMenu* menu);
+
+        EMotionFX::AnimGraphEditor* GetAnimGraphEditor() const;
 
     public slots:
-        void OnCopyConditions();
+        void OnCopy();
+        void OnPasteFullTransition();
         void OnPasteConditions();
         void OnPasteConditionsSelective();
+        void OnConditionContextMenu(const QPoint& position);
 
     private slots:
         void AddCondition(const AZ::TypeId& conditionType);
         void OnRemoveCondition();
-        void OnConditionContextMenu(const QPoint& position);
+        
 
         void OnActionContextMenu(const QPoint& position);
 
@@ -138,9 +152,11 @@ namespace EMStudio
 
         void OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
         void OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles);
-
     private:
+        AddConditionButton* m_addConditionButton = nullptr;
         void contextMenuEvent(QContextMenuEvent* event);
+
+        void PasteTransition(bool pasteTransitionProperties, bool pasteConditions);
 
         AnimGraphPlugin*                        mPlugin;
         QScrollArea*                            mScrollArea;
@@ -175,8 +191,7 @@ namespace EMStudio
 
         PasteConditionsWindow*                  mPasteConditionsWindow;
 
-        // copy & paste conditions
-        AZStd::vector<CopyPasteConditionObject> m_copyPasteClipboard;
+        CopyPasteClipboard                      m_copyPasteClipboard;        
 
         void UpdateConditions(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, bool forceUpdate = false);
         void UpdateActions(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, bool forceUpdate = false);

@@ -49,6 +49,22 @@ enum class AnimNodeType
     ScreenDropsSetup,                       // deprecated Jan 2016
     AzEntity,
     Component,
+    TOD_START,
+    TOD_Sun = TOD_START,
+    TOD_Fog,
+    TOD_VolumetricFog,
+    TOD_SkyLight,
+    TOD_NightSky,
+    TOD_NightSkyMultiplier,
+    TOD_CloudShading,
+    TOD_SunRaysEffect,
+    TOD_AdvancedTOD,
+    TOD_Filters,
+    TOD_DepthOfField,
+    TOD_Shadows,
+    TOD_Obsolete,
+    TOD_HDR,
+    TOD_END = TOD_HDR,
     Num
 };
 

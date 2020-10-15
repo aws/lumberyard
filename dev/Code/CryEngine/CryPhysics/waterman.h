@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_WATERMAN_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 struct SWaterTile
     : SWaterTileBase
@@ -131,5 +132,7 @@ public:
     
     const static AZ::u32 s_MaxCells;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_WATERMAN_H

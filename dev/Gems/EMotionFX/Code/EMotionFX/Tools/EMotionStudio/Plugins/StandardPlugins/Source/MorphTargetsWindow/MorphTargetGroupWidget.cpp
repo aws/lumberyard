@@ -302,7 +302,6 @@ namespace EMStudio
         }
     }
 
-
     void MorphTargetGroupWidget::UpdateMorphTarget(const char* name)
     {
         // update the row

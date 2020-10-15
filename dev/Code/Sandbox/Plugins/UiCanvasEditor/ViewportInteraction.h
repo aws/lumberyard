@@ -24,6 +24,7 @@ class QKeyEvent;
 class QWheelEvent;
 
 class ViewportDragInteraction;
+class ViewportInteractionExpanderWatcher;
 
 class ViewportInteraction
     : public QObject
@@ -288,6 +289,7 @@ private: // data
     std::unique_ptr< ViewportIcon > m_dottedLine;
 
     ViewportDragInteraction* m_dragInteraction;
+    ViewportInteractionExpanderWatcher* m_expanderWatcher;
     bool m_isAreaSelectionActive = false; //!< True while left mouse is held down for a drag select
 
     // Variables set when InteractionType is GUIDE

@@ -52,4 +52,13 @@ namespace UnitTest
         auto editorEntityContextNotificationBus = behaviorContext->m_ebuses.find("EditorEntityContextNotificationBus");
         EXPECT_TRUE(behaviorContext->m_ebuses.end() != editorEntityContextNotificationBus);
     }
+
+    TEST_F(AzToolsFrameworkPythonBindingsFixture, AzToolsFrameworkSliceRequestBus_ApiExists)
+    {
+        AZ::BehaviorContext* behaviorContext = m_app.GetBehaviorContext();
+        ASSERT_TRUE(behaviorContext);
+
+        auto sliceRequestBus = behaviorContext->m_ebuses.find("SliceRequestBus");
+        EXPECT_TRUE(behaviorContext->m_ebuses.end() != sliceRequestBus);
+    }
 }

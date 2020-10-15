@@ -245,11 +245,13 @@ struct VisionMapHelpers
             return false;
         }
 
+#if ENABLE_CRY_PHYSICS
         if (IPhysicalEntity* physicalEntity = entity.GetPhysics())
         {
             params.skipList[params.skipListSize] = physicalEntity;
             ++params.skipListSize;
         }
+#endif // ENABLE_CRY_PHYSICS
 
         if (includeParentEntities)
         {
@@ -261,11 +263,13 @@ struct VisionMapHelpers
                     return false;
                 }
 
+#if ENABLE_CRY_PHYSICS
                 if (IPhysicalEntity* physicalEntity = parentEntity->GetPhysics())
                 {
                     params.skipList[params.skipListSize] = physicalEntity;
                     ++params.skipListSize;
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 parentEntity = parentEntity->GetParent();
             }

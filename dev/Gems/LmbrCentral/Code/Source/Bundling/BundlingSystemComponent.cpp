@@ -104,7 +104,7 @@ namespace LmbrCentral
         }
         if (!m_bundleModeBundles.size())
         {
-            AZ_TracePrintf("BundlingSystem", "No bundles currently loaded");
+            AZ_TracePrintf("BundlingSystem", "No bundles currently loaded\n");
             return;
         }
         AZStd::lock_guard<AZStd::mutex> openBundleLock(m_bundleModeMutex);
@@ -112,11 +112,11 @@ namespace LmbrCentral
         {
             if (crySystem->GetIPak()->ClosePack(thisBundle.c_str()))
             {
-                AZ_TracePrintf("BundlingSystem", "Unloaded %s", thisBundle.c_str());
+                AZ_TracePrintf("BundlingSystem", "Unloaded %s\n",thisBundle.c_str());
             }
             else
             {
-                AZ_TracePrintf("BundlingSystem", "Failed to unload %s", thisBundle.c_str());
+                AZ_TracePrintf("BundlingSystem", "Failed to unload %s\n",thisBundle.c_str());
             }
         }
         m_bundleModeBundles.clear();
@@ -125,7 +125,7 @@ namespace LmbrCentral
     void BundlingSystemComponent::LoadBundles(const char* bundleFolder, const char* bundleExtension)
     {
         AZStd::vector<AZStd::string> bundleList = GetBundleList(bundleFolder, bundleExtension);
-        AZ_TracePrintf("BundlingSystem", "Loading bundles from %s of type %s", bundleFolder, bundleExtension);
+        AZ_TracePrintf("BundlingSystem", "Loading bundles from %s of type %s\n",bundleFolder, bundleExtension);
         if (!bundleList.size())
         {
             AZ_Warning("BundlingSystem", false, "Failed to locate bundles of type %s in folder %s", bundleExtension, bundleFolder);
@@ -159,19 +159,19 @@ namespace LmbrCentral
             AzFramework::StringFunc::Path::Join(bundleRoot, thisBundle.c_str(), bundlePath);
             if (cryPak->OpenPack(bundleRoot, thisBundle.c_str()))
             {
-                AZ_TracePrintf("BundlingSystem", "Loaded bundle %s", bundlePath.c_str());
+                AZ_TracePrintf("BundlingSystem", "Loaded bundle %s\n",bundlePath.c_str());
                 m_bundleModeBundles.emplace_back(AZStd::move(bundlePath));
             }
             else
             {
-                AZ_TracePrintf("BundlingSystem", "Failed to load %s", bundlePath.c_str());
+                AZ_TracePrintf("BundlingSystem", "Failed to load %s\n",bundlePath.c_str());
             }
         }
     }
 
     void BundlingSystemComponent::BundleOpened(const char* bundleName, AZStd::shared_ptr<AzFramework::AssetBundleManifest> bundleManifest, const char* nextBundle, AZStd::shared_ptr<AzFramework::AssetRegistry> bundleCatalog)
     {
-        AZ_TracePrintf("BundlingSystem", "Opening bundle %s", bundleName);
+        AZ_TracePrintf("BundlingSystem", "Opening bundle %s\n",bundleName);
         AZStd::lock_guard<AZStd::mutex> openBundleLock(m_openedBundleMutex);
         auto bundleIter = m_openedBundles.find(bundleName);
         if (bundleIter != m_openedBundles.end())
@@ -228,7 +228,7 @@ namespace LmbrCentral
         }
         else
         {
-            AZ_TracePrintf("BundlingSystem", "No Manifest found - %s is a legacy Pak", bundleName);
+            AZ_TracePrintf("BundlingSystem", "No Manifest found - %s is a legacy Pak\n",bundleName);
         }
     }
 
@@ -265,7 +265,7 @@ namespace LmbrCentral
 
     void BundlingSystemComponent::BundleClosed(const char* bundleName)
     {
-        AZ_TracePrintf("BundlingSystem", "Closing bundle %s", bundleName);
+        AZ_TracePrintf("BundlingSystem", "Closing bundle %s\n",bundleName);
         AZStd::unique_ptr<OpenBundleInfo> bundleRecord;
         {
             AZStd::lock_guard<AZStd::mutex> openBundleLock(m_openedBundleMutex);

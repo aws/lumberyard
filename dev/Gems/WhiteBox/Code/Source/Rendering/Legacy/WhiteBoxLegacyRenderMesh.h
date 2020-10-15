@@ -30,6 +30,7 @@ namespace WhiteBox
         void BuildMesh(const WhiteBoxRenderData& renderData, const AZ::Transform& worldFromLocal) override;
         void UpdateTransform(const AZ::Transform& worldFromLocal) override;
         void UpdateMaterial(const WhiteBoxMaterial& material) override;
+        bool IsVisible() const override;
         void SetVisiblity(bool visibility) override;
 
     private:

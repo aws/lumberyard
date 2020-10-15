@@ -87,10 +87,17 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                     ->Attribute(AZ::Script::Attributes::Category, "Components")
                     ->Attribute(AZ::Script::Attributes::Module, "entity")
+                    ->Method("GetEntityId", &AZ::EntityComponentIdPair::GetEntityId)
+                        ->Attribute(AZ::Script::Attributes::Alias, "get_entity_id")
                     ->Method("Equal", &AZ::EntityComponentIdPair::operator==)
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                    ->Method("ToString", [](const AZ::EntityComponentIdPair* self) {
+                        return AZStd::string::format("[ %s - %s ]", self->GetEntityId().ToString().c_str(), AZStd::to_string(self->GetComponentId()).c_str());
+                    })
+                        ->Attribute(AZ::Script::Attributes::Alias, "to_string")
                     ;
 
+                AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
                 behaviorContext->EBus<EditorComponentAPIBus>("EditorComponentAPIBus")
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                     ->Attribute(AZ::Script::Attributes::Category, "Components")
@@ -102,6 +109,7 @@ namespace AzToolsFramework
                     ->Event("BuildComponentTypeNameList", &EditorComponentAPIRequests::BuildComponentTypeNameList) // Deprecated. Use BuildComponentTypeNameListByEntityType instead.
                     ->Event("BuildComponentTypeNameListByEntityType", &EditorComponentAPIRequests::BuildComponentTypeNameListByEntityType)
                     ->Event("AddComponentsOfType", &EditorComponentAPIRequests::AddComponentsOfType)
+                    ->Event("AddComponentOfType", &EditorComponentAPIRequests::AddComponentOfType)
                     ->Event("HasComponentOfType", &EditorComponentAPIRequests::HasComponentOfType)
                     ->Event("CountComponentsOfType", &EditorComponentAPIRequests::CountComponentsOfType)
                     ->Event("GetComponentOfType", &EditorComponentAPIRequests::GetComponentOfType)
@@ -116,7 +124,9 @@ namespace AzToolsFramework
                     ->Event("SetComponentProperty", &EditorComponentAPIRequests::SetComponentProperty)
                     ->Event("CompareComponentProperty", &EditorComponentAPIRequests::CompareComponentProperty)
                     ->Event("BuildComponentPropertyList", &EditorComponentAPIRequests::BuildComponentPropertyList)
+                    ->Event("SetVisibleEnforcement", &EditorComponentAPIRequests::SetVisibleEnforcement)
                     ;
+                AZ_POP_DISABLE_WARNING
             }
         }
 
@@ -131,6 +141,11 @@ namespace AzToolsFramework
         void EditorComponentAPIComponent::Deactivate()
         {
             EditorComponentAPIBus::Handler::BusDisconnect();
+        }
+
+        void EditorComponentAPIComponent::SetVisibleEnforcement(bool enforceVisiblity)
+        {
+            m_usePropertyVisibility = enforceVisiblity;
         }
 
         AZStd::vector<AZ::Uuid> EditorComponentAPIComponent::FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames)
@@ -337,6 +352,11 @@ namespace AzToolsFramework
             return AddComponentsOutcome( componentIds );
         }
 
+        EditorComponentAPIRequests::AddComponentsOutcome EditorComponentAPIComponent::AddComponentOfType(AZ::EntityId entityId, const AZ::Uuid& componentTypeId)
+        {
+            return AddComponentsOfType(entityId, { componentTypeId });
+        }
+
         bool EditorComponentAPIComponent::HasComponentOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId)
         {
             GetComponentOutcome outcome = GetComponentOfType(entityId, componentTypeId);
@@ -518,7 +538,7 @@ namespace AzToolsFramework
                 return {PropertyTreeOutcome::ErrorType("BuildComponentPropertyTreeEditor - Component Instance is Invalid.")};
             }
 
-            return {PropertyTreeOutcome::ValueType(reinterpret_cast<void*>(component), component->RTTI_GetType())};
+            return {PropertyTreeOutcome::ValueType(reinterpret_cast<void*>(component), component->GetUnderlyingComponentType())};
         }
 
         EditorComponentAPIRequests::PropertyOutcome EditorComponentAPIComponent::GetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath)
@@ -531,7 +551,12 @@ namespace AzToolsFramework
                 return { PropertyOutcome::ErrorType("GetComponentProperty - Component Instance is Invalid.") };
             }
 
-            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->RTTI_GetType());
+            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->GetUnderlyingComponentType());
+
+            if (m_usePropertyVisibility)
+            {
+                pte.SetVisibleEnforcement(true);
+            }
 
             return pte.GetProperty(propertyPath);
         }
@@ -546,7 +571,12 @@ namespace AzToolsFramework
                 return {PropertyOutcome::ErrorType("SetComponentProperty - Component Instance is Invalid.")};
             }
 
-            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->RTTI_GetType());
+            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->GetUnderlyingComponentType());
+
+            if (m_usePropertyVisibility)
+            {
+                pte.SetVisibleEnforcement(true);
+            }
 
             PropertyOutcome result = pte.SetProperty(propertyPath, value);
             if (result.IsSuccess())
@@ -567,7 +597,12 @@ namespace AzToolsFramework
                 return false;
             }
 
-            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->RTTI_GetType());
+            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->GetUnderlyingComponentType());
+
+            if (m_usePropertyVisibility)
+            {
+                pte.SetVisibleEnforcement(true);
+            }
 
             return pte.CompareProperty(propertyPath, value);
         }
@@ -582,7 +617,12 @@ namespace AzToolsFramework
                 return { AZStd::string("BuildComponentPropertyList - Component Instance is Invalid.") };
             }
 
-            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->RTTI_GetType());
+            PropertyTreeEditor pte = PropertyTreeEditor(reinterpret_cast<void*>(component), component->GetUnderlyingComponentType());
+
+            if (m_usePropertyVisibility)
+            {
+                pte.SetVisibleEnforcement(true);
+            }
 
             return pte.BuildPathsList();
         }
@@ -661,7 +701,7 @@ namespace AzToolsFramework
             const auto& entityComponents = entityPtr->GetComponents();
             for (AZ::Component* component : entityComponents)
             {
-                if (component->RTTI_GetType() == componentTypeId)
+                if (component->GetUnderlyingComponentType() == componentTypeId)
                 {
                     return component;
                 }
@@ -672,7 +712,7 @@ namespace AzToolsFramework
             AzToolsFramework::EditorPendingCompositionRequestBus::Event(entityPtr->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
             for (AZ::Component* component : pendingComponents)
             {
-                if (component->RTTI_GetType() == componentTypeId)
+                if (component->GetUnderlyingComponentType() == componentTypeId)
                 {
                     return component;
                 }
@@ -683,7 +723,7 @@ namespace AzToolsFramework
             AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entityPtr->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
             for (AZ::Component* component : disabledComponents)
             {
-                if (component->RTTI_GetType() == componentTypeId)
+                if (component->GetUnderlyingComponentType() == componentTypeId)
                 {
                     return component;
                 }
@@ -709,7 +749,7 @@ namespace AzToolsFramework
             const auto& entityComponents = entityPtr->GetComponents();
             for (AZ::Component* component : entityComponents)
             {
-                if (component->RTTI_GetType() == componentTypeId)
+                if (component->GetUnderlyingComponentType() == componentTypeId)
                 {
                     components.push_back(component);
                 }
@@ -720,7 +760,7 @@ namespace AzToolsFramework
             AzToolsFramework::EditorPendingCompositionRequestBus::Event(entityId, &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
             for (AZ::Component* component : pendingComponents)
             {
-                if (component->RTTI_GetType() == componentTypeId)
+                if (component->GetUnderlyingComponentType() == componentTypeId)
                 {
                     components.push_back(component);
                 }
@@ -731,7 +771,7 @@ namespace AzToolsFramework
             AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entityId, &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
             for (AZ::Component* component : disabledComponents)
             {
-                if (component->RTTI_GetType() == componentTypeId)
+                if (component->GetUnderlyingComponentType() == componentTypeId)
                 {
                     components.push_back(component);
                 }

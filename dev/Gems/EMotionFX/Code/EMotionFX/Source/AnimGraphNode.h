@@ -229,19 +229,19 @@ namespace EMotionFX
         virtual void SetCurrentPlayTimeNormalized(AnimGraphInstance* animGraphInstance, float normalizedTime);
         virtual void Rewind(AnimGraphInstance* animGraphInstance);
 
-        void AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, ESyncMode syncMode, bool resync);
-        void SyncFullNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed = true);
-        void SyncPlayTime(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode);
-        void SyncUsingSyncTracks(AnimGraphInstance* animGraphInstance, AnimGraphNode* syncWithNode, const AnimGraphSyncTrack* syncTrackA, const AnimGraphSyncTrack* syncTrackB, float weight, bool resync, bool modifyMasterSpeed = true);
+        void AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode, float weight, ESyncMode syncMode, bool resync);
+        void SyncFullNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode, float weight, bool modifyLeaderSpeed = true);
+        void SyncPlayTime(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode);
+        void SyncUsingSyncTracks(AnimGraphInstance* animGraphInstance, AnimGraphNode* syncWithNode, const AnimGraphSyncTrack* syncTrackA, const AnimGraphSyncTrack* syncTrackB, float weight, bool resync, bool modifyLeaderSpeed = true);
         static AZStd::tuple<float, float, float> SyncPlaySpeeds(float playSpeedA, float durationA, float playSpeedB, float durationB, float weight);
-        void SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed = true);
+        void SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode, float weight, bool modifyLeaderSpeed = true);
         virtual void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode);
         void HierarchicalSyncAllInputNodes(AnimGraphInstance* animGraphInstance, AnimGraphNodeData* uniqueDataOfThisNode);
 
-        static void CalcSyncFactors(AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
-        static void CalcSyncFactors(float masterPlaySpeed, const AnimGraphSyncTrack* masterSyncTrack, uint32 masterSyncTrackIndex, float masterDuration,
-            float servantPlaySpeed, const AnimGraphSyncTrack* servantSyncTrack, uint32 servantSyncTrackIndex, float servantDuration,
-            ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
+        static void CalcSyncFactors(AnimGraphInstance* animGraphInstance, const AnimGraphNode* leaderNode, const AnimGraphNode* followerNode, ESyncMode syncMode, float weight, float* outLeaderFactor, float* outFollowerFactor, float* outPlaySpeed);
+        static void CalcSyncFactors(float leaderPlaySpeed, const AnimGraphSyncTrack* leaderSyncTrack, uint32 leaderSyncTrackIndex, float leaderDuration,
+            float followerPlaySpeed, const AnimGraphSyncTrack* followerSyncTrack, uint32 followerSyncTrackIndex, float followerDuration,
+            ESyncMode syncMode, float weight, float* outLeaderFactor, float* outFollowerFactor, float* outPlaySpeed);
 
         void RequestPoses(AnimGraphInstance* animGraphInstance);
         void FreeIncomingPoses(AnimGraphInstance* animGraphInstance);
@@ -269,7 +269,7 @@ namespace EMotionFX
 
         virtual AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const  { MCORE_UNUSED(animGraphInstance); MCORE_ASSERT(false); return nullptr; }
 
-        virtual void RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType = AZ::TypeId::CreateNull()) const;
+        virtual void RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType = AZ::TypeId::CreateNull()) const;
         virtual void RecursiveCollectActiveNetTimeSyncNodes(AnimGraphInstance* animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes) const;
 
         virtual bool RecursiveDetectCycles(AZStd::unordered_set<const AnimGraphNode*>& nodes) const;

@@ -31,7 +31,11 @@ struct SSpineRC;
 class CStaticObjectCompiler
 {
 public:
+#if ENABLE_CRY_PHYSICS
     CStaticObjectCompiler(CPhysicsInterface* pPhysicsInterface, bool bConsole, int logVerbosityLevel = 0);
+#else
+    CStaticObjectCompiler(bool bConsole, int logVerbosityLevel = 0);
+#endif
     ~CStaticObjectCompiler();
 
     void SetSplitLods(bool bSplit);
@@ -71,7 +75,9 @@ private:
     //END: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
 
 private:
+#if ENABLE_CRY_PHYSICS
     CPhysicsInterface* m_pPhysicsInterface;
+#endif
     bool m_bSplitLODs;
     bool m_bOwnLod0;
     bool m_bConsole;

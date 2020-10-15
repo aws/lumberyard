@@ -79,7 +79,7 @@ namespace ImageProcessingEditor
 
         if (fileSizeInBytes < kb)
         {
-            fileSizeStr = AZStd::string::format("%d%s", fileSizeInBytes, byteStr.c_str());
+            fileSizeStr = AZStd::string::format("%u%s", fileSizeInBytes, byteStr.c_str());
         }
         else if (fileSizeInBytes < mb)
         {

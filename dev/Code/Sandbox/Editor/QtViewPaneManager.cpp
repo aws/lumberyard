@@ -649,8 +649,12 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
 
             // track every new dock widget instance that we created
             pane->m_dockWidgetInstances.push_back(newDockWidget);
-            connect(newDockWidget, &QObject::destroyed, this, [pane, newDockWidget]() {
-                pane->m_dockWidgetInstances.removeAll(newDockWidget);
+            connect(newDockWidget, &QObject::destroyed, this, [this, name, newDockWidget]() {
+                QtViewPane* pane = GetPane(name);
+                if (pane && pane->IsValid())
+                {
+                    pane->m_dockWidgetInstances.removeAll(newDockWidget);
+                }
             });
 
             // only set the single instance of the dock widget on the pane if this

@@ -37,7 +37,7 @@ CStartupLogoDialog::CStartupLogoDialog(QString versionText, QString richTextCopy
  
     s_pLogoWindow = this;
 
-    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_startergame.png"));
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_1_26.png"));
     setFixedSize(m_backgroundImage.size());
 
     m_ui->m_TransparentConfidential->setObjectName("copyrightNotice");

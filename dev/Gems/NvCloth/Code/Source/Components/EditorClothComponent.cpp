@@ -21,6 +21,9 @@
 
 #include <Components/EditorClothComponent.h>
 #include <Components/ClothComponent.h>
+#include <Components/ClothComponentMesh/ClothComponentMesh.h>
+
+#include <Utils/AssetHelper.h>
 
 namespace NvCloth
 {
@@ -49,9 +52,17 @@ namespace NvCloth
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Cloth.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Cloth.svg")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://gameworksdocs.nvidia.com/NvCloth/1.1/index.html")
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-cloth.html")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+
+                    ->UIElement(AZ::Edit::UIHandlers::CheckBox, "Simulate in editor",
+                        "Enables cloth simulation in editor when set.")
+                        ->Attribute(AZ::Edit::Attributes::CheckboxDefaultValue, &EditorClothComponent::IsSimulatedInEditor)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorClothComponent::OnSimulatedInEditorToggled)
+
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorClothComponent::m_config)
+
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorClothComponent::OnConfigurationChanged)
                     ;
 
                 editContext->Class<ClothConfiguration>("Cloth Configuration", "Configuration for cloth simulation.")
@@ -152,11 +163,16 @@ namespace NvCloth
 
                     // Wind
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Wind")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_windVelocity, "Velocity", 
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_useCustomWindVelocity, "Enable local wind velocity",
+                        "When enabled it allows to set a custom wind velocity value for this cloth, otherwise using wind velocity from Physics::WindBus.\n"
+                        "Wind is disabled when both air coefficients are zero.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_windVelocity, "Local velocity", 
                         "Wind in global coordinates acting on cloth's triangles. Disabled when both air coefficients are zero.\n"
                         "NOTE: A combination of high values in wind properties can cause unstable results.")
                         ->Attribute(AZ::Edit::Attributes::Min, -50.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 50.0f)
+                        ->Attribute(AZ::Edit::Attributes::ReadOnly, &ClothConfiguration::IsUsingWindBus )
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_airDragCoefficient, "Air drag coefficient",
                         "Amount of air dragging.\n"
                         "NOTE: A combination of high values in wind properties can cause unstable results.")
@@ -353,6 +369,8 @@ namespace NvCloth
             };
     }
 
+    EditorClothComponent::~EditorClothComponent() = default;
+
     void EditorClothComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("ClothMeshService", 0x6ffcbca5));
@@ -380,6 +398,8 @@ namespace NvCloth
         LmbrCentral::MeshComponentNotificationBus::Handler::BusDisconnect();
 
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
+
+        m_clothComponentMesh.reset();
     }
 
     void EditorClothComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
@@ -431,6 +451,11 @@ namespace NvCloth
 
         m_previousMeshNode = "";
 
+        if (m_simulateInEditor)
+        {
+            m_clothComponentMesh = AZStd::make_unique<ClothComponentMesh>(GetEntityId(), m_config);
+        }
+
         // Refresh UI
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
             &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
@@ -444,9 +469,46 @@ namespace NvCloth
         m_meshNodeList = { {StatusMessageNoAsset} };
         m_config.m_meshNode = StatusMessageNoAsset;
 
+        m_clothComponentMesh.reset();
+
         // Refresh UI
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
             &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
             AzToolsFramework::Refresh_AttributesAndValues);
+    }
+
+    bool EditorClothComponent::IsSimulatedInEditor() const
+    {
+        return m_simulateInEditor;
+    }
+
+    AZ::u32 EditorClothComponent::OnSimulatedInEditorToggled()
+    {
+        m_clothComponentMesh.reset();
+
+        m_simulateInEditor = !m_simulateInEditor;
+
+        if (m_simulateInEditor)
+        {
+            m_clothComponentMesh = AZStd::make_unique<ClothComponentMesh>(GetEntityId(), m_config);
+        }
+        else
+        {
+            // Force MeshComponent to reload current mesh asset in order to restore original mesh
+            AZ::Data::Asset<AZ::Data::AssetData> meshAsset = nullptr;
+            LmbrCentral::MeshComponentRequestBus::EventResult(meshAsset, GetEntityId(), &LmbrCentral::MeshComponentRequests::GetMeshAsset);
+
+            LmbrCentral::MeshComponentRequestBus::Event(GetEntityId(), &LmbrCentral::MeshComponentRequests::SetMeshAsset, meshAsset.GetId());
+        }
+
+        return AZ::Edit::PropertyRefreshLevels::None;
+    }
+
+    void EditorClothComponent::OnConfigurationChanged()
+    {
+        if (m_clothComponentMesh)
+        {
+            m_clothComponentMesh->UpdateConfiguration(GetEntityId(), m_config);
+        }
     }
 } // namespace NvCloth

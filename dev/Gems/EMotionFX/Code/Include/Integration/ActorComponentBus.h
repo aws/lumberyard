@@ -58,6 +58,9 @@ namespace EMotionFX
             /// \return pointer to actor instance.
             virtual EMotionFX::ActorInstance* GetActorInstance() { return nullptr; }
 
+            /// Retrieve the total number of joints.
+            virtual size_t GetNumJoints() const { return 0; }
+
             /// Find the name index of a given joint by its name.
             /// \param name The name of the join to search for, case insensitive.
             /// \return The joint index, or s_invalidJointIndex if no found.
@@ -68,7 +71,7 @@ namespace EMotionFX
             /// \param Space the space to get the transform in.
             virtual AZ::Transform GetJointTransform(size_t /*jointIndex*/, Space /*space*/) const  { return AZ::Transform::CreateIdentity(); }
             virtual void GetJointTransformComponents(size_t /*jointIndex*/, Space /*space*/, AZ::Vector3& outPosition, AZ::Quaternion& outRotation, AZ::Vector3& outScale) const  { outPosition = AZ::Vector3::CreateZero(); outRotation = AZ::Quaternion::CreateIdentity(); outScale = AZ::Vector3::CreateOne(); }
-
+            
             virtual Physics::AnimationConfiguration* GetPhysicsConfig() const { return nullptr; }
 
             /// Attach to the specified entity.

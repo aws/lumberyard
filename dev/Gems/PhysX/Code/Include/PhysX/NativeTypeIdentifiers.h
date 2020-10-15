@@ -23,5 +23,8 @@ namespace PhysX
         static const AZ::Crc32 RigidBodyStatic = AZ_CRC("PhysXRigidBodyStatic", 0xe8b62e7e);
         static const AZ::Crc32 ArticulationLink = AZ_CRC("PhysXArticulationLink", 0x3181634c);
         static const AZ::Crc32 D6Joint = AZ_CRC("PhysXD6Joint", 0xff42ecdd);
+        static const AZ::Crc32 FixedJoint = AZ_CRC("PhysXFixedJoint", 0x06efb273);
+        static const AZ::Crc32 HingeJoint = AZ_CRC("PhysXHingeJoint", 0xfe3178e0);
+        static const AZ::Crc32 BallJoint = AZ_CRC("PhysXBallJoint", 0x52bae2e7);
     } // namespace NativeTypeIdentifiers
 } // namespace PhysX

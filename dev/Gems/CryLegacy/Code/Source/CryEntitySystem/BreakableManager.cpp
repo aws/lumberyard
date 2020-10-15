@@ -12,6 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "CryLegacy_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include <ICryAnimation.h>
 #include "BreakableManager.h"
 #include "BreakablePlane.h"
@@ -470,6 +473,7 @@ void CBreakableManager::BreakIntoPieces(GeomRef& geoOrig, const Matrix34& mxSrcT
     BreakageParams const& Breakage, int nMatLayers)
 {
     ENTITY_PROFILER;
+#if PARTICLES_USE_CRY_PHYSICS
 
     struct MFXExec
     {
@@ -953,11 +957,13 @@ void CBreakableManager::BreakIntoPieces(GeomRef& geoOrig, const Matrix34& mxSrcT
             }
         }
     }
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CBreakableManager::BreakIntoPieces(IEntity* pEntity, int nOrigSlot, int nPiecesSlot, BreakageParams const& Breakage)
 {
+#if PARTICLES_USE_CRY_PHYSICS
     IComponentRenderPtr pRenderComponent = pEntity->GetComponent<IComponentRender>();
     if (pRenderComponent)
     {
@@ -984,6 +990,7 @@ void CBreakableManager::BreakIntoPieces(IEntity* pEntity, int nOrigSlot, int nPi
             BreakIntoPieces(geoOrig, mx1, pPiecesObj, mx2, Breakage, pRenderNode->GetMaterialLayers());
         }
     }
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1057,6 +1064,7 @@ void CBreakableManager::AttachSurfaceEffect(IEntity* pEntity, int nSlot, const c
 //////////////////////////////////////////////////////////////////////////
 void CBreakableManager::CreateObjectAsParticles(IStatObj* pStatObj, IPhysicalEntity* pPhysEnt, IBreakableManager::SCreateParams& createParams)
 {
+#if PARTICLES_USE_CRY_PHYSICS
     if (!pPhysEnt)
     {
         return;
@@ -1102,6 +1110,7 @@ void CBreakableManager::CreateObjectAsParticles(IStatObj* pStatObj, IPhysicalEnt
     pe_params_foreign_data pfd;
     pfd.iForeignFlagsOR = PFF_UNIMPORTANT;
     pPhysEnt->SetParams(&pfd);
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1314,6 +1323,7 @@ void CBreakableManager::CreateObjectCommon(IStatObj* pStatObj, IPhysicalEntity* 
 bool CBreakableManager::CheckForPieces(IStatObj* pSrcStatObj, IStatObj::SSubObject* pSubObj, const Matrix34& worldTM, int nMatLayers,
     IPhysicalEntity* pPhysEnt)
 {
+#if PARTICLES_USE_CRY_PHYSICS
     const char* sProperties = pSubObj->pStatObj->GetProperties();
 
     bool bMustShatter = (nMatLayers & MTL_LAYER_FROZEN);
@@ -1385,6 +1395,7 @@ bool CBreakableManager::CheckForPieces(IStatObj* pSrcStatObj, IStatObj::SSubObje
         return true;
         //////////////////////////////////////////////////////////////////////////
     }
+#endif // PARTICLES_USE_CRY_PHYSICS
     return false;
 }
 
@@ -2893,4 +2904,4 @@ bool CBreakableManager::IsGeometryBreakable(IPhysicalEntity* pEntity, IStatObj* 
     return true;
 }
 
-
+#endif // ENABLE_CRY_PHYSICS

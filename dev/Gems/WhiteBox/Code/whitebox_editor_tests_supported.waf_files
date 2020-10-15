@@ -6,8 +6,10 @@
             "Tests/WhiteBoxEdgeTest.cpp",
             "Tests/WhiteBoxUVTest.cpp",
             "Tests/WhiteBoxSelectionTest.cpp",
+            "Tests/WhiteBoxTestUtil.cpp",
             "Tests/WhiteBoxTestUtil.h",
-            "Tests/WhiteBoxRenderDataTest.cpp"
+            "Tests/WhiteBoxRenderDataTest.cpp",
+            "Tests/WhiteBoxComponentTest.cpp"
         ]
     }
 }

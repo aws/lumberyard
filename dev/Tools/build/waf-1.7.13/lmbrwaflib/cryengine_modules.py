@@ -2431,6 +2431,9 @@ def ApplyBuildOptionSettings(self, kw):
     if self.options.crash_handler_url:
         kw['defines'] += ['CRASH_HANDLER_URL=' + self.options.crash_handler_url]
 
+    if self.is_option_true('enable_release_logging'):
+        kw['defines'] += ['AZ_ENABLE_TRACING']
+
     # We always send in a packaged build time. It's only meaningful for packaged builds.
     packaged_build_time = 0
     if len(self.options.packaged_build_time) > 0:

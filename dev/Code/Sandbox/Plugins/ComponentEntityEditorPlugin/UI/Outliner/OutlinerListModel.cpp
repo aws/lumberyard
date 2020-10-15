@@ -2406,7 +2406,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     const bool sliceHasOverrides = (entityHasOverrides || childrenHaveOverrides);
 
     const bool isSelected = (option.state & QStyle::State_Selected);
-    const bool isHovered = (option.state & QStyle::State_MouseOver);
+    const bool isHovered = (option.state & QStyle::State_MouseOver) && (option.state & QStyle::State_Enabled);
     if (isSelected || isHovered)
     {
         bool isLayerEntity = false;

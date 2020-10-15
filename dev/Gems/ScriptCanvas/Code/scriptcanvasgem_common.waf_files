@@ -23,7 +23,9 @@
             "Include/ScriptCanvas/Asset/RuntimeAsset.cpp",
             "Include/ScriptCanvas/Asset/RuntimeAsset.h",
             "Include/ScriptCanvas/Asset/RuntimeAssetHandler.cpp",
-            "Include/ScriptCanvas/Asset/RuntimeAssetHandler.h"
+            "Include/ScriptCanvas/Asset/RuntimeAssetHandler.h",
+            "Include/ScriptCanvas/Asset/ScriptCanvasAssetBase.h",
+            "Include/ScriptCanvas/Asset/ScriptCanvasAssetData.h"
         ],
         "Include/ScriptCanvas/Asset/Functions": [
             "Include/ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h",

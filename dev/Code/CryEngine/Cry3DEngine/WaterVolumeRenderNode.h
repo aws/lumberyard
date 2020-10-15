@@ -129,7 +129,9 @@ public:
     virtual void SetRiverPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams = false);
     virtual void SetRiverPhysicsArea(const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, bool keepSerializationParams = false);
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* SetAndCreatePhysicsArea(const Vec3* pVertices, unsigned int numVertices);
+#endif
     void SyncToPhysMesh(const QuatT& qtSurface, IGeometry* pSurface, float depth);
 
     // implements IRenderNode
@@ -207,7 +209,9 @@ private:
 
     bool IsAttachedToEntity() const { return m_attachedToEntity; }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* CreatePhysicsAreaFromSettings();
+#endif
 
 private:
     IWaterVolumeRenderNode::EWaterVolumeType m_volumeType;

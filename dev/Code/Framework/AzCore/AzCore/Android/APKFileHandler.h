@@ -42,6 +42,22 @@ namespace AZ
 {
     namespace Android
     {
+        struct MemoryBuffer
+        {
+            const char* m_buffer;
+            AAsset* m_asset;
+            int m_totalSize;
+            int m_offset;
+
+            MemoryBuffer()
+            {
+                m_offset = 0;
+                m_totalSize = 0;
+                m_buffer = nullptr;
+                m_asset = nullptr;
+            }
+        };
+
         class APKFileHandler
         {
         public:
@@ -107,12 +123,19 @@ namespace AZ
             //! Set the correct number of bytes to be read when calls to fread are redirected to \ref APKFileHandler::Read
             static void SetNumBytesToRead(const size_t numBytesToRead);
 
+            //! Set the names of the files that should be loaded to memory
+            static void SetLoadFilesToMemory(const char* fileNames);
+
 
             APKFileHandler();
             ~APKFileHandler();
 
 
         private:
+            MemoryBuffer* GetInMemoryFileBuffer(void* asset);
+            void RemoveInMemoryFileBuffer(void* asset);
+            bool ShouldLoadFileToMemory(const char* filePath);
+
             typedef JNI::Internal::Object<AZ::OSAllocator> JniObject;
 
             typedef AZ::OSStdAllocator StdAllocatorType;
@@ -134,6 +157,9 @@ namespace AZ
 
 
             static AZ::EnvironmentVariable<APKFileHandler> s_instance; //!< Reference to the global APK file handler object, created in the AndroidEnv
+
+            AZStd::vector<MemoryBuffer> m_memFileBuffers;
+            AZStd::vector<AZStd::string> m_memFileNames;
 
 
             AZStd::unique_ptr<JniObject> m_javaInstance; //!< JNI instance of the com.amazon.lumberyard.io.APKHandler Java object

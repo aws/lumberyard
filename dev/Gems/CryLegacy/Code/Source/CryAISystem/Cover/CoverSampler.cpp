@@ -296,6 +296,7 @@ bool CoverSampler::IntersectSweptSphere(const Vec3& center, const Vec3& dir, flo
     IPhysicalEntity* closestEntity = 0;
     int closestPart = 0;
 
+#if ENABLE_CRY_PHYSICS
     ray_hit hit;
     for (size_t i = 0; i < entityCount; ++i)
     {
@@ -311,6 +312,7 @@ bool CoverSampler::IntersectSweptSphere(const Vec3& center, const Vec3& dir, flo
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (closestEntity)
     {
@@ -382,7 +384,7 @@ CoverSampler::SurfaceType CoverSampler::GetSurfaceType(IPhysicalEntity* physical
             return DynamicSurface;
         }
     }
-
+#if ENABLE_CRY_PHYSICS
     if (IEntity* entity = gEnv->pEntitySystem->GetEntityFromPhysics(physicalEntity))
     {
         if (gAIEnv.pCoverSystem->IsDynamicSurfaceEntity(entity))
@@ -390,7 +392,7 @@ CoverSampler::SurfaceType CoverSampler::GetSurfaceType(IPhysicalEntity* physical
             return DynamicSurface;
         }
     }
-
+#endif
     uint64 jointConnectedParts = 0;
     pe_params_structural_joint sjp;
     sjp.idx = 0;
@@ -481,6 +483,7 @@ float CoverSampler::SampleHeightInterval(const Vec3& position, const Vec3& dir, 
 float CoverSampler::SampleHeight(const Vec3& position, float heightInterval, float maxHeight, float* depth,
     Vec3* averageNormal, SurfaceType* surfaceType)
 {
+#if ENABLE_CRY_PHYSICS
     assert(heightInterval > std::numeric_limits<float>::epsilon());
     assert(maxHeight >= 0.0f);
     uint32 sampleCount = (uint32)(0.5f + maxHeight / heightInterval);
@@ -622,6 +625,15 @@ float CoverSampler::SampleHeight(const Vec3& position, float heightInterval, flo
     }
 
     return currHeight;
+#else
+    AZ_UNUSED(position);
+    AZ_UNUSED(heightInterval);
+    AZ_UNUSED(maxHeight);
+    AZ_UNUSED(depth);
+    AZ_UNUSED(averageNormal);
+    AZ_UNUSED(surfaceType);
+    return 0.f;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 bool CoverSampler::SampleFloor(const Vec3& position, float searchHeight, float searchRadius,

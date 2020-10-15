@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_UNPROJECTIONCHECKS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 struct unprojection_mode
 {
@@ -154,5 +155,7 @@ public:
     static unprojection_check table[2][NPRIMS][NPRIMS];
 };
 extern CUnprojectionChecker g_Unprojector;
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_UNPROJECTIONCHECKS_H

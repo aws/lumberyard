@@ -22,6 +22,11 @@
     #define MATERIAL_EFFECTS_DEBUG
 #endif
 
+
+#if !ENABLE_CRY_PHYSICS
+#include "CryFixedArray.h"
+#endif
+
 struct IEntityClass;
 struct IRenderNode;
 struct ISurfaceType;

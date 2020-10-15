@@ -40,6 +40,7 @@ namespace Multiplayer
 
         void OnMemberJoined(GridMate::GridSession* session, GridMate::GridMember* member) override;
         void OnMemberLeaving(GridMate::GridSession* session, GridMate::GridMember* member) override;
+        void OnSessionCreated(GridMate::GridSession* session) override;
 
         void CallStartMatchmakingBackfill(bool checkAutoBackfill = true);
 
@@ -51,7 +52,6 @@ namespace Multiplayer
         float m_customMatchBackfillStartDelaySeconds;
         bool m_customMatchBackfillEnable;
         bool m_customMatchBackfillOnPlayerRemovedEnable;
-        int m_minimumPlayerSessionCount;
 
         GridMate::TimeStamp m_startTime;
         bool m_customMatchBackfillStart = false;

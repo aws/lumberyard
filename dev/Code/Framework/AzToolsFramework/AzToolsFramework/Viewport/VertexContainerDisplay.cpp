@@ -26,7 +26,7 @@ namespace AzToolsFramework
             AzFramework::DebugDisplayRequests& debugDisplay,
             const AZ::Vector3& position, const size_t index, const float textSize)
         {
-            AZStd::string indexFormat = AZStd::string::format("[%d]", index);
+            AZStd::string indexFormat = AZStd::string::format("[%zu]", index);
             debugDisplay.DrawTextLabel(position, textSize, indexFormat.c_str(), true);
         }
 

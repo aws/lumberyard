@@ -15,9 +15,10 @@
             "DLL.cpp",
             "Driller.cpp",
             "EBus.cpp",
-            "EventTests.cpp",
             "EntityIdTests.cpp",
             "EntityTests.cpp",
+            "EnumTests.cpp",
+            "EventTests.cpp",
             "FileIOBaseTestTypes.h",
             "Geometry2DUtils.cpp",
             "Interface.cpp",
@@ -49,7 +50,8 @@
             "XML.cpp"
         ],
         "AzCore/Debug": [
-            "Debug/AssetTracking.cpp"
+            "Debug/AssetTracking.cpp",
+            "Debug/Trace.cpp"
         ],
         "AzCore/Name": [
             "Name/NameJsonSerializerTests.cpp",

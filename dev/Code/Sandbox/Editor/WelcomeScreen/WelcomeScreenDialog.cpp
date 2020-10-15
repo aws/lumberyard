@@ -71,12 +71,10 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
     ui->setupUi(this);
 
     // Make our welcome screen checkboxes appear as toggle switches
-    AzQtComponents::CheckBox::applyToggleSwitchStyle(ui->enableUI20);
     AzQtComponents::CheckBox::applyToggleSwitchStyle(ui->autoLoadLevel);
     AzQtComponents::CheckBox::applyToggleSwitchStyle(ui->showOnStartup);
 
     ui->autoLoadLevel->setChecked(gSettings.bAutoloadLastLevelAtStartup);
-    ui->enableUI20->setChecked(gSettings.bEnableUI2);
 
     ui->recentLevelList->setModel(m_pRecentListModel);
     ui->recentLevelList->setMouseTracking(true);
@@ -150,7 +148,6 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
     connect(ui->documentationButton, &QPushButton::clicked, this, &WelcomeScreenDialog::OnDocumentationBtnClicked);
     connect(ui->showOnStartup, &QCheckBox::clicked, this, &WelcomeScreenDialog::OnShowOnStartupBtnClicked);
     connect(ui->autoLoadLevel, &QCheckBox::clicked, this, &WelcomeScreenDialog::OnAutoLoadLevelBtnClicked);
-    connect(ui->enableUI20, &QCheckBox::toggled, this, &WelcomeScreenDialog::OnEnableUI20Toggled);
 
     m_manifest = new News::ResourceManifest(
             std::bind(&WelcomeScreenDialog::SyncSuccess, this),
@@ -409,50 +406,9 @@ void WelcomeScreenDialog::OnRecentLevelListItemClicked(const QModelIndex& modelI
     SendMetricsEvent("LoadedLevelFromRecentLevelList");
 }
 
-
 void WelcomeScreenDialog::OnCloseBtnClicked(bool checked)
 {
     accept();
-}
-
-void WelcomeScreenDialog::OnEnableUI20Toggled(bool checked)
-{
-    QMessageBox restartMessage(AzToolsFramework::GetActiveWindow());
-    restartMessage.setWindowTitle(QObject::tr("Restart"));
-    restartMessage.setText(QObject::tr("You must restart the Lumberyard Editor to finish enabling or disabling UI 2.0. Select 'Shutdown' to stop the Editor, and then relaunch it to complete the changes."));
-    QPushButton* shutdownButton = restartMessage.addButton(QObject::tr("Shutdown"), QMessageBox::AcceptRole);
-    restartMessage.addButton(QObject::tr("Cancel"), QMessageBox::RejectRole);
-    restartMessage.exec();
-
-    // Close the Editor on behalf of the user.
-    if (restartMessage.clickedButton() == shutdownButton)
-    {
-        // Save our toggled setting
-        gSettings.bEnableUI2 = checked;
-        gSettings.Save();
-
-        // Send a Metrics event since we changed the UI 2.0 setting
-        if (gSettings.bEnableUI2)
-        {
-            SendMetricsEvent("EditorUI10Off");
-        }
-        else
-        {
-            SendMetricsEvent("EditorUI10On");
-        }
-
-        // Queue the MainWindow close event to be executed on the next event loop pass
-        QTimer::singleShot(0, MainWindow::instance(), &MainWindow::close);
-
-        // Then we need to dismiss ourself (the Welcome Screen modal dialog), or else the MainWindow close event will be ignored
-        reject();
-    }
-    // Otherwise, we cancelled, so reset the checkbox to the previous value
-    else
-    {
-        QSignalBlocker blocker(ui->enableUI20);
-        ui->enableUI20->setChecked(!checked);
-    }
 }
 
 void WelcomeScreenDialog::OnAutoLoadLevelBtnClicked(bool checked)

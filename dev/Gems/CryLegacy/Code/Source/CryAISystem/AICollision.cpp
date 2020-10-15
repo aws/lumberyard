@@ -41,14 +41,17 @@ IPhysicalEntity* g_AIEntitiesInBoxPreAlloc[GetPhysicalEntitiesInBoxMaxResultCoun
 // We could have a static buffer also, at the cost of a little complication - physics memory is still needed if static buffer too small
 void PhysicalEntityListAutoPtr::operator= (IPhysicalEntity** pList)
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pList)
     {
         gEnv->pPhysicalWorld->GetPhysUtils()->DeletePointer(m_pList);
     }
+#endif
     m_pList = pList;
 }
 
 
+#if ENABLE_CRY_PHYSICS
 //====================================================================
 // IntersectSweptSphere
 // hitPos is optional - may be faster if 0
@@ -148,6 +151,7 @@ bool OverlapCylinder(const Lineseg& lineseg, float radius, const std::vector<IPh
     }
     return false;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 // for finding the start/end positions
 const float WalkabilityFloorUpDist = 0.25f;
@@ -203,6 +207,7 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
 
     const float height = (TorsoTotalHeight - TorsoUp.z);
 
+#if ENABLE_CRY_PHYSICS
     intersection_params ip;
     ip.bStopAtFirstTri = true;
     ip.bNoAreaContacts = true;
@@ -217,10 +222,12 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
     params.nSkipEnts = -(int)overlapTorsoEntities.size();
     params.sweepDir = Vec3(0.f, 0.f, 0.f);
     params.pip = &ip;
+#endif // ENABLE_CRY_PHYSICS
 
     // short cut if start equals end
     if (endOBB.IsEquivalent(startOBB))
     {
+#if ENABLE_CRY_PHYSICS
         primitives::cylinder cylinder;
         cylinder.axis = WalkabilityUp;
         cylinder.center = Vec3(startOBB.x, startOBB.y, startOBB.z + height * 0.5f);
@@ -239,6 +246,9 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
                 cylinder.r, cylinder.hh * 2.0f, result ? Col_Red : Col_Green);
         }
 
+#else
+        bool result = false;
+#endif
         return result;
     }
 
@@ -256,11 +266,15 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
     physBox.Basis.SetFromVectors(right, forward, up);
     physBox.Basis.Transpose();
 
+#if ENABLE_CRY_PHYSICS
     // test obb for plane path
     params.itype = primitives::box::type;
     params.pprim = &physBox;
 
     bool result = gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
+#else
+    bool result = false;
+#endif
 
     if (gAIEnv.CVars.DebugCheckWalkability)
     {
@@ -279,9 +293,11 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
         cylinderStart.hh = height * 0.5f;
         cylinderStart.r = radius;
 
+#if ENABLE_CRY_PHYSICS
         params.itype = primitives::cylinder::type;
         params.pprim = &cylinderStart;
         result |= gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
+#endif
 
         if (gAIEnv.CVars.DebugCheckWalkability)
         {
@@ -290,6 +306,7 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     if (!result)
     {
         primitives::cylinder cylinderEnd;
@@ -301,13 +318,13 @@ bool OverlapTorsoSegment(const Vec3& startOBB, const Vec3& endOBB, float radius,
 
         params.pprim = &cylinderEnd;
         result |= gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
-
         if (gAIEnv.CVars.DebugCheckWalkability)
         {
             CDebugDrawContext()->DrawCylinder(cylinderEnd.center, cylinderEnd.axis,
                 cylinderEnd.r, cylinderEnd.hh * 2.0f, result ? Col_Red : Col_Green);
         }
     }
+#endif
 
     return result;
 }
@@ -390,7 +407,11 @@ bool CheckWalkability(const Vec3& origin, const Vec3& target, float radius, Vec3
         enclosingAABB.Add(Vec3(segmentStart.x, segmentStart.y, minZ), radius);
         enclosingAABB.Add(Vec3(segmentEnd.x, segmentEnd.y, maxZ), radius);
 
+#if ENABLE_CRY_PHYSICS
         size_t entityCount = GetPhysicalEntitiesInBox(enclosingAABB.min, enclosingAABB.max, segmentEntities, AICE_ALL);
+#else
+        size_t entityCount = 0;
+#endif
 
         if (!entityCount) // no floor
         {
@@ -732,6 +753,7 @@ bool CheckWalkability(const Vec3& origin, const Vec3& target, float radius,
 }
 #pragma warning (pop)
 
+#if ENABLE_CRY_PHYSICS
 bool CheckWalkabilitySimple(/*Vec3 from, Vec3 to,*/ SWalkPosition fromPos, SWalkPosition toPos, float radius, EAICollisionEntities aiCollisionEntities)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_AI);
@@ -825,6 +847,7 @@ bool CheckWalkabilitySimple(/*Vec3 from, Vec3 to,*/ SWalkPosition fromPos, SWalk
 
     return true;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //====================================================================
 // FindFloor
@@ -873,6 +896,7 @@ bool FindFloor(const Vec3& position, const StaticPhysEntityArray& entities, cons
     Vec3 dir = Vec3(0.0f, 0.0f, -(WalkabilityFloorDownDist + WalkabilityFloorUpDist));
     const Vec3 start = position + Vec3(0, 0, WalkabilityFloorUpDist);
     const Lineseg line(start, start + dir);
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* const physicalWorld = gEnv->pPhysicalWorld;
 
     ray_hit hit;
@@ -909,6 +933,7 @@ bool FindFloor(const Vec3& position, const StaticPhysEntityArray& entities, cons
 
         return true;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (gAIEnv.CVars.DebugCheckWalkability)
     {

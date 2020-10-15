@@ -48,22 +48,26 @@ namespace AzToolsFramework
         m_mainLayout->setSpacing(0);
         m_mainLayout->setContentsMargins(0, 1, 0, 1);
 
+        m_leftHandSideLayoutParent = new QVBoxLayout(nullptr);
         m_leftHandSideLayout = new QHBoxLayout(nullptr);
+        m_leftHandSideLayoutParent->addLayout(m_leftHandSideLayout);
         m_middleLayout = new QHBoxLayout(nullptr);
         m_rightHandSideLayout = new QHBoxLayout(nullptr);
 
         m_leftHandSideLayout->setSpacing(0);
+        m_leftHandSideLayoutParent->setSpacing(0);
         m_middleLayout->setSpacing(0);
         m_rightHandSideLayout->setSpacing(4);
         m_leftHandSideLayout->setContentsMargins(0, 0, 0, 0);
+        m_leftHandSideLayoutParent->setContentsMargins(0, 0, 0, 0);
         m_middleLayout->setContentsMargins(0, 0, 0, 0);
         m_rightHandSideLayout->setContentsMargins(0, 0, 0, 0);
 
-        m_indicatorLabel = aznew QLabel(this);
-        m_indicatorLabel->setObjectName("Indicator");
-        m_indicatorLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_indicatorLabel->setFixedHeight(16);
-        m_indicatorLabel->setFixedWidth(16);
+        m_indicatorButton = aznew QToolButton(this);
+        m_indicatorButton->setObjectName("Indicator");
+        m_indicatorButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        m_indicatorButton->setFixedHeight(16);
+        m_indicatorButton->setFixedWidth(16);
 
         UpdateIndicator(nullptr);
 
@@ -73,7 +77,7 @@ namespace AzToolsFramework
         m_middleAreaContainer->setMinimumWidth(minimumControlWidth);
         m_mainLayout->addWidget(m_leftAreaContainer, LabelColumnStretch, Qt::AlignLeft);
         m_mainLayout->addWidget(m_middleAreaContainer, ValueColumnStretch);
-        m_leftAreaContainer->setLayout(m_leftHandSideLayout);
+        m_leftAreaContainer->setLayout(m_leftHandSideLayoutParent);
         m_middleAreaContainer->setLayout(m_middleLayout);
 
         m_middleLayout->addStretch();
@@ -82,20 +86,18 @@ namespace AzToolsFramework
 
         m_indent = new QSpacerItem(1, 1, QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-        m_leftHandSideLayout->addWidget(m_indicatorLabel);
+        m_leftHandSideLayout->addWidget(m_indicatorButton);
 
         m_leftHandSideLayout->addSpacerItem(m_indent);
 
         m_nameLabel = aznew AzQtComponents::ElidingLabel(this);
         m_nameLabel->setObjectName("Name");
-        m_nameLabel->setContentsMargins(4,0,0,0); // Add 4px to match CardHeader
-        m_nameLabel->setFixedHeight(16);
 
         m_defaultLabel = aznew QLabel(this);
+        m_defaultLabel->setObjectName("DefaultLabel");
         m_middleLayout->insertWidget(0, m_defaultLabel, 1);
         m_defaultLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         m_defaultLabel->hide();
-        m_defaultLabel->setFixedHeight(16);
 
         m_leftHandSideLayout->addWidget(m_nameLabel);
         
@@ -402,7 +404,7 @@ namespace AzToolsFramework
     void PropertyRowWidget::SetDescription(const QString& text)
     {
         setToolTip(text);
-        m_nameLabel->setToolTip(m_nameLabel->text() + " - " + text);
+        m_nameLabel->setDescription(text);
     }
 
     void PropertyRowWidget::SetOverridden(bool overridden)
@@ -1058,6 +1060,10 @@ namespace AzToolsFramework
 
     void PropertyRowWidget::UpdateDropDownArrow()
     {
+        if (m_custom)
+        {
+            return;
+        }
         if ((!m_hadChildren) || (m_forbidExpansion) || m_forceAutoExpand)
         {
             if (m_dropDownArrow)
@@ -1086,6 +1092,15 @@ namespace AzToolsFramework
             m_dropDownArrow->setChecked(m_expanded);
         }
     }
+
+    void PropertyRowWidget::SetIndentSize(int w)
+    {
+        m_indent->changeSize(w, 1, QSizePolicy::Fixed, QSizePolicy::Fixed);
+        m_leftHandSideLayout->invalidate();
+        m_leftHandSideLayout->update();
+        m_leftHandSideLayout->activate();
+    }
+
 
     void PropertyRowWidget::SetExpanded(bool expanded)
     {
@@ -1266,6 +1281,29 @@ namespace AzToolsFramework
                 }
             }
         }
+    }
+
+    bool PropertyRowWidget::IsTopLevel() const
+    {
+        // We're a top level row if we're the first ancestor in the hierarchy with a visible, non-empty label
+        auto canBeTopLevel = [](const PropertyRowWidget* widget)
+        {
+            if (widget->m_nameLabel->isHidden())
+            {
+                return false;
+            }
+            QString label = widget->m_nameLabel->text();
+            return !label.isEmpty();
+        };
+
+        for (PropertyRowWidget* parent = GetParentRow(); parent; parent = parent->GetParentRow())
+        {
+            if (canBeTopLevel(parent))
+            {
+                return false;
+            }
+        }
+        return canBeTopLevel(this);
     }
 
     bool PropertyRowWidget::HasChildRows() const
@@ -1569,14 +1607,14 @@ namespace AzToolsFramework
         if (!fileExists)
         {
             // Hide the indicator
-            m_indicatorLabel->setVisible(false);
+            m_indicatorButton->setVisible(false);
         }
         else
         {
-            m_indicatorLabel->setVisible(true);
+            m_indicatorButton->setVisible(true);
 
             QPixmap pixmap(imagePath);
-            m_indicatorLabel->setPixmap(pixmap);
+            m_indicatorButton->setIcon(pixmap);
         };
     }
 

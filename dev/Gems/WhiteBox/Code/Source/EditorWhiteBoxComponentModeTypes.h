@@ -84,8 +84,9 @@ namespace WhiteBox
     //! The closest polygon returned after performing a ray intersection.
     struct PolygonIntersection
     {
-        PolygonBoundWithHandle m_closestPolygonWithHandle;
-        Intersection m_intersection;
+        PolygonBoundWithHandle m_closestPolygonWithHandle; //!< Polygon and corresponding handle.
+        Intersection m_intersection; //!< Intersection information (distance and position).
+        Api::FaceHandle m_pickedFaceHandle; //!< The individual face that was picked.
 
         Api::PolygonHandle GetHandle() const;
     };

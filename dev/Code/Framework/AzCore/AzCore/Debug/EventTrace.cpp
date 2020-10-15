@@ -27,7 +27,7 @@ namespace AZ
 
         EventTrace::ScopedSlice::~ScopedSlice()
         {
-            EBUS_QUEUE_EVENT(EventTraceDrillerBus, RecordSlice, m_Name, m_Category, AZStd::this_thread::get_id(), m_Time, (uint32_t)(AZStd::GetTimeNowMicroSecond() - m_Time));
+            EventTraceDrillerBus::TryQueueBroadcast(&EventTraceDrillerInterface::RecordSlice, m_Name, m_Category, AZStd::this_thread::get_id(), m_Time, (uint32_t)(AZStd::GetTimeNowMicroSecond() - m_Time));
         }
     }
 }

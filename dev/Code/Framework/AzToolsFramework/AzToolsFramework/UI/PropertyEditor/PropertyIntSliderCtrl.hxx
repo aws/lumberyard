@@ -20,8 +20,10 @@
 
 namespace AzToolsFramework
 {
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     // LUMBERYARD_DEPRECATED(LY-108270)
-    class DHPropertyIntSlider
+    class AZ_DEPRECATED(, "DHPropertyIntSlider is deprecated, please use AzQtComponents::SliderCombo instead")
+        DHPropertyIntSlider
         : public AzQtComponents::SliderCombo
     {
         Q_OBJECT
@@ -30,6 +32,7 @@ namespace AzToolsFramework
 
         explicit DHPropertyIntSlider(QWidget* parent = nullptr);
     };
+    AZ_POP_DISABLE_WARNING
 
     class PropertyIntSliderCtrl
         : public QWidget

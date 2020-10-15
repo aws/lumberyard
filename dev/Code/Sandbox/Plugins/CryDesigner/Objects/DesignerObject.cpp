@@ -206,6 +206,7 @@ bool DesignerObject::HitTest(HitContext& hc)
     return false;
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* DesignerObject::GetCollisionEntity() const
 {
     if (GetCompiler() == NULL)
@@ -218,6 +219,7 @@ IPhysicalEntity* DesignerObject::GetCollisionEntity() const
     }
     return NULL;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void DesignerObject::BeginEditParams(IEditor* ie, int flags)
 {

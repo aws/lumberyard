@@ -220,9 +220,9 @@ namespace AssetProcessor
         bool InsertFiles(AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer& entry);
         bool InsertFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry, bool& entryAlreadyExists);
         bool UpdateFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry, bool& entryAlreadyExists);
-
-        // updates the modtime for a file if it exists.  Only returns true if the row existed and was successfully updated
-        bool UpdateFileModTimeByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AZ::u64 modTime);
+        
+        // updates the modtime and hash for a file if it exists.  Only returns true if the row existed and was successfully updated
+        bool UpdateFileModTimeAndHashByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AZ::u64 modTime, AZ::u64 hash);
         bool RemoveFile(AZ::s64 sourceID);
     protected:
         void SetDatabaseVersion(AzToolsFramework::AssetDatabase::DatabaseVersion ver);

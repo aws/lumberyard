@@ -61,7 +61,6 @@
 /// Deprecated macro
 #define AZ_DEPRECATED(_decl, _message) [[deprecated(_message)]] _decl
 
-
 #define AZ_STRINGIZE_I(text) #text
 
 #if defined(AZ_COMPILER_MSVC)
@@ -70,22 +69,6 @@
 #else
 #    define AZ_STRINGIZE(text) AZ_STRINGIZE_I(text)
 #endif
-
-// LUMBERYARD_DEPRECATED_BEGIN
-// LUMBERYARD_DEPRECATED(LY-102910)
-/// Compiler has AZStd::nullptr_t (std::nullptr_t)
-#define AZ_HAS_NULLPTR_T
-/// Used to delete a method from a class
-#define AZ_DELETE_METHOD = delete
-/// Use the default implementation of a class method
-#define AZ_DEFAULT_METHOD = default
-/// std::underlying_type for enums
-#define AZSTD_UNDERLAYING_TYPE
-/// Enabled if we have initializers list support
-#define AZ_HAS_INITIALIZERS_LIST
-/// Enabled if we can alias templates with the using keyword
-#define AZ_HAS_TEMPLATE_ALIAS
-// LUMBERYARD_DEPRECATED_END
 
 #if defined(AZ_COMPILER_MSVC)
 
@@ -100,7 +83,7 @@
 
 
 /// Classes in Editor Sandbox and Tools which dll export there interfaces, but inherits from a base class that doesn't dll export
-/// will trigger a warning  
+/// will trigger a warning
 #define AZ_PUSH_DISABLE_DLL_EXPORT_BASECLASS_WARNING AZ_PUSH_DISABLE_WARNING(4275, "-Wunknown-warning-option")
 #define AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING AZ_POP_DISABLE_WARNING
 /// Disables a warning for dll exported classes which has non dll-exported members as this can cause ABI issues if the layout of those classes differs between dlls.
@@ -118,8 +101,6 @@
 #   define AZ_ALIGN(_decl, _alignment) __declspec(align(_alignment)) _decl
 /// Return the alignment of a type. This if for internal use only (use AZStd::alignment_of<>())
 #   define AZ_INTERNAL_ALIGNMENT_OF(_type) __alignof(_type)
-/// Pointer is not aliased. (ref __restrict)
-#   define AZ_RESTRICT  __restrict
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS
 /// Function signature macro
@@ -147,8 +128,6 @@
 #   define AZ_ALIGN(_decl, _alignment) _decl __attribute__((aligned(_alignment)))
 /// Return the alignment of a type. This if for internal use only (use AZStd::alignment_of<>())
 #   define AZ_INTERNAL_ALIGNMENT_OF(_type) __alignof__(_type)
-/// Pointer is not aliased. (ref __restrict)
-#   define AZ_RESTRICT  __restrict
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))
 /// Function signature macro

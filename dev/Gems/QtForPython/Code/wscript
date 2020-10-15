@@ -22,9 +22,11 @@ def build(bld):
             file_list = ['qtforpython_editor.waf_files'],
             win_file_list = ['qtforpython_editor_windows.waf_files'],
             win_test_all_file_list = ['qtforpython_editor_tests.waf_files'],
-            win_uselib = ['PYSIDE2'],
+            win_uselib = ['PYTHON37', 'PYBIND11', 'PYSIDE2'],
             win_features = ['crcfix'],
             darwin_file_list = ['qtforpython_editor_macos.waf_files'],
-            darwin_exclude_test = True
+            darwin_exclude_test = True,
+            includes = [bld.Path('Gems/EditorPythonBindings/Code/include')],
+            enable_rtti = True,
          )
     )

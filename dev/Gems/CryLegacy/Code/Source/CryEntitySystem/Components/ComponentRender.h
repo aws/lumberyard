@@ -91,7 +91,9 @@ public:
     float GetFirstLodDistance() const override { return m_fLodDistance; }
     void UpdateLodDistance(const SFrameLodInfo& frameLodInfo);
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetBranchPhys(int idx, int nSlot = 0) { IFoliage* pFoliage = GetFoliage(); return pFoliage ? pFoliage->GetBranchPhysics(idx) : 0; }
+#endif
     virtual IFoliage* GetFoliage(int nSlot = 0);
 
 
@@ -509,8 +511,10 @@ public:
     virtual void SetEntityStatObj(unsigned int nSlot, IStatObj* pStatObj, const Matrix34A* pMatrix = NULL) {};
     virtual _smart_ptr<IMaterial> GetEntitySlotMaterial(unsigned int nPartId, bool bReturnOnlyVisible, bool* pbDrawNear);
     virtual ICharacterInstance* GetEntityCharacter(unsigned int nSlot, Matrix34A* pMatrix = NULL, bool bReturnOnlyVisible = false);
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics() const;
     virtual void SetPhysics(IPhysicalEntity* pPhys) {}
+#endif
     virtual void PreloadInstanceResources(Vec3 vPrevPortalPos, float fPrevPortalDistance, float fTime) {}
 
     void Render_JobEntry(const SRendParams& inRenderParams, const SRenderingPassInfo& passInfo);

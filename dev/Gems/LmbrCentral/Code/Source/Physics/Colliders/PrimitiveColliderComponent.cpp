@@ -9,7 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "PrimitiveColliderComponent.h"
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/sort.h>
@@ -375,3 +379,5 @@ namespace AzFramework
         }
     }
 } // namespace AzFramework
+
+#endif // ENABLE_CRY_PHYSICS

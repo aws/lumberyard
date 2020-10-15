@@ -18,11 +18,8 @@
 #include <ICryAnimation.h>
 #include <IFaceGen.h>
 #include <IGameFramework.h>
-#include <IAudioSystem.h>
 
 #include "3dEngine.h"
-
-#include "Terrain/LegacyTerrainInstanceManager.h" 
 
 #include <MathConversion.h>
 #include <Terrain/Bus/LegacyTerrainBus.h>
@@ -62,8 +59,10 @@
 #include "PhysCallbacks.h"
 #include "DeferredCollisionEvent.h"
 #include "MergedMeshRenderNode.h"
+#if ENABLE_CRY_PHYSICS
 #include "BreakableGlassRenderNode.h"
 #include "BreezeGenerator.h"
+#endif
 #include "OpticsManager.h"
 #include "GeomCacheRenderNode.h"
 #include "GeomCacheManager.h"
@@ -77,15 +76,20 @@
 #include "Environment/OceanEnvironmentBus.h"
 #include <limits>
 #include "VegetationPoolManager.h"
+#include "ParticleManager.h"
 
 #if !defined(EXCLUDE_DOCUMENTATION_PURPOSE)
 #include "PrismRenderNode.h"
 #endif // EXCLUDE_DOCUMENTATION_PURPOSE
 
 #include <AzFramework/IO/FileOperations.h>
+#include <AzFramework/Physics/WindBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/parallel/mutex.h>
+
+#include <MathConversion.h>
 
 // required for LARGE_INTEGER used by QueryPerformanceCounter
 #ifdef WIN32
@@ -98,7 +102,9 @@ ISystem* Cry3DEngineBase::m_pSystem = 0;
 IRenderer* Cry3DEngineBase::m_pRenderer = 0;
 ITimer* Cry3DEngineBase::m_pTimer = 0;
 ILog* Cry3DEngineBase::m_pLog = 0;
+#if ENABLE_CRY_PHYSICS
 IPhysicalWorld* Cry3DEngineBase::m_pPhysicalWorld = 0;
+#endif
 
 COcean* Cry3DEngineBase::m_pOcean = nullptr;
 CObjManager* Cry3DEngineBase::m_pObjManager = 0;
@@ -116,7 +122,9 @@ CClipVolumeManager* Cry3DEngineBase::m_pClipVolumeManager = 0;
 CRenderMeshMerger* Cry3DEngineBase::m_pRenderMeshMerger = 0;
 CMatMan* Cry3DEngineBase::m_pMatMan = 0;
 CMergedMeshesManager* Cry3DEngineBase::m_pMergedMeshesManager = 0;
+#if ENABLE_CRY_PHYSICS
 CBreezeGenerator* Cry3DEngineBase::m_pBreezeGenerator = 0;
+#endif
 IStreamedObjectListener* Cry3DEngineBase::m_pStreamListener = 0;
 #if defined(USE_GEOM_CACHES)
 CGeomCacheManager* Cry3DEngineBase::m_pGeomCacheManager = 0;
@@ -177,7 +185,9 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     Cry3DEngineBase::m_pRenderer = gEnv->pRenderer;
     Cry3DEngineBase::m_pTimer = gEnv->pTimer;
     Cry3DEngineBase::m_pLog = gEnv->pLog;
+#if ENABLE_CRY_PHYSICS
     Cry3DEngineBase::m_pPhysicalWorld = gEnv->pPhysicalWorld;
+#endif
     Cry3DEngineBase::m_pConsole = gEnv->pConsole;
     Cry3DEngineBase::m_p3DEngine = this;
     Cry3DEngineBase::m_pCryPak = gEnv->pCryPak;
@@ -185,7 +195,9 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     Cry3DEngineBase::m_pRenderMeshMerger = new CRenderMeshMerger;
     Cry3DEngineBase::m_pMergedMeshesManager = new CMergedMeshesManager;
     Cry3DEngineBase::m_pMatMan = new CMatMan;
+#if ENABLE_CRY_PHYSICS
     Cry3DEngineBase::m_pBreezeGenerator = new CBreezeGenerator;
+#endif
     Cry3DEngineBase::m_pStreamListener = NULL;
     Cry3DEngineBase::m_CpuFlags = pSystem->GetCPUFlags();
 
@@ -217,7 +229,6 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_nWaterBottomTexId = 0;
     m_vSunDir = Vec3(5.f, 5.f, DISTANCE_TO_THE_SUN);
     m_vSunDirRealtime = Vec3(5.f, 5.f, DISTANCE_TO_THE_SUN).GetNormalized();
-    m_legacyTerrainInstanceManager = new LegacyTerrain::LegacyTerrainInstanceManager();
     m_vegetationPoolManager = nullptr;
 
     m_nBlackTexID = 0;
@@ -246,8 +257,12 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_fSkyBoxAngle = 0;
     m_fSkyBoxStretching = 0;
 
+#if ENABLE_CRY_PHYSICS
     m_pGlobalWind   = 0;
     m_vWindSpeed(1, 0, 0);
+#endif
+
+    m_physicsAreaUpdatesHandler = AZStd::make_unique<class PhysicsAreaUpdatesHandler>(m_PhysicsAreaUpdates);
 
     m_bOcean = true;
     m_nOceanRenderFlags = 0;
@@ -467,9 +482,6 @@ C3DEngine::~C3DEngine()
     delete m_pCVars;
 
     delete m_pDeferredPhysicsEventManager;
-
-    delete m_legacyTerrainInstanceManager;
-
 }
 
 bool C3DEngine::CheckMinSpec(uint32 nMinSpec)
@@ -481,6 +493,7 @@ bool C3DEngine::CheckMinSpec(uint32 nMinSpec)
 
 void C3DEngine::RemoveEntInFoliage(int i, IPhysicalEntity* pent)
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pent1 = m_pPhysicalWorld->GetPhysicalEntityById(m_arrEntsInFoliage[i].id);
     pe_params_foreign_data pfd;
     if (!pent)
@@ -517,6 +530,10 @@ void C3DEngine::RemoveEntInFoliage(int i, IPhysicalEntity* pent)
         }
     }
     m_arrEntsInFoliage.DeleteLast();
+#else
+    // Remove foliage phys entity
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
@@ -626,15 +643,6 @@ unsigned char GetOceanSurfTypeCallback(int ix, int iy)
     return 0;
 }
 
-bool C3DEngine::IsTerrainTextureStreamingInProgress() const
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::IsTerrainTextureStreamingInProgress is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::IsTextureStreamingInProgress instead");
-    bool isTerrainTextureStreamingInProgress = false;
-    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(isTerrainTextureStreamingInProgress
-        , &LegacyTerrain::LegacyTerrainDataRequests::IsTextureStreamingInProgress);
-    return isTerrainTextureStreamingInProgress;
-}
-
 void C3DEngine::Update()
 {
     m_bProfilerEnabled = gEnv->pFrameProfileSystem->IsProfiling();
@@ -679,14 +687,17 @@ void C3DEngine::Update()
 
     ProcessCVarsChange();
 
+#if ENABLE_CRY_PHYSICS
     pe_params_area pa;
     IPhysicalEntity* pArea;
     if ((pArea = gEnv->pPhysicalWorld->AddGlobalArea())->GetParams(&pa))
+#endif // ENABLE_CRY_PHYSICS
     {
         using namespace OceanGlobals;
         AZStd::lock_guard<decltype(g_oceanParamsMutex)> lock(g_oceanParamsMutex);
 
         g_oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel();
+#if ENABLE_CRY_PHYSICS
         bool bOceanEnabled = GetFloatCVar(e_PhysOceanCell) > 0 && (OceanToggle::IsActive() ? OceanRequest::OceanIsEnabled() : g_oceanLevel > 0);
 
         if (bOceanEnabled && (!pa.pGeom || g_oceanStep != GetFloatCVar(e_PhysOceanCell)))
@@ -720,6 +731,7 @@ void C3DEngine::Update()
             pb.waterFlow.zero();
             pArea->SetParams(&pb);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     CRenderMeshUtils::ClearHitCache();
@@ -728,10 +740,12 @@ void C3DEngine::Update()
 
     CDecalRenderNode::ResetDecalUpdatesCounter();
 
+#if ENABLE_CRY_PHYSICS
     if (m_pBreezeGenerator)
     {
         m_pBreezeGenerator->Update();
     }
+#endif
 
     if (m_pBreakableBrushHeap)
     {
@@ -915,10 +929,12 @@ void C3DEngine::ShutDown()
     CryAlignedDelete(m_pObjManager);
     m_pObjManager = 0;
 
+#if ENABLE_CRY_PHYSICS
     if (GetPhysicalWorld())
     {
         CPhysCallbacks::Done();
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // Free the temporary pool's underlying storage
     // and reset the pool
@@ -1717,71 +1733,6 @@ void C3DEngine::SetSSAOContrast(float fMul)
     }
 }
 
-bool C3DEngine::ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::ReadMacroTextureFile is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::ReadMacroTextureFile instead.");
-    bool success = false;
-    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(success, &LegacyTerrain::LegacyTerrainDataRequests::ReadMacroTextureFile, filepath, configuration);
-    return success;
-}
-
-float C3DEngine::GetTerrainElevation(float x, float y, int nSID)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainElevation. This method is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus instead");
-
-    float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
-    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
-        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
-        , x, y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
-    return elevation;
-}
-
-float C3DEngine::GetTerrainZ(int x, int y)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainZ() is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetHeight(Sampler::CLAMP) instead");
-
-    float elevation = 0.0f;
-    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
-        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats, (float)x, (float)y,
-        AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP, nullptr);
-    return elevation;
-}
-
-float C3DEngine::GetTerrainSlope(int x, int y)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainSlope is deprecated and will be deleted. Use AzFramework::Terrain::TerrainDataRequestBus::GetNormal instead");
-    float slope = 0.0f;
-    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(slope, &LegacyTerrain::LegacyTerrainDataRequests::GetSlope, x, y);
-    return slope;
-}
-
-int C3DEngine::GetTerrainSurfaceId(int x, int y)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainSurfaceId() is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSurfaceId() instead");
-    int surfaceId = 0;
-    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(surfaceId, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSurfaceId, x, y);
-    return surfaceId;
-}
-
-bool C3DEngine::GetTerrainHole(int x, int y)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainHole. This method is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetIsHoleFromFloats instead");
-    bool isHole = true;
-    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(isHole
-        , &AzFramework::Terrain::TerrainDataRequests::GetIsHoleFromFloats
-        , aznumeric_cast<float>(x), aznumeric_cast<float>(y)
-        , AzFramework::Terrain::TerrainDataRequests::Sampler::CLAMP);
-    return isHole;
-}
-
-int C3DEngine::GetHeightMapUnitSize()
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetHeightMapUnitSize. This method is deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetTerrainGridResolution instead");
-    AZ::Vector2 gridResolution = AZ::Vector2::CreateOne();
-    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(gridResolution, &AzFramework::Terrain::TerrainDataRequests::GetTerrainGridResolution);
-    return static_cast<int>(gridResolution.GetX());
-}
-
 void C3DEngine::RemoveAllStaticObjects(int nSID)
 {
     if (!IsObjectTreeReady())
@@ -1820,13 +1771,6 @@ void C3DEngine::RemoveAllStaticObjects(int nSID)
 
     GetObjectTree()->RemoveAllVegetationCasters();
     Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::VegetationCleared);
-}
-
-void C3DEngine::SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::SetTerrainSectorTexture is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::SetTerrainSectorTexture instead");
-    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::SetTerrainSectorTexture
-        , nTexSectorX, nTexSectorY, textureId, textureSizeX, textureSizeY, true);
 }
 
 void C3DEngine::OnExplosion(Vec3 vPos, float fRadius, bool bDeformTerrain)
@@ -2326,25 +2270,6 @@ const char* C3DEngine::GetLevelFilePath(const char* szFileName)
     return m_sGetLevelFilePathTmpBuff;
 }
 
-void C3DEngine::SetTerrainBurnedOut(int x, int y, bool bBurnedOut)
-{
-    assert(!"not supported");
-}
-
-bool C3DEngine::IsTerrainBurnedOut(int x, int y)
-{
-    assert(!"not supported");
-    return 0;//m_pTerrain ? m_pTerrain->IsBurnedOut(x, y) : 0;
-}
-
-int C3DEngine::GetTerrainSectorSize()
-{
-    AZ_Warning("LegacyTerrain", false, "This API is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::GetTerrainSectorSize() instead.");
-    int sectorSize = 0;
-    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(sectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
-    return sectorSize;
-}
-
 void C3DEngine::ActivatePortal(const Vec3& vPos, bool bActivate, const char* szEntityName)
 {
     if (m_pVisAreaManager)
@@ -2680,6 +2605,7 @@ void C3DEngine::GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& cstAABB)
 bool C3DEngine::IsUnderWater(const Vec3& vPos) const
 {
     bool bUnderWater = false;
+#if ENABLE_CRY_PHYSICS
     for (IPhysicalEntity* pArea = 0; pArea = GetPhysicalWorld()->GetNextArea(pArea); )
     {
         if (bUnderWater)
@@ -2705,6 +2631,10 @@ bool C3DEngine::IsUnderWater(const Vec3& vPos) const
             }
         }
     }
+#else
+    // Check underwater
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     return bUnderWater;
 }
 
@@ -2742,6 +2672,7 @@ float C3DEngine::GetBottomLevel(const Vec3& referencePos, float maxRelevantDepth
 
     rayLength += padding * 2.0f;
 
+#if ENABLE_CRY_PHYSICS
     ray_hit hit;
     int rayFlags = geom_colltype_player << rwi_colltype_bit | rwi_stop_at_pierceable;
     if (m_pPhysicalWorld->RayWorldIntersection(referencePos + Vec3(0, 0, padding), Vec3(0, 0, -rayLength),
@@ -2749,6 +2680,10 @@ float C3DEngine::GetBottomLevel(const Vec3& referencePos, float maxRelevantDepth
     {
         return hit.pt.z;
     }
+#else
+    // Get bottom level
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     // Terrain was above or too far below referencePos, and no solid object was close enough.
     return BOTTOM_LEVEL_UNKNOWN;
@@ -2982,13 +2917,16 @@ float C3DEngine::GetWaterLevel(const Vec3* pvPos, IPhysicalEntity* pent, bool bA
 
     bool bInVisarea = m_pVisAreaManager && m_pVisAreaManager->GetVisAreaFromPos(*pvPos) != 0;
 
+#if ENABLE_CRY_PHYSICS
     Vec3 gravity;
     pe_params_buoyancy pb[4];
     int iMedium = 0; // medium values, -1 == ignore medium areas, 0 = water areas, 1 = air areas.
     int i, nBuoys = m_pPhysicalWorld->CheckAreas(*pvPos, gravity, pb, 4, iMedium, ZERO, pent);
+#endif
 
     float max_level = (!bInVisarea) ? (bAccurate ? GetAccurateOceanHeight(*pvPos) : GetWaterLevel()) : WATER_LEVEL_UNKNOWN;
 
+#if ENABLE_CRY_PHYSICS
     for (i = 0; i < nBuoys; i++)
     {
         if (pb[i].iMedium == 0 && (!bInVisarea || fabs_tpl(pb[i].waterPlane.origin.x) + fabs_tpl(pb[i].waterPlane.origin.y) > 0))
@@ -3002,6 +2940,7 @@ float C3DEngine::GetWaterLevel(const Vec3* pvPos, IPhysicalEntity* pent, bool bA
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     OceanGlobals::g_oceanParamsMutex.unlock();
     return max(WATER_LEVEL_UNKNOWN, max_level);
@@ -3254,11 +3193,13 @@ IRenderNode* C3DEngine::CreateRenderNode(EERType type)
         CDistanceCloudRenderNode* pRenderNode = new CDistanceCloudRenderNode();
         return pRenderNode;
     }
+#if ENABLE_CRY_PHYSICS
     case eERType_Rope:
     {
         IRopeRenderNode* pRenderNode = new CRopeRenderNode();
         return pRenderNode;
     }
+#endif // ENABLE_CRY_PHYSICS
     case eERType_VolumeObject:
     {
         IVolumeObjectRenderNode* pRenderNode = new CVolumeObjectRenderNode();
@@ -3272,11 +3213,13 @@ IRenderNode* C3DEngine::CreateRenderNode(EERType type)
     }
 #endif // EXCLUDE_DOCUMENTATION_PURPOSE
 
+#if ENABLE_CRY_PHYSICS
     case eERType_BreakableGlass:
     {
         IBreakableGlassRenderNode* pRenderNode = new CBreakableGlassRenderNode();
         return pRenderNode;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     case eERType_MergedMesh:
     {
@@ -3302,11 +3245,13 @@ void C3DEngine::DeleteRenderNode(IRenderNode* pRenderNode)
     delete pRenderNode;
 }
 
+#if ENABLE_CRY_PHYSICS
 void C3DEngine::SetWind(const Vec3& vWind)
 {
     m_vWindSpeed = vWind;
     if (!m_vWindSpeed.IsZero())
     {
+#if ENABLE_CRY_PHYSICS
         // Maintain a large physics area for global wind.
         if (!m_pGlobalWind)
         {
@@ -3334,13 +3279,17 @@ void C3DEngine::SetWind(const Vec3& vWind)
         pb.waterResistance = 1;
         pb.waterDensity = 1;
         m_pGlobalWind->SetParams(&pb);
+#endif // ENABLE_CRY_PHYSICS
     }
     else if (m_pGlobalWind)
     {
+#if ENABLE_CRY_PHYSICS
         GetPhysicalWorld()->DestroyPhysicalEntity(m_pGlobalWind);
+#endif
         m_pGlobalWind = 0;
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 Vec3 C3DEngine::GetWind(const AABB& box, bool bIndoors) const
 {
@@ -3348,7 +3297,7 @@ Vec3 C3DEngine::GetWind(const AABB& box, bool bIndoors) const
 
     if (!m_pCVars->e_Wind)
     {
-        return Vec3(ZERO);
+        return Vec3_Zero;
     }
 
     // Start with global wind.
@@ -3356,6 +3305,7 @@ Vec3 C3DEngine::GetWind(const AABB& box, bool bIndoors) const
 
     if (m_pCVars->e_WindAreas)
     {
+#if ENABLE_CRY_PHYSICS
         // Iterate all areas, looking for wind areas. Skip first (global) area, and global wind.
         pe_params_buoyancy pb;
 
@@ -3386,7 +3336,17 @@ Vec3 C3DEngine::GetWind(const AABB& box, bool bIndoors) const
                 }
             }
         }
+#else
+        const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+        if (windRequests)
+        {
+            const AZ::Aabb aabb = LyAABBToAZAabb(box);
+            const AZ::Vector3 wind = windRequests->GetWind(aabb);
+            vWind += AZVec3ToLYVec3(wind);
+        }
+#endif
     }
+
     return vWind;
 }
 
@@ -3395,7 +3355,22 @@ Vec3 C3DEngine::GetGlobalWind(bool bIndoors) const
     FUNCTION_PROFILER_3DENGINE;
 
     // We assume indoor wind is zero.
-    return (!m_pCVars->e_Wind || bIndoors) ? Vec3_Zero : m_vWindSpeed;
+    if (!m_pCVars->e_Wind || bIndoors)
+    {
+        return Vec3_Zero;
+    }
+
+#if ENABLE_CRY_PHYSICS
+    return m_vWindSpeed;
+#else
+    const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+    if (windRequests)
+    {
+        const AZ::Vector3 wind = windRequests->GetGlobalWind();
+        return AZVec3ToLYVec3(wind);
+    }
+    return Vec3_Zero;
+#endif
 }
 
 bool C3DEngine::SampleWind(Vec3* pSamples, int nSamples, const AABB& volume, bool bIndoors) const
@@ -3407,37 +3382,31 @@ bool C3DEngine::SampleWind(Vec3* pSamples, int nSamples, const AABB& volume, boo
         return false;
     }
 
-
     IF (m_nWindSamplePositions < (size_t)nSamples, 0)
     {
         if (m_pWindSamplePositions)
         {
             CryModuleMemalignFree(m_pWindSamplePositions);
         }
-        const_cast<size_t&>(m_nWindSamplePositions) = nSamples;
-        const_cast<Vec3*&>(m_pWindSamplePositions) = (Vec3*)CryModuleMemalign(m_nWindSamplePositions * sizeof(Vec3), 128u);
+        m_nWindSamplePositions = nSamples;
+        m_pWindSamplePositions = (Vec3*)CryModuleMemalign(m_nWindSamplePositions * sizeof(Vec3), 128u);
     }
 
     Vec3* pPositions = m_pWindSamplePositions;
     memcpy(pPositions, pSamples, sizeof(Vec3) * nSamples);
 
     // Start with global wind.
-    Vec3 vWind;
-    if (bIndoors)
+    Vec3 vWind = GetGlobalWind(bIndoors);
+
+    for (int i = 0; i < nSamples; ++i)
     {
-        vWind.zero();
-    }
-    else
-    {
-        vWind = m_vWindSpeed;
-    }
-    for (int i = 0; i < nSamples; pSamples[i++] = vWind)
-    {
-        ;
+        pSamples[i] = vWind;
     }
 
+#if ENABLE_CRY_PHYSICS
     if (m_pCVars->e_WindAreas)
     {
+#if ENABLE_CRY_PHYSICS
         // Iterate all areas, looking for wind areas. Skip first (global) area, and global wind.
         pe_params_buoyancy pb;
         IPhysicalEntity* pArea = GetPhysicalWorld()->GetNextArea(0);
@@ -3475,7 +3444,20 @@ bool C3DEngine::SampleWind(Vec3* pSamples, int nSamples, const AABB& volume, boo
                 }
             }
         }
+#else
+        const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+        if (windRequests)
+        {
+            for (int i = 0; i < nSamples; ++i)
+            {
+                const AZ::Vector3 position = LYVec3ToAZVec3(pPositions[i]);
+                const AZ::Vector3 wind = windRequests->GetWind(position);
+                pSamples[i] += AZVec3ToLYVec3(wind);
+            }
+        }
+#endif
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return true;
 }
@@ -3717,12 +3699,6 @@ void C3DEngine::CheckMemoryHeap()
     assert (CryMemory::IsHeapValid());
 }
 
-void C3DEngine::CloseTerrainTextureFile(int nSID)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::CloseTerrainTextureFile is deprecated. Use LegacyTerrain::LegacyTerrainDataRequestBus::CloseTerrainTextureFile");
-    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::CloseTerrainTextureFile);
-}
-
 //////////////////////////////////////////////////////////////////////////
 int C3DEngine::GetLoadedObjectCount()
 {
@@ -3834,16 +3810,6 @@ void C3DEngine::FreeUnusedCGFResources()
 void CLightEntity::ShadowMapInfo::Release(struct IRenderer* pRenderer)
 {
     delete this;
-}
-
-Vec3 C3DEngine::GetTerrainSurfaceNormal(Vec3 vPos)
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainSurfaceNormal is deprecated. Use AzFramework::Terrain::TerrainDataRequests::GetNormal*")
-    AZ::Vector3 terrainNormal = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainNormal();
-    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainNormal
-        , &AzFramework::Terrain::TerrainDataRequests::GetNormalFromFloats
-        , vPos.x, vPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
-    return AZVec3ToLYVec3(terrainNormal);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4010,19 +3976,6 @@ void C3DEngine::ReleaseChunkFileWriter(ChunkFile::IChunkFileWriter* p) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-
-int C3DEngine::GetTerrainTextureNodeSizeMeters()
-{
-    AZ_Warning("LegacyTerrain", false, "C3DEngine::GetTerrainTextureNodeSizeMeters is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize instead.");
-    int sectorSize = 0;
-    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(sectorSize, &LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize);
-    return sectorSize;
-}
-
-bool C3DEngine::IsTerrainActive()
-{
-    return AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
-}
 
 bool C3DEngine::CreateOcean(_smart_ptr<IMaterial> pTerrainWaterMat, float waterLevel)
 {
@@ -5444,6 +5397,47 @@ void C3DEngine::GetCollisionClass(SCollisionClass& collclass, int tableIndex)
         collclass = SCollisionClass(0, 0);
     }
 }
+
+class C3DEngine::PhysicsAreaUpdatesHandler
+    : private Physics::WindNotificationsBus::Handler
+{
+public:
+    explicit PhysicsAreaUpdatesHandler(C3DEngine::PhysicsAreaUpdates& physicsAreaUpdates)
+        : m_physicsAreaUpdates(physicsAreaUpdates)
+    {
+        Physics::WindNotificationsBus::Handler::BusConnect();
+    }
+
+    ~PhysicsAreaUpdatesHandler()
+    {
+        Physics::WindNotificationsBus::Handler::BusDisconnect();
+    }
+
+private:
+    // Physics::WindNotificationsBus::Handler
+    void OnGlobalWindChanged() override
+    {
+        // Using same 'global wind' area size value CryPhysics code had
+        const AZ::Vector3 globalWindHalfBound(1e7);
+        AZ::Aabb globalWindAabb = AZ::Aabb::CreateFromMinMax(-globalWindHalfBound, globalWindHalfBound);
+
+        OnWindChanged(globalWindAabb);
+    }
+
+    void OnWindChanged(const AZ::Aabb& aabb) override
+    {
+        SAreaChangeRecord record;
+        record.boxAffected = AZAabbToLyAABB(aabb);
+        record.uPhysicsMask = Area_Air;
+
+        m_physicsAreaUpdates.SetAreaDirty(record);
+
+        // CParticleManager needs to update cached force data
+        CParticleManager::Instance()->OnPhysAreaChange();
+    }
+
+    C3DEngine::PhysicsAreaUpdates& m_physicsAreaUpdates;
+};
 
 void C3DEngine::PhysicsAreaUpdates::SetAreaDirty(const SAreaChangeRecord& rec)
 {

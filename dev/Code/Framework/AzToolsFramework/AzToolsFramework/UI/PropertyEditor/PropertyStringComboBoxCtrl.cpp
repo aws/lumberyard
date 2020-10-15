@@ -87,6 +87,16 @@ namespace AzToolsFramework
         m_pComboBox->blockSignals(false);
     }
 
+    int PropertyStringComboBoxCtrl::GetCount() const
+    {
+        return m_pComboBox->count();
+    }
+
+    uint32_t PropertyStringComboBoxCtrl::GetCurrentIndex() const
+    {
+        return static_cast<uint32_t>(m_pComboBox->currentIndex());
+    }
+
     void PropertyStringComboBoxCtrl::Add(const AZStd::string& val)
     {
         m_pComboBox->blockSignals(true);

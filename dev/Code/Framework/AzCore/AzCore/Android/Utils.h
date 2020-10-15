@@ -90,6 +90,9 @@ namespace AZ
             //! \param[out] heightPixels Returns the pixel height of the window
             //! \return True if successful, False otherwise
             bool GetWindowSize(int& widthPixels, int& heightPixels);
+
+            //! Set the filenames for files to be loaded to memory
+            void SetLoadFilesToMemory(const char* fileNames);
         }
     }
 }

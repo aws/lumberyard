@@ -47,7 +47,8 @@ namespace PluginInfo
 
 CParticleEditorPlugin::CParticleEditorPlugin(IEditor* editor)
 {
-    if (c_EnableParticleEditorMenuEntry && gEnv->pRenderer->GetRenderType() != eRT_Other)
+#ifndef OTHER_ACTIVE
+    if (c_EnableParticleEditorMenuEntry)
     {
         AzToolsFramework::ViewPaneOptions options;
         options.canHaveMultipleInstances = true;
@@ -65,6 +66,7 @@ CParticleEditorPlugin::CParticleEditorPlugin(IEditor* editor)
         AzToolsFramework::RegisterViewPane<CMainWindow>(m_RegisteredQtViewPaneName, LyViewPane::CategoryTools, options);
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
     }
+#endif
 }
 
 void CParticleEditorPlugin::Release()

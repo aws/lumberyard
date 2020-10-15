@@ -1701,7 +1701,9 @@ private:
     void ExportAllLoadingStatistics(SCryEngineStats& stats);
     void ExportLoadingStatistics(SCryEngineStats& stats);
     void ExportFPSBuckets();
+#if ENABLE_CRY_PHYSICS
     void ExportPhysEntStatistics(SCryEngineStats& stats);
+#endif
     void ExportEntitiesStatistics(SCryEngineStats& stats);
     void ExportAssetCatalogProductDependencies(SCryEngineStats& stats);
 
@@ -2038,7 +2040,9 @@ void CStatsToExcelExporter::Export(XmlNodeRef Workbook, SCryEngineStats& stats)
     ExportTimeDemoInfo();
     ExportProfilerStatistics(stats);
     //ExportAllLoadingStatistics(stats);
+#if ENABLE_CRY_PHYSICS
     ExportPhysEntStatistics(stats);
+#endif
     ExportEntitiesStatistics(stats);
     ExportAssetCatalogProductDependencies(stats);
 
@@ -2217,7 +2221,7 @@ void CStatsToExcelExporter::ExportSummary(SCryEngineStats& stats)
     AddCell("All assets found with AssetCatalogRequestBus::Events::GetAllProductDependencies.");
     AddRow();
     AZ::u64 totalAizeBytes = 0;
-    for (const auto assetInfo : stats.assetCatalogProductDependenciesAssetInfo)
+    for (const auto& assetInfo : stats.assetCatalogProductDependenciesAssetInfo)
     {
         totalAizeBytes += assetInfo.m_sizeBytes;
     }
@@ -2497,6 +2501,7 @@ void CStatsToExcelExporter::ExportLoadingStatistics(SCryEngineStats& stats)
 }
 
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 void CStatsToExcelExporter::ExportPhysEntStatistics(SCryEngineStats& stats)
 {
@@ -2605,6 +2610,7 @@ void CStatsToExcelExporter::ExportPhysEntStatistics(SCryEngineStats& stats)
         AddCell(pent->GetType() == PE_ARTICULATED && sizeTot + sizer.m_size - sizeGrid > 60 << 10 ? "too big" : " ");
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 void CStatsToExcelExporter::ExportEntitiesStatistics(SCryEngineStats& stats)
@@ -2752,7 +2758,7 @@ void CStatsToExcelExporter::ExportAssetCatalogProductDependencies(SCryEngineStat
 
     // Create a map of unique asset types and usage stats
     AZStd::map<AZ::Data::AssetType, UsageStats> credentialMap;
-    for (auto const assetInfo : stats.assetCatalogProductDependenciesAssetInfo)
+    for (auto const& assetInfo : stats.assetCatalogProductDependenciesAssetInfo)
     {
         const auto ii = credentialMap.find(assetInfo.m_assetType);
         if (ii == credentialMap.end())
@@ -2770,7 +2776,7 @@ void CStatsToExcelExporter::ExportAssetCatalogProductDependencies(SCryEngineStat
     }
 
     // Add a row for each asset type
-    for (auto const ii : credentialMap)
+    for (auto const& ii : credentialMap)
     {
         AddRow();
         AddCell(AssetTypeIdToName(ii.first).c_str());

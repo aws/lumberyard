@@ -24,7 +24,7 @@ namespace WhiteBox
 {
     class RenderMeshInterface;
 
-    //!
+    //! System component for the White Box Tool.
     class WhiteBoxSystemComponent
         : public AZ::Component
         , private WhiteBoxRequestBus::Handler

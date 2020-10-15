@@ -69,7 +69,7 @@ namespace AzToolsFramework
                     return AZ::Failure(AZStd::string("'ExportIfAllPlatforms' attribute is not bound to the correct return type. Expects AZStd::vector<AZ::Crc32>."));
                 }
 
-                for (const AZ::Crc32 tag : attributeTags)
+                for (AZ::Crc32 tag : attributeTags)
                 {
                     if (platformTags.find(tag) == platformTags.end())
                     {
@@ -90,7 +90,7 @@ namespace AzToolsFramework
                 }
 
                 bool anyFlagSet = false;
-                for (const AZ::Crc32 tag : attributeTags)
+                for (AZ::Crc32 tag : attributeTags)
                 {
                     if (platformTags.find(tag) != platformTags.end())
                     {

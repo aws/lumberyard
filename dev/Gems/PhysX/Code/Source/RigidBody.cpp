@@ -85,8 +85,9 @@ namespace PhysX
             SetSimulationEnabled(configuration.m_simulated);
             SetCCDEnabled(configuration.m_ccdEnabled);
 
-            UpdateCenterOfMassAndInertia(configuration.m_computeCenterOfMass, configuration.m_centerOfMassOffset,
-                configuration.m_computeInertiaTensor, configuration.m_inertiaTensor);
+            Physics::MassComputeFlags flags = configuration.GetMassComputeFlags();
+            UpdateMassProperties(flags, &configuration.m_centerOfMassOffset, &configuration.m_inertiaTensor,
+                &configuration.m_mass);
 
             if (configuration.m_customUserData)
             {
@@ -183,6 +184,109 @@ namespace PhysX
         }
     }
 
+
+    void RigidBody::UpdateMassProperties(Physics::MassComputeFlags flags, const AZ::Vector3* centerOfMassOffsetOverride, const AZ::Matrix3x3* inertiaTensorOverride, const float* massOverride)
+    {
+        using Physics::MassComputeFlags;
+
+        // Input validation
+        bool computeCenterOfMass = MassComputeFlags::COMPUTE_COM == (flags & MassComputeFlags::COMPUTE_COM);
+        AZ_Assert(computeCenterOfMass || centerOfMassOffsetOverride,
+            "UpdateMassProperties: MassComputeFlags::COMPUTE_COM is not set but COM offset is not specified");
+        computeCenterOfMass = computeCenterOfMass || !centerOfMassOffsetOverride;
+
+        bool computeInertiaTensor = MassComputeFlags::COMPUTE_INERTIA == (flags & MassComputeFlags::COMPUTE_INERTIA);
+        AZ_Assert(computeInertiaTensor || inertiaTensorOverride,
+            "UpdateMassProperties: MassComputeFlags::COMPUTE_INERTIA is not set but inertia tensor is not specified");
+        computeInertiaTensor = computeInertiaTensor || !inertiaTensorOverride;
+
+        bool computeMass = MassComputeFlags::COMPUTE_MASS == (flags & MassComputeFlags::COMPUTE_MASS);
+        AZ_Assert(computeMass || massOverride,
+            "UpdateMassProperties: MassComputeFlags::COMPUTE_MASS is not set but mass is not specified");
+        computeMass = computeMass || !massOverride;
+
+        AZ::u32 shapesCount = GetShapeCount();
+
+        // Basic cases when we don't need to compute anything
+        if (shapesCount == 0 || flags == Physics::MassComputeFlags::NONE)
+        {
+            if (massOverride)
+            {
+                SetMass(*massOverride);
+            }
+
+            if (inertiaTensorOverride)
+            {
+                SetInertia(*inertiaTensorOverride);
+            }
+
+            if (centerOfMassOffsetOverride)
+            {
+                SetCenterOfMassOffset(*centerOfMassOffsetOverride);
+            }
+            return;
+        }
+
+        // Setup center of mass offset pointer for PxRigidBodyExt::updateMassAndInertia function
+        AZStd::optional<physx::PxVec3> optionalComOverride;
+        if (!computeCenterOfMass && centerOfMassOffsetOverride)
+        {
+            optionalComOverride = PxMathConvert(*centerOfMassOffsetOverride);
+        }
+
+        const physx::PxVec3* massLocalPose = optionalComOverride.has_value() ? &optionalComOverride.value() : nullptr;
+
+        bool includeAllShapesInMassCalculation =
+            MassComputeFlags::INCLUDE_ALL_SHAPES == (flags & MassComputeFlags::INCLUDE_ALL_SHAPES);
+
+        // Handle the case when we don't compute mass
+        if (!computeMass)
+        {
+            {
+                PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+                physx::PxRigidBodyExt::setMassAndUpdateInertia(*m_pxRigidActor, *massOverride, massLocalPose,
+                    includeAllShapesInMassCalculation);
+            }
+
+            if (!computeInertiaTensor)
+            {
+                SetInertia(*inertiaTensorOverride);
+            }
+
+            return;
+        }
+
+        // Handle the cases when mass should be computed from density
+        if (shapesCount == 1)
+        {
+            AZStd::shared_ptr<Physics::Shape> shape = GetShape(0);
+            float density = shape->GetMaterial()->GetDensity();
+
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            physx::PxRigidBodyExt::updateMassAndInertia(*m_pxRigidActor, density, massLocalPose,
+                includeAllShapesInMassCalculation);
+        }
+        else
+        {
+            AZStd::vector<float> densities(shapesCount);
+            for (AZ::u32 i = 0; i < shapesCount; ++i)
+            {
+                densities[i] = GetShape(i)->GetMaterial()->GetDensity();
+            }
+
+            PHYSX_SCENE_WRITE_LOCK(m_pxRigidActor->getScene());
+            physx::PxRigidBodyExt::updateMassAndInertia(*m_pxRigidActor, densities.data(),
+                shapesCount, massLocalPose, includeAllShapesInMassCalculation);
+        }
+
+        // Set the overrides if provided.
+        // Note: We don't set the center of mass here because it was already provided
+        // to PxRigidBodyExt::updateMassAndInertia above
+        if (!computeInertiaTensor)
+        {
+            SetInertia(*inertiaTensorOverride);
+        }
+    }
 
     void RigidBody::ReleasePhysXActor()
     {

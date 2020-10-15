@@ -115,18 +115,17 @@ namespace EMStudio
             targetModelIndex = GetActiveGraph()->GetModelIndex();
         }
 
+        MCore::CommandGroup commandGroup("Add motion nodes");
+
         // check if the drag & drop is coming from an external window
         if (commandLine.CheckIfHasParameter("window"))
         {
-            AZStd::string currentLine;
-
             AZStd::vector<AZStd::string> droppedLines;
             AzFramework::StringFunc::Tokenize(dropText.c_str(), droppedLines, "\n", false, true);
 
-            const size_t numDroppedLines = droppedLines.size();
-            for (size_t l = 0; l < numDroppedLines; ++l)
+            for (const AZStd::string& droppedLine : droppedLines)
             {
-                MCore::CommandLine currentCommandLine(droppedLines[l].c_str());
+                MCore::CommandLine currentCommandLine(droppedLine.c_str());
 
                 // get the name of the window where the drag came from
                 AZStd::string dragWindow;
@@ -149,7 +148,7 @@ namespace EMStudio
                         if (targetModelIndex.isValid())
                         {
                             EMotionFX::AnimGraphNode* currentNode = targetModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-                            CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), "BlendTreeMotionNode", "Motion", currentNode, offset.x(), offset.y(), serializedMotionNode.GetValue());
+                            CommandSystem::CreateAnimGraphNode(&commandGroup, currentNode->GetAnimGraph(), "BlendTreeMotionNode", "Motion", currentNode, offset.x(), offset.y(), serializedMotionNode.GetValue());
 
                             // Send LyMetrics event.
                             MetricsEventSender::SendCreateNodeEvent(azrtti_typeid<EMotionFX::AnimGraphMotionNode>());
@@ -164,7 +163,7 @@ namespace EMStudio
                 if (dragWindow == "MotionWindow")
                 {
                     // get the motion id and the corresponding motion object
-                    uint32 motionID = currentCommandLine.GetValueAsInt("motionID", MCORE_INVALIDINDEX32);
+                    const uint32 motionID = currentCommandLine.GetValueAsInt("motionID", MCORE_INVALIDINDEX32);
                     EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
 
                     if (!motion)
@@ -223,7 +222,7 @@ namespace EMStudio
                         if (serializedContent.IsSuccess())
                         {
                             EMotionFX::AnimGraphNode* currentNode = targetModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-                            CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, offset.x(), offset.y(), serializedContent.GetValue());
+                            CommandSystem::CreateAnimGraphNode(&commandGroup, currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, offset.x(), offset.y(), serializedContent.GetValue());
 
                             // Send LyMetrics event.
                             MetricsEventSender::SendCreateNodeEvent(azrtti_typeid<EMotionFX::AnimGraphMotionNode>());
@@ -265,7 +264,7 @@ namespace EMStudio
                         if (serializedMotionNode.IsSuccess())
                         {
                             EMotionFX::AnimGraphNode* currentNode = targetModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-                            CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, offset.x(), offset.y(), serializedMotionNode.GetValue());
+                            CommandSystem::CreateAnimGraphNode(&commandGroup, currentNode->GetAnimGraph(), azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), "Motion", currentNode, offset.x(), offset.y(), serializedMotionNode.GetValue());
 
                             // Send LyMetrics event.
                             MetricsEventSender::SendCreateNodeEvent(azrtti_typeid<EMotionFX::AnimGraphMotionNode>());
@@ -303,10 +302,19 @@ namespace EMStudio
             AzFramework::StringFunc::Strip(namePrefix, MCore::CharacterConstants::space, true /* case sensitive */);
 
             const AZ::TypeId typeId = AZ::TypeId::CreateString(parts[1].c_str(), parts[1].size());
-            CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), typeId, namePrefix, currentNode, offset.x(), offset.y());
+            CommandSystem::CreateAnimGraphNode(&commandGroup, currentNode->GetAnimGraph(), typeId, namePrefix, currentNode, offset.x(), offset.y());
 
             // Send LyMetrics event.
             MetricsEventSender::SendCreateNodeEvent(typeId);
+        }
+
+        if (!commandGroup.IsEmpty())
+        {
+            AZStd::string result;
+            if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+            {
+                AZ_Error("EMotionFX", false, result.c_str());
+            }
         }
 
         event->accept();
@@ -464,7 +472,7 @@ namespace EMStudio
 
         const QModelIndex modelIndex = nodeGraph->GetModelIndex();
         EMotionFX::AnimGraphNode* currentNode = modelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-        CommandSystem::CreateAnimGraphNode(currentNode->GetAnimGraph(), typeId, namePrefix, currentNode, offset.x(), offset.y());
+        CommandSystem::CreateAnimGraphNode(/*commandGroup=*/nullptr, currentNode->GetAnimGraph(), typeId, namePrefix, currentNode, offset.x(), offset.y());
 
         // Send LyMetrics event.
         MetricsEventSender::SendCreateNodeEvent(typeId);
@@ -522,7 +530,7 @@ namespace EMStudio
                 CommandSystem::AdjustTransition(transition, !isEnabled,
                     /*sourceNode=*/AZStd::nullopt, /*targetNode=*/AZStd::nullopt,
                     /*startOffsetXY=*/AZStd::nullopt, AZStd::nullopt, /*endOffsetXY=*/AZStd::nullopt, AZStd::nullopt,
-                    /*=attributesString*/AZStd::nullopt,
+                    /*attributesString=*/AZStd::nullopt, /*serializedMembers=*/AZStd::nullopt,
                     &commandGroup);
             }
 
@@ -614,23 +622,7 @@ namespace EMStudio
                     EMotionFX::AnimGraphStateTransition* transition = FindTransitionForConnection(selectedConnections[0]);
                     if (transition)
                     {
-                        // allow to put the conditions into the clipboard
-                        if (transition->GetNumConditions() > 0)
-                        {
-                            QAction* copyAction = menu.addAction("Copy conditions");
-                            connect(copyAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnCopyConditions);
-                        }
-
-                        // if we already copied some conditions, allow pasting
-                        if (!mActiveGraph->IsInReferencedGraph() &&
-                            !mPlugin->GetAttributesWindow()->GetCopyPasteConditionClipboard().empty())
-                        {
-                            QAction* pasteAction = menu.addAction("Paste conditions");
-                            connect(pasteAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnPasteConditions);
-
-                            QAction* pasteSelectiveAction = menu.addAction("Paste conditions selective");
-                            connect(pasteSelectiveAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnPasteConditionsSelective);
-                        }
+                        mPlugin->GetAttributesWindow()->AddTransitionCopyPasteMenuEntries(&menu);
                     }
                 }
             }
@@ -1578,7 +1570,7 @@ namespace EMStudio
         if (mActiveGraph->GetReplaceTransitionValid())
         {
             CommandSystem::AdjustTransition(transition,
-                /*.isDisabled=*/AZStd::nullopt,
+                /*isDisabled=*/AZStd::nullopt,
                 newSourceNodeName, newTargetNodeName,
                 newStartOffsetX, newStartOffsetY,
                 newEndOffsetX, newEndOffsetY);

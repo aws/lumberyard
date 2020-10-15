@@ -36,12 +36,12 @@ namespace AZ
         EventTraceDriller::EventTraceDriller()
         {
             EventTraceDrillerSetupBus::Handler::BusConnect();
-            AZStd::ThreadEventBus::Handler::BusConnect();
+            AZStd::ThreadDrillerEventBus::Handler::BusConnect();
         }
 
         EventTraceDriller::~EventTraceDriller()
         {
-            AZStd::ThreadEventBus::Handler::BusDisconnect();
+            AZStd::ThreadDrillerEventBus::Handler::BusDisconnect();
             EventTraceDrillerSetupBus::Handler::BusDisconnect();
         }
 

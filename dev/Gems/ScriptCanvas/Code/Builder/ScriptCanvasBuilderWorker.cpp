@@ -57,7 +57,7 @@ namespace ScriptCanvasBuilder
 
     int Worker::GetVersionNumber() const
     {
-        return 3;
+        return 4;
     }
 
     const char* Worker::GetFingerprintString() const
@@ -236,9 +236,6 @@ namespace ScriptCanvasBuilder
             return;
         }
 
-        AZ::SerializeContext* context{};
-        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-
         // Asset filter is used to record dependencies.  Only returns true for editor script canvas assets
         auto assetFilter = [](const AZ::Data::Asset<AZ::Data::AssetData>& filterAsset)
         {
@@ -302,12 +299,6 @@ namespace ScriptCanvasBuilder
         }
         AZ_TracePrintf(s_scriptCanvasBuilder, "Script Canvas Asset has been saved to the object stream successfully\n");
 
-
-        AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
-        AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
-        // Gather product dependencies from the compiled asset, not the source asset. In some cases asset references can change during asset compliation.
-        GatherProductDependencies(*context, runtimeAsset, productDependencies, productPathDependencySet);
-
         AZ::IO::FileIOStream outFileStream(runtimeScriptCanvasOutputPath.data(), AZ::IO::OpenMode::ModeWrite);
         if (!outFileStream.IsOpen())
         {
@@ -333,7 +324,7 @@ namespace ScriptCanvasBuilder
 
         // Runtime ScriptCanvas
         jobProduct = {};
-        if(!AssetBuilderSDK::OutputObject(&runtimeAsset, runtimeScriptCanvasOutputPath, azrtti_typeid<ScriptCanvas::RuntimeAsset>(), AZ_CRC("RuntimeData", 0x163310ae), jobProduct))
+        if(!AssetBuilderSDK::OutputObject(&runtimeAsset.Get()->GetData(), runtimeScriptCanvasOutputPath, azrtti_typeid<ScriptCanvas::RuntimeAsset>(), AZ_CRC("RuntimeData", 0x163310ae), jobProduct))
         {
             AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Failed to output product dependencies.");
             return;

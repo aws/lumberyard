@@ -111,6 +111,10 @@ namespace UnitTests
 
     protected:
 
+        void SetAndCheckMissingDependency(
+            AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& updatedMissingDependency,
+            const AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& originalMissingDependency);
+
         struct StaticData
         {
             // these variables are created during SetUp() and destroyed during TearDown() and thus are always available during tests using this fixture:
@@ -392,9 +396,9 @@ namespace UnitTests
 
         ProductDatabaseEntry resultProduct;
 
-        EXPECT_FALSE(m_data->m_connection.GetProductByJobIDSubId(m_data->m_job1.m_jobID, -1, resultProduct));
+        EXPECT_FALSE(m_data->m_connection.GetProductByJobIDSubId(m_data->m_job1.m_jobID, aznumeric_caster(-1), resultProduct));
         EXPECT_FALSE(m_data->m_connection.GetProductByJobIDSubId(-1, m_data->m_product1.m_subID, resultProduct));
-        EXPECT_FALSE(m_data->m_connection.GetProductByJobIDSubId(-1, -1, resultProduct));
+        EXPECT_FALSE(m_data->m_connection.GetProductByJobIDSubId(-1, aznumeric_caster(-1), resultProduct));
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
     }
 
@@ -1672,7 +1676,9 @@ namespace UnitTests
             "Source File Fingerprint",
             assetId.m_guid,
             assetId.m_subId,
-            "Source String");
+            "Source String",
+            "last Scan Time",
+            0);
         EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependency));
 
         AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry readMissingDependency;
@@ -1689,7 +1695,7 @@ namespace UnitTests
 
         // Use a non-zero sub ID to verify it writes and reads correctly.
         AZ::Data::AssetId assetId(AZ::Uuid::CreateString("{32C32642-5832-4997-A478-F288C734425D}"), 6);
-        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry writeMissingDependency(
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry originalMissingDependency(
             // The product ID is a link to another table, it will fail to write this entry if this is invalid.
             m_data->m_product3.m_productID,
             "Scanner Name",
@@ -1697,38 +1703,62 @@ namespace UnitTests
             "Source File Fingerprint",
             assetId.m_guid,
             assetId.m_subId,
-            "Source String");
-        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependency));
+            "Source String",
+            "last Scan Time",
+            0);
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(originalMissingDependency));
 
         AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry readMissingDependency;
         EXPECT_TRUE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
-            writeMissingDependency.m_missingProductDependencyId,
+            originalMissingDependency.m_missingProductDependencyId,
             readMissingDependency));
 
-        EXPECT_EQ(writeMissingDependency, readMissingDependency);
+        EXPECT_EQ(originalMissingDependency, readMissingDependency);
 
-        AZ::Data::AssetId newAssetId(AZ::Uuid::CreateString("{6C3ED7B4-E6F1-4163-9141-54F5DC1D9C35}"), 3);
-        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry updatedWriteMissingDependency(
-            // Write to the same dependency ID
-            writeMissingDependency.m_missingProductDependencyId,
-            // Make everything else different
-            m_data->m_product1.m_productID,
-            "Other Scanner Name",
-            "7.7.7",
-            "New Fingerprint",
-            newAssetId.m_guid,
-            newAssetId.m_subId,
-            "New Source String");
-        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(updatedWriteMissingDependency));
+        // Test each field separately.
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry updatedMissingDependency(originalMissingDependency);
 
-        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry newReadMissingDependency;
+        updatedMissingDependency.m_productPK = m_data->m_product1.m_productID;
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_scannerId = "Different Scanner Name";
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_scannerVersion = "Different Scanner Version";
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_sourceFileFingerprint = "Different Fingerprint";
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_dependencySourceGuid = AZ::Uuid::CreateString("{6C3ED7B4-E6F1-4163-9141-54F5DC1D9C35}");
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_dependencySubId = 3;
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_missingDependencyString = "Different Source String";
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_lastScanTime = "Different Scan Time";
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+
+        updatedMissingDependency.m_scanTimeSecondsSinceEpoch = 1;
+        SetAndCheckMissingDependency(updatedMissingDependency, originalMissingDependency);
+    }
+
+    void AssetDatabaseTest::SetAndCheckMissingDependency(
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& updatedMissingDependency,
+        const AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& originalMissingDependency)
+    {
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(updatedMissingDependency));
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry readMissingDependency;
         EXPECT_TRUE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
-            writeMissingDependency.m_missingProductDependencyId,
-            newReadMissingDependency));
-        EXPECT_EQ(updatedWriteMissingDependency, newReadMissingDependency);
+            originalMissingDependency.m_missingProductDependencyId,
+            readMissingDependency));
+        EXPECT_EQ(updatedMissingDependency, readMissingDependency);
         // MissingProductDependencyDatabaseEntry doesn't override the != operator
-        EXPECT_FALSE(newReadMissingDependency == readMissingDependency);
-
+        EXPECT_FALSE(readMissingDependency == originalMissingDependency);
     }
 
     TEST_F(AssetDatabaseTest, MissingDependencyTable_WriteAndReadMissingDependenciesByProductId_ResultsMatch)
@@ -1750,7 +1780,9 @@ namespace UnitTests
             "Fingerprint 0",
             assetIds[0].m_guid,
             assetIds[0].m_subId,
-            "Source String 0"));
+            "Source String 0",
+            "last Scan Time 0",
+            0));
         writeMissingDependencies.push_back(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry(
             productPK,
             "Scanner 1",
@@ -1758,7 +1790,9 @@ namespace UnitTests
             "Fingerprint 1",
             assetIds[1].m_guid,
             assetIds[1].m_subId,
-            "Source String 1"));
+            "Source String 1",
+            "last Scan Time 1",
+            1));
         writeMissingDependencies.push_back(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry(
             productPK,
             "Scanner 2",
@@ -1766,7 +1800,9 @@ namespace UnitTests
             "Fingerprint 2",
             assetIds[2].m_guid,
             assetIds[2].m_subId,
-            "Source String 2"));
+            "Source String 2",
+            "last Scan Time 2",
+            2));
         EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependencies[0]));
         EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependencies[1]));
         EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependencies[2]));
@@ -1779,6 +1815,192 @@ namespace UnitTests
         {
             EXPECT_EQ(readMissingDependencies[dependencyIndex], writeMissingDependencies[dependencyIndex]);
         }
+    }
+
+    TEST_F(AssetDatabaseTest, MissingDependencyTable_WriteAndDeleteMissingDependencyByDependencyId_MissingDependencyRecordDeleted)
+    {
+        CreateCoverageTestData();
+
+        // Use a non-zero sub ID to verify it writes and reads correctly.
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateString("{12209A94-AF18-44BB-8A62-96F35291B2E1}"), 3);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry writeMissingDependency(
+            // The product ID is a link to another table, it will fail to write this entry if this is invalid.
+            m_data->m_product1.m_productID,
+            "Scanner Name",
+            "1.0.0",
+            "Source File Fingerprint",
+            assetId.m_guid,
+            assetId.m_subId,
+            "Source String",
+            "last Scan Time",
+            0);
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependency));
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry readMissingDependency;
+        EXPECT_TRUE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
+            writeMissingDependency.m_missingProductDependencyId,
+            readMissingDependency));
+
+        // Verify that it was written to the DB before erasing it.
+        EXPECT_EQ(writeMissingDependency, readMissingDependency);
+
+        EXPECT_TRUE(m_data->m_connection.DeleteMissingProductDependencyByProductId(writeMissingDependency.m_missingProductDependencyId));
+
+        EXPECT_FALSE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
+            writeMissingDependency.m_missingProductDependencyId,
+            readMissingDependency));
+    }
+
+    // Verify that clearing missing product dependencies by product ID clears every missing dependency for that product ID.
+    TEST_F(AssetDatabaseTest, MissingDependencyTable_DeleteMultipleMissingDependenciesForOneProduct_MissingDependencyRecordsDeleted)
+    {
+        CreateCoverageTestData();
+
+        // Use a non-zero sub ID to verify it writes and reads correctly.
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateString("{12209A94-AF18-44BB-8A62-96F35291B2E1}"), 3);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry firstMissingDependency(
+            // The product ID is a link to another table, it will fail to write this entry if this is invalid.
+            m_data->m_product1.m_productID,
+            "Scanner Name",
+            "1.0.0",
+            "Source File Fingerprint",
+            assetId.m_guid,
+            assetId.m_subId,
+            "Source String",
+            "last Scan Time",
+            0);
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(firstMissingDependency));
+
+        AZ::Data::AssetId secondMissingAssetId(AZ::Uuid::CreateString("{12209A94-FFFF-FFFF-8A62-96F35291B2E1}"), 4);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry secondMissingDependency(
+            // Use the same product ID as the first missing dependency
+            m_data->m_product1.m_productID,
+            "Scanner Name 2",
+            "1.0.0",
+            "Source File Fingerprint",
+            secondMissingAssetId.m_guid,
+            secondMissingAssetId.m_subId,
+            "Source String",
+            "last Scan Time",
+            0);
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(secondMissingDependency));
+
+        AZStd::unordered_set<AZ::s64> expectedMissingDependencies;
+        expectedMissingDependencies.insert(firstMissingDependency.m_missingProductDependencyId);
+        expectedMissingDependencies.insert(secondMissingDependency.m_missingProductDependencyId);
+        // Tests can't be ran inside the lambda, so cache results and check after.
+        bool foundUnexpectedDependency = false;
+        m_data->m_connection.QueryMissingProductDependencyByProductId(
+            m_data->m_product1.m_productID,
+            [&](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& entry)
+        {
+            if (expectedMissingDependencies.find(entry.m_missingProductDependencyId) == expectedMissingDependencies.end())
+            {
+                foundUnexpectedDependency = true;
+            }
+            else
+            {
+                expectedMissingDependencies.erase(entry.m_missingProductDependencyId);
+            }
+            return true;
+        });
+        EXPECT_FALSE(foundUnexpectedDependency);
+        EXPECT_EQ(expectedMissingDependencies.size(), 0);
+
+        EXPECT_TRUE(m_data->m_connection.DeleteMissingProductDependencyByProductId(m_data->m_product1.m_productID));
+
+        foundUnexpectedDependency = false;
+        m_data->m_connection.QueryMissingProductDependencyByProductId(
+            m_data->m_product1.m_productID,
+            [&](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& /*entry*/)
+        {
+            // No dependencies should be found for this product.
+            foundUnexpectedDependency = true;
+            return false;
+        });
+        EXPECT_FALSE(foundUnexpectedDependency);
+    }
+
+    // Verify that clearing missing dependencies for one product ID does not clear it for another product ID.
+    TEST_F(AssetDatabaseTest, MissingDependencyTable_DeleteMissingDependenciesForOneProduct_MissingDependenciesNotDeletedForOtherProduct)
+    {
+        CreateCoverageTestData();
+
+        // Use a non-zero sub ID to verify it writes and reads correctly.
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateString("{12209A94-AF18-44BB-8A62-96F35291B2E1}"), 3);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry firstMissingDependency(
+            // The product ID is a link to another table, it will fail to write this entry if this is invalid.
+            m_data->m_product1.m_productID,
+            "Scanner Name",
+            "1.0.0",
+            "Source File Fingerprint",
+            assetId.m_guid,
+            assetId.m_subId,
+            "Source String",
+            "last Scan Time",
+            0);
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(firstMissingDependency));
+
+        AZ::Data::AssetId secondMissingAssetId(AZ::Uuid::CreateString("{12209A94-FFFF-FFFF-8A62-96F35291B2E1}"), 4);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry secondMissingDependency(
+            // Use the same product ID as the first missing dependency
+            m_data->m_product3.m_productID,
+            "Scanner Name 2",
+            "1.0.0",
+            "Source File Fingerprint",
+            secondMissingAssetId.m_guid,
+            secondMissingAssetId.m_subId,
+            "Source String",
+            "last Scan Time",
+            0);
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(secondMissingDependency));
+
+        // Verify both missing dependencies are set.
+        size_t dependenciesFound = 0;
+        m_data->m_connection.QueryMissingProductDependencyByProductId(
+            m_data->m_product1.m_productID,
+            [&](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& /*entry*/)
+        {
+            ++dependenciesFound;
+            return true;
+        });
+        EXPECT_EQ(dependenciesFound, 1);
+
+        dependenciesFound = 0;
+        m_data->m_connection.QueryMissingProductDependencyByProductId(
+            m_data->m_product3.m_productID,
+            [&](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& /*entry*/)
+        {
+            ++dependenciesFound;
+            return true;
+        });
+        EXPECT_EQ(dependenciesFound, 1);
+
+        // Delete the first product's missing dependencies.
+        EXPECT_TRUE(m_data->m_connection.DeleteMissingProductDependencyByProductId(m_data->m_product1.m_productID));
+
+        // Verify the first product's missing dependency is gone.
+        dependenciesFound = 0;
+        m_data->m_connection.QueryMissingProductDependencyByProductId(
+            m_data->m_product1.m_productID,
+            [&](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& /*entry*/)
+        {
+            ++dependenciesFound;
+            return false;
+        });
+        // No dependencies should be found for this product.
+        EXPECT_EQ(dependenciesFound, 0);
+
+        // Verify the second product's missing dependency is still there.
+        dependenciesFound = 0;
+        m_data->m_connection.QueryMissingProductDependencyByProductId(
+            m_data->m_product3.m_productID,
+            [&](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& /*entry*/)
+        {
+            ++dependenciesFound;
+            return true;
+        });
+        EXPECT_EQ(dependenciesFound, 1);
     }
 
     TEST_F(AssetDatabaseTest, AddLargeNumberOfSourceDependencies_PerformanceTest)
@@ -1955,7 +2177,7 @@ namespace UnitTests
     {
         CreateCoverageTestData();
 
-        ASSERT_FALSE(m_data->m_connection.UpdateFileModTimeByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234));
+        ASSERT_FALSE(m_data->m_connection.UpdateFileModTimeAndHashByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234, 1111));
 
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
     }
@@ -1971,7 +2193,7 @@ namespace UnitTests
         bool entryAlreadyExists;
         ASSERT_TRUE(m_data->m_connection.InsertFile(entry, entryAlreadyExists));
         ASSERT_FALSE(entryAlreadyExists);
-        ASSERT_TRUE(m_data->m_connection.UpdateFileModTimeByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234));
+        ASSERT_TRUE(m_data->m_connection.UpdateFileModTimeAndHashByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234, 1111));
 
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
     }

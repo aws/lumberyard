@@ -136,17 +136,17 @@ namespace Audio
         AZ_Assert(buffer, "Wwise didn't provide a valid buffer to write to.");
 
         AZ::IO::HandleType fileHandle = GetRealFileHandle(fileDesc.hFile);
-        const long nCurrentFileReadPos = gEnv->pCryPak->FTell(fileHandle);
-        const long nWantedFileReadPos = static_cast<long>(transferInfo.uFilePosition);
+        const long currentFileReadPos = gEnv->pCryPak->FTell(fileHandle);
+        const long wantedFileReadPos = static_cast<long>(transferInfo.uFilePosition);
 
-        if (nCurrentFileReadPos != nWantedFileReadPos)
+        if (currentFileReadPos != wantedFileReadPos)
         {
-            gEnv->pCryPak->FSeek(fileHandle, nWantedFileReadPos, SEEK_SET);
+            gEnv->pCryPak->FSeek(fileHandle, wantedFileReadPos, SEEK_SET);
         }
 
         const size_t bytesRead = gEnv->pCryPak->FReadRaw(buffer, 1, transferInfo.uRequestedSize, fileHandle);
         AZ_Assert(bytesRead == static_cast<size_t>(transferInfo.uRequestedSize), 
-            "Number of bytes read (%i) for Wwise request doesn't match the requested size (%i).", bytesRead, transferInfo.uRequestedSize);
+            "Number of bytes read (%zu) for Wwise request doesn't match the requested size (%u).", bytesRead, transferInfo.uRequestedSize);
         return (bytesRead > 0) ? AK_Success : AK_Fail;
     }
 
@@ -156,18 +156,18 @@ namespace Audio
 
         AZ::IO::HandleType fileHandle = GetRealFileHandle(fileDesc.hFile);
 
-        const long nCurrentFileWritePos = gEnv->pCryPak->FTell(fileHandle);
-        const long nWantedFileWritePos = static_cast<long>(transferInfo.uFilePosition);
+        const long currentFileWritePos = gEnv->pCryPak->FTell(fileHandle);
+        const long wantedFileWritePos = static_cast<long>(transferInfo.uFilePosition);
 
-        if (nCurrentFileWritePos != nWantedFileWritePos)
+        if (currentFileWritePos != wantedFileWritePos)
         {
-            gEnv->pCryPak->FSeek(fileHandle, nWantedFileWritePos, SEEK_SET);
+            gEnv->pCryPak->FSeek(fileHandle, wantedFileWritePos, SEEK_SET);
         }
 
         const size_t bytesWritten = gEnv->pCryPak->FWrite(data, 1, static_cast<size_t>(transferInfo.uRequestedSize), fileHandle);
         if (bytesWritten != static_cast<size_t>(transferInfo.uRequestedSize))
         {
-            AZ_Error("Wwise", false, "Number of bytes written (%i) for Wwise request doesn't match the requested size (%i).", 
+            AZ_Error("Wwise", false, "Number of bytes written (%zu) for Wwise request doesn't match the requested size (%u).",
                 bytesWritten, transferInfo.uRequestedSize);
             return AK_Fail;
         }
@@ -248,7 +248,6 @@ namespace Audio
             fileDesc.pCustomParam = azcreate(AZStd::string, (filename));
             fileDesc.uCustomParamSize = sizeof(AZStd::string*);
 
-
             AZ::IO::Streamer::Instance().CreateDedicatedCache(filename);
 
             return true;
@@ -263,24 +262,24 @@ namespace Audio
         auto callback = [&transferInfo](const AZStd::shared_ptr<AZ::IO::Request>& requestHandle, AZ::IO::Streamer::SizeType, void*, AZ::IO::Request::StateType state)
         {
             AZ_UNUSED(requestHandle);
-            
+
             AZ_Assert(transferInfo.pUserData, "Wwise has already cleared the handle, which is unexpected.");
             AsyncUserData* request = reinterpret_cast<AsyncUserData*>(transferInfo.pUserData);
             AZ_Assert(request->m_request == requestHandle, "Handle provided in the callback from AZ::IO::Streamer is not the same Wwise used to queue the file read.");
-            
+
             switch (state)
             {
             case AZ::IO::Request::StateType::ST_COMPLETED:
-                // fall through
+                [[fallthrough]];
             case AZ::IO::Request::StateType::ST_CANCELLED:
                 transferInfo.pCallback(&transferInfo, AK_Success);
                 delete request;
                 break;
             default:
                 AZ_Assert(false, "Unexpected state (%i) received from AZ::IO::Streamer.", state);
-                // fall through
+                [[fallthrough]];
             case AZ::IO::Request::StateType::ST_ERROR_FAILED_IN_OPERATION:
-                // fall through
+                [[fallthrough]];
             case AZ::IO::Request::StateType::ST_ERROR_FAILED_TO_OPEN_FILE:
                 transferInfo.pCallback(&transferInfo, AK_Fail);
                 delete request;
@@ -325,9 +324,10 @@ namespace Audio
         auto offset = static_cast<AZ::IO::Streamer::SizeType>(transferInfo.uFilePosition);
         auto size = static_cast<AZ::IO::Streamer::SizeType>(transferInfo.uRequestedSize);
         AZStd::chrono::microseconds deadline = AZStd::chrono::duration<float, AZStd::milli>(heuristics.fDeadline);
-        AZStd::shared_ptr<AZ::IO::Request> request = 
-            AZ::IO::Streamer::Instance().CreateAsyncRead(filename->c_str(), offset, size, transferInfo.pBuffer, callback, deadline, 
-                priority, "Wwise", false);
+
+        AZStd::shared_ptr<AZ::IO::Request> request = AZ::IO::Streamer::Instance().CreateAsyncRead(
+            filename->c_str(), offset, size, transferInfo.pBuffer,
+            callback, deadline, priority, "Wwise", false);
         if (!request)
         {
             return AK_Fail;
@@ -379,10 +379,10 @@ namespace Audio
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CFileIOHandler_wwise::CFileIOHandler_wwise()
-        : m_bAsyncOpen(false)
+        : m_useAsyncOpen(false)
     {
-        memset(m_sBankPath, 0, AK_MAX_PATH * sizeof(AkOSChar));
-        memset(m_sLanguageFolder, 0, AK_MAX_PATH * sizeof(AkOSChar));
+        memset(m_bankPath, 0, AK_MAX_PATH * sizeof(AkOSChar));
+        memset(m_languageFolder, 0, AK_MAX_PATH * sizeof(AkOSChar));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -420,86 +420,91 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    AKRESULT CFileIOHandler_wwise::Open(const AkOSChar* sFileName, AkOpenMode eOpenMode, AkFileSystemFlags* pFlags, bool& rSyncOpen, AkFileDesc& rFileDesc)
+    AKRESULT CFileIOHandler_wwise::Open(const AkOSChar* fileName, AkOpenMode openMode, AkFileSystemFlags* flags, bool& syncOpen, AkFileDesc& fileDesc)
     {
-        AKRESULT eResult = AK_Fail;
+        AKRESULT akResult = AK_Fail;
 
-        if (rSyncOpen || !m_bAsyncOpen)
+        if (syncOpen || !m_useAsyncOpen)
         {
-            rSyncOpen = true;
-            AkOSChar sFinalFilePath[AK_MAX_PATH] = { '\0' };
-            AKPLATFORM::SafeStrCat(sFinalFilePath, m_sBankPath, AK_MAX_PATH);
+            syncOpen = true;
+            AkOSChar finalFilePath[AK_MAX_PATH] = { '\0' };
+            AKPLATFORM::SafeStrCat(finalFilePath, m_bankPath, AK_MAX_PATH);
 
-            if (pFlags && eOpenMode == AK_OpenModeRead)
+            if (flags && openMode == AK_OpenModeRead)
             {
                 // Add language folder if the file is localized.
-                if (pFlags->uCompanyID == AKCOMPANYID_AUDIOKINETIC && pFlags->uCodecID == AKCODECID_BANK && pFlags->bIsLanguageSpecific)
+                if (flags->uCompanyID == AKCOMPANYID_AUDIOKINETIC && flags->uCodecID == AKCODECID_BANK && flags->bIsLanguageSpecific)
                 {
-                    AKPLATFORM::SafeStrCat(sFinalFilePath, m_sLanguageFolder, AK_MAX_PATH);
+                    AKPLATFORM::SafeStrCat(finalFilePath, m_languageFolder, AK_MAX_PATH);
                 }
             }
 
-            AKPLATFORM::SafeStrCat(sFinalFilePath, sFileName, AK_MAX_PATH);
+            AKPLATFORM::SafeStrCat(finalFilePath, fileName, AK_MAX_PATH);
 
-            char* sTemp = nullptr;
-            CONVERT_OSCHAR_TO_CHAR(sFinalFilePath, sTemp);
-            if (eOpenMode == AK_OpenModeRead)
+            char* tempStr = nullptr;
+            CONVERT_OSCHAR_TO_CHAR(finalFilePath, tempStr);
+            if (openMode == AK_OpenModeRead)
             {
-                return m_streamingDevice.Open(sTemp, eOpenMode, rFileDesc) ? AK_Success : AK_Fail;
+                return m_streamingDevice.Open(tempStr, openMode, fileDesc) ? AK_Success : AK_Fail;
             }
-            return m_blockingDevice.Open(sTemp, eOpenMode, rFileDesc) ? AK_Success : AK_Fail;
+            return m_blockingDevice.Open(tempStr, openMode, fileDesc) ? AK_Success : AK_Fail;
         }
-        return eResult;
+        return akResult;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    AKRESULT CFileIOHandler_wwise::Open(AkFileID nFileID, AkOpenMode eOpenMode, AkFileSystemFlags* pFlags, bool& rSyncOpen, AkFileDesc& rFileDesc)
+    AKRESULT CFileIOHandler_wwise::Open(AkFileID fileID, AkOpenMode openMode, AkFileSystemFlags* flags, bool& syncOpen, AkFileDesc& fileDesc)
     {
-        AKRESULT eResult = AK_Fail;
+        AKRESULT akResult = AK_Fail;
 
-        if (rSyncOpen || !m_bAsyncOpen)
+        if (syncOpen || !m_useAsyncOpen)
         {
-            rSyncOpen = true;
-            AkOSChar sFinalFilePath[AK_MAX_PATH] = { '\0' };
-            AKPLATFORM::SafeStrCat(sFinalFilePath, m_sBankPath, AK_MAX_PATH);
+            syncOpen = true;
+            AkOSChar finalFilePath[AK_MAX_PATH] = { '\0' };
+            AKPLATFORM::SafeStrCat(finalFilePath, m_bankPath, AK_MAX_PATH);
 
-            if (pFlags && eOpenMode == AK_OpenModeRead)
+            if (flags && openMode == AK_OpenModeRead)
             {
                 // Add language folder if the file is localized.
-                if (pFlags->uCompanyID == AKCOMPANYID_AUDIOKINETIC && pFlags->bIsLanguageSpecific)
+                if (flags->uCompanyID == AKCOMPANYID_AUDIOKINETIC && flags->bIsLanguageSpecific)
                 {
-                    AKPLATFORM::SafeStrCat(sFinalFilePath, m_sLanguageFolder, AK_MAX_PATH);
+                    AKPLATFORM::SafeStrCat(finalFilePath, m_languageFolder, AK_MAX_PATH);
                 }
             }
 
-            AkOSChar sFileName[MAX_FILETITLE_SIZE] = { '\0' };
+            AkOSChar fileName[MAX_FILETITLE_SIZE] = { '\0' };
 
-            const AkOSChar* const sFilenameFormat = (pFlags->uCodecID == AKCODECID_BANK ? ID_TO_STRING_FORMAT_BANK : ID_TO_STRING_FORMAT_WEM);
+            const AkOSChar* const filenameFormat = (flags->uCodecID == AKCODECID_BANK ? ID_TO_STRING_FORMAT_BANK : ID_TO_STRING_FORMAT_WEM);
 
-            AK_OSPRINTF(sFileName, MAX_FILETITLE_SIZE, sFilenameFormat, static_cast<int unsigned>(nFileID));
+            AK_OSPRINTF(fileName, MAX_FILETITLE_SIZE, filenameFormat, static_cast<int unsigned>(fileID));
 
-            AKPLATFORM::SafeStrCat(sFinalFilePath, sFileName, AK_MAX_PATH);
+            AKPLATFORM::SafeStrCat(finalFilePath, fileName, AK_MAX_PATH);
 
-            char* sTemp = nullptr;
-            CONVERT_OSCHAR_TO_CHAR(sFinalFilePath, sTemp);
-            if (eOpenMode == AK_OpenModeRead)
+            char* tempStr = nullptr;
+            CONVERT_OSCHAR_TO_CHAR(finalFilePath, tempStr);
+            if (openMode == AK_OpenModeRead)
             {
-                return m_streamingDevice.Open(sTemp, eOpenMode, rFileDesc) ? AK_Success : AK_Fail;
+                return m_streamingDevice.Open(tempStr, openMode, fileDesc) ? AK_Success : AK_Fail;
             }
-            return m_blockingDevice.Open(sTemp, eOpenMode, rFileDesc) ? AK_Success : AK_Fail;
+            return m_blockingDevice.Open(tempStr, openMode, fileDesc) ? AK_Success : AK_Fail;
         }
-        return eResult;
+        return akResult;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CFileIOHandler_wwise::SetBankPath(const AkOSChar* const sBankPath)
+    void CFileIOHandler_wwise::SetBankPath(const char* const bankPath)
     {
-        AKPLATFORM::SafeStrCpy(m_sBankPath, sBankPath, AK_MAX_PATH);
+        const AkOSChar* akBankPath = nullptr;
+        CONVERT_CHAR_TO_OSCHAR(bankPath, akBankPath);
+        AKPLATFORM::SafeStrCpy(m_bankPath, akBankPath, AK_MAX_PATH);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CFileIOHandler_wwise::SetLanguageFolder(const AkOSChar* const sLanguageFolder)
+    void CFileIOHandler_wwise::SetLanguageFolder(const char* const languageFolder)
     {
-        AKPLATFORM::SafeStrCpy(m_sLanguageFolder, sLanguageFolder, AK_MAX_PATH);
+        const AkOSChar* akLanguageFolder = nullptr;
+        CONVERT_CHAR_TO_OSCHAR(languageFolder, akLanguageFolder);
+        AKPLATFORM::SafeStrCpy(m_languageFolder, akLanguageFolder, AK_MAX_PATH);
     }
+
 } // namespace Audio

@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "overlapchecks.h"
@@ -4645,3 +4647,5 @@ float CRopeEntity::GetSegmentDamping(int segment /*= -1*/)
 
 #undef m_bAwake
 #undef CMemStream
+
+#endif // ENABLE_CRY_PHYSICS

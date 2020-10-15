@@ -1,0 +1,24 @@
+{
+    "name": "openexr",
+    "source": "@3P:ilmbase@",
+    "description": "OpenEXR Library",
+    "aliases": {
+        "openexr_libs" : [
+                "IlmImf-2_3_s",
+                "IlmImfUtil-2_3_s"
+        ],
+        "ilmbase_libs" : [
+                "Half-2_3_s",
+                "IexMath-2_3_s",
+                "Iex-2_3_s",
+                "IlmThread-2_3_s",
+                "Imath-2_3_s"
+        ]
+    },
+    "system_includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "True"
+}
+

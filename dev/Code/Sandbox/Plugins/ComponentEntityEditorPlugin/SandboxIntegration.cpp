@@ -40,6 +40,7 @@
 #include <AzToolsFramework/Commands/SliceDetachEntityCommand.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Slice/SliceRequestBus.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/EditorLayerComponent.h>
@@ -168,8 +169,10 @@ void SandboxIntegrationManager::Setup()
 
     AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+#if !defined(OTHER_ACTIVE) || !defined(ENABLE_OTHER_DEBUG_DISPLAY) || !ENABLE_OTHER_DEBUG_DISPLAY
     AzFramework::DebugDisplayRequestBus::Handler::BusConnect(
         AzToolsFramework::ViewportInteraction::g_mainViewportEntityDebugDisplayId);
+#endif //OTHER_ACTIVE
     AzFramework::DisplayContextRequestBus::Handler::BusConnect();
     SetupFileExtensionMap();
     AZ::LegacyConversion::LegacyConversionRequestBus::Handler::BusConnect();
@@ -353,7 +356,9 @@ void SandboxIntegrationManager::Teardown()
     AzToolsFramework::NewViewportInteractionModelEnabledRequestBus::Handler::BusDisconnect();
     AZ::LegacyConversion::LegacyConversionRequestBus::Handler::BusDisconnect();
     AzFramework::DisplayContextRequestBus::Handler::BusDisconnect();
+#if !defined(OTHER_ACTIVE) || !defined(ENABLE_OTHER_DEBUG_DISPLAY) || !ENABLE_OTHER_DEBUG_DISPLAY
     AzFramework::DebugDisplayRequestBus::Handler::BusDisconnect();
+#endif
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
     AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 
@@ -692,7 +697,7 @@ void SandboxIntegrationManager::OpenPinnedInspector(const AzToolsFramework::Enti
             }
             else
             {
-                widgetTitle = AZStd::string::format("%d Entities - Inspector", entities.size());
+                widgetTitle = AZStd::string::format("%zu Entities - Inspector", entities.size());
             }
 
             dockWidget->setWindowTitle(widgetTitle.c_str());
@@ -1662,9 +1667,6 @@ void SandboxIntegrationManager::ContextMenu_InstantiateSlice()
 
 void SandboxIntegrationManager::InstantiateSliceFromAssetId(const AZ::Data::AssetId& assetId)
 {
-    AZ::Data::Asset<AZ::SliceAsset> sliceAsset;
-    sliceAsset.Create(assetId, true);
-
     AZ::Transform sliceWorldTransform = AZ::Transform::CreateIdentity();
 
     CViewport* view = GetIEditor()->GetViewManager()->GetGameViewport();
@@ -1676,7 +1678,7 @@ void SandboxIntegrationManager::InstantiateSliceFromAssetId(const AZ::Data::Asse
         sliceWorldTransform = AZ::Transform::CreateTranslation(LYVec3ToAZVec3(view->SnapToGrid(view->ViewToWorld(viewPoint))));
     }
 
-    EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, InstantiateEditorSlice, sliceAsset, sliceWorldTransform);
+    AzToolsFramework::SliceRequestBus::Broadcast(&AzToolsFramework::SliceRequests::InstantiateSliceFromAssetId, assetId, sliceWorldTransform);
 
     AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::RightClickMenu);
 
@@ -2138,6 +2140,7 @@ void SandboxIntegrationManager::GenerateAllCubemaps()
     }
 }
 
+#if !defined(OTHER_ACTIVE) || !defined(ENABLE_OTHER_DEBUG_DISPLAY) || !ENABLE_OTHER_DEBUG_DISPLAY
 void SandboxIntegrationManager::SetColor(float r, float g, float b, float a)
 {
     if (m_dc)
@@ -2179,6 +2182,34 @@ void SandboxIntegrationManager::DrawQuad(const AZ::Vector3& p1, const AZ::Vector
             AZVec3ToLYVec3(p2),
             AZVec3ToLYVec3(p3),
             AZVec3ToLYVec3(p4));
+    }
+}
+
+void SandboxIntegrationManager::DrawQuad(float width, float height)
+{
+    if (m_dc)
+    {
+        m_dc->DrawQuad(width, height);
+    }
+}
+
+void SandboxIntegrationManager::DrawWireQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4)
+{
+    if (m_dc)
+    {
+        m_dc->DrawWireQuad(
+            AZVec3ToLYVec3(p1),
+            AZVec3ToLYVec3(p2),
+            AZVec3ToLYVec3(p3),
+            AZVec3ToLYVec3(p4));
+    }
+}
+
+void SandboxIntegrationManager::DrawWireQuad(float width, float height)
+{
+    if (m_dc)
+    {
+        m_dc->DrawWireQuad(width, height);
     }
 }
 
@@ -2810,6 +2841,7 @@ void SandboxIntegrationManager::PopMatrix()
         m_dc->PopMatrix();
     }
 }
+#endif //OTHER_ACTIVE
 
 AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> SandboxIntegrationManager::CreateConvertedEntity(CBaseObject* sourceObject, bool failIfParentNotFound, const AZ::ComponentTypeList& componentsToAdd)
 {

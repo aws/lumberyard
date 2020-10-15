@@ -700,7 +700,9 @@ public:
     virtual bool IsLoggingForTelemetry();
     virtual bool RequiresParticleStats(bool& bEffectStats);
     virtual void AddParticleEffect(const char* pEffectName, int count);
+#if ENABLE_CRY_PHYSICS
     virtual void AddPhysEntity(const phys_profile_info* pInfo);
+#endif
     virtual const char* GetLogFileName() { return m_logFilename.c_str(); }
     virtual void CreateTelemetryStream(const char* postHeader, const char* hostname, int port);
     virtual void CloseTelemetryStream();
@@ -849,7 +851,9 @@ private:
 
     // Built in data groups
     SParticleProfilersDG* m_pParticleProfilers;
+#if ENABLE_CRY_PHYSICS
     SPhysEntityProfilersDG* m_pPhysEntityProfilers;
+#endif
     SFrameProfilersDG* m_pFrameProfilers;
     SUserMarkerDG* m_pUserMarkers;
     SCallstacksDG* m_pCallstacks;

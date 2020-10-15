@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYSYSTEM_PHYSRENDERER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <IPhysicsDebugRenderer.h>
 
 struct SRayRec
@@ -99,5 +101,6 @@ protected:
     static ColorB g_colorTab[9];
     volatile int m_lockDrawGeometry;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYSYSTEM_PHYSRENDERER_H

@@ -31,6 +31,7 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
     content_pak_platform = 'shared'
     content_file_platform = ''
     content_pak_file = content_pak_name + os.path.extsep + content_pak_platform + os.path.extsep + 'pak'
+    cf_key_name = 'pk-MOCKCFKEY.pem'
 
     def setUp(self):
         self.prepare_test_environment("dynamic_content_tests")
@@ -92,10 +93,53 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         self.lmbr_aws('dynamic-content', 'compare-bucket-content', '--manifest-path',self.manifest_name)
         self.assertIn('MATCH Manifest', self.lmbr_aws_stdout)
 
-    def __130_delete_content(self):
+    def __300_delete_content(self):
         self.lmbr_aws('dynamic-content', 'clear-dynamic-content','--manifest-path',self.manifest_name)
         self.lmbr_aws('dynamic-content', 'compare-bucket-content', '--manifest-path',self.manifest_name)
         self.assertIn('Key not found', self.lmbr_aws_stdout)
+
+    def __310_delete_deployment_stack_without_deployment_tags(self):
+        self.unregister_for_shared_resources()
+        self.runtest(self.base_delete_deployment_stack, name='base_delete_deployment_stack_without_deployment_tags')
+
+    def __400_create_deployment_stack_with_deployment_tags(self):
+        self.set_deployment_tags('content-distribution')
+        self.runtest(self.base_create_deployment_stack, name='base_create_deployment_stack_with_deployment_tags')
+
+    def __410_upload_cf_key(self):
+        self.make_temp_asset_file(self.cf_key_name, 'FAKECFKEY')
+        self.lmbr_aws('dynamic-content', 'upload-cf-key', '--key-path', os.path.join(self.PC_CACHE_DIR, self.cf_key_name), '--deployment-name', self.TEST_DEPLOYMENT_NAME)
+        self.assertIn('Uploaded key file', self.lmbr_aws_stdout)
+
+    def __420_upload_monitored_content_and_invalidate_existing_files(self):
+        self.make_temp_asset_file(self.monitored_content_name, 'TESTCONTENT1')
+        self.lmbr_aws('dynamic-content', 'add-manifest-file', '--file-name', self.monitored_content_name, '--manifest-path',self.manifest_name)
+        self.lmbr_aws('dynamic-content', 'add-pak', '--pak-name', self.content_pak_name, '--manifest-path',self.manifest_name, '--platform-type', self.content_pak_platform)
+        self.lmbr_aws('dynamic-content', 'add-file-to-pak', '--pak-file', self.content_pak_file, '--manifest-path',self.manifest_name, '--file-name', self.monitored_content_name, '--platform-type', self.content_file_platform)
+        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name, '--deployment-name', self.TEST_DEPLOYMENT_NAME)
+
+        self.make_temp_asset_file(self.monitored_content_name, 'TESTCONTENT2')
+        self.lmbr_aws('dynamic-content', 'build-new-paks', '--manifest-path',self.manifest_name)
+        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name, '--deployment-name', self.TEST_DEPLOYMENT_NAME, '--invalidate-existing-files')
+        self.removed_from_edge_cache(self.manifest_name)
+        self.removed_from_edge_cache(self.manifest_pak_name)
+        self.removed_from_edge_cache(self.content_pak_file)
+        self.lmbr_aws('dynamic-content', 'compare-bucket-content', '--manifest-path',self.manifest_name)
+        self.assertIn('MATCH Manifest', self.lmbr_aws_stdout)
+
+    def __430_upload_monitored_content_without_invalidating_existing_files(self):
+        self.make_temp_asset_file(self.monitored_content_name, 'TESTCONTENT3')
+        self.lmbr_aws('dynamic-content', 'build-new-paks', '--manifest-path',self.manifest_name)
+        self.lmbr_aws('dynamic-content', 'upload-manifest-content','--manifest-path',self.manifest_name, '--deployment-name', self.TEST_DEPLOYMENT_NAME)
+        self.removed_from_edge_cache(self.manifest_name, False)
+        self.removed_from_edge_cache(self.manifest_pak_name, False)
+        self.removed_from_edge_cache(self.content_pak_file, False)
+        self.lmbr_aws('dynamic-content', 'compare-bucket-content', '--manifest-path',self.manifest_name)
+        self.assertIn('MATCH Manifest', self.lmbr_aws_stdout)
+
+    def __440_invalidate_file(self):
+        self.lmbr_aws('dynamic-content', 'invalidate-file','--file-path',self.content_pak_file, '--caller-reference', 'cctest')
+        self.removed_from_edge_cache(self.content_pak_file)
 
     def __999_teardown_base_stack(self):
         self.teardown_base_stack()
@@ -108,3 +152,10 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         print('writing {} to {}'.format(temp_file_content, output_path))
         with open(output_path, 'w') as f:
             f.write(temp_file_content)
+
+    def removed_from_edge_cache(self, file_name, expect_in_log=True):
+        log_content = f"File /{file_name} is removed from CloudFront edge caches."
+        if expect_in_log:
+            self.assertIn(log_content, self.lmbr_aws_stdout)
+        else:
+            self.assertNotIn(log_content, self.lmbr_aws_stdout)

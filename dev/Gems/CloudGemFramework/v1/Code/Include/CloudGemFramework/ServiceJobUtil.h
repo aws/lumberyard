@@ -14,6 +14,8 @@
 
 #include <ISystem.h>
 
+#include <AzCore/std/string/tokenize.h>
+
 #include <CloudGemFramework/ServiceJob.h>
 
 namespace CloudGemFramework
@@ -24,7 +26,7 @@ namespace CloudGemFramework
 
         if (len > 0)
         {
-            AZStd::string lenStr = AZStd::string::format("%d", len);
+            AZStd::string lenStr = AZStd::string::format("%zu", len);
             request.SetContentLength(lenStr);
             request.SetContentType("application/json");
             request.SetBody(std::move(jsonBody));
@@ -32,6 +34,43 @@ namespace CloudGemFramework
 
         request.SetAccept("application/json");
         request.SetAcceptCharSet("utf-8");
+    }
+
+    inline Aws::String DetermineRegionFromServiceUrl(const Aws::String& serviceUrl)
+    {
+        // Assumes that API Gateway URLs have either of the following two forms:
+        // https://{custom_domain_name}/{region}.{stage}.{rest-api-id}/{path}
+        // https://{rest-api-id}.execute-api.{region}.amazonaws.com/{stage}/{path}
+        const int ExpectedUrlSections = 3;
+
+        AZStd::vector<AZStd::string> urlSections;
+        AZStd::string url(serviceUrl.c_str());
+        AZStd::tokenize(url, AZStd::string("/"), urlSections);
+
+        if (urlSections.size() > ExpectedUrlSections)
+        {
+            int i;
+            i = urlSections[ExpectedUrlSections - 1].find('.');
+            if (i != -1)
+            {
+                // Handle APIGateway URLs with custom domains:
+                // https://{custom_domain_name}/{region}.{stage}.{rest-api-id}/{path}
+                return urlSections[ExpectedUrlSections - 1].substr(0, i).c_str();
+            }
+            else
+            {
+                // API Gateway URLs have the form:
+                // https://{rest-api-id}.execute-api.{region}.amazonaws.com/{stage}/{path}
+                const int RegionIndex = 2;
+
+                AZStd::vector<AZStd::string> domainSections;
+                AZStd::tokenize(urlSections[ExpectedUrlSections - 2], AZStd::string("."), domainSections);
+                return domainSections[RegionIndex].c_str();
+            }
+        }
+
+        return "";
+
     }
 
 } // namespace CloudGemFramework

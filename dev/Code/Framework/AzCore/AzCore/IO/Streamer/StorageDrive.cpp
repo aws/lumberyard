@@ -334,7 +334,7 @@ namespace AZ
             return s_fileNotFound;
         }
 
-        void StorageDrive::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void StorageDrive::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             constexpr double bytesToMB = (1024.0 * 1024.0);
             using DoubleSeconds = AZStd::chrono::duration<double>;

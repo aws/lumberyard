@@ -11,15 +11,16 @@
 */
 #include "UtilitiesUnitTests.h"
 
-#include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
-#include "native/utilities/assetUtils.h"
-#include "native/utilities/ByteArrayStream.h"
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/Entity.h>
+#include <AzCore/Jobs/Job.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzFramework/Asset/AssetSystemComponent.h>
 #include <AzFramework/Components/BootstrapReaderComponent.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Component/Entity.h>
+#include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include "native/assetprocessor.h"
+#include "native/utilities/assetUtils.h"
+#include "native/utilities/ByteArrayStream.h"
 
 #include <QString>
 #include <QStringList>
@@ -181,7 +182,7 @@ void UtilitiesUnitTests::StartTest()
 
     //Trying to copy when the output file is not open
     UNIT_TEST_EXPECT_TRUE(CopyFileWithTimeout(fileName, outputFileName, 1));
-    UNIT_TEST_EXPECT_TRUE(CopyFileWithTimeout(fileName, outputFileName, -1));//invalid timeout time
+    UNIT_TEST_EXPECT_TRUE(CopyFileWithTimeout(fileName, outputFileName, aznumeric_caster(-1)));//invalid timeout time
     // Trying to move when the output file is not open
     UNIT_TEST_EXPECT_TRUE(MoveFileWithTimeout(fileName, outputFileName, 1));
     UNIT_TEST_EXPECT_TRUE(MoveFileWithTimeout(outputFileName, fileName, 1));
@@ -475,4 +476,149 @@ void UtilitiesUnitTests::StartTest()
     Q_EMIT UnitTestPassed();
 }
 
+class GetFileHashFromStream_NullPath_Returns0
+    : public UnitTestRun
+{
+public:
+    void StartTest() override
+    {
+        AZ::u64 result = GetFileHash(nullptr);
+        UNIT_TEST_EXPECT_TRUE(result == 0);
+        Q_EMIT UnitTestPassed();
+    }
+};
 
+REGISTER_UNIT_TEST(GetFileHashFromStream_NullPath_Returns0)
+
+class GetFileHashFromStreamSmallFile_ReturnsExpectedHash
+    : public UnitTestRun
+{
+public:
+    void StartTest() override
+    {
+        QTemporaryDir tempdir;
+        QDir dir(tempdir.path());
+        QString fileName(dir.filePath("test.txt"));
+        CreateDummyFile(fileName);
+        AZ::u64 result = GetFileHash(fileName.toUtf8());
+        UNIT_TEST_EXPECT_TRUE(result == 17241709254077376921);
+        Q_EMIT UnitTestPassed();
+    }
+};
+REGISTER_UNIT_TEST(GetFileHashFromStreamSmallFile_ReturnsExpectedHash)
+
+class GetFileHashFromStream_SmallFileForced_ReturnsExpectedHash
+    : public UnitTestRun
+{
+public:
+    void StartTest() override
+    {
+        QTemporaryDir tempdir;
+        QDir dir(tempdir.path());
+        QString fileName(dir.filePath("test.txt"));
+        CreateDummyFile(fileName);
+        AZ::u64 result = GetFileHash(fileName.toUtf8(), true);
+        UNIT_TEST_EXPECT_TRUE(result == 17241709254077376921);
+        Q_EMIT UnitTestPassed();
+    }
+};
+
+REGISTER_UNIT_TEST(GetFileHashFromStream_SmallFileForced_ReturnsExpectedHash)
+
+// This tests a race condition where one process was writing to a file and the Asset Processor started hashing that file
+// in a rare edge case, the end of file check used within the FileIOStream was reporting an incorrect end of file.
+// This job runs in a separate thread at the same time the hashing is run, and replicates this edge case.
+class FileWriteThrashTestJob : public AZ::Job
+{
+public:
+    AZ_CLASS_ALLOCATOR(FileWriteThrashTestJob, AZ::ThreadPoolAllocator, 0);
+
+    FileWriteThrashTestJob(bool deleteWhenDone, AZ::JobContext* jobContext, AZ::IO::HandleType fileHandle, AZStd::string_view bufferToWrite)
+        : Job(deleteWhenDone, jobContext),
+        m_fileHandle(fileHandle),
+        m_bufferToWrite(bufferToWrite)
+    {
+        for (; m_initialWriteCount >= 0; --m_initialWriteCount)
+        {
+            AZ::IO::FileIOBase::GetInstance()->Write(m_fileHandle, m_bufferToWrite.c_str(), m_bufferToWrite.length());
+        }
+    }
+
+    void Process() override
+    {
+        for (; m_writeLoopCount >= 0; --m_writeLoopCount)
+        {
+            AZ::IO::FileIOBase::GetInstance()->Write(m_fileHandle, m_bufferToWrite.c_str(), m_bufferToWrite.length());
+
+            // Writing this unsigned int triggers the race condition more often.
+            unsigned int uintToWrite = 10;
+            AZ::IO::FileIOBase::GetInstance()->Write(m_fileHandle, &uintToWrite, sizeof(uintToWrite));
+            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
+        }
+        AZ::IO::FileIOBase::GetInstance()->Close(m_fileHandle);
+    }
+
+    AZStd::string m_bufferToWrite;
+    AZ::IO::HandleType m_fileHandle;
+    int m_writeLoopCount = 1023 * 10; // Write enough times to trigger the race condition, a bit more than 10 seconds.
+    int m_initialWriteCount = 1021 * 10; // Start with a larger file to make sure the hash operation won't finish immediately.
+};
+
+// This is a regression test for a bug found with this repro:
+//  In the editor, export a level, the asset processor shuts down.
+// This occured because the asset processor's file hashing picked up the temporary navigation mesh file
+// when it was created, and started hashing it. At the same time, the editor was still writing to this file.
+// When the file hash called AZ::IO::FileIOStream's read function with a buffer to read in this file,
+// and it hit the end of the file and it read less than the buffer, the end of file checked used by the
+// AZ::IO::FileIOStream would sometimes incorrectly report that it did not hit the end of the file.
+// The hash function was updated to use a more accurate check. Instead of always requesting to read the buffer size,
+// it requests to read either the buffer size, or the remaining length of the file.
+// This test replicates that behavior by starting a job on another thread that writes to a file,
+// and at the same time it runs the file hashing process. With the fix reverted, this test fails.
+// This test purposely does not force a failure state to verify the assert would occur because
+// it's a race condition, and this test should not fail due to timing issues on different machines.
+class GetFileHashFromStream_LargeFileForcedAnotherThreadWritesToFile_ReturnsExpectedHash
+    : public UnitTestRun
+    , public AZ::Debug::TraceMessageBus::Handler
+{
+public:
+    void StartTest() override
+    {
+        AZ::Debug::TraceMessageBus::Handler::BusConnect();
+        QTemporaryDir tempdir;
+        QDir dir(tempdir.path());
+        QString fileName(dir.filePath("test.txt"));
+        CreateDummyFile(fileName);
+
+        // Use a small buffer to frequently write a lot of data into the file, to help force the race condition.
+        char buffer[10];
+        memset(buffer, 'a', AZ_ARRAY_SIZE(buffer));
+        AZ::IO::HandleType writeHandle;
+        // Using a file handle and not a file stream because the navigation mesh system used this same interface for writing the file.
+        AZ::IO::FileIOBase::GetInstance()->Open(fileName.toUtf8(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary, writeHandle);
+
+        // The job will close the stream
+        FileWriteThrashTestJob* job = aznew FileWriteThrashTestJob(true, nullptr, writeHandle, buffer);
+        job->Start();
+
+        // Use an artificial delay on hashing to ensure the race condition actually occurs.
+        AZ::u64 result =
+            GetFileHash(fileName.toUtf8(), true, nullptr, /*hashMsDelay*/ 20);
+        // This test will result in different hash results on different machines, because writing to the stream
+        // and reading from the stream to generate the hash happen at different speeds in different setups.
+        // Just make sure it returns some result here.
+        UNIT_TEST_EXPECT_TRUE(result != 0);
+        UNIT_TEST_EXPECT_FALSE(m_assertTriggered);
+        AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+        Q_EMIT UnitTestPassed();
+    }
+
+    bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/)
+    {
+        m_assertTriggered = true;
+        return true;
+    }
+    bool m_assertTriggered = false;
+};
+
+REGISTER_UNIT_TEST(GetFileHashFromStream_LargeFileForcedAnotherThreadWritesToFile_ReturnsExpectedHash)

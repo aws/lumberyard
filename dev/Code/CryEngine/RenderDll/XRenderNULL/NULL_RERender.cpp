@@ -179,6 +179,7 @@ bool CREGameEffect::mfDraw(CShader* ef, SShaderPass* sfm)
     return true;
 }
 
+#if ENABLE_CRY_PHYSICS
 void CREBreakableGlass::mfPrepare(bool bCheckOverflow)
 {
 }
@@ -187,6 +188,7 @@ bool CREBreakableGlass::mfDraw(CShader* pShader, SShaderPass* pShaderPass)
 {
     return true;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CRELensOptics::ClearResources()
 {

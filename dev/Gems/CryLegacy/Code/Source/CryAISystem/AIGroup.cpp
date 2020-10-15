@@ -122,6 +122,7 @@ void    CAIGroup::AddMember(CAIActor* pMember)
     SetUnitClass(newUnit);
 
     IEntity* pEntity = pMember->GetEntity();
+#if ENABLE_CRY_PHYSICS
     if (pEntity)
     {
         IPhysicalEntity* pPhysEntity = pEntity->GetPhysics();
@@ -143,6 +144,7 @@ void    CAIGroup::AddMember(CAIActor* pMember)
             newUnit.SetHeight(myHeight);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
     m_Units.push_back(newUnit);
 
     if (m_pLeader)
@@ -1161,7 +1163,7 @@ void CAIGroup::UpdateReinforcementLogic()
                     {
                         float dist = sqrtf(distSqr);
 
-                        if (!pAttTarget || pProxy->GetLinkedVehicleEntityId())
+                        if (!pAttTarget)
                         {
                             dist += 100.0f;
                         }

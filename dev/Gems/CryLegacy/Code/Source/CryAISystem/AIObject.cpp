@@ -385,6 +385,7 @@ bool CAIObject::ReleaseFormation(void)
 //------------------------------------------------------------------------------------------------------------------------
 Vec3 CAIObject::GetVelocity() const
 {
+#if ENABLE_CRY_PHYSICS
     IAIActorProxy* pProxy = GetProxy();
     if (!pProxy)
     {
@@ -411,6 +412,9 @@ Vec3 CAIObject::GetVelocity() const
     pPhysicalEntity->GetStatus(&dSt);
 
     return dSt.v;
+#else
+    return ZERO;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //
@@ -488,11 +492,13 @@ void CAIObject::EntityEvent(const SEntityEvent& event)
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CAIObject::GetPhysics(bool bWantCharacterPhysics) const
 {
     IEntity* pEntity = GetEntity();
     return pEntity ? pEntity->GetPhysics() : 0;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 //====================================================================
@@ -876,6 +882,7 @@ uint32 CAIObject::GetObservableTypeMask() const
 
 void CAIObject::GetPhysicalSkipEntities(PhysSkipList& skipList) const
 {
+#if ENABLE_CRY_PHYSICS
     if (IPhysicalEntity* physics = GetPhysics())
     {
         stl::push_back_unique(skipList, physics);
@@ -885,6 +892,9 @@ void CAIObject::GetPhysicalSkipEntities(PhysSkipList& skipList) const
     {
         stl::push_back_unique(skipList, charPhysics);
     }
+#else
+    AZ_UNUSED(skipList);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAIObject::UpdateObservableSkipList() const

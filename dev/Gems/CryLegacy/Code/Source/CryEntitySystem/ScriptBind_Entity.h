@@ -49,7 +49,9 @@ public:
     virtual void GetMemoryUsage(ICrySizer* pSizer) const
     {
         pSizer->AddObject(this, sizeof(*this));
+#if ENABLE_CRY_PHYSICS
         pSizer->AddContainer(m_areaPoints);
+#endif
     }
 protected:
     //! <code>Entity.DeleteThis()</code>
@@ -1470,6 +1472,7 @@ private: // --------------------------------------------------------------------
     //////////////////////////////////////////////////////////////////////////
     // Structures used in Physicalize call.
     //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
     pe_params_particle   m_particleParams;
     pe_params_buoyancy   m_buoyancyParams;
     pe_player_dimensions m_playerDimensions;
@@ -1478,6 +1481,7 @@ private: // --------------------------------------------------------------------
     SEntityPhysicalizeParams::AreaDefinition m_areaDefinition;
     std::vector<Vec3> m_areaPoints;
     pe_params_car m_carParams;
+#endif
 
     //temp table used by GetPhysicalStats
     SmartScriptTable m_pStats;

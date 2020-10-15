@@ -268,12 +268,13 @@ namespace AzToolsFramework
 
         for (size_t manipulatorIndex = 0; manipulatorIndex < m_planarManipulators.size(); ++manipulatorIndex)
         {
-            m_planarManipulators[manipulatorIndex]->SetView(
+            const AZStd::shared_ptr<ManipulatorViewQuad> manipulatorView =
                 CreateManipulatorViewQuad(
-                    *m_planarManipulators[manipulatorIndex],planesColor[manipulatorIndex],
+                    *m_planarManipulators[manipulatorIndex], planesColor[manipulatorIndex],
                     planesColor[(manipulatorIndex + 1) % 3],
-                    planeSize)
-            );
+                    planeSize);
+
+            m_planarManipulators[manipulatorIndex]->SetViews(ManipulatorViews{manipulatorView});
         }
     }
 

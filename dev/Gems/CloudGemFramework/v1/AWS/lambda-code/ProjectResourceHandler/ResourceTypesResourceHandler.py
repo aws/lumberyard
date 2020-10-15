@@ -293,10 +293,25 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
             if 'Configuration' in response:
                 lambda_client.tag_resource(Resource=response['Configuration']['FunctionArn'], Tags=tags)
 
-        # Just update the function code if it already exists
+        # Just update the function configuration and code if it already exists
         src_config = lambda_config['Code']
         src_config['FunctionName'] = lambda_name
         src_config['Publish'] = True
+
+        lambda_config.update(
+            {
+                'FunctionName': lambda_name,
+                'Role': info['role_arn'],
+                'Handler': info['handler'],
+                'Timeout': timeout,
+                'Description': info['description'] % type_info.resource_type_name,
+            }
+        )
+        lambda_config.pop('Code', None)
+
+        _apply_custom_lambda_overrides(lambda_config, info)
+
+        result = lambda_client.update_function_configuration(**lambda_config) 
         result = lambda_client.update_function_code(**src_config)
 
     else:

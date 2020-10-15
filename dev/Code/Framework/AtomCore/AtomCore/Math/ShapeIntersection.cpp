@@ -21,7 +21,122 @@ namespace AZ
 {
     namespace ShapeIntersection
     {
-        /// Tests to see if Arg1 overlaps Arg2. Symmetric.
+        PlaneClassification Classify(Plane plane, Sphere sphere)
+        {
+            float distance = plane.GetPointDist(sphere.GetCenter());
+            float radius = sphere.GetRadius();
+            if(distance < -radius)
+            {
+                return Behind;
+            }
+            else if(distance > radius)
+            {
+                return InFront;
+            }
+            else
+            {
+                return Intersects;
+            }
+        }
+
+        PlaneClassification Classify(Plane plane, Obb obb)
+        {
+            //compute the projection interval radius onto the plane normal, then compute the distance to the plane and see if it's outside the interval.
+            //d = distance of box center to the plane
+            //r = projection interval radius of the obb (projected onto the plane normal)
+
+            float d = plane.GetPointDist(obb.GetPosition());
+            float r = obb.GetHalfLengthX() * plane.GetNormal().Dot(obb.GetAxisX()).GetAbs() +
+                obb.GetHalfLengthY() * plane.GetNormal().Dot(obb.GetAxisY()).GetAbs() +
+                obb.GetHalfLengthZ() * plane.GetNormal().Dot(obb.GetAxisZ()).GetAbs();
+            if (d < -r)
+            {
+                return Behind;
+            }
+            else if(d > r)
+            {
+                return InFront;
+            }
+            else
+            {
+                return Intersects;
+            }
+        }
+
+        FrustumClassification Classify(Frustum frustum, Sphere sphere)
+        {
+            bool touchesAnyPlanes = false;
+            PlaneClassification c;            
+            c = Classify(frustum.GetNearPlane(), sphere);
+            if(c == Behind)
+            {
+                return Outside;
+            }
+            else if(c == Intersects)
+            {
+                touchesAnyPlanes = true;
+            }
+
+            c = Classify(frustum.GetFarPlane(), sphere);
+            if (c == Behind)
+            {
+                return Outside;
+            }
+            else if (c == Intersects)
+            {
+                touchesAnyPlanes = true;
+            }
+
+            c = Classify(frustum.GetLeftPlane(), sphere);
+            if (c == Behind)
+            {
+                return Outside;
+            }
+            else if (c == Intersects)
+            {
+                touchesAnyPlanes = true;
+            }
+
+            c = Classify(frustum.GetRightPlane(), sphere);
+            if (c == Behind)
+            {
+                return Outside;
+            }
+            else if (c == Intersects)
+            {
+                touchesAnyPlanes = true;
+            }
+
+            c = Classify(frustum.GetTopPlane(), sphere);
+            if (c == Behind)
+            {
+                return Outside;
+            }
+            else if (c == Intersects)
+            {
+                touchesAnyPlanes = true;
+            }
+
+            c = Classify(frustum.GetBottomPlane(), sphere);
+            if (c == Behind)
+            {
+                return Outside;
+            }
+            else if (c == Intersects)
+            {
+                touchesAnyPlanes = true;
+            }
+
+            if(touchesAnyPlanes)
+            {
+                return Touches;
+            }
+            else
+            {
+                return Inside;
+            }
+        }
+
         bool Overlaps(Sphere sphere, Aabb aabb)
         {
             AZ::VectorFloat distSq = aabb.GetDistanceSq(sphere.GetCenter());
@@ -51,14 +166,6 @@ namespace AZ
                     dists2.IsGreaterEqualThan(AZ::Vector4::CreateZero());
         }
 
-        bool Overlaps(Sphere sphere, Obb obb)
-        {
-            AZ_Assert(false, "Not implemented yet");
-            AZ_UNUSED(sphere);
-            AZ_UNUSED(obb);
-            return false;
-        }
-
         bool Overlaps(Sphere sphere, Plane plane)
         {
             AZ::VectorFloat dist = plane.GetPointDist(sphere.GetCenter());
@@ -71,17 +178,12 @@ namespace AZ
             return sphere1.GetCenter().GetDistanceSq(sphere2.GetCenter()) <= (radiusSum * radiusSum);
         }
 
-        bool Overlaps(Frustum frustum, Plane plane)
-        {
-            AZ_Assert(false, "Not implemented yet");
-            AZ_UNUSED(frustum);
-            AZ_UNUSED(plane);
-            return false;
-        }
-
-        //P/N testing with center/extents
         bool Overlaps(Frustum frustum, Aabb aabb)
         {
+            //For an AABB, extents.Dot(planeAbs) computes the projection interval radius of the AABB onto the plane normal.
+            //So for each plane, we can test compare the center-to-plane distance to this interval to see which side of the plane the AABB is on.
+            //The AABB is not overlapping if it is fully behind any of the planes, otherwise it is overlapping.
+
             AZ::Vector3 center          = aabb.GetCenter();
             AZ::Vector3 extents         = 0.5f * aabb.GetExtents();
 
@@ -114,15 +216,42 @@ namespace AZ
             
             return  results1.IsGreaterThan(AZ::Vector4::CreateZero()) &&
                     results2.IsGreaterThan(AZ::Vector4::CreateZero());
-        }
+        }        
 
-        bool Overlaps(Frustum frustum1, Frustum frustum2)
+        bool Overlaps(Frustum frustum, Obb obb)
         {
-            AZ_Assert(false, "Not impemented yet");
-            AZ_UNUSED(frustum1);
-            AZ_UNUSED(frustum2);
-            
-            return false;
+            //Note: the order of these tests can affect overall frustum culling performance.
+            if(Classify(frustum.GetNearPlane(), obb) == Behind)
+            {
+                return false;
+            }
+
+            if(Classify(frustum.GetFarPlane(), obb) == Behind)
+            {
+                return false;
+            }
+
+            if(Classify(frustum.GetLeftPlane(), obb) == Behind)
+            {
+                return false;
+            }
+
+            if(Classify(frustum.GetRightPlane(), obb) == Behind)
+            {
+                return false;
+            }
+
+            if(Classify(frustum.GetTopPlane(), obb) == Behind)
+            {
+                return false;
+            }
+
+            if(Classify(frustum.GetBottomPlane(), obb) == Behind)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// Tests to see if Arg1 contains Arg2. Non Symmetric.
@@ -142,22 +271,6 @@ namespace AZ
             return distSq <= radiusSq;
         }
 
-        bool Contains(Sphere sphere, Frustum frustum)
-        {
-            AZ_Assert(false, "Not implemented yet");
-            AZ_UNUSED(sphere);
-            AZ_UNUSED(frustum);
-            return false;
-        }
-
-        bool Contains(Sphere sphere, Obb obb)
-        {
-            AZ_Assert(false, "Not implemented yet");
-            AZ_UNUSED(sphere);
-            AZ_UNUSED(obb);
-            return false;
-        }
-
         bool Contains(Sphere sphere1, Sphere sphere2)
         {
             AZ::VectorFloat radiusDiff = sphere1.GetRadius() - sphere2.GetRadius();
@@ -167,6 +280,10 @@ namespace AZ
         //P/N testing with center/extents
         bool Contains(Frustum frustum, Aabb aabb)
         {
+            //For an AABB, extents.Dot(planeAbs) computes the projection interval radius of the AABB onto the plane normal.
+            //So for each plane, we can test compare the center-to-plane distance to this interval to see which side of the plane the AABB is on.
+            //The AABB is contained if it is fully in front of all of the planes.
+
             AZ::Vector3 center = aabb.GetCenter();
             AZ::Vector3 extents = 0.5f * aabb.GetExtents();
 
@@ -223,14 +340,6 @@ namespace AZ
                     dists2.IsGreaterEqualThan(AZ::Vector4::CreateZero());
         }
 
-        bool Contains(Frustum frustum, Obb obb)
-        {
-            AZ_Assert(false, "Not implemented yet.");
-            AZ_UNUSED(frustum);
-            AZ_UNUSED(obb);
-            return false;
-        }
-
         bool Contains(Frustum frustum, Vector3 point)
         {
             AZ::Vector4 dists1 = AZ::Vector4(
@@ -250,15 +359,6 @@ namespace AZ
             return  dists1.IsGreaterEqualThan(AZ::Vector4::CreateZero()) &&
                 dists2.IsGreaterEqualThan(AZ::Vector4::CreateZero());
         }
-
-        bool Contains(Frustum frustum1, Frustum frustum2)
-        {
-            AZ_Assert(false, "Not implemented yet.");
-            AZ_UNUSED(frustum1);
-            AZ_UNUSED(frustum2);
-            return false;
-        }
-
 
     }//ShapeIntersection
 }//AZ

@@ -164,6 +164,8 @@ namespace AssetProcessor
             "    DependencySourceGuid         BLOB NOT NULL, "
             "    DependencySubId              INTEGER, "
             "    MissingDependencyString      TEXT NOT NULL, "
+            "    LastScanTime                 TEXT, "
+            "    ScanTimeSecondsSinceEpoch    INTEGER, "
             "    FOREIGN KEY (ProductPK) REFERENCES "
             "        Products(ProductID) ON DELETE CASCADE);";
 
@@ -175,6 +177,7 @@ namespace AssetProcessor
             "    FileName       TEXT NOT NULL collate nocase, "
             "    IsFolder       INTEGER NOT NULL, "
             "    ModTime        INTEGER NOT NULL, "
+            "    Hash           INTEGER NOT NULL, "
             "    FOREIGN KEY (ScanFolderPK) REFERENCES "
             "       ScanFolders(ScanFolderID) ON DELETE CASCADE);";
 
@@ -599,8 +602,8 @@ namespace AssetProcessor
 
         static const char* INSERT_MISSING_PRODUCT_DEPENDENCY = "AssetProcessor::InsertMissingProductDependency";
         static const char* INSERT_MISSING_PRODUCT_DEPENDENCY_STATEMENT =
-            "INSERT INTO MissingProductDependencies (ProductPK, ScannerId, ScannerVersion, SourceFileFingerprint, DependencySourceGuid, DependencySubId, MissingDependencyString) "
-            "VALUES (:productPK, :scannerId, :scannerVersion, :sourceFileFingerprint, :dependencySourceGuid, :dependencySubId, :missingDependencyString);";
+            "INSERT INTO MissingProductDependencies (ProductPK, ScannerId, ScannerVersion, SourceFileFingerprint, DependencySourceGuid, DependencySubId, MissingDependencyString, LastScanTime, ScanTimeSecondsSinceEpoch) "
+            "VALUES (:productPK, :scannerId, :scannerVersion, :sourceFileFingerprint, :dependencySourceGuid, :dependencySubId, :missingDependencyString, :lastScanTime, :scanTimeSecondsSinceEpoch);";
 
         static const char* DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID = "AssetProcessor::DeleteMissingProductDependencyByProductId";
         static const char* DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
@@ -616,7 +619,9 @@ namespace AssetProcessor
             "SourceFileFingerprint = :sourceFileFingerprint, "
             "DependencySourceGuid = :dependencySourceGuid, "
             "DependencySubId = :dependencySubId, "
-            "MissingDependencyString = :missingDependencyString WHERE "
+            "MissingDependencyString = :missingDependencyString, "
+            "LastScanTime = :lastScanTime, "
+            "ScanTimeSecondsSinceEpoch = :scanTimeSecondsSinceEpoch WHERE "
             "MissingProductDependencyId = :missingProductDependencyId;";
 
         static const auto s_InsertMissingProductDependencyQuery = MakeSqlQuery(INSERT_MISSING_PRODUCT_DEPENDENCY, INSERT_MISSING_PRODUCT_DEPENDENCY_STATEMENT, LOG_NAME,
@@ -626,7 +631,9 @@ namespace AssetProcessor
             SqlParam<const char*>(":sourceFileFingerprint"),
             SqlParam<AZ::Uuid>(":dependencySourceGuid"),
             SqlParam<AZ::u32>(":dependencySubId"),
-            SqlParam<const char*>(":missingDependencyString"));
+            SqlParam<const char*>(":missingDependencyString"),
+            SqlParam<const char*>(":lastScanTime"),
+            SqlParam<AZ::u64>(":scanTimeSecondsSinceEpoch"));
 
         static const auto s_UpdateMissingProductDependencyQuery = MakeSqlQuery(UPDATE_MISSING_PRODUCT_DEPENDENCY, UPDATE_MISSING_PRODUCT_DEPENDENCY_STATEMENT, LOG_NAME,
             SqlParam<AZ::s64>(":missingProductDependencyId"),
@@ -636,7 +643,9 @@ namespace AssetProcessor
             SqlParam<const char*>(":sourceFileFingerprint"),
             SqlParam<AZ::Uuid>(":dependencySourceGuid"),
             SqlParam<AZ::u32>(":dependencySubId"),
-            SqlParam<const char*>(":missingDependencyString"));
+            SqlParam<const char*>(":missingDependencyString"),
+            SqlParam<const char*>(":lastScanTime"),
+            SqlParam<AZ::u64>(":scanTimeSecondsSinceEpoch"));
         
 
         static const auto s_DeleteMissingProductDependencyByProductIdQuery = MakeSqlQuery(
@@ -683,6 +692,10 @@ namespace AssetProcessor
             "ALTER TABLE Files "
             "ADD ModTime INTEGER NOT NULL DEFAULT 0;";
 
+        static const char* INSERT_COLUMN_FILE_HASH = "AssetProcessor::AddFiles_Hash";
+        static const char* INSERT_COLUMN_FILE_HASH_STATEMENT =
+            "ALTER TABLE Files "
+            "ADD Hash INTEGER NOT NULL DEFAULT 0;";
 
         static const char* INSERT_COLUMN_PRODUCTDEPENDENCY_UNRESOLVEDPATH = "AssetProcessor::AddProductDependency_UnresolvedPath";
         static const char* INSERT_COLUMN_PRODUCTDEPENDENCY_UNRESOLVEDPATH_STATEMENT =
@@ -723,15 +736,26 @@ namespace AssetProcessor
             "ADD FromAssetId INTEGER NOT NULL DEFAULT 0; "
             ;
 
+        static const char* INSERT_COLUMN_LAST_SCAN = "AssetProcessor::AddMissingProductDependencies_LastScanTime";
+        static const char* INSERT_COLUMN_LAST_SCAN_STATEMENT =
+            "ALTER TABLE MissingProductDependencies "
+            "ADD LastScanTime TEXT;";
+
+        static const char* INSERT_COLUMN_SCAN_TIME_SECONDS_SINCE_EPOCH = "AssetProcessor::AddMissingProductDependencies_ScanTimeSecondsSinceEpoch";
+        static const char* INSERT_COLUMN_SCAN_TIME_SECONDS_SINCE_EPOCH_STATEMENT =
+            "ALTER TABLE MissingProductDependencies "
+            "ADD ScanTimeSecondsSinceEpoch INTEGER;";
+
         static const char* INSERT_FILE = "AssetProcessor::InsertFile";
         static const char* INSERT_FILE_STATEMENT =
-            "INSERT INTO Files (ScanFolderPK, FileName, IsFolder, ModTime) "
-            "VALUES (:scanfolderpk, :filename, :isfolder, :modtime);";
+            "INSERT INTO Files (ScanFolderPK, FileName, IsFolder, ModTime, Hash) "
+            "VALUES (:scanfolderpk, :filename, :isfolder, :modtime, :hash);";
         static const auto s_InsertFileQuery = MakeSqlQuery(INSERT_FILE, INSERT_FILE_STATEMENT, LOG_NAME,
             SqlParam<AZ::s64>(":scanfolderpk"),
             SqlParam<const char*>(":filename"),
             SqlParam<AZ::s64>(":isfolder"),
-            SqlParam<AZ::u64>(":modtime"));
+            SqlParam<AZ::u64>(":modtime"),
+            SqlParam<AZ::u64>(":hash"));
         
         static const char* UPDATE_FILE = "AssetProcessor::UpdateFile";
         static const char* UPDATE_FILE_STATEMENT =
@@ -740,22 +764,26 @@ namespace AssetProcessor
             "FileName = :filename, "
             "IsFolder = :isfolder, "
             "ModTime = :modtime "
+            "Hash = :hash "
             "WHERE FileID = :fileid;";
         static const auto s_UpdateFileQuery = MakeSqlQuery(UPDATE_FILE, UPDATE_FILE_STATEMENT, LOG_NAME,
             SqlParam<AZ::s64>(":scanfolderpk"),
             SqlParam<const char*>(":filename"),
             SqlParam<AZ::s64>(":isfolder"),
             SqlParam<AZ::u64>(":modtime"),
+            SqlParam<AZ::u64>(":hash"),
             SqlParam<AZ::s64>(":fileid"));
 
-        static const char* UPDATE_FILE_MODTIME_BY_FILENAME_SCANFOLDER_ID = "AssetProcessor::UpdateFileModtimeByFileNameScanFolderId";
-        static const char* UPDATE_FILE_MODTIME_BY_FILENAME_SCANFOLDER_ID_STATEMENT =
+        static const char* UPDATE_FILE_MODTIME_AND_HASH_BY_FILENAME_SCANFOLDER_ID = "AssetProcessor::UpdateFileModtimeAndHashByFileNameScanFolderId";
+        static const char* UPDATE_FILE_MODTIME_AND_HASH_BY_FILENAME_SCANFOLDER_ID_STATEMENT =
             "UPDATE Files SET "
-            "ModTime = :modtime "
+            "ModTime = :modtime, "
+            "Hash = :hash "
             "WHERE FileName = :filename "
             "AND ScanFolderPK = :scanfolderpk;";
-        static const auto s_UpdateFileModtimeByFileNameScanFolderIdQuery = MakeSqlQuery(UPDATE_FILE_MODTIME_BY_FILENAME_SCANFOLDER_ID, UPDATE_FILE_MODTIME_BY_FILENAME_SCANFOLDER_ID_STATEMENT, LOG_NAME,
+        static const auto s_UpdateFileModtimeByFileNameScanFolderIdQuery = MakeSqlQuery(UPDATE_FILE_MODTIME_AND_HASH_BY_FILENAME_SCANFOLDER_ID, UPDATE_FILE_MODTIME_AND_HASH_BY_FILENAME_SCANFOLDER_ID_STATEMENT, LOG_NAME,
             SqlParam<AZ::u64>(":modtime"),
+            SqlParam<AZ::u64>(":hash"),
             SqlParam<const char*>(":filename"),
             SqlParam<AZ::s64>(":scanfolderpk"));
 
@@ -1009,6 +1037,33 @@ namespace AssetProcessor
             }
         }
 
+        if (foundVersion == AssetDatabase::DatabaseVersion::AddedProductDependencyIndexes)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMN_FILE_HASH))
+            {
+                foundVersion = DatabaseVersion::AddedFileHashField;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedFileHashField)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == AssetDatabase::DatabaseVersion::AddedFileHashField)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMN_LAST_SCAN))
+            {
+                foundVersion = DatabaseVersion::AddedLastScanTimeField;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedLastScanTimeField)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == AssetDatabase::DatabaseVersion::AddedLastScanTimeField)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMN_SCAN_TIME_SECONDS_SINCE_EPOCH))
+            {
+                foundVersion = DatabaseVersion::AddedScanTimeSecondsSinceEpochField;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedScanTimeSecondsSinceEpochField)\n", foundVersion)
+            }
+        }
+
         if (foundVersion == CurrentDatabaseVersion())
         {
             dropAllTables = false;
@@ -1221,10 +1276,12 @@ namespace AssetProcessor
 
         m_databaseConnection->AddStatement(INSERT_FILE, INSERT_FILE_STATEMENT);
         m_databaseConnection->AddStatement(UPDATE_FILE, UPDATE_FILE_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_FILE_MODTIME_BY_FILENAME_SCANFOLDER_ID, UPDATE_FILE_MODTIME_BY_FILENAME_SCANFOLDER_ID_STATEMENT);
+        m_databaseConnection->AddStatement(UPDATE_FILE_MODTIME_AND_HASH_BY_FILENAME_SCANFOLDER_ID, UPDATE_FILE_MODTIME_AND_HASH_BY_FILENAME_SCANFOLDER_ID_STATEMENT);
         m_databaseConnection->AddStatement(DELETE_FILE, DELETE_FILE_STATEMENT);
         m_databaseConnection->AddStatement(INSERT_COLUMN_FILE_MODTIME, INSERT_COLUMN_FILE_MODTIME_STATEMENT);
-
+        m_databaseConnection->AddStatement(INSERT_COLUMN_FILE_HASH, INSERT_COLUMN_FILE_HASH_STATEMENT);
+        m_databaseConnection->AddStatement(INSERT_COLUMN_LAST_SCAN, INSERT_COLUMN_LAST_SCAN_STATEMENT);
+        m_databaseConnection->AddStatement(INSERT_COLUMN_SCAN_TIME_SECONDS_SINCE_EPOCH, INSERT_COLUMN_SCAN_TIME_SECONDS_SINCE_EPOCH_STATEMENT);
         // ---------------------------------------------------------------------------------------------
         //                   Indices
         // ---------------------------------------------------------------------------------------------
@@ -2825,7 +2882,9 @@ namespace AssetProcessor
                 entry.m_sourceFileFingerprint.c_str(),
                 entry.m_dependencySourceGuid,
                 entry.m_dependencySubId,
-                entry.m_missingDependencyString.c_str()))
+                entry.m_missingDependencyString.c_str(),
+                entry.m_lastScanTime.c_str(),
+                entry.m_scanTimeSecondsSinceEpoch))
             {
                 return false;
             }
@@ -2876,7 +2935,9 @@ namespace AssetProcessor
                 entry.m_sourceFileFingerprint.c_str(),
                 entry.m_dependencySourceGuid,
                 entry.m_dependencySubId,
-                entry.m_missingDependencyString.c_str());
+                entry.m_missingDependencyString.c_str(),
+                entry.m_lastScanTime.c_str(),
+                entry.m_scanTimeSecondsSinceEpoch);
         }
 
     }
@@ -3020,7 +3081,7 @@ namespace AssetProcessor
         {
             StatementAutoFinalizer autoFinal;
 
-            if (!s_InsertFileQuery.Bind(*m_databaseConnection, autoFinal, entry.m_scanFolderPK, entry.m_fileName.c_str(), static_cast<AZ::s64>(entry.m_isFolder), entry.m_modTime))
+            if (!s_InsertFileQuery.Bind(*m_databaseConnection, autoFinal, entry.m_scanFolderPK, entry.m_fileName.c_str(), static_cast<AZ::s64>(entry.m_isFolder), entry.m_modTime, entry.m_hash))
             {
                 return false;
             }
@@ -3059,7 +3120,7 @@ namespace AssetProcessor
             }
             StatementAutoFinalizer autoFinal;
 
-            if (!s_InsertFileQuery.Bind(*m_databaseConnection, autoFinal, entry.m_scanFolderPK, entry.m_fileName.c_str(), static_cast<AZ::s64>(entry.m_isFolder), entry.m_modTime))
+            if (!s_InsertFileQuery.Bind(*m_databaseConnection, autoFinal, entry.m_scanFolderPK, entry.m_fileName.c_str(), static_cast<AZ::s64>(entry.m_isFolder), entry.m_modTime, entry.m_hash))
             {
                 return false;
             }
@@ -3108,7 +3169,7 @@ namespace AssetProcessor
         }
 
         StatementAutoFinalizer autoFinal;
-        if (!s_UpdateFileQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolderPK, entry.m_fileName.c_str(), entry.m_isFolder, entry.m_modTime, entry.m_fileID))
+        if (!s_UpdateFileQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolderPK, entry.m_fileName.c_str(), entry.m_isFolder, entry.m_modTime, entry.m_hash, entry.m_fileID))
         {
             return false;
         }
@@ -3116,9 +3177,9 @@ namespace AssetProcessor
         return true;
     }
 
-    bool AssetDatabaseConnection::UpdateFileModTimeByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AZ::u64 modTime)
+    bool AssetDatabaseConnection::UpdateFileModTimeAndHashByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AZ::u64 modTime, AZ::u64 hash)
     {
-        if(!s_UpdateFileModtimeByFileNameScanFolderIdQuery.BindAndStep(*m_databaseConnection, modTime, fileName.toUtf8().constData(), scanFolderId))
+        if(!s_UpdateFileModtimeByFileNameScanFolderIdQuery.BindAndStep(*m_databaseConnection, modTime, hash, fileName.toUtf8().constData(), scanFolderId))
         {
             return false;
         }

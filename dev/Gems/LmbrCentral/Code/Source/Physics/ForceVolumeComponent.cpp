@@ -10,7 +10,10 @@
 *
 */
 
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "ForceVolumeComponent.h"
 #include "ForceVolume.h"
 #include "ForceVolumeForces.h"
@@ -128,3 +131,5 @@ namespace LmbrCentral
         DrawLine(entity.m_position, entity.m_position + debugLineLength, Col_Blue);
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

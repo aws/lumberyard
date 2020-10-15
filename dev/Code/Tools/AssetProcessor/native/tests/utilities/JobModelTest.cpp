@@ -138,14 +138,14 @@ TEST_F(JobModelUnitTests, Test_RemoveAllJobsBySourceFolder)
 {
     VerifyModel(); // verify up front for sanity.
 
-    AssetProcessor::CachedJobInfo* jobInfo = new AssetProcessor::CachedJobInfo();
-    jobInfo->m_elementId.SetInputAssetName("sourceFolder1/source.txt");
-    jobInfo->m_elementId.SetPlatform("platform");
-    jobInfo->m_elementId.SetJobDescriptor("jobKey");
+    AssetProcessor::CachedJobInfo* testJobInfo = new AssetProcessor::CachedJobInfo();
+    testJobInfo->m_elementId.SetInputAssetName("sourceFolder1/source.txt");
+    testJobInfo->m_elementId.SetPlatform("platform");
+    testJobInfo->m_elementId.SetJobDescriptor("jobKey");
 
-    jobInfo->m_jobState = AzToolsFramework::AssetSystem::JobStatus::Completed;
-    m_unitTestJobModel->m_cachedJobs.push_back(jobInfo);
-    m_unitTestJobModel->m_cachedJobsLookup.insert(jobInfo->m_elementId, aznumeric_caster(m_unitTestJobModel->m_cachedJobs.size() - 1));
+    testJobInfo->m_jobState = AzToolsFramework::AssetSystem::JobStatus::Completed;
+    m_unitTestJobModel->m_cachedJobs.push_back(testJobInfo);
+    m_unitTestJobModel->m_cachedJobsLookup.insert(testJobInfo->m_elementId, aznumeric_caster(m_unitTestJobModel->m_cachedJobs.size() - 1));
 
     AssetProcessor::QueueElementID elementId("sourceFolder1/source.txt", "platform", "jobKey");
     auto iter = m_unitTestJobModel->m_cachedJobsLookup.find(elementId);

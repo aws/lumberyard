@@ -739,15 +739,14 @@ namespace AZ
                     {
                         m_associativeDataContainer->FreeKey(key);
                     }
-                    IAssociativeDataContainer* m_associativeDataContainer{};
 
+                    IAssociativeDataContainer* m_associativeDataContainer{};
                 };
-                using KeyPtr = AZStd::unique_ptr<void, KeyPtrDeleter>;
 
                 /// Reserve a key that can be used for associative container operations.
-                KeyPtr CreateKey()
+                AZStd::shared_ptr<void> CreateKey()
                 {
-                    return KeyPtr(AllocateKey(), KeyPtrDeleter(this));
+                    return AZStd::shared_ptr<void>(AllocateKey(), KeyPtrDeleter(this));
                 }
                 /// Get an element's address by its key. Not used for serialization.
                 virtual void*   GetElementByKey(void* instance, const ClassElement* classElement, const void* key) = 0;

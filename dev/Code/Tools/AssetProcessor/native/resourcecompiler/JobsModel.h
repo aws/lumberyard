@@ -26,6 +26,14 @@
 // use EditorAssetSystemAPI.h
 Q_DECLARE_METATYPE(AzToolsFramework::AssetSystem::JobStatus);
 
+namespace AzToolsFramework
+{
+    namespace AssetDatabase
+    {
+        class ProductDatabaseEntry;
+        class AssetDatabaseConnection;
+    }
+}
 namespace AssetProcessor
 {
     //! CachedJobInfo stores all the necessary information needed for showing a particular job including its log
@@ -78,6 +86,9 @@ namespace AssetProcessor
         CachedJobInfo* getItem(int index) const;
         static QString GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state, AZ::u32 warningCount, AZ::u32 errorCount);
         void PopulateJobsFromDatabase();
+
+        QModelIndex GetJobFromProduct(const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry, AzToolsFramework::AssetDatabase::AssetDatabaseConnection& assetDatabaseConnection);
+        QModelIndex GetJobFromSourceAndJobInfo(const AZStd::string& source, const AZStd::string& platform, const AZStd::string& jobKey);
 
 public Q_SLOTS:
         void OnJobStatusChanged(JobEntry entry, AzToolsFramework::AssetSystem::JobStatus status);

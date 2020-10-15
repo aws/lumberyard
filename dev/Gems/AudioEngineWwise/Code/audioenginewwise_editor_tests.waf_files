@@ -1,6 +1,8 @@
 {
     "auto": {
         "Tests": [
+            "Tests/AudioControlBuilderTest.cpp",
+            "Tests/AudioEngineWwiseBuilderTest.cpp",
             "Tests/AudioEngineWwiseEditorTest.cpp"
         ]
     }

@@ -22,7 +22,6 @@
 
 #include <I3DEngine.h>
 #include <CryHeaders.h>
-#include <IAudioSystem.h>
 #include "../CharacterManager.h"
 #include "../CharacterInstance.h"
 

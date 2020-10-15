@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -248,3 +250,5 @@ void CVoxelBV::CleanupAfterIntersectionTest(geometry_under_test* pGTest)
         memset(pGTest->pUsedNodesMap, 0, ((m_nTris - 1 >> 5) + 1) * 4);
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

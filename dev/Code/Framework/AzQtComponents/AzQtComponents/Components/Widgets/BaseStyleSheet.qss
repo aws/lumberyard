@@ -71,6 +71,7 @@ QDockWidget
 
 QTextEdit,
 QPlainText,
+QPlainTextEdit,
 QLineEdit,
 QSpinBox,
 QDoubleSpinBox,
@@ -87,7 +88,8 @@ QComboBox
 }
 
 QTextEdit,
-QPlainText
+QPlainText,
+QPlainTextEdit
 {
     margin: 2px;
     border-width: 0px;
@@ -95,7 +97,8 @@ QPlainText
 }
 
 QTextEdit:hover,
-QPlainText:hover
+QPlainText:hover,
+QPlainTextEdit:hover
 {
     margin: 1px;
     border-width: 1px;
@@ -104,18 +107,13 @@ QPlainText:hover
 }
 
 QTextEdit:focus,
-QPlainText:focus
+QPlainText:focus,
+QPlainTextEdit:focus
 {
     margin: 1px;
     border-width: 1px;
     border-color: #00A1C9;
     background-color: #FFFFFF;
-}
-
-ConsoleTextEdit
-{
-    margin-top: 6px;
-    background-color: #222222;
 }
 
 @import "AssetFolderListView.qss";
@@ -133,7 +131,9 @@ ConsoleTextEdit
 @import "ProgressBar.qss";
 @import "PushButton.qss";
 @import "QDockWidget.qss";
+@import "ParticleEditor.qss";
 @import "RadioButton.qss";
+@import "ReflectedPropertyEditor.qss";
 @import "ScrollBar.qss";
 @import "SegmentControl.qss";
 @import "Slider.qss";

@@ -13,24 +13,34 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: rgb(45, 45, 45);</string>
+  </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <property name="spacing">
     <number>3</number>
    </property>
    <property name="leftMargin">
-    <number>3</number>
+    <number>0</number>
    </property>
    <property name="topMargin">
     <number>0</number>
    </property>
    <property name="rightMargin">
-    <number>8</number>
-   </property>
-   <property name="bottomMargin">
     <number>0</number>
    </property>
+   <property name="bottomMargin">
+    <number>3</number>
+   </property>
    <item>
-    <widget class="QWidget" name="grabHandle" native="true"/>
+    <widget class="QCheckBox" name="collapseCheckBox">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="label">
@@ -56,7 +66,20 @@
       <bool>true</bool>
      </property>
     </widget>
-   </item>   
+   </item>
+   <item>
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
    <item>
     <widget class="QLineEdit" name="nameEditor">
      <property name="sizePolicy">
@@ -73,19 +96,19 @@
      </property>
     </widget>
    </item>
-    <item>
-	 <widget class="QPushButton" name="renameCheckButton">
-	  <property name="maximumSize">
-	   <size>
-	    <width>20</width>
-		<height>20</height>
-	   </size>
-	  </property>
-	  <property name="toolTip">
-	   <string>Comfirm Name</string>
-	  </property>
-	 </widget>
-	</item>
+   <item>
+    <widget class="QPushButton" name="renameCheckButton">
+     <property name="maximumSize">
+      <size>
+       <width>20</width>
+       <height>20</height>
+      </size>
+     </property>
+     <property name="toolTip">
+      <string>Comfirm Name</string>
+     </property>
+    </widget>
+   </item>
    <item>
     <widget class="QPushButton" name="pushButton">
      <property name="maximumSize">
@@ -114,7 +137,7 @@
       <string>Close</string>
      </property>
      <property name="autoFillBackground">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
      <property name="styleSheet">
       <string notr="true"/>

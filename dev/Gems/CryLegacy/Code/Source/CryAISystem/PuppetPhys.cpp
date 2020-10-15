@@ -60,6 +60,7 @@ bool CPuppet::ActorObstructingAim(const CAIActor* pActor, const Vec3& firePos, c
         return false;
     }
 
+#if ENABLE_CRY_PHYSICS
     const Vec3 normalizedFireDirectionXY = Vec3(dir.x, dir.y, 0.0f).GetNormalizedSafe();
     Vec3 directionFromFirePositionToOtherAgentPosition = pActor->GetPhysicsPos() - firePos;
     directionFromFirePositionToOtherAgentPosition.z = 0.0f;
@@ -84,6 +85,7 @@ bool CPuppet::ActorObstructingAim(const CAIActor* pActor, const Vec3& firePos, c
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
@@ -145,7 +147,7 @@ bool CPuppet::CheckLineOfFire(const Vec3& vTargetPos, float fDistance, float fSo
     // Early outs
     IAIActorProxy* pProxy = GetProxy();
     assert(pProxy);//shut up SCA
-    if ((pProxy && pProxy->GetLinkedVehicleEntityId()) || GetSubType() == CAIObject::STP_2D_FLY)
+    if (GetSubType() == CAIObject::STP_2D_FLY)
     {
         return true;
     }
@@ -221,16 +223,20 @@ bool CPuppet::CheckLineOfFire(const Vec3& vTargetPos, float fDistance, float fSo
                     pTarget = pAssociation;
                 }
 
+#if ENABLE_CRY_PHYSICS
                 if (IEntity* pEntity = pTarget->GetEntity())
                 {
                     stl::push_back_unique(skipList, pEntity->GetPhysics());
                 }
+#endif // ENABLE_CRY_PHYSICS
             }
 
+#if ENABLE_CRY_PHYSICS
             m_lineOfFireState.rayID = gAIEnv.pRayCaster->Queue(RayCastRequest::HighestPriority,
                     RayCastRequest(firePos, dir, COVER_OBJECT_TYPES, HIT_COVER,
                         &skipList[0], skipList.size()),
                     functor(const_cast<CPuppet&>(*this), &CPuppet::LineOfFireRayComplete));
+#endif // ENABLE_CRY_PHYSICS
         }
 
         return m_lineOfFireState.result;
@@ -557,6 +563,7 @@ void CPuppet::AdjustWithPrediction(CAIObject* pTarget, Vec3& posOut)
         return;
     }
 
+#if ENABLE_CRY_PHYSICS
     float sp = m_CurrentWeaponDescriptor.fSpeed;//bullet speed
     if (sp > 0.0f)
     {
@@ -598,6 +605,7 @@ void CPuppet::AdjustWithPrediction(CAIObject* pTarget, Vec3& posOut)
             //GetAISystem()->AddDebugLine(Q,posOut,255,255,255,3);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 bool CPuppet::IsFireTargetValid(const Vec3& targetPos, const CAIObject* pTargetObject)
@@ -650,16 +658,20 @@ void CPuppet::QueueFireTargetValidRay(const CAIObject* targetObj, const Vec3& fi
                 targetActor->GetPhysicalSkipEntities(skipList);
             }
         }
+#if ENABLE_CRY_PHYSICS
         else if (IPhysicalEntity* physicalEnt = targetObj->GetPhysics())
         {
             stl::push_back_unique(skipList, physicalEnt);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
+#if ENABLE_CRY_PHYSICS
     m_validTargetState.rayID = gAIEnv.pRayCaster->Queue(
             RayCastRequest::HighestPriority,
             RayCastRequest(firePos, fireDir, COVER_OBJECT_TYPES, HIT_COVER, &skipList[0], skipList.size()),
             functor(*this, &CPuppet::FireTargetValidRayComplete));
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CPuppet::FireTargetValidRayComplete(const QueuedRayID& rayID, const RayCastResult& result)

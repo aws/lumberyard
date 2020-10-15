@@ -28,6 +28,8 @@ struct IPreferencesPage
     virtual const char* GetCategory() = 0;
     //! Title of this preferences page.
     virtual const char* GetTitle() = 0;
+    //! Return the icon for this page.
+    virtual QIcon& GetIcon() = 0;
     //! Called by the editor when the Apply Now button is clicked.
     virtual void OnApply() = 0;
     //! Called by the editor when the Cancel button is clicked.

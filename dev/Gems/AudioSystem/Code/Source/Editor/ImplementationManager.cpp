@@ -14,7 +14,6 @@
 #include <ImplementationManager.h>
 
 #include <AzFramework/Application/Application.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <ATLControlsModel.h>
 #include <AudioControlsEditorPlugin.h>

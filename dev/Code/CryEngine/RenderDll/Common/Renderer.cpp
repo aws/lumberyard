@@ -5642,9 +5642,11 @@ IRenderElement* CRenderer::EF_CreateRE(EDataType edt)
     case eDATA_GameEffect:
         re = new CREGameEffect;
         break;
+#if ENABLE_CRY_PHYSICS
     case eDATA_BreakableGlass:
         re = new CREBreakableGlass;
         break;
+#endif
     case eDATA_GPUParticle:
         re = new CREParticleGPU;
         break;

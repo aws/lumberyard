@@ -435,6 +435,8 @@ namespace GradientSignal
 
         bool OnCancelRefresh()
         {
+            // When cancelling a refresh, we cancel both the current job and any pending refreshes.
+            m_refreshUpdateJob = false;
             return m_updateJob->CancelAndWait();
         }
 

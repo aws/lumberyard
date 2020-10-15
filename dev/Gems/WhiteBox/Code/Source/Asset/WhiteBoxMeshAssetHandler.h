@@ -25,7 +25,7 @@ namespace WhiteBox
             , private AZ::AssetTypeInfoBus::Handler
         {
         public:
-            static const char* const s_assetFileExtension;
+            inline static constexpr char AssetFileExtension[] = "wbm";
 
             AZ_CLASS_ALLOCATOR(WhiteBoxMeshAssetHandler, AZ::SystemAllocator, 0)
 

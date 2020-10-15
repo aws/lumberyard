@@ -61,7 +61,7 @@ namespace EMotionFX
         m_skeletonModel = AZStd::make_unique<SkeletonModel>();
 
         m_treeView = new ReselectingTreeView();
-        m_treeView->setObjectName("skeletonOutlinerTreeView");
+        m_treeView->setObjectName("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
 
         m_filterProxyModel = new SkeletonSortFilterProxyModel(m_skeletonModel.get(), &m_skeletonModel->GetSelectionModel(), m_treeView);
         m_filterProxyModel->setFilterKeyColumn(-1);

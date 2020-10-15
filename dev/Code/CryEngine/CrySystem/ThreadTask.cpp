@@ -717,7 +717,9 @@ void CThreadTaskManager::SetThreadName(threadID dwThreadId, const char* sThreadN
 #if defined(AZ_PROFILE_TELEMETRY) && AZ_TRAIT_OS_USE_WINDOWS_THREADS
     AZStd::thread_desc desc;
     desc.m_name = sThreadName;
-    EBUS_EVENT(AZStd::ThreadEventBus, OnThreadEnter, AZStd::thread::id(dwThreadId), &desc);
+    // we broadcast to the "client" bus and then to the "driller" (profiling) bus
+    AZStd::ThreadEventBus::Broadcast(&AZStd::ThreadEventBus::Events::OnThreadEnter, AZStd::thread::id(dwThreadId), &desc);
+    AZStd::ThreadDrillerEventBus::Broadcast(&AZStd::ThreadDrillerEventBus::Events::OnThreadEnter, AZStd::thread::id(dwThreadId), &desc);
 #endif
 
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_THREADTASK_EXCEPTIONS

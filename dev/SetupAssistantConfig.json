@@ -687,20 +687,20 @@
         {
             "identifier": "ilmbase",
             "name": "ilmbasename",
-            "version": "2.3.0-az.1",
-            "source": "ilmbase/2.3.0-az.1",
+            "version": "2.3.0-az.3",
+            "source": "ilmbase/2.3.0-az.3",
             "description": "ilmbaseDescriptionSummary",
             "detailedInstructions": "ilmbaseDetailedInstructions",
             "symlinks":
             [
                 {
-                    "source": "ilmbase/2.3.0-az.1",
+                    "source": "ilmbase/2.3.0-az.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/ilmbase",
                     "exampleFile": "include/OpenEXR/IlmBaseConfig.h"
                 },
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source": "ilmbase/2.3.0-az.1",
+                    "source": "ilmbase/2.3.0-az.3",
                     "exampleFile": "lib/Windows/Release/Imath-2_3_s.lib"
                 }
             ]
@@ -848,7 +848,7 @@
             "identifier": "powerVRTexTool",
             "name": "powerVRName",
             "version": "2016 r1.1",
-            "source": "PVRTexTool/2016_r1.1",
+            "source": "PVRTexTool/2020_r1",
             "optional": 0,
             "description": "powerVRDescriptionSummary",
             "detailedInstructions": "powerVRDetailedInstructions",
@@ -857,25 +857,25 @@
             "symlinks":
             [
                 {
-                    "source": "PVRTexTool/2016_r1.1",
+                    "source": "PVRTexTool/2020_r1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
                     "exampleFile": "Include/PVRTexture.h"
                 },
                 {
                     "compilers": [ "vc141", "vc142" ],
-                    "source": "PVRTexTool/2016_r1.1",
+                    "source": "PVRTexTool/2020_r1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
                     "exampleFile": "Windows_x86_64/PVRTexLib.lib"
                 },
                 {
                     "hostOS": [ "macOS" ],
-                    "source": "PVRTexTool/2016_r1.1",
+                    "source": "PVRTexTool/2020_r1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
                     "exampleFile": "OSX_x86/libPVRTexLib.dylib"
                 },
                 {
                     "hostOS": [ "linux" ],
-                    "source": "PVRTexTool/2016_r1.1",
+                    "source": "PVRTexTool/2020_r1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
                     "exampleFile": "Linux_x86_64/libPVRTexLib.so"
                 }
@@ -929,8 +929,8 @@
         {
            "identifier" : "GameLiftServerSDK",
             "name" : "GameLiftServerSDKName",
-            "version": "3.3.0",
-            "source":  "AWS/GameLift/3.3.0",
+            "version": "3.4.0",
+            "source":  "AWS/GameLift/3.4.0",
             "optional" : 0,
             "description" : "GameLiftServerSDKDescriptionSummary",
             "detailedInstructions" : "GameLiftServerSDKDetailedInstructions",
@@ -939,18 +939,18 @@
             [
                 {
                     "compilers" : ["vc141", "vc142"],
-                    "source" : "AWS/GameLift/3.3.0/",
+                    "source" : "AWS/GameLift/3.4.0/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "bin/windows/intel64/vs2017/Release/aws-cpp-sdk-gamelift-server.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "AWS/GameLift/3.3.0/",
+                    "source" : "AWS/GameLift/3.4.0/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
-                    "exampleFile" : "lib/linux/intel64/clang-3.8.0/Release/libaws-cpp-sdk-gamelift-server.a"
+                    "exampleFile" : "lib/linux/libcxx/intel64/clang-6.0.0/Release/libaws-cpp-sdk-gamelift-server.a"
                 },
                 {
-                    "source" : "AWS/GameLift/3.3.0/",
+                    "source" : "AWS/GameLift/3.4.0/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "include/aws/gamelift/server/GameLiftServerAPI.h"
                 }
@@ -1433,6 +1433,24 @@
             ]
         },
         {
+            "identifier" : "xxhash",
+            "name" : "xxhash",
+            "version" : "0.7.4",
+            "source" : "xxhash/0.7.4",
+            "optional" : 0,
+            "description" : "xxhashDescriptionSummary",
+            "detailedInstructions" : "xxhashDetailedInstructions",
+            "roles" : [ "compilegame", "compileengine", "compilesandbox", "setuplinux" ],
+            "symlinks" :
+            [
+                {
+                    "source" : "xxhash/0.7.4",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/xxhash",
+                    "exampleFile" : "include/xxhash/xxhash.h"
+                }
+            ]
+        },
+        {
             "identifier" : "rapidjson",
             "name" : "rapidjson",
             "version" : "1.1.0",
@@ -1778,7 +1796,7 @@
             "source" : "poly2tri/0.3.3-az.1",
             "description" : "poly2triSummary",
             "detailedInstructions" : "poly2triDetailedInstructions",
-            "roles" : [ "compilesandbox" ],
+            "roles" : [ "compileengine", "compilesandbox" ],
             "hostOS" : [ "windows", "macOS", "linux" ],
             "symlinks" :
             [

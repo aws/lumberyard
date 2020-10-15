@@ -25,6 +25,8 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Math/VectorFloat.h>
+#include <AzCore/std/sort.h>
+#include <AzCore/Serialization/Utils.h>
 
 #include <AzFramework/CommandLine/CommandRegistrationBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -77,47 +79,14 @@ namespace EditorPythonBindings
             Indent(level, buffer);
             AzFramework::StringFunc::Append(buffer, "\"\"\"\n");
         }
+    }
 
-        AZStd::string_view FetchPythonTypeAndTraits(const AZ::TypeId& typeId, AZ::u32 traits)
+    void PythonLogSymbolsComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto&& serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            if (AZ::AzTypeInfo<AZStd::string_view>::Uuid() == typeId || 
-                AZ::AzTypeInfo<AZStd::string>::Uuid() == typeId)
-            {
-                return "str";
-            }
-            else if (AZ::AzTypeInfo<char>::Uuid() == typeId && 
-                    traits & AZ::BehaviorParameter::TR_POINTER && 
-                    traits & AZ::BehaviorParameter::TR_CONST)
-            {
-                return "str";
-            }
-            else if (AZ::AzTypeInfo<float>::Uuid() == typeId || 
-                     AZ::AzTypeInfo<double>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::VectorFloat>::Uuid() == typeId)
-            {
-                return "float";
-            }
-            else if (AZ::AzTypeInfo<bool>::Uuid() == typeId)
-            {
-                return "bool";
-            }
-            else if (AZ::AzTypeInfo<AZ::s8>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::u8>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::s16>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::u16>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::s32>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::u32>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::s64>::Uuid() == typeId ||
-                     AZ::AzTypeInfo<AZ::u64>::Uuid() == typeId)
-            {
-                return "int";
-            }
-            return "";
-        }
-
-        AZStd::string_view FetchPythonType(const AZ::BehaviorParameter& param)
-        {
-            return FetchPythonTypeAndTraits(param.m_typeId, param.m_traits);
+            serialize->Class<PythonLogSymbolsComponent, AZ::Component>()
+                ->Version(0);
         }
     }
 
@@ -141,10 +110,10 @@ namespace EditorPythonBindings
         if (AZ::IO::FileIOBase::GetInstance()->GetAlias("@user@"))
         {
             // clear out the previous symbols path
-            char hydraPath[AZ_MAX_PATH_LEN];
-            AZ::IO::FileIOBase::GetInstance()->ResolvePath("@user@/python_symbols", hydraPath, AZ_MAX_PATH_LEN);
-            AZ::IO::FileIOBase::GetInstance()->CreatePath(hydraPath);
-            m_basePath = hydraPath;
+            char pythonSymbolsPath[AZ_MAX_PATH_LEN];
+            AZ::IO::FileIOBase::GetInstance()->ResolvePath("@user@/python_symbols", pythonSymbolsPath, AZ_MAX_PATH_LEN);
+            AZ::IO::FileIOBase::GetInstance()->CreatePath(pythonSymbolsPath);
+            m_basePath = pythonSymbolsPath;
         }
         EditorPythonBindingsNotificationBus::Handler::BusDisconnect();
     }
@@ -178,7 +147,7 @@ namespace EditorPythonBindings
             AzFramework::StringFunc::Append(buffer, "_");
             AzFramework::StringFunc::Append(buffer, methodName.data());
         }
-        AzFramework::StringFunc::Append(buffer, "( ");
+        AzFramework::StringFunc::Append(buffer, "(");
 
         AZStd::string bufferArg;
         for (size_t argIndex = 0; argIndex < behaviorMethod.GetNumArguments(); ++argIndex)
@@ -193,7 +162,7 @@ namespace EditorPythonBindings
                 bufferArg = *name;
             }
 
-            AZStd::string_view type = Internal::FetchPythonType(*behaviorMethod.GetArgument(argIndex));
+            AZStd::string_view type = FetchPythonType(*behaviorMethod.GetArgument(argIndex));
             if (!type.empty())
             {
                 AzFramework::StringFunc::Append(bufferArg, ": ");
@@ -226,7 +195,7 @@ namespace EditorPythonBindings
         AzFramework::StringFunc::Append(buffer, propertyName.data());
         AzFramework::StringFunc::Append(buffer, "(self) -> ");
 
-        AZStd::string_view type = Internal::FetchPythonTypeAndTraits(property.GetTypeId(), 0);
+        AZStd::string_view type = FetchPythonTypeAndTraits(property.GetTypeId(), AZ::BehaviorParameter::TR_NONE);
         if (type.empty())
         {
             AzFramework::StringFunc::Append(buffer, "Any");
@@ -237,7 +206,7 @@ namespace EditorPythonBindings
         }
         AzFramework::StringFunc::Append(buffer, ":\n");
         Internal::Indent(level + 1, buffer);
-        AzFramework::StringFunc::Append(buffer, "pass\n");
+        AzFramework::StringFunc::Append(buffer, "pass\n\n");
 
         AZ::IO::FileIOBase::GetInstance()->Write(handle, buffer.c_str(), buffer.size());
     }
@@ -247,7 +216,7 @@ namespace EditorPythonBindings
         Internal::FileHandle fileHandle(OpenModuleAt(moduleName));
         if (fileHandle.IsValid())
         {
-            // Behavior Class types with member methods  and properties
+            // Behavior Class types with member methods and properties
             AZStd::string buffer;
             AzFramework::StringFunc::Append(buffer, "class ");
             AzFramework::StringFunc::Append(buffer, behaviorClass->m_name.c_str());
@@ -313,37 +282,107 @@ namespace EditorPythonBindings
 
             AzFramework::StringFunc::Append(buffer, "def ");
             AzFramework::StringFunc::Append(buffer, busName.data());
+            bool isBroadcast = false;
             if (sender.m_event)
             {
-                AZStd::string_view addressType = Internal::FetchPythonType(behaviorEBus->m_idParam);
+                AZStd::string_view addressType = FetchPythonType(behaviorEBus->m_idParam);
                 if (addressType.empty())
                 {
-                    AzFramework::StringFunc::Append(buffer, "(busCallType: int, busEventName: str, address: Any, args: Tuple())");
+                    AzFramework::StringFunc::Append(buffer, "(busCallType: int, busEventName: str, address: Any, args: Tuple[Any])");
                 }
                 else
                 {
                     AzFramework::StringFunc::Append(buffer, "(busCallType: int, busEventName: str, address: ");
-                    AzFramework::StringFunc::Append(buffer, addressType.data());
-                    AzFramework::StringFunc::Append(buffer, ", args: Tuple())");
+                    AzFramework::StringFunc::Append(buffer, AZStd::string::format(AZ_STRING_FORMAT, AZ_STRING_ARG(addressType)).c_str());
+                    AzFramework::StringFunc::Append(buffer, ", args: Tuple[Any])");
                 }
             }
             else
             {
-                AzFramework::StringFunc::Append(buffer, "(busCallType: int, busEventName: str, args: Tuple())");
+                AzFramework::StringFunc::Append(buffer, "(busCallType: int, busEventName: str, args: Tuple[Any])");
+                isBroadcast = true;
             }
-            AzFramework::StringFunc::Append(buffer, " -> None:\n");
+
+            AzFramework::StringFunc::Append(buffer, " -> Any:\n");
             AZ::IO::FileIOBase::GetInstance()->Write(fileHandle, buffer.c_str(), buffer.size());
             buffer.clear();
 
-            // record the event names of the behavior can sent
-            AZStd::string comment = behaviorEBus->m_toolTip;
-            for (const auto& eventEntry : behaviorEBus->m_events)
+            auto eventInfoBuilder = [this](const AZ::BehaviorMethod* behaviorMethod, AZStd::string& inOutStrBuffer, TypeMap& typeCache)
             {
-                const AZStd::string& eventName = eventEntry.first;
-                AzFramework::StringFunc::Append(comment, "\n");
-                Internal::Indent(1, comment);
-                AzFramework::StringFunc::Append(comment, eventName.c_str());
+                AzFramework::StringFunc::Append(inOutStrBuffer, "(");
+
+                size_t numArguments = behaviorMethod->GetNumArguments();
+
+                const AZ::BehaviorParameter* busIdArg = behaviorMethod->GetBusIdArgument();
+
+                for (size_t i = 0; i < numArguments; ++i)
+                {
+                    const AZ::BehaviorParameter* argParam = behaviorMethod->GetArgument(i);
+                    if (argParam == busIdArg)
+                    {
+                        // address argument is part of the bus call, skip from event argument list
+                        continue;
+                    }
+
+                    AZStd::string_view argType = FetchPythonTypeAndTraits(argParam->m_typeId, argParam->m_traits);
+                    AzFramework::StringFunc::Append(inOutStrBuffer, argType.data());
+
+                    if (i < (numArguments - 1))
+                    {
+                        AzFramework::StringFunc::Append(inOutStrBuffer, ", ");
+                    }
+                }
+
+                const AZ::BehaviorParameter* resultParam = behaviorMethod->GetResult();
+                AZStd::string_view returnType = FetchPythonType(*resultParam);
+                AZStd::string returnTypeStr = AZStd::string::format(") -> " AZ_STRING_FORMAT" \n",  AZ_STRING_ARG(returnType));
+                AzFramework::StringFunc::Append(inOutStrBuffer, returnTypeStr.c_str());
+            };
+
+            // record the event names the behavior can send, their parameters and return type
+            AZStd::string comment = behaviorEBus->m_toolTip;
+
+            if (!behaviorEBus->m_events.empty())
+            {
+                AzFramework::StringFunc::Append(comment, "The following bus Call types, Event names and Argument types are supported by this bus:\n");
+                AZStd::vector<AZStd::string> events;
+                for (const auto& eventSenderEntry : behaviorEBus->m_events)
+                {
+                    const AZStd::string& eventName = eventSenderEntry.first;
+                    AZStd::string eventNameStr = AZStd::string::format("'%s', ", eventName.c_str());
+
+                    // prefer m_event info over m_broadcast
+                    if (!isBroadcast && eventSenderEntry.second.m_event != nullptr)
+                    {
+                        AZStd::string eventInfo;
+                        AzFramework::StringFunc::Append(eventInfo, "bus.Event, ");
+                        AzFramework::StringFunc::Append(eventInfo, eventNameStr.c_str());
+                        eventInfoBuilder(eventSenderEntry.second.m_event, eventInfo, m_typeCache);
+                        events.push_back(eventInfo);
+                    }
+                    else if (isBroadcast && eventSenderEntry.second.m_broadcast != nullptr)
+                    {
+                        AZStd::string eventInfo;
+                        AzFramework::StringFunc::Append(eventInfo, "bus.Broadcast, ");
+                        AzFramework::StringFunc::Append(eventInfo, eventNameStr.c_str());
+                        eventInfoBuilder(eventSenderEntry.second.m_broadcast, eventInfo, m_typeCache);
+                        events.push_back(eventInfo);
+                    }
+                    else
+                    {
+                        AZ_Warning("python", false, "Event %s is expected to have valid event information.", eventName.c_str());
+                    }
+                }
+
+                AZStd::sort(events.begin(), events.end());
+
+                for (auto& eventInfo : events)
+                {
+                    Internal::Indent(1, comment);
+                    AzFramework::StringFunc::Append(comment, eventInfo.c_str());
+                }
             }
+
             Internal::AddCommentBlock(1, comment, buffer);
 
             Internal::Indent(1, buffer);
@@ -414,7 +453,7 @@ namespace EditorPythonBindings
             AzFramework::StringFunc::Append(buffer, ": ClassVar[");
 
             const AZ::BehaviorParameter* resultParam = behaviorProperty->m_getter->GetResult();
-            AZStd::string_view type = Internal::FetchPythonTypeAndTraits(resultParam->m_typeId, resultParam->m_traits);
+            AZStd::string_view type = FetchPythonTypeAndTraits(resultParam->m_typeId, resultParam->m_traits);
             if (type.empty())
             {
                 AzFramework::StringFunc::Append(buffer, "Any");
@@ -475,6 +514,167 @@ namespace EditorPythonBindings
                 return AzToolsFramework::EditorPythonConsoleInterface::GlobalFunction({ moduleName, globalFunctionEntry.second, behaviorMethod->m_debugDescription });
             });
         }
+    }
+
+    AZStd::string PythonLogSymbolsComponent::FetchListType(const AZ::TypeId& typeId)
+    {
+        AZStd::string type = "list";
+
+        AZStd::vector<AZ::Uuid> typeList = AZ::Utils::GetContainedTypes(typeId);
+        if (!typeList.empty())
+        {
+            // trait info not available, so defaulting to TR_NONE
+            AZStd::string_view itemType = FetchPythonTypeAndTraits(typeList[0], AZ::BehaviorParameter::TR_NONE);
+            if (!itemType.empty())
+            {
+                type = AZStd::string::format("List[" AZ_STRING_FORMAT "]", AZ_STRING_ARG(itemType));
+            }
+        }
+
+        return type;
+    }
+
+    AZStd::string PythonLogSymbolsComponent::FetchMapType(const AZ::TypeId& typeId)
+    {
+        AZStd::string type = "dict";
+
+        AZStd::vector<AZ::Uuid> typeList = AZ::Utils::GetContainedTypes(typeId);
+        if (!typeList.empty())
+        {
+            // trait info not available, so defaulting to TR_NONE
+            AZStd::string_view kType = FetchPythonTypeAndTraits(typeList[0], AZ::BehaviorParameter::TR_NONE);
+            AZStd::string_view vType = FetchPythonTypeAndTraits(typeList[1], AZ::BehaviorParameter::TR_NONE);
+            if (!kType.empty() && !vType.empty())
+            {
+                type = AZStd::string::format("Dict[" AZ_STRING_FORMAT ", " AZ_STRING_FORMAT "]",
+                    AZ_STRING_ARG(kType), AZ_STRING_ARG(vType));
+            }
+        }
+
+        return type;
+    }
+
+    AZStd::string PythonLogSymbolsComponent::FetchOutcomeType(const AZ::TypeId& typeId)
+    {
+        AZStd::string type = "Outcome";
+        AZStd::pair<AZ::Uuid, AZ::Uuid> outcomeTypes = AZ::Utils::GetOutcomeTypes(typeId);
+
+        // trait info not available, so defaulting to TR_NONE
+        AZStd::string_view valueT = FetchPythonTypeAndTraits(outcomeTypes.first, AZ::BehaviorParameter::TR_NONE);
+        AZStd::string_view errorT = FetchPythonTypeAndTraits(outcomeTypes.second, AZ::BehaviorParameter::TR_NONE);
+        if (!valueT.empty() && !errorT.empty())
+        {
+            type = AZStd::string::format("Outcome[" AZ_STRING_FORMAT ", " AZ_STRING_FORMAT "]",
+                AZ_STRING_ARG(valueT), AZ_STRING_ARG(errorT));
+        }
+
+        return type;
+    }
+
+    AZStd::string PythonLogSymbolsComponent::TypeNameFallback(const AZ::TypeId& typeId)
+    {
+        // fall back to class data m_name
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        if (serializeContext)
+        {
+            auto classData = serializeContext->FindClassData(typeId);
+            if (classData)
+            {
+                return classData->m_name;
+            }
+        }
+
+        return "";
+    }
+
+    AZStd::string_view PythonLogSymbolsComponent::FetchPythonTypeAndTraits(const AZ::TypeId& typeId, AZ::u32 traits)
+    {
+        if (m_typeCache.find(typeId) == m_typeCache.end())
+        {
+            AZStd::string type;
+            if (AZ::AzTypeInfo<AZStd::string_view>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZStd::string>::Uuid() == typeId)
+            {
+                type = "str";
+            }
+            else if (AZ::AzTypeInfo<char>::Uuid() == typeId &&
+                traits & AZ::BehaviorParameter::TR_POINTER &&
+                traits & AZ::BehaviorParameter::TR_CONST)
+            {
+                type = "str";
+            }
+            else if (AZ::AzTypeInfo<float>::Uuid() == typeId ||
+                AZ::AzTypeInfo<double>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::VectorFloat>::Uuid() == typeId)
+            {
+                type = "float";
+            }
+            else if (AZ::AzTypeInfo<bool>::Uuid() == typeId)
+            {
+                type = "bool";
+            }
+            else if (AZ::AzTypeInfo<AZ::s8>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::u8>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::s16>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::u16>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::s32>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::u32>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::s64>::Uuid() == typeId ||
+                AZ::AzTypeInfo<AZ::u64>::Uuid() == typeId)
+            {
+                type = "int";
+            }
+            else if (AZ::AzTypeInfo<AZStd::vector<AZ::u8>>::Uuid() == typeId)
+            {
+                type = "bytes";
+            }
+            else if (AZ::AzTypeInfo<AZStd::any>::Uuid() == typeId)
+            {
+                type = "object";
+            }
+            else if (AZ::AzTypeInfo<void>::Uuid() == typeId)
+            {
+                type = "None";
+            }
+            else if (AZ::Utils::IsVectorContainerType(typeId))
+            {
+                type = FetchListType(typeId);
+            }
+            else if (AZ::Utils::IsMapContainerType(typeId))
+            {
+                type = FetchMapType(typeId);
+            }
+            else if (AZ::Utils::IsOutcomeType(typeId))
+            {
+                type = FetchOutcomeType(typeId);
+            }
+            else
+            {
+                type = TypeNameFallback(typeId);
+            }
+
+            m_typeCache[typeId] = type;
+        }
+
+        return m_typeCache[typeId];
+    }
+
+    AZStd::string_view PythonLogSymbolsComponent::FetchPythonType(const AZ::BehaviorParameter& param)
+    {
+        AZStd::string_view pythonType = FetchPythonTypeAndTraits(param.m_typeId, param.m_traits);
+
+        if (pythonType.empty())
+        {
+            if (AZ::StringFunc::Equal(param.m_name, "void"))
+            {
+                return "None";
+            }
+
+            return param.m_name;
+        }
+        return pythonType;
     }
 
     AZ::IO::HandleType PythonLogSymbolsComponent::OpenInitFileAt(AZStd::string_view moduleName)

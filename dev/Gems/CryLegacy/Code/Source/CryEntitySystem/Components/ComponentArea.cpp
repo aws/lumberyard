@@ -141,6 +141,7 @@ void CComponentArea::OnEnable(bool bIsEnable, bool bIsCallScript)
     m_bIsEnable = bIsEnable;
     if (m_pArea->GetAreaType() == ENTITY_AREA_TYPE_GRAVITYVOLUME)
     {
+#if ENABLE_CRY_PHYSICS
         SEntityPhysicalizeParams physparams;
         if (bIsEnable && m_bIsEnableInternal)
         {
@@ -160,6 +161,15 @@ void CComponentArea::OnEnable(bool bIsEnable, bool bIsCallScript)
             m_pEntity->SetTimer(0, 11000);
         }
         m_pEntity->Physicalize(physparams);
+#else
+        if (bIsEnable && m_bIsEnableInternal)
+        {
+            m_bezierPointsTmp.resize(m_bezierPoints.size());
+            memcpy(&m_bezierPointsTmp[0], &m_bezierPoints[0], m_bezierPoints.size() * sizeof(Vec3));
+
+            m_pEntity->SetTimer(0, 11000);
+        }
+#endif // ENABLE_CRY_PHYSICS
 
         if (bIsCallScript)
         {

@@ -1,6 +1,7 @@
 {
     "none": {
         "Include": [
+            "Include/Engine/ATLCommon.h",
             "Include/Engine/ATLEntityData.h",
             "Include/Engine/AudioAllocators.h",
             "Include/Engine/AudioFileUtils.h",
@@ -18,7 +19,6 @@
         "Source/Engine/Header Files": [
             "Source/Engine/ATL.h",
             "Source/Engine/ATLAudioObject.h",
-            "Source/Engine/ATLCommon.h",
             "Source/Engine/ATLComponents.h",
             "Source/Engine/ATLEntities.h",
             "Source/Engine/ATLUtils.h",

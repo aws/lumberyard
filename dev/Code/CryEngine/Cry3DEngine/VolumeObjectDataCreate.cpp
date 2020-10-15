@@ -22,6 +22,7 @@ IN THE SOFTWARE.
 
 #include <vector>
 #include <math.h>
+#include "Cry_LegacyPhysUtils.h"
 
 namespace
 {
@@ -1062,8 +1063,8 @@ bool CreateVolumeDataHull(const SVolumeDataSrcB& src, SVolumeDataHull& hull)
         size_t numPts = pts.size();
 
         // compute convex hull
-        index_t* pIndices = 0;
-        int numTris = gEnv->pPhysicalWorld->GetPhysUtils()->qhull(pPts, (int) numPts, pIndices, qhmalloc);
+        LegacyCryPhysicsUtils::index_t* pIndices = 0;
+        int numTris = LegacyCryPhysicsUtils::qhull(pPts, (int) numPts, pIndices, qhmalloc);
 
         if (pIndices)
         {

@@ -290,6 +290,7 @@ namespace AzQtComponents
 
             bool event(QEvent* ev) override;
             void keyPressEvent(QKeyEvent* ev) override;
+            void paintEvent(QPaintEvent* event) override;
 
             bool overrideUndoRedo() const;
 
@@ -302,6 +303,7 @@ namespace AzQtComponents
             void copyTriggered();
             void pasteTriggered();
             void deleteTriggered();
+
         };
     } // namespace internal
 } // namespace AzQtComponents

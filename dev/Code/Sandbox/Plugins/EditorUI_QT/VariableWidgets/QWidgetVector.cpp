@@ -25,43 +25,27 @@
 #include "../../../../CryEngine/CryCommon/ParticleParams.h"
 #include "IEditorParticleUtils.h"
 
-
 QWidgetVector::QWidgetVector(CAttributeItem* parent, unsigned int size, bool allowLiveUpdate /*=false*/)
     : QWidget(parent)
     , CBaseVariableWidget(parent)
-    , m_spinBoxWidth(80) // 80 is a good width to display up to 7 digits
+    , m_spinBoxWidth(0) // 80 is a good width to display up to 7 digits
     , layout(new QHBoxLayout(this))
     , m_ignoreSliderChange(false)
     , m_ignoreSpinnerChange(false)
-    , slider(new QSlider)
+    , slider(new AzQtComponents::SliderInt)
 {
     layout->setMargin(0);
     layout->setSizeConstraint(QLayout::SetNoConstraint);
-    layout->setAlignment(Qt::AlignRight);
     setAttribute(Qt::WA_TranslucentBackground, true);
 
 
     for (unsigned int i = 0; i < size; i++)
     {
         VectorEntry* entry = new VectorEntry(this);
-        entry->m_edit->setFixedWidth(m_spinBoxWidth);
         entry->m_edit->installEventFilter(parent);
         entry->m_edit->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
         list.push_back(entry);
         m_StoredValue.push_back(entry->m_edit->value());
-    }
-
-    if (list.size() == 1)
-    {
-        slider->setParent(this);
-        slider->setOrientation(Qt::Horizontal);
-        slider->installEventFilter(parent);
-        slider->setFocusPolicy(Qt::FocusPolicy::ClickFocus);
-        layout->addWidget(slider);
-
-        connect(slider, &QSlider::valueChanged, this, &QWidgetVector::onSliderChanged);
-        connect(slider, &QSlider::sliderReleased, this, &QWidgetVector::onSliderReleased);
-        slider->installEventFilter(this);
     }
 
     for (int i = 0; i < list.size(); i++)
@@ -70,6 +54,9 @@ QWidgetVector::QWidgetVector(CAttributeItem* parent, unsigned int size, bool all
         layout->addWidget(entry.m_edit);
         connect(entry.m_edit, SIGNAL(valueChanged(double)), this, SLOT(onSetValue()));
         QAmazonDoubleSpinBox* edit = entry.m_edit;
+        QSizePolicy sizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        edit->setSizePolicy(sizePolicy);
+
         connect(edit, &QAmazonDoubleSpinBox::editingFinished, this, [=]()
             {
                 double finalValue = edit->value();
@@ -85,6 +72,23 @@ QWidgetVector::QWidgetVector(CAttributeItem* parent, unsigned int size, bool all
         connect(entry.m_edit, &QAmazonDoubleSpinBox::spinnerDragged, this, &QWidgetVector::onSpinnerDragged);
         connect(entry.m_edit, &QAmazonDoubleSpinBox::spinnerDragFinished, this, &QWidgetVector::onSpinnerDragFinished);
     }
+
+    if (list.size() == 1)
+    {
+        slider->setParent(this);
+        slider->setOrientation(Qt::Horizontal);
+        slider->installEventFilter(parent);
+        slider->setFocusPolicy(Qt::FocusPolicy::ClickFocus);
+        layout->setStretch(0, 1);
+        layout->addWidget(slider, 2);
+
+        connect(slider, &AzQtComponents::SliderInt::valueChanged, this, &QWidgetVector::onSliderChanged);
+        connect(slider, &AzQtComponents::SliderInt::sliderReleased, this, &QWidgetVector::onSliderReleased);
+        slider->installEventFilter(this);
+    }
+
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(sizePolicy);
 
     setLayout(layout);
     m_tooltip = new QToolTipWidget(this);
@@ -112,12 +116,11 @@ void QWidgetVector::SetComponent(unsigned int n, float val, float min, float max
     if (list.size() == 1)
     {
         slider->setRange(min / stepSize, max / stepSize);
-        slider->setSingleStep(1);
         if (!hardMax)
         {
             slider->hide();
             slider->setFixedWidth(0);
-            layout->setAlignment(Qt::AlignRight);
+            layout->setAlignment(Qt::AlignLeft);
         }
     }
 

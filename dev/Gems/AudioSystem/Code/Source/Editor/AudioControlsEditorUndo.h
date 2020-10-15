@@ -131,8 +131,7 @@ namespace AudioControls
         CID m_id;
         AZStd::string m_name;
         AZStd::string m_scope;
-        bool m_bAutoLoad;
-        AZStd::map<AZStd::string, int> m_groupPerPlatform;
+        bool m_isAutoLoad;
         AZStd::vector<TConnectionPtr> m_connectedControls;
     };
 

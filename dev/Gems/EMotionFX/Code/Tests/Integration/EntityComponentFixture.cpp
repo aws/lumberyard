@@ -12,6 +12,8 @@
 
 #include <AzFramework/Components/TransformComponent.h>
 #include <Integration/Components/ActorComponent.h>
+#include <Integration/Components/AnimGraphComponent.h>
+#include <Integration/Components/SimpleMotionComponent.h>
 #include <Tests/Integration/EntityComponentFixture.h>
 
 namespace EMotionFX
@@ -22,6 +24,8 @@ namespace EMotionFX
         SystemComponentFixture::SetUp();
 
         m_app.RegisterComponentDescriptor(Integration::ActorComponent::CreateDescriptor());
+        m_app.RegisterComponentDescriptor(Integration::AnimGraphComponent::CreateDescriptor());
+        m_app.RegisterComponentDescriptor(Integration::SimpleMotionComponent::CreateDescriptor());
         m_app.RegisterComponentDescriptor(AzFramework::TransformComponent::CreateDescriptor());
     }
 

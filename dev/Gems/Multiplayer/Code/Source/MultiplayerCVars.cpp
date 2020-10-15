@@ -485,7 +485,6 @@ namespace Multiplayer
             REGISTER_COMMAND("gamelift_stop_server", StopGameLiftServer, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
             REGISTER_INT("gamelift_flexmatch_enable", 0, VF_NULL, "Enable Custom backfill");
             REGISTER_INT("gamelift_flexmatch_onplayerremoved_enable", 0, VF_NULL, "Enables creating backfill tickets on player disconnect.");
-            REGISTER_INT("gamelift_flexmatch_minimumplayersessioncount", 2, VF_NULL, "Minimum player session count in a matchmaking config. Same as min players in matchmaking rule set");
             REGISTER_FLOAT("gamlift_flexmatch_start_delay", 5.0F, VF_NULL, "initial delay for custom backfill in seconds.");
 #endif
         }
@@ -514,7 +513,6 @@ namespace Multiplayer
             UNREGISTER_COMMAND("gamelift_start_server");
             UNREGISTER_COMMAND("gamelift_flexmatch_enable");
             UNREGISTER_COMMAND("gamelift_flexmatch_onplayerremoved_enable");
-            UNREGISTER_COMMAND("gamelift_flexmatch_minimumplayersessioncount");
             UNREGISTER_COMMAND("gamlift_flexmatch_start_delay");
 #endif
 
@@ -717,6 +715,7 @@ namespace Multiplayer
         s_instance->m_autoJoin = autoJoin;
 
         GridMate::LANSearchParams searchParams;
+        searchParams.m_familyType = Utils::CVarToFamilyType(gEnv->pConsole->GetCVar("gm_ipversion")->GetString());
         searchParams.m_serverAddress = serveraddr;
         searchParams.m_serverPort = gEnv->pConsole->GetCVar("cl_serverport")->GetIVal() + 1;
         searchParams.m_version = gEnv->pConsole->GetCVar("gm_version")->GetIVal();

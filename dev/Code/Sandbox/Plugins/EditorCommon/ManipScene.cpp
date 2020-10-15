@@ -120,7 +120,9 @@ namespace Manip
         }
 
         IRenderer* renderer = GetIEditor()->GetRenderer();
+#if ENABLE_CRY_PHYSICS
         IPhysicsDebugRenderer* physicsDebugRenderer = GetIEditor()->GetSystem()->GetIPhysicsDebugRenderer();
+#endif
         IRenderAuxGeom* aux = renderer->GetIRenderAuxGeom();
 
         SAuxGeomRenderFlags defaultFlags(e_Mode3D | e_AlphaBlended | e_DrawInFrontOff | e_FillModeSolid | e_CullModeNone | e_DepthWriteOn | e_DepthTestOn);
@@ -226,8 +228,10 @@ namespace Manip
         IRenderer* renderer = GetIEditor()->GetRenderer();
         IRenderAuxGeom* aux = renderer->GetIRenderAuxGeom();
 
+#if ENABLE_CRY_PHYSICS
         IPhysicsDebugRenderer* physicsDebugRenderer = GetIEditor()->GetSystem()->GetIPhysicsDebugRenderer();
         physicsDebugRenderer->UpdateCamera(*rc.viewport->Camera());
+#endif
 
         SignalRenderElements(m_elements, rc);
 

@@ -347,6 +347,17 @@ bool ShortcutDispatcher::eventFilter(QObject* obj, QEvent* ev)
 {
     switch (ev->type())
     {
+    case QEvent::ShortcutOverride:
+        // QActions default "autoRepeat" to true, which is not an ideal user experience
+        // We globally disable that behavior here - in the unlikely event a shortcut needs to
+        // replicate it, its owner can instead implement a keyEvent handler
+        if (static_cast<QKeyEvent*>(ev)->isAutoRepeat())
+        {
+            ev->accept();
+            return true;
+        }
+        break;
+
     case QEvent::Shortcut:
         return shortcutFilter(obj, static_cast<QShortcutEvent*>(ev));
         break;

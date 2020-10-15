@@ -42,39 +42,33 @@ namespace AzToolsFramework
             PJR_Sync,
         };
 
-        RequestType m_requestType;
+        RequestType m_requestType { PJR_Invalid };
         AZStd::string m_requestPath;
         AZStd::string m_targetPath;
         AZStd::unordered_set<AZStd::string> m_bulkFilePaths;
         bool m_allowMultiCheckout{};
-        SourceControlResponseCallback m_callback{};
-        SourceControlResponseCallbackBulk m_bulkCallback{};
+        bool m_skipReadonly{};
+        SourceControlResponseCallback m_callback{ nullptr };
+        SourceControlResponseCallbackBulk m_bulkCallback{ nullptr };
+
+        PerforceJobRequest() = default;
 
         PerforceJobRequest(RequestType requestType, const AZStd::string& requestPath, SourceControlResponseCallback responseCB)
             : m_requestType(requestType)
             , m_requestPath(requestPath)
-            , m_allowMultiCheckout(false)
             , m_callback(AZStd::move(responseCB))
         {}
 
         PerforceJobRequest(RequestType requestType, const AZStd::string& requestPath, SourceControlResponseCallbackBulk responseCB)
             : m_requestType(requestType)
             , m_requestPath(requestPath)
-            , m_allowMultiCheckout(false)
             , m_bulkCallback(AZStd::move(responseCB))
         {}
 
-        PerforceJobRequest(RequestType requestType, const AZStd::unordered_set<AZStd::string> bulkFilePaths, SourceControlResponseCallbackBulk responseCB)
+        PerforceJobRequest(RequestType requestType, const AZStd::unordered_set<AZStd::string>& bulkFilePaths, SourceControlResponseCallbackBulk responseCB)
             : m_requestType(requestType)
             , m_bulkFilePaths(bulkFilePaths)
-            , m_allowMultiCheckout(false)
             , m_bulkCallback(AZStd::move(responseCB))
-        {}
-
-        PerforceJobRequest()
-            : m_requestType(PJR_Invalid)
-            , m_allowMultiCheckout(false)
-            , m_callback(0)
         {}
     };
 
@@ -82,15 +76,13 @@ namespace AzToolsFramework
     {
     public:
 
-        SourceControlResponseCallback m_callback{};
-        SourceControlResponseCallbackBulk m_bulkCallback{};
-        bool m_succeeded;
+        SourceControlResponseCallback m_callback{ nullptr };
+        SourceControlResponseCallbackBulk m_bulkCallback{ nullptr };
+        bool m_succeeded{};
         SourceControlFileInfo m_fileInfo;
         AZStd::vector<SourceControlFileInfo> m_bulkFileInfo;
 
-        PerforceJobResult()
-            : m_succeeded(false)
-            , m_callback(NULL) {}
+        PerforceJobResult() = default;
     };
 
     class PerforceSettingResult
@@ -139,16 +131,20 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         // SourceControlCommandBus::Handler overrides
-        void GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& callbackFn) override;
+        void GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void GetBulkFileInfo(const AZStd::unordered_set<AZStd::string>& fullFilePaths, const SourceControlResponseCallbackBulk& respCallback) override;
-        void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& callbackFn) override;
-        void RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, const SourceControlResponseCallbackBulk& respCallback) override;
+        void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& respCallback) override;
+        void RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, bool allowMultiCheckout, const SourceControlResponseCallbackBulk& respCallback) override;
         void RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestDeleteExtended(const char* fullFilePath, bool skipReadOnly, const SourceControlResponseCallback& respCallback) override;
         void RequestDeleteBulk(const char* fullFilePath, const SourceControlResponseCallbackBulk& respCallback) override;
+        void RequestDeleteBulkExtended(const char* fullFilePath, bool skipReadOnly, const SourceControlResponseCallbackBulk& respCallback) override;
         void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback) override;
+        void RequestRenameExtended(const char* sourcePathFull, const char* destPathFull, bool skipReadOnly, const SourceControlResponseCallback& respCallback) override;
         void RequestRenameBulk(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallbackBulk& respCallback) override;
+        void RequestRenameBulkExtended(const char* sourcePathFull, const char* destPathFull, bool skipReadOnly, const SourceControlResponseCallbackBulk& respCallback) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -175,7 +171,7 @@ namespace AzToolsFramework
         //! Note You cant check a file out if you don't have latest.
         bool RequestEdit(const char* fullFilePath, bool allowMultiCheckout);
 
-        bool RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePath);
+        bool RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePath, bool allowMultiCheckout);
 
         //! Attempt to delete a file from both perforce and local
         bool RequestDelete(const char* fullFilePath);

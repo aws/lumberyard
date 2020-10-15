@@ -281,6 +281,7 @@ uint32 CAttachmentManager::ParseXMLAttachmentList(CharacterAttachment* parrAttac
 
         attach.ap.m_strProcFunction = nodeAttach->getAttr("ProcFunction");
 
+#if ENABLE_CRY_PHYSICS
         if (nodeAttach->haveAttr("PhysPropType"))
         {
             memset(&attach.m_AttPhysInfo, 0, sizeof(attach.m_AttPhysInfo));
@@ -312,6 +313,7 @@ uint32 CAttachmentManager::ParseXMLAttachmentList(CharacterAttachment* parrAttac
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         uint32 flags;
         if (nodeAttach->getAttr("Flags", flags))
@@ -499,6 +501,7 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
             }
 
 
+#if ENABLE_CRY_PHYSICS
             //this should have its own type; its not really an attachment
             for (int nLod = 0; nLod < 2; nLod++)
             {
@@ -507,6 +510,7 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
                     pICharacter->m_SkeletonPose.m_physics.SetJointPhysInfo(pAttachment->GetJointID(), attach.m_AttPhysInfo[nLod], nLod);
                 }
             }
+#endif
         }
 
         //-----------------------------------------------------------------------------------
@@ -989,6 +993,7 @@ void CAttachmentManager::GetRandomPos(PosNorm& ran, EGeomForm eForm) const
 }
 
 
+#if ENABLE_CRY_PHYSICS
 void CAttachmentManager::PhysicalizeAttachment(int idx, IPhysicalEntity* pent, int nLod)
 {
     if (!pent)
@@ -1158,6 +1163,7 @@ int CAttachmentManager::UpdatePhysAttachmentHideState(int idx, IPhysicalEntity* 
     }
     return 3;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 

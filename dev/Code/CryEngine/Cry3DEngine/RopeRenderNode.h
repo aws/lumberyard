@@ -18,6 +18,7 @@
 #include <ISplines.h>
 #include <IDeferredCollisionEvent.h>
 
+#if ENABLE_CRY_PHYSICS
 
 class CRopeRenderNode
     : public IRopeRenderNode
@@ -137,5 +138,6 @@ private:
     } m_ropeSoundData;
 };
 
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRY3DENGINE_ROPERENDERNODE_H

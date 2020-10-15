@@ -1410,7 +1410,7 @@ void CLightEntity::FillFrustumCastersList_SUN(ShadowMapFrustum* pFr, int dwAllow
     Vec3 vMapCenter = AZVec3ToLYVec3(terrainCenter);
 
     // prevent crash in qhull
-    if (!dwAllowedTypes || !((passInfo.GetCamera().GetPosition() - vMapCenter).GetLength() < terrainSize * 4))
+    if (!dwAllowedTypes || (terrainSize > 0.0f && !((passInfo.GetCamera().GetPosition() - vMapCenter).GetLength() < terrainSize * 4)))
     {
         return;
     }

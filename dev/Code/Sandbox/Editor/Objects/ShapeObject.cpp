@@ -37,6 +37,7 @@
 
 #include <IEntityHelper.h>
 #include "Components/IComponentArea.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 CNavigation* GetNavigation ();
 
@@ -1188,7 +1189,11 @@ void CShapeObject::DrawTerrainLine(DisplayContext& dc, const Vec3& p1, const Vec
     for (int i = 0; i < steps - 1; i++)
     {
         pos2 = p1 + (1.0f / i) * (p2 - p1);
-        pos2.z = dc.engine->GetTerrainElevation(pos2.x, pos2.y);
+        pos2.z = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(pos2.z
+            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+            , pos2.x, pos2.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
         dc.SetColor(i * 2, 0, 0, 1);
         dc.DrawLine(pos1, pos2);
         pos1 = pos2;
@@ -2570,6 +2575,7 @@ bool CAIPathObject::IsSegmentValid(const Vec3& p0, const Vec3& p1, float rad)
     box.min -= Vec3(rad, rad, rad);
     box.max += Vec3(rad, rad, rad);
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity** entities;
     unsigned nEntities = gEnv->pPhysicalWorld->GetEntitiesInBox(box.min, box.max, entities, ent_static | ent_ignore_noncolliding);
 
@@ -2592,6 +2598,10 @@ bool CAIPathObject::IsSegmentValid(const Vec3& p0, const Vec3& p1, float rad)
         }
     }
     return true;
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    return true;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAIPathObject::Display(DisplayContext& dc)

@@ -109,6 +109,12 @@ namespace LmbrCentral
         return m_capsuleShapeConfig.m_radius;
     }
 
+    CapsuleInternalEndPoints CapsuleShape::GetCapsulePoints()
+    {
+        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_capsuleShapeConfig);
+        return { m_intersectionDataCache.m_basePlaneCenterPoint, m_intersectionDataCache.m_topPlaneCenterPoint };
+    }
+
     AZ::Aabb CapsuleShape::GetEncompassingAabb()
     {
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_capsuleShapeConfig);

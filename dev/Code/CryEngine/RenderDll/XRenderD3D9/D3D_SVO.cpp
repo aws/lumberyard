@@ -1550,7 +1550,7 @@ void CSvoRenderer::SetupRsmSun(const EHWShaderClass eShClass)
         }
         else
         {
-            firstFrustum.pDepthTex->Apply(12, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
+            static_cast<CTexture*>(firstFrustum.pDepthTex.get())->Apply(12, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
             GetRsmColorMap(firstFrustum)->Apply(13, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
             GetRsmNormlMap(firstFrustum)->Apply(9, m_nTexStatePoint, EFTT_UNKNOWN, -1, -1, eShClass);
         }

@@ -24,6 +24,7 @@
 #include "DebugDrawContext.h"
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 IGoalOp* CGoalOpFactoryG02::GetGoalOp(const char* sGoalOpName, IFunctionHandler* pH, int nFirstParam, GoalParameters& params) const
 {
@@ -257,6 +258,7 @@ EGoalOpResult COPCharge::Execute(CPipeUser* pOperand)
 
 void COPCharge::ValidateRange()
 {
+#if ENABLE_CRY_PHYSICS
     AIAssert(m_moveTarget);
     if (!m_pOperand)
     {
@@ -273,6 +275,7 @@ void COPCharge::ValidateRange()
     {
         m_chargeEnd = m_chargeStart + (m_chargeEnd - m_chargeStart).GetNormalizedSafe() * max(0.0f, hitDist - 0.3f);
     }
+#endif
 }
 
 void COPCharge::SetChargeParams()
@@ -824,6 +827,7 @@ void COPSeekCover::Serialize(TSerialize ser)
 //====================================================================
 bool COPSeekCover::IsSegmentValid(IAISystem::tNavCapMask navCap, float rad, const Vec3& posFrom, Vec3& posTo, IAISystem::ENavigationType& navTypeFrom)
 {
+#if ENABLE_CRY_PHYSICS
     int nBuildingID = -1;
 
     navTypeFrom = gAIEnv.pNavigation->CheckNavigationType(posFrom, nBuildingID, navCap);
@@ -843,6 +847,9 @@ bool COPSeekCover::IsSegmentValid(IAISystem::tNavCapMask navCap, float rad, cons
     SWalkPosition to(posTo, true);
 
     return CheckWalkabilitySimple(from, to, rad, AICE_ALL_EXCEPT_TERRAIN);
+#else
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 inline float Ease(float a)
@@ -855,6 +862,7 @@ inline float Ease(float a)
 //====================================================================
 bool COPSeekCover::IsTargetVisibleFrom(const Vec3& from, const Vec3& targetPos)
 {
+#if ENABLE_CRY_PHYSICS
     ray_hit hit;
     Vec3 waistPos = from + Vec3(0, 0, m_uncover ? 1.2f : 0.6f);
     Vec3 delta = targetPos - waistPos;
@@ -865,6 +873,7 @@ bool COPSeekCover::IsTargetVisibleFrom(const Vec3& from, const Vec3& targetPos)
             return false;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
     return true;
 }
 
@@ -945,7 +954,11 @@ void COPSeekCover::GetNearestPuppets(CPuppet* pSelf, const Vec3& pos, float radi
 //====================================================================
 bool COPSeekCover::IsInDeepWater(const Vec3& refPos)
 {
-    float terrainLevel = gEnv->p3DEngine->GetTerrainElevation(refPos.x, refPos.y);
+    float terrainLevel = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainLevel
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , refPos.x, refPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
     if (refPos.z + 2.0f < terrainLevel)
     {
         // Completely under terrain, skip water level checks.

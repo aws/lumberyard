@@ -21,7 +21,11 @@ class CRYEDIT_API CStatObjValidator
 public:
     CStatObjValidator();
 
+#if ENABLE_CRY_PHYSICS
     void Validate(IStatObj* statObj, CMaterial* editorMaterial, IPhysicalEntity* physEntity);
+#else
+    void Validate(IStatObj* statObj, CMaterial* editorMaterial);
+#endif
     bool IsValid() const { return m_isValid; }
 
     QString GetDescription() const { return m_description; }

@@ -49,6 +49,10 @@ namespace AzGameFramework
     {
         AZ::ComponentTypeList components = Application::GetRequiredSystemComponents();
 
+#if !defined(_RELEASE)
+        components.emplace_back(azrtti_typeid<AzFramework::TargetManagementComponent>());
+#endif
+
         // Note that this component is registered by AzFramework.
         // It must be registered here instead of in the module so that existence of AzFrameworkModule is guaranteed.
         components.emplace_back(azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>());

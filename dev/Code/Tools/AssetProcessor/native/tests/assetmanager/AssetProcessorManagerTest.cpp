@@ -30,6 +30,7 @@
 #include <QSet>
 #include <QString>
 #include <QMetaObject>
+#include <limits>
 
 using namespace AssetProcessor;
 
@@ -87,6 +88,10 @@ public:
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_FileUnchanged);
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_EnablePlatform_ShouldProcessFilesForPlatform);
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_ModifyFile);
+    friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_ModifyFile_AndThenRevert_ProcessesAgain);
+    friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_ModifyFilesSameHash_BothProcess);
+    friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_ModifyTimestamp);
+    friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_ModifyTimestampNoHashing_ProcessesFile);
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_ModifyMetadataFile);
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_DeleteFile);
     friend class GTEST_TEST_CLASS_NAME_(DeleteTest, DeleteFolderSharedAcrossTwoScanFolders_CorrectFileAndFolderAreDeletedFromCache);
@@ -161,6 +166,11 @@ bool AssetProcessorManagerTest::BlockUntilIdle(int millisecondsMax)
 {
     QTime limit;
     limit.start();
+
+    if(AZ::Debug::Trace::IsDebuggerPresent())
+    {
+        millisecondsMax = std::numeric_limits<int>::max();
+    }
 
     // Always run at least once so that if we're in an idle state to start, we don't end up skipping the loop before finishing all the queued work
     do
@@ -550,7 +560,7 @@ TEST_F(AssetProcessorManagerTest, UnitTestForCancelledJob)
     ASSERT_TRUE(m_assetProcessorManager->CheckJobKeyToJobRunKeyMap(entry.m_jobKey.toUtf8().data()));
     m_assetProcessorManager->AssetCancelled(entry);
     ASSERT_FALSE(m_assetProcessorManager->CheckJobKeyToJobRunKeyMap(entry.m_jobKey.toUtf8().data()));
-    ASSERT_TRUE(m_assetProcessorManager->GetDatabaseConnection()->QuerySourceBySourceGuid(sourceUUID, [&](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& source)
+    ASSERT_TRUE(m_assetProcessorManager->GetDatabaseConnection()->QuerySourceBySourceGuid(sourceUUID, [&](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& /*source*/)
     {
         sourceFound = true;
         return false;
@@ -1261,7 +1271,7 @@ AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry AbsolutePathProd
 AZStd::string AbsolutePathProductDependencyTest::BuildScanFolderRelativePath(const AZStd::string& relativePath) const
 {
     // Scan folders write to the database with the $ character wrapped around the scan folder's ID.
-    return AZStd::string::format("$%d$%s", m_scanFolderInfo->ScanFolderID(), relativePath.c_str());
+    return AZStd::string::format("$%llu$%s", m_scanFolderInfo->ScanFolderID(), relativePath.c_str());
 }
 
 TEST_F(AbsolutePathProductDependencyTest, AbsolutePathProductDependency_MatchingFileNotAvailable_DependencyCorrectWithScanFolder)
@@ -1392,7 +1402,7 @@ void PathDependencyTest::CaptureJobs(AZStd::vector<AssetProcessor::JobDetails>& 
     using namespace AssetBuilderSDK;
     QDir tempPath(m_tempDir.path());
     QString absPath(tempPath.absoluteFilePath(sourceFilePath));
-    UnitTestUtils::CreateDummyFile(absPath);
+    UnitTestUtils::CreateDummyFile(absPath, QString::number(QDateTime::currentMSecsSinceEpoch()));
 
     // prepare to capture the job details as the APM inspects the file.
     auto connection = QObject::connect(m_assetProcessorManager.get(), &AssetProcessorManager::AssetToProcess, [&jobDetailsList](JobDetails jobDetails)
@@ -1598,6 +1608,55 @@ TEST_F(DuplicateProcessTest, SameAssetProcessedTwice_DependenciesResolveWithoutE
             dep2.m_products[2]
         }
     );
+}
+
+TEST_F(PathDependencyTest, NoLongerProcessedFile_IsRemoved)
+{
+    using namespace AssetProcessor;
+    using namespace AssetBuilderSDK;
+
+    m_mockApplicationManager->UnRegisterAllBuilders();
+
+    AssetRecognizer rec;
+    AssetPlatformSpec specpc;
+
+    rec.m_name = "txt files2";
+    rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+    rec.m_platformSpecs.insert("pc", specpc);
+    rec.m_supportsCreateJobs = false;
+    m_mockApplicationManager->RegisterAssetRecognizerAsBuilder(rec);
+
+    AzFramework::AssetSystem::AssetNotificationMessage details;
+
+    auto connection = QObject::connect(m_assetProcessorManager.get(), &AssetProcessorManager::AssetMessage, [&details](AzFramework::AssetSystem::AssetNotificationMessage message)
+        {
+            details = message;
+        });
+    
+    QDir tempPath(m_tempDir.path());
+    QString absPath(tempPath.absoluteFilePath("subfolder1/test1.txt"));
+
+    TestAsset testAsset("test1");
+    
+    ASSERT_TRUE(ProcessAsset(testAsset, { {".asset1"} }));
+
+    AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer products;
+    m_sharedConnection->GetProductsBySourceName("test1.txt", products);
+
+    ASSERT_EQ(products.size(), 1);
+    ASSERT_TRUE(QFile::exists(m_normalizedCacheRootDir.absoluteFilePath("pc/samplesproject/test1.asset1").toUtf8().constData()));
+
+    m_mockApplicationManager->UnRegisterAllBuilders();
+
+    m_isIdling = false;
+    QMetaObject::invokeMethod(m_assetProcessorManager.get(), "AssessModifiedFile", Qt::QueuedConnection, Q_ARG(QString, absPath));
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    products.clear();
+    m_sharedConnection->GetProductsBySourceName("test1.txt", products);
+    ASSERT_EQ(products.size(), 0);
+
+    ASSERT_FALSE(QFile::exists(m_normalizedCacheRootDir.absoluteFilePath("pc/samplesproject/test1.asset1").toUtf8().constData()));
 }
 
 // This test shows the process of deferring resolution of a path dependency works.
@@ -2730,6 +2789,8 @@ TEST_F(AssetProcessorManagerTest, AssetProcessedImpl_DifferentProductDependencie
         capturedTableEntries[asset] = entry;
         return true;
     });
+
+    ASSERT_TRUE(queryresult);
 
     // this also asserts uniqueness.
     ASSERT_EQ(countFound, 2);
@@ -4427,6 +4488,8 @@ void ModtimeScanningTest::ProcessAssetJobs()
     }
 
     ASSERT_TRUE(BlockUntilIdle(5000));
+
+    m_isIdling = false;
 }
 
 void ModtimeScanningTest::SimulateAssetScanner(QSet<AssetFileInfo> filePaths)
@@ -4451,6 +4514,42 @@ QSet<AssetFileInfo> ModtimeScanningTest::BuildFileSet()
     return filePaths;
 }
 
+void ModtimeScanningTest::ExpectWork(int createJobs, int processJobs)
+{
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, createJobs);
+    ASSERT_EQ(m_data->m_processResults.size(), processJobs);
+    ASSERT_FALSE(m_data->m_processResults[0].m_autoFail);
+    ASSERT_FALSE(m_data->m_processResults[1].m_autoFail);
+    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+
+    m_isIdling = false;
+}
+
+void ModtimeScanningTest::ExpectNoWork()
+{
+    // Since there's no work to do, the idle event isn't going to trigger, just process events a couple times
+    for (int i = 0; i < 10; ++i)
+    {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    }
+
+    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 0);
+    ASSERT_EQ(m_data->m_processResults.size(), 0);
+    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+
+    m_isIdling = false;
+}
+
+void ModtimeScanningTest::SetFileContents(QString filePath, QString contents)
+{
+    QFile file(filePath);
+    file.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    file.write(contents.toUtf8().constData());
+    file.close();
+}
+
 TEST_F(ModtimeScanningTest, ModtimeSkipping_FileUnchanged_WithoutModtimeSkipping)
 {
     using namespace AzToolsFramework::AssetSystem;
@@ -4462,38 +4561,31 @@ TEST_F(ModtimeScanningTest, ModtimeSkipping_FileUnchanged_WithoutModtimeSkipping
     QSet<AssetFileInfo> filePaths = BuildFileSet();
     SimulateAssetScanner(filePaths);
 
-    ASSERT_TRUE(BlockUntilIdle(5000));
-    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 2);
-    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+    // 2 create jobs but 0 process jobs because the file has already been processed before in SetUp
+    ExpectWork(2, 0);
 }
 
 TEST_F(ModtimeScanningTest, ModtimeSkipping_FileUnchanged)
 {
     using namespace AzToolsFramework::AssetSystem;
 
-    // Enable the feature we're testing
+    // Enable the features we're testing
     m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
 
     QSet<AssetFileInfo> filePaths = BuildFileSet();
     SimulateAssetScanner(filePaths);
 
-    // Since there's no work to do, the idle event isn't going to trigger, just process events a couple times
-    for (int i = 0; i < 10; ++i)
-    {
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
-    }
-    
-    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 0);
-    ASSERT_EQ(m_data->m_processResults.size(), 0);
-    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+    ExpectNoWork();
 }
 
 TEST_F(ModtimeScanningTest, ModtimeSkipping_EnablePlatform_ShouldProcessFilesForPlatform)
 {
     using namespace AzToolsFramework::AssetSystem;
 
-    // Enable the feature we're testing
+    // Enable the features we're testing
     m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
     
     // Enable es3 platform after the initial SetUp has already processed the files for pc
     QDir tempPath(m_tempDir.path());
@@ -4511,66 +4603,176 @@ TEST_F(ModtimeScanningTest, ModtimeSkipping_EnablePlatform_ShouldProcessFilesFor
     QSet<AssetFileInfo> filePaths = BuildFileSet();
     SimulateAssetScanner(filePaths);
 
-    ASSERT_TRUE(BlockUntilIdle(5000));
-    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 4); // 2 files * 2 platforms
-    ASSERT_EQ(m_data->m_processResults.size(), 2); // 2 files for es3 platform
-    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+    ExpectWork(4, 2); // CreateJobs = 4, 2 files * 2 platforms.  ProcessJobs = 2, just the es3 platform jobs (pc is already processed)
 
     ASSERT_TRUE(m_data->m_processResults[0].m_destinationPath.contains("es3"));
     ASSERT_TRUE(m_data->m_processResults[1].m_destinationPath.contains("es3"));
+}
+
+TEST_F(ModtimeScanningTest, ModtimeSkipping_ModifyTimestamp)
+{
+    // Update the timestamp on a file without changing its contents
+    // This should not cause any job to run since the hash of the file is the same before/after
+    // Additionally, the timestamp stored in the database should be updated
+    using namespace AzToolsFramework::AssetSystem;
+
+    uint64_t timestamp = 1594923423;
+
+    QString databaseName, scanfolderName;
+    m_config->ConvertToRelativePath(m_data->m_absolutePath[1], databaseName, scanfolderName);
+    auto* scanFolder = m_config->GetScanFolderForFile(m_data->m_absolutePath[1]);
+
+    AzToolsFramework::AssetDatabase::FileDatabaseEntry fileEntry;
+
+    m_assetProcessorManager.get()->m_stateData->GetFileByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(), fileEntry);
+
+    ASSERT_NE(fileEntry.m_modTime, timestamp);
+    uint64_t existingTimestamp = fileEntry.m_modTime;
+
+    // Modify the timestamp on just one file
+    AzToolsFramework::ToolsFileUtils::SetModificationTime(m_data->m_absolutePath[1].toUtf8().data(), timestamp);
+
+    // Enable the features we're testing
+    m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
+
+    QSet<AssetFileInfo> filePaths = BuildFileSet();
+    SimulateAssetScanner(filePaths);
+
+    ExpectNoWork();
+
+    m_assetProcessorManager.get()->m_stateData->GetFileByFileNameAndScanFolderId(databaseName, scanFolder->ScanFolderID(), fileEntry);
+
+    // The timestamp should be updated even though nothing processed
+    ASSERT_NE(fileEntry.m_modTime, existingTimestamp);
+}
+
+TEST_F(ModtimeScanningTest, ModtimeSkipping_ModifyTimestampNoHashing_ProcessesFile)
+{
+    // Update the timestamp on a file without changing its contents
+    // This should not cause any job to run since the hash of the file is the same before/after
+    // Additionally, the timestamp stored in the database should be updated
+    using namespace AzToolsFramework::AssetSystem;
+
+    uint64_t timestamp = 1594923423;
+
+    // Modify the timestamp on just one file
+    AzToolsFramework::ToolsFileUtils::SetModificationTime(m_data->m_absolutePath[1].toUtf8().data(), timestamp);
+
+    // Enable the features we're testing
+    m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, false);
+
+    QSet<AssetFileInfo> filePaths = BuildFileSet();
+    SimulateAssetScanner(filePaths);
+
+    ExpectWork(2, 2);
 }
 
 TEST_F(ModtimeScanningTest, ModtimeSkipping_ModifyFile)
 {
     using namespace AzToolsFramework::AssetSystem;
 
-    // Modify the timestamp on just one file
-    AzToolsFramework::ToolsFileUtils::SetModificationTime(m_data->m_absolutePath[1].toUtf8().data(), 1234);
+    SetFileContents(m_data->m_absolutePath[1].toUtf8().constData(), "hello world");
     
-    // Enable the feature we're testing
+    // Enable the features we're testing
     m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
 
     QSet<AssetFileInfo> filePaths = BuildFileSet();
     SimulateAssetScanner(filePaths);
 
     // Even though we're only updating one file, we're expecting 2 createJob calls because our test file is a dependency that triggers the other test file to process as well
-    ASSERT_TRUE(BlockUntilIdle(5000));
-    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 2);
-    ASSERT_EQ(m_data->m_processResults.size(), 2);
-    ASSERT_FALSE(m_data->m_processResults[0].m_autoFail);
-    ASSERT_FALSE(m_data->m_processResults[1].m_autoFail);
-    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+    ExpectWork(2, 2);
+}
+
+TEST_F(ModtimeScanningTest, ModtimeSkipping_ModifyFile_AndThenRevert_ProcessesAgain)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    auto theFile = m_data->m_absolutePath[1].toUtf8();
+    const char* theFileString = theFile.constData();
+
+    SetFileContents(theFileString, "hello world");
+
+    // Enable the features we're testing
+    m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
+
+    QSet<AssetFileInfo> filePaths = BuildFileSet();
+    SimulateAssetScanner(filePaths);
+
+    // Even though we're only updating one file, we're expecting 2 createJob calls because our test file is a dependency that triggers the other test file to process as well
+    ExpectWork(2, 2);
+    ProcessAssetJobs();
+
+    m_data->m_mockBuilderInfoHandler.m_createJobsCount = 0;
+    m_data->m_processResults.clear();
+    m_data->m_deletedSources.clear();
+
+    SetFileContents(theFileString, "");
+
+    filePaths = BuildFileSet();
+    SimulateAssetScanner(filePaths);
+
+    // Expect processing to happen again
+    ExpectWork(2, 2);
+}
+
+TEST_F(ModtimeScanningTest, ModtimeSkipping_ModifyFilesSameHash_BothProcess)
+{
+    using namespace AzToolsFramework::AssetSystem;
+
+    SetFileContents(m_data->m_absolutePath[1].toUtf8().constData(), "hello world");
+
+    // Enable the features we're testing
+    m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
+
+    QSet<AssetFileInfo> filePaths = BuildFileSet();
+    SimulateAssetScanner(filePaths);
+
+    // Even though we're only updating one file, we're expecting 2 createJob calls because our test file is a dependency that triggers the other test file to process as well
+    ExpectWork(2, 2);
+    ProcessAssetJobs();
+
+    m_data->m_mockBuilderInfoHandler.m_createJobsCount = 0;
+    m_data->m_processResults.clear();
+    m_data->m_deletedSources.clear();
+
+    // Make file 0 have the same contents as file 1
+    SetFileContents(m_data->m_absolutePath[0].toUtf8().constData(), "hello world");
+
+    filePaths = BuildFileSet();
+    SimulateAssetScanner(filePaths);
+
+    ExpectWork(1, 1);
 }
 
 TEST_F(ModtimeScanningTest, ModtimeSkipping_ModifyMetadataFile)
 {
     using namespace AzToolsFramework::AssetSystem;
 
-    // Modify the timestamp on just one file
-    AzToolsFramework::ToolsFileUtils::SetModificationTime(m_data->m_absolutePath[2].toUtf8().data(), 1234);
+    SetFileContents(m_data->m_absolutePath[2].toUtf8().constData(), "hello world");
 
-    // Enable the feature we're testing
+    // Enable the features we're testing
     m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
 
     QSet<AssetFileInfo> filePaths = BuildFileSet();
     SimulateAssetScanner(filePaths);
 
     // Even though we're only updating one file, we're expecting 2 createJob calls because our test file is a metadata file
     // that triggers the source file which is a dependency that triggers the other test file to process as well
-    ASSERT_TRUE(BlockUntilIdle(5000));
-    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 2);
-    ASSERT_EQ(m_data->m_processResults.size(), 2);
-    ASSERT_FALSE(m_data->m_processResults[0].m_autoFail);
-    ASSERT_FALSE(m_data->m_processResults[1].m_autoFail);
-    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+    ExpectWork(2, 2);
 }
 
 TEST_F(ModtimeScanningTest, ModtimeSkipping_DeleteFile)
 {
     using namespace AzToolsFramework::AssetSystem;
 
-    // Enable the feature we're testing
+    // Enable the features we're testing
     m_assetProcessorManager->m_allowModtimeSkippingFeature = true;
+    AssetUtilities::SetUseFileHashOverride(true, true);
 
     ASSERT_TRUE(QFile::remove(m_data->m_absolutePath[0]));
 
@@ -4594,6 +4796,59 @@ TEST_F(ModtimeScanningTest, ModtimeSkipping_DeleteFile)
     ASSERT_THAT(m_data->m_deletedSources, testing::ElementsAre(m_data->m_relativePathFromWatchFolder[0]));
 }
 
+TEST_F(ModtimeScanningTest, ReprocessRequest_FileNotModified_FileProcessed)
+{
+    using namespace AzToolsFramework::AssetSystem;
+
+    m_assetProcessorManager->RequestReprocess(m_data->m_absolutePath[0]);
+
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 1);
+    ASSERT_EQ(m_data->m_processResults.size(), 1);
+}
+
+TEST_F(ModtimeScanningTest, ReprocessRequest_SourceWithDependency_BothWillProcess)
+{
+    using namespace AzToolsFramework::AssetSystem;
+
+    using SourceFileDependencyEntry = AzToolsFramework::AssetDatabase::SourceFileDependencyEntry;
+
+    SourceFileDependencyEntry newEntry1;  
+    newEntry1.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
+    newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
+    newEntry1.m_source = m_data->m_absolutePath[0].toUtf8().constData();
+    newEntry1.m_dependsOnSource = m_data->m_absolutePath[1].toUtf8().constData();
+    newEntry1.m_typeOfDependency = SourceFileDependencyEntry::DEP_SourceToSource;
+
+    m_assetProcessorManager->RequestReprocess(m_data->m_absolutePath[0]);
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 1);
+    ASSERT_EQ(m_data->m_processResults.size(), 1);
+
+    m_assetProcessorManager->RequestReprocess(m_data->m_absolutePath[1]);
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 3);
+    ASSERT_EQ(m_data->m_processResults.size(), 3);
+}
+
+TEST_F(ModtimeScanningTest, ReprocessRequest_RequestFolder_SourceAssetsWillProcess)
+{
+    using namespace AzToolsFramework::AssetSystem;
+
+    const auto& scanFolder = m_config->GetScanFolderAt(0);
+
+    QString scanPath = scanFolder.ScanPath();
+    m_assetProcessorManager->RequestReprocess(scanPath);
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    // two text files are source assets, assetinfo is not
+    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 2);
+    ASSERT_EQ(m_data->m_processResults.size(), 2);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 MockBuilderInfoHandler::~MockBuilderInfoHandler()
@@ -4602,7 +4857,7 @@ MockBuilderInfoHandler::~MockBuilderInfoHandler()
     m_builderDesc = {};
 }
 
-void MockBuilderInfoHandler::GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList)
+void MockBuilderInfoHandler::GetMatchingBuildersInfo(const AZStd::string& /*assetPath*/, AssetProcessor::BuilderInfoList& builderInfoList)
 {
     builderInfoList.push_back(m_builderDesc);
 }
@@ -4640,7 +4895,7 @@ void MockBuilderInfoHandler::CreateJobs(const AssetBuilderSDK::CreateJobsRequest
     }
 }
 
-void MockBuilderInfoHandler::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
+void MockBuilderInfoHandler::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& /*request*/, AssetBuilderSDK::ProcessJobResponse& response)
 {
     response.m_resultCode = AssetBuilderSDK::ProcessJobResultCode::ProcessJobResult_Success;
 }
@@ -4906,7 +5161,7 @@ TEST_F(AssetProcessorManagerTest, RemoveSource_RemoveCacheFolderIfEmpty_Ok)
 
 }
 
-void DuplicateProductsTest::SetupDuplicateProductsTest(QString& sourceFile, QDir& tempPath, QString& productFile, AZStd::vector<AssetProcessor::JobDetails>& jobDetails, AssetBuilderSDK::ProcessJobResponse& response)
+void DuplicateProductsTest::SetupDuplicateProductsTest(QString& sourceFile, QDir& tempPath, QString& productFile, AZStd::vector<AssetProcessor::JobDetails>& jobDetails, AssetBuilderSDK::ProcessJobResponse& response, bool multipleOutputs, QString extension)
 {
     using namespace AssetProcessor;
     using namespace AssetBuilderSDK;
@@ -4919,7 +5174,7 @@ void DuplicateProductsTest::SetupDuplicateProductsTest(QString& sourceFile, QDir
 
     AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
     builderDescriptor.m_name = "Test Txt Builder";
-    builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.txt", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+    builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(QString("*.%1").arg(extension).toUtf8().constData(), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
     builderDescriptor.m_busId = AZ::Uuid::CreateRandom();
     builderDescriptor.m_createJobFunction = [&](const AssetBuilderSDK::CreateJobsRequest& /*request*/, AssetBuilderSDK::CreateJobsResponse& response)
     {
@@ -4928,6 +5183,12 @@ void DuplicateProductsTest::SetupDuplicateProductsTest(QString& sourceFile, QDir
         jobDescriptor.SetPlatformIdentifier("pc");
         response.m_createJobOutputs.emplace_back(jobDescriptor);
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
+
+        if(multipleOutputs)
+        {
+            jobDescriptor.m_jobKey = "Duplicate Output";
+            response.m_createJobOutputs.emplace_back(jobDescriptor);
+        }
     };
     builderDescriptor.m_processJobFunction = [](const AssetBuilderSDK::ProcessJobRequest& /*request*/, AssetBuilderSDK::ProcessJobResponse& response)
     {
@@ -4941,14 +5202,14 @@ void DuplicateProductsTest::SetupDuplicateProductsTest(QString& sourceFile, QDir
     builderFilePatternMatcher.m_matcherBuilderPattern = AssetUtilities::BuilderFilePatternMatcher(builderDescriptor.m_patterns.back(), builderDescriptor.m_busId);
     m_mockApplicationManager->m_matcherBuilderPatterns.emplace_back(builderFilePatternMatcher);
 
-    sourceFile = tempPath.absoluteFilePath("subfolder1/subfolder2/source_test.txt");
+    sourceFile = tempPath.absoluteFilePath("subfolder1/subfolder2/source_test." + extension);
     UnitTestUtils::CreateDummyFile(sourceFile, "source");
     // Tell the APM about the file:
     m_isIdling = false;
     QMetaObject::invokeMethod(m_assetProcessorManager.get(), "AssessModifiedFile", Qt::QueuedConnection, Q_ARG(QString, sourceFile));
     ASSERT_TRUE(BlockUntilIdle(5000));
 
-    productFile.append(QDir(jobDetails[0].m_destinationPath).absoluteFilePath("product_test.txt"));
+    productFile.append(QDir(jobDetails[0].m_destinationPath).absoluteFilePath("product_test." + extension));
     UnitTestUtils::CreateDummyFile(productFile, "product");
 
     // Populate ProcessJobResponse
@@ -4973,7 +5234,32 @@ TEST_F(DuplicateProductsTest, SameSource_MultipleBuilder_DuplicateProductJobs_Em
     AZStd::vector<JobDetails> jobDetails;
     
     ProcessJobResponse response;
-    SetupDuplicateProductsTest(sourceFile, tempPath, productFile, jobDetails, response);
+    SetupDuplicateProductsTest(sourceFile, tempPath, productFile, jobDetails, response, false, "txt");
+
+    // ----------------------------- TEST BEGINS HERE -----------------------------
+    // We will process another job with the same source file outputting the same product
+    JobDetails jobDetail = jobDetails[1];
+    jobDetails.clear();
+    m_isIdling = false;
+    m_assetProcessorManager->AssetProcessed(jobDetail.m_jobEntry, response);
+    ASSERT_TRUE(BlockUntilIdle(5000));
+
+    EXPECT_EQ(jobDetails.size(), 1);
+    EXPECT_TRUE(jobDetails.back().m_jobParam.find(AZ_CRC(AutoFailReasonKey)) != jobDetails.back().m_jobParam.end());
+}
+
+TEST_F(DuplicateProductsTest, SameSource_SameBuilder_DuplicateProductJobs_EmitAutoFailJob)
+{
+    using namespace AssetProcessor;
+    using namespace AssetBuilderSDK;
+
+    QString productFile;
+    QDir tempPath(m_tempDir.path());
+    QString sourceFile;
+    AZStd::vector<JobDetails> jobDetails;
+
+    ProcessJobResponse response;
+    SetupDuplicateProductsTest(sourceFile, tempPath, productFile, jobDetails, response, true, "png");
 
     // ----------------------------- TEST BEGINS HERE -----------------------------
     // We will process another job with the same source file outputting the same product
@@ -4999,7 +5285,7 @@ TEST_F(DuplicateProductsTest, SameSource_MultipleBuilder_NoDuplicateProductJob_N
     // Capture the job details as the APM inspects the file.
     AZStd::vector<JobDetails> jobDetails;
     ProcessJobResponse response;
-    SetupDuplicateProductsTest(sourceFile, tempPath, productFile, jobDetails, response);
+    SetupDuplicateProductsTest(sourceFile, tempPath, productFile, jobDetails, response, false, "txt");
 
     // ----------------------------- TEST BEGINS HERE -----------------------------
     // We will process another job with the same source file outputting a different product file
@@ -5170,7 +5456,7 @@ void MockMultiBuilderInfoHandler::GetMatchingBuildersInfo(const AZStd::string& a
     }
 }
 
-void MockMultiBuilderInfoHandler::GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList)
+void MockMultiBuilderInfoHandler::GetAllBuildersInfo(AssetProcessor::BuilderInfoList& /*builderInfoList*/)
 {
     // Only here to fulfill the interface requirement, this won't be called as part of the test
     ASSERT_TRUE(false) << "Not implemented";
@@ -5199,7 +5485,7 @@ void MockMultiBuilderInfoHandler::CreateJobs(AssetBuilderExtraInfo extraInfo, co
     }
 }
 
-void MockMultiBuilderInfoHandler::ProcessJob(AssetBuilderExtraInfo extraInfo, const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
+void MockMultiBuilderInfoHandler::ProcessJob(AssetBuilderExtraInfo /*extraInfo*/, const AssetBuilderSDK::ProcessJobRequest& /*request*/, AssetBuilderSDK::ProcessJobResponse& response)
 {
     response.m_resultCode = AssetBuilderSDK::ProcessJobResultCode::ProcessJobResult_Success;
 }
@@ -5408,10 +5694,7 @@ TEST_F(DeleteTest, DeleteFolderSharedAcrossTwoScanFolders_CorrectFileAndFolderAr
     QSet<AssetFileInfo> filePaths = BuildFileSet();
     SimulateAssetScanner(filePaths);
 
-    ASSERT_TRUE(BlockUntilIdle(5000));
-    ASSERT_EQ(m_data->m_mockBuilderInfoHandler.m_createJobsCount, 0);
-    ASSERT_EQ(m_data->m_processResults.size(), 0);
-    ASSERT_EQ(m_data->m_deletedSources.size(), 0);
+    ExpectNoWork();
 
     // Delete one of the folders
     QDir tempPath(m_tempDir.path());

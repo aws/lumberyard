@@ -29,6 +29,7 @@
 #include <AssetBuilderApplication.h>
 #include <AssetBuilderComponent.h>
 #include <AssetBuilderInfo.h>
+#include <AzCore/Interface/Interface.h>
 
 AZ::ComponentTypeList AssetBuilderApplication::GetRequiredSystemComponents() const
 {
@@ -62,6 +63,12 @@ AZ::ComponentTypeList AssetBuilderApplication::GetRequiredSystemComponents() con
 AssetBuilderApplication::AssetBuilderApplication(int* argc, char*** argv)
 : AzToolsFramework::ToolsApplication(argc, argv)
 {
+    AZ::Interface<IBuilderApplication>::Register(this);
+}
+
+AssetBuilderApplication::~AssetBuilderApplication()
+{
+    AZ::Interface<IBuilderApplication>::Unregister(this);
 }
 
 void AssetBuilderApplication::RegisterCoreComponents()
@@ -139,9 +146,6 @@ void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
     AzFramework::StringFunc::Path::Join(gameRoot.c_str(), "Config/Editor.xml", configFilePath);
     ReflectModulesFromAppDescriptor(configFilePath.c_str());
 
-    // once we load all the modules from the app descriptor, create an entity with the builders inside gems
-    CreateAndAddEntityFromComponentTags(AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }), "AssetBuilders Entity");
-
     // the asset builder app never writes source files, only assets, so there is no need to do any kind of asset upgrading
     AZ::Data::AssetManager::Instance().SetAssetInfoUpgradingEnabled(false);
 }
@@ -218,4 +222,9 @@ bool AssetBuilderApplication::GetOptionalAppRootArg(char destinationRootArgBuffe
     {
         return false;
     }
+}
+
+void AssetBuilderApplication::InitializeBuilderComponents()
+{
+    CreateAndAddEntityFromComponentTags(AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }), "AssetBuilders Entity");
 }

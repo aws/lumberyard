@@ -22,6 +22,7 @@
 #include <QValidator>
 #include <vector>
 #include <Controls/QToolTipWidget.h>
+#include <AzQtComponents/Components/Widgets/Slider.h>
 #include "QAmazonDoubleSpinBox.h"
 
 class QWidgetVector
@@ -65,7 +66,7 @@ private:
     const int m_spinBoxWidth;
 
     QHBoxLayout* layout;
-    QSlider* slider;
+    AzQtComponents::SliderInt* slider;
     QVector<VectorEntry*> list;
 
     bool m_ignoreSliderChange;

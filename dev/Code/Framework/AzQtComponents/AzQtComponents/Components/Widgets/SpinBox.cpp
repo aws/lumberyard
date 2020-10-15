@@ -1607,6 +1607,23 @@ namespace internal
         QLineEdit::keyPressEvent(ev);
     }
 
+    void SpinBoxLineEdit::paintEvent(QPaintEvent* event)
+    {
+        QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>(parent());
+        bool fixLeftAlignment = !spinBox->property(g_hoveredPropertyName).toBool() && !hasFocus();
+        int cursorPos = 0;
+        if (fixLeftAlignment)
+        {
+            // Reset the cursorposition to ensure left-aligned values
+            cursorPos = cursorPosition();
+            setCursorPosition(0);
+        }
+        QLineEdit::paintEvent(event);
+        if (fixLeftAlignment)
+        {
+            setCursorPosition(cursorPos);
+        }
+    }
 } // namespace internal
 
 } // namespace AzQtComponents

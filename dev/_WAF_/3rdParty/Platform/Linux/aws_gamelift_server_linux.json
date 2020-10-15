@@ -11,10 +11,10 @@
                 "GAMELIFT_USE_STD"
             ],
             "aws_gamelift_server_static/libpath_debug": [
-                "lib/linux/intel64/clang-3.8.0/Debug"
+                "lib/linux/libcxx/intel64/clang-6.0.0/Debug"
             ],
             "aws_gamelift_server_static/libpath_release": [
-                "lib/linux/intel64/clang-3.8.0/Release"
+                "lib/linux/libcxx/intel64/clang-6.0.0/Release"
             ],
             "aws_gamelift_server_static/lib": [
                 "libaws-cpp-sdk-gamelift-server.a",

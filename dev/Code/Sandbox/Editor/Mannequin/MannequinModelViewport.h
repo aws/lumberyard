@@ -280,7 +280,9 @@ private:
 
     IActionController* m_pActionController;
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* m_piGroundPlanePhysicalEntity;
+#endif
 
     ESequencerTickMode m_TickerMode;
 

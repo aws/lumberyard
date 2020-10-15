@@ -32,8 +32,25 @@ namespace AZ
                 [alert addAction:okAction];
             }
             
-            UIWindow* window = [[UIApplication sharedApplication] keyWindow];
-            UIViewController* rootViewController = window ? window.rootViewController : nullptr;
+            UIWindow* foundWindow = nil;
+#if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
+            if(@available(iOS 13.0, tvOS 13.0, *))
+            {
+                NSArray* windows = [[UIApplication sharedApplication] windows];
+                for (UIWindow* window in windows)
+                {
+                    if (window.isKeyWindow)
+                    {
+                        foundWindow = window;
+                        break;
+                    }
+                }
+            }
+#else
+            foundWindow = [[UIApplication sharedApplication] keyWindow];
+#endif
+            
+            UIViewController* rootViewController = foundWindow ? foundWindow.rootViewController : nullptr;
             if (!rootViewController)
             {
                 return "";
@@ -58,7 +75,7 @@ namespace AZ
             {
                 [rootViewController presentViewController:alert animated:YES completion:nil];
             }
-            
+
             while (userSelection.empty())
             {
                 CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, TRUE);

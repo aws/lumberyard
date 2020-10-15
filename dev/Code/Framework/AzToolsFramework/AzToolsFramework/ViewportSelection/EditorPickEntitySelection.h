@@ -20,7 +20,7 @@ namespace AzToolsFramework
     /// Viewport interaction that will handle assigning an entity in the viewport to
     /// an entity field in the entity inspector.
     class EditorPickEntitySelection
-        : public ViewportInteraction::ViewportSelectionRequests
+        : public ViewportInteraction::InternalViewportSelectionRequests
     {
     public:
         AZ_CLASS_ALLOCATOR_DECL
@@ -29,8 +29,8 @@ namespace AzToolsFramework
         ~EditorPickEntitySelection();
 
     private:
-        // ViewportInteraction::ViewportSelectionRequests
-        bool HandleMouseInteraction(
+        // ViewportInteraction::InternalViewportSelectionRequests ...
+        bool InternalHandleMouseViewportInteraction(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
         void DisplayViewportSelection(
             const AzFramework::ViewportInfo& viewportInfo,

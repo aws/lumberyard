@@ -11,19 +11,19 @@
 */
 #pragma once
 
+#include <AzCore/std/typetraits/underlying_type.h>
+
 #include <AzQtComponents/AzQtComponentsAPI.h>
-#include <QStyle>
+
+#include <QStack>
 #include <QString>
+#include <QStyle>
 #include <QVector>
 #include <QWidget>
-#include <QStack>
-
-#include <AzCore/std/typetraits/underlying_type.h>
 
 /**
 * AUTOMOC
 */
-
 
 class QSettings;
 class QToolButton;
@@ -39,94 +39,87 @@ namespace AzQtComponents
         return static_cast<typename AZStd::underlying_type<E>::type>(e);
     }
 
+    //! Enum listing the type of buttons 
     enum class NavigationButton
     {
-        Back,
-        Forward,
-        Browse,
+        Back,       //!< Back button    - restores previous path when clicked.
+        Forward,    //!< Forward button - navigates to latest path before the back button was clicked.
+        Browse,     //!< Browse button  - can be used to add browsing capabilities to select a path from disk.
 
-        Count
+        Count       //!< Counter for the number of possible values.
     };
 
     using BreadCrumbButtonStates = bool[EnumToConstExprInt(NavigationButton::Count)];
 
-    /**
-     * Specialized widget to create html-style clickable links for each of the parts of a path, and provide state management
-     * and signals for handling common path related functionality (back, forward and up).
-     *
-     * Can be styled by modifying BreadCrumbs.qss and BreadCrumbsConfig.ini.
-     *
-     * Note that Qt doesn't handle HTML embedded in QLabel widgets gracefully - stylesheets are not shared between those
-     * and Qt objects. As a result, the color of the HTML styled links in the BreadCrumbs is specified in BreadCrumbsConfig.ini
-     */
+    //! Specialized widget to create html-style clickable links for each part of a path.
+    //! Provides state management and signals for handling common path navigation functionality (back, forward and up).
+    //! Can be styled by modifying BreadCrumbs.qss and BreadCrumbsConfig.ini.
+    //! Note that Qt doesn't handle HTML embedded in QLabel widgets gracefully - stylesheets are not shared between those
+    //! and Qt objects. As a result, the color of the HTML styled links in the BreadCrumbs is specified in BreadCrumbsConfig.ini.
     class AZ_QT_COMPONENTS_API BreadCrumbs
         : public QWidget
     {
         Q_OBJECT
 
     public:
-
+        //! Style configuration for the Breadcrumbs class.
         struct Config
         {
-            QString linkColor; // this is a color, but loaded as a string as it will be inserted into an HTML/css style spec
-            float optimalPathWidth; // this is the portion of the total width that should be considered for display the path
+            QString linkColor;      //!< Color for links. Must be a string using the hex format #rrggbb.
+            float optimalPathWidth; //!< The portion of the total width used to display the path. Must be a value between 0.0 and 1.0.
         };
 
         explicit BreadCrumbs(QWidget* parent = nullptr);
         ~BreadCrumbs();
 
+        //! Returns true if it is possible to move back in the navigation stack, false otherwise.
         bool isBackAvailable() const;
+        //! Returns true if it is possible to move forward in the navigation stack, false otherwise.
         bool isForwardAvailable() const;
+        //! Returns true if the current breadcrumb path has a parent that can be added to the navigation stack, false otherwise.
         bool isUpAvailable() const;
 
+        //! Returns a string with the current breadcrumb path.
         QString currentPath() const;
 
+        //! Creates a button of the type specified.
+        //! @param type The type of button to create.
+        //! @return The pointer to the newly created QToolButton.
+        //! Note: the button will need to be added to a layout manually.
         QToolButton* createButton(NavigationButton type);
+        //! Creates a widget containing the back and forward buttons.
+        //! @return The pointer to the newly created QWidget.
+        //! Note: the widget will need to be added to a layout manually.
         QWidget* createBackForwardToolBar();
+        //! Creates a separator styled to match the Breadcrumbs widget.
+        //! @return The pointer to the newly created separator.
+        //! Note: the separator will need to be added to a layout manually.
         QWidget* createSeparator();
 
-        /*!
-         * Loads the button config data from a settings object.
-         */
+        //! Sets the Breadcrumbs style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the Breadcrumbs.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-         * Returns default button config data.
-         */
+        //! Gets the default Breadcrumbs style configuration.
         static Config defaultConfig();
 
     public Q_SLOTS:
-        /*!
-         * Pushes a path. The current path, if one is set, will be pushed to the top of the back stack and the forward stack will be cleared.
-         */
+        //! Pushes a path to be shown in the Breadcrumbs widget.
         void pushPath(const QString& fullPath);
-
-        /*!
-         * Restores the path on the top of the back stack and pushes the current path onto the forward stack.
-         */
+        //! Restores the previous breadcrumb path from the navigation stack if it exists.
         bool back();
-
-        /*!
-         * Restores the path on the top of the forward stack and pushes the current path onto the back stack.
-         */
+        //! Restores the next breadcrumb path from the navigation stack if it exists.
         bool forward();
 
- 
     Q_SIGNALS:
-
-        /*!
-         * Emitted any time the currently displayed path changes (via any of the above slots).
-         */
+        //! Triggered when the currently displayed path changes via any of the slots.
+        //! @return fullPath The new path after the change.
         void pathChanged(const QString& fullPath);
-
-        /*!
-         * Indicates that a change to the back stack has occurred. Can be used to update back buttons.
-         */
+        //! Triggered after a change to the navigation stack, if back is available. Used to update back buttons.
+        //! @param enabled The new back availability state after the change.
         void backAvailabilityChanged(bool enabled);
-
-        /*!
-         * Indicates that a change to the forward stack has occurred. Can be used to update forward buttons.
-         */
+        //! Triggered after a change to the navigation stack, if forward is available. Used to update forward buttons.
+        //! @param enabled The new forward availability state after the change.
         void forwardAvailabilityChanged(bool enabled);
 
     protected:

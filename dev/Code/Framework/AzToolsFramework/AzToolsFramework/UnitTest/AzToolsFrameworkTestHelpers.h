@@ -16,15 +16,16 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/Entity/EditorEntityTransformBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/Viewport/ActionBus.h>
+#include <AzToolsFramework/SourceControl/PerforceConnection.h>
 #include <AzCore/UnitTest/TestTypes.h>
-
-#include <ostream>
+#include <AzCore/UnitTest/Helpers.h>
 
 AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // warning suppressed: constant used in conditional expression
 #include <QtTest/QtTest>
@@ -34,21 +35,11 @@ namespace AZ
 {
     class Entity;
     class EntityId;
-    class Vector3;
-    class Quaternion;
-
-    std::ostream& operator<<(std::ostream& os, const Vector3& vec);
-    std::ostream& operator<<(std::ostream& os, const Quaternion& quat);
 
 } // namespace AZ
 
 namespace UnitTest
 {
-    AZ_PUSH_DISABLE_WARNING(4100,"-Wno-unused-parameter")
-    // matcher to make tests easier to read and failures more useful (more information is included in the output)
-    MATCHER_P(IsClose, v, "") { return arg.IsClose(v); }
-    AZ_POP_DISABLE_WARNING
-
     /// Base fixture for ToolsApplication editor tests.
     class ToolsApplicationFixture
         : public AllocatorsTestFixture
@@ -140,6 +131,46 @@ namespace UnitTest
         void InvalidatePropertyDisplay(AzToolsFramework::PropertyModificationRefreshLevel level) override;
 
         bool m_propertyDisplayInvalidated = false;
+    };
+
+    struct MockPerforceCommand
+        : AzToolsFramework::PerforceCommand
+    {
+        void ExecuteCommand() override;
+
+        void ExecuteRawCommand() override;
+
+        bool m_persistFstatResponse = false;
+        AZStd::string m_fstatResponse;
+        AZStd::string m_fstatErrorResponse;
+        AZStd::function<void(AZStd::string)> m_addCallback;
+        AZStd::function<void(AZStd::string)> m_editCallback;
+        AZStd::function<void(AZStd::string)> m_moveCallback;
+        AZStd::function<void(AZStd::string)> m_deleteCallback;
+    };
+
+    struct MockPerforceConnection
+        : AzToolsFramework::PerforceConnection
+    {
+        explicit MockPerforceConnection(MockPerforceCommand& command) : PerforceConnection(command)
+        {
+        }
+    };
+
+    void WaitForSourceControl(AZStd::binary_semaphore& waitSignal);
+
+    struct SourceControlTest
+        : AzToolsFramework::SourceControlNotificationBus::Handler
+    {
+        SourceControlTest();
+        ~SourceControlTest();
+
+        void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;
+        void EnableSourceControl();
+
+        bool m_connected = false;
+        AZStd::binary_semaphore m_connectSignal;
+        MockPerforceCommand m_command;
     };
 
     /// Create an Entity as it would appear in the Editor.

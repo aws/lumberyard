@@ -32,53 +32,46 @@
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    QConnectionsWidget::QConnectionsWidget(QWidget* pParent, const AZStd::string& sGroup)
-        : QWidget(pParent)
-        , m_sGroup(sGroup)
+    QConnectionsWidget::QConnectionsWidget(QWidget* parent)
+        : QWidget(parent)
         , m_notFoundColor(QColor(0xf3, 0x81, 0x1d))
-        , m_localisedColor(QColor(0x42, 0x85, 0xf4))
-        , m_pControl(nullptr)
+        , m_localizedColor(QColor(0x42, 0x85, 0xf4))
+        , m_control(nullptr)
     {
         setupUi(this);
 
-        m_pConnectionProperties->setSizeToContent(true);
-        m_pConnectionPropertiesFrame->setHidden(true);
-        connect(m_pConnectionProperties, SIGNAL(signalChanged()), this, SLOT(CurrentConnectionModified()));
+        m_connectionProperties->setSizeToContent(true);
+        m_connectionPropertiesFrame->setHidden(true);
+        connect(m_connectionProperties, SIGNAL(signalChanged()), this, SLOT(CurrentConnectionModified()));
 
-        m_pConnectionList->viewport()->installEventFilter(this);
-        m_pConnectionList->installEventFilter(this);
+        m_connectionList->viewport()->installEventFilter(this);
+        m_connectionList->installEventFilter(this);
 
-        connect(m_pConnectionList, SIGNAL(customContextMenuRequested(const QPoint&)), SLOT(ShowConnectionContextMenu(const QPoint&)));
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void QConnectionsWidget::Init(const AZStd::string& sGroup)
-    {
-        m_sGroup = sGroup;
-        connect(m_pConnectionList, SIGNAL(itemSelectionChanged()), this, SLOT(SelectedConnectionChanged()));
+        connect(m_connectionList, SIGNAL(customContextMenuRequested(const QPoint&)), SLOT(ShowConnectionContextMenu(const QPoint&)));
+        connect(m_connectionList, SIGNAL(itemSelectionChanged()), this, SLOT(SelectedConnectionChanged()));
     }
 
     //-------------------------------------------------------------------------------------------//
     void QConnectionsWidget::CurrentConnectionModified()
     {
-        if (m_pControl)
+        if (m_control)
         {
-            m_pControl->SignalControlModified();
+            m_control->SignalControlModified();
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    bool QConnectionsWidget::eventFilter(QObject* pObject, QEvent* pEvent)
+    bool QConnectionsWidget::eventFilter(QObject* object, QEvent* event)
     {
-        IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
-        if (pAudioSystemEditorImpl && m_pControl && pEvent->type() == QEvent::Drop)
+        IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
+        if (audioSystemImpl && m_control && event->type() == QEvent::Drop)
         {
-            QDropEvent* pDropEvent = static_cast<QDropEvent*>(pEvent);
-            const QMimeData* pData = pDropEvent->mimeData();
+            QDropEvent* dropEvent = static_cast<QDropEvent*>(event);
+            const QMimeData* mimeData = dropEvent->mimeData();
             QString format = "application/x-qabstractitemmodeldatalist";
-            if (pData->hasFormat(format))
+            if (mimeData->hasFormat(format))
             {
-                QByteArray encoded = pData->data(format);
+                QByteArray encoded = mimeData->data(format);
                 QDataStream stream(&encoded, QIODevice::ReadOnly);
                 while (!stream.atEnd())
                 {
@@ -87,11 +80,11 @@ namespace AudioControls
                     stream >> row >> col >> roleDataMap;
                     if (!roleDataMap.isEmpty())
                     {
-                        if (IAudioSystemControl* pMiddlewareControl = pAudioSystemEditorImpl->GetControl(roleDataMap[eMDR_ID].toUInt()))
+                        if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(roleDataMap[eMDR_ID].toUInt()))
                         {
-                            if (pAudioSystemEditorImpl->GetCompatibleTypes(m_pControl->GetType()) & pMiddlewareControl->GetType())
+                            if (audioSystemImpl->GetCompatibleTypes(m_control->GetType()) & middlewareControl->GetType())
                             {
-                                MakeConnectionTo(pMiddlewareControl);
+                                MakeConnectionTo(middlewareControl);
                             }
                         }
                     }
@@ -99,16 +92,16 @@ namespace AudioControls
             }
             return true;
         }
-        else if (pEvent->type() == QEvent::KeyPress)
+        else if (event->type() == QEvent::KeyPress)
         {
-            QKeyEvent* pDropEvent = static_cast<QKeyEvent*>(pEvent);
-            if (pDropEvent && pDropEvent->key() == Qt::Key_Delete && pObject == m_pConnectionList)
+            QKeyEvent* dropEvent = static_cast<QKeyEvent*>(event);
+            if (dropEvent && dropEvent->key() == Qt::Key_Delete && object == m_connectionList)
             {
                 RemoveSelectedConnection();
                 return true;
             }
         }
-        return QWidget::eventFilter(pObject, pEvent);
+        return QWidget::eventFilter(object, event);
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -116,74 +109,73 @@ namespace AudioControls
     {
         QMenu contextMenu(tr("Context menu"), this);
         contextMenu.addAction(tr("Remove Connection"), this, SLOT(RemoveSelectedConnection()));
-        contextMenu.exec(m_pConnectionList->mapToGlobal(pos));
+        contextMenu.exec(m_connectionList->mapToGlobal(pos));
     }
 
     //-------------------------------------------------------------------------------------------//
     void QConnectionsWidget::SelectedConnectionChanged()
     {
-        TConnectionPtr pConnection;
-        EACEControlType eType = AudioControls::eACET_NUM_TYPES;
-        if (m_pControl)
+        TConnectionPtr connection;
+        EACEControlType controlType = AudioControls::eACET_NUM_TYPES;
+        if (m_control)
         {
-            QList<QListWidgetItem*> selected = m_pConnectionList->selectedItems();
+            QList<QListWidgetItem*> selected = m_connectionList->selectedItems();
             if (selected.length() == 1)
             {
-                QListWidgetItem* pCurrent = selected[0];
-                if (pCurrent)
+                QListWidgetItem* currentItem = selected[0];
+                if (currentItem)
                 {
-                    const CID nExternalId = pCurrent->data(eMDR_ID).toInt();
-                    pConnection = m_pControl->GetConnection(nExternalId);
-                    eType = m_pControl->GetType();
+                    const CID externalId = currentItem->data(eMDR_ID).toInt();
+                    connection = m_control->GetConnection(externalId);
+                    controlType = m_control->GetType();
                 }
             }
         }
 
-        if (pConnection && pConnection->HasProperties())
+        if (connection && connection->HasProperties())
         {
-            m_pConnectionProperties->attach(Serialization::SStruct(*pConnection.get()));
-            m_pConnectionPropertiesFrame->setHidden(false);
+            m_connectionProperties->attach(Serialization::SStruct(*connection.get()));
+            m_connectionPropertiesFrame->setHidden(false);
         }
         else
         {
-            m_pConnectionProperties->detach();
-            m_pConnectionPropertiesFrame->setHidden(true);
+            m_connectionProperties->detach();
+            m_connectionPropertiesFrame->setHidden(true);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void QConnectionsWidget::MakeConnectionTo(IAudioSystemControl* pAudioMiddlewareControl)
+    void QConnectionsWidget::MakeConnectionTo(IAudioSystemControl* middlewareControl)
     {
-        IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
-        if (m_pControl && pAudioMiddlewareControl && pAudioSystemEditorImpl)
+        IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
+        if (m_control && middlewareControl && audioSystemImpl)
         {
             CUndo undo("Connected Audio Control to Audio System");
 
-            TConnectionPtr pConnection = m_pControl->GetConnection(pAudioMiddlewareControl, m_sGroup);
-            if (pConnection)
+            TConnectionPtr connection = m_control->GetConnection(middlewareControl);
+            if (connection)
             {
                 // connection already exists, select it
-                const int size = m_pConnectionList->count();
+                const int size = m_connectionList->count();
                 for (int i = 0; i < size; ++i)
                 {
-                    QListWidgetItem* pItem = m_pConnectionList->item(i);
-                    if (pItem && pItem->data(eMDR_ID).toInt() == pAudioMiddlewareControl->GetId())
+                    QListWidgetItem* listItem = m_connectionList->item(i);
+                    if (listItem && listItem->data(eMDR_ID).toInt() == middlewareControl->GetId())
                     {
-                        m_pConnectionList->clearSelection();
-                        pItem->setSelected(true);
-                        m_pConnectionList->setCurrentItem(pItem);
-                        m_pConnectionList->scrollToItem(pItem);
+                        m_connectionList->clearSelection();
+                        listItem->setSelected(true);
+                        m_connectionList->setCurrentItem(listItem);
+                        m_connectionList->scrollToItem(listItem);
                         break;
                     }
                 }
             }
             else
             {
-                pConnection = pAudioSystemEditorImpl->CreateConnectionToControl(m_pControl->GetType(), pAudioMiddlewareControl);
-                if (pConnection)
+                connection = audioSystemImpl->CreateConnectionToControl(m_control->GetType(), middlewareControl);
+                if (connection)
                 {
-                    pConnection->SetGroup(m_sGroup);
-                    m_pControl->AddConnection(pConnection);
+                    m_control->AddConnection(connection);
                 }
             }
         }
@@ -193,19 +185,19 @@ namespace AudioControls
     void QConnectionsWidget::RemoveSelectedConnection()
     {
         CUndo undo("Disconnected Audio Control from Audio System");
-        if (m_pControl)
+        if (m_control)
         {
             QMessageBox messageBox(this);
             messageBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
             messageBox.setDefaultButton(QMessageBox::Yes);
             messageBox.setWindowTitle("Audio Controls Editor");
-            QList<QListWidgetItem*> selected = m_pConnectionList->selectedItems();
+            QList<QListWidgetItem*> selected = m_connectionList->selectedItems();
             const int size = selected.length();
             if (size > 0)
             {
                 if (size == 1)
                 {
-                    messageBox.setText("Are you sure you want to delete the connection between \"" + QString(m_pControl->GetName().c_str()) + "\" and \"" + selected[0]->text() + "\"?");
+                    messageBox.setText("Are you sure you want to delete the connection between \"" + QString(m_control->GetName().c_str()) + "\" and \"" + selected[0]->text() + "\"?");
                 }
                 else
                 {
@@ -213,22 +205,22 @@ namespace AudioControls
                 }
                 if (messageBox.exec() == QMessageBox::Yes)
                 {
-                    if (IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl())
+                    if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl())
                     {
                         AZStd::vector<IAudioSystemControl*> connectedMiddlewareControls;
                         connectedMiddlewareControls.reserve(selected.size());
                         for (int i = 0; i < size; ++i)
                         {
-                            CID nAudioSystemControlID = selected[i]->data(eMDR_ID).toInt();
-                            connectedMiddlewareControls.push_back(pAudioSystemEditorImpl->GetControl(nAudioSystemControlID));
+                            CID middlewareControlId = selected[i]->data(eMDR_ID).toInt();
+                            connectedMiddlewareControls.push_back(audioSystemImpl->GetControl(middlewareControlId));
                         }
 
                         for (int i = 0; i < size; ++i)
                         {
-                            if (IAudioSystemControl* pAudioSystemControl = connectedMiddlewareControls[i])
+                            if (IAudioSystemControl* middlewareControl = connectedMiddlewareControls[i])
                             {
-                                pAudioSystemEditorImpl->ConnectionRemoved(pAudioSystemControl);
-                                m_pControl->RemoveConnection(pAudioSystemControl);
+                                audioSystemImpl->ConnectionRemoved(middlewareControl);
+                                m_control->RemoveConnection(middlewareControl);
                             }
                         }
                     }
@@ -240,63 +232,63 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void QConnectionsWidget::UpdateConnections()
     {
-        m_pConnectionList->clear();
-        IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
-        if (pAudioSystemEditorImpl && m_pControl)
+        m_connectionList->clear();
+        IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
+        if (audioSystemImpl && m_control)
         {
-            m_pConnectionList->setEnabled(true);
-            const size_t size = m_pControl->ConnectionCount();
+            m_connectionList->setEnabled(true);
+            const size_t size = m_control->ConnectionCount();
             for (size_t i = 0; i < size; ++i)
             {
-                TConnectionPtr pConnection = m_pControl->GetConnectionAt(i);
-                if (pConnection && pConnection->GetGroup() == m_sGroup)
+                TConnectionPtr connection = m_control->GetConnectionAt(i);
+                if (connection)
                 {
-                    if (IAudioSystemControl* pAudioSystemControl = pAudioSystemEditorImpl->GetControl(pConnection->GetID()))
+                    if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(connection->GetID()))
                     {
-                        CreateItemFromConnection(pAudioSystemControl);
+                        CreateItemFromConnection(middlewareControl);
                     }
                 }
             }
         }
         else
         {
-            m_pConnectionList->setEnabled(false);
+            m_connectionList->setEnabled(false);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void QConnectionsWidget::CreateItemFromConnection(IAudioSystemControl* pAudioSystemControl)
+    void QConnectionsWidget::CreateItemFromConnection(IAudioSystemControl* middlewareControl)
     {
-        if (IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl())
+        if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl())
         {
-            const TImplControlType nType = pAudioSystemControl->GetType();
+            const TImplControlType type = middlewareControl->GetType();
 
-            QListWidgetItem* pListItem = new QListWidgetItem(QIcon(QString(pAudioSystemEditorImpl->GetTypeIcon(nType).data())), QString(pAudioSystemControl->GetName().c_str()));
-            pListItem->setData(eMDR_ID, pAudioSystemControl->GetId());
-            pListItem->setData(eMDR_LOCALISED, pAudioSystemControl->IsLocalised());
-            if (pAudioSystemControl->IsPlaceholder())
+            QListWidgetItem* listItem = new QListWidgetItem(QIcon(QString(audioSystemImpl->GetTypeIcon(type).data())), QString(middlewareControl->GetName().c_str()));
+            listItem->setData(eMDR_ID, middlewareControl->GetId());
+            listItem->setData(eMDR_LOCALIZED, middlewareControl->IsLocalized());
+            if (middlewareControl->IsPlaceholder())
             {
-                pListItem->setToolTip(tr("Control not found in currently loaded audio system project"));
-                pListItem->setForeground(m_notFoundColor);
+                listItem->setToolTip(tr("Control not found in currently loaded audio system project"));
+                listItem->setForeground(m_notFoundColor);
             }
-            else if (pAudioSystemControl->IsLocalised())
+            else if (middlewareControl->IsLocalized())
             {
-                pListItem->setForeground(m_localisedColor);
+                listItem->setForeground(m_localizedColor);
             }
-            m_pConnectionList->insertItem(0, pListItem);
+            m_connectionList->insertItem(0, listItem);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void QConnectionsWidget::SetControl(CATLControl* pControl)
+    void QConnectionsWidget::SetControl(CATLControl* control)
     {
-        if (m_pControl != pControl)
+        if (m_control != control)
         {
-            m_pControl = pControl;
-            m_pConnectionList->clear();
+            m_control = control;
+            m_connectionList->clear();
             UpdateConnections();
         }
-        else if (m_pControl->ConnectionCount() != m_pConnectionList->count())
+        else if (m_control->ConnectionCount() != m_connectionList->count())
         {
             UpdateConnections();
         }

@@ -135,7 +135,11 @@ namespace ScriptCanvas
                     m_format.append(name);
                     m_format.append("}");
 
-                    m_stringInterface.SignalDataChanged();
+                    {
+                        m_isHandlingExtension = true;
+                        m_stringInterface.SignalDataChanged();
+                        m_isHandlingExtension = false;
+                    }
 
                     auto formatMapIter = m_formatSlotMap.find(name);
 
@@ -178,7 +182,7 @@ namespace ScriptCanvas
                             return;
                         }
 
-                        m_format.erase(firstInstance, name.size());                        
+                        m_format.erase(firstInstance, name.size());
                         m_formatSlotMap.erase(slotPair.first);
                         break;
                     }
@@ -229,7 +233,19 @@ namespace ScriptCanvas
 
             void StringFormatted::OnPropertyChanged()
             {
-                ParseFormat();
+                // When handling an extension we need to signal out right away since the extension needs the slot to exist immediately
+                if (m_isHandlingExtension)
+                {
+                    ParseFormat();
+                }
+                // Otherwise we want to delay until the top of the system tick, since adding/removing slots has a lot of side-effects which can cause a variety of crashes
+                // through elements being deleted while they are being dispatched to.
+                else
+                {
+                    AZ::SystemTickBus::QueueFunction([this]() {
+                        this->ParseFormat();
+                    });
+                }
             }
 
             void StringFormatted::RelayoutNode()
@@ -432,12 +448,7 @@ namespace ScriptCanvas
 
             void StringFormatted::OnFormatChanged()
             {
-                // Adding and removing slots within the ChangeNotify handler causes problems due to the property grid's
-                // rows changing. To get around that problem we queue the parsing of the string format to happen
-                // on the next system tick.
-                AZ::SystemTickBus::QueueFunction([this]() {
-                    m_stringInterface.SignalDataChanged();
-                });
+                m_stringInterface.SignalDataChanged();
             }
         }
     }

@@ -74,7 +74,7 @@ namespace EMotionFX
             return;
         }
 
-        animGraphInstance->SetObjectFlags(nodeA->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCMASTER, true);
+        animGraphInstance->SetObjectFlags(nodeA->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCLEADER, true);
         UpdateIncomingNode(animGraphInstance, nodeA, timePassedInSeconds);
 
         AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);

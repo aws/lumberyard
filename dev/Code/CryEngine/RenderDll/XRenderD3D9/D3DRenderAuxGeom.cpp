@@ -102,6 +102,7 @@ void CRenderAuxGeomD3D::ReleaseDeviceObjects()
     {
         m_sphereObj[ i ].Release();
         m_diskObj[ i ].Release();
+        m_quadObj[ i ].Release();
         m_coneObj[ i ].Release();
         m_cylinderObj[ i ].Release();
     }
@@ -118,6 +119,7 @@ int CRenderAuxGeomD3D::GetDeviceDataSize()
     {
         nSize += m_sphereObj[i].GetDeviceDataSize();
         nSize += m_diskObj[i].GetDeviceDataSize();
+        nSize += m_quadObj[i].GetDeviceDataSize();
         nSize += m_coneObj[i].GetDeviceDataSize();
         nSize += m_cylinderObj[i].GetDeviceDataSize();
     }
@@ -241,6 +243,44 @@ static void CreateDisk(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib, float radi
         ib.push_back(3 + i);
         ib.push_back(3 + i + 2);
     }
+}
+
+// function to generate a quad mesh on the x z plane
+static void CreateQuad(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib, float width, float height)
+{
+    // Calc required number of vertices/indices/triangles to build a quad for the given parameters
+    uint32 numVertices = 4 * 2; // 4 corners * 2 sides
+    uint32 numTriangles = 2 * 2; // 2 triangles * 2 sides
+    uint32 numIndices = numTriangles * 3; 
+
+    float halfWidth = width * 0.5f;
+    float halfHeight = height * 0.5f;
+
+    // setup buffers
+    vb.clear();
+    vb.reserve(numVertices);
+
+    ib.clear();
+    ib.reserve(numIndices);
+
+    Vec3 yUp = Vec3(0.0f, 1.0f, 0.0f);
+    Vec3 yDown = Vec3(0.0f, -1.0f, 0.0f);
+
+    // top faces
+    vb.push_back(SAuxObjVertex(Vec3(-halfWidth, 0.0f,  halfHeight), yUp));
+    vb.push_back(SAuxObjVertex(Vec3( halfWidth, 0.0f,  halfHeight), yUp));
+    vb.push_back(SAuxObjVertex(Vec3(-halfWidth, 0.0f, -halfHeight), yUp));
+    vb.push_back(SAuxObjVertex(Vec3( halfWidth, 0.0f, -halfHeight), yUp));
+
+    ib.insert(ib.end(), {1, 2, 0, 3, 2, 1});
+
+    // bottom faces
+    vb.push_back(SAuxObjVertex(Vec3(-halfWidth, 0.0f,  halfHeight), yDown));
+    vb.push_back(SAuxObjVertex(Vec3( halfWidth, 0.0f,  halfHeight), yDown));
+    vb.push_back(SAuxObjVertex(Vec3(-halfWidth, 0.0f, -halfHeight), yDown));
+    vb.push_back(SAuxObjVertex(Vec3( halfWidth, 0.0f, -halfHeight), yDown));
+
+    ib.insert(ib.end(), { 4, 6, 5, 5, 6, 7 });
 }
 
 // function to generate a cone mesh
@@ -448,6 +488,25 @@ struct SDiskMeshCreateFunc
     unsigned int m_rings;
 };
 
+// Functor to generate a quad mesh. To be used with generalized CreateMesh function.
+struct SQuadMeshCreateFunc
+{
+    SQuadMeshCreateFunc(float width, float height)
+        : m_width(width)
+        , m_height(height)
+    {
+    }
+
+    void CreateMesh(AuxObjVertexBuffer& vb, AuxObjIndexBuffer& ib)
+    {
+        CreateQuad(vb, ib, m_width, m_height);
+    }
+
+    float m_width;
+    float m_height;
+};
+
+
 
 // Functor to generate a cone mesh. To be used with generalized CreateMesh function.
 struct SConeMeshCreateFunc
@@ -608,6 +667,12 @@ HRESULT CRenderAuxGeomD3D::RestoreDeviceObjects()
 
         m_diskObj[i].Release();
         if (FAILED(hr = CreateMesh(m_diskObj[ i ], SDiskMeshCreateFunc(1.0f, 9 + 4 * i))))
+        {
+            return(hr);
+        }
+
+        m_quadObj[i].Release();
+        if (FAILED(hr = CreateMesh(m_quadObj[i], SQuadMeshCreateFunc(1.0f, 1.0f))))
         {
             return(hr);
         }
@@ -1013,6 +1078,11 @@ void CRenderAuxGeomD3D::DrawAuxObjects(CAuxGeomCB::AuxSortedPushBuffer::const_it
             case CAuxGeomCB::eDOT_Disk:
             {
                 pMesh = &m_diskObj[ lodLevel ];
+                break;
+            }
+            case CAuxGeomCB::eDOT_Quad:
+            {
+                pMesh = &m_quadObj[lodLevel];
                 break;
             }
             case CAuxGeomCB::eDOT_Cone:

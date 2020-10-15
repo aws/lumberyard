@@ -272,7 +272,10 @@ void MaterialBrowserWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
     {
         m_filterModel->ShowOnlyLevelMaterials(false, true);
         m_filterModel->StartRecordUpdateJobs();
-        m_ui->treeView->ApplyTreeViewSnapshot();
+        if (m_ui->treeView->IsTreeViewSavingReady())
+        {
+            m_ui->treeView->ApplyTreeViewSnapshot();
+        }
     }
     break;
     }

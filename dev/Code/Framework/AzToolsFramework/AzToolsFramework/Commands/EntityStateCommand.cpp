@@ -215,9 +215,11 @@ namespace AzToolsFramework
 
             // Signal that an Entity was created since ComponentApplicationBus::Events::DeleteEntity causes
             // EditorEntityContextNotification::OnEditorEntityDeleted to be fired, we need to have parity
+            // However, we don't send the notification here if we are restoring a slice, because the RestoreSliceEntity
+            // action gets queued so the Entity won't be in a good state yet until the restoration is complete.
             AzFramework::EntityContextId editorEntityContextId = AzFramework::EntityContextId::CreateNull();
             EditorEntityContextRequestBus::BroadcastResult(editorEntityContextId, &EditorEntityContextRequestBus::Events::GetEditorEntityContextId);
-            if (editorEntityContextId == m_entityContextId)
+            if (editorEntityContextId == m_entityContextId && !sliceRestoreInfo)
             {
                 EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntityCreated, entity->GetId());
             }

@@ -179,6 +179,7 @@ namespace Physics
         sphereColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
 
         RigidBodyConfiguration rigidBodyConfig;
+        rigidBodyConfig.m_computeMass = false;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
         entity->Activate();
@@ -205,6 +206,7 @@ namespace Physics
         boxColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
 
         RigidBodyConfiguration rigidBodyConfig;
+        rigidBodyConfig.m_computeMass = false;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
         entity->Activate();
@@ -307,6 +309,7 @@ namespace Physics
         capsuleColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
 
         RigidBodyConfiguration rigidBodyConfig;
+        rigidBodyConfig.m_computeMass = false;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
         entity->Activate();

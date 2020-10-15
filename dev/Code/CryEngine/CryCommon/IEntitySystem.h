@@ -586,7 +586,7 @@ struct IEntitySystem
     //   Call this when you know dimensions of the level, before entities are created.
     virtual void ResizeProximityGrid(int nWidth, int nHeight) = 0;
 
-
+#if ENABLE_CRY_PHYSICS
     // Summary:
     //   Gets all entities in specified radius.
     // Arguments:
@@ -601,7 +601,7 @@ struct IEntitySystem
     // Description:
     //   Retrieves host entity from the physical entity.
     virtual IEntity* GetEntityFromPhysics(IPhysicalEntity* pPhysEntity) const = 0;
-
+#endif
     // Description:
     //   Adds the sink of the entity system. The sink is a class which implements IEntitySystemSink.
     // Arguments:
@@ -713,10 +713,12 @@ struct IEntitySystem
     //   Gets a pointer to access to area manager.
     virtual IAreaManager* GetAreaManager() const = 0;
 
+#if ENABLE_CRY_PHYSICS
     //////////////////////////////////////////////////////////////////////////
     // Description:
     //    Return the breakable manager interface.
     virtual IBreakableManager* GetBreakableManager() const = 0;
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
     // Description:
@@ -796,9 +798,11 @@ struct IEntitySystem
     // Returns true if entity is not in a layer or the layer is enabled/serialized
     virtual bool ShouldSerializedEntity(IEntity* pEntity) = 0;
 
+#if ENABLE_CRY_PHYSICS
     // Register callbacks from Physics System
     virtual void RegisterPhysicCallbacks() = 0;
     virtual void UnregisterPhysicCallbacks() = 0;
+#endif // ENABLE_CRY_PHYSICS
 
     virtual void PurgeDeferredCollisionEvents(bool bForce = false) = 0;
 

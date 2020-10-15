@@ -35,9 +35,9 @@
 #include <QScopedValueRollback>
 #include <QStyle>
 #include <QLayout>
+#include <QtGui/private/qhighdpiscaling_p.h>
 
 #ifdef Q_OS_WIN
-# include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 # include <Windows.h>
 #endif
 

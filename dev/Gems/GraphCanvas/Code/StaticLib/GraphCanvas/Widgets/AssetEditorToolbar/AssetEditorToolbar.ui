@@ -28,6 +28,12 @@
    </property>
    <item>
     <widget class="QToolButton" name="addComment">
+     <property name="minimumSize">
+       <size>
+         <width>32</width>
+         <height>0</height>
+       </size>
+     </property>
      <property name="toolTip">
       <string>Adds a comment to the active graph [Ctrl+Alt+M]</string>
      </property>
@@ -40,6 +46,9 @@
      </property>
      <property name="shortcut">
       <string>Ctrl+Alt+M</string>
+     </property>
+     <property name="popupMode">
+       <enum>QToolButton::MenuButtonPopup</enum>
      </property>
     </widget>
    </item>

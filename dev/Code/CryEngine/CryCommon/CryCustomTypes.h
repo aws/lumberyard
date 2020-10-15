@@ -1104,6 +1104,115 @@ struct CEnumInfo
     }
 };
 
+struct CEnumDefUuid
+    : public TTypeInfo<AZ::Uuid>
+{
+    struct SElem
+    {
+        AZ::Uuid  Value;
+        cstr        Name;
+    };
+
+    CEnumDefUuid(cstr name, Array<CEnumDefUuid::SElem> elems, char* enum_str = 0)
+        : TTypeInfo<AZ::Uuid>(name)
+    {
+        CEnumDefUuid::Init(elems, enum_str);
+    }
+    void Init(Array<SElem> elems, char* enum_str = 0);
+
+    // TEnumDef implementations
+    ILINE uint Count() const
+    {
+        return Elems.size();
+    }
+    ILINE AZ::Uuid Value(uint i) const
+    {
+        return Elems[i].Value;
+    }
+    ILINE cstr Name(uint i) const
+    {
+        return *Elems[i].Name ? Elems[i].Name + nPrefixLength : "";
+    }
+    bool MatchName(uint i, cstr str) const;
+    cstr ToName(AZ::Uuid val) const;
+
+    cstr EnumElem(uint nIndex) const override
+    {
+        if (nIndex < Count())
+        {
+            cstr name = Name(nIndex);
+            if (*name != '_')
+            {
+                return name;
+            }
+        }
+        return 0;
+    }
+
+    bool FromValue(void* data, const void* value, const CTypeInfo& typeVal) const override
+    {
+        if (&typeVal == this)
+        {
+            const AZ::Uuid& valueUuid = *reinterpret_cast<const AZ::Uuid*>(value);
+            if (ToName(valueUuid))
+            {
+                AZ::Uuid& dataUuid = *reinterpret_cast<AZ::Uuid*>(data);
+                dataUuid = valueUuid;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    string ToString(const void* data, FToString flags, const void* def_data) const override
+    {
+        const AZ::Uuid& uuidData = *reinterpret_cast<const AZ::Uuid*>(data);
+        const AZ::Uuid& defUuidData = *reinterpret_cast<const AZ::Uuid*>(def_data);
+        if (flags.SkipDefault && uuidData == (def_data ? defUuidData : AZ::Uuid::CreateNull()))
+        {
+            return string();
+        }
+
+        if (cstr sName = ToName(uuidData))
+        {
+            return sName;
+        }
+
+        return string();
+    }
+
+    bool FromString(void* data, cstr str, FFromString flags) const override
+    {
+        AZ::Uuid& uuidData = *reinterpret_cast<AZ::Uuid*>(data);
+        if (!*str)
+        {
+            if (!flags.SkipEmpty)
+            {
+                uuidData = AZ::Uuid::CreateNull();
+            }
+            return true;
+        }
+
+        for (int i = 0, count = Count(); i < count; i++)
+        {
+            if (MatchName(i, str))
+            {
+                uuidData = Value(i);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+protected:
+
+    Array<SElem>    Elems;
+    bool                    bRegular;
+    uint                    nPrefixLength;
+};
+
+
 // Define an irregular enum with TypeInfo
 
 #define DEFINE_ENUM_VALS(EType, TInt, ...)                         \

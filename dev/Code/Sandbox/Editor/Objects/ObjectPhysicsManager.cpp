@@ -94,6 +94,7 @@ void CObjectPhysicsManager::SimulateSelectedObjectsPositions()
     GetIEditor()->GetGameEngine()->SetSimulationMode(true, true);
 
     m_simObjects.clear();
+#if ENABLE_CRY_PHYSICS
     for (int i = 0; i < pSel->GetCount(); i++)
     {
         CBaseObject* pObject = pSel->GetObject(i);
@@ -109,6 +110,9 @@ void CObjectPhysicsManager::SimulateSelectedObjectsPositions()
 
         m_simObjects.push_back(pSel->GetObject(i));
     }
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     m_wasSimObjects = m_simObjects.size();
 
     m_fStartObjectSimulationTime = GetISystem()->GetITimer()->GetAsyncCurTime();
@@ -120,6 +124,7 @@ void CObjectPhysicsManager::UpdateSimulatingObjects()
 {
     {
         CUndo undo("Simulate");
+#if ENABLE_CRY_PHYSICS
         for (int i = 0; i < m_simObjects.size(); )
         {
             CBaseObject* pObject = m_simObjects[i];
@@ -138,6 +143,9 @@ void CObjectPhysicsManager::UpdateSimulatingObjects()
             }
             i++;
         }
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     }
 
     float curTime = GetISystem()->GetITimer()->GetAsyncCurTime();

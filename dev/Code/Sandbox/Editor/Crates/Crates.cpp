@@ -233,7 +233,7 @@ namespace AZ
                 case NEW_GEM:
                 {
                     QMessageBox* box = makeMessageBox(QMessageBox::NoIcon, tr("Extracting .crate file"),
-                        tr("The .crate file contents will be extracted and added to Lumberyard as a Gem, and then enabled in your current project. <a href='http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html'>Learn more</a>"),
+                        tr("The .crate file contents will be extracted and added to Lumberyard as a Gem, and then enabled in your current project. <a href='http://docs.aws.amazon.com/console/lumberyard/gems'>Learn more</a>"),
                         tr("Once the Asset Processor is finished processing the contents, you can access them from the Gems folder in the Asset Browser."));
 
                     QPushButton* okayButton = box->addButton(tr("Okay"), QMessageBox::AcceptRole);
@@ -255,7 +255,7 @@ namespace AZ
                 case NEW_CODE_GEM:
                 {
                     QMessageBox* box = makeMessageBox(QMessageBox::Information, tr("Gem requires recompile"),
-                        tr("We have unpacked your new Gem, but it contains code that requires you to recompile your project. <a href='http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html'>Learn more</a>"),
+                        tr("We have unpacked your new Gem, but it contains code that requires you to recompile your project. <a href='http://docs.aws.amazon.com/console/lumberyard/gems'>Learn more</a>"),
                         tr("Please close the Lumberyard editor, enable the Gem in the Project Configurator, and then recompile your project."));
 
                     QPushButton* quitButton = box->addButton(tr("Quit and Enable"), QMessageBox::ActionRole);
@@ -273,7 +273,7 @@ namespace AZ
                 case NEW_GEM_VERSION:
                 {
                     QMessageBox* box = makeMessageBox(QMessageBox::Information, tr("Updating existing Gem"),
-                        tr("The Gem you're importing is a newer version of an existing Gem. If you continue, the old version will be disabled in favor of the new one. <a href='http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html'>Learn more</a>"),
+                        tr("The Gem you're importing is a newer version of an existing Gem. If you continue, the old version will be disabled in favor of the new one. <a href='http://docs.aws.amazon.com/console/lumberyard/gems'>Learn more</a>"),
                         tr("Any overrides you've made will be preserved. No files will be overwritten."));
 
                     QPushButton* updateButton = box->addButton(tr("Update"), QMessageBox::AcceptRole);
@@ -295,7 +295,7 @@ namespace AZ
                 case NEW_GEM_EXISTS_AND_IS_ENABLED:
                 {
                     QMessageBox* box = makeMessageBox(QMessageBox::NoIcon, tr("Gem already exists"),
-                        tr("An exact copy of this Gem already exists. You can access it by browsing to the Gems folder in the Asset Browser. <a href='http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html'>Learn more</a>"),
+                        tr("An exact copy of this Gem already exists. You can access it by browsing to the Gems folder in the Asset Browser. <a href='http://docs.aws.amazon.com/console/lumberyard/gems'>Learn more</a>"),
                         tr(""));
 
                     QPushButton* closeButton = box->addButton(tr("Close"), QMessageBox::AcceptRole);
@@ -308,7 +308,7 @@ namespace AZ
                 case NEW_GEM_EXISTS_AND_IS_NOT_ENABLED:
                 {
                     QMessageBox* box = makeMessageBox(QMessageBox::NoIcon, tr("Gem already exists"),
-                        tr("An exact copy of this Gem already exists, but has not been enabled. Would you like to enable it for the current project? <a href='http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html'>Learn more</a>"),
+                        tr("An exact copy of this Gem already exists, but has not been enabled. Would you like to enable it for the current project? <a href='http://docs.aws.amazon.com/console/lumberyard/gems'>Learn more</a>"),
                         tr(""));
 
                     QPushButton* enableButton = box->addButton(tr("Enable"), QMessageBox::ActionRole);
@@ -329,7 +329,7 @@ namespace AZ
                 case NEW_CODE_GEM_EXISTS_AND_IS_NOT_ENABLED:
                 {
                     QMessageBox* box = makeMessageBox(QMessageBox::NoIcon, tr("Gem already exists"),
-                        tr("An exact copy of this Gem already exists, but has not been enabled or compiled. Please close the Lumberyard editor, enable the Gem in the Project Configurator, and then recompile your project. <a href='http://docs.aws.amazon.com/lumberyard/latest/userguide/gems-system-gems.html'>Learn more</a>"),
+                        tr("An exact copy of this Gem already exists, but has not been enabled or compiled. Please close the Lumberyard editor, enable the Gem in the Project Configurator, and then recompile your project. <a href='http://docs.aws.amazon.com/console/lumberyard/gems'>Learn more</a>"),
                         tr(""));
 
                     QPushButton* enableButton = box->addButton(tr("Quit and Enable"), QMessageBox::ActionRole);

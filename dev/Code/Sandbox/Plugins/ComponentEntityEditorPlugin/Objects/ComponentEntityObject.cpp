@@ -299,6 +299,7 @@ IRenderNode* CComponentEntityObject::GetEngineNode() const
     return nullptr;
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CComponentEntityObject::GetCollisionEntity() const
 {
     IPhysicalEntity* result = nullptr;
@@ -314,6 +315,7 @@ IPhysicalEntity* CComponentEntityObject::GetCollisionEntity() const
     }
     return result;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CComponentEntityObject::OnEntityNameChanged(const AZStd::string& name)
 {
@@ -1295,7 +1297,11 @@ void CComponentEntityObject::ValidateMeshStatObject()
     CMaterial* editorMaterial = GetMaterial();
     CStatObjValidator statValidator;
     // This will print out warning messages to the console.
+#if ENABLE_CRY_PHYSICS
     statValidator.Validate(statObj, editorMaterial, nullptr);
+#else
+    statValidator.Validate(statObj, editorMaterial);
+#endif
 }
 
 #include <Objects/ComponentEntityObject.moc>

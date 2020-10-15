@@ -68,7 +68,7 @@ namespace UnitTest
         for (size_t entityCounter = 0; entityCounter < 10; ++entityCounter)
         {
             // For each iteration capture the entity made to be used as the parent for the next
-            parent = CreateEditorEntity(AZStd::string::format("Entity Level %i", entityCounter).c_str(), liveEntityIds, parent);
+            parent = CreateEditorEntity(AZStd::string::format("Entity Level %zu", entityCounter).c_str(), liveEntityIds, parent);
 
             ASSERT_TRUE(parent.IsValid());
         }
@@ -95,7 +95,7 @@ namespace UnitTest
         // Build 10 children and set all of their parent ids to the same parent entity
         for (size_t childEntityCounter = 0; childEntityCounter < 10; ++childEntityCounter)
         {
-            ASSERT_TRUE(CreateEditorEntity(AZStd::string::format("Child #%i", childEntityCounter + 1).c_str(), liveEntityIds, parent).IsValid());
+            ASSERT_TRUE(CreateEditorEntity(AZStd::string::format("Child #%zu", childEntityCounter + 1).c_str(), liveEntityIds, parent).IsValid());
         }
 
         // Capture the hierarchy state
@@ -411,7 +411,7 @@ namespace UnitTest
             EXPECT_TRUE(m_validator.Capture(liveEntityIds));
 
             // Create a slice from the current hierarchy
-            AZ::Data::AssetId newSlice = CreateSlice(AZStd::string::format("Slice Level: %i", ancestorCount + 1).c_str(), liveEntityIds, sliceInstanceAddress);
+            AZ::Data::AssetId newSlice = CreateSlice(AZStd::string::format("Slice Level: %zu", ancestorCount + 1).c_str(), liveEntityIds, sliceInstanceAddress);
             ASSERT_TRUE(newSlice.IsValid());
 
             // Compare the generated slice instance against the capture state and reset the capture for the next iteration

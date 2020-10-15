@@ -104,7 +104,9 @@ private:
     bool IsLodFile(const string& filename) const;
 
 private:
+#if ENABLE_CRY_PHYSICS
     CPhysicsInterface* m_pPhysicsInterface;
+#endif
     ConvertContext m_CC;
 
     int m_refCount;

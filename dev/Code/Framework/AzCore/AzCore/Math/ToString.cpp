@@ -91,7 +91,7 @@ namespace AZ
         return AZStd::string::format(
             "[%f, %f, %f %f]\n"
             "[%f, %f, %f %f]\n"
-            "[%f, %f, %f %f]\n",
+            "[%f, %f, %f %f]\n"
             "[%f, %f, %f %f]",
             static_cast<float>(row1.GetX()), static_cast<float>(row1.GetY()), static_cast<float>(row1.GetZ()), static_cast<float>(row1.GetW()),
             static_cast<float>(row2.GetX()), static_cast<float>(row2.GetY()), static_cast<float>(row2.GetZ()), static_cast<float>(row2.GetW()),

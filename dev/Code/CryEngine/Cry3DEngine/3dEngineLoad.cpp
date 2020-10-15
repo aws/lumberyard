@@ -37,7 +37,9 @@
 #include "FogVolumeRenderNode.h"
 #include "RopeRenderNode.h"
 #include "MergedMeshRenderNode.h"
+#if ENABLE_CRY_PHYSICS
 #include "BreezeGenerator.h"
+#endif
 #include <ICryAnimation.h>
 #include <IMaterialEffects.h>
 #include "ClipVolumeManager.h"
@@ -163,12 +165,14 @@ bool C3DEngine::InitLevelForEditor(const char* szFolderName, const char* szMissi
 
     ClearDebugFPSInfo();
 
+#if ENABLE_CRY_PHYSICS
     gEnv->pPhysicalWorld->DeactivateOnDemandGrid();
 
     if (gEnv->pEntitySystem)
     {
         gEnv->pEntitySystem->RegisterPhysicCallbacks();
     }
+#endif
 
     if (!szFolderName || !szFolderName[0])
     {
@@ -216,7 +220,9 @@ bool C3DEngine::InitLevelForEditor(const char* szFolderName, const char* szMissi
     CryComment("initializing merged mesh manager");
     m_pMergedMeshesManager->Init();
 
+#if ENABLE_CRY_PHYSICS
     m_pBreezeGenerator->Initialize();
+#endif
 
     if (m_pSkyLightManager)
     {
@@ -261,7 +267,9 @@ bool C3DEngine::InitLevelForEditor(const char* szFolderName, const char* szMissi
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     LoadPhysicsData();
+#endif
 
     GetObjManager()->LoadOcclusionMesh(szFolderName);
 
@@ -564,16 +572,20 @@ void C3DEngine::UnloadLevel()
     }
 
     //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
     m_pBreezeGenerator->Shutdown();
+#endif
 
     //////////////////////////////////////////////////////////////////////////
     // Delete physics related things.
     //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pEntitySystem)
     {
         gEnv->pEntitySystem->UnregisterPhysicCallbacks();
     }
     UnloadPhysicsData();
+#endif // ENABLE_CRY_PHYSICS
 
     stl::free_container(m_lstRoadRenderNodesForUpdate);
     stl::free_container(m_lstAlwaysVisible);
@@ -590,7 +602,9 @@ void C3DEngine::UnloadLevel()
     CLightEntity::StaticReset();
     CVisArea::StaticReset();
     CFogVolumeRenderNode::StaticReset();
+#if ENABLE_CRY_PHYSICS
     CRopeRenderNode::StaticReset();
+#endif
 
     GetRenderer()->FlushRTCommands(true, true, true);
 
@@ -701,11 +715,12 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     m_bEditor = false;
 #endif
 
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pEntitySystem)
     {
         gEnv->pEntitySystem->RegisterPhysicCallbacks();
     }
-
+#endif
     assert(!m_bEditor);
 
     //////////////////////////////////////////////////////////////////////////
@@ -713,7 +728,9 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     m_pMergedMeshesManager->Init();
 
     //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
     m_pBreezeGenerator->Initialize();
+#endif
 
     if (!szFolderName || !szFolderName[0])
     {
@@ -909,10 +926,12 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     //Update loading screen and important tick functions
     SYNCHRONOUS_LOADING_TICK();
 
-    if (!IsTerrainActive())
+#if ENABLE_CRY_PHYSICS
+    if (!LegacyTerrain::LegacyTerrainDataRequestBus::HasHandlers())
     {
         gEnv->pPhysicalWorld->SetHeightfieldData(nullptr);
     }
+#endif
 
     // init water if not initialized already (if no mission was found)
     if (!GetOcean())
@@ -922,7 +941,9 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
     }
 
     PrintMessage("===== Load level physics data =====");
+#if ENABLE_CRY_PHYSICS
     LoadPhysicsData();
+#endif
     LoadFlaresData();
 
     // restore game state
@@ -946,10 +967,12 @@ bool C3DEngine::LoadLevel(const char* szFolderName, const char* szMissionName)
 }
 
 //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
 void C3DEngine::LoadPhysicsData()
 {
     CPhysCallbacks::Init();
 }
+#endif // ENABLE_CRY_PHYSICS
 
 static void OnReleaseGeom(IGeometry* pGeom)
 {
@@ -959,13 +982,17 @@ static void OnReleaseGeom(IGeometry* pGeom)
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 void C3DEngine::UnloadPhysicsData()
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pGlobalWind != 0)
     {
         gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_pGlobalWind);
         m_pGlobalWind = 0;
     }
+#endif
+
     if (gEnv->pPhysicalWorld)
     {
         // Pause and wait for the physics
@@ -990,6 +1017,7 @@ void C3DEngine::UnloadPhysicsData()
     }
     //////////////////////////////////////////////////////////////////////////
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -1026,12 +1054,6 @@ void C3DEngine::FreeFoliages()
         CryComment("done");
     }
     m_arrEntsInFoliage.Reset();
-}
-
-void C3DEngine::LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID)
-{
-    AZ_Warning("LegacyTerrain", false, "%s is deprecated. Use LegacyTerrain::LegacyTerrainDataRequests::LoadTerrainSurfacesFromXML instead");
-    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::LoadTerrainSurfacesFromXML, pDoc);
 }
 
 void C3DEngine::LoadMissionDataFromXMLNode(const char* szMissionName)
@@ -1211,7 +1233,8 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
     m_oceanCausticsTiling = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticsTilling", "1.0"));
     m_oceanCausticDepth = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticDepth", "8.0"));
     m_oceanCausticIntensity = (float)atof(GetXMLAttribText(pInputNode, "Ocean", "CausticIntensity", "1.0"));
-    
+
+#if ENABLE_CRY_PHYSICS
     // get wind
     Vec3 vWindSpeed = StringToVector(GetXMLAttribText(pInputNode, "EnvState", "WindVector", "1,0,0"));
     SetWind(vWindSpeed);
@@ -1236,6 +1259,7 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
 
         m_pBreezeGenerator->Initialize();
     }
+#endif
 
     // Per-level mergedmeshes pool size (on consoles)
     Cry3DEngineBase::m_mergedMeshesPoolSize = atoi(GetXMLAttribText(pInputNode, "EnvState", "ConsoleMergedMeshesPool", MMRM_DEFAULT_POOLSIZE_STR));
@@ -1506,6 +1530,7 @@ void C3DEngine::PostLoadLevel()
     // Submit water material to physics if the ocean exists
     //////////////////////////////////////////////////////////////////////////
 
+#if ENABLE_CRY_PHYSICS
     if (!OceanToggle::IsActive() || OceanRequest::OceanIsEnabled())
     {
         IMaterialManager* pMatMan = GetMaterialManager();
@@ -1523,6 +1548,7 @@ void C3DEngine::PostLoadLevel()
             pPhysicalWorld->SetWaterMat(pSrfType->GetId());
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (GetCVars()->e_PrecacheLevel)
     {

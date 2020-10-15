@@ -70,7 +70,11 @@
             "Viewport/ViewportConstants.cpp",
             "Viewport/CameraState.h",
             "Viewport/CameraState.cpp",
-            "Viewport/DisplayContextRequestBus.h"
+            "Viewport/DisplayContextRequestBus.h",
+            "Viewport/ScreenGeometry.cpp",
+            "Viewport/ScreenGeometry.h",
+            "Viewport/ViewportScreen.cpp",
+            "Viewport/ViewportScreen.h"
         ],
         "Entity": [
             "Entity/BehaviorEntity.cpp",
@@ -166,7 +170,14 @@
             "Logging/MissingAssetLogger.cpp",
             "Logging/MissingAssetLogger.h",
             "Logging/MissingAssetNotificationBus.h"
-        ],        
+        ],
+        "Render" : [
+            "Render/GeometryIntersectionBus.h",
+            "Render/GeometryIntersectionStructures.h",
+            "Render/IntersectorInterface.h",
+            "Render/Intersector.cpp",
+            "Render/Intersector.h"
+        ],
         "Scene": [
             "Scene/Scene.h",
             "Scene/Scene.cpp",
@@ -244,7 +255,10 @@
             "Physics/TouchBendingBus.h",
             "Physics/WorldEventhandler.h",
             "Physics/ScriptCanvasPhysicsUtils.h",
-            "Physics/ScriptCanvasPhysicsUtils.cpp"
+            "Physics/ScriptCanvasPhysicsUtils.cpp",
+            "Physics/WindBus.h",
+            "Physics/NameConstants.h",
+            "Physics/NameConstants.cpp"
         ],
         "Terrain": [
             "Terrain/TerrainDataRequestBus.h",

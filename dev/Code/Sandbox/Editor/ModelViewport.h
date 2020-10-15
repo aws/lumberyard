@@ -310,8 +310,10 @@ protected:
 
     CVarObject m_vars;
 
+#if ENABLE_CRY_PHYSICS
 public:
     IPhysicalEntity* m_pPhysicalEntity;
+#endif
 public slots:
     virtual void OnAnimPlay();
     virtual void OnAnimBack();

@@ -141,7 +141,9 @@ namespace LmbrCentral
 
         SkinnedMeshComponentRenderNode m_mesh;     ///< IRender node implementation
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
+#endif
         AZ::Transform m_physTransform;      ///< To track scale changes, which requires re-physicalizing.
     };
 

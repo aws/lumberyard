@@ -41,6 +41,11 @@ namespace WhiteBox
         return worldPoints;
     }
 
+    ManipulatorViewPolygon::ManipulatorViewPolygon()
+        : AzToolsFramework::ManipulatorView(false)
+    {
+    }
+
     void ManipulatorViewPolygon::Draw(
         const AzToolsFramework::ManipulatorManagerId managerId,
         [[maybe_unused]] const AzToolsFramework::ManipulatorManagerState& managerState,
@@ -48,12 +53,13 @@ namespace WhiteBox
         AzFramework::DebugDisplayRequests& debugDisplay, [[maybe_unused]] const AzFramework::CameraState& cameraState,
         [[maybe_unused]] const AzToolsFramework::ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        const auto worldTriangles = TransformToWorldSpace(manipulatorState.m_worldFromLocal, m_triangles);
+        BoundShapePolygon polygonBounds;
+        polygonBounds.m_triangles = TransformToWorldSpace(manipulatorState.m_worldFromLocal, m_triangles);
 
         // draw fill
         debugDisplay.DepthTestOn();
         debugDisplay.SetColor(m_fillColor);
-        debugDisplay.DrawTriangles(worldTriangles, m_fillColor);
+        debugDisplay.DrawTriangles(polygonBounds.m_triangles, m_fillColor);
 
         if (manipulatorState.m_mouseOver)
         {
@@ -74,18 +80,20 @@ namespace WhiteBox
 
         debugDisplay.DepthTestOff();
 
-        // update bounds
-        BoundShapePolygon polygonBounds;
-        polygonBounds.m_triangles = worldTriangles;
-        RefreshBound(managerId, manipulatorId, polygonBounds);
+        RefreshBoundInternal(managerId, manipulatorId, polygonBounds);
+    }
+
+    ManipulatorViewEdge::ManipulatorViewEdge()
+        : AzToolsFramework::ManipulatorView(false)
+    {
     }
 
     void ManipulatorViewEdge::Draw(
         const AzToolsFramework::ManipulatorManagerId managerId,
-        const AzToolsFramework::ManipulatorManagerState& /*managerState*/,
+        [[maybe_unused]] const AzToolsFramework::ManipulatorManagerState& managerState,
         const AzToolsFramework::ManipulatorId manipulatorId, const AzToolsFramework::ManipulatorState& manipulatorState,
         AzFramework::DebugDisplayRequests& debugDisplay, const AzFramework::CameraState& cameraState,
-        const AzToolsFramework::ViewportInteraction::MouseInteraction& /*mouseInteraction*/)
+        [[maybe_unused]] const AzToolsFramework::ViewportInteraction::MouseInteraction& mouseInteraction)
     {
         const int mouseOver = manipulatorState.m_mouseOver;
 
@@ -106,11 +114,19 @@ namespace WhiteBox
         const AZ::Vector3 worldStart = manipulatorState.m_worldFromLocal * m_start;
         const AZ::Vector3 worldEnd = manipulatorState.m_worldFromLocal * m_end;
 
+        const auto floatFromBool = [](const bool boolean)
+        {
+            return boolean ? 1.0f : 0.0f;
+        };
+
         // world space radii of vertex handles at edge start and end points
+        // note: the start/end will not be pushed in if the connected vertex handles are hidden
         const float worldStartVertexHandleRadius = cl_whiteBoxVertexManipulatorSize *
-            AzToolsFramework::CalculateScreenToWorldMultiplier(worldStart, cameraState);
+            AzToolsFramework::CalculateScreenToWorldMultiplier(worldStart, cameraState) *
+            floatFromBool(!m_vertexStartEndHidden[0]);
         const float worldEndVertexHandleRadius = cl_whiteBoxVertexManipulatorSize *
-            AzToolsFramework::CalculateScreenToWorldMultiplier(worldEnd, cameraState);
+            AzToolsFramework::CalculateScreenToWorldMultiplier(worldEnd, cameraState) *
+            floatFromBool(!m_vertexStartEndHidden[1]);
 
         const AZ::Vector3 worldEdge = worldEnd - worldStart;
         const float worldEdgeLength = worldEdge.GetLength();
@@ -131,23 +147,28 @@ namespace WhiteBox
         const AZ::Vector3 worldStartOffsetByVertexHandle = worldStart + (worldEdge * tStart);
         const AZ::Vector3 worldEndOffsetByVertexHandle = worldStart + (worldEdge * tEnd);
 
+        BoundShapeEdge edgeBounds;
+        edgeBounds.m_start = worldStartOffsetByVertexHandle;
+        edgeBounds.m_end = worldEndOffsetByVertexHandle;
+        edgeBounds.m_radius = screenRadius;
+        RefreshBoundInternal(managerId, manipulatorId, edgeBounds);
+
 #if defined(WHITE_BOX_DEBUG_VISUALS)
         debugDisplay.DepthTestOn();
         debugDisplay.SetColor(AZ::Colors::DarkCyan);
         debugDisplay.SetLineWidth(m_width[mouseOver]);
         debugDisplay.DrawLine(
             worldStartOffsetByVertexHandle,
-            worldStartOffsetByVertexHandle + (AZ::Vector3::CreateAxisZ() * worldStartVertexHandleRadius));
+            worldStartOffsetByVertexHandle +
+                (AZ::Vector3::CreateAxisZ(0.2f) *
+                 AzToolsFramework::CalculateScreenToWorldMultiplier(worldStart, cameraState)));
         debugDisplay.DrawLine(
             worldEndOffsetByVertexHandle,
-            worldEndOffsetByVertexHandle + (AZ::Vector3::CreateAxisZ() * worldEndVertexHandleRadius));
+            worldEndOffsetByVertexHandle +
+                (AZ::Vector3::CreateAxisZ(0.2f) *
+                 AzToolsFramework::CalculateScreenToWorldMultiplier(worldEnd, cameraState)));
         debugDisplay.DepthTestOff();
 #endif
-        BoundShapeEdge edge;
-        edge.m_start = worldStartOffsetByVertexHandle;
-        edge.m_end = worldEndOffsetByVertexHandle;
-        edge.m_radius = screenRadius;
-        RefreshBound(managerId, manipulatorId, edge);
     }
 
     void ManipulatorViewEdge::SetColor(const AZ::Color& color, const AZ::Color& hoverColor)

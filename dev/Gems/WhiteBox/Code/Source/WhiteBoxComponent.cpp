@@ -51,13 +51,15 @@ namespace WhiteBox
         m_renderMesh->SetVisiblity(m_whiteBoxRenderData.m_material.m_visible);
 
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
+        WhiteBoxComponentRequestBus::Handler::BusConnect(AZ::EntityComponentIdPair(entityId, GetId()));
     }
 
     void WhiteBoxComponent::Deactivate()
     {
-        m_renderMesh.reset();
-
+        WhiteBoxComponentRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+
+        m_renderMesh.reset();
     }
 
     void WhiteBoxComponent::GenerateWhiteBoxMesh(const WhiteBoxRenderData& whiteBoxRenderData)
@@ -68,5 +70,10 @@ namespace WhiteBox
     void WhiteBoxComponent::OnTransformChanged([[maybe_unused]] const AZ::Transform& local, const AZ::Transform& world)
     {
         m_renderMesh->UpdateTransform(world);
+    }
+
+    bool WhiteBoxComponent::WhiteBoxIsVisible() const
+    {
+        return m_renderMesh->IsVisible();
     }
 } // namespace WhiteBox

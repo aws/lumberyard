@@ -12,6 +12,7 @@
 #include "StdAfx.h"
 #include "EditorPreferencesPageExperimentalLighting.h"
 #include <AzCore/Serialization/EditContext.h>
+#include <AzQtComponents/Components/StyleManager.h>
 
 void CEditorPreferencesPage_ExperimentalLighting::Reflect(AZ::SerializeContext& serialize)
 {
@@ -40,6 +41,23 @@ void CEditorPreferencesPage_ExperimentalLighting::Reflect(AZ::SerializeContext& 
 CEditorPreferencesPage_ExperimentalLighting::CEditorPreferencesPage_ExperimentalLighting()
 {
     InitializeSettings();
+
+    m_icon = QIcon(":/res/Experimental.svg");
+}
+
+const char* CEditorPreferencesPage_ExperimentalLighting::GetTitle()
+{
+    if (AzQtComponents::StyleManager::isUi10())
+    {
+        return "Lighting";
+    }
+
+    return "Experimental Features";
+}
+
+QIcon& CEditorPreferencesPage_ExperimentalLighting::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_ExperimentalLighting::OnApply()

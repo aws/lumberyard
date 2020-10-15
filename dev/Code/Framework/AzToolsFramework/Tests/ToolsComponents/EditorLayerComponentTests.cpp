@@ -15,6 +15,8 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AZTestShared/Utils/Utils.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
@@ -26,7 +28,13 @@
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
+
 #include <QColor>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QTextStream>
 
 namespace AzToolsFramework
 {
@@ -131,6 +139,20 @@ namespace AzToolsFramework
         return sliceReference->FindInstance(sliceInstance.GetInstance()->GetId()) != nullptr;
     }
 
+    bool IsLooseEntityInRootSlice(const AZ::SliceComponent* rootSlice, const AZ::EntityId layerEntityId)
+    {
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+
+        for (const auto& entity : looseEntities)
+        {
+            if (entity->GetId() == layerEntityId)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     AZ::Entity* CreateEditorReadyEntity(const char* entityName)
     {
         AZ::EntityId createdEntityId;
@@ -220,6 +242,8 @@ namespace AzToolsFramework
             m_app.Stop();
             AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
         }
+
+        AZStd::string GetLayerDirectory() const { return "Layers"; }
 
         // A few tests save a layer and want to check the state after saving.
         // A separate unit test actually validates all of the behavior in this function.
@@ -2170,14 +2194,245 @@ namespace AzToolsFramework
     TEST_F(EditorLayerComponentTest, LayerTests_CheckOverwriteFlag_IsSetCorrectly)
     {
         // Check layer created with correct value
-        EXPECT_TRUE(m_layerEntity.m_layer->GetOverwriteFlag());
-        //check direct call works correctly
-        m_layerEntity.m_layer->SetOverwriteFlag(false);
         EXPECT_FALSE(m_layerEntity.m_layer->GetOverwriteFlag());
+        //check direct call works correctly
+        m_layerEntity.m_layer->SetOverwriteFlag(true);
+        EXPECT_TRUE(m_layerEntity.m_layer->GetOverwriteFlag());
         // check bus works correctly
         AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
             m_layerEntity.m_entity->GetId(),
             &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::SetOverwriteFlag, true);
         EXPECT_TRUE(m_layerEntity.m_layer->GetOverwriteFlag());
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_UndoRedoRestoreLayerWithChildren_AllRestoredEntitiesCorrect)
+    {
+        const AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+
+        // Set up a an entity and a slice instance as children of the layer.
+        AZ::Entity* childEntity = CreateEditorReadyEntity("ChildEntity");
+        const AZ::EntityId childEntityId = childEntity->GetId();
+        AZ::TransformBus::Event(
+            childEntityId,
+            &AZ::TransformBus::Events::SetParent,
+            layerEntityId);
+
+        AZ::SliceComponent::SliceInstanceAddress instantiatedSlice = CreateSliceInstance();
+        AZ::Data::Asset<AZ::SliceAsset> loadedSliceAsset = instantiatedSlice.first->GetSliceAsset();
+        AZ::Entity* sliceEntity = GetEntityFromSliceInstance(instantiatedSlice);
+        const AZ::EntityId sliceEntityId = sliceEntity->GetId();
+        AZ::TransformBus::Event(
+            sliceEntityId,
+            &AZ::TransformBus::Events::SetParent,
+            layerEntityId);
+
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 2);
+
+        // Check that the layers, the entity, and the slice are in the scene.
+        EXPECT_TRUE(IsLooseEntityInRootSlice(rootSlice, layerEntityId));
+        EXPECT_TRUE(IsLooseEntityInRootSlice(rootSlice, childEntityId));
+        EXPECT_TRUE(IsInstanceAndReferenceInRootSlice(rootSlice, instantiatedSlice));
+
+        // Next, save the layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+
+        Layers::LayerResult saveResult = m_layerEntity.m_layer->PopulateLayerWriteToStreamAndGetEntities(
+            savedEntities,
+            savedInstances,
+            entitySaveStream,
+            layer);
+
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Delete all the objects.
+        bool entityDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            entityDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            childEntityId);
+        EXPECT_TRUE(entityDeleted);
+        childEntity = nullptr;
+
+        DeleteSliceInstance(instantiatedSlice);
+        
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            entityDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            layerEntityId);
+        EXPECT_TRUE(entityDeleted);
+        m_layerEntity.m_entity = nullptr;
+
+        // Check that everything is gone.
+        EXPECT_EQ(looseEntities.size(), 0);
+        EXPECT_FALSE(IsInstanceAndReferenceInRootSlice(rootSlice, instantiatedSlice));
+        
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Attempt to recover the layer. It has no parent, so use an invalid ID.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        // Verify it recovered successfully.
+        EXPECT_TRUE(recoveryResult.IsSuccess());
+        
+        // Verify the slice instance is now in the scene.
+        AZStd::list<AZ::SliceComponent::SliceReference>& sliceList = rootSlice->GetSlices();
+        EXPECT_EQ(sliceList.size(), 1);
+        EXPECT_EQ(sliceList.front().GetSliceAsset(), loadedSliceAsset);
+        AZStd::unordered_set<AZ::SliceComponent::SliceInstance>& sliceInstances = sliceList.front().GetInstances();
+        EXPECT_EQ(sliceInstances.size(), 1);
+
+        // Verify the loose entities are restored.
+        EXPECT_EQ(looseEntities.size(), 2);
+
+        // Check the hierarchy is correct.
+        AZ::EntityId childParentId;
+        AZ::TransformBus::EventResult(
+            childParentId,
+            childEntityId,
+            &AZ::TransformBus::Events::GetParentId);
+        EXPECT_EQ(childParentId, layerEntityId);
+
+        AZ::EntityId sliceParentId;
+        AZ::TransformBus::EventResult(
+            sliceParentId,
+            sliceEntityId,
+            &AZ::TransformBus::Events::GetParentId);
+        EXPECT_EQ(sliceParentId, layerEntityId);
+
+        // Undo.
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::UndoPressed);
+        
+        // Check everything's gone again.
+        EXPECT_EQ(looseEntities.size(), 0);
+        EXPECT_EQ(sliceList.size(), 0);
+        
+        // Redo.
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::RedoPressed);
+        
+        // Check everything's back and the hierarchy is correct.
+        EXPECT_EQ(looseEntities.size(), 2);
+        EXPECT_TRUE(IsLooseEntityInRootSlice(rootSlice, layerEntityId));
+        EXPECT_TRUE(IsLooseEntityInRootSlice(rootSlice, childEntityId));
+        EXPECT_EQ(sliceList.size(), 1);
+
+        AZ::EntityId childParentIdAfterRedo;
+        AZ::TransformBus::EventResult(
+            childParentIdAfterRedo,
+            childEntityId,
+            &AZ::TransformBus::Events::GetParentId);
+        EXPECT_EQ(childParentIdAfterRedo, layerEntityId);
+
+        AZ::EntityId sliceParentIdAfterRedo;
+        AZ::TransformBus::EventResult(
+            sliceParentIdAfterRedo,
+            sliceEntityId,
+            &AZ::TransformBus::Events::GetParentId);
+        EXPECT_EQ(sliceParentIdAfterRedo, layerEntityId);
+
+        rootSlice->RemoveAllEntities();
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_ModifyFileOnDiskAndWriteToLayerWithoutChangesInEditor_FileNotOverwritten)
+    {
+        QString testFolderPath = UnitTest::GetTestFolderPath().c_str();
+
+        // Get full file path of test layer file.
+        AZStd::string layerFileFolerPath;
+        AzFramework::StringFunc::Path::Join(
+            UnitTest::GetTestFolderPath().c_str(),
+            GetLayerDirectory().c_str(),
+            layerFileFolerPath
+        );
+        AZStd::string layerFullFileName(
+            AZStd::string::format(
+                "%s%s",
+                m_entityName,
+                AzToolsFramework::Layers::EditorLayerComponent::GetLayerExtensionWithDot().c_str()
+            )
+        );
+        AZStd::string layerFullFilePath;
+        AzFramework::StringFunc::Path::Join(
+            layerFileFolerPath.c_str(),
+            layerFullFileName.c_str(),
+            layerFullFilePath
+        );
+
+        // Get the test layer file and if it doesn't exist, create one.
+        // The test file must exists before write layer to disk or WriteLayerAndGetEntities will fail. 
+        EXPECT_TRUE(QDir().mkpath(layerFileFolerPath.c_str()));
+        QFile layerFile(layerFullFilePath.c_str());
+        layerFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        EXPECT_TRUE(layerFile.isOpen());
+        layerFile.close();
+        EXPECT_FALSE(layerFile.isOpen());
+
+        // Ckeck if the test layer file exists now.
+        AZ::Outcome<AZStd::string, AZStd::string> layerFullFilePathResult
+            = m_layerEntity.m_layer->GetLayerFullFilePath(testFolderPath);
+        EXPECT_TRUE(layerFullFilePathResult.IsSuccess());
+
+        // Write empty layer into test layer file.
+        AZStd::vector<AZ::Entity*> layerEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs instancesInLayers;
+        Layers::LayerResult layerResult = m_layerEntity.m_layer->WriteLayerAndGetEntities(
+            testFolderPath,
+            layerEntities,
+            instancesInLayers
+        );
+        EXPECT_TRUE(layerResult.IsSuccess());
+        layerFile.open(QIODevice::ReadOnly | QIODevice::Text);
+        EXPECT_TRUE(layerFile.isOpen());
+        QTextStream originalLayerInStream(&layerFile);
+        QString originalLayerFileText = originalLayerInStream.readAll();
+        layerFile.close();
+        EXPECT_FALSE(layerFile.isOpen());
+
+        // Change test layer file on disk. 
+        QTextStream layerOutStream(&layerFile);
+        layerFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        EXPECT_TRUE(layerFile.isOpen());
+        layerOutStream << "File Modified.";
+        layerFile.close();
+        EXPECT_FALSE(layerFile.isOpen());
+        layerFile.open(QIODevice::ReadOnly | QIODevice::Text);
+        EXPECT_TRUE(layerFile.isOpen());
+        QTextStream modifiedLayerInStream(&layerFile);
+        QString modifiedLayerFileText = modifiedLayerInStream.readAll();
+        layerFile.close();
+        EXPECT_FALSE(layerFile.isOpen());
+
+        // Ensure the file gets updated.
+        EXPECT_NE(modifiedLayerFileText, originalLayerFileText);
+
+        // Try to save the unchanged empty layer.
+        // The test layer file on disk should not get overwritten. 
+        layerResult = m_layerEntity.m_layer->WriteLayerAndGetEntities(
+            testFolderPath,
+            layerEntities,
+            instancesInLayers
+        );
+        EXPECT_TRUE(layerResult.IsSuccess());
+        layerFile.open(QIODevice::ReadOnly | QIODevice::Text);
+        EXPECT_TRUE(layerFile.isOpen());
+        QTextStream currentLayerInStream(&layerFile);
+        QString currentLayerFileText = currentLayerInStream.readAll();
+        layerFile.close();
+        EXPECT_FALSE(layerFile.isOpen());
+
+        // Ensure the file does not get overwritten.
+        EXPECT_EQ(currentLayerFileText, modifiedLayerFileText);
     }
 }

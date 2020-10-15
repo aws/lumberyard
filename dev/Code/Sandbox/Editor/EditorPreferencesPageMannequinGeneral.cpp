@@ -51,6 +51,13 @@ void CEditorPreferencesPage_MannequinGeneral::Reflect(AZ::SerializeContext& seri
 CEditorPreferencesPage_MannequinGeneral::CEditorPreferencesPage_MannequinGeneral()
 {
     InitializeSettings();
+
+    m_icon = QIcon(":/res/Motion.svg");
+}
+
+QIcon& CEditorPreferencesPage_MannequinGeneral::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_MannequinGeneral::OnApply()

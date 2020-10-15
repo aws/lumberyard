@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_IPHYSICSDEBUGRENDERER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 struct IPhyicalWorld;
 class CCamera;
 
@@ -30,5 +31,6 @@ struct IPhysicsDebugRenderer
     virtual void Flush(float dt) = 0;
     // </interfuscator:shuffle>
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_IPHYSICSDEBUGRENDERER_H

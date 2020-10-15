@@ -13,7 +13,13 @@
 
 #pragma once
 
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/XML/rapidxml.h>
+
+#if !AUDIO_ENABLE_CRY_PHYSICS
+    #include <AzFramework/Physics/Casts.h>
+    #include <AzFramework/Physics/World.h>
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
 
 #include <IAudioSystem.h>
 #include <ATLAudioObject.h>
@@ -22,7 +28,6 @@
 #include <AudioInternalInterfaces.h>
 #include <FileCacheManager.h>
 
-class CATLAudioObjectBase;
 
 namespace Audio
 {
@@ -79,6 +84,52 @@ namespace Audio
 #endif //INCLUDE_AUDIO_PRODUCTION_CODE
     };
 
+
+#if !AUDIO_ENABLE_CRY_PHYSICS
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    class AudioRaycastManager
+        : public AudioRaycastRequestBus::Handler
+        , public Physics::WorldNotificationBus::Handler
+    {
+    public:
+        AudioRaycastManager()
+        {
+            Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
+            AudioRaycastRequestBus::Handler::BusConnect();
+        }
+
+        ~AudioRaycastManager() override
+        {
+            AudioRaycastRequestBus::Handler::BusDisconnect();
+            Physics::WorldNotificationBus::Handler::BusDisconnect();
+        }
+
+        // AudioRaycastRequestBus::Handler interface
+        void PushAudioRaycastRequest(const AudioRaycastRequest& request) override;
+
+        // Physics::WorldNotificationBus::Handler interface
+        void OnPostPhysicsUpdate(float fixedDeltaTimeSeconds) override;
+        int GetPhysicsTickOrder() override
+        {
+            return Physics::WorldNotifications::Audio;
+        }
+
+        // Additional functionality related to processing raycasts...
+        void ProcessRaycastResults(float updateIntervalMs);
+
+        using AudioRaycastRequestQueueType = AZStd::vector<AudioRaycastRequest>;
+        using AudioRaycastResultQueueType = AZStd::vector<AudioRaycastResult>;
+
+    protected:
+        AZStd::mutex m_raycastRequestsMutex;
+        AZStd::mutex m_raycastResultsMutex;
+        AudioRaycastRequestQueueType m_raycastRequests;
+        AudioRaycastResultQueueType m_raycastResults;
+    };
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
+
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CAudioObjectManager
     {
@@ -99,13 +150,15 @@ namespace Audio
 
         void ReportStartedEvent(const CATLEvent* const pEvent);
         void ReportFinishedEvent(const CATLEvent* const pEvent, const bool bSuccess);
+
+#if AUDIO_ENABLE_CRY_PHYSICS
         void ReportObstructionRay(const TAudioObjectID nAudioObjectID, const size_t nRayID);
-
         void ReleasePendingRays();
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
-        bool HasActiveEvents(const CATLAudioObjectBase* const pAudioObject) const;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+
         using TActiveObjectMap = ATLMapLookupType<TAudioObjectID, CATLAudioObject*>;
 
         bool ReserveID(TAudioObjectID& rAudioObjectID, const char* const sAudioObjectName);
@@ -121,10 +174,12 @@ namespace Audio
 
     private:
         CATLDebugNameStore* m_pDebugNameStore;
-#else //INCLUDE_AUDIO_PRODUCTION_CODE
+
+    #else
     private:
         using TActiveObjectMap = ATLMapLookupType<TAudioObjectID, CATLAudioObject*>;
-#endif //INCLUDE_AUDIO_PRODUCTION_CODE
+
+    #endif //INCLUDE_AUDIO_PRODUCTION_CODE
 
         static float s_fVelocityUpdateIntervalMS;
 
@@ -136,6 +191,10 @@ namespace Audio
         float m_fTimeSinceLastVelocityUpdateMS;
 
         CAudioEventManager& m_refAudioEventManager;
+
+#if !AUDIO_ENABLE_CRY_PHYSICS
+        AudioRaycastManager m_raycastManager;
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,6 +301,9 @@ namespace Audio
         void ParseAudioRtpcs(const AZ::rapidxml::xml_node<char>* rtpcsXmlRoot, const EATLDataScope dataScope);
         void ParseAudioPreloads(const AZ::rapidxml::xml_node<char>* preloadsXmlRoot, const EATLDataScope dataScope, const char* const folderName);
         void ParseAudioEnvironments(const AZ::rapidxml::xml_node<char>* environmentsXmlRoot, const EATLDataScope dataScope);
+
+        CATLPreloadRequest::TFileEntryIDs LegacyParseFileEntries(const AZ::rapidxml::xml_node<char>* preloadNode, const EATLDataScope dataScope, bool autoLoad);
+        CATLPreloadRequest::TFileEntryIDs ParseFileEntries(const AZ::rapidxml::xml_node<char>* preloadNode, const EATLDataScope dataScope, bool autoLoad);
 
         IATLTriggerImplData* NewAudioTriggerImplDataInternal(const AZ::rapidxml::xml_node<char>* triggerXmlRoot);
         IATLRtpcImplData* NewAudioRtpcImplDataInternal(const AZ::rapidxml::xml_node<char>* rtpcXmlRoot);

@@ -11,6 +11,8 @@
 */
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzTest/AzTest.h>
 #include "../utils.h"
 
@@ -67,3 +69,5 @@ TEST(IntersectionTests, BoxSegmentIntersect_SegmentInsideBox_False)
     bool intersect = box_segment_intersect(box, Vec2(0.2f), Vec2(0.8f));
     EXPECT_FALSE(intersect);
 }
+
+#endif

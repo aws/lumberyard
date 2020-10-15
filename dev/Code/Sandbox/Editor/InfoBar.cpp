@@ -28,7 +28,9 @@
 
 #include <QComboBox>
 #include <QFontMetrics>
+
 #include <AzQtComponents/Components/Widgets/VectorInput.h>
+#include <AzQtComponents/Components/Style.h>
 
 #include <ui_InfoBar.h>
 
@@ -78,6 +80,11 @@ CInfoBar::CInfoBar(QWidget* parent)
 
     connect(ui->m_posCtrl, &AzQtComponents::VectorInput::valueChanged, this, &CInfoBar::OnVectorChanged);
 
+    // Hide some buttons from the expander menu
+    AzQtComponents::Style::addClass(ui->m_posCtrl, "expanderMenu_hide");
+    AzQtComponents::Style::addClass(ui->m_physDoStepBtn, "expanderMenu_hide");
+    AzQtComponents::Style::addClass(ui->m_physSingleStepBtn, "expanderMenu_hide");
+
     // posCtrl is a VectorInput initialized via UI; as such, we can't construct it to have only 3 elements.
     // We can just hide the W element as it is unused.
     ui->m_posCtrl->getElements()[3]->setVisible(false);
@@ -123,9 +130,13 @@ CInfoBar::CInfoBar(QWidget* parent)
     if (GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         ui->m_lockSelection->setVisible(false);
+        AzQtComponents::Style::addClass(ui->m_lockSelection, "expanderMenu_hide");
         ui->m_posCtrl->setVisible(false);
+        AzQtComponents::Style::addClass(ui->m_posCtrl, "expanderMenu_hide");
         ui->m_setVector->setVisible(false);
+        AzQtComponents::Style::addClass(ui->m_setVector, "expanderMenu_hide");
         ui->m_vectorLock->setVisible(false);
+        AzQtComponents::Style::addClass(ui->m_vectorLock, "expanderMenu_hide");
 
         // As we're hiding some of the icons, we have an extra spacer to deal with.
         // We cannot set the visibility of separators, so we'll have to take it out.
@@ -480,7 +491,12 @@ void CInfoBar::IdleUpdate()
             ui->m_physicsBtn->setChecked(bPhysics);
         }
 
+#if ENABLE_CRY_PHYSICS
         bool bSingleStep = (gEnv->pPhysicalWorld->GetPhysVars()->bSingleStepMode != 0);
+#else
+        // Unsupported for Phyics:: atm
+        bool bSingleStep = false;
+#endif // ENABLE_CRY_PHYSICS
         if (ui->m_physSingleStepBtn->isChecked() != bSingleStep)
         {
             ui->m_physSingleStepBtn->setChecked(bSingleStep);
@@ -751,15 +767,15 @@ void CInfoBar::SetVectorRange(float min, float max)
 
 void CInfoBar::OnVectorLock()
 {
-    SetVectorLock(ui->m_vectorLock->isChecked());
+    SetVectorLock(!m_bVectorLock);
 }
 
 void CInfoBar::OnLockSelection()
 {
-    bool locked = ui->m_lockSelection->isChecked();
-    ui->m_lockSelection->setChecked(locked);
-    m_bSelectionLocked = (locked) ? true : false;
-    GetIEditor()->LockSelection(m_bSelectionLocked);
+    bool newLockSelectionValue = !m_bSelectionLocked;
+    m_bSelectionLocked = newLockSelectionValue;
+    ui->m_lockSelection->setChecked(newLockSelectionValue);
+    GetIEditor()->LockSelection(newLockSelectionValue);
 }
 
 void CInfoBar::OnUpdateMoveSpeedText(const QString& text)
@@ -837,12 +853,18 @@ void CInfoBar::OnBnClickedPhysics()
 
 void CInfoBar::OnBnClickedSingleStepPhys()
 {
+#if ENABLE_CRY_PHYSICS
     ui->m_physSingleStepBtn->setChecked(gEnv->pPhysicalWorld->GetPhysVars()->bSingleStepMode ^= 1);
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 }
 
 void CInfoBar::OnBnClickedDoStepPhys()
 {
+#if ENABLE_CRY_PHYSICS
     gEnv->pPhysicalWorld->GetPhysVars()->bDoStep = 1;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////

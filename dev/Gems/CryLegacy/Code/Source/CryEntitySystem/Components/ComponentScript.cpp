@@ -543,6 +543,7 @@ void CComponentScript::ProcessEvent(SEntityEvent& event)
     }
     case ENTITY_EVENT_PHYS_BREAK:
     {
+#if ENABLE_CRY_PHYSICS
         EventPhysJointBroken* pBreakEvent = (EventPhysJointBroken*)event.nParam[0];
         if (pBreakEvent)
         {
@@ -551,6 +552,7 @@ void CComponentScript::ProcessEvent(SEntityEvent& event)
             int nBreakOtherEntityPartId = pBreakEvent->partid[1];
             m_pScript->CallStateFunction(CurrentState(), m_pThis, ScriptState_OnPhysicsBreak, pBreakPos, nBreakPartId, nBreakOtherEntityPartId);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
     break;
     case ENTITY_EVENT_SOUND_DONE:
@@ -1065,11 +1067,13 @@ void CComponentScript::OnCollision(IEntity* pTarget, int matId, const Vec3& pt, 
             ScriptHandle sh;
             sh.n = pTarget->GetId();
 
+#if ENABLE_CRY_PHYSICS
             if (pTarget->GetPhysics())
             {
                 chain.SetValue("target_type", (int)pTarget->GetPhysics()->GetType());
             }
             else
+#endif
             {
                 chain.SetToNull("target_type");
             }

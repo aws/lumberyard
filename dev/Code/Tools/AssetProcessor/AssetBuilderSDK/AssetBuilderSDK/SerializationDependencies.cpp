@@ -19,7 +19,7 @@ namespace AssetBuilderSDK
         void* instancePointer,
         const AZ::SerializeContext::ClassData* classData,
         const AZ::SerializeContext::ClassElement* classElement,
-        AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet,
+        UniqueDependencyList& productDependencySet,
         ProductPathDependencySet& productPathDependencySet,
         bool enumerateChildren)
     {
@@ -33,7 +33,7 @@ namespace AssetBuilderSDK
 
             if (asset->GetId().IsValid())
             {
-                productDependencySet.emplace(asset->GetId());
+                productDependencySet[asset->GetId()] = AZ::Data::ProductDependencyInfo::CreateFlags(asset);
             }
         }
         else if (classData->m_typeId == azrtti_typeid<AZ::Data::AssetId>())
@@ -42,7 +42,7 @@ namespace AssetBuilderSDK
 
             if (assetId->IsValid())
             {
-                productDependencySet.emplace(*assetId);
+                productDependencySet[*assetId] = AZ::Data::ProductDependencyInfo::ProductDependencyFlags();
             }
         }
         else if (classData->m_azRtti && classData->m_azRtti->IsTypeOf(azrtti_typeid<AzFramework::SimpleAssetReferenceBase>()))
@@ -97,14 +97,14 @@ namespace AssetBuilderSDK
 
     void FillDependencyVectorFromSet(
         AZStd::vector<ProductDependency>& productDependencies,
-        AZStd::unordered_set<AZ::Data::AssetId>& productDependencySet)
+        UniqueDependencyList& productDependencySet)
     {
         productDependencies.reserve(productDependencySet.size());
 
-        for (const auto& assetId : productDependencySet)
+        for (const auto& thisEntry : productDependencySet)
         {
             constexpr int flags = 0;
-            productDependencies.emplace_back(assetId, flags);
+            productDependencies.emplace_back(thisEntry.first, thisEntry.second);
         }
     }
 
@@ -119,7 +119,7 @@ namespace AssetBuilderSDK
         {
             return false;
         }
-        AZStd::unordered_set<AZ::Data::AssetId> productDependencySet;
+        UniqueDependencyList productDependencySet;
 
         // UpdateDependenciesFromClassData is also looking for assets. In some cases, the assets may not be ready to use
         // in UpdateDependenciesFromClassData, and have an invalid asset ID. This asset filter will be called with valid, ready to use assets,
@@ -128,7 +128,7 @@ namespace AssetBuilderSDK
         {
             if (asset.GetId().IsValid())
             {
-                productDependencySet.emplace(asset.GetId());
+                productDependencySet[asset.GetId()] = AZ::Data::ProductDependencyInfo::CreateFlags(&asset);
             }
             return true;
         });
@@ -162,7 +162,7 @@ namespace AssetBuilderSDK
         }
 
         // start with a set to make it easy to avoid duplicate entries.
-        AZStd::unordered_set<AZ::Data::AssetId> productDependencySet;
+        UniqueDependencyList productDependencySet;
         auto beginCallback = [&serializeContext, &productDependencySet, &productPathDependencySet, handler](void* instancePointer, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement)
         {
             // EnumerateObject already visits every element, so no need to enumerate farther, set enumerateChildren to false.

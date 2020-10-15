@@ -18,6 +18,7 @@
 #include <AzCore/Math/Color.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <QtWidgets/QWidget>
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
 #include "PropertyEditorAPI.h"
 
 #pragma once
@@ -28,13 +29,23 @@ class QPushButton;
 class QToolButton;
 class QLabel;
 
-namespace AzQtComponents
-{
-    class ColorPicker;
-}
-
 namespace AzToolsFramework
 {
+    using TransformColorCallback = AZStd::function<AZ::Color(const AZ::Color& /*color*/, uint32_t /* fromColorSpaceId*/, uint32_t /* toColorSpaceId*/)>;
+
+    //! Can be used to configure PropertyColorCtrl, especially for handling conversions between color spaces.
+    struct ColorEditorConfiguration
+    {
+        AZ_TYPE_INFO(AzToolsFramework::ColorEditorConfiguration, "{1B9DBA31-4C1F-4E0A-8EFC-2A3C9FEC78E8}");
+        
+        uint32_t m_propertyColorSpaceId;                                 //!< Color space of the color property being edited, an displayed in the PropertyColorCtrl's numeric field.
+        uint32_t m_colorSwatchColorSpaceId;                              //!< Color space used to display the PropertyColorCtrl small color swatch.
+        uint32_t m_colorPickerDialogColorSpaceId;                        //!< Color space used by the color picker dialog for numeric input, swatches, the dropper, etc.
+        AZStd::unordered_map<uint32_t, AZStd::string> m_colorSpaceNames; //!< Lists display names for each of the available color space IDs
+        TransformColorCallback m_transformColorCallback;                 //!< A custom function for transforming from one of the above color spaces to another.
+        AzQtComponents::ColorPicker::Configuration m_colorPickerDialogConfiguration = AzQtComponents::ColorPicker::Configuration::RGB;
+    };
+
     class PropertyColorCtrl
         : public QWidget
     {
@@ -50,6 +61,8 @@ namespace AzToolsFramework
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();
         void UpdateTabOrder();
+
+        void SetColorEditorConfiguration(const ColorEditorConfiguration& configuration);
 
     signals:
         void valueChanged(QColor newValue);
@@ -71,6 +84,11 @@ namespace AzToolsFramework
         void CreateColorDialog();
         void SetColor(QColor color, bool updateDialogColor = true);
         QColor convertFromString(const QString& string);
+
+        ColorEditorConfiguration m_config;
+
+        AZ::Color TransformColor(const AZ::Color& color, uint32_t fromColorSpaceId, uint32_t toColorSpaceId) const;
+        QColor TransformColor(const QColor& color, uint32_t fromColorSpaceId, uint32_t toColorSpaceId) const;
 
         QToolButton* m_pDefaultButton;
         AzQtComponents::ColorPicker* m_pColorDialog;

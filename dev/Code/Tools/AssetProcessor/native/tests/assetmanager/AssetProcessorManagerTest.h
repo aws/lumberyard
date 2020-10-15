@@ -165,6 +165,9 @@ struct ModtimeScanningTest
     void ProcessAssetJobs();
     void SimulateAssetScanner(QSet<AssetProcessor::AssetFileInfo> filePaths);
     QSet<AssetProcessor::AssetFileInfo> BuildFileSet();
+    void ExpectWork(int createJobs, int processJobs);
+    void ExpectNoWork();
+    void SetFileContents(QString filePath, QString contents);
 
     struct StaticData
     {
@@ -252,7 +255,7 @@ struct ChainJobDependencyTest
 struct DuplicateProductsTest
     : public AssetProcessorManagerTest
 {
-    void SetupDuplicateProductsTest(QString& sourceFile, QDir& tempPath, QString& productFile, AZStd::vector<AssetProcessor::JobDetails>& jobDetails, AssetBuilderSDK::ProcessJobResponse& response);
+    void SetupDuplicateProductsTest(QString& sourceFile, QDir& tempPath, QString& productFile, AZStd::vector<AssetProcessor::JobDetails>& jobDetails, AssetBuilderSDK::ProcessJobResponse& response, bool multipleOutputs, QString extension);
 };
 
 struct DeleteTest

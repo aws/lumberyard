@@ -24,20 +24,20 @@ namespace AudioControls
         switch (type)
         {
         case AudioControls::eACET_TRIGGER:
-            return QIcon(":/Editor/Icons/Trigger_Icon.png");
+            return QIcon(":/Editor/Icons/Trigger_Icon.svg");
         case AudioControls::eACET_RTPC:
-            return QIcon(":/Editor/Icons/RTPC_Icon.png");
+            return QIcon(":/Editor/Icons/RTPC_Icon.svg");
         case AudioControls::eACET_SWITCH:
-            return QIcon(":/Editor/Icons/Switch_Icon.png");
+            return QIcon(":/Editor/Icons/Switch_Icon.svg");
         case AudioControls::eACET_SWITCH_STATE:
-            return QIcon(":/Editor/Icons/Property_Icon.png");
+            return QIcon(":/Editor/Icons/Property_Icon.svg");
         case AudioControls::eACET_ENVIRONMENT:
-            return QIcon(":/Editor/Icons/Environment_Icon.png");
+            return QIcon(":/Editor/Icons/Environment_Icon.svg");
         case AudioControls::eACET_PRELOAD:
-            return QIcon(":/Editor/Icons/Bank_Icon.png");
+            return QIcon(":/Editor/Icons/Preload_Icon.svg");
         default:
             // should make a "default"/empty icon...
-            return QIcon(":/Editor/Icons/RTPC_Icon.png");
+            return QIcon(":/Editor/Icons/RTPC_Icon.svg");
         }
     }
 

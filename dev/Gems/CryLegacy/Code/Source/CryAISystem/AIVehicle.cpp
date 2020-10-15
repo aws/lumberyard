@@ -25,6 +25,7 @@
 #include "Cry_Vector2.h"
 
 #include <ISerialize.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 
 CAIVehicle::CAIVehicle()
@@ -167,6 +168,7 @@ Vec3 CAIVehicle::PredictMovingTarget(const CAIObject* pTarget, const Vec3& vTarg
 {
     Vec3 vError(ZERO);
 
+#if ENABLE_CRY_PHYSICS
     // if we need a prediction of the target
     if (pTarget)
     {
@@ -192,6 +194,13 @@ Vec3 CAIVehicle::PredictMovingTarget(const CAIObject* pTarget, const Vec3& vTarg
             }
         }
     }
+#else
+    AZ_UNUSED(pTarget);
+    AZ_UNUSED(vTargetPos);
+    AZ_UNUSED(vFirePos);
+    AZ_UNUSED(duration);
+    AZ_UNUSED(distpred);
+#endif // ENABLE_CRY_PHYSICS
     return vError;
 }
 
@@ -230,7 +239,13 @@ Vec3 CAIVehicle::GetError(const Vec3& vTargetPos, const Vec3& vFirePos, const fl
         vError = rotmatZ * vError;
 
         vError = vError + vTargetPos;
-        vError.z = gEnv->p3DEngine->GetTerrainElevation(vError.x, vError.y);
+
+        float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+            , vError.x, vError.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+        vError.z = elevation;
         vError = vError - vTargetPos;
         vError.z -= zofs;
     }
@@ -253,6 +268,7 @@ bool CAIVehicle::CheckExplosion(const Vec3& vTargetPos, const Vec3& vFirePos, co
 
     ray_hit hit;
 
+#if ENABLE_CRY_PHYSICS
     if (gAIEnv.pWorld->RayWorldIntersection(vFirePos, vDirVector, COVER_OBJECT_TYPES, HIT_COVER,
             &hit, 1, &skipList[0], skipList.size()))
     {
@@ -260,6 +276,7 @@ bool CAIVehicle::CheckExplosion(const Vec3& vTargetPos, const Vec3& vFirePos, co
         vHitPoint = hit.pt;
     }
     else
+#endif // ENABLE_CRY_PHYSICS
     {
         //When the bullet will hit the player.
         vHitPoint = vTargetPos;
@@ -279,6 +296,7 @@ bool CAIVehicle::CheckExplosion(const Vec3& vTargetPos, const Vec3& vFirePos, co
     Vec3 vActualDir = vActuallFireDir;
     vActualDir.SetLength(vDirVector.GetLength());
 
+#if ENABLE_CRY_PHYSICS
     if (GetSubType() != CAIObject::STP_HELI)
     {
         // if will hit the terrain/static and there is no friend
@@ -310,6 +328,7 @@ bool CAIVehicle::CheckExplosion(const Vec3& vTargetPos, const Vec3& vFirePos, co
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return bNoFriendsInRadius;
 }
@@ -367,6 +386,7 @@ void CAIVehicle::FireCommand(void)
         //      gEnv->pAISystem->AddDebugLine( vFirePos, vFirePos + vFwdDir * 20.0f , 255, 255, 255, 1.0f);
     }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhys  = GetPhysics();
     if (pPhys)
     {
@@ -374,9 +394,11 @@ void CAIVehicle::FireCommand(void)
         pPhys->GetStatus(&my_status);
         vMyPos = my_status.pos;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     Vec3    vTargetPos;
     {
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pAttPhys   = pFireTarget->GetPhysics();
         if (pAttPhys)
         {
@@ -390,13 +412,25 @@ void CAIVehicle::FireCommand(void)
             vTargetPos += ofs;
         }
         else
+#endif // ENABLE_CRY_PHYSICS
         {
             vTargetPos = pFireTarget->GetPos();
         }
     }
 
-    float targetHeight  = vTargetPos.z - gEnv->p3DEngine->GetTerrainElevation(vTargetPos.x, vTargetPos.y);
-    float fireHeight    = vFirePos.z - gEnv->p3DEngine->GetTerrainElevation(vFirePos.x, vFirePos.y);
+    float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , vTargetPos.x, vTargetPos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+    float targetHeight  = vTargetPos.z - elevation;
+
+    elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , vFirePos.x, vFirePos.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+    float fireHeight    = vFirePos.z - elevation;
 
     // For the helicopter/vtol missiles
     if (GetSubType() == CAIObject::STP_HELI)
@@ -600,12 +634,14 @@ void CAIVehicle::FireCommand(void)
         {
             if (targetHeight < 10.0f)
             {
+#if ENABLE_CRY_PHYSICS
                 IPhysicalEntity* pAttPhys   = pFireTarget->GetPhysics();
                 if (pAttPhys)
                 {
                     pe_status_dynamics  dSt;
                     pAttPhys->GetStatus(&dSt);
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 m_vDeltaTarget = GetError(vTargetPos, vFirePos, fAccuracy);
                 m_vDeltaTarget += PredictMovingTarget(pFireTarget, vTargetPos, vFirePos, 1.0f, 0.0f);
@@ -891,6 +927,7 @@ void CAIVehicle::AlertPuppets(void)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_AI);
 
+#if ENABLE_CRY_PHYSICS
     if (GetSubType() != CAIObject::STP_CAR)
     {
         return;
@@ -1018,12 +1055,6 @@ void CAIVehicle::AlertPuppets(void)
 
         assert(pPuppet);
 
-        // Skip puppets in vehicles.
-        if (lookUp.GetProxy(actorIndex)->GetLinkedVehicleEntityId())
-        {
-            continue;
-        }
-
         bool bNearPath = false;
         Vec3 puppetDir = pPuppet->GetPos() - r.center;
 
@@ -1100,6 +1131,7 @@ void CAIVehicle::AlertPuppets(void)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAIVehicle::Serialize(TSerialize ser)
@@ -1243,9 +1275,7 @@ bool CAIVehicle::IsPlayerInside()
 //------------------------------------------------------------------------------------------------------------------
 EntityId CAIVehicle::GetDriverEntity() const
 {
-    IAIActorProxy* pProxy = GetProxy();
-
-    return (pProxy ? pProxy->GetLinkedDriverEntityId() : 0);
+    return 0;
 }
 
 

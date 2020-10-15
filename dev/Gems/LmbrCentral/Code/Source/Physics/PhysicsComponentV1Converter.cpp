@@ -9,7 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "RigidPhysicsComponent.h"
 #include "StaticPhysicsComponent.h"
 
@@ -200,3 +204,5 @@ namespace LmbrCentral
         return true;
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

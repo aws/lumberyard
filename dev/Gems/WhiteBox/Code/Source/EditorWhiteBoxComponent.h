@@ -25,6 +25,7 @@
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <IEditor.h>
 #include <WhiteBox/EditorWhiteBoxComponentBus.h>
 #include <WhiteBox/WhiteBoxToolApi.h>
@@ -45,6 +46,7 @@ namespace WhiteBox
         , private AZ::Data::AssetBus::Handler
         , private IEditorNotifyListener
         , private MeshAssetNotificationBus::Handler
+        , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorWhiteBoxComponent, "{C9F2D913-E275-49BB-AB4F-2D221C16170A}", EditorComponentBase);
@@ -55,6 +57,10 @@ namespace WhiteBox
         EditorWhiteBoxComponent& operator=(const EditorWhiteBoxComponent&) = delete;
         ~EditorWhiteBoxComponent();
 
+        // AZ::Component ...
+        void Activate() override;
+        void Deactivate() override;
+
         // EditorWhiteBoxComponentRequestBus ...
         WhiteBoxMesh* GetWhiteBoxMesh() override;
         void SerializeWhiteBox() override;
@@ -63,16 +69,18 @@ namespace WhiteBox
         // EditorLocalBoundsRequestBus ...
         AZ::Aabb GetEditorLocalBounds() override;
 
+        //! Return if the component currently has an instance of RenderMeshInterface.
+        bool HasRenderMesh() const;
+
     private:
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
-        // AZ::Component ...
-        void Activate() override;
-        void Deactivate() override;
-
         // EditorComponentBase ...
         void BuildGameEntity(AZ::Entity* gameEntity) override;
+
+        // EditorVisibilityNotificationBus ...
+        void OnEntityVisibilityChanged(bool visibility) override;
 
         // EditorComponentSelectionRequestsBus ...
         AZ::Aabb GetEditorSelectionBoundsViewport(const AzFramework::ViewportInfo& viewportInfo) override;
@@ -101,7 +109,6 @@ namespace WhiteBox
 
         void AssetChanged();
         void AssetCleared();
-        AZStd::string GetPathForAsset(AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset>& asset);
         void SaveAsAsset();
         bool SaveAsset(const AZStd::string& filePath);
         AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset> CreateOrFindMeshAsset(const AZStd::string& assetPath);
@@ -119,18 +126,23 @@ namespace WhiteBox
 
         // IEditorNotifyListener ...
         void OnEditorNotifyEvent(EEditorNotifyEvent editorEvent) override;
+
         void RegisterForEditorEvents();
         void UnregisterForEditorEvents();
 
         void OnMaterialChange();
         bool IsCustomAsset() const;
 
+        void ShowRenderMesh();
+        void HideRenderMesh();
+
         using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
         ComponentModeDelegate m_componentModeDelegate; //!< Responsible for detecting ComponentMode activation
                                                        //!< and creating a concrete ComponentMode.
 
         Api::WhiteBoxMeshPtr m_whiteBox; //!< Handle/opaque pointer to the White Box mesh data.
-        AZStd::unique_ptr<RenderMeshInterface> m_renderMesh; //!< The render mesh to use for the White Box mesh data.
+        AZStd::optional<AZStd::unique_ptr<RenderMeshInterface>>
+            m_renderMesh; //!< The render mesh to use for the White Box mesh data.
         AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); //!< Cached world transform of Entity.
         AZStd::vector<AZ::u8> m_whiteBoxData; //! Serialized White Box mesh data.
         AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset>

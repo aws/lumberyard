@@ -68,7 +68,6 @@ public:
 
 private Q_SLOTS:
     void OnSelectionChanged(const QItemSelection&, const QItemSelection&);
-    void OnOpenTreeContextMenu(const QPoint& pos);
 
     void OnSearchTextChanged(const QString& activeTextFilter);
     void OnFilterChanged(const AzQtComponents::SearchTypeFilterList& activeTypeFilters);
@@ -77,6 +76,7 @@ private Q_SLOTS:
     void OnDisplayOptionChanged(EntityOutliner::DisplayOption displayOption, bool enable);
 
 private:
+    void contextMenuEvent(QContextMenuEvent* event) override;
 
     QString FindCommonSliceAssetName(const AZStd::vector<AZ::EntityId>& entityList) const;
 

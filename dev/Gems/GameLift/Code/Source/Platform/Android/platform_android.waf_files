@@ -1,7 +1,8 @@
 {
   "auto": {
     "Platform/Android": [
-      "CAFile_Android.cpp"
+      "CAFile_Android.cpp",
+      "GameLift_Traits.h"
     ]
   }
 }

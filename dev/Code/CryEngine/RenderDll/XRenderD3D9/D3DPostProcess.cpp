@@ -199,7 +199,7 @@ void SD3DPostEffectsUtils::CopyScreenToTexture(CTexture*& pDst, const RECT* pSrc
             D3D11_RENDER_TARGET_VIEW_DESC backbufferDesc;
             sourceRT->GetDesc(&backbufferDesc);
             const D3DFormat dstFmt = CTexture::DeviceFormatFromTexFormat(pDst->GetDstFormat());
-            const D3DFormat srcFmt = backbufferDesc.Format;        
+            const D3DFormat srcFmt = backbufferDesc.Format;
 
             if (dstFmt == srcFmt)
             {
@@ -502,7 +502,7 @@ void SD3DPostEffectsUtils::DownsampleDepthUsingCompute(CTexture* pSrc, CTexture*
 
     CTexture* pDst = pDstArr[0];
 
-    CD3D9Renderer* const AZ_RESTRICT rd = gcpRendD3D;
+    CD3D9Renderer* const __restrict rd = gcpRendD3D;
 
     uint64 saveFlagsShader_RT = rd->m_RP.m_FlagsShader_RT;
     rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
@@ -1717,4 +1717,3 @@ bool CREPostProcess:: mfDraw(CShader* ef, SShaderPass* sfm)
 
     return 1;
 }
-

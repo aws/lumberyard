@@ -17,6 +17,7 @@
 #include "EditorWhiteBoxComponent.h"
 #include "EditorWhiteBoxComponentMode.h"
 #include "EditorWhiteBoxComponentModeBus.h"
+#include "Rendering/WhiteBoxNullRenderMesh.h"
 #include "Rendering/WhiteBoxRenderMeshInterface.h"
 #include "WhiteBoxComponent.h"
 
@@ -29,10 +30,14 @@
 #include <AzCore/std/numeric.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Maths/TransformUtils.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <WhiteBox/EditorWhiteBoxColliderBus.h>
 #include <WhiteBox/WhiteBoxBus.h>
 
@@ -53,13 +58,28 @@ namespace WhiteBox
     static const char* const AssetModifiedUndoRedoDesc = "White Box Mesh asset was updated";
     static const char* const AssetSavedUndoRedoDesc = "White Box Mesh asset saved";
     static const char* const ObjExtension = "obj";
-    static const char* const WbmExtension = "wbm";
 
     static void RefreshProperties()
     {
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
             &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
             AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
+    }
+
+    static void RequestEditSourceControl(const char* absoluteFilePath)
+    {
+        bool active = false;
+        AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(
+            active, &AzToolsFramework::SourceControlConnectionRequestBus::Events::IsActive);
+
+        if (active)
+        {
+            AzToolsFramework::SourceControlCommandBus::Broadcast(
+                &AzToolsFramework::SourceControlCommandBus::Events::RequestEdit, absoluteFilePath, true,
+                [](bool /*success*/, AzToolsFramework::SourceControlFileInfo /*info*/)
+                {
+                });
+        }
     }
 
     // build intermediate data to be passed to WhiteBoxRenderMeshInterface
@@ -110,7 +130,7 @@ namespace WhiteBox
     {
         const AZStd::string entityIdStr = AZStd::string::format("%llu", static_cast<AZ::u64>(GetEntityId()));
         const AZStd::string componentIdStr = AZStd::string::format("%llu", GetId());
-        const AZStd::string shapeTypeStr = AZStd::string::format("%d", m_defaultShape);
+        const AZStd::string shapeTypeStr = AZStd::string::format("%d", aznumeric_cast<int>(m_defaultShape));
         const AZStd::vector<AZStd::string_view> scriptArgs{entityIdStr, componentIdStr, shapeTypeStr};
 
         AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(
@@ -143,7 +163,8 @@ namespace WhiteBox
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WhiteBox.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/WhiteBox.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "NONE")
+                    ->Attribute(
+                        AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/whitebox")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(
                         AZ::Edit::UIHandlers::ComboBox, &EditorWhiteBoxComponent::m_defaultShape, "Default Shape",
@@ -184,7 +205,11 @@ namespace WhiteBox
 
     void EditorWhiteBoxComponent::OnMaterialChange()
     {
-        m_renderMesh->UpdateMaterial(m_material);
+        if (m_renderMesh.has_value())
+        {
+            (*m_renderMesh)->UpdateMaterial(m_material);
+        }
+
         RebuildRenderMesh();
     }
 
@@ -219,6 +244,7 @@ namespace WhiteBox
         AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusConnect(entityId);
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(entityId);
+        AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(entityId);
         RegisterForEditorEvents();
 
         m_componentModeDelegate.ConnectWithSingleComponentMode<EditorWhiteBoxComponent, EditorWhiteBoxComponentMode>(
@@ -230,12 +256,17 @@ namespace WhiteBox
 
         // deserialize the white box data into a mesh object or load the serialized asset ref
         LoadMesh();
-        RebuildRenderMesh();
+
+        if (AzToolsFramework::IsEntityVisible(entityId))
+        {
+            ShowRenderMesh();
+        }
     }
 
     void EditorWhiteBoxComponent::Deactivate()
     {
         UnregisterForEditorEvents();
+        AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusDisconnect();
@@ -368,15 +399,24 @@ namespace WhiteBox
         m_localAabb.reset();
         m_faces.reset();
 
-        m_renderMesh.reset();
+        // must have been created in Activate or have had the Entity made visible again
+        if (m_renderMesh.has_value())
+        {
+            // cache the white box render data
+            m_renderData = CreateWhiteBoxRenderData(*GetWhiteBoxMesh(), m_material);
 
-        WhiteBoxRequestBus::BroadcastResult(m_renderMesh, &WhiteBoxRequests::CreateRenderMeshInterface);
+            // it's possible the white box mesh data isn't yet ready (for example if it's stored
+            // in an asset which hasn't finished loading yet) so don't attempt to create a render
+            // mesh with no data
+            if (!m_renderData.m_faces.empty())
+            {
+                // create a concrete implementation of the render mesh
+                WhiteBoxRequestBus::BroadcastResult(m_renderMesh, &WhiteBoxRequests::CreateRenderMeshInterface);
 
-        // cache the white box render data
-        m_renderData = CreateWhiteBoxRenderData(*GetWhiteBoxMesh(), m_material);
-
-        // generate the mesh
-        m_renderMesh->BuildMesh(m_renderData, m_worldFromLocal);
+                // generate the mesh
+                (*m_renderMesh)->BuildMesh(m_renderData, m_worldFromLocal);
+            }
+        }
 
         // generate physics mesh
         RebuildPhysicsMesh();
@@ -424,9 +464,9 @@ namespace WhiteBox
         const AZ::Transform worldUniformScale = AzToolsFramework::TransformUniformScale(world);
         m_worldFromLocal = worldUniformScale;
 
-        if (m_renderMesh)
+        if (m_renderMesh.has_value())
         {
-            m_renderMesh->UpdateTransform(worldUniformScale);
+            (*m_renderMesh)->UpdateTransform(worldUniformScale);
         }
     }
 
@@ -438,28 +478,37 @@ namespace WhiteBox
             GetEntityId(), &EditorWhiteBoxColliderRequests::GeneratePhysics, *GetWhiteBoxMesh());
     }
 
+    static AZStd::string WhiteBoxPathAtProjectRoot(const AZStd::string_view name, const AZStd::string_view extension)
+    {
+        const char* projectFolder = nullptr;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(
+            projectFolder, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAbsoluteDevGameFolderPath);
+
+        return AZStd::string::format(
+            "%s\\%.*s_whitebox.%.*s", projectFolder, aznumeric_cast<int>(name.size()), name.data(),
+            aznumeric_cast<int>(extension.size()), extension.data());
+    }
+
     void EditorWhiteBoxComponent::ExportToFile()
     {
-        const AZStd::string entityName = GetEntity()->GetName();
-        const AZStd::string exportPath =
-            AZStd::string::format("@devassets@/%s_whitebox.%s", entityName.c_str(), ObjExtension);
-
-        AZStd::array<char, AZ::IO::MaxPathLength> resolvedPath;
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath(exportPath.data(), resolvedPath.data(), resolvedPath.size());
+        const AZStd::string initialAbsolutePathToExport =
+            WhiteBoxPathAtProjectRoot(GetEntity()->GetName(), ObjExtension);
 
         const QString fileFilter = AZStd::string::format("*.%s", ObjExtension).c_str();
-        const QString saveFilePath =
-            QFileDialog::getSaveFileName(nullptr, "Save As...", resolvedPath.data(), fileFilter);
+        const QString absoluteSaveFilePath = QFileDialog::getSaveFileName(
+            nullptr, "Save As...", QString(initialAbsolutePathToExport.c_str()), fileFilter);
 
-        if (WhiteBox::Api::SaveToObj(*GetWhiteBoxMesh(), saveFilePath.toStdString().c_str()))
+        const auto absoluteSaveFilePathUtf8 = absoluteSaveFilePath.toUtf8();
+        const auto absoluteSaveFilePathCstr = absoluteSaveFilePathUtf8.constData();
+        if (WhiteBox::Api::SaveToObj(*GetWhiteBoxMesh(), absoluteSaveFilePathCstr))
         {
-            AZ_Printf("EditorWhiteBoxComponent", "Exported white box mesh to: %s", saveFilePath.toStdString().c_str());
+            AZ_Printf("EditorWhiteBoxComponent", "Exported white box mesh to: %s", absoluteSaveFilePathCstr);
+            RequestEditSourceControl(absoluteSaveFilePathCstr);
         }
         else
         {
             AZ_Warning(
-                "EditorWhiteBoxComponent", false, "Failed to export white box mesh to: %s",
-                saveFilePath.toStdString().c_str());
+                "EditorWhiteBoxComponent", false, "Failed to export white box mesh to: %s", absoluteSaveFilePathCstr);
         }
     }
 
@@ -516,122 +565,171 @@ namespace WhiteBox
         }
     }
 
-    static AZStd::string GetRelativePath(const AZStd::string& fullPath, const AZStd::string& subPath)
+    static AZStd::optional<AZStd::string> AbsolutePathForSourceAsset(
+        AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset>& asset)
     {
-        return fullPath.substr(subPath.size(), fullPath.size() - subPath.size());
-    }
-
-    AZStd::string EditorWhiteBoxComponent::GetPathForAsset(AZ::Data::Asset<Pipeline::WhiteBoxMeshAsset>& asset)
-    {
-        AZStd::string path;
+        AZStd::string relativeAssetPath;
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(
-            path, &AZ::Data::AssetCatalogRequests::GetAssetPathById, asset.GetId());
+            relativeAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, asset.GetId());
 
-        AZStd::string srcPath;
-        AzFramework::StringFunc::Path::Join("@devassets@\\", path.c_str(), srcPath);
+        AZStd::string absoluteAssetPath;
+        bool foundAbsolutePath = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(
+            foundAbsolutePath,
+            &AzToolsFramework::AssetSystem::AssetSystemRequest::GetFullSourcePathFromRelativeProductPath,
+            relativeAssetPath, absoluteAssetPath);
 
-        return srcPath;
+        if (foundAbsolutePath)
+        {
+            return absoluteAssetPath;
+        }
+
+        return AZStd::nullopt;
     }
 
-    bool EditorWhiteBoxComponent::SaveAsset(const AZStd::string& filePath)
+    bool EditorWhiteBoxComponent::SaveAsset(const AZStd::string& absoluteFilePath)
     {
         bool success = false;
         auto assetType = AZ::AzTypeInfo<Pipeline::WhiteBoxMeshAsset>::Uuid();
-        auto assetHandler = AZ::Data::AssetManager::Instance().GetHandler(assetType);
-        if (assetHandler)
+        if (auto assetHandler = AZ::Data::AssetManager::Instance().GetHandler(assetType))
         {
-            AZ::IO::FileIOStream fileStream(filePath.c_str(), AZ::IO::OpenMode::ModeWrite);
+            AZ::IO::FileIOStream fileStream(absoluteFilePath.c_str(), AZ::IO::OpenMode::ModeWrite);
             if (fileStream.IsOpen())
             {
                 success = assetHandler->SaveAssetData(m_meshAsset, &fileStream);
-                AZ_Printf("EditorWhiteBoxComponent", "Saved file (%d) to: %s", success, filePath.c_str());
+                AZ_Printf(
+                    "EditorWhiteBoxComponent", "Save %s. Location: %s", success ? "succeeded" : "failed",
+                    absoluteFilePath.c_str());
             }
         }
+
         return success;
     }
 
-    AZStd::string BuildAssetPath(const AZStd::string& entityName, AZStd::string& savePath)
+    // the outcome of attempting to save a white box mesh
+    struct SaveResult
     {
-        AZStd::string assetPathHint = AZStd::string::format(
-            "@devassets@\\%s_whitebox.%s", entityName.c_str(),
-            Pipeline::WhiteBoxMeshAssetHandler::s_assetFileExtension);
+        AZStd::optional<AZStd::string> m_relativeAssetPath; // optional relative asset path (the file may not have been
+                                                            // saved in the project folder)
+        AZStd::string m_absoluteFilePath; // the absolute path of the saved file (valid wherever the file is saved)
+    };
 
-        // suggest a new file name based on the entity
-        AZStd::array<char, AZ::IO::MaxPathLength> resolvedPath;
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath(assetPathHint.c_str(), resolvedPath.data(), resolvedPath.size());
+    static AZStd::optional<SaveResult> TrySaveAs(const AZStd::string& entityName)
+    {
+        const AZStd::string initialAbsolutePathToSave =
+            WhiteBoxPathAtProjectRoot(entityName, Pipeline::WhiteBoxMeshAssetHandler::AssetFileExtension);
 
         // let the user select final location of the saved asset
-        const QString fileFilter = AZStd::string::format("*.%s", WbmExtension).c_str();
-        const QString saveFilePath =
-            QFileDialog::getSaveFileName(nullptr, "Save As Asset...", resolvedPath.data(), fileFilter);
+        const QString fileFilter =
+            AZStd::string::format("*.%s", Pipeline::WhiteBoxMeshAssetHandler::AssetFileExtension).c_str();
+        const QString absoluteSaveFilePath = QFileDialog::getSaveFileName(
+            nullptr, "Save As Asset...", QString(initialAbsolutePathToSave.c_str()), fileFilter);
 
         // user pressed cancel
-        if (saveFilePath.isEmpty())
+        if (absoluteSaveFilePath.isEmpty())
         {
-            return AZStd::string();
+            return AZStd::nullopt;
         }
 
-        // absolute devassets path
-        AZStd::array<char, AZ::IO::MaxPathLength> devAssets;
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath("@devassets@", devAssets.data(), devAssets.size());
+        const auto absoluteSaveFilePathUtf8 = absoluteSaveFilePath.toUtf8();
+        const auto absoluteSaveFilePathCstr = absoluteSaveFilePathUtf8.constData();
 
-        // get the final asset path relative to devassets folder
-        AZStd::string assetPath = GetRelativePath(saveFilePath.toStdString().c_str(), devAssets.data());
-        AzFramework::StringFunc::Replace(assetPath, "/", "\\");
+        AZStd::string relativePath;
+        bool foundRelativePath = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(
+            foundRelativePath,
+            &AzToolsFramework::AssetSystem::AssetSystemRequest::GetRelativeProductPathFromFullSourceOrProductPath,
+            AZStd::string(absoluteSaveFilePathCstr, absoluteSaveFilePathUtf8.length()), relativePath);
 
-        savePath = saveFilePath.toStdString().c_str();
-        return assetPath;
+        if (!foundRelativePath)
+        {
+            int saveDecision = QMessageBox::warning(
+                AzToolsFramework::GetActiveWindow(), "Warning",
+                "Saving a White Box Mesh Asset (.wbm) outside of the project root will not create an Asset for the "
+                "Component to use. The file will be saved but will not be processed. For live updates to happen the "
+                "asset must be saved somewhere in the current project folder. Would you like to continue?",
+                (QMessageBox::Save | QMessageBox::Cancel), QMessageBox::Cancel);
+
+            // save the file but do not attempt to create an asset
+            if (saveDecision == QMessageBox::Save)
+            {
+                return SaveResult{AZStd::nullopt, AZStd::string(absoluteSaveFilePathCstr)};
+            }
+
+            // the user decided not to save the asset outside the project folder after the prompt
+            return AZStd::nullopt;
+        }
+
+        return SaveResult{relativePath, AZStd::string(absoluteSaveFilePathCstr)};
     }
 
     void EditorWhiteBoxComponent::SaveAsAsset()
     {
-        AZStd::string saveFilePath;
-        AZStd::string assetPath = BuildAssetPath(GetEntity()->GetName(), saveFilePath);
-        if (assetPath.empty())
+        const AZStd::optional<SaveResult> saveResult = TrySaveAs(GetEntity()->GetName());
+
+        // user pressed cancel
+        if (!saveResult.has_value())
         {
-            // user pressed cancel
             return;
         }
 
-        // notify undo system the entity has been changed (m_meshAsset)
-        AzToolsFramework::ScopedUndoBatch undoBatch(AssetSavedUndoRedoDesc);
-
-        // this is needed to check if we're saving from an existing asset, or internal data
-        const bool wasUsingAsset = IsUsingAsset();
-
-        // if there was a previous asset selected, it has to be cloned to a new one
-        if (wasUsingAsset)
+        const char* const absoluteSaveFilePath = saveResult.value().m_absoluteFilePath.c_str();
+        if (saveResult.value().m_relativeAssetPath.has_value())
         {
-            auto newMesh = Api::CloneMesh(*GetWhiteBoxMesh());
-            m_meshAsset = CreateOrFindMeshAsset(assetPath);
-            m_meshAsset->SetMesh(AZStd::move(newMesh));
+            const auto& relativeAssetPath = saveResult.value().m_relativeAssetPath.value();
+
+            // notify undo system the entity has been changed (m_meshAsset)
+            AzToolsFramework::ScopedUndoBatch undoBatch(AssetSavedUndoRedoDesc);
+
+            // this is needed to check if we're saving from an existing asset, or internal data
+            const bool wasUsingAsset = IsUsingAsset();
+
+            // if there was a previous asset selected, it has to be cloned to a new one
+            if (wasUsingAsset)
+            {
+                auto newMesh = Api::CloneMesh(*GetWhiteBoxMesh());
+                m_meshAsset = CreateOrFindMeshAsset(relativeAssetPath);
+                m_meshAsset->SetMesh(AZStd::move(newMesh));
+            }
+            // otherwise the internal mesh can simply be moved into the new asset
+            else
+            {
+                m_meshAsset = CreateOrFindMeshAsset(relativeAssetPath);
+                m_meshAsset->SetMesh(AZStd::move(m_whiteBox));
+            }
+
+            // change default shape to custom
+            m_defaultShape = DefaultShapeType::Custom;
+
+            // make sure the new asset has up to date undo data
+            m_meshAsset->UpdateUndoData();
+
+            // ensure this change gets tracked
+            undoBatch.MarkEntityDirty(GetEntityId());
+
+            // start listening for asset updates (potentially from other entities)
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+            MeshAssetNotificationBus::Handler::BusDisconnect();
+
+            AZ::Data::AssetBus::Handler::BusConnect(m_meshAsset.GetId());
+            MeshAssetNotificationBus::Handler::BusConnect(m_meshAsset.GetId());
+
+            RefreshProperties();
+
+            // save the asset to disk in the project folder
+            if (SaveAsset(absoluteSaveFilePath))
+            {
+                RequestEditSourceControl(absoluteSaveFilePath);
+            }
         }
-        // otherwise the internal mesh can simply be moved into the new asset
         else
         {
-            m_meshAsset = CreateOrFindMeshAsset(assetPath);
-            m_meshAsset->SetMesh(AZStd::move(m_whiteBox));
+            // save the asset to disk outside the project folder
+            if (Api::SaveToWbm(*GetWhiteBoxMesh(), absoluteSaveFilePath))
+            {
+                RequestEditSourceControl(absoluteSaveFilePath);
+            }
         }
-
-        // change default shape to custom
-        m_defaultShape = DefaultShapeType::Custom;
-
-        // make sure the new asset has up to date undo data
-        m_meshAsset->UpdateUndoData();
-
-        // ensure this change gets tracked
-        undoBatch.MarkEntityDirty(GetEntityId());
-
-        // save the asset to disk
-        SaveAsset(saveFilePath.c_str());
-
-        // start listening for asset updates (potentially from other entities)
-        AZ::Data::AssetBus::Handler::BusDisconnect();
-        MeshAssetNotificationBus::Handler::BusDisconnect();
-
-        AZ::Data::AssetBus::Handler::BusConnect(m_meshAsset.GetId());
-        MeshAssetNotificationBus::Handler::BusConnect(m_meshAsset.GetId());
-        RefreshProperties();
     }
 
     template<typename TransformFn>
@@ -736,24 +834,35 @@ namespace WhiteBox
     {
         IEditor* editor = nullptr;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
-        editor->RegisterNotifyListener(this);
+
+        if (editor)
+        {
+            editor->RegisterNotifyListener(this);
+        }
     }
 
     void EditorWhiteBoxComponent::UnregisterForEditorEvents()
     {
         IEditor* editor = nullptr;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
-        editor->UnregisterNotifyListener(this);
+
+        if (editor)
+        {
+            editor->UnregisterNotifyListener(this);
+        }
     }
 
-    void EditorWhiteBoxComponent::OnEditorNotifyEvent(EEditorNotifyEvent editorEvent)
+    void EditorWhiteBoxComponent::OnEditorNotifyEvent(const EEditorNotifyEvent editorEvent)
     {
         switch (editorEvent)
         {
         case eNotify_OnEndSceneSave:
             if (IsUsingAsset())
             {
-                SaveAsset(GetPathForAsset(m_meshAsset));
+                if (const auto absolutePath = AbsolutePathForSourceAsset(m_meshAsset))
+                {
+                    SaveAsset(absolutePath.value());
+                }
             }
             break;
         default:
@@ -761,50 +870,78 @@ namespace WhiteBox
         }
     }
 
-    void EditorWhiteBoxComponent::DisplayEntityViewport(
-        const AzFramework::ViewportInfo& viewportInfo, AzFramework::DebugDisplayRequests& debugDisplay)
+    void EditorWhiteBoxComponent::OnEntityVisibilityChanged(const bool visibility)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        auto whiteBoxMesh = GetWhiteBoxMesh();
-        if (!whiteBoxMesh)
+        if (visibility)
         {
-            return;
+            ShowRenderMesh();
         }
+        else
+        {
+            HideRenderMesh();
+        }
+    }
 
-        const AZ::Transform worldFromLocal = m_worldFromLocal;
+    void EditorWhiteBoxComponent::ShowRenderMesh()
+    {
+        // if we wish to display the render mesh, set a null render mesh indicating a mesh can exist
+        // note: if the optional remains empty, no render mesh will be created
+        m_renderMesh.emplace(AZStd::make_unique<WhiteBoxNullRenderMesh>());
+        RebuildRenderMesh();
+    }
 
-        AZ::Quaternion worldOrientationFromLocal = AZ::Quaternion::CreateIdentity();
-        AZ::TransformBus::EventResult(
-            worldOrientationFromLocal, GetEntityId(), &AZ::TransformInterface::GetWorldRotationQuaternion);
+    void EditorWhiteBoxComponent::HideRenderMesh()
+    {
+        // clear the optional
+        m_renderMesh.reset();
+    }
+
+    bool EditorWhiteBoxComponent::HasRenderMesh() const
+    {
+        // if the optional has a value we know a render mesh exists
+        // note: This implicitly implies that the Entity is visible
+        return m_renderMesh.has_value();
+    }
+
+    static bool DebugDrawingEnabled()
+    {
+        return cl_whiteBoxDebugVertexHandles || cl_whiteBoxDebugNormals || cl_whiteBoxDebugHalfedgeHandles ||
+            cl_whiteBoxDebugEdgeHandles || cl_whiteBoxDebugFaceHandles || cl_whiteBoxDebugAabb;
+    }
+
+    static void WhiteBoxDebugRendering(
+        const WhiteBoxMesh& whiteBoxMesh, const AZ::Transform& worldFromLocal,
+        AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Aabb& editorBounds)
+    {
+        AZ::Quaternion worldOrientationFromLocal = AZ::Quaternion::CreateFromTransform(worldFromLocal);
 
         debugDisplay.DepthTestOn();
 
-        for (const auto faceHandle : Api::MeshFaceHandles(*whiteBoxMesh))
+        for (const auto faceHandle : Api::MeshFaceHandles(whiteBoxMesh))
         {
-            const auto faceHalfedgeHandles = Api::FaceHalfedgeHandles(*whiteBoxMesh, faceHandle);
+            const auto faceHalfedgeHandles = Api::FaceHalfedgeHandles(whiteBoxMesh, faceHandle);
 
             const AZ::Vector3 localFaceCenter =
                 AZStd::accumulate(
                     faceHalfedgeHandles.cbegin(), faceHalfedgeHandles.cend(), AZ::Vector3::CreateZero(),
-                    [this, &whiteBoxMesh](AZ::Vector3 start, const Api::HalfedgeHandle halfedgeHandle)
+                    [&whiteBoxMesh](AZ::Vector3 start, const Api::HalfedgeHandle halfedgeHandle)
                     {
                         return start +
                             Api::VertexPosition(
-                                   *whiteBoxMesh, Api::HalfedgeVertexHandleAtTip(*whiteBoxMesh, halfedgeHandle));
+                                   whiteBoxMesh, Api::HalfedgeVertexHandleAtTip(whiteBoxMesh, halfedgeHandle));
                     }) /
                 3.0f;
 
             for (const auto halfedgeHandle : faceHalfedgeHandles)
             {
                 const Api::VertexHandle vertexHandleAtTip =
-                    Api::HalfedgeVertexHandleAtTip(*whiteBoxMesh, halfedgeHandle);
+                    Api::HalfedgeVertexHandleAtTip(whiteBoxMesh, halfedgeHandle);
                 const Api::VertexHandle vertexHandleAtTail =
-                    Api::HalfedgeVertexHandleAtTail(*whiteBoxMesh, halfedgeHandle);
+                    Api::HalfedgeVertexHandleAtTail(whiteBoxMesh, halfedgeHandle);
 
-                const AZ::Vector3 localTailPoint = Api::VertexPosition(*whiteBoxMesh, vertexHandleAtTail);
-                const AZ::Vector3 localTipPoint = Api::VertexPosition(*whiteBoxMesh, vertexHandleAtTip);
-                const AZ::Vector3 localFaceNormal = Api::FaceNormal(*whiteBoxMesh, faceHandle);
+                const AZ::Vector3 localTailPoint = Api::VertexPosition(whiteBoxMesh, vertexHandleAtTail);
+                const AZ::Vector3 localTipPoint = Api::VertexPosition(whiteBoxMesh, vertexHandleAtTip);
+                const AZ::Vector3 localFaceNormal = Api::FaceNormal(whiteBoxMesh, faceHandle);
                 const AZ::Vector3 localHalfedgeCenter = (localTailPoint + localTipPoint) * 0.5f;
 
                 // offset halfedge slightly based on the face it is associated with
@@ -848,9 +985,9 @@ namespace WhiteBox
 
         if (cl_whiteBoxDebugEdgeHandles)
         {
-            for (const auto edgeHandle : Api::MeshEdgeHandles(*GetWhiteBoxMesh()))
+            for (const auto edgeHandle : Api::MeshEdgeHandles(whiteBoxMesh))
             {
-                const AZ::Vector3 localEdgeMidpoint = Api::EdgeMidpoint(*GetWhiteBoxMesh(), edgeHandle);
+                const AZ::Vector3 localEdgeMidpoint = Api::EdgeMidpoint(whiteBoxMesh, edgeHandle);
                 const AZ::Vector3 worldEdgeMidpoint = worldFromLocal * localEdgeMidpoint;
                 debugDisplay.SetColor(AZ::Colors::CornflowerBlue);
                 const AZStd::string edge = AZStd::string::format("%d", edgeHandle.Index());
@@ -860,9 +997,21 @@ namespace WhiteBox
 
         if (cl_whiteBoxDebugAabb)
         {
-            const AZ::Aabb worldBounds = GetEditorSelectionBoundsViewport(AzFramework::ViewportInfo{});
             debugDisplay.SetColor(AZ::Colors::Blue);
-            debugDisplay.DrawWireBox(worldBounds.GetMin(), worldBounds.GetMax());
+            debugDisplay.DrawWireBox(editorBounds.GetMin(), editorBounds.GetMax());
+        }
+    }
+
+    void EditorWhiteBoxComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo, AzFramework::DebugDisplayRequests& debugDisplay)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        if (DebugDrawingEnabled())
+        {
+            WhiteBoxDebugRendering(
+                *GetWhiteBoxMesh(), m_worldFromLocal, debugDisplay,
+                GetEditorSelectionBoundsViewport(AzFramework::ViewportInfo{}));
         }
     }
 } // namespace WhiteBox

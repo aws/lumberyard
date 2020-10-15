@@ -23,10 +23,16 @@ SUBFOLDERS = [
     'Tools',
     'UnitTestLauncher',
     'Lyzard',
-    'GFXPrefabLab'
+    'GFXPrefabLab',
+    'Viewers'
 ]
 
 def build(bld):
+    
+    # Set whether to enable CryPhysics
+    # Disabling cryphysics is a very experimental feature and it's not encouraged for production
+    setattr(bld, 'enable_cry_physics', True)
+
     # do not add game projects here.  They will be added automatically based on what
     # game projects you have enabled in your user settings, from the list defined in projects.json
     bld.recurse(SUBFOLDERS, mandatory=False)

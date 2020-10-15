@@ -201,7 +201,7 @@ namespace Vegetation
         const bool result = (noise >= m_configuration.m_thresholdMin) && (noise <= m_configuration.m_thresholdMax);
         if (!result)
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("DistributionFilter")));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("DistributionFilter")));
         }
         return result;
     }

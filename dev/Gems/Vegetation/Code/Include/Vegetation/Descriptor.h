@@ -15,10 +15,11 @@
 #include <AzCore/std/any.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/RTTI/ReflectContext.h>
-#include <LmbrCentral/Rendering/MaterialAsset.h>
-#include <LmbrCentral/Rendering/MeshAsset.h>
 #include <SurfaceData/SurfaceDataTypes.h>
+#include <Vegetation/InstanceSpawner.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace Vegetation
 {
@@ -70,29 +71,49 @@ namespace Vegetation
         ~Descriptor();
 
         bool operator==(const Descriptor& rhs) const;
+        bool HasEquivalentInstanceSpawners(const Descriptor& rhs) const;
 
-        void ResetAssets(bool resetMaterialOverride = true);
-        void LoadAssets();
-        void UpdateAssets();
+        // Pass-throughs to the specific type of instance spawner that we have for this descriptor.
+        AZ_INLINE AZStd::string GetDescriptorName() { return m_instanceSpawner ? m_instanceSpawner->GetName() : "<unknown>"; }
+        AZ_INLINE void LoadAssets() { if (m_instanceSpawner) { m_instanceSpawner->LoadAssets(); } }
+        AZ_INLINE void UnloadAssets() { if (m_instanceSpawner) { m_instanceSpawner->UnloadAssets(); } }
+        AZ_INLINE void OnRegisterUniqueDescriptor() { if (m_instanceSpawner) { m_instanceSpawner->OnRegisterUniqueDescriptor(); } }
+        AZ_INLINE void OnReleaseUniqueDescriptor() { if (m_instanceSpawner) { m_instanceSpawner->OnReleaseUniqueDescriptor(); } }
+        AZ_INLINE float GetInstanceRadius() const { return (m_instanceSpawner && m_instanceSpawner->HasRadiusData()) ? m_instanceSpawner->GetRadius() : m_radiusMin; }
+        AZ_INLINE bool HasEmptyAssetReferences() const { return m_instanceSpawner ? m_instanceSpawner->HasEmptyAssetReferences() : true; }
+        AZ_INLINE bool IsLoaded() const { return m_instanceSpawner ? m_instanceSpawner->IsLoaded() : false; }
+        AZ_INLINE bool IsSpawnable() const { return m_instanceSpawner ? m_instanceSpawner->IsSpawnable() : false; }
+        AZ_INLINE InstancePtr CreateInstance(const InstanceData& instanceData)
+        {
+            return m_instanceSpawner ? m_instanceSpawner->CreateInstance(instanceData) : nullptr;
+        }
+        AZ_INLINE void DestroyInstance(InstanceId id, InstancePtr instance)
+        {
+            if (m_instanceSpawner)
+            {
+                m_instanceSpawner->DestroyInstance(id, instance);
+            }
+        }
 
-        // basic
-        AZ::Data::Asset<LmbrCentral::MeshAsset> m_meshAsset;
-        bool m_meshLoaded = false; //cached value to not access asset or statObj on other threads
-        float m_meshRadius = 0.0f; //cached value to not access asset or statObj on other threads
+        // We use the InstanceSpawner pointer as the notification bus ID since the InstanceSpawner is
+        // the one that will actually broadcast out the notifications.  Multiple Descriptors can point to
+        // the same InstanceSpawner, but we want its notifications to go to the consumer of every Descriptor
+        // pointing to it.
+        void* GetDescriptorNotificationBusId() const { return m_instanceSpawner.get(); }
 
-        AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset> m_materialAsset;
-        _smart_ptr<IMaterial> m_materialOverride = nullptr;
+        // Use with caution, changing the InstanceSpawner will change the DescriptorNotificationBusId.
+        AZ_INLINE AZStd::shared_ptr<InstanceSpawner> GetInstanceSpawner() const { return m_instanceSpawner; }
+        AZ_INLINE void SetInstanceSpawner(const AZStd::shared_ptr<InstanceSpawner>& spawner) { m_instanceSpawner = spawner; }
 
+
+
+        // (basic)
+
+        AZ::TypeId m_spawnerType;
         float m_weight = 1.0f;
-        bool  m_autoMerge = true;
-        bool  m_useTerrainColor = false;
         bool  m_advanced = false;
 
-        // (expert)
-
-        // view settings
-        float m_viewDistanceRatio = 1.0f;
-        float m_lodDistanceRatio = 1.0f;
+        // (advanced)
 
         // surface tag settings
         SurfaceTagDistance m_surfaceTagDistance;
@@ -106,8 +127,7 @@ namespace Vegetation
         bool m_radiusOverrideEnabled = false;
         BoundMode m_boundMode = BoundMode::Radius;
         float m_radiusMin = 0.0f;
-        AZ_INLINE float GetRadius() const { return (m_boundMode == BoundMode::MeshRadius) ? m_meshRadius : m_radiusMin; }
-        AZ_INLINE bool IsRadiusReadOnly() const { return m_boundMode != BoundMode::Radius; }
+        AZ_INLINE float GetRadius() const { return (m_boundMode == BoundMode::MeshRadius) ? GetInstanceRadius() : m_radiusMin; }
 
         // surface alignment
         bool m_surfaceAlignmentOverrideEnabled = false;
@@ -151,18 +171,6 @@ namespace Vegetation
         float m_slopeFilterMin = 0.0f;
         float m_slopeFilterMax = 20.0f;
 
-        // bending
-        float m_windBending = 0.1f;
-        float m_airResistance = 1.0f;
-        float m_stiffness = 0.5f;
-        float m_damping = 2.5f;
-        float m_variance = 0.6f;
-
-        AZStd::string GetMeshAssetPath() const;
-        void SetMeshAssetPath(const AZStd::string& assetPath);
-        AZStd::string GetMaterialAssetPath() const;
-        void SetMaterialAssetPath(const AZStd::string& path);
-
         size_t GetNumInclusiveSurfaceFilterTags() const;
         AZ::Crc32 GetInclusiveSurfaceFilterTag(int tagIndex) const;
         void RemoveInclusiveSurfaceFilterTag(int tagIndex);
@@ -173,19 +181,43 @@ namespace Vegetation
         void RemoveExclusiveSurfaceFilterTag(int tagIndex);
         void AddExclusiveSurfaceFilterTag(const AZStd::string& tag);
 
-        const char* GetMeshName();
-
+        AZStd::vector<AZStd::pair<AZ::TypeId, AZStd::string>> GetSpawnerTypeList() const;
+        AZ::u32 SpawnerTypeChanged();
+        void RefreshSpawnerTypeList() const;
     private:
-        // This is written in the negative tense because we want to set the ReadOnly attribute for
-        // certain bending parameters only when we do NOT have AutoMerge enabled.
-        bool AutoMergeIsDisabled() const;
+        AZ::TypeId GetSpawnerType() const;
+        void SetSpawnerType(const AZ::TypeId& spawnerType);
+
+        AZStd::any GetSpawner() const;
+        void SetSpawner(const AZStd::any& spawner);
+
+        bool CreateInstanceSpawner(AZ::TypeId spawnerType, InstanceSpawner* spawnerToClone = nullptr);
 
         AZ::u32 GetAdvancedGroupVisibility() const;
+        AZ::u32 GetBoundModeVisibility() const;
 
-        void UpdateMeshAssetName(bool forceUpdate = false);
-        AZ::u32 MeshAssetChanged();
+        AZ_INLINE bool IsSurfaceTagFilterReadOnly() const { return m_surfaceFilterOverrideMode == OverrideMode::Disable; }
+        AZ_INLINE bool IsRadiusReadOnly() const { return (!m_radiusOverrideEnabled) || (m_boundMode != BoundMode::Radius); }
+        AZ_INLINE bool IsDistanceBetweenFilterReadOnly() const { return !m_radiusOverrideEnabled; }
+        AZ_INLINE bool IsSurfaceAlignmentFilterReadOnly() const { return !m_surfaceAlignmentOverrideEnabled; }
+        AZ_INLINE bool IsPositionFilterReadOnly() const { return !m_positionOverrideEnabled; }
+        AZ_INLINE bool IsRotationFilterReadOnly() const { return !m_rotationOverrideEnabled; }
+        AZ_INLINE bool IsScaleFilterReadOnly() const { return !m_scaleOverrideEnabled; }
+        AZ_INLINE bool IsAltitudeFilterReadOnly() const { return !m_altitudeFilterOverrideEnabled; }
+        AZ_INLINE bool IsSlopeFilterReadOnly() const { return !m_slopeFilterOverrideEnabled; }
 
-        AZStd::string m_meshAssetName;
+        AZStd::shared_ptr<InstanceSpawner> m_instanceSpawner{ nullptr };
+
+        // We cache off our list of spawner types and only build it once, because it's a non-trivial
+        // list to calculate for every Descriptor every time the Vegetation Aset List component is
+        // refreshed.  The entries shouldn't be able to change dynamically, so there isn't a clear
+        // need to ever recompute this list, other than for unit tests that change the set of registered
+        // entries between tests.
+        // We use a fixed vector with an arbitrary size that's expected to be plenty large, but can
+        // be expanded if necessary.  It's just important for the static variable not to rely on
+        // system allocators which might not exist at the point that the static variable is destroyed.
+        static constexpr int m_maxSpawnerTypesExpected{ 16 };
+        static AZStd::fixed_vector<AZStd::pair<AZ::TypeId, AZStd::string_view>, m_maxSpawnerTypesExpected> m_spawnerTypes;
     };
 
     using DescriptorPtr = AZStd::shared_ptr<Descriptor>;

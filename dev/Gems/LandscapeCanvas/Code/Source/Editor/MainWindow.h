@@ -137,9 +137,9 @@ namespace LandscapeCanvasEditor
         // LandscapeCanvas::LandscapeCanvasRequestBus::Handler overrides
         GraphCanvas::GraphId OnGraphEntity(const AZ::EntityId& entityId) override;
         GraphModel::NodePtr GetNodeMatchingEntityInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& entityId) override;
-        GraphModel::NodePtr GetNodeMatchingEntityComponentInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& entityId, const AZ::ComponentId& componentId) override;
+        GraphModel::NodePtr GetNodeMatchingEntityComponentInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityComponentIdPair& entityComponentId) override;
         GraphModel::NodePtrList GetAllNodesMatchingEntity(const AZ::EntityId& entityId) override;
-        GraphModel::NodePtrList GetAllNodesMatchingEntityComponent(const AZ::EntityId& entityId, const AZ::ComponentId& componentId) override;
+        GraphModel::NodePtrList GetAllNodesMatchingEntityComponent(const AZ::EntityComponentIdPair& entityComponentId) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

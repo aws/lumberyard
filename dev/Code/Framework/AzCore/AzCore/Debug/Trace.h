@@ -22,6 +22,14 @@ namespace AZ
         /// Global instance to the tracer.
         extern class Trace      g_tracer;
 
+        enum LogLevel : int
+        {
+            Disabled = 0,
+            Errors = 1,
+            Warnings = 2,
+            Info = 3
+        };
+
         class Trace
         {
         public:
@@ -52,6 +60,9 @@ namespace AZ
 
             /// Terminates the process with the specified exit code
             static void Terminate(int exitCode);
+
+            /// Indicates if trace logging functions are enabled based on compile mode and cvar logging level
+            static bool IsTraceLoggingEnabledForLevel(LogLevel level);
 
             static void Assert(const char* fileName, int line, const char* funcName, const char* format, ...);
             static void Error(const char* fileName, int line, const char* funcName, const char* window, const char* format, ...);
@@ -200,7 +211,12 @@ namespace AZ
     }                                                                                                                           \
     AZ_POP_DISABLE_WARNING
 
-    #define AZ_TracePrintf(window, ...)                      AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
+    #define AZ_TracePrintf(window, ...)                                                                            \
+    if(AZ::Debug::Trace::IsTraceLoggingEnabledForLevel(AZ::Debug::LogLevel::Info))                                 \
+    {                                                                                                              \
+        AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);                                                  \
+    }
+    
 
 /*!
  * Verify version of the trace checks evaluates the expression even in release.

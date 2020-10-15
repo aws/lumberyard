@@ -18,6 +18,7 @@
 #define CRYINCLUDE_CRYPHYSICS_UTILS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 #include <Cry_Math.h>
 #include <MemoryAccess.h>
@@ -1385,5 +1386,7 @@ ILINE const char* numbered_tag(const char* s, unsigned int num)
     sprintf_s(str + strlen(s), sizeof(str) - strlen(s), "_%d", num);
     return str;
 }
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_UTILS_H

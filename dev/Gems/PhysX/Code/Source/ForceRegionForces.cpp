@@ -24,7 +24,6 @@ namespace PhysX
     static const float s_forceRegionMaxFrequency = 10.0f;
 
 
-
     ForceWorldSpace::ForceWorldSpace(const AZ::Vector3& direction, const float magnitude)
         : m_direction(direction)
         , m_magnitude(magnitude)
@@ -74,6 +73,28 @@ namespace PhysX
     AZ::Vector3 ForceWorldSpace::CalculateForce(const EntityParams& entity, const RegionParams& region) const
     {
         return m_direction.GetNormalized() * m_magnitude * entity.m_mass;
+    }
+
+    void ForceWorldSpace::SetDirection(const AZ::Vector3& direction)
+    {
+        m_direction = direction;
+        NotifyChanged();
+    }
+
+    AZ::Vector3 ForceWorldSpace::GetDirection() const
+    {
+        return m_direction;
+    }
+
+    void ForceWorldSpace::SetMagnitude(float magnitude)
+    {
+        m_magnitude = magnitude;
+        NotifyChanged();
+    }
+
+    float ForceWorldSpace::GetMagnitude() const
+    {
+        return m_magnitude;
     }
 
     ForceLocalSpace::ForceLocalSpace(const AZ::Vector3& direction, const float magnitude) :
@@ -127,6 +148,28 @@ namespace PhysX
         return region.m_rotation * m_direction.GetNormalized() * m_magnitude * entity.m_mass;
     }
 
+    void ForceLocalSpace::SetDirection(const AZ::Vector3& direction)
+    {
+        m_direction = direction;
+        NotifyChanged();
+    }
+
+    AZ::Vector3 ForceLocalSpace::GetDirection() const
+    {
+        return m_direction;
+    }
+
+    void ForceLocalSpace::SetMagnitude(float magnitude)
+    {
+        m_magnitude = magnitude;
+        NotifyChanged();
+    }
+
+    float ForceLocalSpace::GetMagnitude() const
+    {
+        return m_magnitude;
+    }
+
     ForcePoint::ForcePoint(float magnitude) 
         : m_magnitude(magnitude)
     {
@@ -169,6 +212,17 @@ namespace PhysX
     AZ::Vector3 ForcePoint::CalculateForce(const EntityParams& entity, const RegionParams& region) const
     {
         return (entity.m_position - region.m_aabb.GetCenter()).GetNormalizedSafe() * m_magnitude;
+    }
+
+    void ForcePoint::SetMagnitude(float magnitude)
+    {
+        m_magnitude = magnitude;
+        NotifyChanged();
+    }
+
+    float ForcePoint::GetMagnitude() const
+    {
+        return m_magnitude;
     }
 
     ForceSplineFollow::ForceSplineFollow(float dampingRatio
@@ -263,7 +317,7 @@ namespace PhysX
             splineTangent = region.m_rotation * splineTangent;
 
             // http://www.matthewpeterkelly.com/tutorials/pdControl/index.html
-            float kp = pow((2.0f * AZ::Constants::Pi * m_frequency), 2);
+            float kp = aznumeric_cast<float>(pow((2.0f * AZ::Constants::Pi * m_frequency), 2));
             float kd = 2.0f * m_dampingRatio * (2.0f * AZ::Constants::Pi * m_frequency);
 
             AZ::Vector3 targetVelocity = splineTangent * m_targetSpeed;
@@ -282,9 +336,53 @@ namespace PhysX
 
     void ForceSplineFollow::Activate(AZ::EntityId entityId)
     {
-        BusConnect(entityId);
+        BaseForce::Activate(entityId);
         ForceSplineFollowRequestBus::Handler::BusConnect(entityId);
         m_loggedMissingSplineWarning = false;
+    }
+
+    void ForceSplineFollow::SetDampingRatio(float ratio)
+    {
+        m_dampingRatio = ratio;
+        NotifyChanged();
+    }
+
+    float ForceSplineFollow::GetDampingRatio() const
+    {
+        return m_dampingRatio;
+    }
+
+    void ForceSplineFollow::SetFrequency(float frequency)
+    {
+        m_frequency = frequency;
+        NotifyChanged();
+    }
+
+    float ForceSplineFollow::GetFrequency() const
+    {
+        return m_frequency;
+    }
+
+    void ForceSplineFollow::SetTargetSpeed(float targetSpeed)
+    {
+        m_targetSpeed = targetSpeed;
+        NotifyChanged();
+    }
+
+    float ForceSplineFollow::GetTargetSpeed() const
+    {
+        return m_targetSpeed;
+    }
+
+    void ForceSplineFollow::SetLookAhead(float lookAhead)
+    {
+        m_lookAhead = lookAhead;
+        NotifyChanged();
+    }
+
+    float ForceSplineFollow::GetLookAhead() const
+    {
+        return m_lookAhead;
     }
 
     ForceSimpleDrag::ForceSimpleDrag(float dragCoefficient, float volumeDensity) 
@@ -350,6 +448,17 @@ namespace PhysX
         return dragForce * direction.GetNormalized();
     }
 
+    void ForceSimpleDrag::SetDensity(float density)
+    {
+        m_volumeDensity = density;
+        NotifyChanged();
+    }
+
+    float ForceSimpleDrag::GetDensity() const
+    {
+        return m_volumeDensity;
+    }
+
     ForceLinearDamping::ForceLinearDamping(float damping) 
         : m_damping(damping)
     {
@@ -394,6 +503,17 @@ namespace PhysX
         return entity.m_velocity * -m_damping * entity.m_mass;
     }
 
+    void ForceLinearDamping::SetDamping(float damping)
+    {
+        m_damping = damping;
+        NotifyChanged();
+    }
+
+    float ForceLinearDamping::GetDamping() const
+    {
+        return m_damping;
+    }
+
     void BaseForce::Reflect(AZ::SerializeContext& context)
     {
         context.Class<BaseForce>();
@@ -402,5 +522,11 @@ namespace PhysX
     AZ::Vector3 BaseForce::CalculateForce(const EntityParams& /*entityParams*/, const RegionParams& /*volumeParams*/) const
     {
         return AZ::Vector3::CreateZero();
+    }
+
+    void BaseForce::NotifyChanged()
+    {
+        ForceRegionNotificationBus::Broadcast(
+            &ForceRegionNotificationBus::Events::OnForceRegionForceChanged, m_entityId);
     }
 }

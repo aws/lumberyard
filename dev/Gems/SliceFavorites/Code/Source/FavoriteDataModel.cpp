@@ -532,16 +532,12 @@ namespace SliceFavorites
                 if (checkAsset.m_sizeBytes > 0)
                 {
                     m_favoriteMap.emplace(current->m_assetId, current);
+                    currentList.push_back(current);
                 }
             }
-
-            if (current->m_type == FavoriteData::DataType_Folder)
+            else if (current->m_type == FavoriteData::DataType_Folder)
             {
                 ReadChildren(settings, current->m_children);
-            }
-
-            if (checkAsset.m_sizeBytes > 0)
-            {
                 currentList.push_back(current);
             }
         }

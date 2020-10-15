@@ -49,7 +49,7 @@ public: // member functions
     virtual void DestroyUiContext() = 0;
 
     //! Get the Entity for the root asset
-    AZ::Entity* GetRootAssetEntity() { return m_rootAsset.Get()->GetEntity(); }
+    AZ::Entity* GetRootAssetEntity() { return m_rootAsset->GetEntity(); }
 
     //! Saves the context's slice root to the specified buffer. If necessary
     //! entities undergo conversion for game: editor -> game components.

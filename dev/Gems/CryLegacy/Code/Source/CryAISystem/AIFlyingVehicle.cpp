@@ -138,6 +138,7 @@ void CAIFlyingVehicle::OnVisionChanged(const VisionID& observerID, const Observe
                                         Vec3 diff = ownPos - pos;
                                         diff.Normalize();
 
+#if ENABLE_CRY_PHYSICS
                                         pe_status_dynamics dynamics;
                                         if (entity->GetPhysics())
                                         {
@@ -172,6 +173,7 @@ void CAIFlyingVehicle::OnVisionChanged(const VisionID& observerID, const Observe
                                                 }
                                             }
                                         }
+#endif // ENABLE_CRY_PHYSICS
                                     }
                                 }
                             }

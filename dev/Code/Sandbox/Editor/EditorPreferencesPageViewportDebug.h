@@ -29,6 +29,7 @@ public:
 
     virtual const char* GetCategory() override { return "Viewports"; }
     virtual const char* GetTitle() override { return "Debug"; }
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -54,5 +55,6 @@ private:
 
     Profiling m_profiling;
     Warnings m_warnings;
+    QIcon m_icon;
 };
 

@@ -16,6 +16,7 @@
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 namespace UnitTest
 {
@@ -37,11 +38,13 @@ namespace UnitTest
             TraceBusRedirector::BusConnect();
 
             AZStd::string entityName("test");
-            m_testEntity = nullptr;
+            AZ::EntityId testEntityId;
             AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-                m_testEntity,
-                &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
+                testEntityId,
+                &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntity,
                 entityName.c_str());
+
+            m_testEntity = AzToolsFramework::GetEntityById(testEntityId);
 
             ASSERT_TRUE(m_testEntity);
 

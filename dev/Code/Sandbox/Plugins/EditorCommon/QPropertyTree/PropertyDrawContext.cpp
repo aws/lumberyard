@@ -314,19 +314,29 @@ void PropertyDrawContext::drawButton(const QRect& rect, const wchar_t* text, int
         textRect = rect.adjusted(0, 0, -8, 0);
     }
     else
+    {
         textRect = rect;
+    }
 
     if (buttonFlags & BUTTON_PRESSED)
+    {
         textRect = textRect.adjusted(1, 0, 1, 0);
+    }
     if ((buttonFlags & BUTTON_CENTER) == 0)
+    {
         textRect.adjust(4, 0, -5, 0);
+    }
 
     QColor textColor;
     if (colorOverride && !(buttonFlags & BUTTON_DISABLED))
+    {
         textColor = interpolateColor(tree->palette().color(QPalette::Normal, QPalette::ButtonText),
             QColor(colorOverride->r, colorOverride->g, colorOverride->b, colorOverride->a), 0.4f);
+    }
     else
+    {
         textColor = tree->palette().color((buttonFlags & BUTTON_DISABLED) ? QPalette::Disabled : QPalette::Normal, QPalette::ButtonText);
+    }
     tree->_drawRowValue(*painter, text, font, textRect, textColor, false, (buttonFlags & BUTTON_CENTER) != 0);
 }
 

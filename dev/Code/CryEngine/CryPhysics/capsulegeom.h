@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_CAPSULEGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CCapsuleGeom
     : public CCylinderGeom
 {
@@ -40,5 +42,7 @@ public:
     virtual int PrepareForIntersectionTest(geometry_under_test* pGTest, CGeometry* pCollider, geometry_under_test* pGTestColl, bool bKeepPrevContacts = false);
     virtual int GetUnprojectionCandidates(int iop, const contact* pcontact, primitive*& pprim, int*& piFeature, geometry_under_test* pGTest);
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_CAPSULEGEOM_H

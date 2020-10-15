@@ -107,14 +107,17 @@ namespace EMotionFX
             float GetBlendOutTime() const override;
             void PlayMotion() override;
 
+            const EMotionFX::MotionInstance* GetMotionInstance();
+
+            // AZ::Data::AssetBus::Handler
+            void SetMotionAssetId(const AZ::Data::AssetId& assetId);
+            void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+            void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+
         private:
             // ActorComponentNotificationBus::Handler
             void OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance) override;
             void OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance) override;
-
-            // AZ::Data::AssetBus::Handler
-            void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
-            void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             void RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance);
 

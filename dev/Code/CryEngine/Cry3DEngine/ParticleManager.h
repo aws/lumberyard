@@ -302,6 +302,11 @@ public:
     virtual void AddVertexIndexPoolUsageEntry(uint32 nVertexMemory, uint32 nIndexMemory, const char* pContainerName);
     virtual void MarkAsOutOfMemory();
 
+    void OnPhysAreaChange()
+    {
+        m_PhysEnv.OnPhysAreaChange();
+    }
+
 private:
 
     friend struct CParticleEffectIterator;
@@ -380,17 +385,15 @@ private:
     }
 
     void UpdateEngineData();
-
+    
+#if PARTICLES_USE_CRY_PHYSICS
     // Listener for physics events.
-    static int StaticOnPhysAreaChange(const EventPhys* pEvent)
+    static int StaticOnPhysAreaChange(const EventPhys* /*pEvent*/)
     {
-        CParticleManager::Instance()->OnPhysAreaChange(pEvent);
+        CParticleManager::Instance()->OnPhysAreaChange();
         return 0;
     }
-    void OnPhysAreaChange(const EventPhys* pEvent)
-    {
-        m_PhysEnv.OnPhysAreaChange(static_cast<const EventPhysAreaChange&>(*pEvent));
-    }
+#endif
 
     CParticleEffect* FindLoadedEffect(cstr sEffectName);
     void EraseEmitter(CParticleEmitter* pEmitter);

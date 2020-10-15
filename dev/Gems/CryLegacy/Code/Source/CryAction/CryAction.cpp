@@ -79,7 +79,6 @@
 #include "ScriptBind_Inventory.h"
 #include "ScriptBind_ActionMapManager.h"
 #include "Network/ScriptBind_Network.h"
-#include "ScriptBind_VehicleSystem.h"
 
 #include "Network/ScriptRMI.h"
 #include "Network/GameContext.h"
@@ -115,11 +114,7 @@
 // game object extensions
 #include "Inventory.h"
 
-#include "IVehicleSystem.h"
 #include "EffectSystem/EffectSystem.h"
-#include "VehicleSystem/ScriptBind_Vehicle.h"
-#include "VehicleSystem/ScriptBind_VehicleSeat.h"
-#include "VehicleSystem/Vehicle.h"
 #include "AnimationGraph/AnimatedCharacter.h"
 #include "AnimationGraph/AnimationGraphCVars.h"
 #include "MaterialEffects/MaterialEffects.h"
@@ -140,7 +135,6 @@
 #include "LevelSystem.h"
 #include "ActorSystem.h"
 #include "ItemSystem.h"
-#include "VehicleSystem.h"
 #include "SharedParams/SharedParamsManager.h"
 #include "ActionMapManager.h"
 
@@ -312,7 +306,6 @@ CCryAction::CCryAction()
     , m_pLevelSystem(0)
     , m_pActorSystem(0)
     , m_pItemSystem(0)
-    , m_pVehicleSystem(0)
     , m_pSharedParamsManager(0)
     , m_pActionMapManager(0)
     , m_pViewSystem(0)
@@ -325,7 +318,9 @@ CCryAction::CCryAction()
     , m_pAnimationGraphCvars(0)
     , m_pMannequin(0)
     , m_pMaterialEffects(0)
+#if ENABLE_CRY_PHYSICS
     , m_pBreakableGlassSystem(0)
+#endif
     , m_pForceFeedBackSystem(0)
     , m_pPlayerProfileManager(0)
     , m_pDialogSystem(0)
@@ -341,9 +336,6 @@ CCryAction::CCryAction()
     , m_pScriptAS(0)
     , m_pScriptNet(0)
     , m_pScriptAMM(0)
-    , m_pScriptVS(0)
-    , m_pScriptBindVehicle(0)
-    , m_pScriptBindVehicleSeat(0)
     , m_pScriptInventory(0)
     , m_pScriptBindDS(0)
     , m_pScriptBindMFX(0)
@@ -373,7 +365,9 @@ CCryAction::CCryAction()
     , m_pCustomEventManager(0)
     , m_colorGradientManager(nullptr)
     , m_screenFaderManager(nullptr)
+#if ENABLE_CRY_PHYSICS
     , m_pPhysicsQueues(0)
+#endif
     , m_PreUpdateTicks(0)
     , m_levelPrecachingDone(false)
     , m_usingLevelHeap(false)
@@ -1073,7 +1067,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     m_pViewSystem = new CViewSystem(m_pSystem);
     m_pGameplayRecorder = new CGameplayRecorder(this);
     m_pGameRulesSystem = new CGameRulesSystem(m_pSystem, this);
-    m_pVehicleSystem = new CVehicleSystem(m_pSystem, m_pEntitySystem);
 
     m_pSharedParamsManager = new CSharedParamsManager;
 
@@ -1162,11 +1155,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
         movieSys->SetUser(m_pViewSystem);
     }
 
-    if (m_pVehicleSystem)
-    {
-        m_pVehicleSystem->Init();
-    }
-
     REGISTER_FACTORY((IGameFramework*)this, "Inventory", CInventory, false);
 
     if (m_pLevelSystem && m_pItemSystem)
@@ -1185,10 +1173,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     BeginLanQuery();
 #endif
 
-    if (m_pVehicleSystem)
-    {
-        m_pVehicleSystem->RegisterVehicles(this);
-    }
     if (m_pGameObjectSystem)
     {
         m_pGameObjectSystem->RegisterFactories(this);
@@ -1224,10 +1208,12 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
         RegisterActionBehaviorTreeNodes();
     }
 
+#if ENABLE_CRY_PHYSICS
     if (gEnv->IsEditor())
     {
         CreatePhysicsQueues();
     }
+#endif
 
     XMLCPB::CDebugUtils::Create();
 
@@ -1356,7 +1342,9 @@ bool CCryAction::CompleteInit()
         InlineInitializationProcessing("CCryAction::CompleteInit MaterialEffects");
     }
 
+#if ENABLE_CRY_PHYSICS
     m_pBreakableGlassSystem = new CBreakableGlassSystem();
+#endif
 
     InitForceFeedbackSystem();
 
@@ -1439,10 +1427,6 @@ void CCryAction::InitScriptBinds()
     m_pScriptAS = new CScriptBind_ActorSystem(m_pSystem, this);
     m_pScriptAMM = new CScriptBind_ActionMapManager(m_pSystem, m_pActionMapManager);
 
-    m_pScriptVS = new CScriptBind_VehicleSystem(m_pSystem, m_pVehicleSystem);
-    m_pScriptBindVehicle = new CScriptBind_Vehicle(m_pSystem, this);
-    m_pScriptBindVehicleSeat = new CScriptBind_VehicleSeat(m_pSystem, this);
-
     m_pScriptInventory = new CScriptBind_Inventory(m_pSystem, this);
     m_pScriptBindDS = new CScriptBind_DialogSystem(m_pSystem, m_pDialogSystem);
 }
@@ -1460,9 +1444,6 @@ void CCryAction::ReleaseScriptBinds()
     SAFE_RELEASE(m_pScriptIS);
     SAFE_RELEASE(m_pScriptAS);
     SAFE_RELEASE(m_pScriptAMM);
-    SAFE_RELEASE(m_pScriptVS);
-    SAFE_RELEASE(m_pScriptBindVehicle);
-    SAFE_RELEASE(m_pScriptBindVehicleSeat);
     SAFE_RELEASE(m_pScriptInventory);
     SAFE_RELEASE(m_pScriptBindDS);
     SAFE_RELEASE(m_pScriptBindMFX);
@@ -1536,9 +1517,10 @@ void CCryAction::Shutdown()
     SAFE_RELEASE(m_pGameplayAnalyst);
     SAFE_RELEASE(m_pGameRulesSystem);
     SAFE_RELEASE(m_pSharedParamsManager);
-    SAFE_RELEASE(m_pVehicleSystem);
     SAFE_DELETE(m_pMaterialEffects);
+#if ENABLE_CRY_PHYSICS
     SAFE_DELETE(m_pBreakableGlassSystem);
+#endif
     SAFE_RELEASE(m_pActorSystem);
     SAFE_DELETE(m_pForceFeedBackSystem);
     SAFE_DELETE(m_pSubtitleManager);
@@ -1601,7 +1583,7 @@ void CCryAction::Shutdown()
     // having a dll handle means we did create the system interface
     // so we must release it
     SAFE_RELEASE(m_pSystem);
-    if (m_crySystemModule->IsLoaded())
+    if (m_crySystemModule && m_crySystemModule->IsLoaded())
     {
         typedef void*( * PtrFunc_ModuleShutdownISystem )(ISystem* pSystem);
 
@@ -1616,7 +1598,9 @@ void CCryAction::Shutdown()
     }
 
     SAFE_DELETE(m_nextFrameCommand);
+#if ENABLE_CRY_PHYSICS
     SAFE_DELETE(m_pPhysicsQueues);
+#endif
 
     m_pThis = 0;
 
@@ -1765,10 +1749,12 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
 
     m_pForceFeedBackSystem->Update(frameTime);
 
+#if ENABLE_CRY_PHYSICS
     if (m_pPhysicsQueues)
     {
         m_pPhysicsQueues->Update(frameTime);
     }
+#endif
 
     if (!bGameIsPaused)
     {
@@ -1782,19 +1768,16 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
             m_pMaterialEffects->Update(frameTime);
         }
 
+#if ENABLE_CRY_PHYSICS
         if (m_pBreakableGlassSystem)
         {
             m_pBreakableGlassSystem->Update(frameTime);
         }
+#endif
 
         if (m_pDialogSystem)
         {
             m_pDialogSystem->Update(frameTime);
-        }
-
-        if (m_pVehicleSystem)
-        {
-            m_pVehicleSystem->Update(frameTime);
         }
 
         if (m_pCooperativeAnimationManager)
@@ -2268,11 +2251,6 @@ void CCryAction::EndGameContext(bool loadEmptyLevel)
     if (m_pSharedParamsManager)
     {
         m_pSharedParamsManager->Reset();
-    }
-
-    if (m_pVehicleSystem)
-    {
-        m_pVehicleSystem->Reset();
     }
 
     if (m_pScriptRMI)
@@ -3148,14 +3126,6 @@ void CCryAction::RegisterFactory(const char* name, IItemCreator* pCreator, bool 
     }
 }
 
-void CCryAction::RegisterFactory(const char* name, IVehicleCreator* pCreator, bool isAI)
-{
-    if (m_pVehicleSystem)
-    {
-        m_pVehicleSystem->RegisterVehicleClass(name, pCreator, isAI);
-    }
-}
-
 void CCryAction::RegisterFactory(const char* name, IGameObjectExtensionCreator* pCreator, bool isAI)
 {
     m_pGameObjectSystem->RegisterExtension(name, pCreator, nullptr);
@@ -3190,11 +3160,6 @@ IActorSystem* CCryAction::GetIActorSystem()
 IItemSystem* CCryAction::GetIItemSystem()
 {
     return m_pItemSystem;
-}
-
-IVehicleSystem* CCryAction::GetIVehicleSystem()
-{
-    return m_pVehicleSystem;
 }
 
 ISharedParamsManager* CCryAction::GetISharedParamsManager()
@@ -3233,10 +3198,12 @@ IMaterialEffects* CCryAction::GetIMaterialEffects()
     return m_pMaterialEffects;
 }
 
+#if ENABLE_CRY_PHYSICS
 IBreakableGlassSystem* CCryAction::GetIBreakableGlassSystem()
 {
     return m_pBreakableGlassSystem;
 }
+#endif
 
 IDialogSystem* CCryAction::GetIDialogSystem()
 {
@@ -3282,10 +3249,7 @@ void CCryAction::PreloadAnimatedCharacter(IScriptTable* pEntityScript)
 // NOTE: This function must be thread-safe.
 void CCryAction::PrePhysicsTimeStep(float deltaTime)
 {
-    if (m_pVehicleSystem)
-    {
-        m_pVehicleSystem->OnPrePhysicsTimeStep(deltaTime);
-    }
+    AZ_UNUSED(deltaTime);
 }
 
 void CCryAction::RegisterExtension(ICryUnknownPtr pExtension)
@@ -3804,7 +3768,6 @@ void CCryAction::GetMemoryUsage(ICrySizer* s) const
     s->AddObject(m_pCustomEventManager);
     CHILD_STATISTICS(m_pActorSystem);
     s->AddObject(m_pItemSystem);
-    CHILD_STATISTICS(m_pVehicleSystem);
     CHILD_STATISTICS(m_pSharedParamsManager);
     CHILD_STATISTICS(m_pActionMapManager);
     s->AddObject(m_pViewSystem);
@@ -3816,7 +3779,9 @@ void CCryAction::GetMemoryUsage(ICrySizer* s) const
         s->Add(*m_pAnimationGraphCvars);
     }
     s->AddObject(m_pMaterialEffects);
+#if ENABLE_CRY_PHYSICS
     s->AddObject(m_pBreakableGlassSystem);
+#endif
     CHILD_STATISTICS(m_pDialogSystem);
     CHILD_STATISTICS(m_pEffectSystem);
     CHILD_STATISTICS(m_pGameSerialize);
@@ -3829,9 +3794,6 @@ void CCryAction::GetMemoryUsage(ICrySizer* s) const
     s->Add(*m_pScriptIS);
     s->Add(*m_pScriptAS);
     s->Add(*m_pScriptAMM);
-    s->Add(*m_pScriptVS);
-    s->Add(*m_pScriptBindVehicle);
-    s->Add(*m_pScriptBindVehicleSeat);
     s->Add(*m_pScriptInventory);
     s->Add(*m_pScriptBindDS);
     s->Add(*m_pScriptBindMFX);
@@ -3952,9 +3914,11 @@ IAIActorProxy* CCryAction::GetAIActorProxy(EntityId id) const
     return m_pAIProxyManager->GetAIActorProxy(id);
 }
 
+#if ENABLE_CRY_PHYSICS
 void CCryAction::OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity)
 {
 }
+#endif
 
 bool CCryAction::StartedGameContext(void) const
 {
@@ -3966,6 +3930,7 @@ bool CCryAction::StartingGameContext(void) const
     return (m_pGame != 0) && (m_pGame->IsIniting());
 }
 
+#if ENABLE_CRY_PHYSICS
 void CCryAction::CreatePhysicsQueues()
 {
     if (!m_pPhysicsQueues)
@@ -3985,6 +3950,7 @@ CCryActionPhysicQueues& CCryAction::GetPhysicQueues()
 
     return *m_pPhysicsQueues;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CCryAction::StartNetworkStallTicker(bool includeMinimalUpdate)
 {

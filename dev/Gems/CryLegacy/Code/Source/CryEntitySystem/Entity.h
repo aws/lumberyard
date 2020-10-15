@@ -197,15 +197,19 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // Physics.
     //////////////////////////////////////////////////////////////////////////
+
     virtual void Physicalize(SEntityPhysicalizeParams& params);
     virtual void EnablePhysics(bool enable);
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics() const;
+#endif
 
     virtual int PhysicalizeSlot(int slot, SEntityPhysicalizeParams& params);
     virtual void UnphysicalizeSlot(int slot);
     virtual void UpdateSlotPhysics(int slot);
 
     virtual void SetPhysicsState(XmlNodeRef& physicsState);
+
 
     //////////////////////////////////////////////////////////////////////////
     // Audio & Physics

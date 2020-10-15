@@ -10,15 +10,19 @@
 *
 */
 
-#include <AzQtComponents/Components/DockTabBar.h>
+#include <AzCore/Debug/Trace.h>
+
 #include <AzQtComponents/Components/DockBar.h>
 #include <AzQtComponents/Components/DockBarButton.h>
 #include <AzQtComponents/Components/DockMainWindow.h>
-#include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
+#include <AzQtComponents/Components/Titlebar.h>
 
 #include <QAction>
 #include <QApplication>
+#include <QContextMenuEvent>
 #include <QGraphicsOpacityEffect>
 #include <QMenu>
 #include <QMouseEvent>
@@ -144,6 +148,11 @@ namespace AzQtComponents
         }
     }
 
+    void DockTabBar::setIsShowingWindowControls(bool show)
+    {
+        m_isShowingWindowControls = show;
+    }
+
     /**
      * Handle resizing appropriately when our parent tab widget is resized,
      * otherwise when there is only one tab it won't know to stretch to the
@@ -245,7 +254,7 @@ namespace AzQtComponents
         // the currently active tab if the event was triggered in the header
         // dead zone
         int index = tabAt(event->pos());
-        if (index == -1)
+        if (index == -1 && !m_isShowingWindowControls)
         {
             index = currentIndex();
         }
@@ -279,47 +288,73 @@ namespace AzQtComponents
             QObject::connect(m_undockTabGroupMenuAction, &QAction::triggered, this ,[this]() { emit undockTab(-1); });
         }
 
-        // Update the menu labels for the close/undock individual tab actions
-        QString tabName = tabText(index);
-        m_closeTabMenuAction->setText(tr("Close %1").arg(tabName));
-        m_undockTabMenuAction->setText(tr("Undock %1").arg(tabName));
-
-        // Only enable the close/undock group actions if we have more than one
-        // tab in our tab widget
-        bool enableGroupActions = (count() > 1);
-        m_closeTabGroupMenuAction->setEnabled(enableGroupActions);
-
-        // Don't enable the undock action if this dock widget is the only pane
-        // in a floating window or if it isn't docked in one of our dock main windows
-        QWidget* tabWidget = parentWidget();
-        bool enableUndock = true;
-        if (tabWidget)
+        if (index >= 0)
         {
-            // The main case is when we have a tab bar for a tab widget
-            QWidget* tabWidgetParent = tabWidget->parentWidget();
-            StyledDockWidget* dockWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidgetParent);
-            if (!dockWidgetContainer)
+            // Update the menu labels for the close/undock individual tab actions
+            QString tabName = tabText(index);
+            m_closeTabMenuAction->setText(tr("Close %1").arg(tabName));
+            m_undockTabMenuAction->setText(tr("Undock %1").arg(tabName));
+
+            // Only enable the close/undock group actions if we have more than one
+            // tab in our tab widget
+            bool enableGroupActions = (count() > 1);
+            m_closeTabGroupMenuAction->setEnabled(enableGroupActions);
+
+            // Don't enable the undock action if this dock widget is the only pane
+            // in a floating window or if it isn't docked in one of our dock main windows
+            QWidget* tabWidget = parentWidget();
+            bool enableUndock = true;
+            if (tabWidget)
             {
-                // The other case is when this tab bar is being used for a solo dock widget by the TitleBar
-                // so that it looks like a tab, so we need to look one level up
-                dockWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidgetParent->parentWidget());
+                // The main case is when we have a tab bar for a tab widget
+                QWidget* tabWidgetParent = tabWidget->parentWidget();
+                StyledDockWidget* dockWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidgetParent);
+                if (!dockWidgetContainer)
+                {
+                    // The other case is when this tab bar is being used for a solo dock widget by the TitleBar
+                    // so that it looks like a tab, so we need to look one level up
+                    dockWidgetContainer = qobject_cast<StyledDockWidget*>(tabWidgetParent->parentWidget());
+                }
+
+                if (dockWidgetContainer)
+                {
+                    DockMainWindow* dockMainWindow = qobject_cast<DockMainWindow*>(dockWidgetContainer->parentWidget());
+
+                    enableUndock = dockMainWindow && !dockWidgetContainer->isSingleFloatingChild();
+                }
+            }
+            m_undockTabGroupMenuAction->setEnabled(enableGroupActions && enableUndock);
+
+            // Enable the undock action if there are multiple tabs or if this isn't
+            // a single tab in a floating window
+            m_undockTabMenuAction->setEnabled(enableGroupActions || enableUndock);
+
+            // Show the context menu
+            m_contextMenu->exec(event->globalPos());
+        }
+        else
+        {
+            // Show Window context menu
+
+            // The Floating Window structure is fixed, so we should always get the parent. If we don't, bail out.
+            if (!parent() || !parent()->parent() || !parent()->parent()->parent())
+            {
+                AZ_Warning("DockTabBar", false,
+                    "Could not access the parent floating window to trigger its context menu - invalid floating window structure?");
+                return;
             }
 
-            if (dockWidgetContainer)
+            auto parentFloatingWindow = qobject_cast<StyledDockWidget*>(parent()->parent()->parent()->parent());
+            if (parentFloatingWindow)
             {
-                DockMainWindow* dockMainWindow = qobject_cast<DockMainWindow*>(dockWidgetContainer->parentWidget());
-
-                enableUndock = dockMainWindow && !dockWidgetContainer->isSingleFloatingChild();
+                auto parentFloatingWindowTitleBar = qobject_cast<AzQtComponents::TitleBar*>(parentFloatingWindow->customTitleBar());
+                if (parentFloatingWindowTitleBar)
+                {
+                    QContextMenuEvent contextMenuEvent(QContextMenuEvent::Reason::Mouse, event->pos(), event->globalPos());
+                    QApplication::sendEvent(parentFloatingWindowTitleBar, &contextMenuEvent);
+                }
             }
         }
-        m_undockTabGroupMenuAction->setEnabled(enableGroupActions && enableUndock);
-
-        // Enable the undock action if there are multiple tabs or if this isn't
-        // a single tab in a floating window
-        m_undockTabMenuAction->setEnabled(enableGroupActions || enableUndock);
-
-        // Show the context menu
-        m_contextMenu->exec(event->globalPos());
     }
 
     /**

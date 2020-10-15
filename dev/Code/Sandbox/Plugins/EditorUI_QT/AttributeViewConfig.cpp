@@ -28,6 +28,7 @@ CAttributeViewConfig::config::item CAttributeViewConfig::parseItemNode(QDomNode 
     vstruct_item.advanced = ndItem.attribute("advanced", "no");
     vstruct_item.visibility = ndItem.attribute("visibility", GetDefaultVisibilityValue());
     vstruct_item.onUpdateCallback = ndItem.attribute("onUpdateCallback", "");
+    vstruct_item.physics = ndItem.attribute("physics", "");
 
     parseItemSubNodes(vstruct_item, ndItem);
 

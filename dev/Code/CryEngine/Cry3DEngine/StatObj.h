@@ -96,7 +96,11 @@ public:
         m_lifeTime = 0;
         m_ppThis = 0;
         m_pStatObj = 0;
+
+#if ENABLE_CRY_PHYSICS
         m_pRopes = 0;
+#endif
+
         m_pRopesActiveTime = 0;
         m_nRopes = 0;
         m_nRefCount = 1;
@@ -134,8 +138,14 @@ public:
     virtual int GetFlags() { return m_flags; }
     virtual IRenderNode* GetIRenderNode() { return m_pVegInst; }
     virtual int GetBranchCount() { return m_nRopes; }
-    virtual IPhysicalEntity* GetBranchPhysics(int iBranch) { return (unsigned int)iBranch < (unsigned int)m_nRopes ? m_pRopes[iBranch] : 0; }
-
+    virtual IPhysicalEntity* GetBranchPhysics(int iBranch)
+    {
+#if ENABLE_CRY_PHYSICS
+        return (unsigned int)iBranch < (unsigned int)m_nRopes ? m_pRopes[iBranch] : 0;
+#else
+        return nullptr;
+#endif
+    }
     virtual SSkinningData* GetSkinningData(const Matrix34& RenderMat34, const SRenderingPassInfo& passInfo);
 
     uint32 ComputeSkinningTransformationsCount();
@@ -149,7 +159,11 @@ public:
     int m_nRefCount;
     int m_flags;
     CStatObj* m_pStatObj;
+
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity** m_pRopes;
+#endif
+
     float* m_pRopesActiveTime;
     IPhysicalEntity* m_pTrunk;
     int16 m_nRopes;
@@ -550,10 +564,12 @@ public:
     phys_geometry* GetPhysGeom(int nGeomType = PHYS_GEOM_TYPE_DEFAULT) { return m_arrPhysGeomInfo[nGeomType]; }
     void SetPhysGeom(phys_geometry* pPhysGeom, int nGeomType = PHYS_GEOM_TYPE_DEFAULT)
     {
+#if ENABLE_CRY_PHYSICS
         if (m_arrPhysGeomInfo[nGeomType])
         {
             GetPhysicalWorld()->GetGeomManager()->UnregisterGeometry(m_arrPhysGeomInfo[nGeomType]);
         }
+#endif
         m_arrPhysGeomInfo.SetPhysGeom(pPhysGeom, nGeomType);
     }
     ITetrLattice* GetTetrLattice() { return m_pLattice; }
@@ -775,7 +791,9 @@ public:
 
     // Used in ObjMan.
     void TryMergeSubObjects(bool bFromStreaming) override;
+#if ENABLE_CRY_PHYSICS
     void SavePhysicalizeData(CNodeCGF* pNode);
+#endif
     bool IsMeshStrippedCGF() const { return m_bMeshStrippedCGF; }
     string& GetFileName() override { return m_szFileName; }
     const string& GetFileName() const override { return m_szFileName; }
@@ -809,10 +827,12 @@ protected:
     void CalcRadiuses();
     void GetStatisticsNonRecursive(SStatistics& stats);
 
+#if ENABLE_CRY_PHYSICS
     void PhysicalizeCompiled(CNodeCGF* pNode, int bAppend = 0);
     bool PhysicalizeGeomType(int nGeomType, CMesh& mesh, float tolerance = 0.05f, int bAppend = 0);
     bool RegisterPhysicGeom(int nGeomType, phys_geometry* pPhysGeom);
     void AssignPhysGeom(int nGeomType, phys_geometry* pPhysGeom, int bAppend = 0, int bLoading = 0);
+#endif // ENABLE_CRY_PHYSICS
 
     // Creates static object contents from mesh.
     // Return true if successful.

@@ -173,7 +173,6 @@ QToolTipWidget::QToolTipWidget(QWidget* parent)
     m_specialContent = nullptr;
     setWindowTitle("ToolTip");
     setObjectName("ToolTip");
-    setAttribute(Qt::WA_TranslucentBackground, true);
     m_layout = new QVBoxLayout(this);
     m_normalPos = QPoint(0, 0);
     m_arrow = new QArrow(m_background);

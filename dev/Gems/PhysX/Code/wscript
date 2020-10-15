@@ -60,7 +60,7 @@ def build(bld):
         pch               = pch_file,
         use               = ['AzFramework', 'BENCHMARK'],
         uselib            = [physx_sdk_lib],
-        test_all_use      = ['AzPhysicsTests'],
+        test_all_use      = ['AzPhysicsTests', 'AzTestShared'],
         win_features      = ['crcfix'],
 
         win_x64_clang_cxxflags = ['-Wno-return-type-c-linkage'],

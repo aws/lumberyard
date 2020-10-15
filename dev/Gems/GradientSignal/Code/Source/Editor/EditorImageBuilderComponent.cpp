@@ -261,7 +261,7 @@ namespace GradientSignal
     AZStd::unique_ptr<ImageAsset> EditorImageBuilderWorker::LoadImageFromPath(const AZStd::string& fullPath)
     {
         ImageProcessing::IImageObject* rawImage = nullptr;
-        ImageProcessing::ImageProcessingRequestBus::BroadcastResult(rawImage, &ImageProcessing::ImageProcessingRequests::LoadImage, 
+        ImageProcessing::ImageProcessingRequestBus::BroadcastResult(rawImage, &ImageProcessing::ImageProcessingRequests::LoadImage,
             fullPath);
 
         if (!rawImage)
@@ -269,7 +269,7 @@ namespace GradientSignal
             return {};
         }
 
-        AZStd::unique_ptr<ImageProcessing::IImageObject> imageObject{rawImage};
+        AZStd::unique_ptr<ImageProcessing::IImageObject> imageObject{ rawImage };
 
         //create a new image asset
         auto imageAsset = AZStd::make_unique<ImageAsset>();
@@ -278,7 +278,7 @@ namespace GradientSignal
         {
             return {};
         }
-        
+
         imageAsset->m_imageWidth = imageObject->GetWidth(0);
         imageAsset->m_imageHeight = imageObject->GetHeight(0);
         imageAsset->m_imageFormat = imageObject->GetPixelFormat();
@@ -288,7 +288,7 @@ namespace GradientSignal
         AZ::u32 mipBufferSize = imageObject->GetMipBufSize(0);
         imageObject->GetImagePointer(0, mem, pitch);
 
-        imageAsset->m_imageData = {mem, mem + mipBufferSize};
+        imageAsset->m_imageData = { mem, mem + mipBufferSize };
 
         return imageAsset;
     }

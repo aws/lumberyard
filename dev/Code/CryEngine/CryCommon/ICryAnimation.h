@@ -41,7 +41,9 @@
 #include <Cry_Geo.h>
 
 #include <IRenderer.h>
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include <I3DEngine.h>
 #include <IEntityRenderState.h>
 #include <IRenderAuxGeom.h>
@@ -535,7 +537,9 @@ struct IDefaultSkeleton
 
     // NOTE: Will become deprecated.
     //All render-meshes will be removed from the CDefaultSkeleton-class
+#if ENABLE_CRY_PHYSICS
     virtual const phys_geometry* GetJointPhysGeom(uint32 jointIndex) const = 0;  //just for statistics of physics proxies
+#endif
     virtual int32 GetLimbDefinitionIdx(LimbIKDefinitionHandle handle) const = 0;
     virtual void PrecacheMesh(bool bFullUpdate, int nRoundId, int nLod) = 0;
     virtual IRenderMesh* GetIRenderMesh() const = 0;
@@ -591,6 +595,7 @@ struct ISkin
 //! Split this interface up into a few logical interfaces, starting with the ICryCharModel
 //DOC-IGNORE-END
 
+#if ENABLE_CRY_PHYSICS
 struct SCharUpdateFeedback
 {
     SCharUpdateFeedback() { flags = 0; pPhysHost = 0; mtxDelta.SetIdentity(); }
@@ -598,6 +603,7 @@ struct SCharUpdateFeedback
     IPhysicalEntity* pPhysHost; // tells the caller to restore this host as the main phys entity
     Matrix34 mtxDelta;          // tells the caller to instantly post-multiply its matrix with this one
 };
+#endif // ENABLE_CRY_PHYSICS
 
 struct SAnimationProcessParams
 {
@@ -980,6 +986,7 @@ struct ISkeletonAnim
 struct IAnimationPoseBlenderDir;
 
 
+#if ENABLE_CRY_PHYSICS
 struct ISkeletonPhysics
 {
     // <interfuscator:shuffle>
@@ -1016,10 +1023,13 @@ struct ISkeletonPhysics
     virtual bool SetJointPhysProperties_ROPE(uint32 jointIndex, int nLod, const DynArray<SJointProperty>& props) = 0;
     // </interfuscator:shuffle>
 };
+#endif // ENABLE_CRY_PHYSICS
 
 
 struct ISkeletonPose
+#if ENABLE_CRY_PHYSICS
     : public ISkeletonPhysics
+#endif
 {
     // <interfuscator:shuffle>
     virtual ~ISkeletonPose() { }

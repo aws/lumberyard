@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
@@ -219,3 +221,5 @@ namespace LmbrCentral
         AABB m_cachedAABB;
     };
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

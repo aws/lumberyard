@@ -270,6 +270,13 @@ SEditorSettings::SEditorSettings()
     bEnableUI2 = true;
 
     new QtApplicationListener(); // Deletes itself when it's done.
+
+    AzToolsFramework::EditorSettingsAPIBus::Handler::BusConnect();
+}
+
+SEditorSettings::~SEditorSettings()
+{
+    AzToolsFramework::EditorSettingsAPIBus::Handler::BusDisconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -698,7 +705,12 @@ void SEditorSettings::Save()
     //////////////////////////////////////////////////////////////////////////
     // UI 2.0 Settings
     //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings", "EnableUI20", bEnableUI2);
+    SaveValue("Settings", "EnableUI10", !bEnableUI2);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Particle sorting settings
+    //////////////////////////////////////////////////////////////////////////
+    SaveValue("Settings", "ParticlesNameSortingMode", static_cast<int>(particlesNameSortingMode));
 
     /*
     //////////////////////////////////////////////////////////////////////////
@@ -964,7 +976,17 @@ void SEditorSettings::Load()
     //////////////////////////////////////////////////////////////////////////
     // UI 2.0 Settings
     //////////////////////////////////////////////////////////////////////////
-    LoadValue("Settings", "EnableUI20", bEnableUI2);
+    bool enableUI1 = false;
+    LoadValue("Settings", "EnableUI10", enableUI1);
+    bEnableUI2 = !enableUI1;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Particle sorting settings
+    //////////////////////////////////////////////////////////////////////////
+    int tmpParticlesNameSortingMode = static_cast<int>(particlesNameSortingMode);
+    LoadValue("Settings", "ParticlesNameSortingMode", tmpParticlesNameSortingMode);
+
+    particlesNameSortingMode = static_cast<ParticlesNameSortingMode>(tmpParticlesNameSortingMode);
 
     //////////////////////////////////////////////////////////////////////////
     // Load paths.
@@ -1099,4 +1121,96 @@ void SEditorSettings::LoadEnableSourceControlFlag()
 {
     LoadValue("Settings", "EnableSourceControl", enableSourceControl);
     EnableSourceControl(enableSourceControl);
+}
+
+AZStd::vector<AZStd::string> SEditorSettings::BuildSettingsList()
+{
+    if (GetIEditor()->GetSettingsManager())
+    {
+        // Will need to save the settings at least once to populate the list
+        // This will not affect the level nor prompt dialogs
+        Save();
+        return GetIEditor()->GetSettingsManager()->BuildSettingsList();
+    }
+
+    return AZStd::vector<AZStd::string>();
+}
+
+void SEditorSettings::ConvertPath(const AZStd::string_view sourcePath, AZStd::string& category, AZStd::string& attribute)
+{
+    // This API accepts pipe-separated paths like "Category1|Category2|AttributeName"
+    // But the SettingsManager requires 2 arguments, a Category like "Category1\Category2" and an attribute "AttributeName"
+    // The reason for the difference is to have this API be consistent with the path syntax in Lumberyard Python APIs.
+
+    // Find the last pipe separator ("|") in the path
+    int lastSeparator = sourcePath.find_last_of("|");
+
+    // Everything before the last separator is the category (since only the category is hierarchical)
+    category = sourcePath.substr(0, lastSeparator);
+
+    // Everything after the last separator is the attribute
+    attribute = sourcePath.substr(lastSeparator + 1, sourcePath.length());
+
+    // Replace pipes with backspaces in the category
+    AZStd::replace(category.begin(), category.end(), '|', '\\');
+}
+
+AzToolsFramework::EditorSettingsAPIRequests::SettingOutcome SEditorSettings::GetValue(const AZStd::string_view path)
+{
+    if (path.find("|") < 0)
+    {
+        return { AZStd::string("Invalid Path - could not find separator \"|\"") };
+    }
+
+    AZStd::string category, attribute;
+    ConvertPath(path, category, attribute);
+
+    QString result;
+    LoadValue(category.c_str(), attribute.c_str(), result);
+
+    AZStd::string actualResult = result.toUtf8().data();
+
+    return { AZStd::any(actualResult) };
+}
+
+AzToolsFramework::EditorSettingsAPIRequests::SettingOutcome SEditorSettings::SetValue(const AZStd::string_view path, const AZStd::any& value)
+{
+    if (path.find("|") < 0)
+    {
+        return { AZStd::string("Invalid Path - could not find separator \"|\"") };
+    }
+
+    AZStd::string category, attribute;
+    ConvertPath(path, category, attribute);
+
+    if (value.type() == azrtti_typeid<bool>())
+    {
+        bool val = AZStd::any_cast<bool>(value);
+        SaveValue(category.c_str(), attribute.c_str(), val);
+    }
+    else if (value.type() == azrtti_typeid<double>())
+    {
+        SaveValue(category.c_str(), attribute.c_str(), aznumeric_cast<float>(AZStd::any_cast<double>(value)));
+    }
+    else if (value.type() == azrtti_typeid<AZ::s64>())
+    {
+        SaveValue(category.c_str(), attribute.c_str(), aznumeric_cast<int>(AZStd::any_cast<AZ::s64>(value)));
+    }
+    else if (value.type() == azrtti_typeid<AZStd::string>())
+    {
+        SaveValue(category.c_str(), attribute.c_str(), QString(AZStd::any_cast<AZStd::string>(value).c_str()));
+    }
+    else if (value.type() == azrtti_typeid<AZStd::string_view>())
+    {
+        SaveValue(category.c_str(), attribute.c_str(), QString(AZStd::any_cast<AZStd::string_view>(value).data()));
+    }
+    else
+    {
+        return { AZStd::string("Invalid Value Type - supported types: string, bool, int, float") };
+    }
+
+    // Reload the changes in the Settings object used in the Editor
+    Load();
+
+    return { value };
 }

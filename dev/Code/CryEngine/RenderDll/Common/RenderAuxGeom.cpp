@@ -435,6 +435,29 @@ void CAuxGeomCB::DrawTriangles(const Vec3* v, uint32 numPoints, const vtx_idx* i
     memcpy(pIndices, ind, sizeof(pIndices[0]) * numIndices);
 }
 
+void CAuxGeomCB::DrawQuad(float width, float height, const Matrix34& matWorld, const ColorB& col, bool drawShaded)
+{
+    if (width <= 0.0f && height <= 0.0f)
+    {
+        return;
+    }
+
+    SAuxDrawObjParams* pDrawParams(0);
+    AddObject(pDrawParams, CreateObjectRenderFlags(eDOT_Quad));
+
+    Matrix34 scaleMatrix = Matrix33::CreateScale(Vec3(width, 1.0f, height));
+    Matrix34 finalMatrix = matWorld * scaleMatrix;
+
+    Matrix33 rotationMatrix;
+    matWorld.GetRotation33(rotationMatrix);
+
+    pDrawParams->m_matWorld = finalMatrix;
+    pDrawParams->m_matWorldRotation = rotationMatrix;
+    pDrawParams->m_color = PackColor(col);
+    pDrawParams->m_size = max(width, height) * 0.5f;
+    pDrawParams->m_shaded = drawShaded;
+}
+
 
 void CAuxGeomCB::DrawAABB(const AABB& aabb, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle)
 {

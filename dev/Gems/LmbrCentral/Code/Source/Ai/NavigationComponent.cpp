@@ -425,7 +425,9 @@ namespace LmbrCentral
         , m_arrivalDistanceThreshold(0.25f)
         , m_repathThreshold(1.f)
         , m_movementMethod(NavigationComponentRequests::MovementMethod::Physics)
+#if ENABLE_CRY_PHYSICS
         , m_usesLegacyPhysics(false)
+#endif
         , m_usesCharacterPhysics(false)
         , m_allowVerticalNavigation(false)
     {
@@ -451,14 +453,25 @@ namespace LmbrCentral
 
         if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
         {
-            const bool usesLegacyCharacterPhysics = CryCharacterPhysicsRequestBus::FindFirstHandler(entityId) != nullptr;
+            bool usesLegacyCharacterPhysics = false;
+
+#if ENABLE_CRY_PHYSICS
+            usesLegacyCharacterPhysics = CryCharacterPhysicsRequestBus::FindFirstHandler(entityId) != nullptr;
+            m_usesLegacyPhysics = usesLegacyCharacterPhysics || CryPhysicsComponentRequestBus::FindFirstHandler(entityId);
+#endif
+
             const bool usesAZCharacterPhysics = Physics::CharacterRequestBus::FindFirstHandler(entityId) != nullptr;
             m_usesCharacterPhysics = usesLegacyCharacterPhysics || usesAZCharacterPhysics;
-            m_usesLegacyPhysics = usesLegacyCharacterPhysics || CryPhysicsComponentRequestBus::FindFirstHandler(entityId);
-
+            
+#if ENABLE_CRY_PHYSICS
             AZ_Warning("NavigationComponent",
                 m_usesLegacyPhysics || usesAZCharacterPhysics || Physics::RigidBodyRequestBus::FindFirstHandler(entityId),
                 "Entity %s cannot be moved physically because it is missing a physics component", GetEntity()->GetName().c_str());
+#else
+            AZ_Warning("NavigationComponent",
+                usesAZCharacterPhysics || Physics::RigidBodyRequestBus::FindFirstHandler(entityId),
+                "Entity %s cannot be moved physically because it is missing a physics component", GetEntity()->GetName().c_str());
+#endif
         }
 
         AZ::TransformBus::EventResult(m_entityTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
@@ -616,7 +629,11 @@ namespace LmbrCentral
                     if (shouldPathBeTraversed)
                     {
                         // Connect to physics bus if appropriate, else tick bus
+#if ENABLE_CRY_PHYSICS
                         if ((m_movementMethod == NavigationComponentRequests::MovementMethod::Physics) && !m_usesLegacyPhysics)
+#else
+                        if ((m_movementMethod == NavigationComponentRequests::MovementMethod::Physics))
+#endif
                         {
                             Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
                         }
@@ -713,6 +730,7 @@ namespace LmbrCentral
 
         if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
         {
+#if ENABLE_CRY_PHYSICS
             if (m_usesLegacyPhysics)
             {
                 pe_status_dynamics dynamics;
@@ -729,6 +747,7 @@ namespace LmbrCentral
                     &Physics::CharacterRequestBus::Events::GetVelocity);
             }
             else
+#endif // ENABLE_CRY_PHYSICS
             {
                 Physics::RigidBodyRequestBus::EventResult(currentVelocity, GetEntityId(),
                     &Physics::RigidBodyRequestBus::Events::GetLinearVelocity);
@@ -770,6 +789,7 @@ namespace LmbrCentral
         {
             if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
             {
+#if ENABLE_CRY_PHYSICS
                 if (m_usesLegacyPhysics)
                 {
                     if (m_usesCharacterPhysics)
@@ -787,6 +807,7 @@ namespace LmbrCentral
                     }
                 }
                 else
+#endif
                 {
                     if (m_usesCharacterPhysics)
                     {
@@ -832,16 +853,19 @@ namespace LmbrCentral
             }
             else if (m_movementMethod == NavigationComponentRequests::MovementMethod::Physics)
             {
+#if ENABLE_CRY_PHYSICS
                 if (m_usesLegacyPhysics && m_usesCharacterPhysics)
                 {
                     LmbrCentral::CryCharacterPhysicsRequestBus::Event(GetEntityId(),
                         &LmbrCentral::CryCharacterPhysicsRequestBus::Events::RequestVelocity, targetVelocity, 0);
                 }
                 else
+#endif // ENABLE_CRY_PHYSICS
                 {
                     AZ::Vector3 forceRequired = (targetVelocity - currentVelocity) * mass;
                     forceRequired.SetZ(0);
 
+#if ENABLE_CRY_PHYSICS
                     if (m_usesLegacyPhysics)
                     {
                         pe_action_impulse applyImpulse;
@@ -850,6 +874,9 @@ namespace LmbrCentral
                             &CryPhysicsComponentRequestBus::Events::ApplyPhysicsAction, applyImpulse, false);
                     }
                     else if (m_usesCharacterPhysics)
+#else
+                    if (m_usesCharacterPhysics)
+#endif // ENABLE_CRY_PHYSICS
                     {
                         Physics::CharacterRequestBus::Event(GetEntityId(), 
                             &Physics::CharacterRequestBus::Events::TryRelativeMove, targetVelocity * deltaTime, deltaTime);

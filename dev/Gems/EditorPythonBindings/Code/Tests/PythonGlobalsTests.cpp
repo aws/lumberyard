@@ -43,11 +43,19 @@ namespace UnitTest
             GE_YARD
         };
 
+        enum class MyTypes
+        {
+            One = 1,
+            Two = 2,
+        };
+
         static AZ::s32 s_staticValue;
         static AZ::u32 s_pingCount;
         static GlobalEnums s_result1;
         static GlobalEnums s_result2;
         static constexpr AZ::u8 s_one = 1;
+        static AZ::Uuid s_myTypeId;
+        static AZStd::string s_myString;
 
         static AZ::s32 GetValue()
         {
@@ -71,6 +79,8 @@ namespace UnitTest
             s_staticValue = 0;
             s_result1 = GlobalEnums::GE_NONE;
             s_result2 = GlobalEnums::GE_NONE;
+            s_myTypeId = AZ::TypeId::CreateString("{DEADBEE5-F983-4153-848A-EE9F99502811}");
+            s_myString = AZStd::string("my string");
         }
 
         void Reflect(AZ::ReflectContext* context)
@@ -108,6 +118,18 @@ namespace UnitTest
                 behaviorContext->EnumProperty<GlobalEnums::GE_YARD>("GE_YARD")
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
 
+                // azlmbr.my.enum.One
+                behaviorContext->EnumProperty<aznumeric_cast<int>(MyTypes::One)>("One")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "my.enum") 
+                    ;
+
+                // azlmbr.my.enum.Two
+                behaviorContext->EnumProperty<aznumeric_cast<int>(MyTypes::Two)>("Two")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "my.enum")
+                    ;
+
                 behaviorContext->Property("result1", []() { return s_result1; }, [](GlobalEnums value) { s_result1 = value; })
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
 
@@ -118,6 +140,18 @@ namespace UnitTest
 
                 behaviorContext->ConstantProperty("ONE", []() { return s_one; })
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
+
+                // azlmbr.constant.MY_TYPE
+                behaviorContext->ConstantProperty("MY_TYPE", []() { return s_myTypeId; })
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "constant") 
+                    ;
+
+                // azlmbr.constant.MY_STRING
+                behaviorContext->ConstantProperty("MY_STRING", []() { return s_myString; })
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "constant") 
+                    ;
             }
         }
     };
@@ -125,6 +159,8 @@ namespace UnitTest
     AZ::u32 PythonGlobalsTester::s_pingCount = 0;
     PythonGlobalsTester::GlobalEnums PythonGlobalsTester::s_result1 = PythonGlobalsTester::GlobalEnums::GE_NONE;
     PythonGlobalsTester::GlobalEnums PythonGlobalsTester::s_result2 = PythonGlobalsTester::GlobalEnums::GE_NONE;
+    AZ::Uuid PythonGlobalsTester::s_myTypeId;
+    AZStd::string PythonGlobalsTester::s_myString;
 
     //////////////////////////////////////////////////////////////////////////
     // fixtures
@@ -145,6 +181,17 @@ namespace UnitTest
             // clearing up memory
             m_testSink = PythonTraceMessageSink();
             PythonTestingFixture::TearDown();
+        }
+
+        void Deactivate(AZ::Entity& entity)
+        {
+            auto editorPythonEventsInterface = AZ::Interface<AzToolsFramework::EditorPythonEventsInterface>::Get();
+            if (editorPythonEventsInterface)
+            {
+                editorPythonEventsInterface->StopPython();
+            }
+
+            entity.Deactivate();
         }
     };
 
@@ -174,11 +221,10 @@ namespace UnitTest
         }
         catch (const std::exception& e)
         {
-            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", e.what());
-            FAIL();
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
         }
 
-        e.Deactivate();
+        Deactivate(e);
 
         EXPECT_EQ(830, PythonGlobalsTester::s_pingCount);
     }
@@ -255,11 +301,10 @@ namespace UnitTest
         }
         catch (const std::exception& e)
         {
-            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", e.what());
-            FAIL();
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
         }
 
-        e.Deactivate();
+        Deactivate(e);
 
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::GlobalPropertyTest_NotNone)]);
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::GlobalPropertyTest_Is40)]);
@@ -319,11 +364,10 @@ namespace UnitTest
         }
         catch (const std::exception& e)
         {
-            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", e.what());
-            FAIL();
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
         }
 
-        e.Deactivate();
+        Deactivate(e);
 
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::GlobalEnumTest_Lumber)]);
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::GlobalEnumTest_Yard)]);
@@ -382,11 +426,10 @@ namespace UnitTest
         }
         catch (const std::exception& e)
         {
-            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", e.what());
-            FAIL();
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
         }
 
-        e.Deactivate();
+        Deactivate(e);
 
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::GlobalConstantTest_Fetch)]);
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::GlobalConstantTest_Adds)]);
@@ -434,13 +477,201 @@ namespace UnitTest
         }
         catch (const std::exception& e)
         {
-            AZ_Warning("UnitTest", false, "Failed on with Python exception: %s", e.what());
-            FAIL();
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
         }
 
-        e.Deactivate();
+        Deactivate(e);
 
         EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::stringValue1_has_data)]);
         EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::stringValue2_is_empty)]);
+    }
+
+    TEST_F(PythonGlobalsTests, GlobalListAllClasses)
+    {
+        PythonGlobalsTester pythonGlobalsTester;
+        pythonGlobalsTester.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        enum class LogTypes
+        {
+            Skip = 0,
+            ClassesFound
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::Equal(message, "ClassListFound"))
+                {
+                    return aznumeric_cast<int>(LogTypes::ClassesFound);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.object
+                classList = azlmbr.object.list_classes()
+                if (len(classList) > 0):
+                    print ('ClassListFound')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+
+        Deactivate(e);
+
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::ClassesFound)]);
+    }
+
+    TEST_F(PythonGlobalsTests, GlobalModuleDefinedTypeId)
+    {
+        PythonGlobalsTester pythonGlobalsTester;
+        pythonGlobalsTester.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        enum class LogTypes
+        {
+            Skip = 0,
+            TypeIsValid,
+            StringTypeIsValid,
+            EnumIsValid,
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::Equal(message, "TypeIsValid"))
+                {
+                    return aznumeric_cast<int>(LogTypes::TypeIsValid);
+                }
+                else if (AzFramework::StringFunc::Equal(message, "StringTypeIsValid"))
+                {
+                    return aznumeric_cast<int>(LogTypes::StringTypeIsValid);
+                }
+                else if (AzFramework::StringFunc::Equal(message, "EnumIsValid"))
+                {
+                    return aznumeric_cast<int>(LogTypes::EnumIsValid);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+        
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.constant
+                import azlmbr.my.enum
+                import azlmbr.globals
+                azlmbr.globals.reset()
+                type = azlmbr.constant.MY_TYPE
+                if (type.ToString().startswith('{DEADBEE5-')):
+                    print ('TypeIsValid')
+                if (azlmbr.constant.MY_STRING == 'my string'):
+                    print ('StringTypeIsValid')
+                if (azlmbr.my.enum.One == 1):
+                    print ('EnumIsValid')
+                if (azlmbr.my.enum.Two == 2):
+                    print ('EnumIsValid')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+
+        Deactivate(e);
+
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::TypeIsValid)]);
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::StringTypeIsValid)]);
+        EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::EnumIsValid)]);
+    }
+
+    TEST_F(PythonGlobalsTests, CompareEqualityOperators)
+    {
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        enum class LogTypes
+        {
+            Skip = 0,
+            IsGreaterThan,
+            IsGreaterEqualTo,
+            IsLessThan,
+            IsLessEqualTo,
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "IsGreaterThan"))
+                {
+                    return aznumeric_cast<int>(LogTypes::IsGreaterThan);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "IsGreaterEqualTo"))
+                {
+                    return aznumeric_cast<int>(LogTypes::IsGreaterEqualTo);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "IsLessThan"))
+                {
+                    return aznumeric_cast<int>(LogTypes::IsLessThan);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "IsLessEqualTo"))
+                {
+                    return aznumeric_cast<int>(LogTypes::IsLessEqualTo);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.math
+                import azlmbr.globals
+                pointA = azlmbr.math.Vector2(40.0)
+                pointB = azlmbr.math.Vector2(2.0)
+                if (pointB < pointA):
+                    print ('IsLessThan')
+                if (pointB <= pointA):
+                    print ('IsLessEqualTo')
+                if (pointB <= pointB):
+                    print ('IsLessEqualTo')
+                if (pointA > pointB):
+                    print ('IsGreaterThan')
+                if (pointA >= pointB):
+                    print ('IsGreaterEqualTo')
+                if (pointA >= pointA):
+
+                    print ('IsGreaterEqualTo')
+                if (pointB >= pointA):
+                    print ('IsGreaterEqualTo')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+
+        Deactivate(e);
+
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::IsGreaterThan)]);
+        EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::IsGreaterEqualTo)]);
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::IsLessThan)]);
+        EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::IsLessEqualTo)]);
     }
 }

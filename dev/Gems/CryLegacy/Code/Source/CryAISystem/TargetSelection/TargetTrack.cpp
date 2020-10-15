@@ -176,30 +176,6 @@ float CTargetTrack::GetUpdateInterval() const
 //////////////////////////////////////////////////////////////////////////
 CWeakRef<CAIObject> CTargetTrack::GetAITarget() const
 {
-    // Check if has vehicle attached to it and use it if possible
-    CAIActor* pAIActor = CastToCAIActorSafe(m_object.GetAIObject());
-    IAIActorProxy* pAIProxy = (pAIActor ? pAIActor->GetProxy() : NULL);
-    if (pAIProxy)
-    {
-        EntityId vehicleId = pAIProxy->GetLinkedVehicleEntityId();
-        IEntity* pVehicle = (vehicleId > 0 ? gEnv->pEntitySystem->GetEntity(vehicleId) : NULL);
-
-        if (pVehicle)
-        {
-            CWeakRef<CAIObject> refVehicle = gAIEnv.pObjectContainer->GetWeakRef(pVehicle->GetAIObjectID());
-
-            CAIObject* vehicleAIObject = refVehicle.GetAIObject();
-            CAIVehicle* aiVehicle = vehicleAIObject ? vehicleAIObject->CastToCAIVehicle() : 0;
-            CAIActor* driver = aiVehicle ? aiVehicle->GetDriver() : 0;
-
-            if (driver == pAIActor)
-            {
-                assert (refVehicle.IsValid());
-                return refVehicle;
-            }
-        }
-    }
-
     return m_object;
 }
 

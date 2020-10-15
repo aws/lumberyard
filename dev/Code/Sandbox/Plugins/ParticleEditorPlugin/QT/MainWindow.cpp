@@ -537,7 +537,7 @@ void CMainWindow::ResetToDefaultEditorLayout()
 
 void CMainWindow::OnActionViewDocumentation()
 {
-    static const char* documentationUrl = "https://docs.aws.amazon.com/lumberyard/userguide/particle-editor";
+    static const char* documentationUrl = "https://docs.aws.amazon.com/console/lumberyard/particles/editor";
     QDesktopServices::openUrl(QUrl(documentationUrl));
 }
 

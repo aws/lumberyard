@@ -156,10 +156,12 @@ inline void ConvexHull2D(std::vector<Vec3>& ptsOut, const std::vector<Vec3>& pts
 }
 
 
+#if ENABLE_CRY_PHYSICS
 /// Return the closest intersection point on surface of the swept sphere
 /// and distance along the linesegment. hitPos can be zero - may be faster
 bool IntersectSweptSphere(Vec3* hitPos, float& hitDist, const Lineseg& lineseg,
     float radius, EAICollisionEntities aiCollisionEntities, IPhysicalEntity** pSkipEnts = 0, int nSkipEnts = 0, int geomFlagsAny = geom_colltype0);
+#endif // ENABLE_CRY_PHYSICS
 
 #ifdef CRYAISYSTEM_DEBUG
 /// Count of calls to CheckWalkability - for profiling
@@ -199,8 +201,10 @@ typedef StaticDynArray<IPhysicalEntity*, GetPhysicalEntitiesInBoxMaxResultCount>
 bool FindFloor(const Vec3& position, const StaticPhysEntityArray& entities, const StaticAABBArray& aabbs, Vec3& floor);
 bool FindFloor(const Vec3& position, Vec3& floor);
 
+#if ENABLE_CRY_PHYSICS
 bool CheckWalkabilitySimple(/*Vec3 from, Vec3 to,*/ SWalkPosition fromPos, SWalkPosition toPos, float radius,
     EAICollisionEntities aiCollisionEntities = AICE_ALL);
+#endif // ENABLE_CRY_PHYSICS
 
 // Faster and more accurate version of walkability check
 // radius is now the agent radius instead of a padding radius
@@ -213,6 +217,7 @@ bool CheckWalkability(const Vec3& origin, const Vec3& target, float radius, cons
 //====================================================================
 // GetEntitiesFromAABB
 //====================================================================
+#if ENABLE_CRY_PHYSICS
 inline unsigned GetEntitiesFromAABB(PhysicalEntityListAutoPtr& entities, const AABB& aabb, EAICollisionEntities aiCollisionEntities)
 {
     IPhysicalEntity** pEntities = NULL;
@@ -456,6 +461,7 @@ inline bool CheckBodyPos(const Vec3& floorPos, EAICollisionEntities aiCollisionE
     Lineseg torsoSeg(segStart, segEnd);
     return !OverlapCapsule(torsoSeg, WalkabilityRadius, aiCollisionEntities);
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //===================================================================
 // CalcPolygonArea

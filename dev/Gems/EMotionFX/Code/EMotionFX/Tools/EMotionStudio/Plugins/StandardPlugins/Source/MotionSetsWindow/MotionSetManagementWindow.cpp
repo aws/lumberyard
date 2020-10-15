@@ -493,10 +493,11 @@ namespace EMStudio
     void MotionSetManagementWindow::contextMenuEvent(QContextMenuEvent* event)
     {
         // create the context menu
-        QMenu menu(this);
+        QMenu* menu = new QMenu(this);
+        menu->setObjectName("EMFX.MotionSetManagementWindow.ContextMenu");
 
         // add motion set is always enabled
-        QAction* addAction = menu.addAction("Add Motion Set");
+        QAction* addAction = menu->addAction("Add Motion Set");
         connect(addAction, &QAction::triggered, this, &MotionSetManagementWindow::OnCreateMotionSet);
 
         // get the selected items
@@ -506,32 +507,34 @@ namespace EMStudio
         // add remove if at least one item selected
         if (numSelectedItems > 0)
         {
-            QAction* removeAction = menu.addAction("Remove selected");
+            QAction* removeAction = menu->addAction("Remove selected");
+            removeAction->setObjectName("EMFX.MotionSetManagementWindow.ContextMenu.RemoveSelected");
             connect(removeAction, &QAction::triggered, this, &MotionSetManagementWindow::OnRemoveSelectedMotionSets);
 
-            QAction* removeAllAction = menu.addAction("Remove all");
+            QAction* removeAllAction = menu->addAction("Remove all");
             connect(removeAllAction, &QAction::triggered, this, &MotionSetManagementWindow::OnClearMotionSets);
         }
 
         // add rename if only one item selected
         if (numSelectedItems == 1)
         {
-            QAction* renameAction = menu.addAction("Rename Selected Motion Set");
+            QAction* renameAction = menu->addAction("Rename Selected Motion Set");
             connect(renameAction, &QAction::triggered, this, &MotionSetManagementWindow::OnRenameSelectedMotionSet);
         }
 
         // add the save menu if at least one item selected
         if (numSelectedItems > 0)
         {
-            menu.addSeparator();
+            menu->addSeparator();
 
             // add the save menu
-            QAction* saveAction = menu.addAction("Save Selected Root Motion Set");
+            QAction* saveAction = menu->addAction("Save Selected Root Motion Set");
             connect(saveAction, &QAction::triggered, this, &MotionSetManagementWindow::OnSave);
         }
 
         // show the menu at the given position
-        menu.exec(event->globalPos());
+        menu->popup(event->globalPos());
+        connect(menu, &QMenu::triggered, menu, &QMenu::deleteLater);
     }
 
 
@@ -613,7 +616,7 @@ namespace EMStudio
 
             // Select the new motion sets.
             mMotionSetsTree->clearSelection();
-            for (const AZStd::pair<AZStd::string, EMotionFX::MotionSet*> nameAndParentMotionSet : parentMotionSetByName)
+            for (const AZStd::pair<AZStd::string, EMotionFX::MotionSet*>& nameAndParentMotionSet : parentMotionSetByName)
             {
                 EMotionFX::MotionSet* motionSet = nameAndParentMotionSet.second->RecursiveFindMotionSetByName(nameAndParentMotionSet.first);
                 SelectItemsById(motionSet->GetID());

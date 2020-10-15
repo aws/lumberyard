@@ -44,6 +44,8 @@
 
 namespace PhysX
 {
+    class WindProvider;
+
     /// System allocator to be used for all PhysX gem persistent allocations.
     class PhysXAllocator
         : public AZ::SystemAllocator
@@ -132,6 +134,9 @@ namespace PhysX
         void zoneEnd(void* profilerData, const char* eventName, bool detached, uint64_t contextId) override;
     };
 
+    // This disables the warning about calling deprecated functions.  It is necessary because several functions from
+    // ConfigurationRequestBus have been deprecated, and the bus handling causes these functions to be called here.
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// System component for PhysX.
     /// The system component handles underlying tasks such as initialization and shutdown of PhysX, managing a
     /// Lumberyard memory allocator for PhysX allocations, scheduling for PhysX jobs, and connections to the PhysX
@@ -157,7 +162,7 @@ namespace PhysX
         AZ_COMPONENT(SystemComponent, "{85F90819-4D9A-4A77-AB89-68035201F34B}");
 
         SystemComponent();
-        ~SystemComponent() override = default;
+        ~SystemComponent();
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -197,7 +202,7 @@ namespace PhysX
         physx::PxCpuDispatcher* m_cpuDispatcher = nullptr;
 
         // SystemRequestsBus
-        const Physics::WorldConfiguration& GetDefaultWorldConfiguration() override;
+        const Physics::WorldConfiguration& GetDefaultWorldConfiguration() const override;
         const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() override;
         physx::PxScene* CreateScene(physx::PxSceneDesc& sceneDesc) override;
         physx::PxConvexMesh* CreateConvexMesh(const void* vertices, AZ::u32 vertexNum, AZ::u32 vertexStride) override; // should we use AZ::Vector3* or physx::PxVec3 here?
@@ -232,10 +237,12 @@ namespace PhysX
         // PhysX::ConfigurationRequestBus
         // LUMBERYARD_DEPRECATED(LY-109358)
         /// @deprecated Please use the alternative configuration getters instead.
-        void SetConfiguration(const Configuration&) override;
+        AZ_DEPRECATED(void SetConfiguration(const Configuration&) override;,
+            "SetConfiguration is deprecated, please use the alternative configuration getters instead.")
         // LUMBERYARD_DEPRECATED(LY-109358)
         /// @deprecated Please use the alternative configuration setters instead.
-        const Configuration& GetConfiguration() override;
+        AZ_DEPRECATED(const Configuration& GetConfiguration() override;,
+            "GetConfiguration is deprecated, please use the alternative configuration setters instead.")
         void SetPhysXConfiguration(const PhysXConfiguration&) override;
         const PhysXConfiguration& GetPhysXConfiguration() override;
 
@@ -323,7 +330,7 @@ namespace PhysX
         bool UpdateMaterialSelection(const Physics::ShapeConfiguration& shapeConfiguration,
             Physics::ColliderConfiguration& colliderConfiguration) override;
 
-    private:
+private:
         bool UpdateMaterialSelectionFromPhysicsAsset(
             const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
             Physics::ColliderConfiguration& colliderConfiguration);
@@ -335,7 +342,10 @@ namespace PhysX
         PhysicsConfiguration m_physicsConfiguration;
         AZ::Vector3 m_cameraPositionCache = AZ::Vector3::CreateZero();
         PxAzProfilerCallback m_pxAzProfilerCallback;
+
+        AZStd::unique_ptr<WindProvider> m_windProvider;
     };
+    AZ_POP_DISABLE_WARNING
 
     /// Return PxCookingParams better suited for use at run-time, these parameters will improve cooking time.
     /// Reference: https://docs.nvidia.com/gameworks/content/gameworkslibrary/physx/guide/Manual/Geometry.html#triangle-meshes

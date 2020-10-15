@@ -49,10 +49,12 @@
     
     <script src="config.js"></script>
 
-    <script id="systemjs_load">
+    <script id="socket.io_load">
         if (origin.toLocaleLowerCase() == schema + domain + port) {
-            System.import('systemjs-hot-reloader').then((connect) => {
-                connect({ host: '//'+ domain + port })
+            System.import('socket.io-client/dist/socket.io.js').then((io) => {
+                const socket = io.connect({ host: '//' + domain + port })
+                socket.emit('client', navigator.userAgent);
+
                 System.import('app')
             })
         }

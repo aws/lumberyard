@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 
 #include <ACETypes.h>

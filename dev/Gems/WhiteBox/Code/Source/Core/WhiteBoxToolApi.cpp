@@ -17,6 +17,7 @@
 
 #include <AzCore/Console/Console.h>
 #include <AzCore/Debug/Profiler.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/ToString.h>
 #include <AzCore/Math/Transform.h>
@@ -48,10 +49,10 @@ namespace OpenMesh
     struct vector_traits<AZ::Vector3>
     {
         //! Type of the vector class
-        typedef AZ::Vector3 vector_type;
+        using vector_type = AZ::Vector3;
 
         //! Type of the scalar value
-        typedef float value_type;
+        using value_type = float;
 
         //! size/dimension of the vector
         static const size_t size_ = 3;
@@ -67,10 +68,10 @@ namespace OpenMesh
     struct vector_traits<AZ::Vector2>
     {
         //! Type of the vector class
-        typedef AZ::Vector2 vector_type;
+        using vector_type = AZ::Vector2;
 
         //! Type of the scalar value
-        typedef float value_type;
+        using value_type = float;
 
         //! size/dimension of the vector
         static const size_t size_ = 2;
@@ -451,14 +452,24 @@ namespace WhiteBox
     // map from internal handles to external handles
     Api::PolygonHandle PolygonHandleFromInternal(const FaceHandlesInternal& faceHandlesInternal)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
         Api::PolygonHandle polygonHandle;
         polygonHandle.m_faceHandles.reserve(faceHandlesInternal.size());
         AZStd::transform(
             faceHandlesInternal.begin(), faceHandlesInternal.end(), AZStd::back_inserter(polygonHandle.m_faceHandles),
             &wb_fh);
         return polygonHandle;
+    }
+
+    FaceHandlesInternal InternalFaceHandlesFromPolygon(const Api::PolygonHandle& polygonHandle)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        FaceHandlesInternal faceHandlesInternal;
+        faceHandlesInternal.reserve(polygonHandle.m_faceHandles.size());
+        AZStd::transform(
+            polygonHandle.m_faceHandles.begin(), polygonHandle.m_faceHandles.end(),
+            AZStd::back_inserter(faceHandlesInternal), &om_fh);
+        return faceHandlesInternal;
     }
 
     namespace Api
@@ -517,22 +528,10 @@ namespace WhiteBox
         } // namespace Internal
 
         // forward declarations
-        PolygonHandle AddPolygon(WhiteBoxMesh& whiteBox, const AZStd::vector<FaceVertHandles>& faceVertexHandles);
         AZStd::vector<FaceVertHandles> BuildNewVertexFaceHandles(
             WhiteBoxMesh& whiteBox, const Internal::AppendedVerts& appendedVerts, const FaceHandles& existingFaces);
         void RemoveFaces(WhiteBoxMesh& whiteBox, const FaceHandles& faceHandles);
         void CalculatePlanarUVs(WhiteBoxMesh& whiteBox, const FaceHandles& faceHandles);
-
-#ifdef AZ_ENABLE_TRACING
-        // forward declare ToString calls used for logging
-        AZStd::string ToString(const PolygonHandle& polygonHandle);
-        AZStd::string ToString(const FaceVertHandles& faceVertHandles);
-        AZStd::string ToString(const FaceVertHandlesList& faceVertHandlesList);
-        AZStd::string ToString(const VertexHandle vertexHandle);
-        AZStd::string ToString(const FaceHandle faceHandle);
-        AZStd::string ToString(const EdgeHandle edgeHandle);
-        AZStd::string ToString(const HalfedgeHandle halfedgeHandle);
-#endif
 
         // restores WhiteBoxMesh properties, use when properties have not been initialized or have been cleared
         static void InitializeWhiteBoxMesh(WhiteBoxMesh& whiteBox)
@@ -541,6 +540,7 @@ namespace WhiteBox
             PolygonPropertyHandle polygonPropsHandle;
             whiteBox.mesh.add_property(polygonPropsHandle, PolygonProps);
             whiteBox.mesh.mproperty(polygonPropsHandle).set_persistent(true);
+
             VertexBoolPropertyHandle vertexPropsHiddenHandle;
             whiteBox.mesh.add_property(vertexPropsHiddenHandle, VertexHiddenProp);
             whiteBox.mesh.property(vertexPropsHiddenHandle).set_persistent(true);
@@ -600,18 +600,18 @@ namespace WhiteBox
 
             const auto& polygonProps = whiteBox.mesh.property(polygonPropsHandle);
 
-            AZStd::vector<PolygonHandle> handles;
-            for (auto& entry : polygonProps)
+            AZStd::vector<PolygonHandle> polygonHandles;
+            for (const auto& polygonProp : polygonProps)
             {
                 // don't add duplicate polygons
-                PolygonHandle handle = PolygonHandleFromInternal(entry.second);
-                if (AZStd::find(handles.begin(), handles.end(), handle) == handles.end())
+                PolygonHandle polygonHandle = PolygonHandleFromInternal(polygonProp.second);
+                if (AZStd::find(polygonHandles.begin(), polygonHandles.end(), polygonHandle) == polygonHandles.end())
                 {
-                    handles.push_back(handle);
+                    polygonHandles.push_back(AZStd::move(polygonHandle));
                 }
             }
 
-            return handles;
+            return polygonHandles;
         }
 
         EdgeHandlesCollection PolygonBorderEdgeHandles(const WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle)
@@ -718,8 +718,6 @@ namespace WhiteBox
 
         HalfedgeHandles FaceHalfedgeHandles(const WhiteBoxMesh& whiteBox, const FaceHandle faceHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             HalfedgeHandles halfedgeHandles;
             halfedgeHandles.reserve(3);
 
@@ -734,8 +732,6 @@ namespace WhiteBox
 
         EdgeHandles FaceEdgeHandles(const WhiteBoxMesh& whiteBox, const FaceHandle faceHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             if (!faceHandle.IsValid())
             {
                 return {};
@@ -754,8 +750,6 @@ namespace WhiteBox
 
         VertexHandles FaceVertexHandles(const WhiteBoxMesh& whiteBox, const FaceHandle faceHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             if (!faceHandle.IsValid())
             {
                 return {};
@@ -764,10 +758,9 @@ namespace WhiteBox
             VertexHandles vertexHandles;
             vertexHandles.reserve(3);
 
-            const auto faceHalfedgeHandles = FaceHalfedgeHandles(whiteBox, faceHandle);
-            for (const auto halfedgeHandle : faceHalfedgeHandles)
+            for (const auto halfedgeHandle : FaceHalfedgeHandles(whiteBox, faceHandle))
             {
-                vertexHandles.push_back(HalfedgeVertexHandleAtTip(whiteBox, halfedgeHandle));
+                vertexHandles.emplace_back(HalfedgeVertexHandleAtTip(whiteBox, halfedgeHandle));
             }
 
             return vertexHandles;
@@ -775,10 +768,7 @@ namespace WhiteBox
 
         AZStd::vector<AZ::Vector3> FaceVertexPositions(const WhiteBoxMesh& whiteBox, const FaceHandle faceHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-            const auto vertexHandles = FaceVertexHandles(whiteBox, faceHandle);
-            return VertexPositions(whiteBox, vertexHandles);
+            return VertexPositions(whiteBox, FaceVertexHandles(whiteBox, faceHandle));
         }
 
         AZStd::vector<AZ::Vector3> FacesPositions(const WhiteBoxMesh& whiteBox, const FaceHandles& faceHandles)
@@ -786,6 +776,8 @@ namespace WhiteBox
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
             AZStd::vector<AZ::Vector3> triangles;
+            triangles.reserve(faceHandles.size() * 3);
+
             for (const auto faceHandle : faceHandles)
             {
                 const auto corners = FaceVertexPositions(whiteBox, faceHandle);
@@ -812,8 +804,6 @@ namespace WhiteBox
 
         HalfedgeHandles VertexOutgoingHalfedgeHandles(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             HalfedgeHandles outgoingHalfEdgeHandles;
 
             for (auto oheh = whiteBox.mesh.cvoh_ccwbegin(om_vh(vertexHandle));
@@ -827,8 +817,6 @@ namespace WhiteBox
 
         HalfedgeHandles VertexIncomingHalfedgeHandles(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             HalfedgeHandles incomingHalfEdgeHandles;
 
             for (auto iheh = whiteBox.mesh.cvih_ccwbegin(om_vh(vertexHandle));
@@ -842,6 +830,8 @@ namespace WhiteBox
 
         HalfedgeHandles VertexHalfedgeHandles(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             HalfedgeHandles outgoingHandles = VertexOutgoingHalfedgeHandles(whiteBox, vertexHandle);
             HalfedgeHandles incomingHandles = VertexIncomingHalfedgeHandles(whiteBox, vertexHandle);
 
@@ -855,9 +845,11 @@ namespace WhiteBox
 
         EdgeHandles VertexEdgeHandles(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             const auto omVertexHandle = om_vh(vertexHandle);
 
-            return std::reduce(
+            return AZStd::accumulate(
                 whiteBox.mesh.cve_ccwbegin(omVertexHandle), whiteBox.mesh.cve_ccwend(omVertexHandle), EdgeHandles{},
                 [](EdgeHandles edgeHandles, const auto edgeHandle)
                 {
@@ -1148,18 +1140,27 @@ namespace WhiteBox
             return wb_heh(whiteBox.mesh.prev_halfedge_handle(om_heh(halfedgeHandle)));
         }
 
+        static AZStd::array<AZ::Vector3, 2> EdgeVertexPositions(
+            const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle, const VertexHandle vertexHandle)
+        {
+            if (const auto vertexHandles = EdgeVertexHandles(whiteBox, edgeHandle); vertexHandle.IsValid())
+            {
+                const auto otherVertexHandle = vertexHandles[0] == vertexHandle ? vertexHandles[1] : vertexHandles[0];
+                return {VertexPosition(whiteBox, vertexHandle), VertexPosition(whiteBox, otherVertexHandle)};
+            }
+            else
+            {
+                return {VertexPosition(whiteBox, vertexHandles[0]), VertexPosition(whiteBox, vertexHandles[1])};
+            }
+        }
+
         AZStd::array<AZ::Vector3, 2> EdgeVertexPositions(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-            const auto vertexHandles = EdgeVertexHandles(whiteBox, edgeHandle);
-            return {VertexPosition(whiteBox, vertexHandles[0]), VertexPosition(whiteBox, vertexHandles[1])};
+            return EdgeVertexPositions(whiteBox, edgeHandle, VertexHandle{});
         }
 
         AZStd::array<VertexHandle, 2> EdgeVertexHandles(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             // note: first halfedge handle should always exist
             if (const auto halfedgeHandle = EdgeHalfedgeHandle(whiteBox, edgeHandle, EdgeHalfedge::First);
                 halfedgeHandle.IsValid())
@@ -1174,10 +1175,35 @@ namespace WhiteBox
             return {VertexHandle{}, VertexHandle{}};
         }
 
-        AZ::Vector3 EdgeDirection(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
+        // provide the ability to pass a vertex handle to explicitly determine the direction of the axis
+        static AZ::Vector3 EdgeVectorWithStartingVertexHandle(
+            const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle, const VertexHandle vertexHandle)
         {
-            const auto edgeVertexPositions = EdgeVertexPositions(whiteBox, edgeHandle);
-            return (edgeVertexPositions[1] - edgeVertexPositions[0]).GetNormalizedSafeExact();
+            const auto edgeVertexPositions = EdgeVertexPositions(whiteBox, edgeHandle, vertexHandle);
+            return (edgeVertexPositions[1] - edgeVertexPositions[0]);
+        }
+
+        AZ::Vector3 EdgeVector(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
+        {
+            return EdgeVectorWithStartingVertexHandle(whiteBox, edgeHandle, VertexHandle{});
+        }
+
+        // provide the ability to pass a vertex handle to explicitly determine the direction of the axis
+        static AZ::Vector3 EdgeAxisWithStartingVertexHandle(
+            const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle, const VertexHandle vertexHandle)
+        {
+            if (const AZ::Vector3 edgeVector = EdgeVectorWithStartingVertexHandle(whiteBox, edgeHandle, vertexHandle);
+                edgeVector.GetLength() > 0.0f)
+            {
+                return edgeVector / edgeVector.GetLength();
+            }
+
+            return AZ::Vector3::CreateZero();
+        }
+
+        AZ::Vector3 EdgeAxis(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
+        {
+            return EdgeAxisWithStartingVertexHandle(whiteBox, edgeHandle, VertexHandle{});
         }
 
         bool EdgeIsBoundary(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
@@ -1284,6 +1310,14 @@ namespace WhiteBox
             return edgeGrouping;
         }
 
+        bool EdgeIsHidden(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            const EdgeHandles userEdgeHandles = MeshPolygonEdgeHandles(whiteBox);
+            return AZStd::find(userEdgeHandles.cbegin(), userEdgeHandles.cend(), edgeHandle) == userEdgeHandles.cend();
+        }
+
         AZStd::vector<FaceHandle> EdgeFaceHandles(const WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -1340,7 +1374,7 @@ namespace WhiteBox
                 EdgeHalfedgeHandle(whiteBox, edgeHandle, EdgeHalfedge::First),
                 EdgeHalfedgeHandle(whiteBox, edgeHandle, EdgeHalfedge::Second)};
 
-            return std::reduce(
+            return AZStd::accumulate(
                 halfedgeHandles.cbegin(), halfedgeHandles.cend(), HalfedgeHandles{},
                 [&whiteBox](HalfedgeHandles halfedgeHandles, const HalfedgeHandle halfedgeHandle)
                 {
@@ -1649,14 +1683,12 @@ namespace WhiteBox
             whiteBox.mesh.get_property_handle(polygonPropsHandle, PolygonProps);
 
             const auto& polygonProps = whiteBox.mesh.property(polygonPropsHandle);
-            const auto& polygonsIt = polygonProps.find(om_fh(faceHandle));
+            const auto polygonIt = polygonProps.find(om_fh(faceHandle));
 
-            if (polygonsIt != polygonProps.end())
+            if (polygonIt != polygonProps.end())
             {
-                return PolygonHandleFromInternal(polygonsIt->second);
+                return PolygonHandleFromInternal(polygonIt->second);
             }
-
-            AZ_Assert(false, "Did not find PolygonHandle for FaceHandle: %d", faceHandle.Index());
 
             return {};
         }
@@ -1716,7 +1748,7 @@ namespace WhiteBox
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
-            return std::reduce(
+            return AZStd::accumulate(
                 polygonHandle.m_faceHandles.cbegin(), polygonHandle.m_faceHandles.cend(), HalfedgeHandles{},
                 [&whiteBox](HalfedgeHandles halfedges, const FaceHandle faceHandle)
                 {
@@ -1772,14 +1804,12 @@ namespace WhiteBox
 
         AZStd::vector<AZ::Vector3> VertexPositions(const WhiteBoxMesh& whiteBox, const VertexHandles& vertexHandles)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             AZStd::vector<AZ::Vector3> positions;
             positions.reserve(vertexHandles.size());
 
             AZStd::transform(
                 vertexHandles.cbegin(), vertexHandles.cend(), AZStd::back_inserter(positions),
-                [&whiteBox](const auto& vertexHandle)
+                [&whiteBox](const auto vertexHandle)
                 {
                     return VertexPosition(whiteBox, vertexHandle);
                 });
@@ -1787,11 +1817,81 @@ namespace WhiteBox
             return positions;
         }
 
+        EdgeHandles VertexUserEdgeHandles(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            auto vertexEdgeHandles = VertexEdgeHandles(whiteBox, vertexHandle);
+
+            vertexEdgeHandles.erase(
+                AZStd::remove_if(
+                    AZStd::begin(vertexEdgeHandles), AZStd::end(vertexEdgeHandles),
+                    [&whiteBox](const EdgeHandle edgeHandle)
+                    {
+                        return !EdgeIsUser(whiteBox, edgeHandle);
+                    }),
+                AZStd::end(vertexEdgeHandles));
+
+            return vertexEdgeHandles;
+        }
+
+        template<typename EdgeFn>
+        static AZStd::vector<AZ::Vector3> VertexUserEdges(
+            const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle, EdgeFn&& edgeFn)
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            const auto vertexEdgeHandles = VertexUserEdgeHandles(whiteBox, vertexHandle);
+
+            AZStd::vector<AZ::Vector3> edgeVectors;
+            edgeVectors.reserve(vertexEdgeHandles.size());
+
+            AZStd::transform(
+                AZStd::cbegin(vertexEdgeHandles), AZStd::cend(vertexEdgeHandles), AZStd::back_inserter(edgeVectors),
+                [&whiteBox, edgeFn, vertexHandle](const EdgeHandle edgeHandle)
+                {
+                    return edgeFn(whiteBox, edgeHandle, vertexHandle);
+                });
+
+            // filter out any invalid edges
+            edgeVectors.erase(
+                AZStd::remove_if(
+                    AZStd::begin(edgeVectors), AZStd::end(edgeVectors),
+                    [](const AZ::Vector3& edge)
+                    {
+                        return AZ::IsCloseMag<float>(edge.GetLengthSq(), 0.0f);
+                    }),
+                AZStd::end(edgeVectors));
+
+            return edgeVectors;
+        }
+
+        AZStd::vector<AZ::Vector3> VertexUserEdgeVectors(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
+        {
+            return VertexUserEdges(whiteBox, vertexHandle, &EdgeVectorWithStartingVertexHandle);
+        }
+
+        AZStd::vector<AZ::Vector3> VertexUserEdgeAxes(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
+        {
+            return VertexUserEdges(whiteBox, vertexHandle, &EdgeAxisWithStartingVertexHandle);
+        }
+
         bool VertexIsHidden(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
         {
             VertexBoolPropertyHandle vertexPropsHiddenHandle;
             whiteBox.mesh.get_property_handle(vertexPropsHiddenHandle, VertexHiddenProp);
             return whiteBox.mesh.property(vertexPropsHiddenHandle, om_vh(vertexHandle));
+        }
+
+        bool VertexIsIsolated(const WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
+        {
+            const auto connectedEdgeHandles = VertexEdgeHandles(whiteBox, vertexHandle);
+            return AZStd::all_of(
+                AZStd::cbegin(connectedEdgeHandles), AZStd::cend(connectedEdgeHandles),
+                [&whiteBox](const EdgeHandle edgeHandle)
+                {
+                    return !EdgeIsUser(whiteBox, edgeHandle);
+                });
         }
 
         AZ::Vector3 FaceNormal(const WhiteBoxMesh& whiteBox, const FaceHandle faceHandle)
@@ -1949,7 +2049,7 @@ namespace WhiteBox
         {
             for (const auto faceHandle : faceHandles)
             {
-                auto& polygonIt = polygonProps.find(om_fh(faceHandle));
+                auto polygonIt = polygonProps.find(om_fh(faceHandle));
                 for (const auto innerFaceHandle : faceHandles)
                 {
                     polygonIt->second.push_back(om_fh(innerFaceHandle));
@@ -1961,9 +2061,21 @@ namespace WhiteBox
         {
             for (const auto faceHandle : faceHandles)
             {
-                if (auto& polygonIt = polygonProps.find(om_fh(faceHandle)); polygonIt != polygonProps.end())
+                if (auto polygonIt = polygonProps.find(om_fh(faceHandle)); polygonIt != polygonProps.end())
                 {
                     polygonIt->second.clear();
+                }
+            }
+        }
+
+        // restore all vertices along the restored edges (after creating a new polygon)
+        static void RestoreVertexHandlesForEdges(WhiteBoxMesh& whiteBox, const EdgeHandles& restoredEdgeHandles)
+        {
+            for (const auto edgeHandle : restoredEdgeHandles)
+            {
+                for (const auto vertexHandle : EdgeVertexHandles(whiteBox, edgeHandle))
+                {
+                    RestoreVertex(whiteBox, vertexHandle);
                 }
             }
         }
@@ -1971,14 +2083,11 @@ namespace WhiteBox
         AZStd::optional<AZStd::array<PolygonHandle, 2>> RestoreEdge(
             WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle, EdgeHandles& restoringEdgeHandles)
         {
-            WHITEBOX_LOG("White Box", "RestoreVertex eh(%s)", ToString(edgeHandle).c_str());
+            WHITEBOX_LOG("White Box", "RestoreEdge eh(%s)", ToString(edgeHandle).c_str());
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
-            const auto splitEdgeHandles = MeshUserEdgeHandles(whiteBox);
-
             // check we're not selecting an existing user edge
-            if (AZStd::find(splitEdgeHandles.m_user.cbegin(), splitEdgeHandles.m_user.cend(), edgeHandle) !=
-                splitEdgeHandles.m_user.cend())
+            if (!EdgeIsHidden(whiteBox, edgeHandle))
             {
                 // do nothing
                 return {};
@@ -2002,8 +2111,8 @@ namespace WhiteBox
                 whiteBox, secondHalfedgeHandle, firstHalfedgeHandle, polygonBorderHalfedgeHandles,
                 restoringEdgeHandles);
 
-            // check if the first and second polygons are identical - this can happen if
-            // the vertex list forms a loop (not currently fully supported)
+            // check if the first and second polygons are identical,
+            // this can happen if the vertex list forms a loop
             const bool identical = [first = firstPolygon, second = secondPolygon]() mutable
             {
                 AZStd::sort(first.m_faceHandles.begin(), first.m_faceHandles.end());
@@ -2044,6 +2153,8 @@ namespace WhiteBox
             AZStd::sort(allPolygonEdges.begin(), allPolygonEdges.end());
             allPolygonEdges.erase(AZStd::unique(allPolygonEdges.begin(), allPolygonEdges.end()), allPolygonEdges.end());
 
+            RestoreVertexHandlesForEdges(whiteBox, restoringEdgeHandles);
+
             // remove all edges that make up the new polygons from the ones currently being restored
             restoringEdgeHandles.erase(
                 AZStd::remove_if(
@@ -2068,6 +2179,20 @@ namespace WhiteBox
             whiteBox.mesh.property(vertexPropsHiddenHandle, om_vh(vertexHandle)) = false;
         }
 
+        bool TryRestoreVertex(WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
+        {
+            WHITEBOX_LOG("White Box", "TryRestoreVertex vh(%s)", ToString(vertexHandle).c_str());
+
+            // if none of the connected edge handles are user edges then the vertex should not be restored
+            if (!VertexIsIsolated(whiteBox, vertexHandle))
+            {
+                RestoreVertex(whiteBox, vertexHandle);
+                return true;
+            }
+
+            return false;
+        }
+
         PolygonHandle HideEdge(WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
         {
             WHITEBOX_LOG("White Box", "HideEdge eh(%s)", ToString(edgeHandle).c_str());
@@ -2084,6 +2209,9 @@ namespace WhiteBox
             // get polygon handle from each face handle
             const PolygonHandle firstPolygonHandle = FacePolygonHandle(whiteBox, firstFaceHandle);
             const PolygonHandle secondPolygonHandle = FacePolygonHandle(whiteBox, secondFaceHandle);
+
+            // get all vertex handles associated with the first polygon
+            const VertexHandles firstPolygonVertexHandles = PolygonVertexHandles(whiteBox, firstPolygonHandle);
 
             // union of all face handles
             FaceHandles combinedFaceHandles;
@@ -2104,7 +2232,7 @@ namespace WhiteBox
             // update all face handles to refer to the new face handles in the group
             for (const auto faceHandle : combinedFaceHandles)
             {
-                auto& polygonIt = polygonProps.find(om_fh(faceHandle));
+                auto polygonIt = polygonProps.find(om_fh(faceHandle));
                 polygonIt->second.clear();
 
                 for (const auto innerFaceHandle : combinedFaceHandles)
@@ -2113,7 +2241,153 @@ namespace WhiteBox
                 }
             }
 
+            // hide any vertices that are not connected to a 'user' edge
+            for (const auto vertexHandle : firstPolygonVertexHandles)
+            {
+                if (VertexIsIsolated(whiteBox, vertexHandle))
+                {
+                    HideVertex(whiteBox, vertexHandle);
+                }
+            }
+
             return PolygonHandle{combinedFaceHandles};
+        }
+
+        VertexHandle SplitFace(WhiteBoxMesh& whiteBox, const FaceHandle faceHandle, const AZ::Vector3& position)
+        {
+            WHITEBOX_LOG("White Box", "SplitFace fh(%s)", ToString(faceHandle).c_str());
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            const auto omFaceHandle = om_fh(faceHandle);
+            const auto omVertexHandle = whiteBox.mesh.split_copy(omFaceHandle, position);
+            const VertexHandle splitVertexHandle = wb_vh(omVertexHandle);
+
+            // as all new edges will be by default hidden, ensure
+            // the newly added vertex is also hidden
+            HideVertex(whiteBox, splitVertexHandle);
+
+            // build collection of current face handles for newly inserted vertex
+            auto omFaceHandles = AZStd::accumulate(
+                whiteBox.mesh.vf_ccwbegin(omVertexHandle), whiteBox.mesh.vf_ccwend(omVertexHandle),
+                AZStd::vector<Mesh::FaceHandle>{},
+                [](AZStd::vector<Mesh::FaceHandle> faceHandles, const Mesh::FaceHandle faceHandle)
+                {
+                    faceHandles.push_back(faceHandle);
+                    return faceHandles;
+                });
+
+            // get polygon property handle from mesh
+            PolygonPropertyHandle polygonPropsHandle;
+            whiteBox.mesh.get_property_handle(polygonPropsHandle, PolygonProps);
+            auto& polygonProps = whiteBox.mesh.property(polygonPropsHandle);
+
+            // get all faces associated with the split face handle and added the newly split faces
+            // ensuring we do not have any duplicates
+            const auto polygonIt = polygonProps.find(om_fh(faceHandle));
+            omFaceHandles.insert(omFaceHandles.end(), polygonIt->second.begin(), polygonIt->second.end());
+            AZStd::sort(omFaceHandles.begin(), omFaceHandles.end());
+            omFaceHandles.erase(AZStd::unique(omFaceHandles.begin(), omFaceHandles.end()), omFaceHandles.end());
+
+            // update all face handles to point to the new polygon grouping
+            for (const auto omFaceHandle : omFaceHandles)
+            {
+                polygonProps[omFaceHandle] = omFaceHandles;
+            }
+
+            return splitVertexHandle;
+        }
+
+        VertexHandle SplitEdge(WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle, const AZ::Vector3& position)
+        {
+            WHITEBOX_LOG("White Box", "SplitEdge eh(%s)", ToString(edgeHandle).c_str());
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            const HalfedgeHandle halfedgeHandle = EdgeHalfedgeHandle(whiteBox, edgeHandle, EdgeHalfedge::First);
+            const VertexHandle tailVertexHandle = HalfedgeVertexHandleAtTail(whiteBox, halfedgeHandle);
+            const VertexHandle tipVertexHandle = HalfedgeVertexHandleAtTip(whiteBox, halfedgeHandle);
+            const VertexHandle existingConnectedVerts[] = {tailVertexHandle, tipVertexHandle};
+
+            // determine if the edge is a user edge or not before the split
+            const bool userEdge = EdgeIsUser(whiteBox, halfedgeHandle, edgeHandle);
+
+            const auto omEdgeHandle = om_eh(edgeHandle);
+            const auto omVertexHandle = whiteBox.mesh.add_vertex(position);
+            whiteBox.mesh.split_copy(omEdgeHandle, omVertexHandle);
+
+            const VertexHandle splitVertexHandle = wb_vh(omVertexHandle);
+
+            // if the edge that was split was not a 'user' edge we should ensure the
+            // newly added vertex is also hidden
+            if (!userEdge)
+            {
+                HideVertex(whiteBox, splitVertexHandle);
+            }
+
+            // get all outing edge handles from the new inserted vertex
+            const EdgeHandles splitEdgeHandles = VertexEdgeHandles(whiteBox, splitVertexHandle);
+
+            AZStd::for_each(
+                splitEdgeHandles.cbegin(), splitEdgeHandles.cend(),
+                [&whiteBox, &existingConnectedVerts](const EdgeHandle edgeHandle)
+                {
+                    const auto vertexHandles = EdgeVertexHandles(whiteBox, edgeHandle);
+                    const bool alreadyConnectedVertex = AZStd::any_of(
+                        AZStd::cbegin(existingConnectedVerts), AZStd::cend(existingConnectedVerts),
+                        [&vertexHandles](const VertexHandle vertexHandle)
+                        {
+                            return AZStd::find(
+                                       AZStd::cbegin(vertexHandles), AZStd::cend(vertexHandles), vertexHandle) !=
+                                AZStd::cend(vertexHandles);
+                        });
+
+                    // find if the edge was added or is part of the existing edge which was split
+                    if (!alreadyConnectedVertex)
+                    {
+                        const FaceHandles faceHandles = EdgeFaceHandles(whiteBox, edgeHandle);
+                        const PolygonHandle polygonHandle = FacePolygonHandle(whiteBox, faceHandles[0]);
+
+                        // if the edge was not already connected to on of the existing verts,
+                        // find the associated polygon handle update them with the newly split faces
+                        const PolygonHandle existingPolygonHandle = polygonHandle.m_faceHandles.empty()
+                            ? FacePolygonHandle(whiteBox, faceHandles[1])
+                            : polygonHandle;
+
+                        const FaceHandle newFaceHandle =
+                            polygonHandle.m_faceHandles.empty() ? faceHandles[0] : faceHandles[1];
+
+                        PolygonPropertyHandle polygonPropsHandle;
+                        whiteBox.mesh.get_property_handle(polygonPropsHandle, PolygonProps);
+                        auto& polygonProps = whiteBox.mesh.property(polygonPropsHandle);
+
+                        auto omExistingPolygonHandle = InternalFaceHandlesFromPolygon(existingPolygonHandle);
+                        omExistingPolygonHandle.push_back(om_fh(newFaceHandle));
+
+                        // update all face handles to point to the new polygon grouping
+                        for (const Mesh::FaceHandle faceHandle : omExistingPolygonHandle)
+                        {
+                            polygonProps[faceHandle] = omExistingPolygonHandle;
+                        }
+                    }
+                });
+
+            return splitVertexHandle;
+        }
+
+        bool FlipEdge(WhiteBoxMesh& whiteBox, const EdgeHandle edgeHandle)
+        {
+            WHITEBOX_LOG("White Box", "FlipEdge eh(%s)", ToString(edgeHandle).c_str());
+
+            const auto omEdgeHandle = om_eh(edgeHandle);
+
+            // check if edge can be flipped
+            const bool canFlip = whiteBox.mesh.is_flip_ok(omEdgeHandle) && EdgeIsHidden(whiteBox, edgeHandle);
+
+            if (canFlip)
+            {
+                whiteBox.mesh.flip(omEdgeHandle);
+            }
+
+            return canFlip;
         }
 
         void HideVertex(WhiteBoxMesh& whiteBox, const VertexHandle vertexHandle)
@@ -2132,6 +2406,11 @@ namespace WhiteBox
             PolygonPropertyHandle polygonPropsHandle;
             whiteBox.mesh.get_property_handle(polygonPropsHandle, PolygonProps);
             whiteBox.mesh.remove_property(polygonPropsHandle);
+
+            VertexBoolPropertyHandle vertexPropsHiddenHandle;
+            whiteBox.mesh.get_property_handle(vertexPropsHiddenHandle, VertexHiddenProp);
+            whiteBox.mesh.remove_property(vertexPropsHiddenHandle);
+
             whiteBox.mesh.clear();
 
             InitializeWhiteBoxMesh(whiteBox);
@@ -2343,6 +2622,18 @@ namespace WhiteBox
         {
             const auto vertexPositions = EdgeVertexPositions(whiteBox, edgeHandle);
             return (vertexPositions[0] + vertexPositions[1]) * 0.5f;
+        }
+
+        AZ::Vector3 FaceMidpoint(const WhiteBoxMesh& whiteBox, const FaceHandle faceHandle)
+        {
+            const auto vertexPositions = FaceVertexPositions(whiteBox, faceHandle);
+            return AZStd::accumulate(
+                       AZStd::begin(vertexPositions), AZStd::end(vertexPositions), AZ::Vector3::CreateZero(),
+                       [](const AZ::Vector3 acc, const AZ::Vector3& position)
+                       {
+                           return acc + position;
+                       }) /
+                3;
         }
 
         AZ::Vector3 PolygonMidpoint(const WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle)
@@ -2607,13 +2898,13 @@ namespace WhiteBox
 
             // store pointers to all face handles stored within the map (the values - e.g. it.second)
             FaceHandlePtrs faceHandlePtrs;
-            for (auto& polygonPropIt : polygonProps)
+            for (auto& polygonProp : polygonProps)
             {
                 faceHandlePtrs = AZStd::accumulate(
-                    polygonPropIt.second.begin(), polygonPropIt.second.end(), faceHandlePtrs,
-                    [](FaceHandlePtrs ptrs, Mesh::FaceHandle& fh)
+                    polygonProp.second.begin(), polygonProp.second.end(), faceHandlePtrs,
+                    [](FaceHandlePtrs ptrs, Mesh::FaceHandle& faceHandle)
                     {
-                        ptrs.push_back(&fh);
+                        ptrs.push_back(&faceHandle);
                         return ptrs;
                     });
             }
@@ -2771,11 +3062,11 @@ namespace WhiteBox
                         const auto nextHalfedgeHandle = HalfedgeHandleNext(whiteBox, halfedgeHandle);
                         const auto nextEdgeHandle = HalfedgeEdgeHandle(whiteBox, nextHalfedgeHandle);
 
-                        const AZ::Vector3 edgeDirection = EdgeDirection(whiteBox, edgeHandle);
-                        const AZ::Vector3 nextEdgeDirection = EdgeDirection(whiteBox, nextEdgeHandle);
+                        const AZ::Vector3 edgeAxis = EdgeAxis(whiteBox, edgeHandle);
+                        const AZ::Vector3 nextEdgeAxis = EdgeAxis(whiteBox, nextEdgeHandle);
 
                         // calculate face normal from two edges
-                        const AZ::Vector3 faceNormal = edgeDirection.Cross(nextEdgeDirection).GetNormalizedSafeExact();
+                        const AZ::Vector3 faceNormal = edgeAxis.Cross(nextEdgeAxis).GetNormalizedSafeExact();
                         const bool adjacentFaceAndPolygonNormalOrthogonal =
                             faceNormal.Dot(polygonNormal)
                                 .GetAbs()
@@ -2816,7 +3107,7 @@ namespace WhiteBox
         //! @AppendVertexFn The way vertices should be translated as an append happens
         //! note: This is a customization point for scale and translation types of append
         template<typename AppendVertexFn>
-        static PolygonHandle Extrude(
+        static AppendedPolygonHandles Extrude(
             WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle, AppendVertexFn&& appendFn)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -2828,7 +3119,10 @@ namespace WhiteBox
             // been hidden and no border vertex loop can be found
             if (polygonBorderVertexHandlesCollection.empty())
             {
-                return polygonHandle;
+                AppendedPolygonHandles appendedPolygonHandles;
+                appendedPolygonHandles.m_appendedPolygonHandle = polygonHandle;
+
+                return appendedPolygonHandles;
             }
 
             // find all vertex handles for polygon
@@ -2873,10 +3167,26 @@ namespace WhiteBox
             // has been called as this will invalidate all existing face handles
             RemoveFaces(whiteBox, allFacesToRemove);
 
+            PolygonHandles polygonHandlesToRestore;
             // re-add existing adjacent polygons
             for (const auto& verts : vertsForExistingAdjacentPolygons)
             {
-                AddPolygon(whiteBox, verts);
+                polygonHandlesToRestore.push_back(AddPolygon(whiteBox, verts));
+            }
+
+            AZ_Assert(
+                polygonHandlesToRestore.size() == polygonHandlesToRemove.size(),
+                "PolygonHandles to restore and PolygonHandles to remove have different sizes");
+
+            AppendedPolygonHandles appendedPolygonHandles;
+            appendedPolygonHandles.m_restoredPolygonHandles.reserve(polygonHandlesToRestore.size());
+            for (size_t index = 0; index < polygonHandlesToRestore.size(); ++index)
+            {
+                RestoredPolygonHandlePair restoredPair;
+                restoredPair.m_before = polygonHandlesToRemove[index];
+                restoredPair.m_after = polygonHandlesToRestore[index];
+
+                appendedPolygonHandles.m_restoredPolygonHandles.push_back(AZStd::move(restoredPair));
             }
 
             // add linking polygons
@@ -2896,7 +3206,9 @@ namespace WhiteBox
 
             whiteBox.mesh.update_normals();
 
-            return newPolygonHandle;
+            appendedPolygonHandles.m_appendedPolygonHandle = newPolygonHandle;
+
+            return appendedPolygonHandles;
         }
 
         using AppendFn = AZStd::function<AZ::Vector3(const AZ::Vector3&)>;
@@ -2915,16 +3227,26 @@ namespace WhiteBox
             WHITEBOX_LOG("White Box", "TranslatePolygonAppend ph(%s) %f", ToString(polygonHandle).c_str(), distance)
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
+            return TranslatePolygonAppendAdvanced(whiteBox, polygonHandle, distance).m_appendedPolygonHandle;
+        }
+
+        AppendedPolygonHandles TranslatePolygonAppendAdvanced(
+            WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle, const float distance)
+        {
+            WHITEBOX_LOG(
+                "White Box", "TranslatePolygonAppendAdvanced ph(%s) %f", ToString(polygonHandle).c_str(), distance)
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             // check mesh has faces
             if (whiteBox.mesh.n_faces() == 0)
             {
                 return {};
             }
 
-            const auto newPolygonHandle =
+            auto appendedPolygonHandles =
                 Extrude(whiteBox, polygonHandle, TranslatePoint(PolygonNormal(whiteBox, polygonHandle), distance));
 
-            return newPolygonHandle;
+            return appendedPolygonHandles;
         }
 
         void TranslatePolygon(WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle, const float distance)
@@ -2964,9 +3286,9 @@ namespace WhiteBox
                 return ScalePosition(1.0f + scale, localPosition, polygonSpace);
             };
 
-            const auto newPolygonHandle = Extrude(whiteBox, polygonHandle, scalePolygonFn);
+            auto appendedPolygonHandles = Extrude(whiteBox, polygonHandle, scalePolygonFn);
 
-            return newPolygonHandle;
+            return appendedPolygonHandles.m_appendedPolygonHandle;
         }
 
         static AZ::Transform BuildSpace(const AZ::Vector3& normal, const AZ::Vector3& pivot)
@@ -3085,20 +3407,38 @@ namespace WhiteBox
 
         bool SaveToObj(const WhiteBoxMesh& whiteBox, const AZStd::string& filePath)
         {
-            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
             OpenMesh::IO::Options options{OpenMesh::IO::Options::FaceTexCoord};
             OpenMesh::IO::ExporterT<WhiteBox::Mesh> exporter{whiteBox.mesh};
             return OpenMesh::IO::OBJWriter().write(filePath.c_str(), exporter, options);
         }
 
-#ifdef AZ_ENABLE_TRACING
-        AZStd::string TrimLastChar(const AZStd::string& str)
+        bool SaveToWbm(const WhiteBoxMesh& whiteBox, AZ::IO::GenericStream& stream)
+        {
+            AZStd::vector<AZ::u8> buffer;
+            const bool success = WhiteBox::Api::WriteMesh(whiteBox, buffer);
+
+            const auto bytesWritten = stream.Write(buffer.size(), buffer.data());
+            return success && bytesWritten == buffer.size();
+        }
+
+        bool SaveToWbm(const WhiteBoxMesh& whiteBox, const AZStd::string& filePath)
+        {
+            AZ::IO::FileIOStream fileStream(filePath.c_str(), AZ::IO::OpenMode::ModeWrite);
+            if (!fileStream.IsOpen())
+            {
+                return false;
+            }
+
+            return SaveToWbm(whiteBox, fileStream);
+        }
+
+        static AZStd::string TrimLastChar(const AZStd::string& str)
         {
             if (str.empty())
             {
                 return str;
             }
+
             return str.substr(0, str.length() - 1);
         }
 
@@ -3109,6 +3449,7 @@ namespace WhiteBox
             {
                 str.append(ToString(faceHandle)).append(",");
             }
+
             return TrimLastChar(str);
         }
 
@@ -3119,6 +3460,7 @@ namespace WhiteBox
             {
                 str.append(ToString(vertexHandle)).append(",");
             }
+
             return TrimLastChar(str);
         }
 
@@ -3129,6 +3471,7 @@ namespace WhiteBox
             {
                 str.append("fvh(").append(ToString(faceVertHandles)).append("),");
             }
+
             return TrimLastChar(str);
         }
 
@@ -3151,8 +3494,6 @@ namespace WhiteBox
         {
             return AZStd::to_string(halfedgeHandle.Index());
         }
-#endif
-
     } // namespace Api
 
 } // namespace WhiteBox

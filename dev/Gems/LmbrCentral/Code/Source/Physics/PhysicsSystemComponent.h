@@ -9,6 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if ENABLE_CRY_PHYSICS
+
 #pragma once
 
 #include <AzFramework/Physics/PhysicsSystemComponentBus.h>
@@ -111,3 +114,5 @@ namespace LmbrCentral
         IPhysicalWorld* m_physicalWorld = nullptr;
     };
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

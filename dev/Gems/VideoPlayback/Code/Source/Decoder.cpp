@@ -18,6 +18,10 @@
 #include <AzCore/std/functional.h>
 #include <VideoPlaybackFramework/VideoPlaybackBus.h>
 
+// Disable warnings so that this works with FFMPEG and libAV
+// due to differing types and deprecated functions.
+AZ_PUSH_DISABLE_WARNING(4244 4996, "-Wunknown-warning-option")
+
 namespace AZ
 {
     namespace VideoPlayback
@@ -288,8 +292,6 @@ namespace AZ
                     m_frameClearStartIndex = m_framePresentIndex;
                     m_frameClearCount = frameAheadIndex;
 
-                    SignalDecoderThread(frameAheadIndex);
-
                     return true;
                 }
             }
@@ -308,6 +310,9 @@ namespace AZ
                 AZ::u64 frameIndexCounter = (m_frameClearStartIndex + i) % m_RGBAFrames.size();
                 m_decodedFrames[frameIndexCounter] = false;
             }
+
+            //Signal the decoder thread to start up again
+            SignalDecoderThread(1);
         }
 
         void Decoder::SignalDecoderThread(AZ::u32 count)
@@ -329,7 +334,8 @@ namespace AZ
                 //If the frame we're trying to write to has not been read from yet, just skip it
                 if (m_decodedFrames[frameIndex] != false)
                 {
-                    continue;
+                    // Wait here until the decode frame for frameIndex is Read.
+                    m_semaphore.acquire();
                 }
 
                 // Decode a frame.
@@ -388,10 +394,6 @@ namespace AZ
                     m_decodedFrames[frameIndex] = true;
                     ++m_frameDecodeIndex;
                 }
-
-                // Wait for a semaphore to kick off decoding of a frame.
-                m_semaphore.acquire();
-
             } while (true);
         }
 
@@ -467,9 +469,6 @@ namespace AZ
             //Restart decoding
             StartDecoderThread();
 
-            //Signal the decoder thread to start up again
-            SignalDecoderThread(m_RGBAFrames.size());
-
             m_endOfFile = false;
         }
 
@@ -500,4 +499,7 @@ namespace AZ
         }
     } //namespace VideoPlayback
 }//namespace AZ
+
+AZ_POP_DISABLE_WARNING
+
 #endif

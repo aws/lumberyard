@@ -13,7 +13,6 @@
 
 // Description : Defines the entry point for the console application.
 
-
 #include "stdafx.h"
 
 // Must be included only once in DLL module.
@@ -77,6 +76,11 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/Memory/AllocatorManager.h>
 #include <AzCore/Math/Sfmt.h>
+
+#if defined(AZ_TESTS_ENABLED)
+#include <Tests/ResourceCompilerTestHelper.h>
+DECLARE_AZ_UNIT_TEST_MAIN();
+#endif
 
 #if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <mach-o/dyld.h>  // Needed for _NSGetExecutablePath
@@ -1887,19 +1891,9 @@ std::unique_ptr<QCoreApplication> CreateQApplication(int &argc, char** argv)
     return qApplication;
 }
 
-#ifdef AZ_TESTS_ENABLED
-int AzMainUnitTests(int argc, char** argv);
-#endif // AZ_TESTS_ENABLED
 
 int rcmain(int argc, char** argv, char** envp)
 {
-#ifdef AZ_TESTS_ENABLED
-    if (argc >= 2 && 0 == stricmp(argv[1], "--unittest"))
-    {
-        return AzMainUnitTests(argc, argv);
-    }
-#endif // AZ_TESTS_ENABLED
-
     std::unique_ptr<QCoreApplication> qApplication = CreateQApplication(argc, argv);
 
 #if 0
@@ -2268,13 +2262,9 @@ int rcmain(int argc, char** argv, char** envp)
 //////////////////////////////////////////////////////////////////////////
 int __cdecl main(int argc, char** argv, char** envp)
 {
-#ifdef AZ_TESTS_ENABLED
-    if (argc >= 2 && 0 == azstricmp(argv[1], "--unittest"))
-    {
-        return AzMainUnitTests(argc, argv);
-    }
-#endif // AZ_TESTS_ENABLED
-
+#if defined(AZ_TESTS_ENABLED)
+    INVOKE_AZ_UNIT_TEST_MAIN(new ResourceCompilerTestEnvironment);
+#endif
     AZ::Sfmt::Create();
 
     AZ::AllocatorInstance<AZ::SystemAllocator>::Create();

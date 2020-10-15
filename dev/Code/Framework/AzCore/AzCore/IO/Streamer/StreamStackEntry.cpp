@@ -136,7 +136,7 @@ namespace AZ
             }
         }
 
-        void StreamStackEntry::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void StreamStackEntry::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             if (m_next)
             {

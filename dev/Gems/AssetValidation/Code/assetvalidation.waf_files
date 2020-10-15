@@ -6,7 +6,8 @@
         "Source": [
             "Source/AssetValidationModule.cpp",
             "Source/AssetValidationSystemComponent.cpp",
-            "Source/AssetValidationSystemComponent.h"
+            "Source/AssetValidationSystemComponent.h",
+            "Source/AssetSystemTestCommands.cpp"
         ]
     }
 }

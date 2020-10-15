@@ -2203,7 +2203,7 @@ namespace EMotionFX
         const MCore::Endian::EEndianType endianType = importParams.mEndianType;
         Actor* actor = importParams.mActor;
         Importer::ActorSettings actorSettings = *importParams.mActorSettings;
-        //actorSettings.mAutoRegisterMasterEnabled = false;
+        //actorSettings.mAutoRegisterLeaderEnabled = false;
 
         MCORE_ASSERT(actor);
 

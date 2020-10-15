@@ -52,7 +52,7 @@ static const char* EDIT_PROFILE_STRING = "Edit an AWS profile";
 static const char* SETTINGS_KEY_FIRST_AWS_PROFILE = "FirstAWSProfileEntered";
 static const char* DEFAULT_LUMBERYARD_LABEL = "Lumberyard enables you to easily build games that utilize AWS services.  "
     "You are responsible for charges for AWS services and for adhering to the "
-    "applicable service terms.  <a href=\"https://docs.aws.amazon.com/lumberyard/userguide/\" >Learn more.</a>";
+    "applicable service terms.  <a href=\"https://docs.aws.amazon.com/console/lumberyard/userguide\" >Learn more.</a>";
 static const char* NO_PROFILE_TEXT = "Add one or more AWS profiles to the editor to utilize AWS resources in your game.";
 
 void QAWSProfileRow::SetupRow(QLabel& rowLabel, QAWSQTControls::QAWSProfileLineEdit& editControl)

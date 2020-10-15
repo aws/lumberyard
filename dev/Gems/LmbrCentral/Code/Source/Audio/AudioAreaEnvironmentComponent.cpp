@@ -18,6 +18,8 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/Physics/WorldBody.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
@@ -51,14 +53,20 @@ namespace LmbrCentral
 
         if (m_broadPhaseTriggerArea.IsValid())
         {
+#if ENABLE_CRY_PHYSICS
             TriggerAreaNotificationBus::Handler::BusConnect(m_broadPhaseTriggerArea);
+#endif
+            Physics::TriggerNotificationBus::Handler::BusConnect(m_broadPhaseTriggerArea);
         }
     }
 
     //=========================================================================
     void AudioAreaEnvironmentComponent::Deactivate()
     {
+#if ENABLE_CRY_PHYSICS
         TriggerAreaNotificationBus::Handler::BusDisconnect();
+#endif
+        Physics::TriggerNotificationBus::Handler::BusDisconnect();
     }
 
     //=========================================================================
@@ -91,6 +99,7 @@ namespace LmbrCentral
         AudioProxyComponentRequestBus::Event(*busEntityId, &AudioProxyComponentRequestBus::Events::SetEnvironmentAmount, m_environmentId, fadeValue);
     }
 
+#if ENABLE_CRY_PHYSICS
     //=========================================================================
     void AudioAreaEnvironmentComponent::OnTriggerAreaEntered(AZ::EntityId enteringEntityId)
     {
@@ -100,6 +109,27 @@ namespace LmbrCentral
     //=========================================================================
     void AudioAreaEnvironmentComponent::OnTriggerAreaExited(AZ::EntityId exitingEntityId)
     {
+        AZ::TransformNotificationBus::MultiHandler::BusDisconnect(exitingEntityId);
+
+        if (m_environmentId != INVALID_AUDIO_ENVIRONMENT_ID)
+        {
+            // When entities fully exit the broad-phase trigger area, set the environment amount to zero to ensure no effects linger on the entity.
+            AudioProxyComponentRequestBus::Event(exitingEntityId, &AudioProxyComponentRequestBus::Events::SetEnvironmentAmount, m_environmentId, 0.f);
+        }
+    }
+#endif // ENABLE_CRY_PHYSICS
+
+    //=========================================================================
+    void AudioAreaEnvironmentComponent::OnTriggerEnter(const Physics::TriggerEvent& triggerEvent)
+    {
+        AZ::EntityId enteringEntityId = triggerEvent.m_otherBody->GetEntityId();
+        AZ::TransformNotificationBus::MultiHandler::BusConnect(enteringEntityId);
+    }
+
+    //=========================================================================
+    void AudioAreaEnvironmentComponent::OnTriggerExit(const Physics::TriggerEvent& triggerEvent)
+    {
+        AZ::EntityId exitingEntityId = triggerEvent.m_otherBody->GetEntityId();
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect(exitingEntityId);
 
         if (m_environmentId != INVALID_AUDIO_ENVIRONMENT_ID)

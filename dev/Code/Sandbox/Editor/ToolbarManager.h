@@ -131,6 +131,8 @@ private:
     bool m_isMainToolbar = false;
 };
 
+class AmazonToolBarExpanderWatcher;
+
 class ToolbarManager
 {
 public:
@@ -150,6 +152,7 @@ public:
     bool IsCustomToolbar(const QString& name) const;
     EditableQToolBar* ToolbarParent(QObject* o) const;
     ActionManager* GetActionManager() const;
+    AmazonToolBarExpanderWatcher* GetExpanderWatcher() const;
 
     void SetIsEditingToolBars(bool);
     bool IsEditingToolBars() const;
@@ -181,6 +184,7 @@ private:
     ActionManager* const m_actionManager;
     QSettings m_settings;
     AmazonToolbar::List m_toolbars;
+    AmazonToolBarExpanderWatcher* m_expanderWatcher;
     int m_loadedVersion = 0;
     bool m_isEditingToolBars = false;
 

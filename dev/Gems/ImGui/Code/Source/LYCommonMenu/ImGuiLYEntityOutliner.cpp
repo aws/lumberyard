@@ -266,7 +266,7 @@ namespace ImGui
             static char searchCharArray[128] = "";
             ImGui::InputText("", searchCharArray, sizeof(searchCharArray));
             ImGui::SameLine();
-            if (ImGui::Button(AZStd::string::format("Add '%s'", &searchCharArray).c_str()))
+            if (ImGui::Button(AZStd::string::format("Add '%s'", searchCharArray).c_str()))
             {
                 const AZStd::string& searchString = searchCharArray;
                 // Don't add an empty string.
@@ -863,12 +863,12 @@ namespace ImGui
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<AZ::s8        >::GetClassTypeId()) { value = AZStd::string::format("%d", *reinterpret_cast<const AZ::s8 *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<short         >::GetClassTypeId()) { value = AZStd::string::format("%d", *reinterpret_cast<const short *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<int           >::GetClassTypeId()) { value = AZStd::string::format("%d", *reinterpret_cast<const int *>(instance)); }
-        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<long          >::GetClassTypeId()) { value = AZStd::string::format("%d", *reinterpret_cast<const long *>(instance)); }
-        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<AZ::s64       >::GetClassTypeId()) { value = AZStd::string::format("%ll", *reinterpret_cast<const AZ::s64 *>(instance)); }
+        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<long          >::GetClassTypeId()) { value = AZStd::string::format("%ld", *reinterpret_cast<const long *>(instance)); }
+        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<AZ::s64       >::GetClassTypeId()) { value = AZStd::string::format("%lld", *reinterpret_cast<const AZ::s64 *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned char >::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned char *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned short>::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned short *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned int  >::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned int *>(instance)); }
-        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned long >::GetClassTypeId()) { value = AZStd::string::format("%u", *reinterpret_cast<const unsigned long *>(instance)); }
+        else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<unsigned long >::GetClassTypeId()) { value = AZStd::string::format("%lu", *reinterpret_cast<const unsigned long *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<AZ::u64       >::GetClassTypeId()) { value = AZStd::string::format("%llu", *reinterpret_cast<const AZ::u64 *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<float         >::GetClassTypeId()) { value = AZStd::string::format("%.*g", FLT_DIG, *reinterpret_cast<const float *>(instance)); }
         else if (classElement->m_typeId == AZ::SerializeGenericTypeInfo<double        >::GetClassTypeId()) { value = AZStd::string::format("%.*g", DBL_DIG, *reinterpret_cast<const double *>(instance)); }

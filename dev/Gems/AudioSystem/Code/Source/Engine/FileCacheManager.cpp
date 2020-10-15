@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -16,6 +16,7 @@
 #include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/StreamerUtil.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <AudioInternalInterfaces.h>
 #include <IAudioSystemImplementation.h>
@@ -62,6 +63,8 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::Update()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
         AudioFileCacheManagerNotficationBus::ExecuteQueuedEvents();
         UpdatePreloadRequestsStatus();
     }
@@ -92,9 +95,9 @@ namespace Audio
         {
             const char* fileLocation = nullptr;
             AudioSystemImplementationRequestBus::BroadcastResult(fileLocation, &AudioSystemImplementationRequestBus::Events::GetAudioFileLocation, &fileEntryInfo);
-            AZStd::string fullPath(fileLocation);
-            fullPath += fileEntryInfo.sFileName;
-            auto newAudioFileEntry = azcreate(CATLAudioFileEntry, (fullPath.c_str(), fileEntryInfo.pImplData), Audio::AudioSystemAllocator, "ATLAudioFileEntry");
+            AZStd::string filePath;
+            AZ::StringFunc::AssetDatabasePath::Join(fileLocation, fileEntryInfo.sFileName, filePath);
+            auto newAudioFileEntry = azcreate(CATLAudioFileEntry, (filePath.c_str(), fileEntryInfo.pImplData), Audio::AudioSystemAllocator, "ATLAudioFileEntry");
 
             if (newAudioFileEntry)
             {
@@ -537,6 +540,8 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::FinishCachingFileInternal(CATLAudioFileEntry* const audioFileEntry, AZ::IO::SizeType bytesRead, AZ::IO::Request::StateType requestState)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
         bool success = false;
         audioFileEntry->m_asyncStreamRequest.reset();
 
@@ -647,6 +652,8 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::AllocateMemoryBlockInternal(CATLAudioFileEntry* const audioFileEntry)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
         // Must not have valid memory yet.
         AZ_Assert(!audioFileEntry->m_memoryBlock, "FileCacheManager AllocateMemoryBlockInternal - Memory appears to be set already!");
 
@@ -750,6 +757,8 @@ namespace Audio
         const bool overrideUseCount /* = false */,
         const size_t useCount /* = 0 */)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
         bool success = false;
 
         if (!audioFileEntry->m_filePath.empty() && !audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED | eAFF_LOADING))

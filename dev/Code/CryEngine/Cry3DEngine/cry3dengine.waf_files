@@ -220,7 +220,8 @@
             "3DEngineRender.cpp",
             "TerrainRenderNode.h",
             "BreezeGenerator.h",
-            "PhysCallbacks.h"
+            "PhysCallbacks.h",
+            "Cry_LegacyPhysUtils.h"
         ],
         "ClipVolumes":
         [

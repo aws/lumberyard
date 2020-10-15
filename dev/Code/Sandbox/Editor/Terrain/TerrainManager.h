@@ -124,7 +124,8 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // LegacyTerrain::LegacyTerrainEditorDataRequestBus
     //////////////////////////////////////////////////////////////////////////
-    bool CreateTerrainSystemFromEditorData() override;
+    bool GetTerrainInfo(STerrainInfo& terrainInfo) override;
+    bool InitializeTerrainSystemFromEditorData() override;
     void DestroyTerrainSystem() override;
     void RefreshEngineMacroTexture() override;
     int GetTerrainSurfaceIdFromSurfaceTag(AZ::Crc32 tag) override;

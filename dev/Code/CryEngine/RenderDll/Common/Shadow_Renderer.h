@@ -78,7 +78,7 @@ struct ShadowMapFrustum
     bool bUseShadowsPool;
     struct ShadowMapFrustum* pPrevFrustum = nullptr;
     struct ShadowMapFrustum* pFrustumOwner = nullptr;
-    class CTexture* pDepthTex;
+    _smart_ptr<ITexture> pDepthTex;
 
     //3d engine parameters
     float fFOV;

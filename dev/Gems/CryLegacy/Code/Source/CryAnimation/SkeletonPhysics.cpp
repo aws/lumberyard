@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "CryLegacy_precompiled.h"
+#if ENABLE_CRY_PHYSICS
 #include "SkeletonPhysics.h"
 
 #include "Model.h"
@@ -3063,3 +3064,4 @@ bool CSkeletonPhysics::BlendFromRagdoll(QuatTS& location, IPhysicalEntity*& pPhy
     m_bBlendFromRagdollFlip = false;
     return true;
 }
+#endif // ENABLE_CRY_PHYSICS

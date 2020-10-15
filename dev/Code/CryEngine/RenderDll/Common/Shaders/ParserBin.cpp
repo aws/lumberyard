@@ -1919,16 +1919,22 @@ bool CParserBin::PreprocessTokens(ShaderTokensVec& Tokens, int nPass, PodArray<u
             SShaderBin* pBin = gRenDev->m_cEF.m_Bin.GetBinShader(szName, true, 0);
             if (!pBin)
             {
-                iLog->Log("Warning: Couldn't find include file '%s'", szName);
-                CRY_ASSERT(0);
+                AZ_Assert(false, "Fatal error: could not find required shader include file '%s'", szName);
+                return false;
             }
             else
             {
                 assert(pBin);
                 MergeTable(pBin);
                 pBin->Lock();
-                PreprocessTokens(pBin->m_Tokens, nPass, tokensBuffer);
+                bool result  = PreprocessTokens(pBin->m_Tokens, nPass, tokensBuffer);
                 pBin->Unlock();
+
+                if(!result)
+                {
+                    // PreprocessTokens will output an error message, no need for one here
+                    return false;
+                }
             }
         }
         break;
@@ -2910,13 +2916,14 @@ ETokenStorageClass CParserBin::ParseObject(SFXTokenBin* pTokens)
     if (pTokens->id == 0)
     {
         pTokens = pT;
-        Warning ("FXBin parser found token '%s' which was not one of the list (Skipping).\n", GetString(m_eToken));
+        const char* tokenName = GetString(m_eToken);
+        Warning ("FXBin parser found token '%s' which was not one of the list (Skipping).\n", tokenName);
         while (pTokens->id != 0)
         {
             Warning("    %s\n", GetString(pTokens->id));
             pTokens++;
         }
-        CRY_ASSERT(0);
+        AZ_Assert(false, "FXBin parser found token '%s' which was not one of the list (Skipping).\n", tokenName);
 #ifdef _DEBUG
         TArray<char> Text;
         SParserFrame Fr;

@@ -29,7 +29,8 @@ public:
     virtual ~CEditorPreferencesPage_ViewportMovement() = default;
 
     virtual const char* GetCategory() override { return "Viewports"; }
-    virtual const char* GetTitle() override { return "Movement"; }
+    virtual const char* GetTitle();
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -50,6 +51,7 @@ private:
     };
 
     CameraMovementSettings m_cameraMovementSettings;
+    QIcon m_icon;
 };
 
 

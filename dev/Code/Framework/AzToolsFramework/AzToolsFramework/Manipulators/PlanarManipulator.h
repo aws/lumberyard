@@ -56,6 +56,7 @@ namespace AzToolsFramework
         struct Start
         {
             AZ::Vector3 m_localPosition; ///< The current position of the manipulator in local space.
+            AZ::Vector3 m_localHitPosition; ///< The intersection point in local space between the ray and the manipulator when the mouse down event happens.
             AZ::Vector3 m_snapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
         };
 
@@ -102,7 +103,9 @@ namespace AzToolsFramework
         AZ::Vector3 GetPosition() const { return m_localTransform.GetTranslation(); }
 
         // LUMBERYARD_DEPRECATED(LY-106737)
-        void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
+        AZ_DEPRECATED(
+            void SetView(AZStd::unique_ptr<ManipulatorView>&& view);,
+            "SetView is now deprecated, please use SetViews instead.")
 
         template<typename Views>
         void SetViews(Views&& views)
@@ -143,11 +146,12 @@ namespace AzToolsFramework
 
         static StartInternal CalculateManipulationDataStart(
             const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
-            const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection);
+            const GridSnapAction& gridSnapAction, const ViewportInteraction::MouseInteraction& interaction,
+            float intersectionDistance);
 
         static Action CalculateManipulationDataAction(
             const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
-            const AZ::Transform& localTransform, const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin,
-            const AZ::Vector3& rayDirection, ViewportInteraction::KeyboardModifiers keyboardModifiers);
+            const AZ::Transform& localTransform, const GridSnapAction& gridSnapAction,
+            const ViewportInteraction::MouseInteraction& interaction);
     };
 } // namespace AzToolsFramework

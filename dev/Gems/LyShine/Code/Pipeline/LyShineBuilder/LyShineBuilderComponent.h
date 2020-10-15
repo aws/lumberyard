@@ -10,6 +10,8 @@
 *
 */
 
+#pragma once
+
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Component/Component.h>
 #include <Pipeline/LyShineBuilder/UiCanvasBuilderWorker.h>

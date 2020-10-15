@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_WHEELEDVEHICLEENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 struct suspension_point
 {
     Vec3 pos;
@@ -159,5 +161,7 @@ public:
     float m_drivingTorque;
     float m_maxTilt;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_WHEELEDVEHICLEENTITY_H

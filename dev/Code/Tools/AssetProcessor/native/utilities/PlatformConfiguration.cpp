@@ -806,10 +806,8 @@ namespace AssetProcessor
             // do not call UpdateToCorrectCase here, this is an extreme hotspot in terms of how often this function is called.
             // the only time its generally necessary to update case is when an override is found, which is generally very rare,
             // so we save UpdateToCorrectCase for the override related functions instead of this hot path.
-            bool fileExists = false;
-            AssetProcessor::FileStateRequestBus::BroadcastResult(fileExists, &AssetProcessor::FileStateRequestBus::Events::Exists, absolutePath);
-
-            if(fileExists)
+            auto* fileStateInterface = AZ::Interface<IFileStateRequests>::Get();
+            if (fileStateInterface && fileStateInterface->Exists(absolutePath))
             {
                 return AssetUtilities::NormalizeFilePath(absolutePath);
             }

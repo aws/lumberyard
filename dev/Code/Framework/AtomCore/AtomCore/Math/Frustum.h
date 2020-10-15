@@ -42,6 +42,7 @@ namespace AZ
          * SymmetricZ implies -w <= z <= w, non symmetric 0<=z<=w
          * RowMajor implies x*M convention
          * ColumnMajor implies M*x convention;
+         * Note: if extracting from a matrix with reversed z-depth, then the extracted near and far planes will be swapped
          */
         static const Frustum CreateFromMatrixRowMajor(Matrix4x4 matrix)
         {
@@ -161,6 +162,22 @@ namespace AZ
         bool operator!=(const Frustum& rhs) const
         {
             return  !(*this == rhs);
+        }
+
+        void NormalizePlanes()
+        {
+            Plane* planes[] = {&m_near, &m_far, &m_left, &m_right, &m_top, &m_bottom};
+            const VectorFloat epsilon(0.000001f);
+            for(Plane* p : planes)
+            {
+                Vector3 n = p->GetNormal();
+                VectorFloat lengthSq = n.GetLengthSq();
+                if(lengthSq.IsGreaterEqualThan(epsilon))
+                {
+                    float oneOverLength = (float)lengthSq.GetSqrtReciprocal();
+                    p->Set(oneOverLength * n, oneOverLength * p->GetDistance());
+                }
+            }
         }
 
     private:

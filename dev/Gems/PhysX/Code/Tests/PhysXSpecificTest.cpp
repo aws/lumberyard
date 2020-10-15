@@ -105,6 +105,17 @@ namespace PhysX
         }
     }
 
+    // Helper functions for calculating the volume
+    float GetShapeVolume(const Physics::BoxShapeConfiguration& box)
+    {
+        return box.m_dimensions.GetX() * box.m_dimensions.GetY() * box.m_dimensions.GetZ() *
+            box.m_scale.GetX() * box.m_scale.GetY() * box.m_scale.GetZ();
+    }
+
+    float GetShapeVolume(const Physics::SphereShapeConfiguration& sphere)
+    {
+        return 4.0f * AZ::Constants::Pi * sphere.m_radius * sphere.m_radius * sphere.m_radius / 3.0f;
+    }
 
     TEST_F(PhysXSpecificTest, VectorConversion_ConvertToPxVec3_ConvertedVectorsCorrect)
     {
@@ -400,6 +411,7 @@ namespace PhysX
         EXPECT_TRUE(strcmp(nativePointer->getConcreteTypeName(), "PxRigidDynamic") == 0);
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXSpecificTest, TriggerArea_RigidBodyEnteringAndLeavingTrigger_EnterLeaveCallbackCalled)
     {
         // set up a trigger box
@@ -439,6 +451,7 @@ namespace PhysX
         EXPECT_EQ(exitedEvents[0].m_otherBody, testBoxBody);
         EXPECT_EQ(exitedEvents[0].m_otherShape, testBoxShape.get());
     }
+    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXSpecificTest, TriggerArea_RigidBodiesEnteringAndLeavingTriggers_EnterLeaveCallbackCalled)
     {
@@ -463,7 +476,7 @@ namespace PhysX
         // run the simulation for a while
         UpdateWorld(500);
 
-        for (const auto triggerListener : {&testTriggerBoxNotificationListener, &testTriggerSphereNotificationListener})
+        for (const auto& triggerListener : {&testTriggerBoxNotificationListener, &testTriggerSphereNotificationListener})
         {
             const auto& enteredEvents = triggerListener->GetEnteredEvents();
             ASSERT_EQ(2, enteredEvents.size());
@@ -543,6 +556,7 @@ namespace PhysX
         EXPECT_EQ(collisionEnd02.m_shape2, shape01);
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXSpecificTest, RigidBody_CollisionCallback_SimpleCallbackSphereFallingOnStaticBox)
     {
         auto obj01 = TestUtils::AddUnitTestObject<SphereColliderComponent>(AZ::Vector3(0.0f, 0.0f, 10.0f), "TestSphere01");
@@ -580,6 +594,7 @@ namespace PhysX
         EXPECT_EQ(listener02.m_beginCollisions[0].m_body2, body01);
         EXPECT_EQ(listener02.m_beginCollisions[0].m_shape2, shape01);
     }
+    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXSpecificTest, RigidBody_CollisionCallback_SimpleCallbackSphereFallingOnTerrain)
     {
@@ -757,6 +772,7 @@ namespace PhysX
         EXPECT_TRUE(com.IsClose(AZ::Vector3::CreateOne(), PhysXSpecificTest::tolerance));
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedInsideTrigger_OnTriggerExitEventRaised)
     {
         // set up a trigger box
@@ -840,6 +856,7 @@ namespace PhysX
         EXPECT_EQ(exitedEvents[0].m_triggerBody, dynamicBody);
         EXPECT_EQ(exitedEvents[0].m_otherBody, staticBody);
     }
+    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedOnTriggerEnter_DoesNotCrash)
     {
@@ -952,7 +969,7 @@ namespace PhysX
         const PointList testPoints = TestUtils::GeneratePyramidPoints(1.0f);
         AZStd::vector<AZ::u8> cookedData;
         bool cookingResult = false;
-        PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookConvexMeshToMemory,
+        Physics::SystemRequestBus::BroadcastResult(cookingResult, &Physics::SystemRequests::CookConvexMeshToMemory,
             testPoints.data(), static_cast<AZ::u32>(testPoints.size()), cookedData);
         EXPECT_TRUE(cookingResult);
 
@@ -1013,7 +1030,7 @@ namespace PhysX
         VertexIndexData cubeMeshData = TestUtils::GenerateCubeMeshData(3.0f);
         AZStd::vector<AZ::u8> cookedData;
         bool cookingResult = false;
-        PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookTriangleMeshToMemory,
+        Physics::SystemRequestBus::BroadcastResult(cookingResult, &Physics::SystemRequests::CookTriangleMeshToMemory,
             cubeMeshData.first.data(), static_cast<AZ::u32>(cubeMeshData.first.size()),
             cubeMeshData.second.data(), static_cast<AZ::u32>(cubeMeshData.second.size()),
             cookedData);
@@ -1333,5 +1350,373 @@ namespace PhysX
             });
         EXPECT_TRUE(testBodyInAllHits);
     }
+
+    // Fixture for testing combinations of shape flags for scene query
+    class SceneQueryFlagsTestFixture
+        : public ::testing::TestWithParam<::testing::tuple<bool, bool>>
+        , private Physics::DefaultWorldBus::Handler
+    {
+    public:
+        void SetUp() override
+        {
+            m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
+            Physics::DefaultWorldBus::Handler::BusConnect();
+        }
+
+        void TearDown() override
+        {
+            Physics::DefaultWorldBus::Handler::BusDisconnect();
+            m_defaultWorld = nullptr;
+        }
+
+        // DefaultWorldBus
+        AZStd::shared_ptr<Physics::World> GetDefaultWorld() override
+        {
+            return m_defaultWorld;
+        }
+
+        bool IsTrigger() const
+        {
+            return AZStd::get<0>(GetParam());
+        }
+
+        bool IsSimulated() const
+        {
+            return AZStd::get<1>(GetParam());
+        }
+
+    private:
+        AZStd::shared_ptr<Physics::World> m_defaultWorld;
+    };
+
+    TEST_P(SceneQueryFlagsTestFixture, RayCast_CreateShapesWithMixedFlags_ReturnsHitsForSceneQueryShapes)
+    {
+        Physics::System* physics = AZ::Interface<Physics::System>::Get();
+        Physics::RigidBodyConfiguration rigidBodyConfig;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody = physics->CreateRigidBody(rigidBodyConfig);
+
+        // Create a box shape with InSceneQueries = false
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_isInSceneQueries = false;
+        colliderConfig.m_isTrigger = IsTrigger();
+        colliderConfig.m_isSimulated = IsSimulated();
+        colliderConfig.m_position = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        AZStd::shared_ptr<Physics::Shape> boxShape =
+            physics->CreateShape(colliderConfig, Physics::BoxShapeConfiguration());
+        rigidBody->AddShape(boxShape);
+
+        // Create a sphere with InSceneQuesries = true
+        colliderConfig.m_isInSceneQueries = true;
+        colliderConfig.m_isTrigger = IsTrigger();
+        colliderConfig.m_isSimulated = IsSimulated();
+        colliderConfig.m_position = AZ::Vector3(-1.0f, 0.0f, 0.0f);
+        AZStd::shared_ptr<Physics::Shape> sphereShape =
+            physics->CreateShape(colliderConfig, Physics::SphereShapeConfiguration());
+        rigidBody->AddShape(sphereShape);
+
+        AZStd::shared_ptr<Physics::World> world = GetDefaultWorld();
+        world->AddBody(*rigidBody);
+
+        // Do a simple raycast from the box side
+        Physics::RayCastRequest request;
+        request.m_start = AZ::Vector3(3.0f, 0.0f, 0.0f);
+        request.m_direction = AZ::Vector3(-1.0f, 0.0f, 0.0f);
+        request.m_distance = 20.0f;
+        request.m_hitFlags = Physics::HitFlags::Position;
+
+        // Verify the sphere was hit
+        Physics::RayCastHit hit = world->RayCast(request);
+        EXPECT_EQ(hit.m_shape, sphereShape.get());
+    }
+
+    INSTANTIATE_TEST_CASE_P(PhysX, SceneQueryFlagsTestFixture, ::testing::Combine(
+        ::testing::Bool(),
+        ::testing::Bool()));
+
+    TEST_F(PhysXSpecificTest, RigidBody_RigidBodyWithSimulatedFlagsHitsPlane_OnlySimulatedShapeCollidesWithPlane)
+    {
+        // Helper function wrapping creation logic
+        auto CreateBoxRigidBody = [this](const AZ::Vector3& position, bool simulatedFlag, bool triggerFlag)
+        {
+            Physics::System* physics = AZ::Interface<Physics::System>::Get();
+            AZStd::shared_ptr<Physics::World> world = GetDefaultWorld();
+
+            Physics::RigidBodyConfiguration rigidBodyConfig;
+            rigidBodyConfig.m_entityId = AZ::EntityId(0); // Set entity ID to avoid warnings in OnTriggerEnter 
+
+            rigidBodyConfig.m_position = position;
+            AZStd::unique_ptr<Physics::RigidBody> rigidBody = physics->CreateRigidBody(rigidBodyConfig);
+            Physics::ColliderConfiguration colliderConfig;
+            colliderConfig.m_isSimulated = simulatedFlag;
+            colliderConfig.m_isTrigger = triggerFlag;
+            AZStd::shared_ptr<Physics::Shape> shapeNonSim =
+                physics->CreateShape(colliderConfig, Physics::BoxShapeConfiguration());
+            rigidBody->AddShape(shapeNonSim);
+            world->AddBody(*rigidBody);
+            return rigidBody;
+        };
+
+        // Create a box with m_isSimulated = false
+        AZStd::unique_ptr<Physics::RigidBody> rigidBodyNonSim =
+            CreateBoxRigidBody(AZ::Vector3(-5.0f, 0.0f, 5.0f), false, false);
+
+        AZStd::unique_ptr<Physics::RigidBody> rigidBodySolid =
+            CreateBoxRigidBody(AZ::Vector3(5.0f, 0.0f, 5.0f), true, false);
+
+        AZStd::unique_ptr<Physics::RigidBody> rigidBodyTrigger =
+            CreateBoxRigidBody(AZ::Vector3(0.0f, 0.0f, 5.0f), true, true);
+
+        // Create ground at origin
+        auto ground = TestUtils::CreateStaticBoxEntity(AZ::Vector3::CreateZero(), AZ::Vector3(20.0f, 20.0f, 0.5f));
+
+        UpdateWorld();
+
+        // Solid rigid body is above the ground
+        EXPECT_GT(rigidBodySolid->GetPosition().GetZ(), 0.5f);
+
+        // Non sim rigid body fell through the ground
+        EXPECT_LT(rigidBodyNonSim->GetPosition().GetZ(), 0.5f);
+
+        // Trigger rigid body fell through the ground
+        EXPECT_LT(rigidBodyTrigger->GetPosition().GetZ(), 0.5f);
+    }
+
+    // Fixture for testing combinations of densities on multiple shapes
+    class MultiShapesDensityTestFixture
+        : public ::testing::TestWithParam<AZStd::pair<float, float>>
+    {
+    };
+
+    TEST_P(MultiShapesDensityTestFixture, RigidBody_CreateShapesWithDifferentDensity_ResultingMassMatchesExpected)
+    {
+        Physics::System* physics = AZ::Interface<Physics::System>::Get();
+        Physics::RigidBodyConfiguration rigidBodyConfig;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody = physics->CreateRigidBody(rigidBodyConfig);
+
+        // Create materials for each density
+        Physics::MaterialConfiguration materialProperties;
+        materialProperties.m_density = AZStd::get<0>(GetParam());
+        AZStd::shared_ptr<Physics::Material> boxMaterial = physics->CreateMaterial(materialProperties);
+
+        materialProperties.m_density = AZStd::get<1>(GetParam());
+        AZStd::shared_ptr<Physics::Material> sphereMaterial = physics->CreateMaterial(materialProperties);
+
+        // Create the shapes with their corresponding materials
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_position = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        Physics::BoxShapeConfiguration boxShapeConfig;
+        AZStd::shared_ptr<Physics::Shape> boxShape =
+            physics->CreateShape(colliderConfig, boxShapeConfig);
+        boxShape->SetMaterial(boxMaterial);
+        rigidBody->AddShape(boxShape);
+
+        colliderConfig.m_position = AZ::Vector3(-1.0f, 0.0f, 0.0f);
+        Physics::SphereShapeConfiguration sphereShapeConfig;
+        AZStd::shared_ptr<Physics::Shape> sphereShape =
+            physics->CreateShape(colliderConfig, sphereShapeConfig);
+        sphereShape->SetMaterial(sphereMaterial);
+        rigidBody->AddShape(sphereShape);
+
+        // Do mass properties calculation
+        rigidBody->UpdateMassProperties();
+
+        // Verify the calculated mass matches the expected
+        const float mass = rigidBody->GetMass();
+
+        const float expectedMass = boxMaterial->GetDensity() * GetShapeVolume(boxShapeConfig) +
+            sphereMaterial->GetDensity() * GetShapeVolume(sphereShapeConfig);
+
+        EXPECT_TRUE(AZ::IsClose(expectedMass, mass, 0.001f));
+    }
+
+    INSTANTIATE_TEST_CASE_P(PhysX, MultiShapesDensityTestFixture,
+        ::testing::Values(
+            AZStd::make_pair(std::numeric_limits<float>::min(), std::numeric_limits<float>::max()),
+            AZStd::make_pair(-std::numeric_limits<float>::max(), 0.0f),
+            AZStd::make_pair(1.0f, 1e9f)
+        ));
+
+    // Fixture for testing extreme density values
+    class DensityBoundariesTestFixture
+        : public ::testing::TestWithParam<float>
+    {
+    };
+
+    TEST_P(DensityBoundariesTestFixture, Material_ExtremeDensityValues_ResultingDensityClampedToValidRange)
+    {
+        Physics::System* physics = AZ::Interface<Physics::System>::Get();
+
+        Physics::MaterialConfiguration materialProperties;
+        materialProperties.m_density = GetParam();
+
+        AZStd::shared_ptr<Physics::Material> material = physics->CreateMaterial(materialProperties);
+
+        // Resulting density should be in the valid range
+        float resultingDensity = material->GetDensity();
+        EXPECT_TRUE(resultingDensity >= Physics::MaterialConfiguration::MinDensityLimit
+            && resultingDensity <= Physics::MaterialConfiguration::MaxDensityLimit);
+    }
+
+    INSTANTIATE_TEST_CASE_P(PhysX, DensityBoundariesTestFixture,
+        ::testing::Values(
+            std::numeric_limits<float>::min(),
+            std::numeric_limits<float>::max(),
+            -std::numeric_limits<float>::max(),
+            0.0f,
+            1.0f,
+            1e9f
+            ));
+
+    enum class SimulatedShapesMode
+    {
+        NONE,
+        MIXED,
+        ALL
+    };
+
+    class MassComputeFixture
+        : public ::testing::TestWithParam<::testing::tuple<SimulatedShapesMode, Physics::MassComputeFlags, bool>>
+    {
+    public:
+        void SetUp() override final
+        {
+            SimulatedShapesMode shapeMode = GetShapesMode();
+            Physics::MassComputeFlags massComputeFlags = GetMassComputeFlags();
+
+            m_rigidBodyConfig.SetMassComputeFlags(massComputeFlags);
+
+            m_rigidBody = AZ::Interface<Physics::System>::Get()->CreateRigidBody(m_rigidBodyConfig);
+        }
+
+        void TearDown() override final
+        {
+            m_rigidBodyConfig = Physics::RigidBodyConfiguration();
+            m_rigidBody.reset();
+        }
+
+        SimulatedShapesMode GetShapesMode() const
+        {
+            return ::testing::get<0>(GetParam());
+        }
+
+        Physics::MassComputeFlags GetMassComputeFlags() const
+        {
+            return ::testing::get<1>(GetParam());
+        }
+
+        bool IsMultiShapeTest() const
+        {
+            return ::testing::get<2>(GetParam());
+        }
+
+        bool IsMassExpectedToChange() const
+        {
+            return m_rigidBodyConfig.m_computeMass &&
+                (!(GetShapesMode() == SimulatedShapesMode::NONE) || m_rigidBodyConfig.m_includeAllShapesInMassCalculation);
+        }
+
+        bool IsComExpectedToChange() const
+        {
+            return m_rigidBodyConfig.m_computeCenterOfMass &&
+                (!(GetShapesMode() == SimulatedShapesMode::NONE) || m_rigidBodyConfig.m_includeAllShapesInMassCalculation);
+        }
+
+        bool IsInertiaExpectedToChange() const
+        {
+            return m_rigidBodyConfig.m_computeInertiaTensor &&
+                (!(GetShapesMode() == SimulatedShapesMode::NONE) || m_rigidBodyConfig.m_includeAllShapesInMassCalculation);
+        }
+
+        Physics::RigidBodyConfiguration m_rigidBodyConfig;
+        AZStd::unique_ptr<Physics::RigidBody> m_rigidBody;
+    };
+
+    TEST_P(MassComputeFixture, RigidBody_ComputeMassFlagsCombinationsTwoShapes_MassPropertiesCalculatedAccordingly)
+    {
+        SimulatedShapesMode shapeMode = GetShapesMode();
+        Physics::MassComputeFlags massComputeFlags = GetMassComputeFlags();
+        bool multiShapeTest = IsMultiShapeTest();
+        Physics::System* physics = AZ::Interface<Physics::System>::Get();
+
+        // Save initial values
+        AZ::Vector3 comBefore = m_rigidBody->GetCenterOfMassWorld();
+        AZ::Matrix3x3 inertiaBefore = m_rigidBody->GetInverseInertiaWorld();
+        float massBefore = m_rigidBody->GetMass();
+
+        // Box shape will be simulated for ALL and MIXED shape modes
+        Physics::ColliderConfiguration boxColliderConfig;
+        boxColliderConfig.m_isSimulated =
+            (shapeMode == SimulatedShapesMode::ALL || shapeMode == SimulatedShapesMode::MIXED);
+        boxColliderConfig.m_position = AZ::Vector3(1.0f, 0.0f, 0.0f);
+
+        AZStd::shared_ptr<Physics::Shape> boxShape =
+            physics->CreateShape(boxColliderConfig, Physics::BoxShapeConfiguration());
+        m_rigidBody->AddShape(boxShape);
+
+        if (multiShapeTest)
+        {
+            // Sphere shape will be simulated only for the ALL shape mode
+            Physics::ColliderConfiguration sphereColliderConfig;
+            sphereColliderConfig.m_isSimulated = (shapeMode == SimulatedShapesMode::ALL);
+            sphereColliderConfig.m_position = AZ::Vector3(-1.0f, 0.0f, 0.0f);
+            AZStd::shared_ptr<Physics::Shape> sphereShape =
+                physics->CreateShape(sphereColliderConfig, Physics::SphereShapeConfiguration());
+            m_rigidBody->AddShape(sphereShape);
+        }
+
+        // Verify swapping materials results in changes in the mass.
+        m_rigidBody->UpdateMassProperties(massComputeFlags, &m_rigidBodyConfig.m_centerOfMassOffset,
+            &m_rigidBodyConfig.m_inertiaTensor, &m_rigidBodyConfig.m_mass);
+
+        float massAfter = m_rigidBody->GetMass();
+        AZ::Vector3 comAfter = m_rigidBody->GetCenterOfMassWorld();
+        AZ::Matrix3x3 inertiaAfter = m_rigidBody->GetInverseInertiaWorld();
+
+        if (IsMassExpectedToChange())
+        {
+            EXPECT_FALSE(AZ::IsClose(massBefore, massAfter, FLT_EPSILON));
+        }
+        else
+        {
+            EXPECT_TRUE(AZ::IsClose(massBefore, massAfter, FLT_EPSILON));
+        }
+
+        if (IsComExpectedToChange())
+        {
+            EXPECT_FALSE(comBefore.IsClose(comAfter));
+        }
+        else
+        {
+            EXPECT_TRUE(comBefore.IsClose(comAfter));
+        }
+
+        if (IsInertiaExpectedToChange())
+        {
+            EXPECT_FALSE(inertiaBefore.IsClose(inertiaAfter));
+        }
+        else
+        {
+            EXPECT_TRUE(inertiaBefore.IsClose(inertiaAfter));
+        }
+    }
+
+    Physics::MassComputeFlags possibleMassComputeFlags[] = {
+        Physics::MassComputeFlags::NONE, Physics::MassComputeFlags::DEFAULT, Physics::MassComputeFlags::COMPUTE_MASS,
+        Physics::MassComputeFlags::COMPUTE_COM, Physics::MassComputeFlags::COMPUTE_INERTIA,
+        Physics::MassComputeFlags::DEFAULT | Physics::MassComputeFlags::INCLUDE_ALL_SHAPES,
+        Physics::MassComputeFlags::COMPUTE_COM, Physics::MassComputeFlags::COMPUTE_INERTIA, Physics::MassComputeFlags::INCLUDE_ALL_SHAPES,
+        Physics::MassComputeFlags::COMPUTE_MASS | Physics::MassComputeFlags::COMPUTE_COM,
+        Physics::MassComputeFlags::COMPUTE_MASS | Physics::MassComputeFlags::COMPUTE_COM | Physics::MassComputeFlags::INCLUDE_ALL_SHAPES,
+        Physics::MassComputeFlags::COMPUTE_MASS | Physics::MassComputeFlags::COMPUTE_INERTIA,
+        Physics::MassComputeFlags::COMPUTE_MASS | Physics::MassComputeFlags::COMPUTE_INERTIA | Physics::MassComputeFlags::INCLUDE_ALL_SHAPES,
+        Physics::MassComputeFlags::COMPUTE_COM | Physics::MassComputeFlags::COMPUTE_INERTIA,
+        Physics::MassComputeFlags::COMPUTE_COM | Physics::MassComputeFlags::COMPUTE_INERTIA | Physics::MassComputeFlags::INCLUDE_ALL_SHAPES
+    };
+
+    INSTANTIATE_TEST_CASE_P(PhysX, MassComputeFixture, ::testing::Combine(
+        ::testing::ValuesIn({ SimulatedShapesMode::NONE, SimulatedShapesMode::MIXED, SimulatedShapesMode::ALL }),
+        ::testing::ValuesIn(possibleMassComputeFlags),
+        ::testing::Bool()));
+
 } // namespace PhysX
 

@@ -214,10 +214,12 @@ void CBuffer::Execute()
 {
     DEFINE_PROFILER_FUNCTION();
 
+#if ENABLE_CRY_PHYSICS
     if (!m_pInstance->m_SkeletonPose.m_physics.m_bPhysicsRelinquished)
     {
         m_state.m_pPoseData->ResetToDefault(*m_pInstance->m_pDefaultSkeleton);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     PREFAST_SUPPRESS_WARNING(6255)
     QuatT * pJointsTemp = (QuatT*)alloca(m_state.m_jointCount * sizeof(QuatT));
@@ -358,12 +360,14 @@ void CBuffer::Execute()
     params.timeDelta = m_state.m_timeDelta;
     params.location = m_state.m_location;
 
+#if ENABLE_CRY_PHYSICS
     if (!m_pInstance->m_SkeletonPose.m_physics.m_bPhysicsRelinquished && m_pInstance->m_SkeletonAnim.m_IsAnimPlaying && Console::GetInst().ca_useADIKTargets)
     {
         ProcessAnimationDrivenIk(*m_pInstance, params);
     }
 
     m_pInstance->m_SkeletonPose.m_physics.Job_Physics_SynchronizeFrom(*m_state.m_pPoseData, m_pInstance->m_fOriginalDeltaTime);
+#endif // ENABLE_CRY_PHYSICS
 
     // NOTE: Temporary layer -1 PoseModifier queue to allow post-physics sync
     // PoseModifiers to be executed. This should not be needed once the

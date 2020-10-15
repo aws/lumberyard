@@ -50,4 +50,5 @@ def build(bld):
 
         # Testing
         test_all_file_list = ['componententityeditorplugin_test.waf_files'],
+        test_use           = ['AzToolsFrameworkTestCommon'],
     )

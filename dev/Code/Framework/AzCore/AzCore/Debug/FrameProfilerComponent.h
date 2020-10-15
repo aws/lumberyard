@@ -30,7 +30,6 @@ namespace AZ
         class FrameProfilerComponent
             : public Component
             , public AZ::TickBus::Handler
-            , public AZStd::ThreadEventBus::Handler
         {
         public:
             AZ_COMPONENT(AZ::Debug::FrameProfilerComponent, "{B81739EF-ED77-4F67-9D05-6ADF94F0431A}")
@@ -49,14 +48,6 @@ namespace AZ
             // Tick bus
             void OnTick(float deltaTime, ScriptTimePoint time) override;
             int GetTickOrder() override;
-            //////////////////////////////////////////////////////////////////////////
-
-            //////////////////////////////////////////////////////////////////////////
-            // Thread event bus
-            /// Called when we enter a thread, optional thread_desc is provided when the use provides one.
-            void OnThreadEnter(const AZStd::thread::id& id, const AZStd::thread_desc* desc) override;
-            /// Called when we exit a thread.
-            void OnThreadExit(const AZStd::thread::id& id) override;
             //////////////////////////////////////////////////////////////////////////
 
             /// \ref ComponentDescriptor::GetProvidedServices

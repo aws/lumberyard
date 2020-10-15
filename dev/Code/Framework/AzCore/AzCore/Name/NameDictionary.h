@@ -58,6 +58,7 @@ namespace AZ
         friend Module;
         friend Name;
         friend Internal::NameData;
+        friend UnitTest::NameDictionaryTester;
         
     public:
 
@@ -83,11 +84,6 @@ namespace AZ
         //! @return A Name instance. If the hash was not found, the Name will be empty.
         Name FindName(Name::Hash hash) const;
 
-#ifdef AZ_TESTS_ENABLED
-        //! Unit tests can inspect the internals of the name map. Direct access to this data is not thread-safe.
-        const AZStd::unordered_map<Name::Hash, Internal::NameData*>& GetNames() const { return m_dictionary; }
-#endif
-
     private:
         NameDictionary();
         ~NameDictionary();
@@ -97,14 +93,15 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         // Private API for NameData
 
-        //! Attempts to release the name from the dictionary, but checks to make sure
-        //! a reference wasn't taken by another thread.
+        // Attempts to release the name from the dictionary, but checks to make sure
+        // a reference wasn't taken by another thread.
         void TryReleaseName(Internal::NameData* data);
         
         //////////////////////////////////////////////////////////////////////////
 
-        //! Makes a hash for the provided name string.
-        Name::Hash MakeHash(AZStd::string_view name);
+        // Calculates a hash for the provided name string.
+        // Does not attempt to resolve hash collisions; that is handled elsewhere.
+        Name::Hash CalcHash(AZStd::string_view name);
                 
         AZStd::unordered_map<Name::Hash, Internal::NameData*> m_dictionary;
         mutable AZStd::shared_mutex m_sharedMutex;

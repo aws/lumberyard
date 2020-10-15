@@ -14,6 +14,7 @@
 
 #include <AzCore/std/functional.h>
 #include <AzCore/std/string/regex.h>
+#include <AzCore/std/string/tokenize.h>
 #include <CloudGemFramework/ServiceClientJob.h>
 #include <CloudGemFramework/JsonObjectHandler.h>
 #include <CloudGemFramework/JsonWriter.h>
@@ -504,38 +505,20 @@ namespace CloudGemFramework
 
         Aws::String DetermineRegionFromRequestUrl()
         {
-            // This assumes that API Gateway URLs have the form:
-            //
-            //   https://{rest-api-id}.execute-api.{region}.amazonaws.com/{stage}/{path}
-            //
-
-            int i;
-
-            i = m_requestUrl.find('.');
-            if (i != -1)
+            Aws::String region = DetermineRegionFromServiceUrl(m_requestUrl);
+            if (region.empty())
             {
-                i = m_requestUrl.find('.', i + 1);
-                if (i != -1)
-                {
-                    int offset = i + 1;
-                    i = m_requestUrl.find('.', offset);
-                    if (i != -1)
-                    {
-                        int count = i - offset;
-                        return m_requestUrl.substr(offset, count);
-                    }
-                }
+                AZ_Warning(
+                    ServiceClientJobType::COMPONENT_DISPLAY_NAME,
+                    false,
+                    "Service request url %s does not have the expected format. Cannot determine region from the url.",
+                    m_requestUrl.c_str()
+                );
+
+                region = "us-east-1";
             }
 
-            AZ_Warning(
-                ServiceClientJobType::COMPONENT_DISPLAY_NAME,
-                false,
-                "Service request url %s does not have the expected format. Cannot determine region from the url.",
-                m_requestUrl.c_str()
-            );
-
-            return "us-east-1";
-
+            return region;
         }
 
         static AZStd::string GetFormattedJSON(const AZStd::string& inputStr)

@@ -209,7 +209,9 @@ namespace Lightning
         spawnerConfig.m_sliceAsset = sliceData;
         spawnerComponent->SetConfiguration(spawnerConfig);
 
-        AzToolsFramework::EntityCompositionRequestBus::Broadcast(&AzToolsFramework::EntityCompositionRequestBus::Events::AddExistingComponentsToEntity, entity, AZStd::vector<AZ::Component*>{spawnerComponent});
+        AzToolsFramework::EntityCompositionRequestBus::Broadcast(
+            &AzToolsFramework::EntityCompositionRequestBus::Events::AddExistingComponentsToEntityById,
+            entity->GetId(), AZStd::vector<AZ::Component*>{spawnerComponent});
 
         //Manually add the RandomTimedSpawnerComponent after its dependencies have been met
 

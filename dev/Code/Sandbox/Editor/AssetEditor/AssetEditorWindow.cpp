@@ -41,7 +41,6 @@ namespace AssetEditorUtils
     }
 }
 
-
 AssetEditorWindow::AssetEditorWindow(QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::AssetEditorWindowClass())
@@ -80,6 +79,32 @@ void AssetEditorWindow::CreateAsset(const AZ::Data::AssetType& assetType)
 void AssetEditorWindow::OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
 {
     m_ui->m_assetEditorWidget->OpenAsset(asset);
+}
+
+void AssetEditorWindow::OpenAssetById(const AZ::Data::AssetId assetId)
+{
+    AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::Data::AssetData>(assetId, false);
+    OpenAsset(asset);
+}
+
+void AssetEditorWindow::SaveAssetAs(const AZStd::string_view assetPath)
+{
+    if (assetPath.empty())
+    {
+        AZ_Warning("Asset Editor", false, "Could not save asset to empty path.");
+        return;
+    }
+
+    const char* engineRoot;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(engineRoot, &AzToolsFramework::ToolsApplicationRequests::GetEngineRootPath);
+
+    AZStd::string absoluteAssetPath;
+    AzFramework::StringFunc::Path::Join(engineRoot, assetPath.data(), absoluteAssetPath);
+
+    if (!m_ui->m_assetEditorWidget->SaveAssetToPath(absoluteAssetPath))
+    {
+        AZ_Warning("Asset Editor", false, "File was not saved correctly via SaveAssetAs.");
+    }
 }
 
 void AssetEditorWindow::RegisterViewClass()

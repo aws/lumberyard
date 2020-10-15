@@ -12,8 +12,8 @@
 import boto3
 import survey_utils
 import survey_common
-import CloudCanvas
 import json
+
 
 def main(delete_submissions_info, context):
     survey_id = delete_submissions_info['survey_id']
@@ -49,12 +49,14 @@ def main(delete_submissions_info, context):
             trigger_next_lambda(delete_submissions_info, context)
             break
 
+
 def should_trigger_next_lambda(context):
     # trigger another lambda if remaining time is less than 30 seconds
     if context.get_remaining_time_in_millis() < 30000:
         return True
     else:
         return False
+
 
 def trigger_next_lambda(delete_submissions_info, context):
     boto3.client('lambda').invoke_async(

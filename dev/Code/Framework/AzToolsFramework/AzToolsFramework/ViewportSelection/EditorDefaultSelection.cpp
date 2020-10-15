@@ -13,8 +13,11 @@
 #include "EditorDefaultSelection.h"
 
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzToolsFramework/Manipulators/ManipulatorManager.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 #include <Entity/EditorEntityHelpers.h>
+#include <QGuiApplication>
 
 namespace AzToolsFramework
 {
@@ -32,6 +35,8 @@ namespace AzToolsFramework
         // Component Mode when using legacy viewport interaction model
         if (IsNewViewportInteractionModelEnabled())
         {
+            m_manipulatorManager =
+                AZStd::make_shared<AzToolsFramework::ManipulatorManager>(AzToolsFramework::g_mainManipulatorManagerId);
             m_transformComponentSelection = AZStd::make_unique<EditorTransformComponentSelection>(entityDataCache);
         }
     }
@@ -196,11 +201,55 @@ namespace AzToolsFramework
         m_componentModeCollection.RefreshActions();
     }
 
-    bool EditorDefaultSelection::HandleMouseInteraction(
+    bool EditorDefaultSelection::InternalHandleMouseManipulatorInteraction(
+        const ViewportInteraction::MouseInteractionEvent& mouseInteractionEvent)
+    {
+        if (!m_manipulatorManager)
+        {
+            return false;
+        }
+
+        using namespace AzToolsFramework::ViewportInteraction;
+        const auto& mouseInteraction = mouseInteractionEvent.m_mouseInteraction;
+        // store the current interaction for use in DrawManipulators
+        m_currentInteraction = mouseInteraction;
+
+        switch (mouseInteractionEvent.m_mouseEvent)
+        {
+        case MouseEvent::Down:
+            {
+                return m_manipulatorManager->ConsumeViewportMousePress(mouseInteraction);
+            }
+        case MouseEvent::DoubleClick:
+            {
+                return false;
+            }
+        case MouseEvent::Move:
+            {
+                AzToolsFramework::ManipulatorManager::ConsumeMouseMoveResult mouseMoveResult =
+                    AzToolsFramework::ManipulatorManager::ConsumeMouseMoveResult::None;
+                mouseMoveResult = m_manipulatorManager->ConsumeViewportMouseMove(mouseInteraction);
+                return mouseMoveResult == AzToolsFramework::ManipulatorManager::ConsumeMouseMoveResult::Interacting;
+            }
+        case MouseEvent::Up:
+            {
+                return m_manipulatorManager->ConsumeViewportMouseRelease(mouseInteraction);
+            }
+        case MouseEvent::Wheel:
+            {
+                return m_manipulatorManager->ConsumeViewportMouseWheel(mouseInteraction);
+            }
+        default:
+            return false;
+        }
+    }
+
+    bool EditorDefaultSelection::InternalHandleMouseViewportInteraction(
         const ViewportInteraction::MouseInteractionEvent& mouseInteraction)
     {
         bool enterComponentModeAttempted = false;
         const bool componentModeBefore = InComponentMode();
+
         bool handled = false;
         if (!componentModeBefore)
         {
@@ -232,9 +281,11 @@ namespace AzToolsFramework
                 [&mouseInteraction, &handled]
                 (ComponentModeFramework::ComponentModeRequestBus::InterfaceType* componentModeRequest)
             {
-                // HandleMouseInteraction must be on the left side of the OR to ensure it's executed for every component
-                // and prevent an early out.
-                handled = componentModeRequest->HandleMouseInteraction(mouseInteraction) || handled;
+                if (componentModeRequest->HandleMouseInteraction(mouseInteraction))
+                {
+                    handled = true;
+                }
+
                 return true;
             });
 
@@ -258,7 +309,7 @@ namespace AzToolsFramework
             if (m_transformComponentSelection)
             {
                 // no components being edited (not in ComponentMode), use standard selection
-                handled = m_transformComponentSelection->HandleMouseInteraction(mouseInteraction);
+                return m_transformComponentSelection->HandleMouseInteraction(mouseInteraction);
             }
         }
 
@@ -272,6 +323,18 @@ namespace AzToolsFramework
         if (m_transformComponentSelection)
         {
             m_transformComponentSelection->DisplayViewportSelection(viewportInfo, debugDisplay);
+        }
+
+        if (IsNewViewportInteractionModelEnabled())
+        {
+            // poll and set the keyboard modifiers to ensure the mouse interaction is up to date
+            m_currentInteraction.m_keyboardModifiers =
+                AzToolsFramework::ViewportInteraction::BuildKeyboardModifiers(QGuiApplication::queryKeyboardModifiers());
+            // draw the manipulators
+            const AzFramework::CameraState cameraState = GetCameraState(viewportInfo.m_viewportId);
+            debugDisplay.DepthTestOff();
+            m_manipulatorManager->DrawManipulators(debugDisplay, cameraState, m_currentInteraction);
+            debugDisplay.DepthTestOn();
         }
     }
 

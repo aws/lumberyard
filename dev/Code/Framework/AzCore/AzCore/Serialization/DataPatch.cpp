@@ -10,7 +10,7 @@
 *
 */
 
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/DataPatchBus.h>
@@ -1325,7 +1325,7 @@ namespace AZ
             else if (classData && elementType == ElementType::Index)
             {
                 // className(class typeId)#containerId<versionDelimiter>version<pathDelimiter>
-                m_pathElement = AZStd::string::format("%s(%s)#%" PRIu64 "%s%u%s", classData->m_name, m_addressClassTypeId.ToString<AZStd::string>().c_str(), m_addressElement, VersionDelimiter, m_addressClassVersion, PathDelimiter);
+                m_pathElement = AZStd::string::format("%s(%s)#%" PRIu64 "%s%u%s", classData->m_name, m_addressClassTypeId.ToString<AZStd::string>().c_str(), static_cast<uint64_t>(m_addressElement), VersionDelimiter, m_addressClassVersion, PathDelimiter);
             }
             else if (elementType == ElementType::None)
             {

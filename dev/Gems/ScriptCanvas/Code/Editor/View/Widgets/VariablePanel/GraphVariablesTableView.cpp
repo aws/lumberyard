@@ -891,7 +891,7 @@ namespace ScriptCanvasEditor
         }
 
         int leftPriority = leftVariable->GetSortPriority();
-        int rightPriority = rightVariable->GetSortPriority();        
+        int rightPriority = rightVariable->GetSortPriority();
 
         if (leftPriority == rightPriority)
         {
@@ -899,13 +899,13 @@ namespace ScriptCanvasEditor
         }
         else
         {
-            return m_variableComparator(leftVariable, rightVariable);            
+            return m_variableComparator(leftVariable, rightVariable);
         }
     }
 
     void GraphVariablesModelSortFilterProxyModel::SetFilter(const QString& filter)
     {
-        m_filter = filter;
+        m_filter = QRegExp::escape(filter);
         m_filterRegex = QRegExp(m_filter, Qt::CaseInsensitive);
 
         invalidateFilter();
@@ -973,6 +973,8 @@ namespace ScriptCanvasEditor
             return false;
         }
 
+        GeneralRequestBus::Broadcast(&GeneralRequests::PushPreventUndoStateUpdate);
+
         for (auto variableMapData : copiedVariableData.m_variableMapping)
         {
             AZ::Outcome<ScriptCanvas::VariableId, AZStd::string> variableOutcome = requests->CloneVariable(variableMapData.second);
@@ -990,6 +992,9 @@ namespace ScriptCanvasEditor
                 }
             }
         }
+
+        GeneralRequestBus::Broadcast(&GeneralRequests::PopPreventUndoStateUpdate);
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasId);
 
         return !copiedVariableData.m_variableMapping.empty();
     }
@@ -1284,7 +1289,10 @@ namespace ScriptCanvasEditor
                 return;
             }
 
+            GeneralRequestBus::Broadcast(&GeneralRequests::PushPreventUndoStateUpdate);
             ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasId, &ScriptCanvas::GraphVariableManagerRequests::CloneVariable, (*graphVariable));
+            GeneralRequestBus::Broadcast(&GeneralRequests::PopPreventUndoStateUpdate);
+            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasId);
         }
     }
 

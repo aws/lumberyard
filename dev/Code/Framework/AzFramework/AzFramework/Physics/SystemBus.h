@@ -107,6 +107,8 @@ namespace Physics
         : public AZ::EBusTraits
     {
     public:
+        using MutexType = AZStd::mutex;
+
         /// Returns the Editor world managed editor system component.
         virtual AZStd::shared_ptr<World> GetEditorWorld() = 0;
 
@@ -119,6 +121,8 @@ namespace Physics
         : public AZ::EBusTraits 
     {
     public:
+        using MutexType = AZStd::recursive_mutex;
+
         // EBusTraits
         // singleton pattern
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
@@ -143,7 +147,7 @@ namespace Physics
         //// General Physics
 
         /// Gets the current default world configuration.
-        virtual const WorldConfiguration& GetDefaultWorldConfiguration() = 0;
+        virtual const WorldConfiguration& GetDefaultWorldConfiguration() const = 0;
         /// Sets the current default world configuration.
         virtual void SetDefaultWorldConfiguration(const WorldConfiguration& worldConfiguration) = 0;
 

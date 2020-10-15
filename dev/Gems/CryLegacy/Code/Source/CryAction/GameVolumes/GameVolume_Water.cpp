@@ -145,7 +145,11 @@ void CGameVolume_Water::HandleEvent(const SGameObjectEvent& gameObjectEvent)
                 {
                     SWaterSegment& segment = m_segments[i];
 
+#if ENABLE_CRY_PHYSICS
                     if ((segment.m_pWaterArea == NULL) && (segment.m_pWaterRenderNode != NULL))
+#else
+                    if ((segment.m_pWaterRenderNode != NULL))
+#endif // ENABLE_CRY_PHYSICS
                     {
                         if (!m_isRiver)
                         {
@@ -219,6 +223,7 @@ void CGameVolume_Water::ProcessEvent(SEntityEvent& event)
 
                 UpdateRenderNode(segment.m_pWaterRenderNode, m_baseMatrix);
 
+#if ENABLE_CRY_PHYSICS
                 if (segment.m_pWaterArea)
                 {
                     const Vec3 newAreaPosition = m_baseMatrix.GetTranslation() + ((Quat(m_baseMatrix) * segment.m_physicsLocalAreaCenter) - segment.m_physicsLocalAreaCenter);
@@ -233,6 +238,7 @@ void CGameVolume_Water::ProcessEvent(SEntityEvent& event)
 
                     //gEnv->pRenderer->GetIRenderAuxGeom()->DrawSphere( areaPos.pos, 0.5f, ColorB(255, 0, 0));
                 }
+#endif // ENABLE_CRY_PHYSICS
             }
 
             AwakeAreaIfRequired(false);
@@ -440,10 +446,13 @@ void CGameVolume_Water::CreatePhysicsArea(const uint32 segmentIndex, const Matri
     IWaterVolumeRenderNode* pWaterRenderNode = segment.m_pWaterRenderNode;
     Vec3 waterFlow(ZERO);
 
+#if ENABLE_CRY_PHYSICS
     CRY_ASSERT (segment.m_pWaterArea == NULL);
+#endif
     CRY_ASSERT (pWaterRenderNode != NULL);
 
     pWaterRenderNode->SetMatrix(Matrix34::CreateIdentity());
+#if ENABLE_CRY_PHYSICS
     segment.m_pWaterArea = pWaterRenderNode->SetAndCreatePhysicsArea(&pVertices[0], vertexCount);
 
     IPhysicalEntity* pWaterArea = segment.m_pWaterArea;
@@ -481,10 +490,12 @@ void CGameVolume_Water::CreatePhysicsArea(const uint32 segmentIndex, const Matri
 
         segment.m_physicsLocalAreaCenter = posStatus.pos;
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CGameVolume_Water::DestroyPhysicsAreas()
 {
+#if ENABLE_CRY_PHYSICS
     WaterSegments::iterator iter = m_segments.begin();
     WaterSegments::iterator end = m_segments.end();
     while (iter != end)
@@ -501,12 +512,14 @@ void CGameVolume_Water::DestroyPhysicsAreas()
 
         ++iter;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     m_lastAwakeCheckPosition.zero();
 }
 
 void CGameVolume_Water::AwakeAreaIfRequired(bool forceAwake)
 {
+#if ENABLE_CRY_PHYSICS
     if (gEnv->IsEditing())
     {
         return;
@@ -549,6 +562,9 @@ void CGameVolume_Water::AwakeAreaIfRequired(bool forceAwake)
 
         ++iter;
     }
+#else
+    AZ_UNUSED(forceAwake);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CGameVolume_Water::UpdateRenderNode(IWaterVolumeRenderNode* pWaterRenderNode, const Matrix34& newLocation)

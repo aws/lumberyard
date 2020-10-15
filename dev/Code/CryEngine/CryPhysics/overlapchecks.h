@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_OVERLAPCHECKS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 typedef int (* overlap_check)(const primitive*, const primitive*, class COverlapChecker*);
 
@@ -64,5 +65,7 @@ public:
     Matrix33 Basis21abs;
 };
 //extern COverlapChecker g_Overlapper;
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_OVERLAPCHECKS_H

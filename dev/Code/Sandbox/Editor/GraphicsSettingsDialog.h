@@ -95,7 +95,7 @@ private:
     struct CollapseGroup
     {
         QString m_groupName;
-        QPushButton* m_dropDownButton;
+        QToolButton* m_dropDownButton;
         QGridLayout* m_gridlayout;
 
         bool m_isCollapsed;
@@ -107,7 +107,7 @@ private:
         CollapseGroup();
 
         void ToggleCollpased();
-        void ToggleButton(QPushButton* button, QGridLayout* layout);
+        void ToggleButton(QToolButton* button, QGridLayout* layout);
     };
 
     void OpenCustomSpecDialog();
@@ -156,7 +156,7 @@ private:
     // UI help functions
 
     // Setup collapsed buttons
-    void SetCollapsedLayout(const QString& groupName, QPushButton* togglebutton, QGridLayout* layout);
+    void SetCollapsedLayout(const QString& groupName, QToolButton* togglebutton, QGridLayout* layout);
     // Sets the platform entry index for the given platform
     void SetPlatformEntry(ESystemConfigPlatform platform);
     // Gets the platform enum given the platform name
@@ -212,7 +212,7 @@ private:
         QVector<AzQtComponents::DoubleSpinBox*> m_cvarDoubleSpinBoxes;
         QVector<QLineEdit*> m_cvarLineEdits;
         QVector<QPushButton*> m_customSpecUnloadButtons;
-        QVector<QPushButton*> m_specFileArea;
+        QVector<QToolButton*> m_specFileArea;
         QGridLayout* m_layout;
         QVector<QWidget*> m_widgetInsertOrder;
     };

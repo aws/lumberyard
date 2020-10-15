@@ -231,11 +231,13 @@ void CSceneSnow::UpdateClusters()
         if (m_SnowVolParams.m_fSnowFallGravityScale)
         {
             Vec3 vGravity(0.0f, 0.0f, -9.8f);
+#if ENABLE_CRY_PHYSICS
             if (gEnv->pPhysicalWorld)
             {
                 pe_params_buoyancy pb;
                 gEnv->pPhysicalWorld->CheckAreas(pCurr->m_pPos, vGravity, &pb);
             }
+#endif // ENABLE_CRY_PHYSICS
             pCurr->m_pPos += vGravity * fGravity * pCurr->m_fWeight;
         }
 

@@ -86,9 +86,6 @@ public:
     void SetMatrix(const Matrix34& matrix);
     const Matrix34& GetMatrix() const { return m_matrix; }
 
-    virtual struct IPhysicalEntity* GetPhysics() const { return NULL; }
-    virtual void SetPhysics(IPhysicalEntity* pPhys) {}
-
     virtual void SetMaterial(_smart_ptr<IMaterial> pMat);
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos);
     virtual _smart_ptr<IMaterial> GetMaterialOverride() { return m_pMaterial; }

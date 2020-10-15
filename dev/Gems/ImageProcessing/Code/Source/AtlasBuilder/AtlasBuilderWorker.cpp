@@ -875,7 +875,7 @@ namespace TextureAtlasBuilder
         if (!TryTightening(
             input, data, GetWidest(data), GetTallest(data), aznumeric_cast<int>(totalArea), input.m_padding, resultWidth, resultHeight, amountFit, paddedMap))
         {
-            AZ_Error("AtlasBuilder", false, AZStd::string::format("Cannot fit images into given maximum atlas size (%dx%d). Only %d out of %d images fit.", input.m_maxDimension, input.m_maxDimension, amountFit, input.m_filePaths.size()).c_str());
+            AZ_Error("AtlasBuilder", false, AZStd::string::format("Cannot fit images into given maximum atlas size (%dx%d). Only %zu out of %zu images fit.", input.m_maxDimension, input.m_maxDimension, amountFit, input.m_filePaths.size()).c_str());
             // For some reason, failing the assert isn't enough to stop the Asset builder. It will still fail further
             // down when it tries to assemble the atlas, but returning here is cleaner.
             return;

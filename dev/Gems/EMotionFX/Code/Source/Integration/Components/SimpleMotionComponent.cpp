@@ -185,6 +185,16 @@ namespace EMotionFX
             m_actorInstance.reset();
         }
 
+        const MotionInstance* SimpleMotionComponent::GetMotionInstance()
+        {
+            return m_motionInstance;
+        }
+
+        void SimpleMotionComponent::SetMotionAssetId(const AZ::Data::AssetId& assetId)
+        {
+            m_configuration.m_motionAsset = AZ::Data::Asset<MotionAsset>(assetId, azrtti_typeid<MotionAsset>());
+        }
+
         void SimpleMotionComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
             auto& cfg = m_configuration;

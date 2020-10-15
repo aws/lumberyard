@@ -36,10 +36,10 @@ namespace AzToolsFramework
         void SetHandler(const ViewportSelectionRequestsBuilderFn& interactionRequestsBuilder) override;
         void SetDefaultHandler() override;
 
-        /// EditorInteractionSystemViewportSelectionRequestBus
-        /// Called by viewport events (RenderViewport) and then handled by concrete
-        /// implementation of ViewportSelectionRequests.
-        bool HandleMouseInteraction(
+        // EditorInteractionSystemViewportSelectionRequestBus ...
+        bool InternalHandleMouseViewportInteraction(
+            const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
+        bool InternalHandleMouseManipulatorInteraction(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
 
         // AzFramework::ViewportDebugDisplayEventBus
@@ -61,7 +61,7 @@ namespace AzToolsFramework
         AZStd::unique_ptr<EditorVisibleEntityDataCache> m_entityDataCache = nullptr; ///< Visible EntityData cache to be used by concrete
                                                                                      ///< instantiations of ViewportSelectionRequests.
 
-        AZStd::unique_ptr<ViewportSelectionRequests> m_interactionRequests; ///< Hold a concrete implementation of
+        AZStd::unique_ptr<InternalViewportSelectionRequests> m_interactionRequests; ///< Hold a concrete implementation of
                                                                             ///< ViewportSelectionRequests to handle viewport
                                                                             ///< input and drawing for the Editor.
     };

@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_HEIGHTFIELDGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "trimesh.h"
 #include "heightfieldbv.h"
 
@@ -51,5 +53,7 @@ public:
     int m_nVerticesAlloc, m_nTrisAlloc;
     Vec3 m_lastOriginOffs;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_HEIGHTFIELDGEOM_H

@@ -28,6 +28,13 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////
+        void MotionAsset::SetData(EMotionFX::SkeletalMotion* motion)
+        {
+            m_emfxMotion.reset(motion);
+            m_status = static_cast<int>(AZ::Data::AssetData::AssetStatus::Ready);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
         bool MotionAssetHandler::OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
         {
             MotionAsset* assetData = asset.GetAs<MotionAsset>();

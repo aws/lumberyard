@@ -32,6 +32,7 @@ namespace PhysX
             auto shapeConfig = AZStd::make_shared<typename ColliderType::Configuration>();
             colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
             Physics::RigidBodyConfiguration rigidBodyConfig;
+            rigidBodyConfig.m_computeMass = false;
             entity->CreateComponent<RigidBodyComponent>(rigidBodyConfig);
             entity->Init();
             entity->Activate();

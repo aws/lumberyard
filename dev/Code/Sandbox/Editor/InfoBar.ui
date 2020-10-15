@@ -223,7 +223,7 @@
       <string>Enable Terrain Camera Collision (Q)</string>
      </property>
      <property name="text">
-      <string>Coll</string>
+      <string>Enable Terrain Camera Collision (Q)</string>
      </property>
      <property name="icon">
       <iconset resource="InfoBar.qrc">
@@ -252,7 +252,7 @@
       <string>Synchronize Player with Camera</string>
      </property>
      <property name="text">
-      <string>No Sync Player</string>
+      <string>Synchronize Player with Camera</string>
      </property>
      <property name="icon">
       <iconset resource="InfoBar.qrc">
@@ -293,7 +293,7 @@
       <string>Simulate (Ctrl+P)</string>
      </property>
      <property name="text">
-      <string>Simulate</string>
+      <string>Simulate (Ctrl+P)</string>
      </property>
      <property name="icon">
       <iconset resource="InfoBar.qrc">
@@ -322,7 +322,7 @@
       <string>Enable Physics/AI Single-step Mode ('&lt;' in Game Mode)</string>
      </property>
      <property name="text">
-      <string>||</string>
+      <string>Enable Physics/AI Single-step Mode ('&lt;' in Game Mode)</string>
      </property>
      <property name="icon">
       <iconset resource="InfoBar.qrc">
@@ -354,7 +354,7 @@
       <string>Perform a Single Physics/AI Simulation Step ('&gt;' in Game Mode)</string>
      </property>
      <property name="text">
-      <string>|&gt;</string>
+      <string>Perform a Single Physics/AI Simulation Step ('&gt;' in Game Mode)</string>
      </property>
      <property name="icon">
       <iconset resource="InfoBar.qrc">
@@ -428,7 +428,7 @@
       <string>Enable VR Preview</string>
      </property>
      <property name="text">
-      <string>VR Preview</string>
+      <string>Enable VR Preview</string>
      </property>
      <property name="icon">
       <iconset resource="InfoBar.qrc">

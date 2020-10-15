@@ -30,6 +30,7 @@
 #include <CryArray.h>
 #include <ISystem.h>
 #include <INetwork.h>
+#include <ICryMannequin.h>
 #include <IScriptSystem.h>
 #include <IEntitySystem.h>
 #include <IEntityHelper.h>
@@ -46,13 +47,14 @@
 #include <IItem.h>
 #include <IItemSystem.h>
 #include <IViewSystem.h>
-#include <IVehicleSystem.h>
 #include <IGameplayRecorder.h>
 #include <GameWarning.h>
 #include <GameUtils.h>
 #include <Cry_Geo.h>
 #include <ISerialize.h>
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include <I3DEngine.h>
 #include <IAgent.h>
 #include <IAIActorProxy.h>
@@ -63,7 +65,6 @@
 #include <IRenderAuxGeom.h>
 #include <Random.h>
 #include <XMLUtils.h>
-#include <VehicleSystem.h>
 
 #ifdef CRYAISYSTEM_VERBOSITY
 # define AIWarningID gEnv->pAISystem->Warning
@@ -325,4 +326,8 @@ inline void ScriptWarning(const char* format, ...)
 
 #ifndef IN
 # define IN
+#endif
+
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
 #endif

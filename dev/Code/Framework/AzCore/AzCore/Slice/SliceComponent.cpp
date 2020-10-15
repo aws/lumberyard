@@ -18,6 +18,7 @@
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 ///////////////////////////////////////////////////////
@@ -3928,6 +3929,15 @@ namespace AZ
                 Field("InstanceId", &EntityRestoreInfo::m_instanceId)->
                 Field("AncestorId", &EntityRestoreInfo::m_ancestorId)->
                 Field("DataFlags", &EntityRestoreInfo::m_dataFlags); // added at v1
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection))
+        {
+            behaviorContext->Class<SliceComponent::SliceInstanceAddress>()
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "slice")
+                ->Method("IsValid", &SliceComponent::SliceInstanceAddress::operator bool)
+                ;
         }
     }
 } // namespace AZ

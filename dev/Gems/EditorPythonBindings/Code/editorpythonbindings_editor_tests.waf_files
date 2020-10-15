@@ -6,10 +6,13 @@
         "Tests/PythonAssetTypesTests.cpp",
         "Tests/PythonContainerAnyTests.cpp",
         "Tests/PythonDictionaryTests.cpp",
+        "Tests/PythonPairTests.cpp",
+        "Tests/PythonPairTests.h",
         "Tests/PythonGlobalsTests.cpp",
         "Tests/PythonProxyBusTests.cpp",
         "Tests/PythonProxyObjectTests.cpp",
         "Tests/PythonReflectionComponentTests.cpp",
+        "Tests/PythonLogSymbolsComponentTests.cpp",
         "Tests/PythonTestingUtility.h",
         "Tests/PythonTraceMessageSink.h"
       ]

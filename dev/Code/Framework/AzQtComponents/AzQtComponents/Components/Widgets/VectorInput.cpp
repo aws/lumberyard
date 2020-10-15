@@ -253,6 +253,7 @@ VectorInput::VectorInput(QWidget* parent, int elementCount, int elementsPerRow, 
                 int elementIndex = rowIdx * elementsPerRow + columnIdx;
 
                 m_elements[elementIndex] = new VectorElement(this);
+                m_elements[elementIndex]->setObjectName(labels.mid(elementIndex, 1));
                 m_elements[elementIndex]->setLabel(labels.mid(elementIndex, 1));
                 m_elements[elementIndex]->setCoordinate(static_cast<VectorElement::Coordinate>(elementIndex % 4));
 

@@ -1781,6 +1781,7 @@ namespace BehaviorTree
         {
             EStance slopeVerifiedStance = m_stance;
 
+#if ENABLE_CRY_PHYSICS
             if (IEntity* entity = context.entity)
             {
                 if (IPhysicalEntity* physicalEntity = entity->GetPhysics())
@@ -1808,6 +1809,7 @@ namespace BehaviorTree
                     }
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
 
             CPipeUser* pipeUser = GetPipeUser(context);
             pipeUser->m_State.bodystate = slopeVerifiedStance;
@@ -3946,6 +3948,7 @@ namespace BehaviorTree
             {
                 EStance slopeVerifiedStance = m_stance;
 
+#if ENABLE_CRY_PHYSICS
                 if (IEntity* entity = context.entity)
                 {
                     if (IPhysicalEntity* physicalEntity = entity->GetPhysics())
@@ -3973,6 +3976,7 @@ namespace BehaviorTree
                         }
                     }
                 }
+#endif // ENABLE_CRY_PHYSICS
 
                 pipeUser->m_State.bodystate = slopeVerifiedStance;
             }

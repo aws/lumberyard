@@ -46,6 +46,8 @@ QColorWidgetImp::QColorWidgetImp(CAttributeItem* parent)
 {
     QString colorString;
     parent->getVar()->Get(colorString);
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(sizePolicy);
 
     auto relations = parent->GetRelations();
     TrySetupSecondColor(relations["randomColor"], relations["randomColorEnable"]);

@@ -48,7 +48,9 @@ CParticleSubEmitter::CParticleSubEmitter(CParticleSource* pSource, CParticleCont
     m_fActivateAge = -fHUGE;
     m_fStartAge = m_fStopAge = m_fRepeatAge = fHUGE;
     m_fLastEmitAge = 0.f;
+#if PARTICLES_USE_CRY_PHYSICS
     m_pForce = NULL;
+#endif
 }
 
 CParticleSubEmitter::~CParticleSubEmitter()
@@ -111,11 +113,13 @@ void CParticleSubEmitter::Deactivate()
 {
     DeactivateAudio();
 
+#if PARTICLES_USE_CRY_PHYSICS
     if (m_pForce)
     {
         GetPhysicalWorld()->DestroyPhysicalEntity(m_pForce);
         m_pForce = 0;
     }
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 bool CParticleSubEmitter::UpdateState(float fAgeAdjust)
@@ -544,12 +548,17 @@ void CParticleSubEmitter::UpdateForce()
 
         if (fForce * fRadius == 0.f)
         {
+#if PARTICLES_USE_CRY_PHYSICS
             // No force.
             if (m_pForce)
             {
                 GetPhysicalWorld()->DestroyPhysicalEntity(m_pForce);
                 m_pForce = NULL;
             }
+#else
+            // Remove force
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
             return;
         }
 
@@ -570,6 +579,7 @@ void CParticleSubEmitter::UpdateForce()
         geomBox.center = force.bbOuter.GetCenter();
         geomBox.size = force.bbOuter.GetSize() * 0.5f;
 
+#if PARTICLES_USE_CRY_PHYSICS
         pe_status_pos spos;
         if (m_pForce)
         {
@@ -591,7 +601,12 @@ void CParticleSubEmitter::UpdateForce()
                 m_pForce = NULL;
             }
         }
+#else
+        // Update force shape
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
 
+#if PARTICLES_USE_CRY_PHYSICS
         if (!m_pForce)
         {
             IGeometry* pGeom = m_pPhysicalWorld->GetGeomManager()->CreatePrimitive(primitives::box::type, &geomBox);
@@ -621,7 +636,12 @@ void CParticleSubEmitter::UpdateForce()
                 m_pForce->SetParams(&pos);
             }
         }
+#else
+        // Create a force in the given area using force.qpLoc
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
 
+#if PARTICLES_USE_CRY_PHYSICS
         // To do: 4D flow
         pe_params_area area;
         float fVMagSqr = force.vForce3.GetLengthSquared(),
@@ -644,9 +664,14 @@ void CParticleSubEmitter::UpdateForce()
             area.gravity = force.vForce3;
         }
         m_pForce->SetParams(&area);
+#else
+        // Set force parameters
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
 
         if (params.eForceGeneration == params.eForceGeneration.Wind)
         {
+#if PARTICLES_USE_CRY_PHYSICS
             pe_params_buoyancy buoy;
             buoy.iMedium = 1;
             buoy.waterDensity = buoy.waterResistance = 1;
@@ -654,15 +679,25 @@ void CParticleSubEmitter::UpdateForce()
             buoy.waterPlane.n = -PhysEnv.m_UniformForces.plWater.n;
             buoy.waterPlane.origin = PhysEnv.m_UniformForces.plWater.n * PhysEnv.m_UniformForces.plWater.d;
             m_pForce->SetParams(&buoy);
+#else
+            // Create wind on area
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
         }
+
     }
     else
     {
+#if PARTICLES_USE_CRY_PHYSICS
         if (m_pForce)
         {
             GetPhysicalWorld()->DestroyPhysicalEntity(m_pForce);
             m_pForce = NULL;
         }
+#else
+        // Destroy the force
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
 }
 

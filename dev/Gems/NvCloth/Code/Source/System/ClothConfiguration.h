@@ -32,6 +32,8 @@ namespace NvCloth
 
         virtual ~ClothConfiguration() = default;
 
+        bool IsUsingWindBus() const { return !m_useCustomWindVelocity; }
+
         AZStd::string m_meshNode;
 
         // Mass and Gravity parameters
@@ -59,6 +61,7 @@ namespace NvCloth
         AZ::Vector3 m_centrifugalInertia = AZ::Vector3::CreateOne();
 
         // Wind parameters
+        bool m_useCustomWindVelocity = true;
         AZ::Vector3 m_windVelocity = AZ::Vector3(0.0f, 20.0f, 0.0f);
         float m_airDragCoefficient = 0.0f;
         float m_airLiftCoefficient = 0.0f;

@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_GEOMETRIES_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "primitives.h"
 #include "bvtree.h"
 #include "geometry.h"
@@ -31,5 +33,7 @@
 #include "voxelbv.h"
 #include "voxelgeom.h"
 #include "geoman.h"
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_GEOMETRIES_H

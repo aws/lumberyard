@@ -48,7 +48,7 @@ class CXTPDockingPaneLayout; // Needed for settings.h
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
-const char* AssetImporterWindow::s_documentationWebAddress = "http://docs.aws.amazon.com/lumberyard/latest/userguide/char-fbx-importer.html";
+const char* AssetImporterWindow::s_documentationWebAddress = "http://docs.aws.amazon.com/console/lumberyard/fbx-importer";
 const AZ::Uuid AssetImporterWindow::s_browseTag = AZ::Uuid::CreateString("{C240D2E1-BFD2-4FFA-BB5B-CC0FA389A5D3}");
 
 void MakeUserFriendlySourceAssetPath(QString& out, const QString& sourcePath)

@@ -205,7 +205,6 @@ namespace Visibility
 
         const AZ::EntityId entityId = GetEntityId();
 
-#ifndef AZ_TESTS_ENABLED
         // NOTE: We create the vis-area here at activated, but destroy it in the destructor.
         // We have to do this, otherwise the vis-area is not saved into the level.
         // Unfortunately, at this time we cannot create the vis-areas at game runtime.
@@ -216,7 +215,6 @@ namespace Visibility
         {
             m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
         }
-#endif
 
         m_componentModeDelegate.ConnectWithSingleComponentMode<
             EditorVisAreaComponent, EditorVisAreaComponentMode>(
@@ -345,7 +343,8 @@ namespace Visibility
                 info.bUseDeepness = false;
                 info.bUseInIndoors = false;
 
-                const AZStd::string name = AZStd::string("vis-area_") + GetEntity()->GetName();
+                // The name must have visarea in it because of a check in UpdateVisArea that depends on it.
+                const AZStd::string name = AZStd::string("VisArea_") + GetEntity()->GetName();
 
                 GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.c_str(), info, true);
             }

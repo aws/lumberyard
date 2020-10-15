@@ -32,6 +32,14 @@
 
 using namespace AzToolsFramework;
 
+namespace AZ
+{
+    std::ostream& operator<<(std::ostream& os, const EntityId entityId)
+    {
+        return os << entityId.ToString().c_str();
+    }
+}
+
 namespace UnitTest
 {
     class EditorEntityVisibilityCacheFixture
@@ -100,7 +108,7 @@ namespace UnitTest
     }
 
     // Fixture to support testing EditorTransformComponentSelection functionality on an Entity selection.
-    class EditorTransformComponentSelectionTest
+    class EditorTransformComponentSelectionFixture
         : public ToolsApplicationFixture
         , private NewViewportInteractionModelEnabledRequestBus::Handler
     {
@@ -113,7 +121,8 @@ namespace UnitTest
             EditorInteractionSystemViewportSelectionRequestBus::Event(
                 GetEntityContextId(), &EditorInteractionSystemViewportSelection::SetDefaultHandler);
 
-            m_entityIds.push_back(CreateDefaultEditorEntity("Entity"));
+            m_entity1 = CreateDefaultEditorEntity("Entity1");
+            m_entityIds.push_back(m_entity1);
 
             ToolsApplicationRequestBus::Broadcast(
                 &ToolsApplicationRequests::SetSelectedEntities, m_entityIds);
@@ -137,26 +146,27 @@ namespace UnitTest
         bool IsNewViewportInteractionModelEnabled() override;
 
     public:
+        AZ::EntityId m_entity1;
         EntityIdList m_entityIds;
         TestEditorActions m_editorActions;
     };
 
-    bool EditorTransformComponentSelectionTest::IsNewViewportInteractionModelEnabled()
+    bool EditorTransformComponentSelectionFixture::IsNewViewportInteractionModelEnabled()
     {
         return true;
     }
 
-    void EditorTransformComponentSelectionTest::ArrangeIndividualRotatedEntitySelection(
+    void EditorTransformComponentSelectionFixture::ArrangeIndividualRotatedEntitySelection(
         const AZ::Quaternion& orientation)
     {
-        for (const auto entityId : m_entityIds)
+        for (auto entityId : m_entityIds)
         {
             AZ::TransformBus::Event(
                 entityId, &AZ::TransformBus::Events::SetLocalRotationQuaternion, orientation);
         }
     }
 
-    AZStd::optional<AZ::Transform> EditorTransformComponentSelectionTest::GetManipulatorTransform() const
+    AZStd::optional<AZ::Transform> EditorTransformComponentSelectionFixture::GetManipulatorTransform() const
     {
         AZStd::optional<AZ::Transform> manipulatorTransform;
         EditorTransformComponentSelectionRequestBus::EventResult(
@@ -165,14 +175,14 @@ namespace UnitTest
         return manipulatorTransform;
     }
 
-    void EditorTransformComponentSelectionTest::RefreshManipulators(
+    void EditorTransformComponentSelectionFixture::RefreshManipulators(
         EditorTransformComponentSelectionRequests::RefreshType refreshType)
     {
         EditorTransformComponentSelectionRequestBus::Event(
             GetEntityContextId(), &EditorTransformComponentSelectionRequests::RefreshManipulators, refreshType);
     }
 
-    void EditorTransformComponentSelectionTest::SetTransformMode(
+    void EditorTransformComponentSelectionFixture::SetTransformMode(
         EditorTransformComponentSelectionRequests::Mode transformMode)
     {
         EditorTransformComponentSelectionRequestBus::Event(
@@ -180,7 +190,7 @@ namespace UnitTest
             transformMode);
     }
 
-    void EditorTransformComponentSelectionTest::OverrideManipulatorOrientation(
+    void EditorTransformComponentSelectionFixture::OverrideManipulatorOrientation(
         const AZ::Quaternion& orientation)
     {
         EditorTransformComponentSelectionRequestBus::Event(
@@ -188,7 +198,7 @@ namespace UnitTest
             orientation);
     }
 
-    void EditorTransformComponentSelectionTest::OverrideManipulatorTranslation(
+    void EditorTransformComponentSelectionFixture::OverrideManipulatorTranslation(
         const AZ::Vector3& translation)
     {
         EditorTransformComponentSelectionRequestBus::Event(
@@ -199,7 +209,7 @@ namespace UnitTest
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // EditorTransformComponentSelection Tests
 
-    TEST_F(EditorTransformComponentSelectionTest, ManipulatorOrientationIsResetWhenEntityOrientationIsReset)
+    TEST_F(EditorTransformComponentSelectionFixture, ManipulatorOrientationIsResetWhenEntityOrientationIsReset)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -211,9 +221,9 @@ namespace UnitTest
         const AZ::Transform manipulatorTransformBefore =
             GetManipulatorTransform().value_or(AZ::Transform::CreateIdentity());
 
-        // check preconditions - manipulator transform matches entity transform
-        EXPECT_THAT(manipulatorTransformBefore.GetBasisY(), IsClose(AZ::Vector3::CreateAxisZ()));
-        EXPECT_THAT(manipulatorTransformBefore.GetBasisZ(), IsClose(-AZ::Vector3::CreateAxisY()));
+        // check preconditions - manipulator transform matches parent/world transform (identity)
+        EXPECT_THAT(manipulatorTransformBefore.GetBasisY(), IsClose(AZ::Vector3::CreateAxisY()));
+        EXPECT_THAT(manipulatorTransformBefore.GetBasisZ(), IsClose(AZ::Vector3::CreateAxisZ()));
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -227,13 +237,14 @@ namespace UnitTest
         const AZ::Transform manipulatorTransformAfter =
             GetManipulatorTransform().value_or(AZ::Transform::CreateIdentity());
 
-        // check postconditions - manipulator transform matches identity transform
+        // check postconditions - manipulator transform matches parent/world transform (identity)
         EXPECT_THAT(manipulatorTransformAfter.GetBasisY(), IsClose(AZ::Vector3::CreateAxisY()));
         EXPECT_THAT(manipulatorTransformAfter.GetBasisZ(), IsClose(AZ::Vector3::CreateAxisZ()));
 
-        for (const auto entityId : m_entityIds)
+        for (auto entityId : m_entityIds)
         {
-            AZ::Quaternion entityOrientation;
+            // create invalid starting orientation to guarantee correct data is coming from GetLocalRotationQuaternion
+            AZ::Quaternion entityOrientation = AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3::CreateAxisX(), 90.0f);
             AZ::TransformBus::EventResult(
                 entityOrientation, entityId, &AZ::TransformBus::Events::GetLocalRotationQuaternion);
 
@@ -244,7 +255,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(EditorTransformComponentSelectionTest, EntityOrientationRemainsConstantWhenOnlyManipulatorOrientationIsReset)
+    TEST_F(EditorTransformComponentSelectionFixture, EntityOrientationRemainsConstantWhenOnlyManipulatorOrientationIsReset)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -275,11 +286,11 @@ namespace UnitTest
         const AZ::Transform manipulatorTransformAfter =
             GetManipulatorTransform().value_or(AZ::Transform::CreateIdentity());
 
-        // check postconditions - manipulator transform matches entity transform (manipulator override was cleared)
-        EXPECT_THAT(manipulatorTransformAfter.GetBasisY(), IsClose(AZ::Vector3::CreateAxisZ()));
-        EXPECT_THAT(manipulatorTransformAfter.GetBasisZ(), IsClose(-AZ::Vector3::CreateAxisY()));
+        // check postconditions - manipulator transform matches parent/world space (manipulator override was cleared)
+        EXPECT_THAT(manipulatorTransformAfter.GetBasisY(), IsClose(AZ::Vector3::CreateAxisY()));
+        EXPECT_THAT(manipulatorTransformAfter.GetBasisZ(), IsClose(AZ::Vector3::CreateAxisZ()));
 
-        for (const auto entityId : m_entityIds)
+        for (auto entityId : m_entityIds)
         {
             AZ::Quaternion entityOrientation;
             AZ::TransformBus::EventResult(
@@ -291,7 +302,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(EditorTransformComponentSelectionTest, TestComponentPropertyNotificationIsSentAfterModifyingSlice)
+    TEST_F(EditorTransformComponentSelectionFixture, TestComponentPropertyNotificationIsSentAfterModifyingSlice)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -336,6 +347,610 @@ namespace UnitTest
 
         UnitTest::DestroySlices(sliceAssets);
     }
+
+    TEST_F(EditorTransformComponentSelectionFixture, InvertSelectionIgnoresLockedAndHiddenEntities)
+    {
+        using ::testing::UnorderedElementsAreArray;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        // note: entity1 is selected in the fixture setup
+        AZ::EntityId entity2 = CreateDefaultEditorEntity("Entity2");
+        AZ::EntityId entity3 = CreateDefaultEditorEntity("Entity3");
+        AZ::EntityId entity4 = CreateDefaultEditorEntity("Entity4");
+        AZ::EntityId entity5 = CreateDefaultEditorEntity("Entity5");
+        AZ::EntityId entity6 = CreateDefaultEditorEntity("Entity6");
+
+        SetEntityVisibility(entity2, false);
+        SetEntityLockState(entity3, true);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // 'Invert Selection' shortcut
+        QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_I, Qt::ControlModifier | Qt::ShiftModifier);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        AzToolsFramework::EntityIdList selectedEntities;
+        ToolsApplicationRequestBus::BroadcastResult(
+            selectedEntities, &ToolsApplicationRequestBus::Events::GetSelectedEntities);
+
+        AzToolsFramework::EntityIdList expectedSelectedEntities = {entity4, entity5, entity6};
+
+        EXPECT_THAT(selectedEntities, UnorderedElementsAreArray(expectedSelectedEntities));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(EditorTransformComponentSelectionFixture, SelectAllIgnoresLockedAndHiddenEntities)
+    {
+        using ::testing::UnorderedElementsAreArray;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::EntityId entity2 = CreateDefaultEditorEntity("Entity2");
+        AZ::EntityId entity3 = CreateDefaultEditorEntity("Entity3");
+        AZ::EntityId entity4 = CreateDefaultEditorEntity("Entity4");
+        AZ::EntityId entity5 = CreateDefaultEditorEntity("Entity5");
+        AZ::EntityId entity6 = CreateDefaultEditorEntity("Entity6");
+
+        SetEntityVisibility(entity5, false);
+        SetEntityLockState(entity6, true);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // 'Select All' shortcut
+        QTest::keyPress(&m_editorActions.m_testWidget, Qt::Key_A, Qt::ControlModifier);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        AzToolsFramework::EntityIdList selectedEntities;
+        ToolsApplicationRequestBus::BroadcastResult(
+            selectedEntities, &ToolsApplicationRequestBus::Events::GetSelectedEntities);
+
+        AzToolsFramework::EntityIdList expectedSelectedEntities = {m_entity1, entity2, entity3, entity4};
+
+        EXPECT_THAT(selectedEntities, UnorderedElementsAreArray(expectedSelectedEntities));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // struct to contain input reference frame and expected orientation outcome based on
+    // the reference frame, selection and entity hierarchy
+    struct ReferenceFrameWithOrientation
+    {
+        ReferenceFrame m_referenceFrame; // the input reference frame (Local/Parent/World)
+        AZ::Quaternion m_orientation; // the orientation of the manipulator transform
+    };
+
+    // custom orientation to compare against for leaf/child entities (when ReferenceFrame is Local)
+    static const AZ::Quaternion ChildExpectedPivotLocalOrientationInWorldSpace =
+        AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3::CreateAxisZ(), AZ::DegToRad(45.0f));
+
+    // custom orientation to compare against for branch/parent entities (when ReferenceFrame is Parent)
+    static const AZ::Quaternion ParentExpectedPivotLocalOrientationInWorldSpace =
+        AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3::CreateAxisX(), AZ::DegToRad(45.0f));
+
+    // custom orientation to compare against for orientation/pivot override
+    static const AZ::Quaternion PivotOverrideLocalOrientationInWorldSpace =
+        AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3::CreateAxisY(), AZ::DegToRad(90.0f));
+
+    class EditorTransformComponentSelectionSingleEntityPivotFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(EditorTransformComponentSelectionSingleEntityPivotFixture, PivotOrientationMatchesReferenceFrameSingleEntity)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculatePivotOrientation;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ChildExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateZero()));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        const PivotOrientationResult pivotResult =
+            CalculatePivotOrientation(m_entityIds[0], referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionSingleEntityPivotFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ReferenceFrame::Local, ChildExpectedPivotLocalOrientationInWorldSpace},
+            ReferenceFrameWithOrientation{ReferenceFrame::Parent, AZ::Quaternion::CreateIdentity()},
+            ReferenceFrameWithOrientation{ReferenceFrame::World, AZ::Quaternion::CreateIdentity()}));
+
+    class EditorTransformComponentSelectionSingleEntityWithParentPivotFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionSingleEntityWithParentPivotFixture,
+        PivotOrientationMatchesReferenceFrameEntityWithParent)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculatePivotOrientation;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        const AZ::EntityId parentEntityId = CreateDefaultEditorEntity("Parent");
+        AZ::TransformBus::Event(m_entityIds[0], &AZ::TransformBus::Events::SetParent, parentEntityId);
+
+        AZ::TransformBus::Event(
+            parentEntityId, &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ParentExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateZero()));
+
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ChildExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateAxisZ(-5.0f)));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        const PivotOrientationResult pivotResult =
+            CalculatePivotOrientation(m_entityIds[0], referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // with a single entity selected with a parent the orientation reference frames follow as you'd expect
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionSingleEntityWithParentPivotFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ReferenceFrame::Local, ChildExpectedPivotLocalOrientationInWorldSpace},
+            ReferenceFrameWithOrientation{ReferenceFrame::Parent, ParentExpectedPivotLocalOrientationInWorldSpace},
+            ReferenceFrameWithOrientation{ReferenceFrame::World, AZ::Quaternion::CreateIdentity()}));
+
+    class EditorTransformComponentSelectionMultipleEntitiesPivotFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionMultipleEntitiesPivotFixture,
+        PivotOrientationMatchesReferenceFrameMultipleEntities)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculatePivotOrientationForEntityIds;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity2"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity3"));
+
+        // setup entities in arbitrary triangle arrangement
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(-10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[1], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[2], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY(10.0f)));
+
+        // note: EntityIdManipulatorLookup{} is unused during this test
+        EntityIdManipulatorLookups lookups {
+            {m_entityIds[0], EntityIdManipulatorLookup{}},
+            {m_entityIds[1], EntityIdManipulatorLookup{}},
+            {m_entityIds[2], EntityIdManipulatorLookup{}}
+        };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        const PivotOrientationResult pivotResult =
+            CalculatePivotOrientationForEntityIds(lookups, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // with a group selection, when the entities are not in a hierarchy, no matter what reference frame,
+    // we will always get an orientation aligned to the world
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionMultipleEntitiesPivotFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, AZ::Quaternion::CreateIdentity() },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, AZ::Quaternion::CreateIdentity() },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
+
+    class EditorTransformComponentSelectionMultipleEntitiesWithSameParentPivotFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionMultipleEntitiesWithSameParentPivotFixture,
+        PivotOrientationMatchesReferenceFrameMultipleEntitiesSameParent)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculatePivotOrientationForEntityIds;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity2"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity3"));
+
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ParentExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateAxisZ(-5.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[1], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[2], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY(10.0f)));
+
+        AZ::TransformBus::Event(m_entityIds[1], &AZ::TransformBus::Events::SetParent, m_entityIds[0]);
+        AZ::TransformBus::Event(m_entityIds[2], &AZ::TransformBus::Events::SetParent, m_entityIds[0]);
+
+        // note: EntityIdManipulatorLookup{} is unused during this test
+        // only select second two entities that are children of m_entityIds[0]
+        EntityIdManipulatorLookups lookups{
+            {m_entityIds[1], EntityIdManipulatorLookup{}},
+            {m_entityIds[2], EntityIdManipulatorLookup{}}
+        };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        const PivotOrientationResult pivotResult =
+            CalculatePivotOrientationForEntityIds(lookups, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // here two entities are selected with the same parent - local and parent will match parent space, with world
+    // giving the identity (aligned to world axes)
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionMultipleEntitiesWithSameParentPivotFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, ParentExpectedPivotLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, ParentExpectedPivotLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
+
+    class EditorTransformComponentSelectionMultipleEntitiesWithDifferentParentPivotFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionMultipleEntitiesWithDifferentParentPivotFixture,
+        PivotOrientationMatchesReferenceFrameMultipleEntitiesDifferentParent)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculatePivotOrientationForEntityIds;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity2"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity3"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity4"));
+
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ParentExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateAxisZ(-5.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[1], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[2], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY(10.0f)));
+
+        AZ::TransformBus::Event(m_entityIds[1], &AZ::TransformBus::Events::SetParent, m_entityIds[0]);
+        AZ::TransformBus::Event(m_entityIds[2], &AZ::TransformBus::Events::SetParent, m_entityIds[3]);
+
+        // note: EntityIdManipulatorLookup{} is unused during this test
+        // only select second two entities that are children of different m_entities
+        EntityIdManipulatorLookups lookups{
+            {m_entityIds[1], EntityIdManipulatorLookup{}},
+            {m_entityIds[2], EntityIdManipulatorLookup{}}
+        };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        const PivotOrientationResult pivotResult =
+            CalculatePivotOrientationForEntityIds(lookups, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // if multiple entities are selected without a parent in common, orientation will always be world again
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionMultipleEntitiesWithDifferentParentPivotFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, AZ::Quaternion::CreateIdentity() },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, AZ::Quaternion::CreateIdentity() },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
+
+    class EditorTransformComponentSelectionSingleEntityPivotAndOverrideFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionSingleEntityPivotAndOverrideFixture,
+        PivotOrientationMatchesReferenceFrameSingleEntityOptionalOverride)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculateSelectionPivotOrientation;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ChildExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateZero()));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        EntityIdManipulatorLookups lookups{
+            {m_entityIds[0], EntityIdManipulatorLookup{}}
+        };
+
+        // set override frame (orientation only)
+        OptionalFrame optionalFrame;
+        optionalFrame.m_orientationOverride = PivotOverrideLocalOrientationInWorldSpace;
+
+        const PivotOrientationResult pivotResult =
+            CalculateSelectionPivotOrientation(lookups, optionalFrame, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // local reference frame will still return local orientation for entity, but pivot override will trump parent
+    // space (world will still give identity alignment for axes)
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionSingleEntityPivotAndOverrideFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, ChildExpectedPivotLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, PivotOverrideLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
+
+    class EditorTransformComponentSelectionMultipleEntitiesPivotAndOverrideFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionMultipleEntitiesPivotAndOverrideFixture,
+        PivotOrientationMatchesReferenceFrameMultipleEntitiesOptionalOverride)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculateSelectionPivotOrientation;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity2"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity3"));
+
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(-10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[1], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[2], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY(10.0f)));
+
+        // note: EntityIdManipulatorLookup{} is unused during this test
+        EntityIdManipulatorLookups lookups{
+            {m_entityIds[0], EntityIdManipulatorLookup{}},
+            {m_entityIds[1], EntityIdManipulatorLookup{}},
+            {m_entityIds[2], EntityIdManipulatorLookup{}}
+        };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        OptionalFrame optionalFrame;
+        optionalFrame.m_orientationOverride = PivotOverrideLocalOrientationInWorldSpace;
+
+        const PivotOrientationResult pivotResult =
+            CalculateSelectionPivotOrientation(lookups, optionalFrame, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // with multiple entities selected, override frame wins in both local and parent reference frames
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionMultipleEntitiesPivotAndOverrideFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, PivotOverrideLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, PivotOverrideLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
+
+    class EditorTransformComponentSelectionMultipleEntitiesPivotAndNoOverrideFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionMultipleEntitiesPivotAndNoOverrideFixture,
+        PivotOrientationMatchesReferenceFrameMultipleEntitiesNoOptionalOverride)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculateSelectionPivotOrientation;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity2"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity3"));
+
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(-10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[1], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[2], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY(10.0f)));
+
+        // note: EntityIdManipulatorLookup{} is unused during this test
+        EntityIdManipulatorLookups lookups{
+            {m_entityIds[0], EntityIdManipulatorLookup{}},
+            {m_entityIds[1], EntityIdManipulatorLookup{}},
+            {m_entityIds[2], EntityIdManipulatorLookup{}}
+        };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        OptionalFrame optionalFrame;
+        const PivotOrientationResult pivotResult =
+            CalculateSelectionPivotOrientation(lookups, optionalFrame, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // multiple entities selected (no hierarchy) always get world aligned axes (identity)
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionMultipleEntitiesPivotAndNoOverrideFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, AZ::Quaternion::CreateIdentity() },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, AZ::Quaternion::CreateIdentity() },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
+
+    class EditorTransformComponentSelectionMultipleEntitiesSameParentPivotAndNoOverrideFixture
+        : public EditorTransformComponentSelectionFixture
+        , public ::testing::WithParamInterface<ReferenceFrameWithOrientation> {};
+
+    TEST_P(
+        EditorTransformComponentSelectionMultipleEntitiesSameParentPivotAndNoOverrideFixture,
+        PivotOrientationMatchesReferenceFrameMultipleEntitiesSameParentNoOptionalOverride)
+    {
+        using ETCS::PivotOrientationResult;
+        using ETCS::CalculateSelectionPivotOrientation;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity2"));
+        m_entityIds.push_back(CreateDefaultEditorEntity("Entity3"));
+
+        AZ::TransformBus::Event(
+            m_entityIds[0], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateFromQuaternionAndTranslation(
+                ParentExpectedPivotLocalOrientationInWorldSpace, AZ::Vector3::CreateAxisZ(-5.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[1], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f)));
+
+        AZ::TransformBus::Event(
+            m_entityIds[2], &AZ::TransformBus::Events::SetWorldTM,
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY(10.0f)));
+
+        AZ::TransformBus::Event(m_entityIds[1], &AZ::TransformBus::Events::SetParent, m_entityIds[0]);
+        AZ::TransformBus::Event(m_entityIds[2], &AZ::TransformBus::Events::SetParent, m_entityIds[0]);
+
+        // note: EntityIdManipulatorLookup{} is unused during this test
+        EntityIdManipulatorLookups lookups{
+            {m_entityIds[1], EntityIdManipulatorLookup{}},
+            {m_entityIds[2], EntityIdManipulatorLookup{}}
+        };
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        const ReferenceFrameWithOrientation referenceFrameWithOrientation = GetParam();
+
+        OptionalFrame optionalFrame;
+        const PivotOrientationResult pivotResult =
+            CalculateSelectionPivotOrientation(lookups, optionalFrame, referenceFrameWithOrientation.m_referenceFrame);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_THAT(pivotResult.m_worldOrientation, IsClose(referenceFrameWithOrientation.m_orientation));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // no optional frame, same parent, local and parent both get parent alignment (world reference frame
+    // gives world alignment (identity))
+    INSTANTIATE_TEST_CASE_P(
+        All,
+        EditorTransformComponentSelectionMultipleEntitiesSameParentPivotAndNoOverrideFixture,
+        testing::Values(
+            ReferenceFrameWithOrientation{ ReferenceFrame::Local, ParentExpectedPivotLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::Parent, ParentExpectedPivotLocalOrientationInWorldSpace },
+            ReferenceFrameWithOrientation{ ReferenceFrame::World, AZ::Quaternion::CreateIdentity() }));
 
     class EditorEntityModelVisibilityFixture
         : public ToolsApplicationFixture

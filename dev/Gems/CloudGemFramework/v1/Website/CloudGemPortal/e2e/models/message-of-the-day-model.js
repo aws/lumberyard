@@ -13,7 +13,7 @@
 var motdModel = module.exports = {
     // CGP defaults
     cog: $('.fa.fa-cog'),
-    thumbnail: $('thumbnail-gem[ng-reflect-title="Message of the day"]'),
+    thumbnail: $('thumbnail-gem[ng-reflect-title="Message of the Day"]'),
     refresh: $('i.fa.refresh-icon'),
     // Navigation Facets
     facets : $$('message-of-the-day-index facet-generator .row .tab a'),

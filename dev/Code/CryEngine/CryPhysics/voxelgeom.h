@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_VOXELGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CVoxelGeom
     : public CTriMesh
 {
@@ -48,5 +50,7 @@ public:
     voxelgrid m_grid;
     CVoxelBV m_Tree;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_VOXELGEOM_H

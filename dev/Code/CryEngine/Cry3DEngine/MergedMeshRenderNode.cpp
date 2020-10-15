@@ -33,6 +33,10 @@
 
 #include <StlUtils.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#endif
+
 namespace MergedMesh
 {
     static constexpr int s_defaultGroupId = 0;
@@ -1126,6 +1130,7 @@ static inline void ExtractSphereSet(
         }
         else
         {
+#if ENABLE_CRY_PHYSICS
             if (pent->GetiForeignData() == PHYS_FOREIGN_ID_ENTITY)
             {
                 IEntity* pEntity = (IEntity*)pent->GetForeignData(PHYS_FOREIGN_ID_ENTITY);
@@ -1150,6 +1155,9 @@ static inline void ExtractSphereSet(
                 }
                 ExtractSphereSet(pEnt, pColliders, nColliders, visibleAABB, true);
             }
+#else
+            return;
+#endif // ENABLE_CRY_PHYSICS
         }
         break;
     case PE_ARTICULATED:
@@ -1235,11 +1243,17 @@ static inline void QueryColliders(primitives::sphere*& pColliders, int& nCollide
     nColliders = 0;
     IPhysicalEntity* pents[MMRM_MAX_COLLIDERS];
     IPhysicalEntity** pentList = &pents[0];
+#if ENABLE_CRY_PHYSICS
     int nents = gEnv->pPhysicalWorld->GetEntitiesInBox(
             visibleAABB.min, visibleAABB.max,
             pentList,
             ent_sleeping_rigid | ent_rigid | ent_living | ent_allocate_list,
             MMRM_MAX_COLLIDERS);
+#else
+    // Retreive colliders
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    int nents = 0;
+#endif // ENABLE_CRY_PHYSICS
     nColliders = 0;
     for (int j = 0; j < min(nents, MMRM_MAX_COLLIDERS) && nColliders < MMRM_MAX_COLLIDERS; ++j)
     {
@@ -1250,10 +1264,12 @@ static inline void QueryColliders(primitives::sphere*& pColliders, int& nCollide
         ExtractSphereSet(pentList[j], pColliders, nColliders, visibleAABB);
     }
     std::sort(pColliders, pColliders + nColliders, SortCollider);
+#if ENABLE_CRY_PHYSICS
     if (pents != pentList)
     {
         gEnv->pPhysicalWorld->GetPhysUtils()->DeletePointer(pentList);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 inline void QueryProjectiles(SMMRMProjectile*& pColliders, int& nColliders, const AABB& visibleAABB)
@@ -4425,10 +4441,15 @@ void CMergedMeshesManager::Init()
     m_ActiveNodes.reserve(8192);
     m_VisibleNodes.reserve(8192);
 
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pPhysicalWorld)
     {
         gEnv->pPhysicalWorld->AddEventClient(EventPhysPostStep::id, CMergedMeshesManager::OnPhysPostStep, 0, 1.0f);
     }
+#else
+    // Projectile postphys step
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 }
 void CMergedMeshesManager::Shutdown()
 {    
@@ -4468,10 +4489,12 @@ void CMergedMeshesManager::Shutdown()
     }
     m_MeshListPresent = false;
 
+#if ENABLE_CRY_PHYSICS
     if (gEnv->pPhysicalWorld)
     {
         gEnv->pPhysicalWorld->RemoveEventClient(EventPhysPostStep::id, CMergedMeshesManager::OnPhysPostStep, 0);
     }
+#endif
 }
 
 void CMergedMeshesManager::UpdateViewDistRatio(float value)

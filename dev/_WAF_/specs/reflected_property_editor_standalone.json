@@ -1,0 +1,10 @@
+{
+    "description"           : "Standalone RPE for testing",
+    "visual_studio_name"    : "RPE",
+    "disable_game_projects" : true,
+    "platforms" : ["win", "darwin", "linux"],
+    "modules" :
+    [
+        "ReflectedPropertyEditorStandalone"
+    ]
+}

@@ -14,7 +14,6 @@
 #pragma once
 
 #include <AudioControl.h>
-#include <IAudioConnection.h>
 #include <AzCore/std/string/string_view.h>
 
 namespace AudioControls
@@ -23,7 +22,7 @@ namespace AudioControls
     // available levels where the controls can be stored
     struct SControlScope
     {
-        SControlScope() {}
+        SControlScope() = default;
         SControlScope(const AZStd::string& _name, bool _bOnlyLocal)
             : name(_name)
             , bOnlyLocal(_bOnlyLocal)
@@ -41,11 +40,11 @@ namespace AudioControls
     struct IATLControlModelListener
     {
         virtual ~IATLControlModelListener() = default;
-        virtual void OnControlAdded(CATLControl* pControl) {}
-        virtual void OnControlModified(CATLControl* pControl) {}
-        virtual void OnControlRemoved(CATLControl* pControl) {}
-        virtual void OnConnectionAdded(CATLControl* pControl, IAudioSystemControl* pMiddlewareControl) {}
-        virtual void OnConnectionRemoved(CATLControl* pControl, IAudioSystemControl* pMiddlewareControl) {}
+        virtual void OnControlAdded(CATLControl* control) {}
+        virtual void OnControlModified(CATLControl* control) {}
+        virtual void OnControlRemoved(CATLControl* control) {}
+        virtual void OnConnectionAdded(CATLControl* control, IAudioSystemControl* middlewareControl) {}
+        virtual void OnConnectionRemoved(CATLControl* control, IAudioSystemControl* middlewareControl) {}
     };
 
     //-------------------------------------------------------------------------------------------//
@@ -60,63 +59,51 @@ namespace AudioControls
         ~CATLControlsModel();
 
         void Clear();
-        CATLControl* CreateControl(const AZStd::string& sControlName, EACEControlType type, CATLControl* pParent = nullptr);
+        CATLControl* CreateControl(const AZStd::string& controlName, EACEControlType type, CATLControl* parent = nullptr);
         void RemoveControl(CID id);
 
         CATLControl* GetControlByID(CID id) const;
-        CATLControl* FindControl(const AZStd::string_view sControlName, EACEControlType eType, const AZStd::string_view sScope, CATLControl* pParent = nullptr) const;
-
-        // Platforms
-        AZStd::string GetPlatformAt(AZ::u32 index);
-        void AddPlatform(AZStd::string platformName);
-        AZ::u32 GetPlatformCount();
-
-        // Connection Groups
-        void AddConnectionGroup(const AZStd::string_view name);
-        int GetConnectionGroupId(const AZStd::string_view name);
-        int GetConnectionGroupCount() const;
-        AZStd::string GetConnectionGroupAt(int index) const;
+        CATLControl* FindControl(const AZStd::string_view controlName, EACEControlType type, const AZStd::string_view scope, CATLControl* parent = nullptr) const;
 
         // Scope
-        void AddScope(AZStd::string scopeName, bool bLocalOnly = false);
+        void AddScope(AZStd::string scopeName, bool localOnly = false);
         void ClearScopes();
-        int GetScopeCount() const;
-        SControlScope GetScopeAt(int index) const;
+        size_t GetScopeCount() const;
+        SControlScope GetScopeAt(size_t index) const;
         bool ScopeExists(AZStd::string scopeName) const;
 
         // Helper functions
-        bool IsNameValid(const AZStd::string_view name, EACEControlType type, const AZStd::string_view scope, const CATLControl* const pParent = nullptr) const;
-        AZStd::string GenerateUniqueName(const AZStd::string_view sRootName, EACEControlType eType, const AZStd::string_view sScope, const CATLControl* const pParent = nullptr) const;
+        bool IsNameValid(const AZStd::string_view name, EACEControlType type, const AZStd::string_view scope, const CATLControl* const parent = nullptr) const;
+        AZStd::string GenerateUniqueName(const AZStd::string_view rootName, EACEControlType type, const AZStd::string_view scope, const CATLControl* const parent = nullptr) const;
         void ClearAllConnections();
         void ReloadAllConnections();
 
-        void AddListener(IATLControlModelListener* pListener);
-        void RemoveListener(IATLControlModelListener* pListener);
-        void SetSuppressMessages(bool bSuppressMessages);
-        bool IsTypeDirty(EACEControlType eType);
+        void AddListener(IATLControlModelListener* modelListener);
+        void RemoveListener(IATLControlModelListener* modelListener);
+        void SetSuppressMessages(bool suppressMessages);
+        bool IsTypeDirty(EACEControlType type);
         bool IsDirty();
         void ClearDirtyFlags();
 
     private:
-        void OnControlAdded(CATLControl* pControl);
-        void OnControlModified(CATLControl* pControl);
-        void OnConnectionAdded(CATLControl* pControl, IAudioSystemControl* pMiddlewareControl);
-        void OnConnectionRemoved(CATLControl* pControl, IAudioSystemControl* pMiddlewareControl);
-        void OnControlRemoved(CATLControl* pControl);
+        void OnControlAdded(CATLControl* control);
+        void OnControlModified(CATLControl* control);
+        void OnConnectionAdded(CATLControl* control, IAudioSystemControl* middlewareControl);
+        void OnConnectionRemoved(CATLControl* control, IAudioSystemControl* middlewareControl);
+        void OnControlRemoved(CATLControl* control);
 
         CID GenerateUniqueId() { return ++m_nextId; }
 
         AZStd::shared_ptr<CATLControl> TakeControl(CID nID);
-        void InsertControl(AZStd::shared_ptr<CATLControl> pControl);
+        void InsertControl(AZStd::shared_ptr<CATLControl> control);
 
         static CID m_nextId;
-        AZStd::vector<AZStd::shared_ptr<CATLControl> > m_controls;
-        AZStd::vector<AZStd::string> m_platforms;
+        AZStd::vector<AZStd::shared_ptr<CATLControl>> m_controls;
         AZStd::vector<SControlScope> m_scopes;
-        AZStd::vector<AZStd::string> m_connectionGroups;
 
         AZStd::vector<IATLControlModelListener*> m_listeners;
-        bool m_bSuppressMessages;
-        bool m_bControlTypeModified[eACET_NUM_TYPES];
+        bool m_suppressMessages;
+        bool m_isControlTypeModified[eACET_NUM_TYPES];
     };
+
 } // namespace AudioControls

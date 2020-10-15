@@ -495,6 +495,7 @@ void CModelMesh::DrawDebugInfo(CDefaultSkeleton* pCSkel, int nLOD, const Matrix3
         if (!bNoText)
         {
             int nPhysTrisCount = 0;
+#if ENABLE_CRY_PHYSICS
             const phys_geometry* pgeom;
             for (int i = pCSkel->GetJointCount() - 1; i >= 0; --i)
             {
@@ -503,6 +504,7 @@ void CModelMesh::DrawDebugInfo(CDefaultSkeleton* pCSkel, int nLOD, const Matrix3
                     nPhysTrisCount += pgeom->pGeom->GetPrimitiveCount();
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
 
             if (nPhysTrisCount == 0)
             {

@@ -1120,7 +1120,7 @@ namespace CommandSystem
         const size_t numFilenames = filenames.size();
 
         // Construct the command.
-        const AZStd::string commandGroupName = AZStd::string::format("%s %d motion set%s", reload ? "Reload" : "Load", numFilenames, (numFilenames > 1) ? "s" : "");
+        const AZStd::string commandGroupName = AZStd::string::format("%s %zu motion set%s", reload ? "Reload" : "Load", numFilenames, (numFilenames > 1) ? "s" : "");
         MCore::CommandGroup commandGroup(commandGroupName);
 
         // Clear all other motion sets first.

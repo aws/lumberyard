@@ -1561,6 +1561,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 //////////////////////////////////////////////////////////////////////////
 float CVegetationMap::CalcHeightOnBrushes(const Vec3& p, const Vec3& posUpper)
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* world = GetIEditor()->GetSystem()->GetIPhysicalWorld();
     ray_hit hit;
 
@@ -1595,6 +1596,11 @@ float CVegetationMap::CalcHeightOnBrushes(const Vec3& p, const Vec3& posUpper)
     }
 
     return p.z;
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    AZ_UNUSED(posUpper);
+    return p.z;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 

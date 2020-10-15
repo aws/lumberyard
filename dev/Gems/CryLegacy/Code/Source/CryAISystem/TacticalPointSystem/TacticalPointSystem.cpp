@@ -42,6 +42,7 @@ MTJ 30/06/09 - QueryContext's IAIActor should be a CAIActor internally
 #include "Puppet.h"
 
 #include "Navigation/NavigationSystem/NavigationSystem.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 // Maximum time that an async query can execute before it is aborted as an error
 const float MAX_SYNC_TIME_MS = 20;
@@ -1799,7 +1800,12 @@ bool CTacticalPointSystem::GenerateInternal(TTacticalPointQuery query, const Que
 
                 // if point generated is beneath ground
                 // ...but not too low [5/7/2010 evgeny]
-                float fTerrainHeightPlus1m = pEngine->GetTerrainElevation(vPoint.x, vPoint.y) + .2f;
+                float elevation = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+                AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(elevation
+                    , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+                    , vPoint.x, vPoint.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
+                float fTerrainHeightPlus1m = elevation + .2f;
                 AABB aabb;
                 pAIActor->GetLocalBounds(aabb);
                 float fActorHeight = aabb.max.z - aabb.min.z;

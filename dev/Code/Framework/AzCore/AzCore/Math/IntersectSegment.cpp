@@ -969,14 +969,15 @@ int AZ::Intersect::IntersectRayQuad(
     Vector3 AB = vertexB - vertexA;
     Vector3 QA = vertexA - rayOrigin;
 
-    float da = rayDir.Dot(QA);
-    if (da < 0.0f)
+    Vector3 triN = AB.Cross(AC); // the normal of the triangle ABC
+    float dn = rayDir.Dot(triN);
+
+    // Early-out if ray is facing away from ABC triangle
+    if (dn * triN.Dot(QA) < 0)
     {
         return 0;
     }
 
-    Vector3 triN = AB.Cross(AC); // the normal of the triangle ABC
-    float dn = rayDir.Dot(triN);
     Vector3 E = rayDir.Cross(QA);
     float dnAbs = 0.0f;
 

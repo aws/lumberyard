@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -173,3 +175,5 @@ int CHeightfieldBV::GetNodeContents(int iNode, BV* pBVCollider, int bColliderUse
 
     return nPrims;
 }
+
+#endif // ENABLE_CRY_PHYSICS

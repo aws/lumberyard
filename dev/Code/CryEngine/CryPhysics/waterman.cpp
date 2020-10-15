@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -1041,3 +1043,5 @@ void CWaterMan::DrawHelpers(IPhysRenderer* pRenderer)
         }
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

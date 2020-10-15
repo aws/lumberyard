@@ -12,19 +12,12 @@
 #include "Visibility_precompiled.h"
 
 #include <AzTest/AzTest.h>
-#include <Mocks/ITimerMock.h>
-#include <Mocks/ICryPakMock.h>
-#include <Mocks/IConsoleMock.h>
-#include <Mocks/ISystemMock.h>
+#include <Mocks/I3DEngineMock.h>
+
+
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>
-#include <AzCore/Math/Random.h>
-#include <AzCore/Memory/Memory.h>
-#include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/Script/ScriptContext.h>
-#include <AzCore/std/chrono/clocks.h>
 
 #include <AzFramework/Components/TransformComponent.h>
 
@@ -33,6 +26,17 @@
 #include <PortalComponent.h>
 #include <VisAreaComponent.h>
 
+#if VISIBILITY_EDITOR
+#include <EditorOccluderAreaComponent.h>
+#include <EditorPortalComponent.h>
+#include <EditorVisAreaComponent.h>
+
+#include <Editor/Util/EditorUtils.h>
+#include <Editor/Lib/Tests/IEditorMock.h>
+#endif
+
+struct IEditor;
+
 class VisibilityTest
     : public ::testing::Test
 {
@@ -40,6 +44,8 @@ protected:
 
     void SetUp() override
     {
+        using ::testing::_;
+        
         AZ::ComponentApplication::Descriptor appDesc;
         appDesc.m_memoryBlocksByteSize = 10 * 1024 * 1024;
         appDesc.m_recordingMode = AZ::Debug::AllocationRecords::RECORD_FULL;
@@ -54,21 +60,79 @@ protected:
         m_systemEntity = m_application.Create(appDesc, appStartup);
         m_systemEntity->Init();
         m_systemEntity->Activate();
+        
+        m_priorEnv = gEnv;
+        m_data.reset(new DataMembers);
+
+        memset(&m_data->m_stubEnv, 0, sizeof(SSystemGlobalEnvironment));
+        m_data->m_stubEnv.p3DEngine = &m_data->m_3DEngine;
+        
+#if VISIBILITY_EDITOR
+        m_previousEditor = GetIEditor();
+        SetIEditor(&(m_data->m_mockEditor));
+        
+        ON_CALL(m_data->m_mockEditor, Get3DEngine())
+                .WillByDefault(::testing::Return(&m_data->m_3DEngine));
+#endif
+        
+        ON_CALL(m_data->m_3DEngine, CreateVisArea(_))
+                .WillByDefault(::testing::Return(m_visArea));
+        ON_CALL(m_data->m_3DEngine, UpdateVisArea(_, _, _, _, _, _))
+                .WillByDefault(Invoke(this, &VisibilityTest::UpdateVisArea));
+
+            gEnv = &m_data->m_stubEnv;
 
         m_application.RegisterComponentDescriptor(AzFramework::TransformComponent::CreateDescriptor());
         m_application.RegisterComponentDescriptor(Visibility::OccluderAreaComponent::CreateDescriptor());
         m_application.RegisterComponentDescriptor(Visibility::PortalComponent::CreateDescriptor());
         m_application.RegisterComponentDescriptor(Visibility::VisAreaComponent::CreateDescriptor());
     }
+    
+    void UpdateVisArea(IVisArea* pArea, const Vec3* pPoints, int nCount, const char* szName, const SVisAreaInfo& info, bool bReregisterObjects)
+    {
+        m_visAreaUpdateCalled = true;
+
+        char sTemp[64];
+        cry_strcpy(sTemp, szName);
+        _strlwr_s(sTemp, sizeof(sTemp));
+
+        if (strstr(sTemp, "visarea"))
+        {
+            m_visAreaTagFound = true;
+        }
+    }
 
     void TearDown() override
     {
         delete m_systemEntity;
         m_application.Destroy();
-    }
+        
+#if VISIBILITY_EDITOR
+        SetIEditor(m_previousEditor);
+#endif
+        
+        gEnv = m_priorEnv;
+        m_data.reset();
 
+    }
+    
+    struct DataMembers
+    {
+        ::testing::NiceMock<I3DEngineMock> m_3DEngine;
+#if VISIBILITY_EDITOR
+        ::testing::NiceMock<CEditorMock> m_mockEditor;
+#endif
+        SSystemGlobalEnvironment m_stubEnv;
+    };
+
+    IEditor* m_previousEditor = nullptr;
+    IVisArea* m_visArea = reinterpret_cast<IVisArea*>(0x1234);
     AZ::ComponentApplication m_application;
     AZ::Entity* m_systemEntity;
+    SSystemGlobalEnvironment* m_priorEnv = nullptr;
+    AZStd::unique_ptr<DataMembers> m_data;
+    bool m_visAreaUpdateCalled = false;
+    bool m_visAreaTagFound = false;
 };
 
 TEST_F(VisibilityTest, ExampleTest)
@@ -77,9 +141,6 @@ TEST_F(VisibilityTest, ExampleTest)
 }
 
 #if VISIBILITY_EDITOR
-#include <EditorOccluderAreaComponent.h>
-#include <EditorPortalComponent.h>
-#include <EditorVisAreaComponent.h>
 
 TEST_F(VisibilityTest, Occluder_TestIntersect)
 {
@@ -186,6 +247,30 @@ TEST_F(VisibilityTest, VisArea_TestIntersect)
     const AZ::Vector3 badDir(100, 100, -1);
     didHit = vaComp->EditorSelectionIntersectRayViewport(viewportInfo, src, badDir, distance);
     ASSERT_FALSE(didHit);
+}
+
+TEST_F(VisibilityTest, VisArea_TestVisAreaUpdates_FT)
+{
+    AZ::Entity* testEntity = aznew AZ::Entity();
+    ASSERT_TRUE(testEntity != nullptr);
+    ASSERT_FALSE(m_visAreaUpdateCalled);
+    ASSERT_FALSE(m_visAreaTagFound);
+
+    testEntity->CreateComponent<AzFramework::TransformComponent>();
+    testEntity->CreateComponent<Visibility::EditorVisAreaComponent>();
+    testEntity->Init();
+    testEntity->Activate();
+
+    Visibility::EditorVisAreaComponent* vaComp = testEntity->FindComponent<Visibility::EditorVisAreaComponent>();
+    ASSERT_TRUE(vaComp != nullptr);
+    
+    vaComp->SetAffectedBySun(true);
+
+    // UpdateVisArea searches for the type by name, if this changes the editor vis area component must be changed
+    // to match, as it prefixes the visarea tag so that vis areas work as expected in the edtior.
+    ASSERT_TRUE(m_visAreaUpdateCalled);
+    ASSERT_TRUE(m_visAreaTagFound);
+    
 }
 #endif
 

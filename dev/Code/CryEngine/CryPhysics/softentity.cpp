@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "overlapchecks.h"
@@ -2836,3 +2838,5 @@ void CSoftEntity::GetMemoryStatistics(ICrySizer* pSizer) const
 #undef CMemStream
 #undef se_vertex
 #undef m_bAwake
+
+#endif // ENABLE_CRY_PHYSICS

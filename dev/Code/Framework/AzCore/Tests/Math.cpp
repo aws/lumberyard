@@ -2936,6 +2936,12 @@ namespace UnitTest
                     Vector3 position = linearSpline.GetPosition(SplineAddress(3, 0.0f));
                     EXPECT_TRUE(position == Vector3(0.0f, 5.0f, 0.0f));
                 }
+
+                {
+                    // out of bounds access (return position of last vertex - clamped)
+                    Vector3 position = linearSpline.GetPosition(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 5.0f, 0.0f));
+                }
             }
 
             {
@@ -2961,6 +2967,12 @@ namespace UnitTest
                 {
                     Vector3 position = linearSpline.GetPosition(linearSpline.GetAddressByDistance(18.0f));
                     EXPECT_TRUE(position == Vector3(0.0f, 2.0f, 0.0f));
+                }
+
+                {
+                    // out of bounds access (return position of last/first vertex - clamped)
+                    Vector3 position = linearSpline.GetPosition(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
             }
         }
@@ -2994,6 +3006,12 @@ namespace UnitTest
                 {
                     Vector3 normal = linearSpline.GetNormal(linearSpline.GetAddressByDistance(4.0f));
                     EXPECT_TRUE(normal == Vector3(-1.0f, 0.0f, 0.0f));
+                }
+
+                {
+                    // out of bounds access (return normal of last vertex - clamped)
+                    Vector3 normal = linearSpline.GetNormal(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(normal == Vector3(1.0f, 0.0f, 0.0f));
                 }
             }
 
@@ -3590,6 +3608,12 @@ namespace UnitTest
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(2, 0.0f));
                     EXPECT_TRUE(position == Vector3(10.0f, 10.0f, 0.0f));
                 }
+
+                {
+                    // out of bounds access (return position of last vertex that is not a control point - clamped)
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(position == Vector3(10.0f, 10.0f, 0.0f));
+                }
             }
 
             {
@@ -3626,6 +3650,12 @@ namespace UnitTest
                     Vector3 position = catmullRomSpline.GetPosition(SplineAddress(0, 0.5f));
                     EXPECT_TRUE(position == Vector3(-1.25f, 5.0f, 0.0f));
                 }
+
+                {
+                    // out of bounds access (return position of first/last vertex - clamped)
+                    Vector3 position = catmullRomSpline.GetPosition(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
             }
         }
 
@@ -3639,6 +3669,11 @@ namespace UnitTest
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(0.0f, 10.0f, 0.0f));
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 10.0f, 0.0f));
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
+
+                {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress());
+                    EXPECT_TRUE(normal.IsClose(Vector3(-5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
 
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.0f));
@@ -3664,6 +3699,12 @@ namespace UnitTest
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(3, 0.5f));
                     EXPECT_TRUE(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
                 }
+
+                {
+                    // out of bounds access (return normal of last vertex that is not a control point - clamped)
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(5.0f, 5.0f, 0.0f).GetNormalized()));
+                }
             }
 
             {
@@ -3677,6 +3718,11 @@ namespace UnitTest
                 catmullRomSpline.m_vertexContainer.AddVertex(Vector3(10.0f, 0.0f, 0.0f));
 
                 {
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress());
+                    EXPECT_TRUE(normal.IsClose(Vector3(-5.0f, -5.0f, 0.0f).GetNormalized()));
+                }
+
+                {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(1, 0.5f));
                     EXPECT_TRUE(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
                 }
@@ -3684,6 +3730,12 @@ namespace UnitTest
                 {
                     Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(3, 0.5f));
                     EXPECT_TRUE(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                }
+
+                {
+                    // out of bounds access (return normal of last vertex that is not a control point - clamped)
+                    Vector3 normal = catmullRomSpline.GetNormal(SplineAddress(5, 0.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(-5.0f, -5.0f, 0.0f).GetNormalized()));
                 }
             }
         }
@@ -4163,6 +4215,12 @@ namespace UnitTest
                     Vector3 position = bezierSpline.GetPosition(SplineAddress(bezierSpline.GetSegmentCount() - 1, 1.0f));
                     EXPECT_TRUE(position == Vector3(10.0f, 0.0f, 0.0f));
                 }
+
+                {
+                    // out of bounds access (return position of last vertex - clamped)
+                    Vector3 position = bezierSpline.GetPosition(SplineAddress(5, 0.5f));
+                    EXPECT_TRUE(position == Vector3(10.0f, 0.0f, 0.0f));
+                }
             }
 
             {
@@ -4184,6 +4242,12 @@ namespace UnitTest
                     Vector3 position = bezierSpline.GetPosition(SplineAddress(bezierSpline.GetSegmentCount() - 1, 1.0f));
                     EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
                 }
+
+                {
+                    // out of bounds access (return position of last/first vertex - clamped)
+                    Vector3 position = bezierSpline.GetPosition(SplineAddress(5, 0.5f));
+                    EXPECT_TRUE(position == Vector3(0.0f, 0.0f, 0.0f));
+                }
             }
         }
 
@@ -4202,6 +4266,22 @@ namespace UnitTest
                     Vector3 normal = bezierSpline.GetNormal(SplineAddress(1, 0.5f));
                     EXPECT_TRUE(normal.IsClose(Vector3(0.0f, 1.0f, 0.0f)));
                 }
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(0, 0.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(-0.955f, -0.294f, 0.0f)));
+                }
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(3, 0.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.955f, -0.294f, 0.0f)));
+                }
+
+                {
+                    // out of bounds access (return normal of last vertex - clamped)
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(5, 0.5f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.955f, -0.294f, 0.0f)));
+                }
             }
 
             {
@@ -4217,6 +4297,27 @@ namespace UnitTest
                 {
                     Vector3 normal = bezierSpline.GetNormal(SplineAddress(3, 0.5f));
                     EXPECT_TRUE(normal.IsClose(Vector3(0.0f, -1.0f, 0.0f)));
+                }
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(0, 0.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(-0.707f, -0.707f, 0.0f)));
+                }
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(3, 0.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(0.707f, -0.707f, 0.0f)));
+                }
+
+                {
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(3, 1.0f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(-0.707f, -0.707f, 0.0f)));
+                }
+
+                {
+                    // out of bounds access (return normal of last vertex - clamped)
+                    Vector3 normal = bezierSpline.GetNormal(SplineAddress(5, 0.5f));
+                    EXPECT_TRUE(normal.IsClose(Vector3(-0.707f, -0.707f, 0.0f)));
                 }
             }
         }
@@ -5164,6 +5265,64 @@ namespace UnitTest
         float t = 0.0f;
         int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
         EXPECT_EQ(hit, 1);
+    }
+
+    // Previously IntersectRayQuad incorrectly rejected rays which pointed away from vertexA, but still intersected
+    // the quad. This can only happen when the ray origin is close to the quad, and the _Near tests tests that case.
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectLineAC_CCW_Near)
+    {
+        // Test Hit
+        Vector3 rayOrigin = ((m_vertexA + m_vertexC) * 0.5f) + (0.5f * m_normal);
+        Vector3 collisionPoint = (0.1f * m_vertexA + 0.9f * m_vertexC); // a point close to vertexC but inside the quad
+        Vector3 rayDir = collisionPoint - rayOrigin;
+
+        float expectedDist = rayDir.GetLength();
+        rayDir.NormalizeExact();
+
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 1);
+
+        const float epsilon = 0.001f;
+        EXPECT_NEAR(t, expectedDist, epsilon);
+
+        // Test Miss
+        collisionPoint = (-0.1f * m_vertexA + 1.1f * m_vertexC); // a point close to vertexC but outside the quad
+        rayDir = collisionPoint - rayOrigin;
+
+        rayDir.NormalizeExact();
+
+        hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 0);
+
+    }
+
+    TEST_F(MATH_IntersectRayQuadTest, RayIntersectLineAC_CW_Near)
+    {
+        // Test Hit
+        Vector3 rayOrigin = ((m_vertexA + m_vertexC) * 0.5f) + (0.5f * m_normal);
+        Vector3 collisionPoint = (0.1f * m_vertexA + 0.9f * m_vertexC); // a point close to vertexC
+        Vector3 rayDir = collisionPoint - rayOrigin;
+
+        float expectedDist = rayDir.GetLength();
+        rayDir.NormalizeExact();
+
+        float t = 0.0f;
+        int hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexD, m_vertexC, m_vertexB, m_vertexA, t);
+        EXPECT_EQ(hit, 1);
+
+        const float epsilon = 0.001f;
+        EXPECT_NEAR(t, expectedDist, epsilon);
+
+        // Test Miss
+        collisionPoint = (-0.1f * m_vertexA + 1.1f * m_vertexC); // a point close to vertexC but outside the quad
+        rayDir = collisionPoint - rayOrigin;
+
+        rayDir.NormalizeExact();
+
+        hit = Intersect::IntersectRayQuad(rayOrigin, rayDir, m_vertexA, m_vertexB, m_vertexC, m_vertexD, t);
+        EXPECT_EQ(hit, 0);
     }
 
     TEST_F(MATH_IntersectRayQuadTest, RayShootOverAB_CCW)

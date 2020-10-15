@@ -12,7 +12,10 @@
 
 #include <NvCloth_precompiled.h>
 
+#include <AzCore/Interface/Interface.h>
+
 #include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/WindBus.h>
 
 #include <System/Cloth.h>
 #include <System/ClothConfiguration.h>
@@ -129,7 +132,7 @@ namespace NvCloth
                 *m_fabric));
             AZ_Assert(m_cloth, "Failed to create cloth");
 
-            InitializeCloth(config);
+            SetConfiguration(config);
 
             // Initialize simulation data
             m_simParticles = m_initialParticles;
@@ -198,12 +201,17 @@ namespace NvCloth
             0, m_cloth->getNumCapsules());
     }
 
+    void Cloth::SetWindVelocity(const AZ::Vector3& windVelocity)
+    {
+        m_cloth->setWindVelocity(PxMathConvert(windVelocity));
+    }
+
     void Cloth::ClearInertia()
     {
         m_cloth->clearInertia();
     }
 
-    void Cloth::InitializeCloth(const ClothConfiguration& config)
+    void Cloth::SetConfiguration(const ClothConfiguration& config)
     {
         // Fabric Phases
         SetupFabricPhases(config);
@@ -236,7 +244,19 @@ namespace NvCloth
         m_cloth->setCentrifugalInertia(PxMathConvert(config.m_centrifugalInertia));
 
         // Wind parameters
-        m_cloth->setWindVelocity(PxMathConvert(config.m_windVelocity));
+        AZ::Vector3 windVelocity = config.m_windVelocity;
+        if (!config.m_useCustomWindVelocity)
+        {
+            const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+            if (windRequests)
+            {
+                const AZ::Vector3 globalWind = windRequests->GetGlobalWind();
+                const physx::PxVec3& translation = m_cloth->getTranslation();
+                const AZ::Vector3 localWind = windRequests->GetWind(PxMathConvert(translation));
+                windVelocity = globalWind + localWind;
+            }
+        }
+        m_cloth->setWindVelocity(PxMathConvert(windVelocity));
         const float airDragMaxValue = 0.97f;
         m_cloth->setDragCoefficient(airDragMaxValue * config.m_airDragCoefficient);
         const float airLiftMaxValue = 0.8f;

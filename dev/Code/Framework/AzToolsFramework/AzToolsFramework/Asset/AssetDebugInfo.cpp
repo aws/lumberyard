@@ -14,6 +14,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/AssetCatalog/PlatformAddressedAssetCatalogBus.h>
+#include <cinttypes>
 
 
 const char AssetListDebugFileExtension[] = "assetlistdebug";
@@ -45,7 +46,8 @@ namespace AzToolsFramework
             AZStd::string fileName = infoList.m_fileDebugInfoList[m_assetId].m_assetRelativePath;
 
             // Only print size on the top asset, not the graph below it.
-            AZStd::string sizeString = tabString.empty() ? AZStd::string::format(" - %d bytes", infoList.m_fileDebugInfoList[m_assetId].m_fileSize) : "";
+            uint64_t filesize = infoList.m_fileDebugInfoList[m_assetId].m_fileSize;
+            AZStd::string sizeString = tabString.empty() ? AZStd::string::format(" - %" PRIu64 " bytes", filesize) : "";
 
             infoList.m_humanReadableString += tabString;
 
@@ -100,7 +102,8 @@ namespace AzToolsFramework
         const AzFramework::PlatformId& platformIndex,
         AssetFileDebugInfoList* debugList,
         AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet,
-        const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
+        const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
+        const AZStd::vector<AZStd::string>& wildcardPatternExclusionList)
     {
         using namespace AzToolsFramework::AssetCatalog;
 
@@ -136,6 +139,20 @@ namespace AzToolsFramework
             }
 
             if (exclusionList.find(productDependency.m_assetId) != exclusionList.end())
+            {
+                continue;
+            }
+
+            bool wildcardPatternMatch = false;
+            for (const AZStd::string& wildcardPattern : wildcardPatternExclusionList)
+            {
+                PlatformAddressedAssetCatalogRequestBus::EventResult(wildcardPatternMatch, platformIndex, &PlatformAddressedAssetCatalogRequestBus::Events::DoesAssetIdMatchWildcardPattern, assetId, wildcardPattern);
+                if (wildcardPatternMatch)
+                {
+                    break;
+                }
+            }
+            if (wildcardPatternMatch)
             {
                 continue;
             }

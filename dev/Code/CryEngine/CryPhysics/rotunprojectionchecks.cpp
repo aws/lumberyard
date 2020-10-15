@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "unprojectionchecks.h"
@@ -1097,3 +1099,5 @@ int sphere_ray_rot_unprojection(unprojection_mode* pmode, const sphere* psph, in
 }
 
 #undef UPDATE_IDBEST
+
+#endif // ENABLE_CRY_PHYSICS

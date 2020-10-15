@@ -10,6 +10,8 @@
 *
 */
 
+#if ENABLE_CRY_PHYSICS
+
 #pragma once
 
 #include <LmbrCentral/Physics/ForceVolumeRequestBus.h>
@@ -188,3 +190,5 @@ namespace LmbrCentral
         float m_damping = 1.f;
     };
 }
+
+#endif // ENABLE_CRY_PHYSICS

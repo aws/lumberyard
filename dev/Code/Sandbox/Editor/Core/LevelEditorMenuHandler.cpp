@@ -36,6 +36,7 @@
 #include <QUrlQuery>
 #include <QDesktopServices>
 #include <QHBoxLayout>
+#include <QUrl>
 
 using namespace AZ;
 using namespace AzToolsFramework;
@@ -1101,17 +1102,16 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
 
     // Layouts
 
+#ifndef OTHER_ACTIVE
     // Disable Layouts menu if other is active
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
-        connect(m_viewPaneManager, &QtViewPaneManager::savedLayoutsChanged, this, [this]()
-            {
-                UpdateViewLayoutsMenu(m_layoutsMenu);
-            });
+    m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
+    connect(m_viewPaneManager, &QtViewPaneManager::savedLayoutsChanged, this, [this]()
+        {
+            UpdateViewLayoutsMenu(m_layoutsMenu);
+        });
 
-        UpdateViewLayoutsMenu(m_layoutsMenu);
-    }
+    UpdateViewLayoutsMenu(m_layoutsMenu);
+#endif
 
     // Viewport
     auto viewportViewsMenuWrapper = viewMenu.AddMenu(tr("Viewport"));
@@ -1140,10 +1140,9 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     viewportViewsMenuWrapper.AddAction(ID_VIEW_GRIDSETTINGS);
     viewportViewsMenuWrapper.AddSeparator();
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        viewportViewsMenuWrapper.AddAction(ID_VIEW_CONFIGURELAYOUT);
-    }
+#ifndef OTHER_ACTIVE
+    viewportViewsMenuWrapper.AddAction(ID_VIEW_CONFIGURELAYOUT);
+#endif
     viewportViewsMenuWrapper.AddSeparator();
 
     viewportViewsMenuWrapper.AddAction(ID_DISPLAY_GOTOPOSITION);
@@ -1234,14 +1233,15 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
 
                 QUrl docSearchUrl("https://docs.aws.amazon.com/search/doc-search.html");
                 QUrlQuery docSearchQuery;
+                QString lumberyardProductString = QUrl::toPercentEncoding("Amazon Lumberyard");
                 // The order of these QueryItems matters. wiki Search URL Formatting
                 docSearchQuery.addQueryItem("searchPath", "documentation-product");
                 docSearchQuery.addQueryItem("searchQuery", text);
-                docSearchQuery.addQueryItem("this_doc_product", "Lumberyard");
+                docSearchQuery.addQueryItem("this_doc_product", lumberyardProductString);
                 docSearchQuery.addQueryItem("ref", "lye");
                 docSearchQuery.addQueryItem("ev", productVersionString);
                 docSearchUrl.setQuery(docSearchQuery);
-                docSearchUrl.setFragment("facet_doc_product=Lumberyard");
+                docSearchUrl.setFragment(QString("facet_doc_product=%1").arg(lumberyardProductString));
                 QDesktopServices::openUrl(docSearchUrl);
             }
             lineEdit->clear();

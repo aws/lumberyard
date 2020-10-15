@@ -408,7 +408,6 @@ enum PublicRenderPrimitiveType
 #define R_GL_RENDERER 6
 #define R_METAL_RENDERER 7
 #define R_DX12_RENDERER 8
-#define R_OTHER_RENDERER 9
 
 //////////////////////////////////////////////////////////////////////
 // Render features
@@ -902,7 +901,6 @@ enum ERenderType
     eRT_Provo,
     eRT_OpenGL,
     eRT_Metal,
-    eRT_Other,
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -1119,6 +1117,11 @@ struct IRenderer
     virtual void RemoveRenderDebugListener(IRenderDebugListener* pRenderDebugListener) = 0;
 
     virtual ERenderType GetRenderType() const = 0;
+
+    virtual const char* GetRenderDescription() const
+    {
+        return nullptr;
+    }
 
     // Summary:
     //  Initializes the renderer, params are self-explanatory.

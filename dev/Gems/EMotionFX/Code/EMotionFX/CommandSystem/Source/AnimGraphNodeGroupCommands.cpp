@@ -419,7 +419,7 @@ namespace CommandSystem
         const uint32 groupIndex = animGraph->FindNodeGroupIndexByName(groupName.c_str());
         if (groupIndex == MCORE_INVALIDINDEX32)
         {
-            outResult = AZStd::string::format("Cannot add node group to anim graph. Node group index is invalid.", groupIndex);
+            outResult = AZStd::string::format("Cannot add node group to anim graph. Node group index %u is invalid.", groupIndex);
             return false;
         }
 

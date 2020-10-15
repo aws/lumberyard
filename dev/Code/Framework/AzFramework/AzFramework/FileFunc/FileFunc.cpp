@@ -66,7 +66,7 @@ namespace AzFramework
             if (document.Parse(jsonText.c_str()).HasParseError())
             {
                 return AZ::Failure(
-                    AZStd::string::format("Error parsing json contents (offset %u): %s",
+                    AZStd::string::format("Error parsing json contents (offset %zu): %s",
                         document.GetErrorOffset(),
                         rapidjson::GetParseError_En(document.GetParseError())));
             }

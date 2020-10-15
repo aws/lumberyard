@@ -22,6 +22,7 @@
 
 class QFrame;
 class QSettings;
+class QSpacerItem;
 class QStyleOption;
 class QToolButton;
 
@@ -64,6 +65,7 @@ namespace AzQtComponents
             int closeButtonMinTabWidth;
             int toolTipTabWidthThreshold;
             bool showOverflowMenu;
+            int overflowSpacing;
         };
 
         /*!
@@ -98,6 +100,7 @@ namespace AzQtComponents
         // the constructor or through setActionToolBar, a default one is created and connected.
         void setActionToolBarVisible(bool visible = true);
         bool isActionToolBarVisible() const;
+        void setOverflowButtonSpacing(bool enable);
 
         void resizeEvent(QResizeEvent* resizeEvent) override;
 
@@ -112,6 +115,7 @@ namespace AzQtComponents
         QMenu* m_overflowMenu = nullptr;
         bool m_overFlowMenuDirty = true;
         bool m_shouldShowOverflowMenu = false;
+        bool m_spaceOverflowButton = false;
 
         void setOverflowMenuVisible(bool visible);
         void resetOverflowMenu();
@@ -130,6 +134,7 @@ namespace AzQtComponents
     public:
         explicit TabWidgetActionToolBarContainer(QWidget* parent = nullptr);
         QToolButton* overflowButton() const { return m_overflowButton; }
+        QSpacerItem* overflowSpacer() const { return m_overflowSpacer; }
 
         TabWidgetActionToolBar* actionToolBar() const { return m_actionToolBar; }
         void setActionToolBar(TabWidgetActionToolBar* actionToolBar);
@@ -138,6 +143,7 @@ namespace AzQtComponents
 
     private:
         QToolButton* m_overflowButton = nullptr;
+        QSpacerItem* m_overflowSpacer = nullptr;
         TabWidgetActionToolBar* m_actionToolBar = nullptr;
 
         void fixTabOrder();
@@ -149,7 +155,9 @@ namespace AzQtComponents
         Q_OBJECT
 
     public:
-        explicit TabBar(QWidget* parent = nullptr);
+
+        void setHandleOverflow(bool handleOverflow);
+        bool getHandleOverflow() const;
 
         void tabInserted(int index) override;
         void tabRemoved(int index) override;
@@ -158,6 +166,8 @@ namespace AzQtComponents
         void overflowingChanged(bool overflowing);
 
     protected:
+        explicit TabBar(QWidget* parent = nullptr);
+
         void enterEvent(QEvent* event) override;
         void leaveEvent(QEvent* event) override;
         void mousePressEvent(QMouseEvent* mouseEvent) override;
@@ -176,6 +186,7 @@ namespace AzQtComponents
             Overflowing
         };
 
+        bool m_handleOverflow = true;
         Overflow m_overflowing = OverflowUnchecked;
         int m_hoveredTab = -1;
         bool m_movingTab = false;

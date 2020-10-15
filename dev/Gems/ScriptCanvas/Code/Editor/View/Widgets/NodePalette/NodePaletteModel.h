@@ -28,6 +28,7 @@
 #include <Editor/View/Widgets/NodePalette/NodePaletteModelBus.h>
 
 #include <ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Core/Core.h>
 
 
@@ -86,7 +87,7 @@ namespace ScriptCanvasEditor
 
         // Asset Based Registrations
         AZStd::vector<ScriptCanvas::NodeTypeIdentifier> RegisterScriptEvent(ScriptEvents::ScriptEventsAsset* scriptEventAsset);
-        AZStd::vector<ScriptCanvas::NodeTypeIdentifier> RegisterFunctionInformation(ScriptCanvas::ScriptCanvasFunctionAsset* functionAsset);
+        AZStd::vector<ScriptCanvas::NodeTypeIdentifier> RegisterFunctionInformation(ScriptCanvas::RuntimeFunctionAsset* functionAsset);
 
         void RegisterCategoryInformation(const AZStd::string& category, const CategoryInformation& categoryInformation);
         const CategoryInformation* FindCategoryInformation(const AZStd::string& categoryStyle) const;

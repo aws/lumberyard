@@ -697,8 +697,10 @@ private:
     int m_collisionNormalCount;
     Vec3 m_collisionNormal[4];
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* m_pFeetColliderPE;
     IPhysicalEntity* m_pRigidColliderPE;
+#endif // ENABLE_CRY_PHYSICS
 
     // Not serialized
     unsigned int m_characterCollisionFlags; // geom_colltype_player by default.

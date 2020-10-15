@@ -49,3 +49,7 @@
 #undef max
 #undef min
 #endif
+
+#ifndef ENABLE_CRY_PHYSICS
+#error "ENABLE_CRY_PHYSICS must be defined for LmbrCentral module"
+#endif

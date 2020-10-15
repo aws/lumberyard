@@ -893,9 +893,15 @@ void CFlightNavRegion2::InitCVars()
     REGISTER_CVAR2("ai_DebugDrawFlight2", &m_DebugDraw, 0, VF_CHEAT | VF_CHEAT_NOCHECK, "Set AI features to behave in earlier milestones - please use sparingly");
 }
 
+#if ENABLE_CRY_PHYSICS
 CFlightNavRegion2::CFlightNavRegion2(IPhysicalWorld* pPhysWorld, CGraph* pGraph)
 {
 }
+#else
+CFlightNavRegion2::CFlightNavRegion2(CGraph* pGraph)
+{
+}
+#endif // ENABLE_CRY_PHYSICS
 
 CFlightNavRegion2::~CFlightNavRegion2()
 {

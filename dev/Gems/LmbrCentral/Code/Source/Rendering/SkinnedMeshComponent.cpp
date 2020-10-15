@@ -744,15 +744,6 @@ namespace LmbrCentral
         m_objectMoved = true;
     }
 
-    /*IRenderNode*/ struct IPhysicalEntity* SkinnedMeshComponentRenderNode::GetPhysics() const
-    {
-        return nullptr;
-    }
-
-    /*IRenderNode*/ void SkinnedMeshComponentRenderNode::SetPhysics(IPhysicalEntity* pPhys)
-    {
-    }
-
     /*IRenderNode*/ void SkinnedMeshComponentRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
     {
         m_materialOverride = pMat;

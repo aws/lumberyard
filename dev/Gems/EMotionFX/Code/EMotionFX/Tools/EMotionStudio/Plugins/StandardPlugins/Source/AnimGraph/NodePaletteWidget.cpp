@@ -33,24 +33,6 @@ namespace EMStudio
 {
     AZ_CLASS_ALLOCATOR_IMPL(NodePaletteWidget::EventHandler, EMotionFX::EventHandlerAllocator, 0)
 
-    namespace
-    {
-        const auto& CategoryNames()
-        {
-            static const AZStd::unordered_map<EMotionFX::AnimGraphNode::ECategory, QString> categories =
-            {
-                { EMotionFX::AnimGraphNode::CATEGORY_SOURCES, NodePaletteWidget::tr("Sources") },
-                { EMotionFX::AnimGraphNode::CATEGORY_BLENDING, NodePaletteWidget::tr("Blending") },
-                { EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS, NodePaletteWidget::tr("Controllers") },
-                { EMotionFX::AnimGraphNode::CATEGORY_PHYSICS, NodePaletteWidget::tr("Physics") },
-                { EMotionFX::AnimGraphNode::CATEGORY_LOGIC, NodePaletteWidget::tr("Logic") },
-                { EMotionFX::AnimGraphNode::CATEGORY_MATH, NodePaletteWidget::tr("Math") },
-                { EMotionFX::AnimGraphNode::CATEGORY_MISC, NodePaletteWidget::tr("Misc") },
-            };
-            return categories;
-        }
-    }
-
     class NodePaletteModel
         : public QAbstractItemModel
     {
@@ -72,6 +54,8 @@ namespace EMStudio
 
         void setNode(EMotionFX::AnimGraphNode* node);
 
+        const auto& GetCategoryNames() const { return m_categoryNames; }
+
     private:
         void initializeGroups();
 
@@ -85,12 +69,22 @@ namespace EMStudio
         AnimGraphPlugin* m_plugin;
         EMotionFX::AnimGraphNode* m_node = nullptr;
         AZStd::vector<AZStd::unique_ptr<CategoryGroup>> m_groups;
+
+        // Registered categories and names for this model.
+        AZStd::unordered_map<EMotionFX::AnimGraphNode::ECategory, QString> m_categoryNames;
     };
 
     NodePaletteModel::NodePaletteModel(AnimGraphPlugin* plugin, QObject* parent)
         : QAbstractItemModel(parent)
         , m_plugin(plugin)
     {
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_SOURCES, NodePaletteWidget::tr("Sources"));
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_BLENDING, NodePaletteWidget::tr("Blending"));
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS, NodePaletteWidget::tr("Controllers"));
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_PHYSICS, NodePaletteWidget::tr("Physics"));
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_LOGIC, NodePaletteWidget::tr("Logic"));
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_MATH, NodePaletteWidget::tr("Math"));
+        m_categoryNames.emplace(EMotionFX::AnimGraphNode::CATEGORY_MISC, NodePaletteWidget::tr("Misc"));
     }
 
     QModelIndex NodePaletteModel::index(int row, int column, const QModelIndex& parent) const
@@ -190,7 +184,7 @@ namespace EMStudio
             {
                 const EMotionFX::AnimGraphNode::ECategory category = m_groups[index.row()]->m_category;
 
-                const auto& categoryNames = CategoryNames();
+                const auto& categoryNames = m_categoryNames;
                 auto it = categoryNames.find(category);
                 if (it != categoryNames.end())
                 {
@@ -268,28 +262,18 @@ namespace EMStudio
 
     void NodePaletteModel::initializeGroups()
     {
-        static const auto categories =
-        {
-            EMotionFX::AnimGraphNode::CATEGORY_SOURCES,
-            EMotionFX::AnimGraphNode::CATEGORY_BLENDING,
-            EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS,
-            EMotionFX::AnimGraphNode::CATEGORY_PHYSICS,
-            EMotionFX::AnimGraphNode::CATEGORY_LOGIC,
-            EMotionFX::AnimGraphNode::CATEGORY_MATH,
-            EMotionFX::AnimGraphNode::CATEGORY_MISC,
-        };
-
         m_groups.clear();
-        m_groups.reserve(categories.size());
+        m_groups.reserve(m_categoryNames.size());
 
         const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = m_plugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
         AZStd::vector<AZStd::pair<EMotionFX::AnimGraphObject*, bool>> nodes;
-        for (const auto category : categories)
+        for (const auto categoryName : m_categoryNames)
         {
             nodes.clear();
+            const EMotionFX::AnimGraphNode::ECategory category = categoryName.first;
             for (EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
             {
-                if (objectPrototype->GetPaletteCategory() == category)
+                if (objectPrototype->GetPaletteCategory() == categoryName.first)
                 {
                     const bool isEnabled = m_plugin->CheckIfCanCreateObject(m_node, objectPrototype, category);
                     nodes.emplace_back(objectPrototype, isEnabled);
@@ -409,7 +393,54 @@ namespace EMStudio
             mTreeView->setVisible(true);
         }
 
+        SaveExpandStates();
         mModel->setNode(mNode);
+        RestoreExpandStates();
+    }
+
+
+    void NodePaletteWidget::SaveExpandStates()
+    {
+        m_expandedCatagory.clear();
+        const auto& catagoryNames = mModel->GetCategoryNames();
+
+        // Save the expand state.
+        for (const auto& categoryName : catagoryNames)
+        {
+            const QString& str = categoryName.second;
+            const QModelIndexList items = mModel->match(mModel->index(0, 0), Qt::DisplayRole, QVariant::fromValue(str));
+            if (!items.isEmpty())
+            {
+                if (mTreeView->isExpanded(items.first()))
+                {
+                    m_expandedCatagory.emplace(categoryName.first);
+                }
+            }
+        }
+    }
+
+
+    void NodePaletteWidget::RestoreExpandStates()
+    {
+        const auto& catagoryNames = mModel->GetCategoryNames();
+
+        // Restore the expand state.
+        for (const auto& categoryName : catagoryNames)
+        {
+            const EMotionFX::AnimGraphNode::ECategory category = categoryName.first;
+            if (m_expandedCatagory.find(category) == m_expandedCatagory.end())
+            {
+                continue;
+            }
+
+            const QString& str = categoryName.second;
+            const QModelIndexList items = mModel->match(mModel->index(0, 0), Qt::DisplayRole, QVariant::fromValue(str));
+            if (!items.isEmpty())
+            {
+                mTreeView->setExpanded(items.first(), true);
+            }
+        }
+        m_expandedCatagory.clear();
     }
 
 

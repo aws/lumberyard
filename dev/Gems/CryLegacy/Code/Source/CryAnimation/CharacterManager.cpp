@@ -106,11 +106,13 @@ void CharacterManager::PostInit()
     }
     PREFAST_ASSUME(g_pIRenderer);
 
+#if ENABLE_CRY_PHYSICS
     g_pIPhysicalWorld   = g_pISystem->GetIPhysicalWorld();
     if (g_pIPhysicalWorld == 0)
     {
         CryFatalError("CryAnimation: failed to initialize pIPhysicalWorld");
     }
+#endif
 
     g_pI3DEngine            =   g_pISystem->GetI3DEngine();
     if (g_pI3DEngine == 0)
@@ -899,7 +901,9 @@ bool CharacterManager::LoadAndLockResources(const char* szFilePath, uint32 nLoad
 
     //Note: This initialization is copied from CreateInstance( ), it could be that this pointers haven't been initialized yet at this point?
     g_pIRenderer            = g_pISystem->GetIRenderer();
+#if ENABLE_CRY_PHYSICS
     g_pIPhysicalWorld   = g_pISystem->GetIPhysicalWorld();
+#endif
     g_pI3DEngine            =   g_pISystem->GetI3DEngine();
     g_pAuxGeom              = g_pIRenderer->GetIRenderAuxGeom();
 
@@ -1502,6 +1506,7 @@ SClothGeometry* CharacterManager::LoadVClothGeometry(const CAttachmentVCLOTH& pA
         unweldedIndices[i] = ret.weldMap[pSimIndices[i]];
     }
 
+#if ENABLE_CRY_PHYSICS
     // create the physics geometry (CTriMesh)
     IGeometry* pSimPhysMesh = g_pIPhysicalWorld->GetGeomManager()->CreateMesh(&unweldedVerts[0], unweldedIndices, 0, 0, nSimIndices / 3, 0);
     delete[] unweldedIndices;
@@ -1509,6 +1514,7 @@ SClothGeometry* CharacterManager::LoadVClothGeometry(const CAttachmentVCLOTH& pA
     // register phys geometry
     ret.pPhysGeom = g_pIPhysicalWorld->GetGeomManager()->RegisterGeometry(pSimPhysMesh);
     pSimPhysMesh->Release();
+#endif
 
     // compute blending weights from vertex colors
     ret.weights = new float[ret.nUniqueVtx];
@@ -1523,6 +1529,7 @@ SClothGeometry* CharacterManager::LoadVClothGeometry(const CAttachmentVCLOTH& pA
     pSimRenderMesh->UnlockStream(VSF_GENERAL);
     pSimRenderMesh->UnLockForThreadAccess();
 
+#if ENABLE_CRY_PHYSICS
     // build adjacent triangles list
     mesh_data* md = (mesh_data*)pSimPhysMesh->GetData();
     std::vector<std::vector<int> > adjTris(md->nVertices);
@@ -1684,6 +1691,7 @@ SClothGeometry* CharacterManager::LoadVClothGeometry(const CAttachmentVCLOTH& pA
         pRenderMesh->UnlockStream(VSF_GENERAL);
         pRenderMesh->UnLockForThreadAccess();
     }
+#endif
 
     // allocate working buffers
     ret.AllocateBuffer();
@@ -2055,7 +2063,9 @@ void CharacterManager::Update(bool bPaused)
     //update interfaces every frame
     g_YLine = 16.0f;
     g_pIRenderer            = g_pISystem->GetIRenderer();
+#if ENABLE_CRY_PHYSICS
     g_pIPhysicalWorld   = g_pISystem->GetIPhysicalWorld();
+#endif
     g_pI3DEngine            =   g_pISystem->GetI3DEngine();
     g_bProfilerOn           = g_pISystem->GetIProfileSystem()->IsProfiling();
 
@@ -3845,7 +3855,9 @@ CDefaultSkeleton* CharacterManager::CreateExtendedSkel(CCharInstance* pCharInsta
         lh.m_arrHierarchy[j].m_idxNext          = 0;
         lh.m_arrHierarchy[j].m_idxFirst         = 0;
         lh.m_arrHierarchy[j].m_fMass            = pDefaultSkeleton->m_arrModelJoints[j].m_fMass;
+#if ENABLE_CRY_PHYSICS
         lh.m_arrHierarchy[j].m_PhysInfo         = pDefaultSkeleton->m_arrBackupPhysInfo[j];
+#endif
         lh.m_arrHierarchy[j].m_strJointName     = pDefaultSkeleton->m_arrModelJoints[j].m_strJointName;
         lh.m_arrHierarchy[j].m_nJointCRC32Lower = pDefaultSkeleton->m_arrModelJoints[j].m_nJointCRC32Lower;
         lh.m_arrHierarchy[j].m_nCRC32Parent     = p < 0 ? 0 : pDefaultSkeleton->m_arrModelJoints[p].m_nJointCRC32Lower;
@@ -3909,7 +3921,9 @@ CDefaultSkeleton* CharacterManager::CreateExtendedSkel(CCharInstance* pCharInsta
     pExtDefaultSkeleton->m_arrModelJoints[0].m_strJointName       = lh.m_arrExtModelJoints[0].m_strJointName;
     pExtDefaultSkeleton->m_arrModelJoints[0].m_nJointCRC32Lower   = lh.m_arrExtModelJoints[0].m_nJointCRC32Lower;
     pExtDefaultSkeleton->m_arrModelJoints[0].m_nJointCRC32        = CCrc32::Compute(lh.m_arrExtModelJoints[0].m_strJointName);
+#if ENABLE_CRY_PHYSICS
     pExtDefaultSkeleton->m_arrModelJoints[0].m_PhysInfo           = lh.m_arrExtModelJoints[0].m_PhysInfo;
+#endif
     pExtDefaultSkeleton->m_arrModelJoints[0].m_fMass              = lh.m_arrExtModelJoints[0].m_fMass;
     pExtDefaultSkeleton->m_poseDefaultData.GetJointsRelative()[0] = lh.m_arrExtModelJoints[0].m_DefaultAbsolute;
     pExtDefaultSkeleton->m_poseDefaultData.GetJointsAbsolute()[0] = lh.m_arrExtModelJoints[0].m_DefaultAbsolute;
@@ -3920,14 +3934,18 @@ CDefaultSkeleton* CharacterManager::CreateExtendedSkel(CCharInstance* pCharInsta
         pExtDefaultSkeleton->m_arrModelJoints[i].m_strJointName       = lh.m_arrExtModelJoints[i].m_strJointName;
         pExtDefaultSkeleton->m_arrModelJoints[i].m_nJointCRC32Lower   = lh.m_arrExtModelJoints[i].m_nJointCRC32Lower;
         pExtDefaultSkeleton->m_arrModelJoints[i].m_nJointCRC32        = CCrc32::Compute(lh.m_arrExtModelJoints[i].m_strJointName);
+#if ENABLE_CRY_PHYSICS
         pExtDefaultSkeleton->m_arrModelJoints[i].m_PhysInfo           = lh.m_arrExtModelJoints[i].m_PhysInfo;
+#endif
         pExtDefaultSkeleton->m_arrModelJoints[i].m_fMass              = lh.m_arrExtModelJoints[i].m_fMass;
         pExtDefaultSkeleton->m_poseDefaultData.GetJointsAbsolute()[i] = lh.m_arrExtModelJoints[i].m_DefaultAbsolute;
         pExtDefaultSkeleton->m_poseDefaultData.GetJointsRelative()[i] = pExtDefaultSkeleton->m_poseDefaultData.GetJointsAbsolute()[p].GetInverted() * lh.m_arrExtModelJoints[i].m_DefaultAbsolute;
     }
     pExtDefaultSkeleton->PrepareJointIDHash();
     pExtDefaultSkeleton->CopyAndAdjustSkeletonParams(pDefaultSkeleton);
+#if ENABLE_CRY_PHYSICS
     pExtDefaultSkeleton->SetupPhysicalProxies(pDefaultSkeleton->m_arrBackupPhyBoneMeshes, pDefaultSkeleton->m_arrBackupBoneEntities, pDefaultSkeleton->GetIMaterial(), pFilepathSKEL);
+#endif
     pExtDefaultSkeleton->VerifyHierarchy();
     return pExtDefaultSkeleton;
 }

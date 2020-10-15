@@ -77,7 +77,7 @@ namespace EMotionFX
         }
 
         // Update the first node.
-        animGraphInstance->SetObjectFlags(nodeA->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCMASTER, true);
+        animGraphInstance->SetObjectFlags(nodeA->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_IS_SYNCLEADER, true);
         UpdateIncomingNode(animGraphInstance, nodeA, timePassedInSeconds);
 
         AnimGraphNodeData* uniqueData = FindOrCreateUniqueNodeData(animGraphInstance);
@@ -334,10 +334,10 @@ namespace EMotionFX
                 uniqueData->mSyncTrackNode = nodeA;
             }
 
-            // Sync the master to this node.
+            // Sync the leader to this node.
             nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false);
 
-            // Sync the motion's to the master.
+            // Sync the motion's to the leader.
             for (uint32 i = 0; i < 2; ++i)
             {
                 BlendTreeConnection* connection = mInputPorts[INPUTPORT_POSE_A + i].mConnection;

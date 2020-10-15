@@ -105,7 +105,6 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     AZ::Data::AssetType validAssetType5 = AZ::Data::AssetType::CreateRandom();
     AZ::Data::AssetType validAssetType6 = AZ::Data::AssetType::CreateRandom();
 
-    AzToolsFramework::AssetSystem::JobStatus statusAny = AzToolsFramework::AssetSystem::JobStatus::Any;
     AzToolsFramework::AssetSystem::JobStatus statusQueued = AzToolsFramework::AssetSystem::JobStatus::Queued;
     AzToolsFramework::AssetSystem::JobStatus statusCompleted = AzToolsFramework::AssetSystem::JobStatus::Completed;
 
@@ -650,7 +649,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
         };
 
 
-    auto JobsContainRunKey = [](const JobDatabaseEntryContainer& jobs, AZ::s64 runKey) -> bool
+    auto JobsContainRunKey = [](const JobDatabaseEntryContainer& jobs, AZ::u64 runKey) -> bool
         {
             for (const auto& job : jobs)
             {
@@ -973,7 +972,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product.m_productID, handler));
     UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 2);
     
-    AZ::u64 toRemove = entriesReturned[0].m_subIDsEntryID;
+    AZ::s64 toRemove = entriesReturned[0].m_subIDsEntryID;
     AZ::u32 removingSubID = entriesReturned[0].m_subID;
 
     UNIT_TEST_EXPECT_TRUE(stateData->RemoveLegacySubID(toRemove));

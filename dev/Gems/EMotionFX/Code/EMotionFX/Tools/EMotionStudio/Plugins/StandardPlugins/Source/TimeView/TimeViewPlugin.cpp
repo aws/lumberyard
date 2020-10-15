@@ -605,13 +605,6 @@ namespace EMStudio
             inTime = 0.0;
         }
 
-        // snap to the current time marker
-        double curTimeMarker = GetCurrentTime();
-        if (MCore::Math::Abs(aznumeric_cast<float>(inTime - curTimeMarker)) < snapThreshold)
-        {
-            inTime = curTimeMarker;
-        }
-
         // for all tracks
         const uint32 numTracks = mTracks.GetLength();
         for (uint32 t = 0; t < numTracks; ++t)
@@ -848,10 +841,13 @@ namespace EMStudio
                 const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
                 if (motionInstances.size() == 1)
                 {
-                    EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                    if (!AZ::IsClose(aznumeric_cast<float>(mCurTime), motionInstance->GetCurrentTime(), MCore::Math::epsilon))
+                    if (!mTrackDataWidget->mDragging && !mTrackDataWidget->mResizing)
                     {
-                        SetCurrentTime(motionInstance->GetCurrentTime());
+                        EMotionFX::MotionInstance* motionInstance = motionInstances[0];
+                        if (!AZ::IsClose(aznumeric_cast<float>(mCurTime), motionInstance->GetCurrentTime(), MCore::Math::epsilon))
+                        {
+                            SetCurrentTime(motionInstance->GetCurrentTime());
+                        }
                     }
                 }
                 else
@@ -1296,6 +1292,22 @@ namespace EMStudio
                             timeTrack->AddElement(element);
                         }
 
+                        // Select the element if in mSelectedEvents.
+                        const AZ::u32 numSelectedEvents = mSelectedEvents.GetLength();
+                        for (AZ::u32 selectedEventIndex = 0; selectedEventIndex < numSelectedEvents; ++selectedEventIndex)
+                        {
+                            const EventSelectionItem& selectionItem = mSelectedEvents[selectedEventIndex];
+                            if (mMotion != selectionItem.mMotion)
+                            {
+                                continue;
+                            }
+                            if (selectionItem.mTrackNr == static_cast<size_t>(trackIndex) && selectionItem.mEventNr == static_cast<uint32>(eventIndex))
+                            {
+                                element->SetIsSelected(true);
+                                break;
+                            }
+                        }
+                        
                         text = '{';
                         AZStd::string delimiter;
                         const EMotionFX::EventDataSet& eventDatas = motionEvent.GetEventDatas();
@@ -1608,6 +1620,11 @@ namespace EMStudio
         // create the command group
         AZStd::string result;
         MCore::CommandGroup commandGroup("Remove motion events");
+
+        if (mTrackDataWidget)
+        {
+            mTrackDataWidget->ClearState();
+        }
 
         if (mMotion == nullptr)
         {

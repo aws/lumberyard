@@ -80,7 +80,7 @@ namespace EMotionFX
             {
                 // The motion set keeps track of motions by their name. Each motion
                 // within the motion set must have a unique name.
-                AZStd::string motionId = AZStd::string::format("testSkeletalMotion%i", i);
+                AZStd::string motionId = AZStd::string::format("testSkeletalMotion%zu", i);
                 SkeletalMotion* motion = SkeletalMotion::Create(motionId.c_str());
                 motion->SetMaxTime(1.0f);
                 MotionSet::MotionEntry* motionEntry = aznew MotionSet::MotionEntry(motion->GetName(), motion->GetName(), motion);

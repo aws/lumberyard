@@ -2677,6 +2677,7 @@ float COPCrysis2Fly::CheckTargetEntity(const CPipeUser* pPipeUser, const Vec3& l
 
             diff *= 1.0f / dist;
 
+#if ENABLE_CRY_PHYSICS
             pe_status_dynamics vel;
             float targetSpeed = 0.f;
             if (IPhysicalEntity* pPhysics = pEntity->GetPhysics())
@@ -2684,6 +2685,9 @@ float COPCrysis2Fly::CheckTargetEntity(const CPipeUser* pPipeUser, const Vec3& l
                 pPhysics->GetStatus(&vel);
                 targetSpeed = vel.v.GetLength();
             }
+#else
+            float targetSpeed = 0.f;
+#endif
 
             Vec3 targetDir = pEntity->GetForwardDir();
 
@@ -3435,6 +3439,7 @@ void COPCrysis2ChaseTarget::TestLocation(const CandidateLocation& location, CPip
     PhysSkipList skipList;
     pipeUser->GetPhysicalSkipEntities(skipList);
 
+#if ENABLE_CRY_PHYSICS
     m_visCheckRayID[0] = gAIEnv.pRayCaster->Queue(RayCastRequest::HighPriority,
             RayCastRequest(pointLeft, (targetLeft - pointLeft) * 0.985f, COVER_OBJECT_TYPES, HIT_COVER | HIT_SOFT_COVER,
                 &skipList.at(0), skipList.size()), functor(*this, &COPCrysis2ChaseTarget::VisCheckRayComplete));
@@ -3442,6 +3447,7 @@ void COPCrysis2ChaseTarget::TestLocation(const CandidateLocation& location, CPip
     m_visCheckRayID[1] = gAIEnv.pRayCaster->Queue(RayCastRequest::HighPriority,
             RayCastRequest(pointRight, (targetRight - pointRight) * 0.985f, COVER_OBJECT_TYPES, HIT_COVER | HIT_SOFT_COVER,
                 &skipList.at(0), skipList.size()), functor(*this, &COPCrysis2ChaseTarget::VisCheckRayComplete));
+#endif // ENABLE_CRY_PHYSICS
 
     m_testLocation = location;
     m_visCheckResultCount = 0;

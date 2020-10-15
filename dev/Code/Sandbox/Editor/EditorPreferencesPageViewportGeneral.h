@@ -30,7 +30,8 @@ public:
     virtual ~CEditorPreferencesPage_ViewportGeneral() = default;
 
     virtual const char* GetCategory() override { return "Viewports"; }
-    virtual const char* GetTitle() override { return "General"; }
+    virtual const char* GetTitle() override;
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -109,6 +110,7 @@ private:
     MapViewport m_map;
     TextLabels m_textLabels;
     SelectionPreviewColor m_selectionPreviewColor;
+    QIcon m_icon;
 };
 
 

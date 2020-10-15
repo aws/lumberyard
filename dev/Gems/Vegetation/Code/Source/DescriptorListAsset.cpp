@@ -41,7 +41,7 @@ namespace Vegetation
                     ->DataElement(0, &DescriptorListAsset::m_descriptors, "Assets", "Set of vegetation descriptors.")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                    ->ElementAttribute(AZ::Edit::Attributes::NameLabelOverride, &Descriptor::GetMeshName)
+                    ->ElementAttribute(AZ::Edit::Attributes::NameLabelOverride, &Descriptor::GetDescriptorName)
                     ->ElementAttribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }

@@ -51,7 +51,7 @@ namespace AZ
             auto&& behaviorClassIterator = behaviorContext->m_typeToClassMap.find(m_payloadTypeId);
             bool typeFound = behaviorClassIterator != behaviorContext->m_typeToClassMap.end();
             AZStd::string payloadName = typeFound ? behaviorClassIterator->second->m_name : m_payloadTypeId.ToString<AZStd::string>();
-            return AZStd::string::format("(channel=%llu, actionNameCrc=%lu, payloadTypeId=%s)", static_cast<AZ::u64>(m_channel), static_cast<AZ::u32>(m_actionNameCrc), payloadName.c_str());
+            return AZStd::string::format("(channel=%llu, actionNameCrc=%u, payloadTypeId=%s)", static_cast<AZ::u64>(m_channel), static_cast<AZ::u32>(m_actionNameCrc), payloadName.c_str());
         }
 
         AZ::EntityId m_channel = AZ::EntityId(0);

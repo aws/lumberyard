@@ -66,7 +66,9 @@ AZ::ComponentTypeList CGFToolApplication::GetRequiredSystemComponents() const
 /////////////////////////////////////////////////////////////////////////
 CStatCGFCompiler::CStatCGFCompiler()
 {
+#if ENABLE_CRY_PHYSICS
     m_pPhysicsInterface = NULL;
+#endif
     //MessageBox(NULL, "Pres OK baton ->", "Ok?", MB_OK);
 
     m_refCount = 1;
@@ -75,10 +77,12 @@ CStatCGFCompiler::CStatCGFCompiler()
 //////////////////////////////////////////////////////////////////////////
 CStatCGFCompiler::~CStatCGFCompiler()
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pPhysicsInterface)
     {
         delete m_pPhysicsInterface;
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -984,6 +988,7 @@ bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response,
             DeleteOldChunks(pCGF, chunkFile);
         }
 
+#if ENABLE_CRY_PHYSICS
         // Compile contents.
         if (m_pPhysicsInterface == 0)
         {
@@ -997,7 +1002,13 @@ bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response,
             delete pCGF;
             return false;
         }
+#endif // ENABLE_CRY_PHYSICS
+
+#if ENABLE_CRY_PHYSICS
         CStaticObjectCompiler statCgfCompiler(m_pPhysicsInterface, bConsole, m_CC.pRC->GetVerbosityLevel());
+#else
+        CStaticObjectCompiler statCgfCompiler(bConsole, m_CC.pRC->GetVerbosityLevel());
+#endif
         statCgfCompiler.SetSplitLods(bSplitLods);
         // Confetti: Nicholas Baldwin
         statCgfCompiler.SetOptimizeStripify(bOptimizePVRStripify);

@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/Component/ComponentBus.h>
 
 namespace AzFramework
@@ -54,3 +56,4 @@ namespace AzFramework
     };
     using ConstraintComponentNotificationBus = AZ::EBus<ConstraintComponentNotifications>;
 }
+#endif // ENABLE_CRY_PHYSICS

@@ -30,7 +30,7 @@ namespace PhysX
         class MeshAsset;
     }
 
-    /// Force region internal representation. Computes net force exerted on bodies in a force region. 
+    //! Force region internal representation. Computes net force exerted on bodies in a force region. 
     class ForceRegion : private AZ::TransformNotificationBus::MultiHandler
         , private LmbrCentral::SplineComponentNotificationBus::Handler
         , private PhysX::ForceRegionRequestBus::Handler
@@ -47,16 +47,16 @@ namespace PhysX
         void Activate(AZ::EntityId entityId);
         void Deactivate();
 
-        /// Add a force to this force region and activate it.
+        //! Add a force to this force region and activate it.
         void AddAndActivateForce(AZStd::unique_ptr<BaseForce> force);
 
-        /// Computes net force exerted on an entity.
+        //! Computes net force exerted on an entity.
         AZ::Vector3 CalculateNetForce(const EntityParams& entity) const;
 
-        /// Removes all forces in force region.
+        //! Removes all forces in force region.
         void ClearForces();
 
-        /// Get region parameters - entity ID, position, rotation, spline, AABB
+        //! Get region parameters - entity ID, position, rotation, spline, AABB
         PhysX::RegionParams GetRegionParams() const;
 
     private:
@@ -85,10 +85,13 @@ namespace PhysX
 
     namespace ForceRegionUtil
     {
-        /// Creates a structure with params about the force region used to calculate a resulting force.
-        RegionParams CreateRegionParams(const AZ::EntityId& entityId);
+        //! Creates a structure with params about the force region used to calculate a resulting force.
+        RegionParams CreateRegionParams(AZ::EntityId entityId);
 
-        /// Creates a structure with params about en entity used to calculate a resulting force.
-        EntityParams CreateEntityParams(const AZ::EntityId& entityId);
+        //! Creates a structure with params about en entity used to calculate a resulting force.
+        EntityParams CreateEntityParams(AZ::EntityId entityId);
+
+        //! Gets aggregated Aabb of all colliders assigned to entity.
+        AZ::Aabb GetForceRegionAabb(AZ::EntityId entityId);
     }
 }

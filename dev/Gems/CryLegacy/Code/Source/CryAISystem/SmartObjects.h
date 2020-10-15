@@ -98,7 +98,9 @@ public:
     Vec3 GetHelperPos(const SmartObjectHelper* pHelper) const;
     Vec3 GetOrientation(const SmartObjectHelper* pHelper) const;
     ILINE const char* GetName() const;
+#if ENABLE_CRY_PHYSICS
     ILINE IPhysicalEntity* GetPhysics() const;
+#endif
     ILINE CAIObject* GetAI() const;
     CPipeUser* GetPipeUser() const;
     CAIActor* GetAIActor() const;
@@ -1178,11 +1180,13 @@ const char* CSmartObjectBase::GetName() const
     return pEntity ? pEntity->GetName() : "<NONE>";
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CSmartObjectBase::GetPhysics() const
 {
     const IEntity* pEntity = GetEntity();
     return pEntity ? pEntity->GetPhysics() : NULL;
 }
+#endif
 
 CAIObject* CSmartObjectBase::GetAI() const
 {

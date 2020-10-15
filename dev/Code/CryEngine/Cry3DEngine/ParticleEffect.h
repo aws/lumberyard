@@ -650,5 +650,4 @@ namespace Travel
 
 IStatObj::SSubObject* GetSubGeometry(IStatObj* pParent, int i);
 int GetSubGeometryCount(IStatObj* pParent);
-
 #endif // CRYINCLUDE_CRY3DENGINE_PARTICLEEFFECT_H

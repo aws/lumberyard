@@ -424,6 +424,11 @@ namespace PhysXDebug
     // TickBus::Handler
     void SystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
+        if (!m_settings.IsPhysXDebugEnabled())
+        {
+            return;
+        }
+
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
         m_currentTime = time;
         bool dirty = true;

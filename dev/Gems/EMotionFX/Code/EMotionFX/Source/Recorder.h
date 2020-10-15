@@ -365,7 +365,7 @@ namespace EMotionFX
         AZStd::vector<ActorInstanceData*>       m_actorInstanceDatas;
         AZStd::vector<float>                    m_timeDeltas; // The value of the time deltas whenever a key is made
         MCore::Array<AnimGraphObject*>          mObjects;
-        MCore::Array<AnimGraphNode*>            mActiveNodes;       /**< A temp array to store active animgraph nodes in. */
+        AZStd::vector<AnimGraphNode*>           mActiveNodes;       /**< A temp array to store active animgraph nodes in. */
         MCore::Mutex                            mLock;
         AZ::TypeId                              m_sessionUuid;
         float                                   mRecordTime;

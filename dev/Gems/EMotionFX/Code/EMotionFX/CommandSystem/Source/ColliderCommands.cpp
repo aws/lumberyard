@@ -100,7 +100,7 @@ namespace EMotionFX
 
         if (insertAtIndex)
         {
-            command += AZStd::string::format(" -%s %d", CommandAddCollider::s_insertAtIndexParameterName, insertAtIndex.value());
+            command += AZStd::string::format(" -%s %zu", CommandAddCollider::s_insertAtIndexParameterName, insertAtIndex.value());
         }
 
         return CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, executeInsideCommand);
@@ -108,7 +108,7 @@ namespace EMotionFX
 
     bool CommandColliderHelpers::RemoveCollider(AZ::u32 actorId, const AZStd::string& jointName, const PhysicsSetup::ColliderConfigType& configType, size_t colliderIndex, MCore::CommandGroup* commandGroup, bool executeInsideCommand, bool firstLastCommand)
     {
-        const AZStd::string command = AZStd::string::format("%s -%s %d -%s \"%s\" -%s \"%s\" -%s %d -updateUI %s",
+        const AZStd::string command = AZStd::string::format("%s -%s %d -%s \"%s\" -%s \"%s\" -%s %zu -updateUI %s",
             CommandRemoveCollider::s_commandName,
             CommandRemoveCollider::s_actorIdParameterName,
             actorId,
@@ -357,7 +357,7 @@ namespace EMotionFX
         const size_t shapeCount = nodeConfig->m_shapes.size();
         if (!m_oldColliderIndex || m_oldColliderIndex.value() >= shapeCount)
         {
-            outResult = AZStd::string::format("Cannot undo adding collider. The joint '%s' is only holding %d colliders and the index %d is out of range.", m_jointName.c_str(), shapeCount, m_oldColliderIndex.value());
+            outResult = AZStd::string::format("Cannot undo adding collider. The joint '%s' is only holding %zu colliders and the index %zu is out of range.", m_jointName.c_str(), shapeCount, m_oldColliderIndex.value());
             return false;
         }
 
@@ -633,7 +633,7 @@ namespace EMotionFX
         const size_t shapeCount = nodeConfig->m_shapes.size();
         if (m_index.value() >= shapeCount)
         {
-            outResult = AZStd::string::format("Cannot get collider. The joint '%s' is only holding %d %s colliders and the index %d is out of range.",
+            outResult = AZStd::string::format("Cannot get collider. The joint '%s' is only holding %zu %s colliders and the index %zu is out of range.",
                 m_jointName.c_str(),
                 shapeCount,
                 PhysicsSetup::GetStringForColliderConfigType(m_configType.value()),
@@ -711,7 +711,7 @@ namespace EMotionFX
         const size_t shapeCount = nodeConfig->m_shapes.size();
         if (m_colliderIndex >= shapeCount)
         {
-            outResult = AZStd::string::format("Cannot remove collider. The joint '%s' is only holding %d colliders and the index %d is out of range.", m_jointName.c_str(), shapeCount, m_colliderIndex);
+            outResult = AZStd::string::format("Cannot remove collider. The joint '%s' is only holding %zu colliders and the index %zu is out of range.", m_jointName.c_str(), shapeCount, m_colliderIndex);
             return false;
         }
 

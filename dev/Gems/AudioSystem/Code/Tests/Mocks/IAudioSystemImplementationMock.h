@@ -15,8 +15,6 @@
 #include <IAudioSystemImplementation.h>
 #include <AzTest/AzTest.h>
 
-#pragma warning(push)
-#pragma warning(disable:4373)
 
 namespace Audio
 {
@@ -140,6 +138,3 @@ namespace Audio
     };
 
 } // namespace Audio
-
-#pragma warning(pop)
-

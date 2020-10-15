@@ -68,7 +68,7 @@ namespace SurfaceData
                     "Surface Tag", "Matches a surface value like a mask or material")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &SurfaceTag::GetDisplayName)
+                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &SurfaceTag::m_surfaceTagCrc, "Surface Tag", "Matches a surface value like a mask or material")
                     ->Attribute(AZ::Edit::Attributes::EnumValues, &SurfaceTag::BuildSelectableTagList)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
@@ -80,6 +80,7 @@ namespace SurfaceData
         {
             behaviorContext->Class<SurfaceTag>()
                 ->Constructor()
+                ->Constructor<const AZStd::string&>()
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
@@ -129,7 +130,7 @@ namespace SurfaceData
         if (it == selectableTags.end())
         {
             //if a match was not found, generate a name using the crc
-            name = AZStd::string::format("(unregistered %u)", &m_surfaceTagCrc);
+            name = AZStd::string::format("(unregistered %u)", m_surfaceTagCrc);
             return false;
         }
 
@@ -148,7 +149,7 @@ namespace SurfaceData
         {
             //if a match was not found, add the generated name to the selectable set
             selectableTags.push_back({ m_surfaceTagCrc, name });
-            AZ_Warning("SurfaceData", false, "SurfaceTag CRC %u is not a registered tag.", &m_surfaceTagCrc);
+            AZ_Warning("SurfaceData", false, "SurfaceTag CRC %u is not a registered tag.", m_surfaceTagCrc);
         }
 
         AZStd::sort(selectableTags.begin(), selectableTags.end(), [](const auto& lhs, const auto& rhs) {return lhs.second < rhs.second;});

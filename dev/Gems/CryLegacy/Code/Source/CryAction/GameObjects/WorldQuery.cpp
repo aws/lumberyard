@@ -35,8 +35,10 @@ CWorldQuery::UpdateQueryFunction CWorldQuery::m_updateQueryFunctions[] =
     &CWorldQuery::UpdateInFrontOfQuery,
     &CWorldQuery::UpdateBackRaycastQuery,
     &CWorldQuery::UpdateEntitiesAround,
+#if ENABLE_CRY_PHYSICS
     &CWorldQuery::UpdatePhysicalEntitiesAround,
     &CWorldQuery::UpdatePhysicalEntityInFrontOf,
+#endif
 };
 
 namespace
@@ -62,7 +64,9 @@ namespace
 }
 
 CWorldQuery::CWorldQuery()
+#if ENABLE_CRY_PHYSICS
     : m_physicalEntityInFrontOf(-100)
+#endif
 {
     m_worldPosition =   Vec3(ZERO);
     m_dir       =   Vec3(0, 1, 0);
@@ -71,12 +75,17 @@ CWorldQuery::CWorldQuery()
     m_validQueries = 0;
     m_proximityRadius = 5.0f;
     m_pEntitySystem = gEnv->pEntitySystem;
+#if ENABLE_CRY_PHYSICS
     m_pPhysWorld = gEnv->pPhysicalWorld;
     m_pViewSystem = CCryAction::GetCryAction()->GetIViewSystem();
     m_rayHitAny = false;
     m_backRayHitAny = false;
     m_renderFrameId = -1;
     m_rayHitPierceable.dist = -1.0f;
+#else
+    m_pViewSystem = CCryAction::GetCryAction()->GetIViewSystem();
+    m_renderFrameId = -1;
+#endif // ENABLE_CRY_PHYSICS
 
 #if WORLDQUERY_USE_DEFERRED_LINETESTS
     m_timeLastDeferredResult = 0.0f;
@@ -166,6 +175,7 @@ void CWorldQuery::Update(SEntityUpdateContext& ctx, int slot)
 
 void CWorldQuery::UpdateRaycastQuery()
 {
+#if ENABLE_CRY_PHYSICS
     if (!m_pActor || m_pActor->GetEntity()->IsHidden())
     {
         return;
@@ -229,10 +239,12 @@ void CWorldQuery::UpdateRaycastQuery()
     //  if (m_rayHitAny)
     //      CryLogAlways( "HIT: terrain:%i distance:%f (%f,%f,%f)", m_rayHit.bTerrain, m_rayHit.dist, m_rayHit.pt.x, m_rayHit.pt.y, m_rayHit.pt.z );
 #endif // WORLDQUERY_USE_DEFERRED_LINETESTS
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CWorldQuery::UpdateBackRaycastQuery()
 {
+#if ENABLE_CRY_PHYSICS
     if (!m_pActor)
     {
         return;
@@ -243,6 +255,7 @@ void CWorldQuery::UpdateBackRaycastQuery()
     static const int obj_types = ent_all; // ent_terrain|ent_static|ent_rigid|ent_sleeping_rigid|ent_living;
     static const unsigned int flags = rwi_stop_at_pierceable | rwi_colltype_any;
     m_backRayHitAny = 0 != m_pPhysWorld->RayWorldIntersection(m_worldPosition, -100.0f * m_dir, obj_types, flags, &m_backRayHit, 1, pPhysEnt);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CWorldQuery::UpdateProximityQuery()
@@ -347,6 +360,7 @@ void CWorldQuery::GetMemoryUsage(ICrySizer* pSizer) const
 }
 
 
+#if ENABLE_CRY_PHYSICS
 void CWorldQuery::UpdatePhysicalEntitiesAround()
 {
     if (!m_pActor)
@@ -381,6 +395,7 @@ void CWorldQuery::UpdatePhysicalEntityInFrontOf()
         m_physicalEntityInFrontOf = gEnv->pPhysicalWorld->GetPhysicalEntityId(rayHitResult.pCollider);
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CWorldQuery::UpdateEntitiesAround()
 {
@@ -402,6 +417,7 @@ void CWorldQuery::UpdateEntitiesAround()
     {
         m_EntAroundOf[i] = qry.pEntities[i]->GetId();
     }
+#if ENABLE_CRY_PHYSICS
     // add to ent list if available in phys list
     int physEntListSize = 0;
     IPhysicalEntity* const* physEntList = this->GetPhysicalEntitiesAround(physEntListSize);
@@ -416,10 +432,12 @@ void CWorldQuery::UpdateEntitiesAround()
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
 #if WORLDQUERY_USE_DEFERRED_LINETESTS
+#if ENABLE_CRY_PHYSICS
 //async raycasts results callback
 void CWorldQuery::OnRayCastDataReceived(const QueuedRayID& rayID, const RayCastResult& result)
 {
@@ -478,6 +496,7 @@ void CWorldQuery::OnRayCastDataReceived(const QueuedRayID& rayID, const RayCastR
     m_rayHitAny = rayHitSucced;
     m_lookAtEntityId = entityIdHit;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 int CWorldQuery::GetRaySlot()
 {

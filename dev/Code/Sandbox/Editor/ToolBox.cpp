@@ -48,7 +48,7 @@ void CToolBoxCommand::Execute() const
     if (m_type == CToolBoxCommand::eT_SCRIPT_COMMAND)
     {
         using namespace AzToolsFramework;
-        EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByString, m_text.toUtf8().data());
+        EditorPythonRunnerRequestBus::Broadcast(&EditorPythonRunnerRequestBus::Events::ExecuteByString, m_text.toUtf8().data(), false);
     }
     else if (m_type == CToolBoxCommand::eT_CONSOLE_COMMAND)
     {

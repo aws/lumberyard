@@ -12,7 +12,9 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#if ENABLE_CRY_PHYSICS
 #include <AzFramework/Physics/LegacyColliderComponentBus.h>
+#endif
 
 namespace Physics
 {

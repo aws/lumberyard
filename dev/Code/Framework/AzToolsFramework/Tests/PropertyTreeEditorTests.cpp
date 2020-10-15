@@ -13,6 +13,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Entity/EntityContext.h>
+#include <AzFramework/Asset/SimpleAsset.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -35,6 +36,53 @@ namespace UnitTest
         AZ::s16 m_myNegativeShort = -42;
     };
 
+    struct MockAssetData
+        : public AZ::Data::AssetData
+    {
+        AZ_RTTI(MyTestAssetData, "{8B0A8DCA-7F29-4B8E-B5D7-08E0EAB2C900}", AZ::Data::AssetData);
+
+        MockAssetData(const AZ::Data::AssetId& assetId)
+            : AssetData(assetId)
+        {
+            // to skip the automatic removal from the asset system
+            m_useCount = 2;
+        }
+    };
+
+    class TestSimpleAsset
+    {
+    public:
+        AZ_TYPE_INFO(TestSimpleAsset, "{10A39072-9287-49FE-93C8-55F7715FC758}");
+
+        bool m_data = false;
+
+        static const char* GetFileFilter()
+        {
+            return "*.NaN";
+        }
+
+        static void Reflect(AZ::ReflectContext* reflection)
+        {
+            AZ::SerializeContext* serializeContext = AZ::RttiCast<AZ::SerializeContext*>(reflection);
+            if (serializeContext)
+            {
+                serializeContext->Class<TestSimpleAsset>()
+                    ->Version(0)
+                    ->Field("data", &TestSimpleAsset::m_data)
+                    ;
+
+                AzFramework::SimpleAssetReference<TestSimpleAsset>::Register(*serializeContext);
+
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<TestSimpleAsset>("TestSimpleAsset", "Test data block for a simple asset mock data block")
+                        ->DataElement(0, &TestSimpleAsset::m_data, "My Data", "A test bool value.")
+                        ;
+                }
+            }
+        }
+    };
+
     //! Test class
     struct PropertyTreeEditorTester
     {
@@ -49,6 +97,8 @@ namespace UnitTest
         PropertyTreeEditorSubBlockTester m_mySubBlock;
         double m_myHiddenDouble = 42.0;
         AZ::u16 m_myReadOnlyShort = 42;
+        AZ::Data::Asset<MockAssetData> m_myAssetData;
+        AzFramework::SimpleAssetReference<TestSimpleAsset> m_myTestSimpleAsset;
 
         struct PropertyTreeEditorNestedTester
         {
@@ -65,6 +115,8 @@ namespace UnitTest
 
         void Reflect(AZ::ReflectContext* context)
         {
+            TestSimpleAsset::Reflect(context);
+
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<PropertyTreeEditorSubBlockTester>()
@@ -86,6 +138,8 @@ namespace UnitTest
                     ->Field("myHiddenDouble", &PropertyTreeEditorTester::m_myHiddenDouble)
                     ->Field("myReadOnlyShort", &PropertyTreeEditorTester::m_myReadOnlyShort)                    
                     ->Field("nestedTesterHiddenChildren", &PropertyTreeEditorTester::m_nestedTesterHiddenChildren)
+                    ->Field("myAssetData", &PropertyTreeEditorTester::m_myAssetData)
+                    ->Field("myTestSimpleAsset", &PropertyTreeEditorTester::m_myTestSimpleAsset)
                     ;
 
                 serializeContext->Class<PropertyTreeEditorNestedTester>()
@@ -112,6 +166,8 @@ namespace UnitTest
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myNewInt, "My New Int", "A test int.", "My Old Int")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myList, "My New List", "A test vector<>.", "My Old List")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myMap, "My Map", "A test unordered_map<>.", "My Old Map")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myAssetData, "My Asset Data", "An test asset data.")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myTestSimpleAsset, "My Test Simple Asset", "A test simple asset ref.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myHiddenDouble, "My Hidden Double", "A test hidden node.", "My Old Double")
                             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_nestedTesterHiddenChildren, "Nested Hidden Children", "A test node with hidden children.")
@@ -670,5 +726,47 @@ namespace UnitTest
         }
 
     }
-    
+
+    TEST_F(PropertyTreeEditorTests, ClearWithEmptyAny)
+    {
+        AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+        AZ::Data::AssetId mockAssetId = AZ::Data::AssetId::CreateString("{66CC8A20-DC4D-4856-95FE-5C75A47B6A21}:0");
+        MockAssetData mockAssetData(mockAssetId);
+        AZ::Data::Asset<MockAssetData> mockAsset(&mockAssetData);
+
+        AzFramework::SimpleAssetReference<TestSimpleAsset> mockSimpleAsset;
+        mockSimpleAsset.SetAssetPath("path/to/42");
+
+        PropertyTreeEditorTester propertyTreeEditorTester;
+        propertyTreeEditorTester.Reflect(m_serializeContext);
+        propertyTreeEditorTester.m_myInt = 42;
+        propertyTreeEditorTester.m_mySubBlock.m_myNegativeShort = -42;
+        propertyTreeEditorTester.m_myList.push_back({});
+        propertyTreeEditorTester.m_myAssetData = AZStd::move(mockAsset);
+        propertyTreeEditorTester.m_myTestSimpleAsset = mockSimpleAsset;
+
+        PropertyTreeEditor propertyTree(&propertyTreeEditorTester, AZ::AzTypeInfo<PropertyTreeEditorTester>::Uuid());
+        propertyTree.SetVisibleEnforcement(true);
+
+        // use an empty any<> to set properties back to a default value
+        {
+            AZStd::any anEmpty;
+            EXPECT_TRUE(propertyTree.SetProperty("My Int", anEmpty).IsSuccess());
+            EXPECT_TRUE(propertyTree.SetProperty("My Negative Short", anEmpty).IsSuccess());
+            EXPECT_TRUE(propertyTree.SetProperty("My New List", anEmpty).IsSuccess());
+            EXPECT_TRUE(propertyTree.SetProperty("My Asset Data", anEmpty).IsSuccess());
+            EXPECT_TRUE(propertyTree.SetProperty("My Test Simple Asset", anEmpty).IsSuccess());
+        }
+
+        // check that the properties went back to default values
+        {
+            EXPECT_EQ(0, propertyTreeEditorTester.m_myInt);
+            EXPECT_EQ(0, propertyTreeEditorTester.m_mySubBlock.m_myNegativeShort);
+            EXPECT_TRUE(propertyTreeEditorTester.m_myList.empty());
+            EXPECT_FALSE(propertyTreeEditorTester.m_myAssetData.GetId().IsValid());
+            EXPECT_TRUE(propertyTreeEditorTester.m_myTestSimpleAsset.GetAssetPath().empty());
+        }
+    }
+
 } // namespace UnitTest

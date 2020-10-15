@@ -16,6 +16,7 @@
 #include "EditorWhiteBoxEdgeModifierBus.h"
 #include "SubComponentModes/EditorWhiteBoxDefaultModeBus.h"
 #include "Util/WhiteBoxMathUtil.h"
+#include "Viewport/WhiteBoxModifierUtil.h"
 #include "Viewport/WhiteBoxViewportConstants.h"
 #include "WhiteBoxEdgeTranslationModifier.h"
 #include "WhiteBoxManipulatorViews.h"
@@ -57,7 +58,6 @@ namespace WhiteBox
         const AZ::Vector3& intersectionPoint)
         : m_hoveredEdgeHandle{edgeHandle}
         , m_entityComponentIdPair(entityComponentIdPair)
-        , m_intersectionPoint(intersectionPoint)
     {
         CreateManipulator();
     }
@@ -119,10 +119,10 @@ namespace WhiteBox
             AzToolsFramework::WorldFromLocalWithUniformScale(m_entityComponentIdPair.GetEntityId()));
 
         m_translationManipulator->AddEntityComponentIdPair(m_entityComponentIdPair);
-        m_translationManipulator->SetLocalPosition(m_intersectionPoint);
+        m_translationManipulator->SetLocalPosition(Api::EdgeMidpoint(*whiteBox, m_hoveredEdgeHandle));
         m_translationManipulator->SetAxes(axes[0], axes[1]);
 
-        CreateView(m_intersectionPoint);
+        CreateView();
 
         m_translationManipulator->Register(AzToolsFramework::g_mainManipulatorManagerId);
 
@@ -130,8 +130,8 @@ namespace WhiteBox
         {
             // the previous position when moving the manipulator, used to calculate manipulator delta position
             AZ::Vector3 m_prevPosition;
-            // the distance from where the user clicked to the midpoint of the edge being moved
-            AZ::Vector3 m_midpointToIntersection;
+            // the midpoint of the edge manipulator
+            AZ::Vector3 m_edgeMidpoint = AZ::Vector3::CreateZero();
             // the position of the manipulator the moment an append is initiated
             AZ::Vector3 m_initiateAppendPosition = AZ::Vector3::CreateZero();
             // the distance the manipulator has moved from where it started when an append begins
@@ -153,9 +153,9 @@ namespace WhiteBox
 
                 // record initial state at mouse down
                 sharedState->m_prevPosition = action.LocalPosition();
-                sharedState->m_midpointToIntersection =
-                    m_intersectionPoint - Api::EdgeMidpoint(*whiteBox, m_hoveredEdgeHandle);
+                sharedState->m_edgeMidpoint = Api::EdgeMidpoint(*whiteBox, m_hoveredEdgeHandle);
                 sharedState->m_appendStage = AppendStage::None;
+                sharedState->m_moved = false;
             });
 
         m_translationManipulator->InstallMouseMoveCallback(
@@ -198,8 +198,7 @@ namespace WhiteBox
                         const Api::EdgeHandle nextEdgeHandle =
                             AttemptEdgeAppend(*whiteBox, m_hoveredEdgeHandle, m_edgeHandles, extrudeVector);
 
-                        m_intersectionPoint =
-                            Api::EdgeMidpoint(*whiteBox, nextEdgeHandle) + sharedState->m_midpointToIntersection;
+                        sharedState->m_edgeMidpoint = Api::EdgeMidpoint(*whiteBox, nextEdgeHandle);
                         sharedState->m_appendStage = AppendStage::Complete;
 
                         EditorWhiteBoxEdgeModifierNotificationBus::Broadcast(
@@ -228,7 +227,7 @@ namespace WhiteBox
                 if (AppendInactive(sharedState->m_appendStage))
                 {
                     m_translationManipulator->SetLocalPosition(
-                        m_intersectionPoint + action.LocalPositionOffset() - sharedState->m_activeAppendOffset);
+                        sharedState->m_edgeMidpoint + action.LocalPositionOffset() - sharedState->m_activeAppendOffset);
 
                     EditorWhiteBoxComponentModeRequestBus::Event(
                         m_entityComponentIdPair,
@@ -307,20 +306,13 @@ namespace WhiteBox
         CreateManipulator();
     }
 
-    void EdgeTranslationModifier::UpdateIntersectionPoint(const AZ::Vector3& intersectionPoint)
-    {
-        m_intersectionPoint = intersectionPoint;
-        // set the translation modifier to be the exact location of the intersection
-        m_translationManipulator->SetLocalPosition(m_intersectionPoint);
-
-        CreateView(intersectionPoint);
-    }
-
-    void EdgeTranslationModifier::CreateView(const AZ::Vector3& intersectionPoint)
+    void EdgeTranslationModifier::CreateView()
     {
         WhiteBoxMesh* whiteBox = nullptr;
         EditorWhiteBoxComponentRequestBus::EventResult(
             whiteBox, m_entityComponentIdPair, &EditorWhiteBoxComponentRequests::GetWhiteBoxMesh);
+
+        const AZ::Vector3 edgeMidpoint = Api::EdgeMidpoint(*whiteBox, m_hoveredEdgeHandle);
 
         // if the size of the edge handles and views has changed
         // we know we need to either add or remove views
@@ -341,13 +333,17 @@ namespace WhiteBox
             auto view = m_edgeViews[edgeIndex];
             const auto edgeHandle = m_edgeHandles[edgeIndex];
 
+            const auto vertexHandles = Api::EdgeVertexHandles(*whiteBox, edgeHandle);
             // vertex positions in the local space of the entity
             const auto vertexPositions = Api::EdgeVertexPositions(*whiteBox, edgeHandle);
 
             // transform edge start/end positions to be in manipulator space (see UpdateIntersectionPoint)
             // (relative to m_translationManipulator local position)
-            view->m_start = vertexPositions[0] - intersectionPoint;
-            view->m_end = vertexPositions[1] - intersectionPoint;
+            view->m_start = vertexPositions[0] - edgeMidpoint;
+            view->m_end = vertexPositions[1] - edgeMidpoint;
+            // record if start/end handles are hidden to adjust dimensions of manipulator view
+            view->m_vertexStartEndHidden[0] = Api::VertexIsHidden(*whiteBox, vertexHandles[0]);
+            view->m_vertexStartEndHidden[1] = Api::VertexIsHidden(*whiteBox, vertexHandles[1]);
 
             // only do selection colors for 'selected/hovered' edge handle
             if (edgeHandle == m_hoveredEdgeHandle)

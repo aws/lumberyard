@@ -649,7 +649,7 @@ namespace AzToolsFramework
             EditorEntityIconComponentRequestBus::EventResult(firstIconPath, m_selectedEntityIds.front(), &EditorEntityIconComponentRequestBus::Events::GetEntityIconPath);
 
             bool haveSameIcon = true;
-            for (const auto entityId : m_selectedEntityIds)
+            for (AZ::EntityId entityId : m_selectedEntityIds)
             {
                 AZStd::string iconPath;
                 EditorEntityIconComponentRequestBus::EventResult(iconPath, entityId, &EditorEntityIconComponentRequestBus::Events::GetEntityIconPath);

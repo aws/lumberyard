@@ -10,6 +10,9 @@
 *
 */
 
+// MacOS 10.14 deprecates OpenGL. This silences the warnings for now.
+#define GL_SILENCE_DEPRECATION
+
 // include the required headers
 #include "GLWidget.h"
 #include "OpenGLRenderPlugin.h"

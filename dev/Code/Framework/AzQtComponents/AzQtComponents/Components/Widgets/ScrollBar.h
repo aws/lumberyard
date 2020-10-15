@@ -27,37 +27,40 @@ namespace AzQtComponents
     class AssetFolderThumbnailView;
     class TableView;
 
-    /**
-    * Class to provide extra functionality for working with ScrollBar controls.
-    *
-    * QScrollBar controls are styled in ScrollBar.qss
-    *
-    */
+    //! Class to provide extra functionality for working with ScrollBar controls.
     class AZ_QT_COMPONENTS_API ScrollBar
     {
     public:
-
+        //! Enum used to determine the display mode of the ScrollBar.
         enum class ScrollBarMode
         {
-            AlwaysShow = 0,
-            ShowOnHover
+            AlwaysShow = 0,     //!< Always shows scrollbars when content overflows (default).
+            ShowOnHover         //!< Only show scrollbars when the parent widget is being hovered.
         };
 
+        //! Style configuration for the ScrollBar class.
         struct Config
         {
-            ScrollBarMode defaultMode;
+            ScrollBarMode defaultMode;  //!< ScrollBar display mode.
         };
 
-        /*!
-        * Loads the config data from a settings object.
-        */
+        //! Applies the qss classes to the QAbstractScrollArea to display the scrollbars in their dark style.
+        //! Used to make the scrollbars visible in widgets with light backgrounds.
+        static void applyDarkStyle(QAbstractScrollArea* scrollArea);
+
+        //! Resets the qss classes to the QAbstractScrollArea to display the scrollbars in their light style.
+        //! This is the default styling, so it only needs to be called to revert to it after applyDarkStyle is used.
+        static void applyLightStyle(QAbstractScrollArea* scrollArea);
+
+        //! Sets the ScrollBar style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the ScrollBar.
         static Config loadConfig(QSettings& settings);
 
-        /*!
-        * Returns default config data.
-        */
+        //! Gets the default ScrollBar style configuration.
         static Config defaultConfig();
 
+        //! Sets the ScrollBar display mode for the QAbstractScrollArea specified.
         static void setDisplayMode(QAbstractScrollArea* scrollArea, ScrollBarMode mode);
 
     private:
@@ -74,7 +77,7 @@ namespace AzQtComponents
         static bool drawScrollBar(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config);
 
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::ScrollBar::s_scrollBarWatcher': class 'QPointer<AzQtComponents::ScrollBarWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::ScrollBar'
-        static QPointer<ScrollBarWatcher> s_scrollBarWatcher;
+            static QPointer<ScrollBarWatcher> s_scrollBarWatcher;
         AZ_POP_DISABLE_WARNING
         static unsigned int s_watcherReferenceCount;
     };

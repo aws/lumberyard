@@ -30,6 +30,7 @@ struct IVariable;
 class QCollapseWidget;
 class CAttributeView;
 class CAttributeGroup;
+class QColumnWidget;
 
 namespace Prop
 {
@@ -104,7 +105,7 @@ public:
     QString getUpdateCallbacks();
     bool hasCallback();
     // Types
-    QCollapseWidget* CreateDragableGroups(const CAttributeViewConfig::config::group* grp);
+    void CreateDragableGroups(const CAttributeViewConfig::config::group* grp);
     // Insert dragable parameter to custom panel
     bool InsertDragableGroup(const CAttributeViewConfig::config::item* item, const CAttributeViewConfig::config::group* grp, QWidget* insertWidget = nullptr, int index = 0);
     void HideDefault()
@@ -137,7 +138,7 @@ signals:
 private:
     // Utility functions
     QString getVarName(IVariable* var, bool addDots);
-    void addToLayout(const Prop::Description* desc, IVariable* var, QWidget* widget);
+    void addToLayout(const Prop::Description* desc, IVariable* var, QColumnWidget* widget);
 
 
     // Generate child attributes from variable or group.
@@ -153,7 +154,7 @@ private:
     void CreateDataType(IVariable* var);
 
     // Types
-    QCollapseWidget* CreateCategory(const Prop::Description* desc, IVariable* var, const CAttributeViewConfig::config::group* grp);
+    bool CreateCategory(const Prop::Description* desc, IVariable* var, const CAttributeViewConfig::config::group* grp, QColumnWidget* column = nullptr);
     void CreateString(const Prop::Description* desc, IVariable* var);
     void CreateInt(const Prop::Description* desc, IVariable* var);
     void CreateBool(const Prop::Description* desc, IVariable* var);

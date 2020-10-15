@@ -13,17 +13,18 @@
 
 // Description : Dialog for python script terminal
 
-
 #ifndef CRYINCLUDE_EDITOR_SCRIPTTERMDIALOG_H
 #define CRYINCLUDE_EDITOR_SCRIPTTERMDIALOG_H
 #pragma once
 
 #include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 
+#include <EditorPreferencesBus.h>
+
 #include <QWidget>
 
-#include <QScopedPointer>
 #include <QColor>
+#include <QScopedPointer>
 
 #define SCRIPT_TERM_WINDOW_NAME "Python Console"
 
@@ -35,6 +36,7 @@ namespace Ui {
 class CScriptTermDialog
     : public QWidget
     , protected AzToolsFramework::EditorPythonConsoleNotificationBus::Handler
+    , protected EditorPreferencesNotificationBus::Handler
 {
     Q_OBJECT
 public:
@@ -52,22 +54,28 @@ protected:
     void OnErrorMessage(AZStd::string_view message) override;
     void OnExceptionMessage(AZStd::string_view message) override;
 
+    //! EditorPreferencesNotificationBus
+    void OnEditorPreferencesChanged() override;
+
 private slots:
     void OnScriptHelp();
     void OnOK();
     void OnScriptInputTextChanged(const QString& text);
 
 private:
+    void RefreshStyle();
     void InitCompleter();
-
     void ExecuteAndPrint(const char* cmd);
-
-    void AppendToConsole(const QString& string, const QColor& color = Qt::white);
+    void AppendToConsole(const QString& string, const QColor& color, bool bold = false);
 
     QScopedPointer<Ui::CScriptTermDialog> ui;
     QStringListModel* m_completionModel;
     QStringListModel* m_lastCommandModel;
     QStringList m_lastCommands;
+
+    QColor m_textColor;
+    QColor m_warningColor;
+    QColor m_errorColor;
 
     int m_upArrowLastCommandIndex = -1;
 };

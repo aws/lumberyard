@@ -210,7 +210,6 @@ void CCentralInterestManager::Update(float fDelta)
                     pPuppet->IsActive() &&
                     pPuppet->IsUpdatedOnce() &&
                     !pProxy->IsDead() &&
-                    !pProxy->GetLinkedVehicleEntityId() &&
                     !pProxy->IsPlayingSmartObjectAction())
                 {
                     bool bCloseToCamera = pPuppet->GetPos().GetSquaredDistance2D(vCameraPos) < CIM_MIN_DIST_SQ;

@@ -272,7 +272,7 @@ namespace AZ
             tangentData->SetTangentSetIndex(uvSetIndex);
             tangentData->SetTangentSpace(tangentSpace);
 
-            const AZStd::string tangentGeneratedName = AZStd::string::format("TangentSet_%s_%d", spaceName, uvSetIndex);
+            const AZStd::string tangentGeneratedName = AZStd::string::format("TangentSet_%s_%zu", spaceName, uvSetIndex);
             const AZStd::string tangentSetName = AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<SceneData::GraphData::MeshVertexBitangentData>(tangentGeneratedName, manifest);
             AZ::SceneAPI::Containers::SceneGraph::NodeIndex newIndex = graph.AddChild(nodeIndex, tangentSetName.c_str(), tangentData);
             AZ_Assert(newIndex.IsValid(), "Failed to create SceneGraph node for tangent attribute.");
@@ -299,7 +299,7 @@ namespace AZ
             bitangentData->SetBitangentSetIndex(uvSetIndex);
             bitangentData->SetTangentSpace(tangentSpace);
 
-            const AZStd::string bitangentGeneratedName = AZStd::string::format("BitangentSet_%s_%d", spaceName, uvSetIndex);
+            const AZStd::string bitangentGeneratedName = AZStd::string::format("BitangentSet_%s_%zu", spaceName, uvSetIndex);
             const AZStd::string bitangentSetName = AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<SceneData::GraphData::MeshVertexBitangentData>(bitangentGeneratedName, manifest);
             newIndex = graph.AddChild(nodeIndex, bitangentSetName.c_str(), bitangentData);
             AZ_Assert(newIndex.IsValid(), "Failed to create SceneGraph node for bitangent attribute.");

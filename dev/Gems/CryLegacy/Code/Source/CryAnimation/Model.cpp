@@ -45,6 +45,7 @@ CDefaultSkeleton::CDefaultSkeleton(const char* pSkeletonFilePath, uint32 type, u
 CDefaultSkeleton::~CDefaultSkeleton()
 {
     m_ModelMesh.AbortStream();
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* pIPhysicalWorld = g_pIPhysicalWorld;
     IGeomManager* pPhysGeomManager = pIPhysicalWorld ? pIPhysicalWorld->GetGeomManager() : NULL;
     if (pPhysGeomManager)
@@ -78,6 +79,7 @@ CDefaultSkeleton::~CDefaultSkeleton()
             delete m_pJointsCRCToIDMap;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     for (auto it = m_arrDynamicControllers.begin(); it != m_arrDynamicControllers.end(); ++it)
     {
@@ -279,6 +281,7 @@ int GetMeshApproxFlags(const char* str, int len)
 
 uint32 GetUserDefinedPropertyShapeOverride(PhysicalProxy& physicsBoneProxy, const DynArray<BONE_ENTITY>& arrBoneEntitiesSorted, const DynArray<CDefaultSkeleton::SJoint>& arrModelJoints)
 {
+#if ENABLE_CRY_PHYSICS
     uint32 numBoneEntities = arrBoneEntitiesSorted.size();
     uint32 numJoints = arrModelJoints.size();
     //the UDP string stored in the .prop string of the BONE to which the proxy is attached
@@ -301,12 +304,18 @@ uint32 GetUserDefinedPropertyShapeOverride(PhysicalProxy& physicsBoneProxy, cons
             }
         }
     }
+#else
+    AZ_UNUSED(physicsBoneProxy);
+    AZ_UNUSED(arrBoneEntitiesSorted);
+    AZ_UNUSED(arrModelJoints);
+#endif // ENABLE_CRY_PHYSICS
     return 0;
 }
 
 template<class T>
 void _swap(T& op1, T& op2) { T tmp = op1; op1 = op2; op2 = tmp; }
 
+#if ENABLE_CRY_PHYSICS
 bool CDefaultSkeleton::SetupPhysicalProxies(const DynArray<PhysicalProxy>& arrPhyBoneMeshes, const DynArray<BONE_ENTITY>& arrBoneEntitiesSrc, _smart_ptr<IMaterial> pIMaterial, const char* filename)
 {
     //set children
@@ -578,15 +587,6 @@ bool CDefaultSkeleton::SetupPhysicalProxies(const DynArray<PhysicalProxy>& arrPh
     return true;
 }
 
-
-
-
-
-
-
-
-
-
 bool CDefaultSkeleton::ParsePhysInfoProperties_ROPE(CryBonePhysics& pi, const DynArray<SJointProperty>& props)
 {
     uint32 numProps = props.size();
@@ -819,6 +819,7 @@ DynArray<SJointProperty> CDefaultSkeleton::GetPhysInfoProperties_ROPE(const CryB
     }
     return res;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 

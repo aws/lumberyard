@@ -23,7 +23,9 @@
 #include "IEntitySystem.h"
 #include "IEntityClass.h"
 #include "IConsole.h"
+#if ENABLE_CRY_PHYSICS
 #include "IPhysics.h"
+#endif
 
 //------------------------------------------------------------------------
 CScriptBind_Network::CScriptBind_Network(ISystem* pSystem, CCryAction* pFW)

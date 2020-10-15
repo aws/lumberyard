@@ -57,8 +57,23 @@ namespace NvCloth
 
     private:
         AZ::EntityId m_entityId;
-        AZStd::vector<uint32_t> m_staticParticleIndices;
-        AZStd::vector<uint32_t> m_dynamicParticleIndices;
+
+        // Skinning information of all particles
         AZStd::vector<SkinningInfo> m_skinningData;
+
+        // Indices of particles that are static (its inverse mass is 0)
+        AZStd::vector<uint32_t> m_staticParticleIndices;
+
+        // Indices of particles that are dynamic (its inverse mass is not 0)
+        AZStd::vector<uint32_t> m_dynamicParticleIndices;
+
+        // Collection of skeleton joint indices that influence the particles
+        AZStd::vector<AZ::u16> m_jointIndices;
+
+        // Collection of skeleton joint indices that influence the static particles
+        AZStd::vector<AZ::u16> m_staticParticleJointIndices;
+
+        // Collection of skeleton joint indices that influence the dynamic particles
+        AZStd::vector<AZ::u16> m_dynamicParticleJointIndices;
     };
 }// namespace NvCloth

@@ -74,7 +74,7 @@ namespace Audio
         explicit CFileCacheManager(TATLPreloadRequestLookup& preloadRequests);
         ~CFileCacheManager() override;
 
-        CFileCacheManager(const CFileCacheManager&) = delete;           // Copy protection
+        CFileCacheManager(const CFileCacheManager&) = delete;            // Copy protection
         CFileCacheManager& operator=(const CFileCacheManager&) = delete; // Copy protection
 
         // Public methods
@@ -82,7 +82,7 @@ namespace Audio
         void Release();
         void Update();
 
-        TAudioFileEntryID TryAddFileCacheEntry(const AZ::rapidxml::xml_node<char>* fileXmlNode, const EATLDataScope dataScope, bool autoLoad);
+        virtual TAudioFileEntryID TryAddFileCacheEntry(const AZ::rapidxml::xml_node<char>* fileXmlNode, const EATLDataScope dataScope, bool autoLoad);  // 'virtual' is needed for unit tests/mocking
         bool TryRemoveFileCacheEntry(const TAudioFileEntryID audioFileID, const EATLDataScope dataScope);
         void UpdateLocalizedFileCacheEntries();
 

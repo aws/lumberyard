@@ -20,10 +20,17 @@
 
 class CFXNodeDescription;
 
+namespace TimeOfDayNodeTest
+{
+    class TimeOfDayNode_Test;
+}
+
 //////////////////////////////////////////////////////////////////////////
 class CAnimPostFXNode
     : public CAnimNode
 {
+    friend class TimeOfDayNodeTest::TimeOfDayNode_Test;
+
 public:
     AZ_CLASS_ALLOCATOR(CAnimPostFXNode, AZ::SystemAllocator, 0);
     AZ_RTTI(CAnimPostFXNode, "{41FCA8BB-46A8-4F37-87C2-C1D10994854B}", CAnimNode);
@@ -68,11 +75,16 @@ public:
 protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 
+
     typedef std::map< AnimNodeType, _smart_ptr<CFXNodeDescription> > FxNodeDescriptionMap;
     static StaticInstance<FxNodeDescriptionMap> s_fxNodeDescriptions;
     static bool s_initialized;
 
     CFXNodeDescription* m_pDescription;
+
+private:
+    //! Allows CryStrings to be destroyed before their allocators
+    static void ClearControlParams();
 };
 
 #endif // CRYINCLUDE_CRYMOVIE_ANIMPOSTFXNODE_H

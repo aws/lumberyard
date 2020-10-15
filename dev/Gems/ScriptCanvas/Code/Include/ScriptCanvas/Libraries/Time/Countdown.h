@@ -46,6 +46,8 @@ namespace ScriptCanvas
                 bool AllowInstantResponse() const override;
                 void OnTimeElapsed() override;
 
+                const char* GetBaseTimeSlotToolTip() const override { return "The amount of time to delay before the Out is signalled."; }
+
                 // Inputs
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signaled, execution is delayed at this node for the specified amount of times.")
                     ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));

@@ -12,7 +12,9 @@
 
 #include "AssetCatalog.h"
 
+#include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Interface/Interface.h>
@@ -23,6 +25,7 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/string/wildcard.h>
 
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/AssetBundleManifest.h>
@@ -100,6 +103,28 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // GetAssetTypeByDisplayName
+    //=========================================================================
+    AZ::Data::AssetType AssetCatalog::GetAssetTypeByDisplayName(const AZStd::string_view displayName)
+    {
+        AZStd::vector<AZ::Data::AssetType> assetTypes;
+        GetHandledAssetTypes(assetTypes);
+
+        for (auto assetType : assetTypes)
+        {
+            AZStd::string assetTypeName = "";
+            AZ::AssetTypeInfoBus::EventResult(assetTypeName, assetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+
+            if (assetTypeName == displayName)
+            {
+                return assetType;
+            }
+        }
+
+        return AZ::Data::AssetType::CreateNull();
+    }
+
+    //=========================================================================
     // DisableCatalog
     //=========================================================================
     void AssetCatalog::DisableCatalog()
@@ -142,6 +167,15 @@ namespace AzFramework
     //=========================================================================
     AZStd::string AssetCatalog::GetAssetPathById(const AZ::Data::AssetId& id)
     {
+        return GetAssetPathByIdInternal(id);
+    }
+
+
+    //=========================================================================
+    // GetAssetPathByIdInternal
+    //=========================================================================
+    AZStd::string AssetCatalog::GetAssetPathByIdInternal(const AZ::Data::AssetId& id) const
+    {
         if (!id.IsValid())
         {
             return AZStd::string();
@@ -159,7 +193,7 @@ namespace AzFramework
         AZ::Data::AssetId legacyMapping = m_registry->GetAssetIdByLegacyAssetId(id);
         if (legacyMapping.IsValid())
         {
-            return GetAssetPathById(legacyMapping);
+            return GetAssetPathByIdInternal(legacyMapping);
         }
 
         return AZStd::string();
@@ -169,6 +203,14 @@ namespace AzFramework
     // GetAssetInfoById
     //=========================================================================
     AZ::Data::AssetInfo AssetCatalog::GetAssetInfoById(const AZ::Data::AssetId& id)
+    {
+        return GetAssetInfoByIdInternal(id);
+    }
+
+    //=========================================================================
+    // GetAssetInfoByIdInternal
+    //=========================================================================
+    AZ::Data::AssetInfo AssetCatalog::GetAssetInfoByIdInternal(const AZ::Data::AssetId& id) const
     {
         if (!id.IsValid())
         {
@@ -187,7 +229,7 @@ namespace AzFramework
         AZ::Data::AssetId legacyMapping = m_registry->GetAssetIdByLegacyAssetId(id);
         if (legacyMapping.IsValid())
         {
-            return GetAssetInfoById(legacyMapping);
+            return GetAssetInfoByIdInternal(legacyMapping);
         }
 
         return AZ::Data::AssetInfo();
@@ -283,29 +325,94 @@ namespace AzFramework
     
     AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetAllProductDependencies(const AZ::Data::AssetId& id)
     {
-        return GetAllProductDependenciesFilter(id, {});
+        return GetAllProductDependenciesFilter(id, {}, {});
     }
 
-    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList)
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList)
     {
         AZStd::vector<AZ::Data::ProductDependency> dependencyList;
         AZStd::unordered_set<AZ::Data::AssetId> assetSet;
-
-        if (exclusionList.find(id) == exclusionList.end())
+        AZ::Data::PreloadAssetListType preloadList;
+        if (exclusionList.find(id) != exclusionList.end())
         {
-            AddAssetDependencies(id, assetSet, dependencyList, exclusionList);
+            return AZ::Success(AZStd::move(dependencyList));
         }
+
+        for (const AZStd::string& wildcardPattern : wildcardPatternExclusionList)
+        {
+            if (DoesAssetIdMatchWildcardPattern(id, wildcardPattern))
+            {
+                return AZ::Success(AZStd::move(dependencyList));
+            }
+        }
+
+        AddAssetDependencies(id, assetSet, dependencyList, exclusionList, wildcardPatternExclusionList, preloadList);
 
         // dependencyList will be appended to while looping, so use a traditional loop
         for (size_t i = 0; i < dependencyList.size(); ++i)
         {
-            AddAssetDependencies(dependencyList[i].m_assetId, assetSet, dependencyList, exclusionList);
+            AddAssetDependencies(dependencyList[i].m_assetId, assetSet, dependencyList, exclusionList, wildcardPatternExclusionList, preloadList);
         }
 
         return AZ::Success(AZStd::move(dependencyList));
     }
 
-    void AssetCatalog::AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList) const
+    AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetLoadBehaviorProductDependencies(const AZ::Data::AssetId& id, AZStd::unordered_set<AZ::Data::AssetId>& noloadSet, AZ::Data::PreloadAssetListType& preloadAssetList)
+    {
+        AZStd::vector<AZ::Data::ProductDependency> dependencyList;
+        AZStd::vector<AZ::Data::ProductDependency> returnList;
+        AZStd::unordered_set<AZ::Data::AssetId> assetSet;
+
+        AddAssetDependencies(id, assetSet, dependencyList, {}, {}, preloadAssetList);
+
+        // dependencyList will be appended to while looping, so use a traditional loop
+        for (size_t i = 0; i < dependencyList.size(); ++i)
+        {
+            if (AZ::Data::ProductDependencyInfo::LoadBehaviorFromFlags(dependencyList[i].m_flags) == AZ::Data::AssetLoadBehavior::NoLoad)
+            {
+                noloadSet.insert(dependencyList[i].m_assetId);
+                assetSet.erase(dependencyList[i].m_assetId);
+            }
+            else
+            {
+                returnList.push_back(dependencyList[i]);
+                AddAssetDependencies(dependencyList[i].m_assetId, assetSet, dependencyList, {}, {}, preloadAssetList);
+            }
+        }
+
+        return AZ::Success(AZStd::move(returnList));
+    }
+
+    bool AssetCatalog::DoesAssetIdMatchWildcardPatternInternal(const AZ::Data::AssetId& assetId, const AZStd::string& wildcardPattern) const
+    {
+        if (wildcardPattern.empty())
+        {
+            // pattern is empty, there is nothing to match
+            return false;
+        }
+
+        AZStd::string relativePath = GetAssetPathByIdInternal(assetId);
+        if (relativePath.empty())
+        {
+            // assetId did not resolve to a relative path, cannot be matched
+            return false;
+        }
+
+        return AZStd::wildcard_match(wildcardPattern, relativePath);
+    }
+
+    bool AssetCatalog::DoesAssetIdMatchWildcardPattern(const AZ::Data::AssetId& assetId, const AZStd::string& wildcardPattern) 
+    {
+        return DoesAssetIdMatchWildcardPatternInternal(assetId, wildcardPattern);
+    }
+
+    void AssetCatalog::AddAssetDependencies(
+        const AZ::Data::AssetId& searchAssetId,
+        AZStd::unordered_set<AZ::Data::AssetId>& assetSet,
+        AZStd::vector<AZ::Data::ProductDependency>& dependencyList,
+        const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
+        const AZStd::vector<AZStd::string>& wildcardPatternExclusionList,
+        AZ::Data::PreloadAssetListType& preloadAssetList) const
     {
         using namespace AZ::Data;
 
@@ -318,15 +425,39 @@ namespace AzFramework
 
             for (const ProductDependency& dependency : assetDependencyList)
             {
+                if (!dependency.m_assetId.IsValid())
+                {
+                    continue;
+                }
+
                 if(exclusionList.find(dependency.m_assetId) != exclusionList.end())
                 {
                     continue;
                 }
 
+                bool isWildcardMatch = false;
+                for (const AZStd::string& wildcardPattern : wildcardPatternExclusionList)
+                {
+                    isWildcardMatch = DoesAssetIdMatchWildcardPatternInternal(dependency.m_assetId, wildcardPattern);
+                    if (isWildcardMatch)
+                    {
+                        break;
+                    }
+                }
+                if (isWildcardMatch)
+                {
+                    continue;
+                }
+
+                auto loadBehavior = AZ::Data::ProductDependencyInfo::LoadBehaviorFromFlags(dependency.m_flags);
+                if (loadBehavior == AZ::Data::AssetLoadBehavior::PreLoad)
+                {
+                    preloadAssetList[searchAssetId].insert(dependency.m_assetId);
+                }
+
                 // Only proceed if this ID is valid and we haven't encountered this assetId before.
                 // Invalid IDs usually come from unmet path product dependencies.
-                if (dependency.m_assetId.IsValid() &&
-                    assetSet.find(dependency.m_assetId) == assetSet.end())
+                if (assetSet.find(dependency.m_assetId) == assetSet.end())
                 {
                     assetSet.insert(dependency.m_assetId); // add to the set of already-encountered assets
                     dependencyList.push_back(dependency); // put it in the flat list of dependencies we've found
@@ -380,84 +511,95 @@ namespace AzFramework
     //=========================================================================
     void AssetCatalog::InitializeCatalog(const char* catalogRegistryFile /*= nullptr*/)
     {
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
-
-        // Get asset root from application.
-        EBUS_EVENT_RESULT(m_assetRoot, AzFramework::ApplicationRequests::Bus, GetAssetRoot);
-
-        // Reflect registry for serialization.
-        AZ::SerializeContext* serializeContext = nullptr;
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
-        if (nullptr == serializeContext->FindClassData(AZ::AzTypeInfo<AssetRegistry>::Uuid()))
+        bool shouldBroadcast = false;
         {
-            AssetRegistry::ReflectSerialize(serializeContext);
-        }
+            // this scope controls the below lock guard, do not remove this scope.  
+            // the lock must expire before we send out notifications to other systems.
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
 
-        AZ_TracePrintf("AssetCatalog","Initializing asset catalog with root \"%s\"",m_assetRoot.c_str());
+            // Get asset root from application.
+            EBUS_EVENT_RESULT(m_assetRoot, AzFramework::ApplicationRequests::Bus, GetAssetRoot);
 
-        // even though this could be a chunk of memory to allocate and deallocate, this is many times faster and more efficient
-        // in terms of memory AND fragmentation than allowing it to perform thousands of reads on physical media.
-        AZStd::vector<char> bytes;
-        if (catalogRegistryFile && AZ::IO::FileIOBase::GetInstance())
-        {
-            AZ::IO::HandleType handle = AZ::IO::InvalidHandle;
-            AZ::u64 size = 0;
-            AZ::IO::FileIOBase::GetInstance()->Size(catalogRegistryFile, size);
-
-            if (size)
+            // Reflect registry for serialization.
+            AZ::SerializeContext* serializeContext = nullptr;
+            EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+            AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
+            if (nullptr == serializeContext->FindClassData(AZ::AzTypeInfo<AssetRegistry>::Uuid()))
             {
-                if (AZ::IO::FileIOBase::GetInstance()->Open(catalogRegistryFile, AZ::IO::OpenMode::ModeRead, handle))
+                AssetRegistry::ReflectSerialize(serializeContext);
+            }
+
+            AZ_TracePrintf("AssetCatalog", "Initializing asset catalog with root \"%s\"", m_assetRoot.c_str());
+
+            // even though this could be a chunk of memory to allocate and deallocate, this is many times faster and more efficient
+            // in terms of memory AND fragmentation than allowing it to perform thousands of reads on physical media.
+            AZStd::vector<char> bytes;
+            if (catalogRegistryFile && AZ::IO::FileIOBase::GetInstance())
+            {
+                AZ::IO::HandleType handle = AZ::IO::InvalidHandle;
+                AZ::u64 size = 0;
+                AZ::IO::FileIOBase::GetInstance()->Size(catalogRegistryFile, size);
+
+                if (size)
                 {
-                    bytes.resize_no_construct(size);
-                    // this call will fail on purpose if bytes.size() != size successfully actually read from disk.
-                    if (!AZ::IO::FileIOBase::GetInstance()->Read(handle, bytes.data(), bytes.size(), true))
+                    if (AZ::IO::FileIOBase::GetInstance()->Open(catalogRegistryFile, AZ::IO::OpenMode::ModeRead, handle))
                     {
-                        AZ_Error("AssetCatalog", false, "File %s failed read - read was truncated!", catalogRegistryFile);
-                        bytes.set_capacity(0);
+                        bytes.resize_no_construct(size);
+                        // this call will fail on purpose if bytes.size() != size successfully actually read from disk.
+                        if (!AZ::IO::FileIOBase::GetInstance()->Read(handle, bytes.data(), bytes.size(), true))
+                        {
+                            AZ_Error("AssetCatalog", false, "File %s failed read - read was truncated!", catalogRegistryFile);
+                            bytes.set_capacity(0);
+                        }
+                        AZ::IO::FileIOBase::GetInstance()->Close(handle);
                     }
-                    AZ::IO::FileIOBase::GetInstance()->Close(handle);
                 }
             }
-        }
 
-        if (!bytes.empty())
-        {
-            AZStd::shared_ptr < AzFramework::AssetRegistry> prevRegistry;
-            if (!m_initialized)
+            if (!bytes.empty())
             {
-                // First time initialization may have updates already processed which we want to apply
-                prevRegistry = AZStd::move(m_registry);
-                m_registry.reset(aznew AssetRegistry());
-            }
-            AZ::IO::MemoryStream catalogStream(bytes.data(), bytes.size());
-        #if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
-            ApplicationRequests::Bus::Broadcast(&ApplicationRequests::PumpSystemEventLoopWhileDoingWorkInNewThread,
-                AZStd::chrono::milliseconds(AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING_INTERVAL_MS),
-                [this, &catalogStream, &serializeContext]
+                AZStd::shared_ptr < AzFramework::AssetRegistry> prevRegistry;
+                if (!m_initialized)
+                {
+                    // First time initialization may have updates already processed which we want to apply
+                    prevRegistry = AZStd::move(m_registry);
+                    m_registry.reset(aznew AssetRegistry());
+                }
+                AZ::IO::MemoryStream catalogStream(bytes.data(), bytes.size());
+#if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+                ApplicationRequests::Bus::Broadcast(&ApplicationRequests::PumpSystemEventLoopWhileDoingWorkInNewThread,
+                    AZStd::chrono::milliseconds(AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING_INTERVAL_MS),
+                    [this, &catalogStream, &serializeContext]
                 {
                     AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
                 },
-                "Asset Catalog Loading Thread"
-            );
-        #else
-            AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
-        #endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+                    "Asset Catalog Loading Thread"
+                    );
+#else
+                AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
+#endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
 
-            AZ_TracePrintf("AssetCatalog", "Loaded registry containing %u assets.\n", m_registry->m_assetIdToInfo.size());
+                AZ_TracePrintf("AssetCatalog", "Loaded registry containing %u assets.\n", m_registry->m_assetIdToInfo.size());
 
-            // It's currently possible in tools for us to have received updates from AP which were applied before the catalog was ready to load
-            // due to CryPak and CrySystem coming online later than our components
-            if (!m_initialized)
-            {
-                ApplyDeltaCatalog(prevRegistry);
-                m_initialized = true;
+                // It's currently possible in tools for us to have received updates from AP which were applied before the catalog was ready to load
+                // due to CryPak and CrySystem coming online later than our components
+                if (!m_initialized)
+                {
+                    ApplyDeltaCatalog(prevRegistry);
+                    m_initialized = true;
+                }
+                shouldBroadcast = true;
             }
-            AssetCatalogEventBus::Broadcast(&AssetCatalogEventBus::Events::OnCatalogLoaded, catalogRegistryFile);
+            else
+            {
+                AZ_ErrorOnce("AssetCatalog", false, "Unable to load the asset catalog from %s!", catalogRegistryFile);
+            }
         }
-        else
+
+        // Send notification to other systems after expiring the lock guard above.
+        if (shouldBroadcast)
         {
-            AZ_ErrorOnce("AssetCatalog", false, "Unable to load the asset catalog from %s!", catalogRegistryFile);
+            AssetCatalogEventBus::Broadcast(&AssetCatalogEventBus::Events::OnCatalogLoaded, catalogRegistryFile);
         }
     }
 

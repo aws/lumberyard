@@ -71,16 +71,7 @@ namespace EMotionFX
 
             memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
 
-            AZStd::shared_ptr<int>& renderNodeLifetime = m_renderNodeLifetime;
-            const AZStd::function<void()> finalizeOnMainThread = [this, renderNodeLifetime]() {
-                // RenderMesh creation must be performed on the main thread,
-                // as required by the renderer.
-                if (renderNodeLifetime.use_count() != 1)
-                {
-                    BuildRenderMeshPerLOD();
-                }
-            };
-            AZ::SystemTickBus::QueueFunction(finalizeOnMainThread);
+            QueueBuildRenderMesh();
 
             if (m_entityId.IsValid())
             {
@@ -536,15 +527,6 @@ namespace EMotionFX
             EBUS_EVENT_ID(m_entityId, AZ::TransformBus, SetLocalTM, localTransform);
         }
 
-        struct IPhysicalEntity* CryRenderActorInstance::GetPhysics() const
-        {
-            return nullptr;
-        }
-
-        void CryRenderActorInstance::SetPhysics(IPhysicalEntity* /*pPhys*/)
-        {
-        }
-
         void CryRenderActorInstance::SetMaterial(_smart_ptr<IMaterial> pMat)
         {
             AZ_Assert(m_materialPerLOD.size() < 2, "Attempting to override actor's multiple LOD materials with a single material");
@@ -744,6 +726,20 @@ namespace EMotionFX
             {
                 renderMesh->UnlockStream(VSF_QTANGENTS);
             }
+        }
+
+        void CryRenderActorInstance::QueueBuildRenderMesh()
+        {
+            AZStd::shared_ptr<int>& renderNodeLifetime = m_renderNodeLifetime;
+            const AZStd::function<void()> finalizeOnMainThread = [this, renderNodeLifetime]() {
+                // RenderMesh creation must be performed on the main thread,
+                // as required by the renderer.
+                if (renderNodeLifetime.use_count() != 1)
+                {
+                    BuildRenderMeshPerLOD();
+                }
+            };
+            AZ::SystemTickBus::QueueFunction(finalizeOnMainThread);
         }
 
         void CryRenderActorInstance::BuildRenderMeshPerLOD()
@@ -950,6 +946,16 @@ namespace EMotionFX
 
         // MeshComponentRequestBus::Handler
         //////////////////////////////////////////////////////////////////////////
+
+        void CryRenderActorInstance::SetMeshAsset(const AZ::Data::AssetId& id)
+        {
+            AZ::Data::Asset<ActorAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ActorAsset>(id, false);
+            if (asset)
+            {
+                m_actorAsset = asset;
+                QueueBuildRenderMesh();
+            }
+        }
 
         //////////////////////////////////////////////////////////////////////////
         // MaterialOwnerRequestBus::Handler

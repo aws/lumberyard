@@ -146,7 +146,9 @@ private:
     int FindSubsetId(CNodeCGF* pNode, int vertid);
 
 private:
+#if ENABLE_CRY_PHYSICS
     CPhysicsInterface* m_pPhysicsInterface;
+#endif
     ConvertContext m_CC;
     ICryXML* m_pXML;
     int m_refCount;

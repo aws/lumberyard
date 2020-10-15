@@ -135,8 +135,9 @@ namespace AzFramework
         void ResolveEnginePath(AZStd::string& engineRelativePath) const override;
         void CalculateBranchTokenForAppRoot(AZStd::string& token) const override;
 
-
         const CommandLine* GetCommandLine() override { return &m_commandLine; }
+        const CommandLine* GetApplicationCommandLine() override { return &m_commandLine; }
+        
         void SetAssetRoot(const char* assetRoot) override;
         void MakePathRootRelative(AZStd::string& fullPath) override;
         void MakePathAssetRootRelative(AZStd::string& fullPath) override;

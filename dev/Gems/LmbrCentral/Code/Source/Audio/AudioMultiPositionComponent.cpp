@@ -39,10 +39,9 @@ namespace LmbrCentral
                 ->Enum<static_cast<AZ::u32>(Audio::MultiPositionBehaviorType::Blended)>("MultiPositionBehaviorType_Blended")
                 ;
 
-            behaviorContext->EBus<AudioMultiPositionComponentRequestBus>("Multi-Position Audio Requests", "AudioMultiPositionComponentRequestBus")
+            behaviorContext->EBus<AudioMultiPositionComponentRequestBus>("AudioMultiPositionComponentRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Audio")
-                ->Event("Add Entity", &AudioMultiPositionComponentRequestBus::Events::AddEntity, "AddEntity")
+                ->Event("AddEntity", &AudioMultiPositionComponentRequestBus::Events::AddEntity)
                 ->Event("RemoveEntity", &AudioMultiPositionComponentRequestBus::Events::RemoveEntity)
                 ->Event("SetBehaviorType", &AudioMultiPositionComponentRequestBus::Events::SetBehaviorType)
                 ;

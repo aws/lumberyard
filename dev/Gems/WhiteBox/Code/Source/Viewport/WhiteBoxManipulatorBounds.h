@@ -73,7 +73,7 @@ namespace WhiteBox
     //! and anything greater than that distance away can usually safely be ignored.
     bool IntersectRayPolygon(
         const PolygonBound& polygonBound, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
-        float& rayIntersectionDistance);
+        float& rayIntersectionDistance, int64_t& intersectedTriangleIndex);
 
     //! Perform a ray intersection against an edge, returning true if the ray intersects the
     //! edge within a tolerance defined by edgeScreenWidth, or false if it does not intersect.

@@ -21,7 +21,9 @@
 #include "MaterialEffects/MaterialEffectsCVars.h"
 #include "ParticleParams.h"
 #include "DelayedPlaneBreak.h"
+#if ENABLE_CRY_PHYSICS
 #include "IPhysics.h"
+#endif
 #include "IMaterialEffects.h"
 #include "IBreakableGlassSystem.h"
 #include "IPlayerProfiles.h"
@@ -208,7 +210,9 @@ private:
 CActionGame::CActionGame(CScriptRMI* pScriptRMI)
     : m_pEntitySystem(gEnv->pEntitySystem)
     , m_pNetwork(gEnv->pNetwork)
+#if ENABLE_CRY_PHYSICS
     , m_pPhysicalWorld(0)
+#endif
     , m_pEntHits0(0)
     , m_pGameContext(0)
     , m_pCHSlotPool(0)
@@ -217,7 +221,9 @@ CActionGame::CActionGame(CScriptRMI* pScriptRMI)
     , m_timeToPromoteToServer(0.f)
 #endif
     , m_initState(eIS_Uninited)
+#if ENABLE_CRY_PHYSICS
     , m_pendingPlaneBreaks(10)
+#endif
     , m_clientActorID(0)
     , m_pClientActor(NULL)
 {
@@ -261,9 +267,11 @@ CActionGame::~CActionGame()
         m_pNetwork->SyncWithGame(eNGS_Shutdown_Clear);
     }
 
+#if ENABLE_CRY_PHYSICS
     // Pause and wait for the physics
     gEnv->pSystem->SetThreadState(ESubsys_Physics, false);
     EnablePhysicsEvents(false);
+#endif
 
     CCryAction* pCryAction = CCryAction::GetCryAction();
     if (pCryAction)
@@ -505,7 +513,9 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
         gEnv->pEntitySystem->ReserveEntityId(LOCAL_PLAYER_ENTITY_ID);
     }
 
+#if ENABLE_CRY_PHYSICS
     m_pPhysicalWorld = gEnv->pPhysicalWorld;
+#endif
 
     // Create Physics API World
     if (auto physicsSystem = AZ::Interface<Physics::System>::Get())
@@ -541,7 +551,9 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
     CCryAction::GetCryAction()->AllowSave(true);
     CCryAction::GetCryAction()->AllowLoad(true);
 
+#if ENABLE_CRY_PHYSICS
     EnablePhysicsEvents(true);
+#endif
     m_bLoading = false;
 
     m_nEffectCounter = 0;
@@ -717,6 +729,7 @@ bool CActionGame::Update()
     return false;
 }
 
+#if ENABLE_CRY_PHYSICS
 void CActionGame::OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity)
 {
     // For now this is MP only
@@ -731,6 +744,7 @@ void CActionGame::OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPh
         it->bCollisions = 1;
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CActionGame::UpdateFadeEntities(float dt)
 {
@@ -749,16 +763,21 @@ void CActionGame::UpdateFadeEntities(float dt)
                 {
                     const float newTime = state->time + dt;
                     const float t = newTime - g_breakageFadeDelay;
+#if ENABLE_CRY_PHYSICS
                     IPhysicalEntity* pent = pEntity->GetPhysics();
+#endif
                     if (t >= g_breakageFadeTime)
                     {
+#if ENABLE_CRY_PHYSICS
                         FreeBrokenMeshesForEntity(pent);
+#endif
                         continue;
                     }
                     if (t > 0.f)
                     {
                         float opacity = 1.f - t * inv;
                         pRenderComponent->SetOpacity(opacity);
+#if ENABLE_CRY_PHYSICS
                         if (pent && state->bCollisions)
                         {
                             // Turn off some collisions
@@ -768,6 +787,7 @@ void CActionGame::UpdateFadeEntities(float dt)
                             pent->SetParams(&pp);
                             state->bCollisions = 0;
                         }
+#endif // ENABLE_CRY_PHYSICS
                     }
                     state->time = newTime;
                     *p = *state;
@@ -789,10 +809,12 @@ IGameObject* CActionGame::GetEntityGameObject(IEntity* pEntity)
     return pEntity ? pEntity->GetComponent<CGameObject>().get() : nullptr;
 }
 
+#if ENABLE_CRY_PHYSICS
 IGameObject* CActionGame::GetPhysicalEntityGameObject(IPhysicalEntity* pPhysEntity)
 {
     return GetEntityGameObject(gEnv->pEntitySystem->GetEntityFromPhysics(pPhysEntity));
 }
+#endif
 
 
 bool CActionGame::IsStale()
@@ -803,6 +825,7 @@ bool CActionGame::IsStale()
 
 /////////////////////////////////////////////////////////////////////////////
 
+#if ENABLE_CRY_PHYSICS
 void CActionGame::AddGlobalPhysicsCallback(int event, void(* proc)(const EventPhys*, void*), void* userdata)
 {
     int idx = (event & (0xff << 8)) != 0;
@@ -1219,6 +1242,7 @@ SBreakEvent& CActionGame::RegisterBreakEvent(const EventPhysCollision* pColl, fl
 
     return StoreBreakEvent(be);
 }
+#endif // ENABLE_CRY_PHYSICS
 
 /////////////////////////////////
 // Store break event for later playback. This should only occur with break events that
@@ -1254,16 +1278,24 @@ void CActionGame::PerformPlaneBreak(const EventPhysCollision& epc, SBreakEvent* 
     {
         s_this->m_bLoading = true; // fake loading here
     }
+#if ENABLE_CRY_PHYSICS
     pe_params_part pp;
+#endif
     IStatObj* pStatObj = 0;
     IStatObj* pStatObjHost = 0;
+#if ENABLE_CRY_PHYSICS
     IStatObj::SSubObject* pSubObj;
     IRenderNode* pBrush;
+#endif
     _smart_ptr<IMaterial> pRenderMat;
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEnt;
+#endif
     float r = epc.radius;
+#if ENABLE_CRY_PHYSICS
     pp.pMatMapping = 0;
     pp.flagsOR = geom_can_modify;
+#endif
     Matrix34A mtx;
     SProcBrokenObjRec rec;
     rec.itype = epc.pEntity[1] ? epc.pEntity[1]->GetiForeignData() : epc.iForeignData[1];
@@ -1302,6 +1334,7 @@ void CActionGame::PerformPlaneBreak(const EventPhysCollision& epc, SBreakEvent* 
     //IEntity* pEntitySrc = epc.pEntity[0] ? (IEntity*)epc.pEntity[0]->GetForeignData(PHYS_FOREIGN_ID_ENTITY) : 0;
     IEntity* pEntityTrg = epc.pEntity[1] ? (IEntity*)epc.pEntity[1]->GetForeignData(PHYS_FOREIGN_ID_ENTITY) : 0;
 
+#if ENABLE_CRY_PHYSICS
     if (pEntityTrg && rec.itype == PHYS_FOREIGN_ID_ENTITY)
     {
         BreakLogAlways("> PHYS_FOREIGN_ID_ENTITY");
@@ -1873,8 +1906,10 @@ ForceObjUpdate:
             gEnv->p3DEngine->CreateDecal(dcl);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
+#if ENABLE_CRY_PHYSICS
 namespace
 {
     ILINE bool CheckCarParamBreakable(const EventPhysCollision* pCEvent)
@@ -2749,7 +2784,6 @@ int CActionGame::OnCreatePhysicalEntityLogged(const EventPhys* pEvent)
     return 1;
 }
 
-
 void CActionGame::RegisterEntsForBreakageReuse(IPhysicalEntity* pPhysEnt, int partid, IPhysicalEntity* pPhysEntNew, float h, float size)
 {
     IEntity* pEntity;
@@ -3054,6 +3088,7 @@ int CActionGame::OnUpdateMeshLogged(const EventPhys* pEvent)
 
     return 1;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 struct CrySizerNaive
@@ -3101,6 +3136,7 @@ const char* GetStatObjName(IStatObj* pStatObj)
 const char* GetGeomName(const SBrokenMeshSize& bms)
 {
     IStatObj* pStatObj = 0;
+#if ENABLE_CRY_PHYSICS
     if (IEntity* pEntity = (IEntity*)bms.pent->GetForeignData(PHYS_FOREIGN_ID_ENTITY))
     {
         pStatObj = pEntity->GetStatObj(bms.partid);
@@ -3109,10 +3145,12 @@ const char* GetGeomName(const SBrokenMeshSize& bms)
     {
         pStatObj = pBrush->GetEntityStatObj();
     }
+#endif // ENABLE_CRY_PHYSICS
     return GetStatObjName(pStatObj);
 }
 
 
+#if ENABLE_CRY_PHYSICS
 void CActionGame::FreeBrokenMeshesForEntity(IPhysicalEntity* pent)
 {
     // Remove all broken meshes for this entity
@@ -3144,23 +3182,28 @@ int CActionGame::OnPhysEntityDeleted(const EventPhys* pEvent)
     }
     return 1;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 static void FreeSlotsAndFoilage(IEntity* pEntity)
 {
+#if ENABLE_CRY_PHYSICS
     IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>();
     if (pPhysicsComponent)
     {
         pPhysicsComponent->DephysicalizeFoliage(0);
     }
+
     SEntityPhysicalizeParams epp;
     epp.type = PE_NONE;
     pEntity->Physicalize(epp);
+#endif // ENABLE_CRY_PHYSICS
     for (int i = pEntity->GetSlotCount() - 1; i >= 0; i--)
     {
         pEntity->FreeSlot(i);
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 int CActionGame::FreeBrokenMesh(IPhysicalEntity* pent, SBrokenMeshSize& bm)
 {
     if (!pent || pent != bm.pent)
@@ -3278,11 +3321,13 @@ void CActionGame::RegisterBrokenMesh(IPhysicalEntity* pPhysEnt, IGeometry* pPhys
         {
             pPhysGeom->GetMemoryStatistics(&sizer);
 
+#if ENABLE_CRY_PHYSICS
             if (void* pPlane = pPhysGeom->GetForeignData(1))
             {
                 IBreakableManager* pBreakableManager = gEnv->pEntitySystem->GetBreakableManager();
                 pBreakableManager->GetPlaneMemoryStatistics(pPlane, &sizer);
             }
+#endif
         }
         if (pStatObj || pPhysGeom && (pStatObj = (IStatObj*)pPhysGeom->GetForeignData()))
         {
@@ -3417,10 +3462,12 @@ void CActionGame::RegisterBrokenMesh(IPhysicalEntity* pPhysEnt, IGeometry* pPhys
         m_brokenMeshRemovals.push_back(-1);
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 
 void CActionGame::DrawBrokenMeshes()
 {
+#if ENABLE_CRY_PHYSICS
     IRenderer* pRnd = gEnv->pRenderer;
     std::map<int, SBrokenMeshSize>::iterator iter;
     int sizes[16] = { 0 }, keys[16] = { 0 }, nTop = 0, i;
@@ -3455,6 +3502,7 @@ void CActionGame::DrawBrokenMeshes()
     {
         pRnd->Draw2dLabel(10.0f, 72.0f + i * 12.0f, 1.3f, clr, false, "%d Kb %s", sizes[i], GetGeomName(m_mapBrokenMeshes.find(keys[i])->second));
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CActionGame::AddBroken2DChunkId(int id)
@@ -3467,6 +3515,7 @@ void CActionGame::UpdateBrokenMeshes(float dt)
     //Temporarily disabled to fit back into memory
     //if (g_breakage_mem_limit!=m_lastDynPoolSize)
     //  gEnv->pPhysicalWorld->SetDynPoolSize((m_lastDynPoolSize = g_breakage_mem_limit)*1024);
+#if ENABLE_CRY_PHYSICS
     CDelayedPlaneBreak* pdpb;
     for (int i = m_pendingPlaneBreaks.size() - 1; i >= 0; i--)
     {
@@ -3479,6 +3528,7 @@ void CActionGame::UpdateBrokenMeshes(float dt)
             pdpb->m_status = CDelayedPlaneBreak::NONE;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     std::map<int, SBrokenMeshSize>::iterator iter, iterNext;
     if (dt)
@@ -3488,7 +3538,9 @@ void CActionGame::UpdateBrokenMeshes(float dt)
             if (++(iterNext = iter), iter->second.timeout > 0 && (iter->second.timeout -= dt) <= 0.0)
             {
                 iter->second.timeout += dt;
+#if ENABLE_CRY_PHYSICS
                 FreeBrokenMesh(iter->second.pent, iter->second);
+#endif
                 m_totBreakageSize -= iter->second.size;
                 CryLog("Removing broken mesh on timeout; new total size %dKb", m_totBreakageSize);
                 m_mapBrokenMeshes.erase(iter);
@@ -3498,6 +3550,7 @@ void CActionGame::UpdateBrokenMeshes(float dt)
 }
 
 
+#if ENABLE_CRY_PHYSICS
 void CActionGame::RemoveEntFromBreakageReuse(IPhysicalEntity* pEntity, int bRemoveOnlyIfSecondary)
 {
     std::map<IPhysicalEntity*, STreePieceThunk*>::iterator iter1;
@@ -3740,6 +3793,8 @@ int CActionGame::OnCreatePhysicalEntityImmediate(const EventPhys* pEvent)
 
     return 1;
 }
+#endif // ENABLE_CRY_PHYSICS
+
 
 EntityId CActionGame::UpdateEntityIdForBrokenPart(EntityId idSrc)
 {
@@ -3760,6 +3815,7 @@ EntityId CActionGame::UpdateEntityIdForBrokenPart(EntityId idSrc)
     return id;
 }
 
+#if ENABLE_CRY_PHYSICS
 int CActionGame::OnUpdateMeshImmediate(const EventPhys* pEvent)
 {
     EventPhysUpdateMesh* pepum = (EventPhysUpdateMesh*)pEvent;
@@ -3778,6 +3834,7 @@ int CActionGame::OnUpdateMeshImmediate(const EventPhys* pEvent)
 
     return 1;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 EntityId CActionGame::UpdateEntityIdForVegetationBreak(IRenderNode* pVeg)
 {
@@ -3905,7 +3962,9 @@ void CActionGame::ApplyBreakToClonedObjectFromEvent(const SRenderNodeCloneLookup
             BreakLogAlways(">>>  Break, original: 0x%p      new: 0x%p", renderNodeLookup.pOriginalNodes[iNodeIndex], renderNodeLookup.pClonedNodes[iNodeIndex]);
             epc.pForeignData[1] = pVeg;
             epc.iForeignData[1] = PHYS_FOREIGN_ID_STATIC;
+#if ENABLE_CRY_PHYSICS
             epc.pEntity[1] = pVeg->GetPhysics();
+#endif
         }
         else
         {
@@ -4087,12 +4146,14 @@ void CActionGame::CloneBrokenObjectsByIndex(uint16* pBreakEventIndices, int32& i
 
                     pNewNode->SetEntityStatObj(0, BrokenObj.pStatObjOrg);
 
+#if ENABLE_CRY_PHYSICS
                     IPhysicalEntity* pPhysEnt = pNewNode->GetPhysics();
                     if (pPhysEnt)
                     {
                         gEnv->pPhysicalWorld->DestroyPhysicalEntity(pPhysEnt);
                         pNewNode->SetPhysics(NULL);
                     }
+#endif // ENABLE_CRY_PHYSICS
 
                     gEnv->p3DEngine->RegisterEntity(pNewNode);
                     outClonedNodes[iLocalNumClonedNodes] = pNewNode;
@@ -4113,12 +4174,14 @@ void CActionGame::CloneBrokenObjectsByIndex(uint16* pBreakEventIndices, int32& i
 
                     pNewNode->SetEntityStatObj(0, BrokenObj.pStatObjOrg, &mtx);
 
+#if ENABLE_CRY_PHYSICS
                     IPhysicalEntity* pPhysEnt = pNewNode->GetPhysics();
                     if (pPhysEnt)
                     {
                         gEnv->pPhysicalWorld->DestroyPhysicalEntity(pPhysEnt);
                         pNewNode->SetPhysics(NULL);
                     }
+#endif // ENABLE_CRY_PHYSICS
 
                     gEnv->p3DEngine->RegisterEntity(pNewNode);
                     outClonedNodes[iLocalNumClonedNodes] = pNewNode;
@@ -4149,6 +4212,7 @@ void CActionGame::CloneBrokenObjectsByIndex(uint16* pBreakEventIndices, int32& i
 
 void CActionGame::FixBrokenObjects(bool bRestoreBroken)
 {
+#if ENABLE_CRY_PHYSICS
     //
     if (IBreakableManager* pBreakManager = gEnv->pEntitySystem->GetBreakableManager())
     {
@@ -4160,6 +4224,7 @@ void CActionGame::FixBrokenObjects(bool bRestoreBroken)
     {
         pGlassSystem->ResetAll();
     }
+#endif // ENABLE_CRY_PHYSICS
 
     //
     for (int i = m_brokenObjs.size() - 1; i >= 0; i--)
@@ -4325,6 +4390,7 @@ void CActionGame::ClearBreakHistory()
 
 void CActionGame::ClearTreeBreakageReuseLog()
 {
+#if ENABLE_CRY_PHYSICS
     for (std::map<IPhysicalEntity*, STreePieceThunk*>::iterator iter = m_mapBrokenTreesChunks.begin(); iter != m_mapBrokenTreesChunks.end(); ++iter)
     {
         if (iter->second != (STreePieceThunk*)&iter->second->pParent->pPhysEntNew0)
@@ -4337,8 +4403,11 @@ void CActionGame::ClearTreeBreakageReuseLog()
         delete iter->second;
     }
     m_mapBrokenTreesByPhysEnt.clear();
+#endif // ENABLE_CRY_PHYSICS
     m_mapBrokenTreesByCGF.clear();
+#if ENABLE_CRY_PHYSICS
     m_mapBrokenTreesChunks.clear();
+#endif
 }
 
 void CActionGame::FlushBreakableObjects()
@@ -4426,6 +4495,7 @@ void CActionGame::SerializeBreakableObjects(TSerialize ser)
         m_mapBrokenMeshes.clear();
         m_totBreakageSize = 0;
 
+#if ENABLE_CRY_PHYSICS
         EventPhysCollision epc;
         IEntity* pEnt;
         pe_params_structural_joint psj;
@@ -4434,11 +4504,20 @@ void CActionGame::SerializeBreakableObjects(TSerialize ser)
         m_entPieceIdx.clear();
         epc.pEntity[0] = 0;
         epc.iForeignData[0] = -1;
+#else
+        AZ_UNUSED(i);
+        m_bLoading = true;
+        m_entPieceIdx.clear();
+#endif
+
         ClearTreeBreakageReuseLog();
 
+#if ENABLE_CRY_PHYSICS
         m_pPhysicalWorld->UpdateDeformingEntities(-1);
+#endif
         FixBrokenObjects(true);
 
+#if ENABLE_CRY_PHYSICS
         for (i = 0; i < m_breakEvents.size(); i++)
         {
             m_iCurBreakEvent = i;
@@ -4508,6 +4587,8 @@ void CActionGame::SerializeBreakableObjects(TSerialize ser)
             m_pPhysicalWorld->UpdateDeformingEntities();
         }
         m_pPhysicalWorld->GetPhysVars()->bLogStructureChanges = 1;
+#endif // ENABLE_CRY_PHYSICS
+
         m_entPieceIdx.clear();
         m_bLoading = false;
     }
@@ -4539,6 +4620,7 @@ void CCryAction::ClearBreakHistory()
 
 void CActionGame::OnExplosion(const ExplosionInfo& ei)
 {
+#if ENABLE_CRY_PHYSICS
     // This code is purely for serialisation, which is not needed in MP
     if (gEnv->bMultiplayer)
     {
@@ -4593,6 +4675,9 @@ void CActionGame::OnExplosion(const ExplosionInfo& ei)
             m_breakEvents.push_back(be);
         }
     }
+#else
+    AZ_UNUSED(ei);
+#endif
 }
 
 void CActionGame::DumpStats()

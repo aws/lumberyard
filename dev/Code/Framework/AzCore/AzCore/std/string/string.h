@@ -1396,70 +1396,171 @@ namespace AZStd
             }
         }
 
-        static basic_string<char, char_traits<char>, Allocator> format_arg(const char* format, va_list argList)
+        static basic_string<char, char_traits<char>, Allocator> format_arg(const char* formatStr, va_list argList)
         {
             basic_string<char, char_traits<char>, Allocator> result;
-#if defined(AZ_COMPILER_MSVC)
-            // On Windows, AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS is set, so
-            // azvsnprintf calls _vsnprintf_s. _vsnprintf_s, unlike vsnprintf,
-            // will fail and return -1 when the size argument is 0.
-            const int len = _vscprintf(format, argList);
-#else
-            va_list argList2;
-            va_copy(argList2, argList);
-            const int len = azvsnprintf(nullptr, static_cast<size_t>(0), format, argList2);
-            va_end(argList2);
-#endif
+            // On Windows, AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS is set, so azvsnprintf calls _vsnprintf_s.
+            // _vsnprintf_s, unlike vsnprintf, will fail and return -1 when the size argument is 0.
+            // azvscprintf uses the proper function(_vscprintf or vsnprintf) on the given platform
+            va_list argListCopy; //<- Depending on vprintf implementation va_list may be consumed, so send a copy
+            va_copy(argListCopy, argList);
+            const int len = azvscprintf(formatStr, argListCopy);
+            va_end(argListCopy);
             if (len > 0)
             {
                 result.resize(len);
-                const int bytesPrinted = azvsnprintf(result.data(), result.size() + 1, format, argList);
+                va_copy(argListCopy, argList);
+                const int bytesPrinted = azvsnprintf(result.data(), result.size() + 1, formatStr, argListCopy);
+                va_end(argListCopy);
                 AZ_UNUSED(bytesPrinted);
-                AZ_Assert(bytesPrinted == static_cast<int>(result.size()), "azvsnprintf failed!");
+                AZ_Assert(bytesPrinted >= 0, "azvsnprintf error! Format string: \"%s\"", formatStr);
+                AZ_Assert(static_cast<size_t>(bytesPrinted) == result.size(), "azvsnprintf failed to print all bytes! Format string: \"%s\", bytesPrinted=%i/%i",
+                    formatStr, bytesPrinted, len);
             }
             return result;
         }
 
-        static inline basic_string<char, char_traits<char>, Allocator> format(const char* format, ...)
-        {
-            va_list mark;
-            va_start(mark, format);
-            basic_string<char, char_traits<char>, Allocator> result = format_arg(format, mark);
-            va_end(mark);
-            return result;
-        }
-
-        static basic_string<wchar_t, char_traits<wchar_t>, Allocator> format_arg(const wchar_t* format, va_list argList)
+        static basic_string<wchar_t, char_traits<wchar_t>, Allocator> format_arg(const wchar_t* formatStr, va_list argList)
         {
             basic_string<wchar_t, char_traits<wchar_t>, Allocator> result;
-            int len;
-#if defined(AZ_COMPILER_MSVC)
-            len = _vscwprintf(format, argList);
+            // On Windows, AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS is set, so azvsnwprintf calls _vsnwprintf_s.
+            // _vsnwprintf_s, unlike vsnwprintf, will fail and return -1 when the size argument is 0.
+            // azvscwprintf uses the proper function(_vscwprintf or vsnwprintf) on the given platform
+            va_list argListCopy; //<- Depending on vprintf implementation va_list may be consumed, so send a copy
+            va_copy(argListCopy, argList);
+            const int len = azvscwprintf(formatStr, argListCopy);
+            va_end(argListCopy);
             if (len > 0)
             {
                 result.resize(len);
-                len = azvsnwprintf(result.data(), result.capacity() + 1, format, argList);
-                (void)len;
-                AZ_Assert(len == static_cast<int>(result.size()), "azvsnwprintf failed!");
+                va_copy(argListCopy, argList);
+                const int bytesPrinted = azvsnwprintf(result.data(), result.size() + 1, formatStr, argListCopy);
+                va_end(argListCopy);
+                AZ_UNUSED(bytesPrinted);
+                AZ_Assert(bytesPrinted >= 0, "azvsnwprintf error! Format string: \"%ws\"", formatStr);
+                AZ_Assert(static_cast<size_t>(bytesPrinted) == result.size(), "azvsnwprintf failed to print all bytes! Format string: \"%ws\", bytesPrinted=%i/%i",
+                    formatStr, bytesPrinted, len);
             }
-#else
-            const int maxBufferLength = 2048;
-            wchar_t buffer[maxBufferLength];
-            len = azvsnwprintf(buffer, maxBufferLength, format, argList);
-            (void)len;
-            AZ_Assert(len != -1, "azvsnwprintf failed increase the buffer size!");
-            result += buffer;
-#endif
             return result;
         }
 
-        static inline basic_string<wchar_t, char_traits<wchar_t>, Allocator> format(const wchar_t* format, ...)
+        struct _Format_Internal
         {
-            va_list mark;
-            va_start(mark, format);
-            basic_string<wchar_t, char_traits<wchar_t>, Allocator> result = format_arg(format, mark);
-            va_end(mark);
+            struct ValidFormatArg
+            {
+                ValidFormatArg(const bool) {}
+                ValidFormatArg(const char) {}
+                ValidFormatArg(const unsigned char) {}
+                ValidFormatArg(const signed char) {}
+                ValidFormatArg(const wchar_t) {}
+                ValidFormatArg(const char16_t) {}
+                ValidFormatArg(const char32_t) {}
+                ValidFormatArg(const unsigned short) {}
+                ValidFormatArg(const short) {}
+                ValidFormatArg(const unsigned int) {}
+                ValidFormatArg(const int) {}
+                ValidFormatArg(const unsigned long) {}
+                ValidFormatArg(const long) {}
+                ValidFormatArg(const unsigned long long) {}
+                ValidFormatArg(const long long) {}
+                ValidFormatArg(const float) {}
+                ValidFormatArg(const double) {}
+                ValidFormatArg(const char*) {}
+                ValidFormatArg(const wchar_t*) {}
+                ValidFormatArg(const void*) {}
+            };
+
+            static basic_string<char, char_traits<char>, Allocator> raw_format(const char* formatStr, ...)
+            {
+                va_list args;
+                va_start(args, formatStr);
+                basic_string<char, char_traits<char>, Allocator> result = this_type::format_arg(formatStr, args);
+                va_end(args);
+                return result;
+            }
+
+            static basic_string<wchar_t, char_traits<wchar_t>, Allocator> raw_format(const wchar_t* formatStr, ...)
+            {
+                va_list args;
+                va_start(args, formatStr);
+                basic_string<wchar_t, char_traits<wchar_t>, Allocator> result = this_type::format_arg(formatStr, args);
+                va_end(args);
+                return result;
+            }
+        };
+
+// Clang supports compile-time check for printf-like signatures
+// On MSVC, *only* if /analyze flag is enabled(defines _PREFAST_) we can also do a compile-time check
+// For not affecting final release binary size, we don't use the templated version on Release configuration either
+#if AZ_COMPILER_CLANG || defined(_PREFAST_) || defined(_RELEASE)
+#    if AZ_COMPILER_CLANG
+#        define FORMAT_FUNC      __attribute__((format(printf, 1, 2)))
+#        define FORMAT_FUNC_ARG
+#    elif AZ_COMPILER_MSVC
+#        define FORMAT_FUNC
+#        define FORMAT_FUNC_ARG  _Printf_format_string_
+#    else
+#        define FORMAT_FUNC
+#        define FORMAT_FUNC_ARG
+#    endif
+
+        FORMAT_FUNC static basic_string<char, char_traits<char>, Allocator> format(FORMAT_FUNC_ARG const char* formatStr, ...)
+        {
+            va_list args;
+            va_start(args, formatStr);
+            basic_string<char, char_traits<char>, Allocator> result = format_arg(formatStr, args);
+            va_end(args);
             return result;
+        }
+
+#    undef FORMAT_FUNC
+#    undef FORMAT_FUNC_ARG
+
+#else // !AZ_COMPILER_CLANG && !defined(_PREFAST_) && !defined(_RELEASE)
+
+        static basic_string<char, char_traits<char>, Allocator> format(const char* formatStr)
+        {
+            return { formatStr };
+        }
+
+        template<typename... Args>
+        static basic_string<char, char_traits<char>, Allocator> format(const char* formatStr, Args... args)
+        {
+            using ValidFormatArg = typename _Format_Internal::ValidFormatArg;
+
+            auto IsValidFormatArg = [](const auto& value) constexpr
+            {
+                constexpr bool isValid = AZSTD_IS_CONVERTIBLE(decltype(value), ValidFormatArg);
+                static_assert(isValid, "Invalid string::format argument");
+                return isValid;
+            };
+            constexpr bool allValid = (IsValidFormatArg(args) && ...);
+            static_assert(allValid, "Invalid string::format arguments, must be: numeric(floating point, integral, pointer) or C String(char/w_char)");
+
+            return _Format_Internal::raw_format(formatStr, args...);
+        }
+#endif // AZ_COMPILER_CLANG || defined(_PREFAST_) || defined(_RELEASE)
+
+        static inline basic_string<wchar_t, char_traits<wchar_t>, Allocator> format(const wchar_t* formatStr)
+        {
+            return { formatStr };
+        }
+
+        template<typename... Args>
+        static basic_string<wchar_t, char_traits<wchar_t>, Allocator> format(const wchar_t* formatStr, Args... args)
+        {
+            using ValidFormatArg = typename _Format_Internal::ValidFormatArg;
+
+            auto IsValidFormatArg = [](const auto& value) constexpr
+            {
+                constexpr bool isValid = AZSTD_IS_CONVERTIBLE(decltype(value), ValidFormatArg);
+                static_assert(isValid, "Invalid wstring::format argument");
+                return isValid;
+            };
+            constexpr bool allValid = (IsValidFormatArg(args) && ...);
+            static_assert(allValid, "Invalid wstring::format arguments, must be: numeric(floating point, integral, pointer) or C String(char/w_char)");
+
+            return _Format_Internal::raw_format(formatStr, args...);
         }
 
         template<class UAllocator>

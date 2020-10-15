@@ -15,6 +15,7 @@
 #include "TimeViewPlugin.h"
 #include "TimeInfoWidget.h"
 #include "TrackHeaderWidget.h"
+#include "TimeViewToolBar.h"
 #include <QPainter>
 #include <QToolTip>
 #include <QPaintEvent>
@@ -43,6 +44,7 @@
 #include "../MotionEvents/MotionEventsPlugin.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
+
 
 namespace EMStudio
 {
@@ -205,11 +207,11 @@ namespace EMStudio
         {
             // update the current time marker
             int newX = event->x();
-            newX = MCore::Clamp<int>(newX, 0, geometry().width() - 1);
+            newX = AZ::GetClamp(newX, 0, geometry().width() - 1);
             mPlugin->mCurTime = mPlugin->PixelToTime(newX);
 
             EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
-            if (recorder.GetRecordTime() > MCore::Math::epsilon)
+            if (recorder.GetRecordTime() > AZ::g_fltEps)
             {
                 if (recorder.GetIsInPlayMode())
                 {
@@ -307,36 +309,38 @@ namespace EMStudio
             mMouseLeftClicked   = true;
 
             EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
-            if ((mPlugin->mNodeHistoryItem == nullptr) && altPressed == false && (recorder.GetRecordTime() >= MCore::Math::epsilon))
+            if (!mPlugin->mNodeHistoryItem && !altPressed)
             {
                 // update the current time marker
                 int newX = event->x();
-                newX = MCore::Clamp<int>(newX, 0, geometry().width() - 1);
+                newX = AZ::GetClamp(newX, 0, geometry().width() - 1);
                 mPlugin->mCurTime = mPlugin->PixelToTime(newX);
 
-                if (recorder.GetRecordTime() < MCore::Math::epsilon)
+                if (recorder.GetRecordTime() > AZ::g_fltEps)
                 {
-                    const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-                    if (motionInstances.size() == 1)
-                    {
-                        EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                        motionInstance->SetPause(true);
-                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
-                    }
-                }
-                else
-                {
-                    if (recorder.GetIsInPlayMode() == false)
+                    if (!recorder.GetIsInPlayMode())
                     {
                         recorder.StartPlayBack();
                     }
 
                     recorder.SetCurrentPlayTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     recorder.SetAutoPlay(false);
+                    emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                    emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                 }
-
-                emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
-                emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                else
+                {
+                    const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
+                    if (motionInstances.size() == 1)
+                    {
+                        EMotionFX::MotionInstance* motionInstance = motionInstances[0];
+                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()), false);
+                        motionInstance->SetPause(true);
+                        mPlugin->GetTimeViewToolBar()->UpdateInterface();
+                        emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                        emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                    }
+                }
             }
         }
 

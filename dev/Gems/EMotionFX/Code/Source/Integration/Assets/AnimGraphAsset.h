@@ -20,6 +20,7 @@ namespace EMotionFX
     class AnimGraph;
     class AnimGraphInstance;
     class ActorInstance;
+    class MotionSet;
 
     namespace Integration
     {

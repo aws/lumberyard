@@ -27,7 +27,7 @@ namespace NvCloth
                 aznew MeshNodeHandler()
             };
 
-            for (const auto handler : propertyHandlers)
+            for (const auto& handler : propertyHandlers)
             {
                 AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, handler);
             }

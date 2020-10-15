@@ -32,7 +32,6 @@
 #include "VariableWidgets/QWidgetInt.h"
 #include "VariableWidgets/QColumnWidget.h"
 #include "VariableWidgets/QCollapsePanel.h"
-#include "VariableWidgets/QCollapseWidget.h"
 #include "VariableWidgets/QColorCurve.h"
 #include "VariableWidgets/QCurveEditorImp.h"
 #include "VariableWidgets/QColorWidgetImp.h"
@@ -598,18 +597,17 @@ QString CAttributeItem::getVarName(IVariable* var, bool addDots)
     return title + (addDots ? "........................" : "");
 }
 
-void CAttributeItem::addToLayout(const Prop::Description* desc, IVariable* var, QWidget* widget)
+void CAttributeItem::addToLayout(const Prop::Description* desc, IVariable* var, QColumnWidget* widget)
 {
-    QCollapseWidget* collapseWidget = var->GetNumVariables() > 0 ? CreateCategory(desc, var, nullptr) : NULL;
-    if (collapseWidget)
+    if(var->GetNumVariables() > 0)
     {
+        CreateCategory(desc, var, nullptr, widget);
         ((QColumnWidget*)widget)->SetCollapsible(true);
-        collapseWidget->getMainLayout()->addWidget(widget, Qt::AlignRight);
     }
     else
     {
         ((QColumnWidget*)widget)->SetCollapsible(false);
-        m_layout->addWidget(widget, Qt::AlignRight);
+        m_layout->addWidget(widget);
     }
 }
 
@@ -680,7 +678,7 @@ void CAttributeItem::CreateDataType(IVariable* var)
                 extraInfo = QString().sprintf(" - Unimplemented type# %d", desc.m_type);
             }
 
-            addToLayout(&desc, var, new QColumnWidget(this, getVarName(var, false) + extraInfo, NULL));
+            addToLayout(&desc, var, new QColumnWidget(this, getVarName(var, false) + extraInfo, nullptr));
         }
         break;
     }
@@ -725,7 +723,7 @@ void CAttributeItem::CreateChildAttributes_ConfigGroup(const CAttributeViewConfi
                 // attribute not found, make a placeholder
                 QString extraInfo;
                 extraInfo = QString().sprintf("(@ %s)", grp->items[id.index].as.toUtf8().data());
-                m_layout->addWidget(new QColumnWidget(this, extraInfo, NULL));
+                m_layout->addWidget(new QColumnWidget(this, extraInfo, nullptr));
             }
             else
             {
@@ -784,12 +782,12 @@ void CAttributeItem::CreateChildAttributes_Variable(IVariable* pVar, QWidget* pa
 
         if (layout)
         {
-            layout->addWidget(widget, Qt::AlignRight);
+            layout->addWidget(widget);
         }
     }
 }
 
-QCollapseWidget* CAttributeItem::CreateCategory(const Prop::Description* desc, IVariable* var, const CAttributeViewConfig::config::group* grp)
+bool CAttributeItem::CreateCategory(const Prop::Description* desc, IVariable* var, const CAttributeViewConfig::config::group* grp, QColumnWidget* column)
 {
     QString title;
 
@@ -806,11 +804,11 @@ QCollapseWidget* CAttributeItem::CreateCategory(const Prop::Description* desc, I
     {
         if (var)
         {
-            // use collapsed widgets for variables
-            QCollapseWidget* widget = new QCollapseWidget(this, this);
-            m_layout->addWidget(widget);
-            CreateChildAttributes(widget, widget->getChildLayout(), var, grp);
-            return widget;
+            // set collapsed flag for variables
+            column->SetAsCollapsible(this);
+            m_layout->addWidget(column);
+            CreateChildAttributes(column, column->GetChildLayout(), var, grp);
+            return true;
         }
         if (grp)
         {
@@ -841,13 +839,13 @@ QCollapseWidget* CAttributeItem::CreateCategory(const Prop::Description* desc, I
         QVBoxLayout* layout = new QVBoxLayout();
 
         QWidget* widget = new QWidget();
-        m_layout->addWidget(widget, Qt::AlignRight);
+        m_layout->addWidget(widget, Qt::AlignLeft);
         CreateChildAttributes(widget, layout, var, grp);
         widget->setLayout(layout);
         widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
     }
 
-    return NULL;
+    return false;
 }
 bool CAttributeItem::InsertDragableGroup(const CAttributeViewConfig::config::item* item, const CAttributeViewConfig::config::group* grp, QWidget* insertWidget, int index)
 {
@@ -909,7 +907,7 @@ bool CAttributeItem::InsertDragableGroup(const CAttributeViewConfig::config::ite
             // attribute not found, make a placeholder
             QString extraInfo;
             extraInfo = QString().sprintf("(@ %s)", item->as.toUtf8().data());
-            layout->addWidget(new QColumnWidget(this, extraInfo, NULL));
+            layout->addWidget(new QColumnWidget(this, extraInfo, nullptr));
         }
         else
         {
@@ -960,7 +958,7 @@ bool CAttributeItem::InsertDragableGroup(const CAttributeViewConfig::config::ite
 }
 
 
-QCollapseWidget* CAttributeItem::CreateDragableGroups(const CAttributeViewConfig::config::group* grp)
+void CAttributeItem::CreateDragableGroups(const CAttributeViewConfig::config::group* grp)
 {
     assert(m_nodeDepth == 1); // The function only applys for nodeDepth == 1
     QVBoxLayout* layout = new QVBoxLayout();
@@ -996,12 +994,19 @@ QCollapseWidget* CAttributeItem::CreateDragableGroups(const CAttributeViewConfig
         case CAttributeViewConfig::config::group::order_type::Item:
         {
             auto& item = grp->items[id.index];
+            const bool isDisabled = PARTICLES_USE_CRY_PHYSICS ? item.physics == "azphysics" : item.physics == "cryphysics";
+
+            if (isDisabled)
+            {
+                continue;
+            }
+
             if (m_attributeView->getConfigVariableMap().contains(item.as) == false)
             {
                 // attribute not found, make a placeholder
                 QString extraInfo;
                 extraInfo = QString().sprintf("(@ %s)", grp->items[id.index].as.toUtf8().data());
-                m_layout->addWidget(new QColumnWidget(this, extraInfo, NULL));
+                m_layout->addWidget(new QColumnWidget(this, extraInfo, nullptr));
             }
             else
             {
@@ -1032,8 +1037,6 @@ QCollapseWidget* CAttributeItem::CreateDragableGroups(const CAttributeViewConfig
     widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
     m_widget = widget;
     m_widget->setObjectName("Widget");
-
-    return NULL;
 }
 
 void CAttributeItem::RemoveDragableGroup(CAttributeGroup* group)
@@ -1071,7 +1074,7 @@ void CAttributeItem::CreateString(const Prop::Description* desc, IVariable* var)
 
     QStringWidget* widget = new QStringWidget(this);
 
-    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget));
+    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget, false, true));
 }
 
 void CAttributeItem::CreateInt(const Prop::Description* desc, IVariable* var)
@@ -1098,7 +1101,7 @@ void CAttributeItem::CreateBool(const Prop::Description* desc, IVariable* var)
 
     QBoolWidget* widget = new QBoolWidget(this);
 
-    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget));
+    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget, false, false));
 }
 
 void CAttributeItem::CreateFloat(const Prop::Description* desc, IVariable* var)
@@ -1211,7 +1214,7 @@ void CAttributeItem::CreateCurveFloat(const Prop::Description* desc, IVariable* 
     widget->setVar(var);
     widget->setMinimumHeight(96);
 
-    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget));
+    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget, false, false));
 }
 
 void CAttributeItem::CreateCurveColor(const Prop::Description* desc, IVariable* var)
@@ -1238,7 +1241,7 @@ void CAttributeItem::CreateColor(const Prop::Description* desc, IVariable* var)
     QColorWidgetImp* widget = new QColorWidgetImp(this);
     widget->setVar(var);
 
-    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget));
+    addToLayout(desc, var, new QColumnWidget(this, getVarName(var, false), widget, false, false));
 }
 
 

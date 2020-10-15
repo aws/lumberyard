@@ -24,6 +24,7 @@
 const uint32 BAI_COVER_FILE_VERSION_READ = 2;
 const uint16 MAX_CACHED_COVERS = 4096;
 
+#if ENABLE_CRY_PHYSICS
 struct CoverSystemPhysListener
 {
     static int RemoveEntityParts(const EventPhys* event)
@@ -48,6 +49,7 @@ struct CoverSystemPhysListener
         return 1;
     }
 };
+#endif // ENABLE_CRY_PHYSICS
 
 
 CCoverSystem::CCoverSystem(const char* configFileName)
@@ -56,13 +58,17 @@ CCoverSystem::CCoverSystem(const char* configFileName)
     ReloadConfig();
     ClearAndReserveCoverLocationCache();
 
+#if ENABLE_CRY_PHYSICS
     gEnv->pPhysicalWorld->AddEventClient(EventPhysRemoveEntityParts::id, CoverSystemPhysListener::RemoveEntityParts, true,
         FLT_MAX);
+#endif
 }
 
 CCoverSystem::~CCoverSystem()
 {
+#if ENABLE_CRY_PHYSICS
     gEnv->pPhysicalWorld->RemoveEventClient(EventPhysRemoveEntityParts::id, CoverSystemPhysListener::RemoveEntityParts, true);
+#endif
 }
 
 ICoverSampler* CCoverSystem::CreateCoverSampler(const char* samplerName)

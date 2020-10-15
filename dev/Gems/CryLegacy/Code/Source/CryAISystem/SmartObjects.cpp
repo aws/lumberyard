@@ -148,6 +148,7 @@ Vec3 CSmartObjectBase::GetPos() const
 
 bool GetPelvisJointForRagdollizedActor(IEntity* pEntity, QuatT& pelvisJoint)
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPE = pEntity->GetPhysics();
     const bool isArticulatedEntity = pPE ?  (pPE->GetType() == PE_ARTICULATED) : false;
     if (isArticulatedEntity && pEntity->HasAI())
@@ -166,6 +167,7 @@ bool GetPelvisJointForRagdollizedActor(IEntity* pEntity, QuatT& pelvisJoint)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
@@ -1380,6 +1382,7 @@ float CSmartObjectManager::CalculateDelayTime(CSmartObject* pUser, const Vec3& p
     {
         CPipeUser* pPipeUser = pUser->GetPipeUser();
         const bool isInVisualRange = pPipeUser ?  (IAIObject::eFOV_Outside != pPipeUser->IsPointInFOV(posObject)) : false;
+#if ENABLE_CRY_PHYSICS
         if (isInVisualRange)
         {
             if (GetAISystem()->CheckPointsVisibility(posUser, posObject, 0, pUser->GetPhysics(), pObject->GetPhysics()))   // is physically visible?
@@ -1387,6 +1390,7 @@ float CSmartObjectManager::CalculateDelayTime(CSmartObject* pUser, const Vec3& p
                 delta += pCondition->fVisibilityFactor;
             }
         }
+#endif
         if (pCondition->fVisibilityFactor > 0)
         {
             divider += pCondition->fVisibilityFactor;
@@ -5302,6 +5306,7 @@ bool CSmartObjectManager::ValidateSmartObjectArea(const SSOTemplateArea& templat
     static float upDist = 1.0f;
     static float downDist = 1.0f;
 
+#if ENABLE_CRY_PHYSICS
     if (templateArea.projectOnGround &&
         !GetFloorPos(groundPos, templateArea.pt, upDist, downDist, WalkabilityDownRadius, collEntities))
     {
@@ -5315,6 +5320,7 @@ bool CSmartObjectManager::ValidateSmartObjectArea(const SSOTemplateArea& templat
     {
         return false;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return true;
 }

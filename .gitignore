@@ -105,6 +105,8 @@
 /dev/Bin64
 /dev/Bin64vc141
 /dev/Bin64vc141.Debug
+/dev/Bin64vc142
+/dev/Bin64vc142.Debug
 /dev/Cache
 /dev/SamplesProject
 /dev/Code/SDKs
@@ -119,7 +121,7 @@
 /dev/Gems/PBSreferenceMaterials
 /dev/Gems/Substance
 /dev/Tools/CrySCompileServer/x64
-/dev/Tools/LmbrSetup/Win.vc141.Debug
+/dev/Tools/LmbrSetup/Win
 
 # Ignore ico files from Lumberyard folders but preserve ico files in project folders
 /dev/Code/**/*.ico

@@ -30,7 +30,8 @@ public:
     virtual ~CEditorPreferencesPage_General() = default;
 
     virtual const char* GetCategory() override { return "General Settings"; }
-    virtual const char* GetTitle() override { return "General"; }
+    virtual const char* GetTitle() override;
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -58,14 +59,15 @@ private:
         bool m_bLayerDoubleClicking;
         bool m_bShowNews;
         bool m_enableSceneInspector;
-        bool m_enableUI2;
+        bool m_enableUI1;
         bool m_enableLegacyUI;
         bool m_enableNewViewportInteractionModel;
+        ParticlesNameSortingMode m_particlesNameSortingMode;
 
         // Only used to tell if the user has changed this value since it requires a restart
         bool m_enableLegacyUIInitialValue;
         bool m_enableNewViewportInteractionModelInitialValue;
-        bool m_enableUI2InitialValue;
+        bool m_enableUI1InitialValue;
 
 
         // Callbacks when either m_enableNewViewportInteractionModel or m_enableLegacyUI
@@ -127,6 +129,7 @@ private:
     VertexSnapping m_vertexSnapping;
     MetricsSettings m_metricsSettings;
     SliceSettings m_sliceSettings;
+    QIcon m_icon;
 };
 
 static const char* EditorPreferencesGeneralRestoreViewportCameraSettingName = "Restore Viewport Camera on Game Mode Exit";

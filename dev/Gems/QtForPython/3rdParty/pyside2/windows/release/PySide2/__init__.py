@@ -1,9 +1,8 @@
 __all__ = list("Qt" + body for body in
-               "Core;Gui;Widgets;PrintSupport;Sql;Network;Test;Concurrent;WinExtras;Xml;XmlPatterns;Help;Multimedia;MultimediaWidgets;OpenGL;OpenGLFunctions;Positioning;Location;Qml;Quick;QuickWidgets;RemoteObjects;Scxml;Script;ScriptTools;Sensors;TextToSpeech;Charts;Svg;DataVisualization;UiTools;AxContainer;WebChannel;WebEngineCore;WebEngine;WebEngineWidgets;WebSockets;3DCore;3DRender;3DInput;3DLogic;3DAnimation;3DExtras"
-               .split(";"))
-__version__ = "5.12.4"
-__version_info__ = (5, 12, 4, "", "")
-
+    "Core;Gui;Widgets;PrintSupport;Sql;Network;Test;Concurrent;WinExtras;Xml;XmlPatterns;Help;OpenGL;OpenGLFunctions;Qml;Quick;QuickWidgets;Sensors;Svg;UiTools;WebChannel;WebEngineCore;WebEngine;WebEngineWidgets;WebSockets"
+    .split(";"))
+__version__ = "5.12.5"
+__version_info__ = (5, 12, 5, "a", "1")
 
 def _setupQtDirectories():
     import sys
@@ -23,7 +22,7 @@ def _setupQtDirectories():
     #   Trigger signature initialization.
     type.__signature__
 
-    pyside_package_dir = os.path.abspath(os.path.dirname(__file__))
+    pyside_package_dir =  os.path.abspath(os.path.dirname(__file__))
 
     if sys.platform == 'win32':
         # PATH has to contain the package directory, otherwise plugins
@@ -48,6 +47,5 @@ def _setupQtDirectories():
                     QtNetwork.QSslSocket.supportsSsl()
             finally:
                 os.environ['PATH'] = path
-
 
 _setupQtDirectories()

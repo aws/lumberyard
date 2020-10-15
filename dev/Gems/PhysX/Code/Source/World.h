@@ -76,7 +76,7 @@ namespace PhysX
         void SetSimFunc(std::function<void(void*)> func) override;
         void SetTriggerEventCallback(Physics::ITriggerEventCallback* callback) override;
 
-        AZ::Vector3 GetGravity() override;
+        AZ::Vector3 GetGravity() const override;
         void SetGravity(const AZ::Vector3& gravity) override;
         void SetMaxDeltaTime(float maxDeltaTime) override;
         void SetFixedDeltaTime(float fixedDeltaTime) override;
@@ -86,6 +86,8 @@ namespace PhysX
     private:
         using ActorPair = AZStd::pair<const physx::PxActor*, const physx::PxActor*>;
         AZStd::unordered_set<ActorPair>::iterator FindSuppressedPair(const physx::PxActor* actor0, const physx::PxActor* actor1);
+
+        void UpdateAzProfilerDataPoints();
 
         physx::PxScene* m_world = nullptr;
         AZ::Crc32 m_worldId;

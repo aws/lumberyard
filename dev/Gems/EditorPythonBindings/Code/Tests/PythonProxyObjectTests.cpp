@@ -79,6 +79,48 @@ namespace UnitTest
         }
     };
 
+    struct ClassWithOnlyConstructors final
+    {
+        AZ_TYPE_INFO(ClassWithOnlyConstructors, "{CF0EC37A-B846-4637-BFDC-15B29AE82D3E}");
+
+        ClassWithOnlyConstructors() = default;
+        ClassWithOnlyConstructors(int value) { m_value = value; }
+
+        int m_value = 0;
+
+        void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->Class<ClassWithOnlyConstructors>("ClassWithOnlyConstructors")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "test.proxy")
+                    ->Constructor()
+                    ->Constructor<int>()
+                    ;
+            }
+        }
+    };
+
+    struct ClassWithOnlyProperties
+    {
+        AZ_TYPE_INFO(ClassWithOnlyProperties, "{3D9FC921-6768-4456-A460-FE1BCF7D0155}");
+
+        int m_value = 0;
+
+        void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->Class<ClassWithOnlyProperties>("ClassWithOnlyProperties")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "test.proxy")
+                    ->Property("the_value", BehaviorValueProperty(&ClassWithOnlyProperties::m_value))
+                    ;
+            }
+        }
+    };
+
     struct PythonReflectionObjectProxyTester
     {
         AZ_TYPE_INFO(PythonReflectionObjectProxyTester, "{4FC01B6B-D738-46AD-BF74-6F72506DD9B1}");
@@ -1186,6 +1228,70 @@ namespace UnitTest
 
         EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Crc32Type_Created)]);
         EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Crc32Type_Read)]);
+    }
+
+    TEST_F(PythonObjectProxyTests, AlmostEmptyClasses)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            FoundClassWithOnlyConstructors,
+            FoundClassWithOnlyProperties
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "FoundClassWithOnlyConstructors"))
+                {
+                    return aznumeric_cast<int>(LogTypes::FoundClassWithOnlyConstructors);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "FoundClassWithOnlyProperties"))
+                {
+                    return aznumeric_cast<int>(LogTypes::FoundClassWithOnlyProperties);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        ClassWithOnlyConstructors classWithOnlyConstructors;
+        classWithOnlyConstructors.Reflect(m_app.GetBehaviorContext());
+        ClassWithOnlyProperties classWithOnlyProperties;
+        classWithOnlyProperties.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.test.proxy
+
+                instance = azlmbr.test.proxy.ClassWithOnlyConstructors()
+                print ('FoundClassWithOnlyConstructors_created')
+
+                instance = azlmbr.test.proxy.ClassWithOnlyConstructors(42)
+                print ('FoundClassWithOnlyConstructors_created_with_value')
+
+                instance = azlmbr.test.proxy.ClassWithOnlyProperties()
+                print ('FoundClassWithOnlyProperties_created')
+                instance.the_value = 42
+                print ('FoundClassWithOnlyProperties_updated')
+                if (instance.the_value == 42):
+                    print ('FoundClassWithOnlyProperties_read')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+
+        e.Deactivate();
+
+        EXPECT_EQ(2, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::FoundClassWithOnlyConstructors)]);
+        EXPECT_EQ(3, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::FoundClassWithOnlyProperties)]);
     }
 
     TEST_F(PythonObjectProxyTests, ObjectDirectory)

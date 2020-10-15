@@ -19,6 +19,9 @@ namespace AzToolsFramework
 {
     namespace Components
     {
+        // This disables the warning about calling deprecated functions.  It is necessary because several functions from
+        // EntityCompositionRequestBus have been deprecated, and the bus handling causes these functions to be called here.
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
         /**
         * A system component for handling component-related actions on entities
         *
@@ -46,7 +49,10 @@ namespace AzToolsFramework
             AddComponentsOutcome AddComponentsToEntities(const EntityIdList& entityIds, const AZ::ComponentTypeList& componentsToAdd) override;
             AddExistingComponentsOutcome AddExistingComponentsToEntityById(const AZ::EntityId& entityId, const AZStd::vector<AZ::Component*>& componentsToAdd) override;
             //! LUMBERYARD_DEPRECATED(LY-103316)
-            AddExistingComponentsOutcome AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd) override;
+            AZ_DEPRECATED(
+                AddExistingComponentsOutcome AddExistingComponentsToEntity(
+                    AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd) override;,
+                "AddExistingComponentsToEntity is deprecated, please use AddExistingComponentsToEntityById");
             RemoveComponentsOutcome RemoveComponents(const AZStd::vector<AZ::Component*>& componentsToRemove) override;
             ScrubEntitiesOutcome ScrubEntities(const EntityList& entities) override;
 
@@ -81,6 +87,6 @@ namespace AzToolsFramework
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         };
-
+        AZ_POP_DISABLE_WARNING
     } // namespace Components
 } // namespace AzToolsFramework

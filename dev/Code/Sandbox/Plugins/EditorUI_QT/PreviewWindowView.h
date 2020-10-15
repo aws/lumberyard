@@ -14,6 +14,8 @@
 #include "api.h"
 #include <QWidget>
 #include <QSettings>
+#include <AzQtComponents/Components/Widgets/Slider.h>
+#include "AzQtComponents/Components/Widgets/SpinBox.h"
 
 struct IParticleEffect;
 class QAmazonDoubleSpinBox;
@@ -29,6 +31,36 @@ class QSlider;
 class QMenu;
 class QShortcutEvent;
 struct SLodInfo;
+
+class PreviewToolButton
+    : public QToolButton
+{
+    Q_OBJECT
+public:
+    explicit PreviewToolButton(QWidget* parent = nullptr);
+
+    void SetNormalIcon(const QIcon& icon) { m_normalIcon[0] = icon; }
+    void SetHoverIcon(const QIcon& icon) { m_hoverIcon[0] = icon; }
+    void SetSelectedIcon(const QIcon& icon) { m_selectedIcon[0] = icon; }
+    void SetIconsForType(const QString& iconBaseName, int level = 0);
+    void SetClicked(bool clicked) { m_clicked = clicked; }
+    void RefreshIcon();
+    void SetLevel(int level);
+    void HandlePressedEvent();
+    void HandleReleasedEvent();
+
+protected:
+    void enterEvent(QEvent* event) override;
+    void leaveEvent(QEvent* event) override;
+
+private:
+    QVector<QIcon> m_normalIcon = (QVector<QIcon>(3));
+    QVector <QIcon> m_hoverIcon = (QVector<QIcon>(3));
+    QVector <QIcon> m_selectedIcon = (QVector<QIcon>(3));
+    int m_iconLevelSet = 0;
+    bool m_hovering = false;
+    bool m_clicked = false;
+};
 
 class EDITOR_QT_UI_API CPreviewWindowView
     : public QWidget
@@ -98,23 +130,21 @@ private:
     CParticleItem* m_pActiveItem;
     SLodInfo*   m_activeLod;
     QToolTipWidget* m_tooltip;
-    QPushButton* m_playPauseButton;
-    QPushButton* m_loopButton;
-    QPushButton* m_resetButton;
-    QAmazonDoubleSpinBox* m_playSpeedButton;
+    PreviewToolButton* m_playPauseButton;
+    PreviewToolButton* m_loopButton;
+    PreviewToolButton* m_resetButton;
+    AzQtComponents::DoubleSpinBox* m_playSpeedButton;
     QLabel* m_numOfParticle;
     QLabel* m_timeLabel;
-    QSlider* m_timeSlider;
-    QPushButton* cameraDropdownButton;
-    QPushButton* m_wireframeButton;
-    QPushButton* m_timeOfDayButton;
-    QPushButton* m_focusButton;
+    AzQtComponents::SliderDouble* m_timeSlider;
+    PreviewToolButton* m_cameraDropdownButton;
+    PreviewToolButton* m_wireframeButton;
+    PreviewToolButton* m_timeOfDayButton;
+    PreviewToolButton* m_focusButton;
     QAction* m_showEmitterOnly;
     QAction* m_showEmitterChildren;
     QAction* m_showEmitterChildrenParents;
-    QPushButton* m_stepButton;
-    QPushButton* playSpeedButton;
-    QSlider* comboSlider;
+    PreviewToolButton* m_stepButton;
 
     enum class ShowEmitterSetting
     {
@@ -125,7 +155,7 @@ private:
 
     void HandleEmitterViewChange(ShowEmitterSetting showState);
 
-    ShowEmitterSetting ShowEmitterSettingState;
+    ShowEmitterSetting m_showEmitterSettingState;
 
     ////////////////////////////////////////////////////////
     enum class MenuActions
@@ -176,7 +206,7 @@ private:
     void HandleMenuAction(MenuActions action);
 
     QMenu* m_PreviewMenu;
-    QMenu* customEmitterMenu;
-    QMenu* loadEmitterMenu;
+    QMenu* m_customEmitterMenu;
+    QMenu* m_loadEmitterMenu;
 };
 

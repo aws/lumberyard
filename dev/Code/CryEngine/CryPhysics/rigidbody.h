@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_RIGIDBODY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 struct entity_contact;
 const int MAX_CONTACTS = 9984;
 
@@ -113,5 +115,7 @@ void CleanupContactSolvers();
 void RegisterContact(entity_contact* pcontact);
 int InvokeContactSolver(float time_interval, SolverSettings* pss, float Ebefore, entity_contact**& pContacts, int& nContacts);
 char* AllocSolverTmpBuf(int size);
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_RIGIDBODY_H

@@ -185,8 +185,9 @@ namespace AssetProcessor
         void SetQueryLogging(bool enableLogging);
 
         //! Scans assets that match the given pattern for content that looks like a missing product dependency.
-        //! Note that the pattern is used as an SQL query, so use SQL syntax for the search (wildcard is %, not *).
-        void ScanForMissingProductDependencies(QString pattern, int maxScanIteration=AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration);
+        //! Note that the database pattern is used as an SQL query, so use SQL syntax for the search (wildcard is %, not *).
+        //! FilePattern is just a normal wildcard pattern that can be used to filter files in the provided scan folders.
+        void ScanForMissingProductDependencies(QString dbPattern, QString filePattern, const AZStd::vector<AZStd::string>& dependencyAdditionalScanFolders, int maxScanIteration=AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration);
 
         AZStd::shared_ptr<AssetDatabaseConnection> GetDatabaseConnection() const;
 
@@ -203,6 +204,8 @@ namespace AssetProcessor
             AZStd::vector<AZStd::pair<AZ::Uuid, AssetBuilderSDK::SourceFileDependency>> m_sourceFileDependencies;
         };
 
+        //! Request to invalidate and reprocess a source asset or folder containing source assets
+        AZ::u64 RequestReprocess(const QString& sourcePath);
     Q_SIGNALS:
         void NumRemainingJobsChanged(int newNumJobs);
 
@@ -347,12 +350,7 @@ namespace AssetProcessor
 
     protected:
         // Checks whether or not a file can be skipped for processing (ie, file content hasn't changed, builders haven't been added/removed, builders for the file haven't changed)
-        bool CanSkipProcessingFile(const AssetFileInfo &fileInfo);
-
-        // Expect our prebuilt cache to have timestamps in pacific with 2 second precision.  Fast scan can check for this if the TimeZoneOffset value is set
-        // And add an additional exception for files which appear to still be on "archive time" which is also offset by exactly the value we expect our time zone
-        // Differs from the local time where the archiving took place
-        static bool CheckArchiveTimeZoneOffset(QDateTime fileTimeStamp, AZ::u64 adjustedFileTimeMs, AZ::u64 databaseTimeMs, int allowedOffset, QString fileName);
+        bool CanSkipProcessingFile(const AssetFileInfo &fileInfo, AZ::u64& fileHash);
 
         AZ::s64 GenerateNewJobRunKey();
         // Attempt to erase a log file.  Failing to erase it is not a critical problem, but should be logged.
@@ -412,6 +410,9 @@ namespace AssetProcessor
 
         // this map contains modtimes of all files AP processed last time it ran
         AZStd::unordered_map<AZStd::string, AZ::u64> m_fileModTimes;
+
+        // this map contains hashes of all files AP processed last time it ran
+        AZStd::unordered_map<AZStd::string, AZ::u64> m_fileHashes;
 
         QSet<QString> m_knownFolders; // a cache of all known folder names, normalized to have forward slashes.
         typedef AZStd::unordered_map<AZ::u64, AzToolsFramework::AssetSystem::JobInfo> JobRunKeyToJobInfoMap;  // for when network requests come in about the jobInfo

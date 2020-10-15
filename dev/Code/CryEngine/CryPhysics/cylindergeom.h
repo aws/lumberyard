@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_CYLINDERGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CCylinderGeom
     : public CPrimitive
 {
@@ -65,5 +67,7 @@ public:
     int m_nTessellation;
     CSingleBoxTree m_Tree;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_CYLINDERGEOM_H

@@ -75,7 +75,7 @@ SpriteBorderEditor::SpriteBorderEditor(const char* path, QWidget* parent)
                                 row++,
                                 1 );
 
-        for( const auto &b : SpriteBorder() )
+        for( SpriteBorder b : SpriteBorder() )
         {
             SlicerEdit* edit = new SlicerEdit( b,
                                                 unscaledPixmapSize,

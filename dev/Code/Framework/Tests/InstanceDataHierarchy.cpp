@@ -735,8 +735,44 @@ namespace UnitTest
         : public AllocatorsFixture
     {
     public:
+        class CustomKeyWithoutStringRepresentation
+        {
+        public:
+            AZ_TYPE_INFO(CustomKeyWithoutStringRepresentation, "{54E838DE-1A8D-4BBA-BD3A-D41886C439A9}");
+            AZ_CLASS_ALLOCATOR(CustomKeyWithoutStringRepresentation, AZ::SystemAllocator, 0);
+
+            int m_value = 0;
+
+            int operator<(const CustomKeyWithoutStringRepresentation& other) const
+            {
+                return m_value < other.m_value;
+            }
+        };
+
+        class CustomKeyWithStringRepresentation
+        {
+        public:
+            AZ_TYPE_INFO(CustomKeyWithStringRepresentation, "{51F7FB74-2991-4CC9-850A-8D5AA0732282}");
+            AZ_CLASS_ALLOCATOR(CustomKeyWithStringRepresentation, AZ::SystemAllocator, 0);
+
+            static const char* KeyPrefix() { return "CustomKey"; }
+
+            int m_value = 0;
+
+            int operator<(const CustomKeyWithStringRepresentation& other) const
+            {
+                return m_value < other.m_value;
+            }
+
+            AZStd::string ToString() const
+            {
+                return AZStd::string::format("%s %i", KeyPrefix(), m_value);
+            }
+        };
+
         class KeyedContainer
         {
+
         public:
             AZ_TYPE_INFO(KeyedContainer, "{53A7416F-2D84-4256-97B0-BE4B6EF6DBAF}");
             AZ_CLASS_ALLOCATOR(KeyedContainer, AZ::SystemAllocator, 0);
@@ -747,16 +783,33 @@ namespace UnitTest
             AZStd::unordered_set<AZ::u64> m_unorderedSet;
             AZStd::unordered_multimap<int, AZStd::string> m_multiMap;
             AZStd::unordered_map<int, AZStd::unordered_map<int, int>> m_nestedMap;
+            AZStd::map<CustomKeyWithoutStringRepresentation, int> m_uncollapsableMap;
+            AZStd::map<CustomKeyWithStringRepresentation, int> m_collapsableMap;
 
             static void Reflect(AZ::SerializeContext& context)
             {
+                context.Class<CustomKeyWithoutStringRepresentation>()
+                    ->Field("value", &CustomKeyWithoutStringRepresentation::m_value);
+
+                context.Class<CustomKeyWithStringRepresentation>()
+                    ->Field("value", &CustomKeyWithStringRepresentation::m_value);
+
                 context.Class<KeyedContainer>()
                     ->Field("map", &KeyedContainer::m_map)
                     ->Field("unorderedMap", &KeyedContainer::m_unorderedMap)
                     ->Field("set", &KeyedContainer::m_set)
                     ->Field("unorderedSet", &KeyedContainer::m_unorderedSet)
                     ->Field("multiMap", &KeyedContainer::m_multiMap)
-                    ->Field("nestedMap", &KeyedContainer::m_nestedMap);
+                    ->Field("nestedMap", &KeyedContainer::m_nestedMap)
+                    ->Field("uncollapsableMap", &KeyedContainer::m_uncollapsableMap)
+                    ->Field("collapsableMap", &KeyedContainer::m_collapsableMap);
+
+                if (auto editContext = context.GetEditContext())
+                {
+                    editContext->Class<CustomKeyWithStringRepresentation>("CustomKeyWithStringRepresentation", "")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::ConciseEditorStringRepresentation, &CustomKeyWithStringRepresentation::ToString);
+                }
             }
         };
 
@@ -829,6 +882,8 @@ namespace UnitTest
             keyTestData[AZ_CRC("unorderedSet")] = TypedKeyTestData<AZ::u64>::Create({500000, 9, 0, 42, 42});
             keyTestData[AZ_CRC("multiMap")] = TypedKeyTestData<int>::Create({-1, 2, -3, 4, -5, 6});
             keyTestData[AZ_CRC("nestedMap")] = TypedKeyTestData<int>::Create({1, 10, 100, 1000});
+            keyTestData[AZ_CRC("uncollapsableMap")] = TypedKeyTestData<CustomKeyWithoutStringRepresentation>::Create({{0}, {1}});
+            keyTestData[AZ_CRC("collapsableMap")] = TypedKeyTestData<CustomKeyWithStringRepresentation>::Create({{0}, {1}});
 
             auto insertKeysIntoContainer = [&serializeContext](AzToolsFramework::InstanceDataNode& node, KeyTestData* keysToInsert)
             {
@@ -882,6 +937,35 @@ namespace UnitTest
                     for (AzToolsFramework::InstanceDataNode& child : children)
                     {
                         insertKeysIntoContainer(child.GetChildren().back(), nestedKeys.get());
+                    }
+                }
+                else if (element->m_nameCrc == AZ_CRC("collapsableMap"))
+                {
+                    auto children = node.GetChildren();
+                    EXPECT_GT(children.size(), 0);
+                    for (AzToolsFramework::InstanceDataNode& child : children)
+                    {
+                        // Ensure we're getting keys with the correct prefix based on the ConciseEditorStringRepresentation
+                        AZStd::string name = child.GetElementEditMetadata()->m_name;
+                        EXPECT_NE(name.find(CustomKeyWithStringRepresentation::KeyPrefix()), AZStd::string::npos);
+                    }
+                }
+                else if (element->m_nameCrc == AZ_CRC("uncollapsableMap"))
+                {
+                    auto children = node.GetChildren();
+                    EXPECT_GT(children.size(), 0);
+                    for (AzToolsFramework::InstanceDataNode& child : children)
+                    {
+                        auto keyValueChildren = child.GetChildren();
+                        EXPECT_EQ(keyValueChildren.size(), 2);
+                        auto keyValueChildrenIterator = keyValueChildren.begin();
+                        auto keyNode = *keyValueChildrenIterator;
+                        ++keyValueChildrenIterator;
+                        auto valueNode = *keyValueChildrenIterator;
+
+                        // Ensure key/value pairs that can't be collapsed get labels based on type
+                        EXPECT_EQ(AZ::Crc32(keyNode.GetElementEditMetadata()->m_name), AZ_CRC("Key<CustomKeyWithoutStringRepresentation>"));
+                        EXPECT_EQ(AZ::Crc32(valueNode.GetElementEditMetadata()->m_name), AZ_CRC("Value<int>"));
                     }
                 }
             }
@@ -1023,12 +1107,14 @@ namespace UnitTest
 
             static void Reflect(AZ::SerializeContext& context)
             {
-                context.Class<UIElementContainer>();
+                context.Class<UIElementContainer>()
+                    ->Field("data", &UIElementContainer::m_data);
 
                 if (auto editContext = context.GetEditContext())
                 {
                     editContext->Class<UIElementContainer>("Test", "")
                         ->UIElement("TestHandler", "UIElement")
+                        ->DataElement(0, &UIElementContainer::m_data)
                         ->UIElement(AZ_CRC("TestHandler2"), "UIElement2")
                     ;
                 }
@@ -1049,7 +1135,7 @@ namespace UnitTest
             idh.Build(&serializeContext, 0);
 
             auto children = idh.GetChildren();
-            ASSERT_EQ(children.size(), 2);
+            ASSERT_EQ(children.size(), 3);
             auto it = children.begin();
 
             Crc32 uiHandler = 0;
@@ -1060,10 +1146,90 @@ namespace UnitTest
 
             uiHandler = 0;
             ++it;
+            ++it;
             EXPECT_EQ(it->ReadAttribute(AZ::Edit::UIHandlers::Handler, uiHandler), true);
             EXPECT_EQ(uiHandler, AZ_CRC("TestHandler2"));
             EXPECT_EQ(it->GetElementMetadata()->m_name, "UIElement2");
             EXPECT_EQ(it->GetElementMetadata()->m_nameCrc, AZ_CRC("UIElement2"));
+        }
+    };
+
+    class InstanceDataHierarchyAggregateInstanceTest
+        : public AllocatorsFixture
+    {
+    public:
+        class AggregatedContainer
+        {
+        public:
+            AZ_TYPE_INFO(AggregatedContainer, "{42E09F38-2D26-4FED-9901-06003A030ED5}");
+            AZ_CLASS_ALLOCATOR(AggregatedContainer, AZ::SystemAllocator, 0);
+
+            int m_aggregated;
+            int m_notAggregated;
+
+            static void Reflect(AZ::SerializeContext& context)
+            {
+                context.Class<AggregatedContainer>()
+                    ->Field("aggregatedDataElement", &AggregatedContainer::m_aggregated)
+                    ->Field("notAggregatedDataElement", &AggregatedContainer::m_notAggregated)
+                ;
+
+                if (auto editContext = context.GetEditContext())
+                {
+                    // By default, DataElements accept multi-edit and UIElements do not
+                    editContext->Class<AggregatedContainer>("Test", "")
+                        ->DataElement(0, &AggregatedContainer::m_aggregated)
+                        ->DataElement(0, &AggregatedContainer::m_notAggregated)
+                            ->Attribute(AZ::Edit::Attributes::AcceptsMultiEdit, false)
+                        ->UIElement("TestHandler", "aggregatedUIElement")
+                            ->Attribute(AZ::Edit::Attributes::AcceptsMultiEdit, true)
+                        ->UIElement(AZ_CRC("TestHandler2"), "notAggregatedUIElement")
+                    ;
+                }
+            }
+        };
+
+        void run()
+        {
+            using namespace AzToolsFramework;
+
+            AZ::SerializeContext serializeContext;
+            serializeContext.CreateEditContext();
+            AggregatedContainer::Reflect(serializeContext);
+
+            InstanceDataHierarchy idh;
+            AZStd::list<AggregatedContainer> containers;
+            for (int i = 0; i < 5; ++i)
+            {
+                containers.push_back();
+                AggregatedContainer& container = containers.back();
+                idh.AddRootInstance(&container, azrtti_typeid<AggregatedContainer>());
+                idh.Build(&serializeContext, 0);
+
+                auto children = idh.GetChildren();
+                // If we have multiple instances, the two non-aggregating elements should go away
+                ASSERT_EQ(children.size(), i == 0 ? 4 : 2);
+
+                auto it = children.begin();
+
+                EXPECT_EQ(it->GetElementMetadata()->m_name, "aggregatedDataElement");
+                ++it;
+
+                if (i == 0)
+                {
+                    EXPECT_EQ(it->GetElementMetadata()->m_name, "notAggregatedDataElement");
+                    ++it;
+                }
+
+                EXPECT_EQ(it->GetElementMetadata()->m_name, "aggregatedUIElement");
+                ++it;
+
+                if (i == 0)
+                {
+                    EXPECT_EQ(it->GetElementMetadata()->m_name, "notAggregatedUIElement");
+                    ++it;
+                }
+            }
         }
     };
 
@@ -1138,12 +1304,17 @@ namespace UnitTest
         EXPECT_EQ(0, mapDataContainer->Size(&testMap));
     }
 
-    TEST_F(InstanceDataHierarchyCompareAssociativeContainerTest, Test)
+    TEST_F(InstanceDataHierarchyCompareAssociativeContainerTest, TestComparingAssociativeContainers)
     {
         run();
     }
 
-    TEST_F(InstanceDataHierarchyElementTest, Test)
+    TEST_F(InstanceDataHierarchyElementTest, TestLayingOutUIAndDataElements)
+    {
+        run();
+    }
+
+    TEST_F(InstanceDataHierarchyAggregateInstanceTest, TestRespectingAggregateInstanceVisibility)
     {
         run();
     }

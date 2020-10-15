@@ -84,7 +84,11 @@ void CGeomEntity::OnGeometryFileChange(IVariable* pVar)
         CalcBBox();
         InvalidateTM(0);
         OnRenderFlagsChange(0);
+#if ENABLE_CRY_PHYSICS
         m_statObjValidator.Validate(m_pEntity->GetStatObj(ENTITY_SLOT_ACTUAL), GetRenderMaterial(), m_pEntity->GetPhysics());
+#else
+        m_statObjValidator.Validate(m_pEntity->GetStatObj(ENTITY_SLOT_ACTUAL), GetRenderMaterial());
+#endif
         if (ms_pTreePanel)
         {
             ms_pTreePanel->SelectFile(QtUtil::ToQString(filename));
@@ -234,6 +238,7 @@ XmlNodeRef CGeomEntity::Export(const QString& levelPath, XmlNodeRef& xmlNode)
 void CGeomEntity::OnEvent(ObjectEvent event)
 {
     CEntityObject::OnEvent(event);
+#if ENABLE_CRY_PHYSICS
     switch (event)
     {
     case EVENT_INGAME:
@@ -250,6 +255,7 @@ void CGeomEntity::OnEvent(ObjectEvent event)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -957,15 +957,6 @@ namespace LmbrCentral
         m_objectMoved = true;
     }
 
-    /*IRenderNode*/ struct IPhysicalEntity* MeshComponentRenderNode::GetPhysics() const
-    {
-        return nullptr;
-    }
-
-    /*IRenderNode*/ void MeshComponentRenderNode::SetPhysics(IPhysicalEntity* pPhys)
-    {
-    }
-
     /*IRenderNode*/ void MeshComponentRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
     {
         m_materialOverride = pMat;

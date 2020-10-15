@@ -281,7 +281,9 @@ CUNIXConsole* pUnixConsole;
 #define DLL_NETWORK         "CryNetwork"
 #define DLL_ONLINE          "CryOnline"
 
+#if ENABLE_CRY_PHYSICS
 #define DLL_PHYSICS           "CryPhysics"
+#endif
 #define DLL_MOVIE                 "CryMovie"
 #define DLL_FONT                    "CryFont"
 #define DLL_3DENGINE            "Cry3DEngine"
@@ -291,7 +293,6 @@ CUNIXConsole* pUnixConsole;
 #define DLL_RENDERER_METAL  "CryRenderMetal"
 #define DLL_RENDERER_GL   "CryRenderGL"
 #define DLL_RENDERER_NULL "CryRenderNULL"
-#define DLL_RENDERER_OTHER "CryRenderOther"
 #define DLL_GAME                    "GameDLL"
 #define DLL_UNITTESTS       "CryUnitTests"
 #define DLL_SHINE           "LyShine"
@@ -303,7 +304,9 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_MODULE_SHUTDOWN_ISYSTEM "ModuleShutdownISystem"
 #   define DLL_INITFUNC_RENDERER "PackageRenderConstructor"
 #   define DLL_INITFUNC_SOUND "CreateSoundSystem"
+#if ENABLE_CRY_PHYSICS
 #   define DLL_INITFUNC_PHYSIC "CreatePhysicalWorld"
+#endif
 #   define DLL_INITFUNC_FONT "CreateCryFontInterface"
 #   define DLL_INITFUNC_3DENGINE "CreateCry3DEngine"
 #   define DLL_INITFUNC_UI "CreateLyShineInterface"
@@ -1193,13 +1196,10 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
         return OpenRenderLibrary(R_NULL_RENDERER, initParams);
     }
 
-    AZStd::string rendererName;
-    AzFramework::Render::RenderSystemRequestBus::BroadcastResult(rendererName, &AzFramework::Render::RenderSystemRequestBus::Events::GetRendererName);
-    if (rendererName == "Other")
-    {
-        return OpenRenderLibrary(R_OTHER_RENDERER, initParams);
-    }
-    else if (azstricmp(t_rend, "DX9") == 0)
+#ifdef OTHER_ACTIVE
+    return OpenRenderLibrary(R_DX11_RENDERER, initParams);
+#else
+    if (azstricmp(t_rend, "DX9") == 0)
     {
         return OpenRenderLibrary(R_DX9_RENDERER, initParams);
     }
@@ -1223,7 +1223,7 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
     {
         return OpenRenderLibrary(R_NULL_RENDERER, initParams);
     }
-
+#endif // OTHER_ACTIVE
     AZ_Assert(false, "Unknown renderer type: %s", t_rend);
     return false;
 #endif
@@ -1402,9 +1402,10 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
     }
 #endif
 
-
-
     const char* libname = "";
+#ifdef OTHER_ACTIVE
+    libname = "CryRenderOther";
+#else
     if (type == R_DX9_RENDERER)
     {
         libname = DLL_RENDERER_DX9;
@@ -1416,10 +1417,6 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
     else if (type == R_DX12_RENDERER)
     {
         libname = DLL_RENDERER_DX12;
-    }
-    else if (type == R_OTHER_RENDERER)
-    {
-        libname = DLL_RENDERER_OTHER;
     }
     else if (type == R_NULL_RENDERER)
     {
@@ -1438,7 +1435,7 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
         AZ_Assert(false, "Renderer did not initialize correctly; no valid renderer specified.");
         return false;
     }
-
+#endif
     if (!InitializeEngineModule(libname, "EngineModule_CryRenderer", initParams))
     {
         return false;
@@ -1665,14 +1662,18 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         //Timur, Not very clean code, we need to push new hwnd value to the system init params, so other modules can used when initializing.
         (const_cast<SSystemInitParams*>(&initParams))->hWnd = m_hWnd;
 
+#if ENABLE_CRY_PHYSICS
         InitPhysicsRenderer(initParams);
+#endif
 
         bool retVal = (initParams.bShaderCacheGen || m_hWnd != 0);
         AZ_Assert(retVal, "Renderer failed to initialize correctly.");
         return retVal;
 #else   // WIN32
         WIN_HWND h = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, initParams.bEditor, hinst, hwnd, false, nullptr, initParams.bShaderCacheGen);
+#if ENABLE_CRY_PHYSICS
         InitPhysicsRenderer(initParams);
+#endif
 
 #if (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))
         return true;
@@ -1704,6 +1705,7 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
     return true;
 }
 
+#if ENABLE_CRY_PHYSICS
 /////////////////////////////////////////////////////////////////////////////////
 char* PhysHelpersToStr(int iHelpers, char* strHelpers)
 {
@@ -1901,7 +1903,9 @@ void OnDrawHelpersStrChange(ICVar* pVar)
 {
     gEnv->pPhysicalWorld->GetPhysVars()->iDrawHelpers = StrToPhysHelpers(pVar->GetString());
 }
+#endif // ENABLE_CRY_PHYSICS
 
+#if ENABLE_CRY_PHYSICS
 bool CSystem::InitPhysics(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
@@ -2238,6 +2242,7 @@ bool CSystem::InitPhysicsRenderer(const SSystemInitParams& initParams)
     }
     return true;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -3020,6 +3025,10 @@ bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initPara
         AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Loading system configuration from %s...", m_systemConfigName.c_str());
     }
 
+#if defined(AZ_PLATFORM_ANDROID)
+    AZ::Android::Utils::SetLoadFilesToMemory(m_sys_load_files_to_memory->GetString());
+#endif
+
     GetISystem()->SetConfigPlatform(GetDevicePlatform());
     
 #if defined(CRY_ENABLE_RC_HELPER)
@@ -3501,14 +3510,17 @@ void CSystem::OpenLanguageAudioPak(const char* sLanguage)
 
 string GetUniqueLogFileName(string logFileName)
 {
-    int instance = gEnv->pSystem->GetApplicationInstance();
-
     string logFileNamePrefix = logFileName;
     if ((logFileNamePrefix[0] != '@') && (AzFramework::StringFunc::Path::IsRelative(logFileNamePrefix)))
     {
         logFileNamePrefix = "@log@/";
         logFileNamePrefix += logFileName;
     }
+
+    char resolvedLogFilePathBuffer[AZ_MAX_PATH_LEN] = { 0 };
+    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(logFileNamePrefix.c_str(), resolvedLogFilePathBuffer, AZ_MAX_PATH_LEN);
+
+    int instance = gEnv->pSystem->GetApplicationLogInstance(resolvedLogFilePathBuffer);
 
     if (instance == 0)
     {
@@ -4279,6 +4291,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         }
 #endif
 
+#if ENABLE_CRY_PHYSICS
         //////////////////////////////////////////////////////////////////////////
         // PHYSICS
         //////////////////////////////////////////////////////////////////////////
@@ -4293,6 +4306,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         }
 
         InlineInitializationProcessing("CSystem::Init InitPhysics");
+#endif // ENABLE_CRY_PHYSICS
 
         //////////////////////////////////////////////////////////////////////////
         // Localization
@@ -4387,21 +4401,19 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
                     m_env.pRenderer->SetViewport(0, 0, screenWidth, screenHeight);
 
                     // Skip splash screen rendering when other is active, Draw2dImage is not yet implemented
-                    if (m_env.pRenderer->GetRenderType() != eRT_Other)
+#ifndef OTHER_ACTIVE
+                    // make sure it's rendered in full screen mode when triple buffering is enabled as well
+                    for (size_t n = 0; n < 3; n++)
                     {
-                        // make sure it's rendered in full screen mode when triple buffering is enabled as well
-                        for (size_t n = 0; n < 3; n++)
-                        {
-                            m_env.pRenderer->BeginFrame();
-                            m_env.pRenderer->SetCullMode(R_CULL_NONE);
-                            m_env.pRenderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
-                            m_env.pRenderer->Draw2dImageStretchMode(true);
-                            m_env.pRenderer->Draw2dImage(x * vx, y * vy, w * vx, h * vy, pTex->GetTextureID(), 0.0f, 1.0f, 1.0f, 0.0f);
-                            m_env.pRenderer->Draw2dImageStretchMode(false);
-                            m_env.pRenderer->EndFrame();
-                        }
+                        m_env.pRenderer->BeginFrame();
+                        m_env.pRenderer->SetCullMode(R_CULL_NONE);
+                        m_env.pRenderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
+                        m_env.pRenderer->Draw2dImageStretchMode(true);
+                        m_env.pRenderer->Draw2dImage(x * vx, y * vy, w * vx, h * vy, pTex->GetTextureID(), 0.0f, 1.0f, 1.0f, 0.0f);
+                        m_env.pRenderer->Draw2dImageStretchMode(false);
+                        m_env.pRenderer->EndFrame();
                     }
-
+#endif
 #if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_MAC)
                     // Pump system events in order to update the screen
                     AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
@@ -6188,6 +6200,11 @@ void CSystem::CreateSystemVars()
     REGISTER_STRING_CB("sys_telemetry_stream_file", "", VF_NULL, "Telemetry stream file name", TelemetryStreamFileChanged);
     REGISTER_STRING_CB("sys_telemetry_stream_ip", "", VF_NULL, "Telemetry stream ip address", TelemetryStreamIPChanged);
     REGISTER_FLOAT("sys_telemetry_keep_alive", 5.0f, VF_NULL, "Telemetry stream keep-alive time");
+
+    m_sys_load_files_to_memory = REGISTER_STRING("sys_load_files_to_memory", "shadercache.pak", 0,
+            "Specify comma separated list of filenames that need to be loaded to memory.\n"
+            "Partial names also work. Eg. \"shader\" will load:\n"
+            "shaders.pak, shadercache.pak, and shadercachestartup.pak");
 
 #ifndef _RELEASE
     REGISTER_STRING_CB("sys_version", "", VF_CHEAT, "Override system file/product version", SystemVersionChanged);

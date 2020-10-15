@@ -16,6 +16,7 @@
 #include <AzCore/Serialization/EditContext.h>
 
 #include "LegacyTerrainEditorLevelComponent.h"
+#include "terrain.h"
 
 //From EditorLib/Include
 #include <EditorDefs.h>
@@ -57,61 +58,18 @@ namespace LegacyTerrain
 
     void LegacyTerrainEditorLevelComponent::Activate()
     {
-        bool isInstantiated = false;
-        LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
-        if (isInstantiated)
-        {
-            AZ_Warning("LegacyTerrain", false, "The legacy terrain system was already instantiated");
-            return;
-        }
-
-        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateBegin);
-
-        // If we're running in the Editor with terrain editor code compiled in, make sure the Editor version of terrain data is used
-        // to instantiate our runtime terrain.  This allows us to see edited but unsaved data.  Otherwise, we'll see the last exported
-        // version of the runtime terrain.
-        if (LegacyTerrainEditorDataRequestBus::HasHandlers())
-        {
-            LegacyTerrainEditorDataRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainEditorDataRequests::CreateTerrainSystemFromEditorData);
-        }
-        else
-        {
-            LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainInstanceRequests::CreateTerrainSystem, (uint8*)nullptr, 0);
-        }
-
-        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataCreateEnd);
-
-        AZ_Error("LegacyTerrain", isInstantiated, "Failed to initialize the legacy terrain system");
+        AZ_Assert(CTerrain::GetTerrain() == nullptr, "The Terrain System was already initialized");
+        m_component.ActivateTerrainSystemWithEditor();
     }
 
     void LegacyTerrainEditorLevelComponent::Deactivate()
     {
-        bool isInstantiated = false;
-        LegacyTerrainInstanceRequestBus::BroadcastResult(isInstantiated, &LegacyTerrainInstanceRequests::IsTerrainSystemInstantiated);
-        if (!isInstantiated)
+        if (CTerrain::GetTerrain() == nullptr)
         {
             return;
         }
 
-        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyBegin);
-
-        //Before removing the terrain system from memory, it is important to make sure
-        //there are no pending culling jobs because removing the terrain causes the Octree culling jobs
-        //to recalculate and those jobs may access Octree nodes that don't exist anymore.
-        GetIEditor()->Get3DEngine()->WaitForCullingJobsCompletion();
-
-        // If we're running in the Editor with terrain editing compiled in, the Editor terrain data needs to know that
-        // we're destroying the terrain system too.
-        if (LegacyTerrainEditorDataRequestBus::HasHandlers())
-        {
-            LegacyTerrainEditorDataRequestBus::Broadcast(&LegacyTerrainEditorDataRequests::DestroyTerrainSystem);
-        }
-        else
-        {
-            LegacyTerrainInstanceRequestBus::Broadcast(&LegacyTerrainInstanceRequests::DestroyTerrainSystem);
-        }
-
-        AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyEnd);
+        m_component.DeactivateTerrainSystemWithEditor();
     }
 
     AZ::u32 LegacyTerrainEditorLevelComponent::ConfigurationChanged()

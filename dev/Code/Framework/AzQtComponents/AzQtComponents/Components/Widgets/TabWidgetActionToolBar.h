@@ -15,7 +15,7 @@
 
 #include <QWidget>
 
-class QPushButton;
+class QToolButton;
 
 namespace AzQtComponents
 {
@@ -43,7 +43,7 @@ namespace AzQtComponents
         friend class TabWidgetActionToolBarContainer;
 
         AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
-        QHash<QAction*, QPushButton*> m_actionButtons;
+        QHash<QAction*, QToolButton*> m_actionButtons;
         AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
         void removeWidgetFromLayout(QWidget* widget);

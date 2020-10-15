@@ -471,7 +471,7 @@ AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
         else
         {
             QByteArray keyByteArray = key.toUtf8();
-            return STRING_OUTCOME_WARNING(AZStd::string::format("Unsupported key parsed from RC.ini: ", keyByteArray.constData()));
+            return STRING_OUTCOME_WARNING(AZStd::string::format("Unsupported key parsed from RC.ini: %s", keyByteArray.constData()));
         }
 
         return STRING_OUTCOME_SUCCESS;

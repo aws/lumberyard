@@ -82,6 +82,9 @@ namespace Physics
         virtual CombineMode GetRestitutionCombineMode() const = 0;
         virtual void SetRestitutionCombineMode(CombineMode mode) = 0;
 
+        virtual float GetDensity() const = 0;
+        virtual void SetDensity(float density) = 0;
+
         /// If the name of this material matches the name of one of the CrySurface types, it will return its CrySurface Id.\n
         /// If there's no match it will return default CrySurface Id.\n
         /// CrySurface types are defined in libs/materialeffects/surfacetypes.xml
@@ -106,11 +109,14 @@ namespace Physics
         const static AZ::Crc32 s_stringGroup; ///< Edit context data attribute. Identifies a string group instance. String values in the same group are unique.
         const static AZ::Crc32 s_forbiddenStringSet; ///<  Edit context data attribute. A set of strings that are not acceptable as values to the data element. Can be AZStd::unordered_set<AZStd::string>, AZStd::set<AZStd::string>, AZStd::vector<AZStd::string>
         const static AZ::Crc32 s_configLineEdit; ///< Edit context data element handler. Creates custom line edit widget that allows string values to be unique in a group.
+        static constexpr float MinDensityLimit = 0.01f; //!< Minimum possible value of density.
+        static constexpr float MaxDensityLimit = 100000.0f; //!< Maximum possible value of density.
 
         AZStd::string m_surfaceType{ "Default" };
         float m_dynamicFriction = 0.5f;
         float m_staticFriction = 0.5f;
         float m_restitution = 0.5f;
+        float m_density = 1000.0f;
 
         Material::CombineMode m_restitutionCombine = Material::CombineMode::Average;
         Material::CombineMode m_frictionCombine = Material::CombineMode::Average;
@@ -138,6 +144,7 @@ namespace Physics
         static void Reflect(AZ::ReflectContext* context);
 
         static MaterialId Create();
+        static MaterialId FromUUID(const AZ::Uuid& uuid);
         bool IsNull() const { return m_id.IsNull(); }
         bool operator==(const MaterialId& other) const { return m_id == other.m_id; }
         const AZ::Uuid& GetUuid() const { return m_id; }

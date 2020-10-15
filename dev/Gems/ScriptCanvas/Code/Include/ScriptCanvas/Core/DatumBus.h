@@ -23,6 +23,7 @@ namespace ScriptCanvas
     class DatumNotifications : public AZ::EBusTraits
     {
     public:
+        using MutexType = AZStd::recursive_mutex;
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;

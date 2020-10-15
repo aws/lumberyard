@@ -217,7 +217,7 @@ namespace EMotionFX
     }
 
 
-    void BlendSpaceNode::DoUpdate(float timePassedInSeconds, const BlendInfos& blendInfos, ESyncMode syncMode, AZ::u32 masterIdx, MotionInfos& motionInfos)
+    void BlendSpaceNode::DoUpdate(float timePassedInSeconds, const BlendInfos& blendInfos, ESyncMode syncMode, AZ::u32 leaderIdx, MotionInfos& motionInfos)
     {
         float blendedDuration = 0;
         for (const BlendInfo& blendInfo : blendInfos)
@@ -241,27 +241,27 @@ namespace EMotionFX
             motionInfo.m_preSyncTime = motionInstance->GetCurrentTime();
 
             // If syncing is enabled, we are going to update the current play time (m_currentTime) of all motions later based
-            // on the master's. Otherwise, we need to update them now itself.
-            if ((syncMode == SYNCMODE_DISABLED) || (i == masterIdx))
+            // on the leader's. Otherwise, we need to update them now itself.
+            if ((syncMode == SYNCMODE_DISABLED) || (i == leaderIdx))
             {
                 const MotionInstance::PlayStateOut newPlayState = motionInstance->CalcPlayStateAfterUpdate(timePassedInSeconds);
                 motionInfo.m_currentTime = newPlayState.m_currentTime;
             }
 
             motionInstance->SetPause(false);
-            motionInfo.m_playSpeed = (i == masterIdx) ? motionInstance->GetDuration() / blendedDuration : 1.0f;
+            motionInfo.m_playSpeed = (i == leaderIdx) ? motionInstance->GetDuration() / blendedDuration : 1.0f;
         }
     }
 
     void BlendSpaceNode::DoTopDownUpdate(AnimGraphInstance* animGraphInstance, ESyncMode syncMode,
-        AZ::u32 masterIdx, MotionInfos& motionInfos, bool motionsHaveSyncTracks)
+        AZ::u32 leaderIdx, MotionInfos& motionInfos, bool motionsHaveSyncTracks)
     {
         if (motionInfos.empty() || (syncMode == SYNCMODE_DISABLED))
         {
             return;
         }
 
-        SyncMotionToNode(animGraphInstance, syncMode, motionInfos[masterIdx], this);
+        SyncMotionToNode(animGraphInstance, syncMode, motionInfos[leaderIdx], this);
 
         ESyncMode motionSyncMode = syncMode;
         if ((motionSyncMode == SYNCMODE_TRACKBASED) && !motionsHaveSyncTracks)
@@ -271,19 +271,19 @@ namespace EMotionFX
 
         if (motionSyncMode == SYNCMODE_CLIPBASED)
         {
-            DoClipBasedSyncOfMotionsToMaster(masterIdx, motionInfos);
+            DoClipBasedSyncOfMotionsToLeader(leaderIdx, motionInfos);
         }
         else
         {
-            DoEventBasedSyncOfMotionsToMaster(masterIdx, motionInfos);
+            DoEventBasedSyncOfMotionsToLeader(leaderIdx, motionInfos);
         }
     }
 
-    void BlendSpaceNode::DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 masterIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
+    void BlendSpaceNode::DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 leaderIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
         EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data, bool inPlace)
     {
         MCORE_UNUSED(animGraphInstance);
-        MCORE_UNUSED(masterIdx);
+        MCORE_UNUSED(leaderIdx);
 
         const size_t numMotions = motionInfos.size();
         for (size_t i = 0; i < numMotions; ++i)
@@ -292,26 +292,43 @@ namespace EMotionFX
             MotionInstance* motionInstance = motionInfo.m_motionInstance;
             motionInstance->SetIsInPlace(inPlace);
 
-            const size_t indexInBlendInfos = GetIndexOfMotionInBlendInfos(blendInfos, i);
-            if (indexInBlendInfos == MCORE_INVALIDINDEX32 || eventFilterMode == BSEVENTMODE_NONE)
+            const size_t blendInfoIndex = GetIndexOfMotionInBlendInfos(blendInfos, i);
+
+            // Default to not adding events which represents BSEVENTMODE_NONE.
+            AnimGraphEventBuffer* eventBuffer = nullptr;
+            if (blendInfoIndex != InvalidIndex32)
             {
-                // It is not part of blend infos. Just update the time in this case without emitting events.
-                // We update the time even for these so that motions stay in sync.
-                motionInstance->UpdateByTimeValues(motionInfo.m_preSyncTime, motionInfo.m_currentTime, nullptr);
-            }
-            else
-            {
-                // If using BSEVENTMODE_MOST_ACTIVE_MOTION, pass nullptr as data for all but the
-                // first motion so that we collect the events only for the first motion which has the highest weight.
-                if ((eventFilterMode == BSEVENTMODE_MOST_ACTIVE_MOTION) && (indexInBlendInfos != 0))
+                // Skip emitting events for motions that hardly have any influence.
+                const float blendWeight = blendInfos[blendInfoIndex].m_weight;
+                if (blendWeight > 0.001f)
                 {
-                    motionInstance->UpdateByTimeValues(motionInfo.m_preSyncTime, motionInfo.m_currentTime, nullptr);
-                }
-                else
-                {
-                    motionInstance->UpdateByTimeValues(motionInfo.m_preSyncTime, motionInfo.m_currentTime, &data->GetEventBuffer());
+                    switch (eventFilterMode)
+                    {
+                        case EMotionFX::BlendSpaceNode::BSEVENTMODE_ALL_ACTIVE_MOTIONS:
+                        {
+                            eventBuffer = &data->GetEventBuffer();
+                            break;
+                        }
+                        case EMotionFX::BlendSpaceNode::BSEVENTMODE_MOST_ACTIVE_MOTION:
+                        {
+                            // Only emit the events for the first motion as the first one has the highest weight and thus is the most active.
+                            if (blendInfoIndex == 0)
+                            {
+                                eventBuffer = &data->GetEventBuffer();
+                            }
+                            break;
+                        }
+                        default:
+                        {
+                            // Nothing to do here as we defaulted to no events.
+                            break;
+                        }
+                    }
                 }
             }
+
+            // In case the event buffer is nullptr, we update the time values to stay in sync without emitting events.
+            motionInstance->UpdateByTimeValues(motionInfo.m_preSyncTime, motionInfo.m_currentTime, eventBuffer);
         }
 
         if (eventFilterMode == BSEVENTMODE_NONE)
@@ -402,41 +419,41 @@ namespace EMotionFX
         return true;
     }
 
-    void BlendSpaceNode::DoClipBasedSyncOfMotionsToMaster(AZ::u32 masterIdx, MotionInfos& motionInfos)
+    void BlendSpaceNode::DoClipBasedSyncOfMotionsToLeader(AZ::u32 leaderIdx, MotionInfos& motionInfos)
     {
         const AZ::u32 numMotionInfos = (AZ::u32)motionInfos.size();
-        if (masterIdx >= numMotionInfos)
+        if (leaderIdx >= numMotionInfos)
         {
             return;
         }
-        const MotionInfo& masterInfo = motionInfos[masterIdx];
-        const float masterDuration = masterInfo.m_motionInstance->GetDuration();
-        if (masterDuration < MCore::Math::epsilon)
+        const MotionInfo& leaderInfo = motionInfos[leaderIdx];
+        const float leaderDuration = leaderInfo.m_motionInstance->GetDuration();
+        if (leaderDuration < MCore::Math::epsilon)
         {
             return;
         }
-        const float normalizedTime = masterInfo.m_currentTime / masterDuration;
+        const float normalizedTime = leaderInfo.m_currentTime / leaderDuration;
 
         for (AZ::u32 motionIdx = 0; motionIdx < numMotionInfos; ++motionIdx)
         {
-            if (motionIdx != masterIdx)
+            if (motionIdx != leaderIdx)
             {
                 MotionInfo& info = motionInfos[motionIdx];
                 const float duration = info.m_motionInstance->GetDuration();
-                info.m_playSpeed = (masterInfo.m_playSpeed * duration) / masterDuration;
+                info.m_playSpeed = (leaderInfo.m_playSpeed * duration) / leaderDuration;
                 info.m_currentTime = normalizedTime * duration;
             }
         }
     }
 
-    void BlendSpaceNode::DoEventBasedSyncOfMotionsToMaster(AZ::u32 masterIdx, MotionInfos& motionInfos)
+    void BlendSpaceNode::DoEventBasedSyncOfMotionsToLeader(AZ::u32 leaderIdx, MotionInfos& motionInfos)
     {
         const AZ::u32 numMotionInfos = (AZ::u32)motionInfos.size();
-        if (masterIdx >= numMotionInfos)
+        if (leaderIdx >= numMotionInfos)
         {
             return;
         }
-        MotionInfo& srcMotion = motionInfos[masterIdx];
+        MotionInfo& srcMotion = motionInfos[leaderIdx];
         const AnimGraphSyncTrack* srcTrack = srcMotion.m_syncTrack;
 
         const float srcCurrentTime = srcMotion.m_currentTime;
@@ -476,7 +493,7 @@ namespace EMotionFX
 
         for (AZ::u32 motionIdx = 0; motionIdx < numMotionInfos; ++motionIdx)
         {
-            if (motionIdx == masterIdx)
+            if (motionIdx == leaderIdx)
             {
                 continue;
             }

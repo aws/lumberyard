@@ -221,7 +221,6 @@ namespace UnitTest
         existingInstance.m_descriptorPtr.reset(aznew Vegetation::Descriptor());
         existingInstance.m_descriptorPtr->m_radiusOverrideEnabled = true;
         existingInstance.m_descriptorPtr->m_radiusMin = 4.0f;
-        existingInstance.m_descriptorPtr->m_meshRadius = 4.0f;
 
         MockAreaManager mockAreaManager;
         mockAreaManager.m_existingInstances.clear();
@@ -235,7 +234,6 @@ namespace UnitTest
             inputInstanceData.m_descriptorPtr.reset(aznew Vegetation::Descriptor());
             inputInstanceData.m_descriptorPtr->m_radiusOverrideEnabled = true;
             inputInstanceData.m_descriptorPtr->m_radiusMin = 10.0f;
-            inputInstanceData.m_descriptorPtr->m_meshRadius = 10.0f;
             Vegetation::FilterRequestBus::EventResult(result, entity->GetId(), &Vegetation::FilterRequestBus::Events::Evaluate, inputInstanceData);
             EXPECT_FALSE(result);
             EXPECT_EQ(1, mockAreaManager.m_count);
@@ -255,7 +253,6 @@ namespace UnitTest
             inputInstanceData.m_descriptorPtr.reset(aznew Vegetation::Descriptor());
             inputInstanceData.m_descriptorPtr->m_radiusOverrideEnabled = true;
             inputInstanceData.m_descriptorPtr->m_radiusMin = 6.0f;
-            inputInstanceData.m_descriptorPtr->m_meshRadius = 6.0f;
             Vegetation::FilterRequestBus::EventResult(result, entity->GetId(), &Vegetation::FilterRequestBus::Events::Evaluate, inputInstanceData);
             EXPECT_FALSE(result);
             EXPECT_EQ(3, mockAreaManager.m_count);

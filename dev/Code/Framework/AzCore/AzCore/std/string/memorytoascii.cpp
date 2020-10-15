@@ -77,7 +77,7 @@ namespace AZStd
                                     line2 += "-";
                                 }
 
-                                line2 += AZStd::string::format("%02x", i);
+                                line2 += AZStd::string::format("%02zx", i);
                             }
 
                             if (showASCII)
@@ -101,7 +101,7 @@ namespace AZStd
 
                         if (showInfo)
                         {
-                            output += AZStd::string::format("Address: 0x%p Data Size:%u Max Size:%u\n", data, dataSize, maxShowSize);
+                            output += AZStd::string::format("Address: 0x%p Data Size:%zu Max Size:%zu\n", data, dataSize, maxShowSize);
                         }
 
                         output += line1 + "\n";
@@ -115,7 +115,7 @@ namespace AZStd
                     {
                         if (showOffset)
                         {
-                            output += AZStd::string::format("%06x", offset);
+                            output += AZStd::string::format("%06zx", offset);
 
                             if (showBinary || showASCII)
                             {

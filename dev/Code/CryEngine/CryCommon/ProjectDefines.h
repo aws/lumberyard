@@ -88,7 +88,7 @@ typedef uint32 vtx_idx;
 // Since read accesses tend to be used in flow-control logic, constants allow for better optimization by the compiler.
 #define LOG_CONST_CVAR_ACCESS 0
 
-#if defined(WIN32) || defined(WIN64) || LOG_CONST_CVAR_ACCESS
+#if defined(WIN32) || defined(WIN64) || (defined(LINUX) && defined(DEDICATED_SERVER)) || LOG_CONST_CVAR_ACCESS
 #define RELEASE_LOGGING
 #if defined(_RELEASE)
 #define CVARS_WHITELIST
@@ -323,7 +323,7 @@ typedef uint32 vtx_idx;
 
 #if defined(ENABLE_PROFILING_CODE)
 #   define USE_DISK_PROFILER
-#   define ENABLE_LOADING_PROFILER
+//#   define ENABLE_LOADING_PROFILER    // Not guaranteed to have enough slots for all the threads in the system
 #endif
 
 #include "ProjectDefinesInclude.h"

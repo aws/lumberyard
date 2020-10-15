@@ -154,7 +154,11 @@ namespace UnitTest
 
         void DestroyAllInstances() override {}
 
-        void Cleanup() override {};
+        void Cleanup() override {}
+
+        void RegisterMergedMeshInstance(Vegetation::InstancePtr instance, IRenderNode* mergedMeshNode) override {}
+        void ReleaseMergedMeshInstance(Vegetation::InstancePtr instance) override {}
+
     };
 
     struct MockGradientRequestHandler
@@ -305,6 +309,11 @@ namespace UnitTest
         {
             m_assetId = assetId;
             m_status.store((int)AZ::Data::AssetData::AssetStatus::Ready);
+        }
+
+        void SetStatus(AZ::Data::AssetData::AssetStatus status)
+        {
+            m_status.store((int)status);
         }
     };
 

@@ -42,6 +42,7 @@ CEntityLayer::~CEntityLayer()
         {
             if (it->second.m_bIsNoAwake)
             {
+#if ENABLE_CRY_PHYSICS
                 if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
                 {
                     if (IPhysicalEntity* pPhysicalEntity = pPhysicsComponent->GetPhysicalEntity())
@@ -51,6 +52,7 @@ CEntityLayer::~CEntityLayer()
                         pPhysicalEntity->Action(&aa);
                     }
                 }
+#endif
             }
             it->second.m_bIsNoAwake = false;
         }
@@ -194,8 +196,10 @@ void CEntityLayer::EnableEntities(bool isEnable)
         // activate static lights but not brushes
         gEnv->p3DEngine->ActivateObjectsLayer(m_id, isEnable, m_havePhysics, false, true, m_name.c_str(), m_pHeap);
 
+#if ENABLE_CRY_PHYSICS
         pe_action_awake noAwake;
         noAwake.bAwake = false;
+#endif
 
         for (TEntityProps::iterator it = m_entities.begin(); it != m_entities.end(); ++it)
         {
@@ -225,6 +229,7 @@ void CEntityLayer::EnableEntities(bool isEnable)
                 pEntity->Hide(!isEnable);
                 pEntity->Activate(prop.m_bIsActive);
 
+#if ENABLE_CRY_PHYSICS
                 if (prop.m_bIsNoAwake)
                 {
                     if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
@@ -235,6 +240,7 @@ void CEntityLayer::EnableEntities(bool isEnable)
                         }
                     }
                 }
+#endif
                 prop.m_bIsNoAwake = false;
 
                 SEntityEvent event;
@@ -247,15 +253,18 @@ void CEntityLayer::EnableEntities(bool isEnable)
                     event.event = ENTITY_EVENT_LEVEL_LOADED;
                     pEntity->SendEvent(event);
                 }
+#if ENABLE_CRY_PHYSICS
                 if (!m_wasReEnabled && pEntity->GetPhysics() && pEntity->GetPhysics()->GetType() == PE_ROPE)
                 {
                     event.event = ENTITY_EVENT_LEVEL_LOADED;
                     pEntity->SendEvent(event);
                 }
+#endif
             }
             else
             {
                 prop.m_bIsNoAwake = false;
+#if ENABLE_CRY_PHYSICS
                 if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
                 {
                     pe_status_awake isawake;
@@ -267,8 +276,10 @@ void CEntityLayer::EnableEntities(bool isEnable)
                         }
                     }
                 }
+#endif
                 pEntity->Hide(!isEnable);
                 pEntity->Activate(isEnable);
+#if ENABLE_CRY_PHYSICS
                 if (prop.m_bIsNoAwake)
                 {
                     if (IComponentPhysicsPtr pPhysicsComponent = pEntity->GetComponent<IComponentPhysics>())
@@ -279,6 +290,7 @@ void CEntityLayer::EnableEntities(bool isEnable)
                         }
                     }
                 }
+#endif
             }
         }
 

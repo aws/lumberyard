@@ -22,9 +22,8 @@ class QIcon;
 
 namespace AzQtComponents
 {
-    /**
-     * Card Notification
-     */
+    //! Notification class for Card widgets.
+    //! Displays a message and allows for widgets to be added to handle error cases and solve requirements.
     class AZ_QT_COMPONENTS_API CardNotification
         : public QFrame
     {
@@ -32,7 +31,12 @@ namespace AzQtComponents
     public:
         CardNotification(QWidget* parent, const QString& title, const QIcon& icon, const QSize = {24, 24});
 
+        //! Appends a widget to the notification frame.
+        //! The widget will be parented to the CardNotification.
         void addFeature(QWidget* feature);
+
+        //! Creates a QPushButton and adds it to the notification frame.
+        //! @param buttonText The text to display on the newly created button.
         QPushButton* addButtonFeature(const QString& buttonText);
 
     private:

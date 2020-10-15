@@ -163,6 +163,18 @@ namespace Vegetation
 
     void AreaComponentBase::Deactivate()
     {
+        // Disconnect from the busses *before* unregistering to ensure that unregistration can't trigger any
+        // messages back into this component while it is deactivating.
+        // Specifically, unregistering the area first previously caused a bug in the SpawnerComponent in which OnUnregisterArea
+        // cleared out Descriptor pointers, and if any of them went to a refcount of 0, they could trigger an
+        // OnCompositionChanged event which ended up looping back into this component.
+        AreaNotificationBus::Handler::BusDisconnect();
+        AreaInfoBus::Handler::BusDisconnect();
+        AreaRequestBus::Handler::BusDisconnect();
+        LmbrCentral::DependencyNotificationBus::Handler::BusDisconnect();
+        LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        AZ::TransformNotificationBus::Handler::BusDisconnect();
+
         if (m_areaRegistered)
         {
             m_areaRegistered = false;
@@ -171,13 +183,6 @@ namespace Vegetation
             // Let area subclasses know that we've just unregistered the area
             OnUnregisterArea();
         }
-
-        AreaNotificationBus::Handler::BusDisconnect();
-        AreaInfoBus::Handler::BusDisconnect();
-        AreaRequestBus::Handler::BusDisconnect();
-        LmbrCentral::DependencyNotificationBus::Handler::BusDisconnect();
-        LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
-        AZ::TransformNotificationBus::Handler::BusDisconnect();
     }
 
     bool AreaComponentBase::ReadInConfig(const AZ::ComponentConfig* baseConfig)

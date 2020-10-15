@@ -363,7 +363,9 @@ public:
             m_CGAObject          =  0;
             m_ObjectID           = -1;
             m_NodeID             = ~0;
+#if ENABLE_CRY_PHYSICS
             m_PhysInfo.pPhysGeom = 0;
+#endif
             m_fMass              = 0.0f;
         }
 
@@ -384,7 +386,9 @@ public:
         //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
         //--------> the rest is deprecated and will disappear sooner or later
         //#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+#if ENABLE_CRY_PHYSICS
         CryBonePhysics m_PhysInfo;
+#endif
         f32 m_fMass;                            //this doesn't need to be in every joint
         _smart_ptr<IStatObj> m_CGAObject; // Static object controlled by this joint.
         uint32 m_NodeID;        // CGA-node
@@ -492,10 +496,12 @@ public:
         CRY_ASSERT(nJointIdx >= 0 && nJointIdx < jointCount);
         return g_IdentityQuatT;
     };
+#if ENABLE_CRY_PHYSICS
     virtual const phys_geometry* GetJointPhysGeom(uint32 jointIndex) const
     {
         return m_arrModelJoints[jointIndex].m_PhysInfo.pPhysGeom;
     }
+#endif
 
     virtual bool CreateCHRPARAMS(const char* paramFileName);
 
@@ -505,11 +511,13 @@ public:
     bool AddAnimationIfInAnimationSetFilters(const char* animationPath);
     bool RemoveAnimation(const char* animationPath);
 
+#if ENABLE_CRY_PHYSICS
     //--> setup of physical proxies
     bool SetupPhysicalProxies(const DynArray<PhysicalProxy>& arrPhyBoneMeshes, const DynArray<BONE_ENTITY>& arrBoneEntities, _smart_ptr<IMaterial> pIMaterial, const char* filename);
 
     static bool ParsePhysInfoProperties_ROPE(CryBonePhysics& pi, const DynArray<SJointProperty>& props);
     static DynArray<SJointProperty> GetPhysInfoProperties_ROPE(const CryBonePhysics& pi, int32 nRopeOrGrid);
+#endif // ENABLE_CRY_PHYSICS
 
 
     CDefaultSkeleton::SJoint* GetParent(int32 i)
@@ -577,7 +585,9 @@ public:
     bool m_bHasPhysics2;
     DynArray<PhysicalProxy>  m_arrBackupPhyBoneMeshes; //collision proxi
     DynArray<BONE_ENTITY>    m_arrBackupBoneEntities;  //physical-bones
+#if ENABLE_CRY_PHYSICS
     DynArray<CryBonePhysics> m_arrBackupPhysInfo;
+#endif // ENABLE_CRY_PHYSICS
     uint m_guid;
 
 

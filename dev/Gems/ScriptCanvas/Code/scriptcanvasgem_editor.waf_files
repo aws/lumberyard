@@ -34,6 +34,8 @@
         ],
         "Editor/Assets": [
             "Editor/Include/ScriptCanvas/Assets/ScriptCanvasAsset.h",
+            "Editor/Include/ScriptCanvas/Assets/ScriptCanvasAssetBus.h",
+            "Editor/Include/ScriptCanvas/Assets/ScriptCanvasAssetTypes.h",
             "Editor/Assets/ScriptCanvasAsset.cpp",
             "Editor/Include/ScriptCanvas/Assets/ScriptCanvasAssetHandler.h",
             "Editor/Assets/ScriptCanvasAssetHandler.cpp",
@@ -134,8 +136,9 @@
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasQuaternionDataInterface.h"
         ],
         "Editor/GraphCanvas/PropertyInterfaces": [
+            "Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasEnumComboBoxPropertyDataInterface.h",
             "Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasPropertyDataInterface.h",
-            "Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasStringPropertyDataInterface.h"
+            "Editor/GraphCanvas/PropertyInterfaces/ScriptCanvasStringPropertyDataInterface.h"            
         ],
         "Editor/Model/MimeHandlers": [
             "Editor/Model/EntityMimeDataHandler.h",

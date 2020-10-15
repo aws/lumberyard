@@ -10,6 +10,9 @@
 *
 */
 #include "CryLegacy_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "ComponentRope.h"
 #include "Components/IComponentSerialization.h"
 
@@ -336,3 +339,4 @@ void CComponentRope::SerializeXML(XmlNodeRef& entityNode, bool bLoading)
     }
 }
 
+#endif // ENABLE_CRY_PHYSICS

@@ -27,7 +27,6 @@
 
 namespace AzQtComponents
 {
-        
     namespace HeaderBarConstants
     {
         // names for widgets so they can be found in stylesheet

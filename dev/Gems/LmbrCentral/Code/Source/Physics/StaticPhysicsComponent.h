@@ -9,6 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if ENABLE_CRY_PHYSICS
+
 #pragma once
 
 #include "PhysicsComponent.h"
@@ -55,3 +58,5 @@ namespace LmbrCentral
         AzFramework::StaticPhysicsConfig m_configuration;
     };
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

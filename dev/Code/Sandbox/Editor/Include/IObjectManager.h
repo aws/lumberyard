@@ -139,9 +139,11 @@ public:
     //! Find BaseObject who is owner of specified animation node.
     virtual CBaseObject* FindAnimNodeOwner(CTrackViewAnimNode* pNode) const = 0;
 
+#if ENABLE_CRY_PHYSICS
     //////////////////////////////////////////////////////////////////////////
     // Find object from in game physical entity.
     CBaseObject* FindPhysicalObjectOwner(struct IPhysicalEntity* pPhysicalEntity);
+#endif // ENABLE_CRY_PHYSICS
 
     //////////////////////////////////////////////////////////////////////////
     // Operations on objects.

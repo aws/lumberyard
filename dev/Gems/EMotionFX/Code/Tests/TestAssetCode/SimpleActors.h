@@ -42,4 +42,12 @@ namespace EMotionFX
     private:
         Mesh* CreatePlane(uint32 nodeIndex, const AZStd::vector<AZ::Vector3>& points) const;
     };
+
+    class PlaneActorWithJoints
+        : public PlaneActor
+    {
+    public:
+        explicit PlaneActorWithJoints(size_t jointCount, const char* name = "Test actor");
+    };
+
 } // namespace EMotionFX

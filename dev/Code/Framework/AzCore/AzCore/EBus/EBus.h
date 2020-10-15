@@ -16,8 +16,8 @@
  * that Lumberyard uses to dispatch notifications and receive requests.
  * EBuses are configurable and support many different use cases.
  * For more information about %EBuses, see AZ::EBus in this guide and
- * [Event Bus](http://docs.aws.amazon.com/lumberyard/latest/developerguide/asset-pipeline-ebus.html)
- * in the *Lumberyard Developer Guide*.
+ * [Event Bus](https://docs.aws.amazon.com/lumberyard/latest/userguide/ebus-intro.html)
+ * in the *Lumberyard User Guide*.
  */
 
 #pragma once
@@ -69,8 +69,8 @@ namespace AZ
      * @endcode
      *
      * For more information about %EBuses, see EBus in this guide and
-     * [Event Bus](http://docs.aws.amazon.com/lumberyard/latest/developerguide/asset-pipeline-ebus.html)
-     * in the *Lumberyard Developer Guide*.
+     * [Event Bus](https://docs.aws.amazon.com/lumberyard/latest/userguide/ebus-intro.html)
+     * in the *Lumberyard User Guide*.
      */
     struct EBusTraits
     {
@@ -266,9 +266,8 @@ namespace AZ
      *
      * EBuses are configurable and support many different use cases.
      * For more information about EBuses, see
-     * [Event Bus](http://docs.aws.amazon.com/lumberyard/latest/developerguide/asset-pipeline-ebus.html)
-     * and [Components and EBuses: Best Practices ](http://docs.aws.amazon.com/lumberyard/latest/developerguide/component-entity-system-pg-components-ebuses-best-practices.html)
-     * in the *Lumberyard Developer Guide*.
+     * [Event Bus](https://docs.aws.amazon.com/lumberyard/latest/userguide/ebus-intro.html)
+     * in the *Lumberyard User Guide*.
      *
      * ## How Components Use EBuses
      * Components commonly use EBuses in two ways: to dispatch events or to handle requests.

@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "raybv.h"
@@ -934,3 +936,4 @@ int CPhysicalWorld::TracePendingRays(int bDoTracing)
 IGeometry* PrepGeomExt(IGeometry* pGeom) { return PrepGeom(pGeom, 0); }
 
 
+#endif

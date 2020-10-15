@@ -297,7 +297,7 @@ namespace EMotionFX
                 m_actorInstance->SetLODLevel(m_configuration.m_lodLevel);
 
                 // Setup initial transform and listen for transform changes.
-                AZ::Transform transform;
+                AZ::Transform transform = AZ::Transform::CreateIdentity();
                 AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
                 OnTransformChanged(transform, transform);
                 AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
@@ -306,6 +306,10 @@ namespace EMotionFX
                 m_actorInstance->UpdateBounds(0, ActorInstance::EBoundsType::BOUNDS_STATIC_BASED);
 
                 RenderBackend* renderBackend = AZ::Interface<RenderBackendManager>::Get()->GetRenderBackend();
+
+                // If there is already a RenderActorInstance, destroy it before creating the new one so there are not two instances potentially handling events for the same entityId
+                m_renderActorInstance.reset(nullptr);
+                // Create the new RenderActorInstance
                 m_renderActorInstance.reset(renderBackend->CreateActorInstance(GetEntityId(),
                         m_actorInstance,
                         m_configuration.m_actorAsset,
@@ -584,6 +588,13 @@ namespace EMotionFX
             }
         }
 
+        size_t ActorComponent::GetNumJoints() const
+        {
+            AZ_Assert(m_actorInstance, "The actor instance needs to be valid.");
+
+            return m_actorInstance->GetActor()->GetNumNodes();
+        }
+
         size_t ActorComponent::GetJointIndexByName(const char* name) const
         {
             AZ_Assert(m_actorInstance, "The actor instance needs to be valid.");
@@ -728,6 +739,10 @@ namespace EMotionFX
                 if (result == m_attachments.end())
                 {
                     m_attachments.emplace_back(attachedEntityId);
+                }
+                else
+                {
+                    return;
                 }
             }
 

@@ -11,11 +11,21 @@
 */
 
 #include <AssetManager/SourceFileRelocator.h>
+#include <AzCore/Component/TickBus.h>
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobManager.h>
+#include <AzCore/Jobs/JobManagerDesc.h>
+#include <AzCore/Memory/PoolAllocator.h>
 #include <AzTest/AzTest.h>
 #include "AssetProcessorTest.h"
 #include "AzToolsFramework/API/AssetDatabaseBus.h"
 #include "AssetDatabase/AssetDatabase.h"
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzToolsFramework/SourceControl/PerforceComponent.h>
+#include <AzToolsFramework/SourceControl/PerforceConnection.h>
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+
+#include <utility>
 
 namespace UnitTests
 {
@@ -23,6 +33,12 @@ namespace UnitTests
     using testing::NiceMock;
     using namespace AssetProcessor;
     using namespace AzToolsFramework::AssetDatabase;
+
+    struct MockPerforceComponent
+        : AzToolsFramework::PerforceComponent
+    {
+        friend struct SourceFileRelocatorTest;
+    };
 
     class MockDatabaseLocationListener : public AssetDatabaseRequests::Bus::Handler
     {
@@ -66,14 +82,13 @@ namespace UnitTests
         MOCK_METHOD0(IsRemoteIOEnabled, bool ());
     };
 
-    class SourceFileRelocatorTest
-        : public UnitTest::ScopedAllocatorSetupFixture
-        , public UnitTest::TraceBusRedirector
+    struct SourceFileRelocatorTest
+        : UnitTest::ScopedAllocatorSetupFixture
+        , UnitTest::SourceControlTest
     {
-    public:
         void SetUp() override
         {
-            AZ::Debug::TraceMessageBus::Handler::BusConnect();
+            AZ::TickBus::AllowFunctionQueuing(true);
 
             m_data.reset(new StaticData());
 
@@ -97,19 +112,14 @@ namespace UnitTests
 
             m_data->m_platformConfig.EnablePlatform(AssetBuilderSDK::PlatformInfo("pc", { "desktop" }));
 
+            m_data->m_platformConfig.AddMetaDataType("metadataextension", "metadatatype");
+            m_data->m_platformConfig.AddMetaDataType("bar", "foo");
+
             AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
             m_data->m_platformConfig.PopulatePlatformsForScanFolder(platforms);
 
             m_data->m_scanFolder1 = { tempPath.absoluteFilePath("dev").toUtf8().constData(), "dev", "devKey", ""};
             m_data->m_scanFolder2 = { tempPath.absoluteFilePath("folder").toUtf8().constData(), "folder", "folderKey", "prefix" };
-
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/subfolder1/somefile.tif")));
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/subfolder1/otherfile.tif")));
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("folder/otherfile.tif")));
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("folder/a/b/c/d/otherfile.tif")));
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/duplicate/file1.tif")));
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("folder/duplicate/file1.tif")));
-            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/subfolder2/file.tif")));
 
             ASSERT_TRUE(m_data->m_connection->SetScanFolder(m_data->m_scanFolder1));
             ASSERT_TRUE(m_data->m_connection->SetScanFolder(m_data->m_scanFolder2));
@@ -136,6 +146,9 @@ namespace UnitTests
             SourceDatabaseEntry sourceFile6 = { m_data->m_scanFolder2.m_scanFolderID, "duplicate/file1.tif", AZ::Uuid::CreateRandom(), "AnalysisFingerprint" };
             SourceDatabaseEntry sourceFile7 = { m_data->m_scanFolder1.m_scanFolderID, "subfolder2/file.tif", AZ::Uuid::CreateRandom(), "AnalysisFingerprint" };
             SourceDatabaseEntry sourceFile8 = { m_data->m_scanFolder1.m_scanFolderID, "test.txt", AZ::Uuid::CreateRandom(), "AnalysisFingerprint" };
+            SourceDatabaseEntry sourceFile9 = { m_data->m_scanFolder1.m_scanFolderID, "duplicate/folder/file1.tif", AZ::Uuid::CreateRandom(), "AnalysisFingerprint" };
+            SourceDatabaseEntry sourceFile10 = { m_data->m_scanFolder1.m_scanFolderID, "folder/file.foo", AZ::Uuid::CreateRandom(), "AnalysisFingerprint" };
+            SourceDatabaseEntry sourceFile11 = { m_data->m_scanFolder1.m_scanFolderID, "testfolder/file.foo", AZ::Uuid::CreateRandom(), "AnalysisFingerprint" };
             ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile1));
             ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile2));
             ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile3));
@@ -144,6 +157,9 @@ namespace UnitTests
             ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile6));
             ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile7));
             ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile8));
+            ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile9));
+            ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile10));
+            ASSERT_TRUE(m_data->m_connection->SetSource(sourceFile11));
 
             SourceFileDependencyEntry dependency1 = { AZ::Uuid::CreateRandom(), "subfolder1/somefile.tif", "subfolder1/otherfile.tif", SourceFileDependencyEntry::TypeOfDependency::DEP_SourceToSource, false };
             SourceFileDependencyEntry dependency2 = { AZ::Uuid::CreateRandom(), "subfolder1/otherfile.tif", "prefix/otherfile.tif", SourceFileDependencyEntry::TypeOfDependency::DEP_JobToJob, false };
@@ -168,7 +184,7 @@ namespace UnitTests
             ASSERT_TRUE(m_data->m_connection->SetProduct(product2));
             ASSERT_TRUE(m_data->m_connection->SetProduct(product3));
 
-            ProductDependencyDatabaseEntry productDependency1 = { product1.m_productID, sourceFile2.m_sourceGuid, productSubId, {}, "pc", false };
+            ProductDependencyDatabaseEntry productDependency1 = { product1.m_productID, sourceFile2.m_sourceGuid, productSubId, {}, "pc", true };
             ProductDependencyDatabaseEntry productDependency2 = { product2.m_productID, sourceFile3.m_sourceGuid, productSubId, {}, "pc", false };
             ProductDependencyDatabaseEntry productDependency3 = { product1.m_productID, sourceFile4.m_sourceGuid, productSubId, {}, "pc", false };
             ProductDependencyDatabaseEntry productDependency4 = { product2.m_productID, sourceFile4.m_sourceGuid, productSubId, {}, "pc", false };
@@ -180,18 +196,58 @@ namespace UnitTests
             ASSERT_TRUE(m_data->m_connection->SetProductDependency(productDependency4));
             ASSERT_TRUE(m_data->m_connection->SetProductDependency(productDependency5));
 
+            QString referenceString = QString(R"(<Class name="Asset" field="Asset" value="id=%1,type={C62C7A87-9C09-4148-A985-12F2C99C0A45},hint={%2}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>)")
+            .arg(AZ::Data::AssetId(sourceFile2.m_sourceGuid, product2.m_productID).ToString<AZStd::string>(AZ::Data::AssetId::SubIdDisplayType::Hex).c_str())
+            .arg(sourceFile2.m_sourceName.c_str());
+
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/subfolder1/somefile.tif"), referenceString));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/subfolder1/otherfile.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("folder/otherfile.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("folder/a/b/c/d/otherfile.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/duplicate/file1.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("folder/duplicate/file1.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/subfolder2/file.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/duplicate/folder/file1.tif")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/test.txt")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/dummy/foo.metadataextension")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/folder/file.foo")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/folder/file.bar")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/testfolder/file.foo")));
+            ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("dev/testfolder/File.bar")));
+
+
             AZ::IO::FileIOBase::SetInstance(nullptr); // The API requires the old instance to be destroyed first
             AZ::IO::FileIOBase::SetInstance(new AZ::IO::LocalFileIO());
 
             m_data->m_reporter = AZStd::make_unique<SourceFileRelocator>(m_data->m_connection, &m_data->m_platformConfig);
+
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+            AZ::JobManagerDesc jobDesc;
+            AZ::JobManagerThreadDesc threadDesc;
+            jobDesc.m_workerThreads.push_back(threadDesc);
+            jobDesc.m_workerThreads.push_back(threadDesc);
+            jobDesc.m_workerThreads.push_back(threadDesc);
+            m_data->m_jobManager = aznew AZ::JobManager(jobDesc);
+            m_data->m_jobContext = aznew AZ::JobContext(*m_data->m_jobManager);
+            AZ::JobContext::SetGlobalContext(m_data->m_jobContext);
+
+            m_data->m_perforceComponent = AZStd::make_unique<MockPerforceComponent>();
+            m_data->m_perforceComponent->Activate();
+            m_data->m_perforceComponent->SetConnection(new UnitTest::MockPerforceConnection(m_command));
         }
 
         void TearDown() override
         {
+            AZ::JobContext::SetGlobalContext(nullptr);
+            delete m_data->m_jobContext;
+            delete m_data->m_jobManager;
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
+
+            m_data->m_perforceComponent->Deactivate();
             m_data->m_databaseLocationListener.BusDisconnect();
             m_data.reset();
 
-            AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+            AZ::TickBus::AllowFunctionQueuing(false);
         }
 
         void TestResultEntries(const SourceFileRelocationContainer& container, AZStd::initializer_list<AZStd::string> expectedEntryDatabaseNames) const
@@ -200,20 +256,28 @@ namespace UnitTests
 
             for(const auto& relocationInfo : container)
             {
-                actualEntryDatabaseNames.push_back(relocationInfo.m_sourceEntry.m_sourceName);
+                if (relocationInfo.m_sourceEntry.m_sourceID != -1)
+                {
+                    actualEntryDatabaseNames.push_back(relocationInfo.m_sourceEntry.m_sourceName);
+                }
+                else
+                {
+                    // its a meta data file
+                    actualEntryDatabaseNames.push_back(relocationInfo.m_oldRelativePath);
+                }
             }
 
             ASSERT_THAT(actualEntryDatabaseNames, testing::UnorderedElementsAreArray(expectedEntryDatabaseNames));
         }
 
-        void TestGetSourcesByPath(const AZStd::string& source, AZStd::initializer_list<AZStd::string> expectedEntryDatabaseNames, bool expectSuccess = true) const
+        void TestGetSourcesByPath(const AZStd::string& source, AZStd::initializer_list<AZStd::string> expectedEntryDatabaseNames, bool expectSuccess = true, bool excludeMetaDataFiles = true) const
         {
             SourceFileRelocationContainer relocationContainer;
 
             QDir tempPath(m_tempDir.path());
 
             const ScanFolderInfo* info;
-            auto result = m_data->m_reporter->GetSourcesByPath(source, relocationContainer, info);
+            auto result = m_data->m_reporter->GetSourcesByPath(source, relocationContainer, info, excludeMetaDataFiles);
             ASSERT_EQ(result.IsSuccess(), expectSuccess) << result.GetError().c_str();
 
             if (expectSuccess)
@@ -239,7 +303,114 @@ namespace UnitTests
             if (expectSuccess)
             {
                 ASSERT_STREQ(entryContainer[0].m_newRelativePath.c_str(), expectedPath);
+                ASSERT_TRUE(AZ::StringFunc::StartsWith(entryContainer[0].m_newAbsolutePath, scanFolderEntry.m_scanFolder));
                 ASSERT_NE(destInfo, nullptr);
+            }
+        }
+
+        QString ToAbsolutePath(QString path)
+        {
+            QDir tempPath(m_tempDir.path());
+
+            return QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath(path);
+        }
+
+        void TestMove(QString fromPath, QString toPath, QString expectedSourcePath, QString expectedDestinationPath, QString expectedQueryPath, bool p4Enabled)
+        {
+            fromPath = ToAbsolutePath(fromPath);
+            toPath = ToAbsolutePath(toPath);
+            expectedDestinationPath = ToAbsolutePath(expectedDestinationPath);
+            expectedQueryPath = ToAbsolutePath(expectedQueryPath);
+
+
+            QDir tempPath(m_tempDir.path());
+            QString absoluteDepotFilePath = tempPath.absoluteFilePath(expectedSourcePath);
+
+            AZStd::string editParams, moveParams;
+
+            m_command.m_fstatResponse =
+                AZStd::string::format(R"(... depotFile //depot/%s)", expectedSourcePath.toUtf8().data()) + "\r\n"
+                R"(... isMapped)" "\r\n"
+                R"(... action edit)" "\r\n"
+                R"(... headAction integrate)" "\r\n"
+                R"(... headType text)" "\r\n"
+                R"(... headTime 1454346715)" "\r\n"
+                R"(... headRev 3)" "\r\n"
+                R"(... headChange 147109)" "\r\n"
+                R"(... headModTime 1452731919)" "\r\n"
+                R"(... haveRev 3)" "\r\n";
+
+            m_command.m_fstatResponse.append("... clientFile ")
+                .append(absoluteDepotFilePath.toUtf8().constData())
+                .append("\r\n\r\n");
+
+            m_command.m_editCallback = [&editParams](AZStd::string params)
+            {
+                editParams = AZStd::move(params);
+            };
+
+            m_command.m_moveCallback = [this, &moveParams, expectedDestinationPath, expectedSourcePath](AZStd::string params)
+            {
+                moveParams = AZStd::move(params);
+
+                m_command.m_fstatResponse.clear();
+                m_command.m_fstatResponse =
+                    AZStd::string::format(R"(... depotFile //depot/%s)", expectedSourcePath.toUtf8().data()) + "\r\n"
+                    R"(... isMapped)" "\r\n"
+                    R"(... action edit)" "\r\n"
+                    R"(... headAction integrate)" "\r\n"
+                    R"(... headType text)" "\r\n"
+                    R"(... headTime 1454346715)" "\r\n"
+                    R"(... headRev 3)" "\r\n"
+                    R"(... headChange 147109)" "\r\n"
+                    R"(... headModTime 1452731919)" "\r\n"
+                    R"(... haveRev 3)" "\r\n";
+
+                m_command.m_fstatResponse.append("... clientFile ")
+                    .append(expectedDestinationPath.toUtf8().constData())
+                    .append("\r\n\r\n");
+            };
+
+            auto result = m_data->m_reporter->Move(fromPath.toUtf8().constData(), toPath.toUtf8().constData(), false);
+
+            if (p4Enabled)
+            {
+                ASSERT_FALSE(editParams.empty());
+                ASSERT_FALSE(moveParams.empty());
+            }
+            ASSERT_TRUE(result.IsSuccess());
+
+            // Check the result report
+            RelocationSuccess report = result.TakeValue();
+            ASSERT_EQ(report.m_moveFailureCount, 0); // 0 Failures
+            ASSERT_EQ(report.m_moveSuccessCount, 1); // Exactly 1 file moved
+
+            // Check the command parameters to make sure the paths are correct
+            if (p4Enabled)
+            {
+                // edit -> we should see p4 edit <fromPath>
+                AZStd::vector<AZStd::string> tokens;
+                AZ::StringFunc::Tokenize(editParams, tokens, " ");
+
+                ASSERT_EQ(tokens.size(), 4);
+                AZ::StringFunc::Strip(tokens[3], "\\\"", true, true, true);
+                AZStd::string pathToCheck(fromPath.toUtf8().constData());
+                if (fromPath.endsWith("*") && toPath.endsWith("*"))
+                {
+                    AZ::StringFunc::Replace(pathToCheck, "*", "...");
+                }
+                ASSERT_STREQ(tokens[3].c_str(), pathToCheck.c_str());
+
+                // move -> we should see p4 move <fromPath> <expectedQueryPath>
+                tokens = {};
+                AZ::StringFunc::Tokenize(moveParams, tokens, " ");
+
+                ASSERT_EQ(tokens.size(), 5);
+                // Remove quotes around the path and any slashes at the end
+                AZ::StringFunc::Strip(tokens[3], "\\\"", true, true, true);
+                AZ::StringFunc::Strip(tokens[4], "\\\"", true, true, true);
+                ASSERT_STREQ(tokens[3].c_str(), pathToCheck.c_str());
+                ASSERT_STREQ(tokens[4].c_str(), expectedQueryPath.toUtf8().constData());
             }
         }
 
@@ -257,6 +428,10 @@ namespace UnitTests
             FileStatePassthrough m_fileStateCache;
 
             AZStd::unique_ptr<SourceFileRelocator> m_reporter;
+            AZStd::unique_ptr<MockPerforceComponent> m_perforceComponent;
+
+            AZ::JobManager* m_jobManager = nullptr;
+            AZ::JobContext* m_jobContext = nullptr;
         };
 
         QTemporaryDir m_tempDir;
@@ -271,6 +446,17 @@ namespace UnitTests
         TestGetSourcesByPath("subfolder1/somefile.tif", { "subfolder1/somefile.tif" });
     }
 
+    TEST_F(SourceFileRelocatorTest, GetSources_PrefixedFile_Succeeds)
+    {
+        TestGetSourcesByPath("otherfile.tif", { "prefix/otherfile.tif" });
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_PrefixedAbsFile_Succeeds)
+    {
+        QDir tempDir(m_tempDir.path());
+        TestGetSourcesByPath(  tempDir.absoluteFilePath("folder/otherfile.tif").toUtf8().constData(), { "prefix/otherfile.tif" });
+    }
+
     TEST_F(SourceFileRelocatorTest, GetSources_Folder_Fails)
     {
         TestGetSourcesByPath("subfolder1", { }, false);
@@ -281,14 +467,19 @@ namespace UnitTests
         TestGetSourcesByPath("subfolder1/some*", { "subfolder1/somefile.tif" });
     }
 
+    TEST_F(SourceFileRelocatorTest, GetSources_NonExistentFile_Fails)
+    {
+        TestGetSourcesByPath("subfolder1/doesNotExist*.txt", { }, false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_ConsecutiveWildcard_Fails)
+    {
+        TestGetSourcesByPath("subfolder1/**.txt", { }, false);
+    }
+
     TEST_F(SourceFileRelocatorTest, GetSources_SingleFileWildcard2_Succeeds)
     {
         TestGetSourcesByPath("subfolder1/some*.tif", { "subfolder1/somefile.tif" });
-    }
-
-    TEST_F(SourceFileRelocatorTest, GetSources_SingleFileWildcard3_Succeeds)
-    {
-        TestGetSourcesByPath("?ther?ile.ti?", { "prefix/otherfile.tif" });
     }
 
     TEST_F(SourceFileRelocatorTest, GetSources_MultipleFilesWildcard1_Succeeds)
@@ -328,9 +519,9 @@ namespace UnitTests
         TestGetSourcesByPath("*", { }, false);
     }
 
-    TEST_F(SourceFileRelocatorTest, GetSources_PartialPath_SucceedsWithNoResults)
+    TEST_F(SourceFileRelocatorTest, GetSources_PartialPath_FailsWithNoResults)
     {
-        TestGetSourcesByPath("older/*", { }, true);
+        TestGetSourcesByPath("older/*", { }, false);
     }
 
     TEST_F(SourceFileRelocatorTest, GetSources_AmbiguousPath1_Fails)
@@ -349,6 +540,70 @@ namespace UnitTests
 
         auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("duplicate/file1.tif");
         TestGetSourcesByPath(filePath.toUtf8().constData(), { "duplicate/file1.tif" }, true);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetMetaDataFile_AbsolutePath_Succeeds)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("dummy/foo.metadataextension");
+        TestGetSourcesByPath(filePath.toUtf8().constData(), { "dummy/foo.metadataextension" }, true, false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_HaveMetadata_AbsolutePath_Succeeds)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("folder/file.foo");
+        TestGetSourcesByPath(filePath.toUtf8().constData(), { "folder/file.foo" , "folder/file.bar" }, true, false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_HaveMetadata_Exclude_AbsolutePath_Succeeds)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("folder/file.foo");
+        TestGetSourcesByPath(filePath.toUtf8().constData(), { "folder/file.foo" }, true, true);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_HaveMetadataDifferentFileCase_AbsolutePath_Succeeds)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("testfolder/file.foo");
+        TestGetSourcesByPath(filePath.toUtf8().constData(), { "testfolder/file.foo", "testfolder/File.bar" }, true, false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetMetaDataFile_SingleFileWildcard_Succeeds)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("dummy/foo.metadataextension");
+        TestGetSourcesByPath("dummy/*", { "dummy/foo.metadataextension" }, true, false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_HaveMetadata_SingleFileWildcard_Succeeds)
+    {
+        TestGetSourcesByPath("folder/*", { "folder/file.foo" , "folder/file.bar" }, true, false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, GetSources_HaveMetadata_Exclude_SingleFileWildcard_Succeeds)
+    {
+        TestGetSourcesByPath("folder/*", { "folder/file.foo" }, true, true);
+    }
+
+    TEST_F(SourceFileRelocatorTest, Move_Real_SourceEndsWithWildcard_DestinationEndsWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fi*", destinationPath + "rename*", "dev/duplicate/file1.tif", destinationPath + "renameile1.tif", destinationPath + "rename*", false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, Move_Real_SourceEndsWithWildcardFolder_DestinationEndsWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/folder*", destinationPath + "rename*", "dev/duplicate/folder/file1.tif", destinationPath + "rename/file1.tif", destinationPath + "rename*", false);
     }
 
     TEST_F(SourceFileRelocatorTest, HandleWildcard_RepeatCharacters1_Succeeds)
@@ -565,7 +820,7 @@ namespace UnitTests
 
         m_data->m_reporter->ComputeDestination(entryContainer, info, "*", "someOtherPlace/*", destInfo);
         m_data->m_reporter->PopulateDependencies(entryContainer);
-        AZStd::string report = m_data->m_reporter->BuildReport(entryContainer, updateTasks, true);
+        AZStd::string report = m_data->m_reporter->BuildReport(entryContainer, updateTasks, true, false);
 
         ASSERT_FALSE(report.empty());
     }
@@ -600,6 +855,13 @@ namespace UnitTests
         ASSERT_TRUE(result.IsSuccess());
         ASSERT_FALSE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
         ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(newFilePath.toUtf8().constData()));
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 1);
+        ASSERT_EQ(successResult.m_moveFailureCount, 0);
+        ASSERT_EQ(successResult.m_moveTotalCount, 1);
+        ASSERT_EQ(successResult.m_updateTotalCount, 0);
     }
 
     TEST_F(SourceFileRelocatorTest, Move_Real_ReadOnlyFile_Fails)
@@ -612,13 +874,18 @@ namespace UnitTests
         ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
         ASSERT_TRUE(AZ::IO::SystemFile::SetWritable(filePath.toUtf8().constData(), false));
 
-        AZ_TEST_START_TRACE_SUPPRESSION;
         auto result = m_data->m_reporter->Move(filePath.toUtf8().constData(), "someOtherPlace/file1.tif", false);
-        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         ASSERT_TRUE(result.IsSuccess());
         ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
         ASSERT_FALSE(AZ::IO::FileIOBase::GetInstance()->Exists(newFilePath.toUtf8().constData()));
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 0);
+        ASSERT_EQ(successResult.m_moveFailureCount, 1);
+        ASSERT_EQ(successResult.m_moveTotalCount, 1);
+        ASSERT_EQ(successResult.m_updateTotalCount, 0);
     }
 
     TEST_F(SourceFileRelocatorTest, Move_Real_WithDependencies_Fails)
@@ -632,9 +899,19 @@ namespace UnitTests
     TEST_F(SourceFileRelocatorTest, Move_Real_WithDependenciesUpdateReferences_Succeeds)
     {
         QDir tempPath(m_tempDir.path());
+
         auto result = m_data->m_reporter->Move("subfolder1/otherfile.tif", "someOtherPlace/otherfile.tif", false, false, true, true);
 
         ASSERT_TRUE(result.IsSuccess());
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 1);
+        ASSERT_EQ(successResult.m_moveFailureCount, 0);
+        ASSERT_EQ(successResult.m_moveTotalCount, 1);
+        ASSERT_EQ(successResult.m_updateSuccessCount, 1);
+        ASSERT_EQ(successResult.m_updateFailureCount, 1); // Since we have both product and source dependencies from the same file, the 2nd attempt to update fails
+        ASSERT_EQ(successResult.m_updateTotalCount, 2);
     }
 
     TEST_F(SourceFileRelocatorTest, Delete_Real_Succeeds)
@@ -648,7 +925,39 @@ namespace UnitTests
         auto result = m_data->m_reporter->Delete(filePath.toUtf8().constData(), false);
 
         ASSERT_TRUE(result.IsSuccess());
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 1);
+        ASSERT_EQ(successResult.m_moveFailureCount, 0);
+        ASSERT_EQ(successResult.m_moveTotalCount, 1);
+        ASSERT_EQ(successResult.m_updateTotalCount, 0);
+
         ASSERT_FALSE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
+    }
+
+    TEST_F(SourceFileRelocatorTest, Delete_Real_Readonly_Fails)
+    {
+        QDir tempPath(m_tempDir.path());
+
+        auto filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("duplicate/file1.tif");
+
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
+
+        AZ::IO::SystemFile::SetWritable(filePath.toUtf8().constData(), false);
+
+        auto result = m_data->m_reporter->Delete(filePath.toUtf8().constData(), false);
+
+        ASSERT_TRUE(result.IsSuccess());
+
+        RelocationSuccess successResult = result.TakeValue();
+
+        ASSERT_EQ(successResult.m_moveSuccessCount, 0);
+        ASSERT_EQ(successResult.m_moveFailureCount, 1);
+        ASSERT_EQ(successResult.m_moveTotalCount, 1);
+        ASSERT_EQ(successResult.m_updateTotalCount, 0);
+
+        ASSERT_TRUE(AZ::IO::FileIOBase::GetInstance()->Exists(filePath.toUtf8().constData()));
     }
 
     TEST_F(SourceFileRelocatorTest, Delete_Real_WithDependencies_Fails)
@@ -657,5 +966,168 @@ namespace UnitTests
         auto result = m_data->m_reporter->Delete("subfolder1/otherfile.tif", false);
 
         ASSERT_FALSE(result.IsSuccess());
+    }
+
+    TEST_F(SourceFileRelocatorTest, Move_Real_DestinationIsPathOnly_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/file1.tif", destinationPath, "dev/duplicate/file1.tif",  destinationPath + "file1.tif", destinationPath + "file1.tif", false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, Move_Real_DestinationIsPathOnly_SourceWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fil*1.tif", destinationPath, "dev/duplicate/file1.tif", destinationPath + "file1.tif", destinationPath + "fil*1.tif", false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, Move_Real_SourceContainsWildcard_DestinationEndsWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fil*1.tif", destinationPath + "*", "dev/duplicate/file1.tif", destinationPath + "e", destinationPath + "*", false);
+    }
+
+    TEST_F(SourceFileRelocatorTest, Move_Real_SourceEndsWithWildcard_DestinationContainsWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fi*", destinationPath + "*.rename", "dev/duplicate/file1.tif", destinationPath + "le1.tif.rename", destinationPath + "*.rename", false);
+    }
+
+    struct SourceFileRelocatorPerforceMockTest
+        : SourceFileRelocatorTest
+    {
+        void SetUp() override
+        {
+            SourceFileRelocatorTest::SetUp();
+
+            EnableSourceControl();
+        }
+    };
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, GetSources_NonExistentFile_Fails)
+    {
+        SourceFileRelocationContainer relocationContainer;
+
+        QDir tempPath(m_tempDir.path());
+
+        m_command.m_persistFstatResponse = true;
+        m_command.m_fstatErrorResponse = (tempPath.absoluteFilePath("dev/subfolder1/doesNotExist*.txt") + " - no such file(s)\n"
+            + tempPath.absoluteFilePath("folder/subfolder1/doesNotExist*.txt") + " - no such file(s)\n").toUtf8().constData();
+
+        const ScanFolderInfo* info;
+        auto result = m_data->m_reporter->GetSourcesByPath("subfolder1/doesNotExist*.txt", relocationContainer, info);
+        ASSERT_EQ(result.IsSuccess(), false);
+
+        auto&& error = result.TakeError();
+
+        ASSERT_STREQ(error.c_str(), "Wildcard search did not match any files.\n");
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Move_Real_DestinationIsPathOnly_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/file1.tif", destinationPath, "dev/duplicate/file1.tif", destinationPath + "file1.tif", destinationPath + "file1.tif", true);
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Move_Real_DestinationIsPathOnly_SourceWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fil*1.tif", destinationPath, "dev/duplicate/file1.tif", destinationPath + "file1.tif", destinationPath + "fil*1.tif", true);
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Move_Real_SourceContainsWildcard_DestinationEndsWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fil*1.tif", destinationPath + "*", "dev/duplicate/file1.tif", destinationPath + "e", destinationPath + "*", true);
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Move_Real_SourceEndsWithWildcard_DestinationContainsWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/f*", destinationPath + "*.rename", "dev/duplicate/file1.tif", destinationPath + "ile1.tif.rename", destinationPath + "*.rename", true);
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Delete_Real_Succeeds)
+    {
+        QDir tempPath(m_tempDir.path());
+        QString filePath = QDir(tempPath.absoluteFilePath(m_data->m_scanFolder1.m_scanFolder.c_str())).absoluteFilePath("duplicate/file1.tif");
+
+        AZStd::string deleteParams;
+
+        m_command.m_fstatResponse =
+            R"(... depotFile //depot/dev/duplicate/file1.tif)" "\r\n"
+            R"(... isMapped)" "\r\n"
+            R"(... action edit)" "\r\n"
+            R"(... headAction integrate)" "\r\n"
+            R"(... headType text)" "\r\n"
+            R"(... headTime 1454346715)" "\r\n"
+            R"(... headRev 3)" "\r\n"
+            R"(... headChange 147109)" "\r\n"
+            R"(... headModTime 1452731919)" "\r\n"
+            R"(... haveRev 3)" "\r\n";
+
+        m_command.m_fstatResponse.append("... clientFile ")
+            .append(filePath.toUtf8().constData())
+            .append("\r\n\r\n");
+
+        m_command.m_deleteCallback = [this, &deleteParams, filePath](AZStd::string params)
+        {
+            deleteParams = AZStd::move(params);
+            m_command.m_rawOutput.outputResult = "delete called";
+
+            m_command.m_fstatResponse =
+                R"(... depotFile //depot/dev/duplicate/file1.tif)" "\r\n"
+                R"(... isMapped)" "\r\n"
+                R"(... action delete)" "\r\n"
+                R"(... headAction integrate)" "\r\n"
+                R"(... headType text)" "\r\n"
+                R"(... headTime 1454346715)" "\r\n"
+                R"(... headRev 3)" "\r\n"
+                R"(... headChange 147109)" "\r\n"
+                R"(... headModTime 1452731919)" "\r\n"
+                R"(... haveRev 3)" "\r\n";
+
+            m_command.m_fstatResponse.append("... clientFile ")
+            .append(filePath.toUtf8().constData())
+            .append("\r\n\r\n");
+        };
+
+        auto result = m_data->m_reporter->Delete(filePath.toUtf8().constData(), false);
+
+        ASSERT_TRUE(result.IsSuccess());
+
+        RelocationSuccess report = result.TakeValue();
+        ASSERT_EQ(report.m_moveFailureCount, 0);
+        ASSERT_GT(report.m_moveSuccessCount, 0);
+
+        ASSERT_FALSE(deleteParams.empty());
+
+        AZStd::vector<AZStd::string> tokens;
+        AZ::StringFunc::Tokenize(deleteParams, tokens, " ");
+
+        ASSERT_EQ(tokens.size(), 4);
+        AZ::StringFunc::Strip(tokens[3], "\\\"", true, true, true);
+        ASSERT_STREQ(tokens[3].c_str(), filePath.toUtf8().constData());
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Move_Real_SourceEndsWithWildcard_DestinationEndsWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/fi*", destinationPath + "rename*", "dev/duplicate/file1.tif", destinationPath + "renamele1.tif", destinationPath + "rename...", true);
+    }
+
+    TEST_F(SourceFileRelocatorPerforceMockTest, Move_Real_SourceEndsWithWildcardFolder_DestinationEndsWithWildcard_Succeeds)
+    {
+        const QString destinationPath = "someOtherPlace/";
+
+        TestMove("duplicate/folder*", destinationPath + "rename*", "dev/duplicate/folder/file1.tif", destinationPath + "rename/file1.tif", destinationPath + "rename...", true);
     }
 }

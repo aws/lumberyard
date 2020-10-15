@@ -115,7 +115,8 @@ namespace EMStudio
         MCORE_INLINE void SetAvoidRendering(bool avoidRendering)                                { mAvoidRendering = avoidRendering; }
         MCORE_INLINE bool GetIgnoreVisibility() const                                           { return mIgnoreVisible; }
         MCORE_INLINE void SetIgnoreVisibility(bool ignoreVisible)                               { mIgnoreVisible = ignoreVisible; }
-
+        MCORE_INLINE bool GetSkipSourceControlCommands()                                        { return m_skipSourceControlCommands; }
+        MCORE_INLINE void SetSkipSourceControlCommands(bool skip)                               { m_skipSourceControlCommands = skip; }
     private:
         MCore::Array<MCommon::TransformationManipulator*> mTransformationManipulators;
         QPointer<MainWindow>                mMainWindow;
@@ -133,6 +134,7 @@ namespace EMStudio
         bool                                mAvoidRendering;
         bool                                mIgnoreVisible = false;
         MotionEventPresetManager*           mEventPresetManager;
+        bool                                m_skipSourceControlCommands = false;
 
         // SkeletonOutlinerNotificationBus
         void JointSelectionChanged();

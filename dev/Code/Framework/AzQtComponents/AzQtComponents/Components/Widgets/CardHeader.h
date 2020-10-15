@@ -26,83 +26,121 @@ class QLabel;
 
 namespace AzQtComponents
 {
-    /**
-    * Header bar for Card widgets.
-    *
-    * Basically an expander arrow with a text title and a button to trigger a content menu.
-    * Also has an optional icon and optional help button. 
-    *
-    * The sub widgets are hidden by default and will show once they're configured
-    * via the appropriate setter (ex: setIcon causes the icon widget to appear).
-    */
+    //! Header bar for Card widgets.
+    //! Provides a bar with an expander arrow, a text title and a button to trigger a context menu.
+    //! Also has an optional icon and help button. 
+    //! Sub widgets are hidden by default and will show once they're configured via the appropriate setter.
+    //! For example, setIcon will cause the icon widget to appear.
     class AZ_QT_COMPONENTS_API CardHeader
         : public QFrame
     {
         Q_OBJECT //AUTOMOC
+        //! Enable warning styling.
         Q_PROPERTY(bool warning READ isWarning WRITE setWarning NOTIFY warningChanged)
+        //! Enable read-only styling.
         Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly NOTIFY readOnlyChanged)
+        //! Enable content modified styling.
         Q_PROPERTY(bool contentModified READ isContentModified WRITE setContentModified NOTIFY contentModifiedChanged)
     public:
+        //! Enum used to determine which icon to use for the context menu button.
         enum ContextMenuIcon
         {
-            Standard,
-            Plus
+            Standard,   //!< Hamburger menu button.
+            Plus        //!< Plus button, usually tied to add actions.
         };
 
         CardHeader(QWidget* parent = nullptr);
 
-        /// Set a title. Passing an empty string will hide the widget.
+        //! Sets the Card Header title. Passing an empty string will hide the Card Header.
         void setTitle(const QString& title);
-        void setFilter(const QString& filterString);
-        void refreshTitle();
-        void setTitleProperty(const char *name, const QVariant &value);
+        //! Returns the current title.
         QString title() const;
+        //! Returns a direct pointer to the title label.
         AzQtComponents::ElidingLabel* titleLabel() const;
 
-        /// Set an icon. Passing a null icon will hide the icon.
+        //! Sets the filter string. If the title contains the filter string, it will be highlighted.
+        //! Used to enhance searches.
+        void setFilter(const QString& filterString);
+
+        //! Sets a custom property to the title label.
+        //! Can be used to 
+        void setTitleProperty(const char *name, const QVariant &value);
+        //! Forces a repaint of the title.
+        //! Can be used to refresh the widget after style or property changes are applied.
+        void refreshTitle();
+
+        //! Sets the icon. Passing a null icon will hide the current icon.
         void setIcon(const QIcon& icon);
 
-        /// Set whether the header has an expand/contract button.
-        /// Note that the header itself will not change size or hide, it
-        /// simply causes the onExpanderChanged signal to fire.
+        //! Set whether the header displays an expander button.
+        //! Note that the header itself will not change size or hide, it simply causes
+        //! the onExpanderChanged signal to fire.
         void setExpandable(bool expandable);
+        //! Returns true if the Card Header is showing and expander button, false otherwise.
         bool isExpandable() const;
 
+        //! Sets the parent Card's expanded state.
         void setExpanded(bool expanded);
+        //! Returns the parent Card's expanded state.
         bool isExpanded() const;
 
+        //! Sets the warning state on the Card Header.
+        void setWarning(bool warning);
+        //! Returns true if the Card Header's warning state is set, false otherwise.
+        bool isWarning() const;
+        //! Sets a new QIcon for the warning state.
         void setWarningIcon(const QIcon& icon);
 
-        void setWarning(bool warning);
-        bool isWarning() const;
-
+        //! Sets the read only state on the Card Header.
         void setReadOnly(bool readOnly);
+        //! Returns true if the Card Header's read only state is set, false otherwise.
         bool isReadOnly() const;
 
+        //! Sets the modified state on the Card Header.
         void setContentModified(bool modified);
+        //! Returns true if the Card Header's modified state is set, false otherwise.
         bool isContentModified() const;
 
-        /// Set whether the header has a context menu widget - determines whether or not the contextMenuRequested signal fires on right-mouse-button click / when the context menu button is pressed.
+        //! Sets whether the header has a context menu widget.
+        //! This determines whether or not the contextMenuRequested signal fires on right-click, or when
+        //! the context menu button is pressed.
         void setHasContextMenu(bool showContextMenu);
 
+        //! Sets the help url on the Card Header.
+        //! If a url is set, a question mark icon will be displayed on the right and it will open the
+        //! default browser on the url provided on click.
         void setHelpURL(const QString& url);
+        //! Resets the help url and hides the question mark button.
         void clearHelpURL();
+        //! Returns the help url for this Card Header if set.
         QString helpURL() const;
 
+        //! Forces a refresh of the icon and warning icon on the Card Header.
         void configSettingsChanged();
 
+        //! Sets the mock disabled state.
+        //! This will make the Card Header look disabled, but the buttons will still work.
         void mockDisabledState(bool disabled);
 
+        //! Sets the size of the Card header's icon.
         static void setIconSize(int iconSize);
+
+        //! Returns the default size for the Card Header's icon.
         static int defaultIconSize();
 
-        /// Set the icon to be displayed for the context menu.
+        //! Sets the icon to be displayed for the context menu.
         void setContextMenuIcon(ContextMenuIcon iconType);
+
     Q_SIGNALS:
+        //! Triggered when the context menu button is clicked, or on a right click.
         void contextMenuRequested(const QPoint& position);
+        //! Triggered when the expander state is changed.
         void expanderChanged(bool expanded);
+        //! Triggered when the warning state is changed.
         void warningChanged(bool warning);
+        //! Triggered when the read only state is changed.
         void readOnlyChanged(bool readOnly);
+        //! Triggered when the content modified state is changed.
         void contentModifiedChanged(bool modified);
 
     protected:

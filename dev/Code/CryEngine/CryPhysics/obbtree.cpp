@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -566,3 +568,5 @@ int COBBTree::SanityCheck()
     const int bufLength = sizeof(g_BBoxBuf) / sizeof(g_BBoxBuf[0]);
     return SanityCheckTree(this, (bufLength - 1) / 4);
 }
+
+#endif // ENABLE_CRY_PHYSICS

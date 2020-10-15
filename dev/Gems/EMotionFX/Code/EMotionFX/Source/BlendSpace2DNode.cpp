@@ -120,6 +120,13 @@ namespace EMotionFX
         m_vertIndices[2] = indexC;
     }
 
+    bool BlendSpace2DNode::Triangle::operator==(const Triangle& other) const
+    {
+        return (m_vertIndices[0] == other.m_vertIndices[0] &&
+            m_vertIndices[1] == other.m_vertIndices[1] &&
+            m_vertIndices[2] == other.m_vertIndices[2]);
+    }
+
     BlendSpace2DNode::UniqueData::UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
         : AnimGraphNodeData(node, animGraphInstance)
         , m_allMotionsHaveSyncTracks(false)
@@ -127,7 +134,7 @@ namespace EMotionFX
         , m_rangeMax(0, 0)
         , m_currentPosition(0, 0)
         , m_normCurrentPosition(0, 0)
-        , m_masterMotionIdx(0)
+        , m_leaderMotionIdx(0)
         , m_hasDegenerateTriangles(false)
     {
     }
@@ -374,7 +381,7 @@ namespace EMotionFX
         }
 
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindOrCreateUniqueObjectData(this));
-        DoTopDownUpdate(animGraphInstance, m_syncMode, uniqueData->m_masterMotionIdx,
+        DoTopDownUpdate(animGraphInstance, m_syncMode, uniqueData->m_leaderMotionIdx,
             uniqueData->m_motionInfos, uniqueData->m_allMotionsHaveSyncTracks);
 
         for (int i = 0; i < 2; ++i)
@@ -423,8 +430,8 @@ namespace EMotionFX
         uniqueData->m_currentPosition = GetCurrentSamplePosition(animGraphInstance, *uniqueData);
         uniqueData->m_normCurrentPosition = uniqueData->ConvertToNormalizedSpace(uniqueData->m_currentPosition);
 
-        // Set the duration and current play time etc to the master motion index, or otherwise just the first motion in the list if syncing is disabled.
-        AZ::u32 motionIndex = (uniqueData->m_masterMotionIdx != MCORE_INVALIDINDEX32) ? uniqueData->m_masterMotionIdx : MCORE_INVALIDINDEX32;
+        // Set the duration and current play time etc to the leader motion index, or otherwise just the first motion in the list if syncing is disabled.
+        AZ::u32 motionIndex = (uniqueData->m_leaderMotionIdx != MCORE_INVALIDINDEX32) ? uniqueData->m_leaderMotionIdx : MCORE_INVALIDINDEX32;
         if (m_syncMode == ESyncMode::SYNCMODE_DISABLED || motionIndex == MCORE_INVALIDINDEX32)
         {
             motionIndex = 0;
@@ -432,7 +439,7 @@ namespace EMotionFX
 
         UpdateBlendingInfoForCurrentPoint(*uniqueData);
 
-        DoUpdate(timePassedInSeconds, uniqueData->m_blendInfos, m_syncMode, uniqueData->m_masterMotionIdx, uniqueData->m_motionInfos);
+        DoUpdate(timePassedInSeconds, uniqueData->m_blendInfos, m_syncMode, uniqueData->m_leaderMotionIdx, uniqueData->m_motionInfos);
 
         if (!uniqueData->m_motionInfos.empty())
         {
@@ -485,7 +492,7 @@ namespace EMotionFX
         data->ZeroTrajectoryDelta();
 
         const bool inPlace = GetIsInPlace(animGraphInstance);
-        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data, inPlace);
+        DoPostUpdate(animGraphInstance, uniqueData->m_leaderMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data, inPlace);
     }
 
     bool BlendSpace2DNode::UpdateMotionInfos(UniqueData* uniqueData)
@@ -512,7 +519,7 @@ namespace EMotionFX
 
         MotionInstancePool& motionInstancePool = GetMotionInstancePool();
 
-        uniqueData->m_masterMotionIdx = 0;
+        uniqueData->m_leaderMotionIdx = 0;
 
         PlayBackInfo playInfo;// TODO: Init from attributes
         for (BlendSpaceMotion& blendSpaceMotion : m_motions)
@@ -539,9 +546,9 @@ namespace EMotionFX
             motionInstance->SetWeight(1.0f, 0.0f);
             AddMotionInfo(uniqueData->m_motionInfos, motionInstance);
 
-            if (motionId == m_syncMasterMotionId)
+            if (motionId == m_syncLeaderMotionId)
             {
-                uniqueData->m_masterMotionIdx = (AZ::u32)uniqueData->m_motionInfos.size() - 1;
+                uniqueData->m_leaderMotionIdx = (AZ::u32)uniqueData->m_motionInfos.size() - 1;
             }
         }
         uniqueData->m_allMotionsHaveSyncTracks = DoAllMotionsHaveSyncTracks(uniqueData->m_motionInfos);
@@ -664,9 +671,9 @@ namespace EMotionFX
     }
 
 
-    void BlendSpace2DNode::SetSyncMasterMotionId(const AZStd::string& syncMasterMotionId)
+    void BlendSpace2DNode::SetSyncLeaderMotionId(const AZStd::string& syncLeaderMotionId)
     {
-        m_syncMasterMotionId = syncMasterMotionId;
+        m_syncLeaderMotionId = syncLeaderMotionId;
         if (mAnimGraph)
         {
             Reinit();
@@ -674,9 +681,9 @@ namespace EMotionFX
     }
 
 
-    const AZStd::string& BlendSpace2DNode::GetSyncMasterMotionId() const
+    const AZStd::string& BlendSpace2DNode::GetSyncLeaderMotionId() const
     {
-        return m_syncMasterMotionId;
+        return m_syncLeaderMotionId;
     }
 
 
@@ -1182,6 +1189,27 @@ namespace EMotionFX
         return AZ::Edit::PropertyVisibility::Show;
     }
 
+    bool BlendSpace2DNode::NodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        const unsigned int version = classElement.GetVersion();
+        if (version < 2)
+        {
+            int index = classElement.FindElement(AZ_CRC("syncMasterMotionId", 0xfaec9599));
+            if (index > 0)
+            {
+                AZStd::string oldValue;
+                AZ::SerializeContext::DataElementNode& dataElementNode = classElement.GetSubElement(index);
+                const bool result = dataElementNode.GetData<AZStd::string>(oldValue);
+                if (!result)
+                {
+                    return false;
+                }
+                classElement.RemoveElement(index);
+                classElement.AddElementWithData(context, "syncLeaderMotionId", oldValue);
+            }
+        }
+        return true;
+    }
 
     void BlendSpace2DNode::Reflect(AZ::ReflectContext* context)
     {
@@ -1192,13 +1220,13 @@ namespace EMotionFX
         }
 
         serializeContext->Class<BlendSpace2DNode, BlendSpaceNode>()
-            ->Version(1)
+            ->Version(2, NodeVersionConverter)
             ->Field("calculationMethodX", &BlendSpace2DNode::m_calculationMethodX)
             ->Field("evaluatorTypeX", &BlendSpace2DNode::m_evaluatorTypeX)
             ->Field("calculationMethodY", &BlendSpace2DNode::m_calculationMethodY)
             ->Field("evaluatorTypeY", &BlendSpace2DNode::m_evaluatorTypeY)
             ->Field("syncMode", &BlendSpace2DNode::m_syncMode)
-            ->Field("syncMasterMotionId", &BlendSpace2DNode::m_syncMasterMotionId)
+            ->Field("syncLeaderMotionId", &BlendSpace2DNode::m_syncLeaderMotionId)
             ->Field("eventFilterMode", &BlendSpace2DNode::m_eventFilterMode)
             ->Field("motions", &BlendSpace2DNode::m_motions)
         ;
@@ -1230,7 +1258,7 @@ namespace EMotionFX
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace2DNode::m_syncMode)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-            ->DataElement(AZ_CRC("BlendSpaceMotion", 0x9be98fb7), &BlendSpace2DNode::m_syncMasterMotionId, "Sync Master Motion", "The master motion used for motion synchronization.")
+            ->DataElement(AZ_CRC("BlendSpaceMotion", 0x9be98fb7), &BlendSpace2DNode::m_syncLeaderMotionId, "Sync Leader Motion", "The leader motion used for motion synchronization.")
             ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace2DNode::GetSyncOptionsVisibility)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace2DNode::Reinit)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace2DNode::m_eventFilterMode)

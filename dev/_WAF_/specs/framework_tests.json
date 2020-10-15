@@ -16,6 +16,9 @@
         "GridMate",
         "AzFramework",
         "AzToolsFramework",
+        "AzManipulatorTestFramework",
+        "AzManipulatorTestFrameworkTests",
+        "AzToolsFrameworkTestCommon",
         "AzTestRunner",
         "FrameworkTests",
         "ProcessLaunchTest"

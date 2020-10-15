@@ -43,6 +43,11 @@ def build(bld):
         features = ['ExternalLyIdentity', 'ExternalLyMetrics'],
 
         # Platform Specific
-        darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib', '@executable_path/qtlibs_mac/Frameworks'],
+        msvc_cxxflags      = ['/W4',     # warning level
+                              '/wd4127', # warning caused by QVector and QRect; disabling in this project because it's not useful
+                              '/wd4251', # warning caused by QList and QScopedPointer; disabling in this project because it's not useful
+                             ],
+
+        darwin_rpath       = ['@executable_path', '@executable_path/qtlibs/lib', '@executable_path/qtlibs_mac/Frameworks'],
         test_all_file_list = ['assetbundlerbatch_test.waf_files']
     )

@@ -131,6 +131,22 @@ namespace AzQtComponents
                         styleSheet->repolish(cbWidget);
                     }
                     break;
+
+                    // Only allow wheel events when the combo box has focus
+                    case QEvent::Wheel:
+                    {
+                        if (cbWidget->hasFocus())
+                        {
+                            event->accept();
+                            return false;
+                        }
+                        else
+                        {
+                            event->ignore();
+                            return true;
+                        }
+                    }
+                    break;
                 }
             }
             else if (auto itemView = qobject_cast<QAbstractItemView*>(watched))
@@ -308,6 +324,13 @@ namespace AzQtComponents
             if (comboBox->view())
             {
                 comboBox->view()->installEventFilter(s_comboBoxWatcher);
+            }
+
+            // Prevent QComboBoxes from automatically gaining focus on a wheel event
+            // so that scrolling a parent does not result in unintended combo box changes
+            if (comboBox->focusPolicy() == Qt::FocusPolicy::WheelFocus)
+            {
+                comboBox->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
             }
 
             ComboBox::addErrorButton(comboBox, config);

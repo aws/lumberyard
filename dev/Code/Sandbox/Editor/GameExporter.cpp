@@ -463,7 +463,7 @@ bool CGameExporter::ExportTerrainMacroTexture()
 
     DWORD startTime = GetTickCount();
 
-    gEnv->p3DEngine->CloseTerrainTextureFile();
+    LegacyTerrain::LegacyTerrainDataRequestBus::Broadcast(&LegacyTerrain::LegacyTerrainDataRequests::CloseTerrainTextureFile);
 
     if (!ExportTerrainTexture(ctcFilename.toUtf8().data()))
     {
@@ -770,7 +770,7 @@ void CGameExporter::ExportLevelInfo(const QString& path)
 
     SetupTerrainInfo(
         gEnv->p3DEngine->GetOctreeCompiledDataSize(),
-        [&root](const size_t compiledDataSize)
+        [&](const size_t compiledDataSize)
         {
             byte* pInfo = new byte[compiledDataSize];
 

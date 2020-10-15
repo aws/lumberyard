@@ -11,21 +11,26 @@
 #
 ########################################################################################
 
+
 def build(bld):
-
-
+    define_enable_cry_physics = ''
+    if hasattr(bld, 'enable_cry_physics'):
+        define_enable_cry_physics = 'ENABLE_CRY_PHYSICS=%i' % bld.enable_cry_physics
+    
     bld.DefineGem(
-        includes     = [bld.Path('Code/CryEngine/CryCommon')],
+        includes        = [bld.Path('Code/CryEngine/CryCommon')],
         export_includes = ['include'],
-        win_features = ['crcfix'],
+        win_features    = ['crcfix'],
+        defines         = [define_enable_cry_physics],
+        export_defines  = [define_enable_cry_physics],
 
         editor       = dict(
 
-
+            platform_roots = [bld.PlatformRoot('Platform', export_includes=False)],
             platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
 
-            use         = ['AzToolsFramework', 'AzQtComponents'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
+            use         = ['AzToolsFramework', 'AzQtComponents', 'AssetBuilderSDK'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
             includes    = ['include',
                            'Source',
                            bld.Path('Code/Sandbox'),
@@ -35,12 +40,14 @@ def build(bld):
                            bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/CryEngine')
                            ],
-            uselib      =['QT5CORE',
-                          'QT5QUICK',
-                          'QT5QML',
-                          'QT5GUI',
-                          'QT5WIDGETS'],
-            defines     =['LMBR_CENTRAL_EDITOR', 'METRICS_SYSTEM_COMPONENT_ENABLED'],
+            uselib      = ['QT5CORE',
+                           'QT5QUICK',
+                           'QT5QML',
+                           'QT5GUI',
+                           'QT5WIDGETS'],
+
+            defines        = ['LMBR_CENTRAL_EDITOR', 'METRICS_SYSTEM_COMPONENT_ENABLED', define_enable_cry_physics],
+            export_defines = [define_enable_cry_physics],
 
             darwin_uselib = ['AWS_CPP_SDK_CORE',
                              'AWS_CPP_SDK_COGNITO_IDENTITY',
@@ -48,12 +55,12 @@ def build(bld):
                              'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
                              'AWS_CPP_SDK_MOBILEANALYTICS'],
 
-            linux_uselib =['AWS_CPP_SDK_CORE',
-                           'AWS_CPP_SDK_COGNITO_IDENTITY',
-                           'AWS_CPP_SDK_STS',
-                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                           'AWS_CPP_SDK_MOBILEANALYTICS'],
+            linux_uselib  = ['AWS_CPP_SDK_CORE',
+                             'AWS_CPP_SDK_COGNITO_IDENTITY',
+                             'AWS_CPP_SDK_STS',
+                             'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                             'AWS_CPP_SDK_MOBILEANALYTICS'],
 
-            win_features    =['crcfix']
+            win_features  = ['crcfix']
         )
     )

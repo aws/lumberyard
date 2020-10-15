@@ -20,7 +20,7 @@
 #include <Editor/Controls/QToolTipWidget.h>
 #include <QFileInfo>
 
-static const char* g_assetProcessorLink = "<a href=\"https://docs.aws.amazon.com/console/lumberyard/userguide/asset-processor\">Asset Processor</a>";
+static const char* g_assetProcessorLink = "<a href=\"https://docs.aws.amazon.com/console/lumberyard/asset-processor\">Asset Processor</a>";
 static const char* g_copyFilesMessage = "The original file will remain outside of the project and the %1 will not monitor the file.";
 static const char* g_moveFilesMessage = "The original file will be moved inside of the project and the %1 will monitor the file for changes.";
 static const char* g_selectDestinationFilesPath = "AssetImporter/SelectDestinationFilesPath";

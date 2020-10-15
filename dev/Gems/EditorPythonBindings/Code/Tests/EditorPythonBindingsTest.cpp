@@ -147,11 +147,58 @@ R"(
 import sys
 print ('EditorPythonBindingsTest_RunScriptTextBuffer')
 )";
-        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, script);
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, script, false);
 
         e.Deactivate();
 
         EXPECT_EQ(m_testSink.m_evaluationMap[(int)LogTypes::ScriptWorked], 1);
+    }
+
+    TEST_F(EditorPythonBindingsTest, RunScriptTextBufferAndPrint)
+    {
+        AZ::Entity e;
+        e.CreateComponent<EditorPythonBindings::PythonSystemComponent>();
+        e.Init();
+        e.Activate();
+
+        SimulateEditorBecomingInitialized();
+
+        AZStd::string capturedOutput;
+        m_testSink.m_evaluateMessage = [&capturedOutput](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                capturedOutput.append(message);
+            }
+            return 0;
+        };
+
+        // Expressions should log their result
+        // Any other statement shouldn't log anything
+
+        capturedOutput.clear();
+        const char* script = "5+5";
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, script, true);
+        EXPECT_EQ(capturedOutput, "10\n");
+
+        capturedOutput.clear();
+        script = 
+R"(
+import sys
+sys.version
+)";
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, script, true);
+        EXPECT_EQ(capturedOutput, "");
+
+        capturedOutput.clear();
+        script = "variable = 'test'";
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, script, true);
+        EXPECT_EQ(capturedOutput, "");
+
+        capturedOutput.clear();
+        script = "variable";
+        AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(&AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByString, script, true);
+        EXPECT_EQ(capturedOutput, "test\n");
     }
 
     TEST_F(EditorPythonBindingsTest, RunScriptFile)

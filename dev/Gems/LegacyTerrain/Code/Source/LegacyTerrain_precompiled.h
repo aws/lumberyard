@@ -15,3 +15,64 @@
 #include <platform.h> // Many CryCommon files require that this is included first.
 #include <ISystem.h>
 #include <I3DEngine.h>
+#include <IRenderAuxGeom.h>
+
+
+#define UPDATE_PTR_AND_SIZE(_pData, _nDataSize, _SIZE_PLUS) \
+    {                                                       \
+        _pData += (_SIZE_PLUS);                             \
+        _nDataSize -= (_SIZE_PLUS);                         \
+        AZ_Assert(_nDataSize >= 0, "What!");                         \
+    }
+
+
+inline void FixAlignment(byte*& pPtr, int& nDataSize)
+{
+    while ((UINT_PTR)pPtr & 3)
+    {
+        *pPtr = 222;
+        pPtr++;
+        nDataSize--;
+    }
+}
+
+
+template <class T>
+void AddToPtr(byte*& pPtr, int& nDataSize, const T* pArray, int nElemNum, EEndian eEndian, bool bFixAlignment = false)
+{
+    assert(!((INT_PTR)pPtr & 3));
+    memcpy(pPtr, pArray, nElemNum * sizeof(T));
+    SwapEndian((T*)pPtr, nElemNum, eEndian);
+    pPtr += nElemNum * sizeof(T);
+    nDataSize -= nElemNum * sizeof(T);
+    assert(nDataSize >= 0);
+
+    if (bFixAlignment)
+    {
+        FixAlignment(pPtr, nDataSize);
+    }
+    else
+    {
+        assert(!((INT_PTR)pPtr & 3));
+    }
+}
+
+template <class T>
+void AddToPtr(byte*& pPtr, const T* pArray, int nElemNum, EEndian eEndian, bool bFixAlignment = false)
+{
+    assert(!((INT_PTR)pPtr & 3));
+    memcpy(pPtr, pArray, nElemNum * sizeof(T));
+    SwapEndian((T*)pPtr, nElemNum, eEndian);
+    pPtr += nElemNum * sizeof(T);
+
+    if (bFixAlignment)
+    {
+        int dummy = 0;
+        FixAlignment(pPtr, dummy);
+    }
+    else
+    {
+        assert(!((INT_PTR)pPtr & 3));
+    }
+}
+

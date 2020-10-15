@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "overlapchecks.h"
@@ -28,7 +30,7 @@
 
 volatile int* g_pLockIntersect;
 class CPhysicalWorld;
-extern CPhysicalWorld* g_pPhysWorlds[];
+extern IPhysicalWorld* g_pPhysWorlds[];
 
 
 intersData g_idata[MAX_PHYS_THREADS + 1] _ALIGN(128);
@@ -1243,3 +1245,5 @@ int SanityCheckTree(CBVTree* pBVtree, int maxDepth)
 }
 
 #undef g_Overlapper
+
+#endif // ENABLE_CRY_PHYSICS

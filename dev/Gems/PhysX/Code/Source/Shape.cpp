@@ -152,7 +152,7 @@ namespace PhysX
             }
 
             AZ_Warning("PhysX Shape", m_materials.size() < std::numeric_limits<AZ::u16>::max(), "Trying to assign too many materials, cutting down");
-            size_t materialsCount = AZStd::GetMin(m_materials.size() - 1, static_cast<size_t>(std::numeric_limits<AZ::u16>::max()));
+            size_t materialsCount = AZStd::GetMin(m_materials.size(), static_cast<size_t>(std::numeric_limits<AZ::u16>::max()));
             m_pxShape->setMaterials(&pxMaterials[0], static_cast<physx::PxU16>(materialsCount));
         }
     }
@@ -254,6 +254,46 @@ namespace PhysX
         return { PxMathConvert(pose.p), PxMathConvert(pose.q) };
     }
 
+    float Shape::GetRestOffset() const
+    {
+        return m_pxShape->getRestOffset();
+    }
+
+    float Shape::GetContactOffset() const
+    {
+        return m_pxShape->getContactOffset();
+    }
+
+    void Shape::SetRestOffset(float restOffset)
+    {
+        float contactOffset = GetContactOffset();
+        if (restOffset >= contactOffset)
+        {
+            AZ_Error("PhysX Shape", false, "Requested rest offset (%e) must be less than contact offset (%e).",
+                restOffset, contactOffset);
+            return;
+        }
+        m_pxShape->setRestOffset(restOffset);
+    }
+
+    void Shape::SetContactOffset(float contactOffset)
+    {
+        if (contactOffset <= 0.0f)
+        {
+            AZ_Error("PhysX Shape", false, "Requested contact offset (%e) must exceed 0.");
+            return;
+        }
+
+        float restOffset = GetRestOffset();
+        if (contactOffset <= restOffset)
+        {
+            AZ_Error("PhysX Shape", false, "Requested contact offset (%e) must exceed rest offset (%e).",
+                contactOffset, restOffset);
+            return;
+        }
+        m_pxShape->setContactOffset(contactOffset);
+    }
+
     void* Shape::GetNativePointer()
     {
         return m_pxShape.get();
@@ -326,6 +366,26 @@ namespace PhysX
             localPose = m_pxShape->getLocalPose();
         }
         return RayCastInternal(localSpaceRequest, localPose);
+    }
+
+    AZ::Aabb Shape::GetAabb(const AZ::Transform& worldTransform) const
+    {
+        physx::PxTransform localPose;
+        {
+            PHYSX_SCENE_READ_LOCK(GetScene());
+            localPose = m_pxShape->getLocalPose();
+        }
+        return PxMathConvert(physx::PxGeometryQuery::getWorldBounds(m_pxShape->getGeometry().any(), PxMathConvert(worldTransform) * localPose, 1.0f));
+    }
+
+    AZ::Aabb Shape::GetAabbLocal() const
+    {
+        physx::PxTransform localPose;
+        {
+            PHYSX_SCENE_READ_LOCK(GetScene());
+            localPose = m_pxShape->getLocalPose();
+        }
+        return PxMathConvert(physx::PxGeometryQuery::getWorldBounds(m_pxShape->getGeometry().any(), localPose, 1.0f));
     }
 
     physx::PxScene* Shape::GetScene() const

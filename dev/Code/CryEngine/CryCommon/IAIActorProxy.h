@@ -46,10 +46,6 @@ struct IAIActorProxy
     virtual void QueryBodyInfo(SAIBodyInfo& bodyInfo) = 0;
     virtual bool QueryBodyInfo(const SAIBodyInfoQuery& query, SAIBodyInfo& bodyInfo) = 0;
     virtual void QueryWeaponInfo(SAIWeaponInfo& weaponInfo) = 0;
-    virtual EntityId GetLinkedDriverEntityId() = 0;
-    virtual bool IsDriver() = 0;
-    virtual EntityId GetLinkedVehicleEntityId() = 0;
-    virtual bool GetLinkedVehicleVisionHelper(Vec3& outHelperPos) const = 0;
     virtual void Reset(EObjectResetType type) = 0;
     virtual void Serialize(TSerialize ser) = 0;
 
@@ -57,7 +53,9 @@ struct IAIActorProxy
 
     virtual bool BecomeAggressiveToAgent(EntityId agentID) = 0;
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics(bool wantCharacterPhysics = false) = 0;
+#endif
     virtual void DebugDraw(int iParam = 0) = 0;
 
     // This will internally keep a counter to allow stacking of such commands

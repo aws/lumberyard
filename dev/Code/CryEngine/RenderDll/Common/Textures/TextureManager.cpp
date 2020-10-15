@@ -168,42 +168,38 @@ void CTextureManager::LoadDefaultTextures()
 
     // Loop over the appropriate texture list and load the textures, storing them in a map keyed by texture name.
     // Use reduced subset of textures for Other.
-    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
+#ifdef OTHER_ACTIVE
+    for (const TextureEntry& entry : texturesFromFileReduced)
     {
-        for (const TextureEntry& entry : texturesFromFileReduced)
+        // Other requires that we use EF_LoadTexture rather than CTexture::ForName
+        CTexture* pNewTexture = static_cast<CTexture*>(gEnv->pRenderer->EF_LoadTexture(entry.szFileName, entry.flags));
+        if (pNewTexture)
         {
-            // Other requires that we use EF_LoadTexture rather than CTexture::ForName
-            CTexture* pNewTexture = static_cast<CTexture*>(gEnv->pRenderer->EF_LoadTexture(entry.szFileName, entry.flags));
-            if (pNewTexture)
-            {
-                CCryNameTSCRC texEntry(entry.szTextureName);
-                m_DefaultTextures[texEntry] = pNewTexture;
-            }
-            else
-            {
-                AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
-                AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
-            }
+            CCryNameTSCRC texEntry(entry.szTextureName);
+            m_DefaultTextures[texEntry] = pNewTexture;
+        }
+        else
+        {
+            AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+            AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
         }
     }
-    else
+#else
+    for (const TextureEntry& entry : texturesFromFile)
     {
-        for (const TextureEntry& entry : texturesFromFile)
+        CTexture* pNewTexture = CTexture::ForName(entry.szFileName, entry.flags, eTF_Unknown);
+        if (pNewTexture)
         {
-            CTexture* pNewTexture = CTexture::ForName(entry.szFileName, entry.flags, eTF_Unknown);
-            if (pNewTexture)
-            {
-                CCryNameTSCRC texEntry(entry.szTextureName);
-                m_DefaultTextures[texEntry] = pNewTexture;
-            }
-            else
-            {
-                AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
-                AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
-            }
+            CCryNameTSCRC texEntry(entry.szTextureName);
+            m_DefaultTextures[texEntry] = pNewTexture;
+        }
+        else
+        {
+            AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+            AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
         }
     }
-
+#endif
     m_texNoTexture = GetDefaultTexture("NoTexture");
     m_texNoTextureCM = GetDefaultTexture("NoTextureCM");
     m_texWhite = GetDefaultTexture("White");

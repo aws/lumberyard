@@ -15,15 +15,19 @@
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzTest/AzTest.h>
+#include <AzCore/Memory/AllocatorScope.h>
 
 #include <AzCore/Memory/OSAllocator.h>
 
 #include "CrySizerImpl.h"
 
+using SystemAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
 namespace UnitTest
 {
     class CrySizerTest
         : public ::testing::Test
+        , public SystemAllocatorScope
     {
     public:
         CrySizerTest()
@@ -32,9 +36,7 @@ namespace UnitTest
 
         void SetUp() override
         {
-            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
-            AZ::AllocatorInstance<CryStringAllocator>::Create();
-
+            SystemAllocatorScope::ActivateAllocators();
             m_sizer = new CrySizerImpl();
         }
 
@@ -45,9 +47,7 @@ namespace UnitTest
         void TearDown() override
         {
             delete m_sizer;
-
-            AZ::AllocatorInstance<CryStringAllocator>::Destroy();
-            AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+            SystemAllocatorScope::DeactivateAllocators();
         }
     protected:
         CrySizerImpl* m_sizer;

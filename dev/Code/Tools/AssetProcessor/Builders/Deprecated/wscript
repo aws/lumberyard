@@ -1,0 +1,51 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+
+#
+# The builder modules listed here are on a deprecation path.  They will build a stub
+# that overwrites the original target.  Once these plugins have gone through an 
+# acceptable number of releases as deprecated, they may be deleted from this list and
+# any applicable WAF specs.
+#
+# Builder dll loading is deprecated and will be removed a future release.
+# All future builders should be placed inside gems following this guide:
+# https://docs.aws.amazon.com/lumberyard/latest/userguide/asset-builder-custom.html
+#
+deprecated_builders = [
+    'WwiseBuilder',                 # LUMBERYARD_DEPRECATED(LY-111281)
+    'SliceBuilder',                 # LUMBERYARD_DEPRECATED(LY-113752)
+    'TranslationBuilder',           # LUMBERYARD_DEPRECATED(LY-113752)
+    'CopyDependencyBuilder',        # LUMBERYARD_DEPRECATED(LY-113752)
+    'MaterialBuilder',              # LUMBERYARD_DEPRECATED(LY-113752)
+    'LevelBuilder',                 # LUMBERYARD_DEPRECATED(LY-113752)
+    'LuaBuilder',                   # LUMBERYARD_DEPRECATED(LY-113752)
+    'ExampleBuilder',               # LUMBERYARD_DEPRECATED(LY-113752)
+    'SceneBuilder',                 # LUMBERYARD_DEPRECATED(LY-113752)
+]
+
+
+def build(bld):
+    # Loop over the deprecated builder targets and build a stub module...
+    for builder in deprecated_builders:
+        bld.BuilderPlugin(
+            target = builder,
+            vs_filter = 'Tools/AssetProcessor/Builders/Deprecated',
+            file_list = ['deprecatedbuilder.waf_files'],
+            test_all_file_list = ['deprecatedbuilder_test.waf_files'],
+            platforms = ['win', 'darwin', 'linux'],
+            client_only = True,
+            disable_pch = True,
+            exclude_monolithic = True,
+            use = ['AzCore'],
+            linux_rpath = ['$ORIGIN/..'],
+        )

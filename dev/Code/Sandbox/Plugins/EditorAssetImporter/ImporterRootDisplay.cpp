@@ -50,6 +50,7 @@ AZ::SceneAPI::UI::ManifestWidget* ImporterRootDisplay::GetManifestWidget()
 
 void ImporterRootDisplay::SetSceneDisplay(const QString& headerText, const AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& scene)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     if (!scene)
     {
         AZ_Assert(scene, "No scene provided to display.");
@@ -66,6 +67,7 @@ void ImporterRootDisplay::SetSceneDisplay(const QString& headerText, const AZStd
 
 void ImporterRootDisplay::HandleSceneWasReset(const AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& scene)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     // Don't accept updates while the widget is being filled in.
     BusDisconnect();
     m_manifestWidget->BuildFromScene(scene);

@@ -26,6 +26,12 @@
 #include "../CryCommon/IGPUParticleEngine.h"
 #include "ParticleContainerGPU.h"
 
+#if !PARTICLES_USE_CRY_PHYSICS
+#include <AzFramework/Physics/RigidBody.h>
+#include <CryPhysicsDeprecation.h>
+#include "MathConversion.h"
+#endif
+
 
 static const float fUNSEEN_EMITTER_RESET_TIME   = 5.f;      // Max time to wait before freeing unseen emitter resources
 static const float fVELOCITY_SMOOTHING_TIME     = 0.125f;   // Interval to smooth computed entity velocity
@@ -408,6 +414,10 @@ CParticleEmitter::CParticleEmitter(const IParticleEffect* pEffect, const QuatTS&
     if (pSpawnParams)
     {
         m_SpawnParams = *pSpawnParams;
+        m_azEntityId = pSpawnParams->azEntityId;
+#if !PARTICLES_USE_CRY_PHYSICS
+        Physics::CollisionNotificationBus::Handler::BusConnect(m_azEntityId);
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
 
     GetInstCount(GetRenderNodeType())++;
@@ -418,6 +428,9 @@ CParticleEmitter::CParticleEmitter(const IParticleEffect* pEffect, const QuatTS&
 //////////////////////////////////////////////////////////////////////////
 CParticleEmitter::~CParticleEmitter()
 {
+#if !PARTICLES_USE_CRY_PHYSICS
+    Physics::CollisionNotificationBus::Handler::BusDisconnect();
+#endif // PARTICLES_USE_CRY_PHYSICS
     m_p3DEngine->FreeRenderNodeState(this); // Also does unregister entity.
     GetInstCount(GetRenderNodeType())--;
     GetEmitGeom().Release();
@@ -912,6 +925,7 @@ IEntity* CParticleEmitter::GetEntity() const
     return NULL;
 }
 
+#if PARTICLES_USE_CRY_PHYSICS
 bool GetPhysicalVelocity(Velocity3& Vel, IEntity* pEnt, const Vec3& vPos)
 {
     if (pEnt)
@@ -934,6 +948,19 @@ bool GetPhysicalVelocity(Velocity3& Vel, IEntity* pEnt, const Vec3& vPos)
     }
     return false;
 }
+#else
+bool GetPhysicalVelocity(Velocity3& Vel, CryParticlePhysEntity* entity, const Vec3& vPos)
+{
+    if (entity)
+    {
+        Vel.vLin = AZVec3ToLYVec3(entity->GetLinearVelocity());
+        Vel.vRot = AZVec3ToLYVec3(entity->GetAngularVelocity());
+        Vel.vLin = Vel.VelocityAt(vPos - AZVec3ToLYVec3(entity->GetCenterOfMassWorld()));
+        return true;
+    }
+    return false;
+}
+#endif // PARTICLES_USE_CRY_PHYSICS
 
 void CParticleEmitter::OnEntityEvent(IEntity* pEntity, SEntityEvent const& event)
 {
@@ -976,7 +1003,11 @@ void CParticleEmitter::UpdateFromEntity()
                         target.vTarget = pTarget->GetPos();
 
                         Velocity3 Vel(ZERO);
+#if PARTICLES_USE_CRY_PHYSICS
                         GetPhysicalVelocity(Vel, pTarget, GetLocation().t);
+#else // AZPhysics
+                        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
                         target.vVelocity = Vel.vLin;
 
                         AABB bb;
@@ -1007,20 +1038,24 @@ void CParticleEmitter::UpdateFromEntity()
             bShadows = false;
         }
 
+#if PARTICLES_USE_CRY_PHYSICS
         if (pEntity->GetPhysics())
         {
             m_nEmitterFlags |= ePEF_HasPhysics;
         }
+#endif // PARTICLES_USE_CRY_PHYSICS
 
         if (pEntity->GetParent())
         {
             pEntity = pEntity->GetParent();
         }
 
+#if PARTICLES_USE_CRY_PHYSICS
         if (pEntity->GetPhysics())
         {
             m_nEmitterFlags |= ePEF_HasPhysics;
         }
+#endif // PARTICLES_USE_CRY_PHYSICS
 
         if (m_SpawnParams.eAttachType != GeomType_None)
         {
@@ -1048,7 +1083,11 @@ void CParticleEmitter::UpdateFromEntity()
                 }
             }
 
+#if PARTICLES_USE_CRY_PHYSICS
             geom.m_pPhysEnt = pEntity->GetPhysics();
+#else
+            geom.m_pPhysEnt = nullptr;
+#endif
 
             SetEmitGeom(geom);
         }
@@ -1117,7 +1156,11 @@ void CParticleEmitter::Update()
 
     // Update velocity
     Velocity3 Vel;
+#if PARTICLES_USE_CRY_PHYSICS
     if ((m_nEmitterFlags & ePEF_HasPhysics) && GetPhysicalVelocity(Vel, GetEntity(), GetLocation().t))
+#else // AZPhysics
+    if ((m_nEmitterFlags & ePEF_HasPhysics) && GetPhysicalVelocity(Vel, m_pPhysEnt, GetLocation().t))
+#endif
     {
         // Get velocity from physics.
         m_Vel = Vel;
@@ -1705,6 +1748,11 @@ void CParticleEmitter::GetMemoryUsage(ICrySizer* pSizer) const
     m_PhysEnviron.GetMemoryUsage(pSizer);
 }
 
+AZ::EntityId CParticleEmitter::GetEntityId()
+{
+    return m_azEntityId;
+}
+
 bool CParticleEmitter::UpdateStreamableComponents(float fImportance, Matrix34A& objMatrix, IRenderNode* pRenderNode, float fEntDistance, bool bFullUpdate, int nLod)
 {
     FUNCTION_PROFILER_3DENGINE;
@@ -1768,3 +1816,23 @@ bool CParticleEmitter::GetPreviewMode() const
     const bool previewMode = 0 != (m_nEmitterFlags & ePEF_Nowhere);
     return previewMode;
 }
+
+#if !PARTICLES_USE_CRY_PHYSICS
+void CParticleEmitter::OnCollisionBegin(const Physics::CollisionEvent& collisionEvent)
+{
+    if (collisionEvent.m_body1->GetEntityId() == GetEntityId())
+    {
+        if (CParticle* particle = collisionEvent.m_body1->GetUserData<CParticle>())
+        {
+            particle->OnCollided(collisionEvent.m_body2->GetEntityId());
+        }
+    }
+    if (collisionEvent.m_body2->GetEntityId() == GetEntityId())
+    {
+        if (CParticle* particle = collisionEvent.m_body2->GetUserData<CParticle>())
+        {
+            particle->OnCollided(collisionEvent.m_body1->GetEntityId());
+        }
+    }
+}
+#endif // PARTICLES_USE_CRY_PHYSICS

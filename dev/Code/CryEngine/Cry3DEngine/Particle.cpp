@@ -29,6 +29,18 @@
 #define fSLIDE_TEST_AHEAD_TIME  0.01f
 #define WIDTH_TO_HALF_WIDTH 0.5f
 
+#if !PARTICLES_USE_CRY_PHYSICS
+#include <AzCore/Interface/Interface.h>
+#include <CryPhysicsDeprecation.h>
+#include <AzFramework/Physics/CollisionNotificationBus.h>
+#include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
+#include <MathConversion.h>
+#endif
+
 namespace
 {
     // A measure of how far a midpoint is from the line.
@@ -44,7 +56,7 @@ namespace
     float InterpVariance(QuatTS const& qt0, QuatTS const& qt1, QuatTS const& qt2)
     {
         return InterpVariance(qt0.t, qt1.t, qt2.t)
-               + InterpVariance(qt0.q.GetColumn2() * qt0.s, qt1.q.GetColumn2() * qt1.s, qt2.q.GetColumn2() * qt2.s);
+            + InterpVariance(qt0.q.GetColumn2() * qt0.s, qt1.q.GetColumn2() * qt1.s, qt2.q.GetColumn2() * qt2.s);
     }
 
     float Adjust(float fDensity, float fReduce)
@@ -150,10 +162,10 @@ float CParticle::TravelSlide(SParticleState& state, SSlideInfo& sliding, float f
         if (sliding.fSlidingTime >= fMaxSlideTime - 1e-6f)
         {
             // Require retest against entity.
-            ray_hit hit;
+            CryParticleRayHit hit;
             Vec3 vTest = vExtAccel.GetNormalized(fMaxSlide);
             GetContainer().GetCounts().ParticlesClip += 1.f;
-            IPhysicalEntity* pPhysicalEntityHit = sliding.GetPhysicalEntity();
+            CryParticleHitEntity* pPhysicalEntityHit = sliding.GetPhysicalEntity();
             if (!SPhysEnviron::PhysicsCollision(hit, state.m_Loc.t - vTest, state.m_Loc.t + vTest,
                 fCOLLIDE_BUFFER_DIST, pPhysicalEntityHit ? ENV_COLLIDE_PHYSICS : ENV_TERRAIN, pPhysicalEntityHit))
             {
@@ -169,7 +181,11 @@ float CParticle::TravelSlide(SParticleState& state, SSlideInfo& sliding, float f
             sliding.vNormal = hit.n;
             sliding.fSlidingTime = 0.f;
             float fBounce_;
+#if PARTICLES_USE_CRY_PHYSICS
             GetCollisionParams(hit.surface_idx, fBounce_, sliding.fFriction);
+#else
+            GetCollisionParams(hit.material, fBounce_, sliding.fFriction);
+#endif // PARTICLES_USE_CRY_PHYSICS
         }
     }
 
@@ -236,7 +252,7 @@ void CParticle::Move(SParticleState& state, float fTime, STargetForces const& fo
                 quaternionf quatZ = quaternionf::CreateRotationY(vVelUser.z / radius);
 
                 quaternionf rot = quatXY * quatZ;
-                origin = (rot*origin).normalized() * radius;
+                origin = (rot * origin).normalized() * radius;
             }
             else
             {
@@ -261,13 +277,13 @@ void CParticle::Move(SParticleState& state, float fTime, STargetForces const& fo
                 origin.y = originOffset.x * sin_tpl(angleInRad) + originOffset.y * cos_tpl(angleInRad);
             }
 
-            origin += Vec3(0,0, vVelUser.z);
+            origin += Vec3(0, 0, vVelUser.z);
         }
 
         Vec3 rotatedOrigin = locCur.q * origin;
         state.m_Loc.t = rotatedOrigin + m_originalEmitterLocation;
     }
-    
+
     Vec3 vVelOrig = state.m_Vel.vLin;
 
     SForceParams forces;
@@ -407,7 +423,7 @@ float CParticle::MoveLinear(SParticleState& state, SCollisionInfo& coll, float f
             Vec3 vDPos = stateNew.m_Loc.t - state.m_Loc.t;
             float fDistSqr = vDPos.len2();
             float fDevSqrN = (vDVel.len2() * fDistSqr - sqr(vDVel * vDPos)) * sqr(fTime * 0.125f);
-            if (fDevSqrN > fDistSqr * sqr(fMaxLinearDev))
+            if (fDevSqrN > fDistSqr* sqr(fMaxLinearDev))
             {
                 // Exceeds linear threshold. Deviation proportional to t
                 float fCorrect = fMaxLinearDev * isqrt_fast_tpl(fDevSqrN / fDistSqr);
@@ -426,7 +442,7 @@ float CParticle::MoveLinear(SParticleState& state, SCollisionInfo& coll, float f
     return fTime;
 }
 
-bool CParticle::SHitInfo::TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& vPos1, const Vec3& vVel0, const Vec3& vVel1, float fMaxDev, float fRadius) const
+bool CParticle::SHitInfo::TestHit(CryParticleRayHit& hit, const Vec3& vPos0, const Vec3& vPos1, const Vec3& vVel0, const Vec3& vVel1, float fMaxDev, float fRadius) const
 {
     if (!HasPath())
     {
@@ -453,7 +469,7 @@ bool CParticle::SHitInfo::TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& v
 
             // Find inflection point.
             float fV0 = vVel0 * vNormal,
-                  fV1 = vVel1 * vNormal;
+                fV1 = vVel1 * vNormal;
             if (fV0 > 0.f && fV1 < 0.f)
             {
                 /*
@@ -488,7 +504,11 @@ bool CParticle::SHitInfo::TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& v
 
             hit.n = vNormal;
             hit.pt += hit.n * fRadius;
+#if PARTICLES_USE_CRY_PHYSICS
             hit.surface_idx = nSurfaceIdx;
+#else
+            hit.material = material;
+#endif
             hit.pCollider = GetPhysicalEntity();
             return true;
         }
@@ -510,7 +530,7 @@ bool CParticle::SHitInfo::TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& v
     return false;
 }
 
-bool CParticle::CheckCollision(ray_hit& hit, float fStepTime, SParticleUpdateContext const& context, STargetForces const& forces, const SParticleState& stateNew, SCollisionInfo& collNew)
+bool CParticle::CheckCollision(CryParticleRayHit& hit, float fStepTime, SParticleUpdateContext const& context, STargetForces const& forces, const SParticleState& stateNew, SCollisionInfo& collNew)
 {
     hit.dist = 1.f;
     uint32 nCollideFlags = context.nEnvFlags & ENV_COLLIDE_ANY;
@@ -544,11 +564,15 @@ bool CParticle::CheckCollision(ray_hit& hit, float fStepTime, SParticleUpdateCon
                 fTestTime = MoveLinear(stateTest, collTest, fTestTime, forces, fMAX_COLLIDE_DEVIATION, fHUGE, fStepTime);
                 if (fTestTime >= fStepTime * fMIN_TEST_AHEAD_MULT && stateTest.m_Loc.t != m_Loc.t)
                 {
-                    ray_hit hit_cache;
-                    GetContainer().GetCounts().ParticlesCollideTest += 1.f;
+                    CryParticleRayHit hit_cache;
+                    GetContainer().GetCounts().ParticlesCollideTest += 1.f; // Add +1 to collision tests done, this is for statistics only
                     if (SPhysEnviron::PhysicsCollision(hit_cache, m_Loc.t, stateTest.m_Loc.t, 0.f, nCollideFlags & ENV_COLLIDE_CACHE))
                     {
+#if PARTICLES_USE_CRY_PHYSICS
                         collNew.Hit.SetHit(m_Loc.t, hit_cache.pt, hit_cache.n, hit_cache.surface_idx, hit_cache.pCollider);
+#else
+                        collNew.Hit.SetHit(m_Loc.t, hit_cache.pt, hit_cache.n, hit_cache.material, hit_cache.pCollider);
+#endif
                     }
                     else
                     {
@@ -566,24 +590,26 @@ bool CParticle::CheckCollision(ray_hit& hit, float fStepTime, SParticleUpdateCon
         {
             collNew.Clear();
         }
+#if PARTICLES_USE_CRY_PHYSICS
 #ifdef _DEBUG
         else if (!(nCollideFlags & ENV_COLLIDE_CACHE))
         {
             int& iDrawHelpers = gEnv->pPhysicalWorld->GetPhysVars()->iDrawHelpers;
             int iSave = iDrawHelpers;
             iDrawHelpers = 0;
-            ray_hit hit2;
+            CryParticleRayHit hit2;
             if (SPhysEnviron::PhysicsCollision(hit2, m_Loc.t, stateNew.m_Loc.t, fCOLLIDE_BUFFER_DIST, context.nEnvFlags & ENV_COLLIDE_CACHE))
             {
                 GetContainer().GetCounts().ParticlesReject += 1.f;
             }
             iDrawHelpers = iSave;
         }
-#endif
+#endif // _DEBUG
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
     if (nCollideFlags)
     {
-        ray_hit hit2;
+        CryParticleRayHit hit2;
         GetContainer().GetCounts().ParticlesCollideTest += 1.f;
         if (SPhysEnviron::PhysicsCollision(hit2, m_Loc.t, stateNew.m_Loc.t, fCOLLIDE_BUFFER_DIST, nCollideFlags))
         {
@@ -606,12 +632,15 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
     m_pEmitter = pEmitter;
     m_pContainer = &pEmitter->GetContainer();
     m_segmentCount = 0;
+#if !PARTICLES_USE_CRY_PHYSICS
+    m_physicsActive = false;
+#endif
     CParticleContainer& rContainer = GetContainer();
     ResourceParticleParams const& params = rContainer.GetParams();
     SpawnParams const& spawnParams = GetMain().GetSpawnParams();
 
     m_originalEmitterLocation = Vec3(0, 0, 0);
-    
+
     // Init allocations.
     m_aPosHistory = 0;
     if (int nSteps = rContainer.GetHistorySteps())
@@ -640,7 +669,7 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
             if ((m_pCollisionInfo = static_cast<SCollisionInfo*>(ParticleObjectAllocator().Allocate(sizeof(SCollisionInfo)))))
             {
                 //nMaxCollisionEvents is only used for RigidBodyCollision. All the other physics won't limit collision events count (using 0).
-                new (m_pCollisionInfo)SCollisionInfo(params.ePhysicsType == params.ePhysicsType.RigidBody?params.nMaxCollisionEvents:0);
+                new (m_pCollisionInfo)SCollisionInfo(params.ePhysicsType == params.ePhysicsType.RigidBody ? params.nMaxCollisionEvents : 0);
             }
         }
     }
@@ -693,7 +722,7 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
 
     //init size scale
     CRY_ASSERT(spawnParams.particleSizeScaleRandom <= 1);
-    float scaleRandom = cry_random<float> (0, spawnParams.particleSizeScaleRandom);
+    float scaleRandom = cry_random<float>(0, spawnParams.particleSizeScaleRandom);
     m_sizeScale = spawnParams.particleSizeScale * ((1.f - spawnParams.particleSizeScaleRandom * 0.5f) + scaleRandom);
 
     m_preEmissionRandomVelocity = Vec3(ZERO);
@@ -738,18 +767,21 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
         Set(data.pStatObj);
         SetCentered(!params.bNoOffset && params.ePhysicsType != params.ePhysicsType.RigidBody);
     }
+
     Set(data.pPhysEnt);
 
     Vec3 emitterLocation = data.Location.t;
 
-    IF (data.pPhysEnt && data.pStatObj, false)
+    IF(data.pPhysEnt && data.pStatObj, false)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         // Pre-generated physics entity.
         m_pPhysEnt->AddRef();
         pe_params_foreign_data pfd;
         pfd.iForeignData = PHYS_FOREIGN_ID_RIGID_PARTICLE;
         pfd.pForeignData = data.pPhysEnt;
         m_pPhysEnt->SetParams(&pfd);
+#endif // PARTICLES_USE_CRY_PHYSICS
 
         // Get initial state.
         GetPhysicsState();
@@ -772,9 +804,12 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
             m_Vel = data.Velocity;
         }
 
-        if (m_pCollisionInfo && params.ePhysicsType >= params.ePhysicsType.SimplePhysics)
+        if (m_pCollisionInfo && params.ePhysicsType > params.ePhysicsType.SimpleCollision)
         {
             // Emitter-generated physical particles.
+#if !PARTICLES_USE_CRY_PHYSICS
+            m_collided = CParticleCollision::NONE;
+#endif // !PARTICLES_USE_CRY_PHYSICS
             Physicalize();
         }
     }
@@ -786,12 +821,15 @@ void CParticle::Init(SParticleUpdateContext const& context, float fAge, CParticl
         data.pStatObj->AddRef();
     }
 
+#if PARTICLES_USE_CRY_PHYSICS
+    // Indoor will ignore ocean
     if (m_pPhysEnt && GetMain().GetVisEnviron().OriginIndoors())
     {
         pe_params_flags pf;
         pf.flagsOR = pef_ignore_ocean;
         m_pPhysEnt->SetParams(&pf);
     }
+#endif // !PARTICLES_USE_CRY_PHYSICS
 
     Update(context, fAge, true);
 }
@@ -822,8 +860,8 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
     }
     else
     {
-        if (shape == ParticleParams::EEmitterShapeType::ANGLE || 
-            shape == ParticleParams::EEmitterShapeType::TRAIL || 
+        if (shape == ParticleParams::EEmitterShapeType::ANGLE ||
+            shape == ParticleParams::EEmitterShapeType::TRAIL ||
             shape == ParticleParams::EEmitterShapeType::BEAM)
         {
             // Focus direction.
@@ -846,7 +884,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
         Vec3 dir = params.vVelocity.GetVector();
         if (!dir.IsZeroFast())
         {
-            quaternion quat = quaternion::CreateRotationV0V1(Vec3(0,0,1),dir.normalized());
+            quaternion quat = quaternion::CreateRotationV0V1(Vec3(0, 0, 1), dir.normalized());
 
             point = (quat * point).normalized();
         }
@@ -858,7 +896,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
     m_originalEmitterLocation += params.GetEmitterOffset(context.vEmitBox, context.vEmitScale, fEmissionStrength, params.vSpawnPosOffset, params.vSpawnPosRandomOffset);
 
     // Particle Position Offset for Shape Emitters.
-    Vec3 vLocalPosition(0,0,0);
+    Vec3 vLocalPosition(0, 0, 0);
     {
         const float spawnPosX = params.vSpawnPosXYZ.fX(VRANDOM, fEmissionStrength);
         const float spawnPosY = params.vSpawnPosXYZ.fY(VRANDOM, fEmissionStrength);
@@ -868,7 +906,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
         const float spawnPosRandY = params.vSpawnPosXYZRandom.fY(VRANDOM, fEmissionStrength) * cry_random(-1.0f, 1.0f);
         const float spawnPosRandZ = params.vSpawnPosXYZRandom.fZ(VRANDOM, fEmissionStrength) * cry_random(-1.0f, 1.0f);
 
-        if (shape == ParticleParams::EEmitterShapeType::SPHERE || 
+        if (shape == ParticleParams::EEmitterShapeType::SPHERE ||
             shape == ParticleParams::EEmitterShapeType::CIRCLE)
         {
             const float incrementRandX = params.vSpawnPosIncrementXYZRandom.fX(VRANDOM, fEmissionStrength) * cry_random(-1.0f, 1.0f);
@@ -894,7 +932,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
                 float integer = 0;
                 float scaleOverX = percentageToUniformScale * (incrementX + positionIncrement.x);
                 scaleOverX = fmodf(scaleOverX, 1.0f);
-                
+
                 // position increment moves outwards
                 float positionIncrementX = scaleOverX * radius;
 
@@ -931,7 +969,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
                 // position increment moves outwards
                 float positionIncrementX = scaleOverX * radius;
                 float positionIncrementZ = scaleOverZ * radius;
-                
+
                 const float offsetX = -(radius + spawnPosX + spawnPosRandX + positionIncrementX);
                 const float offsetZ = spawnPosZ + spawnPosRandZ + positionIncrementZ;
 
@@ -1064,7 +1102,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
         vRotationRate.Set(params.vRotationRateX.GetValueFromMod(m_BaseMods.RotateRateX, 0.f)
             , params.vRotationRateY.GetValueFromMod(m_BaseMods.RotateRateY, 0.f)
             , params.vRotationRateZ.GetValueFromMod(m_BaseMods.RotateRateZ, 0.f)
-            );
+        );
         m_Vel.vRot = m_Loc.q * DEG2RAD(vRotationRate);
         m_fAngle = 0.f;
     }
@@ -1119,12 +1157,28 @@ void CParticle::OffsetPosition(const Vec3& delta)
     }
 }
 
+#if !PARTICLES_USE_CRY_PHYSICS
+void CParticle::OnCollided(AZ::EntityId collidedWith)
+{
+    AZ_Assert(m_pPhysEnt != nullptr, "This should only be triggered from Entity collision");
+    
+    if (collidedWith == m_pPhysEnt->GetEntityId())
+    {
+        m_collided |= CParticleCollision::SELF;
+    }
+    else
+    {
+        m_collided |= CParticleCollision::OTHER;
+    }
+}
+#endif // PARTICLES_USE_CRY_PHYSICS
+
 Vec3 CParticle::GetVisualVelocity(SParticleState const& nextState, float stepTime) const
 {
     const ParticleParams& params = GetParams();
     // Use the same caculation in Move() to get velocity
     Vec3 vVelUser = params.GetVelocityVector(GetEmitter()->GetAge(), GetRelativeAge(stepTime * 0.5f));
-    
+
     // For these shapes, estimating the velocity over time is much simpler than trying to attain velocity by more direct means, given 
     // the complex space transformations involved (i.e. x means radius, y means longitudinal rotation, etc).
     ParticleParams::EEmitterShapeType emitterShape = GetEmitter()->GetParams().GetEmitterShape();
@@ -1304,6 +1358,13 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
         {
             UpdateBounds(*context.pbbDynamicBounds);
         }
+#if !PARTICLES_USE_CRY_PHYSICS
+        if (m_pPhysEnt && m_physicsActive)
+        {
+            m_pPhysEnt->SetSimulationEnabled(false);
+            m_physicsActive = false;
+        }
+#endif
         return;
     }
 
@@ -1311,11 +1372,12 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
     // Move
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    IF (m_pPhysEnt, false)
+    IF(m_pPhysEnt, false)
     {
         // Use physics engine to move particles.
         GetPhysicsState();
 
+#if PARTICLES_USE_CRY_PHYSICS
         // Get collision status.
         pe_status_collisions status;
         coll_history_item item;
@@ -1324,6 +1386,23 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
         status.bClearHistory = 1;
 
         const bool collisionHappened = (m_pPhysEnt->GetStatus(&status) > 0);
+#else // AZPhysics
+        bool collisionHappened = false;
+        switch (m_collided)
+        {
+        case CParticleCollision::SELF:
+            collisionHappened = params.bUseSelfCollision;
+            break;
+        case CParticleCollision::OTHER:
+        case CParticleCollision::BOTH:
+            collisionHappened = true;
+            break;
+        }
+        if (collisionHappened)
+        {
+            m_collided = CParticleCollision::NONE;
+        }
+#endif // PARTICLES_USE_CRY_PHYSICS
         if (collisionHappened)
         {
             Collide();
@@ -1347,8 +1426,23 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
                 m_pCollisionInfo->Stop();
             }
         }
+#if !PARTICLES_USE_CRY_PHYSICS
+        if (!m_pCollisionInfo->Stopped())
+        {
+            // Apply custom gravity
+            if (!m_pPhysEnt->IsGravityEnabled())
+            {
+                Vec3 vGravity = PhysEnv.m_UniformForces.vAccel * params.fGravityScale.GetValueFromMod(m_BaseMods.GravityScale) + params.vAcceleration;
+                if (!vGravity.IsZero())
+                {
+                    AZ::Vector3 gravityForce = LYVec3ToAZVec3(vGravity) * m_pPhysEnt->GetMass() * fFrameTime;
+                    m_pPhysEnt->ApplyLinearImpulse(gravityForce);
+                }
+            }
+        }
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
-    else
+    else // No rigid body
     {
         uint32 nFlags = context.nEnvFlags & ENV_PHYS_AREA;
         uint32 nCollideFlags = m_pCollisionInfo ? context.nEnvFlags & ENV_COLLIDE_ANY : 0;
@@ -1407,7 +1501,7 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
             }
 
             fStepTime = MoveLinear(stateNew, collNew, min(fStepTime, context.fMaxLinearStepTime),
-                    forces, context.fMaxLinearDeviation, context.fMaxLinearDeviation, context.fMinStepTime);
+                forces, context.fMaxLinearDeviation, context.fMaxLinearDeviation, context.fMinStepTime);
 
             if (params.eMoveRelEmitter != ParticleParams::EMoveRelative::E::No)
             {
@@ -1476,7 +1570,7 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
 
             if (collNew.CanCollide() && !vMove.IsZero())
             {
-                ray_hit hit;
+                CryParticleRayHit hit;
                 if (CheckCollision(hit, fStepTime, context, forces, stateNew, collNew))
                 {
                     assert(hit.dist >= 0.f);
@@ -1514,6 +1608,8 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
                     }
                     else
                     {
+                        // Bounce
+
                         if (hit.dist <= 0.f)
                         {
                             // Disable further collisions this frame
@@ -1539,7 +1635,11 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
 
                             // Get phys params from material, or particle params.
                             float fElasticity, fSlidingFriction;
+#if PARTICLES_USE_CRY_PHYSICS
                             GetCollisionParams(hit.surface_idx, fElasticity, fSlidingFriction);
+#else
+                            GetCollisionParams(hit.material, fElasticity, fSlidingFriction);
+#endif // PARTICLES_USE_CRY_PHYSICS
 
                             float fVelBounce = fVelPerp * -fElasticity;
                             float fAccelPerp = forces.vAccel * hit.n;
@@ -1628,7 +1728,7 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
                 vRotationRate.Set(params.vRotationRateX.GetValueFromMod(m_BaseMods.RotateRateX, age)
                     , params.vRotationRateY.GetValueFromMod(m_BaseMods.RotateRateY, age)
                     , params.vRotationRateZ.GetValueFromMod(m_BaseMods.RotateRateZ, age)
-                    );
+                );
                 state.m_Vel.vRot = m_initialOrientation * DEG2RAD(vRotationRate);
             }
             else
@@ -1909,6 +2009,7 @@ void CParticle::TargetMovement(ParticleTarget const& target, SParticleState& sta
     assert(m_Loc.s >= 0.f);
 }
 
+#if PARTICLES_USE_CRY_PHYSICS
 void CParticle::GetCollisionParams(int nCollSurfaceIdx, float& fElasticity, float& fDrag) const
 {
     // Get phys params from material, or particle params.
@@ -1940,19 +2041,62 @@ void CParticle::GetCollisionParams(int nCollSurfaceIdx, float& fElasticity, floa
         fDrag = max((fDrag + physHit.friction) * 0.5f, 0.f);
     }
 }
+#else
+void CParticle::GetCollisionParams(const Physics::Material* material, float& fElasticity, float& fDrag) const
+{
+    if (material)
+    {
+        const Physics::MaterialConfiguration& thisMaterialConfig = GetContainer().GetMaterialConfig();
+        auto calcCombine = [](Physics::Material::CombineMode combineMode, float current, float against)
+        {
+            switch (combineMode)
+            {
+            case Physics::Material::CombineMode::Minimum:  return min(current, against);
+            case Physics::Material::CombineMode::Maximum:  return max(current, against);
+            case Physics::Material::CombineMode::Multiply: return current * against;
+            default:
+            case Physics::Material::CombineMode::Average:  return (current + against) / 2.f;
+            }
+        };
+        fElasticity = calcCombine(material->GetRestitutionCombineMode(), thisMaterialConfig.m_restitution, material->GetRestitution());
+        fElasticity = AZStd::clamp(fElasticity, 0.f, 1.f);
+
+        fDrag = calcCombine(material->GetFrictionCombineMode(), thisMaterialConfig.m_dynamicFriction, material->GetDynamicFriction());
+        fDrag = AZStd::max(fDrag, 0.f);
+    }
+}
+#endif // PARTICLES_USE_CRY_PHYSICS
+
+CParticle::CParticle(const CParticle& other)
+{
+    *this = other;
+#if !PARTICLES_USE_CRY_PHYSICS
+    if (m_pPhysEnt)
+    {
+        m_pPhysEnt->SetUserData(this);
+    }
+#endif // PARTICLES_USE_CRY_PHYSICS
+}
 
 CParticle::~CParticle()
 {
     m_pEmitter->Release();
 
-    IF (m_pPhysEnt, 0)
+    IF(m_pPhysEnt, 0)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         GetPhysicalWorld()->DestroyPhysicalEntity(m_pPhysEnt);
+#else // AZPhysics
+        Physics::World* physWorld = m_pPhysEnt->GetWorld();
+        m_pPhysEnt->RemoveFromWorld(*physWorld);
+        physWorld->DeferDelete(AZStd::unique_ptr<CryParticleHitEntity>(m_pPhysEnt));
+        m_pPhysEnt = nullptr;
+#endif
     }
 
     SEmitGeom::Release();
 
-    IF (m_pCollisionInfo, 0)
+    IF(m_pCollisionInfo, 0)
     {
         m_pCollisionInfo->Clear();
         ParticleObjectAllocator().Deallocate(m_pCollisionInfo, sizeof(SCollisionInfo));
@@ -1982,6 +2126,7 @@ char GetMinAxis(Vec3 const& vVec)
 
 #define fSPHERE_VOLUME float(4.f / 3.f * gf_PI)
 
+#if PARTICLES_USE_CRY_PHYSICS
 int CParticle::GetSurfaceIndex() const
 {
     ResourceParticleParams const& params = GetParams();
@@ -2015,6 +2160,7 @@ int CParticle::GetSurfaceIndex() const
     }
     return 0;
 }
+#endif // PARTICLES_USE_CRY_PHYSICS
 
 void CParticle::Physicalize()
 {
@@ -2023,6 +2169,7 @@ void CParticle::Physicalize()
 
     Vec3 vGravity = PhysEnv.m_UniformForces.vAccel * params.fGravityScale.GetValueFromMod(m_BaseMods.GravityScale) + params.vAcceleration;
 
+#if PARTICLES_USE_CRY_PHYSICS
     pe_params_pos par_pos;
     par_pos.pos = m_Loc.t;
     par_pos.q = m_Loc.q;
@@ -2030,9 +2177,11 @@ void CParticle::Physicalize()
     IStatObj* pStatObj = GetStatObj();
 
     phys_geometry* pGeom = pStatObj ? pStatObj->GetPhysGeom() : 0;
+#endif // PARTICLES_USE_CRY_PHYSICS
 
     m_Loc.s = params.fSizeY.GetMaxValue() * GetMain().GetParticleScale() * m_sizeScale.y;
 
+#if PARTICLES_USE_CRY_PHYSICS
     if (params.ePhysicsType == params.ePhysicsType.RigidBody)
     {
         if (!pGeom)
@@ -2131,7 +2280,58 @@ void CParticle::Physicalize()
 
         m_pPhysEnt->SetParams(&part);
     }
+#else // AZPhysics
+    if (params.ePhysicsType == params.ePhysicsType.EPhysics::RigidBody)
+    {
+        Physics::World* world = SPhysEnviron::GetAZPhysicsWorld();
+        AZ_Assert(world, "No physics world");
+        Physics::System* physics = AZ::Interface<Physics::System>::Get();
+        AZ_Assert(physics, "No physics system");
 
+        AZ::EntityId entityId = GetEmitter()->GetContainer().GetMain().GetEntityId();
+
+        Physics::RigidBodyConfiguration config;
+        config.m_entityId = entityId;
+        config.m_initialLinearVelocity = LYVec3ToAZVec3(m_Vel.vLin);
+        config.m_initialAngularVelocity = LYVec3ToAZVec3(m_Vel.vRot);
+        config.m_position = LYVec3ToAZVec3(m_Loc.t);
+        config.m_orientation = LYQuaternionToAZQuaternion(m_Loc.q);
+        config.m_startAsleep = false;
+        config.m_debugName = AZStd::string::format("Particle (EntityId %s, Address: %p)", entityId.ToString().c_str(), this);
+        config.m_linearDamping = params.fAirResistance;
+        config.m_angularDamping = params.fAirResistance.fRotationalDragScale;
+
+        // There is no support for custom gravity, we use built-in gravity if its set the same as the current one
+        // Otherwise we simulate gravity by sending impulses in the update function
+        config.m_gravityEnabled = false;
+        if (LYVec3ToAZVec3(vGravity) == world->GetGravity())
+        {
+            config.m_gravityEnabled = true;
+        }
+
+        Physics::RigidBody* rigidBody = physics->CreateRigidBody(config).release();
+        rigidBody->SetUserData(this);
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_collisionLayer = Physics::CollisionLayer(params.sCollisionLayer.layer);
+        colliderConfig.m_collisionGroupId.m_id = params.sCollisionGroup.group;
+        Physics::MaterialId physicsMaterialId = Physics::MaterialId::FromUUID(params.sPhysicsMaterial.material);
+        colliderConfig.m_materialSelection.SetMaterialId(physicsMaterialId);
+        // Sphere volume formula
+        float volume = (4.f / 3.f) * AZ::Constants::Pi * (m_Loc.s * m_Loc.s * m_Loc.s);
+        config.m_mass = params.fDensity * volume;
+        config.m_ccdEnabled = false;
+
+        Physics::SphereShapeConfiguration sphereConfig;
+        sphereConfig.m_radius = m_Loc.s * params.fThickness;
+        rigidBody->AddShape(physics->CreateShape(colliderConfig, sphereConfig));
+        
+        rigidBody->AddToWorld(*world);
+        m_pPhysEnt = rigidBody;
+        m_physicsActive = true;
+    }
+#endif // PARTICLES_USE_CRY_PHYSICS
+
+#if PARTICLES_USE_CRY_PHYSICS
     // Common settings.
     if (m_pPhysEnt)
     {
@@ -2141,12 +2341,14 @@ void CParticle::Physicalize()
         m_pPhysEnt->SetParams(&pf);
         m_pPhysEnt->AddRef();
     }
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 void CParticle::GetPhysicsState()
 {
     if (m_pPhysEnt)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         pe_status_pos status_pos;
         if (m_pPhysEnt->GetStatus(&status_pos))
         {
@@ -2159,13 +2361,21 @@ void CParticle::GetPhysicsState()
             m_Vel.vLin = status_dyn.v;
             m_Vel.vRot = status_dyn.w;
         }
+#else // AZPhysics
+
+        // Update velocity and location based on the rigid body data
+        m_Loc.t = AZVec3ToLYVec3(m_pPhysEnt->GetPosition());
+        m_Loc.q = AZQuaternionToLYQuaternion(m_pPhysEnt->GetOrientation());
+        m_Vel.vLin = AZVec3ToLYVec3(m_pPhysEnt->GetLinearVelocity());
+        m_Vel.vRot = AZVec3ToLYVec3(m_pPhysEnt->GetAngularVelocity());
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
 }
 
 size_t CParticle::GetAllocationSize(const CParticleContainer* pCont)
 {
     return pCont->GetHistorySteps() * sizeof(SParticleHistory)
-           + (pCont->NeedsCollisionInfo() ? sizeof(SCollisionInfo) : 0);
+        + (pCont->NeedsCollisionInfo() ? sizeof(SCollisionInfo) : 0);
 }
 
 void CParticle::SetBeamInfo(unsigned int segmentCount, Vec3 segmentStep, const float uvScale, bool isEdgeParticle /*= false*/)

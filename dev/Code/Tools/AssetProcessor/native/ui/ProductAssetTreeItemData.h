@@ -12,6 +12,7 @@
 #pragma once
 
 #include "AssetTreeItem.h"
+#include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 
 namespace AZ
@@ -35,4 +36,6 @@ namespace AssetProcessor
         AzToolsFramework::AssetDatabase::ProductDatabaseEntry m_databaseInfo;
         bool m_hasDatabaseInfo = false;
     };
+
+    AZ::Outcome<QString> GetAbsolutePathToProduct(const AssetTreeItem& product);
 } // AssetProcessor

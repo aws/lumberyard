@@ -278,7 +278,7 @@ namespace Editor
     {
         m_idleTimer->setInterval(UninitializedFrequency);
 
-        setWindowIcon(QIcon(":/Application/res/editor_icon.ico"));
+        setWindowIcon(QIcon(":/Application/res/lyeditor.ico"));
 
         // set the default key store for our preferences:
         setOrganizationName("Amazon");
@@ -298,6 +298,8 @@ namespace Editor
     {
         GetIEditor()->RegisterNotifyListener(this);
 
+        // When removing UI1.0, move this line to the end of the constructor
+        // to allow Gems to register stylesheets when their system components activate
         m_stylesheet->Initialize(this, !gSettings.bEnableUI2);
 
         // install QTranslator

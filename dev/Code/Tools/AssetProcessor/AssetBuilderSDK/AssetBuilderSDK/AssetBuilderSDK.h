@@ -617,8 +617,8 @@ namespace AssetBuilderSDK
         //! ID of the asset dependency
         AZ::Data::AssetId m_dependencyId;
 
-        //! Flags
-        AZStd::bitset<64> m_flags;
+
+        AZ::Data::ProductDependencyInfo::ProductDependencyFlags m_flags;
 
         ProductDependency() = default;
         ProductDependency(AZ::Data::AssetId dependencyId, const AZStd::bitset<64>& flags);

@@ -67,6 +67,7 @@ def build(bld):
             
             # Dependencies
             use                 = ['SceneCore', 'EMotionFXStaticLib'],
+            test_all_use        = ['AzToolsFrameworkTestCommon'],
             uselib              = nvcloth_uselib,
             win_lib             = nvcloth_win_lib
         )

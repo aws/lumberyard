@@ -29,7 +29,7 @@ namespace AssetUtilities
     extern char s_cachedEngineRoot[AZ_MAX_PATH_LEN];
 }
 
-void Foo(int*, int* b)
+void Foo(int*, int*)
 { 
 }
 

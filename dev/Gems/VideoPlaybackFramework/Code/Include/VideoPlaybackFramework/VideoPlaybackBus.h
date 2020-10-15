@@ -115,14 +115,17 @@ namespace VideoPlaybackFramework
         * Get the source location of the video
         * @return Returns the source location of the video
         */
-        virtual AZStd::string GetVideoPathname()  = 0;
+        virtual AZStd::string GetVideoPathname() const  = 0;
 
         /*
         * Set the source location of the video
         *
         * @param videoPath The source location of the video
         */
-        virtual void SetVideoPathname(AZStd::string videoPath) = 0;
+        virtual void SetVideoPathname(const AZStd::string& videoPath) = 0;
+
+        virtual AZStd::string GetDestinationTextureName() const = 0;
+        virtual void SetDestinationTextureName(const AZStd::string& destinationTextureName) = 0;
     };
     using VideoPlaybackRequestBus = AZ::EBus<VideoPlaybackRequests>;
 

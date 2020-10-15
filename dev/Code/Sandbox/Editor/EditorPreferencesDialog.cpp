@@ -27,10 +27,13 @@
 #include "EditorPreferencesPageViewportDebug.h"
 #include "EditorPreferencesPageMannequinGeneral.h"
 #include "EditorPreferencesPageExperimentalLighting.h"
+#include "EditorPreferencesTreeWidgetItemDelegate.h"
+#include <EditorPreferencesBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/QtWin>
 #endif
@@ -77,18 +80,31 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
     ui->propertyEditor->Setup(serializeContext, this, true, 250);
 
     ui->pageTree->setColumnCount(1);
+
+    if (!AzQtComponents::StyleManager::isUi10())
+    {
+        // In UI2.0 there are no expandable categories, so hide the column.
+        ui->pageTree->setRootIsDecorated(false);
+
+        // Set the delegate so we can use the svg icons.
+        ui->pageTree->setItemDelegate(new EditorPreferencesTreeWidgetItemDelegate(ui->pageTree));
+
+        // Shrink the spacer so that the search bar fills the dialog.
+        ui->horizontalSpacer_2->changeSize(0, 0, QSizePolicy::Maximum);
+    }
+
     connect(ui->pageTree, &QTreeWidget::currentItemChanged, this, &EditorPreferencesDialog::OnTreeCurrentItemChanged);
 
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &EditorPreferencesDialog::OnAccept);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &EditorPreferencesDialog::OnReject);
     connect(ui->MANAGE_BTN, &QPushButton::clicked, this, &EditorPreferencesDialog::OnManage);
-}
 
+    AzQtComponents::StyleManager::setStyleSheet(this, QStringLiteral("style:EditorPreferencesDialog.qss"));
+}
 
 EditorPreferencesDialog::~EditorPreferencesDialog()
 {
 }
-
 
 void EditorPreferencesDialog::showEvent(QShowEvent* event)
 {
@@ -124,7 +140,6 @@ void EditorPreferencesDialog::OnTreeCurrentItemChanged()
     }
 }
 
-
 void EditorPreferencesDialog::OnAccept()
 {
     // Call on OK for all pages.
@@ -152,11 +167,7 @@ void EditorPreferencesDialog::OnAccept()
         MainWindow::instance()->ResetAutoSaveTimers(true);
     }
 
-    auto consoleWindow = CConsoleSCB::GetCreatedInstance();
-    if (consoleWindow != nullptr)
-    {
-        consoleWindow->OnStyleSettingsChanged();
-    }
+    EditorPreferencesNotificationBus::Broadcast(&EditorPreferencesNotifications::OnEditorPreferencesChanged);
 
     accept();
 }
@@ -216,7 +227,11 @@ void EditorPreferencesDialog::SetActivePage(EditorPreferencesTreeWidgetItem* pag
     const AZ::Uuid& classId = AZ::SerializeTypeInfo<IPreferencesPage>::GetUuid(instance);
     ui->propertyEditor->AddInstance(instance, classId);
     m_currentPageItem->UpdateEditorFilter(ui->propertyEditor, m_filter);
+
     ui->propertyEditor->show();
+
+    // Refresh the Stylesheet - style would break on page load sometimes.
+    AzQtComponents::StyleManager::repolishStyleSheet(this);
 }
 
 void EditorPreferencesDialog::SetFilter(const QString& filter)
@@ -274,6 +289,7 @@ void EditorPreferencesDialog::CreatePages()
 {
     std::vector<IClassDesc*> classes;
     GetIEditor()->GetClassFactory()->GetClassesBySystemID(ESYSTEM_CLASS_PREFERENCE_PAGE, classes);
+
     for (int i = 0; i < classes.size(); i++)
     {
         auto pUnknown = classes[i];
@@ -293,20 +309,27 @@ void EditorPreferencesDialog::CreatePages()
                 continue;
             }
 
-            QTreeWidgetItem* category = nullptr;
-            QList<QTreeWidgetItem*> items = ui->pageTree->findItems(pPage->GetCategory(), Qt::MatchExactly);
-            if (items.size() > 0)
+            if (AzQtComponents::StyleManager::isUi10())
             {
-                category = items[0];
+                QTreeWidgetItem* category = nullptr;
+                QList<QTreeWidgetItem*> items = ui->pageTree->findItems(pPage->GetCategory(), Qt::MatchExactly);
+                if (items.size() > 0)
+                {
+                    category = items[0];
+                }
+                else
+                {
+                    category = new QTreeWidgetItem(QStringList(pPage->GetCategory()));
+                    ui->pageTree->addTopLevelItem(category);
+                }
+
+                category->addChild(new EditorPreferencesTreeWidgetItem(pPage, m_selectedPixmap, m_unSelectedPixmap));
+                category->setExpanded(true);
             }
             else
             {
-                category = new QTreeWidgetItem(QStringList(pPage->GetCategory()));
-                ui->pageTree->addTopLevelItem(category);
+                ui->pageTree->addTopLevelItem(new EditorPreferencesTreeWidgetItem(pPage, pPage->GetIcon()));
             }
-
-            category->addChild(new EditorPreferencesTreeWidgetItem(pPage, m_selectedPixmap, m_unSelectedPixmap));
-            category->setExpanded(true);
         }
     }
 }

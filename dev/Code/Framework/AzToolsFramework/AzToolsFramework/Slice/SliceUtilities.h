@@ -420,7 +420,9 @@ namespace AzToolsFramework
          * \return The root ID of the new entity hierarchy after necessary cloning/reparenting
          */
          // LUMBERYARD_DEPRECATED(LY-108703)
-        AZ::EntityId ReparentNonTrivialEntityHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);
+        AZ_DEPRECATED(
+            AZ::EntityId ReparentNonTrivialEntityHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);,
+            "ReparentNonTrivialEntityHierarchy is deprecated, please instead use ReparentNonTrivialSliceInstanceHierarchy")
 
         /**
          * Performs the necessary detach operations on orphaned slice and subslice entities while reparenting existing loose entities and slices.
@@ -582,6 +584,12 @@ namespace AzToolsFramework
         * Returns the file extension (including .) used for slices.
         */
         AZStd::string GetSliceFileExtension();
+
+        //! Returns whether or not a given asset is a dynamic slice or not
+        bool IsDynamic(const AZ::Data::AssetId& assetId);
+
+        //! Toggles if a slice asset is dynamic and re-saves the slice
+        void SetIsDynamic(const AZ::Data::AssetId& assetId, bool isDynamic);
 
         /**
         * Creates the right click context menu for slices in the asset browser.

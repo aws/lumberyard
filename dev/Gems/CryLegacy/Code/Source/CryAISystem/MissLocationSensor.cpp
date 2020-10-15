@@ -111,6 +111,7 @@ void CMissLocationSensor::Collect(int types)
     ClearEntities();
     m_entities.resize(MaxCollectedCount);
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity** entities = &m_entities.front();
     size_t entityCount = gEnv->pPhysicalWorld->GetEntitiesInBox(min, max, entities, types, MaxCollectedCount);
 
@@ -132,6 +133,7 @@ void CMissLocationSensor::Collect(int types)
     {
         m_entities.resize(entityCount);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     m_lastCollectionLocation = feet;
 }
@@ -164,7 +166,7 @@ bool CMissLocationSensor::Filter(float timeLimit)
 
         bool destroyable = false;
         bool lightweight = false;
-
+#if ENABLE_CRY_PHYSICS
         if (IEntity* ientity = gEnv->pEntitySystem->GetEntityFromPhysics(entity))
         {
             IEntityClass* entityClass = ientity->GetClass();
@@ -184,7 +186,7 @@ bool CMissLocationSensor::Filter(float timeLimit)
                 lightweight = true;
             }
         }
-
+#endif
         // Check for idmatBreakable or geom_manually_breakable
         // If the entity was previous known to be destroyable add all it's physical parts
         if (entity)
@@ -394,6 +396,7 @@ bool CMissLocationSensor::GetLocation(CAIObject* target, const Vec3& shootPos, c
         //if ((location.position - targetLocation).dot(targetViewDir) <= 0.0f)
         //continue;
 
+#if ENABLE_CRY_PHYSICS
         // Ignore anything that would hit the player
         if (IPhysicalEntity* ownerPhysics = m_owner->GetPhysics())
         {
@@ -418,6 +421,7 @@ bool CMissLocationSensor::GetLocation(CAIObject* target, const Vec3& shootPos, c
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         float typeScore = 0.0f;
         switch (location.type)

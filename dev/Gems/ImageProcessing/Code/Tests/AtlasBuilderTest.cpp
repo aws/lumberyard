@@ -95,7 +95,7 @@ namespace UnitTest
             }
 
             testsFolder += "/Gems/ImageProcessing/Code/Tests/";
-            return AZStd::string::format("%s%.*s", testsFolder.c_str(), fileName.size(), fileName.data());
+            return AZStd::string::format("%s%.*s", testsFolder.c_str(), aznumeric_cast<int>(fileName.size()), fileName.data());
         }
 
         AZStd::unique_ptr<AZ::SerializeContext> m_context;

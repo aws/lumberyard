@@ -72,10 +72,12 @@ void CSkeletonPose::SkeletonPostProcess(Skeleton::CPoseData& poseData)
     // -------------------------------------------------------------------------
 
     m_pInstance->m_location = rAnimLocationNext;
+#if ENABLE_CRY_PHYSICS
     if (m_physics.m_bPhysicsRelinquished)
     {
         m_pInstance->m_location.q.SetIdentity();
     }
+#endif
     //m_pInstance->m_fOriginalDeltaTime = g_pITimer->GetFrameTime();
     //m_pInstance->m_fDeltaTime = m_pInstance->m_fOriginalDeltaTime * m_pInstance->m_fPlaybackScale;
 
@@ -102,15 +104,19 @@ void CSkeletonPose::SkeletonPostProcess(Skeleton::CPoseData& poseData)
     poseData.ValidateRelative(*m_pInstance->m_pDefaultSkeleton);
 
     static ICVar* pUseSinglePositionVar = gEnv->pConsole->GetCVar("g_useSinglePosition");
+#if ENABLE_CRY_PHYSICS
     if (!pUseSinglePositionVar || ((pUseSinglePositionVar->GetIVal() & 4) == 0))
     {
         m_physics.SynchronizeWithPhysics(poseData);
     }
+#endif
     m_pSkeletonAnim->PoseModifiersExecutePost(poseData, rAnimLocationNext);
 
     m_pSkeletonAnim->PoseModifiersSynchronize();
 
+#if ENABLE_CRY_PHYSICS
     m_physics.SynchronizeWithPhysicsPost();
+#endif
 
     poseData.Validate(*m_pInstance->m_pDefaultSkeleton);
 
@@ -188,6 +194,7 @@ void CSkeletonPose::UpdateBBox(uint32 update)
 
     if (numCGAJoints == 0)
     {
+#if ENABLE_CRY_PHYSICS
         if (rCModelSkeleton.m_usePhysProxyBBox)
         {
             for (uint32 i = 0; i < numJoints; i++)
@@ -210,6 +217,7 @@ void CSkeletonPose::UpdateBBox(uint32 update)
             }
         }
         else
+#endif // ENABLE_CRY_PHYSICS
         {
             if (nIncludeList)
             {

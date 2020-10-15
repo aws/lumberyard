@@ -46,7 +46,7 @@ namespace AZ
             MOCK_METHOD2(CreateDedicatedCache, void(const RequestPath&, const FileRange&));
             MOCK_METHOD2(DestroyDedicatedCache, void(const RequestPath&, const FileRange&));
             
-            MOCK_CONST_METHOD1(CollectStatistics, void(AZStd::vector<Statistic>&));
+            MOCK_METHOD1(CollectStatistics, void(AZStd::vector<Statistic>&));
         };
     } // namespace IO
 } // namespace AZ

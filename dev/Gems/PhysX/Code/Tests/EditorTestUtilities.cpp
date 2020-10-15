@@ -27,6 +27,7 @@
 #include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/CollisionNotificationBus.h>
 #include <PhysX/PhysXLocks.h>
+#include <Tests/PhysXTestUtil.h>
 
 namespace PhysXEditorTests
 {
@@ -111,17 +112,22 @@ namespace PhysXEditorTests
         }
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     void PhysXEditorFixture::SetUp()
     {
         m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
         m_defaultWorld->SetEventHandler(this);
         Physics::DefaultWorldBus::Handler::BusConnect();
+        m_dummyTerrainComponentDescriptor = PhysX::DummyTestTerrainComponent::CreateDescriptor();
 
         m_oldConfiguration = AZ::Interface<PhysX::ConfigurationRequests>::Get()->GetConfiguration();
     }
 
     void PhysXEditorFixture::TearDown()
     {
+        m_dummyTerrainComponentDescriptor->ReleaseDescriptor();
+        m_dummyTerrainComponentDescriptor = nullptr;
+
         // Have to reset config to the old one, because other tests will pick up this config, but they rely
         // on old configurations instead. This can be deleted once asset directory is isolated between tests.
         // https://jira.agscollab.com/browse/LY-105551
@@ -134,6 +140,7 @@ namespace PhysXEditorTests
         AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
             &AzToolsFramework::ToolsApplicationRequests::FlushUndo);
     }
+    AZ_POP_DISABLE_WARNING
 
     // DefaultWorldBus
     AZStd::shared_ptr<Physics::World> PhysXEditorFixture::GetDefaultWorld()

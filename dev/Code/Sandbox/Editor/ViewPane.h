@@ -26,6 +26,7 @@
 class CViewport;
 class QToolBar;
 class QScrollArea;
+class ViewportTitleExpanderWatcher;
 
 /////////////////////////////////////////////////////////////////////////////
 // CViewPane view
@@ -70,6 +71,7 @@ public:
     void ToggleMaximize();
 
     void SetFocusToViewportSearch();
+    void SetFocusToViewport();
 
     void ResizeViewport(int width, int height);
     void SetAspectRatio(unsigned int x, unsigned int y);
@@ -114,8 +116,6 @@ private:
         LAST_ID_CLASSVIEW = FIRST_ID_CLASSVIEW + MAX_CLASSVIEWS - 1
     };
 
-
-
     QString m_viewPaneClass;
     bool m_bFullscreen;
     CViewportTitleDlg m_viewportTitleDlg;
@@ -127,6 +127,7 @@ private:
     QWidget* m_viewport;
     QScrollArea* m_viewportScrollArea = nullptr;
     ViewportExpansionPolicy m_viewportPolicy = ViewportExpansionPolicy::AutoExpand;
+    ViewportTitleExpanderWatcher* m_expanderWatcher;
     bool m_active;
 };
 

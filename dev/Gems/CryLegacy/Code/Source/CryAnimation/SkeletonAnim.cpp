@@ -143,8 +143,10 @@ void CSkeletonAnimTask::Prepare()
     m_pSkeletonAnim->Commands_Create(m_location, *m_pCommandBuffer);
     m_pSkeletonAnim->m_IsAnimPlaying = m_pCommandBuffer->GetCommandCount() != 0;
 
+#if ENABLE_CRY_PHYSICS
     pSkeletonPose->m_physics.SetLocation(m_location);
     pSkeletonPose->m_physics.Job_SynchronizeWithPhysicsPrepare(*s_pMemoryPool);
+#endif
 
     m_bStarted = true;
 }
@@ -293,7 +295,9 @@ void CSkeletonAnim::FinishAnimationComputations(FinishAnimationComputationCallMe
         // otherwise it would cause the character's pose to blend during 1 second after it reenters the frustrum even if the standup anim has finished
         // (see CSkeletonPose::ProcessPhysicsFallAndPlay)
         // [*DavidR | 24/Jan/2011] ToDo: We may want to update more timers (e.g., lying timer) the same way
+#if ENABLE_CRY_PHYSICS
         m_pSkeletonPose->m_physics.m_timeStandingUp += static_cast<float>(fsel(m_pSkeletonPose->m_physics.m_timeStandingUp, m_pInstance->m_fOriginalDeltaTime, 0.0f));
+#endif
         m_pInstance->m_SkeletonPose.UpdateAttachments(m_pInstance->m_SkeletonPose.GetPoseDataExplicitWriteable());
         PoseModifiersSwapBuffersAndClearActive();
     }
@@ -330,7 +334,11 @@ void CSkeletonAnim::PoseModifiersPrepare(const QuatTS& location)
 {
     Skeleton::CPoseData* pPoseData = m_pSkeletonPose->GetPoseDataWriteable();
 
+#if ENABLE_CRY_PHYSICS
     if (m_pSkeletonPose->m_bFullSkeletonUpdate && !m_pSkeletonPose->m_physics.m_bPhysicsRelinquished)
+#else
+    if (m_pSkeletonPose->m_bFullSkeletonUpdate)
+#endif
     {
         PushPoseModifier(15, m_pSkeletonPose->m_limbIk, "LimbIK");
 
@@ -374,7 +382,11 @@ void CSkeletonAnim::PoseModifiersPrepare(const QuatTS& location)
         m_transformPinningPoseModifier->Prepare(poseModifierParams);
     }
 
+#if ENABLE_CRY_PHYSICS
     if (m_pSkeletonPose->m_bFullSkeletonUpdate && !m_pSkeletonPose->m_physics.m_bPhysicsRelinquished)
+#else
+    if (m_pSkeletonPose->m_bFullSkeletonUpdate)
+#endif
     {
         if (CPoseBlenderAim* pPBAim = static_cast<CPoseBlenderAim*>(m_pSkeletonPose->m_PoseBlenderAim.get()))
         {

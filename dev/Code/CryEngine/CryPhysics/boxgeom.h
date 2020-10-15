@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_BOXGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CTriMesh;
 
 class CBoxGeom
@@ -69,5 +71,7 @@ public:
 
     CSingleBoxTree m_Tree;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_BOXGEOM_H

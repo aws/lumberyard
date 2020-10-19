@@ -10,7 +10,8 @@
  *
  */
 #include <AssetBuilderApplication.h>
-
+#include <TraceMessageHook.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
 namespace AssetBuilder
@@ -73,5 +74,82 @@ namespace AssetBuilder
 
         ASSERT_TRUE(app.GetOptionalAppRootArg(appRootBuffer, AZ_ARRAY_SIZE(appRootBuffer)));
         ASSERT_STREQ(appRootBuffer, expectedResult);
+    }
+
+    void VerifyOutput(const AZStd::string& output)
+    {
+        ASSERT_FALSE(output.empty());
+
+        AZStd::vector<AZStd::string> tokens;
+        AZ::StringFunc::Tokenize(output, tokens, "\n", false, false);
+
+        // There should be an even number of lines since every line has a context line printed before it
+        ASSERT_GT(tokens.size(), 0);
+        ASSERT_EQ(tokens.size() % 2, 0);
+
+        for (int i = 0; i < tokens.size(); i += 2)
+        {
+            ASSERT_STREQ(tokens[0].c_str(), "C: [Source] = Test");
+        }
+    }
+
+    struct LoggingTest
+        : ScopedAllocatorSetupFixture
+    {
+        void SetUp() override
+        {
+            m_messageHook.EnableTraceContext(true);
+            
+        }
+
+        TraceMessageHook m_messageHook;
+    };
+
+    TEST_F(LoggingTest, TracePrintf_ContainsContextOnEachLine)
+    {
+        testing::internal::CaptureStdout();
+
+        AZ_TraceContext("Source", "Test");
+        AZ_TracePrintf("window", "line1\nline2\nline3");
+
+        auto output = testing::internal::GetCapturedStdout();
+        VerifyOutput(output.c_str());
+    }
+
+    TEST_F(LoggingTest, Warning_ContainsContextOnEachLine)
+    {
+        testing::internal::CaptureStdout();
+
+        AZ_TraceContext("Source", "Test");
+        AZ_Warning("window", false, "line1\nline2\nline3");
+
+        auto output = testing::internal::GetCapturedStdout();
+        VerifyOutput(output.c_str());
+    }
+
+    TEST_F(LoggingTest, Error_ContainsContextOnEachLine)
+    {
+        testing::internal::CaptureStderr();
+
+        AZ_TraceContext("Source", "Test");
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        AZ_Error("window", false, "line1\nline2\nline3");
+        AZ_TEST_STOP_TRACE_SUPPRESSION_NO_COUNT;
+
+        auto output = testing::internal::GetCapturedStderr();
+        VerifyOutput(output.c_str());
+    }
+
+    TEST_F(LoggingTest, Assert_ContainsContextOnEachLine)
+    {
+        testing::internal::CaptureStderr();
+
+        AZ_TraceContext("Source", "Test");
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        AZ_Assert(false, "line1\nline2\nline3");
+        AZ_TEST_STOP_TRACE_SUPPRESSION_NO_COUNT;
+
+        auto output = testing::internal::GetCapturedStderr();
+        VerifyOutput(output.c_str());
     }
 } // namespace AssetBuilder

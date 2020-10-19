@@ -40,6 +40,8 @@ public:
     //////////////////////////////////////////////////////////////////////////
     void CreateAsset(const AZ::Data::AssetType& assetType) override;
     void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
+    void OpenAssetById(const AZ::Data::AssetId assetId) override;
+    void SaveAssetAs(const AZStd::string_view assetPath) override;
 
     static void RegisterViewClass();
     static void RegisterViewClass(const AZ::Data::Asset<AZ::Data::AssetData>& asset);

@@ -18,6 +18,9 @@
 
 namespace AzToolsFramework
 {
+    //! Name of the AZ Trace window for source control messages
+    static constexpr char SCC_WINDOW[] = "Source Control";
+
     enum SourceControlStatus
     {
         SCS_OpSuccess,          // No errors reported
@@ -171,13 +174,21 @@ namespace AzToolsFramework
         virtual void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& respCallback) = 0;
 
         //! Attempt to make a set of files ready for editing
-        virtual void RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, const SourceControlResponseCallbackBulk& respCallback) = 0;
+        virtual void RequestEditBulk(const AZStd::unordered_set<AZStd::string>& fullFilePaths, bool allowMultiCheckout, const SourceControlResponseCallbackBulk& respCallback) = 0;
 
         //! Attempt to delete a file
         virtual void RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback) = 0;
 
+        //! Attempt to delete a file
+        //! @param skipReadOnly If source control is disabled and we're using the local file component, this will skip changes to files which are readonly
+        virtual void RequestDeleteExtended(const char* fullFilePath, bool skipReadOnly, const SourceControlResponseCallback& respCallback) = 0;
+
         //! Attempt to delete multiple files.  Path may contain wildcards
         virtual void RequestDeleteBulk(const char* fullFilePath, const SourceControlResponseCallbackBulk& respCallback) = 0;
+
+        //! Attempt to delete multiple files.  Path may contain wildcards
+        //! @param skipReadOnly If source control is disabled and we're using the local file component, this will skip changes to files which are readonly
+        virtual void RequestDeleteBulkExtended(const char* fullFilePath, bool skipReadOnly, const SourceControlResponseCallbackBulk& respCallback) = 0;
 
         //! Attempt to revert a file
         virtual void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) = 0;
@@ -188,8 +199,16 @@ namespace AzToolsFramework
         //! Attempt to rename or move a file
         virtual void RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback) = 0;
 
+        //! Attempt to rename or move a file
+        //! @param skipReadOnly If source control is disabled and we're using the local file component, this will skip changes to files which are readonly
+        virtual void RequestRenameExtended(const char* sourcePathFull, const char* destPathFull, bool skipReadOnly, const SourceControlResponseCallback& respCallback) = 0;
+
         //! Attempt to rename or move multiple files.  Path may contain wildcards
         virtual void RequestRenameBulk(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallbackBulk& respCallback) = 0;
+
+        //! Attempt to rename or move multiple files.  Path may contain wildcards
+        //! @param skipReadOnly If source control is disabled and we're using the local file component, this will skip changes to files which are readonly
+        virtual void RequestRenameBulkExtended(const char* sourcePathFull, const char* destPathFull, bool skipReadOnly, const SourceControlResponseCallbackBulk& respCallback) = 0;
     };
 
     using SourceControlCommandBus = AZ::EBus<SourceControlCommands>;

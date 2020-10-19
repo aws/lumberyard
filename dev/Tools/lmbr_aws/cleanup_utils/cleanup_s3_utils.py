@@ -66,7 +66,9 @@ def delete_s3_buckets(cleaner):
             cleaner.s3.delete_bucket(Bucket=bucket_name)
         except ClientError as e:
             print('      ERROR: Failed to delete bucket {0} due to {1}'.format(bucket_name, exception_utils.message(e)))
-            cleaner.add_to_failed_resources('s3', bucket_name)
+            code = e.response['Error']['Code']
+            if code != "NoSuchBucket":
+                cleaner.add_to_failed_resources('s3', bucket_name)
 
     # Wait for buckets to delete
     for bucket_name in bucket_name_list:
@@ -97,7 +99,9 @@ def _clean_s3_bucket(cleaner, bucket_name):
         response = cleaner.s3.list_object_versions(Bucket=bucket_name, MaxKeys=1000)
     except ClientError as e:
         print('      ERROR: Unexpected error while trying to gather s3 object versions. {}'.format(e))
-        cleaner.add_to_failed_resources('s3', bucket_name)
+        code = e.response['Error']['Code']
+        if code != "NoSuchBucket":
+            cleaner.add_to_failed_resources('s3', bucket_name)
         return
 
     # Deleting objects in batches is capped at 1000 objects, therefore we can't construct the entire list beforehand
@@ -114,7 +118,9 @@ def _clean_s3_bucket(cleaner, bucket_name):
         except ClientError as e:
             print('        ERROR: Failed to delete objects {0} from bucket {1}. {2}'
                   .format(delete_list, bucket_name, exception_utils.message(e)))
-            cleaner.add_to_failed_resources('s3', delete_list)
+            code = e.response['Error']['Code']
+            if code != "NoSuchBucket":
+                cleaner.add_to_failed_resources('s3', delete_list)
         next_key = response.get('NextKeyMarker', None)
         if next_key:
             response = cleaner.s3.list_object_versions(Bucket=bucket_name, MaxKeys=1000, KeyMarker=next_key)

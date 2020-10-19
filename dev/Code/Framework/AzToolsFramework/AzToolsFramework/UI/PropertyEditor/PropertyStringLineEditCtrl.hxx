@@ -37,6 +37,7 @@ namespace AzToolsFramework
         virtual ~PropertyStringLineEditCtrl();
 
         AZStd::string value() const;
+        QLineEdit* GetLineEdit() const;
 
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();

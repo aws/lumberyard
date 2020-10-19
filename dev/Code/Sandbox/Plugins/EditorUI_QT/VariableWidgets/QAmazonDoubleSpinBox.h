@@ -10,11 +10,11 @@
 *
 */
 #pragma once
-#include <QDoubleSpinBox>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 /*used to get access to line edit so we can select all text on double click*/
 class QAmazonDoubleSpinBox
-    : public QDoubleSpinBox
+    : public AzQtComponents::DoubleSpinBox
 {
     Q_OBJECT
 

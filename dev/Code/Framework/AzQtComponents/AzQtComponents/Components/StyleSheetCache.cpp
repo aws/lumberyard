@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/StyleSheetCache.h>
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
+#include <AzCore/Debug/Trace.h>
 #include <QProxyStyle>
 #include <QWidget>
 #include <QDir>
@@ -20,6 +21,8 @@
 #include <QStringList>
 #include <QRegExp>
 #include <QDebug>
+#include <QApplication>
+#include <QQueue>
 
 namespace AzQtComponents
 {
@@ -42,14 +45,71 @@ const QString& StyleSheetCache::styleSheetExtension()
     return extension;
 }
 
+void StyleSheetCache::registerPathsFoundOnDisk(const QString& pathOnDisk, const QString& qrcPrefix)
+{
+    // Do a sanity check to ensure there are no style-sheets on disk that don't exist in a qrc
+    QDir rootDirectory(pathOnDisk);
+    QQueue<QFileInfo> entriesToScan;
+    entriesToScan.push_back(QFileInfo(pathOnDisk));
+    while (!entriesToScan.empty())
+    {
+        QFileInfo entry = entriesToScan.front();
+        entriesToScan.pop_front();
+
+        if (!entry.exists())
+        {
+            continue;
+        }
+
+        if (entry.isDir())
+        {
+            for (auto subEntry : QDir(entry.absoluteFilePath()).entryInfoList({"*.qss"}, QDir::NoDotAndDotDot | QDir::Dirs | QDir::Files))
+            {
+                entriesToScan.push_back(subEntry);
+            }
+        }
+        else
+        {
+            QString diskPath = entry.absoluteFilePath();
+            QString qrcPath = QStringLiteral("%1/%2")
+                .arg(qrcPrefix)
+                .arg(rootDirectory.relativeFilePath(diskPath));
+            QFileInfo qrcInfo(qrcPath);
+            if (qrcInfo.exists())
+            {
+                m_diskToQrcMap[diskPath] = qrcPath;
+            }
+            else
+            {
+                AZ_Warning("StyleSheetCache", false,
+                    "No QRC entry found for style sheet found on disk. Disk path: \"%s\" Expected QRC path: \"%s\"",
+                    diskPath.toUtf8().constData(), qrcPath.toUtf8().constData());
+            }
+        }
+    }
+}
+
 void StyleSheetCache::addSearchPaths(const QString& searchPrefix, const QString& pathOnDisk, const QString& qrcPrefix)
 {
+    AZ_Warning("StyleSheetCache", m_prefixes.find(searchPrefix) == m_prefixes.end(),
+        "Style prefix \"%s\" was already registered, ignoring...", searchPrefix.constData());
+
+    // If pathOnDisk is a relative path, search from the engine root directory
+    QString diskPathToUse = pathOnDisk;
+    if (!QFileInfo(pathOnDisk).isAbsolute())
+    {
+        QDir rootDir(AzQtComponents::FindEngineRootDir(qApp));
+        diskPathToUse = rootDir.absoluteFilePath(pathOnDisk);
+    }
+
+    registerPathsFoundOnDisk(diskPathToUse, qrcPrefix);
+
     // Specifying the path to the file on disk and the qrc prefix of the file in this order means
     // that the style will be loaded from disk if it exists, otherwise the style in the Qt Resource
     // file will be used. Styles loaded from disk will be automatically watched and re-applied if
     // changes are detected, allowing much faster style iteration.
     m_prefixes.insert(searchPrefix);
-    QDir::addSearchPath(searchPrefix, pathOnDisk);
+    QDir::addSearchPath(searchPrefix, diskPathToUse);
     QDir::addSearchPath(searchPrefix, qrcPrefix);
 }
 
@@ -72,6 +132,7 @@ void StyleSheetCache::setFallbackSearchPaths(const QString& fallbackPrefix, cons
         return;
     }
 
+    registerPathsFoundOnDisk(pathOnDisk, qrcPrefix);
     QDir::setSearchPaths(m_fallbackPrefix, {pathOnDisk, qrcPrefix});
 }
 
@@ -112,10 +173,18 @@ QString StyleSheetCache::loadStyleSheet(QString styleFileName)
         return QString();
     }
 
+    QFileInfo filePathInfo(filePath);
     // watch this file for changes now, if it's not loaded from resources
-    if (!filePath.startsWith(QStringLiteral(":")))
+    if (filePathInfo.exists() && filePathInfo.isNativePath())
     {
         m_fileWatcher->addPath(filePath);
+
+        QString absolutePath = filePathInfo.absoluteFilePath();
+        if (m_diskToQrcMap.find(absolutePath) == m_diskToQrcMap.end())
+        {
+            AZ_Error("StyleSheetCache", false, "No QRC entry was found for style-sheet loaded from disk, loading has been disabled: %s", absolutePath.toUtf8().constData());
+            return {};
+        }
     }
 
     QString loadedStyleSheet;

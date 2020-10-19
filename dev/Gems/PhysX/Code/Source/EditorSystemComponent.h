@@ -14,8 +14,9 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
-#include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <IEditor.h>
 
@@ -28,6 +29,7 @@ namespace PhysX
         : public AZ::Component
         , public AZ::TickBus::Handler
         , public Physics::EditorWorldBus::Handler
+        , private Physics::WorldEventHandler
         , private CrySystemEventBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
         , private IEditorNotifyListener
@@ -44,6 +46,13 @@ namespace PhysX
         void MarkEditorWorldDirty() override;
 
     private:
+
+        void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override;
+        void OnTriggerExit(const Physics::TriggerEvent& triggerEvent) override;
+        void OnCollisionBegin(const Physics::CollisionEvent& collisionEvent) override;
+        void OnCollisionPersist(const Physics::CollisionEvent& collisionEvent) override;
+        void OnCollisionEnd(const Physics::CollisionEvent& collisionEvent) override;
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("PhysXEditorService", 0x0a61cda5));
@@ -88,5 +97,6 @@ namespace PhysX
         static const float s_minEditorWorldUpdateInterval; ///< The minimal interval between editor World updates.
         static const float s_fixedDeltaTime; ///< The fixed delta time used to update the editor world.
         float m_intervalCountdown = s_minEditorWorldUpdateInterval;
+        bool m_onlyTickOnDirty = false;
     };
 }

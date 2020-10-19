@@ -26,42 +26,42 @@
 QWidgetInt::QWidgetInt(CAttributeItem* parent)
     : QWidget(parent)
     , CBaseVariableWidget(parent)
-    , stepResolution(1)
+    , m_stepResolution(1)
 {
-    edit.setParent(this);
-    slider.setParent(this);
-    slider.setOrientation(Qt::Horizontal);
-    slider.installEventFilter(parent);
-    slider.setFocusPolicy(Qt::FocusPolicy::ClickFocus);
+    m_edit.setParent(this);
+    m_slider.setParent(this);
+    m_slider.setOrientation(Qt::Horizontal);
+    m_slider.installEventFilter(parent);
+    m_slider.setFocusPolicy(Qt::FocusPolicy::ClickFocus);
 
-    layout.setMargin(0);
-    layout.setAlignment(Qt::AlignRight);
+    m_layout.setMargin(0);
+    m_layout.setAlignment(Qt::AlignRight);
     setAttribute(Qt::WA_TranslucentBackground, true);
 
-    edit.setFixedWidth(64);
-    edit.setValue(0);
-    edit.installEventFilter(parent);
+    m_edit.setFixedWidth(64);
+    m_edit.setValue(0);
+    m_edit.installEventFilter(parent);
 
-    layout.addWidget(&slider);
-    layout.addWidget(&edit);
+    m_layout.addWidget(&m_edit, 1);
+    m_layout.addWidget(&m_slider, 2);
 
-    setLayout(&layout);
-    m_StoredValue = edit.value();
-    connect(&slider, &QSlider::valueChanged, this, &QWidgetInt::onSliderChanged);
-    connect(&slider, &QSlider::sliderReleased, this, [=]()
+    setLayout(&m_layout);
+    m_StoredValue = m_edit.value();
+    connect(&m_slider, &AzQtComponents::SliderInt::valueChanged, this, &QWidgetInt::onSliderChanged);
+    connect(&m_slider, &AzQtComponents::SliderInt::sliderReleased, this, [=]()
         {
-            onSetValue(slider.value()); 
-            if (m_StoredValue != slider.value())
+            onSetValue(m_slider.value()); 
+            if (m_StoredValue != m_slider.value())
             {
-                m_StoredValue = slider.value();
+                m_StoredValue = m_slider.value();
                 emit m_parent->SignalUndoPoint();
             }
         });
-    connect(&edit, SIGNAL(valueChanged(int)), this, SLOT(onSetValue(int)));
-    connect(&edit, &QSpinBox::editingFinished, this, [=]()
+    connect(&m_edit, SIGNAL(valueChanged(int)), this, SLOT(onSetValue(int)));
+    connect(&m_edit, &QSpinBox::editingFinished, this, [=]()
         {
             SelfCallFence(m_ignoreSetCallback);
-            int finalValue = edit.value();
+            int finalValue = m_edit.value();
             m_var->Set(finalValue);
             if (m_StoredValue != finalValue)
             {
@@ -70,30 +70,29 @@ QWidgetInt::QWidgetInt(CAttributeItem* parent)
             }
         });
     m_tooltip = new QToolTipWidget(this);
-    edit.installEventFilter(this);
+    m_edit.installEventFilter(this);
 }
 
 void QWidgetInt::Set(int val, int min, int max, bool hardMin, bool hardMax, int stepSize)
 {
-    stepResolution = (int)stepSize;
+    m_stepResolution = (int)stepSize;
 
     // Make sure the stepResolution is not lower than 1
-    stepResolution = stepResolution < 1 ? 1 : stepResolution;
+    m_stepResolution = m_stepResolution < 1 ? 1 : m_stepResolution;
 
     // Initialize the slider's configuration before calling setValue for the spinner box (edit) as that call will set the value of the slider.
 
-    slider.setRange(min, max);
-    slider.setSingleStep(stepResolution);
+    m_slider.setRange(min, max);
     if (!hardMax)
     {
-        slider.hide();
-        slider.setFixedWidth(0);
+        m_slider.hide();
+        m_slider.setFixedWidth(0);
     }
 
-    edit.setRange(hardMin ? min : std::numeric_limits<int>::min(),
+    m_edit.setRange(hardMin ? min : std::numeric_limits<int>::min(),
         hardMax ? max : std::numeric_limits<int>::max());
-    edit.setSingleStep(stepResolution);
-    edit.setValue(val);
+    m_edit.setSingleStep(m_stepResolution);
+    m_edit.setValue(val);
 }
 
 void QWidgetInt::onVarChanged(IVariable* var)
@@ -104,10 +103,10 @@ void QWidgetInt::onVarChanged(IVariable* var)
     QString v;
     var->Get(v);
     int value = v.toInt();
-    QSignalBlocker sliderBlocker(&slider);
-    QSignalBlocker editBlocker(&edit);
-    slider.setValue(value);
-    edit.setValue(value);
+    QSignalBlocker sliderBlocker(&m_slider);
+    QSignalBlocker editBlocker(&m_edit);
+    m_slider.setValue(value);
+    m_edit.setValue(value);
     assert(m_var);
     if (!m_var)
     {
@@ -122,11 +121,11 @@ void QWidgetInt::onSetValue(int value)
 
     //when slider is disabled we set the width to 0
     //this check prevents the slider from overriding the edit's value
-    if (!slider.isHidden())
+    if (!m_slider.isHidden())
     {
-        slider.setValue(value);
+        m_slider.setValue(value);
     }
-    edit.setValue(value);
+    m_edit.setValue(value);
 
     assert(m_var);
     if (!m_var)
@@ -140,9 +139,9 @@ void QWidgetInt::onSetValue(int value)
 void QWidgetInt::onSliderChanged(int value)
 {
     SelfCallFence(m_ignoreSetCallback);
-    edit.blockSignals(true);
-    edit.setValue(value);
-    edit.blockSignals(false);
+    m_edit.blockSignals(true);
+    m_edit.setValue(value);
+    m_edit.blockSignals(false);
     emit m_parent->SignalUndoPoint();
 }
 
@@ -179,29 +178,29 @@ bool QWidgetInt::event(QEvent* e)
 
 bool QWidgetInt::eventFilter(QObject* obj, QEvent* e)
 {
-    if (obj == &edit)
+    if (obj == &m_edit)
     {
         if (e->type() == QEvent::KeyPress)
         {
             QKeyEvent* kev = (QKeyEvent*)e;
             if (kev->key() == Qt::Key_Return)
             {
-                if (edit.text().isEmpty())
+                if (m_edit.text().isEmpty())
                 {
-                    edit.setValue(0);
+                    m_edit.setValue(0);
                 }
             }
         }
         if (e->type() == QEvent::FocusOut)
         {
-            if (edit.text().isEmpty())
+            if (m_edit.text().isEmpty())
             {
-                edit.setValue(0);
+                m_edit.setValue(0);
             }
         }
         if (e->type() == QEvent::FocusIn)
         {
-            m_StoredValue = edit.value();
+            m_StoredValue = m_edit.value();
         }
     }
     return QWidget::eventFilter(obj, e);

@@ -15,7 +15,6 @@
 
 #include <AzQtComponents/Components/StyleHelpers.h>
 #include <AzQtComponents/Components/StyleManager.h>
-#include <AzQtComponents/Utilities/QtPluginPaths.h>
 
 #include <QDir>
 namespace Example
@@ -90,8 +89,8 @@ StyleSheetPage::StyleSheetPage(QWidget* parent)
     ui->filteredSearchWidget->SetFilterState(0, true);
     ui->filteredSearchWidget->SetFilterState(1, true);
 
-    QDir rootDir(AzQtComponents::FindEngineRootDir(qApp));
-    const auto pathOnDisk = rootDir.absoluteFilePath(QStringLiteral("Code/Framework/AzQtComponents/AzQtComponents/Gallery"));
+    // pathOnDisk is specified relative to the engine root directory
+    const auto pathOnDisk = QStringLiteral("Code/Framework/AzQtComponents/AzQtComponents/Gallery");
     const auto qrcPath = QStringLiteral(":/Gallery");
 
     // Setting the style sheet using both methods allows faster style iteration speed for
@@ -157,8 +156,8 @@ allows other style sheets to be imported.
 #include &lt;AzQtComponents/Components/StyleManager.h&gt;
 
 // To add a search prefix:
-QDir rootDir(AzQtComponents::FindEngineRootDir(qApp));
-const auto pathOnDisk = rootDir.absoluteFilePath("Code/Framework/AzQtComponents/AzQtComponents/Gallery");
+// pathOnDisk is specified relative to the engine root directory
+const auto pathOnDisk = QStringLiteral("Code/Framework/AzQtComponents/AzQtComponents/Gallery");
 const auto qrcPath = QStringLiteral(":/Gallery");
 
 // Specifying the path to the file on disk and the qrc prefix of the file in this order means

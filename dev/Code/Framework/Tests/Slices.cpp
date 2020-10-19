@@ -230,8 +230,8 @@ namespace UnitTest
                     AZ::SliceComponent::EntityList entities;
                     slice->GetEntities(entities);
 
-                    entities[0]->SetName(AZStd::string::format("Gen%u_Descendent%u_%u", generation, i, nextSliceIndex));
-                    entities[1]->SetName(AZStd::string::format("Gen%u_Descendent%u_%u", generation, i, nextSliceIndex + 1));
+                    entities[0]->SetName(AZStd::string::format("Gen%zu_Descendent%zu_%zu", generation, i, nextSliceIndex));
+                    entities[1]->SetName(AZStd::string::format("Gen%zu_Descendent%zu_%zu", generation, i, nextSliceIndex + 1));
                     //entities[0]->FindComponent<TestComponent>()->m_floatValue = float(nextSliceIndex) + 0.1f;
                     //entities[0]->FindComponent<TestComponent>()->m_intValue = int(generation);
                     //entities[1]->FindComponent<TestComponent>()->m_floatValue = float(nextSliceIndex) + 0.2f;

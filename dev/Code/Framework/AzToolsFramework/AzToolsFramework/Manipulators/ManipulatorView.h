@@ -51,11 +51,14 @@ namespace AzToolsFramework
         AZ_RTTI(ManipulatorView, "{7529E3E9-39B3-4D15-899A-FA13770113B2}")
 
         ManipulatorView();
+        ManipulatorView(bool screenSizeFixed);
         virtual ~ManipulatorView();
+        ManipulatorView(ManipulatorView&&) = default;
+        ManipulatorView& operator=(ManipulatorView&&) = default;
 
         void SetBoundDirty(ManipulatorManagerId managerId);
-        void RefreshBound(ManipulatorManagerId managerId,
-            ManipulatorId manipulatorId, const Picking::BoundRequestShapeBase& shape);
+        void RefreshBound(
+            ManipulatorManagerId managerId, ManipulatorId manipulatorId, const Picking::BoundRequestShapeBase& bound);
         void Invalidate(ManipulatorManagerId managerId);
 
         virtual void Draw(
@@ -64,9 +67,12 @@ namespace AzToolsFramework
             AzFramework::DebugDisplayRequests& debugDisplay, const AzFramework::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) = 0;
 
+        bool ScreenSizeFixed() const { return m_screenSizeFixed; }
+
     protected:
         AZ::Color m_mouseOverColor = BaseManipulator::s_defaultMouseOverColor; ///< What color should the manipulator
                                                                                ///< be when the mouse is hovering over it.
+        // LUMBERYARD_DEPRECATED(LY-117143)
         Picking::RegisteredBoundId m_boundId = Picking::InvalidBoundId; ///< Used for hit detection.
         ManipulatorManagerId m_managerId = InvalidManipulatorManagerId; /// The manipulator manager this view has been registered with.
         bool m_screenSizeFixed = true; ///< Should manipulator size be adjusted based on camera distance.
@@ -77,8 +83,11 @@ namespace AzToolsFramework
         AZ::VectorFloat ManipulatorViewScaleMultiplier(
             const AZ::Vector3& worldPosition, const AzFramework::CameraState& cameraState) const;
 
-    private:
-        AZ_DISABLE_COPY_MOVE(ManipulatorView)
+        /// Wrap the logic for updating a bound.
+        /// Should be called at the end of the Draw function once a concrete BoundRequestShape has
+        /// been created to use for dimensions for rendering.
+        void RefreshBoundInternal(
+            ManipulatorManagerId managerId, ManipulatorId manipulatorId, const Picking::BoundRequestShapeBase& bound);
     };
 
     // A collection of views (a manipulator may have 1 - * views)

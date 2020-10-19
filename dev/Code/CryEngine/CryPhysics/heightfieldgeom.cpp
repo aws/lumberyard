@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "intersectionchecks.h"
@@ -596,3 +598,4 @@ void CHeightfield::GetMemoryStatistics(ICrySizer* pSizer)
     pSizer->AddObject(this, sizeof(CHeightfield));
 }
 
+#endif // ENABLE_CRY_PHYSICS

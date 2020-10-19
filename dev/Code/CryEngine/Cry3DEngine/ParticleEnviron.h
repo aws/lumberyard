@@ -21,6 +21,13 @@
 
 class CParticleEmitter;
 
+#if !PARTICLES_USE_CRY_PHYSICS
+namespace Physics
+{
+    class World;
+}
+#endif
+
 //////////////////////////////////////////////////////////////////////////
 // Physical environment management.
 //
@@ -38,8 +45,10 @@ struct SPhysEnviron
     {
         const SPhysEnviron*
             m_pEnviron;                                                     // Parent environment.
+#if PARTICLES_USE_CRY_PHYSICS
         _smart_ptr<IPhysicalEntity>
         m_pArea;
+#endif
         volatile int*           m_pLock;                            // Copy of lock for area.
 
         SPhysForces             m_Forces;
@@ -101,7 +110,7 @@ struct SPhysEnviron
         return (m_nNonUniformFlags & EFF_LOADED) != 0;
     }
 
-    void OnPhysAreaChange(const EventPhysAreaChange& event);
+    void OnPhysAreaChange();
 
     void LockAreas(uint32 nFlags, int iLock) const
     {
@@ -143,8 +152,15 @@ struct SPhysEnviron
         return fDist;
     }
 
-    // Phys collision
-    static bool PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const& vEnd, float fRadius, uint32 nEnvFlags, IPhysicalEntity* pThisEntity = 0);
+    // Phys collision, if pTestEntity is != nullptr, collision will only be checked against that entity
+    static bool PhysicsCollision(CryParticleRayHit& hit, Vec3 const& vStart, Vec3 const& vEnd, float fRadius, uint32 nEnvFlags, CryParticleHitEntity* pTestEntity = 0);
+
+#if !PARTICLES_USE_CRY_PHYSICS
+    // Note: Do not store world, may be deleted
+    static Physics::World* GetAZPhysicsWorld();
+    static CryParticleHitEntity* GetPhysicalEntityFromEntityId(AZ::EntityId entityId);
+
+#endif // PARTICLES_USE_CRY_PHYSICS
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
@@ -234,7 +250,7 @@ protected:
         void*                               m_pMeshObj;                     // Render object attachment. Can hold an IStatObj* OR an ICharacterInstance*
         size_t                          m_uFlags;                           // 1 bit identifies which mesh type it is, another bit for centering
     };
-    IPhysicalEntity*            m_pPhysEnt;                     // Physics object attachment.
+    CryParticlePhysEntity*            m_pPhysEnt;                     // Physics object attachment.
 
 public:
 
@@ -277,10 +293,12 @@ public:
             Set(pStatobj);
         }
     }
-    void Set(IPhysicalEntity* pPhys)
+
+    void Set(CryParticlePhysEntity* pPhys)
     {
         m_pPhysEnt = pPhys;
     }
+
     void SetCentered(bool bCenter)
     {
         if (bCenter)
@@ -300,19 +318,32 @@ public:
     {
         return (m_uFlags & ~uFlags) || m_pPhysEnt;
     }
-    bool operator == (const SEmitGeom& other) const
-    { return m_pMeshObj == other.m_pMeshObj && m_pPhysEnt == other.m_pPhysEnt; }
-    bool operator != (const SEmitGeom& other) const
-    { return m_pMeshObj != other.m_pMeshObj || m_pPhysEnt != other.m_pPhysEnt; }
 
+    bool operator == (const SEmitGeom& other) const
+    {
+        return m_pMeshObj == other.m_pMeshObj && m_pPhysEnt == other.m_pPhysEnt;
+    }
+    bool operator != (const SEmitGeom& other) const
+    {
+        return m_pMeshObj != other.m_pMeshObj || m_pPhysEnt != other.m_pPhysEnt;
+    }
     IStatObj* GetStatObj() const
-    { return !(m_uFlags & uIsCharacter) ? (IStatObj*)(m_uFlags & ~uFlags) : 0; }
+    {
+        return !(m_uFlags & uIsCharacter) ? (IStatObj*)(m_uFlags & ~uFlags) : 0;
+    }
     ICharacterInstance* GetCharacter() const
-    { return (m_uFlags & uIsCharacter) ? (ICharacterInstance*)(m_uFlags & ~uFlags) : 0; }
-    IPhysicalEntity* GetPhysicalEntity() const
-    { return m_pPhysEnt; }
+    {
+        return (m_uFlags & uIsCharacter) ? (ICharacterInstance*)(m_uFlags & ~uFlags) : 0;
+    }
+    CryParticlePhysEntity* GetPhysicalEntity() const
+    {
+        return m_pPhysEnt;
+    }
+
     bool IsCentered() const
-    { return m_uFlags & uIsCentered; }
+    {
+        return m_uFlags & uIsCentered;
+    }
 
     void GetAABB(AABB& bb, QuatTS const& tLoc) const;
     float GetExtent(EGeomForm eForm) const;

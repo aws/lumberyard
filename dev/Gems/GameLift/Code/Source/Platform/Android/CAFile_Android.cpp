@@ -30,7 +30,7 @@ namespace GridMate
         void ResolveCaCertFilePath(Aws::String& caFile)
         {
             char resolvedCAFile[AZ_MAX_PATH_LEN] = { 0 };
-            AZ::IO::FileIOBase::GetInstance()->ResolvePath("@user@/certs/aws/cacert.pem", resolvedCAFile, AZ_MAX_PATH_LEN);
+            AZ::IO::FileIOBase::GetInstance()->ResolvePath("@assets@/certificates/aws/cacert.pem", resolvedCAFile, AZ_MAX_PATH_LEN);
             caFile = resolvedCAFile;
         }
     }

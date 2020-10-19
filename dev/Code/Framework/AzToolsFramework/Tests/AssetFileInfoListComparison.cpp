@@ -186,9 +186,11 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AzToolsFramework::AssetFileInfoListComparison assetFileInfoListComparison;
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData comparisonData(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Delta, TempFiles[FileIndex::ResultAssetFileInfoList]);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            comparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
 
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }, { TempFiles[FileIndex::SecondAssetFileInfoList] }).IsSuccess()) << "Delta operation failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Delta operation failed.\n";
 
             // AssetFileInfo should contain {2*, 4*, 5}
             AzToolsFramework::AssetFileInfoList assetFileInfoList;
@@ -246,8 +248,10 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AzToolsFramework::AssetFileInfoListComparison assetFileInfoListComparison;
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData comparisonData(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Union, TempFiles[FileIndex::ResultAssetFileInfoList]);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            comparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }, { TempFiles[FileIndex::SecondAssetFileInfoList] }).IsSuccess()) << "Union operation failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Union operation failed.\n";
 
             // AssetFileInfo should contain {0, 1, 2*, 3, 4*, 5}
             AzToolsFramework::AssetFileInfoList assetFileInfoList;
@@ -330,8 +334,10 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AzToolsFramework::AssetFileInfoListComparison assetFileInfoListComparison;
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData comparisonData(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Intersection, TempFiles[FileIndex::ResultAssetFileInfoList]);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            comparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }, { TempFiles[FileIndex::SecondAssetFileInfoList] }).IsSuccess()) << "Intersection operation failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Intersection operation failed.\n";
 
             // AssetFileInfo should contain {1,2*,3,4*}
             AzToolsFramework::AssetFileInfoList assetFileInfoList;
@@ -389,8 +395,10 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData comparisonData(AssetFileInfoListComparison::ComparisonType::Complement, TempFiles[FileIndex::ResultAssetFileInfoList]);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            comparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }, { TempFiles[FileIndex::SecondAssetFileInfoList] }).IsSuccess()) << "Complement comparison failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Complement comparison failed.\n";
 
             // AssetFileInfo should contain {5}
             AssetFileInfoList assetFileInfoList;
@@ -446,8 +454,9 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AssetFileInfoListComparison::ComparisonData comparisonData(AssetFileInfoListComparison::ComparisonType::FilePattern, TempFiles[FileIndex::ResultAssetFileInfoList], "Asset*.txt", AssetFileInfoListComparison::FilePatternType::Wildcard);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }).IsSuccess()) << "File pattern match failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "File pattern match failed.\n";
 
             // AssetFileInfo should contain {0,1,2,3,4}
             AssetFileInfoList assetFileInfoList;
@@ -470,20 +479,18 @@ namespace UnitTest
             EXPECT_EQ(expectedAssetIds.size(), 0);
         }
 
-        void AssetFileInfoValidation_FilePatternWildcardComparisonNone_Valid()
+        void AssetFileInfoValidation_FilePatternWildcardComparisonNone_ExpectFailure()
         {
             using namespace AzToolsFramework;
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AssetFileInfoListComparison::ComparisonData comparisonData(AssetFileInfoListComparison::ComparisonType::FilePattern, TempFiles[FileIndex::ResultAssetFileInfoList], "Foo*.txt", AssetFileInfoListComparison::FilePatternType::Wildcard);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }).IsSuccess()) << "File pattern match failed.\n";
+            ASSERT_FALSE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "File pattern match should not have produced any output.\n";
 
-            // AssetFileInfo should be empty
-            AssetFileInfoList assetFileInfoList;
-            ASSERT_TRUE(AZ::Utils::LoadObjectFromFileInPlace(TempFiles[FileIndex::ResultAssetFileInfoList], assetFileInfoList)) << "Unable to read the asset file info list.\n";
-
-            EXPECT_EQ(assetFileInfoList.m_fileInfoList.size(), 0);
+            // AssetFileInfo should not exist on-disk
+            ASSERT_FALSE(AZ::IO::FileIOBase::GetInstance()->Exists(TempFiles[FileIndex::ResultAssetFileInfoList])) << "Asset List file should not exist on-disk.\n";
         }
 
         void AssetFileInfoValidation_FilePatternRegexComparisonPartial_Valid()
@@ -492,8 +499,9 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AssetFileInfoListComparison::ComparisonData comparisonData(AssetFileInfoListComparison::ComparisonType::FilePattern, TempFiles[FileIndex::ResultAssetFileInfoList], "Asset[0-3].txt", AssetFileInfoListComparison::FilePatternType::Regex);
+            comparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(comparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList] }).IsSuccess()) << "File pattern match failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "File pattern match failed.\n";
 
             // AssetFileInfo should be {0,1,2,3}
             AssetFileInfoList assetFileInfoList;
@@ -521,10 +529,14 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData deltaComparisonData(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Delta, "$1");
+            deltaComparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            deltaComparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(deltaComparisonData);
+
             AssetFileInfoListComparison::ComparisonData filePatternComparisonData(AssetFileInfoListComparison::ComparisonType::FilePattern, TempFiles[FileIndex::ResultAssetFileInfoList], "Asset[0-3].txt", AssetFileInfoListComparison::FilePatternType::Regex);
+            filePatternComparisonData.m_firstInput = "$1";
             assetFileInfoListComparison.AddComparisonStep(filePatternComparisonData);
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList], "$1" }, { TempFiles[FileIndex::SecondAssetFileInfoList] }).IsSuccess()) << "Multiple Comparison Operation( Delta + FilePattern ) failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Multiple Comparison Operation( Delta + FilePattern ) failed.\n";
 
             // Output of the Delta Operation should be {2*, 4*, 5}
             // Output of the FilePattern Operation should be {2*}
@@ -582,12 +594,15 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AssetFileInfoListComparison::ComparisonData filePatternComparisonData(AssetFileInfoListComparison::ComparisonType::FilePattern,"$1", "Asset[0-3].txt", AssetFileInfoListComparison::FilePatternType::Regex);
+            filePatternComparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(filePatternComparisonData);
             
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData deltaComparisonData(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Delta, TempFiles[FileIndex::ResultAssetFileInfoList]);
+            deltaComparisonData.m_firstInput = "$1";
+            deltaComparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(deltaComparisonData);
             
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList], "$1" }, { TempFiles[FileIndex::SecondAssetFileInfoList] }).IsSuccess()) << "Multiple Comparison Operation( FilePattern + Delta ) failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Multiple Comparison Operation( FilePattern + Delta ) failed.\n";
             // Output of the FilePattern Operation should be {0,1,2,3}
             // Output of the Delta Operation should be {2*,4*,5}
             AzToolsFramework::AssetFileInfoList assetFileInfoList;
@@ -644,13 +659,20 @@ namespace UnitTest
             // First AssetFileInfoList {0,1,2,3,4} , Second AssetFileInfoList {1,2*,3,4*,5} where * indicate that hash has changed for that asset
             AssetFileInfoListComparison assetFileInfoListComparison;
             AzToolsFramework::AssetFileInfoListComparison::ComparisonData deltaComparisonData(AzToolsFramework::AssetFileInfoListComparison::ComparisonType::Delta, "$1");
+            deltaComparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            deltaComparisonData.m_secondInput = TempFiles[FileIndex::SecondAssetFileInfoList];
             assetFileInfoListComparison.AddComparisonStep(deltaComparisonData);
+
             AssetFileInfoListComparison::ComparisonData unionComparisonData(AssetFileInfoListComparison::ComparisonType::Union, "$2");
+            unionComparisonData.m_firstInput = TempFiles[FileIndex::FirstAssetFileInfoList];
+            unionComparisonData.m_secondInput = "$1";
             assetFileInfoListComparison.AddComparisonStep(unionComparisonData);
+
             AssetFileInfoListComparison::ComparisonData filePatternComparisonData(AssetFileInfoListComparison::ComparisonType::FilePattern, TempFiles[FileIndex::ResultAssetFileInfoList], "Asset[4-5].txt", AssetFileInfoListComparison::FilePatternType::Regex);
+            filePatternComparisonData.m_firstInput = "$2";
             assetFileInfoListComparison.AddComparisonStep(filePatternComparisonData);
 
-            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults({ TempFiles[FileIndex::FirstAssetFileInfoList], TempFiles[FileIndex::FirstAssetFileInfoList], "$2" }, { TempFiles[FileIndex::SecondAssetFileInfoList], "$1" }).IsSuccess()) << "Multiple Comparison Operation( Delta + Union + FilePattern ) failed.\n";
+            ASSERT_TRUE(assetFileInfoListComparison.CompareAndSaveResults().IsSuccess()) << "Multiple Comparison Operation( Delta + Union + FilePattern ) failed.\n";
 
             // Output of the Delta Operation should be {2*, 4*, 5}
             // Putput of the Union Operation should be {0, 1, 2*, 3, 4*, 5}
@@ -737,9 +759,9 @@ namespace UnitTest
         AssetFileInfoValidation_FilePatternWildcardComparisonAll_Valid();
     }
 
-    TEST_F(AssetFileInfoListComparisonTest, AssetFileInfoValidation_FilePatternWildcardComparisonNone_Valid)
+    TEST_F(AssetFileInfoListComparisonTest, AssetFileInfoValidation_FilePatternWildcardComparisonNone_ExpectFailure)
     {
-        AssetFileInfoValidation_FilePatternWildcardComparisonNone_Valid();
+        AssetFileInfoValidation_FilePatternWildcardComparisonNone_ExpectFailure();
     }
 
     TEST_F(AssetFileInfoListComparisonTest, AssetFileInfoValidation_FilePatternRegexComparisonPartial_Valid)

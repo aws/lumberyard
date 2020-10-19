@@ -63,7 +63,8 @@ namespace AzToolsFramework
             const AzFramework::PlatformId& platformIndex,
             AssetFileDebugInfoList* debugList,
             AZStd::unordered_set<AZ::Data::AssetId>* cyclicalDependencySet,
-            const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList);
+            const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
+            const AZStd::vector<AZStd::string>& wildcardPatternExclusionList = AZStd::vector<AZStd::string>());
 
         static const char* GetAssetListDebugFileExtension();
 

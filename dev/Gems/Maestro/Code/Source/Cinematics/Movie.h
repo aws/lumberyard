@@ -70,9 +70,16 @@ struct IConsoleCmdArgs;
 
 struct ISkeletonAnim;
 
+namespace TimeOfDayNodeTest
+{
+    class TimeOfDayNode_Test;
+}
+
 class CMovieSystem
     : public IMovieSystem
 {
+    friend class TimeOfDayNodeTest::TimeOfDayNode_Test;
+
     typedef std::vector<PlayingSequence> PlayingSequences;
 
 public:
@@ -224,8 +231,12 @@ private:
     static void GoToFrameCmd(IConsoleCmdArgs* pArgs);
     static void ListSequencesCmd(IConsoleCmdArgs* pArgs);
     static void PlaySequencesCmd(IConsoleCmdArgs* pArgs);
+
     AZStd::string m_notificationLogMsgs;     // buffer to hold movie user warnings, errors and notifications for the editor.
 #endif
+
+    //! Allows CryStrings to be destroyed before their allocators
+    static void ClearEnumToStringMaps();
 
     void DoNodeStaticInitialisation();
     void UpdateInternal(const float dt, const bool bPreUpdate);

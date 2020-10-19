@@ -131,12 +131,14 @@ void EditorGame::SetPlayerPosAng(Vec3 position, Vec3 viewDirection)
 
         entity->SetPos(position);
 
+#if ENABLE_CRY_PHYSICS
         if (entity->GetPhysics())
         {
             pe_params_pos physicsParams;
             physicsParams.pos = position;
             entity->GetPhysics()->SetParams(&physicsParams);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 

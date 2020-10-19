@@ -28,6 +28,8 @@
 
 #include <LmbrCentral/Animation/AttachmentComponentBus.h>
 
+#include <AzFramework/Render/RenderSystemBus.h>
+
 namespace LmbrCentral
 {
     class MaterialOwnerRequestBusHandlerImpl;
@@ -88,6 +90,7 @@ namespace EMotionFX
 
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentRequestBus::Handler
+            size_t GetNumJoints() const override;
             size_t GetJointIndexByName(const char* name) const override;
             AZ::Transform GetJointTransform(size_t jointIndex, Space space) const override;
             void GetJointTransformComponents(size_t jointIndex, Space space, AZ::Vector3& outPosition, AZ::Quaternion& outRotation, AZ::Vector3& outScale) const override;
@@ -129,6 +132,10 @@ namespace EMotionFX
                 provided.push_back(AZ_CRC("EMotionFXActorService", 0xd6e8f48d));
                 provided.push_back(AZ_CRC("MeshService", 0x71d8a455));
                 provided.push_back(AZ_CRC("CharacterPhysicsDataService", 0x34757927));
+
+#ifdef OTHER_ACTIVE
+                provided.push_back(AZ_CRC("MaterialReceiverService", 0x0d1a6a74));
+#endif
             }
 
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)

@@ -162,7 +162,7 @@ namespace EMotionFX
 
         if (index)
         {
-            command += AZStd::string::format(" -%s %d", CommandAddRagdollJoint::s_indexParameterName, index.value());
+            command += AZStd::string::format(" -%s %zu", CommandAddRagdollJoint::s_indexParameterName, index.value());
         }
 
         CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, executeInsideCommand);

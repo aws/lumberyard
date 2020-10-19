@@ -22,6 +22,8 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 
+#include <AzCore/std/sort.h>
+
 namespace LmbrCentral
 {
 
@@ -326,6 +328,8 @@ Negative values will be ignored.\n")->
             // Grab emitter list from asset and refresh properties.
             m_emitterNames = static_cast<ParticleAsset*>(asset.Get())->m_emitterNames;
 
+            AZStd::sort(m_emitterNames.begin(), m_emitterNames.end(), [](const auto& first, const auto& second) { return first < second; });
+
             //get lib name
             m_libName = "";
             if (m_emitterNames.size() > 0)
@@ -481,6 +485,8 @@ Negative values will be ignored.\n")->
                     }
                     m_libName = "";
                 }
+
+                AZStd::sort(m_emitterNames.begin(), m_emitterNames.end(), [](const auto& first, const auto& second) { return first < second; });
 
                 if (!m_emitterNames.empty())
                 {

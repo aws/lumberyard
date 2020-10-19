@@ -15,6 +15,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "geoman.h"
 #include "bvtree.h"
 #include "geometry.h"
@@ -2739,3 +2741,5 @@ void CPhysicalWorld::ActivateArea(CPhysArea* pArea)
         }
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

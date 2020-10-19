@@ -426,6 +426,29 @@ namespace AZ
             return false;
         }
 
+        bool IsPairContainerType(const AZ::Uuid& type)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                AZ::Uuid containerTypeId = type;
+
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    containerTypeId = classInfo->GetGenericTypeId();
+                }
+
+                if (containerTypeId == AZ::GetGenericClassPairTypeId())
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         AZ::TypeId GetGenericContainerType(const AZ::TypeId& type)
         {
             AZ::SerializeContext* serializeContext = nullptr;

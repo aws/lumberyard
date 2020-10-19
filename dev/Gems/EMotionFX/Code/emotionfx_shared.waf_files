@@ -37,7 +37,9 @@
             "Source/Integration/Components/SimpleMotionComponent.cpp",
             "Source/Integration/Components/SimpleLODComponent.h",
             "Source/Integration/Components/SimpleLODComponent.cpp"
-        ],
+        ]
+    },
+    "RenderBackend.cpp": {
         "GemShared/Source/Rendering": [
             "Source/Integration/Rendering/RenderBackend.h",
             "Source/Integration/Rendering/RenderBackend.cpp",

@@ -142,11 +142,15 @@ private:
     float m_fDamping;
     float m_bDontDisableInvisible;
 
+#if ENABLE_CRY_PHYSICS
     pe_params_area m_gravityParams;
+#endif
 
     std::vector<Vec3> m_bezierPoints;
     std::vector<Vec3> m_bezierPointsTmp;
+#if ENABLE_CRY_PHYSICS
     SEntityPhysicalizeParams::AreaDefinition m_areaDefinition;
+#endif
     bool m_bIsEnable;
     bool m_bIsEnableInternal;
     float m_lastFrameTime;

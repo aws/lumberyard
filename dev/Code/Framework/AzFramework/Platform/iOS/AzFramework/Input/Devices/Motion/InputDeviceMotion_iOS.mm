@@ -142,8 +142,31 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceMotionIos::TickInputDevice()
     {
-        UIInterfaceOrientation uiOrientation = UIApplication.sharedApplication.statusBarOrientation;
-
+        UIInterfaceOrientation uiOrientation = UIInterfaceOrientationUnknown;
+#if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
+        if(@available(iOS 13.0, tvOS 13.0, *))
+        {
+            UIWindow* foundWindow = nil;
+            NSArray* windows = [[UIApplication sharedApplication] windows];
+            for (UIWindow* window in windows)
+            {
+                if (window.isKeyWindow)
+                {
+                    foundWindow = window;
+                    break;
+                }
+            }
+            UIWindowScene* windowScene = foundWindow ? foundWindow.windowScene : nullptr;
+            AZ_Assert(windowScene, "WindowScene is invalid");
+            if(windowScene)
+            {
+                uiOrientation = windowScene.interfaceOrientation;
+            }
+        }
+#else
+        uiOrientation = UIApplication.sharedApplication.statusBarOrientation;
+#endif
+        
         if (CMAccelerometerData* accelerometerData = m_motionManager.accelerometerData)
         {
             // Process raw acceleration

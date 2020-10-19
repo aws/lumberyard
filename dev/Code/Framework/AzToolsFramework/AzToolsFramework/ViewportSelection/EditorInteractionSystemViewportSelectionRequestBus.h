@@ -38,13 +38,13 @@ namespace AzToolsFramework
 
     /// Alias for factory function to create a new type implementing the ViewportSelectionRequests interface.
     using ViewportSelectionRequestsBuilderFn =
-        AZStd::function<AZStd::unique_ptr<ViewportInteraction::ViewportSelectionRequests>(const EditorVisibleEntityDataCache*)>;
+        AZStd::function<AZStd::unique_ptr<ViewportInteraction::InternalViewportSelectionRequests>(const EditorVisibleEntityDataCache*)>;
 
     /// Interface for system component implementing the ViewportSelectionRequests interface.
     /// This interface also includes a setter to set a custom handler also implementing
     /// the ViewportSelectionRequests interface to customize editor behavior.
     class EditorInteractionSystemViewportSelection
-        : public ViewportInteraction::ViewportSelectionRequests
+        : public ViewportInteraction::InternalViewportSelectionRequests
     {
     public:
         /// \ref SetHandler takes a factory function to create a new type implementing
@@ -60,6 +60,8 @@ namespace AzToolsFramework
     };
 
     /// Type to inherit to implement EditorInteractionSystemViewportSelection.
+    /// @note Called by viewport events (RenderViewport) and then handled by concrete
+    /// implementation of InternalViewportSelectionRequests.
     using EditorInteractionSystemViewportSelectionRequestBus =
         AZ::EBus<EditorInteractionSystemViewportSelection, EditorInteractionSystemViewportSelectionRequests>;
 

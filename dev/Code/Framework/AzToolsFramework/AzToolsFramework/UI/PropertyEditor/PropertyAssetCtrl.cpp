@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 
 #include "PropertyAssetCtrl.hxx"
+
 #include "PropertyQTConstants.h"
 
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
@@ -123,6 +124,7 @@ AZ_POP_DISABLE_WARNING
         m_completer->setCaseSensitivity(Qt::CaseInsensitive);
         m_completer->setFilterMode(Qt::MatchContains);
 
+        connect(m_completer->completionModel(), &QAbstractItemModel::modelReset, this, &PropertyAssetCtrl::OnCompletionModelReset);
         connect(m_completer, static_cast<void (QCompleter::*)(const QModelIndex& index)>(&QCompleter::activated), this, &PropertyAssetCtrl::OnAutocomplete);
 
         m_view = aznew AssetCompleterListView(this);
@@ -163,6 +165,29 @@ AZ_POP_DISABLE_WARNING
         {
             SetSelectedAssetID(GetCurrentAssetID());
         }
+    }
+
+    void PropertyAssetCtrl::OnCompletionModelReset()
+    {
+        if (!m_completerIsActive)
+        {
+            return;
+        }
+
+        // Update the minimum width of the popup to fit all strings
+        int marginWidth = m_view->width() - m_view->viewport()->width();
+        int frameWidth = 2 * m_view->frameWidth();
+        int maxStringWidth = 0;
+        for (int i = 0; m_completer->setCurrentRow(i); ++i)
+        {
+            QString currentCompletion = m_completer->currentCompletion();
+            int stringWidth = m_view->fontMetrics().boundingRect(currentCompletion).width();
+            if (stringWidth > maxStringWidth)
+            {
+                maxStringWidth = stringWidth;
+            }
+        }
+        m_view->setMinimumWidth(marginWidth + frameWidth + maxStringWidth);
     }
 
     void PropertyAssetCtrl::OnAutocomplete(const QModelIndex& index)
@@ -836,14 +861,22 @@ AZ_POP_DISABLE_WARNING
 
         AZ::Data::AssetInfo assetInfo;
         AZStd::string rootFilePath;
+        AZStd::string assetPath;
 
-        AssetSystemRequestBus::Broadcast(&AssetSystem::AssetSystemRequest::GetAssetInfoById, defaultID, m_currentAssetType, assetInfo, rootFilePath);
-
-        if (!assetInfo.m_relativePath.empty())
+        if (m_showProductAssetName)
         {
-            AzFramework::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), m_defaultAssetHint);
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, m_defaultAssetID);
+        }
+        else
+        {
+            AssetSystemRequestBus::Broadcast(&AssetSystem::AssetSystemRequest::GetAssetInfoById, defaultID, m_currentAssetType, assetInfo, rootFilePath);
+            assetPath = assetInfo.m_relativePath;
         }
 
+        if (!assetPath.empty())
+        {
+            AzFramework::StringFunc::Path::GetFileName(assetPath.c_str(), m_defaultAssetHint);
+        }
         m_browseEdit->setPlaceholderText((m_defaultAssetHint + m_DefaultSuffix).c_str());
     }
 
@@ -872,6 +905,7 @@ AZ_POP_DISABLE_WARNING
 
                 if (!jobs.empty())
                 {
+                    // The default behavior is show to the source filename.
                     assetPath = jobs[0].m_sourceFile;
 
                     AZStd::string errorLog;
@@ -925,6 +959,12 @@ AZ_POP_DISABLE_WARNING
                         }
                         break;
                     }
+                }
+
+                // This can be turned on with an attribute in EditContext
+                if (m_showProductAssetName)
+                {
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPath, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, assetID);
                 }
 
                 // Only change the asset name if the asset not found or there's no last known good name for it
@@ -1031,6 +1071,16 @@ AZ_POP_DISABLE_WARNING
         SetClearButtonEnabled(visible);
     }
 
+    void PropertyAssetCtrl::SetShowProductAssetName(bool enable)
+    {
+        m_showProductAssetName = enable;
+    }
+
+    bool PropertyAssetCtrl::GetShowProductAssetName() const
+    {
+        return m_showProductAssetName;
+    }
+
     const AZ::Uuid& AssetPropertyHandlerDefault::GetHandledType() const
     {
         return AZ::GetAssetClassId();
@@ -1109,6 +1159,14 @@ AZ_POP_DISABLE_WARNING
             bool visible = true;
             attrValue->Read<bool>(visible);
             GUI->SetClearButtonVisible(visible);
+        }
+        else if (attrib == AZ::Edit::Attributes::ShowProductAssetFileName)
+        {
+            bool showProductAssetName = false;
+            if (attrValue->Read<bool>(showProductAssetName))
+            {
+                GUI->SetShowProductAssetName(showProductAssetName);
+            }
         }
         else if (attrib == AZ::Edit::Attributes::ClearNotify)
         {

@@ -57,6 +57,7 @@ namespace EMotionFX
             ActorInstance* GetActorInstance() override { return m_actorInstance.get(); }
             bool GetRenderCharacter() const override;
             void SetRenderCharacter(bool enable) override;
+            size_t GetNumJoints() const override;
 
             // EditorActorComponentRequestBus::Handler
             const AZ::Data::AssetId& GetActorAssetId() override;

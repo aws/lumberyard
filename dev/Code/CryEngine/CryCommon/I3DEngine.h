@@ -2012,109 +2012,6 @@ struct I3DEngine
     virtual int GetLegacyTerrainLevelData(uint8*& octreeData, STerrainInfo& terrainInfo
                                           , bool& bSectorPalettes, EEndian& eEndian) = 0;
 
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::ReadMacroTextureFile instead
-    // Attempts to import a macro texture file at filepath, and fills out the provided configuration with data from the file. Returns true if successful.
-    virtual bool ReadMacroTextureFile(const char* filepath, LegacyTerrain::MacroTextureConfiguration& configuration) const = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetHeight*(Sampler::BILINEAR) instead.
-    // Summary:
-    //     Gets the interpolated terrain elevation for a specified location.
-    // Notes:
-    //     All x,y values are valid.
-    // Arguments:
-    //     x                        - X coordinate of the location
-    //     y                        - Y coordinate of the location
-    // Return Value:
-    //     A float which indicate the elevation level.
-    virtual float GetTerrainElevation(float x, float y, int nSID = DEFAULT_SID) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetHeight(Sampler::CLAMP) instead.
-    // Summary:
-    //     Gets the terrain elevation for a specified location.
-    // Notes:
-    //     Only values between 0 and WORLD_SIZE.
-    // Arguments:
-    //     x - X coordinate of the location
-    //     y - Y coordinate of the location
-    // Return Value:
-    //     A float which indicate the elevation level.
-    virtual float GetTerrainZ(int x, int y) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus instead.
-    // Summary:
-    //     Gets the terrain slope for a specified location.
-    // Notes:
-    //     Only values between 0 and WORLD_SIZE.
-    //     Otherwise returns 0.
-    // Arguments:
-    //     x - X coordinate of the location
-    //     y - Y coordinate of the location
-    // Return Value:
-    //     A float which indicate the slope (a value between 0f and 255.0f).
-    virtual float GetTerrainSlope(int x, int y) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSurfaceId() instead.
-    // Summary:
-    //     Gets the terrain surfaceid.
-    // Notes:
-    //     Only values between 0 and WORLD_SIZE.
-    // Arguments:
-    //     x - X coordinate of the location
-    //     y - Y coordinate of the location
-    // Return Value:
-    //     An int which indicates the surface id
-    virtual int GetTerrainSurfaceId(int x, int y) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetIsHoleFromFloats instead.
-    // Summary:
-    //     Gets the terrain hole flag for a specified location.
-    // Notes:
-    //     Only values between 0 and WORLD_SIZE.
-    // Arguments:
-    //     x - X coordinate of the location
-    //     y - Y coordinate of the location
-    // Return Value:
-    //     A bool which indicate is there's hole or not.
-    virtual bool GetTerrainHole(int x, int y) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetNormalFromFloats instead.
-    // Summary:
-    //     Gets the terrain surface normal for a specified location.
-    // Arguments:
-    //     vPos.x - X coordinate of the location
-    //     vPos.y - Y coordinate of the location
-    //     vPos.z - ignored
-    // Return Value:
-    //     A terrain surface normal.
-    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetTerrainGridResolution instead.
-    // Summary:
-    //     Gets the unit size of the terrain
-    // Notes:
-    //     The value should currently be 2.
-    // Return Value:
-    //     A int value representing the terrain unit size in meters.
-    virtual int   GetHeightMapUnitSize() = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus::GetTerrainAabb instead.
-    // Summary:
-    //     Gets the size of the terrain
-    // Notes:
-    //     The value should be 2048 by default.
-    // Return Value:
-    //     An int representing the terrain size in meters.
-    virtual int   GetTerrainSize() = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::GetTerrainSectorSize instead.
-    // Summary:
-    //     Gets the size of the terrain sectors
-    // Notes:
-    //     The value should be 64 by default.
-    // Return Value:
-    //     An int representing the size of a sector in meters.
-    virtual int   GetTerrainSectorSize() = 0;
-
     //DOC-IGNORE-BEGIN
 
     // Internal functions, mostly used by the editor, which won't be documented for now
@@ -2123,21 +2020,6 @@ struct I3DEngine
     //        Removes all static objects on the map (for editor)
     virtual void RemoveAllStaticObjects(int nSID = DEFAULT_SID) = 0;
 
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::SetTerrainSectorTexture instead.
-    // Summary:
-    //        Sets terrain sector texture id, and disable streaming on this sector
-    virtual void SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequests::GetTerrainSectorSize
-    // Summary:
-    //        Returns size of smallest terrain texture node (last leaf) in meters
-    virtual int GetTerrainTextureNodeSizeMeters() = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus instead.
-    //Summary:
-    //      Returns boolean indicating if the terrain surface is being shown.
-    virtual bool IsTerrainActive() = 0;
-
     // Summary:
     //        Sets group parameters
     virtual bool SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID = 0) = 0;
@@ -2145,16 +2027,6 @@ struct I3DEngine
     // Summary:
     //        Gets group parameters
     virtual bool GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID = 0) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Will be deleted in an upcoming release.
-    // Summary:
-    //        Sets burbed out flag
-    virtual void SetTerrainBurnedOut(int x, int y, bool bBurnedOut) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Will be deleted in an upcoming release.
-    // Summary:
-    //        Gets burbed out flag
-    virtual bool IsTerrainBurnedOut(int x, int y) = 0;
 
     //DOC-IGNORE-END
 
@@ -2192,11 +2064,6 @@ struct I3DEngine
     virtual void LoadMissionDataFromXMLNode(const char* szMissionName) = 0;
 
     virtual void LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID = DEFAULT_SID) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::LoadTerrainSurfacesFromXML instead.
-    // Summary:
-    //     Loads detail texture and detail object settings from XML doc (load from current LevelData.xml if pDoc is 0)
-    virtual void    LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID = DEFAULT_SID) = 0;
 
     // Summary:
     //      This one is called by the editor when the terrain editing tools are not being built.
@@ -2376,9 +2243,11 @@ struct I3DEngine
     //     Delete RenderNode object.
     virtual void DeleteRenderNode(IRenderNode* pRenderNode) = 0;
 
+#if ENABLE_CRY_PHYSICS
     // Summary:
     //     Set global wind vector.
     virtual void SetWind(const Vec3& vWind) = 0;
+#endif // ENABLE_CRY_PHYSICS
 
     // Summary:
     //     Gets wind direction and force, averaged within a box.
@@ -2464,6 +2333,12 @@ struct I3DEngine
     virtual void GetLightVolumes(threadID nThreadID, SLightVolume*& pLightVols, uint32& nNumVols) = 0;
 
     // Summary:
+    //   Registers a volume for lighting
+    // Return Value:
+    //   The index of the registered volume.
+    virtual uint16 RegisterVolumeForLighting(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo) = 0;
+
+    // Summary:
     //   Reload the heightmap.
     // Description:
     //   Reloading the heightmap will resets all decals and particles.
@@ -2505,11 +2380,6 @@ struct I3DEngine
     // Summary:
     //     In debug mode check memory heap and makes assert, do nothing in release
     virtual void CheckMemoryHeap() = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::CloseTerrainTextureFile instead.
-    // Summary:
-    //     Closes terrain texture file handle and allows to replace/update it.
-    virtual void CloseTerrainTextureFile(int nSID = DEFAULT_SID) = 0;
     
     // Summary:
     //     Removes all decals attached to specified entity.
@@ -2617,11 +2487,6 @@ struct I3DEngine
     virtual void ChangeOceanWaterLevel(float fWaterLevel) = 0;
 
     virtual void InitMaterialDefautMappingAxis(_smart_ptr<IMaterial> pMat) = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use AzFramework::Terrain::TerrainDataRequestBus or LegacyTerrain::LegacyTerrainDataRequestBus
-    // Description:
-    //      Returns interface to terrain engine
-    virtual ITerrain* GetITerrain() = 0;
 
     // Description:
     //      Returns interface to visarea manager.
@@ -2772,10 +2637,6 @@ struct I3DEngine
     virtual void PrecacheRenderNode(IRenderNode* pObj, float fEntDistanceReal) = 0;
 
     virtual IDeferredPhysicsEventManager* GetDeferredPhysicsEventManager() = 0;
-
-    //! LUMBERYARD_DEPRECATED(LY-107351) Use LegacyTerrain::LegacyTerrainDataRequestBus::IsTerrainTextureStreamingInProgress
-    // Return true if terrain texture streaming takes place
-    virtual bool IsTerrainTextureStreamingInProgress() const = 0;
 
     virtual void SetStreamableListener(IStreamedObjectListener* pListener) = 0;
 

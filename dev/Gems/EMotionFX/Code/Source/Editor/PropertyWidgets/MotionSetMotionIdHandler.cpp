@@ -239,30 +239,53 @@ namespace EMotionFX
         }
 
         // Create and show the motion picker window
-        EMStudio::MotionSetSelectionWindow motionPickWindow(this);
-        motionPickWindow.GetHierarchyWidget()->SetSelectionMode(false);
-        motionPickWindow.Update(motionSet);
-        motionPickWindow.setModal(true);
+        m_motionPickWindow = new EMStudio::MotionSetSelectionWindow(this);
+        m_motionPickWindow->GetHierarchyWidget()->SetSelectionMode(false);
+        m_motionPickWindow->Update(motionSet);
+        m_motionPickWindow->setModal(true);
         AZStd::vector<AZStd::string> motionIds;
         motionIds.reserve(m_motions.size());
         for (const auto& motionIdRandomWeightPair : m_motions)
         { 
             motionIds.emplace_back(motionIdRandomWeightPair.first);
         }
-        motionPickWindow.Select(motionIds, motionSet);
+        m_motionPickWindow->Select(motionIds, motionSet);
+        m_motionPickWindow->setAttribute(Qt::WA_DeleteOnClose);
 
-        if (motionPickWindow.exec() == QDialog::Rejected)   // we pressed cancel or the close cross
+        connect(m_motionPickWindow, &QDialog::accepted, this, &MotionSetMotionIdPicker::OnPickDialogAccept);
+        connect(m_motionPickWindow, &QDialog::rejected, this, &MotionSetMotionIdPicker::OnPickDialogReject);
+
+        m_motionPickWindow->open();
+    }
+
+    void MotionSetMotionIdPicker::OnPickDialogAccept()
+    {
+        EMotionFX::MotionSet* motionSet = nullptr;
+        AnimGraphEditorRequestBus::BroadcastResult(motionSet, &AnimGraphEditorRequests::GetSelectedMotionSet);
+        if (!motionSet)
         {
+            QMessageBox::warning(this, "No Motion Set", "Cannot open motion selection window. No valid motion set selected.");
+            m_motionPickWindow->close();
+            m_motionPickWindow = nullptr;
             return;
         }
 
-        HandleSelectedMotionsUpdate(motionPickWindow.GetHierarchyWidget()->GetSelectedMotionIds(motionSet));
+        HandleSelectedMotionsUpdate(m_motionPickWindow->GetHierarchyWidget()->GetSelectedMotionIds(motionSet));
 
         InitializeWidgets();
 
         UpdateGui();
 
         emit SelectionChanged();
+
+        m_motionPickWindow->close();
+        m_motionPickWindow = nullptr;
+    }
+
+    void MotionSetMotionIdPicker::OnPickDialogReject()
+    {
+        m_motionPickWindow->close();
+        m_motionPickWindow = nullptr;
     }
 
     void MotionSetMotionIdPicker::InitializeWidgets()
@@ -282,6 +305,7 @@ namespace EMotionFX
 
             m_pickButton = new QPushButton(this);
             EMStudio::EMStudioManager::MakeTransparentButton(m_pickButton, "/Images/Icons/Plus.svg", "Add motions to blend space");
+            m_pickButton->setObjectName("EMFX.MotionSetMotionIdPicker.PickButton");
             connect(m_pickButton, &QPushButton::clicked, this, &MotionSetMotionIdPicker::OnPickClicked);
             topRowLayout->addWidget(m_pickButton);
             m_pickButton->setToolTip(QString("Add motions"));
@@ -393,7 +417,7 @@ namespace EMotionFX
 
         if (m_motions.size() > 0)
         {
-            m_addMotionsLabel->setText(AZStd::string::format("%u motions selected", m_motions.size()).c_str());
+            m_addMotionsLabel->setText(AZStd::string::format("%zu motions selected", m_motions.size()).c_str());
         }
         else
         {

@@ -47,7 +47,15 @@
             "Source/ForceRegionComponent.cpp",
             "Source/ForceRegionComponent.h",
             "Source/StaticRigidBodyComponent.cpp",
-            "Source/StaticRigidBodyComponent.h"
+            "Source/StaticRigidBodyComponent.h",
+            "Source/JointComponent.cpp",
+            "Source/JointComponent.h",
+            "Source/BallJointComponent.cpp",
+            "Source/BallJointComponent.h",
+            "Source/FixedJointComponent.cpp",
+            "Source/FixedJointComponent.h",
+            "Source/HingeJointComponent.cpp",
+            "Source/HingeJointComponent.h"
         ],
         "Source/Pipeline": [
             "Source/Pipeline/MeshAssetHandler.cpp",
@@ -86,7 +94,9 @@
             "Source/NameConstants.cpp",
             "Source/NameConstants.h",
             "Source/ComponentDescriptors.cpp",
-            "Source/ComponentDescriptors.h"
+            "Source/ComponentDescriptors.h",
+            "Source/WindProvider.cpp",
+            "Source/WindProvider.h"
         ]
     }
 }

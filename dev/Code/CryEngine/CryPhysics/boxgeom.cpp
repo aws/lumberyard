@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "overlapchecks.h"
@@ -739,3 +741,5 @@ void CBoxGeom::Load(CMemStream& stm)
     m_Tree.Load(stm, this);
     m_minVtxDist = (GetBox().size.x + GetBox().size.y + GetBox().size.z) * 1E-4f;
 }
+
+#endif // ENABLE_CRY_PHYSICS

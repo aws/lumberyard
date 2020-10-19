@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzCore/Asset/AssetContainer.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h> // used as allocator for most components
@@ -21,6 +22,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/intrusive_list.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
 
 namespace AZ
 {
@@ -111,7 +113,7 @@ namespace AZ
             friend class ReloadAssetJob;
             friend class LoadAssetJob;
             friend Asset<AssetData> AssetInternal::GetAssetData(const AssetId& id);
-
+            friend class AssetContainer;
         public:
             struct Descriptor
             {
@@ -125,6 +127,7 @@ namespace AZ
             typedef AZStd::unordered_map<AssetType, AssetHandler*> AssetHandlerMap;
             typedef AZStd::unordered_map<AssetType, AssetCatalog*> AssetCatalogMap;
             typedef AZStd::unordered_map<AssetId, AssetData*> AssetMap;
+            typedef AZStd::unordered_map<AssetId, AZStd::weak_ptr<AssetContainer>> AssetContainerMap;
 
             AZ_CLASS_ALLOCATOR(AssetManager, SystemAllocator, 0);
 
@@ -132,7 +135,8 @@ namespace AZ
             static void Destroy();
             static bool IsReady();
             static AssetManager& Instance();
-
+            // Takes ownership
+            static bool SetInstance(AssetManager* assetManager);
             // @{ Asset handler management
             /// Register handler with the system for a particular asset type.
             /// A handler should be registered for each asset type it handles.
@@ -149,7 +153,7 @@ namespace AZ
             /// and therefore this is not a thread safe method and should not be invoked from different threads.
             void UnregisterHandler(AssetHandler* handler);
             // @}
-
+            
             // @{ Asset catalog management
             /// Register a catalog with the system for a particular asset type.
             /// A catalog should be registered for each asset type it is responsible for.
@@ -172,15 +176,39 @@ namespace AZ
             Asset<AssetClass> GetAsset(const AssetId& assetId, bool queueLoadData = true, const AZ::Data::AssetFilterCB& assetLoadFilterCB = nullptr, bool loadBlocking = false);
 
             /**
+            * Gets a root asset and dependencies as individual async loads if necessary.  
+            * \param assetId a valid id of the asset
+            * \param assetLoadFilterCB optional filter predicate for dependent asset loads.
+            * If the asset container is already loaded just hand back a new shared ptr
+            **/
+            AZStd::shared_ptr<AssetContainer> GetAssetContainer(const AssetId& assetId, const AssetType& assetType, AssetContainer::AssetContainerDependencyRules = AssetContainer::AssetContainerDependencyRules::Default, AssetFilterCB loadFilter = {});
+            /**
+            * Creates a new shared AssetContainer with an optional loadFilter
+            * \param assetId a valid id of the asset
+            * **/
+            AZStd::shared_ptr<AssetContainer> CreateAssetContainer(const AssetId& assetId, const AssetType& assetType, AssetContainer::AssetContainerDependencyRules = AssetContainer::AssetContainerDependencyRules::Default, AssetFilterCB loadFilter = nullptr);
+
+            template<class AssetClass>
+            AssetContainer GetAssetContainer(const AssetId& assetId, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+            {
+                return GetAssetContainer(assetId, AzTypeInfo<AssetClass>::Uuid(), assetLoadFilterCB);
+            }
+
+            /**
             * Gets an asset from the database, if not present it loads it from the catalog/stream. For events register a handler by calling RegisterEventHandler().
             * \param assetId a valid id of the asset
             * \param queueLoadData if an asset is not found in the database we will queue a load (default). You can pass false if you don't want to queue a load.
             * \param assetLoadFilterCB optional filter predicate for dependent asset loads.
             * \param loadBlocking defaults to false, but if set, asset will be loaded directly on the calling thread. This should only be set within the asynchronous asset-loading system for cascading loads.
-            * \param isCreate defaults to false.  True indicates this is a brand new asset with a randomly generated assetId, so the AssetManager will not attempt to look up the asset in the asset catalog
+            * \param skipLookup defaults to false.  True tells AssetManager not to attempt to look up the asset in the asset catalog.
+            *     It's used in cases where an asset is new or assetInfo is provided
+            * \param assetInfo - if assetInfo is already known this saves an additional catalog lookup, use skipLookup = True
+            * \parma signalLoaded - if the final "AssetReady" will be suppressed and an AssetLoaded will be signalled instead meaning
+            *     the data is in memory but the asset should not be considered ready, usually due to dependencies
             * Keep in mind that this async operation, asset will not be loaded after the call to this function completes.
-            */
-            Asset<AssetData> GetAsset(const AssetId& assetId, const AssetType& assetType, bool queueLoadData = true, const AZ::Data::AssetFilterCB& assetLoadFilterCB = nullptr, bool loadBlocking = false, bool isCreate = false);
+            **/
+            Asset<AssetData> GetAsset(const AssetId& assetId, const AssetType& assetType, bool queueLoadData = true, const AZ::Data::AssetFilterCB& assetLoadFilterCB = nullptr,
+                bool loadBlocking = false, bool skipLookup = false, AZ::Data::AssetInfo assetInfo = AZ::Data::AssetInfo(), bool signalLoaded = false);
 
             /// Locates an existing asset in the database. If the asset is unknown, a null asset pointer is returned.
             template<class AssetClass>
@@ -248,9 +276,10 @@ namespace AZ
             */
             void        PrepareShutDown();
 
+
         protected:
             AssetManager(const Descriptor& desc);
-            ~AssetManager();
+            virtual ~AssetManager();
 
             void NotifyAssetReady(Asset<AssetData> asset);
             void NotifyAssetPreReload(Asset<AssetData> asset);
@@ -261,7 +290,8 @@ namespace AZ
 
             void AddJob(AssetDatabaseJob* job);
             void RemoveJob(AssetDatabaseJob* job);
-
+            void ValidateAndPostLoad(AZ::Data::Asset < AZ::Data::AssetData>& asset, bool loadSucceeded, bool isReload, AZ::Data::AssetHandler* assetHandler = nullptr);
+            void PostLoad(AZ::Data::Asset < AZ::Data::AssetData>& asset, bool loadSucceeded, bool isReload, AZ::Data::AssetHandler* assetHandler = nullptr);
             //////////////////////////////////////////////////////////////////////////
             // AssetManagerBus
             void OnAssetReady(const Asset<AssetData>& asset) override;
@@ -270,11 +300,18 @@ namespace AZ
             void OnAssetError(const Asset<AssetData>& asset) override;
             //////////////////////////////////////////////////////////////////////////
 
+            // Takes the asset lock and clears any references back to a handler
+            // Used to protect against cleanup errors in cases were the handler is removed
+            // before the assetData
+            virtual AZ::u32 ClearAssetHandlerReferences(AssetHandler* handler);
             AssetHandlerMap         m_handlers;
             AssetCatalogMap         m_catalogs;
             AZStd::recursive_mutex  m_catalogMutex;     // lock when accessing the catalog map
             AssetMap                m_assets;
             AZStd::recursive_mutex  m_assetMutex;       // lock when accessing the asset map
+
+            AssetContainerMap       m_assetsContainers;
+            AZStd::recursive_mutex  m_assetContainerMutex;       // lock when accessing the assetContainers map
 
             int m_creationTokenGenerator = 0; // this is used to generate unique identifiers for assets
 
@@ -295,8 +332,15 @@ namespace AZ
             static EnvironmentVariable<AssetManager*>  s_assetDB;
 
 
-            // used internally by the cycle checking on the job system.
+            // used internally by the cycle checking on the job system.  Used for blocking loads.
             void RegisterAssetLoading(const Asset<AssetData>& asset);
+
+
+            // Variant of RegisterAssetLoading used for jobs which have been queued and need to verify the status of the asset
+            // before loading in order to prevent cases where a load is queued, then a blocking load goes through, then the queued 
+            // load is processed.  This validation step leaves the loaded (And potentially modified) data as is in that case.
+            bool ValidateAndRegisterAssetLoading(const Asset<AssetData>& asset);
+
             void UnregisterAssetLoading(const Asset<AssetData>& asset);
             // to avoid recursive thread deadlocks, we keep track of which thread is loading which asset, and don't allow
             // a thread to wait for its own asset blocking.
@@ -359,6 +403,7 @@ namespace AZ
         class AssetHandler
         {
             friend class AssetManager;
+            friend class AssetData;
         public:
             AZ_RTTI(AssetHandler, "{58BD1FDF-E668-42E5-9091-16F46022F551}");
 

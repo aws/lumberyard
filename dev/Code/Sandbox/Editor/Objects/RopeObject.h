@@ -18,6 +18,7 @@
 #define CRYINCLUDE_EDITOR_OBJECTS_ROPEOBJECT_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 #include "ShapeObject.h"
 
@@ -107,5 +108,6 @@ private:
 
     bool m_bIsSimulating;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_ROPEOBJECT_H

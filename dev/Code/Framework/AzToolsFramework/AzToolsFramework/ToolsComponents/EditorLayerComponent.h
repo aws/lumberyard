@@ -117,6 +117,8 @@ namespace AzToolsFramework
 
             QColor GetLayerColor() override;
 
+            AZ::Color GetColorPropertyValue() override;
+
             bool IsSaveFormatBinary() override;
 
             bool IsLayerNameValid() override;
@@ -169,7 +171,7 @@ namespace AzToolsFramework
             void CleanupLoadedLayer();
 
             // Sets the layer to the passed in color.
-            void SetLayerColor(AZ::Color newColor) { m_editableLayerProperties.m_color = newColor; }
+            void SetLayerColor(AZ::Color newColor) override { m_editableLayerProperties.m_color = newColor; }
 
             // Sets the save format.
             void SetSaveFormat(LayerProperties::SaveFormat saveFormat);
@@ -211,11 +213,26 @@ namespace AzToolsFramework
             /**
             * Creates a layer entity with the given name, and returns the EntityId of the layer entity.
             * \param name Name to use for the new layer.
+            * \param layerColor color of the layer in editor.
+            * \param saveAsBinary save format for layer, xml or binary.
+            * \param optionalEntityId optional param to specify entity ID for created layer.
+            * \return a valid entity ID on successful entity creation
             */
-            static AZ::EntityId CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const LayerProperties::SaveFormat& saveAsBinary, const AZ::EntityId& optionalEntityId=AZ::EntityId());
-        
+            static AZ::EntityId CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const LayerProperties::SaveFormat& saveAsBinary=LayerProperties::SaveFormat::Xml, const AZ::EntityId& optionalEntityId=AZ::EntityId());
+
+            /**
+            * Helper function for script reflection friendly override.
+            * Creates a layer entity with the given name, default color
+            * and xml save format. Returns the EntityId of the layer.
+            * \param name Name to use for the new layer
+            * \return a valid entity ID on successful entity creation
+            */
+            static AZ::EntityId CreateLayerEntityFromName(const AZStd::string& name);
+
+
             // Returns the format the save is currently set to.
             AzToolsFramework::Layers::LayerProperties::SaveFormat GetSaveFormat();
+
         protected:
             ////////////////////////////////////////////////////////////////////
             // AZ::Entity
@@ -309,7 +326,8 @@ namespace AzToolsFramework
                 EntityList& entityList,
                 EditorLayer& layer,
                 const AZStd::unordered_map<AZ::EntityId, AZ::Entity*>& entityIdsToEntityPtrs,
-                AzToolsFramework::Components::TransformComponent& transformComponent) const;
+                AzToolsFramework::Components::TransformComponent& transformComponent,
+                AZ::SliceComponent& rootSlice) const;
 
             void SetUnsavedChanges(bool unsavedChanges);
 
@@ -337,9 +355,12 @@ namespace AzToolsFramework
             // When a new layer is created, mark it as needing to save the level the next time it saves. Existing layers
             // will set this flag to false when they load.
             bool m_mustSaveLevelWhenLayerSaves = true;
-            // When a new layer is created, mark it as requiring an overwrite check, this will also be set when
-            // rename is called and reset when the layer is succesfully saved or just loaded
-            bool m_overwriteCheck = true;
+            // Setting this flag to true will ask for overwrite confirmation when saving the layer, if a layer with the same name exists on
+            // disk. If default value isn't false, this will be set to true for all layers when the level is reset(for example, when saving
+            // a slice), thus prompting a confirmation on further level saves for already loaded layers.
+            bool m_overwriteCheck = false;
+
+            QByteArray m_layerLoadedInEditorHash;
         };
     }
 }

@@ -18,9 +18,10 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Math/Uuid.h>
-#include <AzCore/std/typetraits/is_base_of.h>
+#include <AzCore/std/containers/bitset.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
+#include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/Debug/AssetTracking.h>
 
 namespace AZ
@@ -35,6 +36,7 @@ namespace AZ
         class AssetManager;
         class AssetData;
         class AssetEntry;
+        class AssetHandler;
 
         template<class T>
         class Asset;
@@ -106,7 +108,9 @@ namespace AZ
             enum class AssetStatus : int
             {
                 NotLoaded,          ///< Asset has not been loaded, and is not in the process of loading.
+                Queued,             ///< Asset has a job created for loading it which has not begun processing
                 Loading,            ///< Asset is currently in the process of loading.
+                LoadedPreReady,     ///< Asset data and preload dependencies are loaded. Handler init is about to be called and onassetready will be signaled
                 ReadyPreNotify,     ///< Asset is loaded and ready for use. AssetBus hasn't yet dispatched the OnAssetReady event on the main thread.
                 Ready,              ///< Asset is loaded and ready for use.
                 Error,              ///< Asset attempted to load, but it or a strict dependency failed.
@@ -121,8 +125,7 @@ namespace AZ
                 , m_assetId(assetId)
             {}
 
-            virtual ~AssetData()
-            {}
+            virtual ~AssetData();
 
             static void Reflect(ReflectContext* context);
 
@@ -139,7 +142,7 @@ namespace AZ
             }
 
             AZ_FORCE_INLINE bool IsError() const { return GetStatus() == AssetStatus::Error; }
-            AZ_FORCE_INLINE bool IsLoading() const { return GetStatus() == AssetStatus::Loading; }
+            bool IsLoading(bool includeQueued = true) const;
             AZ_FORCE_INLINE AssetStatus GetStatus() const { return static_cast<AssetStatus>(m_status.load()); }
             AZ_FORCE_INLINE const AssetId& GetId() const { return m_assetId; }
             AZ_FORCE_INLINE const AssetType& GetType() const { return RTTI_GetType(); }
@@ -165,15 +168,34 @@ namespace AZ
              */
             virtual bool HandleAutoReload() { return true; }
 
+            enum class AssetDataFlags : AZ::u32
+            {
+                Requeue = 0
+            };
+
+            bool GetFlag(const AssetDataFlags& checkFlag) const;
+            void SetFlag(const AssetDataFlags& checkFlag, bool setValue);
+
+            bool GetRequeue() const;
+            void SetRequeue(bool requeue);
+
+            void RegisterWithHandler(AssetHandler* assetHandler);
+            void UnregisterWithHandler();
+
             AssetData(const AssetData&) = delete;
             AZStd::atomic_int m_useCount;
             AZStd::atomic_int m_status;
             AssetId m_assetId;
+
+            AssetHandler* m_registeredHandler{ nullptr };
+
             // This is used to identify a unique asset and should only be set by the asset manager 
             // and therefore does not need to be atomic.
             // All shared copy of an asset should have the same identifier and therefore
             // should not be modified while making copy of an existing asset. 
             int m_creationToken = s_defaultCreationToken;
+            // General purpose flags that should only be accessed within the asset mutex
+            AZStd::bitset<32> m_flags;
         };
 
         /**
@@ -181,11 +203,11 @@ namespace AZ
          */
         enum class AssetLoadBehavior : u8
         {
-            Default     = 0,
-
-            PreLoad     = Default,  ///< Default, serializer will pre-load the referenced asset before returning the owning object to the user.
+            PreLoad = 0,            ///< Serializer will "Pre load" dependencies, asset containers may load in parallel but will not signal AssetReady
+            Default = PreLoad,      
             QueueLoad   = 1,        ///< Serializer will queue an asynchronous load of the referenced asset and return the object to the user. User code should use the \ref AZ::Data::AssetBus to monitor for when it's ready.
             NoLoad      = 2,        ///< Serializer will load reference information, but asset loading will be left to the user. User code should call Asset<T>::QueueLoad and use the \ref AZ::Data::AssetBus to monitor for when it's ready.
+                                    ///< AssetContainers will skip NoLoad dependencies
 
             Count,
         };
@@ -214,7 +236,7 @@ namespace AZ
             /// Create asset with default params (no asset bounded)
             /// By default, referenced assets will be preloaded during serialization.
             /// Use \ref AssetLoadBehavior to control this behavior.
-            Asset(AssetLoadBehavior loadBehavior = AssetLoadBehavior::PreLoad);
+            Asset(AssetLoadBehavior loadBehavior = AssetLoadBehavior::Default);
             /// Create an asset from a valid asset data (created asset), might not be loaded or currently loading.
             Asset(AssetData* assetData);
             /// Initialize asset pointer with id, type, and hint. No data construction will occur until QueueLoad is called.
@@ -483,6 +505,9 @@ namespace AZ
             * the asset since completely missing assets are not registered in the asset manager's database or the catalog.
             */
             virtual void OnAssetError(Asset<AssetData> asset) { (void)asset; }
+
+            /// When an asset is loaded as part of a container this signal is sent when all assets within the container are ready
+            virtual void OnAssetContainerReady([[maybe_unused]] Asset<AssetData> asset) { }
         };
 
         typedef EBus<AssetEvents> AssetBus;
@@ -1042,6 +1067,23 @@ namespace AZ
         /// Indiscriminately skips all asset references.
         bool AssetFilterNoAssetLoading(const Asset<Data::AssetData>& /*asset*/);
 
+        // Shared ProductDependency concepts between AP and LY 
+        namespace ProductDependencyInfo
+        {
+            //! Corresponds to all ProductDependencyFlags, not just LoadBehaviors
+            enum class ProductDependencyFlagBits : AZ::u8
+            {
+                // LoadBehavior bits correspond to AssetLoadBehavior which has values 0-3
+                // so uses the first two bits here
+                LoadBehaviorLow = 0,
+                LoadBehaviorHigh = 1,
+                // use additional bits starting here
+                Unused
+            };
+            using ProductDependencyFlags = AZStd::bitset<64>;
+            AZ::Data::AssetLoadBehavior LoadBehaviorFromFlags(const ProductDependencyFlags& dependencyFlags);
+            AZ::Data::ProductDependencyInfo::ProductDependencyFlags CreateFlags(const AZ::Data::Asset<AZ::Data::AssetData>* assetDependency);
+        } // namespace ProductDependencyInfo
     }  // namespace Data
 
     AZ_TYPE_INFO_TEMPLATE_WITH_NAME(AZ::Data::Asset, "Asset", "{C891BF19-B60C-45E2-BFD0-027D15DDC939}", AZ_TYPE_INFO_CLASS);

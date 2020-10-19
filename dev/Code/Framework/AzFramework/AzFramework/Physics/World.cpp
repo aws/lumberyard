@@ -96,6 +96,11 @@ namespace Physics
         return m_maxTimeStep;
     }
 
+    AZ::Crc32 WorldConfiguration::GetCcdVisibility() const
+    {
+        return m_enableCcd ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
+
     void WorldConfiguration::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -110,8 +115,11 @@ namespace Physics
                 ->Field("SweepBufferSize", &WorldConfiguration::m_sweepBufferSize)
                 ->Field("OverlapBufferSize", &WorldConfiguration::m_overlapBufferSize)
                 ->Field("EnableCcd", &WorldConfiguration::m_enableCcd)
+                ->Field("MaxCcdPasses", &WorldConfiguration::m_maxCcdPasses)
+                ->Field("EnableCcdResweep", &WorldConfiguration::m_enableCcdResweep)
                 ->Field("EnableActiveActors", &WorldConfiguration::m_enableActiveActors)
                 ->Field("EnablePcm", &WorldConfiguration::m_enablePcm)
+                ->Field("BounceThresholdVelocity", &WorldConfiguration::m_bounceThresholdVelocity)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -138,8 +146,23 @@ namespace Physics
                         ->Attribute(AZ::Edit::Attributes::Min, 1u)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_overlapBufferSize, "Overlap Query Buffer Size", "Maximum number of hits from a overlap query")
                         ->Attribute(AZ::Edit::Attributes::Min, 1u)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_enableCcd, "Continuous Collision Detection", "Enabled continuous collision detection in the world")
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Continuous Collision Detection")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_enableCcd, "Enable CCD", "Enabled continuous collision detection in the world")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_maxCcdPasses,
+                        "Max CCD Passes", "Maximum number of continuous collision detection passes")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &WorldConfiguration::GetCcdVisibility)
+                        ->Attribute(AZ::Edit::Attributes::Min, 1u)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_enableCcdResweep,
+                        "Enable CCD Resweep", "Enable a more accurate but more expensive continuous collision detection method")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &WorldConfiguration::GetCcdVisibility)
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "") // end previous group by starting new unnamed expanded group
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_enablePcm, "Persistent Contact Manifold", "Enabled the persistent contact manifold narrow-phase algorithm")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_bounceThresholdVelocity,
+                        "Bounce Threshold Velocity", "Relative velocity below which colliding objects will not bounce")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
                     ;
             }
         }

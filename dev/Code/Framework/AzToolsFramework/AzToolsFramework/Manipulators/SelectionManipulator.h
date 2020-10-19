@@ -67,7 +67,9 @@ namespace AzToolsFramework
         void ToggleSelected() { m_selected = !m_selected; }
 
         // LUMBERYARD_DEPRECATED(LY-106737)
-        void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
+        AZ_DEPRECATED(
+            void SetView(AZStd::unique_ptr<ManipulatorView>&& view);,
+            "SetView is now deprecated, please use SetViews instead.")
 
         template<typename Views>
         void SetViews(Views&& views)

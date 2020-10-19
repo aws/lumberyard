@@ -13,6 +13,25 @@
 
 #pragma once
 
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// CryPhysics deprecation
+//
+// Select one and only one of these two #defines.
+//
+// A) (Default) Enabling this will cause audio code to adopt the global CryPhysics
+//    setting, whether it's enabled or disabled.
+#define AUDIO_ENABLE_CRY_PHYSICS ENABLE_CRY_PHYSICS
+
+// B) Enabling this will cause audio code to use the new PhysX-compatible code,
+//    regardless of whether CryPhysics is ON or OFF.
+//    Don't set AUDIO_ENABLE_CRY_PHYSICS to 1, because if ENABLE_CRY_PHYSICS is 0 then it
+//    will result in compile errors.
+//#define AUDIO_ENABLE_CRY_PHYSICS 0
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+
 #include <IAudioInterfacesCommonData.h>
 #include <ILipSyncProvider.h>
 
@@ -80,7 +99,9 @@ namespace Audio
         eACMRT_REPORT_STARTED_EVENT             = AUDIO_BIT(0),
         eACMRT_REPORT_FINISHED_EVENT            = AUDIO_BIT(1),
         eACMRT_REPORT_FINISHED_TRIGGER_INSTANCE = AUDIO_BIT(2),
+#if AUDIO_ENABLE_CRY_PHYSICS
         eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY = AUDIO_BIT(3),
+#endif // AUDIO_ENABLE_CRY_PHYSICS
     };
 
     enum EAudioListenerRequestType : TATLEnumFlagsType
@@ -113,10 +134,6 @@ namespace Audio
         eAOOCT_IGNORE       = 0,
         eAOOCT_SINGLE_RAY   = 1,
         eAOOCT_MULTI_RAY    = 2,
-
-        eAOOCT_NONE         = 3,    // used only as a "default" state, nothing should use this at runtime.
-
-        eAOOCT_COUNT,
     };
 
     enum EAudioControlType : TATLEnumFlagsType
@@ -481,6 +498,7 @@ namespace Audio
         const TAudioControlID nAudioTriggerID;
     };
 
+#if AUDIO_ENABLE_CRY_PHYSICS
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     template<>
     struct SAudioCallbackManagerRequestData<eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY>
@@ -497,6 +515,7 @@ namespace Audio
         const TAudioObjectID nObjectID;
         const AZStd::size_t nRayID;
     };
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

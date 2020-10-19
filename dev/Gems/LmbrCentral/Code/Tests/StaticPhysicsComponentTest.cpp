@@ -10,6 +10,9 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "LmbrCentral.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Physics/StaticPhysicsComponent.h"
@@ -107,3 +110,4 @@ TEST_F(LoadStaticPhysicsComponentFromLegacyDataLackingBehavior, ComponentId_Matc
 {
     EXPECT_EQ(m_object->GetId(), 951);
 }
+#endif // ENABLE_CRY_PHYSICS

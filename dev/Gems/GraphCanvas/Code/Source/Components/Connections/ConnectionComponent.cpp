@@ -844,10 +844,13 @@ namespace GraphCanvas
 
         for (Endpoint endpoint : endpoints)
         {
-            bool isVisible = true;
-            VisualRequestBus::EventResult(isVisible, endpoint.GetSlotId(), &VisualRequests::IsVisible);
+            // Skip over ourselves.
+            if (endpoint == knownEndpoint)
+            {
+                continue;
+            }
 
-            if (!isVisible)
+            if (!GraphUtils::IsSlotVisible(endpoint.GetSlotId()))
             {
                 continue;
             }
@@ -863,7 +866,7 @@ namespace GraphCanvas
             if (m_dragContext == DragContext::MoveSource && endpoint == m_sourceEndpoint)
             {
                 canCreateConnection = true;
-            }            
+            }
             else if (m_dragContext == DragContext::MoveTarget && endpoint == m_targetEndpoint)
             {
                 canCreateConnection = true;

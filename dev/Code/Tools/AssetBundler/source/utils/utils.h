@@ -78,9 +78,13 @@ namespace AssetBundler
     extern const char* ComparisonTypeArg;
     extern const char* ComparisonFilePatternArg;
     extern const char* ComparisonFilePatternTypeArg;
+    extern const char* ComparisonTokenNameArg;
+    extern const char* ComparisonFirstInputArg;
+    extern const char* ComparisonSecondInputArg;
     extern const char* AddComparisonStepArg;
     extern const char* RemoveComparisonStepArg;
     extern const char* MoveComparisonStepArg;
+    extern const char* EditComparisonStepArg;
     ////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,17 +222,23 @@ namespace AssetBundler
     //! Add the specified platform identifier to the filename
     void AddPlatformIdentifier(AZStd::string& filePath, const AZStd::string& platformIdentifier);
 
-    //! Returns a list of absolute file paths of all the default Seed List files for the current game project.
-    AZStd::vector<AZStd::string> GetDefaultSeedListFiles(const char* root, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
+    //! Returns the list of platforms that exist on-disk for the input file path.
+    AzFramework::PlatformFlags GetPlatformsOnDiskForPlatformSpecificFile(const AZStd::string& platformIndependentAbsolutePath);
+
+    //! Returns a map of <absolute file path, source folder display name> of all default Seed List files for the current game project.
+    AZStd::unordered_map<AZStd::string, AZStd::string> GetDefaultSeedListFiles(const char* root, const char* projectName, const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
+
+    //! Returns a vector of relative paths to Assets that should be included as default Seeds, but are not already in a Seed List file.
+    AZStd::vector<AZStd::string> GetDefaultSeeds(const char* root, const char* projectName);
 
     //! Returns the absolute path of {ProjectName}_Dependencies.xml
-    AZStd::string GetProjectDependenciesFile(const char* root);
+    AZStd::string GetProjectDependenciesFile(const char* root, const char* projectName);
 
     //! Returns the absolute path of the project dependencies file in the default project template
     AZStd::string GetProjectDependenciesFileTemplate(const char* root);
 
-    //! Returns a list of absolute file paths of all the default Seed List files found inside enabled Gems.
-    AZStd::vector<AZStd::string> GetGemSeedListFiles(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
+    //! Creates the ProjectName_Dependencies.xml file if it does not exist, and adds returns the relative path to the asset in the Cache.
+    AZStd::string GetProjectDependenciesAssetPath(const char* root, const char* projectName);
 
     //! Returns the map from gem seed list file path to gem name
     AZStd::unordered_map<AZStd::string, AZStd::string> GetGemSeedListFilePathToGemNameMap(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList, AzFramework::PlatformFlags platformFlags);
@@ -289,4 +299,6 @@ namespace AssetBundler
 
     AZ::Outcome<AzToolsFramework::AssetFileInfoListComparison::ComparisonType, AZStd::string> ParseComparisonType(const AZStd::string& comparisonType);
     AZ::Outcome<AzToolsFramework::AssetFileInfoListComparison::FilePatternType, AZStd::string> ParseFilePatternType(const AZStd::string& filePatternType);
+    bool LooksLikePath(const AZStd::string& inputString);
+    bool LooksLikeWildcardPattern(const AZStd::string& inputPattern);
 }

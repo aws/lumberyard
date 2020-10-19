@@ -25,7 +25,7 @@ namespace Multiplayer
     static const char* GameliftEndPointInput = "EndPoint";
 
     static const char* GameliftPlayerIDInput = "PlayerId";
-    static const char* GameliftButton = "GameLiftButton";
+    static const char* GameliftButton = "GameliftButton";
 
     MultiplayerDedicatedHostTypeSelectionCanvas::MultiplayerDedicatedHostTypeSelectionCanvas(const MultiplayerDedicatedHostTypeSelectionCanvasContext& context)
         : m_context(context)

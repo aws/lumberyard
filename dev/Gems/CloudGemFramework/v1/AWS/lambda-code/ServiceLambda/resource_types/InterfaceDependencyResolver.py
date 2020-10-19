@@ -14,6 +14,7 @@ import boto3
 import collections
 import copy
 import re
+import os
 
 # Python 2.7/3.7 Compatibility
 from six import iteritems
@@ -213,21 +214,35 @@ def _get_permitted_arns(stack, interface):
 InterfaceUrlParts = collections.namedtuple(
     'InterfaceUrlparts', ['api_id', 'region', 'stage_name', 'path'])
 INTERFACE_URL_FORMAT = 'https://{api_id}.execute-api.{region}.amazonaws.com/{stage_name}/{path}'
+CUSTOM_DOMAIN_INTERFACE_URL_FORMAT = 'https://{custom_domain_name}/{region}.{stage_name}.{api_id}/{path}'
 
 
 def _parse_interface_url(interface_url):
     slash_parts = interface_url.split('/')
     if len(slash_parts) <= 4:
-        raise RuntimeError('Interface url does not have the expected format of {}: {}'.format(
-            INTERFACE_URL_FORMAT, interface_url))
-    dot_parts = slash_parts[2].split('.')
-    if len(dot_parts) != 5:
-        raise RuntimeError('Interface url does not have the expected format of {}: {}'.format(
-            INTERFACE_URL_FORMAT, interface_url))
+        raise RuntimeError('Interface url does not have the expected format of {} or {}: {}'.format(
+            INTERFACE_URL_FORMAT, CUSTOM_DOMAIN_INTERFACE_URL_FORMAT, interface_url))
 
-    api_id = dot_parts[0]
-    region = dot_parts[2]
-    stage_name = slash_parts[3]
+    custom_domain_name = os.environ.get('CustomDomainName', '')
+
+    if custom_domain_name:
+        dot_parts = slash_parts[3].split('.')
+        if len(dot_parts) != 3:
+            raise RuntimeError('Interface url does not have the expected format of {}: {}'.format(
+                CUSTOM_DOMAIN_INTERFACE_URL_FORMAT, interface_url))
+
+        region = dot_parts[0]
+        stage_name = dot_parts[1]
+        api_id = dot_parts[2]
+    else:
+        dot_parts = slash_parts[2].split('.')
+        if len(dot_parts) != 5:
+            raise RuntimeError('Interface url does not have the expected format of {}: {}'.format(
+                INTERFACE_URL_FORMAT, interface_url))
+
+        api_id = dot_parts[0]
+        region = dot_parts[2]
+        stage_name = slash_parts[3]
     path = '/'.join(slash_parts[4:])
 
     return InterfaceUrlParts(

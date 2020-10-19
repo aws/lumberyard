@@ -15,6 +15,8 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 
+#include <AzFramework/Physics/WindBus.h>
+
 #include <LmbrCentral/Rendering/MeshModificationBus.h>
 
 #include <System/ClothConfiguration.h>
@@ -36,6 +38,7 @@ namespace NvCloth
         : public LmbrCentral::MeshModificationNotificationBus::Handler
         , public SystemNotificationsBus::Handler
         , public AZ::TransformNotificationBus::Handler
+        , public Physics::WindNotificationsBus::Handler
     {
     public:
         AZ_RTTI(ClothComponentMesh, "{15A0F10C-6248-4CE4-A6FD-0E2D8AFCFEE8}");
@@ -44,6 +47,8 @@ namespace NvCloth
         ~ClothComponentMesh();
 
         AZ_DISABLE_COPY_MOVE(ClothComponentMesh);
+
+        void UpdateConfiguration(AZ::EntityId entityId, const ClothConfiguration& config);
 
     protected:
         // Functions used to setup and tear down cloth component mesh
@@ -59,6 +64,10 @@ namespace NvCloth
 
         // LmbrCentral::MeshModificationNotificationBus::Handler overrides
         void ModifyMesh(size_t lodIndex, size_t primitiveIndex, IRenderMesh* renderMesh) override;
+
+        // Physics::WindNotificationsBus::Handler overrides
+        void OnGlobalWindChanged() override;
+        void OnWindChanged(const AZ::Aabb& aabb) override;
 
     private:
         // Rendering data. Stores the final particles that are going to be sent for rendering.
@@ -77,6 +86,8 @@ namespace NvCloth
 
         void ClearData();
 
+        void SetTransform(const AZ::Transform& worldTransform);
+
         // Update functions called every frame in OnTick
         void UpdateSimulationCollisions();
         void UpdateSimulationStaticParticles();
@@ -85,6 +96,9 @@ namespace NvCloth
 
         bool IsClothFullySimulated() const;
         bool IsClothFullyAnimated() const;
+
+        void UpdateWindVelocity();
+        void UpdateWindVelocity(const AZ::Vector3& position);
 
         // Entity Id of the cloth component
         AZ::EntityId m_entityId;

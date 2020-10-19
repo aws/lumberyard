@@ -49,7 +49,11 @@
             "ToolsComponents/EditorTransformComponentTests.cpp"
         ],
         "UI": [
+            "UI/EntityIdQLineEditTests.cpp",
             "UI/EntityPropertyEditorTests.cpp"
+        ],
+        "Viewport": [
+            "Viewport/ViewportScreenTests.cpp"
         ]
     }
 }

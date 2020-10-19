@@ -10,17 +10,19 @@
 *
 */
 
-var session = require('./session-helper.js');
+const session = require('./session-helper.js');
 
 /**
  * Dynamic Content Integration Tests
+ *
  * For this to run correctly it assumes your dynamic content gem has at least one dynamic content item available.
  * This test will only run in Chrome currently.  The current version of gecko does not support mouseMove which means Firefox will not work.
  * https://github.com/angular/protractor/issues/4177
  */
 describe('Dynamic Content', function() {
     
-    beforeAll(function () {        
+    beforeAll(function () {
+        // Cog item can be off screen causing tests to fail with 'element not interactable' errors
         browser.get(browser.params.url);
         console.log("Waiting for the Cloud Gem Portal to load.")
         browser.wait(until.urlContains(session.loginPath), 10000, "urlContains"); // Checks that the current URL contains the expected text           

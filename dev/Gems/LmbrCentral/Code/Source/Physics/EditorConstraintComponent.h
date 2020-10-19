@@ -9,6 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if ENABLE_CRY_PHYSICS
+
 #pragma once
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
@@ -124,3 +127,5 @@ namespace LmbrCentral
         EditorConstraintConfiguration m_config;
     };
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

@@ -1004,7 +1004,7 @@ void COctreeNode::CompileCharacter(ICharacterInstance* pChar, unsigned char& nIn
 }
 
 //////////////////////////////////////////////////////////////////////////
-int16 CObjManager::GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, bool bSpecular)
+int16 CObjManager::GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, bool bSpecular, bool bGetFirstProbe)
 {
     // Only used for alpha blended geometry - but still should be optimized further
     float fMinDistance = FLT_MAX;
@@ -1016,12 +1016,12 @@ int16 CObjManager::GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, b
     {
         if (Get3DEngine()->IsObjectTreeReady())
         {
-            Get3DEngine()->GetObjectTree()->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, &objBox);
+            Get3DEngine()->GetObjectTree()->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, &objBox, bGetFirstProbe);
         }
     }
     else
     {
-        Get3DEngine()->GetVisAreaManager()->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, &objBox);
+        Get3DEngine()->GetVisAreaManager()->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, &objBox, bGetFirstProbe);
     }
 
     if (pNearestLight)
@@ -1458,7 +1458,7 @@ void COctreeNode::GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType o
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void COctreeNode::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox)
+void COctreeNode::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox, bool bGetFirstProbe)
 {
     if (!m_bHasLights)
     {
@@ -1497,12 +1497,14 @@ void COctreeNode::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CL
                     Vec3 vProbeExtents = pLight->m_ProbeExtents;
                     if (fabs(vCenterOBBSpace.x) < vProbeExtents.x && fabs(vCenterOBBSpace.y) < vProbeExtents.y && fabs(vCenterOBBSpace.z) < vProbeExtents.z)
                     {
-                        if (pLight->m_nSortPriority > nMaxPriority 
+                        float fProbeSqDistance = bGetFirstProbe ? 0.0f : vCenterRel.len2();
+
+                        if (pLight->m_nSortPriority > nMaxPriority
                             && pLight->m_fProbeAttenuation > 0) // Don't return a probe that is disabled/invisible. In particular this provides better results when lighting particles.
                         {
                             pNearestLight = (CLightEntity*)pObj;
                             nMaxPriority = pLight->m_nSortPriority;
-                            fMinDistance = 0;
+                            fMinDistance = fProbeSqDistance;
                         }
                     }
                 }
@@ -1514,7 +1516,7 @@ void COctreeNode::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CL
     {
         if (m_arrChilds[i])
         {
-            m_arrChilds[i]->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, pBBox);
+            m_arrChilds[i]->GetNearestCubeProbe(fMinDistance, nMaxPriority, pNearestLight, pBBox, bGetFirstProbe);
         }
     }
 }
@@ -1758,6 +1760,7 @@ _smart_ptr<IMaterial> CRoadRenderNode::GetMaterial(Vec3* pHitPos)
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
 void CBreakableGlassRenderNode::FillBBox(AABB& aabb)
 {
     aabb = CBreakableGlassRenderNode::GetBBox();
@@ -1794,6 +1797,7 @@ _smart_ptr<IMaterial> CBreakableGlassRenderNode::GetMaterial(Vec3* pHitPos)
 {
     return m_glassParams.pGlassMaterial;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -1943,6 +1947,7 @@ _smart_ptr<IMaterial> CDistanceCloudRenderNode::GetMaterial(Vec3* pHitPos)
     return m_pMaterial;
 }
 
+#if ENABLE_CRY_PHYSICS
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 void CRopeRenderNode::FillBBox(AABB& aabb)
@@ -1973,6 +1978,7 @@ _smart_ptr<IMaterial> CRopeRenderNode::GetMaterial(Vec3* pHitPos)
 {
     return m_pMaterial;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

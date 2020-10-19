@@ -1,16 +1,19 @@
 <RCJobs>
     <!--
         DefaultProperties can be overriden from command line.
+        Sounds pak properties moved here in order to override them.
     -->
     <DefaultProperties
         p="pc"
         game="samplesproject"
         src="Cache\${game}\${p}"
         trg="${game}_${p}_paks"
+
+        sounds_pak_types="sounds\*.*"
+        sounds_pak_excludes=""
     />
 
     <Properties
-
         levels_pak_types="levels\*.*"
         levels_pak_excludes="*\leveldata\*;*.pak"
 
@@ -28,9 +31,6 @@
 
         textures_pak_types="textures\*.*"
         textures_pak_excludes=""
-
-        sounds_pak_types="sounds\*.*"
-        sounds_pak_excludes=""
 
         scripts_pak_types="entities\*.*;scripts\*.*"
         scripts_pak_excludes=""
@@ -89,8 +89,8 @@
         <Job sourceroot="${src_game}" input="${misc_pak_types}" zip="${trg_paks}\misc.pak" exclude="${misc_pak_excludes}" />
 
         <Job sourceroot="${src}"      input="${gems_pak_types}" zip="${trg_paks}\gems\gems.pak" exclude="${gems_pak_excludes}" />
-
     </PakJob>
+
     <Run Job="CopyJob"/>
     <Run Job="PakJob"/>
 </RCJobs>

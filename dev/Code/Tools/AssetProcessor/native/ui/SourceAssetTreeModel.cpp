@@ -23,31 +23,13 @@
 namespace AssetProcessor
 {
 
-    SourceAssetTreeModel::SourceAssetTreeModel(QObject *parent) :
-        AssetTreeModel(parent)
+    SourceAssetTreeModel::SourceAssetTreeModel(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> sharedDbConnection, QObject *parent) :
+        AssetTreeModel(sharedDbConnection, parent)
     {
-        ApplicationManagerNotifications::Bus::Handler::BusConnect();
-        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusConnect();
     }
 
     SourceAssetTreeModel::~SourceAssetTreeModel()
     {
-        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
-        ApplicationManagerNotifications::Bus::Handler::BusDisconnect();
-    }
-
-    void SourceAssetTreeModel::DoCleanup()
-    {
-        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
-        // SourceAssetTreeModel queues functions on the systemTickBus for processing on the main thread in response to asset changes
-        // We need to clear out any left pending before we go away
-        AZ::SystemTickBus::ExecuteQueuedEvents();
-
-    }
-
-    void SourceAssetTreeModel::ApplicationShutdownRequested()
-    {
-        DoCleanup();
     }
 
     void SourceAssetTreeModel::ResetModel()
@@ -55,7 +37,7 @@ namespace AssetProcessor
         m_sourceToTreeItem.clear();
         m_sourceIdToTreeItem.clear();
 
-        m_dbConnection.QuerySourceAndScanfolder(
+        m_sharedDbConnection->QuerySourceAndScanfolder(
             [&](AzToolsFramework::AssetDatabase::SourceAndScanFolderDatabaseEntry& sourceAndScanFolder)
         {
             AddOrUpdateEntry(sourceAndScanFolder, sourceAndScanFolder, true);
@@ -166,7 +148,7 @@ namespace AssetProcessor
         // Model changes need to be run on the main thread.
         AZ::SystemTickBus::QueueFunction([&, entry]()
         {
-            m_dbConnection.QueryScanFolderBySourceID(entry.m_sourceID,
+            m_sharedDbConnection->QueryScanFolderBySourceID(entry.m_sourceID,
                 [&, entry](AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry& scanFolder)
             {
                 AddOrUpdateEntry(entry, scanFolder, false);
@@ -191,7 +173,13 @@ namespace AssetProcessor
         {
             return;
         }
+
         AssetTreeItem* parent = assetToRemove->GetParent();
+        if (!parent)
+        {
+            return;
+        }
+
         QModelIndex parentIndex = createIndex(parent->GetRow(), 0, parent);
 
         beginRemoveRows(parentIndex, assetToRemove->GetRow(), assetToRemove->GetRow());

@@ -46,6 +46,7 @@ namespace EMotionFX
         MOCK_METHOD2(RemoveParameterValueImpl, void(uint32 index, bool delFromMem));
         virtual void RemoveParameterValue(uint32 index, bool delFromMem = true) { RemoveParameterValueImpl(index, delFromMem); }
         //void AddParameterValue();
+        MOCK_METHOD2(MoveParameterValue, void(uint32 oldIndex, uint32 newIndex));
         MOCK_METHOD1(InsertParameterValue, void(uint32 index));
         //void RemoveAllParameters(bool delFromMem);
         //template <typename T>
@@ -124,9 +125,9 @@ namespace EMotionFX
         //void SetIsPostUpdateReady(uint32 objectIndex, bool isReady);
         //const InitSettings& GetInitSettings() const;
         //const AnimGraphEventBuffer& GetEventBuffer() const;
-        //void AddServantGraph(AnimGraphInstance* servant, bool registerMasterInsideServant);
-        //void RemoveServantGraph(AnimGraphInstance* servant, bool removeMasterFromServant);
-        //AZStd::vector<AnimGraphInstance*>& GetServantGraphs();
+        //void AddFollowerGraph(AnimGraphInstance* follower, bool registerLeaderInsideFollower);
+        //void RemoveFollowerGraph(AnimGraphInstance* follower, bool removeLeaderFromFollower);
+        //AZStd::vector<AnimGraphInstance*>& GetFollowerGraphs();
         //void CreateSnapshot(bool authoritative);
         //void SetSnapshotSerializer(AZStd::shared_ptr<Network::AnimGraphSnapshotSerializer> serializer);
         //void SetSnapshotChunkSerializer(AZStd::shared_ptr<Network::AnimGraphSnapshotChunkSerializer> serializer);

@@ -107,7 +107,9 @@ public:
     virtual bool RequestScreenShot() = 0;
     virtual bool RequiresParticleStats(bool& bEffectStats) = 0;
     virtual void AddParticleEffect(const char* pEffectName, int count) = 0;
+#if ENABLE_CRY_PHYSICS
     virtual void AddPhysEntity(const struct phys_profile_info* pInfo) = 0;
+#endif
     virtual const char* GetLogFileName() = 0;
     virtual void CreateTelemetryStream(const char* postHeader, const char* hostname, int port) = 0;
     virtual void CloseTelemetryStream() = 0;
@@ -136,7 +138,9 @@ struct IStatoscope
     bool RequestScreenShot() {return false; }
     bool RequiresParticleStats(bool& bEffectStats) {return false; }
     void AddParticleEffect(const char* pEffectName, int count) {}
+#if ENABLE_CRY_PHYSICS
     void AddPhysEntity(const struct phys_profile_info* pInfo) {}
+#endif
     const char* GetLogFileName() { return ""; }
     void CreateTelemetryStream(const char* postHeader, const char* hostname, int port) {}
     void CloseTelemetryStream() {}

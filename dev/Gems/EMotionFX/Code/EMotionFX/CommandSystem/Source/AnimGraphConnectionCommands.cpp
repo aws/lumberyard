@@ -163,13 +163,13 @@ namespace CommandSystem
             // verify port ranges
             if (mSourcePort >= static_cast<int32>(sourceNode->GetOutputPorts().size()) || mSourcePort < 0)
             {
-                outResult = AZStd::string::format("The output port number is not valid for the given node. Node '%s' only has %d output ports.", sourceNode->GetName(), sourceNode->GetOutputPorts().size());
+                outResult = AZStd::string::format("The output port number is not valid for the given node. Node '%s' only has %zu output ports.", sourceNode->GetName(), sourceNode->GetOutputPorts().size());
                 return false;
             }
 
             if (mTargetPort >= static_cast<int32>(targetNode->GetInputPorts().size()) || mTargetPort < 0)
             {
-                outResult = AZStd::string::format("The input port number is not valid for the given node. Node '%s' only has %d input ports.", targetNode->GetName(), targetNode->GetInputPorts().size());
+                outResult = AZStd::string::format("The input port number is not valid for the given node. Node '%s' only has %zu input ports.", targetNode->GetName(), targetNode->GetInputPorts().size());
                 return false;
             }
 
@@ -221,14 +221,14 @@ namespace CommandSystem
             EMotionFX::AnimGraphObject* object = EMotionFX::AnimGraphObjectFactory::Create(mTransitionType, animGraph);
             if (!object)
             {
-                outResult = AZStd::string::format("Cannot create transition of type %d", mTransitionType.ToString<AZStd::string>().c_str());
+                outResult = AZStd::string::format("Cannot create transition of type %s", mTransitionType.ToString<AZStd::string>().c_str());
                 return false;
             }
 
             // check if this is really a transition
             if (!azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(object))
             {
-                outResult = AZStd::string::format("Cannot create state transition of type %d, because this object type is not inherited from AnimGraphStateTransition.", mTransitionType.ToString<AZStd::string>().c_str());
+                outResult = AZStd::string::format("Cannot create state transition of type %s, because this object type is not inherited from AnimGraphStateTransition.", mTransitionType.ToString<AZStd::string>().c_str());
                 return false;
             }
 
@@ -503,13 +503,13 @@ namespace CommandSystem
             // verify port ranges
             if (mSourcePort >= static_cast<int32>(sourceNode->GetOutputPorts().size()) || mSourcePort < 0)
             {
-                outResult = AZStd::string::format("The output port number is not valid for the given node. Node '%s' only has %d output ports.", sourceNode->GetName(), sourceNode->GetOutputPorts().size());
+                outResult = AZStd::string::format("The output port number is not valid for the given node. Node '%s' only has %zu output ports.", sourceNode->GetName(), sourceNode->GetOutputPorts().size());
                 return false;
             }
 
             if (mTargetPort >= static_cast<int32>(targetNode->GetInputPorts().size()) || mTargetPort < 0)
             {
-                outResult = AZStd::string::format("The input port number is not valid for the given node. Node '%s' only has %d input ports.", targetNode->GetName(), targetNode->GetInputPorts().size());
+                outResult = AZStd::string::format("The input port number is not valid for the given node. Node '%s' only has %zu input ports.", targetNode->GetName(), targetNode->GetInputPorts().size());
                 return false;
             }
 
@@ -682,7 +682,7 @@ namespace CommandSystem
         const AZStd::optional<AZStd::string>& sourceNode, const AZStd::optional<AZStd::string>& targetNode,
         const AZStd::optional<AZ::s32>& startOffsetX, const AZStd::optional<AZ::s32>& startOffsetY,
         const AZStd::optional<AZ::s32>& endOffsetX, const AZStd::optional<AZ::s32>& endOffsetY,
-        const AZStd::optional<AZStd::string>& attributesString,
+        const AZStd::optional<AZStd::string>& attributesString, const AZStd::optional<AZStd::string>& serializedMembers,
         MCore::CommandGroup* commandGroup, bool executeInsideCommand)
     {
         AZStd::string command = AZStd::string::format("%s -%s %i -%s %s",
@@ -730,6 +730,13 @@ namespace CommandSystem
             command += "}";
         }
 
+        if (serializedMembers)
+        {
+            command += AZStd::string::format(" -%s {", EMotionFX::ParameterMixinSerializedMembers::s_parameterName);
+            command += serializedMembers.value();
+            command += "}";
+        }
+
         CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, executeInsideCommand);
     }
 
@@ -739,11 +746,6 @@ namespace CommandSystem
     CommandAnimGraphAdjustTransition::CommandAnimGraphAdjustTransition(MCore::Command* orgCommand)
         : MCore::Command(s_commandName, orgCommand)
     {
-        mStartOffsetX       = 0;
-        mStartOffsetY       = 0;
-        mEndOffsetX         = 0;
-        mEndOffsetY         = 0;
-        mOldDirtyFlag       = false;
     }
 
     void CommandAnimGraphAdjustTransition::RewindTransitionIfActive(EMotionFX::AnimGraphStateTransition* transition)
@@ -777,23 +779,7 @@ namespace CommandSystem
             return false;
         }
 
-        mStartOffsetX = transition->GetVisualStartOffsetX();
-        mStartOffsetY = transition->GetVisualStartOffsetY();
-        mEndOffsetX = transition->GetVisualEndOffsetX();
-        mEndOffsetY = transition->GetVisualEndOffsetY();
-        mOldDisabledFlag = transition->GetIsDisabled();
-        m_oldCanBeInterruptedByTransitionIds = MCore::ReflectionSerializer::Serialize(&transition->GetCanBeInterruptedByTransitionIds()).GetValue();
-
-        EMotionFX::AnimGraphNode* oldSourceNode = transition->GetSourceNode();
-        EMotionFX::AnimGraphNode* oldTargetNode = transition->GetTargetNode();
-        if (oldSourceNode)
-        {
-            mOldSourceNodeName = oldSourceNode->GetName();
-        }
-        if (oldTargetNode)
-        {
-            mOldTargetNodeName = oldTargetNode->GetName();
-        }
+        m_oldSerializedMembers = MCore::ReflectionSerializer::SerializeMembersExcept(transition, {"conditions", "actionSetup"});
 
         // set the new source node
         if (parameters.CheckIfHasParameter("sourceNode"))
@@ -850,6 +836,12 @@ namespace CommandSystem
             MCore::ReflectionSerializer::Deserialize(transition, MCore::CommandLine(attributesString.value()));
         }
 
+        const AZStd::optional<AZStd::string>& serializedMembers = ParameterMixinSerializedMembers::GetSerializedMembers();
+        if (serializedMembers)
+        {
+            MCore::ReflectionSerializer::DeserializeMembers(transition, serializedMembers.value());
+        }
+
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
@@ -876,14 +868,12 @@ namespace CommandSystem
             return false;
         }
 
-        const AZStd::string attributesString = AZStd::string::format("-canBeInterruptedByTransitionIds {%s}", m_oldCanBeInterruptedByTransitionIds.c_str());
-
         AdjustTransition(transition,
-            mOldDisabledFlag,
-            mOldSourceNodeName, mOldTargetNodeName,
-            mStartOffsetX, mStartOffsetY,
-            mEndOffsetX, mEndOffsetY,
-            attributesString,
+            /*mOldDisabledFlag=*/AZStd::nullopt,
+            /*sourceNodeName=*/AZStd::nullopt, /*targetNodeName=*/AZStd::nullopt,
+            /*startOffsetX=*/AZStd::nullopt, /*startOffsetY=*/AZStd::nullopt,
+            /*endOffsetX=*/AZStd::nullopt, /*endOffsetY=*/AZStd::nullopt,
+            /*attributesString=*/AZStd::nullopt, /*serializedMembers=*/m_oldSerializedMembers.GetValue(),
             /*commandGroup*/nullptr, /*executeInsideCommand*/true);
 
         animGraph->SetDirtyFlag(mOldDirtyFlag);
@@ -897,6 +887,7 @@ namespace CommandSystem
         MCore::CommandSyntax& syntax = GetSyntax();
         ParameterMixinTransitionId::InitSyntax(syntax);
         ParameterMixinAttributesString::InitSyntax(syntax, false);
+        ParameterMixinSerializedMembers::InitSyntax(syntax, false);
 
         GetSyntax().AddParameter("sourceNode", "The new source node of the transition.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("targetNode", "The new target node of the transition.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
@@ -913,6 +904,7 @@ namespace CommandSystem
     {
         ParameterMixinTransitionId::SetCommandParameters(parameters);
         ParameterMixinAttributesString::SetCommandParameters(parameters);
+        ParameterMixinSerializedMembers::SetCommandParameters(parameters);
         return true;
     }
 
@@ -1134,7 +1126,7 @@ namespace CommandSystem
                 AdjustTransition(checkTransition,
                     /*isDisabled*/AZStd::nullopt, /*sourceNode*/AZStd::nullopt, /*targetNode*/AZStd::nullopt,
                     /*startOffsetX*/AZStd::nullopt, /*startOffsetY*/AZStd::nullopt, /*endOffsetX*/AZStd::nullopt, /*endOffsetY*/AZStd::nullopt,
-                    attributesString,
+                    attributesString, /*serializedMembers=*/AZStd::nullopt,
                     commandGroup);
             }
         }
@@ -1349,13 +1341,12 @@ namespace CommandSystem
         const uint16 sourcePort = connection->GetSourcePort();
         const uint16 targetPort = connection->GetTargetPort();
         
-        const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePortName \"%s\" -targetPortName \"%s\" -updateParam \"false\"",
+        const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %u -sourceNode \"%s\" -targetNode \"%s\" -sourcePortName \"%s\" -targetPortName \"%s\" -updateParam \"false\"",
                 targetAnimGraph->GetID(),
                 sourceNodeName.c_str(),
                 targetNodeName.c_str(),
                 sourceNode->GetOutputPort(sourcePort).GetName(),
-                targetNode->GetInputPort(targetPort).GetName(),
-                targetPort);
+                targetNode->GetInputPort(targetPort).GetName());
         commandGroup->AddCommandString(commandString);
     }
 } // namesapce EMotionFX

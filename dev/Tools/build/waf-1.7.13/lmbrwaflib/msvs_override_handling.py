@@ -229,7 +229,7 @@ def _get_project_overrides(ctx, target):
 
             # Extract WAF items
             while True:
-                next_line = file_iter.next().strip()
+                next_line = next(file_iter).strip()
                 if next_line.startswith('<WAF_'):                       
                     element_name = get_element_name(next_line)
                     element_value = get_element_value(next_line)

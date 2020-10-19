@@ -49,6 +49,41 @@ namespace UnitTest
     //////////////////////////////////////////////////////////////////////////
     // test class/struts
 
+    struct MockBinding final
+    {
+        AZ_TYPE_INFO(MockBinding, "{0B22887C-6377-4573-8FE5-418947640D3F}");
+
+        AZ::Data::AssetId m_mockAssetId;
+
+        MockBinding() = default;
+
+        MockBinding(const AZ::Data::AssetId& value)
+        {
+            m_mockAssetId = value;
+        }
+
+        const AZ::Data::AssetId& GetAssetId() const
+        {
+            return m_mockAssetId;
+        }
+
+        static void Reflect(AZ::ReflectContext* reflection)
+        {
+            auto&& behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+            if (behaviorContext)
+            {
+                behaviorContext->Class<MockBinding>("MockBinding")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "mock")
+                    ->Constructor()
+                    ->Constructor<const AZ::Data::AssetId&>()
+                    ->Method("GetAssetId", &MockBinding::GetAssetId)
+                    ;
+            }
+        }
+
+    };
+
     class MockAsset
         : public AzFramework::SimpleAssetReferenceBase
     {
@@ -636,5 +671,120 @@ namespace UnitTest
         }
         e.Deactivate();
         EXPECT_EQ(5, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::SimpleAssetReference)]);
+    }
+
+    TEST_F(PythonAssetTypesTests, MockBindingAssetIds)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            MockBinding
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "MockBinding"))
+                {
+                    return static_cast<int>(LogTypes::MockBinding);
+                }
+            }
+            return static_cast<int>(LogTypes::Skip);
+        };
+
+        MockBinding::Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr
+                import azlmbr.mock
+                import azlmbr.asset
+
+                assetIdStringValue = '{13DACEEC-69B9-4CE4-9F43-50675D73FD8C}:0'
+                testId = azlmbr.asset.AssetId_CreateString(assetIdStringValue)
+                if (testId is not None):
+                    print('MockBinding: created mock asset ID')
+
+                if (testId.to_string() == assetIdStringValue):
+                    print('MockBinding: created mock asset ID')
+
+                testMock = azlmbr.mock.MockBinding(testId)
+                if (testMock is not None):
+                    print('MockBinding: mock binding created with asset ID')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on to run script buffer with %s", e.what());
+        }
+        e.Deactivate();
+        EXPECT_EQ(3, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::MockBinding)]);
+    }
+
+    TEST_F(PythonAssetTypesTests, AssetIdsEqualOperators)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            EqualOperators
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "EqualOperators"))
+                {
+                    return static_cast<int>(LogTypes::EqualOperators);
+                }
+            }
+            return static_cast<int>(LogTypes::Skip);
+        };
+
+        MockBinding::Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr
+                import azlmbr.asset
+
+                assetIdStringValue0 = '{13DACEEC-69B9-4CE4-9F43-50675D73FD8C}:0'
+                assetIdStringValue1 = '{13DACEEC-69B9-4CE4-9F43-50675D73FD8C}:1'
+
+                testId0 = azlmbr.asset.AssetId_CreateString(assetIdStringValue0)
+                if (testId0 is not None):
+                    print('EqualOperators: created testId0')
+
+                testId1 = azlmbr.asset.AssetId_CreateString(assetIdStringValue1)
+                if (testId1 is not None):
+                    print('EqualOperators: created testId1')
+
+                if (testId1 == azlmbr.asset.AssetId_CreateString(assetIdStringValue1)):
+                    print('EqualOperators: testId1 == testId1')
+
+                if (testId0 != testId1):
+                    print('EqualOperators: testId0 != testId1')
+
+                if ((testId0 == assetIdStringValue0) is not True):
+                    print('EqualOperators: testId0 != assetIdStringValue0')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on to run script buffer with %s", e.what());
+        }
+        e.Deactivate();
+        EXPECT_EQ(5, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::EqualOperators)]);
     }
 }

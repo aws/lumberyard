@@ -57,6 +57,7 @@ namespace AzFramework
         // AssetCatalogRequestBus
         void EnableCatalogForAsset(const AZ::Data::AssetType& assetType) override;
         void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
+        AZ::Data::AssetType GetAssetTypeByDisplayName(const AZStd::string_view displayName) override;
         void DisableCatalog() override;
         void StartMonitoringAssets() override;
         void StopMonitoringAssets() override;
@@ -83,7 +84,11 @@ namespace AzFramework
         AZStd::vector<AZStd::string> GetRegisteredAssetPaths() override;
         AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetDirectProductDependencies(const AZ::Data::AssetId& asset) override;
         AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependencies(const AZ::Data::AssetId& asset) override;
-        AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList) override;
+        AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependenciesFilter(const AZ::Data::AssetId& id, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList, const AZStd::vector<AZStd::string>& wildcardPatternExclusionList) override;
+        AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetLoadBehaviorProductDependencies(const AZ::Data::AssetId& id, AZStd::unordered_set<AZ::Data::AssetId>& noloadSet,
+            AZ::Data::PreloadAssetListType& preloadAssetList) override;
+
+        bool DoesAssetIdMatchWildcardPattern(const AZ::Data::AssetId& assetId, const AZStd::string& wildcardPattern) override;
 
         AZ::Data::AssetId GenerateAssetIdTEMP(const char* /*path*/) override;
         void EnumerateAssets(BeginAssetEnumerationCB beginCB, AssetEnumerationCB enumerateCB, EndAssetEnumerationCB endCB) override;
@@ -110,7 +115,9 @@ namespace AzFramework
 
         /// Helper function that adds all of searchAssetId's dependencies to the depedencySet/List (leaving out ones that are already in the list)
         void AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList, const
-                                  AZStd::unordered_set<AZ::Data::AssetId>& exclusionList) const;
+                                  AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
+                                  const AZStd::vector<AZStd::string>& wildcardPatternExclusionList,
+                                  AZ::Data::PreloadAssetListType& preloadAssetList) const;
         // Called by LoadCatalog to load the base
         bool LoadBaseCatalogInternal();
         // Called by RemoveDeltaCatalog - reassemble our registry from loaded catalog files
@@ -124,6 +131,9 @@ namespace AzFramework
         // Clear just the registry
         void ResetRegistry();
 
+        AZStd::string GetAssetPathByIdInternal(const AZ::Data::AssetId& id) const;
+        AZ::Data::AssetInfo GetAssetInfoByIdInternal(const AZ::Data::AssetId& id) const;
+        bool DoesAssetIdMatchWildcardPatternInternal(const AZ::Data::AssetId& assetId, const AZStd::string& wildcardPattern) const;
     private:
 
         AZStd::atomic_bool m_shutdownThreadSignal;                  ///< Signals the monitoring thread to stop.

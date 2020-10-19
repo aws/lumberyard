@@ -367,7 +367,7 @@ namespace ScriptCanvasEditor
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0)
                             ->Attribute(AZ::Edit::Attributes::Max, 100.0)
                             ->Attribute(AZ::Edit::Attributes::Step, 1.0)
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &ShakeToDespliceSettings::m_maximumShakeTimeMS, "Maximmum Shake Time", "Sets a cap on how long it consider a series of actions as a single shake gesture")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ShakeToDespliceSettings::m_maximumShakeTimeMS, "Maximum Shake Time", "Sets a cap on how long it consider a series of actions as a single shake gesture")
                             ->Attribute(AZ::Edit::Attributes::Suffix, "ms")
                             ->Attribute(AZ::Edit::Attributes::Min, 1)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &ShakeToDespliceSettings::m_straightnessPercent, "Straightness Percent", "Controls how aligned the individual motions must be in order to qualify as a shake")

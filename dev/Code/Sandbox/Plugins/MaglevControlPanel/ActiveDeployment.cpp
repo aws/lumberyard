@@ -28,7 +28,7 @@ using namespace AZStd;
 
 // The URL embedded here isn't expected to be used.  See ActiveDeployment::OnSetupDeploymentClicked.
 static const char* NO_DEPLOYMENTS_LABEL_TEXT = "There aren't any deployments associated with this Lumberyard project. AWS account admins can add new deployments using the Resource Manager."
-    " Learn how to <a href=\"https://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-ui-rm-deployments.html\" style=\"color: #6496e5\">create a deployment</a>.  ";
+    " Learn how to <a href=\"https://docs.aws.amazon.com/console/lumberyard/cloudcanvas\" style=\"color: #6496e5\">create a deployment</a>.  ";
 static const char* HAS_DEPLOYMENTS_LABEL_TEXT = "AWS account admins can add new deployments using the Resource Manager. Otherwise, authorized users can switch the active deployment here.";
 static const char* SELECT_DEPLOYMENT_LABEL = "Select deployment";
 

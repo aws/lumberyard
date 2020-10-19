@@ -262,8 +262,10 @@ namespace PhysX
             }
             return true;
         });
-        m_rigidBody->UpdateCenterOfMassAndInertia(m_configuration.m_computeCenterOfMass, m_configuration.m_centerOfMassOffset,
-            m_configuration.m_computeInertiaTensor, m_configuration.m_inertiaTensor);
+
+        Physics::MassComputeFlags flags = m_configuration.GetMassComputeFlags();
+        m_rigidBody->UpdateMassProperties(flags, &m_configuration.m_centerOfMassOffset, &m_configuration.m_inertiaTensor,
+            &m_configuration.m_mass);
 
         // Listen to the PhysX system for events concerning this entity.
         Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);

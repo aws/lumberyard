@@ -289,14 +289,14 @@ namespace Vegetation
         if (useCompTags &&
             SurfaceData::HasMatchingTags(instanceData.m_masks, m_configuration.m_exclusiveSurfaceMasks, exclusiveWeightMin, exclusiveWeightMax))
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceMaskFilter")));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceMaskFilter")));
             return false;
         }
 
         if (useDescTags &&
             SurfaceData::HasMatchingTags(instanceData.m_masks, instanceData.m_descriptorPtr->m_exclusiveSurfaceFilterTags, exclusiveWeightMin, exclusiveWeightMax))
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceMaskFilter")));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceMaskFilter")));
             return false;
         }
 
@@ -320,7 +320,7 @@ namespace Vegetation
         const bool result = (!useCompTags || !SurfaceData::HasValidTags(m_configuration.m_inclusiveSurfaceMasks)) && (!useDescTags || !SurfaceData::HasValidTags(instanceData.m_descriptorPtr->m_inclusiveSurfaceFilterTags));
         if (!result)
         {
-            VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceMaskFilter")));
+            VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::FilterInstance, instanceData.m_id, AZStd::string_view("SurfaceMaskFilter")));
         }
         return result;
     }

@@ -12,6 +12,8 @@
 
 #if defined(BUILD_GAMELIFT_CLIENT)
 
+#include "GameLift_Traits.h"
+
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/AzFramework_Traits_Platform.h>
 #include <GameLift/Session/GameLiftClientService.h>
@@ -24,14 +26,16 @@
 #include <AzCore/IO/FileIO.h>
 
 #include <aws/core/auth/AWSCredentialsProvider.h>
+#include <aws/core/http/URI.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/gamelift/GameLiftClient.h>
-#include <aws/gamelift/model/ListBuildsRequest.h>
+#include <aws/gamelift/model/DescribeGameSessionsRequest.h>
 
 namespace
 {
     //This is used when a playerId is not specified when initializing GameLiftSDK with developer credentials.
     const char* DEFAULT_PLAYER_ID = "AnonymousPlayerId";
+    const char* FAKE_FLEET_ID = "fleet-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
 }
 
 namespace GridMate
@@ -97,9 +101,9 @@ namespace GridMate
 
     void GameLiftClientService::Update()
     {
-        if (m_listBuildsOutcomeCallable.valid() && m_listBuildsOutcomeCallable.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+        if (m_describeGameSessionsOutcomeCallable.valid() && m_describeGameSessionsOutcomeCallable.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
         {
-            auto outcome = m_listBuildsOutcomeCallable.get();
+            auto outcome = m_describeGameSessionsOutcomeCallable.get();
             if (outcome.IsSuccess())
             {
                 AZ_TracePrintf("GameLift", "Initialized GameLift client successfully.\n");
@@ -269,8 +273,12 @@ namespace GridMate
             {
                 m_clientStatus = GameLift_Initing;
                 CreateSharedAWSGameLiftClient();
-                Aws::GameLift::Model::ListBuildsRequest request;
-                m_listBuildsOutcomeCallable = m_clientSharedPtr->ListBuildsCallable(request);
+
+                // Sanity check that GameLift is reachable and credentials are valid.DescribeGameSessions requires a fleet id that is non - null,
+                // so pass in mock fleet id.Sanity check is optional and can be removed if required
+                Aws::GameLift::Model::DescribeGameSessionsRequest request;
+                request.SetFleetId(FAKE_FLEET_ID);
+                m_describeGameSessionsOutcomeCallable = m_clientSharedPtr->DescribeGameSessionsCallable(request);
             }
         }
 
@@ -284,6 +292,9 @@ namespace GridMate
         config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
         config.region = m_serviceDesc.m_region.c_str();
         config.endpointOverride = m_serviceDesc.m_endpoint.c_str();
+#if AZ_TRAIT_CLOCK_SKEW_CORRECTION_DISABLED
+        config.enableClockSkewAdjustment = false;
+#endif
 
         if (m_serviceDesc.m_useGameLiftLocalServer)
         {
@@ -296,6 +307,17 @@ namespace GridMate
             config.scheme = Aws::Http::Scheme::HTTPS;
 
             Platform::ResolveCaCertFilePath(config.caFile);
+        }
+
+        Aws::Http::URI uri;
+        if (config.endpointOverride.length() &&
+            config.endpointOverride.find(Aws::Http::SchemeMapper::ToString(Aws::Http::Scheme::HTTP)) == Aws::String::npos &&
+            config.endpointOverride.find(Aws::Http::SchemeMapper::ToString(Aws::Http::Scheme::HTTPS)) == Aws::String::npos)
+        {
+            // Generate the complete endpoint URI based on the schema
+            uri.SetScheme(config.scheme);
+            uri.SetAuthority(config.endpointOverride);
+            config.endpointOverride = uri.GetURIString();
         }
 
         Aws::String accessKey(m_serviceDesc.m_accessKey.c_str());

@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYENGINE_RENDERDLL_XRENDERD3D9_D3DREBREAKABLEGLASSBUFFER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #include "CREBreakableGlassConfig.h"
 
 //==================================================================================================
@@ -99,5 +100,6 @@ private:
     // Singleton instance
     static CREBreakableGlassBuffer* s_pInstance;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // _CRE_BREAKABLE_GLASS_BUFFER_

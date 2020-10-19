@@ -69,6 +69,7 @@ namespace ScriptCanvasEditor
         QVariant OnData(const QModelIndex& index, int role) const;
 
         const AZ::Data::AssetId& GetSourceAssetId() const;
+        const AZ::Data::AssetId& GetRuntimeAssetId() const;
 
     protected:
 

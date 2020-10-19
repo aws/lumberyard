@@ -34,6 +34,7 @@
 #include <Source/CapsuleColliderComponent.h>
 #include <Source/Pipeline/MeshAssetHandler.h>
 #include <Source/Pipeline/HeightFieldAssetHandler.h>
+#include <Source/WindProvider.h>
 #include <Terrain/Bus/LegacyTerrainBus.h>
 
 #ifdef PHYSX_EDITOR
@@ -99,6 +100,16 @@ namespace PhysX
             }
         }
 
+        if (classElement.GetVersion() <= 3)
+        {
+            classElement.AddElementWithData(context, "ShowJointHierarchy", true);
+            classElement.AddElementWithData(context, "JointHierarchyLeadColor",
+                EditorConfiguration::JointLeadColor::Aquamarine);
+            classElement.AddElementWithData(context, "JointHierarchyFollowerColor",
+                EditorConfiguration::JointFollowerColor::Magenta);
+            classElement.AddElementWithData(context, "jointHierarchyDistanceThreshold", 1.0f);
+        }
+
         return true;
     }
 
@@ -110,6 +121,7 @@ namespace PhysX
     }
 #endif
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
         D6JointLimitConfiguration::Reflect(context);
@@ -139,11 +151,21 @@ namespace PhysX
             ;
 
             serialize->Class<EditorConfiguration>()
-                ->Version(2, &VersionConverter)
+                ->Version(4, &VersionConverter)
                 ->Field("COMDebugSize", &EditorConfiguration::m_centerOfMassDebugSize)
                 ->Field("COMDebugColor", &EditorConfiguration::m_centerOfMassDebugColor)
                 ->Field("GlobalColliderDebugDraw", &EditorConfiguration::m_globalCollisionDebugDraw)
-                ->Field("GlobalColliderDebugDrawColorMode", &EditorConfiguration::m_globalCollisionDebugDrawColorMode);
+                ->Field("GlobalColliderDebugDrawColorMode", &EditorConfiguration::m_globalCollisionDebugDrawColorMode)
+                ->Field("ShowJointHierarchy", &EditorConfiguration::m_showJointHierarchy)
+                ->Field("JointHierarchyLeadColor", &EditorConfiguration::m_jointHierarchyLeadColor)
+                ->Field("JointHierarchyFollowerColor", &EditorConfiguration::m_jointHierarchyFollowerColor)
+                ->Field("JointHierarchyDistanceThreshold", &EditorConfiguration::m_jointHierarchyDistanceThreshold)
+            ;
+
+            serialize->Class<WindConfiguration>()
+                ->Version(1)
+                ->Field("GlobalWindTag", &WindConfiguration::m_globalWindTag)
+                ->Field("LocalWindTag", &WindConfiguration::m_localWindTag)
             ;
 
             serialize->Class<Configuration>()
@@ -160,6 +182,7 @@ namespace PhysX
                 ->Version(1)
                 ->Field("Settings", &PhysXConfiguration::m_settings)
                 ->Field("EditorConfiguration", &PhysXConfiguration::m_editorConfiguration)
+                ->Field("WindConfiguration", &PhysXConfiguration::m_windConfiguration)
             ;
 
             serialize->Class<PhysicsConfiguration>()
@@ -242,6 +265,53 @@ namespace PhysX
 #ifdef PHYSX_EDITOR
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OnEditorConfigurationChanged)
 #endif
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorConfiguration::m_showJointHierarchy, 
+                        "Display Joints Hierarchy", 
+                        "Flag to switch on / off the display of joint lead-follower connections in the viewport.")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorConfiguration::m_jointHierarchyLeadColor,
+                        "Joints Hierarchy Lead Color",
+                        "Color of the lead half of a lead-follower joint connection line.")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::Aquamarine, "Aquamarine")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::AliceBlue, "AliceBlue")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::CadetBlue, "CadetBlue")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::Coral, "Coral")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::Green, "Green")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::DarkGreen, "DarkGreen")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::ForestGreen, "ForestGreen")
+                        ->EnumAttribute(EditorConfiguration::JointLeadColor::Honeydew, "Honeydew")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorConfiguration::m_jointHierarchyFollowerColor,
+                        "Joints Hierarchy Follower Color",
+                        "Color of the follower half of a lead-follower joint connection line.")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::Chocolate, "Chocolate")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::HotPink, "HotPink")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::Lavender, "Lavender")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::Magenta, "Magenta")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::LightYellow, "LightYellow")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::Maroon, "Maroon")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::Red, "Red")
+                        ->EnumAttribute(EditorConfiguration::JointFollowerColor::Yellow, "Yellow")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorConfiguration::m_jointHierarchyDistanceThreshold,
+                        "Joints Hierarchy Distance Threshold",
+                        "Minimum distance required to draw from follower to joint. Distances shorter than this threshold will result in the line drawn from the joint to the lead.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.000001f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 20.0f)
+                ;
+
+                ec->Class<WindConfiguration>("Wind Configuration", "Wind settings for PhysX")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WindConfiguration::m_globalWindTag,
+                        "Global wind tag",
+                        "Tag value that will be used to mark entities that provide global wind value.\n"
+                        "Global wind has no bounds and affects objects across entire level.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WindConfiguration::m_localWindTag,
+                        "Local wind tag",
+                        "Tag value that will be used to mark entities that provide local wind value.\n"
+                        "Local wind is only applied within bounds defined by PhysX collider.")
+
+#ifdef PHYSX_EDITOR
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OnEditorConfigurationChanged)
+#endif
                 ;
 
                 ec->Class<SystemComponent>("PhysX", "Global PhysX physics configuration")
@@ -257,6 +327,7 @@ namespace PhysX
             }
         }
     }
+    AZ_POP_DISABLE_WARNING
 
     void SystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
@@ -278,11 +349,15 @@ namespace PhysX
         (void)dependent;
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     SystemComponent::SystemComponent()
         : m_enabled(true)
         , m_configurationPath(DefaultConfigurationPath)
     {
     }
+
+    SystemComponent::~SystemComponent() = default;
+    AZ_POP_DISABLE_WARNING
 
     // AZ::Component interface implementation
     void SystemComponent::Init()
@@ -298,10 +373,12 @@ namespace PhysX
 
         // create PhysX basis
         m_physxSDKGlobals.m_foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_physxSDKGlobals.m_azAllocator, m_physxSDKGlobals.m_azErrorCallback);
+        bool physXTrackOutstandingAllocations = false;
 #ifdef AZ_PHYSICS_DEBUG_ENABLED
+        physXTrackOutstandingAllocations = true;
         m_physxSDKGlobals.m_pvd = PxCreatePvd(*m_physxSDKGlobals.m_foundation);
 #endif
-        m_physxSDKGlobals.m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_physxSDKGlobals.m_foundation, physx::PxTolerancesScale(), true, m_physxSDKGlobals.m_pvd);
+        m_physxSDKGlobals.m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_physxSDKGlobals.m_foundation, physx::PxTolerancesScale(), physXTrackOutstandingAllocations, m_physxSDKGlobals.m_pvd);
         PxInitExtensions(*m_physxSDKGlobals.m_physics, m_physxSDKGlobals.m_pvd);
 
         // set up cooking for height fields, meshes etc.
@@ -407,6 +484,8 @@ namespace PhysX
         Physics::DefaultRigidBodyConfiguration::m_sleepMinEnergy = 0.005f;
 
         LoadConfiguration();
+
+        m_windProvider = AZStd::make_unique<WindProvider>();
     }
 
     bool SystemComponent::ConnectToPvd()
@@ -538,6 +617,12 @@ namespace PhysX
         delete m_cpuDispatcher;
         m_cpuDispatcher = nullptr;
         m_assetHandlers.clear();
+
+        m_windProvider.reset();
+
+        // Clear the asset reference in deactivate. The asset system is shut down before destructors are called
+        // for system components, causing any hanging asset references to become crashes on shutdown in release builds.
+        m_physicsConfiguration.m_defaultMaterialLibrary = AZ::Data::Asset<Physics::MaterialLibraryAsset>();
     }
 
 #ifdef PHYSX_EDITOR
@@ -839,6 +924,7 @@ namespace PhysX
         return configuration;
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     void SystemComponent::LoadConfiguration()
     {
         // Initialize collision configuration with default one.
@@ -877,6 +963,7 @@ namespace PhysX
 
         SaveConfiguration();
     }
+    AZ_POP_DISABLE_WARNING
 
     void SystemComponent::SaveConfiguration()
     {
@@ -926,7 +1013,7 @@ namespace PhysX
         
         const auto assetRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
 
-        for (const auto path : {DefaultConfigurationPath, ProjectPhysicsConfigurationPath, ProjectPhysXConfigurationPath})
+        for (const auto& path : {DefaultConfigurationPath, ProjectPhysicsConfigurationPath, ProjectPhysXConfigurationPath})
         {
             AZStd::string fullPath;
             AzFramework::StringFunc::Path::Join(assetRoot, path, fullPath);
@@ -989,6 +1076,7 @@ namespace PhysX
         }
     }
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     const Configuration& SystemComponent::GetConfiguration()
     {
         m_configuration.m_worldConfiguration = m_physicsConfiguration.m_defaultWorldConfiguration;
@@ -1016,6 +1104,7 @@ namespace PhysX
         physxConfiguration.m_editorConfiguration = configuration.m_editorConfiguration;
         SetPhysXConfiguration(physxConfiguration);
     }
+    AZ_POP_DISABLE_WARNING
 
     void SystemComponent::SetPhysXConfiguration(const PhysXConfiguration& configuration)
     {
@@ -1031,7 +1120,7 @@ namespace PhysX
         return m_physxConfiguration;
     }
 
-    const Physics::WorldConfiguration& SystemComponent::GetDefaultWorldConfiguration()
+    const Physics::WorldConfiguration& SystemComponent::GetDefaultWorldConfiguration() const
     {
         return m_physicsConfiguration.m_defaultWorldConfiguration;
     }
@@ -1311,16 +1400,32 @@ namespace PhysX
         return true;
     }
 
-    void* PxAzProfilerCallback::zoneStart(const char* eventName, bool /*detached*/, uint64_t /*contextId*/)
+    void* PxAzProfilerCallback::zoneStart(const char* eventName, bool detached,
+        [[maybe_unused]] uint64_t contextId)
     {
-        AZ_PROFILE_EVENT_BEGIN(AZ::Debug::ProfileCategory::Physics, eventName);
+        if (!detached)
+        {
+            AZ_PROFILE_EVENT_BEGIN(AZ::Debug::ProfileCategory::Physics, eventName);
+        }
+        else
+        {
+            AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::Physics, AZ::Crc32(eventName), eventName);
+        }
         return nullptr;
     }
 
-    void PxAzProfilerCallback::zoneEnd(void* /*profilerData*/, 
-        const char* /*eventName*/, bool /*detached*/, uint64_t /*contextId*/)
+    void PxAzProfilerCallback::zoneEnd([[maybe_unused]] void* profilerData,
+        const char* eventName, bool detached,
+        [[maybe_unused]] uint64_t contextId)
     {
-        AZ_PROFILE_EVENT_END(AZ::Debug::ProfileCategory::Physics);
+        if (!detached)
+        {
+            AZ_PROFILE_EVENT_END(AZ::Debug::ProfileCategory::Physics);
+        }
+        else
+        {
+            AZ_PROFILE_INTERVAL_END(AZ::Debug::ProfileCategory::Physics, AZ::Crc32(eventName));
+        }
     }
 
 } // namespace PhysX

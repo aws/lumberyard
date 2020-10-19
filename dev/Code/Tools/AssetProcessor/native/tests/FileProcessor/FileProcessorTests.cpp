@@ -71,7 +71,7 @@ namespace UnitTests
         AssetProcessorTest::TearDown();
     }
 
-    size_t FileProcessorTests::Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message)
+    size_t FileProcessorTests::Send(unsigned int /*serial*/, const AzFramework::AssetSystem::BaseAssetProcessorMessage& /*message*/)
     {
         m_data->m_messagesSent++;
 

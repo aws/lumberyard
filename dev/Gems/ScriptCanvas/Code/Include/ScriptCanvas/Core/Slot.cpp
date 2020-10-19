@@ -215,7 +215,7 @@ namespace ScriptCanvas
             AddContract({ []() { return aznew ExclusivePureDataContract(); } });
         }
 
-        for (const auto contractDesc : slotConfiguration.m_contractDescs)
+        for (const auto& contractDesc : slotConfiguration.m_contractDescs)
         {
             AddContract(contractDesc);
         }
@@ -816,6 +816,11 @@ namespace ScriptCanvas
         return AZ::Failure(AZStd::string::format("%s is not a type match for %s", ScriptCanvas::Data::GetName(GetDataType()).c_str(), ScriptCanvas::Data::GetName(dataType).c_str()));
     }
 
+    void Slot::SetToolTip(const AZStd::string& toolTip)
+    {
+        m_toolTip = toolTip;
+    }
+
     void Slot::Rename(AZStd::string_view newName)
     {
         if (m_name != newName)
@@ -853,7 +858,9 @@ namespace ScriptCanvas
         ScriptCanvas::ModifiableDatumView datumView;
         GetNode()->ModifyUnderlyingSlotDatum(GetId(), datumView);
 
-        datumView.SetVisibility(IsConnected() ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::ShowChildrenOnly);
+        bool isVisible = !IsConnected() && datumView.GetDataType().IsValid();
+
+        datumView.SetVisibility(isVisible ? AZ::Edit::PropertyVisibility::ShowChildrenOnly : AZ::Edit::PropertyVisibility::Hide);
     }
 
     TransientSlotIdentifier Slot::GetTransientIdentifier() const

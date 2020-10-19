@@ -16,7 +16,9 @@
 #pragma once
 
 
+#if ENABLE_CRY_PHYSICS
 struct pe_params_part;
+#endif
 
 class CSurfaceTypeValidator
 {
@@ -24,7 +26,9 @@ public:
     void Validate();
 
 private:
+#if ENABLE_CRY_PHYSICS
     void GetUsedSubMaterials(pe_params_part* pPart, char usedSubMaterials[]);
+#endif
 };
 
 #endif // CRYINCLUDE_EDITOR_SURFACETYPEVALIDATOR_H

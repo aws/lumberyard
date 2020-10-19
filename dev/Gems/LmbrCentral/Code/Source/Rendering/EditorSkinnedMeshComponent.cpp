@@ -25,6 +25,10 @@
 
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include "CryPhysicsDeprecation.h"
+#endif
+
 namespace LmbrCentral
 {
 
@@ -206,6 +210,7 @@ namespace LmbrCentral
 
     void EditorSkinnedMeshComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
     {
+#if ENABLE_CRY_PHYSICS
         (void)asset;
 
         CreateEditorPhysics();
@@ -214,6 +219,9 @@ namespace LmbrCentral
         {
             OnTransformChanged(GetTransform()->GetLocalTM(), GetTransform()->GetWorldTM());
         }
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     }
 
     void EditorSkinnedMeshComponent::OnMeshDestroyed()
@@ -233,6 +241,7 @@ namespace LmbrCentral
 
     void EditorSkinnedMeshComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+#if ENABLE_CRY_PHYSICS
         if (m_physicalEntity)
         {
             if ((m_physTransform.RetrieveScale() - world.RetrieveScale()).GetLengthSq() > FLT_EPSILON)
@@ -252,6 +261,9 @@ namespace LmbrCentral
 
             m_physTransform = world;
         }
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
     }
 
     AZ::Aabb EditorSkinnedMeshComponent::GetWorldBounds()
@@ -322,6 +334,7 @@ namespace LmbrCentral
             return;
         }
 
+#if ENABLE_CRY_PHYSICS
         if (gEnv->pPhysicalWorld)
         {
             m_physicalEntity = gEnv->pPhysicalWorld->CreatePhysicalEntity(PE_STATIC, nullptr, &m_mesh, PHYS_FOREIGN_ID_STATIC);
@@ -330,12 +343,16 @@ namespace LmbrCentral
             pe_geomparams params;
             geometry->Physicalize(m_physicalEntity, &params);
         }
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
     }
 
     void EditorSkinnedMeshComponent::DestroyEditorPhysics()
     {
         // If physics is completely torn down, all physical entities are by extension completely invalid (dangling pointers).
         // It doesn't matter that we held a reference.
+#if ENABLE_CRY_PHYSICS
         if (gEnv->pPhysicalWorld)
         {
             if (m_physicalEntity)
@@ -346,6 +363,9 @@ namespace LmbrCentral
         }
 
         m_physicalEntity = nullptr;
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
         m_physTransform = AZ::Transform::CreateIdentity();
     }
 

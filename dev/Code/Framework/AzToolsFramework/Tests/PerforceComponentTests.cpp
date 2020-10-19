@@ -10,11 +10,14 @@
  *
  */
 
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobManager.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <SourceControl/PerforceComponent.h>
 #include <SourceControl/PerforceConnection.h>
+#include <QTemporaryDir>
 
 namespace UnitTest
 {
@@ -24,131 +27,53 @@ namespace UnitTest
         friend struct PerforceComponentFixture;
     };
 
-    struct MockPerforceCommand
-        : AzToolsFramework::PerforceCommand
-    {
-        void ExecuteCommand() override
-        {
-            m_rawOutput.Clear();
-            m_applicationFound = true;
-
-            if(m_commandArgs == "set")
-            {
-                m_rawOutput.outputResult = R"(
-P4PORT=ssl:unittest.amazon.com:1666 (set)
-                )";
-            }
-            else if(m_commandArgs == "info")
-            {
-                m_rawOutput.outputResult = R"(
-... userName unittest
-... clientName unittest
-... clientRoot c:\depot
-... clientLock none
-... clientCwd c:\depot\dev\Engine\Fonts
-... clientHost unittest
-... clientCase insensitive
-... peerAddress 127.0.0.1:64565
-... clientAddress 127.0.0.1
-... serverName unittest
-... lbr.replication readonly
-... monitor enabled
-... security enabled
-... externalAuth enabled
-... serverAddress unittest.amazon.com:1666
-... serverRoot /data/repos/p4root/root
-... serverDate 2020/01/01 10:00:00 -0500 PST
-... tzoffset -28800
-... serverUptime 1234:12:34
-... serverVersion P4D/LINUX33X86_64/2020.4/1234567 (2020/06/06)
-... serverEncryption encrypted
-... serverCertExpires Dec 24 04:10:00 3030 GMT
-... ServerID unittest
-... serverServices edge-server
-... authServer ssl:127.0.0.1:1666
-... changeServer ssl:127.0.0.1:1666
-... serverLicense ssl:127.0.0.1:1666
-... caseHandling insensitive
-... replica ssl:127.0.0.1:1666)";
-            }
-            else if(m_commandArgs.starts_with("fstat"))
-            {
-                m_rawOutput.outputResult = m_fstatResponse;
-                m_rawOutput.errorResult = m_fstatErrorResponse;
-
-                m_fstatResponse = m_fstatErrorResponse = "";
-            }
-        }
-
-        void ExecuteRawCommand() override
-        {
-            ExecuteCommand();
-        }
-
-        AZStd::string m_fstatResponse;
-        AZStd::string m_fstatErrorResponse;
-    };
-
-    struct MockPerforceConnection
-        : AzToolsFramework::PerforceConnection
-    {
-        MockPerforceConnection(MockPerforceCommand& command) : PerforceConnection(command)
-        {
-        }
-    };
-
     struct PerforceComponentFixture
         : ::testing::Test
-    , AzToolsFramework::SourceControlNotificationBus::Handler
+        , TraceBusRedirector
+        , SourceControlTest
 
     {
         void SetUp() override
         {
-            BusConnect();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+            AZ::JobManagerDesc jobDesc;
+            AZ::JobManagerThreadDesc threadDesc;
+            jobDesc.m_workerThreads.push_back(threadDesc);
+            jobDesc.m_workerThreads.push_back(threadDesc);
+            jobDesc.m_workerThreads.push_back(threadDesc);
+            m_jobManager = aznew AZ::JobManager(jobDesc);
+            m_jobContext = aznew AZ::JobContext(*m_jobManager);
+            AZ::JobContext::SetGlobalContext(m_jobContext);
 
+            AZ::Debug::TraceMessageBus::Handler::BusConnect();
             AZ::TickBus::AllowFunctionQueuing(true);
 
             m_perforceComponent = AZStd::make_unique<MockPerforceComponent>();
             m_perforceComponent->Activate();
             m_perforceComponent->SetConnection(new MockPerforceConnection(m_command));
 
-            AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, true);
-
-            WaitForSourceControl(m_connectSignal);
-            ASSERT_TRUE(m_connected);
+            EnableSourceControl();
         }
 
         void TearDown() override
         {
-            BusDisconnect();
+            AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+
+            AZ::TickBus::AllowFunctionQueuing(false);
+            AZ::TickBus::ClearQueuedEvents();
 
             m_perforceComponent->Deactivate();
             m_perforceComponent = nullptr;
+
+            AZ::JobContext::SetGlobalContext(nullptr);
+            delete m_jobContext;
+            delete m_jobManager;
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
         }
 
-        void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override
-        {
-            m_connected = (state == AzToolsFramework::SourceControlState::Active);
-            m_connectSignal.release();
-        }
-
-        static void WaitForSourceControl(AZStd::binary_semaphore& waitSignal)
-        {
-            int retryLimit = 500;
-
-            do
-            {
-                AZ::TickBus::ExecuteQueuedEvents();
-                --retryLimit;
-            } while (!waitSignal.try_acquire_for(AZStd::chrono::milliseconds(10)) && retryLimit >= 0);
-
-            ASSERT_GE(retryLimit, 0);
-        }
-
-        bool m_connected = false;
-        AZStd::binary_semaphore m_connectSignal;
         AZStd::unique_ptr<MockPerforceComponent> m_perforceComponent;
-        MockPerforceCommand m_command;
+        AZ::JobManager* m_jobManager = nullptr;
+        AZ::JobContext* m_jobContext = nullptr;
     };
 
     TEST_F(PerforceComponentFixture, TestGetBulkFileInfo_MultipleFiles_Succeeds)
@@ -302,4 +227,510 @@ P4PORT=ssl:unittest.amazon.com:1666 (set)
         ASSERT_EQ(fileInfoSingle.m_flags, fileInfo[0].m_flags);
     }
 
+    TEST_F(PerforceComponentFixture, Test_ExecuteEditBulk)
+    {
+        static constexpr char FileAPath[] = R"(C:\depot\dev\does-not-exist.txt)";
+        static constexpr char FileBPath[] = R"(C:\depot\dev\default.font)";
+
+        m_command.m_fstatErrorResponse =
+            R"(C:\depot\dev\does-not-exist.txt - no such file(s).)" "\r\n"
+            "\r\n";
+
+        m_command.m_fstatResponse = 
+            R"(... depotFile //depot/dev/default.font)" "\r\n"
+            R"(... clientFile C:\depot\dev\default.font)" "\r\n"
+            R"(... isMapped)" "\r\n"
+            R"(... headAction branch)" "\r\n"
+            R"(... headType text)" "\r\n"
+            R"(... headTime 1479280355)" "\r\n"
+            R"(... headRev 1)" "\r\n"
+            R"(... headChange 317116)" "\r\n"
+            R"(... headModTime 1478804078)" "\r\n"
+            R"(... otherOpen)" "\r\n"
+            R"(... haveRev 1)" "\r\n"
+            "\r\n";
+
+        bool addCalled = false;
+        bool editCalled = false;
+
+        m_command.m_addCallback = [&addCalled](const AZStd::string& args)
+        {
+            addCalled = true;
+        };
+
+        m_command.m_editCallback = [this, &editCalled](const AZStd::string& args)
+        {
+            editCalled = true;
+
+            m_command.m_fstatResponse = 
+                R"(... depotFile //depot/dev/does-not-exist.txt)" "\r\n"
+                R"(... clientFile C:\depot\dev\does-not-exist.txt)" "\r\n"
+                R"(... isMapped)" "\r\n"
+                R"(... action add)" "\r\n"
+                R"(... change default)" "\r\n"
+                R"(... type text)" "\r\n"
+                R"(... actionOwner unittest)" "\r\n"
+                R"(... workRev 1)" "\r\n"
+                "\r\n"
+                R"(... depotFile //depot/dev/default.font)" "\r\n"
+                R"(... clientFile C:\depot\dev\default.font)" "\r\n"
+                R"(... isMapped)" "\r\n"
+                R"(... headAction add)" "\r\n"
+                R"(... headType text)" "\r\n"
+                R"(... headTime 1557439413)" "\r\n"
+                R"(... headRev 1)" "\r\n"
+                R"(... headChange 902209)" "\r\n"
+                R"(... headModTime 1556296348)" "\r\n"
+                R"(... haveRev 1)" "\r\n"
+                R"(... action edit)" "\r\n"
+                R"(... change default)" "\r\n"
+                R"(... type text)" "\r\n"
+                R"(... actionOwner unittest)" "\r\n"
+                R"(... workRev 1)" "\r\n"
+                "\r\n";
+        };
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        AZStd::unordered_set<AZStd::string> requestFiles = { FileAPath, FileBPath };
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEditBulk, requestFiles, true, bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_TRUE(result);
+        ASSERT_TRUE(addCalled);
+        ASSERT_TRUE(editCalled);
+        ASSERT_EQ(fileInfo.size(), 2);
+
+        for (int i = 0; i < 2; ++i)
+        {
+            ASSERT_EQ(fileInfo[i].m_status, AzToolsFramework::SourceControlStatus::SCS_OpSuccess);
+        }
+    }
+
+    TEST_F(PerforceComponentFixture, Test_ExecuteEditBulk_CheckedOutByOther_Failure)
+    {
+        static constexpr char FileBPath[] = R"(C:\depot\dev\default.font)";
+
+        m_command.m_fstatResponse =
+            R"(... depotFile //depot/dev/default.font)" "\r\n"
+            R"(... clientFile C:\depot\dev\default.font)" "\r\n"
+            R"(... isMapped)" "\r\n"
+            R"(... headAction branch)" "\r\n"
+            R"(... headType text)" "\r\n"
+            R"(... headTime 1479280355)" "\r\n"
+            R"(... headRev 1)" "\r\n"
+            R"(... headChange 317116)" "\r\n"
+            R"(... headModTime 1478804078)" "\r\n"
+            R"(... otherOpen)" "\r\n"
+            R"(... haveRev 1)" "\r\n"
+            "\r\n";
+
+        bool addCalled = false;
+        bool editCalled = false;
+
+        m_command.m_addCallback = [&addCalled](const AZStd::string& args)
+        {
+            addCalled = true;
+        };
+
+        m_command.m_editCallback = [&editCalled](const AZStd::string& args)
+        {
+            editCalled = true;
+        };
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        AZStd::unordered_set<AZStd::string> requestFiles = { FileBPath };
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEditBulk, requestFiles, false, bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_FALSE(result);
+        ASSERT_FALSE(addCalled);
+        ASSERT_FALSE(editCalled);
+    }
+
+    bool CreateDummyFile(const QString& fullPathToFile, QString contents = "")
+    {
+        QFileInfo fi(fullPathToFile);
+        QDir fp(fi.path());
+        fp.mkpath(".");
+        QFile writer(fullPathToFile);
+        if (!writer.open(QFile::WriteOnly))
+        {
+            return false;
+        }
+
+        {
+            QTextStream ts(&writer);
+            ts.setCodec("UTF-8");
+            ts << contents;
+        }
+        return true;
+    }
+
+    TEST_F(PerforceComponentFixture, Test_ExecuteEditBulk_Local_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+
+            AZ::IO::SystemFile::SetWritable(path, false);
+
+            ASSERT_FALSE(AZ::IO::SystemFile::IsWritable(path));
+        }
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        AZStd::unordered_set<AZStd::string> requestFiles = { testPaths.begin(), testPaths.end() };
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestEditBulk, requestFiles, false, bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_TRUE(result);
+        ASSERT_EQ(fileInfo.size(), testPaths.size());
+
+        for (int i = 0; i < testPaths.size(); ++i)
+        {
+            ASSERT_EQ(fileInfo[i].m_status, AzToolsFramework::SourceControlStatus::SCS_OpSuccess);
+            ASSERT_TRUE(fileInfo[i].HasFlag(AzToolsFramework::SourceControlFlags::SCF_Writeable));
+            ASSERT_TRUE(AZ::IO::SystemFile::IsWritable(testPaths[i]));
+        }
+    }
+
+    TEST_F(PerforceComponentFixture, Test_ExecuteRenameBulk_Local_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+        }
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        auto from = tempDir.filePath("o*e/*o/three/file*.txt");
+        auto to = tempDir.filePath("o*e/*o/three/fileRenamed*.png");
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestRenameBulk, from.toUtf8().constData(), to.toUtf8().constData(), bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_TRUE(result);
+        ASSERT_EQ(fileInfo.size(), testPaths.size());
+
+        ASSERT_FALSE(AZ::IO::SystemFile::Exists(fullPathA.c_str()));
+        ASSERT_FALSE(AZ::IO::SystemFile::Exists(fullPathB.c_str()));
+
+        ASSERT_TRUE(AZ::IO::SystemFile::Exists(tempDir.filePath("one/two/three/fileRenamedA.png").toUtf8().constData()));
+        ASSERT_TRUE(AZ::IO::SystemFile::Exists(tempDir.filePath("one/two/three/fileRenamedB.png").toUtf8().constData()));
+
+        for (int i = 0; i < testPaths.size(); ++i)
+        {
+            ASSERT_EQ(fileInfo[i].m_status, AzToolsFramework::SourceControlStatus::SCS_OpSuccess);
+            ASSERT_TRUE(fileInfo[i].HasFlag(AzToolsFramework::SourceControlFlags::SCF_Tracked));
+        }
+    }
+
+    TEST_F(PerforceComponentFixture, Test_ExecuteRenameBulk_Local_MismatchedWildcards_Fails)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+        }
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        auto from = tempDir.filePath("o*e/*o/three/file*.txt");
+        auto to = tempDir.filePath("o*e/two/three/fileRenamed*.png");
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestRenameBulk, from.toUtf8().constData(), to.toUtf8().constData(), bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        ASSERT_FALSE(result);
+        ASSERT_EQ(fileInfo.size(), 0);
+
+        ASSERT_TRUE(AZ::IO::SystemFile::Exists(fullPathA.c_str()));
+        ASSERT_TRUE(AZ::IO::SystemFile::Exists(fullPathB.c_str()));
+
+        ASSERT_FALSE(AZ::IO::SystemFile::Exists(tempDir.filePath("one/two/three/fileRenamedA.png").toUtf8().constData()));
+        ASSERT_FALSE(AZ::IO::SystemFile::Exists(tempDir.filePath("one/two/three/fileRenamedB.png").toUtf8().constData()));
+    }
+
+    TEST_F(PerforceComponentFixture, Test_ExecuteDeleteBulk_Local_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+        }
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        auto from = tempDir.filePath("o*e/*o/three/file*.txt");
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::RequestDeleteBulk, from.toUtf8().constData(), bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_TRUE(result);
+        ASSERT_EQ(fileInfo.size(), testPaths.size());
+
+        ASSERT_FALSE(AZ::IO::SystemFile::Exists(fullPathA.c_str()));
+        ASSERT_FALSE(AZ::IO::SystemFile::Exists(fullPathB.c_str()));
+
+        for (int i = 0; i < testPaths.size(); ++i)
+        {
+            ASSERT_EQ(fileInfo[i].m_status, AzToolsFramework::SourceControlStatus::SCS_OpSuccess);
+            ASSERT_FALSE(fileInfo[i].HasFlag(AzToolsFramework::SourceControlFlags::SCF_Tracked));
+        }
+    }
+
+    TEST_F(PerforceComponentFixture, Test_GetFiles_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+        }
+
+        auto result = AzToolsFramework::LocalFileSCComponent::GetFiles(tempDir.filePath("one/tw*/fileA.txt").toUtf8().constData());
+
+        ASSERT_EQ(result.size(), 0);
+
+        result = AzToolsFramework::LocalFileSCComponent::GetFiles(tempDir.filePath("on...").toUtf8().constData());
+
+        ASSERT_EQ(result.size(), 2);
+    }
+
+    TEST_F(PerforceComponentFixture, Test_GetFiles_StarWildcardAtEnd_OnlyReturnsFirstFile)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/file1.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/folder/file1.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+        }
+
+        auto result = AzToolsFramework::LocalFileSCComponent::GetFiles(tempDir.filePath("one/f*").toUtf8().constData());
+
+        ASSERT_EQ(result.size(), 1);
+    }
+
+    TEST_F(PerforceComponentFixture, Test_GetFiles_MultipleWildcardsAndWildcardAtEnd_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+            ASSERT_TRUE(AZ::IO::SystemFile::Exists(path));
+        }
+
+        auto result = AzToolsFramework::LocalFileSCComponent::GetFiles(tempDir.filePath("o*e/tw*/...").toUtf8().constData());
+
+        ASSERT_EQ(result.size(), 2);
+    }
+
+    TEST_F(PerforceComponentFixture, Test_GetBulkFileInfo_Wildcard_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+        }
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        AZStd::unordered_set<AZStd::string> paths = { tempDir.filePath("o*e/*o/three/file*.txt").toUtf8().constData() };
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::GetBulkFileInfo, paths, bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_TRUE(result);
+        ASSERT_EQ(fileInfo.size(), testPaths.size());
+
+        using namespace AzToolsFramework;
+
+        for (int i = 0; i < testPaths.size(); ++i)
+        {
+            ASSERT_EQ(fileInfo[i].m_status, SCS_OpSuccess);
+            ASSERT_EQ(fileInfo[i].m_flags, SCF_Writeable | SCF_OpenByUser | SCF_Tracked);
+        }
+    }
+
+    TEST_F(PerforceComponentFixture, Test_GetBulkFileInfo_MultipleFiles_Succeeds)
+    {
+        AzToolsFramework::SourceControlConnectionRequestBus::Broadcast(&AzToolsFramework::SourceControlConnectionRequestBus::Events::EnableSourceControl, false);
+
+        QTemporaryDir tempDir;
+        AZStd::string fullPathA = tempDir.filePath("one/two/three/fileA.txt").toUtf8().constData();
+        AZStd::string fullPathB = tempDir.filePath("one/two/three/fileB.txt").toUtf8().constData();
+        AZStd::vector<const char*> testPaths = { fullPathA.c_str(), fullPathB.c_str() };
+
+        for (const char* path : testPaths)
+        {
+            ASSERT_TRUE(CreateDummyFile(path));
+        }
+
+        AZStd::binary_semaphore callbackSignal;
+
+        bool result = false;
+        AZStd::vector<AzToolsFramework::SourceControlFileInfo> fileInfo;
+
+        auto bulkCallback = [&callbackSignal, &result, &fileInfo](bool success, AZStd::vector<AzToolsFramework::SourceControlFileInfo> info)
+        {
+            result = success;
+            fileInfo = info;
+            callbackSignal.release();
+        };
+
+        AZStd::unordered_set<AZStd::string> paths = { fullPathA, fullPathB };
+
+        AzToolsFramework::SourceControlCommandBus::Broadcast(&AzToolsFramework::SourceControlCommandBus::Events::GetBulkFileInfo, paths, bulkCallback);
+
+        WaitForSourceControl(callbackSignal);
+
+        ASSERT_TRUE(result);
+        ASSERT_EQ(fileInfo.size(), testPaths.size());
+
+        using namespace AzToolsFramework;
+
+        for (int i = 0; i < testPaths.size(); ++i)
+        {
+            ASSERT_EQ(fileInfo[i].m_status, SCS_OpSuccess);
+            ASSERT_EQ(fileInfo[i].m_flags, SCF_Writeable | SCF_OpenByUser | SCF_Tracked);
+        }
+    }
 }

@@ -887,6 +887,7 @@ private:
     std::vector<SParticleInfo> m_particleInfos;
 };
 
+#if ENABLE_CRY_PHYSICS
 struct SPhysEntityProfilersDG
     : public IStatoscopeDataGroup
 {
@@ -931,6 +932,7 @@ struct SPhysEntityProfilersDG
 
     std::vector<SPhysInfo> m_physInfos;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 struct SFrameProfilersDG
     : public IStatoscopeDataGroup
@@ -1752,6 +1754,7 @@ void CStatoscope::AddParticleEffect(const char* pEffectName, int count)
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 void CStatoscope::AddPhysEntity(const phys_profile_info* pInfo)
 {
     if (m_pPhysEntityProfilers && m_pPhysEntityProfilers->IsEnabled())
@@ -1811,6 +1814,7 @@ void CStatoscope::AddPhysEntity(const phys_profile_info* pInfo)
         }
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CStatoscope::CreateTelemetryStream(const char* postHeader, const char* hostname, int port)
 {
@@ -2507,7 +2511,9 @@ bool CStatoscope::RequestScreenShot()
 void CStatoscope::RegisterBuiltInDataGroups()
 {
     m_pParticleProfilers = new SParticleProfilersDG();
+#if ENABLE_CRY_PHYSICS
     m_pPhysEntityProfilers = new SPhysEntityProfilersDG();
+#endif
     m_pFrameProfilers = new SFrameProfilersDG();
     m_pUserMarkers = new SUserMarkerDG();
     m_pCallstacks = new SCallstacksDG();
@@ -2526,7 +2532,9 @@ void CStatoscope::RegisterBuiltInDataGroups()
     RegisterDataGroup(new SLocationDG());
     RegisterDataGroup(new SPerCGFGPUProfilersDG());
     RegisterDataGroup(m_pParticleProfilers);
+#if ENABLE_CRY_PHYSICS
     RegisterDataGroup(m_pPhysEntityProfilers);
+#endif
     RegisterDataGroup(m_pFrameProfilers);
     RegisterDataGroup(new SPerfCountersDG());
     RegisterDataGroup(m_pUserMarkers);
@@ -3257,7 +3265,6 @@ void CStatoscopeIOThread::QueueSendData(const char* pBuffer, int nBytes)
     }
 }
 
-#undef EWOULDBLOCK
 #undef GetLastError
 
 #endif // ENABLE_STATOSCOPE

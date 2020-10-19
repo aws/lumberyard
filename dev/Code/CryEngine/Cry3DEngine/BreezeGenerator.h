@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRY3DENGINE_BREEZEGENERATOR_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "Cry3DEngineBase.h"
 
 struct SBreeze;
@@ -75,5 +77,6 @@ public:
     void Update();
 };
 
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRY3DENGINE_BREEZEGENERATOR_H

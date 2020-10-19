@@ -17,16 +17,8 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_TEMPLATE_ALIAS)
     template<class T, class Container = AZStd::deque<T, SysContAlloc> >
     using queue = AZStd::queue<T, Container>;
-#else
-    template<class T, class Container = AZStd::deque<T, SysContAlloc> >
-    class queue
-        : public AZStd::queue<T, Container>
-    {
-    };
-#endif
 }
 
 #endif // GM_CONTAINERS_QUEUE_H

@@ -10,6 +10,7 @@
 *
 */
 
+#include <AtomCore/Serialization/Json/Utils.h>
 #include <AzCore/base.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/ByteContainerStream.h>
@@ -35,7 +36,72 @@ namespace AZ
         static const char* ClassIdTag = "ClassId";
         static const char* ClassDataTag = "ClassData";
 
+        // Protects from allocating too much memory. The choice of a 1MB threshold is arbitrary, but it's doubtful that there would be a
+        // legitimate json file this large.
         static constexpr size_t MaxFileSize = 1024 * 1024;
+
+        AZ::Outcome<void, AZStd::string> WriteJsonString(const rapidjson::Document& document, AZStd::string& jsonText, WriteJsonSettings settings)
+        {
+            AZ::IO::ByteContainerStream<AZStd::string> stream{&jsonText};
+            return WriteJsonStream(document, stream, settings);
+        }
+
+        AZ::Outcome<void, AZStd::string> WriteJsonFile(const rapidjson::Document& document, AZStd::string_view filePath, WriteJsonSettings settings)
+        {
+            // Write the json into memory first and then write the file, rather than passing a file stream to rapidjson.
+            // This should avoid creating a large number of micro-writes to the file.
+            AZStd::string fileContent;
+            auto outcome = WriteJsonString(document, fileContent, settings);
+            if (!outcome.IsSuccess())
+            {
+                return outcome;
+            }
+
+            AZStd::string filePathString = filePath; // Because FileIOStream requires a null-terminated string
+            AZ::IO::FileIOStream stream(filePathString.c_str(), AZ::IO::OpenMode::ModeWrite);
+
+            bool success = false;
+
+            if (stream.IsOpen())
+            {
+                AZ::IO::SizeType bytesWritten = stream.Write(fileContent.size(), fileContent.data());
+
+                if (bytesWritten == fileContent.size())
+                {
+                    success = true;
+                }
+            }
+
+            if (success)
+            {
+                return AZ::Success();
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("Could not write to file '%s'", filePathString.c_str()));
+            }
+        }
+
+        AZ::Outcome<void, AZStd::string> WriteJsonStream(const rapidjson::Document& document, IO::GenericStream& stream, WriteJsonSettings settings)
+        {
+            AZ::IO::RapidJSONStreamWriter jsonStreamWriter(&stream);
+
+            rapidjson::PrettyWriter<AZ::IO::RapidJSONStreamWriter> writer(jsonStreamWriter);
+
+            if (settings.m_maxDecimalPlaces >= 0)
+            {
+                writer.SetMaxDecimalPlaces(settings.m_maxDecimalPlaces);
+            }
+
+            if (document.Accept(writer))
+            {
+                return AZ::Success();
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string{"Json Writer failed"});
+            }
+        }
 
         AZ::Outcome<void, AZStd::string> SaveObjectToStreamByType(const void* objectPtr, const Uuid& classId, IO::GenericStream& stream,
              const void* defaultObjectPtr, const JsonSerializerSettings* settings)
@@ -169,10 +235,10 @@ namespace AZ
         }
 
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> ParseJson(AZStd::string_view jsonText)
+        AZ::Outcome<rapidjson::Document, AZStd::string> ReadJsonString(AZStd::string_view jsonText)
         {
             rapidjson::Document jsonDocument;
-            jsonDocument.Parse(jsonText.data(), jsonText.size());
+            jsonDocument.Parse<rapidjson::kParseCommentsFlag>(jsonText.data(), jsonText.size());
             if (jsonDocument.HasParseError())
             {
                 size_t lineNumber = 1;
@@ -193,13 +259,11 @@ namespace AZ
             }
         }
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> LoadJson(IO::GenericStream& stream)
+        AZ::Outcome<rapidjson::Document, AZStd::string> ReadJsonStream(IO::GenericStream& stream)
         {
             IO::SizeType length = stream.GetLength();
 
-            // Protect from allocating too much memory. The choice of a 1MB threshold is arbitrary, but it's doubtful that there would be a
-            // legitimate json file this large.
-            if (length > MaxFileSize)
+            if (length > JsonSerializationUtils::MaxFileSize)
             {
                 return AZ::Failure(AZStd::string{"Data is too large."});
             }
@@ -215,18 +279,39 @@ namespace AZ
 
             memoryBuffer.back() = 0;
 
-            return ParseJson(AZStd::string_view{memoryBuffer.data(), memoryBuffer.size()});
+            return ReadJsonString(AZStd::string_view{memoryBuffer.data(), memoryBuffer.size()});
         }
 
-        AZ::Outcome<rapidjson::Document, AZStd::string> LoadJson(AZStd::string_view filePath)
+        AZ::Outcome<rapidjson::Document, AZStd::string> ReadJsonFile(AZStd::string_view filePath)
         {
             IO::FileIOStream file;
             if (!file.Open(filePath.data(), IO::OpenMode::ModeRead))
             {
                 return AZ::Failure(AZStd::string::format("Failed to open '%.*s'.", AZ_STRING_ARG(filePath)));
             }
+            
+            AZ::IO::SizeType length = file.GetLength();
 
-            auto result = LoadJson(file);
+            if(length > JsonSerializationUtils::MaxFileSize)
+            {
+                return AZ::Failure(AZStd::string{"Data is too large."});
+            }
+            else if (length == 0)
+            {
+                return AZ::Failure(AZStd::string::format("Failed to load '%.*s'. File is empty.", AZ_STRING_ARG(filePath)));
+            }
+
+            // Read into memory first and then parse the json, rather than passing a file stream to rapidjson.
+            // This should avoid creating a large number of micro-reads from the file.
+            AZStd::string jsonContent;
+            jsonContent.resize(length);
+            AZ::IO::SizeType bytesRead = file.Read(length, jsonContent.data());
+            file.Close();
+
+            // Resize again just in case bytesRead is less than length for some reason
+            jsonContent.resize(bytesRead);
+
+            auto result = ReadJsonString(jsonContent);
             if (!result.IsSuccess())
             {
                 return AZ::Failure(AZStd::string::format("Failed to load '%.*s'. %s", AZ_STRING_ARG(filePath), result.GetError().c_str()));
@@ -273,7 +358,7 @@ namespace AZ
                 return AZ::Failure(prepare.GetError());
             }
 
-            auto parseResult = LoadJson(stream);
+            auto parseResult = ReadJsonStream(stream);
             if (!parseResult.IsSuccess())
             {
                 return AZ::Failure(parseResult.GetError());
@@ -316,7 +401,7 @@ namespace AZ
                 return AZ::Failure(prepare.GetError());
             }
 
-            auto parseResult = LoadJson(stream);
+            auto parseResult = ReadJsonStream(stream);
             if (!parseResult.IsSuccess())
             {
                 return AZ::Failure(parseResult.GetError());
@@ -352,7 +437,7 @@ namespace AZ
             return AZ::Failure(AZStd::string::format("Can't find serialize context for class %s", className));
         }
 
-        AZ::Outcome<AZStd::any, AZStd::string> LoadAnyObjectFromFile(const AZStd::string& filePath, const JsonDeserializerSettings* settings = nullptr)
+        AZ::Outcome<AZStd::any, AZStd::string> LoadAnyObjectFromFile(const AZStd::string& filePath, const JsonDeserializerSettings* settings)
         {
             AZ::IO::FileIOStream inputFileStream;
             if (!inputFileStream.Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeText))
@@ -360,26 +445,6 @@ namespace AZ
                 return AZ::Failure(AZStd::string::format("Error opening file '%s' for reading", filePath.c_str()));
             }
             return LoadAnyObjectFromStream(inputFileStream, settings);
-        }
-
-        //! Reporting call back that can be used in JsonSerializerSettings to report AZ_Waring when fields are skipped
-        AZ::JsonSerializationResult::ResultCode ReportCommonWarnings(AZStd::string_view /*message*/, AZ::JsonSerializationResult::ResultCode result, AZStd::string_view path)
-        {
-            if (result.GetOutcome() == JsonSerializationResult::Outcomes::Skipped)
-            {
-                AZStd::vector<AZStd::string> tokens;
-                if (path.find("/#") == AZStd::string::npos) // Allow fields to start with '#' to indicate a comment
-                {
-                    AZ_Warning("JSON", false, "Skipped unrecognized field '%.*s'", AZ_STRING_ARG(path));
-                }
-            }
-            else if (result.GetProcessing() != JsonSerializationResult::Processing::Completed ||
-                     result.GetOutcome() >= JsonSerializationResult::Outcomes::Unsupported)
-            {
-                AZ_Warning("JSON", false, "'%.*s': %s", AZ_STRING_ARG(path), result.ToString("").c_str());
-            }
-
-            return result;
         }
 
     } // namespace JsonSerializationUtils

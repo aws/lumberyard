@@ -29,7 +29,7 @@
 
 namespace
 {
-    AZ::Edit::Attribute* FindAttributeInNode(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
+    AZ::Edit::Attribute* FindAttributeInNode(const AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
     {
         if (!node)
         {
@@ -62,88 +62,38 @@ namespace
         return attr;
     }
 
-    template<typename ... Args> 
-    AZStd::string GetStringFromAttributeWithParams(AzToolsFramework::InstanceDataNode* node, AZ::Edit::Attribute* attribute, Args&& ... params)
+    template<typename ParameterType, typename ... Args> 
+    ParameterType GetValueFromAttributeWithParams(const ParameterType& defaultValue, const AzToolsFramework::InstanceDataNode* node, AZ::Edit::Attribute* attribute, Args&& ... params)
     {
         if (!node || !attribute)
         {
-            return "";
+            return defaultValue;
         }
 
-        // Read the string from the attribute found.
-        AZStd::string label;
+        // Read the value from the attribute found.
+        ParameterType value;
         for (size_t instIndex = 0; instIndex < node->GetNumInstances(); ++instIndex)
         {
             AzToolsFramework::PropertyAttributeReader reader(node->GetInstance(instIndex), attribute);
-            if (reader.Read<AZStd::string>(label, AZStd::forward<Args>(params) ...))
+            if (reader.Read<ParameterType>(value, AZStd::forward<Args>(params) ...))
             {
-                return label;
+                return value;
             }
         }
 
-        return "";
+        return defaultValue;
     }
 
     AZStd::string GetIndexedStringFromAttribute(AzToolsFramework::InstanceDataNode* parentNode, AzToolsFramework::InstanceDataNode* attributeNode, AZ::Edit::AttributeId attribId, int siblingIndex)
     {
         AZ::Edit::Attribute* attribute = FindAttributeInNode(attributeNode, attribId);
-        return GetStringFromAttributeWithParams(parentNode, attribute, siblingIndex);
+        return GetValueFromAttributeWithParams<AZStd::string>("", parentNode, attribute, siblingIndex);
     }
 
-    AZStd::string GetStringFromAttribute(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
+    AZStd::string GetStringFromAttribute(const AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
     {
         AZ::Edit::Attribute* attribute = FindAttributeInNode(node, attribId);
-        return GetStringFromAttributeWithParams(node, attribute);
-    }
-
-    template<typename Type>
-    Type GetFromAttribute(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
-    {
-        if (!node)
-        {
-            return Type();
-        }
-
-        AZ::Edit::Attribute* attr{};
-        const AZ::Edit::ElementData* elementEditData = node->GetElementEditMetadata();
-        if (elementEditData)
-        {
-            attr = elementEditData->FindAttribute(attribId);
-        }
-
-        // Attempt to look up the attribute on the node reflected class data.
-        // This look up is done via AZ::SerializeContext::ClassData -> AZ::Edit::ClassData -> EditorData element
-        if (!attr)
-        {
-            if (const AZ::SerializeContext::ClassData* classData = node->GetClassMetadata())
-            {
-                if (const auto* editClassData = classData->m_editData)
-                {
-                    if (const auto* classEditorData = editClassData->FindElementData(AZ::Edit::ClassElements::EditorData))
-                    {
-                        attr = classEditorData->FindAttribute(attribId);
-                    }
-                }
-            }
-        }
-
-        if (!attr)
-        {
-            return Type();
-        }
-
-        // Read the value from the attribute found.
-        Type retVal = Type();
-        for (size_t instIndex = 0; instIndex < node->GetNumInstances(); ++instIndex)
-        {
-            AzToolsFramework::PropertyAttributeReader reader(node->GetInstance(instIndex), attr);
-            if (reader.Read<Type>(retVal))
-            {
-                return retVal;
-            }
-        }
-
-        return Type();
+        return GetValueFromAttributeWithParams<AZStd::string>("", node, attribute);
     }
 
     AZStd::string GetDisplayLabel(AzToolsFramework::InstanceDataNode* node, int siblingIndex = 0)
@@ -594,7 +544,10 @@ namespace AzToolsFramework
         if (nodeEditData)
         {
             const AZ::Edit::ElementData* groupData = nullptr;
-            const AZ::Edit::ElementData* previousData = nullptr;
+
+            // Keep track of where to insert ourselves in the child list
+            m_childIndexOverride = 0;
+            auto nodeIt = node->m_children.begin();
 
             for (auto& element : nodeEditData->m_elements)
             {
@@ -604,51 +557,47 @@ namespace AzToolsFramework
                     continue;
                 }
 
+                // If we're looking at element data that's part of the child list, keep track of the index for adjacent UIElement insertion
+                // Children appear in the order specified by m_elements, so we can scan as we go
+                if (nodeIt != node->m_children.end() && nodeIt->m_classElement->m_editData == &element)
+                {
+                    ++m_childIndexOverride;
+                    ++nodeIt;
+                }
+
                 //create ui elements in their relative edit context positions
                 if (element.m_elementId == AZ::Edit::ClassElements::UIElement)
                 {
-                    //if there is no matching, previous element, assume the UI element comes first
-                    m_childIndexOverride = 0;
+                    AZ::Edit::Attribute* attribute = element.FindAttribute(AZ::Edit::Attributes::AcceptsMultiEdit);
+                    bool acceptsMultiEdit = GetValueFromAttributeWithParams<bool>(false, node, attribute);
 
-                    if (previousData)
+                    size_t numInstances = node->GetNumInstances();
+                    if (numInstances == 1 || acceptsMultiEdit)
                     {
-                        //search for matching sibling element data by name
-                        auto it = AZStd::find_if(
-                            node->m_children.begin(),
-                            node->m_children.end(),
-                            [previousData](const InstanceDataNode& otherNode) {
-                            return otherNode.m_classElement->m_editData == previousData;
-                        });
-                        if (it != node->m_children.end())
+                        // For every UIElement, generate an InstanceDataNode pointed at our instance with the corresponding attributes
+                        for (size_t i = 0; i < numInstances; ++i)
                         {
-                            //if there is element data matching the previous entry, place the UI element after it
-                            m_childIndexOverride = static_cast<int>(AZStd::distance(node->m_children.begin(), it)) + 1;
+                            m_supplementalElementData.push_back();
+                            auto& serializeFieldElement = m_supplementalElementData.back();
+
+                            serializeFieldElement.m_name = element.m_description;
+                            serializeFieldElement.m_nameCrc = AZ::Crc32(element.m_description);
+                            serializeFieldElement.m_azRtti = nullptr;
+                            serializeFieldElement.m_dataSize = sizeof(void*);
+                            serializeFieldElement.m_offset = 0;
+                            serializeFieldElement.m_typeId = AZ::Uuid::CreateNull();
+                            serializeFieldElement.m_editData = &element;
+                            serializeFieldElement.m_flags = AZ::SerializeContext::ClassElement::FLG_UI_ELEMENT;
+
+                            m_curParentNode = node;
+                            m_isMerging = i > 0; // Ensure we always add a node for the first instance, then compare
+                            BeginNode(node->GetInstance(i), nullptr, &serializeFieldElement, dynamicEditDataProvider);
+                            m_curParentNode->m_groupElementData = groupData;
+                            EndNode();
                         }
-                    }
-
-                    // For every UIElement, generate an InstanceDataNode pointed at our instance with the corresponding attributes
-                    for (size_t i = 0, numInstances = node->GetNumInstances(); i < numInstances; ++i)
-                    {
-                        m_supplementalElementData.push_back();
-                        auto& serializeFieldElement = m_supplementalElementData.back();
-
-                        serializeFieldElement.m_name = element.m_description;
-                        serializeFieldElement.m_nameCrc = AZ::Crc32(element.m_description);
-                        serializeFieldElement.m_azRtti = nullptr;
-                        serializeFieldElement.m_dataSize = sizeof(void*);
-                        serializeFieldElement.m_offset = 0;
-                        serializeFieldElement.m_typeId = AZ::Uuid::CreateNull();
-                        serializeFieldElement.m_editData = &element;
-                        serializeFieldElement.m_flags = AZ::SerializeContext::ClassElement::FLG_UI_ELEMENT;
-
-                        m_curParentNode = node;
-                        BeginNode(node->GetInstance(i), nullptr, &serializeFieldElement, dynamicEditDataProvider);
-                        m_curParentNode->m_groupElementData = groupData;
-                        EndNode();
+                        ++m_childIndexOverride;
                     }
                 }
-
-                previousData = &element;
             }
 
             m_childIndexOverride = -1;
@@ -750,9 +699,18 @@ namespace AzToolsFramework
 
         bool GetValueStringRepresentation(const InstanceDataNode* node, AZStd::string& value)
         {
-            if (!node || !node->GetClassMetadata())
+            const AZ::SerializeContext::ClassData* classData = node->GetClassMetadata();
+            if (!node || !classData)
             {
                 return false;
+            }
+
+            // Check to see if the class has a registered ConciseEditorStringRepresentation
+            AZStd::string result = GetStringFromAttribute(node, AZ::Edit::Attributes::ConciseEditorStringRepresentation);
+            if (!result.empty())
+            {
+                value = result;
+                return true;
             }
 
             AZ::SerializeContext* serializeContext = nullptr;
@@ -779,18 +737,19 @@ namespace AzToolsFramework
             }
 
             // Just use our underlying AZStd::string if we're a string
-            if (node->GetClassMetadata()->m_typeId == azrtti_typeid<AZStd::string>())
+            if (classData->m_typeId == azrtti_typeid<AZStd::string>())
             {
                 value = *reinterpret_cast<AZStd::string*>(node->FirstInstance());
                 return true;
             }
 
             // Fall back on using our serializer's DataToText
-            if (node->GetElementMetadata())
+            const AZ::SerializeContext::ClassElement* elementData = node->GetElementMetadata();
+            if (elementData)
             {
-                if (auto& serializer = node->GetClassMetadata()->m_serializer)
+                if (auto& serializer = classData->m_serializer)
                 {
-                    AZ::IO::MemoryStream memStream(node->FirstInstance(), 0, node->GetElementMetadata()->m_dataSize);
+                    AZ::IO::MemoryStream memStream(node->FirstInstance(), 0, elementData->m_dataSize);
                     AZStd::vector<char> buffer;
                     AZ::IO::ByteContainerStream<AZStd::vector<char>> outStream(&buffer);
                     serializer->DataToText(memStream, outStream, false);
@@ -837,13 +796,42 @@ namespace AzToolsFramework
                 elementInstances = node->m_instances;
             }
 
-            // If our node is a pair, and we're not enumerating multiple instances, respect showAsKeyValue and promote the value data element with a label matching our instance's string representation
-            if (showAsKeyValue && node->m_children.size() == 2 && node->GetNumInstances() == 1)
+            // If our node is a pair, respect showAsKeyValue and promote the value data element with a label matching our instance's string representation
+            if (showAsKeyValue && node->m_children.size() == 2)
             {
                 // Make sure we can get a valid string representation before doing the conversion
                 if (label.empty())
                 {
                     showAsKeyValue = InstanceDataHierarchyHelper::GetValueStringRepresentation(&node->m_children.front(), label);
+                }
+
+                if (!showAsKeyValue)
+                {
+                    int i = 0;
+                    for (auto it = node->m_children.begin(); it != node->m_children.end(); ++it, ++i)
+                    {
+                        InstanceDataNode& childNode = *it;
+                        m_supplementalEditData.push_back();
+                        AZ::Edit::ElementData* editData = &m_supplementalEditData.back().m_editElementData;
+                        if (childNode.GetElementEditMetadata())
+                        {
+                            *editData = *node->GetElementEditMetadata();
+                        }
+
+                        const char* labelText;
+                        if (i == 0)
+                        {
+                            labelText = "Key";
+                        }
+                        else
+                        {
+                            labelText = "Value";
+                        }
+                        m_supplementalEditData.back().m_displayLabel = AZStd::string::format("%s<%s>", labelText, childNode.m_classData->m_name);
+                        editData->m_description = nullptr;
+                        editData->m_name = m_supplementalEditData.back().m_displayLabel.c_str();
+                        childNode.m_elementEditData = editData;
+                    }
                 }
             }
 
@@ -890,7 +878,10 @@ namespace AzToolsFramework
             {
                 m_supplementalEditData.back().m_displayLabel = label.empty() ? AZStd::string::format("[%d]", siblingIdx) : label;
                 editData->m_description = nullptr;
-                editData->m_name = m_supplementalEditData.back().m_displayLabel.c_str();
+                if (!editData->m_name)
+                {
+                    editData->m_name = m_supplementalEditData.back().m_displayLabel.c_str();
+                }
 
                 if (mergeContainerEditData)
                 {
@@ -1004,6 +995,15 @@ namespace AzToolsFramework
 
             if (node)
             {
+                AZ::Edit::Attribute* attribute = FindAttributeInNode(node, AZ::Edit::Attributes::AcceptsMultiEdit);
+                bool acceptsMultiEdit = GetValueFromAttributeWithParams<bool>(true, node, attribute);
+                if (!acceptsMultiEdit)
+                {
+                    // Reject the node and everything under it if it doesn't support multiple instances
+                    m_nodeDiscarded = true;
+                    return false;
+                }
+
                 // Add the new instance pointer to the list of mapped instances
                 node->m_instances.push_back(ptr);
                 // Flag the node as already matched for this pass.
@@ -1079,7 +1079,7 @@ namespace AzToolsFramework
                         }
                         else
                         {
-                            AZStd::string indexedName = AZStd::string::format("%s_%d", classData->m_name, m_curParentNode->m_children.size() - 1);
+                            AZStd::string indexedName = AZStd::string::format("%s_%zu", classData->m_name, m_curParentNode->m_children.size() - 1);
                             node->m_identifier = static_cast<Identifier>(AZ::Crc32(indexedName.c_str()));
                         }
                     }

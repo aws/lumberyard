@@ -21,10 +21,13 @@
 
 #define UNKNOWN_GROUND_HEIGHT -1E10f
 
+#if ENABLE_CRY_PHYSICS
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
+#endif
 
 namespace {
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* GetEntityPhysics(IEntity* entity, AZ::EntityId id)
     {
         if (entity)
@@ -38,7 +41,9 @@ namespace {
             return physEntity;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
+#if ENABLE_CRY_PHYSICS
     bool GetGroundFromEntity(const QuatT& location, IPhysicalEntity* pPhysEntity, float& height, Vec3& normal)
     {
         height = location.t.z;
@@ -72,6 +77,7 @@ namespace {
 
         return bHeightValid;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     Vec3 ComputeAnimationMovementPlaneNormal(const ISkeletonAnim& skeletonAnim, const Vec3& defaultNormal)
     {
@@ -133,6 +139,7 @@ namespace PoseAligner {
         REGISTER_CVAR2("a_poseAlignerForceWeightOne", &m_forceWeightOne, 0, VF_NULL, "PoseAligner forces targeting weight to always be one.");
     }
 
+ #if ENABLE_CRY_PHYSICS
     /*
     CContactRaycast
     */
@@ -222,6 +229,7 @@ namespace PoseAligner {
 
         return hitCount > 0;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     /*
     CChain
@@ -282,6 +290,7 @@ namespace PoseAligner {
         m_animationSlopeNormalFiltered.NormalizeSafe(Vec3(0.0f, 0.0f, 1.0f));
     }
 
+#if ENABLE_CRY_PHYSICS
     void CChain::FindContact(const QuatT& location, IPhysicalEntity* physicalEntity)
     {
         Vec3 targetPositionPrevious = m_targetPosition;
@@ -350,6 +359,7 @@ namespace PoseAligner {
         m_targetPosition = targetPositionNew;
         m_targetNormal = targetNormalNew;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     void CChain::FilterTargetLocation(const float time)
     {
@@ -562,10 +572,12 @@ namespace PoseAligner {
     CChainPtr CPose::CreateChain(const SChainDesc& desc)
     {
         SChainDesc chainDesc = desc;
+#if ENABLE_CRY_PHYSICS
         if (!chainDesc.pContactReporter)
         {
             chainDesc.pContactReporter = new CContactRaycast(m_pEntity);
         }
+#endif // ENABLE_CRY_PHYSICS
 
         CChainPtr chain = CChain::Create(chainDesc);
         if (chain)
@@ -608,8 +620,10 @@ namespace PoseAligner {
         float groundHeight = 0.0f;
         Vec3 groundNormal(0.0f, 0.0f, 1.0f);
         
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* physicalEntity = GetEntityPhysics(m_pEntity, m_entityId);
         bool bGroundHeightValid = GetGroundFromEntity(location, physicalEntity, groundHeight, groundNormal);
+#endif // ENABLE_CRY_PHYSICS
 
         //
 
@@ -620,7 +634,9 @@ namespace PoseAligner {
             CChain& chain = *m_chains[i];
 
             chain.UpdateFromAnimations(*m_pCharacter, location, time);
+#if ENABLE_CRY_PHYSICS
             chain.FindContact(location, physicalEntity);
+#endif
             chain.FilterTargetLocation(time);
             chain.ComputeTargetBlendValue(*m_pSkeletonPose, time, m_blendWeight);
 

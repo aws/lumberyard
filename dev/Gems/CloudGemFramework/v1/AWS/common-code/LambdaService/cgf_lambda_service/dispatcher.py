@@ -8,8 +8,6 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-import six  # for six re-raise
-
 from copy import deepcopy
 import importlib
 import inspect
@@ -124,8 +122,8 @@ def dispatch(event, context):
     try:
         result = function(request, **parameters)
     except Exception as e:
-        error_message = 'CloudCanvas_request_id : {} -- {}'.format(aws_request_id, message(e))
-        six.reraise(type(e), type(e)(error_message), sys.exc_info()[2])
+        error_message = 'CloudCanvas_request_id : {} failed with {}'.format(aws_request_id, message(e))
+        raise ClientError(error_message) from e
 
     try:
         result["CloudCanvas_request_id"] = aws_request_id
@@ -136,6 +134,7 @@ def dispatch(event, context):
     print('returning result {}'.format(filtered_result))
 
     return result
+
 
 def __check_function_parameters(function, parameters):
     # arg_spec is a named tuple as produced by inspect.getargspec: ArgSpec(args, varargs, keywords, defaults)
@@ -148,13 +147,13 @@ def __check_function_parameters(function, parameters):
     # which there are no parameters.
     expected_parameters = set(arg_spec.args)
     unexpected_parameters = set()
-    for parameter_name, parameter_value in six.iteritems(parameters):
+    for parameter_name, parameter_value in parameters.items():
         if parameter_name in expected_parameters:
             if parameter_value is not None:
                 if parameter_name == arg_spec.args[0]:
                     raise ValueError('Invalid handler arguments. The first parameter\'s name, {}, matches an api parameter name. Use an unique name for the first parameter, which is always a service.Request object.'.format(parameter_name))
                 expected_parameters.remove(parameter_name)
-        elif not has_kwargs_parameter: # There are no "unexpected" parameters if there is a **kwargs parameter.
+        elif not has_kwargs_parameter:  # There are no "unexpected" parameters if there is a **kwargs parameter.
             unexpected_parameters.add(parameter_name)
     
     # The request object is passed as the first parameter, regardless of it's name.
@@ -177,10 +176,12 @@ def __check_function_parameters(function, parameters):
     if expected_parameters or unexpected_parameters:
         error_message = ''
         if expected_parameters:
-            if error_message: error_message += ' '
+            if error_message:
+                error_message += ' '
             error_message += 'Expected the following parameters: {}.'.format(', '.join(expected_parameters))
         if unexpected_parameters:
-            if error_message: error_message += ' '
+            if error_message:
+                error_message += ' '
             error_message += 'The following parameters are unexpected: {}.'.format(', '.join(unexpected_parameters))
         error_message += ' Check the documentation for the the API your calling.'
         raise ClientError(error_message)

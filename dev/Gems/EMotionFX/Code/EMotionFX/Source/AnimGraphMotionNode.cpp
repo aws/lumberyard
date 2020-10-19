@@ -276,7 +276,7 @@ namespace EMotionFX
         motionInstance->SetIsInPlace(GetIsInPlace(animGraphInstance));
         motionInstance->SetFreezeAtLastFrame(m_playInfo.mFreezeAtLastFrame);
 
-        if (!animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_SYNCED) || animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_IS_SYNCMASTER))
+        if (!animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_SYNCED) || animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_IS_SYNCLEADER))
         {
             // See where we would end up when we would forward in time.
             const MotionInstance::PlayStateOut newPlayState = motionInstance->CalcPlayStateAfterUpdate(timePassedInSeconds);

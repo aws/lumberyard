@@ -101,7 +101,6 @@ CViewportTitleDlg::CViewportTitleDlg(QWidget* pParent)
     GetIEditor()->RegisterNotifyListener(this);
     GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
 
-
     LoadCustomPresets("FOVPresets", "FOVPreset", m_customFOVPresets);
     LoadCustomPresets("AspectRatioPresets", "AspectRatioPreset", m_customAspectRatioPresets);
     LoadCustomPresets("ResPresets", "ResPreset", m_customResPresets);
@@ -351,6 +350,25 @@ void CViewportTitleDlg::OnMenuFOVCustom()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CViewportTitleDlg::CreateFOVMenu()
+{
+    if (!m_fovMenu)
+    {
+        m_fovMenu = new QMenu(this);
+    }
+
+    m_fovMenu->clear();
+
+    AddFOVMenus(m_fovMenu, [this](float f) { m_pViewPane->SetViewportFOV(f); }, m_customFOVPresets);
+    if (!m_fovMenu->isEmpty())
+    {
+        m_fovMenu->addSeparator();
+    }
+
+    QAction* action = m_fovMenu->addAction(tr("Custom..."));
+    connect(action, &QAction::triggered, this, &CViewportTitleDlg::OnMenuFOVCustom);
+}
+
 void CViewportTitleDlg::PopUpFOVMenu()
 {
     if (m_pViewPane == NULL)
@@ -358,18 +376,14 @@ void CViewportTitleDlg::PopUpFOVMenu()
         return;
     }
 
-    QMenu menu(this);
+    CreateFOVMenu();
+    m_fovMenu->exec(QCursor::pos());
+}
 
-    AddFOVMenus(&menu,  [this](float f){m_pViewPane->SetViewportFOV(f); }, m_customFOVPresets);
-    if (!menu.isEmpty())
-    {
-        menu.addSeparator();
-    }
-
-    QAction* action = menu.addAction(tr("Custom..."));
-    connect(action, &QAction::triggered, this, &CViewportTitleDlg::OnMenuFOVCustom);
-
-    menu.exec(QCursor::pos());
+QMenu* const CViewportTitleDlg::GetFovMenu()
+{
+    CreateFOVMenu();
+    return m_fovMenu;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -440,6 +454,25 @@ void CViewportTitleDlg::OnMenuAspectRatioCustom()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CViewportTitleDlg::CreateAspectMenu()
+{
+    if (!m_aspectMenu)
+    {
+        m_aspectMenu = new QMenu(this);
+    }
+
+    m_aspectMenu->clear();
+
+    AddAspectRatioMenus(m_aspectMenu, [this](int width, int height) {m_pViewPane->SetAspectRatio(width, height); }, m_customAspectRatioPresets);
+    if (!m_aspectMenu->isEmpty())
+    {
+        m_aspectMenu->addSeparator();
+    }
+
+    QAction* customAction = m_aspectMenu->addAction(tr("Custom..."));
+    connect(customAction, &QAction::triggered, this, &CViewportTitleDlg::OnMenuAspectRatioCustom);
+}
+
 void CViewportTitleDlg::PopUpAspectMenu()
 {
     if (!m_pViewPane)
@@ -447,18 +480,14 @@ void CViewportTitleDlg::PopUpAspectMenu()
         return;
     }
 
-    QMenu menu(this);
+    CreateAspectMenu();
+    m_aspectMenu->exec(QCursor::pos());
+}
 
-    AddAspectRatioMenus(&menu, [this](int width, int height){m_pViewPane->SetAspectRatio(width, height); }, m_customAspectRatioPresets);
-    if (!menu.isEmpty())
-    {
-        menu.addSeparator();
-    }
-
-    QAction* customAction = menu.addAction(tr("Custom..."));
-    connect(customAction, &QAction::triggered, this, &CViewportTitleDlg::OnMenuAspectRatioCustom);
-
-    menu.exec(QCursor::pos());
+QMenu* const CViewportTitleDlg::GetAspectMenu()
+{
+    CreateAspectMenu();
+    return m_aspectMenu;
 }
 
 void CViewportTitleDlg::AddResolutionMenus(QMenu* menu, std::function<void(int, int)> callback, const QStringList& customPresets)
@@ -523,6 +552,25 @@ void CViewportTitleDlg::OnMenuResolutionCustom()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CViewportTitleDlg::CreateResolutionMenu()
+{
+    if (!m_resolutionMenu)
+    {
+        m_resolutionMenu = new QMenu(this);
+    }
+
+    m_resolutionMenu->clear();
+
+    AddResolutionMenus(m_resolutionMenu, [this](int width, int height) { m_pViewPane->ResizeViewport(width, height); }, m_customResPresets);
+    if (!m_resolutionMenu->isEmpty())
+    {
+        m_resolutionMenu->addSeparator();
+    }
+
+    QAction* action = m_resolutionMenu->addAction(tr("Custom..."));
+    connect(action, &QAction::triggered, this, &CViewportTitleDlg::OnMenuResolutionCustom);
+}
+
 void CViewportTitleDlg::PopUpResolutionMenu()
 {
     if (!m_pViewPane)
@@ -530,18 +578,14 @@ void CViewportTitleDlg::PopUpResolutionMenu()
         return;
     }
 
-    QMenu menu(this);
+    CreateResolutionMenu();
+    m_resolutionMenu->exec(QCursor::pos());
+}
 
-    AddResolutionMenus(&menu, [this](int width, int height) { m_pViewPane->ResizeViewport(width, height); }, m_customResPresets);
-    if (!menu.isEmpty())
-    {
-        menu.addSeparator();
-    }
-
-    QAction* action = menu.addAction(tr("Custom..."));
-    connect(action, &QAction::triggered, this, &CViewportTitleDlg::OnMenuResolutionCustom);
-
-    menu.exec(QCursor::pos());
+QMenu* const CViewportTitleDlg::GetResolutionMenu()
+{
+    CreateResolutionMenu();
+    return m_resolutionMenu;
 }
 
 //////////////////////////////////////////////////////////////////////////

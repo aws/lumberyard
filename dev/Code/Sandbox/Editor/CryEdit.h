@@ -162,7 +162,6 @@ public:
     RecentFileList* GetRecentFileList();
     virtual void AddToRecentFileList(const QString& lpszPathName);
     ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName, const TerrainTextureExportSettings& terrainTextureSettings);
-    void CloseCurrentLevel();
     static void InitDirectory();
     BOOL FirstInstance(bool bForceNewInstance = false);
     void InitFromCommandLine(CEditCommandLineInfo& cmdInfo);

@@ -627,18 +627,18 @@ namespace AZ
             template <class TKey, bool = AZStd::is_same<ValueType, KeyType>::value>
             struct KeyHelper
             {
-                static void SetElementKey(ValueType* element, KeyType&& key)
+                static void SetElementKey(ValueType* element, KeyType key)
                 {
-                    *element = AZStd::move(key);
+                    *element = key;
                 }
             };
 
             template <class T1, class T2>
             struct KeyHelper<AZStd::pair<T1, T2>, false>
             {
-                static void SetElementKey(ValueType* element, KeyType&& key)
+                static void SetElementKey(ValueType* element, KeyType key)
                 {
-                    element->first = AZStd::move(key);
+                    element->first = key;
                 }
             };
         public:
@@ -853,7 +853,7 @@ namespace AZ
             /// Inserts an entry at key in the container (for keyed containers only). Not used for serialization.
             void    SetElementKey(void* element, void* key) override
             {
-                KeyHelper<ValueType>::SetElementKey(reinterpret_cast<ValueType*>(element), AZStd::move(*reinterpret_cast<KeyType*>(key)));
+                KeyHelper<ValueType>::SetElementKey(reinterpret_cast<ValueType*>(element), *reinterpret_cast<KeyType*>(key));
             }
 
             /// Remove elements (removed array of elements) regardless if the container is Stable or not (IsStableElements)
@@ -2800,6 +2800,11 @@ namespace AZ
         }
     };
 
+    AZ_INLINE const Uuid GetGenericClassPairTypeId()
+    {
+        return Uuid("{9F3F5302-3390-407a-A6F7-2E011E3BB686}");
+    };
+
     /// Generic specialization for AZStd::pair
     template<class T1, class T2>
     struct SerializeGenericTypeInfo< AZStd::pair<T1, T2> >
@@ -2810,7 +2815,7 @@ namespace AZ
             : public GenericClassInfo
         {
         public:
-            AZ_TYPE_INFO(GenericClassPair, "{9F3F5302-3390-407a-A6F7-2E011E3BB686}");
+            AZ_TYPE_INFO(GenericClassPair, GetGenericClassPairTypeId());
             GenericClassPair()
                 : m_classData{ SerializeContext::ClassData::Create<PairType>("AZStd::pair", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_pairContainer) }
             {

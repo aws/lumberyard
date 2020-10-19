@@ -23,7 +23,7 @@ public:
     static const int64      TIMEVALUE_PRECISION = 100000;         // one second
 
 public:
-    void GetMemoryUsage(class ICrySizer* pSizer) const { /*nothing*/}
+    void GetMemoryUsage(class ICrySizer*) const { /*nothing*/}
 
     // Default constructor.
     ILINE CTimeValue()
@@ -168,7 +168,7 @@ public:
 
     AUTO_STRUCT_INFO
 
-    void GetMemoryStatistics(class ICrySizer* pSizer) const { /*nothing*/}
+    void GetMemoryStatistics(class ICrySizer*) const { /*nothing*/}
 
 private: // ----------------------------------------------------------
 

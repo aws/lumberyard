@@ -13,6 +13,7 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
 #include "utils.h"
 #include "primitives.h"
 #include "geometries.h"
@@ -212,7 +213,7 @@ int CGeomManager::UnregisterGeometry(phys_geometry* pgeom)
     return 0;
 }
 
-extern class CPhysicalWorld* g_pPhysWorlds[];
+extern struct IPhysicalWorld* g_pPhysWorlds[];
 void CGeometry::Release()
 {
     if (CryInterlockedDecrement(&m_nRefCount) <= 0)
@@ -658,4 +659,4 @@ IBreakableGrid2d* CGeomManager::GenerateBreakableGrid(vector2df* ptsrc, int npt,
     return pGrid;
 }
 
-
+#endif // ENABLE_CRY_PHYSICS

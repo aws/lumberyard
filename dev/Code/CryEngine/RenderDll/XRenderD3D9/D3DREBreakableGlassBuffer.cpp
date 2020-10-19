@@ -15,6 +15,9 @@
 
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "D3DREBreakableGlassBuffer.h"
 
 #include "DriverD3D.h"
@@ -383,3 +386,4 @@ void CREBreakableGlassBuffer::DrawBuffer(const uint32 cyclicId, const EBufferTyp
         }
     }
 }//-------------------------------------------------------------------------------------------------
+#endif // ENABLE_CRY_PHYSICS

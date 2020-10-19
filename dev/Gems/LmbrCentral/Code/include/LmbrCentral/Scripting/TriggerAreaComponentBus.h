@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #include "TagComponentBus.h"
 #include <AzCore/Component/ComponentBus.h>
 
@@ -72,3 +73,5 @@ namespace LmbrCentral
 
     using TriggerAreaEntityNotificationBus = AZ::EBus<TriggerAreaEntityNotifications>;
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

@@ -27,8 +27,10 @@
 #include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/PropertyTreeEditor/PropertyTreeEditorComponent.h>
+#include <AzToolsFramework/Render/EditorIntersectorComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
+#include <AzToolsFramework/Slice/SliceRequestComponent.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
 #include <AzToolsFramework/ToolsComponents/AzToolsFrameworkConfigurationSystemComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
@@ -65,6 +67,7 @@ namespace AzToolsFramework
             EditorEntityContextComponent::CreateDescriptor(),
             EditorEntityFixupComponent::CreateDescriptor(),
             SliceMetadataEntityContextComponent::CreateDescriptor(),
+            SliceRequestComponent::CreateDescriptor(),
             Components::EditorEntityActionComponent::CreateDescriptor(),
             Components::EditorEntityIconComponent::CreateDescriptor(),
             Components::EditorInspectorComponent::CreateDescriptor(),
@@ -89,6 +92,7 @@ namespace AzToolsFramework
             AzToolsFramework::Components::EditorLevelComponentAPIComponent::CreateDescriptor(),
             AzToolsFramework::Components::PropertyTreeEditorComponent::CreateDescriptor(),
             AzToolsFramework::Components::EditorEntitySearchComponent::CreateDescriptor(),
+            AzToolsFramework::Components::EditorIntersectorComponent::CreateDescriptor(),
             AzToolsFramework::AzToolsFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
     }

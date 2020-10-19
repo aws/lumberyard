@@ -247,7 +247,7 @@ namespace EMotionFX
                             const size_t jointIndex = simulatedJoint->CalculateSimulatedJointIndex().GetValue();
                             const AZStd::string colliderExclusionTagString = MCore::ConstructStringSeparatedBySemicolons(colliderExclusionTags);
 
-                            commandString = AZStd::string::format("%s -%s %d -%s %d -%s %d -%s \"%s\"",
+                            commandString = AZStd::string::format("%s -%s %d -%s %zu -%s %zu -%s \"%s\"",
                                 CommandAdjustSimulatedJoint::s_commandName,
                                 CommandAdjustSimulatedJoint::s_actorIdParameterName, actorId,
                                 CommandAdjustSimulatedJoint::s_objectIndexParameterName, objectIndex,
@@ -349,6 +349,7 @@ namespace EMotionFX
         AZ_Error("EMotionFX", serializeContext, "Can't get serialize context from component application.")
         m_simulatedObjectEditor = new ObjectEditor(serializeContext, m_propertyNotify.get());
         m_simulatedJointEditor = new ObjectEditor(serializeContext, m_propertyNotify.get());
+        m_simulatedJointEditor->setObjectName("EMFX.SimulatedJointWidget.SimulatedJointEditor");
 
         QWidget* jointCardContents = new QWidget(this);
         QVBoxLayout* jointCardLayout = new QVBoxLayout(jointCardContents);
@@ -364,6 +365,7 @@ namespace EMotionFX
         if (ColliderHelpers::AreCollidersReflected())
         {
             SimulatedObjectColliderWidget* colliderWidget = new SimulatedObjectColliderWidget();
+            colliderWidget->setObjectName("EMFX.SimulatedJointWidget.SimulatedObjectColliderWidget");
             colliderWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
             colliderWidget->CreateGUI();
 

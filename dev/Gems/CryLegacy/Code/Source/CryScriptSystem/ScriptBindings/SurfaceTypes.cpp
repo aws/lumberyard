@@ -16,7 +16,10 @@
 
 #include <I3DEngine.h>
 #include <ICryPak.h>
+
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 
 static XmlNodeRef m_root = 0;
 
@@ -186,8 +189,10 @@ bool CScriptSurfaceType::Load(int nId)
         aiNode->setAttr("crouchMult", crouchMult);
         aiNode->setAttr("movingMult", movingMult);
     }
+#if ENABLE_CRY_PHYSICS
     gEnv->pPhysicalWorld->SetSurfaceParameters(m_nId, fBouncyness, fFriction,
         (uint32)(sf_pierceability(iPiercingResistence) | sf_matbreakable(imatBreakable) | bManuallyBreakable));
+#endif
 
 
     return true;

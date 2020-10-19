@@ -17,6 +17,8 @@
 #define CRYINCLUDE_CRYPHYSICS_ARTICULATEDENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 struct featherstone_data
 {
     Vec3i qidx2axidx, axidx2qidx;
@@ -309,5 +311,7 @@ public:
     CPhysicalEntity** m_pCollEntList;
     int m_nCollEnts;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_ARTICULATEDENTITY_H

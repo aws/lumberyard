@@ -231,7 +231,9 @@ public:
 
     ////////////////////////////////////////////////////////////////////////////////////////
     //Original Virtuals/////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics(bool wantCharacterPhysics = false) const;
+#endif
 
     virtual void SetFireDir(const Vec3& dir);
     virtual const Vec3& GetFireDir() const;

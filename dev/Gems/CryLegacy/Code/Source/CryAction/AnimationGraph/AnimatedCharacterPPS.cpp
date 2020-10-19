@@ -102,6 +102,7 @@ void CAnimatedCharacter::UpdateSimpleMovementConditions()
         IEntity* pEntity = GetEntity();
         //string name = pEntity->GetName();
         //CryLogAlways("AC[%s]: simplified movement %s!", name, (m_simplifyMovement ? "enabled" : "disabled"));
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pPhysEnt = pEntity->GetPhysics();
         if ((pPhysEnt != NULL) && (pPhysEnt->GetType() == PE_LIVING))
         {
@@ -120,6 +121,7 @@ void CAnimatedCharacter::UpdateSimpleMovementConditions()
 
             pPhysEnt->SetParams(&pf);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 
@@ -341,6 +343,7 @@ void CAnimatedCharacter::ComputeGroundSlope()
 
     IEntity* pEntity = GetEntity();
     CRY_ASSERT(pEntity != NULL);
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEntity = pEntity->GetPhysics();
 
     Vec3 normal = Vec3(0.0f, 0.0f, 1.0f);
@@ -350,6 +353,9 @@ void CAnimatedCharacter::ComputeGroundSlope()
         pPhysEntity->GetStatus(&status);
         normal = status.groundSlope;
     }
+#else
+    Vec3 normal = Vec3(0.0f, 0.0f, 1.0f);
+#endif // ENABLE_CRY_PHYSICS
 
     Vec3 up(0, 0, 1);
     Vec3 rootNormal = normal;
@@ -422,6 +428,7 @@ void CAnimatedCharacter::PostProcessingUpdate()
 
     //
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEnt = pEntity->GetPhysics();
     if (!pPhysEnt)
     {
@@ -431,6 +438,7 @@ void CAnimatedCharacter::PostProcessingUpdate()
     {
         return;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (!m_pPoseAligner)
     {
@@ -825,6 +833,7 @@ void CAnimatedCharacter::RequestPhysicalEntityMovement(const QuatT& wantedEntMov
 {
     ANIMCHAR_PROFILE_DETAILED;
 
+#if ENABLE_CRY_PHYSICS
     IEntity* pEntity = GetEntity();
     CRY_ASSERT(pEntity != NULL);
 
@@ -1013,6 +1022,7 @@ void CAnimatedCharacter::RequestPhysicalEntityMovement(const QuatT& wantedEntMov
 
     m_hasForcedOverrideRotation = false;
     m_hasForcedMovement = false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //--------------------------------------------------------------------------------
@@ -1021,6 +1031,7 @@ void CAnimatedCharacter::UpdatePhysicalColliderMode()
 {
     ANIMCHAR_PROFILE_DETAILED;
 
+#if ENABLE_CRY_PHYSICS
     bool debug = (CAnimationGraphCVars::Get().m_debugColliderMode != 0);
 
     // If filtered result is Undefined it will be forced to Pushable below.
@@ -1227,10 +1238,12 @@ void CAnimatedCharacter::UpdatePhysicalColliderMode()
     pPhysEnt->SetParams(&pd);
     pPhysEnt->SetParams(&pp);
     pPhysEnt->SetParams(&pf);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAnimatedCharacter::EnableRigidCollider(float radius)
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEnt = GetEntity()->GetPhysics();
     if (pPhysEnt && !m_pRigidColliderPE)
     {
@@ -1257,15 +1270,20 @@ void CAnimatedCharacter::EnableRigidCollider(float radius)
         gp.density = 0.0f;
         m_pRigidColliderPE->AddGeometry(pGeom, &gp, 103);
     }
+#else
+    AZ_UNUSED(radius);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CAnimatedCharacter::DisableRigidCollider()
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pRigidColliderPE)
     {
         gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_pRigidColliderPE);
         m_pRigidColliderPE = NULL;
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //--------------------------------------------------------------------------------
@@ -1279,6 +1297,7 @@ void CAnimatedCharacter::CreateExtraSolidCollider()
         return;
     }
 
+    #if ENABLE_CRY_PHYSICS
     if (m_pFeetColliderPE != NULL)
     {
         DestroyExtraSolidCollider();
@@ -1318,12 +1337,14 @@ void CAnimatedCharacter::CreateExtraSolidCollider()
     pab.posHostPivot = Vec3(0, 0, 0.8f);
     pab.bGrounded = 1;
     m_pFeetColliderPE->SetParams(&pab);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //--------------------------------------------------------------------------------
 
 void CAnimatedCharacter::DestroyExtraSolidCollider()
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pFeetColliderPE == NULL)
     {
         return;
@@ -1331,6 +1352,7 @@ void CAnimatedCharacter::DestroyExtraSolidCollider()
 
     gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_pFeetColliderPE);
     m_pFeetColliderPE = NULL;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //--------------------------------------------------------------------------------
@@ -1339,6 +1361,7 @@ void CAnimatedCharacter::UpdatePhysicsInertia()
 {
     ANIMCHAR_PROFILE_DETAILED;
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysEnt = GetEntity()->GetPhysics();
     if (pPhysEnt && (pPhysEnt->GetType() == PE_LIVING) &&
         !GetEntity()->IsHidden()) // Hidden entities will ignore inertia sets, we don't want to invalidate our cache because of that
@@ -1391,6 +1414,7 @@ void CAnimatedCharacter::UpdatePhysicsInertia()
         }
         */
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //--------------------------------------------------------------------------------

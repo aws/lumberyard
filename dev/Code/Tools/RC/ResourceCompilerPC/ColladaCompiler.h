@@ -66,7 +66,9 @@ private:
     ConvertContext m_CC;
     ICryXML* pCryXML;
     IPakSystem* pPakSystem;
+#if ENABLE_CRY_PHYSICS
     CPhysicsInterface* pPhysicsInterface;
+#endif
     int m_refCount;
 };
 

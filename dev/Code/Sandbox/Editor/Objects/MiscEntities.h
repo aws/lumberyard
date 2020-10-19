@@ -18,6 +18,7 @@
 
 #include "EntityObject.h"
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 // WindArea entity.
 //////////////////////////////////////////////////////////////////////////
@@ -79,6 +80,7 @@ private:
     // pointers to the two joined bodies
     IPhysicalEntity* m_body0, * m_body1;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 // GeomCache entity.
 class SANDBOX_API CGeomCacheEntity

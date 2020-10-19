@@ -32,7 +32,7 @@ DESCRIPTION: This file defines the steps/targets required to build WAF based pro
     </ItemGroup>
 
     <PropertyGroup>
-        <WAF_MSBuildDirectory>.</WAF_MSBuildDirectory>
+        <WAF_MSBuildDirectory>$(MSBuildThisFileDirectory)</WAF_MSBuildDirectory>
     </PropertyGroup>
 
     <!-- *******************************************************************************************

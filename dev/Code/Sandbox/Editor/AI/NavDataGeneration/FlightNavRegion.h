@@ -30,7 +30,9 @@
 
 struct IRenderer;
 struct I3DEngine;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct IGeometry;
 struct SpecialArea;
 class CGraph;
@@ -41,7 +43,11 @@ class CFlightNavRegion
 public:
 
 public:
+#if ENABLE_CRY_PHYSICS
     CFlightNavRegion(IPhysicalWorld* pPhysWorld, CGraph* pGraph);
+#else
+    CFlightNavRegion(CGraph* pGraph);
+#endif // ENABLE_CRY_PHYSICS
     ~CFlightNavRegion(void);
     virtual void Clear();
 
@@ -216,7 +222,9 @@ private:
 
     void    DumpLinkRadii(const char* filename);
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld*             m_pPhysWorld;
+#endif
     CGraph*                             m_pGraph;
     int                                 m_heightFieldOriginX, m_heightFieldOriginY;
     int                       m_heightFieldDimX, m_heightFieldDimY; // The size of the coarse grid of cells.

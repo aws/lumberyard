@@ -20,7 +20,9 @@
 #include "ScriptHelpers.h"
 #include "GameObjects/GameObject.h"
 #include "ScriptRMI.h"
+#if ENABLE_CRY_PHYSICS
 #include "IPhysics.h"
+#endif
 #include "IEntityRenderState.h"
 #include "ActionGame.h"
 #include "ILevelSystem.h"
@@ -67,8 +69,10 @@ CGameContext::CGameContext(CCryAction* pFramework, CScriptRMI* pScriptRMI, CActi
     //  changing which network message things are sent in and such.
     m_flags |= eGSF_ImmersiveMultiplayer;
 
+#if ENABLE_CRY_PHYSICS
     m_pPhysicalWorld = gEnv->pPhysicalWorld;
     m_pGame->AddGlobalPhysicsCallback(eEPE_OnCollisionLogged, OnCollision, 0);
+#endif // ENABLE_CRY_PHYSICS
 
     if (!CCryActionCVars::Get().g_syncClassRegistry)
     {
@@ -96,7 +100,9 @@ CGameContext::~CGameContext()
         m_pEntitySystem->RemoveSink(this);
     }
 
+#if ENABLE_CRY_PHYSICS
     m_pGame->RemoveGlobalPhysicsCallback(eEPE_OnCollisionLogged, OnCollision, 0);
+#endif
 
     m_pScriptRMI->SetContext(NULL);
 
@@ -419,6 +425,7 @@ void CGameContext::OnEvent(IEntity* pEntity, SEntityEvent& event)
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 //
 // physics synchronization
 //
@@ -436,6 +443,7 @@ void CGameContext::OnCollision(const EventPhys* pEvent, void*)
         return;
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //
 // internal functions
@@ -670,9 +678,11 @@ IGameRules* CGameContext::GetGameRules()
     return 0;
 }
 
+#if ENABLE_CRY_PHYSICS
 void CGameContext::OnBrokeSomething(const SBreakEvent& be, EventPhysMono* pMono, bool isPlane)
 {
 }
+#endif // ENABLE_CRY_PHYSICS
 
 void CGameContext::PlayerIdSet(EntityId id)
 {

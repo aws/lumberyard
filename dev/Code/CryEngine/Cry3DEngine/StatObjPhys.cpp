@@ -25,6 +25,11 @@
 
 #include "TouchBendingCVegetationAgent.h"
 
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#endif
+
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 void CStatObj::PhysicalizeCompiled(CNodeCGF* pNode, int bAppend)
 {
@@ -259,7 +264,6 @@ bool CStatObj::PhysicalizeGeomType(int nGeomType, CMesh& mesh, float tolerance, 
     {
         delete [] pVertices;
     }
-
     return true;
 }
 
@@ -370,7 +374,7 @@ void CStatObj::SavePhysicalizeData(CNodeCGF* pNode)
         memcpy(&pNode->physicalGeomData[nGeomType][0], stm.GetBuf(), stm.GetUsedSize());
     }
 }
-
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 ///////////////////////// Breakable Geometry /////////////////////////////
@@ -1964,7 +1968,14 @@ void CStatObj::PrepareSkinData(const Matrix34& mtxSkelToMesh, IGeometry* pPhysSk
     geom_world_data gwd[2];
     geom_contact* pcontact;
     mesh_data* md;
+#if ENABLE_CRY_PHYSICS
     IGeometry* pSphere, * pSphereBig;
+#else
+    // two spheres for checking intersections against skeleton
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    AZ_UNUSED(pcontact);
+    AZ_UNUSED(j);
+#endif
     strided_pointer<Vec3> pVtx;
     Matrix34 mtxMeshToSkel = mtxSkelToMesh.GetInverted();
     ITetrLattice* pLattice = GetTetrLattice();
@@ -1981,9 +1992,13 @@ void CStatObj::PrepareSkinData(const Matrix34& mtxSkelToMesh, IGeometry* pPhysSk
     primitives::sphere sph;
     sph.center.zero();
     sph.r = r > 0.0f ? r : min(min(vtx[1].x, vtx[1].y), vtx[1].z);
+#if ENABLE_CRY_PHYSICS
     pSphere = gEnv->pPhysicalWorld->GetGeomManager()->CreatePrimitive(primitives::sphere::type, &sph);
+#endif
     sph.r *= 3.0f;
+#if ENABLE_CRY_PHYSICS
     pSphereBig = gEnv->pPhysicalWorld->GetGeomManager()->CreatePrimitive(primitives::sphere::type, &sph);
+#endif
     assert(pPhysSkel);
     PREFAST_ASSUME(pPhysSkel);
     md = (mesh_data*)pPhysSkel->GetData();
@@ -2004,6 +2019,7 @@ void CStatObj::PrepareSkinData(const Matrix34& mtxSkelToMesh, IGeometry* pPhysSk
         else
         {
             gwd[0].offset = v;
+#if ENABLE_CRY_PHYSICS
             {
                 WriteLockCond locki;
                 if (pSphere->IntersectLocked(pPhysSkel, gwd, gwd + 1, 0, pcontact, locki) ||
@@ -2029,14 +2045,17 @@ void CStatObj::PrepareSkinData(const Matrix34& mtxSkelToMesh, IGeometry* pPhysSk
                     pSkinInfo[i].idx[0] = -1;
                 }
             } // locki
+#endif
         }
     }
     if (pLattice)
     {
         pPhysSkel->Release();
     }
+#if ENABLE_CRY_PHYSICS
     pSphereBig->Release();
     pSphere->Release();
+#endif
 }
 
 IStatObj* CStatObj::SkinVertices(strided_pointer<Vec3> pSkelVtx, const Matrix34& mtxSkelToMesh)
@@ -2516,7 +2535,12 @@ int CStatObj::PhysicalizeSubobjects(IPhysicalEntity* pent, const Matrix34* pMtx,
                         // Make a geometry box for intersection.
                         if (!pJointBox)
                         {
+#if ENABLE_CRY_PHYSICS
                             pJointBox = GetPhysicalWorld()->GetGeomManager()->CreatePrimitive(primitives::box::type, &joint_bbox);
+#else
+                            // Create box for joint
+                            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
                         }
                         {
                             WriteLockCond lockColl;
@@ -2974,7 +2998,11 @@ void CStatObj::CopyFoliageData(IStatObj* pObjDst, bool bMove, IFoliage* pSrcFoli
             memcpy(pDst->m_pSpines[i].pVtx = new Vec3[m_pSpines[i].nVtx], m_pSpines[i].pVtx, m_pSpines[i].nVtx * sizeof(Vec3));
             memcpy(pDst->m_pSpines[i].pSegDim = new Vec4[m_pSpines[i].nVtx], m_pSpines[i].pSegDim, m_pSpines[i].nVtx * sizeof(Vec4));
             pDst->m_pSpines[i].pVtxCur = new Vec3[m_pSpines[i].nVtx];
+#if ENABLE_CRY_PHYSICS
             if (pDst->m_pSpines[i].bActive = m_pSpines[i].bActive && (!pSrcFoliage || ((CStatObjFoliage*)pSrcFoliage)->m_pRopes[i] != 0))
+#else
+            if (pDst->m_pSpines[i].bActive = m_pSpines[i].bActive)
+#endif
             {
                 for (; i1 < (int)m_chunkBoneIds.size() && m_chunkBoneIds[i1] != ibone; i1++)
                 {
@@ -3326,10 +3354,14 @@ int CStatObj::Serialize(TSerialize ser)
                     char* pbuf = new char[i];
                     CMemStream stm(pbuf, i, false);
                     SerializeData(ser, "PhysMeshData", pbuf, i);
+#if ENABLE_CRY_PHYSICS
                     IGeometry* pPhysMesh = GetPhysicalWorld()->GetGeomManager()->LoadGeometry(stm, pMesh->m_pPositions, pMesh->m_pIndices, pIds);
                     pPhysMesh->AddRef();
                     pPhysMesh->SetForeignData((IStatObj*)this, 0);
                     m_arrPhysGeomInfo.SetPhysGeom(GetPhysicalWorld()->GetGeomManager()->RegisterGeometry(pPhysMesh, 0, surfaceTypesId, numIds));
+#else
+                    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
                     delete[] pbuf;
                 }
                 delete[] pIds;
@@ -3386,7 +3418,9 @@ int CStatObj::Serialize(TSerialize ser)
                 if (GetPhysGeom())
                 {
                     CMemStream stm(false);
+#if ENABLE_CRY_PHYSICS
                     GetPhysicalWorld()->GetGeomManager()->SaveGeometry(stm, GetPhysGeom()->pGeom);
+#endif
                     ser.Value("PhysSz", i = stm.GetUsedSize());
                     SerializeData(ser, "PhysMeshData", stm.GetBuf(), i);
                 }
@@ -4137,6 +4171,7 @@ foundtri:
 
 int CStatObj::PhysicalizeFoliage(IPhysicalEntity* pTrunk, const Matrix34& mtxWorld, IFoliage*& pIRes, float lifeTime, int iSource)
 {
+#if ENABLE_CRY_PHYSICS
     if (gEnv->IsDedicated() || !m_pSpines || GetCVars()->e_PhysFoliage < 1 + (pTrunk && pTrunk->GetType() == PE_STATIC))
     {
         return 0;
@@ -4335,6 +4370,10 @@ int CStatObj::PhysicalizeFoliage(IPhysicalEntity* pTrunk, const Matrix34& mtxWor
 
     pIRes = pRes;
     return m_nSpines;
+#else //#if ENABLE_CRY_PHYSICS
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    return 0;
+#endif //#if ENABLE_CRY_PHYSICS
 }
 
 
@@ -4349,7 +4388,7 @@ CStatObjFoliage::~CStatObjFoliage()
         AZ::TouchBendingCVegetationAgent::GetInstance()->OnFoliageDestroyed(this);
         m_touchBendingSkeletonProxy = nullptr;
     }
-
+#if ENABLE_CRY_PHYSICS
     if (m_pRopes)
     {
         for (int i = 0; i < m_nRopes; i++)
@@ -4362,6 +4401,10 @@ CStatObjFoliage::~CStatObjFoliage()
         delete[] m_pRopes;
         delete[] m_pRopesActiveTime;
     }
+#else //#if ENABLE_CRY_PHYSICS
+    delete[] m_pRopesActiveTime;
+#endif //#if ENABLE_CRY_PHYSICS
+
     delete[] m_pSkinningTransformations[0];
     delete[] m_pSkinningTransformations[1];
     m_next->m_prev = m_prev;
@@ -4417,6 +4460,8 @@ void CStatObjFoliage::ComputeSkinningTransformations(uint32 nList)
     Vec3 point0, point1;
     uint32 jointIndex = 1;
     uint32 spineCount = uint32(m_pStatObj->m_nSpines);
+
+#if ENABLE_CRY_PHYSICS
     for (uint32 i = 0; i < spineCount; ++i)
     {
         if (!m_pRopes[i])
@@ -4470,6 +4515,7 @@ void CStatObjFoliage::ComputeSkinningTransformations(uint32 nList)
             jointIndex += count;
         }
     }
+#endif //#if ENABLE_CRY_PHYSICS
 }
 
 SSkinningData* CStatObjFoliage::GetSkinningData(const Matrix34& RenderMat34, const SRenderingPassInfo& passInfo)
@@ -4517,7 +4563,11 @@ SSkinningData* CStatObjFoliage::GetSkinningData(const Matrix34& RenderMat34, con
     uint32 spineCount = uint32(m_pStatObj->m_nSpines);
     for (uint32 i = 0; i < spineCount; ++i)
     {
+#if ENABLE_CRY_PHYSICS
         if (!m_touchBendingSkeletonProxy && !m_pRopes[i])
+#else
+        if (!m_touchBendingSkeletonProxy)
+#endif
         {
             uint32 spineVertexCount = m_pStatObj->m_pSpines[i].nVtx - 1;
             for (uint32 j = 0; j < spineVertexCount; ++j)
@@ -4608,6 +4658,7 @@ void CStatObjFoliage::Update(float dt, const CCamera& rCamera)
         return;
     }
 
+#if ENABLE_CRY_PHYSICS
     int i, j, nContactEnts = 0, nColl;
     //int nContacts[4]={0,0,0,0};
     pe_status_rope sr;
@@ -4717,6 +4768,7 @@ void CStatObjFoliage::Update(float dt, const CCamera& rCamera)
     threadID nThreadID = 0;
     gEnv->pRenderer->EF_Query(EFQ_MainThreadList, nThreadID);
     ComputeSkinningTransformations(nThreadID);
+#endif //#if ENABLE_CRY_PHYSICS
 }
 
 void CStatObjFoliage::SetFlags(int flags)
@@ -4734,6 +4786,7 @@ void CStatObjFoliage::SetFlags(int flags)
             pr.collDist = 0.03f;
             pr.stiffnessAnim = GetFloatCVar(e_FoliageBranchesStiffness);
         }
+#if ENABLE_CRY_PHYSICS
         for (int i = 0; i < m_pStatObj->m_nSpines; i++)
         {
             if (m_pRopes[i])
@@ -4741,6 +4794,7 @@ void CStatObjFoliage::SetFlags(int flags)
                 m_pRopes[i]->SetParams(&pr);
             }
         }
+#endif //#if ENABLE_CRY_PHYSICS
         m_flags = flags;
     }
 }
@@ -4757,6 +4811,7 @@ void CStatObjFoliage::OnHit(struct EventPhysCollision* pHit)
 
 void CStatObjFoliage::BreakBranch(int idx)
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pRopes[idx])
     {
         int i, nActiveRopes;
@@ -4835,10 +4890,12 @@ void CStatObjFoliage::BreakBranch(int idx)
             }
         }
     }
+#endif //#if ENABLE_CRY_PHYSICS
 }
 
 int CStatObjFoliage::Serialize(TSerialize ser)
 {
+#if ENABLE_CRY_PHYSICS
     int i, nRopes = m_nRopes;
     bool bVal;
     ser.Value("nropes", nRopes);
@@ -4884,4 +4941,7 @@ int CStatObjFoliage::Serialize(TSerialize ser)
     }
 
     return 1;
+#else
+    return 0;
+#endif
 }

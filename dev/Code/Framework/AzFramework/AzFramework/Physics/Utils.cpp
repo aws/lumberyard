@@ -26,6 +26,7 @@
 #include <AzFramework/Physics/ScriptCanvasPhysicsUtils.h>
 #include <AzFramework/Physics/CollisionBus.h>
 #include <AzFramework/Physics/WorldBodyBus.h>
+#include <AzFramework/Physics/WindBus.h>
 
 namespace Physics
 {
@@ -155,6 +156,24 @@ namespace Physics
             }
         }
 
+        void ReflectWindBus(AZ::ReflectContext* context)
+        {
+            if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                using WindPositionFuncPtr = AZ::Vector3(WindRequests::*)(const AZ::Vector3&) const;
+                using WindAabbFuncPtr = AZ::Vector3(WindRequests::*)(const AZ::Aabb&) const;
+
+                behaviorContext->EBus<WindRequestsBus>("WindRequestsBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Module, "physics")
+                    ->Attribute(AZ::Script::Attributes::Category, "PhysX")
+                    ->Event("GetGlobalWind", &WindRequests::GetGlobalWind)
+                    ->Event("GetWindAtPosition", static_cast<WindPositionFuncPtr>(&WindRequests::GetWind))
+                    ->Event("GetWindInsideAabb", static_cast<WindAabbFuncPtr>(&WindRequests::GetWind))
+                    ;
+            }
+        }
+
         void ReflectPhysicsApi(AZ::ReflectContext* context)
         {
             ShapeConfiguration::Reflect(context);
@@ -191,6 +210,7 @@ namespace Physics
             CollisionNotificationBusBehaviorHandler::Reflect(context);
             RayCastHit::Reflect(context);
             WorldNotificationBusBehaviorHandler::Reflect(context);
+            ReflectWindBus(context);
         }
     }
 

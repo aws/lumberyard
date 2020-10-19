@@ -20,31 +20,29 @@
 
 namespace AudioControls
 {
-    class IAudioConnectionInspectorPanel;
-
     //-------------------------------------------------------------------------------------------//
     class CRtpcConnection
         : public IAudioConnection
     {
     public:
-        explicit CRtpcConnection(CID nID)
-            : IAudioConnection(nID)
-            , fMult(1.0f)
-            , fShift(0.0f)
+        explicit CRtpcConnection(CID id)
+            : IAudioConnection(id)
+            , m_mult(1.0f)
+            , m_shift(0.0f)
         {}
 
-        virtual ~CRtpcConnection() {}
+        ~CRtpcConnection() override = default;
 
-        virtual bool HasProperties() override { return true; }
+        bool HasProperties() override { return true; }
 
-        virtual void Serialize(Serialization::IArchive& ar) override
+        void Serialize(Serialization::IArchive& ar) override
         {
-            ar(fMult, "mult", "Multiply");
-            ar(fShift, "shift", "Shift");
+            ar(m_mult, "mult", "Multiply");
+            ar(m_shift, "shift", "Shift");
         }
 
-        float fMult;
-        float fShift;
+        float m_mult;
+        float m_shift;
     };
 
     using TRtpcConnectionPtr = AZStd::shared_ptr<CRtpcConnection>;
@@ -54,21 +52,21 @@ namespace AudioControls
         : public IAudioConnection
     {
     public:
-        explicit CStateToRtpcConnection(CID nID)
-            : IAudioConnection(nID)
-            , fValue(0.0f)
+        explicit CStateToRtpcConnection(CID id)
+            : IAudioConnection(id)
+            , m_value(0.0f)
         {}
 
-        virtual ~CStateToRtpcConnection() {}
+        ~CStateToRtpcConnection() override = default;
 
-        virtual bool HasProperties() override { return true; }
+        bool HasProperties() override { return true; }
 
-        virtual void Serialize(Serialization::IArchive& ar) override
+        void Serialize(Serialization::IArchive& ar) override
         {
-            ar(fValue, "value", "Value");
+            ar(m_value, "value", "Value");
         }
 
-        float fValue;
+        float m_value;
     };
 
     using TStateConnectionPtr = AZStd::shared_ptr<CStateToRtpcConnection>;
@@ -81,8 +79,8 @@ namespace AudioControls
         friend class CAudioWwiseLoader;
 
     public:
-        CAudioSystemEditor_wwise();
-        ~CAudioSystemEditor_wwise() override;
+        CAudioSystemEditor_wwise() = default;
+        ~CAudioSystemEditor_wwise() override = default;
 
         //////////////////////////////////////////////////////////
         // IAudioSystemEditor implementation
@@ -92,23 +90,23 @@ namespace AudioControls
         IAudioSystemControl* GetRoot() override { return &m_rootControl; }
         IAudioSystemControl* GetControl(CID id) const override;
         EACEControlType ImplTypeToATLType(TImplControlType type) const override;
-        TImplControlTypeMask GetCompatibleTypes(EACEControlType eATLControlType) const override;
-        TConnectionPtr CreateConnectionToControl(EACEControlType eATLControlType, IAudioSystemControl* pMiddlewareControl) override;
-        TConnectionPtr CreateConnectionFromXMLNode(XmlNodeRef pNode, EACEControlType eATLControlType) override;
-        XmlNodeRef CreateXMLNodeFromConnection(const TConnectionPtr pConnection, const EACEControlType eATLControlType) override;
+        TImplControlTypeMask GetCompatibleTypes(EACEControlType atlControlType) const override;
+        TConnectionPtr CreateConnectionToControl(EACEControlType atlControlType, IAudioSystemControl* middlewareControl) override;
+        TConnectionPtr CreateConnectionFromXMLNode(XmlNodeRef node, EACEControlType atlControlType) override;
+        XmlNodeRef CreateXMLNodeFromConnection(const TConnectionPtr connection, const EACEControlType atlControlType) override;
         const AZStd::string_view GetTypeIcon(TImplControlType type) const override;
         AZStd::string GetName() const override;
         AZStd::string GetDataPath() const;
         void DataSaved() override {}
-        void ConnectionRemoved(IAudioSystemControl* pControl) override;
+        void ConnectionRemoved(IAudioSystemControl* control) override;
         //////////////////////////////////////////////////////////
 
     private:
-        IAudioSystemControl* GetControlByName(AZStd::string sName, bool bIsLocalised = false, IAudioSystemControl* pParent = nullptr) const;
+        IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized = false, IAudioSystemControl* parent = nullptr) const;
 
         // Gets the ID of the control given its name. As controls can have the same name
         // if they're under different parents, the name of the parent is also needed (if there is one)
-        CID GetID(const AZStd::string_view sName) const;
+        CID GetID(const AZStd::string_view name) const;
 
         void UpdateConnectedStatus();
 
@@ -120,7 +118,7 @@ namespace AudioControls
 
         using TConnectionsMap = AZStd::unordered_map<CID, int>;
         TConnectionsMap m_connectionsByID;
-        AudioControls::CAudioWwiseLoader m_loader;
+        CAudioWwiseLoader m_loader;
     };
 
 } // namespace AudioControls

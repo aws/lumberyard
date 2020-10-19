@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "LmbrCentral_Traits_Platform.h",
+            "LmbrCentral_Traits_Linux.h"
+        ]
+    }
+}

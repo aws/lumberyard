@@ -51,7 +51,7 @@ public:
     ///implement all your unit tests in this function
     virtual void StartTest() = 0;
     ///Unit tests having higher priority will run first,
-    ///negative value means higher priority,deafult priority is zero
+    ///negative value means higher priority, default priority is zero
     virtual int UnitTestPriority() const;
     const char* GetName() const;
     void SetName(const char* name);

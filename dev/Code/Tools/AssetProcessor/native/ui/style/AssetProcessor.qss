@@ -88,7 +88,8 @@ QTableWidget#incomingSourceDependenciesTable:item:selected:!active {
     selection-color: rgb(192, 192, 192);
 }
 
-QPushButton#supportButton {
+QPushButton#supportButton,
+QPushButton#MissingProductDependenciesSupport {
     min-height: 24px; /* We have to set the min- and max-height otherwise the margins are not respected. */
     max-height: 24px;
 

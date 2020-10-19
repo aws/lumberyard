@@ -58,12 +58,6 @@
     <file alias="misc_toolbar-00.png">MainWindow/misc_toolbar-00.png</file>
     <file alias="proceduralmaterial_toolbar.png">MainWindow/proceduralmaterial_toolbar.png</file>
   </qresource>
-  <qresource prefix="/macros">
-    <file>btn_listedit_00.png</file>
-    <file>btn_listedit_01.png</file>
-    <file>btn_listedit_02.png</file>
-    <file>btn_listedit_03.png</file>
-  </qresource>
   <qresource prefix="/viewpanes">
     <file alias="editwithbutton_dark.png">MainWindow/editwithbutton_dark.png</file>
     <file alias="hide_helpers.png">MainWindow/hide_helpers.png</file>
@@ -75,12 +69,13 @@
     <file>res/ball_offline.ico</file>
     <file>res/ball_online.ico</file>
     <file>res/ball_pending.ico</file>
-    <file>res/p4.ico</file>
-    <file>res/p4_error.ico</file>
-    <file>res/source_control.ico</file>
+    <file>res/source_control_connected.svg</file>
+    <file>res/source_control_error_v2.svg</file>
+    <file>res/source_control-not_setup.svg</file>
+    <file>res/source_control-warning_v2.svg</file>
   </qresource>
   <qresource prefix="/Application">
-    <file>res/editor_icon.ico</file>
+    <file>res/lyeditor.ico</file>
   </qresource>
   <qresource prefix="/Icons">
       <file alias="Eye.svg">res/Eye.svg</file>
@@ -145,6 +140,14 @@
     <file>res/Preferences_01.png</file>
     <file>res/Preferences_02.png</file>
     <file>res/Preferences_03.png</file>
+    <file>res/Camera.svg</file>
+    <file>res/Debug.svg</file>
+    <file>res/Experimental.svg</file>
+    <file>res/Files.svg</file>
+    <file>res/Gizmos.svg</file>
+    <file>res/Global.svg</file>
+    <file>res/Motion.svg</file>
+    <file>res/Viewport.svg</file>
     <file>error_report_00.png</file>
     <file>error_report_01.png</file>
     <file>error_report_02.png</file>

@@ -14,6 +14,9 @@
 // Description : Breakable glass sim render node
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "BreakableGlassRenderNode.h"
 
 #include "3dEngine.h"
@@ -1077,3 +1080,4 @@ void CBreakableGlassRenderNode::OffsetPosition(const Vec3& delta)
     }
 }
 
+#endif // ENABLE_CRY_PHYSICS

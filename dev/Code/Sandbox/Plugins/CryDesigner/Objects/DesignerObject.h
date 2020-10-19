@@ -76,7 +76,9 @@ public:
     void GetLocalBounds(AABB& box) override;
 
     bool HitTest(HitContext& hc) override;
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetCollisionEntity() const override;
+#endif
 
     void BeginEditParams(IEditor* ie, int flags) override;
     void BeginEditMultiSelParams(bool bAllOfSameType) override;

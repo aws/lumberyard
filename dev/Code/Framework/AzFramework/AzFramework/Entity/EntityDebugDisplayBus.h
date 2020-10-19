@@ -49,6 +49,9 @@ namespace AzFramework
         virtual void SetColor(const AZ::Vector4& color) { (void)color; }
         virtual void SetAlpha(float a) { (void)a; }
         virtual void DrawQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4) { (void)p1; (void)p2; (void)p3; (void)p4; }
+        virtual void DrawQuad(float width, float height) { (void)width; (void)height; }
+        virtual void DrawWireQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4) { (void)p1; (void)p2; (void)p3; (void)p4; }
+        virtual void DrawWireQuad(float width, float height) { (void)width; (void)height; }
         virtual void DrawQuadGradient(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4, const AZ::Vector4& firstColor, const AZ::Vector4& secondColor) { (void)p1; (void)p2; (void)p3; (void)p4; (void)firstColor; (void)secondColor; }
         virtual void DrawTri(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3) { (void)p1; (void)p2; (void)p3; }
         virtual void DrawTriangles(const AZStd::vector<AZ::Vector3>& vertices, const AZ::Color& color) { (void)vertices; (void)color; }
@@ -86,7 +89,9 @@ namespace AzFramework
         virtual void DrawTextLabel(const AZ::Vector3& pos, float size, const char* text, const bool bCenter = false, int srcOffsetX = 0, int srcOffsetY = 0) { (void)pos; (void)size; (void)text; (void)bCenter; (void)srcOffsetX; (void)srcOffsetY; }
         virtual void Draw2dTextLabel(float x, float y, float size, const char* text, bool bCenter = false) { (void)x; (void)y; (void)size; (void)text; (void)bCenter; }
         virtual void DrawTextOn2DBox(const AZ::Vector3& pos, const char* text, float textScale, const AZ::Vector4& TextColor, const AZ::Vector4& TextBackColor) { (void)pos; (void)text; (void)textScale; (void)TextColor; (void)TextBackColor; }
+#if !defined(OTHER_ACTIVE) || !defined(ENABLE_OTHER_DEBUG_DISPLAY) || !ENABLE_OTHER_DEBUG_DISPLAY
         virtual void DrawTextureLabel(ITexture* texture, const AZ::Vector3& pos, float sizeX, float sizeY, int texIconFlags) { (void)texture; (void)pos; (void)sizeX; (void)sizeY; (void)texIconFlags; }
+#endif
         virtual void DrawTextureLabel(int textureId, const AZ::Vector3& pos, float sizeX, float sizeY, int texIconFlags) { (void)textureId; (void)pos; (void)sizeX; (void)sizeY; (void)texIconFlags; }
         virtual void SetLineWidth(float width) { (void)width; }
         virtual bool IsVisible(const AZ::Aabb& bounds) { (void)bounds; return false; }

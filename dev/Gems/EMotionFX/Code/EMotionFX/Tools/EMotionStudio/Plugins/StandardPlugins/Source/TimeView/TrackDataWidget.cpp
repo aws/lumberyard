@@ -50,7 +50,6 @@
 namespace EMStudio
 {
     // the constructor
-    //TrackDataWidget::TrackDataWidget(TimeViewPlugin* plugin, QWidget* parent) : QGLWidget(parent)
     TrackDataWidget::TrackDataWidget(TimeViewPlugin* plugin, QWidget* parent)
         : QOpenGLWidget(parent)
         , QOpenGLFunctions()
@@ -203,6 +202,7 @@ namespace EMStudio
         mPlugin->SetRedrawFlag();
         CommandSystem::CommandRemoveEventTrack(trackIndex);
         mPlugin->UnselectAllElements();
+        ClearState();
     }
 
     // draw the time marker
@@ -1016,6 +1016,22 @@ namespace EMStudio
         }
     }
 
+    void TrackDataWidget::SetPausedTime(float timeValue, bool emitTimeChangeStart)
+    {
+        mPlugin->mCurTime = timeValue;
+        const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
+        if (motionInstances.size() == 1)
+        {
+            EMotionFX::MotionInstance* motionInstance = motionInstances[0];
+            motionInstance->SetCurrentTime(timeValue);
+            motionInstance->SetPause(true);
+        }
+        if (emitTimeChangeStart)
+        {
+            emit mPlugin->ManualTimeChangeStart(timeValue);
+        }
+        emit mPlugin->ManualTimeChange(timeValue);
+    }
 
     // when the mouse is moving, while a button is pressed
     void TrackDataWidget::mouseMoveEvent(QMouseEvent* event)
@@ -1086,13 +1102,7 @@ namespace EMStudio
                 }
                 else
                 {
-                    const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-                    if (motionInstances.size() == 1)
-                    {
-                        EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()), false);
-                        emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
-                    }
+                    SetPausedTime(aznumeric_cast<float>(mPlugin->mCurTime));
                 }
 
                 mIsScrolling = true;
@@ -1136,6 +1146,12 @@ namespace EMStudio
 
                         // show the time of the currently resizing element in the time info view
                         ShowElementTimeInfo(mResizeElement);
+
+                        if (mResizeID == TimeTrackElement::RESIZEPOINT_END)
+                        {
+                            const float timeValue = mResizeElement->GetEndTime();
+                            SetPausedTime(timeValue);
+                        }
 
                         setCursor(Qt::SizeHorCursor);
                     }
@@ -1203,6 +1219,10 @@ namespace EMStudio
                 const double deltaTime = snappedTime - mDraggingElement->GetStartTime();
                 mDraggingElement->MoveRelative(deltaTime);
             }
+
+            dragElementTrack = mDraggingElement->GetTrack();
+            const float timeValue = mDraggingElement->GetStartTime();
+            SetPausedTime(timeValue);
         }
         else if (isPanning)
         {
@@ -1340,13 +1360,7 @@ namespace EMStudio
 
                 if (recorder.GetRecordTime() < MCore::Math::epsilon)
                 {
-                    const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-                    if (motionInstances.size() == 1)
-                    {
-                        EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-                        motionInstance->SetPause(true);
-                        motionInstance->SetCurrentTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
-                    }
+                    SetPausedTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()), /*emitTimeChangeStart=*/true);
                 }
                 else
                 {
@@ -1357,10 +1371,9 @@ namespace EMStudio
 
                     recorder.SetCurrentPlayTime(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                     recorder.SetAutoPlay(false);
+                    emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
+                    emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
                 }
-
-                emit mPlugin->ManualTimeChangeStart(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
-                emit mPlugin->ManualTimeChange(aznumeric_cast<float>(mPlugin->GetCurrentTime()));
             }
             else // not inside timeline
             {
@@ -1510,6 +1523,11 @@ namespace EMStudio
             TimeTrack* mouseCursorTrack = mPlugin->GetTrackAt(event->y());
             const bool elementTrackChanged = (mouseCursorTrack && mDragElementTrack && mouseCursorTrack != mDragElementTrack);
 
+            if (mDragging && mMouseLeftClicked && mDraggingElement && !mIsScrolling && !mResizing)
+            {
+                SetPausedTime(aznumeric_cast<float>(mDraggingElement->GetStartTime()));
+            }
+
             if ((mResizing || mDragging) && elementTrackChanged == false && mDraggingElement)
             {
                 emit MotionEventChanged(mDraggingElement, mDraggingElement->GetStartTime(), mDraggingElement->GetEndTime());
@@ -1585,6 +1603,14 @@ namespace EMStudio
         UpdateMouseOverCursor(event->x(), event->y());
     }
 
+    void TrackDataWidget::ClearState()
+    {
+        mDragElementTrack = nullptr;
+        mDraggingElement = nullptr;
+        mDragging = false;
+        mResizing = false;
+        mResizeElement = nullptr;
+    }
 
     // the mouse wheel is adjusted
     void TrackDataWidget::DoWheelEvent(QWheelEvent* event, TimeViewPlugin* plugin)
@@ -1646,13 +1672,7 @@ namespace EMStudio
         double dropTime = mPlugin->PixelToTime(mousePos.x());
         mPlugin->SetCurrentTime(dropTime);
 
-        const AZStd::vector<EMotionFX::MotionInstance*>& motionInstances = MotionWindowPlugin::GetSelectedMotionInstances();
-        if (motionInstances.size() == 1)
-        {
-            EMotionFX::MotionInstance* motionInstance = motionInstances[0];
-            motionInstance->SetCurrentTime(aznumeric_cast<float>(dropTime), false);
-            motionInstance->Pause();
-        }
+        SetPausedTime(dropTime);
     }
 
 
@@ -1905,6 +1925,7 @@ namespace EMStudio
         CommandSystem::CommandHelperRemoveMotionEvents(timeTrack->GetName(), eventNumbers);
 
         mPlugin->UnselectAllElements();
+        ClearState();
     }
 
 
@@ -1932,6 +1953,7 @@ namespace EMStudio
         CommandSystem::CommandHelperRemoveMotionEvents(timeTrack->GetName(), eventNumbers);
 
         mPlugin->UnselectAllElements();
+        ClearState();
     }
 
     void TrackDataWidget::OnRemoveEventTrack()
@@ -2523,7 +2545,7 @@ namespace EMStudio
                 outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f seconds</p></td></tr>", motion->GetMaxTime());
 
                 outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Event Tracks:&nbsp;</b></p></td>");
-                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%d</p></td></tr>", motion->GetEventTable()->GetNumTracks());
+                outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%zu</p></td></tr>", motion->GetEventTable()->GetNumTracks());
             }
             else
             {
@@ -2705,7 +2727,7 @@ namespace EMStudio
                             outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f seconds</p></td></tr>", motion->GetMaxTime());
 
                             outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Event Tracks:&nbsp;</b></p></td>");
-                            outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%d</p></td></tr>", motion->GetEventTable()->GetNumTracks());
+                            outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%zu</p></td></tr>", motion->GetEventTable()->GetNumTracks());
                         }
                         else
                         {

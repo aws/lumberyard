@@ -50,6 +50,7 @@ AssetImporterDocument::AssetImporterDocument()
 
 bool AssetImporterDocument::LoadScene(const AZStd::string& sceneFullPath)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     namespace SceneEvents = AZ::SceneAPI::Events;
     SceneEvents::SceneSerializationBus::BroadcastResult(m_scene, &SceneEvents::SceneSerializationBus::Events::LoadScene, sceneFullPath, AZ::Uuid::CreateNull());
     return !!m_scene;

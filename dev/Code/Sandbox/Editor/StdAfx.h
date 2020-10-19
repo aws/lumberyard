@@ -89,3 +89,7 @@
 #ifdef LoadCursor
 #undef LoadCursor
 #endif
+
+#if !ENABLE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#endif

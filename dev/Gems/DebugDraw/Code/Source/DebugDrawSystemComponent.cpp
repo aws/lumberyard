@@ -259,6 +259,15 @@ namespace DebugDraw
     {
         m_currentTime = time.GetSeconds();
 
+        // enable alpha blending
+        IRenderAuxGeom* renderer = gEnv->pRenderer->GetIRenderAuxGeom();
+        CRenderAuxGeomRenderFlagsRestore renderFlagsRestore(renderer);
+        SAuxGeomRenderFlags newRenderFlags = renderer->GetRenderFlags();
+        newRenderFlags.SetAlphaBlendMode(e_AlphaBlended);
+
+        renderer->SetRenderFlags(newRenderFlags);
+
+        // draw debug objects
         OnTickAabbs();
         OnTickLines();
         OnTickObbs();

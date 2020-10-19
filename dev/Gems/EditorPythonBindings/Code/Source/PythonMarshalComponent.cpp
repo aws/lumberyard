@@ -107,6 +107,17 @@ namespace EditorPythonBindings
                 AZ_Warning("python", false, "Passed in PythonProxyObject is empty.");
                 return AZStd::nullopt;
             }
+            else if (pyObj.is_none())
+            {
+                AZStd::any* anyValue = aznew AZStd::any();
+                outValue.Set<AZStd::any>(anyValue);
+
+                auto deleteAny = [anyValue]()
+                {
+                    delete anyValue;
+                };
+                return AZStd::make_optional(PythonMarshalTypeRequests::BehaviorValueResult{ true, deleteAny });
+            }
             else if (PyList_Check(pyObj.ptr()))
             {
                 return ReturnVectorFromList(traits, pybind11::cast<pybind11::list>(pyObj), outValue);
@@ -186,8 +197,9 @@ namespace EditorPythonBindings
 
         bool CanConvertPythonToBehaviorValue(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj) const override
         {
-            // supports Python native Float, Long, Bool, String, or List
-            if (PyFloat_Check(pyObj.ptr()) ||
+            // supports Python native types None, Float, Long, Bool, List, or String
+            if (pyObj.is_none()            ||
+                PyFloat_Check(pyObj.ptr()) ||
                 PyLong_Check(pyObj.ptr())  ||
                 PyBool_Check(pyObj.ptr())  ||
                 PyList_Check(pyObj.ptr())  ||
@@ -643,6 +655,26 @@ namespace EditorPythonBindings
             return AZStd::nullopt;
         }
 
+        bool LoadPythonToPairElement(PyObject* pyItem, PythonMarshalTypeRequests::BehaviorTraits traits, const AZ::SerializeContext::ClassElement* itemElement,
+            AZ::SerializeContext::IDataContainer* pairContainer, size_t index, AZ::SerializeContext* serializeContext, void* newPair)
+        {
+            pybind11::object pyObj{ pybind11::reinterpret_borrow<pybind11::object>(pyItem) };
+            AZ::BehaviorValueParameter behaviorItem;
+            auto behaviorResult = ProcessPythonObject(traits, pyObj, itemElement->m_typeId, behaviorItem);
+            if (behaviorResult && behaviorResult.value().first)
+            {
+                void* itemAddress = pairContainer->GetElementByIndex(newPair, itemElement, index);
+                AZ_Assert(itemAddress, "Element reserved for associative container's pair, but unable to retrieve address of the item:%d", index);
+                serializeContext->CloneObjectInplace(itemAddress, behaviorItem.m_value, itemElement->m_typeId);
+            }
+            else
+            {
+                AZ_Warning("python", false, "Could not convert to pair element type %s for the pair<>; failed to marshal Python input %s", itemElement->m_name, Convert::GetPythonTypeName(pyObj).c_str());
+                return false;
+            }
+            return true;
+        }
+
         class TypeConverterDictionary final
             : public PythonMarshalComponent::TypeConverter
         {
@@ -656,26 +688,6 @@ namespace EditorPythonBindings
                 , m_classData(classData)
                 , m_typeId(typeId)
             {
-            }
-
-            bool LoadPythonToPairElement(PyObject* pyItem, PythonMarshalTypeRequests::BehaviorTraits traits, const AZ::SerializeContext::ClassElement* itemElement,
-                AZ::SerializeContext::IDataContainer* pairContainer, size_t index, AZ::SerializeContext* serializeContext, void* newPair)
-            {
-                pybind11::object pyObj{ pybind11::reinterpret_borrow<pybind11::object>(pyItem) };
-                AZ::BehaviorValueParameter behaviorItem;
-                auto behaviorResult = ProcessPythonObject(traits, pyObj, itemElement->m_typeId, behaviorItem);
-                if (behaviorResult && behaviorResult.value().first)
-                {
-                    void* itemAddress = pairContainer->GetElementByIndex(newPair, itemElement, index);
-                    AZ_Assert(itemAddress, "Element reserved for associative container's pair, but unable to retrieve address of the item:%d", index);
-                    serializeContext->CloneObjectInplace(itemAddress, behaviorItem.m_value, itemElement->m_typeId);
-                }
-                else
-                {
-                    AZ_Warning("python", false, "Could not convert to pair element type %s for the pair<>; failed to marshal Python input %s", itemElement->m_name, Convert::GetPythonTypeName(pyObj).c_str());
-                    return false;
-                }
-                return true;
             }
 
             AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> PythonToBehaviorValueParameter(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj, AZ::BehaviorValueParameter& outValue) override
@@ -707,7 +719,7 @@ namespace EditorPythonBindings
                 const AZ::SerializeContext::ClassData* pairClass = serializeContext->FindClassData(pairElement->m_typeId);
                 AZ_Assert(pairClass, "Associative container was registered but not the pair that's used for storage.");
                 AZ::SerializeContext::IDataContainer* pairContainer = pairClass->m_container;
-                AZ_Assert(pairClass, "Associative container is missing the interface to the storage container.");
+                AZ_Assert(pairContainer, "Associative container is missing the interface to the storage container.");
 
                 // get the key/value element types
                 const AZ::SerializeContext::ClassElement* keyElement = nullptr;
@@ -1114,6 +1126,255 @@ namespace EditorPythonBindings
             }
         };
 
+        class TypeConverterPair final
+            : public PythonMarshalComponent::TypeConverter
+        {
+            AZ::GenericClassInfo* m_genericClassInfo = nullptr;
+            const AZ::SerializeContext::ClassData* m_classData = nullptr;
+            const AZ::TypeId m_typeId = {};
+
+            bool IsValidList(pybind11::object pyObj) const
+            {
+                return PyList_Check(pyObj.ptr()) != false && PyList_Size(pyObj.ptr()) == 2;
+            }
+
+            bool IsValidTuple(pybind11::object pyObj) const
+            {
+                return PyTuple_Check(pyObj.ptr()) != false && PyTuple_Size(pyObj.ptr()) == 2;
+            }
+
+            bool IsCompatibleProxy(pybind11::object pyObj) const
+            {
+                if (pybind11::isinstance<EditorPythonBindings::PythonProxyObject>(pyObj))
+                {
+                    auto behaviorObject = pybind11::cast<EditorPythonBindings::PythonProxyObject*>(pyObj)->GetBehaviorObject();
+                    AZ::Uuid typeId = behaviorObject.value()->m_typeId;
+                    return AZ::Utils::IsPairContainerType(typeId);
+                }
+
+                return false;
+            }
+
+        public:
+            TypeConverterPair(AZ::GenericClassInfo* genericClassInfo, const AZ::SerializeContext::ClassData* classData, const AZ::TypeId& typeId)
+                : m_genericClassInfo(genericClassInfo)
+                , m_classData(classData)
+                , m_typeId(typeId)
+            {
+            }
+
+            AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> PythonToBehaviorValueParameter(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj, AZ::BehaviorValueParameter& outValue) override
+            {
+                if (!CanConvertPythonToBehaviorValue(traits, pyObj))
+                {
+                    AZ_Warning("python", false, "Cannot convert pair container for %s", m_classData->m_name);
+                    return AZStd::nullopt;
+                }
+
+                const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(m_typeId);
+                if (!behaviorClass)
+                {
+                    AZ_Warning("python", false, "Missing pair behavior class for %s", m_typeId.ToString<AZStd::string>().c_str());
+                    return AZStd::nullopt;
+                }
+
+                AZ::SerializeContext* serializeContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+                if (!serializeContext)
+                {
+                    return AZStd::nullopt;
+                }
+
+                // prepare the AZStd::pair<> container
+                AZ::BehaviorObject pairInstance = behaviorClass->Create();
+                AZ::SerializeContext::IDataContainer* pairDataContainer = m_classData->m_container;
+
+                // get the element types
+                const AZ::SerializeContext::ClassElement* element0 = nullptr;
+                const AZ::SerializeContext::ClassElement* element1 = nullptr;
+
+                auto elementTypeEnumCallback = [&element0, &element1](const AZ::Uuid&, const AZ::SerializeContext::ClassElement* genericClassElement)
+                {
+                    if (genericClassElement->m_flags & AZ::SerializeContext::ClassElement::Flags::FLG_POINTER)
+                    {
+                        AZ_Error("python", false, "Python marshalling does not handle naked pointers; not converting the pair");
+                        return false;
+                    }
+                    else if (!element0)
+                    {
+                        element0 = genericClassElement;
+                    }
+                    else if (!element1)
+                    {
+                        element1 = genericClassElement;
+                    }
+                    else
+                    {
+                        AZ_Error("python", false, "The pair container can't have more than 2 elements.");
+                        return false;
+                    }
+
+                    return true;
+                };
+
+                pairDataContainer->EnumTypes(elementTypeEnumCallback);
+                if (!element0 || !element1)
+                {
+                    AZ_Error("python", false, "Could not retrieve pair elements.");
+                    return AZStd::nullopt;
+                }
+
+                // load python items into pair elements
+                PyObject* item0 = nullptr;
+                PyObject* item1 = nullptr;
+                if (IsValidList(pyObj))
+                {
+                    pybind11::list pyList(pyObj);
+
+                    item0 = pyList[0].ptr();
+                    item1 = pyList[1].ptr();
+                }
+                else if (IsValidTuple(pyObj))
+                {
+                    pybind11::tuple pyTuple(pyObj);
+
+                    item0 = pyTuple[0].ptr();
+                    item1 = pyTuple[1].ptr();
+                }
+                else if (IsCompatibleProxy(pyObj))
+                {
+                    // OnDemandReflection<AZStd::pair<T1, T2>> exposes "first" and "second" in the proxy object
+                    EditorPythonBindings::PythonProxyObject* proxy = pybind11::cast<EditorPythonBindings::PythonProxyObject*>(pyObj);
+                    item0 = proxy->GetPropertyValue("first").ptr();
+                    item1 = proxy->GetPropertyValue("second").ptr();
+                }
+
+                void* reserved0 = pairDataContainer->ReserveElement(pairInstance.m_address, element0);
+                AZ_Assert(reserved0, "Could not allocate pair's first item via ReserveElement()");
+                if (item0 && item0 && !LoadPythonToPairElement(item0, traits, element0, pairDataContainer, 0, serializeContext, pairInstance.m_address))
+                {
+                    pairDataContainer->FreeReservedElement(pairInstance.m_address, reserved0, serializeContext);
+                    return AZStd::nullopt;
+                }
+
+                void* reserved1 = pairDataContainer->ReserveElement(pairInstance.m_address, element1);
+                AZ_Assert(reserved1, "Could not allocate pair's second item via ReserveElement()");
+                if (item1 && !LoadPythonToPairElement(item1, traits, element1, pairDataContainer, 1, serializeContext, pairInstance.m_address))
+                {
+                    pairDataContainer->FreeReservedElement(pairInstance.m_address, reserved0, serializeContext);
+                    pairDataContainer->FreeReservedElement(pairInstance.m_address, reserved1, serializeContext);
+                    return AZStd::nullopt;
+                }
+
+                outValue.m_value = pairInstance.m_address;
+                outValue.m_typeId = pairInstance.m_typeId;
+                outValue.m_traits = traits;
+
+                auto pairInstanceDeleter = [behaviorClass, pairInstance]()
+                {
+                    behaviorClass->Destroy(pairInstance);
+                };
+
+                return PythonMarshalTypeRequests::BehaviorValueResult{ true, pairInstanceDeleter };
+            }
+            
+            AZStd::optional<PythonMarshalTypeRequests::PythonValueResult> BehaviorValueParameterToPython(AZ::BehaviorValueParameter& behaviorValue) override
+            {
+                // the class data must have a container interface
+                AZ::SerializeContext::IDataContainer* containerInterface = m_classData->m_container;
+
+                if (!containerInterface)
+                {
+                    AZ_Warning("python", false, "Container interface is missing from class %s.", m_classData->m_name);
+                    return AZStd::nullopt;
+                }
+
+                if (!behaviorValue.ConvertTo(m_typeId))
+                {
+                    AZ_Warning("python", false, "Cannot convert behavior value %s.", behaviorValue.m_name);
+                    return AZStd::nullopt;
+                }
+
+                auto cleanUpList = AZStd::make_shared<AZStd::vector<PythonMarshalTypeRequests::DeallocateFunction>>();
+
+                // return pair as list, if conversion failed for an item it will remain as 'none'
+                pybind11::list pythonList;
+                pybind11::object pythonItem0{ pybind11::none() };
+                pybind11::object pythonItem1{ pybind11::none() };
+                size_t itemCount = 0;
+                
+                auto pairElementCallback = [cleanUpList, &pythonItem0, &pythonItem1, &itemCount](void* instancePair, const AZ::Uuid& elementClassId, const AZ::SerializeContext::ClassData* elementGenericClassData, const AZ::SerializeContext::ClassElement* genericClassElement)
+                {
+                    AZ::BehaviorObject behaviorObjectValue(instancePair, elementClassId);
+                    auto result = ProcessBehaviorObject(behaviorObjectValue);
+
+                    if (result.has_value())
+                    {
+                        PythonMarshalTypeRequests::DeallocateFunction deallocateFunction = result.value().second;
+                        if (result.value().second)
+                        {
+                            cleanUpList->emplace_back(AZStd::move(result.value().second));
+                        }
+
+                        pybind11::object pythonResult = result.value().first;
+                        if (itemCount == 0)
+                        {
+                            pythonItem0 = pythonResult;
+                        }
+                        else
+                        {
+                            pythonItem1 = pythonResult;
+                        }
+
+                        itemCount++;
+                    }
+                    else
+                    {
+                        AZ_Warning("python", false, "BehaviorObject was not processed, python item will remain 'none'.");
+                    }
+
+                    return true;
+                };
+
+                containerInterface->EnumElements(behaviorValue.m_value, pairElementCallback);
+                pythonList.append(pythonItem0);
+                pythonList.append(pythonItem1);
+
+                PythonMarshalTypeRequests::PythonValueResult result;
+                result.first = pythonList;
+
+                if (!cleanUpList->empty())
+                {
+                    AZStd::weak_ptr<AZStd::vector<PythonMarshalTypeRequests::DeallocateFunction>> cleanUp(cleanUpList);
+                    result.second = [cleanUp]()
+                    {
+                        auto cleanupList = cleanUp.lock();
+                        if (cleanupList)
+                        {
+                            AZStd::for_each(cleanupList->begin(), cleanupList->end(), [](auto& deleteMe) { deleteMe(); });
+                        }
+                    };
+                }
+
+                return result;
+            }
+
+            bool CanConvertPythonToBehaviorValue(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj) const override
+            {
+                AZStd::vector<AZ::Uuid> typeList = AZ::Utils::GetContainedTypes(m_typeId);
+                bool isList = IsValidList(pyObj);
+                bool isTuple = IsValidTuple(pyObj);
+                bool isCompatibleProxy = IsCompatibleProxy(pyObj);
+
+                if (typeList.empty() || typeList.size() != 2)
+                {
+                    return false;
+                }
+
+                return isList || isTuple || isCompatibleProxy;
+            }
+        };
+
         using TypeConverterRegistrant = AZStd::function<void(const AZ::TypeId& typeId, PythonMarshalComponent::TypeConverterPointer typeConverterPointer)>;
 
         void RegisterContainerTypes(TypeConverterRegistrant registrant)
@@ -1140,6 +1401,10 @@ namespace EditorPythonBindings
                 else if (AZ::Utils::IsMapContainerType(typeId))
                 {
                     registrant(typeId, AZStd::make_unique<TypeConverterDictionary>(serializeContext->FindGenericClassInfo(typeId), classData, typeId));
+                }
+                else if (AZ::Utils::IsPairContainerType(typeId))
+                {
+                    registrant(typeId, AZStd::make_unique<TypeConverterPair>(serializeContext->FindGenericClassInfo(typeId), classData, typeId));
                 }
                 return true;
             };
@@ -1201,6 +1466,15 @@ namespace EditorPythonBindings
     {
         PythonMarshalTypeRequestBus::MultiHandler::BusConnect(typeId);
         m_typeConverterMap[typeId] = AZStd::move(typeConverterPointer);
+    }
+
+    void PythonMarshalComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto&& serialize = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serialize->Class<PythonMarshalComponent, AZ::Component>()
+                ->Version(0);
+        }
     }
 
     void PythonMarshalComponent::Activate()

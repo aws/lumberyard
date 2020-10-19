@@ -136,7 +136,9 @@
 #include <I3DEngine.h>
 #include <IIndexedMesh.h>
 #include <ITimer.h>
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include <IAISystem.h>
 #include <IXml.h>
 #include <IMovieSystem.h>

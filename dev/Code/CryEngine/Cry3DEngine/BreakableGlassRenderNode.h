@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRY3DENGINE_BREAKABLEGLASSRENDERNODE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 // Includes
 #include "CREBreakableGlass.h"
 #include "CREBreakableGlassHelpers.h"
@@ -102,5 +103,8 @@ private:
     uint8                                           m_state;
     uint8                                           m_nextPhysFrag;
 };//------------------------------------------------------------------------------------------------
+
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRY3DENGINE_BREAKABLEGLASSRENDERNODE_H

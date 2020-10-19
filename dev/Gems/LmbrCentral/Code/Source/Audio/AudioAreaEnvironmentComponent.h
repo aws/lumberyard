@@ -13,6 +13,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzFramework/Physics/TriggerBus.h>
 
 #include <LmbrCentral/Scripting/TriggerAreaComponentBus.h>
 
@@ -23,7 +24,7 @@ namespace LmbrCentral
     /*!
      * AudioAreaEnvironmentComponent
      * This component contains an Entity reference which should link to an Entity
-     * that has a TriggerAreaComponent.  That Trigger Area (and shape) will act as the
+     * that has a TriggerAreaComponent or PhysX Collider with Trigger enabled. That Trigger Area (and shape) will act as the
      * broad-phase trigger.  Once Entities go inside, this component will track their
      * movement until they leave the Trigger Area.
      * The AudioAreaEnvironmentComponent's Entity requires it's own Shape that defines
@@ -34,7 +35,10 @@ namespace LmbrCentral
     class AudioAreaEnvironmentComponent
         : public AZ::Component
         , private AZ::TransformNotificationBus::MultiHandler
+        , private Physics::TriggerNotificationBus::Handler
+#if ENABLE_CRY_PHYSICS
         , private TriggerAreaNotificationBus::Handler
+#endif
     {
         friend class EditorAudioAreaEnvironmentComponent;
 
@@ -51,11 +55,16 @@ namespace LmbrCentral
          */
         void OnTransformChanged(const AZ::Transform&, const AZ::Transform&) override;
 
+#if ENABLE_CRY_PHYSICS
         /*!
          * TriggerAreaNotificationBus::Handler
          */
         void OnTriggerAreaEntered(AZ::EntityId enteringEntityId) override;
         void OnTriggerAreaExited(AZ::EntityId exitingEntityId) override;
+#endif // ENABLE_CRY_PHYSICS
+
+        void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override;
+        void OnTriggerExit(const Physics::TriggerEvent& triggerEvent) override;
 
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

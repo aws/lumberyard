@@ -45,6 +45,7 @@ namespace PhysX
         void OnCollisionPersist(const Physics::CollisionEvent& event);
         void OnCollisionEnd(const Physics::CollisionEvent& event);
 
+        AZ::ComponentDescriptor* m_dummyTerrainComponentDescriptor = nullptr;
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
     };
 }

@@ -18,6 +18,11 @@
 
 #include <AudioEngineWwiseGemSystemComponent.h>
 
+#if defined(AUDIO_ENGINE_WWISE_EDITOR)
+    #include <AudioControlBuilderComponent.h>
+    #include <WwiseBuilderComponent.h>
+#endif // AUDIO_ENGINE_WWISE_EDITOR
+
 namespace AudioEngineWwiseGem
 {
     class AudioEngineWwiseModule
@@ -32,6 +37,10 @@ namespace AudioEngineWwiseGem
         {
             m_descriptors.insert(m_descriptors.end(), {
                 AudioEngineWwiseGemSystemComponent::CreateDescriptor(),
+            #if defined(AUDIO_ENGINE_WWISE_EDITOR)
+                AudioControlBuilder::BuilderPluginComponent::CreateDescriptor(),
+                WwiseBuilder::BuilderPluginComponent::CreateDescriptor(),
+            #endif // AUDIO_ENGINE_WWISE_EDITOR
             });
         }
 

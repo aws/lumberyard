@@ -18,6 +18,7 @@
 #include <RayCastQueue.h>
 #include <IntersectionTestQueue.h>
 
+#if ENABLE_CRY_PHYSICS
 class CCryActionPhysicQueues
 {
 public:
@@ -43,5 +44,6 @@ private:
     CryActionRayCaster  m_rayCaster;
     CryActionIntersectionTester m_intersectionTester;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYACTION_CRYACTIONPHYSICQUEUES_H

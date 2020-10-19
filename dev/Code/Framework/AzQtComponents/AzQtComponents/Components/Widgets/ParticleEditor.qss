@@ -1,0 +1,39 @@
+
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+DockableLibraryTreeView > RenameableTitleBar #RenameableIcon
+{
+  min-width: 19px;
+  min-height: 17px;
+  max-width: 19px;
+  max-height: 17px;
+  image: url(:/particleQT/icons/libraries_icon.png);
+}
+
+DockableLibraryTreeView > RenameableTitleBar #RenameableCollapsIcon[Expanded="true"]
+{
+  min-width: 19px;
+  min-height: 17px;
+  max-width: 19px;
+  max-height: 17px;
+  image: url(:/particleQT/icons/caret-down.svg);
+}
+
+DockableLibraryTreeView > RenameableTitleBar #RenameableCollapsIcon[Expanded="false"]
+{
+  min-width: 19px;
+  min-height: 17px;
+  max-width: 19px;
+  max-height: 17px;
+  image: url(:/particleQT/icons/caret-right.svg);
+}

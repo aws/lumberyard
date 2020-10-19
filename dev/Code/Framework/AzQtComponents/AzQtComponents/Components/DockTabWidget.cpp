@@ -43,6 +43,9 @@ namespace AzQtComponents
 
         // Forward on undock requests from our tabs
         QObject::connect(m_tabBar, &DockTabBar::undockTab, this, &DockTabWidget::undockTab);
+
+        // Enable spacing of the overflow button to allow dragging even when the TabBar gets crowded
+        setOverflowButtonSpacing(true);
     }
 
     /**
@@ -277,6 +280,18 @@ namespace AzQtComponents
     void DockTabWidget::mouseReleaseEvent(QMouseEvent* event)
     {
         m_tabBar->mouseReleaseEvent(event);
+    }
+
+    void DockTabWidget::mouseDoubleClickEvent(QMouseEvent* event)
+    {
+        if (event->button() == Qt::MouseButton::LeftButton && event->pos().y() <= m_tabBar->height())
+        {
+            emit tabBarDoubleClicked();
+        }
+        else
+        {
+            TabWidget::mouseDoubleClickEvent(event);
+        }
     }
 
     /**

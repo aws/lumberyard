@@ -693,6 +693,14 @@ class az_code_gen(Task.Task):
                     android_sysroot = flag.split('=', 2)
                     self.add_argument('-android-sysroot "{}"'.format(clean_path(android_sysroot[1])))
                     continue
+                if flag.startswith('-stdlib='):
+                    android_stdlib = flag.split('=', 2)
+                    self.add_argument('-android-stdlib "{}"'.format(android_stdlib[1]))
+                    continue
+                if flag.startswith('-resource-dir='):
+                    android_resource_dir = flag.split('=', 2)
+                    self.add_argument('-resource-dir "{}"'.format(android_resource_dir[1]))
+                    continue
 
         status, self.argument_file = self.write_argument_list_to_file()
         if not status:

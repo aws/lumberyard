@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
@@ -58,3 +59,5 @@ namespace LmbrCentral
         AZStd::vector<AZStd::string> m_excludedTags;
     };
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

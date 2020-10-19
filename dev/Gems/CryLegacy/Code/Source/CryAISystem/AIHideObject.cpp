@@ -775,6 +775,7 @@ void CAIHideObject::SetupPathExpand(CPipeUser* pOperand)
     m_pathNorm.NormalizeSafe();
     m_pathDir.Set(m_pathNorm.y, -m_pathNorm.x, 0);
 
+#if ENABLE_CRY_PHYSICS
     Vec3 hitPos;
     float   hitDist;
 
@@ -783,6 +784,7 @@ void CAIHideObject::SetupPathExpand(CPipeUser* pOperand)
 
     m_lowCoverValid = IntersectSweptSphere(&hitPos, hitDist, Lineseg(lowCoverOrig, lowCoverOrig + m_pathNorm * (m_distToCover + 0.5f)), SAMPLE_RADIUS, AICE_ALL);
     m_highCoverValid = IntersectSweptSphere(&hitPos, hitDist, Lineseg(highCoverOrig, highCoverOrig + m_pathNorm * (m_distToCover + 0.5f)), SAMPLE_RADIUS, AICE_ALL);
+#endif // ENABLE_CRY_PHYSICS
 
     m_lowLeftEdgeValid = false;
     m_lowRightEdgeValid = false;
@@ -863,6 +865,7 @@ void CAIHideObject::SampleCover(CPipeUser* pOperand, float& maxCover, float& max
     float sampleDist, float sampleRad, float sampleDepth,
     std::deque<Vec3>& points, bool pushBack, bool& reachedEdge)
 {
+#if ENABLE_CRY_PHYSICS
     //  const int REFINE_SAMPLES = 4;
 
     Vec3    hitPos;
@@ -902,6 +905,7 @@ void CAIHideObject::SampleCover(CPipeUser* pOperand, float& maxCover, float& max
         }
         maxDepth = max(maxDepth, d);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //
@@ -911,6 +915,7 @@ void CAIHideObject::SampleCoverRefine(CPipeUser* pOperand, float& maxCover, floa
     float sampleDist, float sampleRad, float sampleDepth,
     std::deque<Vec3>& points, bool pushBack)
 {
+#if ENABLE_CRY_PHYSICS
     Vec3    hitPos;
     int n = 1 + (int)floorf(fabs(maxWidth) / sampleDist);
     float   deltaWidth = 1.0f / (float)n * maxWidth;
@@ -951,6 +956,7 @@ void CAIHideObject::SampleCoverRefine(CPipeUser* pOperand, float& maxCover, floa
     {
         points.push_front(startPos + m_pathDir * maxCover + m_pathNorm * maxDepth);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 

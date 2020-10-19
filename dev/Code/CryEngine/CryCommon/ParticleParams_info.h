@@ -289,6 +289,10 @@ ATTRS_INFO("<Group=Collision>")
 VAR_INFO_ATTRS(eDepthCollision, "What kind of collision computation to perform")
 VAR_INFO_ATTRS(fCubemapFarDistance, "$<SoftMin=1> For Cubemap Collision, far distance of the cubemap")
 VAR_INFO_ATTRS(ePhysicsType, "What kind of physics simulation to run on particle")
+#if !PARTICLES_USE_CRY_PHYSICS
+VAR_INFO_ATTRS(sCollisionLayer, "Collision layer for particles")
+VAR_INFO_ATTRS(sCollisionGroup, "Collision group for particles to collide with")
+#endif
 VAR_INFO_ATTRS(bCollideTerrain, "Collides with terrain (if Physics <> none)")
 VAR_INFO_ATTRS(bCollideStaticObjects, "Collides with static physics objects (if Physics <> none)")
 VAR_INFO_ATTRS(bCollideDynamicObjects, "Collides with dynamic physics objects (if Physics <> none)")
@@ -296,7 +300,12 @@ VAR_INFO_ATTRS(fCollisionFraction, "Fraction of emitted particles that actually 
 VAR_INFO_ATTRS(fCollisionCutoffDistance, "Maximum distance up until collisions are respected (0 = infinite)")
 VAR_INFO_ATTRS(nMaxCollisionEvents, "Max # collision events per particle (0 = no limit)")
 VAR_INFO_ATTRS(eFinalCollision, "What to do on final collision (when MaxCollisions > 0")
+#if PARTICLES_USE_CRY_PHYSICS
 VAR_INFO_ATTRS(sSurfaceType, "Surface type for physicalized particles")
+#else
+VAR_INFO_ATTRS(bUseSelfCollision, "Use collision against particles of the same emitter for die/stop behavior")
+VAR_INFO_ATTRS(sPhysicsMaterial, "Physics material to use for particles body (from Default material library only)")
+#endif
 VAR_INFO_ATTRS(fElasticity, "$<SoftMax=1> Collision bounce coefficient: 0 = no bounce, 1 = full bounce, <0 = die")
 VAR_INFO_ATTRS(fDynamicFriction, "<SoftMax=10> Sliding drag value, in inverse seconds")
 VAR_INFO_ATTRS(fThickness, "<SoftMax=1> Lying thickness ratio - for physicalized particles only")

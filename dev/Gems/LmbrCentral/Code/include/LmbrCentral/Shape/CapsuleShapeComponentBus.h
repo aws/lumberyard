@@ -61,6 +61,12 @@ namespace LmbrCentral
 
     using CapsuleShapeConfiguration = CapsuleShapeConfig; ///< @deprecated Use CapsuleShapeConfig
 
+    struct CapsuleInternalEndPoints
+    {
+        AZ::Vector3 m_begin;
+        AZ::Vector3 m_end;
+    };
+
     /// Services provided by the Capsule Shape Component
     class CapsuleShapeComponentRequests 
         : public AZ::ComponentBus
@@ -73,6 +79,9 @@ namespace LmbrCentral
 
         /// @brief Returns the radius of the capsule.
         virtual float GetRadius() = 0;
+
+        /// @brief Returns the base and top points of the capsule, corresponding to the center points of the cap spheres.
+        virtual CapsuleInternalEndPoints GetCapsulePoints() = 0;
 
         /// @brief Sets the end to end height of capsule, this includes the cylinder and both caps.
         /// @param height new height of the capsule.

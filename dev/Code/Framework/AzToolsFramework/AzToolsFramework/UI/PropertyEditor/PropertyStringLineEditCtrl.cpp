@@ -69,6 +69,11 @@ namespace AzToolsFramework
         return AZStd::string(m_pLineEdit->text().toUtf8().data());
     }
 
+    QLineEdit* PropertyStringLineEditCtrl::GetLineEdit() const
+    {
+        return m_pLineEdit;
+    }
+
     void PropertyStringLineEditCtrl::setMaxLen(int maxLen)
     {
         m_pLineEdit->blockSignals(true);

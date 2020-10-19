@@ -413,8 +413,8 @@ namespace EMotionFX
             ->Value("Full clip based", SYNCMODE_CLIPBASED);
 
         editContext->Enum<EEventMode>("Event filter mode", "The event filter mode, which controls which events are passed further up the hierarchy.")
-            ->Value("Master node only", EVENTMODE_MASTERONLY)
-            ->Value("Servant node only", EVENTMODE_SLAVEONLY)
+            ->Value("Leader node only", EVENTMODE_LEADERONLY)
+            ->Value("Follower node only", EVENTMODE_FOLLOWERONLY)
             ->Value("Both nodes", EVENTMODE_BOTHNODES)
             ->Value("Most active", EVENTMODE_MOSTACTIVE)
             ->Value("None", EVENTMODE_NONE);

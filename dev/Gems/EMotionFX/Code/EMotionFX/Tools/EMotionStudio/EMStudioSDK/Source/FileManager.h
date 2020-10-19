@@ -104,6 +104,8 @@ namespace EMStudio
         AZStd::string LoadControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
         AZStd::string SaveControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
 
+        const AZStd::vector<AZStd::string>& GetSavedSourceAssets() const { return m_savedSourceAssets; }
+
     private:
         AZStd::vector<AZStd::string> m_savedSourceAssets;
         QString mLastActorFolder;

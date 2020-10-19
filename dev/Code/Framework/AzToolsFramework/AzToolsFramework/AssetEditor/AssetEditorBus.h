@@ -66,12 +66,15 @@ namespace AzToolsFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
+            //! Open Asset Editor (if it is not already open) and create a new asset of type specified, if possible
             virtual void CreateNewAsset(const AZ::Data::AssetType& assetType) = 0;
 
             virtual AZ::Outcome<bool, AZStd::string> IsAssetDataValid() { return AZ::Success(true); }
 
-            // Open Asset Editor and load asset
+            //! Open Asset Editor (if it is not already open) and load asset by reference
             virtual void OpenAssetEditor(const AZ::Data::Asset<AZ::Data::AssetData>& asset) = 0;
+            //! Open Asset Editor (if it is not already open) and load asset by id
+            virtual void OpenAssetEditorById(const AZ::Data::AssetId assetId) = 0;
         };
         using AssetEditorRequestsBus = AZ::EBus<AssetEditorRequests>;
 
@@ -99,8 +102,14 @@ namespace AzToolsFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
+            //! Creates a new asset of type provided (if possible) in the currently open Asset Editor window
             virtual void CreateAsset(const AZ::Data::AssetType& assetType) = 0;
+            //! Saves the asset being edited in the currently open Asset Editor window to the path provided
+            virtual void SaveAssetAs(const AZStd::string_view assetPath) = 0;
+            //! Opens the asset provided (by reference) in the currently open Asset Editor window
             virtual void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) = 0;
+            //! Opens the asset provided (by id) in the currently open Asset Editor window
+            virtual void OpenAssetById(const AZ::Data::AssetId assetId) = 0;
         };
         using AssetEditorWidgetRequestsBus = AZ::EBus<AssetEditorWidgetRequests>;
     } // namespace AssetEditor

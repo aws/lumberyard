@@ -12,14 +12,16 @@
 #pragma once
 
 #include "AssetTreeModel.h"
-#include <AzToolsFramework/API/AssetDatabaseBus.h>
+
 
 namespace AssetProcessor
 {
-    class ProductAssetTreeModel : public AssetTreeModel, AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler
+    class ProductAssetTreeItemData;
+
+    class ProductAssetTreeModel : public AssetTreeModel
     {
     public:
-        ProductAssetTreeModel(QObject *parent = nullptr);
+        ProductAssetTreeModel(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> sharedDbConnection, QObject *parent = nullptr);
         virtual ~ProductAssetTreeModel();
 
         // AssetDatabaseNotificationBus::Handler
@@ -40,6 +42,8 @@ namespace AssetProcessor
 
         void RemoveAssetTreeItem(AssetTreeItem* assetToRemove);
         void RemoveFoldersIfEmpty(AssetTreeItem* folderToCheck);
+
+        void CheckForUnresolvedIssues(AZStd::shared_ptr<ProductAssetTreeItemData> productItemData);
 
         AZStd::unordered_map<AZStd::string, AssetTreeItem*> m_productToTreeItem;
         // Mapping product Ids to asset tree items makes cleanup easier when files are deleted.

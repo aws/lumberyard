@@ -52,8 +52,8 @@
             "Source/Viewport/WhiteBoxModifierUtil.h",
             "Source/Viewport/WhiteBoxViewportConstants.cpp",
             "Source/Viewport/WhiteBoxViewportConstants.h",
-            "Source/Viewport/WhiteBoxVertexSelectionModifier.cpp",
-            "Source/Viewport/WhiteBoxVertexSelectionModifier.h"
+            "Source/Viewport/WhiteBoxVertexTranslationModifier.cpp",
+            "Source/Viewport/WhiteBoxVertexTranslationModifier.h"
         ],
         "Source/Asset": [
             "Source/Asset/WhiteBoxMeshAsset.h",
@@ -68,7 +68,9 @@
             "Source/SubComponentModes/EditorWhiteBoxEdgeRestoreMode.h",
             "Source/SubComponentModes/EditorWhiteBoxDefaultMode.cpp",
             "Source/SubComponentModes/EditorWhiteBoxDefaultMode.h",
-            "Source/SubComponentModes/EditorWhiteBoxDefaultModeBus.h"
+            "Source/SubComponentModes/EditorWhiteBoxDefaultModeBus.h",
+            "Source/SubComponentModes/EditorWhiteBoxComponentModeCommon.cpp",
+            "Source/SubComponentModes/EditorWhiteBoxComponentModeCommon.h"
         ]
     }
 }

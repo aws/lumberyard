@@ -13,12 +13,13 @@
 
 #include <ATLAudioObject.h>
 
+#include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/chrono/clocks.h>
+
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include <AzCore/std/string/conversions.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-#include <AzCore/Math/Random.h>
-#include <AzCore/std/chrono/clocks.h>
 #include <MathConversion.h>
 
 #include <AudioInternalInterfaces.h>
@@ -29,7 +30,13 @@
 #include <I3DEngine.h>
 #include <IRenderer.h>
 #include <IRenderAuxGeom.h>
-#include <ISurfaceType.h>
+
+#if !AUDIO_ENABLE_CRY_PHYSICS
+    #include <CryPhysicsDeprecation.h>
+    #include <AzFramework/Physics/World.h>
+#else
+    #include <ISurfaceType.h>
+#endif
 
 namespace Audio
 {
@@ -260,6 +267,20 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    bool CATLAudioObjectBase::HasActiveEvents() const
+    {
+        for (const auto& triggerInstance : m_cTriggers)
+        {
+            if (triggerInstance.second.numPlayingEvents != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     TObjectTriggerInstanceSet CATLAudioObjectBase::GetTriggerInstancesByOwner(void* const owner) const
     {
         AZ_Assert(owner, "Retrieving a filtered list of trigger instances requires a non-null Owner pointer!");
@@ -327,34 +348,19 @@ namespace Audio
         }
     }
 
+
+#if AUDIO_ENABLE_CRY_PHYSICS
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const float CATLAudioObject::CPropagationProcessor::SRayInfo::s_fSmoothingAlpha = 0.05f;
+    bool CPropagationProcessor::s_canIssueRWIs = false;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::SRayInfo::Reset()
-    {
-        fTotalSoundOcclusion = 0.0f;
-        nNumHits = 0;
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        fAvgHits = 0.0f;
-        fDistToFirstObstacle = FLT_MAX;
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    bool CATLAudioObject::CPropagationProcessor::s_canIssueRWIs = false;
-    const float CATLAudioObject::CPropagationProcessor::s_minObstructionDistance = 0.3f;
-    const size_t CATLAudioObject::CPropagationProcessor::s_maxObstructionRayHits;
-    const size_t CATLAudioObject::CPropagationProcessor::s_maxObstructionRays;
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    int CATLAudioObject::CPropagationProcessor::OnObstructionTest(const EventPhys* pEvent)
+    int CPropagationProcessor::OnObstructionTest(const EventPhys* pEvent)
     {
         EventPhysRWIResult* const pRWIResult = (EventPhysRWIResult*)pEvent;
 
         if (pRWIResult->iForeignData == PHYS_FOREIGN_ID_SOUND_OBSTRUCTION)
         {
-            auto const pRayInfo = static_cast<CPropagationProcessor::SRayInfo*>(pRWIResult->pForeignData);
+            auto const pRayInfo = static_cast<SRayInfo*>(pRWIResult->pForeignData);
 
             if (pRayInfo)
             {
@@ -381,19 +387,19 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::ProcessObstructionRay(const int nNumHits, SRayInfo* const pRayInfo, const bool bReset)
+    void CPropagationProcessor::ProcessObstructionRay(const int nNumHits, SRayInfo* const pRayInfo, const bool bReset)
     {
         float fTotalOcclusion = 0.0f;
         int nNumRealHits = 0;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        float fMinDistance = FLT_MAX;
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        float fMinDistance = std::numeric_limits<float>::max();
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         if (nNumHits > 0)
         {
             ISurfaceTypeManager* const pSurfaceTypeManager = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceTypeManager();
-            const size_t nCount = min(static_cast<size_t>(nNumHits) + 1, s_maxObstructionRayHits);
+            const size_t nCount = AZStd::GetMin(aznumeric_cast<size_t>(nNumHits + 1), s_maxObstructionRayHits);
 
             for (size_t i = 0; i < nCount; ++i)
             {
@@ -408,12 +414,12 @@ namespace Audio
                         IEntity* pEntity = (pCollider && gEnv->pEntitySystem ? gEnv->pEntitySystem->GetEntityFromPhysics(pCollider) : nullptr);
 
                         const ISurfaceType::SPhysicalParams& physParams = pMat->GetPhyscalParams();
-                        fTotalOcclusion += physParams.sound_obstruction * (pEntity ? pEntity->GetObstructionMultiplier() : 1.f);// not clamping b/w 0 and 1 for performance reasons
+                        fTotalOcclusion += physParams.sound_obstruction * (pEntity ? pEntity->GetObstructionMultiplier() : 1.f);
                         ++nNumRealHits;
 
-                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                        fMinDistance = min(fMinDistance, fDist);
-                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                        fMinDistance = AZStd::GetMin(fMinDistance, fDist);
+                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     }
                 }
             }
@@ -423,67 +429,52 @@ namespace Audio
 
         // If the num hits differs too much from the last ray, reduce the change in TotalOcclusion in inverse proportion.
         // This reduces thrashing at the boundaries of occluding entities.
-        const int nAbsHitDiff = abs(nNumRealHits - pRayInfo->nNumHits);
+        const int nHitDiff = nNumRealHits - pRayInfo->nNumHits;
+        const int nAbsHitDiff = AZ::GetMax(nHitDiff, -nHitDiff);
         const float fNumHitCorrection = nAbsHitDiff > 1 ? 1.0f / nAbsHitDiff : 1.0f;
 
         pRayInfo->nNumHits = nNumRealHits;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        pRayInfo->fDistToFirstObstacle = fMinDistance;
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        pRayInfo->m_debugInfo.fDistToNearestObstacle = fMinDistance;
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         if (bReset)
         {
             pRayInfo->fTotalSoundOcclusion = fTotalOcclusion;
 
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-            pRayInfo->fAvgHits = static_cast<float>(pRayInfo->nNumHits);
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            pRayInfo->m_debugInfo.fAvgHits = static_cast<float>(pRayInfo->nNumHits);
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
         else
         {
             pRayInfo->fTotalSoundOcclusion += fNumHitCorrection * (fTotalOcclusion - pRayInfo->fTotalSoundOcclusion) * SRayInfo::s_fSmoothingAlpha;
 
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-            pRayInfo->fAvgHits += (pRayInfo->nNumHits - pRayInfo->fAvgHits) * SRayInfo::s_fSmoothingAlpha;
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            pRayInfo->m_debugInfo.fAvgHits += (pRayInfo->nNumHits - pRayInfo->m_debugInfo.fAvgHits) * SRayInfo::s_fSmoothingAlpha;
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    size_t CATLAudioObject::CPropagationProcessor::NumRaysFromCalcType(const EAudioObjectObstructionCalcType eCalcType)
+    size_t CPropagationProcessor::NumRaysFromCalcType(const EAudioObjectObstructionCalcType eCalcType)
     {
-        size_t nNumRays = 0;
         switch (eCalcType)
         {
-            case eAOOCT_IGNORE:
-            {
-                nNumRays = 0;
-                break;
-            }
-            case eAOOCT_SINGLE_RAY:
-            {
-                nNumRays = 1;
-                break;
-            }
-            case eAOOCT_MULTI_RAY:
-            {
-                nNumRays = 5;
-                break;
-            }
-            case eAOOCT_NONE: // falls through
-            default:
-            {
-                g_audioLogger.Log(eALT_WARNING, "Unknown object obstruction calculation type (%d)", eCalcType);
-                break;
-            }
+        case eAOOCT_IGNORE:
+            return 0;
+        case eAOOCT_SINGLE_RAY:
+            return 1;
+        case eAOOCT_MULTI_RAY:
+            return 5;
+        default:
+            return 0;
         }
-
-        return nNumRays;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    CATLAudioObject::CPropagationProcessor::CPropagationProcessor(
+    CPropagationProcessor::CPropagationProcessor(
         const TAudioObjectID nObjectID,
         const SATLWorldPosition& rPosition,
         size_t& rRefCounter)
@@ -494,40 +485,39 @@ namespace Audio
         , m_rPosition(rPosition)
         , m_rRefCounter(rRefCounter)
         , m_fCurrListenerDist(0.0f)
-        , m_eObstOcclCalcType(eAOOCT_NONE)
+        , m_eObstOcclCalcType(eAOOCT_IGNORE)
         , m_pendingRaysReleased(false)
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        , m_vRayDebugInfos(s_maxObstructionRays)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_fTimeSinceLastUpdateMS(0.0f)
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     {
         m_vRayInfos.reserve(s_maxObstructionRays);
 
         for (size_t i = 0; i < s_maxObstructionRays; ++i)
         {
-            m_vRayInfos.push_back(SRayInfo(i, nObjectID));
+            m_vRayInfos.emplace_back(i, nObjectID);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    CATLAudioObject::CPropagationProcessor::~CPropagationProcessor()
+    CPropagationProcessor::~CPropagationProcessor()
     {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::Update(const float fUpdateMS)
+    void CPropagationProcessor::Update(const float fUpdateMS)
     {
         m_oObstructionValue.Update(fUpdateMS);
         m_oOcclusionValue.Update(fUpdateMS);
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         m_fTimeSinceLastUpdateMS += fUpdateMS;
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::SetObstructionOcclusionCalcType(const EAudioObjectObstructionCalcType eObstOcclCalcType)
+    void CPropagationProcessor::SetObstructionOcclusionCalcType(const EAudioObjectObstructionCalcType eObstOcclCalcType)
     {
         m_eObstOcclCalcType = eObstOcclCalcType;
 
@@ -540,26 +530,20 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::GetPropagationData(SATLSoundPropagationData& rPropagationData) const
+    void CPropagationProcessor::GetPropagationData(SATLSoundPropagationData& rPropagationData) const
     {
         rPropagationData.fObstruction = m_oObstructionValue.GetCurrent();
         rPropagationData.fOcclusion = m_oOcclusionValue.GetCurrent();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    static inline float frand_symm()
-    {
-        static AZ::SimpleLcgRandom rand(AZStd::GetTimeNowMicroSecond());
-        // return random float [-1.f, 1.f)
-        return rand.GetRandomFloat() * 2.f - 1.f;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::RunObstructionQuery(
+    void CPropagationProcessor::RunObstructionQuery(
         const SATLWorldPosition& rListenerPosition,
         const bool bSyncCall,
         const bool bReset)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
         if (m_nRemainingRays == 0)
         {
             static const AZ::Vector3 vUp(0.0f, 0.0f, 1.0f);
@@ -649,7 +633,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::ReportRayProcessed(const size_t nRayID)
+    void CPropagationProcessor::ReportRayProcessed(const size_t nRayID)
     {
         // make the function to be more tolerant of results when we've released the pending rays.
         if (m_pendingRaysReleased)
@@ -660,12 +644,12 @@ namespace Audio
         AZ_Assert(m_nRemainingRays > 0, "ReportRayProcessed - There are no more remaining rays!"); // make sure there are rays remaining
         AZ_Assert((0 <= nRayID) && (nRayID <= m_nTotalRays), "ReportRayProcessed - The passed RayID is invalid!"); // check RayID validity
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         if (m_nRemainingRays == 0 || m_rRefCounter == 0)
         {
             g_audioLogger.Log(eALT_ASSERT, "Negative ref or ray count on audio object %u", m_vRayInfos[nRayID].nAudioObjectID);
         }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         if (--m_nRemainingRays == 0)
         {
@@ -675,7 +659,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::ReleasePendingRays()
+    void CPropagationProcessor::ReleasePendingRays()
     {
         if (m_nRemainingRays > 0)
         {
@@ -686,7 +670,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::ProcessObstructionOcclusion(const bool bReset)
+    void CPropagationProcessor::ProcessObstructionOcclusion(const bool bReset)
     {
         if (m_nTotalRays > 0)
         {
@@ -727,41 +711,37 @@ namespace Audio
             m_oObstructionValue.SetNewTarget(fObstruction, bReset);
             m_oOcclusionValue.SetNewTarget(fOcclusion, bReset);
 
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+            // Update debug data...
             if (m_fTimeSinceLastUpdateMS > 100.0f) // only re-sample the rays about 10 times per second for a smoother debug drawing
             {
                 m_fTimeSinceLastUpdateMS = 0.0f;
 
-                for (size_t i = 0; i < m_nTotalRays; ++i)
+                for (size_t rayIndex = 0; rayIndex < m_nTotalRays; ++rayIndex)
                 {
-                    const SRayInfo& rRayInfo = m_vRayInfos[i];
-                    SRayDebugInfo& rRayDebugInfo = m_vRayDebugInfos[i];
+                    SRayDebugInfo& rayDebugInfo = m_vRayInfos[rayIndex].m_debugInfo;
 
-                    rRayDebugInfo.vBegin = rRayInfo.vStartPosition + rRayInfo.vRndOffset;
-                    rRayDebugInfo.vEnd = rRayInfo.vStartPosition + rRayInfo.vRndOffset + rRayInfo.vDirection;
+                    rayDebugInfo.vBegin = rayDebugInfo.vStartPosition + rayDebugInfo.vRndOffset;
+                    rayDebugInfo.vEnd = rayDebugInfo.vBegin + rayDebugInfo.vDirection;
 
-                    if (rRayDebugInfo.vStableEnd.IsZero())
+                    if (rayDebugInfo.vStableEnd.IsClose(AZ::Vector3::CreateZero()))
                     {
-                        // to be moved to the PropagationProcessor Reset method
-                        rRayDebugInfo.vStableEnd = rRayDebugInfo.vEnd;
+                        rayDebugInfo.vStableEnd = rayDebugInfo.vEnd;
                     }
                     else
                     {
-                        rRayDebugInfo.vStableEnd += (rRayDebugInfo.vEnd - rRayDebugInfo.vStableEnd) * 0.1f;
+                        rayDebugInfo.vStableEnd += (rayDebugInfo.vEnd - rayDebugInfo.vStableEnd) * 0.1f;
                     }
 
-                    rRayDebugInfo.fDistToNearestObstacle = rRayInfo.fDistToFirstObstacle;
-                    rRayDebugInfo.nNumHits = rRayInfo.nNumHits;
-                    rRayDebugInfo.fAvgHits = rRayInfo.fAvgHits;
-                    rRayDebugInfo.fOcclusionValue = rRayInfo.fTotalSoundOcclusion;
+                    rayDebugInfo.fOcclusionValue = m_vRayInfos[rayIndex].fTotalSoundOcclusion;
                 }
             }
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::CastObstructionRay(
+    void CPropagationProcessor::CastObstructionRay(
         const AZ::Vector3& rOrigin,
         const AZ::Vector3& rRndOffset,
         const AZ::Vector3& rDirection,
@@ -769,20 +749,21 @@ namespace Audio
         const bool bSyncCall,
         const bool bReset)
     {
-        static const int nPhysicsFlags = (ent_water | ent_static | ent_sleeping_rigid | ent_rigid | ent_terrain);
+        AZ_Assert(nRayIdx < s_maxObstructionRays, "[Audio] CastObstructionRay - Ray Index (%zu) is out of bounds!\n", nRayIdx);
         SRayInfo& rRayInfo = m_vRayInfos[nRayIdx];
 
+        static const int nPhysicsFlags = (ent_water | ent_static | ent_sleeping_rigid | ent_rigid | ent_terrain);
         const int nNumHits = gEnv->pPhysicalWorld->RayWorldIntersection(
-                AZVec3ToLYVec3(rOrigin + rRndOffset),
-                AZVec3ToLYVec3(rDirection),
-                nPhysicsFlags,
-                bSyncCall ? rwi_pierceability0 : (rwi_pierceability0 | rwi_queue),
-                rRayInfo.aHits,
-                static_cast<int>(s_maxObstructionRayHits),
-                nullptr,
-                0,
-                &rRayInfo,
-                PHYS_FOREIGN_ID_SOUND_OBSTRUCTION);
+            AZVec3ToLYVec3(rOrigin + rRndOffset),
+            AZVec3ToLYVec3(rDirection),
+            nPhysicsFlags,
+            bSyncCall ? rwi_pierceability0 : (rwi_pierceability0 | rwi_queue),
+            rRayInfo.aHits,
+            static_cast<int>(s_maxObstructionRayHits),
+            nullptr,
+            0,
+            &rRayInfo,
+            PHYS_FOREIGN_ID_SOUND_OBSTRUCTION);
 
         if (bSyncCall)
         {
@@ -793,10 +774,15 @@ namespace Audio
             ++m_nRemainingRays;
         }
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        rRayInfo.vStartPosition = rOrigin;
-        rRayInfo.vDirection = rDirection;
-        rRayInfo.vRndOffset = rRndOffset;
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        // Set the debug data about the raycast...
+        rRayInfo.m_debugInfo.vStartPosition = rOrigin;
+        rRayInfo.m_debugInfo.vDirection = rDirection;
+        rRayInfo.m_debugInfo.vRndOffset = rRndOffset;
+
+        rRayInfo.m_debugInfo.vBegin = rRayInfo.m_debugInfo.vStartPosition + rRayInfo.m_debugInfo.vRndOffset;
+        rRayInfo.m_debugInfo.vEnd = rRayInfo.m_debugInfo.vBegin + rRayInfo.m_debugInfo.vDirection;
+        rRayInfo.m_debugInfo.vStableEnd = rRayInfo.m_debugInfo.vEnd;
 
         if (bSyncCall)
         {
@@ -806,18 +792,36 @@ namespace Audio
         {
             ++s_nTotalAsyncPhysRays;
         }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    }
+
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLAudioObject::Clear()
+    {
+        CATLAudioObjectBase::Clear();
+        m_oPosition = SATLWorldPosition();
+#if !AUDIO_ENABLE_CRY_PHYSICS
+        m_raycastProcessor.Reset();
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::Update(const float fUpdateIntervalMS, const SATLWorldPosition& rListenerPosition)
     {
         CATLAudioObjectBase::Update(fUpdateIntervalMS, rListenerPosition);
+
+#if AUDIO_ENABLE_CRY_PHYSICS
         m_oPropagationProcessor.Update(fUpdateIntervalMS);
 
         if (CanRunObstructionOcclusion())
         {
             const float fDistance = (m_oPosition.GetPositionVec() - rListenerPosition.GetPositionVec()).GetLength();
+
+            AZ_WarningOnce("Audio Raycast", CPropagationProcessor::s_minObstructionDistance < g_audioCVars.m_fOcclusionMaxDistance,
+                "The 's_OcclusionMaxDistance' CVar is set too low (%.2f).  Audio raycasts for occlusion are disabled from running!\n",
+                g_audioCVars.m_fOcclusionMaxDistance);
 
             if ((CPropagationProcessor::s_minObstructionDistance < fDistance) && (fDistance < g_audioCVars.m_fOcclusionMaxDistance))
             {
@@ -827,6 +831,33 @@ namespace Audio
                 m_oPropagationProcessor.RunObstructionQuery(rListenerPosition, bSyncCall);
             }
         }
+#else
+        if (CanRunRaycasts())
+        {
+            m_raycastProcessor.Update(fUpdateIntervalMS);
+            m_raycastProcessor.Run(rListenerPosition);
+        }
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLAudioObject::SetPosition(const SATLWorldPosition& oNewPosition)
+    {
+        m_oPosition = oNewPosition;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLAudioObject::SetVelocityTracking(const bool bTrackingOn)
+    {
+        if (bTrackingOn)
+        {
+            m_oPreviousPosition = m_oPosition;
+            m_nFlags |= eAOF_TRACK_VELOCITY;
+        }
+        else
+        {
+            m_nFlags &= ~eAOF_TRACK_VELOCITY;
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -835,7 +866,7 @@ namespace Audio
         const AZ::Vector3 cPositionDelta = m_oPosition.GetPositionVec() - m_oPreviousPosition.GetPositionVec();
         const float fCurrentVelocity = (1000.0f * cPositionDelta.GetLength()) / fUpdateIntervalMS; // fCurrentVelocity is given in units per second
 
-        if (std::fabsf(fCurrentVelocity - m_fPreviousVelocity) > g_audioCVars.m_fVelocityTrackingThreshold)
+        if (AZ::GetAbs(fCurrentVelocity - m_fPreviousVelocity) > g_audioCVars.m_fVelocityTrackingThreshold)
         {
             m_fPreviousVelocity = fCurrentVelocity;
             SAudioRequest oRequest;
@@ -850,6 +881,7 @@ namespace Audio
         m_oPreviousPosition = m_oPosition;
     }
 
+#if AUDIO_ENABLE_CRY_PHYSICS
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::ReportPhysicsRayProcessed(const size_t nRayID)
     {
@@ -857,22 +889,8 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::SetPosition(const SATLWorldPosition& oNewPosition)
-    {
-        m_oPosition = oNewPosition;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::Clear()
-    {
-        CATLAudioObjectBase::Clear();
-        m_oPosition = SATLWorldPosition();
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::SetObstructionOcclusionCalc(const EAudioObjectObstructionCalcType ePassedOOCalcType)
     {
-        AZ_Assert(ePassedOOCalcType != eAOOCT_NONE, "Invalid Obstruction/Occlusion type in SetObstructionOcclusionCalc");
         m_oPropagationProcessor.SetObstructionOcclusionCalcType(ePassedOOCalcType);
     }
 
@@ -898,19 +916,311 @@ namespace Audio
         m_oPropagationProcessor.ReleasePendingRays();
     }
 
+#else // !AUDIO_ENABLE_CRY_PHYSICS
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::SetVelocityTracking(const bool bTrackingOn)
+    void CATLAudioObject::SetRaycastCalcType(const EAudioObjectObstructionCalcType calcType)
     {
-        if (bTrackingOn)
+        m_raycastProcessor.SetType(calcType);
+        switch (calcType)
         {
-            m_oPreviousPosition = m_oPosition;
-            m_nFlags |= eAOF_TRACK_VELOCITY;
-        }
-        else
-        {
-            m_nFlags &= ~eAOF_TRACK_VELOCITY;
+        case eAOOCT_IGNORE:
+            AudioRaycastNotificationBus::Handler::BusDisconnect();
+            break;
+        case eAOOCT_SINGLE_RAY:
+            [[fallthrough]];
+        case eAOOCT_MULTI_RAY:
+            AudioRaycastNotificationBus::Handler::BusConnect(GetID());
+            break;
+        default:
+            break;
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLAudioObject::RunRaycasts(const SATLWorldPosition& listenerPos)
+    {
+        m_raycastProcessor.Run(listenerPos);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    bool CATLAudioObject::CanRunRaycasts() const
+    {
+        return Audio::s_EnableRaycasts      // This is the CVar to enable/disable audio raycasts.
+            && Audio::s_RaycastMinDistance < Audio::s_RaycastMaxDistance
+            && m_raycastProcessor.CanRun();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLAudioObject::GetObstOccData(SATLSoundPropagationData& data) const
+    {
+        data.fObstruction = m_raycastProcessor.GetObstruction();
+        data.fOcclusion = m_raycastProcessor.GetOcclusion();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLAudioObject::OnAudioRaycastResults(const AudioRaycastResult& result)
+    {
+        // Pull in the results to the raycast processor...
+        AZ_Assert(result.m_audioObjectId != INVALID_AUDIO_OBJECT_ID, "Audio Raycast Results - audio object id is invalid!\n");
+        AZ_Assert(result.m_rayIndex < s_maxRaysPerObject, "Audio Raycast Results - ray index is out of bounds (index: %zu)!\n", result.m_rayIndex);
+        AZ_Assert(result.m_result.size() <= s_maxHitResultsPerRaycast, "Audio Raycast Results - too many hits returned (hits: %zu)!\n", result.m_result.size());
+
+        RaycastInfo& info = m_raycastProcessor.m_rayInfos[result.m_rayIndex];
+        if (!info.m_pending)
+        {
+            // This may mean that an audio object was recycled (reset) and then reused.
+            // Need to investigate this further.
+            return;
+        }
+
+        info.m_pending = false;
+        info.m_hits.clear();
+        info.m_numHits = 0;
+
+        for (auto& hit : result.m_result)
+        {
+            if (hit.m_distance > 0.f)
+            {
+                info.m_hits.push_back(hit);
+                info.m_numHits++;
+            }
+        }
+
+        info.UpdateContribution();
+        info.m_cached = true;
+        info.m_cacheTimerMs = Audio::s_RaycastCacheTimeMs;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void RaycastInfo::UpdateContribution()
+    {
+        // This calculates the contribution of a single raycast.  This calculation can be updated
+        // as needed to suit a user's needs.  This is provided as a first example.
+        // Based on the number of hits reported, add values from the sequence: 1/2 + 1/4 + 1/8 + ...
+        float newContribution = 0.f;
+
+        for (AZ::u16 hit = 0; hit < m_numHits; ++hit)
+        {
+            newContribution += std::pow(2.f, -aznumeric_cast<float>(hit + 1));
+        }
+
+        m_contribution = newContribution;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    float RaycastInfo::GetDistanceScaledContribution() const
+    {
+        // Max extent is the s_RaycastMaxDistance, and use the distance embedded in the raycast request as a percent (inverse).
+        // Objects closer to the listener will have greater contribution amounts.
+        // Objects farther away will contribute less obstruction/occlusion, but distance attenuation will be the larger contributing factor.
+        const float maxDistance = static_cast<float>(s_RaycastMaxDistance);
+        float clampedDistance = AZ::GetClamp(m_raycastRequest.m_distance, 0.f, maxDistance);
+        float distanceScale = 1.f - (clampedDistance / maxDistance);
+
+        // Scale the contribution amount by (inverse) distance.
+        return distanceScale * m_contribution;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    float RaycastInfo::GetNearestHitDistance() const
+    {
+        float minDistance = m_raycastRequest.m_distance;
+        for (const auto& hit : m_hits)
+        {
+            minDistance = AZ::GetMin(minDistance, hit.m_distance);
+        }
+
+        return minDistance;
+    }
+
+
+    // static
+    bool RaycastProcessor::s_raycastsEnabled = false;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    RaycastProcessor::RaycastProcessor(const TAudioObjectID objectId, const SATLWorldPosition& objectPosition)
+        : m_rayInfos(s_maxRaysPerObject, RaycastInfo())
+        , m_position(objectPosition)
+        , m_obstructionValue(s_RaycastSmoothFactor, s_epsilon)
+        , m_occlusionValue(s_RaycastSmoothFactor, s_epsilon)
+        , m_audioObjectId(objectId)
+        , m_obstOccType(eAOOCT_IGNORE)
+    {
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void RaycastProcessor::Update(float elapsedMs)
+    {
+        if (m_obstOccType == eAOOCT_SINGLE_RAY || m_obstOccType == eAOOCT_MULTI_RAY)
+        {
+            // First ray is direct-path obstruction value...
+            m_obstructionValue.SetNewTarget(m_rayInfos[0].GetDistanceScaledContribution());
+
+            if (m_obstOccType == eAOOCT_MULTI_RAY)
+            {
+                float occlusion = 0.f;
+                for (size_t i = 1; i < s_maxRaysPerObject; ++i)
+                {
+                    occlusion += m_rayInfos[i].GetDistanceScaledContribution();
+                }
+
+                // Average of the occlusion rays' contributions...
+                occlusion /= aznumeric_cast<float>(s_maxRaysPerObject - 1);
+
+                m_occlusionValue.SetNewTarget(occlusion);
+            }
+
+            // Tick down the cache timers, when expired mark them dirty...
+            for (auto& rayInfo : m_rayInfos)
+            {
+                if (rayInfo.m_cached)
+                {
+                    rayInfo.m_cacheTimerMs -= elapsedMs;
+                    rayInfo.m_cached = (rayInfo.m_cacheTimerMs > 0.f);
+                }
+            }
+        }
+
+        m_obstructionValue.Update(s_RaycastSmoothFactor);
+        m_occlusionValue.Update(s_RaycastSmoothFactor);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void RaycastProcessor::Reset()
+    {
+        m_obstructionValue.Reset();
+        m_occlusionValue.Reset();
+
+        for (auto& rayInfo : m_rayInfos)
+        {
+            rayInfo.Reset();
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void RaycastProcessor::SetType(EAudioObjectObstructionCalcType calcType)
+    {
+        if (calcType == m_obstOccType)
+        {
+            // No change to type, no need to reset any data.
+            return;
+        }
+
+        if (calcType == eAOOCT_IGNORE)
+        {
+            // Reset the target values when turning off raycasts (set to IGNORE).
+            m_obstructionValue.Reset();
+            m_occlusionValue.Reset();
+        }
+
+        // Otherwise, switching to a new type we can allow the obst/occ values from before to smooth
+        // to new targets as they become available.  Hence no reset.
+
+        for (auto& rayInfo : m_rayInfos)
+        {
+            rayInfo.Reset();
+        }
+
+        m_obstOccType = calcType;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    bool RaycastProcessor::CanRun() const
+    {
+        return s_raycastsEnabled    // This enable/disable is set via ISystem events.
+            && m_obstOccType != eAOOCT_IGNORE;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void RaycastProcessor::Run(const SATLWorldPosition& listenerPosition)
+    {
+        const AZ::Vector3 listener = listenerPosition.GetPositionVec();
+        const AZ::Vector3 source = m_position.GetPositionVec();
+        const AZ::Vector3 ray = source - listener;
+
+        const float distance = ray.GetLength();
+
+        // Prevent raycast when individual sources are not within the allowed distance range...
+        if (Audio::s_RaycastMinDistance >= distance || distance >= Audio::s_RaycastMaxDistance)
+        {
+            Reset();
+            return;
+        }
+
+        const AZ::Vector3 up = AZ::Vector3::CreateAxisZ();
+        const AZ::Vector3 side = ray.GetNormalized().Cross(up);
+
+        // Spread out the side rays based on the percentage the ray distance is of the maximum distance.
+        // The begin of the rays spread by [0.f, 1.f] in the side direction.
+        // The end of the rays spread by [1.f, 10.f] in the side direction.
+        constexpr float spreadDistanceMinExtent = 1.f;
+        constexpr float spreadDistanceMaxExtent = 10.f;
+        constexpr float spreadDistanceDelta = spreadDistanceMaxExtent - spreadDistanceMinExtent;
+
+        const float rayDistancePercent = (distance / Audio::s_RaycastMaxDistance);
+
+        const float spreadDist = spreadDistanceMinExtent + rayDistancePercent * spreadDistanceDelta;
+
+        // Cast ray 0, the direct obstruction ray.
+        CastRay(listener, source, 0);
+
+        if (m_obstOccType == eAOOCT_MULTI_RAY)
+        {
+            // Cast ray 1, an indirect occlusion ray.
+            CastRay(listener, source + up, 1);
+
+            // Cast ray 2, an indirect occlusion ray.
+            CastRay(listener, source - up, 2);
+
+            // Cast ray 3, an indirect occlusion ray.
+            CastRay(listener + side * rayDistancePercent, source + side * spreadDist, 3);
+
+            // Cast ray 4, an indirect occlusion ray.
+            CastRay(listener - side * rayDistancePercent, source - side * spreadDist, 4);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void RaycastProcessor::CastRay(const AZ::Vector3& origin, const AZ::Vector3& dest, const AZ::u16 rayIndex)
+    {
+        AZ_Assert(rayIndex < s_maxRaysPerObject, "RaycastProcessor::CastRay - ray index is out of bounds!\n");
+
+        RaycastInfo& rayInfo = m_rayInfos[rayIndex];
+        if (rayInfo.m_pending || rayInfo.m_cached)
+        {
+            // A raycast is already in flight OR
+            // A raycast result was received recently and is still considered valid.
+            return;
+        }
+
+        rayInfo.m_raycastRequest.m_start = origin;
+        rayInfo.m_raycastRequest.m_direction = dest - origin;
+        rayInfo.m_raycastRequest.m_distance = rayInfo.m_raycastRequest.m_direction.NormalizeSafeWithLength();
+        rayInfo.m_raycastRequest.m_maxResults = s_maxHitResultsPerRaycast;
+
+        // Mark as pending
+        rayInfo.m_pending = true;
+
+        AudioRaycastRequest request(rayInfo.m_raycastRequest, m_audioObjectId, rayIndex);
+        AudioRaycastRequestBus::Broadcast(&AudioRaycastRequestBus::Events::PushAudioRaycastRequest, request);
+    }
+
+#if defined(AZ_TESTS_ENABLED)
+    void RaycastProcessor::SetupTestRay(AZ::u16 rayIndex)
+    {
+        if (rayIndex < s_maxRaysPerObject)
+        {
+            // Set the pending flag to true, so the results aren't discarded.
+            m_rayInfos[rayIndex].m_pending = true;
+            // Set the distance in the request structure so it doesn't have the default.
+            m_rayInfos[rayIndex].m_raycastRequest.m_distance = (s_RaycastMaxDistance / 4.f);
+        }
+    }
+#endif // AZ_TESTS_ENABLED
+
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -959,7 +1269,7 @@ namespace Audio
                 }
                 else
                 {
-                    triggersString = AZStd::string::format("%s%s(%d inst.)%s", triggersString.c_str(), pName, nInstances, sSeparator);
+                    triggersString = AZStd::string::format("%s%s(%zu inst.)%s", triggersString.c_str(), pName, nInstances, sSeparator);
                 }
             }
         }
@@ -973,7 +1283,7 @@ namespace Audio
         AZStd::string eventsString;
         for (auto activeEvent : m_cActiveEvents)
         {
-            eventsString = AZStd::string::format("%s%u%s", eventsString.c_str(), activeEvent, sSeparator);
+            eventsString = AZStd::string::format("%s%" PRIu64 "%s", eventsString.c_str(), activeEvent, sSeparator);
         }
 
         return eventsString;
@@ -1013,7 +1323,11 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::DrawDebugInfo(IRenderAuxGeom& auxGeom, const AZ::Vector3& vListenerPos, const CATLDebugNameStore* const pDebugNameStore) const
     {
+#if AUDIO_ENABLE_CRY_PHYSICS
         m_oPropagationProcessor.DrawObstructionRays(auxGeom);
+#else
+        m_raycastProcessor.DrawObstructionRays(auxGeom);
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
         if (!m_cTriggers.empty())
         {
@@ -1025,12 +1339,15 @@ namespace Audio
 
             for (auto& trigger : m_cTriggers)
             {
-                AZStd::string triggerName(pDebugNameStore->LookupAudioTriggerName(trigger.second.nTriggerID));
-                AZStd::to_lower(triggerName.begin(), triggerName.end());
-
-                if (AudioDebugDrawFilter(triggerName, triggerFilter))
+                if (const char* name = pDebugNameStore->LookupAudioTriggerName(trigger.second.nTriggerID))
                 {
-                    ++cTriggerCounts[trigger.second.nTriggerID];
+                    AZStd::string triggerName(name);
+                    AZStd::to_lower(triggerName.begin(), triggerName.end());
+
+                    if (AudioDebugDrawFilter(triggerName, triggerFilter))
+                    {
+                        ++cTriggerCounts[trigger.second.nTriggerID];
+                    }
                 }
             }
 
@@ -1114,10 +1431,6 @@ namespace Audio
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_LABEL) != 0)
                 {
-                    const size_t nNumRays = m_oPropagationProcessor.GetNumRays();
-                    SATLSoundPropagationData oPropagationData;
-                    m_oPropagationProcessor.GetPropagationData(oPropagationData);
-
                     const TAudioObjectID nObjectID = GetID();
                     auxGeom.Draw2dLabel(
                         vScreenPos.GetX(),
@@ -1131,6 +1444,11 @@ namespace Audio
                         GetRefCount(),
                         fDist);
 
+#if AUDIO_ENABLE_CRY_PHYSICS
+                    const size_t nNumRays = m_oPropagationProcessor.GetNumRays();
+                    SATLSoundPropagationData oPropagationData;
+                    m_oPropagationProcessor.GetPropagationData(oPropagationData);
+
                     auxGeom.Draw2dLabel(
                         vScreenPos.GetX(),
                         vScreenPos.GetY() + fLineHeight,
@@ -1141,6 +1459,22 @@ namespace Audio
                         oPropagationData.fObstruction,
                         oPropagationData.fOcclusion,
                         nNumRays);
+
+#else
+                    SATLSoundPropagationData obstOccData;
+                    GetObstOccData(obstOccData);
+
+                    auxGeom.Draw2dLabel(
+                        vScreenPos.GetX(),
+                        vScreenPos.GetY() + fLineHeight,
+                        fFontSize,
+                        AZColorToLYColorF(brightTextColor),
+                        false,
+                        "Obst: %.3f  Occl: %.3f",
+                        obstOccData.fObstruction,
+                        obstOccData.fOcclusion
+                    );
+#endif // AUDIO_ENABLE_CRY_PHYSICS
                 }
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_TRIGGERS) != 0)
@@ -1232,12 +1566,13 @@ namespace Audio
         }
     }
 
+#if AUDIO_ENABLE_CRY_PHYSICS
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    size_t CATLAudioObject::CPropagationProcessor::s_nTotalSyncPhysRays = 0;
-    size_t CATLAudioObject::CPropagationProcessor::s_nTotalAsyncPhysRays = 0;
+    size_t CPropagationProcessor::s_nTotalSyncPhysRays = 0;
+    size_t CPropagationProcessor::s_nTotalAsyncPhysRays = 0;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::CPropagationProcessor::DrawObstructionRays(IRenderAuxGeom& auxGeom) const
+    void CPropagationProcessor::DrawObstructionRays(IRenderAuxGeom& auxGeom) const
     {
         static const AZ::Color cObstructedRayColor(0.8f, 0.08f, 0.f, 1.f);
         static const AZ::Color cFreeRayColor(0.08f, 0.8f, 0.f, 1.f);
@@ -1255,10 +1590,13 @@ namespace Audio
 
             for (size_t i = 0; i < m_nTotalRays; ++i)
             {
-                const bool bRayObstructed = (m_vRayDebugInfos[i].nNumHits > 0);
+                const SRayInfo& rayInfo = m_vRayInfos[i];
+                const SRayDebugInfo& rayDebugInfo = rayInfo.m_debugInfo;
+
+                const bool bRayObstructed = (rayInfo.nNumHits > 0);
                 const AZ::Vector3 vRayEnd = bRayObstructed
-                    ? m_vRayDebugInfos[i].vBegin + (m_vRayDebugInfos[i].vEnd - m_vRayDebugInfos[i].vBegin).GetNormalized() * m_vRayDebugInfos[i].fDistToNearestObstacle
-                    : m_vRayDebugInfos[i].vEnd;// only draw the ray to the first collision point
+                    ? rayDebugInfo.vBegin + (rayDebugInfo.vEnd - rayDebugInfo.vBegin).GetNormalized() * rayDebugInfo.fDistToNearestObstacle
+                    : rayDebugInfo.vEnd;    // only draw the ray to the first collision point if obstructed
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_DRAW_OBSTRUCTION_RAYS) != 0)
                 {
@@ -1272,14 +1610,14 @@ namespace Audio
                         auxGeom.DrawSphere(AZVec3ToLYVec3(vRayEnd), fCollisionPtSphereRadius, AZColorToLYColorB(cIntersectionSphereColor));
                     }
 
-                    auxGeom.DrawLine(AZVec3ToLYVec3(m_vRayDebugInfos[i].vBegin), AZColorToLYColorB(rRayColor), AZVec3ToLYVec3(vRayEnd), AZColorToLYColorB(rRayColor), 1.0f);
+                    auxGeom.DrawLine(AZVec3ToLYVec3(rayDebugInfo.vBegin), AZColorToLYColorB(rRayColor), AZVec3ToLYVec3(vRayEnd), AZColorToLYColorB(rRayColor), 1.0f);
                     auxGeom.SetRenderFlags(nPreviousRenderFlags);
                 }
 
                 if (IRenderer* pRenderer = (g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBSTRUCTION_RAY_LABELS) != 0 ? gEnv->pRenderer : nullptr)
                 {
                     float screenProj[3];
-                    pRenderer->ProjectToScreen(m_vRayDebugInfos[i].vStableEnd.GetX(), m_vRayDebugInfos[i].vStableEnd.GetY(), m_vRayDebugInfos[i].vStableEnd.GetZ(), &screenProj[0], &screenProj[1], &screenProj[2]);
+                    pRenderer->ProjectToScreen(rayDebugInfo.vStableEnd.GetX(), rayDebugInfo.vStableEnd.GetY(), rayDebugInfo.vStableEnd.GetZ(), &screenProj[0], &screenProj[1], &screenProj[2]);
 
                     screenProj[0] *= 0.01f * static_cast<float>(pRenderer->GetWidth());
                     screenProj[1] *= 0.01f * static_cast<float>(pRenderer->GetHeight());
@@ -1287,7 +1625,7 @@ namespace Audio
 
                     if ((0.0f <= vScreenPos.GetZ()) && (vScreenPos.GetZ() <= 1.0f))
                     {
-                        const float colorLerpValue = AZ::GetClamp(m_vRayInfos[i].fAvgHits, 0.0f, 1.0f);
+                        const float colorLerpValue = AZ::GetClamp(rayDebugInfo.fAvgHits, 0.0f, 1.0f);
                         const AZ::Color cLabelColor = cFreeRayLabelColor.Lerp(cObstructedRayLabelColor, colorLerpValue);
 
                         auxGeom.Draw2dLabel(
@@ -1297,14 +1635,105 @@ namespace Audio
                             AZColorToLYColorF(cLabelColor),
                             true,
                             "ObjID: %llu\n#Hits: %2.1f\nOccl: %3.2f",
-                            m_vRayInfos[i].nAudioObjectID, // a const member, will not be overwritten by a thread filling the obstruction data in
-                            m_vRayDebugInfos[i].fAvgHits,
-                            m_vRayDebugInfos[i].fOcclusionValue);
+                            rayInfo.nAudioObjectID,
+                            rayDebugInfo.fAvgHits,
+                            rayDebugInfo.fOcclusionValue);
                     }
                 }
             }
         }
     }
+
+#else // !AUDIO_ENABLE_CRY_PHYSICS
+
+    void RaycastProcessor::DrawObstructionRays(IRenderAuxGeom& auxGeom) const
+    {
+        static const AZ::Color obstructedRayColor(0.8f, 0.08f, 0.f, 1.f);
+        static const AZ::Color freeRayColor(0.08f, 0.8f, 0.f, 1.f);
+        static const AZ::Color hitSphereColor(1.f, 0.27f, 0.f, 0.8f);
+        static const AZ::Color obstructedRayLabelColor(1.f, 0.f, 0.02f, 0.9f);
+        static const AZ::Color freeRayLabelColor(0.f, 1.f, 0.02f, 0.9f);
+
+        static const float hitSphereRadius = 0.02f;
+
+        if (!CanRun())
+        {
+            return;
+        }
+
+        const SAuxGeomRenderFlags previousRenderFlags = auxGeom.GetRenderFlags();
+        SAuxGeomRenderFlags newRenderFlags(e_Def3DPublicRenderflags | e_AlphaBlended);
+        newRenderFlags.SetCullMode(e_CullModeNone);
+        auxGeom.SetRenderFlags(newRenderFlags);
+
+        const bool drawRays = ((g_audioCVars.m_nDrawAudioDebug & eADDF_DRAW_OBSTRUCTION_RAYS) != 0);
+        const bool drawLabels = ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBSTRUCTION_RAY_LABELS) != 0);
+
+        size_t numRays = m_obstOccType == eAOOCT_SINGLE_RAY ? 1 : s_maxRaysPerObject;
+        for (size_t rayIndex = 0; rayIndex < numRays; ++rayIndex)
+        {
+            const RaycastInfo& rayInfo = m_rayInfos[rayIndex];
+
+            const AZ::Vector3 rayEnd = rayInfo.m_raycastRequest.m_start + rayInfo.m_raycastRequest.m_direction * rayInfo.GetNearestHitDistance();
+
+            if (drawRays)
+            {
+                const bool rayObstructed = (rayInfo.m_numHits > 0);
+                const AZ::Color& rayColor = (rayObstructed ? obstructedRayColor : freeRayColor);
+
+                if (rayObstructed)
+                {
+                    auxGeom.DrawSphere(
+                        AZVec3ToLYVec3(rayEnd),
+                        hitSphereRadius,
+                        AZColorToLYColorB(hitSphereColor)
+                    );
+                }
+
+                auxGeom.DrawLine(
+                    AZVec3ToLYVec3(rayInfo.m_raycastRequest.m_start),
+                    AZColorToLYColorB(freeRayColor),
+                    AZVec3ToLYVec3(rayEnd),
+                    AZColorToLYColorB(rayColor),
+                    1.f
+                );
+            }
+
+            IRenderer* renderer = gEnv->pRenderer;
+            if (drawLabels && renderer)
+            {
+                float screenProj[3];
+                renderer->ProjectToScreen(rayEnd.GetX(), rayEnd.GetY(), rayEnd.GetZ(),
+                    &screenProj[0], &screenProj[1], &screenProj[2]);
+
+                screenProj[0] *= 0.01f * aznumeric_cast<float>(renderer->GetWidth());
+                screenProj[1] *= 0.01f * aznumeric_cast<float>(renderer->GetHeight());
+
+                AZ::Vector3 screenPos = AZ::Vector3::CreateFromFloat3(screenProj);
+
+                if ((0.f <= screenPos.GetZ()) && (screenPos.GetZ() <= 1.f))
+                {
+                    float lerpValue = rayInfo.m_contribution;
+                    AZ::Color labelColor = freeRayLabelColor.Lerp(obstructedRayLabelColor, lerpValue);
+
+                    auxGeom.Draw2dLabel(
+                        screenPos.GetX(),
+                        screenPos.GetY() - 12.f,
+                        1.6f,
+                        AZColorToLYColorF(labelColor),
+                        true,
+                        (rayIndex == 0) ? "OBST: %.2f" : "OCCL: %.2f",
+                        rayInfo.GetDistanceScaledContribution()
+                    );
+                }
+            }
+        }
+
+        auxGeom.SetRenderFlags(previousRenderFlags);
+    }
+
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 } // namespace Audio

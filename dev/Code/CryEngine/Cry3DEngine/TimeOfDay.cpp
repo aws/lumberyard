@@ -402,75 +402,7 @@ void CTimeOfDay::Update(bool bInterpolate, bool bForceUpdate, bool bEnvUpdate)
 
     if (bInterpolate)
     {
-        if (m_pUpdateCallback)
-        {
-            m_pUpdateCallback->BeginUpdate();
-        }
-
-        // normalized time for interpolation
-        float t = m_fTime / s_maxTime;
-
-        // interpolate all values
-        for (uint32 i = 0; i < static_cast<uint32>(GetVariableCount()); i++)
-        {
-            SVariableInfo& var = m_vars[i];
-            if (var.pInterpolator)
-            {
-                if (var.pInterpolator->GetNumDimensions() == 1)
-                {
-                    var.pInterpolator->InterpolateFloat(t, var.fValue[0]);
-                }
-                else if (var.pInterpolator->GetNumDimensions() == 3)
-                {
-                    var.pInterpolator->InterpolateFloat3(t, var.fValue);
-                }
-
-                if (m_pUpdateCallback)
-                {
-                    const int dim = var.pInterpolator->GetNumDimensions();
-                    float customValues[3] = {0, 0, 0};
-                    float blendWeight = 0;
-                    if (m_pUpdateCallback->GetCustomValue((ETimeOfDayParamID) var.nParamId, dim, customValues, blendWeight))
-                    {
-                        AZ_Assert(blendWeight >= 0 && blendWeight <= 1, "blendweight outside 0 and 1 in CTimeOfDay::Update!");
-                        blendWeight = clamp_tpl(blendWeight, 0.0f, 1.0f);
-                        for (int j = 0; j < dim; ++j)
-                        {
-                            var.fValue[j] = var.fValue[j] + blendWeight * (customValues[j] - var.fValue[j]);
-                        }
-                    }
-                }
-
-                switch (var.type)
-                {
-                case TYPE_FLOAT:
-                {
-                    var.fValue[0] = clamp_tpl(var.fValue[0], var.fValue[1], var.fValue[2]);
-                    if (fabs(var.fValue[0]) < 1e-10f)
-                    {
-                        var.fValue[0] = 0.0f;
-                    }
-                    break;
-                }
-                case TYPE_COLOR:
-                {
-                    var.fValue[0] = clamp_tpl(var.fValue[0], 0.0f, 1.0f);
-                    var.fValue[1] = clamp_tpl(var.fValue[1], 0.0f, 1.0f);
-                    var.fValue[2] = clamp_tpl(var.fValue[2], 0.0f, 1.0f);
-                    break;
-                }
-                default:
-                {
-                    AZ_Error("TimeOfDay", false, "Invalid TimeOfDay object during CTimeOfDay::Update!");
-                }
-                }
-            }
-        }
-
-        if (m_pUpdateCallback)
-        {
-            m_pUpdateCallback->EndUpdate();
-        }
+        UpdateValues();
     }
 
     // update environment lighting according to new interpolated values
@@ -481,6 +413,81 @@ void CTimeOfDay::Update(bool bInterpolate, bool bForceUpdate, bool bEnvUpdate)
 }
 
 
+//////////////////////////////////////////////////////////////////////////
+void CTimeOfDay::UpdateValues()
+{
+    if (m_pUpdateCallback)
+    {
+        m_pUpdateCallback->BeginUpdate();
+    }
+
+    // normalized time for interpolation
+    float t = m_fTime / s_maxTime;
+
+    // interpolate all values
+    for (uint32 i = 0; i < static_cast<uint32>(GetVariableCount()); i++)
+    {
+        SVariableInfo& var = m_vars[i];
+        if (var.pInterpolator)
+        {
+            if (var.pInterpolator->GetNumDimensions() == 1)
+            {
+                var.pInterpolator->InterpolateFloat(t, var.fValue[0]);
+            }
+            else if (var.pInterpolator->GetNumDimensions() == 3)
+            {
+                var.pInterpolator->InterpolateFloat3(t, var.fValue);
+            }
+
+            if (m_pUpdateCallback)
+            {
+                const int dim = var.pInterpolator->GetNumDimensions();
+                float customValues[3] = { 0, 0, 0 };
+                float blendWeight = 0;
+                if (m_pUpdateCallback->GetCustomValue((ETimeOfDayParamID)var.nParamId, dim, customValues, blendWeight))
+                {
+                    AZ_Assert(blendWeight >= 0 && blendWeight <= 1, "blendweight outside 0 and 1 in CTimeOfDay::Update!");
+                    blendWeight = clamp_tpl(blendWeight, 0.0f, 1.0f);
+                    for (int j = 0; j < dim; ++j)
+                    {
+                        var.fValue[j] = var.fValue[j] + blendWeight * (customValues[j] - var.fValue[j]);
+                    }
+                }
+            }
+
+            switch (var.type)
+            {
+            case TYPE_FLOAT:
+            {
+                var.fValue[0] = clamp_tpl(var.fValue[0], var.fValue[1], var.fValue[2]);
+                if (fabs(var.fValue[0]) < 1e-10f)
+                {
+                    var.fValue[0] = 0.0f;
+                }
+                break;
+            }
+            case TYPE_COLOR:
+            {
+                var.fValue[0] = clamp_tpl(var.fValue[0], 0.0f, 1.0f);
+                var.fValue[1] = clamp_tpl(var.fValue[1], 0.0f, 1.0f);
+                var.fValue[2] = clamp_tpl(var.fValue[2], 0.0f, 1.0f);
+                break;
+            }
+            default:
+            {
+                AZ_Error("TimeOfDay", false, "Invalid TimeOfDay object during CTimeOfDay::Update!");
+            }
+            }
+        }
+    }
+
+    if (m_pUpdateCallback)
+    {
+        m_pUpdateCallback->EndUpdate();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 Vec3 ConvertIlluminanceToLightColor(float illuminance, Vec3 colorRGB)
 {
     illuminance /= RENDERER_LIGHT_UNIT_SCALE;
@@ -596,7 +603,7 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     float sunIntensityMultiplier(1.0f);
 
     // The ratio between night and day for adjusting luminance.   Day = 1, Night = 0, transitions = [0..1]
-    float dayNightIndicator(1.0);   
+    float dayNightIndicator(1.0);
     // The ratio [0..1] relative to high noon which represents maximum luminance.
     float midDayIndicator(1.0);
 
@@ -872,6 +879,25 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     p3DEngine->SetGlobalParameter(E3DPARAM_VOLFOG2_COLOR1, Vec3(GetVar(PARAM_VOLFOG2_COLOR1).fValue[0], GetVar(PARAM_VOLFOG2_COLOR1).fValue[1], GetVar(PARAM_VOLFOG2_COLOR1).fValue[2]));
 
     p3DEngine->SetGlobalParameter(E3DPARAM_VOLFOG2_COLOR2, Vec3(GetVar(PARAM_VOLFOG2_COLOR2).fValue[0], GetVar(PARAM_VOLFOG2_COLOR2).fValue[1], GetVar(PARAM_VOLFOG2_COLOR2).fValue[2]));
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTimeOfDay::MakeCurrentPresetFromCurrentParams()
+{
+    if (m_pCurrentPreset != m_defaultPreset)
+    {
+        SAFE_DELETE(m_pCurrentPreset);
+    }
+
+    CEnvironmentPreset* preset = new CEnvironmentPreset;
+    for (int enumId = 0; enumId < ITimeOfDay::PARAM_TOTAL; ++enumId)
+    {
+        ETimeOfDayParamID id = static_cast<ETimeOfDayParamID>(enumId);
+        const SVariableInfo& param = GetVar(id);
+        CTimeOfDayVariable* presetVar = preset->GetVar(id);
+        presetVar->Init(param.group, param.displayName, param.name, id, param.type, param.fValue[0], param.fValue[1], param.fValue[2]);
+    }
+    m_pCurrentPreset = preset;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -144,6 +144,9 @@ namespace EMStudio
         AzQtComponents::FancyDocking* GetFancyDockingManager() const            { return m_fancyDockingManager; }
 
         QMessageBox* GetRemoveLayoutDialog();
+
+        void AddRecentActorFile(const QString& fileName);
+
     public slots:
         void OnAutosaveTimeOut();
         void LoadLayoutAfterShow();
@@ -152,6 +155,7 @@ namespace EMStudio
 
         void OnSaveLayoutDialogAccept();
         void OnSaveLayoutDialogReject();
+
     protected:
         void moveEvent(QMoveEvent* event) override;
         void resizeEvent(QResizeEvent* event) override;

@@ -11,7 +11,7 @@
 */
 
 /*
-    NOTE: To minimize your compile times, please consider manually including only the required header files instead of using this master include.
+    NOTE: To minimize your compile times, please consider manually including only the required header files instead of using this main include.
 */
 
 #pragma once

@@ -17,6 +17,7 @@
 #include "AttributeView.h"
 #include <Controls/QBitmapPreviewDialogImp.h>
 #include "VariableWidgets/QColorWidgetImp.h"
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 
 // QT
 #include <QEvent>
@@ -30,6 +31,9 @@
 #include "IEditorParticleUtils.h"
 #include <Controls/QToolTipWidget.h>
 #include "../Utils.h"
+
+#define STATE_COLLAPSED "collapsed"
+#define STATE_UNCOLLAPSED "uncollapsed"
 
 QColumnWidget::QCustomLabel::QCustomLabel(const QString& label, CAttributeItem* parent, bool collapsible)
     : QLabel(label, parent)
@@ -133,7 +137,7 @@ void QColumnWidget::QCustomLabel::SetCollapsible(bool val)
     int groupDepth = l.count() - 2;
     m_collapsible = val;
     //24 is the size of the icon for QCollapseWidget, add to make the first letters of the label align
-    setIndent((groupDepth * 24) + (!m_collapsible) ? 24 : 0);
+    setIndent((groupDepth * 16) + ((!m_collapsible) ? 16 : 0));
 }
 
 void QColumnWidget::mousePressEvent(QMouseEvent* e)
@@ -151,36 +155,49 @@ void QColumnWidget::keyPressEvent(QKeyEvent* event)
 }
 
 
-QColumnWidget::QColumnWidget(CAttributeItem* parent, const QString& label, QWidget* widget, bool collapsible)
+QColumnWidget::QColumnWidget(CAttributeItem* parent, const QString& label, QWidget* widget, bool collapsible, bool fullWidth)
     : QCopyableWidget(parent)
-    , layout(this)
 {
     m_parent = parent;
     m_variable = parent->getVar();
     setMouseTracking(true);
-    layout.setMargin(0);
-
-    if (!widget)
-    {
-        layout.setAlignment(Qt::AlignLeft);
-    }
-
+    m_topLayout = new QVBoxLayout(this);
+    m_containerLayout = new QHBoxLayout();
+    m_topLayout->addLayout(m_containerLayout);
+    m_leftLayout = new QHBoxLayout();
+    m_rightLayout = new QHBoxLayout();
+    QGridLayout* gridLayout = new QGridLayout();
+    gridLayout->addLayout(m_leftLayout, 0, 0);
+    gridLayout->addLayout(m_rightLayout, 0, 1);
+    gridLayout->setColumnStretch(0, 1);
+    gridLayout->setColumnStretch(1, 1);
+    m_containerLayout->addLayout(gridLayout);
+    m_containerLayout->setSpacing(0);
+    m_containerLayout->setContentsMargins(0, 0, 0, 0);
+    m_leftLayout->setSpacing(0);
+    m_leftLayout->setContentsMargins(0, 0, 0, 0);
+    m_rightLayout->setSpacing(0);
+    m_rightLayout->setContentsMargins(0, 0, 0, 0);
+    m_topLayout->setSpacing(0);
+    m_topLayout->setContentsMargins(0, 0, 0, 0);
     setAttribute(Qt::WA_TranslucentBackground, true);
 
     lbl = new QCustomLabel(label, parent);
 
-    layout.addWidget(lbl, 1, Qt::AlignTop | Qt::AlignLeft);
-
+    m_leftLayout->addWidget(lbl, 0, Qt::AlignTop);
     if (widget)
     {
         widget->setParent(this);
-        layout.addWidget(widget, 1);
+        m_rightLayout->addWidget(widget, 0, Qt::AlignTop);
+        if (!fullWidth)
+        {
+            m_rightLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+        }
     }
-
     //if the embedded widget is a color widget imp, we need to something special later
     QColorWidgetImp* colorWidget = qobject_cast<QColorWidgetImp*> (widget);
 
-    setLayout(&layout);
+    setLayout(m_topLayout);
     SetCopyMenuFlags(COPY_MENU_FLAGS(ENABLE_COPY | ENABLE_PASTE | ENABLE_RESET));    
     SetCopyCallback([=]()
         {
@@ -236,6 +253,38 @@ QColumnWidget::~QColumnWidget()
     }
 }
 
+void test()
+{
+}
+
+void QColumnWidget::SetAsCollapsible(CAttributeItem* item)
+{
+    m_attributeItem = item;
+    m_collapseButton = new QCheckBox(this);
+    AzQtComponents::CheckBox::applyExpanderStyle(m_collapseButton);
+    m_leftLayout->insertWidget(0, m_collapseButton);
+    connect(m_collapseButton, &QCheckBox::clicked, this, &QColumnWidget::CollapseButton_clicked);
+    m_widgetChildren = new QWidget(this);
+    m_layoutChildren = new QVBoxLayout(m_widgetChildren);
+    m_layoutChildren->setSpacing(0);
+    m_layoutChildren->setSizeConstraint(QLayout::SetDefaultConstraint);
+    m_layoutChildren->setContentsMargins(0, 6, 0, 0);
+
+    m_topLayout->addWidget(m_widgetChildren, 0, Qt::AlignTop);
+
+#ifdef EDITOR_QT_UI_EXPORTS
+    if (m_attributeItem)
+    {
+        const QString path = m_attributeItem->getAttributePath(true);
+        SetCollapsed(m_attributeItem->getAttributeView()->getValue(path, STATE_COLLAPSED) == STATE_COLLAPSED);
+    }
+#else
+    setCollapsed(true);
+#endif
+    m_isCollapsible = true;
+}
+
+
 void QColumnWidget::onVarChanged(IVariable* var)
 {
     bool canReset = onCheckResetCallback();
@@ -276,4 +325,42 @@ void QColumnWidget::paintEvent(QPaintEvent*)
 void QColumnWidget::SetCollapsible(bool val)
 {
     lbl->SetCollapsible(val);
+}
+
+void QColumnWidget::SetCollapsed(bool state)
+{
+    QIcon icon;
+    if (state)
+    {
+        m_widgetChildren->setHidden(true);
+    }
+    else
+    {
+        m_widgetChildren->setHidden(false);
+    }
+
+    // make sure the parent widget knows that we have changed the geometry.
+
+    m_collapseButton->setProperty("collapsed", state);
+    m_collapseButton->style()->unpolish(m_collapseButton);
+    m_collapseButton->style()->polish(m_collapseButton);
+    m_collapseButton->update();
+}
+
+void QColumnWidget::CollapseButton_clicked()
+{
+    // Toggle
+
+    const bool collapsed = !m_widgetChildren->isHidden();
+
+    SetCollapsed(collapsed);
+
+#ifdef EDITOR_QT_UI_EXPORTS
+    // Save state
+    if (m_attributeItem)
+    {
+        const QString path = m_attributeItem->getAttributePath(true);
+        m_attributeItem->getAttributeView()->setValue(path, collapsed ? STATE_COLLAPSED : STATE_UNCOLLAPSED);
+    }
+#endif
 }

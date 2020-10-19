@@ -12,6 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 #pragma once
 
+#include <SerializeFwd.h>
+
+
 struct SBezierKey;
 struct ITimeOfDayUpdateCallback;
 struct ISplineInterpolator;
@@ -250,11 +253,18 @@ struct ITimeOfDay
 
     virtual void SetPaused(bool paused) = 0;
 
+    virtual void MakeCurrentPresetFromCurrentParams() = 0;
+
     virtual void SetAdvancedInfo(const SAdvancedInfo& advInfo) = 0;
     virtual void GetAdvancedInfo(SAdvancedInfo& advInfo) = 0;
 
     //! Updates engine parameters after variable values have been changed.
     virtual void Update(bool bInterpolate = true, bool bForceUpdate = false, bool bForceEnvUpdate = true) = 0;
+    //! Only updates and interpolates TOD values with.
+    virtual void UpdateValues() = 0;
+    //! Only updates lighting
+    virtual void UpdateEnvLighting(bool forceUpdate = false) = 0;
+
     virtual void SetUpdateCallback(ITimeOfDayUpdateCallback* pCallback) = 0;
 
     virtual void BeginEditMode() = 0;

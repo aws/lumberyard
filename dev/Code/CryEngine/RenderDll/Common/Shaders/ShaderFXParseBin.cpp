@@ -3633,8 +3633,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
     }
     if (nNum == Parser.m_CodeFragments.size())
     {
-        Warning("Couldn't find entry function '%s'", Parser.GetString(dwSHName));
-        CRY_ASSERT(0);
+        AZ_Assert(false, "Couldn't find entry function '%s'", Parser.GetString(dwSHName));
         return false;
     }
 
@@ -5726,8 +5725,14 @@ bool CShaderManBin::ParseBinFX_Dummy(SShaderBin* pBin, std::vector<string>& Shad
     CParserBin Parser(pBin, NULL);
 
     pBin->Lock();
-    Parser.Preprocess(0, pBin->m_Tokens, &pBin->m_TokenTable);
+    bool preprocessResult = Parser.Preprocess(0, pBin->m_Tokens, &pBin->m_TokenTable);
     pBin->Unlock();
+
+    if(!preprocessResult)
+    {
+        // Preprocess already outputs an error, no need to do so here.
+        return false;
+    }
 
     SParserFrame Frame(0, Parser.m_Tokens.size() - 1);
     Parser.BeginFrame(Frame);

@@ -110,7 +110,7 @@ namespace EMStudio
         void UpdateInterface();
 
     private:
-        void CreateViewOptionEntry(QMenu* menu, const char* menuEntryName, int32 actionIndex, bool visible=true);
+        void CreateViewOptionEntry(QMenu* menu, const char* menuEntryName, int32 actionIndex, bool visible = true, const char* iconFilename = nullptr);
         QAction* AddToolBarAction(const char* entryName, const char* iconName);
         void Reset();
 

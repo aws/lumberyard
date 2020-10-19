@@ -58,6 +58,30 @@ namespace SerializationDependencyTests
         AZ::Data::Asset<AZ::Data::AssetData> m_asset;
     };
 
+    class ClassWithNoLoadAsset
+    {
+    public:
+        AZ_RTTI(ClassWithNoLoadAsset, "{C38D0DFA-A19E-48EF-BC0E-2BE4E320F65A}");
+
+        ClassWithNoLoadAsset() : m_asset(AZ::Data::AssetLoadBehavior::NoLoad)
+        {
+
+        }
+        virtual ~ClassWithNoLoadAsset() {}
+
+        static void Reflect(AZ::ReflectContext* reflection)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+            if (serializeContext)
+            {
+                serializeContext->Class<ClassWithNoLoadAsset>()
+                    ->Field("m_asset", &ClassWithNoLoadAsset::m_asset);
+            }
+        }
+
+        AZ::Data::Asset<AZ::Data::AssetData> m_asset;
+    };
+
     class SimpleAssetMock : public AzFramework::SimpleAssetReferenceBase
     {
     public:
@@ -120,6 +144,7 @@ namespace SerializationDependencyTests
             ClassWithAsset::Reflect(m_serializeContext);
             SimpleAssetMock::Reflect(m_serializeContext);
             ClassWithSimpleAsset::Reflect(m_serializeContext);
+            ClassWithNoLoadAsset::Reflect(m_serializeContext);
         }
 
         void TearDown() override
@@ -130,16 +155,21 @@ namespace SerializationDependencyTests
 
     };
 
-    bool FindAssetIdInProductDependencies(const AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies, const AZ::Data::AssetId& assetId)
+    int GetProductDependencySlot(const AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies, const AZ::Data::AssetId& assetId)
     {
-        for (const auto& productDependency : productDependencies)
+        for (int productDependencySlot = 0; productDependencySlot < aznumeric_cast<int>(productDependencies.size()); ++productDependencySlot)
         {
-            if (productDependency.m_dependencyId == assetId)
+            if (productDependencies[productDependencySlot].m_dependencyId == assetId)
             {
-                return true;
+                return productDependencySlot;
             }
         }
         return false;
+    }
+
+    bool FindAssetIdInProductDependencies(const AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies, const AZ::Data::AssetId& assetId)
+    {
+        return (GetProductDependencySlot(productDependencies, assetId) != -1);
     }
 
     TEST_F(SerializationDependenciesTests, GatherProductDependencies_NullData_NoCrash)
@@ -231,6 +261,24 @@ namespace SerializationDependencyTests
         ASSERT_EQ(productPathDependencySet.size(), 1);
         ASSERT_TRUE(productPathDependencySet.begin()->m_dependencyPath.compare(expectedAssetPath) == 0);
         ASSERT_TRUE(productPathDependencySet.begin()->m_dependencyType == AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+    }
+
+    TEST_F(SerializationDependenciesTests, GatherProductDependencies_DependencyFlagsSerialization_Success)
+    {
+        AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+        AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+        ClassWithNoLoadAsset classWithNoLoadAsset;
+        AZ::Data::AssetId testAssetId("{CAAC5458-0738-43F6-A2BD-4E315C64BFD3}", 71);
+        classWithNoLoadAsset.m_asset = AZ::Data::Asset<AZ::Data::AssetData>(
+            testAssetId,
+            azrtti_typeid<AZ::Data::AssetData>());
+        classWithNoLoadAsset.m_asset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+        bool gatherResult = AssetBuilderSDK::GatherProductDependencies(*m_serializeContext, &classWithNoLoadAsset, productDependencies, productPathDependencySet);
+
+        ASSERT_TRUE(gatherResult);
+        ASSERT_EQ(productDependencies.size(), 1);
+        auto behaviorFromFlags = AZ::Data::ProductDependencyInfo::LoadBehaviorFromFlags(productDependencies[0].m_flags);
+        ASSERT_EQ(behaviorFromFlags, AZ::Data::AssetLoadBehavior::NoLoad);
     }
 
     TEST_F(SerializationDependenciesTests, GatherProductDependencies_HasEmptyStringSimpleAsset_NoDependencyEmitted)

@@ -50,6 +50,8 @@ namespace PhysXEditorTests
         friend class PhysXEditorFixture;
     };
 
+    // Required for use of deprecated type PhysX::Configuration
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     //! Test fixture which creates a tools application, loads the PhysX runtime gem and creates a default physics world.
     //! The application is created for the whole test case, rather than individually for each test, due to a known
     //! problem with buses when repeatedly loading and unloading gems. A new default world is created for each test.
@@ -78,10 +80,12 @@ namespace PhysXEditorTests
         static PhysXEditorSystemComponentEntity* s_systemComponentEntity;
         static ToolsApplicationMessageHandler* s_messageHandler;
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
+        AZ::ComponentDescriptor* m_dummyTerrainComponentDescriptor = nullptr;
 
         PhysX::Configuration m_oldConfiguration;
 
         // workaround for parameterized tests causing issues with this (and any derived) fixture
         void ValidateInvalidEditorShapeColliderComponentParams(float radius, float height);
     };
+    AZ_POP_DISABLE_WARNING
 } // namespace PhysXEditorTests

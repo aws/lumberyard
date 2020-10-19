@@ -20,6 +20,7 @@
 
 #include <QWidget>
 #include <QMenu>
+#include <QLabel>
 
 #include <Source/Editor/ui_ATLControlsPanel.h>
 
@@ -128,7 +129,31 @@ namespace AudioControls
         QMenu m_filterMenu;
         QFilterButton* m_pControlTypeFilterButtons[eACET_NUM_TYPES];
         QFilterButton* m_unassignedFilterButton;
-        bool m_visibleTypes[AudioControls::EACEControlType::eACET_NUM_TYPES];
+        bool m_visibleTypes[eACET_NUM_TYPES];
         bool m_showUnassignedControls;
     };
+
+    class QFilterButton
+        : public QWidget
+    {
+        Q_OBJECT
+    public:
+        QFilterButton(const QIcon& icon, const QString& text, QWidget* parent = 0);
+
+        void SetText(const QString& text){ m_actionText.setText(text); }
+
+        void SetChecked(bool checked);
+
+    signals:
+        void clicked(bool checked = false);
+
+    protected:
+        void mousePressEvent(QMouseEvent* event) override;
+
+        QLabel m_checkIcon;
+        QLabel m_filterIcon;
+        QLabel m_actionText;
+        bool m_checked = true;
+    };
+
 } // namespace AudioControls

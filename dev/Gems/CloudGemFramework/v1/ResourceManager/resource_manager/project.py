@@ -55,7 +55,10 @@ def create_stack(context, args):
     context.config.validate_writable(context.config.local_project_settings.path)
 
     # Check if optional admin roles are being created
-    context.config.set_project_admin_roles(args.create_admin_roles if not None else False)
+    context.config.set_project_admin_roles(args.create_admin_roles if args.create_admin_roles is not None else False)
+
+    # Check whether the custom domain for API Gateway is specified
+    context.config.set_custom_domain_name(args.custom_domain_name if args.custom_domain_name else '')
 
     # Is it ok to do this?
     pending_resource_status = __get_pending_resource_status(context)
@@ -88,6 +91,7 @@ def create_stack(context, args):
 
         # Ensure new stacks always has this set
         parameters = {CREATE_ADMIN_ROLE_PARAM_NAME: "true" if args.create_admin_roles else "false"}
+        parameters[constant.CUSTOM_DOMAIN_NAME] = args.custom_domain_name if args.custom_domain_name else ''
 
         # Create stack using the bootstrapping template.
         context.stack.create_using_template(
@@ -194,6 +198,9 @@ def update_stack(context, args):
         args,
         pending_resource_status
     )
+
+    # Check whether the custom domain for API Gateway is specified
+    context.config.set_custom_domain_name(args.custom_domain_name if args.custom_domain_name else '')
 
     # Do the update...
     __update_project_stack(context, pending_resource_status, capabilities, args)
@@ -357,6 +364,10 @@ def __get_project_stack_parameters(context, uploader=None, admin_roles=None):
         params[CREATE_ADMIN_ROLE_PARAM_NAME] = "true" if admin_roles else "false"
     else:
         params[CREATE_ADMIN_ROLE_PARAM_NAME] = None   # None, default to previous value
+    
+    # Pass in optional parameter for the API Gateway custom domain name
+    params[constant.CUSTOM_DOMAIN_NAME] = context.config.custom_domain_name
+
     return params
 
 
@@ -684,6 +695,11 @@ bootstrap_template = '''{
         "CreateAdminRoles": {
             "Default": "false",
             "Description": "If stack was created with the project admin and owner roles",
+            "Type": "String"
+        },
+        "CustomDomainName": {
+            "Default": "",
+            "Description": "Custom domain name for API Gateway",
             "Type": "String"
         }
     },

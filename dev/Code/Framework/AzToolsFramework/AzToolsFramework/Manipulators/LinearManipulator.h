@@ -49,6 +49,16 @@ namespace AzToolsFramework
             AZ::Vector3 m_axis = AZ::Vector3::CreateAxisX(); ///< The axis the manipulator will move along.
         };
 
+        /// Data passed between the initial press and first movement of the linear manipulator.
+        struct StartTransition
+        {
+            /// The normal in local space of the manipulator when the mouse down event happens.
+            AZ::Vector3 m_localNormal;
+            /// Used to scale movement based on camera distance if we want screen space instead
+            /// of world space displacement.
+            float m_screenToWorldScale;
+        };
+
         /// The state of the manipulator at the start of an interaction.
         struct Start
         {
@@ -58,7 +68,8 @@ namespace AzToolsFramework
             AZ::Vector3 m_localAxis; ///< The axis in the local space of the manipulator itself.
             AZ::Vector3 m_positionSnapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
             AZ::Vector3 m_scaleSnapOffset; ///< The snap offset amount to ensure manipulator is aligned to round scale increments.
-            AZ::VectorFloat m_sign; ///< Used to determine which side of the axis we clicked on in case it's flipped to face the camera.
+            float m_sign; ///< Used to determine which side of the axis we clicked on in case it's flipped to face the camera.
+            AzFramework::ScreenPoint m_screenPosition; ///< The initial position in screen space of the manipulator.
         };
 
         /// The state of the manipulator during an interaction.
@@ -66,6 +77,7 @@ namespace AzToolsFramework
         {
             AZ::Vector3 m_localPositionOffset; ///< The current offset of the manipulator from its starting position in local space.
             AZ::Vector3 m_localScaleOffset; ///< The current offset of the manipulator from its starting scale in local space.
+            AzFramework::ScreenPoint m_screenPosition; ///< The current position in screen space of the manipulator.
         };
 
         /// Mouse action data used by MouseActionCallback (wraps Fixed, Start and Current manipulator state).
@@ -75,15 +87,23 @@ namespace AzToolsFramework
             Start m_start;
             Current m_current;
             ViewportInteraction::KeyboardModifiers m_modifiers;
+            int m_viewportId; ///< The id of the viewport this manipulator is being used in.
             AZ::Vector3 LocalScale() const { return m_start.m_localScale + m_current.m_localScaleOffset; }
             AZ::Vector3 LocalScaleOffset() const { return m_start.m_scaleSnapOffset + m_current.m_localScaleOffset; }
             AZ::Vector3 LocalPosition() const { return m_start.m_localPosition + m_current.m_localPositionOffset; }
             AZ::Vector3 LocalPositionOffset() const { return m_current.m_localPositionOffset; }
+            AZ::Vector2 ScreenOffset() const
+            {
+                return ViewportInteraction::Vector2FromScreenVector(
+                    m_current.m_screenPosition - m_start.m_screenPosition);
+            }
         };
 
         /// This is the function signature of callbacks that will be invoked whenever a manipulator
         /// is clicked on or dragged.
         using MouseActionCallback = AZStd::function<void(const Action&)>;
+        /// Tuple of StartTransition (initial mouse down to mouse move) and Start state.
+        using Starter = AZStd::tuple<StartTransition, Start>;
 
         void InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback);
         void InstallMouseMoveCallback(const MouseActionCallback& onMouseMoveCallback);
@@ -110,7 +130,11 @@ namespace AzToolsFramework
             m_manipulatorViews = AZStd::forward<Views>(views);
         }
 
-        void UseVisualOrientationOverride(bool use) { m_useVisualsOverride = use; }
+        void UseVisualOrientationOverride(const bool useVisualOverride)
+        {
+            m_useVisualsOverride = useVisualOverride;
+        }
+
         void SetVisualOrientationOverride(const AZ::Quaternion& visualOrientation)
         {
             m_visualOrientationOverride = visualOrientation;
@@ -127,19 +151,6 @@ namespace AzToolsFramework
         void InvalidateImpl() override;
         void SetBoundsDirtyImpl() override;
 
-        /// Initial data recorded when a press first happens with a linear manipulator.
-        struct StartInternal
-        {
-            AZ::Vector3 m_localPosition; ///< The position in local space of the manipulator when the mouse down event happens.
-            AZ::Vector3 m_localScale; ///< The scale in local space of the manipulator when the mouse down event happens.
-            AZ::Vector3 m_localHitPosition; ///< The intersection point in local space between the ray and the manipulator when the mouse down event happens.
-            AZ::Vector3 m_localNormal; ///< The normal in local space of the manipulator when the mouse down event happens.
-            AZ::Vector3 m_localAxis; ///< The axis in the local space of the manipulator itself.
-            AZ::Vector3 m_positionSnapOffset; ///< The snap offset amount to ensure manipulator position is aligned to the grid.
-            AZ::Vector3 m_scaleSnapOffset; ///< The snap offset amount to ensure manipulator scale is aligned to the grid.
-            AZ::VectorFloat m_screenToWorldScale; ///< Used to scale movement based on camera distance if we want screen space instead of world space displacement.
-        };
-
         AZ::Transform m_localTransform = AZ::Transform::CreateIdentity(); ///< Local transform of the manipulator.
         AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); ///< Space the manipulator is in (identity is world space).
 
@@ -147,22 +158,22 @@ namespace AzToolsFramework
         AZ::Quaternion m_visualOrientationOverride = AZ::Quaternion::CreateIdentity(); // Quaternion to use only for visuals.
 
         Fixed m_fixed;
-        StartInternal m_startInternal;
+        Starter m_starter;
 
         MouseActionCallback m_onLeftMouseDownCallback = nullptr;
         MouseActionCallback m_onLeftMouseUpCallback = nullptr;
         MouseActionCallback m_onMouseMoveCallback = nullptr;
 
         ManipulatorViews m_manipulatorViews; ///< Look of manipulator.
-
-        static StartInternal CalculateManipulationDataStart(
-            const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
-            const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
-            const AzFramework::CameraState& cameraState);
-
-        static Action CalculateManipulationDataAction(
-            const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
-            const AZ::Transform& localTransform, const GridSnapAction& gridSnapAction, const AZ::Vector3& rayOrigin,
-            const AZ::Vector3& rayDirection, ViewportInteraction::KeyboardModifiers keyboardModifiers);
     };
+
+    LinearManipulator::Starter CalculateLinearManipulationDataStart(
+        const LinearManipulator::Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
+        const GridSnapAction& gridSnapAction, const ViewportInteraction::MouseInteraction& interaction,
+        float intersectionDistance, const AzFramework::CameraState& cameraState);
+
+    LinearManipulator::Action CalculateLinearManipulationDataAction(
+        const LinearManipulator::Fixed& fixed, const LinearManipulator::Starter& starter,
+        const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform, const GridSnapAction& gridSnapAction,
+        const ViewportInteraction::MouseInteraction& interaction);
 } // namespace AzToolsFramework

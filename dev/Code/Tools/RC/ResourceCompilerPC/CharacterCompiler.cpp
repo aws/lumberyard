@@ -39,17 +39,21 @@ CharacterCompiler::CharacterCompiler(ICryXML* pXml)
 {
     m_pXML = pXml;
     m_refCount = 1;
+#if ENABLE_CRY_PHYSICS
     m_pPhysicsInterface = NULL;
+#endif
     m_bOptimizePVRStripify = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 CharacterCompiler::~CharacterCompiler()
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pPhysicsInterface)
     {
         delete m_pPhysicsInterface;
     }
+#endif
 }
 
 ////////////////////////////////////////////////////////////
@@ -794,6 +798,7 @@ CContentCGF* CharacterCompiler::MakeCompiledCGF(CContentCGF* pCGF)
 //////////////////////////////////////////////////////////////////////////
 bool CharacterCompiler::Physicalize(CContentCGF* pCGF)
 {
+#if ENABLE_CRY_PHYSICS
 #if defined(AZ_PLATFORM_WINDOWS)
     // _EM_INVALID is used to avoid Floating Point Exception inside CryPhysics
     MathHelpers::AutoFloatingPointExceptions autoFpe(~(_EM_INEXACT | _EM_UNDERFLOW | _EM_INVALID));
@@ -823,6 +828,7 @@ bool CharacterCompiler::Physicalize(CContentCGF* pCGF)
             return false;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     return true;
 }

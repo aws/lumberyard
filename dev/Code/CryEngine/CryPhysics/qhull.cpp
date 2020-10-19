@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 
 ///////////////////////////// Qhull 3d ///////////////////////////////
@@ -917,3 +919,5 @@ int qhull2d(ptitem2d* pts, int nVtx, edgeitem* edges)
 
     return nEdges;
 }
+
+#endif // ENABLE_CRY_PHYSICS

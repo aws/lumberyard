@@ -22,6 +22,7 @@
 #include <CloudGemFramework/JsonObjectHandler.h>
 #include <CloudGemFramework/JsonWriter.h>
 #include <CloudGemFramework/HttpRequestJob.h>
+#include <CloudGemFramework/ServiceJobUtil.h>
 
 #include <CloudGemFramework/AwsApiJobConfig.h>
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
@@ -586,6 +587,31 @@ TEST_F(HttpRequestJobTest, StringToHttpMethod)
     EXPECT_EQ(CloudGemFramework::HttpRequestJob::HttpMethod::HTTP_PATCH, *CloudGemFramework::HttpRequestJob::StringToHttpMethod("PATCH"));
     EXPECT_FALSE(CloudGemFramework::HttpRequestJob::StringToHttpMethod("Foo"));
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// ServiceJobUtil Unit Tests
+class ServiceJobUtilTest
+    : public ::testing::Test
+{
+    void SetUp() override
+    {
+    }
+};
+
+TEST_F(ServiceJobUtilTest, DetermineRegionFromRequestUrl_DefaultUrlFormat_Success)
+{
+    Aws::String defaultUrl = "https://rest-api-id.execute-api.region1.amazonaws.com/stage/path";
+    Aws::String region = CloudGemFramework::DetermineRegionFromServiceUrl(defaultUrl);
+    EXPECT_EQ(region, Aws::String("region1"));
+}
+
+TEST_F(ServiceJobUtilTest, DetermineRegionFromRequestUrl_CustomUrlFormat_Success)
+{
+    Aws::String alternativeUrl = "https://custom_domain_name/region2.stage.rest-api-id/path";
+    Aws::String region = CloudGemFramework::DetermineRegionFromServiceUrl(alternativeUrl);
+    EXPECT_EQ(region, Aws::String("region2"));
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////////////

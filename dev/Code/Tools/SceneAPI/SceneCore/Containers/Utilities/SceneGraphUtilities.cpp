@@ -11,11 +11,13 @@
 */
 
 #include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/typetraits/is_base_of.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 #include <SceneAPI/SceneCore/Containers/Views/FilterIterator.h>
+#include <SceneAPI/SceneCore/Containers/Views/SceneGraphUpwardsIterator.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphChildIterator.h>
@@ -63,6 +65,86 @@ namespace AZ
                 }
 
                 return outTransform;
+            }
+            
+            bool ConcatenateMatricesUpwards(
+                AZ::Transform& transform,
+                const Containers::SceneGraph::HierarchyStorageConstIterator& nodeIterator,
+                const Containers::SceneGraph& graph)
+            {
+                bool translated = false;
+
+                auto view = SceneAPI::Containers::Views::MakeSceneGraphUpwardsView(graph, nodeIterator, graph.GetContentStorage().cbegin(), true);
+                for (auto it = view.begin(); it != view.end(); ++it)
+                {
+                    const DataTypes::ITransform* nodeTransform = azrtti_cast<const DataTypes::ITransform*>(it->get());
+                    if (nodeTransform)
+                    {
+                        transform = nodeTransform->GetMatrix() * transform;
+                        translated = true;
+                    }
+                    else
+                    {
+                        bool endPointTransform = MultiplyEndPointTransforms(transform, it.GetHierarchyIterator(), graph);
+                        translated = translated || endPointTransform;
+                    }
+                }
+                return translated;
+            }
+
+            bool MultiplyEndPointTransforms(
+                AZ::Transform& transform,
+                const Containers::SceneGraph::HierarchyStorageConstIterator& nodeIterator,
+                const Containers::SceneGraph& graph)
+            {
+                // If the translation is not an end point it means it's its own group as opposed to being
+                //      a component of the parent, so only list end point children.
+                auto view = SceneAPI::Containers::Views::MakeSceneGraphChildView<Containers::Views::AcceptEndPointsOnly>(graph, nodeIterator, 
+                    graph.GetContentStorage().begin(), true);
+                auto result = AZStd::find_if(view.begin(), view.end(), Containers::DerivedTypeFilter<DataTypes::ITransform>());
+                if (result != view.end())
+                {
+                    transform = azrtti_cast<const DataTypes::ITransform*>(result->get())->GetMatrix() * transform;
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            AZ::Transform GetOriginRuleTransform(
+                const DataTypes::IOriginRule& originRule,
+                const Containers::SceneGraph& graph)
+            {
+                AZ::Transform originTransform = AZ::Transform::CreateIdentity();
+                if (!originRule.GetTranslation().IsZero() || !originRule.GetRotation().IsIdentity())
+                {
+                    originTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+                        originRule.GetRotation(), originRule.GetTranslation());
+                }
+
+                if (const float scale = originRule.GetScale();
+                    !AZ::IsClose(scale, 1.0f, std::numeric_limits<float>::epsilon()))
+                {
+                    originTransform.MultiplyByScale(AZ::Vector3(scale));
+                }
+
+                if (const AZStd::string& nodeName = originRule.GetOriginNodeName();
+                    !nodeName.empty() && !originRule.UseRootAsOrigin())
+                {
+                    const auto index = graph.Find(nodeName);
+                    if (index.IsValid())
+                    {
+                        AZ::Transform worldMatrix = AZ::Transform::CreateIdentity();
+                        if (ConcatenateMatricesUpwards(worldMatrix, graph.ConvertToHierarchyIterator(index), graph))
+                        {
+                            worldMatrix.InvertFull();
+                            originTransform *= worldMatrix;
+                        }
+                    }
+                }
+                return originTransform;
             }
         } // Utilities
     } // SceneAPI

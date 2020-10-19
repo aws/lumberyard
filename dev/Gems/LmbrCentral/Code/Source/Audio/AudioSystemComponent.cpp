@@ -80,7 +80,7 @@ namespace LmbrCentral
                 ->Event("GlobalSetAudioSwitchState", &AudioSystemComponentRequestBus::Events::GlobalSetAudioSwitchState)
                 ;
 
-            behaviorContext->EBus<AudioSystemComponentNotificationBus>("Audio System Component Notifications", "AudioSystemComponentNotificationBus")
+            behaviorContext->EBus<AudioSystemComponentNotificationBus>("AudioSystemComponentNotificationBus")
                 ->Handler<BehaviorAudioSystemComponentNotificationBusHandler>()
                 ;
         }

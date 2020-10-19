@@ -1007,11 +1007,13 @@ void COcean::GetOceanGridSize(int& outX, int& outY) const
 void COcean::SetWaterLevel(float fWaterLevel)
 {
     m_fWaterLevel = fWaterLevel;
+#if ENABLE_CRY_PHYSICS
     pe_params_buoyancy pb;
     pb.waterPlane.origin.Set(0, 0, fWaterLevel);
     if (gEnv->pPhysicalWorld)
     {
         gEnv->pPhysicalWorld->AddGlobalArea()->SetParams(&pb);
     }
+#endif // ENABLE_CRY_PHYSICS
     OceanGlobals::g_oceanStep = -1; // if e_PhysOceanCell is used, make it re-apply the params on Update
 }

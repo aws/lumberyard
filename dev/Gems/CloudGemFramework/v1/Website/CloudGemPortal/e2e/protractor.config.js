@@ -32,6 +32,7 @@ exports.config = {
             //'args': ['show-fps-counter=true'],
             'args': [
                 '--no-sandbox',
+                '--disable-gpu',
                 "--test-type",
                 '--disable-infobars',
                 '--disable-extensions',

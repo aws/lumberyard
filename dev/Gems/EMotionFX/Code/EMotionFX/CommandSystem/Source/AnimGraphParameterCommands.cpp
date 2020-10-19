@@ -277,7 +277,7 @@ namespace CommandSystem
         const EMotionFX::Parameter* parameter = animGraph->FindParameterByName(mName);
         if (!parameter)
         {
-            outResult = AZStd::string::format("Cannot remove parameter '%s' from anim graph. There is no parameter with the given name.", mName.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot remove parameter '%s' from anim graph. There is no parameter with the given name.", mName.c_str());
             return false;
         }
         AZ_Assert(azrtti_typeid(parameter) != azrtti_typeid<EMotionFX::GroupParameter>(), "CommmandAnimGraphRemoveParameter called for a group parameter");
@@ -349,7 +349,7 @@ namespace CommandSystem
         // Execute the command to create the parameter again.
         AZStd::string commandString;
 
-        commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -type \"%s\" -contents {%s} -parent \"%s\" -updateUI %s",
+        commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %zu -type \"%s\" -contents {%s} -parent \"%s\" -updateUI %s",
                 animGraph->GetID(),
                 mName.c_str(),
                 mIndex,
@@ -776,9 +776,8 @@ namespace CommandSystem
         for (size_t i = 0; i < numInstances; ++i)
         {
             EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
-            // Remove the parameter and add it to the new position
-            animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueIndexBeforeMove.GetValue()));
-            animGraphInstance->InsertParameterValue(static_cast<uint32>(valueIndexAfterMove.GetValue()));
+            // Move the parameter from original position to the new position
+            animGraphInstance->MoveParameterValue(static_cast<uint32>(valueIndexBeforeMove.GetValue()), static_cast<uint32>(valueIndexAfterMove.GetValue()));
         }
 
         EMotionFX::ValueParameterVector valueParametersAfterChange = animGraph->RecursivelyGetValueParameters();
@@ -815,7 +814,7 @@ namespace CommandSystem
             return false;
         }
 
-        AZStd::string commandString = AZStd::string::format("AnimGraphMoveParameter -animGraphID %i -name \"%s\" -index %d",
+        AZStd::string commandString = AZStd::string::format("AnimGraphMoveParameter -animGraphID %i -name \"%s\" -index %zu",
                 animGraphID,
                 name.c_str(),
                 mOldIndex);
@@ -978,7 +977,7 @@ namespace CommandSystem
             }
             else
             {
-                commandString = AZStd::string::format("Remove %d parameters", parameterNamesToRemove.size());
+                commandString = AZStd::string::format("Remove %zu parameters", parameterNamesToRemove.size());
             }
 
             usedCommandGroup = &internalCommandGroup;

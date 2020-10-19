@@ -9,7 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "MeshColliderComponent.h"
 
 #include <AzCore/Component/TransformBus.h>
@@ -122,3 +126,5 @@ namespace LmbrCentral
         return finalPartId;
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

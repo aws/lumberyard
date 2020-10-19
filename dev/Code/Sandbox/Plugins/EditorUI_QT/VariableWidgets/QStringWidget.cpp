@@ -23,7 +23,8 @@ QStringWidget::QStringWidget(CAttributeItem* parent)
     , QAmazonLineEdit(parent)
 {
     setText(QString(m_var->GetDisplayValue()));
-
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(sizePolicy);
     connect(this, &QAmazonLineEdit::textChanged, this, [this](const QString& text)
         {
             SelfCallFence(m_ignoreSetCallback);

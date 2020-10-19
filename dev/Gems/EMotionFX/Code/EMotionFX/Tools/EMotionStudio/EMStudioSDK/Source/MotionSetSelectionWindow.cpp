@@ -35,7 +35,9 @@ namespace EMStudio
         // create the ok and cancel buttons
         QHBoxLayout* buttonLayout = new QHBoxLayout();
         mOKButton       = new QPushButton("OK");
+        mOKButton->setObjectName("EMFX.MotionSetSelectionWindow.Ok");
         mCancelButton   = new QPushButton("Cancel");
+        mCancelButton->setObjectName("EMFX.MotionSetSelectionWindow.Cancel");
         buttonLayout->addWidget(mOKButton);
         buttonLayout->addWidget(mCancelButton);
 

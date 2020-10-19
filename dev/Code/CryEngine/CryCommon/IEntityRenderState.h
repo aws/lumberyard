@@ -106,7 +106,7 @@ enum EOcclusionObjectType
 #define ERF_HIDABLE_SECONDARY           BIT(7)
 #define ERF_HIDDEN                      BIT(8)
 #define ERF_SELECTED                    BIT(9)
-#define ERF_PROCEDURAL_ENTITY           BIT(10) // this is an object generated at runtime which has a limited lifetime (matches procedural entity)
+#define ERF_USE_NEAREST_ENVPROBE        BIT(10) 
 #define ERF_OUTDOORONLY                 BIT(11)
 #define ERF_NODYNWATER                  BIT(12)
 #define ERF_EXCLUDE_FROM_TRIANGULATION  BIT(13)
@@ -298,10 +298,12 @@ struct IRenderNode
     //   Gets material layers mask.
     virtual uint8 GetMaterialLayers() const { return m_nMaterialLayers; }
 
+#if ENABLE_CRY_PHYSICS
     // Summary:
     //   Gets/sets physical entity.
-    virtual struct IPhysicalEntity* GetPhysics() const = 0;
-    virtual void SetPhysics(IPhysicalEntity* pPhys) = 0;
+    virtual struct IPhysicalEntity* GetPhysics() const { return nullptr; }
+    virtual void SetPhysics(IPhysicalEntity* ) {}
+#endif // ENABLE_CRY_PHYSICS
 
     // Summary
     //   Physicalizes if it isn't already.
@@ -313,9 +315,11 @@ struct IRenderNode
     // Summary:
     //   Physicalize stat object's foliage.
     virtual bool PhysicalizeFoliage(bool bPhysicalize = true, int iSource = 0, int nSlot = 0) { return false; }
+#if ENABLE_CRY_PHYSICS
     // Summary:
     //   Gets physical entity (rope) for a given branch (if foliage is physicalized).
     virtual IPhysicalEntity* GetBranchPhys(int idx, int nSlot = 0) { return 0; }
+#endif // ENABLE_CRY_PHYSICS
     // Summary:
     //   Returns physicalized foliage, if it *is* physicalized.
     virtual struct IFoliage* GetFoliage(int nSlot = 0) { return 0; }
@@ -666,6 +670,7 @@ struct IRoadRenderNode
     bool m_addOverlapBetweenSectors = false;
 };
 
+#if ENABLE_CRY_PHYSICS
 // Summary:
 //   IBreakableGlassRenderNode is an interface to the Breakable Glass Render Node object.
 struct SBreakableGlassInitParams;
@@ -693,6 +698,7 @@ struct IBreakableGlassRenderNode
     virtual void        SetCVars(const SBreakableGlassCVars* pCVars) = 0;
     // </interfuscator:shuffle>
 };
+#endif // ENABLE_CRY_PHYSICS
 
 // Summary:
 //   IVoxelObject is an interface to the Voxel Object Render Node object.
@@ -818,6 +824,7 @@ struct IDecalRenderNode
     virtual const SDecalProperties* GetDecalProperties() const = 0;
     virtual const Matrix34& GetMatrix() = 0;
     virtual void CleanUpOldDecals() = 0;
+    virtual void SetMatrixFull(const Matrix34& mat) = 0;
     // </interfuscator:shuffle>
 };
 
@@ -866,7 +873,9 @@ struct IWaterVolumeRenderNode
     virtual void SetRiverPhysicsArea(const Vec3* pVertices, unsigned int numVertices, bool keepSerializationParams = false) = 0;
     virtual void SetRiverPhysicsArea(const AZStd::vector<AZ::Vector3>& verticies, const AZ::Transform& transform, bool keepSerializationParams = false) = 0;
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* SetAndCreatePhysicsArea(const Vec3* pVertices, unsigned int numVertices) = 0;
+#endif // ENABLE_CRY_PHYSICS
     // </interfuscator:shuffle>
 
     // This flag is used to account for legacy entities which used to serialize the node without parent objects.
@@ -924,6 +933,7 @@ struct IPrismRenderNode
 #endif // EXCLUDE_DOCUMENTATION_PURPOSE
 
 //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
 struct IRopeRenderNode
     : public IRenderNode
 {
@@ -1030,6 +1040,7 @@ struct IRopeRenderNode
     virtual void ResetRopeSound() = 0;
     // </interfuscator:shuffle>
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #if defined(USE_GEOM_CACHES)
 struct IGeomCacheRenderNode
@@ -1103,8 +1114,10 @@ struct IGeomCacheRenderNode
     virtual uint32 GetNodeNameHash(const uint nodeIndex) const = 0;
     virtual bool IsNodeDataValid(const uint nodeIndex) const = 0; // Returns false if cache isn't loaded yet or index is out of range
 
+#if ENABLE_CRY_PHYSICS
     // Physics
     virtual void InitPhysicalEntity(IPhysicalEntity* pPhysicalEntity, const pe_articgeomparams& params) = 0;
+#endif
 };
 #endif
 

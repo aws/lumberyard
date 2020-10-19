@@ -89,7 +89,12 @@ namespace MCore
          */
         bool ExecuteCommand(const char* command, AZStd::string& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
         bool ExecuteCommand(const AZStd::string& command, AZStd::string& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
-        bool ExecuteCommand(Command* command, AZStd::string& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
+        bool ExecuteCommand(Command* command,
+            AZStd::string& outCommandResult,
+            bool addToHistory = true,
+            bool clearErrors = true,
+            bool handleErrors = true,
+            bool autoDeleteCommand = true);
         bool ExecuteCommandInsideCommand(const char* command, AZStd::string& outCommandResult);
         bool ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult);
         bool ExecuteCommandInsideCommand(Command* command, AZStd::string& outCommandResult);
@@ -309,10 +314,20 @@ namespace MCore
          * @param command The registered command object.
          * @param commandLine The commandline object.
          * @param outCommandResult The return/result value of the command.
+         * @param[in] callFromCommandGroup True in case the command is called from a command group. False in case the command to be called is not part of a command group and called only by itself.
          * @param addToHistory When set to true it is being added to the command history. This is set to false when redoing a command.
          * @return True if the command succeeded, false if not.
          */
-        bool ExecuteCommand(Command* command, const CommandLine& commandLine, AZStd::string& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
+        bool ExecuteCommand(Command* command,
+            const CommandLine& commandLine,
+            AZStd::string& outCommandResult,
+            bool addToHistory,
+            bool callFromCommandGroup,
+            bool clearErrors,
+            bool handleErrors,
+            bool autoDeleteCommand);
+
+        bool ShouldDeleteCommand(Command* commandObject, bool commandExecutionResult, bool callFromCommandGroup, bool addToHistory);
 
         /**
          * Push a command to the command history stack . This method will be automatically called by the system when

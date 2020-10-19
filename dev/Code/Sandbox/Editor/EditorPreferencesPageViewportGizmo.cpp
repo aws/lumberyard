@@ -67,6 +67,12 @@ void CEditorPreferencesPage_ViewportGizmo::Reflect(AZ::SerializeContext& seriali
 CEditorPreferencesPage_ViewportGizmo::CEditorPreferencesPage_ViewportGizmo()
 {
     InitializeSettings();
+    m_icon = QIcon(":/res/Gizmos.svg");
+}
+
+QIcon& CEditorPreferencesPage_ViewportGizmo::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_ViewportGizmo::OnApply()

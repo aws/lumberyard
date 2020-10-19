@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_AABBTREE_INFO_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "aabbtree.h"
 
 STRUCT_INFO_BEGIN(AABBnode)
@@ -41,5 +43,6 @@ STRUCT_BITFIELD_INFO(ntris, unsigned int, 6)
 STRUCT_BITFIELD_INFO(bSingleColl, unsigned int, 1)
 STRUCT_INFO_END(AABBnodeV0)
 
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_AABBTREE_INFO_H

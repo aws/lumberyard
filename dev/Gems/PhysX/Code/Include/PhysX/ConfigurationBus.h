@@ -110,14 +110,111 @@ namespace PhysX
             ErrorColor       ///< Show default color and flashing red for colliders with errors.
         };
         GlobalCollisionDebugColorMode m_globalCollisionDebugDrawColorMode = GlobalCollisionDebugColorMode::MaterialColor;
+
+        /// Colors for joint lead
+        enum class JointLeadColor
+        {
+            Aquamarine,
+            AliceBlue,
+            CadetBlue,
+            Coral,
+            Green,
+            DarkGreen,
+            ForestGreen,
+            Honeydew
+        };
+
+        /// Colors for joint follower
+        enum class JointFollowerColor
+        {
+            Yellow,
+            Chocolate,
+            HotPink,
+            Lavender,
+            Magenta,
+            LightYellow,
+            Maroon,
+            Red
+        };
+
+        AZ::Color GetJointLeadColor()
+        {
+            switch (m_jointHierarchyLeadColor)
+            {
+            case JointLeadColor::Aquamarine:
+                return AZ::Colors::Aquamarine;
+            case JointLeadColor::AliceBlue:
+                return AZ::Colors::AliceBlue;
+            case JointLeadColor::CadetBlue:
+                return AZ::Colors::CadetBlue;
+            case JointLeadColor::Coral:
+                return AZ::Colors::Coral;
+            case JointLeadColor::Green:
+                return AZ::Colors::Green;
+            case JointLeadColor::DarkGreen:
+                return AZ::Colors::DarkGreen;
+            case JointLeadColor::ForestGreen:
+                return AZ::Colors::ForestGreen;
+            case JointLeadColor::Honeydew:
+                return AZ::Colors::Honeydew;
+            default:
+                return AZ::Colors::Aquamarine;
+            }
+        }
+
+        AZ::Color GetJointFollowerColor()
+        {
+            switch (m_jointHierarchyFollowerColor)
+            {
+            case JointFollowerColor::Chocolate:
+                return AZ::Colors::Chocolate;
+            case JointFollowerColor::HotPink:
+                return AZ::Colors::HotPink;
+            case JointFollowerColor::Lavender:
+                return AZ::Colors::Lavender;
+            case JointFollowerColor::Magenta:
+                return AZ::Colors::Magenta;
+            case JointFollowerColor::LightYellow:
+                return AZ::Colors::LightYellow;
+            case JointFollowerColor::Maroon:
+                return AZ::Colors::Maroon;
+            case JointFollowerColor::Red:
+                return AZ::Colors::Red;
+            case JointFollowerColor::Yellow:
+                return AZ::Colors::Yellow;
+            default:
+                return AZ::Colors::Magenta;
+            }
+        }
+
+        bool m_showJointHierarchy = true; ///< Flag to switch on/off the display of joints' lead-follower connections in the viewport.
+        JointLeadColor m_jointHierarchyLeadColor = JointLeadColor::Aquamarine; ///< Color of the lead half of a lead-follower joint connection line.
+        JointFollowerColor m_jointHierarchyFollowerColor = JointFollowerColor::Magenta; ///< Color of the follower half of a lead-follower joint connection line.
+        float m_jointHierarchyDistanceThreshold = 1.0f; ///< Minimum distance required to draw from follower to joint. Distances shorter than this threshold will result in the line drawn from the joint to the lead.
     };
 
-    // LUMBERYARD_DEPRECATED(LY-109358)
-    /// @deprecated Please use PhysXConfiguration instead.
-    class Configuration
+    /// PhysX wind settings.
+    class WindConfiguration
     {
     public:
+        AZ_CLASS_ALLOCATOR(WindConfiguration, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(WindConfiguration, "{6EA3E646-ECDA-4044-912D-5722D5100066}");
 
+        /// Tag value that will be used to identify entities that provide global wind value.
+        /// Global wind has no bounds and affects objects across entire level.
+        AZStd::string m_globalWindTag = "global_wind";
+        /// Tag value that will be used to identify entities that provide local wind value.
+        /// Local wind is only applied within bounds defined by PhysX collider.
+        AZStd::string m_localWindTag = "wind";
+    };
+
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    // LUMBERYARD_DEPRECATED(LY-109358)
+    /// @deprecated Please use PhysXConfiguration instead.
+    class AZ_DEPRECATED(,"Configuration is deprecated, please use PhysXConfiguration instead")
+        Configuration
+    {
+    public:
         AZ_CLASS_ALLOCATOR(Configuration, AZ::SystemAllocator, 0);
         AZ_RTTI(Configuration, "{9C342C95-3E27-437C-9C15-FEE651C824DD}");
 
@@ -134,9 +231,10 @@ namespace PhysX
         AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary 
             = AZ::Data::AssetLoadBehavior::NoLoad;  ///< Project-wide Default Physics Material library.
     };
+    AZ_POP_DISABLE_WARNING
 
     /// Configuration structure for PhysX.
-    /// Used to initialise the PhysX Gem.
+    /// Used to initialize the PhysX Gem.
     class PhysXConfiguration
     {
     public:
@@ -145,6 +243,7 @@ namespace PhysX
 
         Settings m_settings; ///< PhysX specific settings.
         EditorConfiguration m_editorConfiguration; ///< Editor configuration for PhysX.
+        WindConfiguration m_windConfiguration; ///< Wind configuration for PhysX.
     };
 
     /// Configuration requests bus traits. Singleton pattern.
@@ -156,6 +255,7 @@ namespace PhysX
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
     };
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// Configuration requests.
     class ConfigurationRequests
     {
@@ -172,12 +272,18 @@ namespace PhysX
         /// @deprecated Please use the alternative configuration getters such as
         /// SystemRequests::GetWorldConfiguration, SystemRequests::GetMaterialLibraryPtr,
         /// CollisionRequests::GetCollisionConfiguration, ConfigurationRequests::GetPhysXConfiguration instead.
-        virtual const Configuration& GetConfiguration() = 0;
+        AZ_DEPRECATED(virtual const Configuration& GetConfiguration() = 0;,
+            "GetConfiguration is deprecated, please use the alternative configuration getters such as "
+            "SystemRequests::GetWorldConfiguration, SystemRequests::GetMaterialLibraryPtr, "
+            "CollisionRequests::GetCollisionConfiguration and ConfigurationRequests::GetPhysXConfiguration instead.")
         // LUMBERYARD_DEPRECATED(LY-109358)
         /// @deprecated Please use the alternative configuration getters such as
         /// SystemRequests::SetWorldConfiguration, SystemRequests::SetMaterialLibraryPtr,
         /// CollisionRequests::SetCollisionConfiguration, ConfigurationRequests::SetPhysXConfiguration instead.
-        virtual void SetConfiguration(const Configuration& configuration) = 0;
+        AZ_DEPRECATED(virtual void SetConfiguration(const Configuration& configuration) = 0;,
+            "SetConfiguration is deprecated, please use the alternative configuration getters such as "
+            "SystemRequests::SetWorldConfiguration, SystemRequests::SetMaterialLibraryPtr, "
+            "CollisionRequests::SetCollisionConfiguration and ConfigurationRequests::SetPhysXConfiguration instead.")
 
         virtual const PhysXConfiguration& GetPhysXConfiguration() = 0;
         virtual void SetPhysXConfiguration(const PhysXConfiguration& configuration) = 0;
@@ -185,9 +291,11 @@ namespace PhysX
     protected:
         virtual ~ConfigurationRequests() = default;
     };
+    AZ_POP_DISABLE_WARNING
 
     using ConfigurationRequestBus = AZ::EBus<ConfigurationRequests, ConfigurationRequestsTraits>;
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// Configuration notifications.
     class ConfigurationNotifications
         : public AZ::EBusTraits
@@ -195,13 +303,15 @@ namespace PhysX
     public:
         // LUMBERYARD_DEPRECATED(LY-109358)
         /// @deprecated Please use OnPhysXConfigurationLoaded instead.
-        virtual void OnConfigurationLoaded() {};
+        AZ_DEPRECATED(virtual void OnConfigurationLoaded() {},
+            "OnConfigurationLoaded is deprecated, please use OnPhysXConfigurationLoaded instead.")
         /// Raised when the PhysX configuration has been loaded.
         virtual void OnPhysXConfigurationLoaded() {};
 
         // LUMBERYARD_DEPRECATED(LY-109358)
         /// @deprecated Please use OnPhysXConfigurationRefreshed instead.
-        virtual void OnConfigurationRefreshed(const Configuration&) {};
+        AZ_DEPRECATED(virtual void OnConfigurationRefreshed(const Configuration&) {},
+            "OnConfigurationRefreshed is deprecated, please use OnPhysXConfigurationRefreshed instead.");
         /// Raised when the PhysX configuration has been refreshed.
         virtual void OnPhysXConfigurationRefreshed(const PhysXConfiguration&) {};
 
@@ -211,6 +321,7 @@ namespace PhysX
     protected:
         ~ConfigurationNotifications() = default;
     };
+    AZ_POP_DISABLE_WARNING
 
     using ConfigurationNotificationBus = AZ::EBus<ConfigurationNotifications>;
 }

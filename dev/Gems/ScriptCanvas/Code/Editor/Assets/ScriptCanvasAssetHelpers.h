@@ -14,6 +14,11 @@
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzCore/Component/EntityUtils.h>
+#include <cinttypes>
+
+#include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
+#include <ScriptCanvas/Asset/Functions/ScriptCanvasFunctionAsset.h>
+#include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -57,7 +62,7 @@ namespace ScriptCanvasEditor
 
             return false;
         }
-        
+
         // Given the AssetId to the asset, attempt to get the AssetInfo
         static AZ::Data::AssetInfo GetAssetInfo(AZ::Data::AssetId assetId)
         {
@@ -151,7 +156,7 @@ namespace ScriptCanvasEditor
                 AZ_TracePrintf("Script Canvas", "AssetId: %s", AssetIdToString(assetId).c_str());
                 AZ_TracePrintf("Script Canvas", AZStd::string::format("AssetType: %s", assetInfo.m_assetType.ToString<AZStd::string>().c_str()).c_str());
                 AZ_TracePrintf("Script Canvas", AZStd::string::format("RelativePath: %s", assetInfo.m_relativePath.c_str()).c_str());
-                AZ_TracePrintf("Script Canvas", AZStd::string::format("Size in Byes: %ul", assetInfo.m_sizeBytes).c_str());
+                AZ_TracePrintf("Script Canvas", AZStd::string::format("Size in Byes: %llu", assetInfo.m_sizeBytes).c_str());
                 AZ_TracePrintf("Script Canvas", AZStd::string::format("%s\n", extra).c_str());
                 AZ_TracePrintf("Script Canvas", "-------------------------------------\n");
             }
@@ -160,6 +165,48 @@ namespace ScriptCanvasEditor
                 AZ_TracePrintf("Script Canvas", "Cannot DumpAssetInfo for Asset with ID: %s\n", AssetIdToString(assetId).c_str());
             }
 
+        }
+
+        static bool IsValidSourceFile(const AZStd::string& filePath, ScriptCanvas::ScriptCanvasId scriptCanvasId)
+        {
+            bool isValidSourceFile = true;
+
+            // Let's find the source file on disk
+            AZStd::string watchFolder;
+            AZ::Data::AssetInfo assetInfo;
+            bool sourceInfoFound{};
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, filePath.c_str(), assetInfo, watchFolder);
+
+            if (sourceInfoFound)
+            {
+                if (scriptCanvasId.IsValid())
+                {
+                    bool isRuntimeGraph = false;
+                    EditorGraphRequestBus::EventResult(isRuntimeGraph, scriptCanvasId, &EditorGraphRequests::IsRuntimeGraph);
+
+                    if (isRuntimeGraph)
+                    {
+                        ScriptCanvasAssetDescription assetDescription;
+
+                        if (!AZ::StringFunc::EndsWith(filePath, assetDescription.GetExtensionImpl(), false))
+                        {
+                            isValidSourceFile = false;
+                        }
+                    }
+                    // Assume it's a function for now
+                    else
+                    {
+                        ScriptCanvas::ScriptCanvasFunctionDescription assetDescription;
+
+                        if (!AZ::StringFunc::EndsWith(filePath, assetDescription.GetExtensionImpl(), false))
+                        {
+                            isValidSourceFile = false;
+                        }
+                    }
+                }
+            }
+
+            return isValidSourceFile;
         }
 
     }

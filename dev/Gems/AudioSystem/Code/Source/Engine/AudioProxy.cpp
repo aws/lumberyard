@@ -274,11 +274,11 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioProxy::SetObstructionCalcType(const EAudioObjectObstructionCalcType eObstructionType)
     {
-        const TATLEnumFlagsType nObstructionCalcIndex = static_cast<TATLEnumFlagsType>(eObstructionType);
+        const size_t nObstructionCalcIndex = static_cast<size_t>(eObstructionType);
 
-        if (nObstructionCalcIndex < eAOOCT_COUNT)
+        if (nObstructionCalcIndex < AZ_ARRAY_SIZE(ATLInternalControlIDs::OOCStateIDs))
         {
-            SetSwitchState(ATLInternalControlIDs::ObstructionOcclusionCalcSwitchID, ATLInternalControlIDs::OOCStateIDs[eObstructionType]);
+            SetSwitchState(ATLInternalControlIDs::ObstructionOcclusionCalcSwitchID, ATLInternalControlIDs::OOCStateIDs[nObstructionCalcIndex]);
         }
     }
 

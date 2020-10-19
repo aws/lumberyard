@@ -49,7 +49,8 @@ CRotateTool::CRotateTool(CBaseObject* pObject, QWidget* parent /*= nullptr*/)
     , m_angleToCursor(0.f)
     , m_highlightAxis(AxisNone)
     , m_draggingMouse(false)
-    , m_mouseDownPosition(0, 0)
+    , m_lastPosition(0, 0)
+    , m_rotationAngles(0, 0, 0)
     , m_object(pObject)
     , m_bTransformChanged(false)
     , m_totalRotationAngle(0.f)
@@ -351,6 +352,13 @@ Matrix34 CRotateTool::GetTransform(RefCoordSys referenceCoordinateSystem, IDispl
     return objectTransform;
 }
 
+float CRotateTool::CalculateOrientation(const QPoint& p1, const QPoint& p2, const QPoint& p3)
+{
+    // Source: https://www.geeksforgeeks.org/orientation-3-ordered-points/
+    float c = (p2.y() - p1.y()) * (p3.x() - p2.x()) - (p3.y() - p2.y()) * (p2.x() - p1.x());
+    return c > 0 ? 1.0f : -1.0f;
+}
+
 CRotateTool::~CRotateTool()
 {
     if (m_object)
@@ -399,7 +407,8 @@ bool CRotateTool::OnLButtonDown(CViewport* view, int nFlags, const QPoint& p)
             m_initialViewAxisAngleRadians -= static_cast<float>(g_PI);
         }
 
-        m_mouseDownPosition = point;
+        m_lastPosition = point;
+        m_rotationAngles = Ang3(0, 0, 0);
 
         AzToolsFramework::EntityIdList selectedEntities;
         AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
@@ -490,9 +499,7 @@ bool CRotateTool::OnMouseMove(CViewport* view, int nFlags, const QPoint& p)
     QPoint objectCenter;
     if (nFlags != OBJFLAG_IS_PARTICLE)
     {
-        AffineParts ap;
-        ap.Decompose(GetTransform(GetIEditor()->GetReferenceCoordSys(), view));
-        objectCenter = view->WorldToView(ap.pos);
+        objectCenter = view->WorldToView(GetIEditor()->GetSelection()->GetCenter());
     }
     else
     if (parent() && parent()->isWidgetType())
@@ -544,50 +551,80 @@ bool CRotateTool::OnMouseMove(CViewport* view, int nFlags, const QPoint& p)
         else
         if (m_highlightAxis != AxisNone)
         {
-            float ax = (point.x() - m_mouseDownPosition.x());
-            float ay = (point.y() - m_mouseDownPosition.y());
+            float distanceMoved = (point - m_lastPosition).manhattanLength(); // screen-space distance dragged
+            float distanceToCenter = (m_lastPosition - objectCenter).manhattanLength(); // screen-space distance to object center
+            float roationDelta = RAD2DEG(atan2f(distanceMoved, distanceToCenter)); // unsigned rotation angle
+            float orientation = CalculateOrientation(objectCenter, m_lastPosition, point); // Calculate if rotation dragging gizmo clockwise or counter-clockwise
 
-            Matrix34 transform = GetTransform(referenceCoordSys, view);
+            m_lastPosition = point;
 
-            // Calculate the camera direction (we are only interested in the sign of the dot) to ensure that when we drag the object always drags in the expected direction.
-            float xdir, ydir;
-            const Matrix34& viewMatrix = (nFlags != OBJFLAG_IS_PARTICLE) ? view->GetViewTM() : m_hc.camera->GetViewMatrix();
-            xdir = viewMatrix.GetColumn0().Dot(transform.GetColumn0());
-            ydir = viewMatrix.GetColumn1().Dot(transform.GetColumn0());
+            // Calculate orientation of the object's axis towards camera
+            Vec3 directionToObject = (GetIEditor()->GetSelection()->GetCenter() - m_hc.camera->GetMatrix().GetTranslation()).normalize();
 
-            Ang3 rotationAngles(0, 0, 0);
+            float directionX = 1.0f;
+            float directionY = 1.0f;
+            float directionZ = 1.0f;
 
+            switch (referenceCoordSys)
+            {
+            case COORDS_LOCAL:
+                directionX = directionToObject.Dot(m_object->GetWorldTM().GetColumn0()) > 0 ? -1.0f : 1.0f;
+                directionY = directionToObject.Dot(m_object->GetWorldTM().GetColumn1()) > 0 ? -1.0f : 1.0f;
+                directionZ = directionToObject.Dot(m_object->GetWorldTM().GetColumn2()) > 0 ? -1.0f : 1.0f;
+                break;
+            case COORDS_PARENT:
+                if (m_object->GetParent())
+                {
+                    directionX = directionToObject.Dot(m_object->GetParent()->GetWorldTM().GetColumn0()) > 0 ? -1.0f : 1.0f;
+                    directionY = directionToObject.Dot(m_object->GetParent()->GetWorldTM().GetColumn1()) > 0 ? -1.0f : 1.0f;
+                    directionZ = directionToObject.Dot(m_object->GetParent()->GetWorldTM().GetColumn2()) > 0 ? -1.0f : 1.0f;
+                }
+                else
+                {
+                    directionX = directionToObject.Dot(m_object->GetWorldTM().GetColumn0()) > 0 ? -1.0f : 1.0f;
+                    directionY = directionToObject.Dot(m_object->GetWorldTM().GetColumn1()) > 0 ? -1.0f : 1.0f;
+                    directionZ = directionToObject.Dot(m_object->GetWorldTM().GetColumn2()) > 0 ? -1.0f : 1.0f;
+                }
+                break;
+            case COORDS_VIEW:
+            case COORDS_WORLD:
+                directionX = directionToObject.Dot(Vec3(1, 0, 0)) > 0 ? -1.0f : 1.0f;
+                directionY = directionToObject.Dot(Vec3(0, 1, 0)) > 0 ? -1.0f : 1.0f;
+                directionZ = directionToObject.Dot(Vec3(0, 0, 1)) > 0 ? -1.0f : 1.0f;
+                break;
+            }
+          
             switch (m_highlightAxis)
             {
             case AxisX:
-                rotationAngles.x = (xdir < 0) ? ay : -ay;     // ay means we expect vertical motion from the user to rotate around X or Y axis.
+                m_rotationAngles.x += roationDelta * directionX * orientation;
                 break;
             case AxisY:
-                rotationAngles.y = (ydir < 0) ? -ay : ay;
+                m_rotationAngles.y += roationDelta * directionY * orientation;
                 break;
             case AxisZ:
-                rotationAngles.z = -ax;     // ax means we expect sideways motion from the user to rotate around Z axis.
+                m_rotationAngles.z += roationDelta * directionZ * orientation;
                 break;
             default:
                 break;
             }
 
             // Snap the angle if necessary
-            rotationAngles = view->GetViewManager()->GetGrid()->SnapAngle(rotationAngles);
+            m_rotationAngles = view->GetViewManager()->GetGrid()->SnapAngle(m_rotationAngles);
 
             // Compute the total amount rotated
-            Vec3 vDragValue = Vec3(rotationAngles);
+            Vec3 vDragValue = Vec3(m_rotationAngles);
             m_totalRotationAngle = DEG2RAD(vDragValue.len());
 
             // Apply the rotation
             if (nFlags != OBJFLAG_IS_PARTICLE)
             {
-                GetIEditor()->GetSelection()->Rotate(rotationAngles, referenceCoordSys);
+                GetIEditor()->GetSelection()->Rotate(m_rotationAngles, referenceCoordSys);
             }
             else
             {
                 Quat currentRotation = (m_object->GetRotation());
-                Quat rotateTM = currentRotation * Quat::CreateRotationXYZ(DEG2RAD(-rotationAngles / 50.0f));
+                Quat rotateTM = currentRotation * Quat::CreateRotationXYZ(DEG2RAD(-m_rotationAngles / 50.0f));
                 m_object->SetRotation(rotateTM);
             }
 

@@ -56,7 +56,9 @@ namespace UnitTest
         int DoStep(float time_interval, int iCaller) override { return 0; }
         void StartStep(float time_interval) override {}
         void StepBack(float time_interval) override {}
+#if ENABLE_CRY_PHYSICS
         IPhysicalWorld* GetWorld() const override { return nullptr; }
+#endif
         void GetMemoryStatistics(ICrySizer* pSizer) const override {}
     };
 
@@ -97,6 +99,7 @@ namespace UnitTest
 
         TestEditorMeshComponent() = default;
 
+#if ENABLE_CRY_PHYSICS
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override
         {
             // to stop the physics entity getting rebuilt ensure m_physScale stays in sync with world scale
@@ -108,6 +111,7 @@ namespace UnitTest
         {
             m_physicalEntity = physicalEntity;
         }
+#endif
     };
 
     void TestEditorMeshComponent::Reflect(AZ::ReflectContext* context)
@@ -141,6 +145,7 @@ namespace UnitTest
         }
     };
 
+#if ENABLE_CRY_PHYSICS
     TEST_F(EditorMeshComponentTestFixture, OrthonormalTransformIsPassedToPhysicalEntity)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,6 +206,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Then
         // The child should not have created a physics entity, because its transform is too skewed
+
 
         EXPECT_TRUE(childTestMeshComponent->GetPhysicalEntity() == nullptr);
         EXPECT_TRUE(parentTestMeshComponent->GetPhysicalEntity() != nullptr);
@@ -268,4 +274,6 @@ namespace UnitTest
         EXPECT_FALSE(IsPhysicalizable(scale2 * rot1));
         EXPECT_FALSE(IsPhysicalizable(scale2 * rot2));
     }
+#endif // ENABLE_CRY_PHYSICS
+
 } // namespace UnitTest

@@ -54,6 +54,8 @@ namespace EMotionFX
 
             static void NotifyMotionSetModified(const AZ::Data::Asset<MotionSetAsset>& asset);
 
+            void SetData(EMotionFX::MotionSet* motionSet);
+
             AZStd::unique_ptr<EMotionFX::MotionSet>     m_emfxMotionSet;            ///< EMotionFX motion set
             AZStd::vector<AZ::Data::Asset<MotionAsset>> m_motionAssets;             ///< Handles to all contained motions
             bool                                        m_isReloadPending;          ///< True if a dependent motion was reloaded and we're pending our own reload notification.

@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "singleboxtree.h"
@@ -1295,3 +1297,5 @@ void CParticleEntity::GetMemoryStatistics(ICrySizer* pSizer) const
         pSizer->AddObject(this, sizeof(CParticleEntity));
     }
 }
+
+#endif

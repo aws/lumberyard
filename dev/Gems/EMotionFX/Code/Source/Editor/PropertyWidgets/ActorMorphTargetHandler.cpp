@@ -62,7 +62,7 @@ namespace EMotionFX
         }
         else
         {
-            const AZStd::string text = AZStd::string::format("%d morph targets", morphTargetCount);
+            const AZStd::string text = AZStd::string::format("%zu morph targets", morphTargetCount);
             m_pickButton->setText(text.c_str());
             m_resetButton->setVisible(true);
         }
@@ -105,7 +105,7 @@ namespace EMotionFX
         AZStd::vector<uint32> selection;
         if (!m_morphTargetNames.empty())
         {
-            for (const AZStd::string morphTargetName : m_morphTargetNames)
+            for (const AZStd::string& morphTargetName : m_morphTargetNames)
             {
                 const EMotionFX::MorphTarget* morphTarget = morphSetup->FindMorphTargetByName(morphTargetName.c_str());
                 if (morphTarget)

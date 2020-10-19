@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYENTITYSYSTEM_PHYSICSEVENTLISTENER_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 // forward declaration.
 class CEntitySystem;
 struct IPhysicalWorld;
@@ -57,6 +58,7 @@ private:
     };
     static StaticInstance<std::vector<PhysVisAreaUpdate>> m_physVisAreaUpdateVector;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_PHYSICSEVENTLISTENER_H
 

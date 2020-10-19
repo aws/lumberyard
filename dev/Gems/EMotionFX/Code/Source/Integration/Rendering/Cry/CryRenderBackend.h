@@ -25,8 +25,8 @@ namespace EMotionFX
             : public RenderBackend
         {
         public:
-            AZ_RTTI(EMotionFX::Integration::CryRenderBackend, "{CC4AF6B1-D5D2-4EAA-8198-DED4F875D1F4}", EMotionFX::Integration::RenderBackend)
-            AZ_CLASS_ALLOCATOR_DECL
+            AZ_RTTI(EMotionFX::Integration::CryRenderBackend, "{CC4AF6B1-D5D2-4EAA-8198-DED4F875D1F4}", EMotionFX::Integration::RenderBackend);
+            AZ_CLASS_ALLOCATOR_DECL;
 
             RenderActor * CreateActor(ActorAsset * asset) override;
 

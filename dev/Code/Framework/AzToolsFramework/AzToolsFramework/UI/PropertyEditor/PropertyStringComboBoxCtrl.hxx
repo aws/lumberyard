@@ -42,6 +42,8 @@ namespace AzToolsFramework
 
         void Add(const AZStd::string& value);
         void Add(const AZStd::vector<AZStd::string>& value);
+        int GetCount() const;
+        uint32_t GetCurrentIndex() const;
 
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();

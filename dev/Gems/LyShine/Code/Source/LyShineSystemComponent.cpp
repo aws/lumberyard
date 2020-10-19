@@ -90,7 +90,8 @@ namespace LyShine
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<LyShineSystemComponent, AZ::Component>()
-                ->Version(0)
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }))
                 ->Field("CursorImagePath", &LyShineSystemComponent::m_cursorImagePathname);
 
             if (AZ::EditContext* ec = serialize->GetEditContext())

@@ -42,6 +42,9 @@ namespace Physics
             Offset = 1 << 4 ///< Whether the rotation and position offsets should be visible.
         };
 
+        // Delta to ensure that contact offset is slightly larger than rest offset.
+        static const float ContactOffsetDelta;
+
         ColliderConfiguration() = default;
         ColliderConfiguration(const ColliderConfiguration&) = default;
         virtual ~ColliderConfiguration() = default;
@@ -57,6 +60,8 @@ namespace Physics
         Physics::CollisionLayer m_collisionLayer; ///< Which collision layer is this collider on.
         Physics::CollisionGroups::Id m_collisionGroupId; ///< Which layers does this collider collide with.
         bool m_isTrigger = false; ///< Should this shape act as a trigger shape.
+        bool m_isSimulated = true; ///< Should this shape partake in collision in the physical simulation.
+        bool m_isInSceneQueries = true; ///< Should this shape partake in scene queries (ray casts, overlap tests, sweeps).
         bool m_isExclusive = true; ///< Can this collider be shared between multiple bodies?
         AZ::Vector3 m_position = AZ::Vector3::CreateZero(); /// Shape offset relative to the connected rigid body.
         AZ::Quaternion m_rotation = AZ::Quaternion::CreateIdentity(); ///< Shape rotation relative to the connected rigid body.
@@ -65,7 +70,12 @@ namespace Physics
                                                                                  ///< Note: added parenthesis for std::numeric_limits is
                                                                                  ///< to avoid collision with `max` macro in uber builds.
         bool m_visible = false; ///< @deprecated This property will be removed in a future release. Display the collider in editor view.
-        AZStd::string m_tag; ///< Identifaction tag for the collider
+        AZStd::string m_tag; ///< Identification tag for the collider
+        float m_restOffset = 0.0f; ///< Bodies will come to rest separated by the sum of their rest offsets.
+        float m_contactOffset = 0.02f; ///< Bodies will start to generate contacts when closer than the sum of their contact offsets.
+    private:
+        void OnRestOffsetChanged();
+        void OnContactOffsetChanged();
     };
 
     using ShapeConfigurationPair = AZStd::pair<AZStd::shared_ptr<ColliderConfiguration>, AZStd::shared_ptr<ShapeConfiguration>>;
@@ -95,6 +105,11 @@ namespace Physics
         virtual void SetLocalPose(const AZ::Vector3& offset, const AZ::Quaternion& rotation) = 0;
         virtual AZStd::pair<AZ::Vector3, AZ::Quaternion> GetLocalPose() const = 0;
 
+        virtual float GetRestOffset() const = 0;
+        virtual float GetContactOffset() const = 0;
+        virtual void SetRestOffset(float restOffset) = 0;
+        virtual void SetContactOffset(float contactOffset) = 0;
+
         virtual void* GetNativePointer() = 0;
 
         virtual AZ::Crc32 GetTag() const = 0;
@@ -110,6 +125,13 @@ namespace Physics
         //! Raycast against this shape using local coordinates.
         //! @param request Ray parameters in local space.
         virtual Physics::RayCastHit RayCastLocal(const Physics::RayCastRequest& localSpaceRequest) = 0;
+
+        //! Retrieve this shape AABB.
+        //! @param worldTransform World transform of this shape.
+        virtual AZ::Aabb GetAabb(const AZ::Transform& worldTransform) const = 0;
+
+        //! Retrieve this shape AABB using local coordinates
+        virtual AZ::Aabb GetAabbLocal() const = 0;
 
         //! Fills in the vertices and indices buffers representing this shape.
         //! If vertices are returned but not indices you may assume the vertices are in triangle list format.

@@ -56,9 +56,6 @@ namespace Camera
             v.SetZ(0.f);
             break;
         }
-        default:
-            AZ_Assert(false, "MaskComponentFromNormalizedVector: VectorComponentType - unexpected value");
-            break;
         }
         v.Normalize();
     }

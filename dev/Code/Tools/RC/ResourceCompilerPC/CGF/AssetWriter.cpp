@@ -44,8 +44,12 @@ bool AssetWriter::WriteCGF(CContentCGF* content)
     MathHelpers::AutoFloatingPointExceptions autoFpe(~(_EM_INEXACT | _EM_UNDERFLOW | _EM_INVALID));
 #endif
     
+#if ENABLE_CRY_PHYSICS
     CPhysicsInterface physicsInterface;
     CStaticObjectCompiler compiler(&physicsInterface, false);
+#else
+    CStaticObjectCompiler compiler(false);
+#endif // ENABLE_CRY_PHYSICS
     CContentCGF* const pCompiledCGF = compiler.MakeCompiledCGF(content);
 
     if (!pCompiledCGF)

@@ -76,7 +76,7 @@ namespace AzToolsFramework
         }
     }
 
-    bool EditorPickEntitySelection::HandleMouseInteraction(
+    bool EditorPickEntitySelection::InternalHandleMouseViewportInteraction(
         const ViewportInteraction::MouseInteractionEvent& mouseInteraction)
     {
         const int viewportId = mouseInteraction.m_mouseInteraction.m_interactionId.m_viewportId;

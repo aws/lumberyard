@@ -39,6 +39,7 @@ namespace
     const AZ::u32 DIGITAL_BUTTON_MASK_Y     = 0x0800;
 
     const AZ::u32 DIGITAL_BUTTON_MASK_PAUSE = 0x1000;
+    const AZ::u32 DIGITAL_BUTTON_MASK_SELECT = 0x2000;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Map of digital button ids keyed by their button bitmask
@@ -61,7 +62,8 @@ namespace
             { DIGITAL_BUTTON_MASK_X,        &InputDeviceGamepad::Button::X },
             { DIGITAL_BUTTON_MASK_Y,        &InputDeviceGamepad::Button::Y },
 
-            { DIGITAL_BUTTON_MASK_PAUSE,    &InputDeviceGamepad::Button::Start }
+            { DIGITAL_BUTTON_MASK_PAUSE,    &InputDeviceGamepad::Button::Start },
+            { DIGITAL_BUTTON_MASK_SELECT,   &InputDeviceGamepad::Button::Select }
         };
         return map;
     }
@@ -189,15 +191,6 @@ namespace AzFramework
             return b;
         }
 
-        if (a.gamepad != nil)
-        {
-            return a;
-        }
-        else if (b.gamepad != nil)
-        {
-            return b;
-        }
-
         // It doesn't matter
         return a;
     }
@@ -265,7 +258,9 @@ namespace AzFramework
             }
 
             // The controller connected since the last call to this function
+#if !defined(__MAC_10_15) && !defined(__IPHONE_13_0) && !defined(__TVOS_13_0)
             m_controller.controllerPausedHandler = ^(GCController* controller) { m_wasPausedHandlerCalled = true; };
+#endif
             m_controller.playerIndex = static_cast<GCControllerPlayerIndex>(deviceIndex);
 
         #if defined(AZ_PLATFORM_APPLE_TV)
@@ -303,37 +298,33 @@ namespace AzFramework
 
             if (extendedGamepad.leftShoulder.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_L1; }
             if (extendedGamepad.rightShoulder.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_R1; }
-            // L3 and R3 (thumbstick buttons) are not currently supported by the apple Game Controller Framework,
-            // but if support is added in future we should just need to do something like the following:
-            //if (extendedGamepad.leftThumbstick.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_L3; }
-            //if (extendedGamepad.rightThumbstick.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_R3; }
-
+            
+#if defined(__MAC_10_14_1) || defined(__IPHONE_12_1) || defined(__TVOS_12_1)
+            if(@available(macOS 10.14.1, iOS 12.1, tvOS 12.1, *))
+            {
+                if (extendedGamepad.leftThumbstickButton.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_L3; }
+                if (extendedGamepad.rightThumbstickButton.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_R3; }
+            }
+#endif
+            
             if (extendedGamepad.buttonA.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_A; }
             if (extendedGamepad.buttonB.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_B; }
             if (extendedGamepad.buttonX.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_X; }
             if (extendedGamepad.buttonY.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_Y; }
-
+            
+#if defined(__MAC_10_15) || defined(__IPHONE_13_0) || defined(__TVOS_13_0)
+            if(@available(macOS 10.15, iOS 13.0, tvOS 13.0, *))
+            {
+                if (extendedGamepad.buttonMenu.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_PAUSE; }
+                if (extendedGamepad.buttonOptions.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_SELECT; }
+            }
+#endif
             m_rawGamepadState.m_triggerButtonLState = extendedGamepad.leftTrigger.value;
             m_rawGamepadState.m_triggerButtonRState = extendedGamepad.rightTrigger.value;
             m_rawGamepadState.m_thumbStickLeftXState = extendedGamepad.leftThumbstick.xAxis.value;
             m_rawGamepadState.m_thumbStickLeftYState = extendedGamepad.leftThumbstick.yAxis.value;
             m_rawGamepadState.m_thumbStickRightXState = extendedGamepad.rightThumbstick.xAxis.value;
             m_rawGamepadState.m_thumbStickRightYState = extendedGamepad.rightThumbstick.yAxis.value;
-        }
-        else if (GCGamepad* gamepad = m_controller.gamepad)
-        {
-            if (gamepad.dpad.up.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_DU; }
-            if (gamepad.dpad.down.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_DD; }
-            if (gamepad.dpad.left.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_DL; }
-            if (gamepad.dpad.right.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_DR; }
-
-            if (gamepad.leftShoulder.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_L1; }
-            if (gamepad.rightShoulder.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_R1; }
-
-            if (gamepad.buttonA.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_A; }
-            if (gamepad.buttonB.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_B; }
-            if (gamepad.buttonX.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_X; }
-            if (gamepad.buttonY.pressed) { m_rawGamepadState.m_digitalButtonStates |= DIGITAL_BUTTON_MASK_Y; }
         }
     #if defined(AZ_PLATFORM_APPLE_TV)
         // The micro gamepad profile is actually supported on macOS version 10.12 and above,

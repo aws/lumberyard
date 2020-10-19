@@ -7,9 +7,7 @@
         ],
         "Source":
         [
-            "Source/QtForPythonModule.cpp",
-            "Source/QtForPythonSystemComponent.cpp",
-            "Source/QtForPythonSystemComponent.h"
+            "Source/QtForPythonModuleStub.cpp"
         ]
     }
 }

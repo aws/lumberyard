@@ -318,7 +318,7 @@ public:
         return 0;
     }
 
-    int16 GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, bool bSpecular = true);
+    int16 GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, bool bSpecular = true, bool bGetFirstProbe = true);
 
     void RenderObject(IRenderNode* o,
         const AABB& objBox,
@@ -415,26 +415,26 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     // CheckOcclusion functionality
-    bool CheckOcclusion_TestAABB(const AABB& rAABB, float fEntDistance);
-    bool CheckOcclusion_TestQuad(const Vec3& vCenter, const Vec3& vAxisX, const Vec3& vAxisY);
+    bool CheckOcclusion_TestAABB(const AABB& rAABB, float fEntDistance) override;
+    bool CheckOcclusion_TestQuad(const Vec3& vCenter, const Vec3& vAxisX, const Vec3& vAxisY) override;
 
-    void PushIntoCullQueue(const SCheckOcclusionJobData& rCheckOcclusionData);
+    void PushIntoCullQueue(const SCheckOcclusionJobData& rCheckOcclusionData) override;
     void PushTerrainJobDataIntoCullQueue(ITerrainNode* pTerrainNode, const AABB& nodebox, float distanceToCamera) override;
     void PopFromCullQueue(SCheckOcclusionJobData* pCheckOcclusionData);
 
-    void PushIntoCullOutputQueue(const SCheckOcclusionOutput& rCheckOcclusionOutput);
-    bool PopFromCullOutputQueue(SCheckOcclusionOutput* pCheckOcclusionOutput);
+    void PushIntoCullOutputQueue(const SCheckOcclusionOutput& rCheckOcclusionOutput) override;
+    bool PopFromCullOutputQueue(SCheckOcclusionOutput* pCheckOcclusionOutput) override;
 
-    void BeginCulling();
-    void RemoveCullJobProducer();
-    void AddCullJobProducer();
+    void BeginCulling() override;
+    void RemoveCullJobProducer() override;
+    void AddCullJobProducer() override;
     virtual NAsyncCull::CCullThread& GetCullThread() override { return m_CullThread;  };
 
 #ifndef _RELEASE
-    void CoverageBufferDebugDraw();
+    void CoverageBufferDebugDraw() override;
 #endif
 
-    bool LoadOcclusionMesh(const char* pFileName);
+    bool LoadOcclusionMesh(const char* pFileName) override;
 
     //////////////////////////////////////////////////////////////////////////
     // Garbage collection for parent stat objects.

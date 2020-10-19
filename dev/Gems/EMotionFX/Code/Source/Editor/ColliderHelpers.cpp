@@ -197,6 +197,7 @@ namespace EMotionFX
 
             const QString buttonText = QString("Copy from %1").arg(PhysicsSetup::GetVisualNameForColliderConfigType(copyFrom));
             QPushButton* button = new QPushButton(buttonText);
+            button->setObjectName(QString("EMFX.ColliderHelpers.CopyFrom%1").arg(PhysicsSetup::GetVisualNameForColliderConfigType(copyFrom)));
             QObject::connect(button, &QPushButton::clicked, parent, [=]
                 {
                     copyFunc(copyFrom, createForType);

@@ -82,7 +82,7 @@ namespace AzQtComponents
             {"Global Settings", "--------"}
         };
         int value = 0;
-        for (const SearchTypeFilter filter : globalMenu)
+        for (const SearchTypeFilter& filter : globalMenu)
         {
             AddTypeFilter(filter.category, filter.displayName, QVariant::fromValue<AZ::Uuid>(AZ::Uuid::Create()), value);
             ++value;

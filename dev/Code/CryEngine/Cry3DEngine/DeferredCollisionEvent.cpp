@@ -242,7 +242,9 @@ void CDeferredPhysicsEventManager::Update()
         if (epc->deferredState != EPC_DEFERRED_FINISHED)
         {
             epc->deferredState = EPC_DEFERRED_FINISHED;
+#if ENABLE_CRY_PHYSICS
             gEnv->pPhysicalWorld->AddDeferredEvent(EventPhysCollision::id, epc);
+#endif
         }
         else
         {

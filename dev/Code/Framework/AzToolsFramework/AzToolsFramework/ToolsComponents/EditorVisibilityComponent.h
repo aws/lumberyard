@@ -19,7 +19,6 @@ namespace AzToolsFramework
     namespace Components
     {
         //! Controls whether an Entity is shown or hidden in the Editor.
-        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
         class EditorVisibilityComponent
             : public AzToolsFramework::Components::EditorComponentBase
             , public EditorVisibilityRequestBus::Handler
@@ -35,8 +34,6 @@ namespace AzToolsFramework
             // EditorVisibilityRequestBus ...
             void SetVisibilityFlag(bool flag) override;
             bool GetVisibilityFlag() override;
-            void SetCurrentVisibility(bool visibility) override;
-            bool GetCurrentVisibility() override;
 
         private:
             // AZ::Entity ...
@@ -44,6 +41,5 @@ namespace AzToolsFramework
 
             bool m_visibilityFlag = true; //!< Whether this entity is individually set to be shown.
         };
-        AZ_POP_DISABLE_WARNING
     } // namespace Components
 } // namespace AzToolsFramework

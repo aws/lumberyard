@@ -122,7 +122,7 @@ namespace ScriptCanvas
 
     AZStd::string ActivationInfo::ToString() const
     {
-        return AZStd::string::format("Entity: %s, Graph: %s, Variables: %s", m_runtimeEntity.ToString().data(), GraphInfo::ToString().data()), ScriptCanvas::ToString(m_variableValues).data();
+        return AZStd::string::format("Entity: %s, Graph: %s, Variables: %s", m_runtimeEntity.ToString().data(), GraphInfo::ToString().data(), ScriptCanvas::ToString(m_variableValues).data());
     }
 
     ///////////////

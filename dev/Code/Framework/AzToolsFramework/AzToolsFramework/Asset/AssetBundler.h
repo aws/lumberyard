@@ -29,7 +29,7 @@ namespace AzToolsFramework
     {
     public:
         AZ_TYPE_INFO(AssetBundleSettings, "{B9597C91-540E-41A9-9572-80A629061914}");
-        
+
         static void Reflect(AZ::ReflectContext * context);
 
         //! Loads the AssetBundleSettings file from the file path
@@ -62,6 +62,7 @@ namespace AzToolsFramework
         AZStd::string m_bundleFilePath; // the file path where the parent bundle file should get saved to disk.
         int m_bundleVersion = AzFramework::AssetBundleManifest::CurrentBundleVersion;
         AZ::u64 m_maxBundleSizeInMB = MaxBundleSizeInMB;
+        AZStd::string m_comment;
     };
 
    /*
@@ -118,11 +119,20 @@ namespace AzToolsFramework
             ComparisonData(const ComparisonType& type, const AZStd::string& destinationPath, const AZStd::string& filePattern = AZStd::string(), FilePatternType filePatternType = FilePatternType::Default, unsigned int intersectionCount = 0);
             ComparisonData() = default;
             static void Reflect(AZ::ReflectContext * context);
+
             ComparisonType m_comparisonType = ComparisonType::Default;
+            AZStd::string m_firstInput;
+            AZStd::string m_secondInput;
+
             FilePatternType m_filePatternType = FilePatternType::Default;
             AZStd::string m_filePattern;
-            AZStd::string m_destinationPath; // absolute path where the result of the comparison will be saved.
+
+            AZStd::string m_output;
             unsigned int m_intersectionCount = 0;
+
+            // Values that are not saved to disk
+            AZStd::string m_cachedFirstInputPath;
+            AZStd::string m_cachedSecondInputPath;
         };
         AZ_TYPE_INFO(AssetFileInfoListComparison, "{AC003572-3A33-476C-9B2B-ADDA4F7BB870}");
         AZ_CLASS_ALLOCATOR(AssetFileInfoListComparison, AZ::SystemAllocator, 0);
@@ -133,17 +143,33 @@ namespace AzToolsFramework
 
         bool AddComparisonStep(const ComparisonData& comparisonData);
 
-        bool AddComparisonStep(const ComparisonData& comparisonData, const size_t& destinationIndex);
+        bool AddComparisonStep(const ComparisonData& comparisonData, size_t destinationIndex);
 
-        bool RemoveComparisonStep(const size_t& index);
+        bool RemoveComparisonStep(size_t index);
 
-        bool MoveComparisonStep(const size_t& initialIndex, const size_t& destinationIndex);
+        bool MoveComparisonStep(size_t initialIndex, size_t destinationIndex);
 
         size_t GetNumComparisonSteps() const;
 
         AZStd::vector<ComparisonData> GetComparisonList() const;
 
-        void SetDestinationPath(const int& idx, const AZStd::string& path);
+        bool SetComparisonType(size_t index, const ComparisonType comparisonType);
+
+        bool SetFilePatternType(size_t index, const FilePatternType filePatternType);
+
+        bool SetFilePattern(size_t index, const AZStd::string& filePattern);
+
+        bool SetFirstInput(size_t index, const AZStd::string& firstInput);
+
+        bool SetSecondInput(size_t index, const AZStd::string& secondInput);
+
+        bool SetOutput(size_t index, const AZStd::string& output);
+
+        bool SetCachedFirstInputPath(size_t index, const AZStd::string& firstInputPath);
+
+        bool SetCachedSecondInputPath(size_t index, const AZStd::string& secondInputPath);
+
+        static void FormatOutputToken(AZStd::string& tokenName);
 
         //! This can be used to serialize the AssetFileInfoListComparison to the destination file path. 
         bool Save(const AZStd::string& destinationFilePath) const;
@@ -156,11 +182,11 @@ namespace AzToolsFramework
         //! Tests whether the path is non empty and not a token path (Is a theoretically writable output - doesn't test writeable status)
         static bool IsOutputPath(const AZStd::string& filePath);
 
-        //! Compares the two assetFileInfoLists and returns a AssetFileInfoList
-        AZ::Outcome<AssetFileInfoList, AZStd::string> Compare(const AZStd::vector<AZStd::string>& firstAssetFileInfoPathList, const AZStd::vector<AZStd::string>& secondAssetFileInfoPathList = {});
+        //! Runs all Comparison Steps and returns an AssetFileInfoList
+        AZ::Outcome<AssetFileInfoList, AZStd::string> Compare(const AZStd::vector<AZStd::string>& intersectionCountAssetListFiles = {});
 
-        //! Compares the two assetFileInfoLists saves the assetFileInfoList result in the destination path
-        AZ::Outcome<void, AZStd::string> CompareAndSaveResults(const AZStd::vector<AZStd::string>& firstAssetFileInfoPathList, const AZStd::vector<AZStd::string>& secondAssetFileInfoPathList = {});
+        //! Runs all Comparison Steps and saves all assetFileInfoList results to the destination paths stored with each Comparison Step
+        AZ::Outcome<void, AZStd::string> CompareAndSaveResults(const AZStd::vector<AZStd::string>& intersectionCountAssetListFiles = {});
 
         //! Saves all previously completed comparisons to disk if output is a file path
         AZ::Outcome<void, AZStd::string> SaveResults() const;
@@ -172,13 +198,19 @@ namespace AzToolsFramework
 
         static const char* GetComparisonRulesFileExtension();
 
+        static const char* GetComparisonTypeName(ComparisonType comparisonType);
+
+        static const char* GetFilePatternTypeName(FilePatternType filePatternType);
+
+        static const char GetTokenIdentifier();
+
     protected:
 
         AssetFileInfoList Delta(const AssetFileInfoList& firstAssetFileInfoList, const AssetFileInfoList& secondAssetFileInfoList) const;
         AssetFileInfoList Union(const AssetFileInfoList& firstAssetFileInfoList, const AssetFileInfoList& secondAssetFileInfoList) const;
         AssetFileInfoList Intersection(const AssetFileInfoList& firstAssetFileInfoList, const AssetFileInfoList& secondAssetFileInfoList) const;
         AssetFileInfoList Complement(const AssetFileInfoList& firstAssetFileInfoList, const AssetFileInfoList& secondAssetFileInfoList) const;
-        AssetFileInfoList FilePattern(const AssetFileInfoList& assetFileInfoList, int index) const;
+        AZ::Outcome<AssetFileInfoList, AZStd::string> FilePattern(const AssetFileInfoList& assetFileInfoList, const ComparisonData& comparisonData) const;
         AZ::Outcome<AssetFileInfoList, AZStd::string> IntersectionCount(const AZStd::vector<AZStd::string>& assetFileInfoPathList) const;
         AZ::Outcome<AssetFileInfoList, AZStd::string> PopulateAssetFileInfo(const AZStd::string& assetFileInfoPath) const;
 

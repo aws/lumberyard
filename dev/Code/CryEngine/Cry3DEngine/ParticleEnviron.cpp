@@ -23,7 +23,24 @@
 #include <Terrain/Bus/TerrainProviderBus.h>
 #endif
 #include <Terrain/Bus/LegacyTerrainBus.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Terrain/TerrainDataRequestBus.h>
+#include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/WindBus.h>
+#include <AzFramework/Physics/World.h>
+#include <MathConversion.h>
+
+#if !PARTICLES_USE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#include <AzFramework/Physics/Casts.h>
+#include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/MaterialBus.h>
+#include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/World.h>
+#include "MathConversion.h"
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // SPhysEnviron implementation.
@@ -44,7 +61,7 @@ void SPhysEnviron::FreeMemory()
     stl::free_container(m_NonUniformAreas);
 }
 
-void SPhysEnviron::OnPhysAreaChange(const EventPhysAreaChange& event)
+void SPhysEnviron::OnPhysAreaChange()
 {
     // Require re-querying of world physics areas
     m_nNonUniformFlags &= ~EFF_LOADED;
@@ -66,6 +83,7 @@ void SPhysEnviron::GetWorldPhysAreas(uint32 nFlags, bool bNonUniformAreas)
     AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
     Vec3 vWorldSize(terrainAabb.GetWidth(), terrainAabb.GetHeight(), terrainAabb.GetDepth());
 
+#if PARTICLES_USE_CRY_PHYSICS
     // Atomic iteration.
     for (IPhysicalEntity* pArea = 0; pArea = GetPhysicalWorld()->GetNextArea(pArea); )
     {
@@ -227,6 +245,23 @@ void SPhysEnviron::GetWorldPhysAreas(uint32 nFlags, bool bNonUniformAreas)
             m_UniformForces.Add(area_forces, nAreaFlags);
         }
     }
+#else // AZPhysics
+
+    // Gravity
+    if (Physics::World* world = SPhysEnviron::GetAZPhysicsWorld())
+    {
+        m_UniformForces.vAccel = AZVec3ToLYVec3(world->GetGravity());
+    }
+
+    // Global wind
+    const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+    if (windRequests)
+    {
+        const AZ::Vector3 wind = windRequests->GetGlobalWind();
+        m_UniformForces.vWind = AZVec3ToLYVec3(wind);
+    }
+
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 void SPhysEnviron::GetPhysAreas(SPhysEnviron const& envSource, AABB const& box, bool bIndoors, uint32 nFlags, bool bNonUniformAreas, const CParticleEmitter* pEmitterSkip)
@@ -250,15 +285,31 @@ void SPhysEnviron::GetPhysAreas(SPhysEnviron const& envSource, AABB const& box, 
         m_tUnderWater = fDistMin > 0.f ? ETrinary(false)
             : fDistMax < 0.f ? ETrinary(true)
             : ETrinary();
+
+#if !PARTICLES_USE_CRY_PHYSICS
+        // Local wind
+        const Physics::WindRequests* windRequests = AZ::Interface<Physics::WindRequests>::Get();
+        if (windRequests)
+        {
+            const AZ::Vector3 center = LYVec3ToAZVec3(box.GetCenter());
+            const AZ::Vector3 halfExtents = LYVec3ToAZVec3(box.GetSize()) * 0.5f;
+            const AZ::Aabb aabb = AZ::Aabb::CreateCenterHalfExtents(center, halfExtents);
+            const AZ::Vector3 wind = windRequests->GetWind(aabb);
+
+            m_UniformForces.vWind += AZVec3ToLYVec3(wind);
+        }
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
 
     if (bNonUniformAreas && envSource.m_nNonUniformFlags & nFlags && !box.IsReset())
     {
+#if PARTICLES_USE_CRY_PHYSICS
         pe_status_area sarea;
         sarea.ctr = box.GetCenter();
         sarea.size = box.GetSize() * 0.5f;
         sarea.vel.zero();
-        sarea.bUniformOnly = true;
+        sarea.bUniformOnly = true;        
+#endif // PARTICLES_USE_CRY_PHYSICS
 
         for_array (i, envSource.m_NonUniformAreas)
         {
@@ -273,6 +324,7 @@ void SPhysEnviron::GetPhysAreas(SPhysEnviron const& envSource, AABB const& box, 
                     {
                         if (pEmitterSkip)
                         {
+#if PARTICLES_USE_CRY_PHYSICS
                             pe_params_foreign_data fd;
                             if (area.m_pArea->GetParams(&fd))
                             {
@@ -281,8 +333,13 @@ void SPhysEnviron::GetPhysAreas(SPhysEnviron const& envSource, AABB const& box, 
                                     continue;
                                 }
                             }
+#else // AZPhysics
+                            // Provide skipping for this emitter
+                            CRY_PHYSICS_REPLACEMENT_ASSERT()
+#endif // PARTICLES_USE_CRY_PHYSICS
                         }
 
+#if PARTICLES_USE_CRY_PHYSICS
                         int nStatus = area.m_pArea->GetStatus(&sarea);
 
                         if (nStatus)
@@ -304,7 +361,6 @@ void SPhysEnviron::GetPhysAreas(SPhysEnviron const& envSource, AABB const& box, 
                                     m_tUnderWater = ETrinary();
                                 }
                             }
-
                             if (area.m_nFlags & nFlags)
                             {
                                 if (nStatus < 0)
@@ -324,6 +380,11 @@ void SPhysEnviron::GetPhysAreas(SPhysEnviron const& envSource, AABB const& box, 
                                 }
                             }
                         }
+#else // AZPhysics
+                        // Update m_tUnderWater undewater
+                        // Add the to list of forces
+                        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
                     }
                 }
             }
@@ -342,7 +403,7 @@ void SPhysEnviron::GetNonUniformForces(SPhysForces& forces, Vec3 const& vPos, ui
     }
 }
 
-bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const& vEnd, float fRadius, uint32 nEnvFlags, IPhysicalEntity* pTestEntity)
+bool SPhysEnviron::PhysicsCollision(CryParticleRayHit& hit, Vec3 const& vStart, Vec3 const& vEnd, float fRadius, uint32 nEnvFlags, CryParticleHitEntity* pTestEntity)
 {
     FUNCTION_PROFILER_SYS(PARTICLE);
 
@@ -381,6 +442,7 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
                     hit.dist = rt.t;
                     hit.pt = rt.hitPoint;
                     hit.n = rt.hitNormal;
+#if PARTICLES_USE_CRY_PHYSICS
                     if (rt.material)
                     {
                         hit.surface_idx = rt.material->GetSurfaceTypeId();
@@ -389,6 +451,22 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
                     {
                         hit.surface_idx = 0;
                     }
+#else                    
+                    if (rt.material)
+                    {
+                        AZStd::weak_ptr<Physics::Material> hitMaterial;
+                        Physics::PhysicsMaterialRequestBus::BroadcastResult(hitMaterial,
+                            &Physics::PhysicsMaterialRequests::GetMaterialByName, rt.material->GetName());
+                        hit.material = hitMaterial.lock().get();
+                    }
+                    if (!hit.material)
+                    {
+                        if (Physics::System* system = AZ::Interface<Physics::System>::Get())
+                        {
+                            hit.material = system->GetDefaultMaterial().get();
+                        }
+                    }
+#endif // PARTICLES_USE_CRY_PHYSICS
                     hit.bTerrain = true;
                 }
             }
@@ -397,9 +475,28 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
 
     if (pTestEntity)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         // Test specified entity only.
         bHit = GetPhysicalWorld()->RayTraceEntity(pTestEntity, vStart, vMove, &hit)
             && hit.n * vMove < 0.f;
+#else // AZPhysics
+
+        Physics::RayCastRequest request;
+        request.m_start = LYVec3ToAZVec3(vStart);
+        request.m_distance = vMove.GetLength();
+        request.m_direction = LYVec3ToAZVec3(vMove) / request.m_distance;
+
+        Physics::RayCastHit result = pTestEntity->RayCast(request);
+        if (result)
+        {
+            hit.dist = result.m_distance;
+            hit.pCollider = result.m_body;
+            hit.material = result.m_material;
+            hit.n = AZVec3ToLYVec3(result.m_normal);
+            hit.pt = AZVec3ToLYVec3(result.m_position);
+            bHit = hit.n * vMove < 0.f;
+        }
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
     else if (hit.dist > 0.f)
     {
@@ -417,8 +514,10 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
             ent_collide |= ent_rigid | ent_sleeping_rigid | ent_living | ent_independent;
         }
 
+        // Only check collision if there any collision flags are enabled
         IF (ent_collide, false)
         {
+#if PARTICLES_USE_CRY_PHYSICS
             // rwi_ flags copied from similar code in CParticleEntity.
             ray_hit hit_loc;
             if (GetPhysicalWorld()->RayWorldIntersection(
@@ -435,6 +534,49 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
                     hit.dist *= fInvMove;
                 }
             }
+#else // AZPhysics
+
+            const Physics::World* world = GetAZPhysicsWorld();
+            if (world)
+            {
+                int collideFlags = nEnvFlags & ENV_COLLIDE_PHYSICS;
+                if (collideFlags)
+                {
+                    Physics::RayCastRequest request;
+                    switch (collideFlags)
+                    {
+                    case ENV_STATIC_ENT:
+                        request.m_queryType = Physics::QueryType::Static;
+                        break;
+                    case ENV_DYNAMIC_ENT:
+                        request.m_queryType = Physics::QueryType::Dynamic;
+                        break;
+                    case ENV_COLLIDE_PHYSICS:
+                        request.m_queryType = Physics::QueryType::StaticAndDynamic;
+                        break;
+                    }
+
+                    request.m_start = LYVec3ToAZVec3(vStart);
+                    request.m_distance = vMove.GetLength();
+                    request.m_direction = LYVec3ToAZVec3(vMove) / request.m_distance;
+                    Physics::RayCastHit result;
+                    Physics::WorldRequestBus::EventResult(result, world->GetWorldId(), &Physics::World::RayCast, request);
+                    if (result)
+                    {
+                        fMoveNorm = AZVec3ToLYVec3(result.m_normal) * vMove;
+                        if (fMoveNorm < 0.f)
+                        {
+                            hit.dist = result.m_distance * fInvMove;
+                            hit.pCollider = result.m_body;
+                            hit.material = result.m_material;
+                            hit.n = AZVec3ToLYVec3(result.m_normal);
+                            hit.pt = AZVec3ToLYVec3(result.m_position);
+                            bHit = true;
+                        }
+                    }
+                }
+            }
+#endif // PARTICLES_USE_CRY_PHYSICS
         }
     }
 
@@ -451,6 +593,7 @@ void SPhysEnviron::SArea::GetForcesPhys(SPhysForces& forces, Vec3 const& vPos) c
 {
     FUNCTION_PROFILER_SYS(PARTICLE);
 
+#if PARTICLES_USE_CRY_PHYSICS
     pe_status_area sarea;
     sarea.ctr = vPos;
     if (m_pArea->GetStatus(&sarea))
@@ -464,6 +607,17 @@ void SPhysEnviron::SArea::GetForcesPhys(SPhysForces& forces, Vec3 const& vPos) c
             forces.vWind += sarea.pb.waterFlow;
         }
     }
+#else // AZPhysics
+    AZ::Vector3 gravity = AZ::Vector3(0.f, 0.f, 0.f);
+    if (Physics::World* world = SPhysEnviron::GetAZPhysicsWorld())
+    {
+        gravity = world->GetGravity();
+    }
+    forces.vAccel = AZVec3ToLYVec3(gravity);
+
+    // Retrieve wind
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
 }
 
 void SPhysEnviron::SArea::GetForces(SPhysForces& forces, Vec3 const& vPos, uint32 nFlags) const
@@ -490,11 +644,16 @@ void SPhysEnviron::SArea::GetForces(SPhysForces& forces, Vec3 const& vPos, uint3
             // Update with current position.
             if (!m_pEnviron->IsCurrent())
             {
+#if PARTICLES_USE_CRY_PHYSICS
                 pe_status_pos spos;
                 if (m_pArea->GetStatus(&spos))
                 {
                     vPosRel = vPos - spos.pos;
                 }
+#else // AZPhysics
+                // Retrieve distance to the force area
+                CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
             }
 
             Vec3 vDist = m_matToLocal * vPosRel;
@@ -506,7 +665,7 @@ void SPhysEnviron::SArea::GetForces(SPhysForces& forces, Vec3 const& vPos, uint3
                 fDist = m_nGeomShape == GEOM_BOX ? max(max(abs(vDist.x), abs(vDist.y)), abs(vDist.z))
                     : vDist.GetLengthFast();
             }
-           
+
             if (fDist <= 1.f)
             {
                 float fStrength = min((1.f - fDist) * m_fFalloffScale, 1.f);
@@ -552,6 +711,7 @@ void SPhysEnviron::SArea::GetForces(SPhysForces& forces, Vec3 const& vPos, uint3
 
 float SPhysEnviron::SArea::GetWaterPlane(Plane& plane, Vec3 const& vPos, float fMaxDist) const
 {
+#if PARTICLES_USE_CRY_PHYSICS
     float fDist = m_Forces.plWater.DistFromPlane(vPos);
     if (fDist < fMaxDist)
     {
@@ -563,6 +723,10 @@ float SPhysEnviron::SArea::GetWaterPlane(Plane& plane, Vec3 const& vPos, float f
             return fDist;
         }
     }
+#else // AZPhysics
+    // Retrieve distance and water plane
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // PARTICLES_USE_CRY_PHYSICS
     return fMaxDist;
 }
 
@@ -581,6 +745,31 @@ float SPhysEnviron::GetNonUniformWaterPlane(Plane& plWater, Vec3 const& vPos, fl
 
     return fMaxDist;
 }
+
+#if !PARTICLES_USE_CRY_PHYSICS // AzPhysics
+
+Physics::World* SPhysEnviron::GetAZPhysicsWorld()
+{
+    AZStd::shared_ptr<Physics::World> worldsharedPtr;
+    Physics::DefaultWorldBus::BroadcastResult(worldsharedPtr, &Physics::DefaultWorldRequests::GetDefaultWorld);
+
+#ifndef _RELEASE
+    if (gEnv->IsEditing() && !gEnv->IsEditorSimulationMode())
+    {
+        Physics::EditorWorldBus::BroadcastResult(worldsharedPtr, &Physics::EditorWorldRequests::GetEditorWorld);
+    }
+#endif
+    return worldsharedPtr.get();
+}
+
+CryParticleHitEntity* SPhysEnviron::GetPhysicalEntityFromEntityId(AZ::EntityId entityId)
+{
+    CryParticleHitEntity* ret = nullptr;
+    Physics::WorldBodyRequestBus::EventResult(ret, entityId, &Physics::WorldBodyRequests::GetWorldBody);
+    return ret;
+}
+
+#endif // !PARTICLES_USE_CRY_PHYSICS // AZPhysics
 
 /*
     Emitters render either entirely inside or entirely outside VisAreas (due to rendering architecture).
@@ -657,6 +846,7 @@ SEmitGeom::SEmitGeom(const GeomRef& geom, EGeomType eAttachType)
     {
         m_pMeshObj = 0;
         Set(geom.m_pPhysEnt);
+#if PARTICLES_USE_CRY_PHYSICS
         if (geom.m_pChar)
         {
             // Substitute articulated physics if found.
@@ -673,6 +863,7 @@ SEmitGeom::SEmitGeom(const GeomRef& geom, EGeomType eAttachType)
                 }
             }
         }
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
     else
     {
@@ -691,10 +882,12 @@ void SEmitGeom::AddRef() const
     {
         pStatObj->AddRef();
     }
+#if PARTICLES_USE_CRY_PHYSICS
     if (m_pPhysEnt)
     {
         m_pPhysEnt->AddRef();
     }
+#endif
 }
 
 void SEmitGeom::Release() const
@@ -707,10 +900,12 @@ void SEmitGeom::Release() const
     {
         pStatObj->Release();
     }
+#if PARTICLES_USE_CRY_PHYSICS
     if (m_pPhysEnt)
     {
         m_pPhysEnt->Release();
     }
+#endif
 }
 
 void SEmitGeom::GetAABB(AABB& bb, QuatTS const& tLoc) const
@@ -734,12 +929,16 @@ void SEmitGeom::GetAABB(AABB& bb, QuatTS const& tLoc) const
     }
     else if (m_pPhysEnt)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         pe_status_pos pos;
         if (m_pPhysEnt->GetStatus(&pos))
         {
             // Box is already axis-aligned, but not offset.
             bb = AABB(pos.pos + pos.BBox[0], pos.pos + pos.BBox[1]);
         }
+#else // AZPhysics
+        bb = AZAabbToLyAABB(m_pPhysEnt->GetAabb());
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
 }
 
@@ -757,11 +956,15 @@ float SEmitGeom::GetExtent(EGeomForm eForm) const
     }
     else if (m_pPhysEnt)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         // status_extent query caches extent in geo.
         pe_status_extent se;
         se.eForm = eForm;
         m_pPhysEnt->GetStatus(&se);
         return se.extent;
+#else // AZPhysics
+        return m_pPhysEnt->GetAabb().GetExtents().GetMaxElement();
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
     return 0.f;
 }
@@ -790,10 +993,92 @@ void SEmitGeom::GetRandomPos(PosNorm& ran, EGeomForm eForm, QuatTS const& tWorld
     }
     else if (m_pPhysEnt)
     {
+#if PARTICLES_USE_CRY_PHYSICS
         pe_status_random sr;
         sr.eForm = eForm;
         m_pPhysEnt->GetStatus(&sr);
         ran = sr.ran;
+#else // AZPhysics
+        auto getRandomPosLocalAZPhysics = [this](PosNorm& ran, EGeomForm eForm)
+        {
+            // Retrieve a random shape and calculate a random point inside it.
+            // Note: shape is assumed to be convex
+            if (size_t shapeCount = m_pPhysEnt->GetShapeCount())
+            {
+                size_t randShapeIndex = cry_random(size_t(0), shapeCount - 1);
+                AZStd::shared_ptr<Physics::Shape> shape = m_pPhysEnt->GetShape(randShapeIndex);
+                AZStd::vector<AZ::Vector3> vertices;
+                AZStd::vector<AZ::u32> indices;
+                shape->GetGeometry(vertices, indices);
+                if (vertices.size() > 0 && indices.size() > 0)
+                {
+                    // Random vertex
+                    if (eForm == GeomForm_Vertices)
+                    {
+                        size_t randVertexIdx = cry_random(size_t(0), vertices.size() - 1);
+                        ran.vPos = AZVec3ToLYVec3(vertices[randVertexIdx]);
+                        //ran.vNorm = ran.vPos.GetNormalized();
+                        return;
+                    }
+
+                    // Random triangle start (0, 3, 6, 9,...)
+                    size_t randTriangleStartIdx = cry_random(size_t(0), (indices.size() / 3) - 1) * 3;
+
+                    auto calcRandPointBetweenPoints = [](const AZ::Vector3& a, const AZ::Vector3& b)
+                    {
+                        float t = cry_random(0.f, 1.f);
+                        AZ::Vector3 dir = b - a;
+                        return a + (dir * t);
+                    };
+
+                    const AZ::Vector3 randTriangle[] =
+                    {
+                        vertices[randTriangleStartIdx + 0],
+                        vertices[randTriangleStartIdx + 1],
+                        vertices[randTriangleStartIdx + 2]
+                    };
+
+                    // Random point inside a triangle edge
+                    if (eForm == GeomForm_Edges)
+                    {
+                        const int edges[3][2] = { {0, 1}, {0, 2}, {1, 2} };
+                        const int (&edge)[2] = edges[cry_random(0, 2)];
+                        AZ::Vector3 randInsideEdge = calcRandPointBetweenPoints(randTriangle[edge[0]], randTriangle[edge[1]]);
+                        ran.vPos = AZVec3ToLYVec3(randInsideEdge);
+                        //ran.vNorm = ran.vPos.GetNormalized();
+                        return;
+                    }
+
+                    // For calculating a point inside triangle, we pick two random points on two edges
+                    // and then a random point between them.
+                    AZ::Vector3 randPointInTriAB = calcRandPointBetweenPoints(randTriangle[0], randTriangle[1]);
+                    AZ::Vector3 randPointInTriAC = calcRandPointBetweenPoints(randTriangle[0], randTriangle[2]);
+
+                    AZ::Vector3 randPointInTriangle = calcRandPointBetweenPoints(randPointInTriAB, randPointInTriAC);
+
+                    // Random point on triangle surface
+                    if (eForm == GeomForm_Surface)
+                    {
+                        ran.vPos = AZVec3ToLYVec3(randPointInTriangle);
+                        return;
+                    }
+
+                    // Calculate a random point on a line from the random triangle point towards the shape center
+                    AZ::Vector3 randPointInShape = calcRandPointBetweenPoints(randPointInTriangle, shape->GetAabbLocal().GetCenter());
+
+                    // Random point inside volume
+                    if (eForm == GeomForm_Volume)
+                    {
+                        ran.vPos = AZVec3ToLYVec3(randPointInShape);
+                        return;
+                    }
+                }
+            }
+        };
+
+        getRandomPosLocalAZPhysics(ran, eForm);
+        ran <<= tWorld;
+#endif // PARTICLES_USE_CRY_PHYSICS
     }
 
 #ifdef _DEBUG
@@ -802,5 +1087,3 @@ void SEmitGeom::GetRandomPos(PosNorm& ran, EGeomForm eForm, QuatTS const& tWorld
     assert(bb.IsOverlapSphereBounds(ran.vPos, bb.GetRadius() * 0.010f));
 #endif
 }
-
-

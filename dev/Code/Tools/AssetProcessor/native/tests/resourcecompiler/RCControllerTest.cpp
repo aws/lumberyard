@@ -28,7 +28,7 @@ TEST_F(RCcontrollerTest, CompileGroupCreatedWithUnknownStatusForFailedJobs)
     AzFramework::AssetSystem::AssetStatus assetStatus = AzFramework::AssetSystem::AssetStatus_Failed; 
     RCController rcController;
     QObject::connect(&rcController, &RCController::CompileGroupCreated,
-        [&assetStatus](AssetProcessor::NetworkRequestID groupID, AzFramework::AssetSystem::AssetStatus status)
+        [&assetStatus](AssetProcessor::NetworkRequestID /*groupID*/, AzFramework::AssetSystem::AssetStatus status)
     {
         assetStatus = status;
     }
@@ -209,7 +209,7 @@ void RCcontrollerTest_Simple::SubmitJob()
         jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
         jobDetails.m_jobEntry.m_jobKey = "tiff";
         jobDetails.m_jobEntry.m_jobRunKey = 3;
-        jobDetails.m_assetBuilderDesc.m_processJobFunction = [](const ProcessJobRequest& request, ProcessJobResponse& response)
+        jobDetails.m_assetBuilderDesc.m_processJobFunction = [](const ProcessJobRequest& /*request*/, ProcessJobResponse& response)
         {
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
         };

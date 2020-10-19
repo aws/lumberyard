@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/Math/Vector3.h>
+
 namespace Camera
 {
     /**
@@ -41,6 +43,16 @@ namespace Camera
          * @return the entityId of the entity currently being used as the view.  The Invalid entity id is returned for the default editor camera
          */
         virtual AZ::EntityId GetCurrentViewEntityId() { return AZ::EntityId(); }
+
+        /**
+         * Gets the position of the currently active Editor camera.
+         * The Editor can have multiple viewports displayed, though at most only one is active at any point in time.
+         * (Active is not the same as "has focus" - a different editor pane can have focus, but there's still one
+         * active viewport that's updating every frame, and the others are not)
+         * @param cameraPos On return, the current camera position in the one active Editor viewport.
+         * @return True if the camera position was successfully retrieved, false if not.
+         */
+        virtual bool GetActiveCameraPosition(AZ::Vector3& /*cameraPos*/) { return false; }
     };
 
     using EditorCameraRequestBus = AZ::EBus<EditorCameraRequests>;

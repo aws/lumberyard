@@ -17,6 +17,11 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 
+namespace AZ::IO
+{
+    class GenericStream;
+}
+
 namespace WhiteBox
 {
     //! Opaque handle to a WhiteBoxMesh.
@@ -145,6 +150,26 @@ namespace WhiteBox
 
         using PolygonHandles = AZStd::vector<PolygonHandle>; //!< Alias for a collection of polygon handles.
 
+        //! Stores the before and after polygon handles potentially created during a polygon append (impression).
+        struct RestoredPolygonHandlePair
+        {
+            PolygonHandle m_before;
+            PolygonHandle m_after;
+        };
+
+        //!< Alias for a collection of restored polygon handle pairs.
+        using RestoredPolygonHandlePairs = AZStd::vector<RestoredPolygonHandlePair>;
+
+        //! Stores all relevant created/modified polygon handles from an append operation.
+        struct AppendedPolygonHandles
+        {
+            PolygonHandle m_appendedPolygonHandle; //!< The primary new polygon handle that was created
+                                                   //!< (usually the one being interacted with).
+            RestoredPolygonHandlePairs m_restoredPolygonHandles; //!< A collection of the connected polygon handles to
+                                                                 //!< the primary polygon handle that may have been
+                                                                 //!< deleted and then re-added.
+        };
+
         //! Custom deleter for WhiteBoxMesh opaque pointer.
         class WhiteBoxMeshDeleter
         {
@@ -211,6 +236,10 @@ namespace WhiteBox
         VertexHandles FaceVertexHandles(const WhiteBoxMesh& whiteBox, FaceHandle faceHandle);
 
         //! Return the polygon handle containing the given face.
+        //! @note Calling this function from outside of the Api should always return a non-empty
+        //! PolygonHandle however internally there may be occasions were certain invariants are
+        //! temporarily broken and a FaceHandle may not yet have been added to a PolygonHandle.
+        //! e.g. While splitting an Edge.
         PolygonHandle FacePolygonHandle(const WhiteBoxMesh& whiteBox, FaceHandle faceHandle);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -232,6 +261,10 @@ namespace WhiteBox
         //! Return all edge handles for a given vertex.
         //! @note The edge handles returned will include both 'user' and 'mesh' edges.
         EdgeHandles VertexEdgeHandles(const WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
+
+        //! Return user edge handles for a given vertex.
+        //! @note The edge handles returned will only include 'user' edges.
+        EdgeHandles VertexUserEdgeHandles(const WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -394,6 +427,20 @@ namespace WhiteBox
 
         //! Return if a vertex is hidden or not.
         bool VertexIsHidden(const WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
+
+        //! Return if a vertex is isolated or not.
+        //! @note A vertex is isolated if it has no connecting 'user' edges.
+        bool VertexIsIsolated(const WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
+
+        //! Return user edge vectors for a given vertex.
+        //! @note The edge vectors returned will only include 'user' edges and will not be normalized.
+        //! @note Any invalid (zero) edge vectors will be filtered out and not returned.
+        AZStd::vector<AZ::Vector3> VertexUserEdgeVectors(const WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
+
+        //! Return user edge axes for a given vertex.
+        //! @note The edge axes returned will only include 'user' edges and will be normalized.
+        //! @note Any invalid (zero) edge axes will be filtered out and not returned.
+        AZStd::vector<AZ::Vector3> VertexUserEdgeAxes(const WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -439,15 +486,25 @@ namespace WhiteBox
         //! Return the vertex handles at each end of the edge.
         AZStd::array<VertexHandle, 2> EdgeVertexHandles(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
 
-        //! Return the normalized direction of the edge.
+        //! Return the normalized axis of the edge.
         //! @note Internally uses the 'first' halfedge, direction will be from tail to tip.
-        AZ::Vector3 EdgeDirection(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
+        //! @note It is possible EdgeAxis will return a zero vector if the two edge vertices are at the same position.
+        AZ::Vector3 EdgeAxis(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
+
+        //! Return the edge for the corresponding edge handle.
+        //! @note The edge vector will not be normalized. It will be the length of the distance between the two
+        //! vertices.
+        //! @note It is possible EdgeVector will return a zero vector if the two edge vertices are at the same position.
+        AZ::Vector3 EdgeVector(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
 
         //! Return if the edge is at a boundary (i.e. the edge only has one halfedge associated with it).
         bool EdgeIsBoundary(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
 
         //! Return all connected edges that have been merged through vertex hiding.
         EdgeHandles EdgeGrouping(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
+
+        //! Return if an edge is hidden or not.
+        bool EdgeIsHidden(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -540,22 +597,30 @@ namespace WhiteBox
         //! Create a three sided (triangle) polygon from three VertexHandles.
         //! Each VertexHandle represents an individual Vertex in the Polygon (3 vertex handles forming a Face/Triangle).
         //! @return The newly added PolygonHandle.
-        PolygonHandle AddTriPolygon(
-            WhiteBoxMesh& whiteBox, const VertexHandle vh0, const VertexHandle vh1, const VertexHandle vh2);
+        PolygonHandle AddTriPolygon(WhiteBoxMesh& whiteBox, VertexHandle vh0, VertexHandle vh1, VertexHandle vh2);
 
         //! Create four sided quad polygon (two triangles sharing an edge) from four VertexHandles.
         //! Each VertexHandle represents an individual Vertex in the Polygon (4 vertex handles forming
         //! two Faces in one Quad).
         //! @return The newly added PolygonHandle.
         PolygonHandle AddQuadPolygon(
-            WhiteBoxMesh& whiteBox, const VertexHandle vh0, const VertexHandle vh1, const VertexHandle vh2,
-            const VertexHandle vh3);
+            WhiteBoxMesh& whiteBox, VertexHandle vh0, VertexHandle vh1, VertexHandle vh2, VertexHandle vh3);
 
         //! Extrude a single polygon in the mesh.
         //! A lateral face will be created for each edge of the polygon that is extruded.
         //! TranslatePolygonAppend can be thought of as an extrusion along the normal of the polygon.
         //! @note distance must not be zero.
         PolygonHandle TranslatePolygonAppend(
+            WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle, float distance);
+
+        //! Extrude a single polygon in the mesh.
+        //! A lateral face will be created for each edge of the polygon that is extruded.
+        //! TranslatePolygonAppend can be thought of as an extrusion along the normal of the polygon.
+        //! @note distance must not be zero.
+        //! @note TranslatePolygonAppendAdvanced returns additional information including connected/neighboring
+        //! polygons that were removed and then re-added if shared vertices were changed. This information is important
+        //! for types that hold references to polygon handles that may change (e.g. Modifiers).
+        AppendedPolygonHandles TranslatePolygonAppendAdvanced(
             WhiteBoxMesh& whiteBox, const PolygonHandle& polygonHandle, float distance);
 
         //! Translate an edge in the mesh.
@@ -599,6 +664,21 @@ namespace WhiteBox
         //! Return the handle to the merged polygon.
         PolygonHandle HideEdge(WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
 
+        //! Flip an edge within a quad to subdivide the quad across another diagonal.
+        //! Return whether the edge was able to be flipped (operation may fail).
+        bool FlipEdge(WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
+
+        //! Split an edge and subdivide any connected faces in two, the position
+        //! is where to insert the new vertex.
+        //! Return the vertex handle where the edge was split.
+        //! @note If the edge is at a boundary only one face will be split.
+        VertexHandle SplitEdge(WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle, const AZ::Vector3& position);
+
+        //! Split a face by subdividing it into three new faces, the position
+        //! is where to insert the new vertex.
+        //! Return the vertex handle where the face was split.
+        VertexHandle SplitFace(WhiteBoxMesh& whiteBox, FaceHandle faceHandle, const AZ::Vector3& position);
+
         //! Hide a vertex to merge the edges that share the same vertex.
         void HideVertex(WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
 
@@ -615,8 +695,15 @@ namespace WhiteBox
         //! Restore a vertex from its 'hidden' state and split any connected edges.
         void RestoreVertex(WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
 
+        //! Attempt to restore a vertex from its 'hidden' state and split any connected edges.
+        //! @note TryRestoreVertex will first check if there are any connected edges. If there are none, then the
+        //! vertex will not be restored as it has no valid edges to connect with so cannot be interacted with.
+        //! @return Returns if the vertex was restored or not.
+        bool TryRestoreVertex(WhiteBoxMesh& whiteBox, VertexHandle vertexHandle);
+
         //! Removes all mesh data by clearing the mesh.
         void Clear(WhiteBoxMesh& whiteBox);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -627,6 +714,9 @@ namespace WhiteBox
 
         //! Calculate the midpoint of the two vertices composing an edge.
         AZ::Vector3 EdgeMidpoint(const WhiteBoxMesh& whiteBox, EdgeHandle edgeHandle);
+
+        //! Calculate the midpoint of a face (three vertices).
+        AZ::Vector3 FaceMidpoint(const WhiteBoxMesh& whiteBox, FaceHandle faceHandle);
 
         //! Calculate the midpoint of an arbitrary collection of vertices.
         AZ::Vector3 VerticesMidpoint(const WhiteBoxMesh& whiteBox, const VertexHandles& vertexHandles);
@@ -645,13 +735,34 @@ namespace WhiteBox
         //! @return Will return false if any error was encountered during serialization, true otherwise.
         bool WriteMesh(const WhiteBoxMesh& whiteBox, AZStd::vector<AZ::u8>& output);
 
-        //! Clones the WhiteBoxMesh object into a new mesh.
+        //! Clones the white box mesh object into a new mesh.
         //! @return Will return null if any error was encountered during serialization, otherwise the cloned mesh.
         WhiteBoxMeshPtr CloneMesh(const WhiteBoxMesh& whiteBox);
 
-        //! Exports the white box mesh to an obj file at the specified path.
+        //! Writes the white box mesh to an obj file at the specified path.
         //! @return Will return false if any error was encountered during serialization, true otherwise.
         bool SaveToObj(const WhiteBoxMesh& whiteBox, const AZStd::string& filePath);
 
+        //! Writes the white box mesh to the io stream.
+        //! @return Will return false if any error was encountered during serialization, true otherwise.
+        bool SaveToWbm(const WhiteBoxMesh& whiteBox, AZ::IO::GenericStream& stream);
+
+        //! Writes the white box mesh to a wbm file at the specified path.
+        //! @return Will return false if any error was encountered during serialization, true otherwise.
+        bool SaveToWbm(const WhiteBoxMesh& whiteBox, const AZStd::string& filePath);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Logging
+
+        AZStd::string ToString(VertexHandle vertexHandle);
+        AZStd::string ToString(FaceHandle faceHandle);
+        AZStd::string ToString(EdgeHandle edgeHandle);
+        AZStd::string ToString(HalfedgeHandle halfedgeHandle);
+        AZStd::string ToString(const PolygonHandle& polygonHandle);
+        AZStd::string ToString(const FaceVertHandles& faceVertHandles);
+        AZStd::string ToString(const FaceVertHandlesList& faceVertHandlesList);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     } // namespace Api
 } // namespace WhiteBox

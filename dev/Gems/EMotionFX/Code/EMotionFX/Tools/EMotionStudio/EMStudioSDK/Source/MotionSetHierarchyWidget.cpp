@@ -398,6 +398,18 @@ namespace EMStudio
 
         return result;    
     }
+
+    void MotionSetHierarchyWidget::SelectItemsWithText(QString text)
+    {
+        QList<QTreeWidgetItem*> items = mHierarchy->findItems(text, Qt::MatchWrap | Qt::MatchWildcard | Qt::MatchRecursive);
+
+        mHierarchy->clearSelection();
+
+        for (QTreeWidgetItem* item : items)
+        {
+            item->setSelected(true);
+        }
+    }
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MotionSetHierarchyWidget.moc>

@@ -23,7 +23,6 @@
 #include "IAISystem.h"
 #include "AIHandler.h"
 #include "IItemSystem.h"
-#include "IVehicleSystem.h"
 #include "ICryAnimation.h"
 #include "CryAction.h"
 
@@ -94,86 +93,6 @@ CAIProxy::~CAIProxy()
 
 //
 //----------------------------------------------------------------------------------------------------------
-EntityId CAIProxy::GetLinkedDriverEntityId()
-{
-    IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-    IVehicle* pVehicle = pVehicleSystem->GetVehicle(m_pGameObject->GetEntityId());
-    if (pVehicle)
-    {
-        if (IVehicleSeat* pVehicleSeat = pVehicle->GetSeatById(1))  //1 means driver
-        {
-            return pVehicleSeat->GetPassenger();
-        }
-    }
-    return 0;
-}
-
-//
-//----------------------------------------------------------------------------------------------------------
-bool CAIProxy::IsDriver()
-{
-    // (MATT) Surely rather redundant {2009/01/27}
-    if (IActor* pActor = GetActor())
-    {
-        if (pActor->GetLinkedVehicle())
-        {
-            IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-            IVehicle* pVehicle = pVehicleSystem->GetVehicle(pActor->GetLinkedVehicle()->GetEntityId());
-            if (pVehicle)
-            {
-                if (IVehicleSeat* pVehicleSeat = pVehicle->GetSeatById(1))  //1 means driver
-                {
-                    if (m_pGameObject)
-                    {
-                        EntityId passengerId = pVehicleSeat->GetPassenger();
-                        EntityId selfId = m_pGameObject->GetEntityId();
-                        if (passengerId == selfId)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-//----------------------------------------------------------------------------------------------------------
-EntityId CAIProxy::GetLinkedVehicleEntityId()
-{
-    if (IActor* pActor = GetActor())
-    {
-        if (pActor->GetLinkedVehicle())
-        {
-            return pActor->GetLinkedVehicle()->GetEntityId();
-        }
-    }
-    return 0;
-}
-
-//----------------------------------------------------------------------------------------------------------
-bool CAIProxy::GetLinkedVehicleVisionHelper(Vec3& outHelperPos) const
-{
-    assert(m_pGameObject);
-
-    IActor* pActor = GetActor();
-    IVehicle* pVehicle = pActor ? pActor->GetLinkedVehicle() : NULL;
-    IVehicleSeat* pVehicleSeat = pVehicle ? pVehicle->GetSeatForPassenger(m_pGameObject->GetEntityId()) : NULL;
-    IVehicleHelper* pAIVisionHelper = pVehicleSeat ? pVehicleSeat->GetAIVisionHelper() : NULL;
-
-    if (pAIVisionHelper)
-    {
-        outHelperPos = pAIVisionHelper->GetWorldSpaceTranslation();
-        return true;
-    }
-
-    return false;
-}
-
-//
-//----------------------------------------------------------------------------------------------------------
 void  CAIProxy::QueryBodyInfo(SAIBodyInfo& bodyInfo)
 {
     if (IMovementController* pMC = m_pGameObject->GetMovementController())
@@ -215,11 +134,6 @@ void  CAIProxy::QueryBodyInfo(SAIBodyInfo& bodyInfo)
             bodyInfo.isAiming = false;
             break;
         }
-
-        IActor* pActor = GetActor();
-        IVehicle* pVehicle = pActor ? pActor->GetLinkedVehicle() : 0;
-        IEntity* pVehicleEntity = pVehicle ? pVehicle->GetEntity() : 0;
-        bodyInfo.linkedVehicleEntityId = pVehicleEntity ? pVehicleEntity->GetId() : 0;
     }
 }
 
@@ -441,13 +355,6 @@ IWeapon* CAIProxy::GetSecWeapon(const ERequestedGrenadeType prefGrenadeType, ERe
 
 IFireController* CAIProxy::GetFireController(uint32 controllerNum)
 {
-    IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-
-    if (IVehicle* pVehicle = (IVehicle*) pVehicleSystem->GetVehicle(m_pGameObject->GetEntityId()))
-    {
-        return pVehicle->GetFireController(controllerNum);
-    }
-
     return NULL;
 }
 
@@ -603,7 +510,11 @@ int CAIProxy::Update(SOBJECTSTATE& state, bool bFullUpdate)
         UpdateMind(state);
     }
 
+#if ENABLE_CRY_PHYSICS
     if (IsDead() && GetPhysics() == NULL)
+#else
+    if (IsDead())
+#endif
     {
         // killed actor is updated by AI ?
         return 0;
@@ -1154,21 +1065,7 @@ void CAIProxy::UpdateCurrentWeapon()
     if (pActor)
     {
         IItem* pItem = NULL;
-
-        if (IVehicle* pVehicle = pActor->GetLinkedVehicle())
-        {
-            // mounted weapon( gunner seat )
-            SVehicleWeaponInfo weaponInfo;
-            if (pVehicle->GetCurrentWeaponInfo(weaponInfo, m_pGameObject->GetEntityId(), m_UseSecondaryVehicleWeapon))
-            {
-                pItem = CCryAction::GetCryAction()->GetIItemSystem()->GetItem(weaponInfo.entityId);
-                m_CurrentWeaponCanFire = weaponInfo.bCanFire;
-            }
-        }
-        else
-        {
-            pItem = pActor->GetCurrentItem();
-        }
+        pItem = pActor->GetCurrentItem();
 
         pCurrentWeapon = pItem ? pItem->GetIWeapon() : NULL;
         currentWeaponId = (pCurrentWeapon ? pItem->GetEntityId() : 0);
@@ -1302,6 +1199,7 @@ void CAIProxy::OnEndBurst(IWeapon* pWeapon, EntityId actorId)
     SendSignal(0, "WPN_END_BURST", pEntity, NULL);
 }
 
+#if ENABLE_CRY_PHYSICS
 //
 //----------------------------------------------------------------------------------------------------------
 IPhysicalEntity* CAIProxy::GetPhysics(bool wantCharacterPhysics)
@@ -1317,6 +1215,7 @@ IPhysicalEntity* CAIProxy::GetPhysics(bool wantCharacterPhysics)
     }
     return m_pGameObject->GetEntity()->GetPhysics();
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //
 //----------------------------------------------------------------------------------------------------------
@@ -1967,6 +1866,7 @@ void CAIProxy::Serialize(TSerialize ser)
 //---------------------------------------------------------------------------------------------------------------
 bool CAIProxy::PredictProjectileHit(float vel, Vec3& posOut, Vec3& dirOut, float& speedOut, Vec3* pTrajectoryPositions, unsigned int* trajectorySizeInOut, Vec3* pTrajectoryVelocities)
 {
+#if ENABLE_CRY_PHYSICS
     EntityId currentWeaponId = 0;
     IWeapon* pCurrentWeapon = GetCurrentWeapon(currentWeaponId);
     if (!pCurrentWeapon)
@@ -1979,6 +1879,9 @@ bool CAIProxy::PredictProjectileHit(float vel, Vec3& posOut, Vec3& dirOut, float
 
     return pCurrentWeapon->PredictProjectileHit(GetPhysics(), bodyInfo.vFirePos, dirOut, Vec3(0, 0, 0), vel,
         posOut, speedOut, pTrajectoryPositions, trajectorySizeInOut, 0.24f, pTrajectoryVelocities, true);
+#else
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //
@@ -1986,6 +1889,7 @@ bool CAIProxy::PredictProjectileHit(float vel, Vec3& posOut, Vec3& dirOut, float
 bool CAIProxy::PredictProjectileHit(const Vec3& throwDir, float vel, Vec3& posOut, float& speedOut, ERequestedGrenadeType prefGrenadeType,
     Vec3* pTrajectoryPositions, unsigned int* trajectorySizeInOut, Vec3* pTrajectoryVelocities)
 {
+#if ENABLE_CRY_PHYSICS
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_GAME);
 
     IWeapon* pGrenadeWeapon = GetSecWeapon(prefGrenadeType);
@@ -1999,6 +1903,9 @@ bool CAIProxy::PredictProjectileHit(const Vec3& throwDir, float vel, Vec3& posOu
 
     return pGrenadeWeapon->PredictProjectileHit(GetPhysics(), bodyInfo.vFirePos, throwDir, Vec3(0, 0, 0), vel,
         posOut, speedOut, pTrajectoryPositions, trajectorySizeInOut, 0.24f, pTrajectoryVelocities, true);
+#else
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //
@@ -2071,13 +1978,6 @@ float CAIProxy::GetActorHealth() const
         return pActor->GetHealth();
     }
 
-    const IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-    const IVehicle* pVehicle = const_cast<IVehicleSystem*> (pVehicleSystem)->GetVehicle(m_pGameObject->GetEntityId());
-    if (pVehicle)
-    {
-        return ((1.0f - pVehicle->GetDamageRatio()) * 1000.0f);
-    }
-
     return 0.0f;
 }
 
@@ -2089,13 +1989,6 @@ float CAIProxy::GetActorMaxHealth() const
     if (pActor != NULL)
     {
         return pActor->GetMaxHealth();
-    }
-
-    const IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-    const IVehicle* pVehicle = const_cast<IVehicleSystem*> (pVehicleSystem)->GetVehicle(m_pGameObject->GetEntityId());
-    if (pVehicle)
-    {
-        return 1000.0f;
     }
 
     return 1.0f;
@@ -2146,9 +2039,7 @@ bool CAIProxy::IsDead() const
         return pActor->IsDead();
     }
 
-    IVehicleSystem* pVehicleSystem = CCryAction::GetCryAction()->GetIVehicleSystem();
-    IVehicle* pVehicle = pVehicleSystem->GetVehicle(m_pGameObject->GetEntityId());
-    return pVehicle ? pVehicle->IsDestroyed() : false;
+    return false;
 }
 
 //

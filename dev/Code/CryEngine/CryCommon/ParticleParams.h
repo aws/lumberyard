@@ -1172,11 +1172,32 @@ struct TRangeParam
 };
 
 ///////////////////////////////////////////////////////////////////////
-// Special surface type enum
+// Special type enums
 
 struct CSurfaceTypeIndex
 {
     uint16  nIndex;
+
+    STRUCT_INFO
+};
+
+struct CAZPhysicsCollisionLayerIndex
+{
+    AZ::u8 layer;
+
+    STRUCT_INFO
+};
+
+struct CAZPhysicsCollisionGroupIndex
+{
+    AZ::Uuid group;
+
+    STRUCT_INFO
+};
+
+struct CAZPhysicsMaterialIndex
+{
+    AZ::Uuid material;
 
     STRUCT_INFO
 };
@@ -1712,13 +1733,25 @@ struct ParticleParams
         Cubemap)
     EDepthCollision eDepthCollision;   // for GPU particles, how should they collide
     UFloat fCubemapFarDistance; // For cubemap depth collision, what is the far plane of the cubemap
-    DEFINE_ENUM(EPhysics,
-        None,
-        SimpleCollision,
-        SimplePhysics,
-        RigidBody
-        )
+#if PARTICLES_USE_CRY_PHYSICS
+    DEFINE_ENUM_VALS(EPhysics, uint8,
+        None = 0,
+        SimpleCollision = 1,
+        SimplePhysics = 2,
+        RigidBody = 3
+    )
+#else
+    DEFINE_ENUM_VALS(EPhysics, uint8,
+        None = 0,
+        SimpleCollision = 1,
+        RigidBody = 3
+    )
+#endif
     EPhysics ePhysicsType;                                  // What kind of physics simulation to run on particle
+// AZPhysics
+    CAZPhysicsCollisionLayerIndex sCollisionLayer;             // Collision layer to use
+    CAZPhysicsCollisionGroupIndex sCollisionGroup;               // Collision group to collide with
+// ---------
     TSmallBool bCollideTerrain;                     // Collides with terrain (if Physics <> none)
     TSmallBool bCollideStaticObjects;           // Collides with static physics objects (if Physics <> none)
     TSmallBool bCollideDynamicObjects;      // Collides with dynamic physics objects (if Physics <> none)
@@ -1731,7 +1764,12 @@ struct ParticleParams
         Stop
         )
     ECollisionResponse eFinalCollision;         // What to do on final collision (when MaxCollisions > 0)
+// AZPhysics
     CSurfaceTypeIndex sSurfaceType;             // Surface type for physicalized particles
+// CryPhysics
+    TSmallBool bUseSelfCollision;                  // Whether to ignore collision behavior (die/stop) with particles of this same emitter
+    CAZPhysicsMaterialIndex sPhysicsMaterial;           // Physics material to use for particles body (from Default material library only)
+// ----------
     SFloat fElasticity;                                     // <SoftMin=0> $<SoftMax=1> Collision bounce coefficient: 0 = no bounce, 1 = full bounce
     UFloat fDynamicFriction;                            // <SoftMax=10> Sliding drag value, in inverse seconds
     UFloat fThickness;                                      // <SoftMax=1> Lying thickness ratio - for physicalized particles only
@@ -1886,7 +1924,10 @@ struct ParticleParams
         , bCameraNonFacingFade(SCameraNonFacingFade())
         , fCubemapFarDistance(20.0f)
         , nParticleSizeDiscard(0)
-        , fVelocitySpread(360.f)       
+        , fVelocitySpread(360.f)
+#if !PARTICLES_USE_CRY_PHYSICS
+        , bUseSelfCollision(false)
+#endif
     {}
 
     ParticleParams(type_zero)

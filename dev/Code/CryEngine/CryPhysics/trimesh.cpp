@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "overlapchecks.h"
@@ -6185,3 +6187,5 @@ fullspill:
     delete[] pVtxVal;
     return npt;
 }
+
+#endif // ENABLE_CRY_PHYSICS

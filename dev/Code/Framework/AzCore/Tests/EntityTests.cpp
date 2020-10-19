@@ -679,8 +679,8 @@ namespace UnitTest
 
     TEST_F(EntityTests, EntityIsMoveConstructed)
     {
-        AZ_STATIC_ASSERT(!AZStd::is_copy_constructible<AZ::Entity>::value, "Entity is dangerous to copy construct.");
-        AZ_STATIC_ASSERT(!AZStd::is_copy_assignable<AZ::Entity>::value, "Entity is dangerous to copy assign.");
+        static_assert(!AZStd::is_copy_constructible<AZ::Entity>::value, "Entity is dangerous to copy construct.");
+        static_assert(!AZStd::is_copy_assignable<AZ::Entity>::value, "Entity is dangerous to copy assign.");
 
         {
             AZ::Entity entity1;

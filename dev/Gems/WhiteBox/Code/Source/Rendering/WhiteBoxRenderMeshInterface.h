@@ -22,6 +22,8 @@ namespace WhiteBox
     struct WhiteBoxMaterial;
     struct WhiteBoxRenderData;
 
+    //! A generic interface for the White Box Component to communicate
+    //! with regardless of the rendering backend.
     class RenderMeshInterface
     {
     public:
@@ -35,6 +37,9 @@ namespace WhiteBox
 
         //! Update the material of the render mesh.
         virtual void UpdateMaterial(const WhiteBoxMaterial& material) = 0;
+
+        // Return if the White Box mesh is visible or not.
+        virtual bool IsVisible() const = 0;
 
         //! Set the White Box mesh visible (true) or invisible (false).
         virtual void SetVisiblity(bool visibility) = 0;

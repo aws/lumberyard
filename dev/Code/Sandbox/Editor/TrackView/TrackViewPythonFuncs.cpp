@@ -18,6 +18,7 @@
 #include "TrackViewSequenceManager.h"
 #include "AnimationContext.h"
 
+
 #include <IMovieSystem.h>
 
 #include <Maestro/Types/AnimNodeType.h>
@@ -113,6 +114,7 @@ namespace
     int PyTrackViewGetNumSequences()
     {
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+        AZ_TracePrintf("", "PyTrackViewGetNumSequences called")
         return pSequenceManager->GetCount();
     }
 
@@ -501,6 +503,163 @@ namespace
         const float keyTime = *keyTimeIter;
 
         return PyTrackViewGetInterpolatedValue(paramName, trackIndex, keyTime, nodeName, parentDirectorName);
+    }
+}
+
+
+namespace AzToolsFramework
+{
+    void TrackViewComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<EditorLayerTrackViewRequestBus>("EditorLayerTrackViewRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "track_view")
+                ->Event("AddNode", &EditorLayerTrackViewRequestBus::Events::AddNode)
+                ->Event("AddTrack", &EditorLayerTrackViewRequestBus::Events::AddTrack)
+                ->Event("AddLayerNode", &EditorLayerTrackViewRequestBus::Events::AddLayerNode)
+                ->Event("AddSelectedEntities", &EditorLayerTrackViewRequestBus::Events::AddSelectedEntities)
+                ->Event("DeleteNode", &EditorLayerTrackViewRequestBus::Events::DeleteNode)
+                ->Event("DeleteTrack", &EditorLayerTrackViewRequestBus::Events::DeleteTrack)
+                ->Event("DeleteSequence", &EditorLayerTrackViewRequestBus::Events::DeleteSequence)
+                ->Event("GetInterpolatedValue", &EditorLayerTrackViewRequestBus::Events::GetInterpolatedValue)
+                ->Event("GetKeyValue", &EditorLayerTrackViewRequestBus::Events::GetKeyValue)
+                ->Event("GetNodeName", &EditorLayerTrackViewRequestBus::Events::GetNodeName)
+                ->Event("GetNumNodes", &EditorLayerTrackViewRequestBus::Events::GetNumNodes)
+                ->Event("GetNumSequences", &EditorLayerTrackViewRequestBus::Events::GetNumSequences)
+                ->Event("GetNumTrackKeys", &EditorLayerTrackViewRequestBus::Events::GetNumTrackKeys)
+                ->Event("GetSequenceName", &EditorLayerTrackViewRequestBus::Events::GetSequenceName)
+                ->Event("GetSequenceTimeRange", &EditorLayerTrackViewRequestBus::Events::GetSequenceTimeRange)
+                ->Event("NewSequence", &EditorLayerTrackViewRequestBus::Events::NewSequence)
+                ->Event("PlaySequence", &EditorLayerTrackViewRequestBus::Events::PlaySequence)
+                ->Event("SetCurrentSequence", &EditorLayerTrackViewRequestBus::Events::SetCurrentSequence)
+                ->Event("SetRecording", &EditorLayerTrackViewRequestBus::Events::SetRecording)
+                ->Event("SetSequenceTimeRange", &EditorLayerTrackViewRequestBus::Events::SetSequenceTimeRange)
+                ->Event("SetTime", &EditorLayerTrackViewRequestBus::Events::SetSequenceTime)
+                ->Event("StopSequence", &EditorLayerTrackViewRequestBus::Events::StopSequence)
+                ;
+        }
+    }
+
+    void TrackViewComponent::Activate()
+    {
+        EditorLayerTrackViewRequestBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void TrackViewComponent::Deactivate()
+    {
+        EditorLayerTrackViewRequestBus::Handler::BusDisconnect();
+    }
+
+    int TrackViewComponent::GetNumSequences()
+    {
+        return PyTrackViewGetNumSequences();
+    }
+
+    void TrackViewComponent::NewSequence(const char* name, int sequenceType)
+    {
+        return PyTrackViewNewSequence(name, sequenceType);
+    }
+
+    void TrackViewComponent::PlaySequence()
+    {
+        return PyTrackViewPlaySequence();
+    }
+
+    void TrackViewComponent::StopSequence()
+    {
+        return PyTrackViewStopSequence();
+    }
+
+    void TrackViewComponent::SetSequenceTime(float time)
+    {
+        return PyTrackViewSetSequenceTime(time);
+    }
+
+    void TrackViewComponent::AddSelectedEntities()
+    {
+        return PyTrackViewAddSelectedEntities();
+    }
+
+    void TrackViewComponent::AddLayerNode()
+    {
+        return PyTrackViewAddLayerNode();
+    }
+
+    void TrackViewComponent::AddTrack(const char* paramName, const char* nodeName, const char* parentDirectorName)
+    {
+        return PyTrackViewAddTrack(paramName, nodeName, parentDirectorName);
+    }
+
+    void TrackViewComponent::DeleteTrack(const char* paramName, uint32 index, const char* nodeName, const char* parentDirectorName)
+    {
+        return PyTrackViewDeleteTrack(paramName, index, nodeName, parentDirectorName);
+    }
+
+    int TrackViewComponent::GetNumTrackKeys(const char* paramName, int trackIndex, const char* nodeName, const char* parentDirectorName)
+    {
+        return PyTrackViewGetNumTrackKeys(paramName, trackIndex, nodeName, parentDirectorName);
+    }
+
+    void TrackViewComponent::SetRecording(bool bRecording)
+    {
+        return PyTrackViewSetRecording(bRecording);
+    }
+
+    void TrackViewComponent::DeleteSequence(const char* name)
+    {
+        return PyTrackViewDeleteSequence(name);
+    }
+
+    void TrackViewComponent::SetCurrentSequence(const char* name)
+    {
+        return PyTrackViewSetCurrentSequence(name);
+    }
+
+    AZStd::string TrackViewComponent::GetSequenceName(unsigned int index)
+    {
+        return PyTrackViewGetSequenceName(index);
+    }
+
+    Range TrackViewComponent::GetSequenceTimeRange(const char* name)
+    {
+        return PyTrackViewGetSequenceTimeRange(name);
+    }
+
+    void TrackViewComponent::AddNode(const char* nodeTypeString, const char* nodeName)
+    {
+        return PyTrackViewAddNode(nodeTypeString, nodeName);
+    }
+
+    void TrackViewComponent::DeleteNode(AZStd::string_view nodeName, AZStd::string_view parentDirectorName)
+    {
+        return PyTrackViewDeleteNode(nodeName, parentDirectorName);
+    }
+
+    int TrackViewComponent::GetNumNodes(AZStd::string_view parentDirectorName)
+    {
+        return PyTrackViewGetNumNodes(parentDirectorName);
+    }
+
+    AZStd::string TrackViewComponent::GetNodeName(int index, AZStd::string_view parentDirectorName)
+    {
+        return PyTrackViewGetNodeName(index, parentDirectorName);
+    }
+
+    AZStd::any TrackViewComponent::GetKeyValue(const char* paramName, int trackIndex, int keyIndex, const char* nodeName, const char* parentDirectorName)
+    {
+        return PyTrackViewGetKeyValue(paramName, trackIndex, keyIndex, nodeName, parentDirectorName);
+    }
+
+    AZStd::any TrackViewComponent::GetInterpolatedValue(const char* paramName, int trackIndex, float time, const char* nodeName, const char* parentDirectorName)
+    {
+        return PyTrackViewGetInterpolatedValue(paramName, trackIndex, time, nodeName, parentDirectorName);
+    }
+
+    void TrackViewComponent::SetSequenceTimeRange(const char* name, float start, float end)
+    {
+        return PyTrackViewSetSequenceTimeRange(name, start, end);
     }
 }
 

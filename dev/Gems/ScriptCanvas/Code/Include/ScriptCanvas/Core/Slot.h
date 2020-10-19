@@ -44,7 +44,7 @@ namespace ScriptCanvas
         friend class Node;
     public:
 
-        enum DataType
+        enum class DataType : AZ::s32
         {
             NoData,
             Data,
@@ -173,6 +173,10 @@ namespace ScriptCanvas
 
         AZ::Outcome<void, AZStd::string> IsTypeMatchFor(const Slot& slot) const;
         AZ::Outcome<void, AZStd::string> IsTypeMatchFor(const Data::Type& dataType) const;
+
+        // Doesn't actually push the new tooltip out to the UI. So any updates need to be done
+        // before any visuals are created.
+        void SetToolTip(const AZStd::string& toolTip);
 
         void Rename(AZStd::string_view slotName);
 

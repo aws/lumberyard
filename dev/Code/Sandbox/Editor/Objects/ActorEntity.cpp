@@ -77,7 +77,11 @@ void CActorEntity::OnPrototypeFileChange(IVariable* pVar)
         CalcBBox();
         InvalidateTM(0);
         OnRenderFlagsChange(nullptr);
+#if ENABLE_CRY_PHYSICS
         m_statObjValidator.Validate(m_pEntity->GetStatObj(ENTITY_SLOT_ACTUAL), GetRenderMaterial(), m_pEntity->GetPhysics());
+#else
+        m_statObjValidator.Validate(m_pEntity->GetStatObj(ENTITY_SLOT_ACTUAL), GetRenderMaterial());
+#endif
         if (ms_pTreePanel)
         {
             ms_pTreePanel->SelectFile(filename);
@@ -192,6 +196,7 @@ XmlNodeRef CActorEntity::Export(const QString& levelPath, XmlNodeRef& xmlNode)
 void CActorEntity::OnEvent(ObjectEvent event)
 {
     CEntityObject::OnEvent(event);
+#if ENABLE_CRY_PHYSICS
     if (event == EVENT_INGAME || event == EVENT_OUTOFGAME)
     {
         if (m_pEntity)
@@ -206,6 +211,7 @@ void CActorEntity::OnEvent(ObjectEvent event)
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////

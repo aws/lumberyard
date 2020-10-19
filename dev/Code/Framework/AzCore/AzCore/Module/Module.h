@@ -53,7 +53,7 @@ namespace AZ
          * };
          * \endcode
          */
-        Module() = default;
+        Module();
         /**
          * Releases all descriptors in m_descriptors.
          */

@@ -28,8 +28,8 @@ namespace AzToolsFramework
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         //////////////////////////////////////////////////////////////////////////
 
-        //! executes a Python script using a string
-        virtual void ExecuteByString(AZStd::string_view script) { AZ_UNUSED(script); }
+        //! executes a Python script using a string, prints the result if printResult is true and script is an expression
+        virtual void ExecuteByString(AZStd::string_view script, bool printResult) { AZ_UNUSED(script); AZ_UNUSED(printResult); }
 
         //! executes a Python script using a filename
         virtual void ExecuteByFilename(AZStd::string_view filename) { AZ_UNUSED(filename); }

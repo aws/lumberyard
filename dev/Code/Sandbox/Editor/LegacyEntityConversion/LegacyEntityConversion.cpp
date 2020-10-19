@@ -111,7 +111,9 @@ namespace LegacyConversionInternal
         AZStd::string meshFileName;
         CMaterial* materialUsed = entityToConvert->GetMaterial();
         IStatObj* statObj = entityToConvert->GetIStatObj();
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* physics = entityToConvert->GetCollisionEntity();
+#endif
         if (statObj)
         {
             meshFileName = statObj->GetFilePath();
@@ -156,11 +158,13 @@ namespace LegacyConversionInternal
             meshComponentId
         };
 
+#if ENABLE_CRY_PHYSICS
         if ((isBrush || isSimpleEntity) && physics)
         {
             componentsToAdd.push_back("{2D559EB0-F6FE-46E0-9FCE-E8F375177724}"); // rigid body collider (mesh) shape
             componentsToAdd.push_back("{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}"); // static physics component
         }
+#endif // ENABLE_CRY_PHYSICS
 
         AZ::Outcome<AZ::EntityId, LegacyConversionResult> conversionResult = CreateEntityForConversion(entityToConvert, componentsToAdd);
         if (!conversionResult.IsSuccess())
@@ -210,6 +214,7 @@ namespace LegacyConversionInternal
         AZ::Uuid editorStaticPhysicsComponentId = "{C8D8C366-F7B7-42F6-8B86-E58FFF4AF984}";
         AZ::ComponentTypeList componentsToAdd;
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* physics = entityToConvert->GetCollisionEntity();
         bool bRigidBody = false;
         if (physics)
@@ -226,6 +231,7 @@ namespace LegacyConversionInternal
                 componentsToAdd.push_back(editorStaticPhysicsComponentId);
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         AZStd::string meshFileName = QStringAdapter(entityObject->GetEntityPropertyString("object_Model"));
         bool bHasMesh = false;
@@ -251,6 +257,7 @@ namespace LegacyConversionInternal
         AZ::ComponentApplicationBus::BroadcastResult(newEntity, &AZ::ComponentApplicationBus::Events::FindEntity, newEntityId);
 
         bool conversionSuccess = true;
+#if ENABLE_CRY_PHYSICS
         if (const CVarBlock* varBlock = entityObject->GetProperties())
         {
             if (bRigidBody)
@@ -259,6 +266,7 @@ namespace LegacyConversionInternal
                 conversionSuccess &= ConvertVarHierarchy<float>(newEntity, editorRigidPhysicsComponentId, { AZ_CRC("Mass", 0x6c035b66) }, "Mass", varBlock);
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         if (bHasMesh)
         {
@@ -1764,8 +1772,6 @@ namespace AZ
             Physics::System* physSystem = AZ::Interface<Physics::System>::Get();
             if (!physSystem)
             {
-                AZ_Error("LegacyConversion", false,
-                    "Can't convert CryPhysics object, no Physics system is available. Make sure a Physics Gem is enabled(ex: PhysX)");
                 return;
             }
 

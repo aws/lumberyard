@@ -62,6 +62,11 @@ namespace PhysX
         void SetLocalPose(const AZ::Vector3& offset, const AZ::Quaternion& rotation) override;
         AZStd::pair<AZ::Vector3, AZ::Quaternion> GetLocalPose() const override;
 
+        float GetRestOffset() const override;
+        float GetContactOffset() const override;
+        void SetRestOffset(float restOffset) override;
+        void SetContactOffset(float contactOffset) override;
+
         void* GetNativePointer() override;
 
         AZ::Crc32 GetTag() const override;
@@ -79,6 +84,13 @@ namespace PhysX
         //! Raycast against this shape using local coordinates.
         //! @param request Ray parameters in local space.
         Physics::RayCastHit RayCastLocal(const Physics::RayCastRequest& localSpaceRequest) override;
+
+        //! Retrieve this shape AABB.
+        //! @param worldTransform World transform of this shape.
+        AZ::Aabb GetAabb(const AZ::Transform& worldTransform) const override;
+
+        //! Retrieve this shape AABB using local coordinates
+        AZ::Aabb GetAabbLocal() const override;
 
         void GetGeometry(AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, AZ::Aabb* optionalBounds = nullptr) override;
 

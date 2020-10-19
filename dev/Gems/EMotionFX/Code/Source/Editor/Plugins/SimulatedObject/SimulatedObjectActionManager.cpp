@@ -31,7 +31,7 @@ namespace EMStudio
         InputDialogValidatable* inputDialog = new InputDialogValidatable(parent, /*labelText=*/"Name:");
         inputDialog->setWindowTitle("New simulated object name");
         inputDialog->setMinimumWidth(300);
-        inputDialog->setObjectName("newSimulatedObjectDialog");
+        inputDialog->setObjectName("EMFX.SimulatedObjectActionManager.SimulatedObjectDialog");
 
         inputDialog->SetValidatorFunc([inputDialog, actor]() {
             EMotionFX::SimulatedObjectSetup* simulatedObjectSetup = actor->GetSimulatedObjectSetup().get();

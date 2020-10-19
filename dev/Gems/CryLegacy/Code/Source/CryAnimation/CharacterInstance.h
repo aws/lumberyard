@@ -230,11 +230,15 @@ public:
     CSkeletonAnim m_SkeletonAnim;
     CSkeletonPose m_SkeletonPose;
 
+#if ENABLE_CRY_PHYSICS
     uint32 GetPhysicsRelinquished() { return m_SkeletonPose.m_physics.m_bPhysicsRelinquished; };
+#endif
     uint32 IsCharacterVisible() const { return m_SkeletonPose.m_bInstanceVisible; };
 
     void UpdatePhysicsCGA(Skeleton::CPoseData& poseData, f32 fScale, const QuatTS& rAnimLocationNext);
+#if ENABLE_CRY_PHYSICS
     void ApplyJointVelocitiesToPhysics(IPhysicalEntity* pent, const Quat& qrot = Quat(IDENTITY), const Vec3& velHost = Vec3(ZERO));
+#endif
     virtual void OnDetach();
     virtual float GetExtent(EGeomForm eForm);
     virtual void GetRandomPos(PosNorm& ran, EGeomForm eForm) const;

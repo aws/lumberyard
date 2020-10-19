@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_OBBTREE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 struct OBBnode
 {
     Vec3 axes[3];
@@ -93,5 +95,8 @@ public:
     int* m_pMapVtxUsed;
     Vec3* m_pVtxUsed;
 };
+
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_OBBTREE_H

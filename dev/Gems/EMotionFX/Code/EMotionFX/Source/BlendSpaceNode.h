@@ -141,10 +141,10 @@ namespace EMotionFX
     protected:
         size_t FindMotionIndexByMotionId(const AZStd::vector<BlendSpaceMotion>& motions, const AZStd::string& motionId) const;
 
-        void DoUpdate(float timePassedInSeconds, const BlendInfos& blendInfos, ESyncMode syncMode, AZ::u32 masterIdx, MotionInfos& motionInfos);
+        void DoUpdate(float timePassedInSeconds, const BlendInfos& blendInfos, ESyncMode syncMode, AZ::u32 leaderIdx, MotionInfos& motionInfos);
         void DoTopDownUpdate(AnimGraphInstance* animGraphInstance, ESyncMode syncMode,
-            AZ::u32 masterIdx, MotionInfos& motionInfos, bool motionsHaveSyncTracks);
-        void DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 masterIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
+            AZ::u32 leaderIdx, MotionInfos& motionInfos, bool motionsHaveSyncTracks);
+        void DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 leaderIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
             EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data, bool inPlace);
 
         void RewindMotions(MotionInfos& motionInfos);
@@ -156,8 +156,8 @@ namespace EMotionFX
 
         static bool DoAllMotionsHaveSyncTracks(const MotionInfos& motionInfos);
 
-        static void DoClipBasedSyncOfMotionsToMaster(AZ::u32 masterIdx, MotionInfos& motionInfos);
-        static void DoEventBasedSyncOfMotionsToMaster(AZ::u32 masterIdx, MotionInfos& motionInfos);
+        static void DoClipBasedSyncOfMotionsToLeader(AZ::u32 leaderIdx, MotionInfos& motionInfos);
+        static void DoEventBasedSyncOfMotionsToLeader(AZ::u32 leaderIdx, MotionInfos& motionInfos);
 
         static void SyncMotionToNode(AnimGraphInstance* animGraphInstance, ESyncMode syncMode, MotionInfo& motionInfo, AnimGraphNode* srcNode);
 

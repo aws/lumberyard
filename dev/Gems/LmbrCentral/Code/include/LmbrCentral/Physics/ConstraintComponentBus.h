@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzFramework/Physics/ConstraintComponentBus.h>
 
 namespace LmbrCentral
@@ -18,3 +20,5 @@ namespace LmbrCentral
     using ConstraintComponentRequestBus = AZ::EBus<AzFramework::ConstraintComponentRequests>;
     using ConstraintComponentNotificationBus = AZ::EBus<AzFramework::ConstraintComponentNotifications>;
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

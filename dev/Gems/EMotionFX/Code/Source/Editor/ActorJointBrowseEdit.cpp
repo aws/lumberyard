@@ -57,9 +57,13 @@ namespace EMStudio
         CommandSystem::SelectionList selectionList;
         for (const SelectionItem& selectedJoint : m_selectedJoints)
         {
-            selectionList.AddNode(selectedJoint.GetNode());
+            EMotionFX::Node* node = selectedJoint.GetNode();
+            if (node)
+            {
+                selectionList.AddNode(node);
+            }
         }
-        AZ_Warning("EMotionFX", m_singleJointSelection && m_selectedJoints.size() > 1,
+        AZ_Warning("EMotionFX", m_singleJointSelection && selectionList.GetNumSelectedNodes() > 1,
             "Single selection actor joint window has multiple pre-selected joints.");
 
         m_previouslySelectedJoints = m_selectedJoints;

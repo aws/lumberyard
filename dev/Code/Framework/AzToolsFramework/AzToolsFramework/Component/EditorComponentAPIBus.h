@@ -38,7 +38,10 @@ namespace AzToolsFramework
         //! LUMBERYARD_DEPRECATED(LY-106816)
         //! Use FindComponentTypeIdsByEntityType instead.
         //! Finds the component ids from their type names. Only searches for typedId for Entity Type "Game".
-        virtual AZStd::vector<AZ::Uuid> FindComponentTypeIds(const AZStd::vector<AZStd::string>& componentTypeNames) = 0;
+        AZ_DEPRECATED(
+            virtual AZStd::vector<AZ::Uuid> FindComponentTypeIds(
+                const AZStd::vector<AZStd::string>& componentTypeNames) = 0;,
+            "FindComponentTypeIds is deprecated, please use FindComponentTypeIdsByEntityType instead.")
 
         //! This method requires the filter @entityType because it is possible that two components
         //! With different uuids to have the same name. But, the chances of collision is reduced by specifying
@@ -51,7 +54,8 @@ namespace AzToolsFramework
         //! LUMBERYARD_DEPRECATED(LY-106816)
         //! Use BuildComponentTypeNameListByEntityType instead.
         //! Returns the full list of names for all components that can be created for Game Entity type (aka inGameMenu).
-        virtual AZStd::vector<AZStd::string> BuildComponentTypeNameList() = 0;
+        AZ_DEPRECATED(virtual AZStd::vector<AZStd::string> BuildComponentTypeNameList() = 0;,
+            "BuildComponentTypeNameList is deprecated, please use BuildComponentTypeNameListByEntityType instead.")
 
         //! Returns the full list of names for all components that can be created for the given Entity type (aka type of Menu).
         virtual AZStd::vector<AZStd::string> BuildComponentTypeNameListByEntityType(EntityType entityType) = 0;
@@ -61,7 +65,11 @@ namespace AzToolsFramework
         //! Add Components of the given types to an Entity.
         // Returns an Outcome object - it contains the AZ::EntityComponentIdPairs in case of Success, or an error message in case or Failure.
         virtual AddComponentsOutcome AddComponentsOfType(AZ::EntityId entityId, const AZ::ComponentTypeList& componentTypeIds) = 0;
-        
+
+        //! Add a single component of a given type to an Entity.
+        // Returns an Outcome object - it contains a AZ::EntityComponentIdPair in case of Success, or an error message in case or Failure.
+        virtual AddComponentsOutcome AddComponentOfType(AZ::EntityId entityId, const AZ::Uuid& componentTypeId) = 0;
+
         //! Returns true if a Component of type provided can be found on Entity, false otherwise.
         virtual bool HasComponentOfType(AZ::EntityId entityId, AZ::Uuid componentTypeId) = 0;
 
@@ -107,6 +115,7 @@ namespace AzToolsFramework
         virtual PropertyOutcome GetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath) = 0;
 
         //! Set Value of Property on Component
+        //! If @param value is an AZStd::any then the logic will set the property to a default value
         virtual PropertyOutcome SetComponentProperty(const AZ::EntityComponentIdPair& componentInstance, const AZStd::string_view propertyPath, const AZStd::any& value) = 0;
 
         //! Compare Value of Property on Component
@@ -115,6 +124,8 @@ namespace AzToolsFramework
         //! Get a full list of Component Properties for the Component Entity provided
         virtual const AZStd::vector<AZStd::string> BuildComponentPropertyList(const AZ::EntityComponentIdPair& componentInstance) = 0;
 
+        //! Toggles the usage of visible enforcement logic (defaults to False)
+        virtual void SetVisibleEnforcement(bool enforceVisiblity) = 0;
     };
     using EditorComponentAPIBus = AZ::EBus<EditorComponentAPIRequests>;
 

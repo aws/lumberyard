@@ -53,6 +53,7 @@
 #include <Cinematics/LayerNode.h>
 #include <Cinematics/MaterialNode.h>
 #include <Cinematics/ShadowsSetupNode.h>
+#include <Cinematics/TimeOfDayNode.h>
 
 namespace Maestro
 {
@@ -109,7 +110,7 @@ namespace Maestro
     /*static*/ void SequenceComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        
+
         if (serializeContext)
         {
             serializeContext->Class<SequenceComponent, AZ::Component>()
@@ -149,7 +150,7 @@ namespace Maestro
     {
         // The Movie System itself
         CMovieSystem::Reflect(context);
-        
+
         // Tracks
         TAnimSplineTrack<Vec2>::Reflect(context);
         CBoolTrack::Reflect(context);
@@ -186,6 +187,7 @@ namespace Maestro
         CLayerNode::Reflect(context);
         CAnimMaterialNode::Reflect(context);
         CShadowsSetupNode::Reflect(context);
+        CAnimTODNode::Reflect(context);
     }
 
     void SequenceComponent::Init()
@@ -241,9 +243,9 @@ namespace Maestro
     {
         const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
         bool changed = false;
-        
+
         EBUS_EVENT_ID_RESULT(changed, ebusId, Maestro::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
-        
+
         return changed;
     }
 

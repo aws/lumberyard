@@ -70,10 +70,14 @@ namespace PhysX
         }
         Physics::TriggerNotificationBus::Handler::BusDisconnect();
         Physics::WorldNotificationBus::Handler::BusDisconnect();
+
+        m_entities.clear(); // On re-activation, each entity in this force region triggers OnTriggerEnter again.
     }
 
     void ForceRegionComponent::OnPostPhysicsUpdate(float fixedDeltaTime)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
         for (auto entityId : m_entities)
         {
             EntityParams entity = ForceRegionUtil::CreateEntityParams(entityId);

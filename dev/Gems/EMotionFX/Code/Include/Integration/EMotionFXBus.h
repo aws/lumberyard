@@ -14,11 +14,11 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <EMotionFX/Source/AnimGraphObject.h>
 
 namespace EMotionFX
 {
     class AnimGraphNode;
+    class AnimGraphObject;
 
     namespace Integration
     {

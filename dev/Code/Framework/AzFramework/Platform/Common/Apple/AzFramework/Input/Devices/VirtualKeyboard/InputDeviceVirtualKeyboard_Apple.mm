@@ -295,9 +295,26 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceVirtualKeyboardApple::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options)
     {
+        UIWindow* foundWindow = nil;        
+#if defined(__IPHONE_13_0) || defined(__TVOS_13_0)
+        if(@available(iOS 13.0, tvOS 13.0, *))
+        {
+            NSArray* windows = [[UIApplication sharedApplication] windows];
+            for (UIWindow* window in windows)
+            {
+                if (window.isKeyWindow)
+                {
+                    foundWindow = window;
+                    break;
+                }
+            }
+        }
+#else
+        foundWindow = [[UIApplication sharedApplication] keyWindow];
+#endif
+        
         // Get the application's root view.
-        UIWindow* window = [[UIApplication sharedApplication] keyWindow];
-        UIView* rootView = window ? window.rootViewController.view : nullptr;
+        UIView* rootView = foundWindow ? foundWindow.rootViewController.view : nullptr;
         if (!rootView)
         {
             return;

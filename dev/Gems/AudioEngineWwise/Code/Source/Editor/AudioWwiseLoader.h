@@ -14,11 +14,10 @@
 #pragma once
 
 #include <ACETypes.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 #include <AudioSystemControl_wwise.h>
 
-#include <IXml.h>
+#include <AzCore/XML/rapidxml.h>
 
 namespace AudioControls
 {
@@ -28,22 +27,18 @@ namespace AudioControls
     class CAudioWwiseLoader
     {
     public:
-        CAudioWwiseLoader()
-            : m_pAudioSystemImpl(nullptr)
-        {
-        }
-        void Load(CAudioSystemEditor_wwise* pAudioSystemImpl);
+        CAudioWwiseLoader() = default;
+        void Load(CAudioSystemEditor_wwise* audioSystemImpl);
         const AZStd::string& GetLocalizationFolder() const;
 
     private:
-        void LoadSoundBanks(const AZStd::string_view sRootFolder, const AZStd::string_view sSubPath, bool bLocalised);
-        void LoadControlsInFolder(const AZStd::string_view sFolderPath);
-        void LoadControl(XmlNodeRef root);
-        void ExtractControlsFromXML(XmlNodeRef root, EWwiseControlTypes type, const AZStd::string_view controlTag, const AZStd::string_view controlNameAttribute);
+        void LoadSoundBanks(const AZStd::string_view rootFolder, const AZStd::string_view subPath, bool isLocalized);
+        void LoadControlsInFolder(const AZStd::string_view folderPath);
+        void LoadControl(const AZ::rapidxml::xml_node<char>* xmlNode);
+        void ExtractControlsFromXML(const AZ::rapidxml::xml_node<char>* xmlNode, EWwiseControlTypes type, const AZStd::string_view controlTag, const AZStd::string_view controlNameAttribute);
 
     private:
-        AZStd::string m_sLocalizationFolder;
-
-        CAudioSystemEditor_wwise* m_pAudioSystemImpl;
+        AZStd::string m_localizationFolder;
+        CAudioSystemEditor_wwise* m_audioSystemImpl = nullptr;
     };
 } // namespace AudioControls

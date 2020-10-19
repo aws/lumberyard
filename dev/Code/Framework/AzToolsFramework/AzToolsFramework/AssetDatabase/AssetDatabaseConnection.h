@@ -64,6 +64,9 @@ namespace AzToolsFramework
             AddedWarningAndErrorCountToJobs = 24,
             AddedFromAssetIdField = 25,
             AddedProductDependencyIndexes = 26,
+            AddedFileHashField = 27,
+            AddedLastScanTimeField = 28,
+            AddedScanTimeSecondsSinceEpochField = 29,
             //Add all new versions before this
             DatabaseVersionCount,
             LatestVersion = DatabaseVersionCount - 1
@@ -318,7 +321,9 @@ namespace AzToolsFramework
                 const AZStd::string& sourceFileFingerprint,
                 AZ::Uuid dependencySourceGuid,
                 AZ::u32 dependencySubId,
-                const AZStd::string& missingDependencyString);
+                const AZStd::string& missingDependencyString,
+                const AZStd::string& lastScanTime,
+                AZ::u64 scanTimeSecondsSinceEpoch);
             MissingProductDependencyDatabaseEntry(
                 AZ::s64 productPK,
                 const AZStd::string& scannerId,
@@ -326,7 +331,9 @@ namespace AzToolsFramework
                 const AZStd::string&  sourceFileFingerprint,
                 AZ::Uuid dependencySourceGuid,
                 AZ::u32 dependencySubId,
-                const AZStd::string& missingDependencyString);
+                const AZStd::string& missingDependencyString,
+                const AZStd::string& lastScanTime,
+                AZ::u64 scanTimeSecondsSinceEpoch);
 
             bool operator == (const MissingProductDependencyDatabaseEntry& other) const;
 
@@ -341,6 +348,8 @@ namespace AzToolsFramework
             AZ::Uuid m_dependencySourceGuid = AZ::Uuid::CreateNull();
             AZ::u32 m_dependencySubId = 0;
             AZStd::string m_missingDependencyString;
+            AZStd::string m_lastScanTime; // It's useful to see in the UI if / when a scan was last performed.
+            AZ::u64 m_scanTimeSecondsSinceEpoch = 0; // Makes it easy to sort by scan time.
         };
 
         typedef AZStd::vector<MissingProductDependencyDatabaseEntry> MissingProductDependencyDatabaseEntryContainer;
@@ -385,6 +394,7 @@ namespace AzToolsFramework
             AZStd::string m_fileName;
             int m_isFolder = 0;
             AZ::u64 m_modTime{};
+            AZ::u64 m_hash{};
         };
 
         typedef AZStd::vector<FileDatabaseEntry> FileDatabaseEntryContainer;
@@ -613,6 +623,7 @@ namespace AzToolsFramework
             bool QueryProductDependenciesUnresolvedAdvanced(const AZStd::vector<AZStd::string>& searchPaths, productDependencyAndPathHandler handler);
 
             bool QueryMissingProductDependencyByProductId(AZ::s64 productId, missingProductDependencyHandler handler);
+            bool DeleteMissingProductDependencyByProductId(AZ::s64 productId);
             bool QueryMissingProductDependencyByMissingProductDependencyId(AZ::s64 productDependencyId, missingProductDependencyHandler handler);
 
             //FileInfo

@@ -67,7 +67,9 @@ namespace Footsteps
         if (event.m_eventName[0] && azstricmp(event.m_eventName, "footstep") == 0)
         {
             bool physEnabled = false;
+#if ENABLE_CRY_PHYSICS
             AzFramework::PhysicsComponentRequestBus::EventResult(physEnabled, GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::IsPhysicsEnabled);
+#endif
             if (!physEnabled)
             {
                 return;
@@ -268,6 +270,7 @@ namespace Footsteps
     {
         TMFXEffectId effectId = InvalidEffectId;
 
+#if ENABLE_CRY_PHYSICS
         // get the ground material idx
         pe_status_living livingStatus;
         livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
@@ -295,7 +298,7 @@ namespace Footsteps
                 }
             }
         }
-
+#endif
         return effectId;
     }
 

@@ -28,6 +28,7 @@
 #include <AzCore/std/chrono/types.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/string/memorytoascii.h>
+#include <AzCore/std/string/tokenize.h>
 
 #include <AzCore/std/bind/bind.h>
 
@@ -1153,6 +1154,59 @@ namespace GridMate
     {
         AZ_Assert(ip != nullptr, "Invalid address!");
         return string::format("%s|%d", ip, port);
+    }
+
+    //=========================================================================
+    // IPv4ToIPv6
+    // [7/31/2020]
+    //=========================================================================
+
+    bool
+    SocketDriverCommon::IPv4ToIPv6(const string& ipv4, string& ipv6)
+    {
+        char ipv4Chars[16];
+        const size_t len = ipv4.length();
+        if (len > sizeof(ipv4Chars) - 1)
+        {
+            AZ_Warning("GridMate", false, "Invalid length for IPv4 address %s!", ipv4.c_str());
+            return false;
+        }
+
+        memcpy(ipv4Chars, ipv4.c_str(), len);
+        ipv4Chars[len] = '\0';
+
+        AZStd::vector<int> tokenValues;
+        char* next = nullptr;
+        char* token = azstrtok(ipv4Chars, 0, ".", &next);
+        while (token != nullptr)
+        {
+            if (!AZStd::all_of(token, token + strlen(token), ::isdigit) ||
+                strlen(token) > 3)
+            {
+                AZ_Warning("GridMate", false, "IPv4 address %s contains invalid characters or section!", ipv4.c_str());
+                return false;
+            }
+
+            int tokenValue = AZStd::stoi(string(token));
+            if (tokenValue < 0 || tokenValue > 255)
+            {
+                AZ_Warning("GridMate", false, "IPv4 address %s contains value out of range!", ipv4.c_str());
+                return false;
+            }
+
+            tokenValues.emplace_back(tokenValue);
+            token = azstrtok(nullptr, 0, ".", &next);
+        }
+
+        if (tokenValues.size() != 4)
+        {
+            AZ_Warning("GridMate", false, "IPv4 address %s contains unexpected number of sections!", ipv4.c_str());
+            return false;
+        }
+
+        ipv6 = string::format("0:0:0:0:0:FFFF:%X:%X",
+            tokenValues[0] * 256 + tokenValues[1], tokenValues[2] * 256 + tokenValues[3]);
+        return true;
     }
 
     //=========================================================================

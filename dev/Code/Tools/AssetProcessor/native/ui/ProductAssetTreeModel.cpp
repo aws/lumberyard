@@ -21,15 +21,13 @@
 namespace AssetProcessor
 {
 
-    ProductAssetTreeModel::ProductAssetTreeModel(QObject *parent) :
-        AssetTreeModel(parent)
+    ProductAssetTreeModel::ProductAssetTreeModel(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> sharedDbConnection, QObject *parent) :
+        AssetTreeModel(sharedDbConnection, parent)
     {
-        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusConnect();
     }
 
     ProductAssetTreeModel::~ProductAssetTreeModel()
     {
-        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler::BusDisconnect();
     }
 
     void ProductAssetTreeModel::ResetModel()
@@ -44,7 +42,7 @@ namespace AssetProcessor
             return;
         }
 
-        m_dbConnection.QueryProductsTable(
+        m_sharedDbConnection->QueryProductsTable(
             [&](AzToolsFramework::AssetDatabase::ProductDatabaseEntry& product)
         {
             AddOrUpdateEntry(product, true);
@@ -79,7 +77,13 @@ namespace AssetProcessor
         {
             return;
         }
+
         AssetTreeItem* parent = assetToRemove->GetParent();
+        if (!parent)
+        {
+            return;
+        }
+
         QModelIndex parentIndex = createIndex(parent->GetRow(), 0, parent);
 
         beginRemoveRows(parentIndex, assetToRemove->GetRow(), assetToRemove->GetRow());
@@ -142,6 +146,22 @@ namespace AssetProcessor
         const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& product,
         bool modelIsResetting)
     {
+        const auto& existingEntry = m_productIdToTreeItem.find(product.m_productID);
+        if (existingEntry != m_productIdToTreeItem.end())
+        {
+            AZStd::shared_ptr<ProductAssetTreeItemData> productItemData = AZStd::rtti_pointer_cast<ProductAssetTreeItemData>(existingEntry->second->GetData());
+
+            // This item already exists, refresh the related data.
+            productItemData->m_databaseInfo = product;
+            CheckForUnresolvedIssues(productItemData);
+            
+            QModelIndex existingIndexStart = createIndex(existingEntry->second->GetRow(), 0, existingEntry->second);
+            QModelIndex existingIndexEnd = createIndex(existingEntry->second->GetRow(), existingEntry->second->GetColumnCount() - 1, existingEntry->second);
+            dataChanged(existingIndexStart, existingIndexEnd);
+            return;
+        }
+
+
         AZStd::vector<AZStd::string> tokens;
         AzFramework::StringFunc::Tokenize(product.m_productName.c_str(), tokens, AZ_CORRECT_DATABASE_SEPARATOR, false, true);
 
@@ -177,7 +197,7 @@ namespace AssetProcessor
         }
 
         AZ::Uuid sourceId;
-        m_dbConnection.QuerySourceByProductID(
+        m_sharedDbConnection->QuerySourceByProductID(
             product.m_productID,
             [&](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry)
         {
@@ -191,13 +211,45 @@ namespace AssetProcessor
             beginInsertRows(parentIndex, parentItem->getChildCount(), parentItem->getChildCount());
         }
 
+        AZStd::shared_ptr<ProductAssetTreeItemData> productItemData =
+            ProductAssetTreeItemData::MakeShared(&product, product.m_productName, tokens[tokens.size() - 1].c_str(), false, sourceId);
         m_productToTreeItem[product.m_productName] =
-            parentItem->CreateChild(ProductAssetTreeItemData::MakeShared(&product, product.m_productName, tokens[tokens.size() - 1].c_str(), false, sourceId));
+            parentItem->CreateChild(productItemData);
         m_productIdToTreeItem[product.m_productID] = m_productToTreeItem[product.m_productName];
+
+        CheckForUnresolvedIssues(productItemData);
 
         if (!modelIsResetting)
         {
             endInsertRows();
         }
+    }
+
+    void ProductAssetTreeModel::CheckForUnresolvedIssues(AZStd::shared_ptr<ProductAssetTreeItemData> productItemData)
+    {
+        productItemData->m_assetHasUnresolvedIssue = false;
+        // Start by clearing the tooltip, so any errors don't append to the existing text.
+        productItemData->m_unresolvedIssuesTooltip = QString();
+        if (!productItemData->m_hasDatabaseInfo)
+        {
+            // Folders can't have unresolved issues.
+            return;
+        }
+
+        m_sharedDbConnection->QueryMissingProductDependencyByProductId(
+            productItemData->m_databaseInfo.m_productID,
+            [&, productItemData](AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& missingDependency)
+        {
+            if (missingDependency.m_dependencySourceGuid.IsNull())
+            {
+                // This was an empty row that likely included information like the last time this file was scanned.
+                // Don't mark this product as having unresolved issues, and return true to continue looking through the scan results.
+                return true;
+            }
+            // If this asset has any missing dependencies, mark it as having an unresolved issue.
+            productItemData->m_assetHasUnresolvedIssue = true;
+            productItemData->m_unresolvedIssuesTooltip = tr("A missing product dependency has been detected for this asset.");
+            return false; // Don't keep iterating, an unresolved issue was found.
+        });
     }
 }

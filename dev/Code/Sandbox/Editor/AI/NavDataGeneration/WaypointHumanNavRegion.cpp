@@ -305,19 +305,29 @@ bool CWaypointHumanNavRegion::CheckAndDrawBody(const Vec3& pos, IRenderer* pRend
     bool result = false;
     bool gotFloor = false;
     Vec3 floorPos = pos;
+#if ENABLE_CRY_PHYSICS
     if (GetFloorPos(floorPos, pos, walkabilityFloorUpDist, walkabilityFloorDownDist, walkabilityDownRadius, AICE_ALL))
     {
         gotFloor = true;
     }
+#else
+    // Find floor
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     Vec3 segStart = floorPos + walkabilityTorsoBaseOffset + Vec3(0, 0, walkabilityRadius);
     Vec3 segEnd = floorPos + Vec3(0, 0, walkabilityTotalHeight - walkabilityRadius);
     Lineseg torsoSeg(segStart, segEnd);
 
+#if ENABLE_CRY_PHYSICS
     if (gotFloor && !OverlapCapsule(torsoSeg, walkabilityRadius, AICE_ALL))
     {
         result = true;
     }
+#else
+    // If floor and overlap capsule
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
     if (pRenderer)
     {
@@ -783,8 +793,14 @@ std::pair<bool, bool> CWaypointHumanNavRegion::CheckIfLinkSimple(Vec3 from, Vec3
         assert (pCheckWalkabilityState->computeHeightAlongTheLink);
     }
 
+#if ENABLE_CRY_PHYSICS
     bool walkable = CheckWalkability (from, to, paddingRadius, checkStart, boundary,
             aiCollisionEntities, 0, pCheckWalkabilityState);
+#else
+    // Check walkability
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    bool walkable = false;
+#endif // ENABLE_CRY_PHYSICS
 
     if (pCheckWalkabilityState->state != SCheckWalkabilityState::CWS_RESULT)
     {
@@ -879,7 +895,12 @@ unsigned CWaypointHumanNavRegion::GetEnclosing(const Vec3& pos, float passRadius
     // get a floor position
     Vec3 floorPos;
     static float maxFloorDist = 15.0f; // big value because the target might be huge - e.g. hunter
+#if ENABLE_CRY_PHYSICS
     if (false == GetFloorPos(floorPos, pos, walkabilityFloorUpDist, maxFloorDist, walkabilityDownRadius, AICE_ALL))
+#else
+    // Find floor
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
     {
         AIWarning("CWaypointHumanNavRegion::GetEnclosing Could not find floor position from %s. Pos: (%5.2f, %5.2f, %5.2f)",
             requesterName, pos.x, pos.y, pos.z);
@@ -962,17 +983,27 @@ unsigned CWaypointHumanNavRegion::GetEnclosing(const Vec3& pos, float passRadius
 
         if (nRejected < 15)
         {
+#if ENABLE_CRY_PHYSICS
             if (CheckWalkabilitySimple(SWalkPosition (floorPos, true), pGraph->GetNodeManager().GetNode(nodeIndex)->GetPos(), 0.0f, AICE_ALL))
             {
                 return nodeIndex;
             }
+#else
+            // Check walkability
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
         }
         else
         {
+#if ENABLE_CRY_PHYSICS
             if (CheckWalkability(SWalkPosition (floorPos, true), pGraph->GetNodeManager().GetNode(nodeIndex)->GetPos(), 0.0f, false, buildingPolygon, AICE_ALL))
             {
                 return nodeIndex;
             }
+#else
+            // Checkl walkability
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
         }
         ++nRejected;
     }
@@ -1185,11 +1216,16 @@ void CWaypointHumanNavRegion::ModifyNodeConnections(unsigned nodeIndex1, EAIColl
             const ListPositions& buildingPolygon = sa->GetPolygon();
 
             Vec3 nodeOffset(0, 0, 0.5f);
+#if ENABLE_CRY_PHYSICS
             walkabilityFromTo = CheckWalkability(
                     pNode1->GetPos() + nodeOffset,
                     pNode2->GetPos() + nodeOffset,
                     0.0f, true, buildingPolygon, collisionEntities,
                     pGraph->GetCachedPassabilityResult(link, true));
+#else
+            // Check walkability
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
         }
 
         if ((walkabilityFromTo && curRadius < 0.0f) || (!walkabilityFromTo && curRadius > 0.0f))

@@ -55,12 +55,15 @@ namespace NvCloth
         void SetSphereColliders(const AZStd::vector<physx::PxVec4>& spheres);
         void SetCapsuleColliders(const AZStd::vector<uint32_t>& capsuleIndices);
 
+        void SetWindVelocity(const AZ::Vector3& windVelocity);
+
         void ClearInertia();
+
+        void SetConfiguration(const ClothConfiguration& config);
 
     protected:
         // Functions to setup the NvCloth elements
-        void Create(const ClothConfiguration& config);
-        void InitializeCloth(const ClothConfiguration& config);
+        void Create(const ClothConfiguration& config);        
         void SetupFabricPhases(const ClothConfiguration& config);
 
         // ClothInstanceNotificationsBus overrides

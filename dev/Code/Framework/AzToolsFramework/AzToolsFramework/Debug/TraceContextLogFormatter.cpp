@@ -19,6 +19,8 @@
 
 #endif // AZ_ENABLE_TRACE_CONTEXT
 
+#include <cinttypes>
+
 namespace AzToolsFramework
 {
     namespace Debug
@@ -69,10 +71,10 @@ namespace AzToolsFramework
                 out += stack.GetBoolValue(index) ? "true" : "false";
                 break;
             case TraceContextStackInterface::ContentType::IntType:
-                out += AZStd::string::format("%lli", stack.GetIntValue(index));
+                out += AZStd::string::format("%" PRId64, stack.GetIntValue(index));
                 break;
             case TraceContextStackInterface::ContentType::UintType:
-                out += AZStd::string::format("%llu", stack.GetUIntValue(index));
+                out += AZStd::string::format("%" PRIu64, stack.GetUIntValue(index));
                 break;
             case TraceContextStackInterface::ContentType::FloatType:
                 out += AZStd::string::format("%f", stack.GetFloatValue(index));

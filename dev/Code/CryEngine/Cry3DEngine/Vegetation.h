@@ -17,6 +17,10 @@
 
 #include "ObjMan.h"
 
+#if !ENABLE_CRY_PHYSICS
+#include "CryPhysicsDeprecation.h"
+#endif
+
 class CDeformableNode;
 
 #define VEGETATION_CONV_FACTOR 64.f
@@ -40,7 +44,10 @@ class CVegetation
     , public Cry3DEngineBase
 {
 public:
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* m_pPhysEnt;
+#endif
+
     CDeformableNode* m_pDeformable;
     PodArrayAABB<CRenderObject::SInstanceData>* m_pInstancingInfo;
     Physics::TouchBendingTriggerHandle* m_touchBendingTriggerProxy;
@@ -53,7 +60,11 @@ public:
     byte  m_ucRadius;
     byte  m_ucAngleX;
     byte  m_ucAngleY;
+
+#if ENABLE_CRY_PHYSICS
     byte m_bApplyPhys;
+#endif
+
     // Keep track of whether this is a static instance (created at level load) or dynamic
     // instance (created/destroyed during game execution)
     bool m_isDynamic;
@@ -77,9 +88,28 @@ public:
     bool CanExecuteRenderAsJob() override;
     void Render(const SRendParams& RendParams, const SRenderingPassInfo& passInfo) override { assert(0); }
     void Render(const SRenderingPassInfo& passInfo, const CLodValue& lodValue, SSectorTextureSet* pTerrainTexInfo, const SRendItemSorter& rendItemSorter) const;
-    IPhysicalEntity* GetPhysics(void) const { return m_pPhysEnt; }
+
+    IPhysicalEntity* GetPhysics(void) const
+    {
+#if ENABLE_CRY_PHYSICS
+        return m_pPhysEnt;
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        return nullptr;
+#endif //#if ENABLE_CRY_PHYSICS
+    }
+
     IRenderMesh*       GetRenderMesh(int nLod);
-    void SetPhysics(IPhysicalEntity* pPhysEnt) { m_pPhysEnt = pPhysEnt; }
+
+    void SetPhysics(IPhysicalEntity* pPhysEnt)
+    {
+#if ENABLE_CRY_PHYSICS
+        m_pPhysEnt = pPhysEnt;
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif //#if ENABLE_CRY_PHYSICS
+    }
+
     void SetMaterial(_smart_ptr<IMaterial>) override {}
     _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL);
     _smart_ptr<IMaterial> GetMaterialOverride();
@@ -89,7 +119,15 @@ public:
     IRenderNode* Clone() const override;
     IPhysicalEntity* GetBranchPhys(int idx, int nSlot = 0);
     IFoliage* GetFoliage(int nSlot = 0);
-    bool IsBreakable() { pe_params_part pp; pp.ipart = 0; return m_pPhysEnt && m_pPhysEnt->GetParams(&pp) && pp.idmatBreakable >= 0; }
+    bool IsBreakable()
+    {
+#if ENABLE_CRY_PHYSICS
+        pe_params_part pp; pp.ipart = 0;
+        return m_pPhysEnt && m_pPhysEnt->GetParams(&pp) && pp.idmatBreakable >= 0;
+#else
+        return false;
+#endif
+    }
     void AddBending(Vec3 const& v);
     float GetMaxViewDist() override;
     IStatObj* GetEntityStatObj(unsigned int nPartId = 0, unsigned int nSubPartId = 0, Matrix34A* pMatrix = NULL, bool bReturnOnlyVisible = false);

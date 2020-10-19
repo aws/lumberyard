@@ -13,7 +13,8 @@
 
 #include <AssetDatabase/AssetDatabase.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-
+#include <AzToolsFramework/API/AssetDatabaseBus.h>
+#include <native/utilities/ApplicationManagerAPI.h>
 #include <QAbstractItemModel>
 #include <QFileIconProvider>
 #include <QItemSelectionModel>
@@ -21,12 +22,19 @@
 namespace AssetProcessor
 {
     class AssetTreeItem;
-    class AssetTreeModel : public QAbstractItemModel
+    class AssetTreeModel :
+        public QAbstractItemModel,
+        AzToolsFramework::AssetDatabase::AssetDatabaseNotificationBus::Handler,
+        AssetProcessor::ApplicationManagerNotifications::Bus::Handler
     {
     public:
-        AssetTreeModel(QObject *parent = nullptr);
+        AssetTreeModel(AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> sharedDbConnection, QObject *parent = nullptr);
         virtual ~AssetTreeModel();
 
+        // ApplicationManagerNotifications::Bus::Handler
+        void ApplicationShutdownRequested() override;
+
+        // QAbstractItemModel
         QModelIndex index(int row, int column, const QModelIndex &parent) const override;
 
         int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -48,6 +56,8 @@ namespace AssetProcessor
 
         AZStd::unique_ptr<AssetTreeItem> m_root;
         QFileIconProvider m_fileProvider; // Cache the icon provider, it's expensive to construct.
-        AzToolsFramework::AssetDatabase::AssetDatabaseConnection m_dbConnection;
+        AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> m_sharedDbConnection;
+
+        QIcon m_errorIcon;
     };
 }

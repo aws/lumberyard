@@ -86,16 +86,16 @@ static void ValidateMeshMaterials(std::vector<SMeshMaterialIssue>* issues, IStat
                 {
                     const char* meshName = pStatObj->GetRenderMesh() ? pStatObj->GetRenderMesh()->GetSourceName() : "unknown";
                     AZStd::string errorMessage;
-                    errorMessage = AZStd::string::format("Material '%s' sub-material %d with %d uv set(s) was assigned to mesh '%s' with %d uv set(s). ", pIMaterial->GetName(), i + 1, materialUVs, meshName, meshUVs);
+                    errorMessage = AZStd::string::format("Material '%s' sub-material %d with %zu uv set(s) was assigned to mesh '%s' with %zu uv set(s). ", pIMaterial->GetName(), i + 1, materialUVs, meshName, meshUVs);
 
                     AZStd::string recommendedAction;
                     if (materialUVs < meshUVs)
                     {
-                        recommendedAction = AZStd::string::format("If you do not intend to use %d uv sets, remove the extra uv set(s) from the source mesh during the import process. Otherwise, consider checking the desired 'Use uv set 2 for...' shader gen params in the material editor.", meshUVs);
+                        recommendedAction = AZStd::string::format("If you do not intend to use %zu uv sets, remove the extra uv set(s) from the source mesh during the import process. Otherwise, consider checking the desired 'Use uv set 2 for...' shader gen params in the material editor.", meshUVs);
                     }
                     else
                     {
-                        recommendedAction = AZStd::string::format("If you intend to use %d uv sets, include the additional uv set(s) in the source mesh during the import process. Otherwise, consider unchecking the 'Use uv set 2 for...' shader gen params in the material editor.", materialUVs);
+                        recommendedAction = AZStd::string::format("If you intend to use %zu uv sets, include the additional uv set(s) in the source mesh during the import process. Otherwise, consider unchecking the 'Use uv set 2 for...' shader gen params in the material editor.", materialUVs);
                     }
                     errorMessage += recommendedAction;
                     AZ_Warning("Material Editor", false, errorMessage.c_str());
@@ -138,14 +138,21 @@ static void ValidateMeshMaterials(std::vector<SMeshMaterialIssue>* issues, IStat
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial, IPhysicalEntity* physEntity)
+#else
+void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial)
+#endif
 {
     m_description = QString();
     m_isValid = true;
 
+#if ENABLE_CRY_PHYSICS
     IBreakableManager* pBreakableManager = GetIEditor()->GetSystem()->GetGlobalEnvironment()->pEntitySystem ?
                                            GetIEditor()->GetSystem()->GetGlobalEnvironment()->pEntitySystem->GetBreakableManager() :
                                            nullptr;
+#endif
+
     _smart_ptr<IMaterial> pIMaterial = 0;
     if (editorMaterial)
     {
@@ -159,6 +166,7 @@ void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial, I
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     if (editorMaterial && physEntity && statObj)
     {
         if (pBreakableManager && !pBreakableManager->IsGeometryBreakable(physEntity, statObj, pIMaterial))
@@ -171,6 +179,7 @@ void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial, I
             m_description += "Geometry is unsuitable for procedural (glass) break.";
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
 
     const char* errorText = 0;

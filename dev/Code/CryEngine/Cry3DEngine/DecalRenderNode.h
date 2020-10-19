@@ -39,8 +39,6 @@ public:
     virtual const char* GetName() const;
     virtual Vec3 GetPos(bool bWorldOnly = true) const;
     virtual void Render(const SRendParams& rParam, const SRenderingPassInfo& passInfo);
-    virtual IPhysicalEntity* GetPhysics() const;
-    virtual void SetPhysics(IPhysicalEntity*);
     void SetMaterial(_smart_ptr<IMaterial> pMat) override;
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = 0);
     virtual _smart_ptr<IMaterial> GetMaterialOverride() { return m_pMaterial; }
@@ -60,7 +58,7 @@ public:
     static void ResetDecalUpdatesCounter() { CDecalRenderNode::m_nFillBigDecalIndicesCounter = 0; }
 
     // SetMatrix only supports changing position, this will do the full transform
-    void SetMatrixFull(const Matrix34& mat);
+    virtual void SetMatrixFull(const Matrix34& mat);
 public:
     CDecalRenderNode();
     void RequestUpdate() { m_updateRequested = true; DeleteDecal(); }

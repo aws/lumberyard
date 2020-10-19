@@ -17,6 +17,7 @@
 #include <Source/PythonCommon.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/embed.h>
+#include <pybind11/eval.h>
 #include <osdefs.h>
 
 #include <AzCore/Component/EntityId.h>
@@ -323,8 +324,8 @@ namespace EditorPythonBindings
             EditorPythonBindingsNotificationBus::Broadcast(&EditorPythonBindingsNotificationBus::Events::OnPostInitialize);
 
             // initialize internal base module and bootstrap scripts
-            ExecuteByString("import azlmbr");
-            ExecuteBoostrapScripts(pythonPathStack);
+            ExecuteByString("import azlmbr", false);
+            ExecuteBootstrapScripts(pythonPathStack);
             return true;
         }
         return false;
@@ -427,7 +428,7 @@ namespace EditorPythonBindings
         }
     }
 
-    void PythonSystemComponent::ExecuteBoostrapScripts(const PythonPathStack& pythonPathStack)
+    void PythonSystemComponent::ExecuteBootstrapScripts(const PythonPathStack& pythonPathStack)
     {
         for(const auto& path : pythonPathStack)
         {
@@ -537,7 +538,7 @@ namespace EditorPythonBindings
         return !PyErr_Occurred();
     }
 
-    void PythonSystemComponent::ExecuteByString(AZStd::string_view script)
+    void PythonSystemComponent::ExecuteByString(AZStd::string_view script, bool printResult)
     {
         if (!Py_IsInitialized())
         {
@@ -550,12 +551,55 @@ namespace EditorPythonBindings
             // Acquire GIL before calling Python code
             pybind11::gil_scoped_acquire acquire;
 
-            PyCompilerFlags flags;
-            flags.cf_flags = 0;
-            const int returnCode = PyRun_SimpleStringFlags(script.data(), &flags);
-            if (returnCode != 0)
+            // Acquire scope for __main__ for executing our script
+            pybind11::object scope = pybind11::module::import("__main__").attr("__dict__");
+
+            bool shouldPrintValue = false;
+
+            if (printResult)
             {
-                AZ_Warning("python", false, "Detected script failure with return code %d.", returnCode);
+                // Attempt to compile our code to determine if it's an expression
+                // i.e. a Python code object with only an rvalue
+                // If it is, it can be evaled to produce a PyObject
+                // If it's not, we can't evaluate it into a result and should fall back to exec
+                shouldPrintValue = true;
+
+                using namespace pybind11::literals;
+
+                // codeop.compile_command is a thin wrapper around the Python compile builtin
+                // We attempt to compile using symbol="eval" to see if the string is valid for eval
+                // This is similar to what the Python REPL does internally
+                pybind11::object codeop = pybind11::module::import("codeop");
+                pybind11::object compileCommand = codeop.attr("compile_command");
+                try
+                {
+                    compileCommand(script.data(), "symbol"_a="eval");
+                }
+                catch (const pybind11::error_already_set&)
+                {
+                    shouldPrintValue = false;
+                }
+            }
+
+            try
+            {
+                if (shouldPrintValue)
+                {
+                    // We're an expression, run and print the result
+                    pybind11::object result = pybind11::eval(script.data(), scope);
+                    pybind11::print(result);
+                }
+                else
+                {
+                    // Just exec the code block
+                    pybind11::exec(script.data(), scope);
+                }
+            }
+            catch (pybind11::error_already_set& pythonError)
+            {
+                // Release the exception stack and let Python print it to stderr
+                pythonError.restore();
+                PyErr_Print();
             }
         }
     }

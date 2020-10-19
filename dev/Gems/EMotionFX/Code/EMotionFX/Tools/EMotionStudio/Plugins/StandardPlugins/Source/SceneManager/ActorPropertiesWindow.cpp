@@ -18,7 +18,6 @@
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QWindow>
-#include <MCore/Source/Compare.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MotionManager.h>
@@ -97,20 +96,6 @@ namespace EMStudio
         layout->addWidget(new QLabel("Excluded from bounds"), rowNr, 0);
         layout->addWidget(m_excludeFromBoundsBrowseEdit, rowNr, 1);
 
-        // collision meshes nodes
-        rowNr++;
-        mCollisionMeshesSetupWindow = new CollisionMeshesSetupWindow(this);
-        mCollisionMeshesSetupLink = new AzQtComponents::BrowseEdit();
-        mCollisionMeshesSetupLink->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-        mCollisionMeshesSetupLink->setClearButtonEnabled(true);
-        mCollisionMeshesSetupLink->setLineEditReadOnly(true);
-        mCollisionMeshesSetupLink->setMinimumHeight(20);
-        mCollisionMeshesSetupLink->setMaximumHeight(20);
-        mCollisionMeshesSetupLink->setPlaceholderText("Select meshes");
-        layout->addWidget(new QLabel("Collision mesh setup"), rowNr, 0);
-        layout->addWidget(mCollisionMeshesSetupLink, rowNr, 1);
-        connect(mCollisionMeshesSetupLink, &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &ActorPropertiesWindow::OnCollisionMeshesSetup);
-
         // mirror setup
         rowNr++;
         mMirrorSetupWindow = new MirrorSetupWindow(mPlugin->GetDockWidget(), mPlugin);
@@ -177,13 +162,11 @@ namespace EMStudio
             mNameEdit->setEnabled(false);
             mNameEdit->setText("");
 
-            mCollisionMeshesSetupLink->setEnabled(false);
             mMirrorSetupLink->setEnabled(false);
 
             return;
         }
 
-        mCollisionMeshesSetupLink->setEnabled(true);
         mMirrorSetupLink->setEnabled(true);
 
         // Motion extraction node
@@ -466,11 +449,5 @@ namespace EMStudio
         {
             mMirrorSetupWindow->exec();
         }
-    }
-
-    void ActorPropertiesWindow::OnCollisionMeshesSetup()
-    {
-        mCollisionMeshesSetupWindow->Update(mActorInstance->GetID());
-        mCollisionMeshesSetupWindow->exec();
     }
 } // namespace EMStudio

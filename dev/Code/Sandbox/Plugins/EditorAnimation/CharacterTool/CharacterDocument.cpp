@@ -61,6 +61,7 @@ static void DrawSkeletonBoundingBox(IRenderAuxGeom* pAuxGeom, const ICharacterIn
     pAuxGeom->DrawOBB(obb, location.t, 0, RGBA8(0xff, 0x00, 0x1f, 0xff), eBBD_Extremes_Color_Encoded);
 }
 
+#if ENABLE_CRY_PHYSICS
 static void DrawPhysicalEntities(IPhysicsDebugRenderer* pRenderer, ICharacterInstance* pCharacter, int iDrawHelpers)
 {
     if (pCharacter == 0)
@@ -111,7 +112,7 @@ static void DrawPhysicalEntities(IPhysicsDebugRenderer* pRenderer, ICharacterIns
         }
     }
 }
-
+#endif // ENABLE_CRY_PHYSICS
 
 static void DrawJoint(IRenderAuxGeom* pAuxGeom, const Vec3& start, const Vec3& end, const uint8 opacity = 255)
 {
@@ -592,12 +593,12 @@ namespace CharacterTool {
 
     void CharacterDocument::Physicalize()
     {
+#if ENABLE_CRY_PHYSICS
         IPhysicalWorld* pPhysWorld = gEnv->pPhysicalWorld;
         if (!pPhysWorld)
         {
             return;
         }
-
         ICharacterInstance* character = m_compressedCharacter;
 
         if (m_pPhysicalEntity)
@@ -623,6 +624,7 @@ namespace CharacterTool {
             pd.bActive = 0;
             m_pPhysicalEntity->SetParams(&pd);
         }
+#endif // ENABLE_CRY_PHYSICS
 
         _smart_ptr<IMaterial> pMaterial = 0;
         if (m_compressedCharacter)
@@ -630,6 +632,7 @@ namespace CharacterTool {
             pMaterial = m_compressedCharacter->GetIMaterial();
         }
 
+#if ENABLE_CRY_PHYSICS
         if (pMaterial)
         {
             // Assign custom material to physics.
@@ -643,6 +646,7 @@ namespace CharacterTool {
             (character && character->GetISkeletonPose()->GetCharacterPhysics() ?
              character->GetISkeletonPose()->GetCharacterPhysics() : m_pPhysicalEntity)->SetParams(&ppart);
         }
+#endif
     }
 
     static string GetAnimSettingsFilename(const string& animationPath)
@@ -2153,6 +2157,7 @@ namespace CharacterTool {
                 pe_params_flags pf;
                 pf.flagsOR = pef_update;
 
+#if ENABLE_CRY_PHYSICS
                 IPhysicalEntity* pCharBasePhys = skeletonPose.GetCharacterPhysics();
                 if (pCharBasePhys)
                 {
@@ -2188,6 +2193,7 @@ namespace CharacterTool {
                 pVars->iOutOfBounds = 3;
                 gEnv->pPhysicalWorld->TimeStep(m_AverageFrameTime, ent_independent | ent_living | ent_flagged_only);
                 pVars->iOutOfBounds = iOutOfBounds;
+#endif // ENABLE_CRY_PHYSICS
             }
 
             //  pInstanceBase->SetAttachmentLocation_DEPRECATED( m_PhysicalLocation );
@@ -2389,6 +2395,7 @@ namespace CharacterTool {
             }
         }
 
+#if ENABLE_CRY_PHYSICS
         // draw physics
         if (m_displayOptions->physics.showPhysicalProxies || m_displayOptions->physics.showRagdollJointLimits)
         {
@@ -2408,6 +2415,7 @@ namespace CharacterTool {
             pPhysRender->Flush(FrameTime);
             pAuxGeom->Flush();
         }
+#endif // ENABLE_CRY_PHYSICS
 
         uint32 flags = pInstanceBase->GetCharEditMode() & ~(CA_BindPose | CA_AllowRedirection);
         if (m_system->scene->layers.bindPose)

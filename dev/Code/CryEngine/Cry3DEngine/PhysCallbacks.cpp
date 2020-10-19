@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "PhysCallbacks.h"
 #include "RenderMeshUtils.h"
 #include "Brush.h"
@@ -398,6 +400,7 @@ void CDeferredCollisionEventOnPhysCollision::AdjustBulletVelocity()
 //////////////////////////////////////////////////////////////////////////
 void CDeferredCollisionEventOnPhysCollision::PostStep()
 {
+#if ENABLE_CRY_PHYSICS
     EventPhysCollision* pCollision = &m_CollisionEvent;
     pe_params_rope pr;
 
@@ -412,6 +415,7 @@ void CDeferredCollisionEventOnPhysCollision::PostStep()
         pt.x = (pCollision->partid[1] + 1 + ((pCollision->partid[1] * 2 - pr.nSegments) >> 31)) * pr.length / pr.nSegments;
         pCollision->pEntity[1]->Action(&as);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     UpdateFoliage();
 }
@@ -1021,3 +1025,4 @@ void CDeferredCollisionEventOnPhysCollision::operator delete(void* ptr)
     gCDeferredCollisionEventOnPhysCollisionPoolAllocator.Deallocate(ptr);
 }
 
+#endif // ENABLE_CRY_PHYSICS

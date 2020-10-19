@@ -40,6 +40,13 @@ namespace AZ
         return result;
     }
 
+    const Quaternion Quaternion::CreateFromEulerAnglesDegrees(Vector3& anglesInDegrees)
+    {
+        Quaternion result;
+        result.SetFromEulerDegrees(anglesInDegrees);
+        return result;
+    }
+
     const Quaternion Quaternion::CreateFromMatrix3x3(const Matrix3x3& m)
     {
         Quaternion result;

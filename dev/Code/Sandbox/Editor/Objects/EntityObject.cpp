@@ -511,6 +511,7 @@ void CEntityObject::SetLookAt(CBaseObject* target)
     CBaseObject::SetLookAt(target);
 }
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 IPhysicalEntity* CEntityObject::GetCollisionEntity() const
 {
@@ -521,6 +522,7 @@ IPhysicalEntity* CEntityObject::GetCollisionEntity() const
     }
     return 0;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 void CEntityObject::GetLocalBounds(AABB& box)
@@ -548,6 +550,7 @@ void CEntityObject::SetModified(bool boModifiedTransformOnly)
 //////////////////////////////////////////////////////////////////////////
 bool CEntityObject::HitTestEntity(HitContext& hc, bool& bHavePhysics)
 {
+#if ENABLE_CRY_PHYSICS
     bHavePhysics = true;
     IPhysicalWorld* pPhysWorld = GetIEditor()->GetSystem()->GetIPhysicalWorld();
     // Test 3D viewport.
@@ -615,6 +618,10 @@ bool CEntityObject::HitTestEntity(HitContext& hc, bool& bHavePhysics)
     {
         bHavePhysics = false;
     }
+#else
+    AZ_UNUSED(hc);
+    bHavePhysics = false;
+#endif // ENABLE_CRY_PHYSICS
 
     return false;
 }
@@ -638,6 +645,7 @@ bool CEntityObject::HitTest(HitContext& hc)
                 return false;
             }
         }
+#if ENABLE_CRY_PHYSICS
         if (m_visualObject && !gSettings.viewports.bShowIcons && !gSettings.viewports.bShowSizeBasedIcons)
         {
             Matrix34 tm = GetWorldTM();
@@ -671,6 +679,7 @@ bool CEntityObject::HitTest(HitContext& hc)
                 return true;
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1338,6 +1347,7 @@ void CEntityObject::SpawnEntity()
         // Check if needs to display bbox for this entity.
         //////////////////////////////////////////////////////////////////////////
         m_bCalcPhysics = true;
+#if ENABLE_CRY_PHYSICS
         if (m_pEntity->GetPhysics() != 0)
         {
             m_bDisplayBBox = false;
@@ -1349,6 +1359,7 @@ void CEntityObject::SpawnEntity()
             }
         }
         else
+#endif // ENABLE_CRY_PHYSICS
         {
             if (m_pEntityScript->GetFlags() & ENTITY_SCRIPT_SHOWBOUNDS)
             {
@@ -4204,6 +4215,7 @@ void CEntityObject::AcceptPhysicsState()
         // angles, which are not updated with the physics value
         SetWorldTM(m_pEntity->GetWorldTM());
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* physic = m_pEntity->GetPhysics();
         if (!physic && m_pEntity->GetCharacter(0))     // for ropes
         {
@@ -4220,6 +4232,7 @@ void CEntityObject::AcceptPhysicsState()
                 pSerializer->Release();
             }
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 
@@ -4604,11 +4617,19 @@ void CEntityObject::OnMaterialChanged(MaterialChangeFlags change)
     {
         if (IEntity* pEntity = GetIEntity())
         {
+#if ENABLE_CRY_PHYSICS
             m_statObjValidator.Validate(pEntity->GetStatObj(ENTITY_SLOT_ACTUAL), GetRenderMaterial(), pEntity->GetPhysics());
+#else
+            m_statObjValidator.Validate(pEntity->GetStatObj(ENTITY_SLOT_ACTUAL), GetRenderMaterial());
+#endif
         }
         else
         {
+#if ENABLE_CRY_PHYSICS
             m_statObjValidator.Validate(0, GetRenderMaterial(), 0);
+#else
+            m_statObjValidator.Validate(0, GetRenderMaterial());
+#endif
         }
     }
 }

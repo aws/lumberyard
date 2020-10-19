@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/optional.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include "CommandSystemConfig.h"
@@ -97,13 +98,14 @@ namespace CommandSystem
         const AZStd::optional<AZStd::string>& sourceNode = AZStd::nullopt, const AZStd::optional<AZStd::string>& targetNode = AZStd::nullopt,
         const AZStd::optional<AZ::s32>& startOffsetX = AZStd::nullopt, const AZStd::optional<AZ::s32>& startOffsetY = AZStd::nullopt,
         const AZStd::optional<AZ::s32>& endOffsetX = AZStd::nullopt, const AZStd::optional<AZ::s32>& endOffsetY = AZStd::nullopt,
-        const AZStd::optional<AZStd::string>& attributesString = AZStd::nullopt,
+        const AZStd::optional<AZStd::string>& attributesString = AZStd::nullopt, const AZStd::optional<AZStd::string>& serializedMembers = AZStd::nullopt,
         MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
 
     class CommandAnimGraphAdjustTransition
         : public MCore::Command
         , public EMotionFX::ParameterMixinTransitionId
         , public EMotionFX::ParameterMixinAttributesString
+        , public EMotionFX::ParameterMixinSerializedMembers
     {
     public:
         AZ_RTTI(CommandAnimGraphAdjustTransition, "{B7EA2F2E-8C89-435B-B75A-92840E0A81B1}",
@@ -128,15 +130,8 @@ namespace CommandSystem
         void RewindTransitionIfActive(EMotionFX::AnimGraphStateTransition* transition);
 
     private:
-        AZStd::string                       mOldTargetNodeName;
-        AZStd::string                       mOldSourceNodeName;
-        int32                               mStartOffsetX;
-        int32                               mStartOffsetY;
-        int32                               mEndOffsetX;
-        int32                               mEndOffsetY;
-        AZStd::string                       m_oldCanBeInterruptedByTransitionIds;
-        bool                                mOldDisabledFlag;
-        bool                                mOldDirtyFlag;
+        AZ::Outcome<AZStd::string>          m_oldSerializedMembers; // Without actions and conditions.
+        bool                                mOldDirtyFlag = false;
     };
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////

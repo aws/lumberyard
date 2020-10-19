@@ -98,14 +98,15 @@ namespace UnitTest
         interactionEvent.m_mouseInteraction.m_keyboardModifiers.m_keyModifiers =
             static_cast<AZ::u32>(AzToolsFramework::ViewportInteraction::KeyboardModifier::Ctrl);
 
-        bool handled = false;
+        using MouseInteractionResult = AzToolsFramework::ViewportInteraction::MouseInteractionResult;
+        MouseInteractionResult handled = MouseInteractionResult::None;
         AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(handled,
-            &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
+            &AzToolsFramework::ViewportInteraction::InternalMouseViewportRequests::InternalHandleAllMouseInteractions,
             interactionEvent);
 
         // Then the component mode is cycled.
         PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_TRUE(handled);
+        EXPECT_EQ(handled, MouseInteractionResult::Viewport);
         EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Offset, subMode);
     }
 
@@ -126,14 +127,15 @@ namespace UnitTest
         interactionEvent.m_mouseInteraction.m_keyboardModifiers.m_keyModifiers =
             static_cast<AZ::u32>(AzToolsFramework::ViewportInteraction::KeyboardModifier::Ctrl);
 
-        bool handled = false;
+        using MouseInteractionResult = AzToolsFramework::ViewportInteraction::MouseInteractionResult;
+        MouseInteractionResult handled = MouseInteractionResult::None;
         AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(handled,
-            &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
+            &AzToolsFramework::ViewportInteraction::InternalMouseViewportRequests::InternalHandleAllMouseInteractions,
             interactionEvent);
 
         // Then the component mode is cycled.
         PhysX::ColliderComponentModeRequestBus::BroadcastResult(subMode, &PhysX::ColliderComponentModeRequests::GetCurrentMode);
-        EXPECT_TRUE(handled);
+        EXPECT_EQ(handled, MouseInteractionResult::Viewport);
         EXPECT_EQ(PhysX::ColliderComponentModeRequests::SubMode::Rotation, subMode);
     }
 

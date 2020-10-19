@@ -13,7 +13,6 @@
 
 #include "CryLegacy_precompiled.h"
 #include "ScriptBind_Sound.h"
-#include <IAudioSystem.h>
 
 CScriptBind_Sound::CScriptBind_Sound(IScriptSystem* pScriptSystem, ISystem* pSystem)
 {

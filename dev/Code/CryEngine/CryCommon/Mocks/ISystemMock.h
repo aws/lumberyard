@@ -50,10 +50,12 @@ public:
         void(const char* pFunc, int line));
     MOCK_METHOD0(RenderStatistics,
         void());
+#if ENABLE_CRY_PHYSICS
     MOCK_METHOD0(RenderPhysicsHelpers,
         void());
     MOCK_METHOD1(RenderPhysicsStatistics,
         void(IPhysicalWorld * pWorld));
+#endif
     MOCK_METHOD0(GetUsedMemory,
         uint32());
     MOCK_METHOD0(GetUserName,
@@ -129,10 +131,12 @@ public:
         IFrameProfileSystem * ());
     MOCK_METHOD0(GetIValidator,
         IValidator * ());
+#if ENABLE_CRY_PHYSICS
     MOCK_METHOD0(GetIPhysicsDebugRenderer,
         IPhysicsDebugRenderer * ());
     MOCK_METHOD0(GetIPhysRenderer,
         IPhysRenderer * ());
+#endif // ENABLE_CRY_PHYSICS
     MOCK_METHOD0(GetIAnimationSystem,
         ICharacterManager * ());
     MOCK_METHOD0(GetStreamEngine,
@@ -153,8 +157,10 @@ public:
         IAISystem * ());
     MOCK_METHOD0(GetIMovieSystem,
         IMovieSystem * ());
+#if ENABLE_CRY_PHYSICS
     MOCK_METHOD0(GetIPhysicalWorld,
         IPhysicalWorld * ());
+#endif
     MOCK_METHOD0(GetIAudioSystem,
         Audio::IAudioSystem * ());
     MOCK_METHOD0(GetI3DEngine,
@@ -339,6 +345,8 @@ public:
         void(bool enabled));
     MOCK_METHOD0(GetApplicationInstance,
         int());
+    MOCK_METHOD1(GetApplicationLogInstance,
+        int(const char* logFilePath));
     MOCK_METHOD0(GetCurrentUpdateTimeStats,
         sUpdateTimes & ());
     MOCK_METHOD2(GetUpdateTimeStats,

@@ -295,7 +295,7 @@ namespace AZ
             }
             else
             {
-                return ResultCode(Tasks::ReadField, Outcomes::Skipped);
+                return ResultCode(Tasks::ReadField, Outcomes::DefaultsUsed);
             }
         }
         else

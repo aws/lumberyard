@@ -10,7 +10,10 @@
 *
 */
 
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "ForceVolume.h"
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
@@ -269,7 +272,7 @@ namespace LmbrCentral
         {
             float phi = ((i + 1) % nSamples) * increment;
             float y = ((i * offset) - 1) + (offset / 2.f);
-            float r = sqrt(1 - pow(y, 2));
+            float r = aznumeric_cast<float>(sqrt(1 - pow(y, 2)));
             float x = cos(phi) * r;
             float z = sin(phi) * r;
             points.emplace_back(x * radius, y * radius, z * radius);
@@ -372,3 +375,5 @@ namespace LmbrCentral
         }
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

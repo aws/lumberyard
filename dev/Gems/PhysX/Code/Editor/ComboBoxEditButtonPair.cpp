@@ -37,11 +37,6 @@ namespace PhysX
             layout->addWidget(m_editButton);
         }
 
-        bool ComboBoxEditButtonPair::eventFilter(QObject *object, QEvent *event)
-        {
-            return event->type() == QEvent::Wheel;
-        }
-
         QComboBox* ComboBoxEditButtonPair::GetComboBox()
         { 
             return m_comboBox; 

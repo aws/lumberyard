@@ -36,7 +36,7 @@ namespace AZ
         InputEventNotificationId(const char* actionName) : InputEventNotificationId(AZ::Crc32(actionName)) {}
         bool operator==(const InputEventNotificationId& rhs) const { return m_localUserId == rhs.m_localUserId && m_actionNameCrc == rhs.m_actionNameCrc; }
         InputEventNotificationId Clone() const { return *this; }
-        AZStd::string ToString() const { return AZStd::string::format("%s, %lu", AzFramework::LocalUserIdToString(m_localUserId).c_str(), static_cast<AZ::u32>(m_actionNameCrc)); }
+        AZStd::string ToString() const { return AZStd::string::format("%s, %u", AzFramework::LocalUserIdToString(m_localUserId).c_str(), static_cast<AZ::u32>(m_actionNameCrc)); }
 
         AzFramework::LocalUserId m_localUserId;
         Input::ProcessedEventName m_actionNameCrc;

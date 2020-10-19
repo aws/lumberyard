@@ -85,7 +85,7 @@ void PropertyOArchive::enterNode(PropertyRow* row)
     stack_.push_back(Level());
     Level& level = stack_.back();
     level.oldRows.swap(row->children_);
-    row->children_.reserve(level.oldRows.size());	
+    row->children_.reserve(level.oldRows.size());
 }
 
 void PropertyOArchive::closeStruct(const char* name)
@@ -131,7 +131,7 @@ RowType* PropertyOArchive::updateRow(const char* name, const char* label, const 
     if(currentNode_ == 0){
         if (rootNode_)
             newRow = static_cast<RowType*>(rootNode_.get());
-        else		
+        else
             newRow.reset(new RowType());
         newRow->setNames(name, label, typeName);
         if(updateMode_){
@@ -213,10 +213,12 @@ PropertyRow* PropertyOArchive::updateRowPrimitive(const char* name, const char* 
     }
     currentNode_->add(newRow);
     if (!oldRow || oldLabel != label)
+    {
         // for new rows we should mark all parents with labelChanged_
         newRow->setLabelChanged();
+    }
 
-	newRow->setValue(value, handle, typeId);
+    newRow->setValue(value, handle, typeId);
     return newRow;
 }
 
@@ -256,25 +258,25 @@ bool PropertyOArchive::operator()(const Serialization::SStruct& ser, const char*
 
 bool PropertyOArchive::operator()(Serialization::IString& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowString>(name, label, "string", value.get(), value.handle(), value.type());
+    lastNode_ = updateRowPrimitive<PropertyRowString>(name, label, "string", value.get(), value.handle(), value.type());
     return true;
 }
 
 bool PropertyOArchive::operator()(Serialization::IWString& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowString>(name, label, "string", value.get(), value.handle(), value.type());
+    lastNode_ = updateRowPrimitive<PropertyRowString>(name, label, "string", value.get(), value.handle(), value.type());
     return true;
 }
 
 bool PropertyOArchive::operator()(bool& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowBool>(name, label, "bool", value, &value, Serialization::TypeID::get<bool>());
+    lastNode_ = updateRowPrimitive<PropertyRowBool>(name, label, "bool", value, &value, Serialization::TypeID::get<bool>());
     return true;
 }
 
 bool PropertyOArchive::operator()(char& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<char> >(name, label, "char", value, &value, Serialization::TypeID::get<char>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<char> >(name, label, "char", value, &value, Serialization::TypeID::get<char>());
     return true;
 }
 
@@ -282,25 +284,25 @@ bool PropertyOArchive::operator()(char& value, const char* name, const char* lab
 
 bool PropertyOArchive::operator()(int8& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<int8> >(name, label, "int8", value, &value, Serialization::TypeID::get<int8>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<int8> >(name, label, "int8", value, &value, Serialization::TypeID::get<int8>());
     return true;
 }
 
 bool PropertyOArchive::operator()(int16& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<int16> >(name, label, "int16", value, &value, Serialization::TypeID::get<int16>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<int16> >(name, label, "int16", value, &value, Serialization::TypeID::get<int16>());
     return true;
 }
 
 bool PropertyOArchive::operator()(int32& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<int32> >(name, label, "int32", value, &value, Serialization::TypeID::get<int32>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<int32> >(name, label, "int32", value, &value, Serialization::TypeID::get<int32>());
     return true;
 }
 
 bool PropertyOArchive::operator()(int64& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<int64> >(name, label, "int64", value, &value, Serialization::TypeID::get<int64>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<int64> >(name, label, "int64", value, &value, Serialization::TypeID::get<int64>());
     return true;
 }
 
@@ -308,25 +310,25 @@ bool PropertyOArchive::operator()(int64& value, const char* name, const char* la
 
 bool PropertyOArchive::operator()(uint8& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<uint8> >(name, label, "uint8", value, &value, Serialization::TypeID::get<uint8>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<uint8> >(name, label, "uint8", value, &value, Serialization::TypeID::get<uint8>());
     return true;
 }
 
 bool PropertyOArchive::operator()(uint16& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<uint16> >(name, label, "uint16", value, &value, Serialization::TypeID::get<uint16>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<uint16> >(name, label, "uint16", value, &value, Serialization::TypeID::get<uint16>());
     return true;
 }
 
 bool PropertyOArchive::operator()(uint32& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<uint32> >(name, label, "uint32", value, &value, Serialization::TypeID::get<uint32>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<uint32> >(name, label, "uint32", value, &value, Serialization::TypeID::get<uint32>());
     return true;
 }
 
 bool PropertyOArchive::operator()(uint64& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<uint64> >(name, label, "uint64", value, &value, Serialization::TypeID::get<uint64>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<uint64> >(name, label, "uint64", value, &value, Serialization::TypeID::get<uint64>());
     return true;
 }
 
@@ -334,13 +336,13 @@ bool PropertyOArchive::operator()(uint64& value, const char* name, const char* l
 
 bool PropertyOArchive::operator()(float& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<float> >(name, label, "float", value, &value, Serialization::TypeID::get<float>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<float> >(name, label, "float", value, &value, Serialization::TypeID::get<float>());
     return true;
 }
 
 bool PropertyOArchive::operator()(double& value, const char* name, const char* label)
 {
-	lastNode_ = updateRowPrimitive<PropertyRowNumber<double> >(name, label, "double", value, &value, Serialization::TypeID::get<double>());
+    lastNode_ = updateRowPrimitive<PropertyRowNumber<double> >(name, label, "double", value, &value, Serialization::TypeID::get<double>());
     return true;
 }
 
@@ -356,7 +358,7 @@ bool PropertyOArchive::operator()(Serialization::IContainer& ser, const char *na
         PropertyOArchive ar(model_, true);
         ar.SetOutlineMode(outlineMode_);
         ar.SetFilter(GetFilter());
-		ar.SetInnerContext(GetInnerContext());
+        ar.SetInnerContext(GetInnerContext());
         model_->addDefaultType(0, elementTypeName); // add empty default to prevent recursion
         ser.serializeNewElement(ar, "", (label&&*label=='!')?"!<":"<");
         if (ar.defaultValueRootNode() != 0)
@@ -389,7 +391,7 @@ bool PropertyOArchive::operator()(Serialization::IPointer& ptr, const char *name
         const char* nullLabel = factory->nullLabel();
         if (!(nullLabel && nullLabel[0] == '\0'))
         {
-			PropertyDefaultDerivedTypeValue nullValue;
+            PropertyDefaultDerivedTypeValue nullValue;
             nullValue.factory = factory;
             nullValue.factoryIndex = -1;
             nullValue.label = nullLabel ? nullLabel : "[ null ]";
@@ -398,14 +400,14 @@ bool PropertyOArchive::operator()(Serialization::IPointer& ptr, const char *name
 
         for(size_t i = 0; i < count; ++i) {
             const Serialization::TypeDescription *desc = factory->descriptionByIndex((int)i);
-			if (!model_->defaultTypeRegistered(baseType, desc->name())){
+            if (!model_->defaultTypeRegistered(baseType, desc->name())){
                 PropertyOArchive ar(model_, true);
                 ar.SetOutlineMode(outlineMode_);
                 ar.SetInnerContext(GetInnerContext());
                 ar.SetFilter(GetFilter());
 
-				PropertyDefaultDerivedTypeValue defaultValue;
-				defaultValue.registeredName = desc->name();
+                PropertyDefaultDerivedTypeValue defaultValue;
+                defaultValue.registeredName = desc->name();
                 defaultValue.factory = factory;
                 defaultValue.factoryIndex = int(i);
                 defaultValue.label = desc->label();
@@ -451,7 +453,7 @@ bool PropertyOArchive::operator()(Serialization::Object& obj, const char *name, 
 
 bool PropertyOArchive::OpenBlock(const char* name, const char* label)
 {
-	PropertyRow* row = updateRow<PropertyRow>(name, label, "block", Serialization::SStruct());
+    PropertyRow* row = updateRow<PropertyRow>(name, label, "block", Serialization::SStruct());
     lastNode_ = currentNode_;
     enterNode(row);
     return true;
@@ -459,22 +461,22 @@ bool PropertyOArchive::OpenBlock(const char* name, const char* label)
 
 void PropertyOArchive::ValidatorMessage(bool error, const void* handle, const Serialization::TypeID& type, const char* message)
 {
-	if (validator_)
-	{
-		ValidatorEntry entry(error ? VALIDATOR_ENTRY_ERROR : VALIDATOR_ENTRY_WARNING,
-							 handle,
-							 type,
-							 message);
-		validator_->AddEntry(entry);
-	}
+    if (validator_)
+    {
+        ValidatorEntry entry(error ? VALIDATOR_ENTRY_ERROR : VALIDATOR_ENTRY_WARNING,
+                             handle,
+                             type,
+                             message);
+        validator_->AddEntry(entry);
+    }
 }
 
 void PropertyOArchive::DocumentLastField(const char* message)
 {
-	if (lastNode_ && (!currentNode_ || lastNode_->parent() == currentNode_))
-		lastNode_->setTooltip(message ? message : "");
-	else if (currentNode_)
-		currentNode_->setTooltip(message ? message : "");
+    if (lastNode_ && (!currentNode_ || lastNode_->parent() == currentNode_))
+        lastNode_->setTooltip(message ? message : "");
+    else if (currentNode_)
+        currentNode_->setTooltip(message ? message : "");
 }
 
 void PropertyOArchive::CloseBlock()

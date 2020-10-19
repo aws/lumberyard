@@ -303,6 +303,7 @@ void CRoadRenderNode::BuildTangentListLocked(AzFramework::Terrain::TerrainDataRe
 
 void CRoadRenderNode::DoDeferredCompile() PREFAST_SUPPRESS_WARNING(6262) //function uses > 32k stack space
 {
+#if ENABLE_CRY_PHYSICS
     LOADING_TIME_PROFILE_SECTION;
 
     int nVertsNumAll = m_arrVerts.Count();
@@ -569,6 +570,10 @@ void CRoadRenderNode::DoDeferredCompile() PREFAST_SUPPRESS_WARNING(6262) //funct
         meshCompiler.WeldPos_VF_P3X(m_lstVerticesMerged, m_lstTangMerged, listNormalsDummy, m_lstIndicesMerged, VEC_EPSILON, GetBBox());
 
     }
+#else
+    // Deferred compilation?
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 }
 
 void CRoadRenderNode::MakeRenderMesh()
@@ -854,10 +859,12 @@ void CRoadRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 
 void CRoadRenderNode::Dephysicalize(bool bKeepIfReferenced)
 {
+#if ENABLE_CRY_PHYSICS
     if (m_pPhysEnt)
     {
         GetPhysicalWorld()->DestroyPhysicalEntity(m_pPhysEnt);
     }
+#endif // ENABLE_CRY_PHYSICS
     m_pPhysEnt = NULL;
 }
 

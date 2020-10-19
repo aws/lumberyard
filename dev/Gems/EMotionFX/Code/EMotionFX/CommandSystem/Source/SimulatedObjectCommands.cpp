@@ -82,7 +82,7 @@ namespace EMotionFX
     bool CommandSimulatedObjectHelpers::RemoveSimulatedObject(AZ::u32 actorId, size_t objectIndex,
         MCore::CommandGroup* commandGroup, bool executeInsideCommand)
     {
-        AZStd::string command = AZStd::string::format("%s -%s %d -%s %d",
+        AZStd::string command = AZStd::string::format("%s -%s %u -%s %zu",
             CommandRemoveSimulatedObject::s_commandName,
             CommandRemoveSimulatedObject::s_actorIdParameterName, actorId,
             CommandRemoveSimulatedObject::s_objectIndexParameterName, objectIndex);
@@ -96,7 +96,7 @@ namespace EMotionFX
         AZStd::string jointIndicesStr;
         JointIndicesToString(jointIndices, jointIndicesStr);
 
-        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %d -%s %s",
+        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %zu -%s %s",
             CommandAddSimulatedJoints::s_commandName,
             CommandAddSimulatedJoints::s_actorIdParameterName, actorId,
             CommandAddSimulatedJoints::s_jointIndicesParameterName, jointIndicesStr.c_str(),
@@ -112,7 +112,7 @@ namespace EMotionFX
         AZStd::string jointIndicesStr;
         JointIndicesToString(jointIndices, jointIndicesStr);
 
-        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %d -%s %s",
+        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %zu -%s %s",
             CommandRemoveSimulatedJoints::s_commandName,
             CommandRemoveSimulatedJoints::s_actorIdParameterName, actorId,
             CommandRemoveSimulatedJoints::s_jointIndicesParameterName, jointIndicesStr.c_str(),
@@ -367,7 +367,7 @@ namespace EMotionFX
             return false;
         }
 
-        AZStd::string command = AZStd::string::format("%s -%s %d -%s %d -%s %s",
+        AZStd::string command = AZStd::string::format("%s -%s %d -%s %zu -%s %s",
             CommandAddSimulatedObject::s_commandName,
             CommandAddSimulatedObject::s_actorIdParameterName, actor->GetID(),
             CommandAddSimulatedObject::s_objectIndexParameterName, m_objectIndex,
@@ -715,7 +715,7 @@ namespace EMotionFX
         SimulatedObject* object = setup->GetSimulatedObject(m_objectIndex);
         if (!object)
         {
-            outResult = AZStd::string::format("Can't find simulated object with index %d.", m_objectIndex);
+            outResult = AZStd::string::format("Can't find simulated object with index %zu.", m_objectIndex);
             return false;
         }
 
@@ -768,7 +768,7 @@ namespace EMotionFX
         AZStd::string jointIndicesStr;
         CommandSimulatedObjectHelpers::JointIndicesToString(m_jointIndices, jointIndicesStr);
 
-        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %d",
+        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %zu -%s %s",
             CommandRemoveSimulatedJoints::s_commandName,
             CommandRemoveSimulatedJoints::s_actorIdParameterName, actor->GetID(),
             CommandRemoveSimulatedJoints::s_jointIndicesParameterName, jointIndicesStr.c_str(),
@@ -916,7 +916,7 @@ namespace EMotionFX
         AZStd::string jointIndicesString;
         CommandSimulatedObjectHelpers::JointIndicesToString(m_jointIndices, jointIndicesString);
 
-        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %d -%s %s",
+        AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -%s %zu -%s %s",
             CommandAddSimulatedJoints::s_commandName,
             CommandAddSimulatedJoints::s_actorIdParameterName, actor->GetID(),
             CommandAddSimulatedJoints::s_jointIndicesParameterName, jointIndicesString.c_str(),

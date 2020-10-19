@@ -14,6 +14,9 @@
 // Description : Breakable glass sim render element
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "CREBreakableGlass.h"
 #include "D3DREBreakableGlassBuffer.h"
 
@@ -816,3 +819,5 @@ void CREBreakableGlass::DrawDebugData(IRenderAuxGeom* const pRenderer, SAuxGeomR
     pRenderer->DrawLines(lineVerts, 2, ColorB(127, 255, 255, 255), 2.0f);
 }//-------------------------------------------------------------------------------------------------
 #endif // GLASS_DEBUG_MODE
+
+#endif // ENABLE_CRY_PHYSICS

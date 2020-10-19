@@ -131,7 +131,7 @@ namespace AZ
          {
              static AZStd::string Get(AZ::BehaviorContext& context)
              {
-                 return AZStd::string::format("Fixed Size Array<%s, %d>", OnDemandPrettyName<T>::Get(context).data(), N);
+                 return AZStd::string::format("Fixed Size Array<%s, %zu>", OnDemandPrettyName<T>::Get(context).data(), N);
              }
          };
 

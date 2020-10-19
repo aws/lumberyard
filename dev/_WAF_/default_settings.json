@@ -1,397 +1,403 @@
 {
     "Game Projects": [
         {
-            "long_form": "--enabled-game-projects", 
-            "attribute": "enabled_game_projects", 
-            "default_value": "StarterGame,CloudGemSamples", 
+            "long_form": "--enabled-game-projects",
+            "attribute": "enabled_game_projects",
+            "default_value": "StarterGame,CloudGemSamples",
             "description": "Comma-separated list of game projects to enable for compiling"
         }
-    ], 
+    ],
     "Incredibuild Options": [
         {
-            "short_form": "-i", 
-            "long_form": "--use-incredibuild", 
-            "attribute": "use_incredibuild", 
-            "default_value": "False", 
+            "short_form": "-i",
+            "long_form": "--use-incredibuild",
+            "attribute": "use_incredibuild",
+            "default_value": "False",
             "description": "Use Incredibuild"
-        }, 
+        },
         {
-            "long_form": "--incredibuild-max-cores", 
-            "attribute": "incredibuild_max_cores", 
-            "default_value": "128", 
+            "long_form": "--incredibuild-max-cores",
+            "attribute": "incredibuild_max_cores",
+            "default_value": "128",
             "description": "Control number of processes spawned by Incredibuild"
-        }, 
+        },
         {
-            "long_form": "--auto-update-incredibuild-settings", 
-            "attribute": "auto_update_incredibuild_settings", 
-            "default_value": "False", 
+            "long_form": "--auto-update-incredibuild-settings",
+            "attribute": "auto_update_incredibuild_settings",
+            "default_value": "False",
             "description": "Option to automatically attempt to update the registry for incredibuild if enabled"
-        }, 
+        },
         {
-            "long_form": "--incredibuild-profile", 
-            "attribute": "incredibuild_profile", 
-            "default_value": "", 
+            "long_form": "--incredibuild-profile",
+            "attribute": "incredibuild_profile",
+            "default_value": "",
             "description": "The Incredibuild configuration value to load for incredibuild builds. If blank, generate one automatically."
         }
-    ], 
+    ],
     "Build Options": [
         {
-            "long_form": "--artifacts-cache", 
-            "attribute": "artifacts_cache", 
-            "default_value": "", 
+            "long_form": "--artifacts-cache",
+            "attribute": "artifacts_cache",
+            "default_value": "",
             "description": "Path of artifacts cache, artifacts cache will be disabled if this is empty"
-        }, 
+        },
         {
-            "long_form": "--artifacts-cache-restore", 
-            "attribute": "artifacts_cache_restore", 
-            "default_value": "False", 
+            "long_form": "--artifacts-cache-restore",
+            "attribute": "artifacts_cache_restore",
+            "default_value": "False",
             "description": "Restore artifacts from cache"
-        }, 
+        },
         {
-            "long_form": "--artifacts-cache-upload", 
-            "attribute": "artifacts_cache_upload", 
-            "default_value": "False", 
+            "long_form": "--artifacts-cache-upload",
+            "attribute": "artifacts_cache_upload",
+            "default_value": "False",
             "description": "Upload artifacts to cache"
-        }, 
+        },
         {
-            "long_form": "--artifacts-cache-pch", 
-            "attribute": "artifacts_cache_pch", 
-            "default_value": "False", 
+            "long_form": "--artifacts-cache-pch",
+            "attribute": "artifacts_cache_pch",
+            "default_value": "False",
             "description": "Cache precompiled headers, only enable this when using the same workspace to upload/restore"
-        }, 
+        },
         {
-            "long_form": "--force-version", 
-            "attribute": "version", 
-            "default_value": "1.25.0.0", 
+            "long_form": "--force-version",
+            "attribute": "version",
+            "default_value": "1.26.0.0",
             "description": "Version to embed in final build outputs"
-        }, 
+        },
         {
-            "long_form": "--generate-debug-info", 
-            "attribute": "generate_debug_info", 
-            "default_value": "True", 
+            "long_form": "--generate-debug-info",
+            "attribute": "generate_debug_info",
+            "default_value": "True",
             "description": "Generate a Build containing Debug Info"
-        }, 
+        },
         {
-            "long_form": "--generate-map-file", 
-            "attribute": "generate_map_file", 
-            "default_value": "False", 
+            "long_form": "--generate-map-file",
+            "attribute": "generate_map_file",
+            "default_value": "False",
             "description": "Generate a Map file during linking if the platform supports it"
-        }, 
+        },
         {
-            "long_form": "--use-precompiled-header", 
-            "attribute": "use_precompiled_header", 
-            "default_value": "True", 
+            "long_form": "--use-precompiled-header",
+            "attribute": "use_precompiled_header",
+            "default_value": "True",
             "description": "Use Precompiled Header for compilation"
-        }, 
+        },
         {
-            "long_form": "--use-uber-files", 
-            "attribute": "use_uber_files", 
-            "default_value": "False", 
+            "long_form": "--use-uber-files",
+            "attribute": "use_uber_files",
+            "default_value": "False",
             "description": "Use UberFiles for compilation"
-        }, 
+        },
         {
-            "long_form": "--uber-file-size", 
-            "attribute": "uber_file_size", 
-            "default_value": "307200", 
+            "long_form": "--uber-file-size",
+            "attribute": "uber_file_size",
+            "default_value": "307200",
             "description": "Maximum content size of auto-generated uber files"
-        }, 
+        },
         {
-            "long_form": "--use-bullseye-coverage", 
-            "attribute": "use_bullseye_coverage", 
-            "default_value": "False", 
+            "long_form": "--use-bullseye-coverage",
+            "attribute": "use_bullseye_coverage",
+            "default_value": "False",
             "description": "Tweaks build settings to use Bullseye"
-        }, 
+        },
         {
-            "long_form": "--bullseye-excluded-modules", 
-            "attribute": "bullseye_excluded_modules", 
-            "default_value": "AzCoreTests", 
+            "long_form": "--bullseye-excluded-modules",
+            "attribute": "bullseye_excluded_modules",
+            "default_value": "AzCoreTests",
             "description": "Tells bullseye not to process specific modules. Comma separated list."
-        }, 
+        },
         {
-            "long_form": "--bullseye-included-modules", 
-            "attribute": "bullseye_included_modules", 
-            "default_value": "", 
+            "long_form": "--bullseye-included-modules",
+            "attribute": "bullseye_included_modules",
+            "default_value": "",
             "description": "Tells bullseye a list of specific modules to process. Comma separated list. If empty applies to all modules not excluded."
-        }, 
+        },
         {
-            "long_form": "--bullseye-cov-file", 
-            "attribute": "bullseye_cov_file", 
-            "default_value": "coverage.cov", 
+            "long_form": "--bullseye-cov-file",
+            "attribute": "bullseye_cov_file",
+            "default_value": "coverage.cov",
             "description": "Tells bullseye the name of the coverage data file to create. Relative to the project root."
-        }, 
+        },
         {
-            "long_form": "--bullseye-coverage-regions", 
-            "attribute": "bullseye_coverage_regions", 
-            "default_value": "!*/Tests:, !**/Tests:, !*/UnitTests:, !**/UnitTests:, !*/SDKs:, !**/SDKs:/, !*/Mocks:, !**/Mocks:, !*/qt5:, !**/qt5:", 
+            "long_form": "--bullseye-coverage-regions",
+            "attribute": "bullseye_coverage_regions",
+            "default_value": "!*/Tests:, !**/Tests:, !*/UnitTests:, !**/UnitTests:, !*/SDKs:, !**/SDKs:/, !*/Mocks:, !**/Mocks:, !*/qt5:, !**/qt5:",
             "description": "Comma separated list of bullseye coverage region expressions. If empty Bullseye will process all code in included modules."
-        }, 
+        },
         {
-            "long_form": "--use-recode", 
-            "attribute": "use_recode", 
-            "default_value": "False", 
+            "long_form": "--use-recode",
+            "attribute": "use_recode",
+            "default_value": "False",
             "description": "Tweaks build settings for Recode compatibility"
-        }, 
+        },
         {
-            "long_form": "--win-build-renderer", 
-            "attribute": "win_build_renderer", 
-            "default_value": "DX11", 
+            "long_form": "--win-build-renderer",
+            "attribute": "win_build_renderer",
+            "default_value": "DX11",
             "description": "If building a monolithic build this option is used to select the type of renderer, options are DX11 or DX12"
-        }, 
+        },
         {
-            "long_form": "--use-other-in-monolithic", 
-            "attribute": "use_other_in_monolithic", 
-            "default_value": "False", 
+            "long_form": "--use-other-in-monolithic",
+            "attribute": "use_other_in_monolithic",
+            "default_value": "False",
             "description": "If building a monolithic build this option is used to decide whether to link the other module"
-        }, 
+        },
         {
-            "long_form": "--max-parallel-link", 
-            "attribute": "max_parallel_link", 
-            "default_value": "2", 
+            "long_form": "--max-parallel-link",
+            "attribute": "max_parallel_link",
+            "default_value": "2",
             "description": "Control number of c++ linking operations that happen in parallel"
-        }, 
+        },
         {
-            "long_form": "--gems-optional", 
-            "attribute": "gems_optional", 
-            "default_value": "False", 
+            "long_form": "--gems-optional",
+            "attribute": "gems_optional",
+            "default_value": "False",
             "description": "Allows building of projects without gems.json files."
-        }, 
+        },
         {
-            "long_form": "--use_debug_code_generator", 
-            "attribute": "use_debug_code_generator", 
-            "default_value": "False", 
+            "long_form": "--use_debug_code_generator",
+            "attribute": "use_debug_code_generator",
+            "default_value": "False",
             "description": "Use the version of the code generator located in the Bin64xxxx.Debug folder instead of Bin64xxxx"
-        }, 
+        },
         {
-            "long_form": "--use-crcfix", 
-            "attribute": "use_crcfix", 
-            "default_value": "True", 
+            "long_form": "--use-crcfix",
+            "attribute": "use_crcfix",
+            "default_value": "True",
             "description": "Use the crcfix tool to precompute CRCs in AZ_CRC macros"
-        }, 
+        },
         {
-            "long_form": "--enable-memory-tracking", 
-            "attribute": "enable_memory_tracking", 
-            "default_value": "False", 
+            "long_form": "--enable-memory-tracking",
+            "attribute": "enable_memory_tracking",
+            "default_value": "False",
             "description": "Enable the AZCORE_ENABLE_MEMORY_TRACKING define which allows the Memory Driller to run and track all allocations. Note: Will significantly affect code execution times!"
-        }, 
+        },
         {
-            "short_form": "-s", 
-            "long_form": "--sig-delta", 
-            "attribute": "generate_sig_debug_output", 
-            "default_value": "False", 
+            "short_form": "-s",
+            "long_form": "--sig-delta",
+            "attribute": "generate_sig_debug_output",
+            "default_value": "False",
             "description": "Enable debug output detailing signature differences that caused a task to rerun"
-        }, 
+        },
         {
-            "long_form": "--external-crash-reporting", 
-            "attribute": "external_crash_reporting", 
-            "default_value": "", 
+            "long_form": "--external-crash-reporting",
+            "attribute": "external_crash_reporting",
+            "default_value": "",
             "description": "Zip/Upload symbols and build client with external crash reporting enabled.  Value set here will be used as an additional build tag passed through to the crash reporter system."
-        }, 
+        },
         {
-            "long_form": "--packaged-build-time", 
-            "attribute": "packaged_build_time", 
-            "default_value": "", 
+            "long_form": "--packaged-build-time",
+            "attribute": "packaged_build_time",
+            "default_value": "",
             "description": "float value indicating the time the build was packaged."
-        }, 
+        },
         {
-            "long_form": "--symbol-token", 
-            "attribute": "symbol_token", 
-            "default_value": "", 
+            "long_form": "--symbol-token",
+            "attribute": "symbol_token",
+            "default_value": "",
             "description": "Command line override for token used for uploading symbols"
-        }, 
+        },
         {
-            "long_form": "--symbol-store", 
-            "attribute": "symbol_store", 
-            "default_value": "", 
+            "long_form": "--symbol-store",
+            "attribute": "symbol_store",
+            "default_value": "",
             "description": "Command line override for token used for uploading symbols to a bucket = <bucket_region>:<bucket_name>/<folder> eg: us-west-2:somebucketname/mysymbolfolder"
-        }, 
+        },
         {
-            "long_form": "--symbol-role", 
-            "attribute": "symbol_role", 
-            "default_value": "", 
+            "long_form": "--symbol-role",
+            "attribute": "symbol_role",
+            "default_value": "",
             "description": "Command line override for an iam role arn to assume when attempting to upload symbols"
-        }, 
+        },
         {
-            "long_form": "--upload-symbol-list", 
-            "attribute": "upload_symbol_list", 
-            "default_value": "", 
+            "long_form": "--upload-symbol-list",
+            "attribute": "upload_symbol_list",
+            "default_value": "",
             "description": "Command line override for list of symbol patterns to upload for crash reporting"
-        }, 
+        },
         {
-            "long_form": "--crash-handler-token", 
-            "attribute": "crash_handler_token", 
-            "default_value": "", 
+            "long_form": "--crash-handler-token",
+            "attribute": "crash_handler_token",
+            "default_value": "",
             "description": "Token used for submitting crash reports."
-        }, 
+        },
         {
-            "long_form": "--crash-handler-url", 
-            "attribute": "crash_handler_url", 
-            "default_value": "", 
+            "long_form": "--crash-handler-url",
+            "attribute": "crash_handler_url",
+            "default_value": "",
             "description": "Endpoint to submit crash reports to"
-        }, 
+        },
         {
-            "long_form": "--layout_hard_linking", 
-            "attribute": "layout_hard_linking", 
-            "default_value": "True", 
+            "long_form": "--layout_hard_linking",
+            "attribute": "layout_hard_linking",
+            "default_value": "True",
             "description": "If set to true, then layouts will be hardlinks and not full copies of files"
-        }, 
+        },
         {
-            "long_form": "--layout-binaries-only", 
-            "attribute": "layout_binaries_only", 
-            "default_value": "False", 
+            "long_form": "--layout-binaries-only",
+            "attribute": "layout_binaries_only",
+            "default_value": "False",
             "description": "Only update binaries in a current layout. This is to support programmer rapid iteration mode"
-        }, 
+        },
         {
-            "long_form": "--layout-include-pdbs", 
-            "attribute": "layout_include_pdbs", 
-            "default_value": "False", 
+            "long_form": "--layout-include-pdbs",
+            "attribute": "layout_include_pdbs",
+            "default_value": "False",
             "description": "When adding the binaries to the layout, include the pdbs"
-        }, 
+        },
         {
-            "long_form": "--enable-link-time-optimization", 
-            "attribute": "enable_link_time_optimization", 
-            "default_value": "False", 
+            "long_form": "--enable-link-time-optimization",
+            "attribute": "enable_link_time_optimization",
+            "default_value": "False",
             "description": "If set to true, then link time optimizations and code generation will be enabled in performance and release configurations"
-        }, 
+        },
         {
-            "long_form": "--enable-whole-program-optimization", 
-            "attribute": "enable_whole_program_optimization", 
-            "default_value": "False", 
+            "long_form": "--enable-whole-program-optimization",
+            "attribute": "enable_whole_program_optimization",
+            "default_value": "False",
             "description": "If set to true, then whole program optimizations will be enabled for performance and release builds"
-        }, 
+        },
         {
-            "long_form": "--copy-3rd-party-pdbs", 
-            "attribute": "copy_3rd_party_pdbs", 
-            "default_value": "True", 
+            "long_form": "--copy-3rd-party-pdbs",
+            "attribute": "copy_3rd_party_pdbs",
+            "default_value": "True",
             "description": "Option to copy pdbs from 3rd party libraries for debugging.  Warning: This will increase the memory usage of your visual studio development environment"
-        }, 
+        },
         {
-            "long_form": "--enable-dynamic-file-globbing", 
-            "attribute": "enable_dynamic_file_globbing", 
-            "default_value": "False", 
+            "long_form": "--enable-dynamic-file-globbing",
+            "attribute": "enable_dynamic_file_globbing",
+            "default_value": "False",
             "description": "Enables globbing of files during all build operations, globbing only once during configure"
-        }, 
+        },
         {
-            "long_form": "--product_sku", 
-            "attribute": "product_sku", 
-            "default_value": "default", 
+            "long_form": "--product_sku",
+            "attribute": "product_sku",
+            "default_value": "default",
             "description": "Enables a project wide define PRODUCT_SKU_<this value>, alters where the paks are built to and read from, and which platform resources are used in the gem\\resources\\  Ex. For a demo version of the game you could set product_sku = demo  then PRODUCT_SKU_demo would be defined, and then you could disable systems based on that."
-        }, 
+        },
         {
-            "long_form": "--enable_statistical_profiling", 
-            "attribute": "enable_statistical_profiling", 
-            "default_value": "False", 
+            "long_form": "--enable_statistical_profiling",
+            "attribute": "enable_statistical_profiling",
+            "default_value": "False",
             "description": "Enables statistical profiling when using AZ_PROFILE_SCOPE. If True, it takes effect only if RAD Telemetry is disabled."
-        }, 
+        },
         {
-            "long_form": "--enable_legacy_terrain_editor", 
-            "attribute": "enable_legacy_terrain_editor", 
-            "default_value": "True", 
+            "long_form": "--enable_legacy_terrain_editor",
+            "attribute": "enable_legacy_terrain_editor",
+            "default_value": "True",
             "description": "Enables the Editor options to edit legacy terrain data. If set to False the Legacy Terrain Gem can not be enabled."
+        },
+        {
+            "long_form": "--enable_release_logging",
+            "attribute": "enable_release_logging",
+            "default_value": "False",
+            "description": "If set to true, AZ_* trace macros will be enabled and not be compiled out"
         }
-    ], 
+    ],
     "Misc Options": [
         {
-            "long_form": "--max-cores", 
-            "attribute": "max_cores", 
-            "default_value": "0", 
+            "long_form": "--max-cores",
+            "attribute": "max_cores",
+            "default_value": "0",
             "description": "Number of parallel processes for local builds.  Use <=0 to auto configure based on hardware"
-        }, 
+        },
         {
-            "long_form": "--bootstrap-tool-param", 
-            "attribute": "bootstrap_tool_param", 
-            "default_value": "", 
+            "long_form": "--bootstrap-tool-param",
+            "attribute": "bootstrap_tool_param",
+            "default_value": "",
             "description": "Optional parameters to pass to SetupAssistantBatch.exe"
-        }, 
+        },
         {
-            "long_form": "--3rdpartypath", 
-            "attribute": "bootstrap_third_party_override", 
-            "default_value": "", 
+            "long_form": "--3rdpartypath",
+            "attribute": "bootstrap_third_party_override",
+            "default_value": "",
             "description": "Optional parameter to pass the location of the 3rd party folder as part of the configure/bootstrap process"
-        }, 
+        },
         {
-            "long_form": "--has-test-configs", 
-            "attribute": "has_test_configs", 
-            "default_value": "True", 
+            "long_form": "--has-test-configs",
+            "attribute": "has_test_configs",
+            "default_value": "True",
             "description": "Optional parameter enable the _test configurations"
-        }, 
+        },
         {
-            "long_form": "--has-server-configs", 
-            "attribute": "has_server_configs", 
-            "default_value": "True", 
+            "long_form": "--has-server-configs",
+            "attribute": "has_server_configs",
+            "default_value": "True",
             "description": "Optional parameter enable the _dedicated_server configurations"
-        }, 
+        },
         {
-            "long_form": "--enable-experimental-features", 
-            "attribute": "enable_experimental_features", 
-            "default_value": "False", 
+            "long_form": "--enable-experimental-features",
+            "attribute": "enable_experimental_features",
+            "default_value": "False",
             "description": "Optional parameter to enabled experimental features outside of the dev environment"
         }
-    ], 
+    ],
     "Packaging Options": [
         {
-            "long_form": "--package-projects-automatically", 
-            "attribute": "package_projects_automatically", 
-            "default_value": "True", 
+            "long_form": "--package-projects-automatically",
+            "attribute": "package_projects_automatically",
+            "default_value": "True",
             "description": "Automatically run the package command after each build."
-        }, 
+        },
         {
-            "long_form": "--always-copy-assets", 
-            "attribute": "copy_assets", 
-            "default_value": "False", 
+            "long_form": "--always-copy-assets",
+            "attribute": "copy_assets",
+            "default_value": "False",
             "description": "When running the packaging command always copy any assets that are specified to the package even for debug/profile builds."
-        }, 
+        },
         {
-            "long_form": "--run-xcode-for-packaging", 
-            "attribute": "run_xcode_for_packaging", 
-            "default_value": "True", 
+            "long_form": "--run-xcode-for-packaging",
+            "attribute": "run_xcode_for_packaging",
+            "default_value": "True",
             "description": "When running the packaging command execute xcode from the command line to generate the app bundle resources for macOS."
         }
-    ], 
+    ],
     "Deployment Options": [
         {
-            "long_form": "--deploy-projects-automatically", 
-            "attribute": "deploy_projects_automatically", 
-            "default_value": "True", 
+            "long_form": "--deploy-projects-automatically",
+            "attribute": "deploy_projects_automatically",
+            "default_value": "True",
             "description": "Automatically run the deploy command after each build."
         }
-    ], 
+    ],
     "Test Launch Options": [
         {
-            "long_form": "--auto-launch-unit-test", 
-            "attribute": "auto_launch_unit_test", 
-            "default_value": "False", 
+            "long_form": "--auto-launch-unit-test",
+            "attribute": "auto_launch_unit_test",
+            "default_value": "False",
             "description": "For platforms that support unit test builds, automatically run the unit test launcher based on the active game in bootstrap.cfg"
-        }, 
+        },
         {
-            "long_form": "--auto-launch-unit-test-arguments", 
-            "attribute": "auto_launch_unit_test_arguments", 
-            "default_value": "", 
+            "long_form": "--auto-launch-unit-test-arguments",
+            "attribute": "auto_launch_unit_test_arguments",
+            "default_value": "",
             "description": "Optional arguments to pass into the unit test launcher when unit tests are ran for the game project through WAF."
         }
-    ], 
+    ],
     "Visual Studio Project Generator": [
         {
-            "long_form": "--visual-studio-solution-folder", 
-            "attribute": "visual_studio_solution_folder", 
-            "default_value": "Solutions", 
+            "long_form": "--visual-studio-solution-folder",
+            "attribute": "visual_studio_solution_folder",
+            "default_value": "Solutions",
             "description": "Name of the folder in which the generated solution should be stored"
-        }, 
+        },
         {
-            "long_form": "--visual-studio-solution-default-project", 
-            "attribute": "default_project", 
-            "default_value": "Editor", 
+            "long_form": "--visual-studio-solution-default-project",
+            "attribute": "default_project",
+            "default_value": "Editor",
             "description": "msvs default project if not set in suo file"
-        }, 
+        },
         {
-            "long_form": "--specs-to-include-in-project-generation", 
-            "attribute": "specs_to_include_in_project_generation", 
-            "default_value": "all", 
+            "long_form": "--specs-to-include-in-project-generation",
+            "attribute": "specs_to_include_in_project_generation",
+            "default_value": "all",
             "description": "List of specs to include in solution generation"
-        }, 
+        },
         {
-            "long_form": "--msvs-version", 
-            "attribute": "msvs_version", 
-            "default_value": "15", 
+            "long_form": "--msvs-version",
+            "attribute": "msvs_version",
+            "default_value": "15",
             "description": "Version of the MS Visual Studio Solution to generate"
         }
     ]

@@ -17,17 +17,23 @@
 #include <QtTest>
 
 #include <Tests/UI/UIFixture.h>
+#include <Tests/UI/MenuUIFixture.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/AutoRegisteredActor.h>
+#include <Editor/ColliderContainerWidget.h>
 #include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <Editor/Plugins/SimulatedObject/SimulatedObjectWidget.h>
+#include <Editor/Plugins/SimulatedObject/SimulatedObjectColliderWidget.h>
 #include <Editor/InputDialogValidatable.h>
 #include <Editor/Plugins/SkeletonOutliner/SkeletonOutlinerPlugin.h>
 
 #include <Tests/TestAssetCode/SimpleActors.h>
 #include <Tests/TestAssetCode/ActorFactory.h>
 #include <Tests/PhysicsSetupUtils.h>
+#include <Editor/ReselectingTreeView.h>
+
+#include <AzQtComponents/Components/Widgets/CardHeader.h>
 
 namespace EMotionFX
 {
@@ -71,7 +77,7 @@ namespace EMotionFX
             QTest::mouseClick(addSimulatedObjectButton, Qt::LeftButton);
 
             // In the Input Dialog set the name of the object and close the dialog
-            EMStudio::InputDialogValidatable* inputDialog = qobject_cast<EMStudio::InputDialogValidatable*>(FindTopLevelWidget("newSimulatedObjectDialog"));
+            EMStudio::InputDialogValidatable* inputDialog = qobject_cast<EMStudio::InputDialogValidatable*>(FindTopLevelWidget("EMFX.SimulatedObjectActionManager.SimulatedObjectDialog"));
             ASSERT_NE(inputDialog, nullptr) << "Cannot find input dialog.";
 
             inputDialog->SetText(objectName);
@@ -84,9 +90,60 @@ namespace EMotionFX
 
         }
 
+        void AddCapsuleColliderToJointIndex(int index)
+        {
+            m_skeletonTreeView->selectionModel()->clearSelection();
+
+            // Find the indexed joint in the TreeView and select it
+            SelectIndexes(m_indexList, m_skeletonTreeView, index, index);
+
+            // Open the Right Click Context Menu
+            const QRect rect = m_skeletonTreeView->visualRect(m_indexList[index-1]);
+            EXPECT_TRUE(rect.isValid());
+            BringUpContextMenu(m_skeletonTreeView, rect);
+
+            QMenu* contextMenu = m_skeletonOutliner->GetDockWidget()->findChild<QMenu*>("contextMenu");
+
+            // Trace down the sub Menus to Add Collider and select it
+            QAction* simulatedObjectColliderAction = GetNamedAction(m_skeletonOutliner->GetDockWidget(), "Simulated object collider");
+            ASSERT_TRUE(simulatedObjectColliderAction);
+            QMenu* simulatedObjectColliderMenu = simulatedObjectColliderAction->menu();
+
+            const QList<QAction*> simulatedObjecColliderActions = simulatedObjectColliderMenu->actions();
+            auto addSelectedAddColliderActionItr = AZStd::find_if(simulatedObjecColliderActions.begin(), simulatedObjecColliderActions.end(), [](const QAction* action) {
+                return action->text() == "Add collider";
+            });
+            ASSERT_NE(addSelectedAddColliderActionItr, simulatedObjecColliderActions.end());
+
+            QMenu* addSelectedColliderMenu = (*addSelectedAddColliderActionItr)->menu();
+            const QList<QAction*> addSelectedColliderMenuActions = addSelectedColliderMenu->actions();
+            auto addCapsuleColliderAction = AZStd::find_if(addSelectedColliderMenuActions.begin(), addSelectedColliderMenuActions.end(), [](const QAction* action) {
+                return action->text() == "Add capsule";
+            });
+            ASSERT_NE(addCapsuleColliderAction, addSelectedColliderMenuActions.end());
+
+            size_t numCapsuleColliders = PhysicsSetupUtils::CountColliders(m_actor.get(), PhysicsSetup::SimulatedObjectCollider, false, Physics::ShapeType::Capsule);
+
+            (*addCapsuleColliderAction)->trigger();
+
+            // Delete the context menu, otherwise there it will still be around during this frame as the Qt event loop has not been run.
+            delete contextMenu;
+
+            const size_t numCapsuleCollidersAfterAdd = PhysicsSetupUtils::CountColliders(m_actor.get(), PhysicsSetup::SimulatedObjectCollider, false, Physics::ShapeType::Capsule);
+
+            ASSERT_EQ(numCapsuleCollidersAfterAdd, numCapsuleColliders + 1);
+
+            m_skeletonTreeView->selectionModel()->clearSelection();
+        }
+
     protected:
         AutoRegisteredActor m_actor;
         EMotionFX::SimulatedObjectWidget* m_simulatedObjectWidget = nullptr;
+
+        EMotionFX::SkeletonOutlinerPlugin* m_skeletonOutliner = nullptr;
+        ReselectingTreeView* m_skeletonTreeView = nullptr;
+        const QAbstractItemModel* m_skeletonModel;
+        QModelIndexList m_indexList;
     };
 
     TEST_F(CanAddSimulatedObjectFixture, CanAddSimulatedObject)
@@ -117,7 +174,7 @@ namespace EMotionFX
         ASSERT_TRUE(simulatedObjectWidget) << "Simulated Object plugin not found!";
 
         auto skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
-        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("skeletonOutlinerTreeView");
+        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
         const QAbstractItemModel* model = treeView->model();
 
         const QModelIndex rootJointIndex = model->index(0, 0);
@@ -142,7 +199,7 @@ namespace EMotionFX
         EXPECT_TRUE(UIFixture::GetActionFromContextMenu(newSimulatedObjectAction, addSelectedJointMenu, "<New simulated object>"));
         newSimulatedObjectAction->trigger();
 
-        EMStudio::InputDialogValidatable* inputDialog = qobject_cast<EMStudio::InputDialogValidatable*>(FindTopLevelWidget("newSimulatedObjectDialog"));
+        EMStudio::InputDialogValidatable* inputDialog = qobject_cast<EMStudio::InputDialogValidatable*>(FindTopLevelWidget("EMFX.SimulatedObjectActionManager.SimulatedObjectDialog"));
         ASSERT_NE(inputDialog, nullptr) << "Cannot find input dialog.";
 
         inputDialog->SetText("New simulated object");
@@ -171,7 +228,7 @@ namespace EMotionFX
 
         // Get the Skeleton Outliner and find the model relating to its treeview
         auto skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
-        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("skeletonOutlinerTreeView");
+        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
         const QAbstractItemModel* model = treeView->model();
 
         // Find the 3rd joint in the TreeView and select it
@@ -202,7 +259,7 @@ namespace EMotionFX
         ASSERT_TRUE(UIFixture::GetActionFromContextMenu(newSimulatedObjectAction, addSelectedJointMenu, "<New simulated object>"));
         newSimulatedObjectAction->trigger();
         // Set the name in the Dialog Box and test it.
-        EMStudio::InputDialogValidatable* inputDialog = qobject_cast<EMStudio::InputDialogValidatable*>(FindTopLevelWidget("newSimulatedObjectDialog"));
+        EMStudio::InputDialogValidatable* inputDialog = qobject_cast<EMStudio::InputDialogValidatable*>(FindTopLevelWidget("EMFX.SimulatedObjectActionManager.SimulatedObjectDialog"));
         ASSERT_NE(inputDialog, nullptr) << "Cannot find input dialog.";
 
         inputDialog->SetText("sim2");
@@ -223,7 +280,7 @@ namespace EMotionFX
 
         // Get the Skeleton Outliner and find the model relating to its treeview
         auto skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
-        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("skeletonOutlinerTreeView");
+        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
         const QAbstractItemModel* model = treeView->model();
 
         // Find the 3rd joint in the TreeView and select it
@@ -315,7 +372,7 @@ namespace EMotionFX
         // Get the Skeleton Outliner and find the model relating to its treeview
         auto skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
         ASSERT_TRUE(skeletonOutliner);
-        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("skeletonOutlinerTreeView");
+        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
         ASSERT_TRUE(treeView);
         const QAbstractItemModel* model = treeView->model();
 
@@ -324,7 +381,7 @@ namespace EMotionFX
 
         SelectIndexes(indexList, treeView, 3, 3);
 
-        QDockWidget* simulatedObjectInspectorDock = EMStudio::GetMainWindow()->findChild<QDockWidget*>("SimulatedObjectWidget::m_simulatedObjectInspectorDock");
+        QDockWidget* simulatedObjectInspectorDock = EMStudio::GetMainWindow()->findChild<QDockWidget*>("EMFX.SimulatedObjectWidget.SimulatedObjectInspectorDock");
         ASSERT_TRUE(simulatedObjectInspectorDock);
         QPushButton* addColliderButton = simulatedObjectInspectorDock->findChild<QPushButton*>("EMFX.SimulatedObjectColliderWidget.AddColliderButton");
         ASSERT_TRUE(addColliderButton);
@@ -364,7 +421,7 @@ namespace EMotionFX
         // Get the Skeleton Outliner and find the model relating to its treeview
         auto skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
         ASSERT_TRUE(skeletonOutliner) << "Can't find SkeletonOutlinerPlugin";
-        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("skeletonOutlinerTreeView");
+        QTreeView* treeView = skeletonOutliner->GetDockWidget()->findChild<QTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
         ASSERT_TRUE(treeView) << "Skeleton Treeview not found";
         const QAbstractItemModel* model = treeView->model();
 
@@ -397,4 +454,98 @@ namespace EMotionFX
         EXPECT_EQ(simulatedObject->GetNumSimulatedRootJoints(), 1);
         EXPECT_EQ(simulatedObject->GetNumSimulatedJoints(), 3);
     }
+    TEST_F(CanAddSimulatedObjectFixture, CanRemoveColliderFromSimulatedObject)
+    {
+        RecordProperty("test_case_id", "C13048817");
+
+        m_actor = ActorFactory::CreateAndInit<SimpleJointChainActor>(5, "CanAddSimulatedObjectActor");
+
+        EMStudio::GetMainWindow()->ApplicationModeChanged("SimulatedObjects");
+
+        QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+        CreateSimulateObject("sim1");
+
+        m_skeletonOutliner = static_cast<EMotionFX::SkeletonOutlinerPlugin*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SkeletonOutlinerPlugin::CLASS_ID));
+        m_skeletonTreeView = m_skeletonOutliner->GetDockWidget()->findChild<ReselectingTreeView*>("EMFX.SkeletonOutlinerPlugin.SkeletonOutlinerTreeView");
+        m_skeletonModel = m_skeletonTreeView->model();
+
+        m_indexList.clear();
+
+        m_skeletonTreeView->RecursiveGetAllChildren(m_skeletonTreeView->model()->index(0, 0), m_indexList);
+
+        // Add colliders to two joints.
+        AddCapsuleColliderToJointIndex(3);
+        AddCapsuleColliderToJointIndex(4);
+
+        const size_t numCollidersAfterAdd = PhysicsSetupUtils::CountColliders(m_actor.get(), PhysicsSetup::SimulatedObjectCollider);
+        EXPECT_EQ(numCollidersAfterAdd, 2);
+
+        m_indexList.clear();
+
+        m_skeletonTreeView->RecursiveGetAllChildren(m_skeletonTreeView->model()->index(0, 0), m_indexList);
+
+        // Reselect joint 3 and pop up the context menu for it.
+        m_skeletonTreeView->selectionModel()->clearSelection();
+        SelectIndexes(m_indexList, m_skeletonTreeView, 3, 3);
+
+        // Open the Right Click Context Menu
+        const QRect rect = m_skeletonTreeView->visualRect(m_indexList[2]);
+        EXPECT_TRUE(rect.isValid());
+        BringUpContextMenu(m_skeletonTreeView, rect);
+
+        const QList<QMenu*> contextMenus = m_skeletonOutliner->GetDockWidget()->findChildren<QMenu*>("EMFX.SimulatedObjectWidget.SimulatedObjectColliderMenu");
+        EXPECT_NE(contextMenus.size(), 0) << "Unable to find Skeketon Outliner context menu.";
+
+        // There will be several existing menus, as the Qt event loop has not yet been run, so we need to find the latest and use that.
+        QMenu* contextMenu = *(contextMenus.end() - 1);
+
+        QAction* removeAction = contextMenu->findChild<QAction*>("EMFX.SimulatedObjectWidget.RemoveCollidersAction");
+        ASSERT_TRUE(removeAction);
+        
+        removeAction->trigger();
+
+        // Check that one of the colliders is now gone.
+        const size_t numCollidersAfterFirstRemove = PhysicsSetupUtils::CountColliders(m_actor.get(), PhysicsSetup::SimulatedObjectCollider);
+        ASSERT_EQ(numCollidersAfterFirstRemove, numCollidersAfterAdd - 1) << "RemoveCollider action in Simulated Object Inspector failed.";
+
+        // Now do the same thing using the Simulated Object Inspector context menu.
+        const SimulatedObjectColliderWidget* simulatedObjectColliderWidget = GetSimulatedObjectColliderWidget();
+        ASSERT_TRUE(simulatedObjectColliderWidget) << "SimulatedObjectColliderWidget not found.";
+
+        // Select the second collider that was made earlier.
+        m_skeletonTreeView->selectionModel()->clearSelection();
+        SelectIndexes(m_indexList, m_skeletonTreeView, 4, 4);
+
+        const ColliderContainerWidget* colliderContainerWidget = simulatedObjectColliderWidget->findChild< ColliderContainerWidget*>();
+        ASSERT_TRUE(colliderContainerWidget) << "ColliderContainerWidget not found.";
+
+        // Get the collider widget card from the container.
+        const ColliderWidget* colliderWidget = colliderContainerWidget->findChild<ColliderWidget*>();
+        ASSERT_TRUE(colliderWidget) << "ColliderWidget not found.";
+
+        const AzQtComponents::CardHeader* cardHeader = colliderWidget->findChild<AzQtComponents::CardHeader*>();
+        ASSERT_TRUE(cardHeader) << "ColliderWidget CardHeader not found.";
+
+        const QFrame* frame = cardHeader->findChild<QFrame*>("Background");
+        ASSERT_TRUE(frame) << "ColliderWidget CardHeader Background Frame not found.";
+
+        QPushButton* contextMenubutton = frame->findChild< QPushButton*>("ContextMenu");
+        ASSERT_TRUE(contextMenubutton) << "ColliderWidget ContextMenu not found.";
+
+        // Pop up the context menu.
+        QTest::mouseClick(contextMenubutton, Qt::LeftButton);
+
+        // Find the delete collider button and press it.
+        const QMenu* collilderWidgetContextMenu = colliderWidget->findChild<QMenu*>("EMFX.ColliderContainerWidget.ContextMenu");
+
+        QAction* delAction = collilderWidgetContextMenu->findChild<QAction*>("EMFX.ColliderContainerWidget.DeleteColliderAction");
+
+        delAction->trigger();
+
+        // Check that we have the number of colliders we started we expect.
+        const size_t numCollidersAfterSecondRemove = PhysicsSetupUtils::CountColliders(m_actor.get(), PhysicsSetup::SimulatedObjectCollider);
+        ASSERT_EQ(numCollidersAfterSecondRemove, numCollidersAfterAdd - 2);
+    }
+
 } // namespace EMotionFX

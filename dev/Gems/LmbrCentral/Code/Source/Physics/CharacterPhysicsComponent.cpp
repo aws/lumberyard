@@ -9,7 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "CharacterPhysicsComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -268,7 +272,7 @@ namespace LmbrCentral
                 ->Field("Player Dimensions", &CryPlayerPhysicsConfiguration::m_dimensions)
                 ->Field("Player Dynamics", &CryPlayerPhysicsConfiguration::m_dynamics)
                 ;
-
+            
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
@@ -772,3 +776,5 @@ namespace LmbrCentral
         }
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

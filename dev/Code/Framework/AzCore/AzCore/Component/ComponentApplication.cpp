@@ -458,6 +458,11 @@ namespace AZ
 
         CreateReflectionManager();
 
+        if (m_startupParameters.m_createEditContext)
+        {
+            GetSerializeContext()->CreateEditContext();
+        }
+
         NameDictionary::Create();
 
         // Call this and child class's reflects

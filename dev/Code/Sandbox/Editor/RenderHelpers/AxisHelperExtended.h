@@ -17,7 +17,9 @@
 
 struct DisplayContext;
 struct HitContext;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalEntity;
+#endif
 
 class CAxisHelperExtended
 {
@@ -31,7 +33,9 @@ private:
 private:
     Matrix34 m_matrix;
     Vec3 m_vPos;
+#if ENABLE_CRY_PHYSICS
     std::vector<IPhysicalEntity*> m_skipEntities;
+#endif
     std::vector<CBaseObjectPtr> m_objects;
     CBaseObjectsArray m_objectsForPicker;
     CBaseObject* m_pCurObject;

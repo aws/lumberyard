@@ -12,6 +12,8 @@
 
 #include "LmbrCentral_precompiled.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/Component/TransformBus.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -178,7 +180,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysicsConstraint.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/PhysicsConstraint.png")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))  
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-constraint.html")
 
@@ -472,3 +474,5 @@ namespace LmbrCentral
         return (m_constraintType == ConstraintType::Slider) ? " m" : " deg";
     }
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

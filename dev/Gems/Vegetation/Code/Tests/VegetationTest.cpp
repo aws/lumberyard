@@ -19,6 +19,8 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <Source/Components/AreaBlenderComponent.h>
 
 #include <Source/Components/AreaBlenderComponent.h>

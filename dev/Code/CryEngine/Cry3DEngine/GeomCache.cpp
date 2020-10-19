@@ -497,8 +497,13 @@ bool CGeomCache::ReadNodesStaticDataRec(CGeomCacheStreamReader& reader)
         }
 
         CMemStream memStream(&geometryData[0], geometrySize, false);
+#if ENABLE_CRY_PHYSICS
         phys_geometry* pGeometry = GetPhysicalWorld()->GetGeomManager()->LoadPhysGeometry(memStream, 0, 0, 0);
         m_physicsGeometries.push_back(pGeometry);
+#else
+        // Geometry
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
         staticNodeData.m_meshOrGeometryIndex = (uint32)(m_physicsGeometries.size() - 1);
     }
@@ -594,7 +599,9 @@ void CGeomCache::Shutdown()
         phys_geometry* pGeometry = m_physicsGeometries[i];
         if (pGeometry)
         {
+#if ENABLE_CRY_PHYSICS
             GetPhysicalWorld()->GetGeomManager()->UnregisterGeometry(pGeometry);
+#endif // ENABLE_CRY_PHYSICS
         }
     }
 

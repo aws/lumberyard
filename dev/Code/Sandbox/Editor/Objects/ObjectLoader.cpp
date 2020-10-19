@@ -248,6 +248,7 @@ void CObjectArchive::ResolveObjects()
             m_pCurrentErrorReport->SetCurrentValidatorObject(obj.pObject);
 
             obj.pObject->CreateGameObject();
+#if ENABLE_CRY_PHYSICS
             // remove collisions of hidden objects
             if (obj.pObject->CheckFlags(OBJFLAG_INVISIBLE) || obj.pObject->IsHiddenBySpec())
             {
@@ -257,6 +258,7 @@ void CObjectArchive::ResolveObjects()
                     gEnv->pPhysicalWorld->DestroyPhysicalEntity(pPhEn, 1);
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
 
             CMaterial* pMaterial = obj.pObject->GetRenderMaterial();
             CMaterialManager* pManager = GetIEditor()->GetMaterialManager();

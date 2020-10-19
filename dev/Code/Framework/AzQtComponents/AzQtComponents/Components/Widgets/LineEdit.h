@@ -13,10 +13,12 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option")
 #include <QPointer>
 #include <QColor>
 #include <QSize>
 #include <QStyleOption>
+AZ_POP_DISABLE_WARNING
 
 class QLineEdit;
 class QSettings;

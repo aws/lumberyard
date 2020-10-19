@@ -336,6 +336,9 @@
 		<tooltip path="Collision.Final_Collision" title="Final Collision" content="0"/>
 		<tooltip path="Collision.Surface_Type" title="Surface Type" content="Surface type for physicalized particles"/>
 		<tooltip path="Collision.Final_Collision" title="Die On Collide" content="Particle behavior when colliding with geometry"/>
+		<tooltip path="Collision.Use_Self_Collision" title="Use Self Collision" content="Use collision against particles of the same emitter for die/stop behavior"/>
+		<tooltip name="Collision.Collision_Layer" title="Collision Layer" content="Collision layer for particles bodies" />
+		<tooltip name="Collision.Collision_Group" title="Collides With" content="Collision group for particles to collide with" />
 		<tooltip path="Collision.Elasticity" title="Elasticity" content="Collision bounce coefficient: 0 = no bounce, 1 = full bounce, &lt;0 = die"/>
 		<tooltip path="Collision.Dynamic_Friction" title="Dynamic Friction" content="Sliding drag value, in inverse seconds"/>
 		<tooltip path="Collision.Thickness" title="Thickness" content="Used for projection depth for Decal particle type. And simulates thickness for physicalized particles."/>

@@ -21,8 +21,8 @@
 
 #include "IRenderAuxGeom.h"
 
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <QGuiApplication>
+#include <QtGui/private/qhighdpiscaling_p.h>
 
 //////////////////////////////////////////////////////////////////////////
 CRuler::CRuler()

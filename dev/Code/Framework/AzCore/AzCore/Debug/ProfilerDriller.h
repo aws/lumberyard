@@ -35,7 +35,7 @@ namespace AZ
         class ProfilerDriller
             : public Driller
             , public ProfilerDrillerBus::Handler
-            , public AZStd::ThreadEventBus::Handler
+            , public AZStd::ThreadDrillerEventBus::Handler
         {
             struct ThreadInfo
             {
@@ -68,7 +68,7 @@ namespace AZ
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
-            // Thread event bus
+            // Thread driller event bus
             /// Called when we enter a thread, optional thread_desc is provided when the use provides one.
             virtual void OnThreadEnter(const AZStd::thread_id& id, const AZStd::thread_desc* desc);
             /// Called when we exit a thread.
@@ -95,7 +95,7 @@ namespace AZ
 
 
             static const int m_numberOfSystemFilters = 16;
-            int              m_numberOfValidFilters;    ///< Number of valid filter set when the driller was created.
+            int              m_numberOfValidFilters = 0 ;    ///< Number of valid filter set when the driller was created.
             Param            m_systemFilters[m_numberOfSystemFilters]; ///< If != 0, it's a ID of specific System we would like to drill.
             ThreadArrayType  m_threads;
         };

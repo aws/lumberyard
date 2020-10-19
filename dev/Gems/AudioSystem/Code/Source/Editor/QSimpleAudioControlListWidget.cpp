@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -45,7 +45,7 @@ namespace AudioControls
         : QTreeWidget(parent)
         , m_connectedColor(QColor(0x99, 0x99, 0x99))
         , m_disconnectedColor(QColor(0xf3, 0x81, 0x1d))
-        , m_localisedColor(QColor(0x42, 0x85, 0xf4))
+        , m_localizedColor(QColor(0x42, 0x85, 0xf4))
     {
         CATLControlsModel* pATLModel = CAudioControlsEditorPlugin::GetATLModel();
         if (pATLModel)
@@ -110,11 +110,11 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void QSimpleAudioControlListWidget::UpdateControl(AudioControls::IAudioSystemControl* pControl)
+    void QSimpleAudioControlListWidget::UpdateControl(IAudioSystemControl* pControl)
     {
         if (pControl)
         {
-            QTreeWidgetItem* pItem = GetItem(pControl->GetId(), pControl->IsLocalised());
+            QTreeWidgetItem* pItem = GetItem(pControl->GetId(), pControl->IsLocalized());
             if (pItem)
             {
                 InitItemData(pItem, pControl);
@@ -123,7 +123,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    QTreeWidgetItem* QSimpleAudioControlListWidget::InsertControl(AudioControls::IAudioSystemControl* pControl, QTreeWidgetItem* pRoot)
+    QTreeWidgetItem* QSimpleAudioControlListWidget::InsertControl(IAudioSystemControl* pControl, QTreeWidgetItem* pRoot)
     {
         if (pRoot && pControl)
         {
@@ -137,13 +137,13 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    QTreeWidgetItem* QSimpleAudioControlListWidget::GetItem(AudioControls::CID id, bool bLocalised)
+    QTreeWidgetItem* QSimpleAudioControlListWidget::GetItem(CID id, bool bLocalized)
     {
         QTreeWidgetItemIterator it(this);
         while (*it)
         {
             QTreeWidgetItem* item = *it;
-            if (GetItemId(item) == id && IsLocalised(item) == bLocalised)
+            if (GetItemId(item) == id && IsLocalized(item) == bLocalized)
             {
                 return item;
             }
@@ -163,19 +163,19 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    AudioControls::CID QSimpleAudioControlListWidget::GetItemId(QTreeWidgetItem* item)
+    CID QSimpleAudioControlListWidget::GetItemId(QTreeWidgetItem* item)
     {
         if (item)
         {
-            return (AudioControls::CID) item->data(0, eMDR_ID).toUInt();
+            return static_cast<CID>(item->data(0, eMDR_ID).toUInt());
         }
         return ACE_INVALID_CID;
     }
 
     //-------------------------------------------------------------------------------------------//
-    bool QSimpleAudioControlListWidget::IsLocalised(QTreeWidgetItem* item)
+    bool QSimpleAudioControlListWidget::IsLocalized(QTreeWidgetItem* item)
     {
-        return item->data(0, eMDR_LOCALISED).toBool();
+        return item->data(0, eMDR_LOCALIZED).toBool();
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -191,7 +191,7 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void QSimpleAudioControlListWidget::InitItem(QTreeWidgetItem* pItem)
     {
-        AudioControls::IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
+        IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
         if (pItem && pAudioSystemEditorImpl)
         {
             TImplControlType type = GetControlType(pItem);
@@ -203,15 +203,16 @@ namespace AudioControls
             if (compatibleType != eACET_NUM_TYPES)
             {
                 pItem->setFlags(pItem->flags() | Qt::ItemIsDragEnabled);
-                if (pItem->data(0, eMDR_LOCALISED).toBool())
+                if (pItem->data(0, eMDR_LOCALIZED).toBool())
                 {
                     pItem->setToolTip(0, tr("Localized control"));
-                    pItem->setForeground(0, m_localisedColor);
+                    pItem->setForeground(0, m_localizedColor);
                 }
                 else
                 {
                     if (IsConnected(pItem))
                     {
+                        pItem->setToolTip(0, tr("Connected control"));
                         pItem->setForeground(0, m_connectedColor);
                     }
                     else
@@ -229,7 +230,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void QSimpleAudioControlListWidget::InitItemData(QTreeWidgetItem* pItem, AudioControls::IAudioSystemControl* pControl)
+    void QSimpleAudioControlListWidget::InitItemData(QTreeWidgetItem* pItem, IAudioSystemControl* pControl)
     {
         if (pItem && pControl)
         {
@@ -237,7 +238,7 @@ namespace AudioControls
             if (pControl->GetId() != ACE_INVALID_CID)
             {
                 pItem->setData(0, eMDR_TYPE, pControl->GetType());
-                pItem->setData(0, eMDR_LOCALISED, pControl->IsLocalised());
+                pItem->setData(0, eMDR_LOCALIZED, pControl->IsLocalized());
                 pItem->setData(0, eMDR_CONNECTED, pControl->IsConnected());
             }
             InitItem(pItem);
@@ -260,7 +261,7 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void QSimpleAudioControlListWidget::Refresh(bool reload)
     {
-        AudioControls::IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
+        IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl();
         if (pAudioSystemEditorImpl)
         {
             // store the currently selected control to select it again

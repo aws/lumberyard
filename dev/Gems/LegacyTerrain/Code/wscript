@@ -20,7 +20,8 @@ def build(bld):
     bld.DefineGem(
         includes          = ['.',
                              'Include',
-                             bld.Path('Code/CryEngine/CryCommon')],
+                             bld.Path('Code/CryEngine/CryCommon'),
+                             bld.Path('Code/CryEngine/RenderDll')],
         win_features      = ['crcfix'],    
         use_required_gems = True,
 
@@ -37,6 +38,7 @@ def build(bld):
             includes    = ['.', 
                            'Include',
                            bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/CryEngine/RenderDll'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox/Editor'),
                            bld.Path('Code/Sandbox/Editor/Include'),

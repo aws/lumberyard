@@ -85,8 +85,13 @@ bool WalkabilityCache::Cache(const AABB& aabb)
     m_entities.resize(capacity);
     IPhysicalEntity** entityListPtr = &m_entities.front();
 
+#if ENABLE_CRY_PHYSICS
     size_t entityCount = (size_t)gEnv->pPhysicalWorld->GetEntitiesInBox(m_aabb.min, m_aabb.max, entityListPtr,
             AICE_ALL | ent_allocate_list, capacity);
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    size_t entityCount = 0;
+#endif // ENABLE_CRY_PHYSICS
 
     if (entityCount <= capacity)
     {
@@ -98,7 +103,9 @@ bool WalkabilityCache::Cache(const AABB& aabb)
         memcpy(&m_entities[0], entityListPtr, sizeof(IPhysicalEntity*) * capacity);
         entityCount = capacity;
 
+#if ENABLE_CRY_PHYSICS
         gEnv->pPhysicalWorld->GetPhysUtils()->DeletePointer(entityListPtr);
+#endif
     }
 
     m_aabbs.resize(entityCount);
@@ -256,6 +263,7 @@ bool WalkabilityCache::FindFloor(const Vec3& position, Vec3& floor, IPhysicalEnt
     ray_hit hit;
     float height = FLT_MAX;
     float closest = FLT_MAX;
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* const physicalWorld = gEnv->pPhysicalWorld;
 
     for (size_t i = 0; i < entityCount; ++i)
@@ -273,6 +281,10 @@ bool WalkabilityCache::FindFloor(const Vec3& position, Vec3& floor, IPhysicalEnt
             }
         }
     }
+#else
+    // Raytrace to find closest height(floor)
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     m_floorCache.SetHeight(position, height);
 
@@ -518,11 +530,13 @@ bool WalkabilityCache::OverlapTorsoSegment(const Vec3& startOBB, const Vec3& end
 
     ray_hit hit;
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld::SPWIParams params;
     params.pSkipEnts = entities;
     params.nSkipEnts = -(int)entityCount;
     params.sweepDir = Vec3(0.0f, 0.0f, 0.0f);
     params.pip = &ip;
+#endif // ENABLE_CRY_PHYSICS
 
     // short cut if start equals end
     if (endOBB.IsEquivalent(startOBB))
@@ -534,10 +548,16 @@ bool WalkabilityCache::OverlapTorsoSegment(const Vec3& startOBB, const Vec3& end
         cylinder.hh = height * 0.5f;
         cylinder.r = radius;
 
+#if ENABLE_CRY_PHYSICS
         params.itype = primitives::cylinder::type;
         params.pprim = &cylinder;
 
         bool result = gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
+#else
+        // Intersection against cylinder
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+        bool result = false;
+#endif
 
         if (gAIEnv.CVars.DebugCheckWalkability)
         {
@@ -562,11 +582,17 @@ bool WalkabilityCache::OverlapTorsoSegment(const Vec3& startOBB, const Vec3& end
     physBox.Basis.SetFromVectors(right, forward, up);
     physBox.Basis.Transpose();
 
+#if ENABLE_CRY_PHYSICS
     // test obb for plane path
     params.itype = primitives::box::type;
     params.pprim = &physBox;
 
     bool result = gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
+#else
+    // Intersection against Box priimitive
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+    bool result = false;
+#endif
 
     if (gAIEnv.CVars.DebugCheckWalkability)
     {
@@ -606,9 +632,14 @@ bool WalkabilityCache::OverlapTorsoSegment(const Vec3& startOBB, const Vec3& end
         cylinderStart.hh = height * 0.5f;
         cylinderStart.r = radius;
 
+#if ENABLE_CRY_PHYSICS
         params.itype = primitives::cylinder::type;
         params.pprim = &cylinderStart;
         result |= gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
+#else
+        // Another cylincer intersection with upper part of torso
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
 
         if (gAIEnv.CVars.DebugCheckWalkability)
         {
@@ -626,8 +657,13 @@ bool WalkabilityCache::OverlapTorsoSegment(const Vec3& startOBB, const Vec3& end
         cylinderEnd.hh = height * 0.5f;
         cylinderEnd.r = radius;
 
+#if ENABLE_CRY_PHYSICS
         params.pprim = &cylinderEnd;
         result |= gEnv->pPhysicalWorld->PrimitiveWorldIntersection(params) > 0.0f;
+#else
+        // Yet again another intesection with a cylinder
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif 
 
         if (gAIEnv.CVars.DebugCheckWalkability)
         {

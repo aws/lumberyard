@@ -90,6 +90,13 @@ void CEditorPreferencesPage_Files::Reflect(AZ::SerializeContext& serialize)
 CEditorPreferencesPage_Files::CEditorPreferencesPage_Files()
 {
     InitializeSettings();
+
+    m_icon = QIcon(":/res/Files.svg");
+}
+
+QIcon& CEditorPreferencesPage_Files::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_Files::OnApply()

@@ -21,11 +21,13 @@
 #include "ParticleParams.h"
 #include "Components/IComponentRender.h"
 
+#if !defined(OTHER_ACTIVE)
 // TypeInfo implementations
 #ifndef AZ_MONOLITHIC_BUILD
     #include "ParticleParams_TypeInfo.h"
 #else
     #include <CryTypeInfo.h>
+#endif
 #endif
 
 //------------------------------------------------------------------------
@@ -350,6 +352,7 @@ int CScriptBind_Particle::Detach(IFunctionHandler* pH)
     return pH->EndFunction();
 }
 
+#if !defined(OTHER_ACTIVE)
 template<class T>
 bool TryReadType(const CTypeInfo::CVarInfo& var, T* data, SmartScriptTable& table, cstr key)
 {
@@ -357,9 +360,11 @@ bool TryReadType(const CTypeInfo::CVarInfo& var, T* data, SmartScriptTable& tabl
     return table.GetPtr()->GetValue(key, val)
            && var.Type.FromValue(data, &val, TypeInfo(&val));
 }
+#endif
 
 void CScriptBind_Particle::ReadParams(SmartScriptTable& table, ParticleParams* pParams, IParticleEffect* pEffect)
 {
+#if !defined(OTHER_ACTIVE)
     // Iterate params using TypeInfo, read from script table.
     const CTypeInfo& paramsType = TypeInfo(pParams);
 
@@ -400,4 +405,5 @@ void CScriptBind_Particle::ReadParams(SmartScriptTable& table, ParticleParams* p
     {
         pEffect->SetParticleParams(*pParams);
     }
+#endif
 }

@@ -67,6 +67,8 @@ namespace EMotionFX
 
         SimulatedObjectModel* GetSimulatedObjectModel() const;
 
+        SimulatedJointWidget* GetSimulatedJointWidget() const;
+
         // SkeletonOutlinerNotificationBus overrides
         void OnContextMenu(QMenu* menu, const QModelIndexList& selectedRowIndices) override;
 

@@ -48,6 +48,7 @@ namespace LmbrCentral
         CapsuleShapeConfig GetCapsuleConfiguration() override { return m_capsuleShapeConfig; }
         void SetHeight(float height) override;
         void SetRadius(float radius) override;
+        CapsuleInternalEndPoints GetCapsulePoints() override;
         float GetHeight() override;
         float GetRadius() override;
 

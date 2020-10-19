@@ -18,8 +18,26 @@ namespace AZ
     {
         namespace ClassElements
         {
+            //! This is a catch-all container for attributes that affect how the entirety of a type is handled in the editor.
+            //!
+            //! Accepted Child Attributes:
+            //! Many, see AZ::Edit::Attributes
             const static AZ::Crc32 EditorData = AZ_CRC("EditorData", 0xf44f1a1d);
+            //! Where specified, all subsequent children will be grouped together in the UI under the name of the group
+            //! which is specified as the class element description.
+            //!
+            //! Accepted Child Attributes:
+            //! - AZ::Edit::Attributes::AutoExpand
             const static AZ::Crc32 Group = AZ_CRC("Group", 0x6dc044c5);
+            //! Specifies that the type contains a UIElement, a child property editor without a mapping to a specific member.
+            //! This can be used to add UI components to the property editor that aren't just value editors, e.g. buttons.
+            //!
+            //! There is a convenience method, AZ::EditContext::ClassBuilder::UIComponent that allows specifying a UI component
+            //! and its handler at the same time. This should be preferred to adding a UIComponent and calling ClassComponent.
+            //!
+            //! Accepted Child Attributes:
+            //! - AZ::Edit::Attributes::Handler
+            //! - AZ::Edit::Attributes::AcceptsMultiEdit
             const static AZ::Crc32 UIElement = AZ_CRC("UIElement", 0x4fb5a8e3);
         }
 
@@ -44,6 +62,21 @@ namespace AZ
             const static AZ::Crc32 CheckboxDefaultValue = AZ_CRC("CheckboxDefaultValue", 0x03f117e6);
             //! Affects the display order of a node relative to it's parent/children.  Higher values display further down (after) lower values.  Default is 0, negative values are allowed.  Must be applied as an attribute to the EditorData element
             const static AZ::Crc32 DisplayOrder = AZ_CRC("DisplayOrder", 0x23660ec2);
+            //! Specifies whether the UI should support multi-edit for aggregate instances of this property
+            //! This is enabled by default for everything except UIElements, which require an explicit opt-in
+            //!
+            //! Element type to use this with: Any
+            //! Expected value type: bool
+            //! Default value: true for DataElements, false for UIElements
+            const static AZ::Crc32 AcceptsMultiEdit = AZ_CRC("AcceptsMultiEdit", 0x1d14a103);
+
+            //! Specifies a small, human readable string representation of an entire class for editor display.
+            //! This is used to create a string representation of the class when displaying associative containers.
+            //!
+            //! Element type to use this with: Any type that can sensibly be represented to the user with a string.
+            //! Expected value type: AZStd::string
+            //! Default value: None
+            const static AZ::Crc32 ConciseEditorStringRepresentation = AZ_CRC("ConciseEditorStringRepresentation", 0xe8f2a004);
 
             //! Container attributes
             const static AZ::Crc32 ContainerCanBeModified = AZ_CRC("ContainerCanBeModified", 0xd9948f69);
@@ -68,19 +101,15 @@ namespace AZ
             const static AZ::Crc32 ChangeNotify = AZ_CRC("ChangeNotify", 0xf793bc19);
             const static AZ::Crc32 ClearNotify = AZ_CRC("ClearNotify", 0x88914c8c);
 
-            /**
-            * Specifies a function to accept or reject a value changed in the Lumberyard Editor.
-            * For example, a component could reject AZ::EntityId values that reference its own entity.
-            *
-            * **Element type to use this with:**   Any type that you reflect using AZ::EditContext::ClassInfo::DataElement().
-            *
-            * **Expected value type:**             A function with signature `AZ::Outcome<void, AZStd::string> fn(void* newValue, const AZ::TypeId& valueType)`.
-            *                                      If the function returns failure, then the new value will not be applied.
-            *                                      `newValue` is a void* pointing at the new value being validated.
-            *                                      `valueType` is the type ID of the value pointed to by `newValue`.
-            *
-            * **Default value:**                   None
-            */
+            //! Specifies a function to accept or reject a value changed in the Lumberyard Editor.
+            //! For example, a component could reject AZ::EntityId values that reference its own entity.
+            //!
+            //! Element type to use this with:   Any type that you reflect using AZ::EditContext::ClassInfo::DataElement().
+            //! Expected value type:             A function with signature `AZ::Outcome<void, AZStd::string> fn(void* newValue, const AZ::TypeId& valueType)`.
+            //!                                      If the function returns failure, then the new value will not be applied.
+            //!                                      `newValue` is a void* pointing at the new value being validated.
+            //!                                      `valueType` is the type ID of the value pointed to by `newValue`.
+            //! Default value:                   None
             const AZ::Crc32 ChangeValidate = AZ_CRC("ChangeValidate", 0xc65d7180);
 
             //! Used to bind a callback to the editing complete event of a string line edit control.
@@ -88,16 +117,18 @@ namespace AZ
 
             const static AZ::Crc32 NameLabelOverride = AZ_CRC("NameLabelOverride", 0x9ff79cab);
             const static AZ::Crc32 ChildNameLabelOverride = AZ_CRC("ChildNameLabelOverride", 0x73dd2909);
-            // Container attribute that is used to override labels for its elements given the index of the element
+            //! Container attribute that is used to override labels for its elements given the index of the element
             const static AZ::Crc32 IndexedChildNameLabelOverride = AZ_CRC("IndexedChildNameLabelOverride", 0x5f313ac2);
             const static AZ::Crc32 DescriptionTextOverride = AZ_CRC("DescriptionTextOverride", 0x608b64a8);
 
             const static AZ::Crc32 PrimaryAssetType = AZ_CRC("PrimaryAssetType", 0xa400a5ce);
             const static AZ::Crc32 DynamicElementType = AZ_CRC("DynamicElementType", 0x7c0b82f9);
-            // Asset to show when the selection is empty
+            //! Asset to show when the selection is empty
             const static AZ::Crc32 DefaultAsset = AZ_CRC("DefaultAsset", 0x1a7b1141);
-            // Allow or disallow clearing the asset
+            //! Allow or disallow clearing the asset
             const static AZ::Crc32 AllowClearAsset = AZ_CRC("AllowClearAsset", 0x24827182);
+            // Show the name of the asset that was produced from the source asset
+            const static AZ::Crc32 ShowProductAssetFileName = AZ_CRC("ShowProductAssetFileName", 0x77ce89ac);
 
             //! Component icon attributes
             const static AZ::Crc32 Icon = AZ_CRC("Icon", 0x659429db);
@@ -133,57 +164,55 @@ namespace AZ
 
             const static AZ::Crc32 MaxLength = AZ_CRC("MaxLength", 0x385c7325);
 
-            /**
-            * Specifies the URL to load for a component
-            *
-            * **Element type to use this with:**   AZ::Edit::ClassElements::EditorData, which you reflect using
-            *                                      AZ::EditContext::ClassInfo::ClassElement().
-            *
-            * **Expected value type:**             `AZStd::string`
-            *
-            * **Default value:**                   None
-            *
-            * **Example:**                         The following example shows how to specify a help URL for a given component
-            *
-            * @code{.cpp}
-            * editContext->Class<ScriptEditorComponent>("Lua Script", "The Lua Script component allows you to add arbitrary Lua logic to an entity in the form of a Lua script")
-            *   ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-            *   ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/lumberyard/latest/userguide/component-lua-script.html")
-            * @endcode
-            */
+            //! Specifies the URL to load for a component
+            //!
+            //! **Element type to use this with:**   AZ::Edit::ClassElements::EditorData, which you reflect using
+            //!                                      AZ::EditContext::ClassInfo::ClassElement().
+            //!
+            //! **Expected value type:**             `AZStd::string`
+            //!
+            //! **Default value:**                   None
+            //!
+            //! **Example:**                         The following example shows how to specify a help URL for a given component
+            //!
+            //! @code{.cpp}
+            //! editContext->Class<ScriptEditorComponent>("Lua Script", "The Lua Script component allows you to add arbitrary Lua logic to an entity in the form of a Lua script")
+            //!   ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            //!   ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/lumberyard/latest/userguide/component-lua-script.html")
+            //! @endcode
             const static AZ::Crc32 HelpPageURL = AZ_CRC("HelpPageURL", 0xa344d681);
 
             //! Combobox parameters.
             const static AZ::Crc32 ComboBoxEditable = AZ_CRC("ComboBoxEditable", 0x7ee76669);
 
-            /// For use with slice creation tools. See SliceCreationFlags below for details.
+            //! For use with slice creation tools. See SliceCreationFlags below for details.
             const static AZ::Crc32 SliceFlags = AZ_CRC("SliceFlags", 0xa447e1fb);
 
-            // For optional use on Getter Events used for Virtual Properties
+            //! For optional use on Getter Events used for Virtual Properties
             const static AZ::Crc32 PropertyPosition = AZ_CRC("Position", 0x462ce4f5);
             const static AZ::Crc32 PropertyRotation = AZ_CRC("Rotation", 0x297c98f1);
             const static AZ::Crc32 PropertyScale = AZ_CRC("Scale", 0xec462584);
             const static AZ::Crc32 PropertyHidden = AZ_CRC("Hidden", 0x885de9bd);
 
-            // Specifies a vector<Crc32> of platform tags that must *all* be set on the current platform for the component to be exported.
+            //! Specifies a vector<Crc32> of platform tags that must *all* be set on the current platform for the component to be exported.
             const static AZ::Crc32 ExportIfAllPlatformTags = AZ_CRC("ExportIfAllPlatformTags", 0x572ad424);
 
-            // Specifies a vector<Crc32> of platform tags, of which at least one must be set on the current platform for the component to be exported.
+            //! Specifies a vector<Crc32> of platform tags, of which at least one must be set on the current platform for the component to be exported.
             const static AZ::Crc32 ExportIfAnyPlatformTags = AZ_CRC("ExportIfAnyPlatformTags", 0x1f6c0540);
 
-            // Binds to a function (static or member) to allow for dynamic (runtime) slice exporting of custom editor components.
+            //! Binds to a function (static or member) to allow for dynamic (runtime) slice exporting of custom editor components.
             const static AZ::Crc32 RuntimeExportCallback = AZ_CRC("RuntimeExportCallback", 0x4b52dc01);
 
-            // Attribute for storing a Id Generator function used by GenerateNewIdsAndFixRefs to remapping old id's to new id's
+            //! Attribute for storing a Id Generator function used by GenerateNewIdsAndFixRefs to remapping old id's to new id's
             const static AZ::Crc32 IdGeneratorFunction = AZ_CRC("IdGeneratorFunction", 0x4269a3fd);
 
-            // Attribute for tagging a System Component for use in certain contexts
+            //! Attribute for tagging a System Component for use in certain contexts
             const static AZ::Crc32 SystemComponentTags = AZ_CRC("SystemComponentTags", 0x2d8bebc9);
             
-            // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
+            //! Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
             const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
 
-            // Attribute for skipping a set amount of descendant elements which are not leaves when calculating property visibility
+            //! Attribute for skipping a set amount of descendant elements which are not leaves when calculating property visibility
             const static AZ::Crc32 VisibilitySkipNonLeafDepth = AZ_CRC("VisibilitySkipNonLeafDepth", 0x790293fa);
 
             //! Attribute for making a slider have non-linear scale. The default is 0.5, which results in linear scale. Value can be shifted lower or higher to control more precision in the power curve at those ends (minimum = 0, maximum = 1)
@@ -193,10 +222,8 @@ namespace AZ
 
         namespace UIHandlers
         {
-            /**
-            * Helper for explicitly designating the default UI handler.
-            * i.e. DataElement(DefaultHandler, field, ...)
-            */
+            //! Helper for explicitly designating the default UI handler.
+            //! i.e. DataElement(DefaultHandler, field, ...)
             const static AZ::Crc32 Default = 0;
 
             const static AZ::Crc32 Button = AZ_CRC("Button", 0x3a06ac3d);
@@ -228,9 +255,7 @@ namespace AZ
             const static AZ::Crc32 ElementInstances = AZ_CRC("ElementInstances", 0x38163ba4);
         }
 
-        /**
-         * Notifies the property system to refresh the property grid, along with the level of refresh.
-         */
+        //! Notifies the property system to refresh the property grid, along with the level of refresh.
         namespace PropertyRefreshLevels
         {
             const static AZ::Crc32 None = AZ_CRC("RefreshNone", 0x98a5045b);
@@ -239,9 +264,7 @@ namespace AZ
             const static AZ::Crc32 EntireTree = AZ_CRC("RefreshEntireTree", 0xefbc823c);
         }
 
-        /**
-         * Specifies the visibility setting for a particular property.
-         */
+        //! Specifies the visibility setting for a particular property.
         namespace PropertyVisibility
         {
             const static AZ::Crc32 Show = AZ_CRC("PropertyVisibility_Show", 0xa43c82dd);

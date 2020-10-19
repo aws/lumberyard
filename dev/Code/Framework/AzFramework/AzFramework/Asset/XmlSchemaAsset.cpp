@@ -82,9 +82,12 @@ namespace AzFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<XmlSchemaAttribute>()
-                ->Version(4)
+                ->Version(5)
                 ->Field("Name", &XmlSchemaAttribute::m_name)
                 ->Field("ExpectedExtension", &XmlSchemaAttribute::m_expectedExtension)
+                ->Field("MatchPattern", &XmlSchemaAttribute::m_matchPattern)
+                ->Field("FindPattern", &XmlSchemaAttribute::m_findPattern)
+                ->Field("ReplacePattern", &XmlSchemaAttribute::m_replacePattern)
                 ->Field("Type", &XmlSchemaAttribute::m_type)
                 ->Field("PathDependencyType", &XmlSchemaAttribute::m_pathDependencyType)
                 ->Field("RelativeToSourceAssetFolder", &XmlSchemaAttribute::m_relativeToSourceAssetFolder)
@@ -95,7 +98,10 @@ namespace AzFramework
                 editContext->Class<XmlSchemaAttribute>("XmlSchemaAttribute", "XML Schema attribute")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_name, "Name", "Name of the attribute")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_expectedExtension, "Expected Extension", "Expected extension for the file name")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_expectedExtension, "Expected Extension", "Expected extension for the file name.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_matchPattern, "Match Pattern", "(Optional) Values that don't match this regex pattern will be rejected.  Case-insensitive.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_findPattern, "Find Pattern", "(Optional) Regex pattern to use to match against the value for replacing.  Case-insensitive.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &XmlSchemaAttribute::m_replacePattern, "Replace Pattern", "(Optional) Regex pattern to use to replace the value.")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &XmlSchemaAttribute::m_type, "Type", "Type of the attribute. Select from RelativePath, AssetId, etc.")
                         ->EnumAttribute(AttributeType::RelativePath, "RelativePath")
                         ->EnumAttribute(AttributeType::Asset, "Asset")
@@ -117,6 +123,21 @@ namespace AzFramework
     AZStd::string XmlSchemaAttribute::GetExpectedExtension() const
     {
         return m_expectedExtension;
+    }
+
+    AZStd::string XmlSchemaAttribute::GetMatchPattern() const
+    {
+        return m_matchPattern;
+    }
+
+    AZStd::string XmlSchemaAttribute::GetFindPattern() const
+    {
+        return m_findPattern;
+    }
+
+    AZStd::string XmlSchemaAttribute::GetReplacePattern() const
+    {
+        return m_replacePattern;
     }
 
     XmlSchemaAttribute::AttributeType XmlSchemaAttribute::GetType() const

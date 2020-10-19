@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#if ENABLE_CRY_PHYSICS
 #include "CREBreakableGlass.h"
 
 #include "Utils/PolygonMath2D.h"
@@ -3023,3 +3024,5 @@ void CREBreakableGlass::TransformPointList(PodArray<Vec3>& ptList, const bool in
 #endif // !GLASS_PROFILER_ENABLED
 }//-------------------------------------------------------------------------------------------------
 #endif // GLASS_DEBUG_MODE
+
+#endif // ENABLE_CRY_PHYSICS

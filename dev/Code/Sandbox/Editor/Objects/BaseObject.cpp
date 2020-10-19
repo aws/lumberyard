@@ -3503,11 +3503,13 @@ void CBaseObject::UpdateVisibility(bool bVisible)
 
         NotifyListeners(ON_VISIBILITY);
 
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity* pPhEn = GetCollisionEntity();
         if (pPhEn && gEnv->pPhysicalWorld)
         {
             gEnv->pPhysicalWorld->DestroyPhysicalEntity(pPhEn, bVisibleWithSpec ? 2 : 1);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 }
 

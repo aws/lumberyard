@@ -60,7 +60,7 @@ namespace Vegetation
                     ->Attribute(AZ::Edit::Attributes::Visibility, &DescriptorListConfig::IsEmbeddedSource)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
-                    ->ElementAttribute(AZ::Edit::Attributes::NameLabelOverride, &Descriptor::GetMeshName)
+                    ->ElementAttribute(AZ::Edit::Attributes::NameLabelOverride, &Descriptor::GetDescriptorName)
                     ->ElementAttribute(AZ::Edit::Attributes::AutoExpand, true)
                     ;
             }
@@ -204,25 +204,41 @@ namespace Vegetation
 
     void DescriptorListComponent::Activate()
     {
-        LoadAssets();
-        RegisterUniqueDescriptors();
+        // This component is managing a list of Descriptors, each of which contains an InstanceSpawner.  The
+        // list itself can either be embedded in the component configuration or loaded from an asset.
+        // On activation, the component loads the DescriptorListAsset if one is used, and loads all the assets
+        // used by all of the Descriptors.
+        // Once all of the assets are loaded, the Descriptors get registered with the vegetation system, at which
+        // point they will be used to start placing vegetation.
+        // The vegetation system optimizes memory by sharing pointers to identical Descriptors where possible,
+        // and to identical InstanceSpawners where possible, so the component also keeps track of the shared pointers
+        // returned from the system registration.
+
         DescriptorListRequestBus::Handler::BusConnect(GetEntityId());
         DescriptorProviderRequestBus::Handler::BusConnect(GetEntityId());
         SurfaceData::SurfaceDataTagEnumeratorRequestBus::Handler::BusConnect(GetEntityId());
+
+        LoadAssets();
     }
 
     void DescriptorListComponent::Deactivate()
     {
+        // First, make sure we unregister with the vegetation system.
         ReleaseUniqueDescriptors();
+
         AZ::Data::AssetBus::MultiHandler::BusDisconnect();
         DescriptorListRequestBus::Handler::BusDisconnect();
         DescriptorProviderRequestBus::Handler::BusDisconnect();
         SurfaceData::SurfaceDataTagEnumeratorRequestBus::Handler::BusDisconnect();
 
+        // Stop listening for descriptor load/unload notifications before unloading the assets
+        // to ensure that we don't try to process the changes while deactivating.
+        DescriptorNotificationBus::MultiHandler::BusDisconnect();
+
         m_configuration.m_descriptorListAsset.Release();
         for (auto& descriptor : m_configuration.m_descriptors)
         {
-            descriptor.ResetAssets();
+            descriptor.UnloadAssets();
         }
     }
 
@@ -246,43 +262,16 @@ namespace Vegetation
         return false;
     }
 
-    void DescriptorListComponent::AssignMeshAssets(AZStd::vector<Descriptor>& descriptors, AZ::Data::Asset<AZ::Data::AssetData> asset)
-    {
-        for (auto& descriptor : descriptors)
-        {
-            if (descriptor.m_meshAsset.GetId() == asset.GetId())
-            {
-                descriptor.ResetAssets(false);
-                descriptor.m_meshAsset = asset;
-            }
-        }
-    }
-
     void DescriptorListComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        if (m_configuration.IsExternalSource())
-        {
-            if (m_configuration.m_descriptorListAsset.GetId() == asset.GetId())
-            {
-                m_configuration.m_descriptorListAsset = asset;
-                if (m_configuration.m_descriptorListAsset.IsReady())
-                {
-                    LoadAssets(m_configuration.m_descriptorListAsset.Get()->m_descriptors);
-                }
-                return;
-            }
+        AZ_Assert(m_configuration.IsExternalSource(), "Unexpected notification of a DescriptorListAsset being loaded.");
+        AZ_Assert(m_configuration.m_descriptorListAsset.GetId() == asset.GetId(), "Unexpected notification of a non-DescriptorList asset.");
 
-            if (m_configuration.m_descriptorListAsset.IsReady())
-            {
-                AssignMeshAssets(m_configuration.m_descriptorListAsset.Get()->m_descriptors, asset);
-            }
-        }
-        else
+        m_configuration.m_descriptorListAsset = asset;
+        if (m_configuration.m_descriptorListAsset.IsReady())
         {
-            AssignMeshAssets(m_configuration.m_descriptors, asset);
+            LoadAssetsFromDescriptorList();
         }
-
-        RegisterUniqueDescriptors();
     }
 
     void DescriptorListComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -334,14 +323,53 @@ namespace Vegetation
 
     void DescriptorListComponent::LoadAssets(AZStd::vector<Descriptor>& descriptors)
     {
+        // Before queueing any new assets to load, make sure we stop listening for any
+        // load/unload notifications.  We'll listen again after the queueing is complete.
+        DescriptorNotificationBus::MultiHandler::BusDisconnect();
+
         for (auto& descriptor : descriptors)
         {
-            if (descriptor.m_meshAsset.GetId().IsValid())
+            if (!descriptor.HasEmptyAssetReferences())
             {
+                // If this descriptor has assets, queue them to start loading.
                 descriptor.LoadAssets();
-                AZ::Data::AssetBus::MultiHandler::BusConnect(descriptor.m_meshAsset.GetId());
             }
         }
+
+        // Register to listen to load/unload notifications for all of the provided descriptors.
+        // Any time one of these notifications triggers, we need to either register or unregister with the
+        // vegetation system, depending on whether or not we have the full set of expected data available.
+        // Registration happens after queueing is complete to ensure that we don't get interruptions while
+        // in the process of queueing the loads.  It's safe to ignore the messages while queueing because
+        // we proactively check the load status below.
+        for (auto& descriptor : descriptors)
+        {
+            DescriptorNotificationBus::MultiHandler::BusConnect(descriptor.GetDescriptorNotificationBusId());
+        }
+
+        // Check our loading status and move on to registration if loading is complete, because it's possible
+        // that all of the loading finished before we registered to listen on the DescriptorNotificationBus.
+        ProcessDescriptorLoadingStatus();
+    }
+
+    void DescriptorListComponent::OnDescriptorAssetsLoaded()
+    {
+        // Because we've loaded at least one more needed asset, check our overall loading status and move on
+        // to registration if loading is complete.
+        ProcessDescriptorLoadingStatus();
+    }
+
+    void DescriptorListComponent::OnDescriptorAssetsUnloaded()
+    {
+        // Because we've unloaded at least one needed asset, the following call will deregister from the
+        // vegetation system.  We'll register again if one or more OnDescriptorAssetsLoaded calls occur
+        // to bring us back to a fully loaded state.
+        ProcessDescriptorLoadingStatus();
+    }
+
+    void DescriptorListComponent::LoadAssetsFromDescriptorList()
+    {
+        LoadAssets(m_configuration.m_descriptorListAsset.Get()->m_descriptors);
     }
 
     void DescriptorListComponent::LoadAssets()
@@ -359,7 +387,7 @@ namespace Vegetation
 
                 if (m_configuration.m_descriptorListAsset.IsReady())
                 {
-                    LoadAssets(m_configuration.m_descriptorListAsset.Get()->m_descriptors);
+                    LoadAssetsFromDescriptorList();
                 }
             }
         }
@@ -371,22 +399,30 @@ namespace Vegetation
 
     void DescriptorListComponent::RegisterUniqueDescriptors(AZStd::vector<Descriptor>& descriptors)
     {
+        // Stop listening to load/unload notifications from our current descriptor list.
+        // On registration, the vegetation system might provide us new Descriptor and/or InstanceSpawner pointers,
+        // so we'll register to listen to the newly-returned instances below.
+        DescriptorNotificationBus::MultiHandler::BusDisconnect();
+
         for (auto& descriptor : descriptors)
         {
-            descriptor.UpdateAssets();
             if (descriptor.m_weight > 0.0f)
             {
                 DescriptorPtr descriptorPtr;
                 InstanceSystemRequestBus::BroadcastResult(descriptorPtr, &InstanceSystemRequestBus::Events::RegisterUniqueDescriptor, descriptor);
                 if (descriptorPtr)
                 {
+                    // RegisterUniqueDescriptor can return a pointer to an existing Descriptor (and/or InstanceSpawner),
+                    // as opposed to the one we passed in, so make sure we're monitoring its notification bus instead of the
+                    // one for the original Descriptor.
+                    DescriptorNotificationBus::MultiHandler::BusConnect(descriptorPtr->GetDescriptorNotificationBusId());
                     m_uniqueDescriptors.push_back(descriptorPtr);
                 }
             }
         }
     }
 
-    void DescriptorListComponent::RegisterUniqueDescriptors()
+    void DescriptorListComponent::ProcessDescriptorLoadingStatus()
     {
         ReleaseUniqueDescriptors();
 
@@ -415,7 +451,12 @@ namespace Vegetation
         AZStd::lock_guard<decltype(uniqueDescriptorsMutex)> descriptorLock(uniqueDescriptorsMutex);
         if (!m_uniqueDescriptors.empty())
         {
-            for (auto descriptorPtr : m_uniqueDescriptors)
+            // Stop listening to all Descriptor load/unload notifications until the next time we trigger a load ourselves.
+            // m_uniqueDescriptors only contains entries after a load is complete, so there shouldn't be any loads in flight
+            // at the point that we disconnect here.
+            DescriptorNotificationBus::MultiHandler::BusDisconnect();
+
+            for (auto& descriptorPtr : m_uniqueDescriptors)
             {
                 InstanceSystemRequestBus::Broadcast(&InstanceSystemRequestBus::Events::ReleaseUniqueDescriptor, descriptorPtr);
             }
@@ -429,7 +470,7 @@ namespace Vegetation
     {
         for (auto& descriptor : descriptors)
         {
-            if (descriptor.m_meshAsset.GetId().IsValid() && !descriptor.m_meshAsset.IsReady())
+            if (!descriptor.HasEmptyAssetReferences() && !descriptor.IsLoaded())
             {
                 return false;
             }
@@ -472,6 +513,7 @@ namespace Vegetation
     void DescriptorListComponent::SetDescriptorAssetPath(const AZStd::string& assetPath)
     {
         m_configuration.m_descriptorListAsset.Release();
+        DescriptorNotificationBus::MultiHandler::BusDisconnect();
         ReleaseUniqueDescriptors();
         m_configuration.SetDescriptorAssetPath(assetPath);
         LoadAssets();

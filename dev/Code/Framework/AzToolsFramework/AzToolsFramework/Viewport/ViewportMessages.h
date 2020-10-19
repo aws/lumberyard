@@ -26,6 +26,14 @@ namespace AzToolsFramework
 {
     namespace ViewportInteraction
     {
+        /// Result of handling mouse interaction.
+        enum class MouseInteractionResult
+        {
+            Manipulator,    ///< The manipulator manager handled the interaction.
+            Viewport,       ///< The viewport handled the interaction.
+            None            ///< The interaction was not handled.
+        };
+
         /// Interface for handling mouse viewport events.
         class MouseViewportRequests
         {
@@ -38,16 +46,51 @@ namespace AzToolsFramework
             virtual bool HandleMouseInteraction(
                 const MouseInteractionEvent& /*mouseInteraction*/) { return false; }
         };
-
-        /// Interface for viewport selection behaviors.
-        /// Implement this for types wishing to provide viewport functionality and
-        /// set it by using \ref EditorInteractionSystemViewportSelectionRequestBus.
-        class ViewportSelectionRequests
-            : public MouseViewportRequests
+        
+        /// Interface for internal handling mouse viewport events.
+        class InternalMouseViewportRequests
         {
         public:
             /// @cond
-            virtual ~ViewportSelectionRequests() = default;
+            virtual ~InternalMouseViewportRequests() = default;
+            /// @endcond
+
+            /// Implement this function to have the viewport handle this mouse event.
+            virtual bool InternalHandleMouseViewportInteraction(
+                const MouseInteractionEvent& /*mouseInteraction*/) { return false; }
+
+            /// Implement this function to have manipulators handle this mouse event.
+            virtual bool InternalHandleMouseManipulatorInteraction(
+                const MouseInteractionEvent& /*mouseInteraction*/) { return false; }
+
+            /// Helper to call both viewport and manipulator handle mouse events
+            /// @note Manipulators always attempt to intercept the event first.
+            MouseInteractionResult InternalHandleAllMouseInteractions(const MouseInteractionEvent& mouseInteraction);
+        };
+
+        inline MouseInteractionResult InternalMouseViewportRequests::InternalHandleAllMouseInteractions(
+            const MouseInteractionEvent& mouseInteraction)
+        {
+            if (InternalHandleMouseManipulatorInteraction(mouseInteraction))
+            {
+                return MouseInteractionResult::Manipulator;
+            }
+            else if (InternalHandleMouseViewportInteraction(mouseInteraction))
+            {
+                return MouseInteractionResult::Viewport;
+            }
+            else
+            {
+                return MouseInteractionResult::None;
+            }
+        }
+
+        /// Interface for viewport selection behaviors.
+        class ViewportDisplayNotifications
+        {
+        public:
+            /// @cond
+            virtual ~ViewportDisplayNotifications() = default;
             /// @endcond
 
             /// Display drawing in world space.
@@ -65,6 +108,23 @@ namespace AzToolsFramework
             virtual void DisplayViewportSelection2d(
                 const AzFramework::ViewportInfo& /*viewportInfo*/,
                 AzFramework::DebugDisplayRequests& /*debugDisplay*/) {}
+        };
+
+        /// Interface for internal handling mouse viewport events and display notifications.
+        /// Implement this for types wishing to provide viewport functionality and
+        /// set it by using \ref EditorInteractionSystemViewportSelectionRequestBus.
+        class InternalViewportSelectionRequests
+            : public ViewportDisplayNotifications
+            , public InternalMouseViewportRequests
+        {
+        };
+
+        /// Interface for handling mouse viewport events and display notifications.
+        /// Use this interface for composition types used by InternalViewportSelectionRequests.
+        class ViewportSelectionRequests
+            : public ViewportDisplayNotifications
+            , public MouseViewportRequests
+        {
         };
 
         /// The EBusTraits for ViewportInteractionRequests.

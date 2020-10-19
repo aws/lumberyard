@@ -373,6 +373,7 @@ void DynamicCoverManager::ValidateOne()
         {
             collisionEntities |= ent_rigid | ent_sleeping_rigid; // support 0-mass rigid entities too
         }
+#if ENABLE_CRY_PHYSICS
         IPhysicalEntity** entityList = 0;
         size_t entityCount = (size_t)GetPhysicalEntitiesInBox(boxMin, boxMax, entityList, collisionEntities);
 
@@ -441,6 +442,7 @@ void DynamicCoverManager::ValidateOne()
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         m_validationQueue.pop_front();
     }

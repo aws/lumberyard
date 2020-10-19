@@ -23,7 +23,7 @@
 #include <QDesktopServices>
 #include <QApplication>
 
-#define EDITOR_QTUI_COLORPICKER_HELP_DOC_LINK "https://docs.aws.amazon.com/lumberyard/userguide/color-picker"
+#define EDITOR_QTUI_COLORPICKER_HELP_DOC_LINK "https://docs.aws.amazon.com/console/lumberyard/color-picker"
 
 QCustomColorDialog::QCustomColorDialog(QColor defaultColor, QColorEyeDropper* eyeDropper, QWidget* parent)
     : layout(this)

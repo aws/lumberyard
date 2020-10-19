@@ -161,7 +161,7 @@ namespace AssetProcessor
                 //do not add log files and folders
                 QFileInfo fileInfo(info.m_filePath);
                 if (!QRegExp(".*.log", Qt::CaseInsensitive, QRegExp::RegExp).exactMatch(info.m_filePath)
-                    &&!QRegExp("*.cov", Qt::CaseInsensitive, QRegExp::RegExp).exactMatch(info.m_filePath)
+                    &&!QRegExp("*.cov", Qt::CaseInsensitive, QRegExp::Wildcard).exactMatch(info.m_filePath)
                     && !fileInfo.isDir())
                 {
                     collectedChanges.append(info.m_filePath);
@@ -383,7 +383,6 @@ namespace AssetProcessor
         QList<AzFramework::AssetSystem::AssetNotificationMessage>  assetMessages;
 
         bool idling = false;
-        unsigned int CRC_Of_Change_Message =  AssetUtilities::ComputeCRC32Lowercase("AssetProcessorManager::assetChanged");
 
         connect(&apm, &AssetProcessorManager::AssetToProcess,
             this, [&processResults](JobDetails details)
@@ -414,7 +413,7 @@ namespace AssetProcessor
         AssetProcessor::MockConnectionHandler connection;
         connection.BusConnect(1);
         QList<QPair<unsigned int, QByteArray> > payloadList;
-        connection.m_callback = [&](unsigned int type, unsigned int serial, const QByteArray payload)
+        connection.m_callback = [&](unsigned int type, unsigned int /*serial*/, const QByteArray payload)
             {
                 payloadList.append(qMakePair(type, payload));
             };
@@ -557,7 +556,7 @@ namespace AssetProcessor
 
                 UNIT_TEST_EXPECT_TRUE(connection.m_sent); // we expect a response to have arrived.
 
-                unsigned int jobinformationResultIndex = -1;
+                unsigned int jobinformationResultIndex = aznumeric_caster(-1);
                 for (int index = 0; index < payloadList.size(); index++)
                 {
                     unsigned int type = payloadList.at(index).first;
@@ -566,7 +565,7 @@ namespace AssetProcessor
                         jobinformationResultIndex = index;
                     }
                 }
-                UNIT_TEST_EXPECT_FALSE(jobinformationResultIndex == -1);
+                UNIT_TEST_EXPECT_FALSE(jobinformationResultIndex == unsigned(-1));
                 UNIT_TEST_EXPECT_TRUE(AZ::Utils::LoadObjectFromBufferInPlace(payloadList.at(jobinformationResultIndex).second.data(), payloadList.at(jobinformationResultIndex).second.size(), jobResponse));
             }
 
@@ -618,7 +617,7 @@ namespace AssetProcessor
                 AZ::IO::HandleType logHandle;
                 AZ::IO::LocalFileIO::GetInstance()->CreatePath(AssetUtilities::ComputeJobLogFolder().c_str());
                 UNIT_TEST_EXPECT_TRUE(AZ::IO::LocalFileIO::GetInstance()->Open(logFolder.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary, logHandle));
-                AZStd::string logLine = AZStd::string::format("Log stored for job %lli\n", processResults[checkIdx].m_jobEntry.GetHash());
+                AZStd::string logLine = AZStd::string::format("Log stored for job %u\n", processResults[checkIdx].m_jobEntry.GetHash());
                 AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
                 AZ::IO::LocalFileIO::GetInstance()->Close(logHandle);
             }
@@ -643,7 +642,7 @@ namespace AssetProcessor
 
                 UNIT_TEST_EXPECT_TRUE(connection.m_sent); // we expect a response to have arrived.
 
-                unsigned int jobLogResponseIndex = -1;
+                unsigned int jobLogResponseIndex = aznumeric_caster(-1);
                 for (int index = 0; index < payloadList.size(); index++)
                 {
                     unsigned int type = payloadList.at(index).first;
@@ -660,7 +659,7 @@ namespace AssetProcessor
                 {
                     UNIT_TEST_EXPECT_TRUE(requestResponse.m_isSuccess);
                     UNIT_TEST_EXPECT_FALSE(requestResponse.m_jobLog.empty());
-                    AZStd::string checkString = AZStd::string::format("Log stored for job %lli\n", processResults[checkIdx].m_jobEntry.GetHash());
+                    AZStd::string checkString = AZStd::string::format("Log stored for job %u\n", processResults[checkIdx].m_jobEntry.GetHash());
                     UNIT_TEST_EXPECT_TRUE(requestResponse.m_jobLog.find(checkString.c_str()) != AZStd::string::npos);
                 }
                 else
@@ -701,7 +700,7 @@ namespace AssetProcessor
 
             UNIT_TEST_EXPECT_TRUE(connection.m_sent); // we expect a response to have arrived.
 
-            unsigned int jobinformationResultIndex = -1;
+            unsigned int jobinformationResultIndex = aznumeric_caster(-1);
             for (int index = 0; index < payloadList.size(); index++)
             {
                 unsigned int type = payloadList.at(index).first;
@@ -710,7 +709,7 @@ namespace AssetProcessor
                     jobinformationResultIndex = index;
                 }
             }
-            UNIT_TEST_EXPECT_FALSE(jobinformationResultIndex == -1);
+            UNIT_TEST_EXPECT_FALSE(jobinformationResultIndex == unsigned(-1));
 
             AssetJobsInfoResponse jobResponse;
             UNIT_TEST_EXPECT_TRUE(AZ::Utils::LoadObjectFromBufferInPlace(payloadList.at(jobinformationResultIndex).second.data(), payloadList.at(jobinformationResultIndex).second.size(), jobResponse));
@@ -838,7 +837,7 @@ namespace AssetProcessor
             UNIT_TEST_EXPECT_TRUE(escalated);
             UNIT_TEST_EXPECT_TRUE(numEscalated > 0);
 
-            unsigned int jobinformationResultIndex = -1;
+            unsigned int jobinformationResultIndex = aznumeric_caster(-1);
             for (int index = 0; index < payloadList.size(); index++)
             {
                 unsigned int type = payloadList.at(index).first;
@@ -998,7 +997,7 @@ namespace AssetProcessor
 
             UNIT_TEST_EXPECT_TRUE(connection.m_sent); // we expect a response to have arrived.
 
-            unsigned int jobinformationResultIndex = -1;
+            unsigned int jobinformationResultIndex = aznumeric_caster(-1);
             for (int index = 0; index < payloadList.size(); index++)
             {
                 unsigned int type = payloadList.at(index).first;
@@ -1413,7 +1412,7 @@ namespace AssetProcessor
         }
 
         UNIT_TEST_EXPECT_TRUE(connection.m_sent);
-        UNIT_TEST_EXPECT_TRUE(messageLoadCount == payloadList.size()); // make sure all messages are accounted for
+        UNIT_TEST_EXPECT_TRUE(messageLoadCount == azlossy_cast<unsigned>(payloadList.size())); // make sure all messages are accounted for
         scanFolder = QDir(sourceFileRemovedMessage.m_scanFolder.c_str());
         pathToCheck = scanFolder.filePath(sourceFileRemovedMessage.m_relativeSourcePath.c_str());
         UNIT_TEST_EXPECT_TRUE(QString::compare(absolutePath, pathToCheck, Qt::CaseSensitive) == 0);
@@ -1506,7 +1505,7 @@ namespace AssetProcessor
 
             UNIT_TEST_EXPECT_TRUE(connection.m_sent); // we expect a response to have arrived.
 
-            unsigned int jobinformationResultIndex = -1;
+            unsigned int jobinformationResultIndex = aznumeric_caster(-1);
             for (int index = 0; index < payloadList.size(); index++)
             {
                 unsigned int type = payloadList.at(index).first;
@@ -1802,8 +1801,6 @@ namespace AssetProcessor
             return;
         }
 
-        AssetStatus status = AssetStatus_Unknown;
-
         relativePathFromWatchFolder = "somefile.xxx";
         watchFolderPath = tempPath.absoluteFilePath("subfolder3");
         absolutePath = watchFolderPath + "/" + relativePathFromWatchFolder;
@@ -1855,12 +1852,12 @@ namespace AssetProcessor
 
         // tell it that all those assets are now successfully done:
         AZ::u32 resultIdx = 0;
-        for (auto processResult : processResults)
+        for (const auto& processResult : processResults)
         {
             ++resultIdx;
             QString outputFile = normalizedCacheRootDir.absoluteFilePath(processResult.m_destinationPath + "/doesn'tmatter.dds" + processResult.m_jobEntry.m_jobKey);
             CreateDummyFile(outputFile);
-            AssetBuilderSDK::ProcessJobResponse response;
+            response = {};
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
             response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(outputFile.toUtf8().constData(), AZ::Uuid::CreateNull(), resultIdx));
             apm.AssetProcessed(processResult.m_jobEntry, response);
@@ -1962,7 +1959,7 @@ namespace AssetProcessor
 
                 CreateDummyFile(outputFile);
 
-                AssetBuilderSDK::ProcessJobResponse response;
+                response = {};
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
                 response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(outputFile.toUtf8().constData(), AZ::Uuid::CreateNull(), resultIdx));
 
@@ -1975,7 +1972,7 @@ namespace AssetProcessor
             bool foundIt = false;
 
             connect(&apm, &AssetProcessorManager::SendAssetExistsResponse,
-                this, [&foundIt](NetworkRequestID requestId, bool result)
+                this, [&foundIt](NetworkRequestID /*requestId*/, bool result)
             {
                 foundIt = result;
             });
@@ -2671,7 +2668,7 @@ namespace AssetProcessor
         AssetUtilities::ResetAssetRoot();
 
         QTemporaryDir dir;
-        bool isValid = dir.isValid();
+        UNIT_TEST_EXPECT_TRUE(dir.isValid());
         UnitTestUtils::ScopedDir changeDir(dir.path());
         QDir tempPath(dir.path());
 
@@ -2714,7 +2711,6 @@ namespace AssetProcessor
             AssetDatabaseConnection connection;
             UNIT_TEST_EXPECT_TRUE(connection.OpenDatabase());
             // make sure we find the scan folders.
-            int numFound = 0;
             entryContainer.clear();
             connection.QueryScanFoldersTable(puller);
             UNIT_TEST_EXPECT_TRUE(config.GetScanFolderCount() == entryContainer.size());
@@ -2763,7 +2759,6 @@ namespace AssetProcessor
             AssetDatabaseConnection connection;
             UNIT_TEST_EXPECT_TRUE(connection.OpenDatabase());
             // make sure we find the scan folders.
-            int numFound = 0;
             entryContainer.clear();
             connection.QueryScanFoldersTable(puller);
             UNIT_TEST_EXPECT_TRUE(config2.GetScanFolderCount() == entryContainer.size());
@@ -2915,7 +2910,7 @@ namespace AssetProcessor
         AssetUtilities::ResetAssetRoot();
 
         QTemporaryDir dir;
-        bool isValid = dir.isValid();
+        UNIT_TEST_EXPECT_TRUE(dir.isValid());
         QString test = dir.path();
         UnitTestUtils::ScopedDir changeDir(dir.path());
         QDir tempPath(dir.path());

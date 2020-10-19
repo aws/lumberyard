@@ -75,6 +75,8 @@ private:
     friend class CLayoutWnd;
 };
 
+class InfoBarExpanderWatcher;
+
 /** Main layout window.
 */
 class CLayoutWnd
@@ -88,6 +90,8 @@ public:
     // Attributes
 public:
     CLayoutViewPane* GetViewPane(int id);
+    CLayoutViewPane* GetViewPaneByIndex(unsigned int index);
+    unsigned int GetViewPaneCount();
 
     //! Maximize viewport with specified type.
     void MaximizeViewport(int paneId);
@@ -160,6 +164,7 @@ private:
     QToolBar* m_infoToolBar;
     QSize m_infoBarSize;
     QSettings* m_settings;
+    InfoBarExpanderWatcher* m_expanderWatcher;
 };
 
 /////////////////////////////////////////////////////////////////////////////

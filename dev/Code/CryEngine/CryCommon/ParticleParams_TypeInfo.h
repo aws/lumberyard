@@ -36,6 +36,14 @@
 #include "Name_TypeInfo.h"
 #include "CryTypeInfo.h"
 
+#include "IParticles.h"
+#if !PARTICLES_USE_CRY_PHYSICS
+#include <AzCore/Interface/Interface.h>
+#include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/SystemBus.h>
+#endif
+
 ///////////////////////////////////////////////////////////////////////
 // Implementation of TCurve<> functions.
 
@@ -266,6 +274,140 @@ const CTypeInfo& CSurfaceTypeIndex::TypeInfo() const
     static CCustomInfo Info;
     return Info;
 }
+
+namespace ParticleParamsUtils
+{
+    struct StringBuffer
+    {
+        StringBuffer(const AZStd::string& str)
+        {
+            m_data = AZStd::unique_ptr<char[]>(new char[str.size() + 1]);
+            azstrcpy(m_data.get(), str.size() + 1, str.c_str());
+        }
+        const char* c_str() const
+        {
+            return m_data.get();
+        }
+        AZStd::unique_ptr<char[]> m_data;
+    };
+}
+
+#if !PARTICLES_USE_CRY_PHYSICS
+const CTypeInfo& CAZPhysicsCollisionLayerIndex::TypeInfo() const
+{
+    struct LayerEnums
+        : LegacyDynArray<CEnumInfo<AZ::u8>::SElem>
+    {
+        LayerEnums()
+        {
+            if (auto* collisionRequests = AZ::Interface<Physics::CollisionRequests>::Get())
+            {
+                const Physics::CollisionConfiguration& configuration = collisionRequests->GetCollisionConfiguration();
+                for (AZ::u8 layer = 0; layer < Physics::CollisionLayers::s_maxCollisionLayers; ++layer)
+                {
+                    const AZStd::string& layerName = configuration.m_collisionLayers.GetName(layer);
+                    if (!layerName.empty())
+                    {
+                        m_names.emplace_back(layerName);
+                        CEnumInfo<AZ::u8>::SElem elem = { layer, m_names.back().c_str() };
+                        push_back(elem);
+                    }
+                }
+            }
+
+        }
+    private:
+        AZStd::vector<ParticleParamsUtils::StringBuffer> m_names;
+    };
+
+    struct CCustomInfo
+        : LayerEnums
+        , CEnumInfo<AZ::u8>
+    {
+        CCustomInfo()
+            : CEnumInfo<AZ::u8>("CAZPhysicsCollisionLayerIndex", *this)
+        {}
+    };
+    static CCustomInfo Info;
+    return Info;
+}
+
+const CTypeInfo& CAZPhysicsCollisionGroupIndex::TypeInfo() const
+{
+    struct GroupEnums
+        : LegacyDynArray<CEnumDefUuid::SElem>
+    {
+        GroupEnums()
+        {
+            if (auto* collisionRequests = AZ::Interface<Physics::CollisionRequests>::Get())
+            {
+                const Physics::CollisionConfiguration& configuration = collisionRequests->GetCollisionConfiguration();
+                const AZStd::vector<Physics::CollisionGroups::Preset>& presets = configuration.m_collisionGroups.GetPresets();
+                for (const Physics::CollisionGroups::Preset& preset : presets)
+                {
+                    m_names.emplace_back(preset.m_name);
+                    CEnumDefUuid::SElem elem = { preset.m_id.m_id, m_names.back().c_str() };
+                    push_back(elem);
+                }
+            }
+        }
+    private:
+        AZStd::vector<ParticleParamsUtils::StringBuffer> m_names;
+    };
+
+    struct CCustomInfo
+        : GroupEnums
+        , CEnumDefUuid
+    {
+        CCustomInfo()
+            : CEnumDefUuid("CAZPhysicsCollisionGroupIndex", *this)
+        {}
+    };
+    static CCustomInfo Info;
+    return Info;
+}
+
+const CTypeInfo& CAZPhysicsMaterialIndex::TypeInfo() const
+{
+    struct PhysMaterialEnums
+        : LegacyDynArray<CEnumDefUuid::SElem>
+    {
+        PhysMaterialEnums()
+        {
+            CEnumDefUuid::SElem elem = { AZ::Uuid::CreateNull(), "Default" };
+            push_back(elem);
+            if (auto* system = AZ::Interface<Physics::System>::Get())
+            {
+                const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary = *system->GetDefaultMaterialLibraryAssetPtr();
+                if (Physics::MaterialLibraryAsset* asset = materialLibrary.Get())
+                {
+                    for (const auto& materialData : asset->GetMaterialsData())
+                    {
+                        const AZStd::string& materialName = materialData.m_configuration.m_surfaceType;
+                        m_names.emplace_back(materialName);
+                        CEnumDefUuid::SElem elem = { materialData.m_id.GetUuid(), m_names.back().c_str() };
+                        push_back(elem);
+                    }
+                }
+            }
+        }
+
+    private:
+        AZStd::vector<ParticleParamsUtils::StringBuffer> m_names;
+    };
+
+    struct CCustomInfo
+        : PhysMaterialEnums
+        , CEnumDefUuid
+    {
+        CCustomInfo()
+            : CEnumDefUuid("CAZPhysicsMaterial", *this)
+        {}
+    };
+    static CCustomInfo Info;
+    return Info;
+}
+#endif // PARTICLES_USE_CRY_PHYSICS
 
 #if defined(TEST_TYPEINFO) && defined(_DEBUG)
 

@@ -50,7 +50,9 @@ public:
 
     virtual void SetSelected(bool bSelect);
     virtual void SetMinSpec(uint32 nSpec, bool bSetChildren = true);
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetCollisionEntity() const;
+#endif
 
     //////////////////////////////////////////////////////////////////////////
     void BeginEditParams(IEditor* ie, int flags);

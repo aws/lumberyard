@@ -117,6 +117,7 @@ namespace AZ
 
                 AZStd::shared_ptr<SceneData::GraphData::MaterialData> material = AZStd::make_shared<SceneData::GraphData::MaterialData>();
 
+                material->SetMaterialName(fbxMaterial->GetName());
                 material->SetTexture(DataTypes::IMaterialData::TextureMapType::Diffuse,
                     fbxMaterial->GetTextureFileName(FbxSDKWrapper::FbxMaterialWrapper::MaterialMapType::Diffuse).c_str());
                 material->SetTexture(DataTypes::IMaterialData::TextureMapType::Specular,

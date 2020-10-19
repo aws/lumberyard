@@ -48,7 +48,9 @@ private:
         {
             if (rayId != 0)
             {
+#if ENABLE_CRY_PHYSICS
                 CCryAction::GetCryAction()->GetPhysicQueues().GetRayCaster().Cancel(rayId);
+#endif
                 rayId = 0;
             }
             counter = 0;
@@ -94,6 +96,7 @@ public:
         m_validQueries &= ~(eWQ_Proximity | eWQ_InFrontOf);
     }
 
+#if ENABLE_CRY_PHYSICS
     ILINE const ray_hit* RaycastQuery()
     {
         return GetLookAtPoint(m_proximityRadius);
@@ -127,12 +130,17 @@ public:
         }
         return NULL;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     ILINE const EntityId GetLookAtEntityId(bool ignoreGlass = false)
     {
         ValidateQuery(eWQ_Raycast);
 
+#if ENABLE_CRY_PHYSICS
         return !ignoreGlass && m_rayHitPierceable.dist >= 0.f ? 0 : m_lookAtEntityId;
+#else
+        return m_lookAtEntityId;
+#endif // ENABLE_CRY_PHYSICS
     }
 
     ILINE const EntityId*       ProximityQuery(int& numberOfEntities)
@@ -177,6 +185,7 @@ public:
         return num ? &m_EntAroundOf[0] : 0;
     }
 
+#if ENABLE_CRY_PHYSICS
     ILINE IPhysicalEntity* const* GetPhysicalEntitiesAround(int& num)
     {
         ValidateQuery(eWQ_PhysicalEntitiesAround);
@@ -190,13 +199,16 @@ public:
 
         return gEnv->pPhysicalWorld->GetPhysicalEntityById(m_physicalEntityInFrontOf);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     ILINE const Vec3& GetPos() const { return m_worldPosition; }
     ILINE const Vec3& GetDir() const { return m_dir; }
 
+#if ENABLE_CRY_PHYSICS
 #if WORLDQUERY_USE_DEFERRED_LINETESTS
     void OnRayCastDataReceived(const QueuedRayID& rayID, const RayCastResult& result);
 #endif
+#endif // ENABLE_CRY_PHYSICS
 
 private:
     uint32  m_validQueries;
@@ -222,7 +234,9 @@ private:
     IActor* m_pActor;
     static UpdateQueryFunction m_updateQueryFunctions[];
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* m_pPhysWorld;
+#endif
     IEntitySystem* m_pEntitySystem;
     IViewSystem* m_pViewSystem;
 
@@ -236,6 +250,7 @@ private:
     float       m_timeLastDeferredResult;
 #endif
 
+#if ENABLE_CRY_PHYSICS
     // ray-cast query
     bool m_rayHitAny;
     ray_hit m_rayHitSolid;
@@ -244,6 +259,7 @@ private:
     // back raycast query
     bool m_backRayHitAny;
     ray_hit m_backRayHit;
+#endif // ENABLE_CRY_PHYSICS
 
     //the entity the object is currently looking at...
     EntityId m_lookAtEntityId;
@@ -254,9 +270,11 @@ private:
     Entities m_inFrontOf;
 
     Entities m_EntAroundOf;
+#if ENABLE_CRY_PHYSICS
     std::vector<IPhysicalEntity*> m_PhysEntAroundOf;
 
     int m_physicalEntityInFrontOf;
+#endif
 
     ILINE void ValidateQuery(EWorldQuery query)
     {

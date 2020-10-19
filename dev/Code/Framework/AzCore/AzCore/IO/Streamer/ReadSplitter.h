@@ -28,7 +28,7 @@ namespace AZ
 
             void PrepareRequest(FileRequest* request) override;
 
-            void CollectStatistics(AZStd::vector<Statistic>& statistics) const override;
+            void CollectStatistics(AZStd::vector<Statistic>& statistics) override;
 
         private:
             AverageWindow<u64, double, s_statisticsWindowSize> m_averageNumSubReads;

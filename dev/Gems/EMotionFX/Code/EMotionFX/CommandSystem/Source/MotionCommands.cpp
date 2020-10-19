@@ -1171,7 +1171,7 @@ namespace CommandSystem
         }
         const size_t numFileNames = filenames.size();
 
-        const AZStd::string commandGroupName = AZStd::string::format("%s %d motion%s", reload ? "Reload" : "Load", numFileNames, (numFileNames > 1) ? "s" : "");
+        const AZStd::string commandGroupName = AZStd::string::format("%s %zu motion%s", reload ? "Reload" : "Load", numFileNames, (numFileNames > 1) ? "s" : "");
         MCore::CommandGroup commandGroup(commandGroupName, static_cast<uint32>(numFileNames * 2));
 
         AZStd::string command;
@@ -1262,7 +1262,7 @@ namespace CommandSystem
         }
         else
         {
-            commandGroupName = AZStd::string::format("Remove %d motions", numMotions);
+            commandGroupName = AZStd::string::format("Remove %zu motions", numMotions);
         }
 
         // Create the internal command group which is used in case the parameter command group is not specified.

@@ -20,8 +20,6 @@
 #include <AzQtComponents/Components/DockTabBar.h>
 #include <AzQtComponents/Components/Widgets/ElidingLabel.h>
 
-AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDpiScaling::m_logicalDpi': struct 'QPair<qreal,qreal>' needs to have dll-interface to be used by clients of class 'QHighDpiScaling'
-                                                               // 4244: 'argument': conversion from 'qreal' to 'int', possible loss of data
 #include <QApplication>
 #include <QDockWidget>
 #include <QHBoxLayout>
@@ -33,7 +31,6 @@ AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDp
 #include <QLabel>
 #include <QStackedLayout>
 #include <QVector>
-AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
@@ -143,6 +140,13 @@ namespace AzQtComponents
         tabBarlayout->addWidget(m_tabBar);
         tabBarlayout->addStretch();
 
+        m_tabButtonsContainer = new QFrame(tabBarContainer);
+        m_tabButtonsContainer->setObjectName(QStringLiteral("tabButtons"));
+        m_tabButtonsLayout = new QHBoxLayout(m_tabButtonsContainer);
+        m_tabButtonsLayout->setContentsMargins(0, 0, 0, 0);
+        m_tabButtonsLayout->setSpacing(DockBar::ButtonsSpacing);
+        tabBarlayout->addWidget(m_tabButtonsContainer);
+
         m_stackedLayout->addWidget(tabBarContainer);
 
         auto container = new QWidget(this);
@@ -170,7 +174,7 @@ namespace AzQtComponents
         layout->addWidget(m_buttonsContainer);
 
         setCursor(m_originalCursor);
-        setButtons({ DockBarButton::CloseButton });
+        setButtons({});
         setMouseTracking(true);
 
         connect(this, &TitleBar::drawSimpleChanged, this, &TitleBar::updateTitle);
@@ -269,16 +273,31 @@ namespace AzQtComponents
     }
 
     /**
+     * Set the title bar drawing mode
+     */
+    void TitleBar::setDrawMode(TitleBarDrawMode drawMode)
+    {
+        if (m_drawMode != drawMode)
+        {
+            m_drawMode = drawMode;
+            setupButtons();
+            update();
+            emit drawSimpleChanged(m_drawMode == TitleBarDrawMode::Simple);
+        }
+    }
+
+    /**
      * Change the title bar drawing mode between default and simple
      */
     void TitleBar::setDrawSimple(bool enable)
     {
-        if (m_drawSimple != enable)
+        if (enable)
         {
-            m_drawSimple = enable;
-            setupButtons();
-            update();
-            emit drawSimpleChanged(m_drawSimple);
+            setDrawMode(TitleBarDrawMode::Simple);
+        }
+        else
+        {
+            setDrawMode(TitleBarDrawMode::Main);
         }
     }
 
@@ -413,7 +432,7 @@ namespace AzQtComponents
         // The configured title needs to be simplified since it could have line breaks or
         // carriage returns that should be replaced with spaces so that all the text will
         // be on a single line
-        const auto text = m_drawSimple ? QApplication::applicationName() : title().simplified();
+        const auto text = drawSimple() ? QApplication::applicationName() : title().simplified();
         m_label->setText(text);
         m_tabBar->setTabText(0, text);
     }
@@ -421,9 +440,14 @@ namespace AzQtComponents
     void TitleBar::updateTitleBar()
     {
         setFixedHeight(style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, this));
-        m_label->setVisible(m_drawSimple ? m_showLabelWhenSimple : true);
-        const int currentIndex = !m_drawSimple && m_appearAsTabBar && isTitleBarForDockWidget() ? 0 : 1;
+        m_label->setVisible(drawSimple() ? m_showLabelWhenSimple : true);
+        const int currentIndex = !drawSimple() && m_appearAsTabBar && isTitleBarForDockWidget() ? 0 : 1;
         m_stackedLayout->setCurrentIndex(currentIndex);
+    }
+    
+    void TitleBar::setIsShowingWindowControls(bool show)
+    {
+        m_isShowingWindowControls = show;
     }
 
     void TitleBar::contextMenuEvent(QContextMenuEvent*)
@@ -432,17 +456,17 @@ namespace AzQtComponents
         // title bars, then use the standard context menu with min/max/close/etc... actions
         StyledDockWidget* dockWidgetParent = qobject_cast<StyledDockWidget*>(parentWidget());
         // Main Window title bar, old title bar in old docking, and new title bar will use standard context menu
-        if (!dockWidgetParent || m_drawSimple)
+        if (!dockWidgetParent || drawSimple() || m_isShowingWindowControls)
         {
             updateStandardContextMenu();
+            m_windowContextMenu->exec(QCursor::pos());
         }
         // the old title bar in the new docking will use new context menu
         else
         {
             updateDockedContextMenu();
+            m_tabsContextMenu->exec(QCursor::pos());
         }
-
-        m_contextMenu->exec(QCursor::pos());
     }
 
     bool TitleBar::eventFilter(QObject* watched, QEvent* event)
@@ -522,17 +546,24 @@ namespace AzQtComponents
 
         if (auto titleBar = qobject_cast<const TitleBar*>(widget))
         {
-            if (titleBar->drawSimple())
+            switch (titleBar->drawMode())
             {
-                return config.titleBar.simpleHeight;
-            }
-            else if (titleBar->drawAsTabBar() && titleBar->isTitleBarForDockWidget())
-            {
-                return tabConfig.tabHeight;
-            }
-            else
-            {
-                return config.titleBar.height;
+                case TitleBarDrawMode::Hidden:
+                    return 0;
+                case TitleBarDrawMode::Simple:
+                    return config.titleBar.simpleHeight;
+                case TitleBarDrawMode::Main:
+                default:
+                {
+                    if (titleBar->drawAsTabBar() && titleBar->isTitleBarForDockWidget())
+                    {
+                        return tabConfig.tabHeight;
+                    }
+                    else
+                    {
+                        return config.titleBar.height;
+                    }
+                }
             }
         }
         return -1;
@@ -603,11 +634,11 @@ namespace AzQtComponents
      */
     void TitleBar::updateStandardContextMenu()
     {
-        if (!m_contextMenu)
+        if (!m_windowContextMenu)
         {
-            m_contextMenu = new QMenu(this);
+            m_windowContextMenu = new QMenu(this);
 
-            m_restoreMenuAction = m_contextMenu->addAction(tr("Restore"));
+            m_restoreMenuAction = m_windowContextMenu->addAction(tr("Restore"));
             QIcon restoreIcon;
             restoreIcon.addFile(":/stylesheet/img/titlebarmenu/restore.png");
             restoreIcon.addFile(":/stylesheet/img/titlebarmenu/restore_disabled.png", QSize(), QIcon::Disabled);
@@ -615,13 +646,13 @@ namespace AzQtComponents
             m_restoreMenuAction->setIcon(restoreIcon);
             connect(m_restoreMenuAction, &QAction::triggered, this, &TitleBar::handleMaximize);
 
-            m_moveMenuAction = m_contextMenu->addAction(tr("Move"));
+            m_moveMenuAction = m_windowContextMenu->addAction(tr("Move"));
             connect(m_moveMenuAction, &QAction::triggered, this, &TitleBar::handleMoveRequest);
 
-            m_sizeMenuAction = m_contextMenu->addAction(tr("Size"));
+            m_sizeMenuAction = m_windowContextMenu->addAction(tr("Size"));
             connect(m_sizeMenuAction, &QAction::triggered, this, &TitleBar::handleSizeRequest);
 
-            m_minimizeMenuAction = m_contextMenu->addAction(tr("Minimize"));
+            m_minimizeMenuAction = m_windowContextMenu->addAction(tr("Minimize"));
             QIcon minimizeIcon;
             minimizeIcon.addFile(":/stylesheet/img/titlebarmenu/minimize.png");
             minimizeIcon.addFile(":/stylesheet/img/titlebarmenu/minimize_disabled.png", QSize(), QIcon::Disabled);
@@ -629,7 +660,7 @@ namespace AzQtComponents
             m_minimizeMenuAction->setIcon(minimizeIcon);
             connect(m_minimizeMenuAction, &QAction::triggered, this, &TitleBar::handleMinimize);
 
-            m_maximizeMenuAction = m_contextMenu->addAction(tr("Maximize"));
+            m_maximizeMenuAction = m_windowContextMenu->addAction(tr("Maximize"));
             QIcon maximizeIcon;
             maximizeIcon.addFile(":/stylesheet/img/titlebarmenu/maximize.png");
             maximizeIcon.addFile(":/stylesheet/img/titlebarmenu/maximize_disabled.png", QSize(), QIcon::Disabled);
@@ -637,9 +668,9 @@ namespace AzQtComponents
             m_maximizeMenuAction->setIcon(QIcon(maximizeIcon));
             connect(m_maximizeMenuAction, &QAction::triggered, this, &TitleBar::handleMaximize);
 
-            m_contextMenu->addSeparator();
+            m_windowContextMenu->addSeparator();
 
-            m_closeMenuAction = m_contextMenu->addAction(tr("Close"));
+            m_closeMenuAction = m_windowContextMenu->addAction(tr("Close"));
             QIcon closeIcon;
             closeIcon.addFile(":/stylesheet/img/titlebarmenu/close.png", QSize());
             closeIcon.addFile(":/stylesheet/img/titlebarmenu/close_disabled.png", QSize(), QIcon::Disabled);
@@ -663,7 +694,6 @@ namespace AzQtComponents
         m_minimizeMenuAction->setEnabled(buttonIsEnabled(DockBarButton::MinimizeButton));
         m_maximizeMenuAction->setEnabled(buttonIsEnabled(DockBarButton::MaximizeButton) && !isMaximized());
         m_closeMenuAction->setEnabled(buttonIsEnabled(DockBarButton::CloseButton));
-
     }
 
     /**
@@ -671,35 +701,35 @@ namespace AzQtComponents
      */
     void TitleBar::updateDockedContextMenu()
     {
-        if (!m_contextMenu)
+        if (!m_tabsContextMenu)
         {
-            m_contextMenu = new QMenu(this);
+            m_tabsContextMenu = new QMenu(this);
 
             // Action to close our dock widget, and leave the text blank since
             // it will be dynamically set using the title of the dock widget
-            m_closeMenuAction = m_contextMenu->addAction(QString());
-            QObject::connect(m_closeMenuAction, &QAction::triggered, this, &TitleBar::handleClose);
+            m_closeTabMenuAction = m_tabsContextMenu->addAction(QString());
+            QObject::connect(m_closeTabMenuAction, &QAction::triggered, this, &TitleBar::handleClose);
 
             // Unused in this context, but still here for consistency
-            m_closeGroupMenuAction = m_contextMenu->addAction(tr("Close Tab Group"));
+            m_closeGroupMenuAction = m_tabsContextMenu->addAction(tr("Close Tab Group"));
 
             // Separate the close actions from the undock actions
-            m_contextMenu->addSeparator();
+            m_tabsContextMenu->addSeparator();
 
             // Action to undock our dock widget, and leave the text blank since
             // it will be dynamically set using the title of the dock widget
-            m_undockMenuAction = m_contextMenu->addAction(QString());
+            m_undockMenuAction = m_tabsContextMenu->addAction(QString());
             QObject::connect(m_undockMenuAction, &QAction::triggered, this, &TitleBar::undockAction);
 
             // Unused in this context, but still here for consistency
-            m_undockGroupMenuAction = m_contextMenu->addAction(tr("Undock Tab Group"));
+            m_undockGroupMenuAction = m_tabsContextMenu->addAction(tr("Undock Tab Group"));
         }
 
         // Update the menu labels for the close/undock actions
         // We need to check where we should get the title text from based on whether
         // or not the tab bar or the label are currently being shown
         QString titleLabel = m_tabBar->isVisible() ? m_tabBar->tabText(0) : m_label->ElidedText();
-        m_closeMenuAction->setText(tr("Close %1").arg(titleLabel));
+        m_closeTabMenuAction->setText(tr("Close %1").arg(titleLabel));
         m_undockMenuAction->setText(tr("Undock %1").arg(titleLabel));
 
         // Don't enable the undock action if this dock widget is the only pane
@@ -1132,16 +1162,22 @@ namespace AzQtComponents
 
     void TitleBar::setupButtons(bool useDividerButtons /*= true */)
     {
+        setupButtonsHelper(m_tabButtonsContainer, m_tabButtonsLayout, useDividerButtons);
+        setupButtonsHelper(m_buttonsContainer, m_buttonsLayout, useDividerButtons);
+    }
+
+    void TitleBar::setupButtonsHelper(QFrame* container, QHBoxLayout* layout, bool useDividerButtons)
+    {
         // Before we do anything else, figure out if any existing buttons were disabled.
         // Only trust items already in the layout.
-        QVector<DockBarButton::WindowDecorationButton> disabledButtons = findDisabledButtons(m_buttonsLayout);
+        QVector<DockBarButton::WindowDecorationButton> disabledButtons = findDisabledButtons(layout);
         
         // Remove the old buttons from our layout.
-        const auto oldButtons = m_buttonsContainer->findChildren<QWidget*>();
+        const auto oldButtons = container->findChildren<QWidget*>();
         for (auto button : oldButtons)
         {
             button->hide();
-            m_buttonsLayout->removeWidget(button);
+            layout->removeWidget(button);
 
             // Use QObject::deleteLater to make this function safe to call whilst the application is
             // being polished/unpolished.
@@ -1159,7 +1195,7 @@ namespace AzQtComponents
                 {
                     continue;
                 }
-                w = new ButtonDivider(m_buttonsContainer);
+                w = new ButtonDivider(container);
             }
             else
             {
@@ -1168,7 +1204,7 @@ namespace AzQtComponents
                 StyledDockWidget* dockWidgetParent = qobject_cast<StyledDockWidget*>(parentWidget());
                 bool isDarkStyle = dockWidgetParent && dockWidgetParent->isFloating();
 
-                DockBarButton* button = new DockBarButton(buttonType, m_buttonsContainer, isDarkStyle);
+                DockBarButton* button = new DockBarButton(buttonType, container, isDarkStyle);
                 QObject::connect(button, &DockBarButton::buttonPressed, this, &TitleBar::handleButtonClicked);
                 w = button;
 
@@ -1183,7 +1219,7 @@ namespace AzQtComponents
                 m_firstButton = w;
             }
 
-            m_buttonsLayout->addWidget(w);
+            layout->addWidget(w);
         }
     }
 

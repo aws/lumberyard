@@ -28,7 +28,8 @@ public:
     virtual ~CEditorPreferencesPage_ExperimentalLighting() = default;
 
     virtual const char* GetCategory() override { return "Experimental Features"; }
-    virtual const char* GetTitle() override { return "Lighting"; }
+    virtual const char* GetTitle() override;
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -45,5 +46,6 @@ private:
     };
 
     Options m_options;
+    QIcon m_icon;
 };
 

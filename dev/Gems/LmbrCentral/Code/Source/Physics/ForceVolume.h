@@ -10,6 +10,8 @@
 *
 */
 
+#if ENABLE_CRY_PHYSICS
+
 #pragma once
 
 #include <AzCore/Component/TransformBus.h>
@@ -126,3 +128,5 @@ namespace LmbrCentral
         void DisplayForceDirection(const ForceVolume& forceVolume, AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Vector3& worldPoint);
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

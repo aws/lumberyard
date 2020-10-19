@@ -17,12 +17,14 @@
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/IOriginRule.h>
 #include <SceneAPI/SceneCore/Events/ExportEventContext.h>
 #include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphChildIterator.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMaterialData.h>
+
 
 #include <PhysX/MeshAsset.h>
 #include <AzFramework/Physics/Material.h>
@@ -722,7 +724,7 @@ namespace PhysX
                 const AZStd::string& groupName = pxMeshGroup.GetName();
 
                 AZ_TraceContext("Group Name", groupName);
-
+           
                 const auto& sceneNodeSelectionList = pxMeshGroup.GetSceneNodeSelectionList();
 
                 size_t selectedNodeCount = sceneNodeSelectionList.GetSelectedNodeCount();
@@ -753,6 +755,11 @@ namespace PhysX
                     totalExportData.reserve(selectedNodeCount);
                 }
 
+                auto originRule = pxMeshGroup.GetRuleContainerConst().FindFirstByType<AZ::SceneAPI::DataTypes::IOriginRule>();
+                AZ::Transform originTransform = originRule
+                    ? SceneUtil::GetOriginRuleTransform(*originRule, context.GetScene().GetGraph())
+                    : AZ::Transform::CreateIdentity();
+
                 for (size_t index = 0; index < selectedNodeCount; index++)
                 {
                     AZ::SceneAPI::Containers::SceneGraph::NodeIndex nodeIndex = graph.Find(sceneNodeSelectionList.GetSelectedNode(index));
@@ -766,7 +773,7 @@ namespace PhysX
                     const AZ::SceneAPI::Containers::SceneGraph::Name& nodeName = graph.GetNodeName(nodeIndex);
 
                     const AZStd::vector<AZStd::string> localFbxMaterialsList = Utils::GenerateLocalNodeMaterialMap(graph, nodeIndex);
-                    const AZ::Transform worldTransform = SceneUtil::BuildWorldTransform(graph, nodeIndex);
+                    const AZ::Transform worldTransform = originTransform * SceneUtil::BuildWorldTransform(graph, nodeIndex);
 
                     NodeCollisionGeomExportData nodeExportData;
                     nodeExportData.m_nodeName = nodeName.GetName();

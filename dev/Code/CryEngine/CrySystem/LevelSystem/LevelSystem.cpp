@@ -665,9 +665,11 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         m_pLoadingLevelInfo = pLevelInfo;
         OnLoadingStart(pLevelInfo);
 
+#if ENABLE_CRY_PHYSICS
         // ensure a physical global area is present
         IPhysicalWorld* pPhysicalWorld = gEnv->pPhysicalWorld;
         pPhysicalWorld->AddGlobalArea();
+#endif // ENABLE_CRY_PHYSICS
 
         ICryPak* pPak = gEnv->pCryPak;
 

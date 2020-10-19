@@ -1900,7 +1900,7 @@ namespace GraphCanvas
 
         OrderedEndpointSet targetSlots;
 
-        for (const SlotId slotId : slotIds)
+        for (const SlotId& slotId : slotIds)
         {
             SlotType testSlotType = SlotTypes::Invalid;
             SlotRequestBus::EventResult(testSlotType, slotId, &SlotRequests::GetSlotType);

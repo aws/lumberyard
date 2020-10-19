@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_RAYBV_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CRayBV
     : public CBVTree
 {
@@ -33,6 +35,8 @@ public:
     CGeometry* m_pGeom;
     ray* m_pray;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_RAYBV_H
 

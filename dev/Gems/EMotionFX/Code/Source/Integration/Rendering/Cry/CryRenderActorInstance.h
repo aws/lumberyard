@@ -58,8 +58,6 @@ namespace EMotionFX
                 const AZ::Transform& worldTransform);
             ~CryRenderActorInstance() override;
 
-            void BuildRenderMeshPerLOD();
-
             //////////////////////////////////////////////////////////////////////////
             // IRenderNode interface implementation
             void Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo) override;
@@ -72,8 +70,6 @@ namespace EMotionFX
             const AABB GetBBox() const override;
             void SetBBox(const AABB& WSBBox) override;
             void OffsetPosition(const Vec3& delta) override;
-            struct IPhysicalEntity* GetPhysics() const override;
-            void SetPhysics(IPhysicalEntity* pPhys) override;
             void SetMaterial(_smart_ptr<IMaterial> pMat) override;
             _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = nullptr) override;
             _smart_ptr<IMaterial> GetMaterialOverride() override;
@@ -111,7 +107,7 @@ namespace EMotionFX
             void SetVisibility(bool isVisible) override;
             //AZ::Aabb GetWorldBounds() override; // Already overridden by RenderBoundsRequestBus::Handler
             //AZ::Aabb GetLocalBounds() override; // Already overridden by RenderBoundsRequestBus::Handler
-            void SetMeshAsset(const AZ::Data::AssetId& id) override { (void)id; }
+            void SetMeshAsset(const AZ::Data::AssetId& id) override;
             AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_actorAsset; }
 
             //////////////////////////////////////////////////////////////////////////
@@ -170,6 +166,10 @@ namespace EMotionFX
             // Updates the vertices, normals and tangents buffers in cry based on the emfx
             // mesh. This is used to update morph targets in the ly viewport.
             void UpdateDynamicSkin(size_t lodIndex, size_t primitiveIndex);
+
+        private:
+            void QueueBuildRenderMesh();
+            void BuildRenderMeshPerLOD();
 
             Matrix34 m_renderTransform;
             AABB m_worldBoundingBox;

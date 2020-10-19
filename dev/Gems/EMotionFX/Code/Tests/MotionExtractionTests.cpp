@@ -187,7 +187,7 @@ namespace EMotionFX
             AnimGraphStateTransition* transition = aznew AnimGraphStateTransition(m_motionNode1, m_motionNode2, {paramCondition}, 0.1f);
             transition->SetSyncMode(AnimGraphObject::ESyncMode::SYNCMODE_CLIPBASED);
             transition->SetExtractionMode(AnimGraphObject::EExtractionMode::EXTRACTIONMODE_TARGETONLY);
-            transition->SetEventFilterMode(AnimGraphObject::EEventMode::EVENTMODE_SLAVEONLY);
+            transition->SetEventFilterMode(AnimGraphObject::EEventMode::EVENTMODE_FOLLOWERONLY);
             m_animGraph->GetRootStateMachine()->AddTransition(transition);
             
             m_animGraph->GetRootStateMachine()->AddChildNode(m_motionNode1);

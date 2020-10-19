@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_GEOMAN_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 const int GEOM_CHUNK_SZ = 64;
 const int PHYS_GEOM_VER = 1;
 
@@ -121,5 +123,7 @@ public:
     class CGeometry* m_oldGeoms;
     volatile int m_lockOldGeoms;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_GEOMAN_H

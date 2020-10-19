@@ -1,10 +1,10 @@
 {
     "none":
     {
-        "Source/Cinematics/Nodes/Tests":
-        [
+        "Source/Cinematics/Nodes/Tests": [
             "Source/Cinematics/Tests/AssetBlendTrackTest.cpp",
-            "Source/Cinematics/Tests/EntityNodeTest.cpp"
+            "Source/Cinematics/Tests/EntityNodeTest.cpp",
+            "Source/Cinematics/Tests/TimeOfDayNodeTest.cpp"
         ]
     },
     "auto": {

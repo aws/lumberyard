@@ -13,25 +13,77 @@
 #include "VideoPlayback_precompiled.h"
 
 #include <AzTest/AzTest.h>
+#include <AzCore/UnitTest/TestTypes.h>
+#include <AzFramework/Application/Application.h>
 
-class VideoPlaybackTest
-    : public ::testing::Test
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/Component/Entity.h>
+
+#include <VideoPlaybackGameComponent.h>
+
+class VideoPlaybackFixture
+        : public UnitTest::AllocatorsTestFixture
+    {
+    protected:
+        void SetUp() override
+        {
+#if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
+            m_app.Start(AZ::ComponentApplication::Descriptor{});
+            m_app.RegisterComponentDescriptor(AZ::VideoPlayback::VideoPlaybackGameComponent::CreateDescriptor());
+#endif
+        }
+        void TearDown() override
+        {
+#if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
+            m_app.Stop();
+#endif
+        }
+
+
+        AzFramework::Application m_app;
+    };
+
+#if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
+TEST_F(VideoPlaybackFixture, VideoPlaybackSetUserTexture_FT)
 {
-protected:
-    void SetUp() override
-    {
+    auto gameEntity = AZStd::make_unique<AZ::Entity>();
+    
+    auto videoPlaybackComponent = gameEntity->CreateComponent<AZ::VideoPlayback::VideoPlaybackGameComponent>();
+    
+    gameEntity->Init();
+    gameEntity->Activate();
+    
+    AZStd::string textureName = "$testTexture";
+    
+    videoPlaybackComponent->SetDestinationTextureName(textureName);
+    
+    gameEntity->Deactivate();
+    
+    ASSERT_EQ(videoPlaybackComponent->GetDestinationTextureName(), textureName);
+}
 
-    }
-
-    void TearDown() override
-    {
-
-    }
-};
-
-TEST_F(VideoPlaybackTest, ExampleTest)
+TEST_F(VideoPlaybackFixture, VideoPlaybackSetVideoPath_FT)
+{
+    auto gameEntity = AZStd::make_unique<AZ::Entity>();
+    
+    auto videoPlaybackComponent = gameEntity->CreateComponent<AZ::VideoPlayback::VideoPlaybackGameComponent>();
+    
+    gameEntity->Init();
+    gameEntity->Activate();
+    
+    AZStd::string videoAssetPath = "testVideo.mp4";
+    
+    videoPlaybackComponent->SetVideoPathname(videoAssetPath);
+    
+    gameEntity->Deactivate();
+    
+    ASSERT_EQ(videoPlaybackComponent->GetVideoPathname(), videoAssetPath);
+}
+#else
+TEST_F(VideoPlaybackFixture, VideoPlaybackTest)
 {
     ASSERT_TRUE(true);
 }
+#endif
 
 AZ_UNIT_TEST_HOOK();

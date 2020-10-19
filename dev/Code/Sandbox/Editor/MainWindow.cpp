@@ -79,7 +79,6 @@
 #include "DataBaseDialog.h"
 #include "ErrorReportDialog.h"
 #include "Material/MaterialDialog.h"
-#include "Vehicles/VehicleEditorDialog.h"
 #include "SmartObjects/SmartObjectsEditorDialog.h"
 #include "LensFlareEditor/LensFlareEditor.h"
 #include "DialogEditor/DialogEditorDialog.h"
@@ -1393,7 +1392,7 @@ void MainWindow::InitActions()
             .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateAlignObject)
             .SetIcon(EditorProxyStyle::icon("Align_to_Object"))
             .SetApplyHoverEffect();
-        am->AddAction(ID_MODIFY_ALIGNOBJTOSURF, tr("Align object to surface")).SetCheckable(true)
+        am->AddAction(ID_MODIFY_ALIGNOBJTOSURF, tr("Align object to surface (Hold CTRL)")).SetCheckable(true)
             .SetMetricsIdentifier("MainEditor", "ToggleAlignToSurfaceVoxels")
             .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateAlignToVoxel)
             .SetIcon(EditorProxyStyle::icon("Align_object_to_surface"))
@@ -1551,11 +1550,10 @@ void MainWindow::InitActions()
         .SetShortcut(tr("Ctrl+F12"))
         .SetMetricsIdentifier("MainEditor", "TagSelectedLocation12");
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        am->AddAction(ID_VIEW_CONFIGURELAYOUT, tr("Configure Layout..."))
-            .SetMetricsIdentifier("MainEditor", "ConfigureLayoutDialog");
-    }
+#ifndef OTHER_ACTIVE
+    am->AddAction(ID_VIEW_CONFIGURELAYOUT, tr("Configure Layout..."))
+        .SetMetricsIdentifier("MainEditor", "ConfigureLayoutDialog");
+#endif
 #ifdef FEATURE_ORTHOGRAPHIC_VIEW
     am->AddAction(ID_VIEW_CYCLE2DVIEWPORT, tr("Cycle Viewports"))
         .SetShortcut(tr("Ctrl+Tab"))
@@ -1806,19 +1804,16 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Validate Level"));
     am->AddAction(ID_TOOLS_VALIDATEOBJECTPOSITIONS, tr("Check Object Positions"))
         .SetMetricsIdentifier("MainEditor", "CheckObjectPositions");
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        am->AddAction(ID_TOOLS_LOGMEMORYUSAGE, tr("Save Level Statistics"))
-            .SetMetricsIdentifier("MainEditor", "SaveLevelStatistics")
-            .SetStatusTip(tr("Logs Editor memory usage."));
-    }
-    else
-    {
-        am->AddAction(ID_TOOLS_LOGMEMORYUSAGE, tr("Save Level Statistics (Disabled when Other is active)"))
-            .SetMetricsIdentifier("MainEditor", "SaveLevelStatistics")
-            .SetStatusTip(tr("Logs Editor memory usage."))
-            ->setEnabled(false);
-    }
+#ifndef OTHER_ACTIVE
+    am->AddAction(ID_TOOLS_LOGMEMORYUSAGE, tr("Save Level Statistics"))
+        .SetMetricsIdentifier("MainEditor", "SaveLevelStatistics")
+        .SetStatusTip(tr("Logs Editor memory usage."));
+#else
+    am->AddAction(ID_TOOLS_LOGMEMORYUSAGE, tr("Save Level Statistics (Disabled when Other is active)"))
+        .SetMetricsIdentifier("MainEditor", "SaveLevelStatistics")
+        .SetStatusTip(tr("Logs Editor memory usage."))
+        ->setEnabled(false);
+#endif
     am->AddAction(ID_SCRIPT_COMPILESCRIPT, tr("Compile Cry Lua &Script (LEGACY)"))
         .SetMetricsIdentifier("MainEditor", "CompileScript");
     am->AddAction(ID_RESOURCES_REDUCEWORKINGSET, tr("Reduce Working Set"))
@@ -1852,18 +1847,17 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "ToggleQuickAccessBar");
 
     // Disable layouts menu if other is enabled
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        am->AddAction(ID_VIEW_LAYOUTS, tr("Layouts"))
-            .SetMetricsIdentifier("MainEditor", "Layouts");
+#ifndef OTHER_ACTIVE
+    am->AddAction(ID_VIEW_LAYOUTS, tr("Layouts"))
+        .SetMetricsIdentifier("MainEditor", "Layouts");
 
-        am->AddAction(ID_VIEW_SAVELAYOUT, tr("Save Layout..."))
-            .SetMetricsIdentifier("MainEditor", "SaveLayout")
-            .Connect(&QAction::triggered, this, &MainWindow::SaveLayout);
-        am->AddAction(ID_VIEW_LAYOUT_LOAD_DEFAULT, tr("Restore Default Layout"))
-            .SetMetricsIdentifier("MainEditor", "RestoreDefaultLayout")
-            .Connect(&QAction::triggered, [this]() { m_viewPaneManager->RestoreDefaultLayout(true); });
-    }
+    am->AddAction(ID_VIEW_SAVELAYOUT, tr("Save Layout..."))
+        .SetMetricsIdentifier("MainEditor", "SaveLayout")
+        .Connect(&QAction::triggered, this, &MainWindow::SaveLayout);
+    am->AddAction(ID_VIEW_LAYOUT_LOAD_DEFAULT, tr("Restore Default Layout"))
+        .SetMetricsIdentifier("MainEditor", "RestoreDefaultLayout")
+        .Connect(&QAction::triggered, [this]() { m_viewPaneManager->RestoreDefaultLayout(true); });
+#endif
 
     am->AddAction(ID_SKINS_REFRESH, tr("Refresh Style"))
         .SetMetricsIdentifier("MainEditor", "RefreshStyle")
@@ -1962,13 +1956,12 @@ void MainWindow::InitActions()
         .SetApplyHoverEffect();
     }
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        am->AddAction(ID_OPEN_MATERIAL_EDITOR, tr(LyViewPane::MaterialEditor))
-            .SetToolTip(tr("Open Material Editor"))
-            .SetIcon(EditorProxyStyle::icon("Material"))
-            .SetApplyHoverEffect();
-    }
+#ifndef OTHER_ACTIVE
+    am->AddAction(ID_OPEN_MATERIAL_EDITOR, tr(LyViewPane::MaterialEditor))
+        .SetToolTip(tr("Open Material Editor"))
+        .SetIcon(EditorProxyStyle::icon("Material"))
+        .SetApplyHoverEffect();
+#endif
 
 #ifdef ENABLE_LEGACY_ANIMATION
     am->AddAction(ID_OPEN_CHARACTER_TOOL, tr(LyViewPane::LegacyGeppetto))
@@ -2014,8 +2007,8 @@ void MainWindow::InitActions()
         .SetIcon(EditorProxyStyle::icon("Audio"))
         .SetApplyHoverEffect();
 
-#ifdef LY_TERRAIN_EDITOR
-    if (!GetIEditor()->IsNewViewportInteractionModelEnabled() && gEnv->pRenderer->GetRenderType() != eRT_Other)
+#if defined(LY_TERRAIN_EDITOR) && !defined(OTHER_ACTIVE)
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         am->AddAction(ID_OPEN_TERRAIN_EDITOR, tr(LyViewPane::TerrainEditor))
             .SetToolTip(tr("Open Terrain Editor"))
@@ -2026,22 +2019,18 @@ void MainWindow::InitActions()
             .SetIcon(EditorProxyStyle::icon("Terrain_Texture"))
             .SetApplyHoverEffect();
     }
-#endif // #ifdef LY_TERRAIN_EDITOR
+#endif // #if defined(LY_TERRAIN_EDITOR) && !defined(OTHER_ACTIVE)
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
+#ifndef OTHER_ACTIVE
         am->AddAction(ID_PARTICLE_EDITOR, tr("Particle Editor"))
             .SetToolTip(tr("Open Particle Editor"))
             .SetIcon(EditorProxyStyle::icon("particle"))
             .SetApplyHoverEffect();
-    }
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
         am->AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, tr("Time of Day Editor"))
             .SetToolTip(tr("Open Time of Day"))
             .SetApplyHoverEffect();
-    }
+#endif // OTHER_ACTIVE
 
     if (m_enableLegacyCryEntities)
     {
@@ -2653,7 +2642,6 @@ void MainWindow::RegisterStdViewClasses()
     CRollupBar::RegisterViewClass();
     CTrackViewDialog::RegisterViewClass();
     CDataBaseDialog::RegisterViewClass();
-    CVehicleEditorDialog::RegisterViewClass();
     CSmartObjectsEditorDialog::RegisterViewClass();
     CAIDebugger::RegisterViewClass();
     CSelectObjectDlg::RegisterViewClass();
@@ -2674,19 +2662,17 @@ void MainWindow::RegisterStdViewClasses()
     AssetEditorWindow::RegisterViewClass();
     CVegetationDataBasePage::RegisterViewClass();
 
-    if (gEnv->pRenderer->GetRenderType() != eRT_Other)
-    {
-        CMaterialDialog::RegisterViewClass();
-        CLensFlareEditor::RegisterViewClass();
-        CTimeOfDayDialog::RegisterViewClass();
-        CTerrainTool::RegisterViewClass();
+#ifndef OTHER_ACTIVE
+    CMaterialDialog::RegisterViewClass();
+    CLensFlareEditor::RegisterViewClass();
+    CTimeOfDayDialog::RegisterViewClass();
+    CTerrainTool::RegisterViewClass();
 #ifdef LY_TERRAIN_EDITOR
-        CTerrainDialog::RegisterViewClass();
-        CTerrainTextureDialog::RegisterViewClass();
+    CTerrainDialog::RegisterViewClass();
+    CTerrainTextureDialog::RegisterViewClass();
 #endif //#ifdef LY_TERRAIN_EDITOR
-        CTerrainLighting::RegisterViewClass();
-    }
-
+    CTerrainLighting::RegisterViewClass();
+#endif
 #ifdef ThumbnailDemo
     ThumbnailsSampleWidget::RegisterViewClass();
 #endif

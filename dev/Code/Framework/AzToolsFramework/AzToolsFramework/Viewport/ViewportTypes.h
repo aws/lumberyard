@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "AzFramework/Viewport/ScreenGeometry.h"
+
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
@@ -28,6 +30,10 @@ namespace AzToolsFramework
     /// Viewport related types that are used when interacting with the viewport.
     namespace ViewportInteraction
     {
+        // LUMBERYARD_DEPRECATED(LY-118530)
+        using ScreenPoint = AzFramework::ScreenPoint;
+        using ScreenVector = AzFramework::ScreenVector;
+
         /// Flags to represent each modifier key.
         enum class KeyboardModifier : AZ::u32
         {
@@ -113,20 +119,6 @@ namespace AzToolsFramework
             bool Any() const { return m_mouseButtons != static_cast<AZ::u32>(MouseButton::None); }
 
             AZ::u32 m_mouseButtons = 0; ///< Current mouse button state (flags).
-        };
-
-        /// An incredibly simple wrapper around an X and Y screen position.
-        struct ScreenPoint
-        {
-            /// @cond
-            AZ_TYPE_INFO(ScreenPoint, "{8472B6C2-527F-44FC-87F8-C226B1A57A97}");
-            ScreenPoint() = default;
-            /// @endcond
-
-            ScreenPoint(int x, int y) : m_x(x), m_y(y) {}
-
-            int m_x; ///< X screen coordinate.
-            int m_y; ///< Y screen coordinate.
         };
 
         /// Information relevant when interacting with a particular viewport.
@@ -220,10 +212,16 @@ namespace AzToolsFramework
             return {screenPoint.m_x, screenPoint.m_y};
         }
 
-        /// Return AZ::Vector2 from an Viewport ScreenPoint.
+        // LUMBERYARD_DEPRECATED(LY-118530)
         inline AZ::Vector2 Vector2FromScreenPoint(const ScreenPoint& screenPoint)
         {
-            return AZ::Vector2(static_cast<float>(screenPoint.m_x), static_cast<float>(screenPoint.m_y));
+            return AzFramework::Vector2FromScreenPoint(screenPoint);
+        }
+
+        // LUMBERYARD_DEPRECATED(LY-118530)
+        inline AZ::Vector2 Vector2FromScreenVector(const ScreenVector& screenVector)
+        {
+            return AzFramework::Vector2FromScreenVector(screenVector);
         }
 
         /// Map from Qt -> Lumberyard buttons.

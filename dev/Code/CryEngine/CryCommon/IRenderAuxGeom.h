@@ -146,6 +146,17 @@ struct IRenderAuxGeom
     //##@}
 
     // Summary:
+    //   Draws a quad on the xz plane.
+    // Arguments:
+    //   pos        - Center position of the quad
+    //   width      - Width of the quad.
+    //   height     - Height of the quad.
+    //   matWorld   - World matrix to transform the quad.
+    //   col        - Color of the quad.
+    //   drawShaded - True if you want to draw the quad shaded, false otherwise.
+    virtual void DrawQuad(float width, float height, const Matrix34& matWorld, const ColorB& col, bool drawShaded = true) = 0;
+
+    // Summary:
     //   Draws a Axis-aligned Bounding Boxes (AABB).
     //##@{
     virtual void DrawAABB(const AABB& aabb, bool bSolid, const ColorB& col, const EBoundingBoxDrawStyle& bbDrawStyle) = 0;

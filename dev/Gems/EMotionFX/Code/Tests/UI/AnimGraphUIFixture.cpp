@@ -27,6 +27,7 @@
 #include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 
+#include <EMotionFX/Source/AnimGraphObject.h>
 #include <EMotionFX/Source/AnimGraphReferenceNode.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
 #include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
@@ -92,5 +93,35 @@ namespace EMotionFX
         EXPECT_EQ(targetAnimGraph->GetNumNodes(), nodeCount + 1) << "Expected one more anim graph node after running command: " << cmd.c_str();
 
         return targetAnimGraph->GetNode(targetAnimGraph->GetNumNodes() - 1);
+    }
+
+    AnimGraphNode* AnimGraphUIFixture::AddNodeToAnimGraph(EMotionFX::AnimGraph* animGraph, const QString& nodeTypeName)
+    {
+        if (!animGraph)
+        {
+            return nullptr;
+        }
+
+        // Launch the node graph context menu.
+        const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedAnimGraphNodes = GetActiveNodeGraph()->GetSelectedAnimGraphNodes();
+        m_blendGraphWidget->OnContextMenuEvent(m_blendGraphWidget, QPoint(0, 0), QPoint(0, 0), m_animGraphPlugin, selectedAnimGraphNodes, true, false, m_animGraphPlugin->GetActionFilter());
+
+        // Fire the Add Node action.
+        QAction* addNodeAction = GetNamedAction(m_blendGraphWidget, nodeTypeName);
+        if (!addNodeAction)
+        {
+            return nullptr;
+        }
+        addNodeAction->trigger();
+
+        const EMotionFX::AnimGraphNode* currentNode = GetActiveNodeGraph()->GetModelIndex().data(EMStudio::AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+
+        const int numNodesAfter = currentNode->GetNumChildNodes();
+        if (numNodesAfter == 0)
+        {
+            return nullptr;
+        }
+
+        return currentNode->GetChildNode(0);
     }
 } // namespace EMotionFX

@@ -63,7 +63,7 @@ namespace PhysXEditorTests {
         MOCK_METHOD1(RemoveBody, void(Physics::WorldBody&));
         MOCK_METHOD1(SetSimFunc, void(std::function<void(void*)>));
         MOCK_METHOD1(SetEventHandler, void(Physics::WorldEventHandler*));
-        MOCK_METHOD0(GetGravity, AZ::Vector3());
+        MOCK_CONST_METHOD0(GetGravity, AZ::Vector3());
         MOCK_METHOD1(SetGravity, void(const AZ::Vector3&));
         MOCK_METHOD1(SetMaxDeltaTime, void(float));
         MOCK_METHOD1(SetFixedDeltaTime, void(float));
@@ -92,6 +92,7 @@ namespace PhysXEditorTests {
         MOCK_METHOD1(OnWorldCreated, void(Physics::World*));
     };
 
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXEditorFixture, SetConfiguration_ForwardsConfigChangesToWorldRequestBus)
     {
         testing::StrictMock<MockWorldRequestBusHandler> mockHandler;
@@ -113,6 +114,7 @@ namespace PhysXEditorTests {
 
         AZ::Interface<PhysX::ConfigurationRequests>::Get()->SetConfiguration(newConfiguration);
     }
+    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXEditorFixture, SetWorldConfiguration_ForwardsConfigChangesToWorldRequestBus)
     {

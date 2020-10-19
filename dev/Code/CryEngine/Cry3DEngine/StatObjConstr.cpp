@@ -194,7 +194,12 @@ void CStatObj::ShutDown()
             {
                 m_arrPhysGeomInfo[n]->pGeom->SetForeignData(0, 0);
             }
+#if ENABLE_CRY_PHYSICS
             GetPhysicalWorld()->GetGeomManager()->UnregisterGeometry(m_arrPhysGeomInfo[n]);
+#else
+            // Unregister geometry
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
         }
     }
     m_arrPhysGeomInfo.m_array.clear();
@@ -807,11 +812,12 @@ void CStatObj::Invalidate(bool bPhysics, float tolerance)
                 m_nLoadedTrisCount = m_pIndexedMesh->GetIndexCount() / 3;
             }
             CalcRadiuses();
-
+#if ENABLE_CRY_PHYSICS
             if (bPhysics)
             {
                 PhysicalizeGeomType(PHYS_GEOM_TYPE_DEFAULT, *m_pIndexedMesh->GetMesh(), tolerance, 0);
             }
+#endif // ENABLE_CRY_PHYSICS
         }
 
         ReleaseIndexedMesh(true);
@@ -909,7 +915,12 @@ IStatObj* CStatObj::Clone(bool bCloneGeometry, bool bCloneChildren, bool bMeshes
         pNewObj->m_arrPhysGeomInfo.SetPhysGeom(m_arrPhysGeomInfo[i], i, m_arrPhysGeomInfo.GetGeomType(i));
         if (pNewObj->m_arrPhysGeomInfo[i])
         {
+#if ENABLE_CRY_PHYSICS
             GetPhysicalWorld()->GetGeomManager()->AddRefGeometry(pNewObj->m_arrPhysGeomInfo[i]);
+#else
+            // Remove geometry
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif
         }
     }
     pNewObj->m_vBoxMin = m_vBoxMin;

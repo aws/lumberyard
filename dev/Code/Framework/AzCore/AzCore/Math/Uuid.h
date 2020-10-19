@@ -63,6 +63,11 @@ namespace AZ
         * \param stringLength if zero 'string' pointer must be null terminated so we can compute it's length, otherwise you can provide the length of the buffer.
         */
         static Uuid CreateString(const char* string, size_t stringLength = 0);
+        static Uuid CreateStringSkipWarnings(const char* string, size_t stringLength, bool skipWarnings);
+
+        // Performs a first pass to handle more uuid string formats - allows and removes spaces, 0x, {, }
+        static Uuid CreateStringPermissive(const char* string, size_t stringLength = 0, bool skipWarnings = true);
+
         static Uuid CreateRandom();
         /// Create a UUID based on a string name (sha1)
         static Uuid CreateName(const char* name);

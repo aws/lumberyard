@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Component/ComponentBus.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 
@@ -74,13 +75,13 @@ namespace LandscapeCanvas
         virtual GraphModel::NodePtr GetNodeMatchingEntityInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& entityId) = 0;
 
         //! Return the node (if any) matching a particular EntityId and ComponentId in a specified graph
-        virtual GraphModel::NodePtr GetNodeMatchingEntityComponentInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& entityId, const AZ::ComponentId& componentId) = 0;
+        virtual GraphModel::NodePtr GetNodeMatchingEntityComponentInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityComponentIdPair& entityComponentId) = 0;
 
         //! Return a list of all nodes matching a particular EntityId in all currently open graphs
         virtual GraphModel::NodePtrList GetAllNodesMatchingEntity(const AZ::EntityId& entityId) = 0;
 
         //! Return a list of all nodes matching a particular EntityId and ComponentId in all currently open graphs
-        virtual GraphModel::NodePtrList GetAllNodesMatchingEntityComponent(const AZ::EntityId& entityId, const AZ::ComponentId& componentId) = 0;
+        virtual GraphModel::NodePtrList GetAllNodesMatchingEntityComponent(const AZ::EntityComponentIdPair& entityComponentId) = 0;
     };
     using LandscapeCanvasRequestBus = AZ::EBus<LandscapeCanvasRequests>;
 

@@ -620,6 +620,7 @@ void    CAIHandler::AIMind(SOBJECTSTATE& state)
                     {
                         pExtraData->nID = pTargetEntity->GetId();
                         pExtraData->point = pTarget->GetPos();
+#if ENABLE_CRY_PHYSICS
                         pe_status_dynamics sd;
                         if (pTargetEntity->GetPhysics())
                         {
@@ -627,6 +628,7 @@ void    CAIHandler::AIMind(SOBJECTSTATE& state)
                             pExtraData->point2 = sd.v;
                         }
                         else
+#endif
                         {
                             pExtraData->point2 = ZERO;
                         }

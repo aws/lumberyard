@@ -4077,14 +4077,14 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendSpace2DNode>(MCore::F
                 blendSpace2DNode.SetSyncMode(syncMode);
             }
             break;
-            case 5: //ATTRIB_SYNC_MASTERMOTION
+            case 5: //ATTRIB_SYNC_LEADERMOTION
             {
                 LegacyAttribute<AZStd::string> legacyAttribute;
                 if (!legacyAttribute.Parse(stream, endianType))
                 {
                     return false;
                 }
-                blendSpace2DNode.SetSyncMasterMotionId(legacyAttribute.GetValue());
+                blendSpace2DNode.SetSyncLeaderMotionId(legacyAttribute.GetValue());
             }
             break;
             case 6: //ATTRIB_EVENTMODE
@@ -4199,7 +4199,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendSpace1DNode>(MCore::F
                 {
                     return false;
                 }
-                blendSpace1DNode.SetSyncMasterMotionId(legacyAttribute.GetValue());
+                blendSpace1DNode.SetSyncLeaderMotionId(legacyAttribute.GetValue());
             }
             break;
             case 4:

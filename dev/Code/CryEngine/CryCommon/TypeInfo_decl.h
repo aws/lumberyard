@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYCOMMON_TYPEINFO_DECL_H
 #pragma once
 
+#include <AzCore/Math/Uuid.h>
+
 //////////////////////////////////////////////////////////////////////////
 // Meta-type support.
 //////////////////////////////////////////////////////////////////////////
@@ -105,6 +107,8 @@ BASIC_TYPE_INFO(uint64)
 
 BASIC_TYPE_INFO(float)
 BASIC_TYPE_INFO(double)
+
+BASIC_TYPE_INFO(AZ::Uuid)
 
 DECLARE_TYPE_INFO(string)
 

@@ -40,9 +40,6 @@ class CScriptBind_ActorSystem;
 class CScriptBind_ItemSystem;
 class CScriptBind_ActionMapManager;
 class CScriptBind_Network;
-class CScriptBind_VehicleSystem;
-class CScriptBind_Vehicle;
-class CScriptBind_VehicleSeat;
 class CScriptBind_Inventory;
 class CScriptBind_DialogSystem;
 class CScriptBind_MaterialEffects;
@@ -65,7 +62,6 @@ class CGameContext;
 class CItemSystem;
 class CLevelSystem;
 class CUIDraw;
-class CVehicleSystem;
 class CViewSystem;
 class CGameplayRecorder;
 class CPersistentDebug;
@@ -122,7 +118,6 @@ public:
 
     void RegisterFactory(const char* name, IActorCreator* pCreator, bool isAI) override;
     void RegisterFactory(const char* name, IItemCreator* pCreator, bool isAI) override;
-    void RegisterFactory(const char* name, IVehicleCreator* pCreator, bool isAI) override;
     void RegisterFactory(const char* name, IGameObjectExtensionCreator* pCreator, bool isAI) override;
     void RegisterFactory(const char* name, ISaveGame*(*func)(), bool) override;
     void RegisterFactory(const char* name, ILoadGame*(*func)(), bool) override;
@@ -162,7 +157,6 @@ public:
     ILevelSystem* GetILevelSystem() override;
     IActorSystem* GetIActorSystem() override;
     IItemSystem* GetIItemSystem() override;
-    IVehicleSystem* GetIVehicleSystem() override;
     IActionMapManager* GetIActionMapManager() override;
     IViewSystem* GetIViewSystem() override;
     IGameplayRecorder* GetIGameplayRecorder() override;
@@ -228,7 +222,9 @@ public:
     void OnEditorSetGameMode(int iMode) override;
     bool IsEditing() override {return m_isEditing; }
 
+#if ENABLE_CRY_PHYSICS
     void OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity) override;
+#endif
 
     bool IsImmersiveMPEnabled();
 
@@ -266,7 +262,9 @@ public:
     void RegisterExtension(ICryUnknownPtr pExtension) override;
     void ReleaseExtensions() override;
 
+#if ENABLE_CRY_PHYSICS
     IBreakableGlassSystem* GetIBreakableGlassSystem();
+#endif
     void ScheduleEndLevel(const char* nextLevel = "", bool clearRenderBufferToBlack = true);
 protected:
     ICryUnknownPtr QueryExtensionInterfaceById(const CryInterfaceID& interfaceID) const override;
@@ -277,8 +275,6 @@ public:
     static CCryAction* GetCryAction() { return m_pThis; }
 
     CGameContext* GetGameContext();
-    CScriptBind_Vehicle* GetVehicleScriptBind() { return m_pScriptBindVehicle; }
-    CScriptBind_VehicleSeat* GetVehicleSeatScriptBind() { return m_pScriptBindVehicleSeat; }
     CScriptBind_Inventory* GetInventoryScriptBind() { return m_pScriptInventory; }
     CPersistentDebug* GetPersistentDebug() { return m_pPersistentDebug; }
     CSignalTimer* GetSignalTimer();
@@ -334,9 +330,11 @@ public:
     CAIProxyManager* GetAIProxyManager() { return m_pAIProxyManager; }
     const CAIProxyManager* GetAIProxyManager() const { return m_pAIProxyManager; }
 
+#if ENABLE_CRY_PHYSICS
     void CreatePhysicsQueues();
     void ClearPhysicsQueues();
     virtual CCryActionPhysicQueues& GetPhysicQueues();
+#endif // ENABLE_CRY_PHYSICS
 
     void SwitchToLevelHeap(const char* acLevelName);
 
@@ -437,7 +435,6 @@ private:
     CLevelSystem* m_pLevelSystem;
     CActorSystem* m_pActorSystem;
     CItemSystem* m_pItemSystem;
-    CVehicleSystem* m_pVehicleSystem;
     CSharedParamsManager* m_pSharedParamsManager;
     CActionMapManager* m_pActionMapManager;
     CViewSystem* m_pViewSystem;
@@ -449,7 +446,9 @@ private:
     CAnimationGraphCVars* m_pAnimationGraphCvars;
     IMannequin* m_pMannequin;
     CMaterialEffects* m_pMaterialEffects;
+#if ENABLE_CRY_PHYSICS
     IBreakableGlassSystem* m_pBreakableGlassSystem;
+#endif
     CPlayerProfileManager* m_pPlayerProfileManager;
     CDialogSystem* m_pDialogSystem;
     CSubtitleManager* m_pSubtitleManager;
@@ -492,9 +491,6 @@ private:
     CScriptBind_ActorSystem* m_pScriptAS;
     CScriptBind_Network* m_pScriptNet;
     CScriptBind_ActionMapManager* m_pScriptAMM;
-    CScriptBind_VehicleSystem* m_pScriptVS;
-    CScriptBind_Vehicle* m_pScriptBindVehicle;
-    CScriptBind_VehicleSeat* m_pScriptBindVehicleSeat;
     CScriptBind_Inventory* m_pScriptInventory;
     CScriptBind_DialogSystem* m_pScriptBindDS;
     CScriptBind_MaterialEffects* m_pScriptBindMFX;
@@ -517,7 +513,9 @@ private:
     // Console Variables with some CryAction as owner
     CMaterialEffectsCVars* m_pMaterialEffectsCVars;
 
+#if ENABLE_CRY_PHYSICS
     CCryActionPhysicQueues* m_pPhysicsQueues;
+#endif
 
     typedef std::vector<ICryUnknownPtr> TFrameworkExtensions;
     TFrameworkExtensions m_frameworkExtensions;

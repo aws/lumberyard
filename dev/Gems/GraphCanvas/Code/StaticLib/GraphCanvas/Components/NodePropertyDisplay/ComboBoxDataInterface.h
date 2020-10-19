@@ -32,7 +32,7 @@ namespace GraphCanvas
         virtual QModelIndex GetAssignedIndex() const = 0;
 
         // Returns the string used to display the currently selected value[Used in the non-editable format]
-        virtual const QString& GetDisplayString() const
+        virtual QString GetDisplayString() const
         {
             static QString k_emptyString;
             return k_emptyString;

@@ -26,9 +26,16 @@ namespace AzQtComponents
             // and will show up grouped with our application
             HWND windowId = HWND(floatingWindow->winId());
             QTimer::singleShot(0, [windowId] {
-                ::ShowWindow(windowId, SW_HIDE);
+                BOOL wasVisible = ::IsWindowVisible(windowId);
+                if (wasVisible)
+                {
+                    ::ShowWindow(windowId, SW_HIDE);
+                }
                 ::SetWindowLong(windowId, GWL_EXSTYLE, GetWindowLong(windowId, GWL_EXSTYLE) | WS_EX_APPWINDOW);
-                ::ShowWindow(windowId, SW_SHOW);
+                if (wasVisible)
+                {
+                    ::ShowWindow(windowId, SW_SHOW);
+                }
             });
         }
 

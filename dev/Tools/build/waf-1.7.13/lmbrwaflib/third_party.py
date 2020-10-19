@@ -1381,9 +1381,6 @@ def _get_config_key_weight(key):
     else:
         return 99999
 
-
-@feature('generate_3p_static_lib_config')
-@after_method('set_pdb_flags')
 def generate_3p_config(tgen):
 
     ctx = tgen.bld

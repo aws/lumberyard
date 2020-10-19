@@ -15,10 +15,11 @@
 
 namespace AzFramework
 {
-    SeedInfo::SeedInfo(AZ::Data::AssetId assetId, PlatformFlags platformFlags, const AZStd::string& assetRelativePath)
+    SeedInfo::SeedInfo(AZ::Data::AssetId assetId, PlatformFlags platformFlags, const AZStd::string& assetRelativePath, const AZStd::string& seedListFilePath)
         : m_assetId(assetId)
         , m_platformFlags(platformFlags)
         , m_assetRelativePath(assetRelativePath)
+        , m_seedListFilePath(seedListFilePath)
     {
     }
 

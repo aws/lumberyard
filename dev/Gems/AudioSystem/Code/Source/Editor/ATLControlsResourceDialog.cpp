@@ -13,7 +13,7 @@
 
 #include <ATLControlsResourceDialog.h>
 
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <ACEEnums.h>
 #include <ATLControlsModel.h>
@@ -216,7 +216,7 @@ namespace AudioControls
         if (control)
         {
             AZStd::string sControlScope = control->GetScope();
-            if (control->GetType() == m_eType && (sControlScope.empty() || AzFramework::StringFunc::Equal(sControlScope.c_str(), m_sScope.c_str())))
+            if (control->GetType() == m_eType && (sControlScope.empty() || AZ::StringFunc::Equal(sControlScope.c_str(), m_sScope.c_str())))
             {
                 // LY-22029 - Only allow selecting Preload controls that are non-AutoLoad.
                 // This change applies everywhere, to all Preload selectors, so if there's ever a need to select preloads

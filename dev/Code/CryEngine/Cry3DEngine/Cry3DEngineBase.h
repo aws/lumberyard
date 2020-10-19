@@ -25,7 +25,9 @@
 struct ISystem;
 struct IRenderer;
 struct ILog;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct ITimer;
 struct IConsole;
 struct I3DEngine;
@@ -59,7 +61,9 @@ struct Cry3DEngineBase
     static IRenderer* m_pRenderer;
     static ITimer* m_pTimer;
     static ILog* m_pLog;
+#if ENABLE_CRY_PHYSICS
     static IPhysicalWorld* m_pPhysicalWorld;
+#endif
     static IConsole* m_pConsole;
     static C3DEngine* m_p3DEngine;
     static CVars* m_pCVars;
@@ -76,7 +80,9 @@ struct Cry3DEngineBase
     static CSkyLightManager* m_pSkyLightManager;
     static CRenderMeshMerger* m_pRenderMeshMerger;
     static CMergedMeshesManager* m_pMergedMeshesManager;
+#if ENABLE_CRY_PHYSICS
     static CBreezeGenerator* m_pBreezeGenerator;
+#endif
     static IStreamedObjectListener* m_pStreamListener;
 #if defined(USE_GEOM_CACHES)
     static CGeomCacheManager* m_pGeomCacheManager;
@@ -106,7 +112,9 @@ struct Cry3DEngineBase
     ILINE static ITimer* GetTimer() { return m_pTimer; }
     ILINE static ILog* GetLog() { return m_pLog; }
 
+#if ENABLE_CRY_PHYSICS
     inline static IPhysicalWorld* GetPhysicalWorld() { return m_pPhysicalWorld; }
+#endif
     inline static IConsole* GetConsole() { return m_pConsole; }
     inline static C3DEngine* Get3DEngine() { return m_p3DEngine; }
     inline static CObjManager* GetObjManager() { return m_pObjManager; };

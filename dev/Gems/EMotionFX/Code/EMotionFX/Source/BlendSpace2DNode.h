@@ -12,7 +12,6 @@
 
 #pragma once
 
-
 #include <EMotionFX/Source/BlendSpaceNode.h>
 #include <EMotionFX/Source/BlendSpaceParamEvaluator.h>
 #include <AzCore/std/containers/vector.h>
@@ -22,7 +21,6 @@ namespace EMotionFX
     class AnimGraphPose;
     class AnimGraphInstance;
     class BlendSpaceParamEvaluator;
-
 
     class EMFX_API BlendSpace2DNode
         : public BlendSpaceNode
@@ -50,6 +48,7 @@ namespace EMotionFX
         struct Triangle
         {
             Triangle(uint16_t indexA, uint16_t indexB, uint16_t indexC);
+            bool operator==(const Triangle& other) const;
 
             uint16_t m_vertIndices[3];
         };
@@ -120,7 +119,7 @@ namespace EMotionFX
             CurrentEdgeInfo                 m_currentEdge; // When the point is not inside any triangle, information
             // about the closest point on the outer edge
             BlendInfos                      m_blendInfos;
-            AZ::u32                         m_masterMotionIdx; // index of the master motion for syncing
+            AZ::u32                         m_leaderMotionIdx; // index of the leader motion for syncing
 
             bool                            m_hasDegenerateTriangles; // to notify the UI
         };
@@ -155,8 +154,8 @@ namespace EMotionFX
         //! Called to set the current position from GUI.
         void SetCurrentPosition(const AZ::Vector2& point);
 
-        void SetSyncMasterMotionId(const AZStd::string& syncMasterMotionId);
-        const AZStd::string& GetSyncMasterMotionId() const;
+        void SetSyncLeaderMotionId(const AZStd::string& syncLeaderMotionId);
+        const AZStd::string& GetSyncLeaderMotionId() const;
 
         void SetEvaluatorTypeX(const AZ::TypeId& evaluatorType);
         const AZ::TypeId& GetEvaluatorTypeX() const;
@@ -213,13 +212,15 @@ namespace EMotionFX
         bool FindOuterEdgeClosestToCurrentPoint(UniqueData& uniqueData);
         void SetBindPoseAtOutput(AnimGraphInstance* animGraphInstance);
 
+        static bool NodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+
     private:
         AZ::Crc32 GetEvaluatorXVisibility() const;
         AZ::Crc32 GetEvaluatorYVisibility() const;
         AZ::Crc32 GetSyncOptionsVisibility() const;
 
         AZStd::vector<BlendSpaceMotion> m_motions;
-        AZStd::string                   m_syncMasterMotionId;
+        AZStd::string                   m_syncLeaderMotionId;
         BlendSpaceParamEvaluator*       m_evaluatorX = nullptr;
         AZ::TypeId                      m_evaluatorTypeX = azrtti_typeid<BlendSpaceParamEvaluatorNone>();
         ECalculationMethod              m_calculationMethodX = ECalculationMethod::AUTO;

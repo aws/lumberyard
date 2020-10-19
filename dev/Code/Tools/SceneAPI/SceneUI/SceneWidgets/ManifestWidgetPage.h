@@ -61,6 +61,8 @@ namespace AZ
 
                 virtual void ScrollToBottom();
 
+                void RefreshPage(); // Called when a scene is initially loaded, after all objects are populated.
+
             protected slots:
                 //! Callback that's triggered when the add button only has 1 entry.
                 void OnSingleGroupAdd();

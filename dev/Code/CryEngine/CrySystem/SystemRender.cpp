@@ -263,8 +263,10 @@ void CSystem::RenderBegin()
     gEnv->nMainFrameID = (rndAvail) ? m_env.pRenderer->GetFrameID(false) : 0;
 }
 
+#if ENABLE_CRY_PHYSICS
 char* PhysHelpersToStr(int iHelpers, char* strHelpers);
 int StrToPhysHelpers(const char* strHelpers);
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
@@ -376,6 +378,7 @@ void CSystem::OnScene3DEnd()
     }
 }
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 void CSystem::RenderPhysicsHelpers()
 {
@@ -540,6 +543,7 @@ void CSystem::RenderPhysicsStatistics(IPhysicalWorld* pWorld)
     }
 #endif
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //! Update screen and call some important tick functions during loading.
 void CSystem::SynchronousLoadingTick(const char* pFunc, int line)

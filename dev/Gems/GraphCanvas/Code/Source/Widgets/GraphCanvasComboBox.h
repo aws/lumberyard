@@ -46,6 +46,17 @@ namespace GraphCanvas
 
         void SetFilter(const QString& filter);
 
+        void BeginModelReset()
+        {
+            beginResetModel();
+        }
+
+        void EndModelReset()
+        {
+            endResetModel();
+            invalidate();
+        }
+
     private:
         QString m_filter;
         QRegExp m_testRegex;

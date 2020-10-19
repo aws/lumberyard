@@ -64,7 +64,8 @@ def build(bld):
         use             = ['AzToolsFramework',
                            'AzQtComponents',
                            'AssetBuilderSDK',
-                           'ToolsCrashHandler'
+                           'ToolsCrashHandler',
+                           'XXHASH'
                            ] + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
         uselib          = ['QT5CORE',
                            'QT5GUI',
@@ -136,7 +137,7 @@ def build(bld):
         platforms       = ['win', 'darwin', 'linux'],
         configurations  = ['all'],
         exclude_monolithic = True,
-        client_only      = True,
+        client_only     = True,
         disable_pch     = True,
         features        = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
         includes        = [bld.Path('Code/Tools/GemRegistry/include'),
@@ -146,8 +147,9 @@ def build(bld):
                           ],
 
         win_features    = ['generate_rc_file', 'crcfix'],
-        use             = ['AzToolsFramework',
-                           'AssetBuilderSDK'] + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
+        use             = ['AzToolsFramework', 'AssetBuilderSDK', 'XXHASH']
+                            + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
+        test_use        = ['AzToolsFrameworkTestCommon'],
         uselib          = ['QT5CORE',
                            'QT5GUI',
                            'QT5NETWORK',
@@ -155,6 +157,9 @@ def build(bld):
                            'SQLITE',
 						   'QT5XML'] + metrics_uselib,
         defines         = console_defines,
+
+        # Compiler Specific
+        msvc_cxxflags       = ['/W4'],
 
         # Platform Specific
         darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],

@@ -71,6 +71,9 @@ namespace AzFramework
 
         AZStd::string GetName() const;
         AZStd::string GetExpectedExtension() const;
+        AZStd::string GetMatchPattern() const;
+        AZStd::string GetFindPattern() const;
+        AZStd::string GetReplacePattern() const;
         AttributeType GetType() const;
         AttributePathDependencyType GetPathDependencyType() const;
         bool IsRelativeToSourceAssetFolder() const;
@@ -81,6 +84,9 @@ namespace AzFramework
 
         AZStd::string m_name;
         AZStd::string m_expectedExtension;
+        AZStd::string m_matchPattern;
+        AZStd::string m_findPattern;
+        AZStd::string m_replacePattern;
         AttributeType m_type;
         AttributePathDependencyType m_pathDependencyType;
         bool m_relativeToSourceAssetFolder;

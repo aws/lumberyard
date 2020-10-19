@@ -188,6 +188,22 @@ namespace AzToolsFramework
                 GenericComboBoxHandler<ValueType>::ConsumeAttribute(GUI, attrib, attrValue, debugName);
             }
         }
+
+        bool HandlesType(const AZ::Uuid& id) const override
+        {
+            const AZ::TypeId& handledTypeId = this->GetHandledType();
+            if (handledTypeId == id)
+            {
+                return true;
+            }
+            // Attempt to check if the supplied "id" is an enum type whose underlying type
+            // matches the ValueType type
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+            const AZ::TypeId& underlyingIdType = serializeContext ? serializeContext->GetUnderlyingTypeId(id) : id;
+            return handledTypeId == underlyingIdType;
+        }
+
     };
 
     class charEnumPropertyComboBoxHandler

@@ -43,7 +43,7 @@ namespace AZ
             void FlushCache(const RequestPath& filePath) override;
             void FlushEntireCache() override;
 
-            void CollectStatistics(AZStd::vector<Statistic>& statistics) const override;
+            void CollectStatistics(AZStd::vector<Statistic>& statistics) override;
             
         protected:
             static const AZStd::chrono::microseconds s_averageSeekTime;

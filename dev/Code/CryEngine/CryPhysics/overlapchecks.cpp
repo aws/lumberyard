@@ -17,6 +17,9 @@
 #include "primitives.h"
 #include "overlapchecks.h"
 
+#if ENABLE_CRY_PHYSICS
+
+
 //COverlapChecker g_Overlapper;
 #undef g_Overlapper
 #define g_Overlapper (*pOverlapper)
@@ -709,3 +712,5 @@ int sphere_heightfield_overlap_check(const sphere* psph, const heightfield* phf,
 }
 
 #undef g_Overlapper
+
+#endif // ENABLE_CRY_PHYSICS

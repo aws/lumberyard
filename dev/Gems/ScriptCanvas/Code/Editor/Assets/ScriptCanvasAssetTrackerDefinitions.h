@@ -35,6 +35,7 @@ namespace ScriptCanvasEditor
             NEW,
             MODIFIED,
             UNMODIFIED,
+            SOURCE_REMOVED,
             INVALID = -1
         };
     }

@@ -15,6 +15,7 @@
 #include "MiscEntities.h"
 #include "GameEngine.h"
 
+#if ENABLE_CRY_PHYSICS
 //////////////////////////////////////////////////////////////////////////
 // CConstraintEntity
 //////////////////////////////////////////////////////////////////////////
@@ -289,5 +290,6 @@ void CWindAreaEntity::Display(DisplayContext& dc)
         }
     }
 }
+#endif // ENABLE_CRY_PHYSICS
 
 #include <Objects/MiscEntities.moc>

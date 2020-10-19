@@ -120,7 +120,7 @@ namespace EMotionFX
         AZStd::shared_ptr<const T> FindEventData(const AZStd::shared_ptr<const T>& data)
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_eventDataLock);
-            for (const AZStd::weak_ptr<const EMotionFX::EventData> entry : m_allEventData)
+            for (AZStd::weak_ptr<const EMotionFX::EventData> entry : m_allEventData)
             {
                 if (entry.expired())
                 {

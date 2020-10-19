@@ -12,6 +12,7 @@
 #include "StdAfx.h"
 
 #include <AzTest/AzTest.h>
+#include <AzCore/Memory/AllocatorScope.h>
 #include <CryPak.h>
 
 #include <AzCore/Component/ComponentApplication.h>
@@ -1378,15 +1379,17 @@ namespace CryPakUnitTests
     }
     */
 
+    using SystemAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
     class CryPakUnitTestsWithAllocators
         : public ::testing::Test
+        , public SystemAllocatorScope
     {
     protected:
 
         void SetUp() override
         {
-            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
-            AZ::AllocatorInstance<CryStringAllocator>::Create();
+            SystemAllocatorScope::ActivateAllocators();
             m_localFileIO = aznew AZ::IO::LocalFileIO();
             AZ::IO::FileIOBase::SetDirectInstance(m_localFileIO);
             m_localFileIO->SetAlias(m_firstAlias.c_str(), m_firstAliasPath.c_str());
@@ -1398,8 +1401,7 @@ namespace CryPakUnitTests
             AZ::IO::FileIOBase::SetDirectInstance(nullptr);
             delete m_localFileIO;
             m_localFileIO = nullptr;
-            AZ::AllocatorInstance<CryStringAllocator>::Destroy();
-            AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+            SystemAllocatorScope::DeactivateAllocators();
         }
 
         AZ::IO::FileIOBase* m_localFileIO = nullptr;

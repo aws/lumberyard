@@ -641,6 +641,7 @@ void CSurfaceInfoPicker::FindNearestInfoFromTerrain(
     _smart_ptr<IMaterial>* pOutLastMaterial,
     SRayHitInfo& outHitInfo) const
 {
+#if ENABLE_CRY_PHYSICS
     int objTypes = ent_terrain;
     int flags = (geom_colltype_ray | geom_colltype14) << rwi_colltype_bit | rwi_colltype_any | rwi_ignore_terrain_holes | rwi_stop_at_pierceable;
     ray_hit hit;
@@ -667,6 +668,35 @@ void CSurfaceInfoPicker::FindNearestInfoFromTerrain(
             }
         }
     }
+#else
+    bool terrainHit = false;
+    LegacyTerrain::SRayTrace terrainRayTrace;
+    LegacyTerrain::LegacyTerrainDataRequestBus::BroadcastResult(terrainHit, &LegacyTerrain::LegacyTerrainDataRequests::RayTrace, vWorldRaySrc, vWorldRaySrc + vWorldRayDir, &terrainRayTrace);
+    if (terrainHit)
+    {
+
+        outHitInfo.nHitSurfaceID = terrainRayTrace.material->GetSurfaceTypeId();
+        outHitInfo.vHitNormal = terrainRayTrace.hitNormal;
+        outHitInfo.vHitPos = terrainRayTrace.hitPoint;
+        if (terrainRayTrace.material)
+        {
+            outHitInfo.nHitMatID = terrainRayTrace.material->GetSurfaceTypeId();
+            if (pOutLastMaterial)
+            {
+                *pOutLastMaterial = terrainRayTrace.material;
+            }
+        }
+
+        float terrainElevation = 0.0f;
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainElevation
+            , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+            , terrainRayTrace.hitPoint.x, terrainRayTrace.hitPoint.y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR
+            , nullptr);
+
+        outHitInfo.vHitPos.z = terrainElevation;
+        outHitInfo.fDistance = (outHitInfo.vHitPos - vWorldRaySrc).GetLength();
+    }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 bool CSurfaceInfoPicker::RayIntersection_CBaseObject(
@@ -879,6 +909,7 @@ bool CSurfaceInfoPicker::RayIntersection_IRenderNode(
         return false;
     }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* physics = 0;
     physics = pRenderNode->GetPhysics();
     if (physics == NULL)
@@ -927,6 +958,9 @@ bool CSurfaceInfoPicker::RayIntersection_IRenderNode(
     }
 
     return true;
+#else
+    return false;
+#endif // ENABLE_CRY_PHYSICS
 }
 
 bool CSurfaceInfoPicker::RayIntersection_IEntity(
@@ -942,8 +976,10 @@ bool CSurfaceInfoPicker::RayIntersection_IEntity(
         return false;
     }
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* pPhysWorld = GetIEditor()->GetSystem()->GetIPhysicalWorld();
     IPhysicalEntity* pPhysics = 0;
+#endif
     bool bHit = false;
 
     _smart_ptr<IMaterial> pMaterial = NULL;
@@ -968,7 +1004,9 @@ bool CSurfaceInfoPicker::RayIntersection_IEntity(
 
             if (slotInfo.pCharacter)
             {
+#if ENABLE_CRY_PHYSICS
                 pPhysics = slotInfo.pCharacter->GetISkeletonPose()->GetCharacterPhysics();
+#endif
                 pMaterial = slotInfo.pCharacter->GetIMaterial();
             }
             else if (slotInfo.pStatObj)
@@ -994,9 +1032,12 @@ bool CSurfaceInfoPicker::RayIntersection_IEntity(
         }
         else
         {
+#if ENABLE_CRY_PHYSICS
             pPhysics = pEntity->GetPhysics();
+#endif
             ++i;
         }
+#if ENABLE_CRY_PHYSICS
         if (pPhysics == NULL)
         {
             continue;
@@ -1028,6 +1069,7 @@ bool CSurfaceInfoPicker::RayIntersection_IEntity(
         outHitInfo.nHitSurfaceID = hit.surface_idx;
         outHitInfo.nHitMatID = hit.idmatOrg;
         break;
+#endif // ENABLE_CRY_PHYSICS
     }
 
     if (!bHit)

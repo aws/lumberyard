@@ -75,6 +75,7 @@ namespace MysticQt
 
         m_resetRecentFilesAction = nullptr;
         m_recentFilesMenu = new ToolTipMenu(subMenuName, parentMenu);
+        m_recentFilesMenu->setObjectName("EMFX.MainWindow.RecentFilesMenu");
         parentMenu->addMenu(m_recentFilesMenu);
 
         SetMaxRecentFiles(numRecentFiles);
@@ -172,6 +173,7 @@ namespace MysticQt
         {
             m_recentFilesMenu->addSeparator();
             m_resetRecentFilesAction = m_recentFilesMenu->addAction("Reset Recent Files", this, &RecentFiles::OnClearRecentFiles);
+            m_resetRecentFilesAction->setObjectName("EMFX.RecentFiles.ResetRecentFilesAction");
         }
     }
 

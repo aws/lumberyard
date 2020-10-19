@@ -70,7 +70,7 @@ namespace
 
         AZStd::vector<AZ::EntityId> slotIds;
         GraphCanvas::NodeRequestBus::EventResult(slotIds, entityId, &GraphCanvas::NodeRequests::GetSlotIds);
-        for (const AZ::EntityId slotId : slotIds)
+        for (AZ::EntityId slotId : slotIds)
         {
             GraphCanvas::SlotType type(GraphCanvas::SlotTypes::Invalid);
             GraphCanvas::SlotRequestBus::EventResult(type, slotId, &GraphCanvas::SlotRequests::GetSlotType);

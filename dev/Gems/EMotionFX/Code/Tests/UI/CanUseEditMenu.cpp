@@ -42,7 +42,7 @@ namespace EMotionFX
         ASSERT_TRUE(currentNode) << "No current AnimGraphNode found";
 
         // Create an anim graph node, so we have something to undo.
-        CommandSystem::CreateAnimGraphNode(animGraph, azrtti_typeid<EMotionFX::AnimGraphReferenceNode>(), "Reference", currentNode, 0, 0);
+        CommandSystem::CreateAnimGraphNode(/*commandGroup=*/nullptr, animGraph, azrtti_typeid<EMotionFX::AnimGraphReferenceNode>(), "Reference", currentNode, 0, 0);
         
         // Check the expected node now exists.
         uint32 numNodes = currentNode->GetNumChildNodes();

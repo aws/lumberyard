@@ -602,8 +602,10 @@ public:
     bool IsLookAtTarget() const;
     CBaseObject* GetLookAtSource() const { return m_lookatSource; };
 
+#if ENABLE_CRY_PHYSICS
     //! Gets physics collision entity of this object.
     virtual struct IPhysicalEntity* GetCollisionEntity() const { return 0; };
+#endif
 
     IObjectManager* GetObjectManager() const;
 

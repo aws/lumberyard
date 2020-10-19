@@ -308,7 +308,7 @@ namespace CloudCanvasCommon
     }
 
     int CloudCanvasCommonSystemComponent::GetEndpointHttpResponseCode(const AZStd::string& endPoint)
-    {        
+    {
         auto config = Aws::Client::ClientConfiguration();
         config.enableTcpKeepAlive = AZ_TRAIT_AZFRAMEWORK_AWS_ENABLE_TCP_KEEP_ALIVE_SUPPORTED;
         AZStd::string caFile;
@@ -326,7 +326,7 @@ namespace CloudCanvasCommon
 
         if (!httpResponse)
         {
-            AZ_Warning("CloudCanvas", false, "Failed to retrieve a response from test Endpoint %s.", endPoint.c_str());
+            AZ_Warning("CloudCanvas", false, "Failed to retrieve a response from Endpoint %s.", endPoint.c_str());
             return -1;
         }
 

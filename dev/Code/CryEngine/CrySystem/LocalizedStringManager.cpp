@@ -43,6 +43,7 @@ const char c_sys_localization_debug[] = "sys_localization_debug";
 const char c_sys_localization_encode[] = "sys_localization_encode";
 #define LOC_WINDOW "Localization"
 const char c_sys_localization_format[] = "sys_localization_format";
+const char c_sys_localization_test[] = "sys_localization_test";
 
 enum ELocalizedXmlColumns
 {
@@ -220,6 +221,8 @@ void CLocalizedStringsManager::LocalizationDumpLoadedInfo(IConsoleCmdArgs* pArgs
 CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
     : m_cvarLocalizationDebug(0)
     , m_cvarLocalizationEncode(1)
+    , m_cvarLocalizationTest(0)
+    , m_cvarLocalizationFormat(1)
     , m_availableLocalizations(0)
 {
     m_pSystem = pSystem;
@@ -251,11 +254,18 @@ CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
         "1: Huffman encode translated text, saves approx 30% with a small runtime performance cost\n"
         "Default is 1.");
 
+    REGISTER_CVAR2(c_sys_localization_test, &m_cvarLocalizationTest, m_cvarLocalizationTest, VF_CHEAT,
+        "Toggles test mode for localization.  Provides mechanism to render localization token instead of text as a way to check which text are localized.\n"
+        "Usage: sys_localization_test [0..2]\n"
+        "0: No test mode, regular token translation\n"
+        "1: Use token name rather than translation\n"
+        "2: Use language name rather than translation\n"
+        "Default is 0 (off).");
 
     REGISTER_COMMAND("LocalizationDumpLoadedInfo", LocalizationDumpLoadedInfo, VF_NULL, "Dump out into about the loaded localization files");
 #endif //#if !defined(_RELEASE)
 
-    REGISTER_CVAR2(c_sys_localization_format, &m_cvarLocalizationFormat, 1, VF_NULL,
+    REGISTER_CVAR2(c_sys_localization_format, &m_cvarLocalizationFormat, m_cvarLocalizationFormat, VF_NULL,
         "Usage: sys_localization_format [0..1]\n"
         "    0: Crytek Legacy Localization (Excel 2003)\n"
         "    1: AGS XML\n"
@@ -2043,7 +2053,20 @@ bool CLocalizedStringsManager::LocalizeLabel(const char* sLabel, string& outLoca
 
             if (entry != NULL)
             {
-                
+                switch (m_cvarLocalizationTest)
+                {
+                case 0:  // Ignore the cvar, continue localization as expected
+                    break;
+                case 1:  // Display the label without localizing.  Ex: @ui_hello
+                    outLocalString = sLabel;
+                    return true;
+                case 2: // Change the text to be current language setting.  Ex: @english
+                    outLocalString.Format("@%s", m_pLanguage->sLanguage.c_str());
+                    return true;
+                default:
+                    break;
+                }
+
                 string translatedText = entry->GetTranslatedText(m_pLanguage);
                 if ((bEnglish || translatedText.empty()) && entry->pEditorExtension != NULL)
                 {
@@ -2647,7 +2670,7 @@ void CLocalizedStringsManager::LocalizeNumber_Decimal(float number, int decimals
 
     float decimalsOnly = f - (float)d;
 
-    int decimalsAsInt = int_round(decimalsOnly * pow(10.0f, decimals));
+    int decimalsAsInt = aznumeric_cast<int>(int_round(decimalsOnly * pow(10.0f, decimals)));
 
     CryFixedStringT<64> tmp;
     tmp.Format("%s%s%0*d", intPart.c_str(), commaSeparator.c_str(), decimals, decimalsAsInt);

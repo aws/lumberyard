@@ -24,18 +24,21 @@
 #include <AzCore/std/parallel/semaphore.h>
 #include <AzCore/std/parallel/thread.h>
 
+#define PROVIDE_GETNAME_SUPPORT
+
 namespace Audio
 {
     // Forward declarations.
     class CAudioSystem;
     class CAudioProxy;
-    struct IAudioSystemImplementation;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CAudioThread
     {
     public:
-        CAudioThread() = default;
+        CAudioThread()
+            : m_running(false)
+        {}
         ~CAudioThread();
 
         void Activate(CAudioSystem* const audioSystem);
@@ -44,7 +47,7 @@ namespace Audio
 
     private:
         CAudioSystem* m_audioSystem = nullptr;
-        volatile bool m_running = false;
+        AZStd::atomic_bool m_running;
         AZStd::thread m_thread;
     };
 
@@ -131,7 +134,6 @@ namespace Audio
         using TAudioRequests = AZStd::deque<CAudioRequestInternal, Audio::AudioSystemStdAllocator>;
         using TAudioProxies = AZStd::vector<CAudioProxy*, Audio::AudioSystemStdAllocator>;
 
-        void UpdateTime();
         void InternalUpdate();
         bool ProcessRequests(TAudioRequests& rRequestQueue);
         void ProcessRequestBlocking(CAudioRequestInternal& audioRequestInternalData);
@@ -142,9 +144,7 @@ namespace Audio
         bool m_bSystemInitialized;
 
         using duration_ms = AZStd::chrono::duration<float, AZStd::milli>;
-        AZStd::chrono::system_clock::time_point m_lastUpdateTime;
-        duration_ms m_elapsedTime;
-        duration_ms m_updatePeriod;
+        const duration_ms m_targetUpdatePeriod = AZStd::chrono::milliseconds(8);
 
         CAudioTranslationLayer m_oATL;
         CAudioThread m_audioSystemThread;
@@ -170,8 +170,10 @@ namespace Audio
         AZStd::string m_controlsPath;
 
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(PROVIDE_GETNAME_SUPPORT)
         mutable AZStd::mutex m_debugNameStoreMutex;
         CATLDebugNameStore m_debugNameStore;
+        #endif // PROVIDE_GETNAME_SUPPORT
 
         void DrawAudioDebugData();
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE

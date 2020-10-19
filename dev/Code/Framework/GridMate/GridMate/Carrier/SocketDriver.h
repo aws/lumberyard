@@ -171,6 +171,9 @@ namespace GridMate
         virtual bool    AddressToIPPort(const string& address, string& ip, unsigned int& port) const    { return AddressStringToIPPort(address, ip, port); }
         /// Create address for the socket driver from IP and port
         static string   IPPortToAddressString(const char* ip, unsigned int port);
+        /// Map an IPv4 address into IPv6 address format
+        static bool IPv4ToIPv6(const string& ipv4, string& ipv6);
+
         /// Decompose an address to IP and port
         static bool     AddressStringToIPPort(const string& address, string& ip, unsigned int& port);
         /// Return the family type of the address (AF_INET,AF_INET6 AF_UNSPEC)

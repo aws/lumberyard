@@ -26,6 +26,8 @@
 #include "Terrain/SurfaceType.h"
 #include "Terrain/TerrainManager.h"
 #include "Terrain/Clouds.h"
+#include <AzToolsFramework/Component/EditorComponentAPIBus.h>
+#include <AzToolsFramework/Component/EditorLevelComponentAPIBus.h>
 #endif //#ifdef LY_TERRAIN_EDITOR
 
 #include "Util/PakFile.h"
@@ -1416,6 +1418,48 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         BackupBeforeSave();
     }
 
+    // Handle saving of the ShowTerrainSurface flag appropriately based on whether or not the Legacy Terrain component
+    // is active in this level
+#ifdef LY_TERRAIN_EDITOR
+    AZStd::vector<AZStd::string> componentNames = { "Legacy Terrain", };
+    AZStd::vector<AZ::Uuid> uuids;
+    AzToolsFramework::EditorComponentAPIBus::BroadcastResult(uuids, &AzToolsFramework::EditorComponentAPIRequests::FindComponentTypeIdsByEntityType, componentNames, AzToolsFramework::EditorComponentAPIRequests::EntityType::Level);
+    if (uuids.size() == 1)
+    {
+        AzToolsFramework::EditorComponentAPIRequests::GetComponentOutcome componentOutcome;
+        AzToolsFramework::EditorLevelComponentAPIBus::BroadcastResult(componentOutcome, &AzToolsFramework::EditorLevelComponentAPIRequests::GetComponentOfType, uuids[0]);
+
+        // Even if the Legacy Terrain component exists, we also need to check if it is enabled/disabled
+        bool levelEntityHasLegacyTerrainComponent = false;
+        if (componentOutcome.IsSuccess())
+        {
+            auto legacyTerrainComponent = componentOutcome.GetValue();
+            bool isEnabled = false;
+            AzToolsFramework::EditorComponentAPIBus::BroadcastResult(isEnabled, &AzToolsFramework::EditorComponentAPIRequests::IsComponentEnabled, legacyTerrainComponent);
+
+            levelEntityHasLegacyTerrainComponent = isEnabled;
+        }
+        else
+        {
+            levelEntityHasLegacyTerrainComponent = false;
+        }
+
+        XmlNodeRef rootNode = GetIEditor()->GetDocument()->GetEnvironmentTemplate();
+        if (rootNode)
+        {
+            XmlNodeRef envState = rootNode->findChild("EnvState");
+            if (envState)
+            {
+                XmlNodeRef showTerrainSurface = envState->findChild("ShowTerrainSurface");
+                showTerrainSurface->setAttr("value", (levelEntityHasLegacyTerrainComponent) ? "1" : "false");
+
+                // This will trigger the actual saving of Environment.xml
+                GetIEditor()->GetDocument()->GetCurrentMission()->OnEnvironmentChange();
+            }
+        }
+    }
+#endif
+
     // need to copy existing level data before saving to different folder
     const QString oldLevelFolder = Path::GetPath(GetLevelPathName()); // get just the folder name
     QString newLevelFolder = Path::GetPath(fullPathName);
@@ -2488,11 +2532,7 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
 
 void CCryEditDoc::CreateDefaultLevelAssets(int resolution, int unitSize)
 {
-    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
-    {
-        return;
-    }
-
+#ifndef OTHER_ACTIVE
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_envProbeSliceAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, m_envProbeSliceRelativePath, azrtti_typeid<AZ::SliceAsset>(), false);
 
     if (m_envProbeSliceAssetId.IsValid())
@@ -2511,6 +2551,7 @@ void CCryEditDoc::CreateDefaultLevelAssets(int resolution, int unitSize)
             AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::InstantiateEditorSlice, asset, worldTransform);
         }
     }
+#endif
 }
 
 void CCryEditDoc::OnEnvironmentPropertyChanged(IVariable* pVar)

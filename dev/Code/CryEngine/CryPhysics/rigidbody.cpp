@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "rigidbody.h"
 
 phys_job_info& GetJobProfileInst(int);
@@ -2403,3 +2405,5 @@ endsandw:
     }
     return g_nBodies;
 }
+
+#endif // ENABLE_CRY_PHYSICS

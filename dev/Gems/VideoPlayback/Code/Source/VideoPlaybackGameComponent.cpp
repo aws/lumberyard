@@ -109,10 +109,20 @@ namespace AZ
 
         void VideoPlaybackGameComponent::Deactivate()
         {
+            m_playing = false;
+            m_secondsSinceLastFrame = 0.0f;
             m_videoDecoder.UnloadVideo();
 
             AZ::TickBus::Handler::BusDisconnect();
             VideoPlaybackFramework::VideoPlaybackRequestBus::Handler::BusDisconnect();
+
+            if (gEnv && gEnv->pRenderer)
+            {
+                gEnv->pRenderer->RemoveTexture(m_videoTextureLeft);
+                gEnv->pRenderer->RemoveTexture(m_videoTextureRight);
+            }
+            m_videoTextureLeft = 0;
+            m_videoTextureRight = 0;
         }
 
         void VideoPlaybackGameComponent::Reflect(AZ::ReflectContext* context)
@@ -231,14 +241,25 @@ namespace AZ
             m_playbackSpeedFactor = 1.0f / speedFactor;
         }
 
-        AZStd::string VideoPlaybackGameComponent::GetVideoPathname()
+        AZStd::string VideoPlaybackGameComponent::GetVideoPathname() const
+        {
+            return m_videoAsset.GetAssetPath();
+        }
+
+        void VideoPlaybackGameComponent::SetVideoPathname(const AZStd::string& videoPath)
+        {
+            m_videoAsset.SetAssetPath(videoPath.c_str());
+        }
+
+        AZStd::string VideoPlaybackGameComponent::GetDestinationTextureName() const
         {
             return m_userTextureName;
         }
 
-        void VideoPlaybackGameComponent::SetVideoPathname(AZStd::string videoPath)
+        void VideoPlaybackGameComponent::SetDestinationTextureName(const AZStd::string& destinationTextureName)
         {
-            m_userTextureName = videoPath;
+            m_userTextureName = destinationTextureName;
+            OnRenderTextureChange();
         }
 
         void VideoPlaybackGameComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)

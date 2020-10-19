@@ -46,6 +46,7 @@ namespace AzQtComponents
 
         bool singleTabFillsWidth() const { return m_singleTabFillsWidth; }
         void setSingleTabFillsWidth(bool singleTabFillsWidth);
+        void setIsShowingWindowControls(bool show);
 
         QString tabText(int index) const;
 
@@ -74,5 +75,6 @@ namespace AzQtComponents
         QAction* m_undockTabGroupMenuAction;
         int m_menuActionTabIndex;
         bool m_singleTabFillsWidth;
+        bool m_isShowingWindowControls = false;
     };
 } // namespace AzQtComponents

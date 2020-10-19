@@ -21,6 +21,8 @@ namespace AzToolsFramework
             : public AZ::EBusTraits
         {
         public:
+            using MutexType = AZStd::recursive_mutex;
+
             virtual void LogQuery(const char* statement, const AZStd::string& params) = 0;
             virtual void LogResultId(AZ::s64 rowId) = 0;
         };

@@ -250,6 +250,10 @@ namespace AzToolsFramework
         // Return true if any modifications were made to the toolTipString.
         virtual bool ModifyTooltip(QWidget* /*widget*/, QString& /*toolTipString*/) { return false; }
 
+        // If the control needs to do anything when refreshes have been disabled, such as cancelling async / threaded
+        // updates, it can be done in this function.
+        virtual void PreventRefresh(QWidget* /*widget*/, bool /*shouldPrevent*/) {}
+
     protected:
         // we automatically take care of the rest:
         // --------------------- Internal Implementation ------------------------------

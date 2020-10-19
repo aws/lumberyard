@@ -109,6 +109,9 @@ namespace AzFramework
         /// Get the Command Line arguments passed in.
         virtual const CommandLine* GetCommandLine() { return nullptr; }
 
+        /// Get the Command Line arguments passed in. (Avoids collisions with platform specific macros.)
+        virtual const CommandLine* GetApplicationCommandLine() { return nullptr; }
+
         /// Pump the system event loop once, regardless of whether there are any events to process.
         virtual void PumpSystemEventLoopOnce() {}
 

@@ -17,7 +17,8 @@
           "StreamSocketDriverTests.cpp",
           "CarrierStreamSocketDriverTests.cpp",
           "Carrier.cpp",
-          "Interest.cpp"
+          "Interest.cpp",
+          "SocketDriverCommonTests.cpp"
         ]
     }
 }

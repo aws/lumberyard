@@ -48,7 +48,7 @@ namespace AZ
             void UpdateCompletionEstimates(AZStd::chrono::system_clock::time_point now, AZStd::vector<FileRequest*>& internalPending,
                 AZStd::deque<AZStd::shared_ptr<Request>>& externalPending) override;
 
-            void CollectStatistics(AZStd::vector<Statistic>& statistics) const override;
+            void CollectStatistics(AZStd::vector<Statistic>& statistics) override;
 
             u32 GetNumRunningJobs() const;
 

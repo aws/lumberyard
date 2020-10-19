@@ -182,8 +182,11 @@ protected:
     //! True when the mouse has been pressed, becomes false on release.
     bool m_draggingMouse;
 
-    //! We record the position at which the mouse button is pressed to later compute the mouse drag direction.
-    QPoint m_mouseDownPosition;
+    //! The last mouse position on screen when rotating.
+    QPoint m_lastPosition;
+
+    //! Cumulative rotation angle in degrees.
+    Ang3 m_rotationAngles;
 
     //! The selected object.
     CBaseObject* m_object;
@@ -229,6 +232,9 @@ protected:
 
     //! Retrieves the object's transformation according to the specified reference coordinate system.
     Matrix34 GetTransform(RefCoordSys referenceCoordinateSystem, IDisplayViewport* view);
+
+    //! Calculate orientation of 3 points on screen, return 1.0f if clockwise, -1.0f if counter-clockwise
+    float CalculateOrientation(const QPoint& p1, const QPoint& p2, const QPoint& p3);
 
 private:
 

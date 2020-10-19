@@ -102,6 +102,71 @@ bool CSettingsManager::CreateDefaultLayoutSettingsFile()
     return true;
 }
 
+AZStd::vector<AZStd::string> CSettingsManager::BuildSettingsList()
+{
+    XmlNodeRef root = NULL;
+
+    root = m_pSettingsManagerMemoryNode;
+
+    XmlNodeRef tmpNode = root->findChild(EDITOR_SETTINGS_CONTENT_NODE);
+    if (!tmpNode)
+    {
+        root->addChild(root->createNode(EDITOR_SETTINGS_CONTENT_NODE));
+        tmpNode = root->findChild(EDITOR_SETTINGS_CONTENT_NODE);
+
+        if (!tmpNode)
+        {
+            AZ_Warning("Settings Manager", false, "Failed to build the settings list - could not find the root xml node.");
+            return AZStd::vector<AZStd::string>();
+        }
+    }
+
+    AZStd::vector<AZStd::string> result;
+    BuildSettingsList_Helper(tmpNode, "", result);
+
+    return result;
+}
+
+void CSettingsManager::BuildSettingsList_Helper(const XmlNodeRef& node, const AZStd::string_view& pathToNode, AZStd::vector<AZStd::string>& result)
+{
+    for (int i = 0; i < node->getNumAttributes(); ++i)
+    {
+        const char* key = NULL;
+        const char* value = NULL;
+        node->getAttributeByIndex(i, &key, &value);
+        if (!pathToNode.empty())
+        {
+            result.push_back(AZStd::string(pathToNode));
+        }
+    }
+
+    if (node->getChildCount() > 0)
+    {
+        // Explore Children
+        int numChildren = node->getChildCount();
+        for (int i = 0; i < numChildren; ++i)
+        {
+            if (pathToNode.empty())
+            {
+                BuildSettingsList_Helper(
+                    node->getChild(i),
+                    node->getChild(i)->getTag(),
+                    result
+                );
+            }
+            else
+            {
+                BuildSettingsList_Helper(
+                    node->getChild(i),
+                    AZStd::string(pathToNode) + "|" + node->getChild(i)->getTag(),
+                    result
+                );
+            }
+            
+        }
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CSettingsManager::SaveSetting(const QString& path, const QString& attr, const QString& val)
 {

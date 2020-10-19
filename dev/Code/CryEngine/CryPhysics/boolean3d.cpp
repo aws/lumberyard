@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "overlapchecks.h"
@@ -2219,3 +2221,5 @@ int CTriMesh::Slice(const triangle* pcut, float minlen, float minArea)
     RebuildBVTree();
     return 1;
 }
+
+#endif // ENABLE_CRY_PHYSICS

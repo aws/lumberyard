@@ -120,4 +120,18 @@ namespace EMotionFX
 
         return meshBuilder->ConvertToEMotionFXMesh();
     }
+
+    PlaneActorWithJoints::PlaneActorWithJoints(size_t jointCount, const char* name)
+        : PlaneActor(name)
+    {
+        for (uint32 i = 1; i < jointCount; ++i)
+        {
+            AddNode(i, ("joint" + AZStd::to_string(i)).c_str(), i - 1);
+
+            Transform transform = Transform::CreateIdentity();
+            transform.mPosition = AZ::Vector3(static_cast<float>(i), 0.0f, 0.0f);
+            GetBindPose()->SetLocalSpaceTransform(i, transform);
+        }
+    }
+
 } // namespace EMotionFX

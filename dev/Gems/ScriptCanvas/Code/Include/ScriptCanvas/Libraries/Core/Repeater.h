@@ -57,6 +57,9 @@ namespace ScriptCanvas
                 void OnTimeElapsed();
 
                 const char* GetTimeSlotFormat() const override { return "Delay (%s)"; }
+
+                const char* GetBaseTimeSlotName() const override { return "Interval"; }
+                const char* GetBaseTimeSlotToolTip() const override { return "The Interval between repetitions"; }
                 
             protected:
 

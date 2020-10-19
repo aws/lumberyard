@@ -27,5 +27,6 @@ def build(bld):
         use                         = ['SceneCore', 'SceneData', 'AzCore', 'AzFramework', 'AzToolsFramework', 'AzQtComponents'],
         defines                     = [ 'SCENE_UI_EXPORTS' ],
         features                    = ['qt5', 'crcfix'],
-        uselib                      = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS']
+        uselib                      = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+        win_enable_rtti             = True
     )

@@ -569,6 +569,11 @@ bool ApplicationManager::StartAZFramework(QString appRootOverride)
     AZ_Assert(context, "No serialize context");
     AzToolsFramework::LogPanel::BaseLogPanel::Reflect(context);
 #endif
+
+    QDir engineRoot;
+    AssetUtilities::ComputeEngineRoot(engineRoot);
+
+    AZ::IO::FileIOBase::GetInstance()->SetAlias("@devroot@", engineRoot.absolutePath().toUtf8().data());
     
     // the log folder currently goes in the bin folder:
     AZStd::string fullBinFolder;
@@ -850,7 +855,7 @@ void ApplicationManager::RegisterComponentDescriptor(const AZ::ComponentDescript
     this->m_frameworkApp.RegisterComponentDescriptor(descriptor);
 }
 
-ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegistryProblems(QWidget* /*parentWidget*/, bool showPopupMessage)
+ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegistryProblems(QWidget* /*parentWidget*/,[[maybe_unused]] bool showPopupMessage)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     // There's a bug that prevents rc.exe from closing properly, making it appear

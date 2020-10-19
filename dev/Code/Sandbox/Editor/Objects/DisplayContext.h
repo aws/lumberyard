@@ -105,7 +105,10 @@ struct SANDBOX_API DisplayContext
 
     // Draw 3D quad.
     void DrawQuad(const Vec3& p1, const Vec3& p2, const Vec3& p3, const Vec3& p4);
+    void DrawQuad(float width, float height);
     void DrawQuadGradient(const Vec3& p1, const Vec3& p2, const Vec3& p3, const Vec3& p4, ColorB firstColor, ColorB secondColor);
+    void DrawWireQuad(const Vec3& p1, const Vec3& p2, const Vec3& p3, const Vec3& p4);
+    void DrawWireQuad(float width, float height);
     // Draw 3D Triangle.
     void DrawTri(const Vec3& p1, const Vec3& p2, const Vec3& p3);
     void DrawTriangles(const AZStd::vector<Vec3>& vertices, const ColorB& color);

@@ -26,7 +26,9 @@ struct ICompiler;
 class IConfig;
 struct IConvertor;
 struct IPakSystem;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct IRCLog;
 class MultiplatformConfig;
 struct SFileVersion;

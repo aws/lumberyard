@@ -83,6 +83,7 @@ namespace AssetBundler
     const char GemsFolder[] = "Gems";
     const char EngineFolder[] = "Engine";
     const char PlatformsFolder[] = "Platforms";
+    const char ProjectName[] = "DummyProject";
 
 
     class AssetBundlerGemsUtilTest
@@ -111,13 +112,19 @@ namespace AssetBundler
             // underneath code assumes that we might be leaking the previous instance
             AZ::IO::FileIOBase::SetInstance(nullptr);
             AZ::IO::FileIOBase::SetInstance(m_data->m_localFileIO);
-           
+
             AddGemData(m_data->m_testEngineRoot.c_str(), "GemA");
             AddGemData(m_data->m_testEngineRoot.c_str(), "GemB");
 
+            // Engine default Seed List file
             AZStd::string absoluteEngineSeedFilePath;
             AzFramework::StringFunc::Path::ConstructFull(m_data->m_testEngineRoot.c_str(), EngineFolder, "SeedAssetList", AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteEngineSeedFilePath, true);
-            m_data->m_gemSeedFilePairList.emplace_back(AZStd::make_pair(absoluteEngineSeedFilePath, true));
+            m_data->m_defaultSeedFilePairList.emplace_back(AZStd::make_pair(absoluteEngineSeedFilePath, true));
+
+            // Project default Seed List file
+            AZStd::string absoluteProjectSeedFilePath;
+            AzFramework::StringFunc::Path::ConstructFull(m_data->m_testEngineRoot.c_str(), ProjectName, "SeedAssetList", AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteProjectSeedFilePath, true);
+            m_data->m_defaultSeedFilePairList.emplace_back(AZStd::make_pair(absoluteProjectSeedFilePath, true));
 
             AddGemData(m_data->m_testEngineRoot.c_str(), "GemC", false);
         }
@@ -128,7 +135,7 @@ namespace AssetBundler
             AZ::IO::FileIOBase::SetInstance(m_data->m_priorFileIO);
 
             m_data->m_gemInfoList.set_capacity(0);
-            m_data->m_gemSeedFilePairList.set_capacity(0);
+            m_data->m_defaultSeedFilePairList.set_capacity(0);
             m_data->m_application.get()->Stop();
             m_data->m_application.reset();
             UnitTest::ScopedAllocatorSetupFixture::TearDown();
@@ -145,7 +152,7 @@ namespace AssetBundler
             AZStd::string absoluteGemSeedFilePath;
             AzFramework::StringFunc::Path::ConstructFull(absoluteGemPath.c_str(), "seedList", AzToolsFramework::AssetSeedManager::GetSeedFileExtension(), absoluteGemSeedFilePath, true);
 
-            m_data->m_gemSeedFilePairList.emplace_back(AZStd::make_pair(absoluteGemSeedFilePath, seedFileExists));
+            m_data->m_defaultSeedFilePairList.emplace_back(AZStd::make_pair(absoluteGemSeedFilePath, seedFileExists));
 
             m_data->m_gemInfoList.emplace_back(AzToolsFramework::AssetUtils::GemInfo(gemName, relativeGemPath, absoluteGemPath, AZ::Uuid::CreateRandom().ToString<AZStd::string>().c_str(), false, false));
             
@@ -159,7 +166,7 @@ namespace AssetBundler
                     {
                         AZStd::string normalizedFilePath = fileName;
                         AzFramework::StringFunc::Path::Normalize(normalizedFilePath);
-                        m_data->m_gemSeedFilePairList.emplace_back(AZStd::make_pair(normalizedFilePath, seedFileExists));
+                        m_data->m_defaultSeedFilePairList.emplace_back(AZStd::make_pair(normalizedFilePath, seedFileExists));
                         return true;
                     });
             }
@@ -179,7 +186,7 @@ namespace AssetBundler
                     {
                         AZStd::string normalizedFilePath = seedFile;
                         AzFramework::StringFunc::Path::Normalize(normalizedFilePath);
-                        m_data->m_gemSeedFilePairList.emplace_back(AZStd::make_pair(normalizedFilePath, seedFileExists));
+                        m_data->m_defaultSeedFilePairList.emplace_back(AZStd::make_pair(normalizedFilePath, seedFileExists));
                     }
                 }
             }
@@ -188,7 +195,7 @@ namespace AssetBundler
         struct StaticData
         {
             AZStd::vector<AzToolsFramework::AssetUtils::GemInfo> m_gemInfoList;
-            AZStd::vector<AZStd::pair<AZStd::string, bool>> m_gemSeedFilePairList;
+            AZStd::vector<AZStd::pair<AZStd::string, bool>> m_defaultSeedFilePairList;
             AZStd::unique_ptr<AzToolsFramework::ToolsApplication> m_application = {};
             AZ::IO::FileIOBase* m_priorFileIO = nullptr;
             AZ::IO::FileIOBase* m_localFileIO = nullptr;
@@ -200,51 +207,59 @@ namespace AssetBundler
 
     TEST_F(AssetBundlerGemsUtilTest, GetDefaultSeedFiles_AllSeedFiles_Found)
     {
-        AZStd::vector<AZStd::string> defaultSeedList = AssetBundler::GetDefaultSeedListFiles(m_data->m_testEngineRoot.c_str(), m_data->m_gemInfoList, AzFramework::PlatformFlags::Platform_PC);
-        ASSERT_EQ(defaultSeedList.size(), 4); //adding one for the engine seed file
+        AZStd::unordered_map<AZStd::string, AZStd::string> defaultSeeds = AssetBundler::GetDefaultSeedListFiles(m_data->m_testEngineRoot.c_str(), ProjectName, m_data->m_gemInfoList, AzFramework::PlatformFlags::Platform_PC);
+        ASSERT_EQ(defaultSeeds.size(), 5); //adding one for the engine seed file, and one for the project seed file
 
         int gemAIndex = 0;
         int gemBIndex = 1;
         int gemBSharedFileIndex = 2;
         int engineIndex = 4;
+        int projectIndex = 5;
 
         // Validate whether both GemA and GemB seed file are present  
-        EXPECT_EQ(defaultSeedList[gemAIndex], m_data->m_gemSeedFilePairList[gemAIndex].first);
-        EXPECT_EQ(defaultSeedList[gemBIndex], m_data->m_gemSeedFilePairList[gemBIndex].first);
-        EXPECT_EQ(defaultSeedList[gemBSharedFileIndex], m_data->m_gemSeedFilePairList[gemBSharedFileIndex].first);
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemAIndex].first), defaultSeeds.end());
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemBIndex].first), defaultSeeds.end());
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemBSharedFileIndex].first), defaultSeeds.end());
 
         // Validate that the engine seed file is present
-        EXPECT_EQ(defaultSeedList.back(), m_data->m_gemSeedFilePairList[engineIndex].first);
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[engineIndex].first), defaultSeeds.end());
+
+        // Validate that the project seed file is present
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[projectIndex].first), defaultSeeds.end());
     }
 
     TEST_F(AssetBundlerGemsUtilTest, GetDefaultSeedFilesForMultiplePlatforms_AllSeedFiles_Found)
     {
-        AZStd::vector<AZStd::string> defaultSeedList = AssetBundler::GetDefaultSeedListFiles(m_data->m_testEngineRoot.c_str(), m_data->m_gemInfoList, AzFramework::PlatformFlags::Platform_PC | AzFramework::PlatformFlags::Platform_IOS);
-        ASSERT_EQ(defaultSeedList.size(), 5); //adding one for the engine seed file
+        AZStd::unordered_map<AZStd::string, AZStd::string> defaultSeeds = AssetBundler::GetDefaultSeedListFiles(m_data->m_testEngineRoot.c_str(), ProjectName, m_data->m_gemInfoList, AzFramework::PlatformFlags::Platform_PC | AzFramework::PlatformFlags::Platform_IOS);
+        ASSERT_EQ(defaultSeeds.size(), 6); //adding one for the engine seed file, and one for the project seed file
 
         int gemAIndex = 0;
         int gemBIndex = 1;
         int gemBSharedFileIndex = 2;
         int gemBIosFileIndex = 3;
         int engineIndex = 4;
+        int projectIndex = 5;
 
         // Validate whether both GemA and GemB seed file are present  
-        EXPECT_EQ(defaultSeedList[gemAIndex], m_data->m_gemSeedFilePairList[gemAIndex].first);
-        EXPECT_EQ(defaultSeedList[gemBIndex], m_data->m_gemSeedFilePairList[gemBIndex].first);
-        EXPECT_EQ(defaultSeedList[gemBSharedFileIndex], m_data->m_gemSeedFilePairList[gemBSharedFileIndex].first);
-        EXPECT_EQ(defaultSeedList[gemBIosFileIndex], m_data->m_gemSeedFilePairList[gemBIosFileIndex].first);
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemAIndex].first), defaultSeeds.end());
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemBIndex].first), defaultSeeds.end());
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemBSharedFileIndex].first), defaultSeeds.end());
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[gemBIosFileIndex].first), defaultSeeds.end());
 
         // Validate that the engine seed file is present
-        EXPECT_EQ(defaultSeedList.back(), m_data->m_gemSeedFilePairList[engineIndex].first);
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[engineIndex].first), defaultSeeds.end());
+
+        // Validate that the project seed file is present
+        EXPECT_NE(defaultSeeds.find(m_data->m_defaultSeedFilePairList[projectIndex].first), defaultSeeds.end());
     }
 
 
     TEST_F(AssetBundlerGemsUtilTest, IsSeedFileValid_Ok)
     {
-         for (const auto& pair : m_data->m_gemSeedFilePairList)
+        for (const auto& pair : m_data->m_defaultSeedFilePairList)
         {
             bool result = IsGemSeedFilePathValid(m_data->m_testEngineRoot.c_str(), pair.first, m_data->m_gemInfoList, AzFramework::PlatformFlags::Platform_PC | AzFramework::PlatformFlags::Platform_IOS);
-            EXPECT_EQ(result,pair.second);
+            EXPECT_EQ(result, pair.second);
         }
     }
 
@@ -269,11 +284,11 @@ namespace AssetBundler
             AzFramework::ApplicationRequests::Bus::Handler::BusDisconnect();
         }
         // AzFramework::ApplicationRequests::Bus::Handler interface
-        void NormalizePath(AZStd::string& /*path*/) override {};
-        void NormalizePathKeepCase(AZStd::string& /*path*/) override {};
-        void CalculateBranchTokenForAppRoot(AZStd::string& /*token*/) const override {};
+        void NormalizePath(AZStd::string& /*path*/) override {}
+        void NormalizePathKeepCase(AZStd::string& /*path*/) override {}
+        void CalculateBranchTokenForAppRoot(AZStd::string& /*token*/) const override {}
         const char* GetEngineRoot() const { return TestRoot; }
-        void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override {};
+        void QueryApplicationType(AzFramework::ApplicationTypeQuery& /*appType*/) const override {}
     };
 
     class MockBootstrapReader
@@ -289,7 +304,7 @@ namespace AssetBundler
             AzFramework::BootstrapReaderRequestBus::Handler::BusDisconnect();
         }
         // AzFramework::BootstrapReaderRequestBus interface
-        bool SearchConfigurationForKey(const AZStd::string& key, bool checkPlatform, AZStd::string& value) override
+        bool SearchConfigurationForKey(const AZStd::string& key, bool /*checkPlatform*/, AZStd::string& value) override
         {
             if (key == "sys_game_folder")
             {
@@ -342,6 +357,7 @@ namespace AssetBundler
             AzFramework::StringFunc::Path::ConstructFull(assetPath.c_str(), TestProject, assetPath) &&
             AzFramework::StringFunc::Path::ConstructFull(assetPath.c_str(), platformIdentifier.c_str(), assetPath) &&
             AzFramework::StringFunc::Path::ConstructFull(assetPath.c_str(), TestProjectLowerCase, assetPath);
+        EXPECT_TRUE(success);
         EXPECT_EQ(assetAlias, assetPath);
     }
 
@@ -363,6 +379,7 @@ namespace AssetBundler
             AzFramework::StringFunc::Path::ConstructFull(assetPath.c_str(), "TestProject1", assetPath) &&
             AzFramework::StringFunc::Path::ConstructFull(assetPath.c_str(), platformIdentifier.c_str(), assetPath) &&
             AzFramework::StringFunc::Path::ConstructFull(assetPath.c_str(), "testproject1", assetPath);
+        EXPECT_TRUE(success);
         EXPECT_EQ(assetAlias, assetPath);
     }
 

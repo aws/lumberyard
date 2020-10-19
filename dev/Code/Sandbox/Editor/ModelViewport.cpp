@@ -35,7 +35,9 @@
 #include "ErrorReport.h"
 
 #include <I3DEngine.h>
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include <ITimer.h>
 #include "IRenderAuxGeom.h"
 #include "DisplaySettings.h"
@@ -98,7 +100,9 @@ CModelViewport::CModelViewport(const char* settingsPath, QWidget* parent)
     m_pRESky = 0;
     m_pSkyboxName = 0;
     m_pSkyBoxShader = NULL;
+#if ENABLE_CRY_PHYSICS
     m_pPhysicalEntity = NULL;
+#endif
 
     m_attachBone = QStringLiteral("weapon_bone");
 
@@ -188,6 +192,7 @@ CModelViewport::CModelViewport(const char* settingsPath, QWidget* parent)
     tm.SetTranslation(camPos);
     SetViewTM(tm);
 
+#if ENABLE_CRY_PHYSICS
     if (GetIEditor()->IsInPreviewMode())
     {
         // In preview mode create a simple physical grid, so we can register physical entities.
@@ -198,6 +203,7 @@ CModelViewport::CModelViewport(const char* settingsPath, QWidget* parent)
             pPhysWorld->SetupEntityGrid(2, Vec3(0, 0, 0), 10, 10, 1, 1);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // Audio
     m_pAudioListener = NULL;
@@ -408,7 +414,12 @@ CModelViewport::~CModelViewport()
         assert(m_pAudioListener == NULL);
     }
 
+#if ENABLE_CRY_PHYSICS
     gEnv->pPhysicalWorld->GetPhysVars()->helperOffset.zero();
+#else
+    // helper offset??
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     GetIEditor()->SetConsoleVar("ca_UsePhysics", 1);
 }
 
@@ -943,6 +954,7 @@ void CModelViewport::Drop(const QPoint& point, IDataBaseItem* pItem)
 //////////////////////////////////////////////////////////////////////////
 void CModelViewport::Physicalize()
 {
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* pPhysWorld = gEnv->pPhysicalWorld;
     if (!pPhysWorld)
     {
@@ -1040,12 +1052,15 @@ void CModelViewport::Physicalize()
         (GetCharacterBase() && GetCharacterBase()->GetISkeletonPose()->GetCharacterPhysics() ?
          GetCharacterBase()->GetISkeletonPose()->GetCharacterPhysics() : m_pPhysicalEntity)->SetParams(&ppart);
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CModelViewport::RePhysicalize()
 {
+#if ENABLE_CRY_PHYSICS
     m_pPhysicalEntity = NULL;
+#endif
     Physicalize();
 }
 
@@ -1180,6 +1195,7 @@ void CModelViewport::DrawModel(const SRenderingPassInfo& passInfo)
 
     DrawLights(passInfo);
 
+#if ENABLE_CRY_PHYSICS
     //-------------------------------------------------------------
     //------           Render physical Proxy                 ------
     //-------------------------------------------------------------
@@ -1216,6 +1232,7 @@ void CModelViewport::DrawModel(const SRenderingPassInfo& passInfo)
     }
 
     m_renderer->Unset2DMode(backupSceneMatrices);
+#endif // ENABLE_CRY_PHYSICS
 
     //-----------------------------------------------------------------------------
     //-----            Render Static Object (handled by 3DEngine)              ----

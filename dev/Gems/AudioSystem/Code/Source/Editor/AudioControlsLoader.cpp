@@ -14,7 +14,7 @@
 #include <AudioControlsLoader.h>
 
 #include <AzCore/std/string/conversions.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <ACEEnums.h>
 #include <ATLCommon.h>
@@ -41,7 +41,7 @@ namespace AudioControls
     namespace LoaderStrings
     {
         static constexpr const char* LevelsSubFolder = "levels";
-        static constexpr const char* ConfigFilename = "config.xml";
+        static constexpr const char* PathAttribute = "path";
 
     } // namespace LoaderStrings
 
@@ -77,10 +77,10 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CAudioControlsLoader::CAudioControlsLoader(CATLControlsModel* pATLModel, QStandardItemModel* pLayoutModel, IAudioSystemEditor* pAudioSystemImpl)
-        : m_pModel(pATLModel)
-        , m_pLayout(pLayoutModel)
-        , m_pAudioSystemImpl(pAudioSystemImpl)
+    CAudioControlsLoader::CAudioControlsLoader(CATLControlsModel* atlControlsModel, QStandardItemModel* layoutModel, IAudioSystemEditor* audioSystemImpl)
+        : m_atlControlsModel(atlControlsModel)
+        , m_layoutModel(layoutModel)
+        , m_audioSystemImpl(audioSystemImpl)
     {}
 
     //-------------------------------------------------------------------------------------------//
@@ -94,7 +94,6 @@ namespace AudioControls
     void CAudioControlsLoader::LoadControls()
     {
         const CUndoSuspend suspendUndo;
-        LoadSettings();
 
         // Get the partial path (relative under asset root) where the controls live.
         const char* controlsPath = nullptr;
@@ -102,19 +101,19 @@ namespace AudioControls
 
         // Get the full path up to asset root.
         AZStd::string controlsFullPath(Path::GetEditingGameDataFolder());
-        AzFramework::StringFunc::Path::Join(controlsFullPath.c_str(), controlsPath, controlsFullPath);
+        AZ::StringFunc::Path::Join(controlsFullPath.c_str(), controlsPath, controlsFullPath);
 
         // load the global controls
         LoadAllLibrariesInFolder(controlsFullPath, "");
 
         // load the level specific controls
         _finddata_t fd;
-        ICryPak* pCryPak = gEnv->pCryPak;
+        ICryPak* cryPak = gEnv->pCryPak;
 
         AZStd::string searchMask;
-        AzFramework::StringFunc::Path::Join(controlsFullPath.c_str(), LoaderStrings::LevelsSubFolder, searchMask);
-        AzFramework::StringFunc::Path::Join(searchMask.c_str(), "*.*", searchMask, false, true, false);
-        intptr_t handle = pCryPak->FindFirst(searchMask.c_str(), &fd);
+        AZ::StringFunc::Path::Join(controlsFullPath.c_str(), LoaderStrings::LevelsSubFolder, searchMask);
+        AZ::StringFunc::Path::Join(searchMask.c_str(), "*.*", searchMask, false, true, false);
+        intptr_t handle = cryPak->FindFirst(searchMask.c_str(), &fd);
         if (handle != -1)
         {
             do
@@ -125,81 +124,20 @@ namespace AudioControls
                     if (name != "." && name != "..")
                     {
                         LoadAllLibrariesInFolder(controlsFullPath, name);
-                        if (!m_pModel->ScopeExists(fd.name))
+                        if (!m_atlControlsModel->ScopeExists(fd.name))
                         {
                             // if the control doesn't exist it
                             // means it is not a real level in the
                             // project so it is flagged as LocalOnly
-                            m_pModel->AddScope(fd.name, true);
+                            m_atlControlsModel->AddScope(fd.name, true);
                         }
                     }
                 }
             }
-            while (pCryPak->FindNext(handle, &fd) >= 0);
-            pCryPak->FindClose(handle);
+            while (cryPak->FindNext(handle, &fd) >= 0);
+            cryPak->FindClose(handle);
         }
         CreateDefaultControls();
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CAudioControlsLoader::LoadSettings()
-    {
-        const char* controlsPath = nullptr;
-        Audio::AudioSystemRequestBus::BroadcastResult(controlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
-
-        AZStd::string configFilePath;
-        AzFramework::StringFunc::Path::Join(controlsPath, LoaderStrings::ConfigFilename, configFilePath);
-
-        XmlNodeRef root = GetISystem()->LoadXmlFromFile(configFilePath.c_str());
-        if (root)
-        {
-            AZStd::string rootTag = root->getTag();
-            if (rootTag.compare("ACBConfig") == 0 || rootTag.compare("ACEConfig") == 0)
-            {
-                int size = root->getChildCount();
-                for (int i = 0; i < size; ++i)
-                {
-                    XmlNodeRef child = root->getChild(i);
-                    if (child)
-                    {
-                        AZStd::string tag = child->getTag();
-                        AZStd::string name = child->getAttr("name");
-                        if (tag.compare("Group") == 0)
-                        {
-                            if (!name.empty())
-                            {
-                                m_pModel->AddConnectionGroup(name);
-                            }
-                        }
-                        else if (tag.compare("Platform") == 0)
-                        {
-                            if (!name.empty())
-                            {
-                                m_pModel->AddPlatform(name);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            // hard code some groups if the config.xml file is missing.
-            m_pModel->AddConnectionGroup("default");
-            m_pModel->AddConnectionGroup("high");
-            m_pModel->AddConnectionGroup("low");
-
-            m_pModel->AddPlatform("Windows");
-            m_pModel->AddPlatform("Mac");
-            m_pModel->AddPlatform("Linux");
-            m_pModel->AddPlatform("Android");
-            m_pModel->AddPlatform("iOS");
-            m_pModel->AddPlatform("AppleTV");
-            m_pModel->AddPlatform("Xenia");
-            m_pModel->AddPlatform("Provo");
-
-            // lumberyard: should we write out the config.xml file if it doesn't exist?
-        }
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -220,15 +158,15 @@ namespace AudioControls
         }
 
         AZStd::string searchPath = path + "*.xml";
-        ICryPak* pCryPak = gEnv->pCryPak;
+        ICryPak* cryPak = gEnv->pCryPak;
         _finddata_t fd;
-        intptr_t handle = pCryPak->FindFirst(searchPath.c_str(), &fd);
+        intptr_t handle = cryPak->FindFirst(searchPath.c_str(), &fd);
         if (handle != -1)
         {
             do
             {
                 AZStd::string filename = path + fd.name;
-                AzFramework::StringFunc::Path::Normalize(filename);
+                AZ::StringFunc::Path::Normalize(filename);
                 XmlNodeRef root = GetISystem()->LoadXmlFromFile(filename.c_str());
                 if (root)
                 {
@@ -242,154 +180,156 @@ namespace AudioControls
                         {
                             file = root->getAttr(Audio::ATLXmlTags::ATLNameAttribute);
                         }
-                        AzFramework::StringFunc::Path::StripExtension(file);
+                        AZ::StringFunc::Path::StripExtension(file);
                         LoadControlsLibrary(root, folderPath, level, file);
                     }
                 }
                 else
                 {
-                    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, "(Audio Controls Editor) Failed parsing game sound file %s", filename);
+                    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, "(Audio Controls Editor) Failed parsing ATL Library '%s'", filename.c_str());
                 }
             }
-            while (pCryPak->FindNext(handle, &fd) >= 0);
+            while (cryPak->FindNext(handle, &fd) >= 0);
 
-            pCryPak->FindClose(handle);
+            cryPak->FindClose(handle);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    QStandardItem* CAudioControlsLoader::AddFolder(QStandardItem* pParent, const QString& sName)
+    QStandardItem* CAudioControlsLoader::AddFolder(QStandardItem* parentItem, const QString& name)
     {
-        if (pParent && !sName.isEmpty())
+        if (parentItem && !name.isEmpty())
         {
-            const int size = pParent->rowCount();
+            const int size = parentItem->rowCount();
             for (int i = 0; i < size; ++i)
             {
-                QStandardItem* pItem = pParent->child(i);
-                if (pItem && (pItem->data(eDR_TYPE) == eIT_FOLDER) && (QString::compare(sName, pItem->text(), Qt::CaseInsensitive) == 0))
+                QStandardItem* item = parentItem->child(i);
+                if (item && (item->data(eDR_TYPE) == eIT_FOLDER) && (QString::compare(name, item->text(), Qt::CaseInsensitive) == 0))
                 {
-                    return pItem;
+                    return item;
                 }
             }
 
-            QStandardItem* pItem = new QFolderItem(sName);
-            if (pParent && pItem)
+            QStandardItem* item = new QFolderItem(name);
+            if (parentItem && item)
             {
-                pParent->appendRow(pItem);
-                return pItem;
+                parentItem->appendRow(item);
+                return item;
             }
         }
         return nullptr;
     }
 
     //-------------------------------------------------------------------------------------------//
-    QStandardItem* CAudioControlsLoader::AddUniqueFolderPath(QStandardItem* pParent, const QString& sPath)
+    QStandardItem* CAudioControlsLoader::AddUniqueFolderPath(QStandardItem* parentItem, const QString& path)
     {
-        QStringList folderNames = sPath.split(QRegExp("(\\\\|\\/)"), QString::SkipEmptyParts);
+        QStringList folderNames = path.split(QRegExp("(\\\\|\\/)"), QString::SkipEmptyParts);
         const int size = folderNames.length();
         for (int i = 0; i < size; ++i)
         {
             if (!folderNames[i].isEmpty())
             {
-                QStandardItem* pChild = AddFolder(pParent, folderNames[i]);
-                if (pChild)
+                QStandardItem* childItem = AddFolder(parentItem, folderNames[i]);
+                if (childItem)
                 {
-                    pParent = pChild;
+                    parentItem = childItem;
                 }
             }
         }
-        return pParent;
+        return parentItem;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioControlsLoader::LoadControlsLibrary(XmlNodeRef pRoot, const AZStd::string_view sFilepath, const AZStd::string_view sLevel, const AZStd::string_view sFilename)
+    void CAudioControlsLoader::LoadControlsLibrary(XmlNodeRef rootNode, const AZStd::string_view filePath, const AZStd::string_view level, const AZStd::string_view fileName)
     {
-        QStandardItem* pRootFolder = AddUniqueFolderPath(m_pLayout->invisibleRootItem(), QString(sFilename.data()));
-        if (pRootFolder && pRoot)
+        QStandardItem* rootFolderItem = AddUniqueFolderPath(m_layoutModel->invisibleRootItem(), QString(fileName.data()));
+        if (rootFolderItem && rootNode)
         {
-            const int nControlTypeCount = pRoot->getChildCount();
-            for (int i = 0; i < nControlTypeCount; ++i)
+            const int numControlTypes = rootNode->getChildCount();
+            for (int i = 0; i < numControlTypes; ++i)
             {
-                XmlNodeRef pNode = pRoot->getChild(i);
-                const int nControlCount = pNode->getChildCount();
-                for (int j = 0; j < nControlCount; ++j)
+                XmlNodeRef node = rootNode->getChild(i);
+                const int numControls = node->getChildCount();
+                for (int j = 0; j < numControls; ++j)
                 {
-                    LoadControl(pNode->getChild(j), pRootFolder, sLevel);
+                    LoadControl(node->getChild(j), rootFolderItem, level);
                 }
             }
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl* CAudioControlsLoader::LoadControl(XmlNodeRef pNode, QStandardItem* pFolder, const AZStd::string_view sScope)
+    CATLControl* CAudioControlsLoader::LoadControl(XmlNodeRef node, QStandardItem* folderItem, const AZStd::string_view scope)
     {
-        CATLControl* pControl = nullptr;
-        if (pNode)
+        CATLControl* control = nullptr;
+        if (node)
         {
-            QStandardItem* pParent = AddUniqueFolderPath(pFolder, QString(pNode->getAttr("path")));
-            if (pParent)
+            QStandardItem* parentItem = AddUniqueFolderPath(folderItem, QString(node->getAttr(LoaderStrings::PathAttribute)));
+            if (parentItem)
             {
-                const AZStd::string sName = pNode->getAttr(Audio::ATLXmlTags::ATLNameAttribute);
-                const EACEControlType eControlType = TagToType(pNode->getTag());
-                pControl = m_pModel->CreateControl(sName, eControlType);
-                if (pControl)
+                const AZStd::string name = node->getAttr(Audio::ATLXmlTags::ATLNameAttribute);
+                const EACEControlType controlType = TagToType(node->getTag());
+
+                control = m_atlControlsModel->CreateControl(name, controlType);
+                if (control)
                 {
-                    QStandardItem* pItem = new QAudioControlItem(QString(pControl->GetName().c_str()), pControl);
-                    if (pItem)
+                    QStandardItem* item = new QAudioControlItem(QString(control->GetName().c_str()), control);
+                    if (item)
                     {
-                        pParent->appendRow(pItem);
+                        parentItem->appendRow(item);
                     }
 
-                    switch (eControlType)
+                    switch (controlType)
                     {
                         case eACET_SWITCH:
                         {
-                            const int nStateCount = pNode->getChildCount();
-                            for (int i = 0; i < nStateCount; ++i)
+                            const int numStates = node->getChildCount();
+                            for (int i = 0; i < numStates; ++i)
                             {
-                                CATLControl* pStateControl = LoadControl(pNode->getChild(i), pItem, sScope);
-                                if (pStateControl)
+                                CATLControl* stateControl = LoadControl(node->getChild(i), item, scope);
+                                if (stateControl)
                                 {
-                                    pStateControl->SetParent(pControl);
-                                    pControl->AddChild(pStateControl);
+                                    stateControl->SetParent(control);
+                                    control->AddChild(stateControl);
                                 }
                             }
                             break;
                         }
                         case eACET_PRELOAD:
                         {
-                            LoadPreloadConnections(pNode, pControl);
+                            LoadPreloadConnections(node, control);
                             break;
                         }
                         default:
                         {
-                            LoadConnections(pNode, pControl);
+                            LoadConnections(node, control);
                             break;
                         }
                     }
-                    pControl->SetScope(sScope);
+                    control->SetScope(scope);
                 }
             }
         }
-        return pControl;
+
+        return control;
     }
 
     //-------------------------------------------------------------------------------------------//
     void CAudioControlsLoader::LoadScopes()
     {
         AZStd::string levelsFolderPath;
-        AzFramework::StringFunc::Path::Join(Path::GetEditingGameDataFolder().c_str(), LoaderStrings::LevelsSubFolder, levelsFolderPath);
+        AZ::StringFunc::Path::Join(Path::GetEditingGameDataFolder().c_str(), LoaderStrings::LevelsSubFolder, levelsFolderPath);
         LoadScopesImpl(levelsFolderPath);
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioControlsLoader::LoadScopesImpl(const AZStd::string_view sLevelsFolder)
+    void CAudioControlsLoader::LoadScopesImpl(const AZStd::string_view levelsFolder)
     {
         AZStd::string search;
-        AzFramework::StringFunc::Path::Join(sLevelsFolder.data(), "*.*", search, false, true, false);
+        AZ::StringFunc::Path::Join(levelsFolder.data(), "*.*", search, false, true, false);
         _finddata_t fd;
-        ICryPak* pCryPak = gEnv->pCryPak;
-        intptr_t handle = pCryPak->FindFirst(search.c_str(), &fd);      // !!!
+        ICryPak* cryPak = gEnv->pCryPak;
+        intptr_t handle = cryPak->FindFirst(search.c_str(), &fd);
         if (handle != -1)
         {
             do
@@ -399,28 +339,28 @@ namespace AudioControls
                 {
                     if (fd.attrib & _A_SUBDIR)
                     {
-                        AzFramework::StringFunc::Path::Join(sLevelsFolder.data(), name.c_str(), search);
+                        AZ::StringFunc::Path::Join(levelsFolder.data(), name.c_str(), search);
                         LoadScopesImpl(search);
                     }
                     else
                     {
                         AZStd::string extension;
-                        AzFramework::StringFunc::Path::GetExtension(name.c_str(), extension, false);
+                        AZ::StringFunc::Path::GetExtension(name.c_str(), extension, false);
                         if (extension.compare("cry") == 0 || extension.compare("ly") == 0)
                         {
-                            AzFramework::StringFunc::Path::StripExtension(name);
-                            m_pModel->AddScope(name);
+                            AZ::StringFunc::Path::StripExtension(name);
+                            m_atlControlsModel->AddScope(name);
                         }
                     }
                 }
             }
-            while (pCryPak->FindNext(handle, &fd) >= 0);
-            pCryPak->FindClose(handle);
+            while (cryPak->FindNext(handle, &fd) >= 0);
+            cryPak->FindClose(handle);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    AZStd::set<AZStd::string> CAudioControlsLoader::GetLoadedFilenamesList()
+    const FilepathSet& CAudioControlsLoader::GetLoadedFilenamesList()
     {
         return m_loadedFilenames;
     }
@@ -432,223 +372,231 @@ namespace AudioControls
         // These controls need to always exist in your project
         using namespace Audio;
 
-        QStandardItem* pFolder = AddFolder(m_pLayout->invisibleRootItem(), "default_controls");
-        if (pFolder)
+        QStandardItem* folderItem = AddFolder(m_layoutModel->invisibleRootItem(), "default_controls");
+        if (folderItem)
         {
-            if (!m_pModel->FindControl(ATLInternalControlNames::GetFocusName, eACET_TRIGGER, ""))
+            if (!m_atlControlsModel->FindControl(ATLInternalControlNames::GetFocusName, eACET_TRIGGER, ""))
             {
-                AddControl(m_pModel->CreateControl(ATLInternalControlNames::GetFocusName, eACET_TRIGGER), pFolder);
+                AddControl(m_atlControlsModel->CreateControl(ATLInternalControlNames::GetFocusName, eACET_TRIGGER), folderItem);
             }
 
-            if (!m_pModel->FindControl(ATLInternalControlNames::LoseFocusName, eACET_TRIGGER, ""))
+            if (!m_atlControlsModel->FindControl(ATLInternalControlNames::LoseFocusName, eACET_TRIGGER, ""))
             {
-                AddControl(m_pModel->CreateControl(ATLInternalControlNames::LoseFocusName, eACET_TRIGGER), pFolder);
+                AddControl(m_atlControlsModel->CreateControl(ATLInternalControlNames::LoseFocusName, eACET_TRIGGER), folderItem);
             }
 
-            if (!m_pModel->FindControl(ATLInternalControlNames::MuteAllName, eACET_TRIGGER, ""))
+            if (!m_atlControlsModel->FindControl(ATLInternalControlNames::MuteAllName, eACET_TRIGGER, ""))
             {
-                AddControl(m_pModel->CreateControl(ATLInternalControlNames::MuteAllName, eACET_TRIGGER), pFolder);
+                AddControl(m_atlControlsModel->CreateControl(ATLInternalControlNames::MuteAllName, eACET_TRIGGER), folderItem);
             }
 
-            if (!m_pModel->FindControl(ATLInternalControlNames::UnmuteAllName, eACET_TRIGGER, ""))
+            if (!m_atlControlsModel->FindControl(ATLInternalControlNames::UnmuteAllName, eACET_TRIGGER, ""))
             {
-                AddControl(m_pModel->CreateControl(ATLInternalControlNames::UnmuteAllName, eACET_TRIGGER), pFolder);
+                AddControl(m_atlControlsModel->CreateControl(ATLInternalControlNames::UnmuteAllName, eACET_TRIGGER), folderItem);
             }
 
-            if (!m_pModel->FindControl(ATLInternalControlNames::DoNothingName, eACET_TRIGGER, ""))
+            if (!m_atlControlsModel->FindControl(ATLInternalControlNames::DoNothingName, eACET_TRIGGER, ""))
             {
-                AddControl(m_pModel->CreateControl(ATLInternalControlNames::DoNothingName, eACET_TRIGGER), pFolder);
+                AddControl(m_atlControlsModel->CreateControl(ATLInternalControlNames::DoNothingName, eACET_TRIGGER), folderItem);
             }
 
-            if (!m_pModel->FindControl(ATLInternalControlNames::ObjectSpeedName, eACET_RTPC, ""))
+            if (!m_atlControlsModel->FindControl(ATLInternalControlNames::ObjectSpeedName, eACET_RTPC, ""))
             {
-                AddControl(m_pModel->CreateControl(ATLInternalControlNames::ObjectSpeedName, eACET_RTPC), pFolder);
+                AddControl(m_atlControlsModel->CreateControl(ATLInternalControlNames::ObjectSpeedName, eACET_RTPC), folderItem);
             }
 
-            QStandardItem* pSwitch = nullptr;
-            CATLControl* pControl = m_pModel->FindControl(ATLInternalControlNames::ObstructionOcclusionCalcName, eACET_SWITCH, "");
-            if (pControl)
+            QStandardItem* switchItem = nullptr;
+            CATLControl* control = m_atlControlsModel->FindControl(ATLInternalControlNames::ObstructionOcclusionCalcName, eACET_SWITCH, "");
+            if (control)
             {
-                QModelIndexList indexes = m_pLayout->match(m_pLayout->index(0, 0, QModelIndex()), eDR_ID, pControl->GetId(), 1, Qt::MatchRecursive);
+                QModelIndexList indexes = m_layoutModel->match(m_layoutModel->index(0, 0, QModelIndex()), eDR_ID, control->GetId(), 1, Qt::MatchRecursive);
                 if (!indexes.empty())
                 {
-                    pSwitch = m_pLayout->itemFromIndex(indexes.at(0));
+                    switchItem = m_layoutModel->itemFromIndex(indexes.at(0));
                 }
             }
             else
             {
-                pControl = m_pModel->CreateControl(ATLInternalControlNames::ObstructionOcclusionCalcName, eACET_SWITCH);
-                pSwitch = AddControl(pControl, pFolder);
+                control = m_atlControlsModel->CreateControl(ATLInternalControlNames::ObstructionOcclusionCalcName, eACET_SWITCH);
+                switchItem = AddControl(control, folderItem);
             }
 
-            if (pSwitch)
+            if (switchItem)
             {
-                CATLControl* pChild = nullptr;
-                if (!m_pModel->FindControl(ATLInternalControlNames::OOCIgnoreStateName, eACET_SWITCH_STATE, "", pControl))
+                CATLControl* childControl = nullptr;
+                if (!m_atlControlsModel->FindControl(ATLInternalControlNames::OOCIgnoreStateName, eACET_SWITCH_STATE, "", control))
                 {
-                    pChild = CreateInternalSwitchState(pControl, ATLInternalControlNames::ObstructionOcclusionCalcName, ATLInternalControlNames::OOCIgnoreStateName);
-                    AddControl(pChild, pSwitch);
+                    childControl = CreateInternalSwitchState(control, ATLInternalControlNames::ObstructionOcclusionCalcName, ATLInternalControlNames::OOCIgnoreStateName);
+                    AddControl(childControl, switchItem);
                 }
 
-                if (!m_pModel->FindControl(ATLInternalControlNames::OOCSingleRayStateName, eACET_SWITCH_STATE, "", pControl))
+                if (!m_atlControlsModel->FindControl(ATLInternalControlNames::OOCSingleRayStateName, eACET_SWITCH_STATE, "", control))
                 {
-                    pChild = CreateInternalSwitchState(pControl, ATLInternalControlNames::ObstructionOcclusionCalcName, ATLInternalControlNames::OOCSingleRayStateName);
-                    AddControl(pChild, pSwitch);
+                    childControl = CreateInternalSwitchState(control, ATLInternalControlNames::ObstructionOcclusionCalcName, ATLInternalControlNames::OOCSingleRayStateName);
+                    AddControl(childControl, switchItem);
                 }
 
-                if (!m_pModel->FindControl(ATLInternalControlNames::OOCMultiRayStateName, eACET_SWITCH_STATE, "", pControl))
+                if (!m_atlControlsModel->FindControl(ATLInternalControlNames::OOCMultiRayStateName, eACET_SWITCH_STATE, "", control))
                 {
-                    pChild = CreateInternalSwitchState(pControl, ATLInternalControlNames::ObstructionOcclusionCalcName, ATLInternalControlNames::OOCMultiRayStateName);
-                    AddControl(pChild, pSwitch);
+                    childControl = CreateInternalSwitchState(control, ATLInternalControlNames::ObstructionOcclusionCalcName, ATLInternalControlNames::OOCMultiRayStateName);
+                    AddControl(childControl, switchItem);
                 }
             }
 
-            pSwitch = nullptr;
-            pControl = m_pModel->FindControl(ATLInternalControlNames::ObjectVelocityTrackingName, eACET_SWITCH, "");
-            if (pControl)
+            switchItem = nullptr;
+            control = m_atlControlsModel->FindControl(ATLInternalControlNames::ObjectVelocityTrackingName, eACET_SWITCH, "");
+            if (control)
             {
-                QModelIndexList indexes = m_pLayout->match(m_pLayout->index(0, 0, QModelIndex()), eDR_ID, pControl->GetId(), 1, Qt::MatchRecursive);
+                QModelIndexList indexes = m_layoutModel->match(m_layoutModel->index(0, 0, QModelIndex()), eDR_ID, control->GetId(), 1, Qt::MatchRecursive);
                 if (!indexes.empty())
                 {
-                    pSwitch = m_pLayout->itemFromIndex(indexes.at(0));
+                    switchItem = m_layoutModel->itemFromIndex(indexes.at(0));
                 }
             }
             else
             {
-                pControl = m_pModel->CreateControl(ATLInternalControlNames::ObjectVelocityTrackingName, eACET_SWITCH);
-                pSwitch = AddControl(pControl, pFolder);
+                control = m_atlControlsModel->CreateControl(ATLInternalControlNames::ObjectVelocityTrackingName, eACET_SWITCH);
+                switchItem = AddControl(control, folderItem);
             }
 
-            if (pSwitch)
+            if (switchItem)
             {
-                CATLControl* pChild = nullptr;
-                if (!m_pModel->FindControl(ATLInternalControlNames::OVTOnStateName, eACET_SWITCH_STATE, "", pControl))
+                CATLControl* childControl = nullptr;
+                if (!m_atlControlsModel->FindControl(ATLInternalControlNames::OVTOnStateName, eACET_SWITCH_STATE, "", control))
                 {
-                    pChild = CreateInternalSwitchState(pControl, ATLInternalControlNames::ObjectVelocityTrackingName, ATLInternalControlNames::OVTOnStateName);
-                    AddControl(pChild, pSwitch);
+                    childControl = CreateInternalSwitchState(control, ATLInternalControlNames::ObjectVelocityTrackingName, ATLInternalControlNames::OVTOnStateName);
+                    AddControl(childControl, switchItem);
                 }
 
-                if (!m_pModel->FindControl(ATLInternalControlNames::OVTOffStateName, eACET_SWITCH_STATE, "", pControl))
+                if (!m_atlControlsModel->FindControl(ATLInternalControlNames::OVTOffStateName, eACET_SWITCH_STATE, "", control))
                 {
-                    pChild = CreateInternalSwitchState(pControl, ATLInternalControlNames::ObjectVelocityTrackingName, ATLInternalControlNames::OVTOffStateName);
-                    AddControl(pChild, pSwitch);
+                    childControl = CreateInternalSwitchState(control, ATLInternalControlNames::ObjectVelocityTrackingName, ATLInternalControlNames::OVTOffStateName);
+                    AddControl(childControl, switchItem);
                 }
 
-                if (!pFolder->hasChildren())
+                if (!folderItem->hasChildren())
                 {
-                    m_pLayout->removeRow(pFolder->row(), m_pLayout->indexFromItem(pFolder->parent()));
+                    m_layoutModel->removeRow(folderItem->row(), m_layoutModel->indexFromItem(folderItem->parent()));
                 }
             }
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioControlsLoader::LoadConnections(XmlNodeRef pRoot, CATLControl* pControl)
+    void CAudioControlsLoader::LoadConnections(XmlNodeRef rootNode, CATLControl* control)
     {
-        if (pControl)
+        if (!rootNode || !control)
         {
-            const int nSize = pRoot->getChildCount();
-            for (int i = 0; i < nSize; ++i)
+            return;
+        }
+
+        const int numChildren = rootNode->getChildCount();
+        for (int i = 0; i < numChildren; ++i)
+        {
+            XmlNodeRef node = rootNode->getChild(i);
+            const AZStd::string tag = node->getTag();
+            if (m_audioSystemImpl)
             {
-                XmlNodeRef pNode = pRoot->getChild(i);
-                const AZStd::string sTag = pNode->getTag();
-                if (m_pAudioSystemImpl)
+                TConnectionPtr connection = m_audioSystemImpl->CreateConnectionFromXMLNode(node, control->GetType());
+                if (connection)
                 {
-                    TConnectionPtr pConnection = m_pAudioSystemImpl->CreateConnectionFromXMLNode(pNode, pControl->GetType());
-                    if (pConnection)
-                    {
-                        pControl->AddConnection(pConnection);
-                    }
-                    pControl->m_connectionNodes[AudioControls::g_sDefaultGroup].push_back(SRawConnectionData(pNode, pConnection != nullptr));
+                    control->AddConnection(connection);
                 }
+                control->m_connectionNodes.push_back(SRawConnectionData(node, connection != nullptr));
             }
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioControlsLoader::LoadPreloadConnections(XmlNodeRef pNode, CATLControl* pControl)
+    void CAudioControlsLoader::LoadPreloadConnections(XmlNodeRef node, CATLControl* control)
     {
-        if (pControl)
+        if (!node || !control)
         {
-            AZStd::string type = pNode->getAttr(Audio::ATLXmlTags::ATLTypeAttribute);
-            if (type.compare(Audio::ATLXmlTags::ATLDataLoadType) == 0)
-            {
-                pControl->SetAutoLoad(true);
-            }
-            else
-            {
-                pControl->SetAutoLoad(false);
-            }
+            return;
+        }
 
-            // Read all the platform definitions for this control
-            // <ATLPlatforms>
-            XmlNodeRef pPlatformsGroup = pNode->findChild(Audio::ATLXmlTags::ATLPlatformsTag);
-            if (pPlatformsGroup)
-            {
-                const int nNumPlatforms = pPlatformsGroup->getChildCount();
-                for (int i = 0; i < nNumPlatforms; ++i)
-                {
-                    XmlNodeRef pPlatformNode = pPlatformsGroup->getChild(i);
-                    const AZStd::string sPlatformName = pPlatformNode->getAttr(Audio::ATLXmlTags::ATLNameAttribute);
-                    const AZStd::string sGroupName = pPlatformNode->getAttr(Audio::ATLXmlTags::ATLConfigGroupAttribute);
-                    m_pModel->AddPlatform(sPlatformName);
+        AZStd::string type = node->getAttr(Audio::ATLXmlTags::ATLTypeAttribute);
+        if (type.compare(Audio::ATLXmlTags::ATLDataLoadType) == 0)
+        {
+            control->SetAutoLoad(true);
+        }
+        else
+        {
+            control->SetAutoLoad(false);
+        }
 
-                    const int nGroupID = m_pModel->GetConnectionGroupId(sGroupName);
-                    if (nGroupID >= 0)
-                    {
-                        pControl->SetGroupForPlatform(sPlatformName, nGroupID);
-                    }
-                }
-            }
+        // Legacy Preload XML parsing...
+        // Read all the platform definitions for this control
+        XmlNodeRef platformsGroupNode = node->findChild(Audio::ATLXmlTags::ATLPlatformsTag);
+        if (platformsGroupNode)
+        {
+            // Don't parse the platform groups xml chunk anymore.
 
-            // Read the connection information for each of the platform groups
-            const int nNumChildren = pNode->getChildCount();
-            for (int i = 0; i < nNumChildren; ++i)
+            // Read the connection information for all connected preloads...
+            const int numChildren = node->getChildCount();
+            for (int i = 0; i < numChildren; ++i)
             {
-                // <ATLConfigGroup>
-                XmlNodeRef pGroupNode = pNode->getChild(i);
-                const AZStd::string sTag = pGroupNode->getTag();
-                if (sTag.compare(Audio::ATLXmlTags::ATLConfigGroupTag) != 0)
+                XmlNodeRef groupNode = node->getChild(i);
+                const AZStd::string tag = groupNode->getTag();
+                if (tag.compare(Audio::ATLXmlTags::ATLConfigGroupTag) != 0)
                 {
                     continue;
                 }
-                const AZStd::string sGroupName = pGroupNode->getAttr(Audio::ATLXmlTags::ATLNameAttribute);
 
-                const int nNumConnections = pGroupNode->getChildCount();
-                for (int j = 0; j < nNumConnections; ++j)
+                const AZStd::string groupName = groupNode->getAttr(Audio::ATLXmlTags::ATLNameAttribute);
+                const int numConnections = groupNode->getChildCount();
+                for (int j = 0; j < numConnections; ++j)
                 {
-                    XmlNodeRef pConnectionNode = pGroupNode->getChild(j);
-                    if (pConnectionNode && m_pAudioSystemImpl)
+                    XmlNodeRef connectionNode = groupNode->getChild(j);
+                    if (connectionNode && m_audioSystemImpl)
                     {
-                        TConnectionPtr pAudioConnection = m_pAudioSystemImpl->CreateConnectionFromXMLNode(pConnectionNode, pControl->GetType());
-                        if (pAudioConnection)
+                        TConnectionPtr connection = m_audioSystemImpl->CreateConnectionFromXMLNode(connectionNode, control->GetType());
+                        if (connection)
                         {
-                            pAudioConnection->SetGroup(sGroupName);
-                            pControl->AddConnection(pAudioConnection);
+                            control->AddConnection(connection);
                         }
-                        pControl->m_connectionNodes[sGroupName].push_back(SRawConnectionData(pConnectionNode, pAudioConnection != nullptr));
+                        control->m_connectionNodes.push_back(SRawConnectionData(connectionNode, connection != nullptr));
                     }
+                }
+            }
+        }
+        else
+        {
+            // New Preload XML parsing...
+            const int numChildren = node->getChildCount();
+            for (int i = 0; i < numChildren; ++i)
+            {
+                XmlNodeRef connectionNode = node->getChild(i);
+                if (connectionNode && m_audioSystemImpl)
+                {
+                    TConnectionPtr connection = m_audioSystemImpl->CreateConnectionFromXMLNode(connectionNode, control->GetType());
+                    if (connection)
+                    {
+                        control->AddConnection(connection);
+                    }
+
+                    control->m_connectionNodes.push_back(SRawConnectionData(connectionNode, connection != nullptr));
                 }
             }
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    QStandardItem* CAudioControlsLoader::AddControl(CATLControl* pControl, QStandardItem* pFolder)
+    QStandardItem* CAudioControlsLoader::AddControl(CATLControl* control, QStandardItem* folderItem)
     {
-        QStandardItem* pItem = new QAudioControlItem(QString(pControl->GetName().c_str()), pControl);
-        if (pItem)
+        QStandardItem* item = new QAudioControlItem(QString(control->GetName().c_str()), control);
+        if (item)
         {
-            pItem->setData(true, eDR_MODIFIED);
-            pFolder->appendRow(pItem);
+            item->setData(true, eDR_MODIFIED);
+            folderItem->appendRow(item);
         }
-        return pItem;
+        return item;
     }
 
     //-------------------------------------------------------------------------------------------//
     CATLControl* CAudioControlsLoader::CreateInternalSwitchState(CATLControl* parentControl, const AZStd::string& switchName, const AZStd::string& stateName)
     {
-        CATLControl* childControl = m_pModel->CreateControl(stateName, eACET_SWITCH_STATE, parentControl);
+        CATLControl* childControl = m_atlControlsModel->CreateControl(stateName, eACET_SWITCH_STATE, parentControl);
 
         XmlNodeRef requestNode = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::ATLSwitchRequestTag);
         requestNode->setAttr(Audio::ATLXmlTags::ATLNameAttribute, switchName.c_str());
@@ -656,7 +604,8 @@ namespace AudioControls
         valueNode->setAttr(Audio::ATLXmlTags::ATLNameAttribute, stateName.c_str());
         requestNode->addChild(valueNode);
 
-        childControl->m_connectionNodes[AudioControls::g_sDefaultGroup].push_back(SRawConnectionData(requestNode, false));
+        childControl->m_connectionNodes.push_back(SRawConnectionData(requestNode, false));
         return childControl;
     }
+
 } // namespace AudioControls

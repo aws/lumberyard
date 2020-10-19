@@ -10,6 +10,9 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "LmbrCentral.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Physics/RigidPhysicsComponent.h"
@@ -154,3 +157,4 @@ TEST_F(LoadRigidPhysicsComponentFromLegacyData, BuoyancyResistance_MatchesSource
 {
     EXPECT_FLOAT_EQ(m_rigidPhysicsConfig.m_buoyancyResistance, 1.6f);
 }
+#endif // ENABLE_CRY_PHYSICS

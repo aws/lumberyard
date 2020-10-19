@@ -87,7 +87,9 @@ namespace Audio
                     ACM_REQUEST_BLOCK(eACMRT_REPORT_STARTED_EVENT)
                     ACM_REQUEST_BLOCK(eACMRT_REPORT_FINISHED_EVENT)
                     ACM_REQUEST_BLOCK(eACMRT_REPORT_FINISHED_TRIGGER_INSTANCE)
+#if AUDIO_ENABLE_CRY_PHYSICS
                     ACM_REQUEST_BLOCK(eACMRT_REPORT_PROCESSED_OBSTRUCTION_RAY)
+#endif // AUDIO_ENABLE_CRY_PHYSICS
                     default:
                     {
                         g_audioLogger.Log(eALT_ERROR, "Unknown audio callback manager request type (%d)", pBase->eType);

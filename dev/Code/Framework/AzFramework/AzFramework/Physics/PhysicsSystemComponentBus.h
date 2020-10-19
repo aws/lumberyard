@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector3.h>
@@ -169,3 +171,5 @@ namespace AzFramework
 } // namespace AzFramework
 
 #include "PhysicsSystemComponentBus.inl"
+
+#endif // ENABLE_CRY_PHYSICS

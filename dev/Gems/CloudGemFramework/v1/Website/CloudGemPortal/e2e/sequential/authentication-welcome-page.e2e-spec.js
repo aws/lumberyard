@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-var session = require('../session-helper.js');
+const session = require('../session-helper.js');
 
 /**
  * Authentication Welcome Page test
@@ -17,7 +17,7 @@ var session = require('../session-helper.js');
  * Tests the login screen shows as expected with modal first time user pop-up
  */
 describe('Authentication welcome page', function () {
-    var page = {
+    const page = {
         header: $('div.modal-header h2'),
         welcomeIcon1: $('#welcome-option1-img'),
         welcomeIcon2: $('#welcome-option2-img'),
@@ -29,13 +29,13 @@ describe('Authentication welcome page', function () {
         browser.get(browser.params.url)
         console.log("Waiting for the Cloud Gem Portal to load.")
         browser.wait(until.urlContains(session.loginPath), 10000, "urlContains"); // Checks that the current URL contains the expected text           
-    }); 
+    });
 
-    describe('integration tests', function() {
+    describe('integration tests', function () {
         it('should display a welcome modal', function () {
             browser.wait(until.presenceOf(page.header), 6000, "Modal header")
             expect(page.welcomeIcon1.isDisplayed()).toEqual(true)
-            expect(page.welcomeIcon2.isDisplayed()).toEqual(true)           
+            expect(page.welcomeIcon2.isDisplayed()).toEqual(true)
         });
     });
 });

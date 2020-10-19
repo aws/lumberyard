@@ -10,16 +10,16 @@
 *
 */
 
-var session = require('../session-helper.js');
+const session = require('../session-helper.js');
 
 /**
  * Authentication No Bootstrap Integration test
  *
  * Test assumes index.html does not contain bootstrap information.
  */
-describe('Authentication without a bootstrap', function () {    
-    var page = {
-        header: $('div.modal-header h2'),        
+describe('Authentication without a bootstrap', function () {
+    const page = {
+        header: $('div.modal-header h2'),
         submit: $('#modal-dismiss')
     }
 
@@ -30,11 +30,11 @@ describe('Authentication without a bootstrap', function () {
         browser.wait(until.urlContains(session.loginPath), 10000, "urlContains"); // Checks that the current URL contains the expected text           
     });
 
-    describe('integration tests', function () {        
-        it('should display a informational bootstrap modal', function () {            
+    describe('integration tests', function () {
+        it('should display a informational bootstrap modal', function () {
             browser.wait(until.presenceOf(page.header), 6000, "Modal header")
-            expect(page.header.getText()).toEqual("Missing Cloud Gem Portal bootstrap information.")            
-            page.submit.click();                     
+            expect(page.header.getText()).toEqual("Missing Cloud Gem Portal bootstrap information.")
+            page.submit.click();
         });
     });
 });

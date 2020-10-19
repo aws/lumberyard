@@ -109,7 +109,7 @@ namespace AZ
                 auto hierarchyStorage = graph.GetHierarchyStorage();
                 auto nameStorage = graph.GetNameStorage();                
                 auto range = Containers::Views::MakePairView(hierarchyStorage, nameStorage);
-                for (const auto& it : range)
+                for (auto it : range)
                 {
                     if (!it.first.IsEndPoint())
                     {
@@ -126,7 +126,7 @@ namespace AZ
                 auto hierarchyStorage = graph.GetHierarchyStorage();
                 auto nameStorage = graph.GetNameStorage();                
                 auto range = Containers::Views::MakePairView(hierarchyStorage, nameStorage);
-                for (const auto& it : range)
+                for (auto it : range)
                 {
                     if (!it.first.IsEndPoint())
                     {

@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -790,3 +792,5 @@ int CAABBTree::SanityCheck()
     const int maxDepth2 = (sizeof(g_BBoxExtBuf) / sizeof(g_BBoxExtBuf[0]) - 1) / 2;
     return SanityCheckTree(this, min(maxDepth1, maxDepth2));
 }
+
+#endif // ENABLE_CRY_PHYSICS

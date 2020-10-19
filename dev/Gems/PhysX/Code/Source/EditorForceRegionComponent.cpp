@@ -404,5 +404,8 @@ namespace PhysX
                 , entity->GetName().c_str()
                 , entity->GetId().ToString().c_str());
         }
+
+        ForceRegionNotificationBus::Broadcast(
+            &ForceRegionNotificationBus::Events::OnForceRegionForceChanged, GetEntityId());
     }
 }

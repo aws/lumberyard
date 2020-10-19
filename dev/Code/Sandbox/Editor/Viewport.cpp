@@ -27,7 +27,9 @@
 
 #include "./Include/IRenderListener.h"
 
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 #include <I3DEngine.h>
 #include "GameEngine.h"
 #include "UserMessageDefines.h"

@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/typetraits/is_enum.h>
 #include <AzCore/std/typetraits/is_floating_point.h>
 #include <AzCore/std/typetraits/is_integral.h>

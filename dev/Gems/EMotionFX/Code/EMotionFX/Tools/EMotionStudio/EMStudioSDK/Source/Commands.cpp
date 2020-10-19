@@ -580,6 +580,8 @@ namespace EMStudio
     {
         MCORE_UNUSED(outResult);
 
+        const bool skipSourceControl = GetManager()->GetSkipSourceControlCommands();
+
         AZStd::string filename;
         parameters.GetValue("filename", this, filename);
 
@@ -594,7 +596,7 @@ namespace EMStudio
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
         // Source Control: Checkout file.
-        if (fileExisted)
+        if (fileExisted && !skipSourceControl)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
@@ -620,7 +622,7 @@ namespace EMStudio
         }
 
         // Source Control: Add file in case it did not exist before (when saving it the first time).
-        if (saveResult && !fileExisted)
+        if (saveResult && !fileExisted && !skipSourceControl)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;

@@ -44,7 +44,7 @@ namespace AZ
 #endif
         /** 128-bit data type */
         typedef W128_T w128_t;
-        AZ_STATIC_ASSERT(N == MEXP / (sizeof(W128_T) * 8) + 1, "The m_smft member array must fit all iterations of the correct 128-bit size.");
+        static_assert(N == MEXP / (sizeof(W128_T) * 8) + 1, "The m_smft member array must fit all iterations of the correct 128-bit size.");
 
         void gen_rand_all(Sfmt& g);
         void gen_rand_array(Sfmt& g, SfmtInternal::w128_t* array, int size);

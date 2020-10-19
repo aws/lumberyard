@@ -88,8 +88,8 @@ namespace EMotionFX
 
         enum EEventMode : AZ::u8
         {
-            EVENTMODE_MASTERONLY            = 0,
-            EVENTMODE_SLAVEONLY             = 1,
+            EVENTMODE_LEADERONLY            = 0,
+            EVENTMODE_FOLLOWERONLY          = 1,
             EVENTMODE_BOTHNODES             = 2,
             EVENTMODE_MOSTACTIVE            = 3,
             EVENTMODE_NONE                  = 4

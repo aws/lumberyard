@@ -24,6 +24,7 @@ class QVBoxLayout;
 class QSpacerItem;
 class QAction;
 class QMouseEvent;
+class QFrame;
 
 class EDITOR_QT_UI_API DefaultViewWidget
     : public QWidget
@@ -65,4 +66,6 @@ private:
     QSpacerItem* m_spaceBetweenLabelAndImage;
     QSpacerItem* m_spaceBetweenLabelAndButtons;
     QSpacerItem* m_bottomStretch;
+    QFrame* m_separator = nullptr;
+    QFrame* m_separatorContainer = nullptr;
 };

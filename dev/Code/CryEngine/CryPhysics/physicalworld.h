@@ -17,10 +17,14 @@
 #define CRYINCLUDE_CRYPHYSICS_PHYSICALWORLD_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "IThreadTask.h"
 #include "rigidbody.h"
 #include "physicalentity.h"
 #include "geoman.h"
+
+extern const int g_cryPhysicsMaxPhysWorlds;
 
 const int NSURFACETYPES = 512;
 const int PLACEHOLDER_CHUNK_SZLG2 = 8;
@@ -334,6 +338,9 @@ public:
         float& damage_reduction, float& ric_angle, float& ric_dam_reduction,
         float& ric_vel_reduction, unsigned int& flags);
     virtual PhysicsVars* GetPhysVars() { return &m_vars; }
+    
+    volatile threadID& IdThread() override { return m_idThread; }
+    volatile threadID& IdPODThread() override { return m_idPODThread; }
 
     void GetPODGridCellBBox(int ix, int iy, Vec3& center, Vec3& size);
     pe_PODcell* getPODcell(int ix, int iy)
@@ -365,8 +372,9 @@ public:
     virtual int GetPhysicalEntityId(IPhysicalEntity* pent);
     int GetFreeEntId();
     virtual IPhysicalEntity* GetPhysicalEntityById(int id);
-    int IsPlaceholder(const CPhysicalPlaceholder* pent)
+    int IsPlaceholder(const IPhysicalEntity* pient) override
     {
+        const CPhysicalPlaceholder* pent = static_cast<const CPhysicalPlaceholder*>(pient);
         if (!pent)
         {
             return 0;
@@ -487,6 +495,8 @@ public:
     virtual int qhull(strided_pointer<Vec3> pts, int npts, index_t*& pTris, qhullmalloc qmalloc = 0) { return ::qhull(pts, npts, pTris, qmalloc); }
     virtual int TriangulatePoly(vector2df* pVtx, int nVtx, int* pTris, int szTriBuf)
     { return ::TriangulatePoly(pVtx, nVtx, pTris, szTriBuf); }
+    
+    virtual IPhysicsStreamer* GetPhysicsStreamer() override { return m_pPhysicsStreamer; }
     virtual void SetPhysicsStreamer(IPhysicsStreamer* pStreamer) { m_pPhysicsStreamer = pStreamer; }
     virtual void SetPhysicsEventClient(IPhysicsEventClient* pEventClient) { m_pEventClient = pEventClient; }
     virtual float GetLastEntityUpdateTime(IPhysicalEntity* pent) { return m_updateTimes[((CPhysicalPlaceholder*)pent)->m_iSimClass & 7]; }
@@ -515,7 +525,7 @@ public:
     virtual int GetFuncProfileInfo(phys_profile_info*& pList)   {   pList = m_pFuncProfileData; return m_nProfileFunx; }
     virtual int GetGroupProfileInfo(phys_profile_info*& pList) { pList = m_grpProfileData; return sizeof(m_grpProfileData) / sizeof(m_grpProfileData[0]); }
     virtual int GetJobProfileInfo(phys_job_info*& pList) { pList = m_JobProfileInfo; return sizeof(m_JobProfileInfo) / sizeof(m_JobProfileInfo[0]); }
-    phys_job_info& GetJobProfileInst(int ijob) { return m_JobProfileInfo[ijob]; }
+    phys_job_info& GetJobProfileInst(int ijob) override { return m_JobProfileInfo[ijob]; }
 
     // *important* if provided callback function return 0, other registered listeners are not called anymore.
     virtual void AddEventClient(int type, int (* func)(const EventPhys*), int bLogged, float priority = 1.0f);
@@ -1181,11 +1191,11 @@ public:
 } _ALIGN(128);
 
 extern int g_nPhysWorlds;
-extern CPhysicalWorld* g_pPhysWorlds[];
+extern IPhysicalWorld* g_pPhysWorlds[];
 
-inline int IsPODThread(CPhysicalWorld* pWorld) { return iszero((int32)(CryGetCurrentThreadId() - (pWorld->m_idPODThread))); }
-inline void MarkAsPODThread(CPhysicalWorld* pWorld) { pWorld->m_idPODThread = CryGetCurrentThreadId(); }
-inline void UnmarkAsPODThread(CPhysicalWorld* pWorld) { pWorld->m_idPODThread = THREADID_NULL; }
+inline int IsPODThread(IPhysicalWorld* pWorld) { return iszero((int32)(CryGetCurrentThreadId() - (pWorld->IdPODThread()))); }
+inline void MarkAsPODThread(IPhysicalWorld* pWorld) { pWorld->IdPODThread() = CryGetCurrentThreadId(); }
+inline void UnmarkAsPODThread(IPhysicalWorld* pWorld) { pWorld->IdPODThread() = THREADID_NULL; }
 extern int g_idxThisIsPODThread;
 
 struct CPhysEntityProfilerBase
@@ -1385,4 +1395,7 @@ struct SRayTraceRes
         , pcontacts(contacts){}
     ILINE void SetLock(volatile int*){}
 };
+
+#endif // ENABLE_CRY_PHYSICS
+
 #endif // CRYINCLUDE_CRYPHYSICS_PHYSICALWORLD_H

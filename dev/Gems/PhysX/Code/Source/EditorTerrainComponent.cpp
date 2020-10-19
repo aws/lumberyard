@@ -22,7 +22,6 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
-#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
@@ -169,16 +168,33 @@ namespace PhysX
     void EditorTerrainComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
+
+        bool isTerrainPresent = AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
+        if (isTerrainPresent)
+        {
+            EnableTerrain();
+        }
+    }
+
+    void EditorTerrainComponent::Deactivate()
+    {
+        DisableTerrain();
+
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
+        AzToolsFramework::Components::EditorComponentBase::Deactivate();
+    }
+
+    void EditorTerrainComponent::EnableTerrain()
+    {
         Physics::EditorTerrainComponentRequestsBus::Handler::BusConnect(GetEntityId());
         Physics::EditorTerrainMaterialRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
-        AZ::HeightmapUpdateNotificationBus::Handler::BusConnect();
         PhysX::Utils::LogWarningIfMultipleComponents<Physics::EditorTerrainComponentRequestsBus>(
-            "EditorTerrainComponent", 
+            "EditorTerrainComponent",
             "Multiple EditorTerrainComponents found in the editor scene on these entities:");
 
-        
         if (!m_configuration.m_heightFieldAsset.GetId().IsValid())
         {
             // If this component is newly created, it won't have an asset id assigned yet. 
@@ -197,17 +213,15 @@ namespace PhysX
         Physics::EditorTerrainComponentNotificationBus::Broadcast(&Physics::EditorTerrainComponentNotifications::OnTerrainComponentActive);
     }
 
-    void EditorTerrainComponent::Deactivate()
+    void EditorTerrainComponent::DisableTerrain()
     {
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
         Physics::EditorTerrainComponentRequestsBus::Handler::BusDisconnect();
         Physics::EditorTerrainMaterialRequestsBus::Handler::BusDisconnect();
         AZ::Data::AssetBus::Handler::BusDisconnect(m_configuration.m_heightFieldAsset.GetId());
-        AZ::HeightmapUpdateNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
 
         UnregisterForEditorEvents();
-        AzToolsFramework::Components::EditorComponentBase::Deactivate();
         m_editorTerrain.reset(nullptr);
     }
 
@@ -324,11 +338,6 @@ namespace PhysX
         }
     }
 
-    void EditorTerrainComponent::HeightmapModified(const AZ::Aabb& /*bounds*/)
-    {
-        UpdateHeightFieldAsset();
-    }
-
     AZStd::string EditorTerrainComponent::GetExportPath()
     {
         AZStd::string levelDataFolder = TerrainUtils::GetLevelFolder();
@@ -366,6 +375,8 @@ namespace PhysX
 
     void EditorTerrainComponent::UpdateHeightFieldAsset()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
         AZ_Printf("EditorTerrainComponent", "Updating heightfield...");
 
         const float defaultTerrainHeight = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
@@ -500,6 +511,8 @@ namespace PhysX
 
     void EditorTerrainComponent::CreateEditorTerrain()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
         if (!m_createTerrainInEditor)
         {
             m_editorTerrain = nullptr;
@@ -632,5 +645,15 @@ namespace PhysX
         AZ_UNUSED(configuration);
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
             AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
+    }
+
+    void EditorTerrainComponent::OnTerrainDataCreateEnd()
+    {
+        EnableTerrain();
+    }
+
+    void EditorTerrainComponent::OnTerrainDataDestroyBegin()
+    {
+        DisableTerrain();
     }
 }

@@ -23,7 +23,6 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCard.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCardCollection.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorWarning.h>
-#include <AzQtComponents/Components/Widgets/ColorPicker/GammaEdit.h>
 #include <AzQtComponents/Components/Widgets/Eyedropper.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
@@ -52,6 +51,7 @@
 #include <QUndoStack>
 #include <QTimer>
 #include <QCursor>
+#include <QLabel>
 
 // settings keys
 static const char* g_colorPickerSection = "ColorPicker";
@@ -652,14 +652,13 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
     });
     containerLayout->addWidget(m_paletteCardCollection);
 
-    // Gamma
-    m_gammaSeparator = makePaddedSeparator(this);
-    containerLayout->addWidget(m_gammaSeparator);
-
-    m_gammaEdit = new GammaEdit(this);
-    connect(m_gammaEdit, &GammaEdit::toggled, m_preview, &ColorPreview::setGammaEnabled);
-    connect(m_gammaEdit, &GammaEdit::gammaChanged, m_preview, &ColorPreview::setGamma);
-    containerLayout->addWidget(m_gammaEdit);
+    // Comment
+    m_commentSeparator = makePaddedSeparator(this);
+    containerLayout->addWidget(m_commentSeparator);
+    m_commentLabel = new QLabel(this);
+    containerLayout->addWidget(m_commentLabel);
+    m_commentSeparator->setVisible(false);
+    m_commentLabel->setVisible(false);
 
     // buttons
 
@@ -695,6 +694,13 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
     QTimer::singleShot(0, this, &StyledDialog::restoreGeometryFromSettings);
 
     readSettings();
+}
+
+void ColorPicker::setComment(QString comment)
+{
+    m_commentSeparator->setVisible(!comment.isEmpty());
+    m_commentLabel->setVisible(!comment.isEmpty());
+    m_commentLabel->setText(comment);
 }
 
 void ColorPicker::warnColorAdjusted(const QString& message)

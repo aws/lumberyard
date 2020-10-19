@@ -39,7 +39,7 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QLabel" name="m_pEmptyInspectorLabel">
+    <widget class="QLabel" name="m_emptyInspectorLabel">
      <property name="text">
       <string>Select a control to explore its properties</string>
      </property>
@@ -49,7 +49,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QScrollArea" name="m_pPropertiesPanel">
+    <widget class="QScrollArea" name="m_propertiesPanel">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
        <horstretch>0</horstretch>
@@ -80,7 +80,7 @@
         <height>445</height>
        </rect>
       </property>
-      <layout class="QFormLayout" name="m_pInspectorControlsLayout">
+      <layout class="QFormLayout" name="m_inspectorControlsLayout">
        <property name="fieldGrowthPolicy">
         <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
        </property>
@@ -100,7 +100,7 @@
         <number>0</number>
        </property>
        <item row="1" column="0">
-        <widget class="QLabel" name="m_pNameLabel">
+        <widget class="QLabel" name="m_nameLabel">
          <property name="minimumSize">
           <size>
            <width>55</width>
@@ -113,7 +113,7 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="m_pNameLineEditor">
+        <widget class="QLineEdit" name="m_nameLineEditor">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -123,7 +123,7 @@
         </widget>
        </item>
        <item row="2" column="0">
-        <widget class="QLabel" name="m_pScopeLabel">
+        <widget class="QLabel" name="m_scopeLabel">
          <property name="minimumSize">
           <size>
            <width>55</width>
@@ -136,7 +136,7 @@
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="QComboBox" name="m_pScopeDropDown">
+        <widget class="QComboBox" name="m_scopeDropDown">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -151,17 +151,7 @@
         </widget>
        </item>
        <item row="3" column="0">
-        <widget class="QLabel" name="m_pConnectedControlsLabel">
-         <property name="text">
-          <string>Connected Controls:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="AudioControls::QConnectionsWidget" name="m_pConnectionList" native="true"/>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="m_pAutoLoadLabel">
+        <widget class="QLabel" name="m_autoLoadLabel">
          <property name="minimumSize">
           <size>
            <width>55</width>
@@ -173,8 +163,8 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
-        <widget class="QCheckBox" name="m_pAutoLoadCheckBox">
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="m_autoLoadCheckBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -189,68 +179,15 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="m_pConnectedSoundbanksLabel">
+       <item row="4" column="0">
+        <widget class="QLabel" name="m_connectedControlsLabel">
          <property name="text">
-          <string>Preloaded Soundbanks:</string>
+          <string>Connected Controls:</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
-        <widget class="AzQtComponents::TabWidget" name="m_pPlatformGroupsTabWidget">
-         <property name="tabPosition">
-          <enum>QTabWidget::North</enum>
-         </property>
-         <property name="tabShape">
-          <enum>QTabWidget::Rounded</enum>
-         </property>
-         <property name="currentIndex">
-          <number>-1</number>
-         </property>
-         <property name="usesScrollButtons">
-          <bool>false</bool>
-         </property>
-         <property name="documentMode">
-          <bool>false</bool>
-         </property>
-         <property name="tabsClosable">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="m_pPlatformsLabel">
-         <property name="text">
-          <string>Platforms:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QWidget" name="m_pPlatformsWidget" native="true">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <layout class="QHBoxLayout" name="m_pPlatformsLayout">
-          <property name="spacing">
-           <number>9</number>
-          </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-         </layout>
-        </widget>
+       <item row="4" column="1">
+        <widget class="AudioControls::QConnectionsWidget" name="m_connectionList" native="true"/>
        </item>
       </layout>
      </widget>
@@ -276,12 +213,6 @@
    <class>AudioControls::QConnectionsWidget</class>
    <extends>QWidget</extends>
    <header>QConnectionsWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>AzQtComponents::TabWidget</class>
-   <extends>QTabWidget</extends>
-   <header location="global">AzQtComponents/Components/Widgets/TabWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

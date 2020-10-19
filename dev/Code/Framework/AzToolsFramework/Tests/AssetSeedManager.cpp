@@ -31,6 +31,7 @@ namespace // anonymous
 
     AZ::Data::AssetId assets[s_totalAssets];
     const char TestSliceAssetPath[] = "test.slice";
+    const char SecondTestSliceAssetPath[] = "secondTest.slice";
     const char TestDynamicSliceAssetPath[] = "test.dynamicslice";
 
     bool Search(const AzToolsFramework::AssetFileInfoList& assetList, const AZ::Data::AssetId& assetId)
@@ -103,9 +104,12 @@ namespace UnitTest
             AZ::Data::AssetId testSliceAsset = AZ::Data::AssetId(sourceUUid, 0);
             AZ::Data::AssetId testDynamicSliceAsset = AZ::Data::AssetId(sourceUUid, 1);
 
+            AZ::Data::AssetId secondTestSliceAsset = AZ::Data::AssetId(AZ::Uuid::CreateRandom(), 0);
+
             AZ::Data::AssetInfo dynamicSliceAssetInfo;
             dynamicSliceAssetInfo.m_relativePath = TestDynamicSliceAssetPath;
             dynamicSliceAssetInfo.m_assetId = testDynamicSliceAsset;
+            m_testDynamicSliceAssetId = testDynamicSliceAsset;
             m_assetRegistry->RegisterAsset(testDynamicSliceAsset, dynamicSliceAssetInfo);
 
             AZ::IO::FileIOStream dynamicSliceFileIOStream(TestDynamicSliceAssetPath, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText);
@@ -114,6 +118,11 @@ namespace UnitTest
             sliceAssetInfo.m_relativePath = TestSliceAssetPath;
             sliceAssetInfo.m_assetId = testSliceAsset;
             m_assetRegistry->RegisterAsset(testSliceAsset, sliceAssetInfo);
+
+            AZ::Data::AssetInfo secondSliceAssetInfo;
+            secondSliceAssetInfo.m_relativePath = SecondTestSliceAssetPath;
+            secondSliceAssetInfo.m_assetId = secondTestSliceAsset;
+            m_assetRegistry->RegisterAsset(secondTestSliceAsset, secondSliceAssetInfo);
 
             AZ::IO::FileIOStream sliceFileIOStream(TestSliceAssetPath, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText);
 
@@ -299,7 +308,7 @@ namespace UnitTest
         void ValidateAssetListFileExtension_CorrectFileExtension_ExpectSuccess()
         {
             AZStd::string path("some/test/path/file.assetlist");
-            AZ::Outcome<void, AZStd::string> validationOutcome = AzToolsFramework::AssetSeedManager::ValidateAssetListFileExtension(path);
+            AZ::Outcome<void, AZStd::string> validationOutcome = AzToolsFramework::AssetFileInfoList::ValidateAssetListFileExtension(path);
 
             EXPECT_TRUE(validationOutcome.IsSuccess());
         }
@@ -307,7 +316,7 @@ namespace UnitTest
         void ValidateAssetListFileExtension_IncorrectFileExtension_ExpectFailure()
         {
             AZStd::string path("some/test/path/file.xml");
-            AZ::Outcome<void, AZStd::string> validationOutcome = AzToolsFramework::AssetSeedManager::ValidateAssetListFileExtension(path);
+            AZ::Outcome<void, AZStd::string> validationOutcome = AzToolsFramework::AssetFileInfoList::ValidateAssetListFileExtension(path);
 
             EXPECT_FALSE(validationOutcome.IsSuccess());
         }
@@ -737,6 +746,16 @@ namespace UnitTest
             EXPECT_EQ(seedList[0].m_assetRelativePath, TestDynamicSliceAssetPath);
         }
 
+        void AddSourceAsset_NoRuntimeSlice_Valid()
+        {
+            m_assetSeedManager->AddSeedAsset(SecondTestSliceAssetPath, AzFramework::PlatformFlags::Platform_PC);
+
+            const AzFramework::AssetSeedList& seedList = m_assetSeedManager->GetAssetSeedList();
+
+            EXPECT_EQ(seedList.size(), 0);
+
+        }
+
         AzToolsFramework::AssetSeedManager* m_assetSeedManager;
         AzFramework::AssetRegistry* m_assetRegistry;
         AzToolsFramework::ToolsApplication* m_application;
@@ -748,6 +767,7 @@ namespace UnitTest
         AzFramework::PlatformId m_testPlatforms[s_totalTestPlatforms];
         AZStd::string m_assetsPath[s_totalAssets];
         AZStd::string m_assetsPathFull[s_totalTestPlatforms][s_totalAssets];
+        AZ::Data::AssetId m_testDynamicSliceAssetId;
     };
 
     TEST_F(AssetSeedManagerTest, AssetSeedManager_SaveSeedListFile_FileIsReadOnly)
@@ -855,6 +875,11 @@ namespace UnitTest
         AddSourceAsset_AddRuntimeAsset_Valid();
     }
 
+    TEST_F(AssetSeedManagerTest, AddSourceAsset_NoRuntimeSlice_Valid)
+    {
+        AddSourceAsset_NoRuntimeSlice_Valid();
+    }
+
     TEST_F(AssetSeedManagerTest, GetDependencyList_ExcludeAsset_IncludesOnlyExpected)
     {
         m_assetSeedManager->AddSeedAsset(assets[0], AzFramework::PlatformFlags::Platform_PC);
@@ -895,5 +920,55 @@ namespace UnitTest
         AzToolsFramework::AssetFileInfoList assetList = m_assetSeedManager->GetDependencyList(AzFramework::PlatformId::PC, { assets[0] }, &debugList);
 
         ASSERT_EQ(assetList.m_fileInfoList.size(), 0);
+    }
+
+    TEST_F(AssetSeedManagerTest, AddSeedAssetForValidPlatforms_AllPlatformsValid_SeedAddedForEveryInputPlatform)
+    {
+        using namespace AzFramework;
+        PlatformFlags validPlatforms = PlatformFlags::Platform_PC | PlatformFlags::Platform_ES3;
+        AZStd::pair<AZ::Data::AssetId, PlatformFlags> result = m_assetSeedManager->AddSeedAssetForValidPlatforms(TestDynamicSliceAssetPath, validPlatforms);
+
+        // Verify the function outputs
+        EXPECT_EQ(m_testDynamicSliceAssetId, result.first);
+        EXPECT_EQ(validPlatforms, result.second);
+
+        // Verify the Seed List
+        const AssetSeedList& seedList = m_assetSeedManager->GetAssetSeedList();
+        ASSERT_FALSE(seedList.empty());
+        EXPECT_EQ(m_testDynamicSliceAssetId, seedList.at(0).m_assetId);
+        EXPECT_EQ(validPlatforms, seedList.at(0).m_platformFlags);
+    }
+
+    TEST_F(AssetSeedManagerTest, AddSeedAssetForValidPlatforms_SomePlatformsValid_SeedAddedForEveryValidPlatform)
+    {
+        using namespace AzFramework;
+        PlatformFlags validPlatforms = PlatformFlags::Platform_PC | PlatformFlags::Platform_ES3;
+        PlatformFlags inputPlatforms = validPlatforms | PlatformFlags::Platform_OSX;
+        AZStd::pair<AZ::Data::AssetId, PlatformFlags> result = m_assetSeedManager->AddSeedAssetForValidPlatforms(TestDynamicSliceAssetPath, inputPlatforms);
+
+        // Verify the function outputs
+        EXPECT_EQ(m_testDynamicSliceAssetId, result.first);
+        EXPECT_EQ(validPlatforms, result.second);
+
+        // Verify the Seed List
+        const AssetSeedList& seedList = m_assetSeedManager->GetAssetSeedList();
+        ASSERT_FALSE(seedList.empty());
+        EXPECT_EQ(m_testDynamicSliceAssetId, seedList.at(0).m_assetId);
+        EXPECT_EQ(validPlatforms, seedList.at(0).m_platformFlags);
+    }
+
+    TEST_F(AssetSeedManagerTest, AddSeedAssetForValidPlatforms_NoPlatformsValid_NoSeedAdded)
+    {
+        using namespace AzFramework;
+        PlatformFlags inputPlatforms = PlatformFlags::Platform_OSX;
+        AZStd::pair<AZ::Data::AssetId, PlatformFlags> result = m_assetSeedManager->AddSeedAssetForValidPlatforms(TestDynamicSliceAssetPath, inputPlatforms);
+
+        // Verify the function outputs
+        EXPECT_FALSE(result.first.IsValid());
+        EXPECT_EQ(PlatformFlags::Platform_NONE, result.second);
+
+        // Verify the Seed List
+        const AssetSeedList& seedList = m_assetSeedManager->GetAssetSeedList();
+        EXPECT_TRUE(seedList.empty());
     }
 }

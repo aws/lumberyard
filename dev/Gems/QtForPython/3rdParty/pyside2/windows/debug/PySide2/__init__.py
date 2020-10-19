@@ -1,8 +1,8 @@
 __all__ = list("Qt" + body for body in
-    "Core;Gui;Widgets;PrintSupport;Sql;Network;Test;Concurrent;WinExtras;Xml;XmlPatterns;Help;Multimedia;MultimediaWidgets;OpenGL;OpenGLFunctions;Positioning;Qml;Quick;QuickWidgets;Sensors;Svg;UiTools;WebChannel;WebEngineCore;WebEngine;WebEngineWidgets;WebSockets"
+    "Core;Gui;Widgets;PrintSupport;Sql;Network;Test;Concurrent;WinExtras;Xml;XmlPatterns;Help;OpenGL;OpenGLFunctions;Qml;Quick;QuickWidgets;Sensors;Svg;UiTools;WebChannel;WebEngineCore;WebEngine;WebEngineWidgets;WebSockets"
     .split(";"))
-__version__ = "5.12.4"
-__version_info__ = (5, 12, 4, "", "")
+__version__ = "5.12.5"
+__version_info__ = (5, 12, 5, "a", "1")
 
 def _setupQtDirectories():
     import sys

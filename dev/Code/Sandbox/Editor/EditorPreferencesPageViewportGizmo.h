@@ -31,6 +31,7 @@ public:
 
     virtual const char* GetCategory() override { return "Viewports"; }
     virtual const char* GetTitle() override { return "Gizmos"; }
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -59,6 +60,7 @@ private:
 
     AxisGizmo m_axisGizmo;
     Helpers m_helpers;
+    QIcon m_icon;
 };
 
 

@@ -24,30 +24,11 @@
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    const char* g_sDefaultGroup = "";
-
-
-    //-------------------------------------------------------------------------------------------//
-    CATLControl::CATLControl()
-        : m_sName("")
-        , m_nID(ACE_INVALID_CID)
-        , m_eType(eACET_RTPC)
-        , m_sScope("")
-        , m_bAutoLoad(true)
-        , m_pParent(nullptr)
-        , m_pModel(nullptr)
-    {
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    CATLControl::CATLControl(const AZStd::string& sControlName, CID nID, EACEControlType eType, CATLControlsModel* pModel)
-        : m_sName(sControlName)
-        , m_nID(nID)
-        , m_eType(eType)
-        , m_sScope("")
-        , m_bAutoLoad(true)
-        , m_pParent(nullptr)
-        , m_pModel(pModel)
+    CATLControl::CATLControl(const AZStd::string& controlName, CID id, EACEControlType type, CATLControlsModel* atlControlsModel)
+        : m_name(controlName)
+        , m_id(id)
+        , m_type(type)
+        , m_atlControlsModel(atlControlsModel)
     {
     }
 
@@ -61,10 +42,10 @@ namespace AudioControls
             {
                 for (auto& connectionPtr : m_connectedControls)
                 {
-                    if (IAudioSystemControl* audioSystemControl = audioSystemImpl->GetControl(connectionPtr->GetID()))
+                    if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(connectionPtr->GetID()))
                     {
-                        audioSystemImpl->ConnectionRemoved(audioSystemControl);
-                        SignalConnectionRemoved(audioSystemControl);
+                        audioSystemImpl->ConnectionRemoved(middlewareControl);
+                        SignalConnectionRemoved(middlewareControl);
                     }
                 }
             }
@@ -76,28 +57,34 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     CID CATLControl::GetId() const
     {
-        return m_nID;
+        return m_id;
     }
 
     //-------------------------------------------------------------------------------------------//
     EACEControlType CATLControl::GetType() const
     {
-        return m_eType;
+        return m_type;
     }
 
     //-------------------------------------------------------------------------------------------//
     AZStd::string CATLControl::GetName() const
     {
-        return m_sName;
+        return m_name;
+    }
+
+    //-------------------------------------------------------------------------------------------//
+    CATLControl* CATLControl::GetParent() const
+    {
+        return m_parent;
     }
 
     //-------------------------------------------------------------------------------------------//
     void CATLControl::SetId(CID id)
     {
-        if (id != m_nID)
+        if (id != m_id)
         {
             SignalControlAboutToBeModified();
-            m_nID = id;
+            m_id = id;
             SignalControlModified();
         }
     }
@@ -105,10 +92,10 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CATLControl::SetType(EACEControlType type)
     {
-        if (type != m_eType)
+        if (type != m_type)
         {
             SignalControlAboutToBeModified();
-            m_eType = type;
+            m_type = type;
             SignalControlModified();
         }
     }
@@ -116,10 +103,10 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CATLControl::SetName(const AZStd::string_view name)
     {
-        if (name != m_sName)
+        if (name != m_name)
         {
             SignalControlAboutToBeModified();
-            m_sName = name;
+            m_name = name;
             SignalControlModified();
         }
     }
@@ -127,15 +114,16 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     AZStd::string CATLControl::GetScope() const
     {
-        return m_sScope;
+        return m_scope;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetScope(const AZStd::string_view sScope)
+    void CATLControl::SetScope(const AZStd::string_view scope)
     {
-        if (m_sScope != sScope)
+        if (m_scope != scope)
         {
-            m_sScope = sScope;
+            SignalControlAboutToBeModified();
+            m_scope = scope;
             SignalControlModified();
         }
     }
@@ -143,44 +131,22 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     bool CATLControl::HasScope() const
     {
-        return !m_sScope.empty();
+        return !m_scope.empty();
     }
 
     //-------------------------------------------------------------------------------------------//
     bool CATLControl::IsAutoLoad() const
     {
-        return m_bAutoLoad;
+        return m_isAutoLoad;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetAutoLoad(bool bAutoLoad)
+    void CATLControl::SetAutoLoad(bool isAutoLoad)
     {
-        if (bAutoLoad != m_bAutoLoad)
+        if (isAutoLoad != m_isAutoLoad)
         {
             SignalControlAboutToBeModified();
-            m_bAutoLoad = bAutoLoad;
-            SignalControlModified();
-        }
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    int CATLControl::GetGroupForPlatform(const AZStd::string_view platform) const
-    {
-        auto it = m_groupPerPlatform.find(platform);
-        if (it == m_groupPerPlatform.end())
-        {
-            return 0;
-        }
-        return it->second;
-    }
-
-    //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetGroupForPlatform(const AZStd::string_view platform, int connectionGroupId)
-    {
-        if (m_groupPerPlatform[platform] != connectionGroupId)
-        {
-            SignalControlAboutToBeModified();
-            m_groupPerPlatform[platform] = connectionGroupId;
+            m_isAutoLoad = isAutoLoad;
             SignalControlModified();
         }
     }
@@ -192,27 +158,21 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    TConnectionPtr CATLControl::GetConnectionAt(int index)
+    TConnectionPtr CATLControl::GetConnectionAt(size_t index) const
     {
-        if (index < m_connectedControls.size())
-        {
-            return m_connectedControls[index];
-        }
-        return nullptr;
+        return (index < m_connectedControls.size() ? m_connectedControls[index] : nullptr);
     }
 
     //-------------------------------------------------------------------------------------------//
-    TConnectionPtr CATLControl::GetConnection(CID id, const AZStd::string_view group)
+    TConnectionPtr CATLControl::GetConnection(CID id) const
     {
         if (id != ACE_INVALID_CID)
         {
-            const size_t size = m_connectedControls.size();
-            for (size_t i = 0; i < size; ++i)
+            for (const TConnectionPtr& connection : m_connectedControls)
             {
-                TConnectionPtr pConnection = m_connectedControls[i];
-                if (pConnection && pConnection->GetID() == id && pConnection->GetGroup() == group)
+                if (connection && connection->GetID() == id)
                 {
-                    return pConnection;
+                    return connection;
                 }
             }
         }
@@ -220,24 +180,24 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    TConnectionPtr CATLControl::GetConnection(IAudioSystemControl* m_pAudioSystemControl, const AZStd::string_view group)
+    TConnectionPtr CATLControl::GetConnection(IAudioSystemControl* middlewareControl) const
     {
-        return GetConnection(m_pAudioSystemControl->GetId(), group);
+        return GetConnection(middlewareControl->GetId());
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::AddConnection(TConnectionPtr pConnection)
+    void CATLControl::AddConnection(TConnectionPtr connection)
     {
-        if (pConnection)
+        if (connection)
         {
             SignalControlAboutToBeModified();
-            m_connectedControls.push_back(pConnection);
+            m_connectedControls.push_back(connection);
 
-            if (IAudioSystemEditor* pAudioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
+            if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
             {
-                if (IAudioSystemControl* pAudioSystemControl = pAudioSystemImpl->GetControl(pConnection->GetID()))
+                if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(connection->GetID()))
                 {
-                    SignalConnectionAdded(pAudioSystemControl);
+                    SignalConnectionAdded(middlewareControl);
                 }
             }
             SignalControlModified();
@@ -245,21 +205,21 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::RemoveConnection(TConnectionPtr pConnection)
+    void CATLControl::RemoveConnection(TConnectionPtr connection)
     {
-        if (pConnection)
+        if (connection)
         {
-            auto it = AZStd::find(m_connectedControls.begin(), m_connectedControls.end(), pConnection);
+            auto it = AZStd::find(m_connectedControls.begin(), m_connectedControls.end(), connection);
             if (it != m_connectedControls.end())
             {
                 SignalControlAboutToBeModified();
                 m_connectedControls.erase(it);
 
-                if (IAudioSystemEditor* pAudioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
+                if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
                 {
-                    if (IAudioSystemControl* pAudioSystemControl = pAudioSystemImpl->GetControl(pConnection->GetID()))
+                    if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(connection->GetID()))
                     {
-                        SignalConnectionRemoved(pAudioSystemControl);
+                        SignalConnectionRemoved(middlewareControl);
                     }
                 }
                 SignalControlModified();
@@ -271,14 +231,14 @@ namespace AudioControls
     void CATLControl::ClearConnections()
     {
         SignalControlAboutToBeModified();
-        if (IAudioSystemEditor* pAudioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
+        if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
         {
             for (auto& connectionPtr : m_connectedControls)
             {
-                if (IAudioSystemControl* pAudioSystemControl = pAudioSystemImpl->GetControl(connectionPtr->GetID()))
+                if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(connectionPtr->GetID()))
                 {
-                    pAudioSystemImpl->ConnectionRemoved(pAudioSystemControl);
-                    SignalConnectionRemoved(pAudioSystemControl);
+                    audioSystemImpl->ConnectionRemoved(middlewareControl);
+                    SignalConnectionRemoved(middlewareControl);
                 }
             }
         }
@@ -291,7 +251,7 @@ namespace AudioControls
     {
         bool isConnected = ConnectionCount() > 0;
         //  Switches have no connections. Their child Switch_States do.
-        if (m_eType == eACET_SWITCH)
+        if (m_type == eACET_SWITCH)
         {
             isConnected = true;
             for (auto& childPtr : m_children)
@@ -305,13 +265,13 @@ namespace AudioControls
         }
         else
         {
-            if (IAudioSystemEditor* pAudioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
+            if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
             {
                 for (auto& connectionPtr : m_connectedControls)
                 {
-                    if (IAudioSystemControl* pAudioSystemControl = pAudioSystemImpl->GetControl(connectionPtr->GetID()))
+                    if (IAudioSystemControl* middlewareControl = audioSystemImpl->GetControl(connectionPtr->GetID()))
                     {
-                        if (!pAudioSystemControl->IsConnected() || pAudioSystemControl->IsPlaceholder())
+                        if (!middlewareControl->IsConnected() || middlewareControl->IsPlaceholder())
                         {
                             isConnected = false;
                             break;
@@ -325,20 +285,20 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::RemoveConnection(IAudioSystemControl* pAudioSystemControl)
+    void CATLControl::RemoveConnection(IAudioSystemControl* middlewareControl)
     {
-        if (pAudioSystemControl)
+        if (middlewareControl)
         {
-            const CID nID = pAudioSystemControl->GetId();
+            const CID id = middlewareControl->GetId();
             auto it = m_connectedControls.begin();
             auto end = m_connectedControls.end();
             for (; it != end; ++it)
             {
-                if ((*it)->GetID() == nID)
+                if ((*it)->GetID() == id)
                 {
                     SignalControlAboutToBeModified();
                     m_connectedControls.erase(it);
-                    SignalConnectionRemoved(pAudioSystemControl);
+                    SignalConnectionRemoved(middlewareControl);
                     SignalControlModified();
                     return;
                 }
@@ -349,9 +309,9 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CATLControl::SignalControlModified()
     {
-        if (m_pModel)
+        if (m_atlControlsModel)
         {
-            m_pModel->OnControlModified(this);
+            m_atlControlsModel->OnControlModified(this);
         }
     }
 
@@ -366,57 +326,50 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SignalConnectionAdded(IAudioSystemControl* pMiddlewareControl)
+    void CATLControl::SignalConnectionAdded(IAudioSystemControl* middlewareControl)
     {
-        if (m_pModel)
+        if (m_atlControlsModel)
         {
-            m_pModel->OnConnectionAdded(this, pMiddlewareControl);
+            m_atlControlsModel->OnConnectionAdded(this, middlewareControl);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SignalConnectionRemoved(IAudioSystemControl* pMiddlewareControl)
+    void CATLControl::SignalConnectionRemoved(IAudioSystemControl* middlewareControl)
     {
-        if (m_pModel)
+        if (m_atlControlsModel)
         {
-            m_pModel->OnConnectionRemoved(this, pMiddlewareControl);
+            m_atlControlsModel->OnConnectionRemoved(this, middlewareControl);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
     void CATLControl::ReloadConnections()
     {
-        if (IAudioSystemEditor* pAudioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
+        if (IAudioSystemEditor* audioSystemImpl = CAudioControlsEditorPlugin::GetImplementationManager()->GetImplementation())
         {
-            TConnectionPerGroup::iterator it = m_connectionNodes.begin();
-            TConnectionPerGroup::iterator end = m_connectionNodes.end();
-            for (; it != end; ++it)
+            for (auto& connectionNode : m_connectionNodes)
             {
-                TXmlNodeList& nodeList = it->second;
-                const size_t size = nodeList.size();
-                for (size_t i = 0; i < size; ++i)
+                if (TConnectionPtr connection = audioSystemImpl->CreateConnectionFromXMLNode(connectionNode.m_xmlNode, m_type))
                 {
-                    if (TConnectionPtr pConnection = pAudioSystemImpl->CreateConnectionFromXMLNode(nodeList[i].m_xmlNode, m_eType))
-                    {
-                        AddConnection(pConnection);
-                        nodeList[i].m_isValid = true;
-                    }
-                    else
-                    {
-                        nodeList[i].m_isValid = false;
-                    }
+                    AddConnection(connection);
+                    connectionNode.m_isValid = true;
+                }
+                else
+                {
+                    connectionNode.m_isValid = false;
                 }
             }
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetParent(CATLControl* pParent)
+    void CATLControl::SetParent(CATLControl* parent)
     {
-        m_pParent = pParent;
-        if (m_pParent)
+        m_parent = parent;
+        if (m_parent)
         {
-            SetScope(m_pParent->GetScope());
+            SetScope(m_parent->GetScope());
         }
     }
 

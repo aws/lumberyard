@@ -83,11 +83,20 @@ namespace EMotionFX
     void SimulatedObjectPicker::OnPickClicked()
     {
         Actor* selectedActor = nullptr;
-        ActorEditorRequestBus::BroadcastResult(selectedActor, &ActorEditorRequests::GetSelectedActor);
+        ActorInstance* selectedActorInstance = nullptr;
+        ActorEditorRequestBus::BroadcastResult(selectedActorInstance, &ActorEditorRequests::GetSelectedActorInstance);
+
+        if (selectedActorInstance)
+        {
+            selectedActor = selectedActorInstance->GetActor();
+        }
+        else
+        {
+            ActorEditorRequestBus::BroadcastResult(selectedActor, &ActorEditorRequests::GetSelectedActor);
+        }
 
         if (!selectedActor)
         {
-            AZ_Error("EMotionFX", false, "Cannot open anim graph parameter selection window. No valid actor is selected.");
             return;
         }
 

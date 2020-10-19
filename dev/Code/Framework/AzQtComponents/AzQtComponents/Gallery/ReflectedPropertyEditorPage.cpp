@@ -321,7 +321,7 @@ See the documentation linked above for more details.
 )";
 
     ui->exampleText->setHtml(exampleText);
-    ui->hyperlinkLabel->setText(QStringLiteral(R"(<a href="https://docs.aws.amazon.com/lumberyard/latest/userguide/component-entity-system-reflect-component.html">Reflected Property Editor docs</a>)"));
+    ui->hyperlinkLabel->setText(QStringLiteral(R"(<a href="https://docs.aws.amazon.com/console/lumberyard/component-entity/reflection">Reflected Property Editor docs</a>)"));
 }
 
 ReflectedPropertyEditorPage::~ReflectedPropertyEditorPage()

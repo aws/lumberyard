@@ -21,7 +21,7 @@ def build(bld):
         target             = 'Cry3DEngine',
         vs_filter          = 'CryEngine',
         copyright_org      = 'Amazon-CryTek',
-        file_list          = ['cry3dengine.waf_files', 'cry3dengine_terrain.waf_files'],
+        file_list          = ['cry3dengine.waf_files'],
         pch                = 'StdAfx.cpp',
         platforms          = ['all'],
         configurations     = ['all'],

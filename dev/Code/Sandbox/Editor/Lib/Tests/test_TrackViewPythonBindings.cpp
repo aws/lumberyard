@@ -79,4 +79,63 @@ namespace TrackViewPythonBindingsUnitTests
         EXPECT_TRUE(behaviorContext->m_methods.find("get_key_value") != behaviorContext->m_methods.end());
         EXPECT_TRUE(behaviorContext->m_methods.find("get_interpolated_value") != behaviorContext->m_methods.end());
     }
+
+    class TrackViewComponentFixture
+        : public testing::Test
+    {
+    public:
+        AzToolsFramework::ToolsApplication m_app;
+
+        void SetUp() override
+        {
+            AzFramework::Application::Descriptor appDesc;
+            appDesc.m_enableDrilling = false;
+
+            m_app.Start(appDesc);
+            m_app.RegisterComponentDescriptor(AzToolsFramework::TrackViewComponent::CreateDescriptor());
+        }
+
+        void TearDown() override
+        {
+            m_app.Stop();
+        }
+    };
+
+    TEST_F(TrackViewComponentFixture, TrackViewComponent_ApiExists)
+    {
+        AZ::BehaviorContext* behaviorContext = m_app.GetBehaviorContext();
+        ASSERT_TRUE(behaviorContext);
+
+        auto itTrackViewBus = behaviorContext->m_ebuses.find("TrackViewBus");
+        if (itTrackViewBus != behaviorContext->m_ebuses.end())
+        {
+            AZ::BehaviorEBus* behaviorBus = itTrackViewBus->second;
+            EXPECT_TRUE(behaviorBus->m_events.find("AddNode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddTrack") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddLayerNode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddSelectedEntities") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddNode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddTrack") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddLayerNode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("AddSelectedEntities") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("DeleteNode") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("DeleteTrack") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("DeleteSequence") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetInterpolatedValue") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetKeyValue") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetNodeName") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetNumNodes") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetNumSequences") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetNumTrackKeys") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetSequenceName") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("GetSequenceTimeRange") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("NewSequence") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("PlaySequence") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetCurrentSequence") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetRecording") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetSequenceTimeRange") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("SetTime") != behaviorBus->m_events.end());
+            EXPECT_TRUE(behaviorBus->m_events.find("StopSequence") != behaviorBus->m_events.end());
+        }
+    }
 }

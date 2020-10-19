@@ -858,9 +858,21 @@ namespace EMStudio
             EMotionFX::AnimGraphNode* node = m_parentReferenceNode.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
             EMotionFX::AnimGraphReferenceNode* referenceNode = static_cast<EMotionFX::AnimGraphReferenceNode*>(node);
             EMotionFX::AnimGraph* referencedAnimGraph = referenceNode->GetReferencedAnimGraph();
+            
             QString titleLabel;
+            if (!referencedAnimGraph)
+            {
+                // If referencedAnimGraph does not exist, exit reference node.
+                AnimGraphPlugin* plugin = m_graphWidget->GetPlugin();
+                if (plugin != nullptr)
+                {
+                    const QModelIndex& modelIndex = m_parentReferenceNode.parent();
+                    plugin->GetAnimGraphModel().Focus(modelIndex);
+                }
+                return;
+            }
             // If the reference anim graph is in an error state ( probably due to circular dependency ), we should show some error message.
-            if (referenceNode->GetHasCycles())
+            else if (referenceNode->GetHasCycles())
             {
                 titleLabel = QString("Can't show the reference anim graph because cicular dependency.");
             }

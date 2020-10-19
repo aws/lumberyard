@@ -142,11 +142,15 @@
 		<item name="Collide Static Objects" as="Collision.Collide_Static_Objects" visibility="cpu"/>
 		<item name="Collide Dynamic Objects" as="Collision.Collide_Dynamic_Objects" visibility="cpu"/>
 		<item name="Die On Collide" as="Collision.Final_Collision" visibility="cpu,gpu"/>
+		<item name="Use Self Collision" as="Collision.Use_Self_Collision" physics="azphysics" />
+		<item name="Collision Layer" as="Collision.Collision_Layer" visibility="cpu,gpu" physics="azphysics" />
+		<item name="Collides With" as="Collision.Collision_Group" visibility="cpu,gpu" physics="azphysics" />
+		<item name="Physics Material" as="Collision.Physics_Material" advanced="yes" visibility="cpu" physics="azphysics" />
 		<item name="Max Collision Events" as="Collision.Max_Collision_Events" visibility="cpu"/>
 		<item name="Bounciness" as="Collision.Elasticity" visibility="cpu,gpu"/>
 		<item name="Collision Fraction" as="Collision.Collision_Fraction" advanced="yes" visibility="cpu"/>
 		<item name="Collision Cutoff Distance" as="Collision.Collision_Cutoff_Distance" advanced="yes" visibility="cpu"/>
-		<item name="Surface Type" as="Collision.Surface_Type" advanced="yes" visibility="cpu"/>
+		<item name="Surface Type" as="Collision.Surface_Type" advanced="yes" visibility="cpu" physics="cryphysics" />
 		<item name="Dynamic Friction" as="Collision.Dynamic_Friction" advanced="yes" visibility="cpu"/>
 		<item name="Thickness" as="Collision.Thickness" advanced="yes" visibility="cpu,gpu"/>
 		<item name="Density" as="Collision.Density" advanced="yes" visibility="cpu"/>		

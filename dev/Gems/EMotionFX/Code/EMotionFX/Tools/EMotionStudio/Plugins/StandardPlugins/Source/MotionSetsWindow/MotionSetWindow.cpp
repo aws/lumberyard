@@ -256,6 +256,7 @@ namespace EMStudio
 
         // left side
         m_tableWidget = new MotionSetTableWidget(mPlugin, this);
+        m_tableWidget->setObjectName("EMFX.MotionSetWindow.TableWidget");
         tableLayout->addWidget(m_tableWidget);
         m_tableWidget->setAlternatingRowColors(true);
         m_tableWidget->setGridStyle(Qt::SolidLine);
@@ -1097,7 +1098,6 @@ namespace EMStudio
         // Get the row indices from the selected items.
         AZStd::vector<int> rowIndices;
         GetRowIndices(selectedItems, rowIndices);
-
         const size_t numRowIndices = rowIndices.size();
 
         // remove motion from motion window, too?
@@ -1107,28 +1107,25 @@ namespace EMStudio
         AZStd::string msgBoxTitle;
         if (rowIndices.size() == 1)
         {
-            msgBoxTitle = "Remove Motion From Workspace?";
+            msgBoxTitle = "<p align='center'>Also Remove The Selected Motion From Motions Window?</p>";
         }
         else
         {
-            msgBoxTitle = "Remove Motions From Workspace?";
+            msgBoxTitle = "<p align='center'>Also Remove The Selected Motions From Motions Window?</p>";
         }
 
-        // construct the message box text
-        AZStd::string msgBoxText;
-        if (numRowIndices == 1)
-        {
-            msgBoxText = "Remove the motion from the workspace entirely? This would also remove it from the motion window. Pressing no will remove it from the motion set but keep it inside the motion list inside the motions window.";
-        }
-        else
-        {
-            msgBoxText = "Remove the motions from the workspace entirely? This would also remove them from the motion window. Pressing no will remove them from the motion set but keep them inside the motion list inside the motions window.";
-        }
+        // ask to remove motions
+        QMessageBox* question = new QMessageBox(this);
+        question->setText(tr(msgBoxTitle.c_str()));
+        question->setWindowTitle("Remove From Workspace?");
+        QAbstractButton* removeInAllButton = question->addButton(tr("Yes (Recommended)"), QMessageBox::YesRole);
+        removeInAllButton->setObjectName("EMFX.MotionSet.RemoveMotionMessageBox.YesButton");
+        QAbstractButton* removeInMotionSetButton = question->addButton(tr("No"), QMessageBox::NoRole);
+        removeInMotionSetButton->setObjectName("EMFX.MotionSet.RemoveMotionMessageBox.NoButton");
+        QAbstractButton* cancelActionButton = question->addButton(tr("Cancel"), QMessageBox::RejectRole);
+        cancelActionButton->setObjectName("EMFX.MotionSet.RemoveMotionMessageBox.CancelButton");
 
-        if (QMessageBox::question(this, msgBoxTitle.c_str(), msgBoxText.c_str(), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) == QMessageBox::Yes)
-        {
-            removeMotion = true;
-        }
+        question->exec();
 
         // Create the failed remove motions array.
         AZStd::vector<EMotionFX::Motion*> failedRemoveMotions;
@@ -1138,10 +1135,45 @@ namespace EMStudio
         AZStd::string motionIdsToRemoveString;
         AZStd::vector<AZStd::string> removeMotionCommands;
         AZStd::string commandString, motionFilename;
+
+        if (question->clickedButton() == removeInAllButton)
+        {
+            removeMotion = true;
+        }
+
+        if (question->clickedButton() == cancelActionButton)
+        {
+            failedRemoveMotions.clear();
+            return;
+        }
+
         for (uint32 i = 0; i < numRowIndices; ++i)
         {
             QTableWidgetItem* idItem = m_tableWidget->item(rowIndices[i], 1);
             EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryById(idItem->text().toUtf8().data());
+
+            // Check if the motion exists in multiple motion sets.
+            const AZ::u32 numMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets();
+            AZ::u32 numMotionSetContainsMotion = 0;
+
+            for (AZ::u32 motionSetId = 0; motionSetId < numMotionSets; motionSetId++)
+            {
+                EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().GetMotionSet(motionSetId);
+                if (motionSet->FindMotionEntryById(motionEntry->GetId()))
+                {
+                    numMotionSetContainsMotion++;
+                    if (numMotionSetContainsMotion > 1)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            // If motion exists in multiple motion sets, then it should not be removed from motions window.
+            if (removeMotion && numMotionSetContainsMotion > 1)
+            {
+                continue;
+            }
 
             // check the reference counter if only one reference registered
             // two is needed because the remove motion command has to be called to have the undo/redo possible
@@ -1159,8 +1191,7 @@ namespace EMStudio
             }
             motionIdsToRemoveString += motionEntry->GetId();
 
-            // remove the actual motion as well?
-            // check if the motion is not valid, that means the motion is not loaded
+            // Check if the motion is not valid, that means the motion is not loaded.
             if (removeMotion && motionEntry->GetMotion())
             {
                 // Calculcate how many motion sets except than the provided one use the given motion.
@@ -1577,6 +1608,7 @@ namespace EMStudio
         menu.addSeparator();
 
         QAction* removeSelectedMotionsAction = menu.addAction("Remove Selected Motions");
+        removeSelectedMotionsAction->setObjectName("EMFX.MotionSetTableWidget.RemoveSelectedMotionsAction");
         connect(removeSelectedMotionsAction, &QAction::triggered, this, &MotionSetWindow::OnRemoveMotions);
 
         // execute the menu

@@ -1695,11 +1695,13 @@ namespace LandscapeCanvasEditor
         return nullptr;
     }
 
-    GraphModel::NodePtr MainWindow::GetNodeMatchingEntityComponentInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& entityId, const AZ::ComponentId& componentId)
+    GraphModel::NodePtr MainWindow::GetNodeMatchingEntityComponentInGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityComponentIdPair& entityComponentId)
     {
         GraphModel::NodePtrList nodes;
         GraphModelIntegration::GraphControllerRequestBus::EventResult(nodes, graphId, &GraphModelIntegration::GraphControllerRequests::GetNodes);
 
+        const AZ::EntityId& entityId = entityComponentId.GetEntityId();
+        const AZ::ComponentId& componentId = entityComponentId.GetComponentId();
         for (auto node : nodes)
         {
             auto baseNodePtr = static_cast<LandscapeCanvas::BaseNode*>(node.get());
@@ -1728,13 +1730,13 @@ namespace LandscapeCanvasEditor
         return matchingNodes;
     }
 
-    GraphModel::NodePtrList MainWindow::GetAllNodesMatchingEntityComponent(const AZ::EntityId& entityId, const AZ::ComponentId& componentId)
+    GraphModel::NodePtrList MainWindow::GetAllNodesMatchingEntityComponent(const AZ::EntityComponentIdPair& entityComponentId)
     {
         GraphModel::NodePtrList matchingNodes;
 
         for (GraphCanvas::GraphId graphId : GetOpenGraphIds())
         {
-            GraphModel::NodePtr node = GetNodeMatchingEntityComponentInGraph(graphId, entityId, componentId);
+            GraphModel::NodePtr node = GetNodeMatchingEntityComponentInGraph(graphId, entityComponentId);
             if (node)
             {
                 matchingNodes.push_back(node);
@@ -1840,7 +1842,17 @@ namespace LandscapeCanvasEditor
             }
             else
             {
+                AZ::EntityId previousParentEntityId = parentEntityId;
+
                 AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentEntityId, parentEntityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+
+                // Prevent infinite loop if the GetParent ends up returning itself, which could happen in a case where a slice is in
+                // the process of being restored and this logic gets invoked.
+                if (previousParentEntityId == parentEntityId)
+                {
+                    AZ_Assert(false, "Corrupt parent hierarchy - entity parent ID is set to itself, breaking here to prevent infinite loop.");
+                    break;
+                }
             }
         }
 
@@ -2388,7 +2400,8 @@ namespace LandscapeCanvasEditor
 
     void MainWindow::OnEntityComponentEnabled(const AZ::EntityId& entityId, const AZ::ComponentId& componentId)
     {
-        GraphModel::NodePtrList matchingNodes = GetAllNodesMatchingEntityComponent(entityId, componentId);
+        AZ::EntityComponentIdPair entityComponentId(entityId, componentId);
+        GraphModel::NodePtrList matchingNodes = GetAllNodesMatchingEntityComponent(entityComponentId);
         for (auto node : matchingNodes)
         {
             GraphCanvas::GraphId graphId = GetGraphId(node->GetGraph());
@@ -2398,7 +2411,8 @@ namespace LandscapeCanvasEditor
 
     void MainWindow::OnEntityComponentDisabled(const AZ::EntityId& entityId, const AZ::ComponentId& componentId)
     {
-        GraphModel::NodePtrList matchingNodes = GetAllNodesMatchingEntityComponent(entityId, componentId);
+        AZ::EntityComponentIdPair entityComponentId(entityId, componentId);
+        GraphModel::NodePtrList matchingNodes = GetAllNodesMatchingEntityComponent(entityComponentId);
         for (auto node : matchingNodes)
         {
             GraphCanvas::GraphId graphId = GetGraphId(node->GetGraph());
@@ -2632,10 +2646,8 @@ namespace LandscapeCanvasEditor
     {
         using namespace LandscapeCanvas;
 
-        // Ignore area extender nodes since they aren't wrapped until after they're
-        // created, so we won't know which Entity to add the Component to at this point
         auto* baseNodePtr = static_cast<BaseNode*>(node.get());
-        if (!baseNodePtr || baseNodePtr->IsAreaExtender())
+        if (!baseNodePtr)
         {
             return;
         }
@@ -2718,8 +2730,11 @@ namespace LandscapeCanvasEditor
             }
         }
         // Otherwise, this new node was created by the user from the node palette or right-click menu,
-        // so create a fresh Entity/Component for the node
-        else
+        // so create a fresh Entity/Component for the node, except we need to ignore area extender
+        // nodes since they aren't wrapped until after they're created, so we won't know which
+        // Entity to add the Component to at this point. The OnGraphModelNodeWrapped event will
+        // add the area extender component.
+        else if (!baseNodePtr->IsAreaExtender())
         {
             // Creating a node is actually two operations:  creating an Entity + adding a component(s) to that Entity
             // so we need to batch the operations so that undo/redo will treat it all as one operation

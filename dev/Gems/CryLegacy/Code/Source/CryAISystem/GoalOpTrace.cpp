@@ -339,11 +339,6 @@ bool COPTrace::ExecuteTrace(CPipeUser* pPipeUser, bool bFullUpdate)
         m_refPipeUser = GetWeakRef(pPipeUser);
     }
 
-    // HACK: Special case fix for drivers in fall&play
-    if (IsVehicleAndDriverIsFallen(pPipeUser))
-    {
-        return false;   // Trace not finished.
-    }
     bool bTraceFinished = false;
 
     if (m_bWaitingForPathResult)
@@ -962,9 +957,14 @@ bool COPTrace::Execute2D(CPipeUser* const pPipeUser, bool fullUpdate)
         fwdDir *= -1.0f;
     }
     Vec3 opPos = pPipeUser->GetPhysicsPos();
+#if ENABLE_CRY_PHYSICS
     pe_status_dynamics  dSt;
     pPipeUser->GetPhysics()->GetStatus(&dSt);
     Vec3 opVel = m_Maneuver == eMV_None ? dSt.v : fwdDir * 5.0f;
+#else
+    Vec3 opVel = m_Maneuver == eMV_None ? Vec3(0, 0, 0) : fwdDir * 5.0f;
+#endif // ENABLE_CRY_PHYSICS
+
     float lookAhead = pPipeUser->m_movementAbility.pathLookAhead;
     float pathRadius = pPipeUser->m_movementAbility.pathRadius;
     bool resolveSticking = pPipeUser->m_movementAbility.resolveStickingInTrace;
@@ -1114,6 +1114,7 @@ bool COPTrace::Execute2D(CPipeUser* const pPipeUser, bool fullUpdate)
             }
         }
 
+#if ENABLE_CRY_PHYSICS
         // slow down when going up steep slopes
         if (slopeModCoeff > 0)
         {
@@ -1144,6 +1145,7 @@ bool COPTrace::Execute2D(CPipeUser* const pPipeUser, bool fullUpdate)
                 }
             }
         }
+#endif // ENABLE_CRY_PHYSICS
 
         float maxMod = min(min(min(min(dirSpeedMod, curveSpeedMod), endSpeedMod), slopeMod), moveDirMod);
         Limit(maxMod, 0.0f, 1.0f);
@@ -1203,12 +1205,14 @@ bool COPTrace::Execute3D(CPipeUser* pPipeUser, bool fullUpdate)
             Vec3 endPt = pPipeUser->m_Path.GetPath().back().vPos;
             // ideally we would use AICE_ALL here, but that can result in intersection with the heli when it
             // gets to the end of the path...
+#if ENABLE_CRY_PHYSICS
             bool gotFloor = GetFloorPos(m_landingPos, endPt, 0.5f, 1.0f, 1.0f, AICE_STATIC);
             if (gotFloor)
             {
                 m_landHeight = 2.0f;
             }
             else
+#endif
             {
                 m_landHeight = 0.0f;
             }
@@ -1233,9 +1237,13 @@ bool COPTrace::Execute3D(CPipeUser* pPipeUser, bool fullUpdate)
         fakeOpPos.z -= pPipeUser->m_flightSteeringZOffset;
     }
 
+#if ENABLE_CRY_PHYSICS
     pe_status_dynamics  dSt;
     pPipeUser->GetPhysics()->GetStatus(&dSt);
     Vec3 opVel = dSt.v;
+#else
+    Vec3 opVel(0, 0, 0);
+#endif // ENABLE_CRY_PHYSICS
     float lookAhead = pPipeUser->m_movementAbility.pathLookAhead;
     float pathRadius = pPipeUser->m_movementAbility.pathRadius;
     bool resolveSticking = pPipeUser->m_movementAbility.resolveStickingInTrace;
@@ -1432,6 +1440,7 @@ bool COPTrace::ExecuteLanding(CPipeUser* pPipeUser, const Vec3& pathEnd)
     }
 
     //
+#if ENABLE_CRY_PHYSICS
     pe_status_collisions stat;
     stat.pHistory = 0;
     int collisions = pPipeUser->GetPhysics()->GetStatus(&stat);
@@ -1440,6 +1449,7 @@ bool COPTrace::ExecuteLanding(CPipeUser* pPipeUser, const Vec3& pathEnd)
         return true;
     }
     else
+#endif // ENABLE_CRY_PHYSICS
     {
         return false;
     }
@@ -1653,38 +1663,6 @@ bool COPTrace::HandlePathResult(CPipeUser* pPipeUser, bool* pbReturnValue)
         *pbReturnValue = false;
         return false;
     }
-}
-
-
-bool COPTrace::IsVehicleAndDriverIsFallen(CPipeUser* pPipeUser)
-{
-    if (pPipeUser->GetType() == AIOBJECT_VEHICLE)
-    {
-        // Check if the vehicle driver is tranq'd and do not move if it is.
-        if (EntityId driverId = pPipeUser->GetProxy()->GetLinkedDriverEntityId())
-        {
-            if (IEntity* pDriverEntity = gEnv->pEntitySystem->GetEntity(driverId))
-            {
-                if (IAIObject* pDriverAI = pDriverEntity->GetAI())
-                {
-                    if (CAIActor* pDriverActor = pDriverAI->CastToCAIActor())
-                    {
-                        if (IAIActorProxy* pDriverProxy = pDriverActor->GetProxy())
-                        {
-                            if (pDriverProxy->GetActorIsFallen())
-                            {
-                                // The driver is unable to drive, do not drive.
-                                StopMovement(pPipeUser);
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
 }
 
 

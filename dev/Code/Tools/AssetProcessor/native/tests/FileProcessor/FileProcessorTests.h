@@ -58,23 +58,23 @@ namespace UnitTests
         //////////////////////////////////////////////////////////////////////////
 
         // Sends an unsolicited message to the connection
-        size_t Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message);
+        size_t Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) override;
         // Sends a raw buffer to the connection
-        size_t SendRaw(unsigned int type, unsigned int serial, const QByteArray& data) { return 0; };
+        size_t SendRaw([[maybe_unused]] unsigned int type, [[maybe_unused]] unsigned int serial, [[maybe_unused]] const QByteArray& data) override { return 0; };
 
         // Sends a message to the connection if the platform match
-        size_t SendPerPlatform(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const QString& platform){ return 0; };
+        size_t SendPerPlatform([[maybe_unused]] unsigned int serial, [[maybe_unused]] const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, [[maybe_unused]] const QString& platform) override { return 0; };
         // Sends a raw buffer to the connection if the platform match
-        size_t SendRawPerPlatform(unsigned int type, unsigned int serial, const QByteArray& data, const QString& platform){ return 0; };
+        size_t SendRawPerPlatform([[maybe_unused]] unsigned int type, [[maybe_unused]] unsigned int serial, [[maybe_unused]] const QByteArray& data, [[maybe_unused]] const QString& platform) override { return 0; };
 
         // Sends a message to the connection which expects a response.
-        unsigned int SendRequest(const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const ResponseCallback& callback){ return 0; };
+        unsigned int SendRequest([[maybe_unused]] const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, [[maybe_unused]] const ResponseCallback& callback) override { return 0; };
 
         // Sends a response to the connection
-        size_t SendResponse(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message){ return 0; };
+        size_t SendResponse([[maybe_unused]] unsigned int serial, [[maybe_unused]] const AzFramework::AssetSystem::BaseAssetProcessorMessage& message) override { return 0; };
 
         // Removes a response handler that is no longer needed
-        void RemoveResponseHandler(unsigned int serial){};
+        void RemoveResponseHandler([[maybe_unused]] unsigned int serial) override {};
 
     protected:
         struct StaticData

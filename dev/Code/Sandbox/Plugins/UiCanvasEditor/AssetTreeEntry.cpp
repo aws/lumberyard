@@ -133,7 +133,7 @@ AssetTreeEntry* AssetTreeEntry::BuildAssetTree(const AZ::Data::AssetType& assetT
     filter.Filter(entries, rootEntry.get());
 
     AssetTreeEntry* assetTree = new AssetTreeEntry;
-    for (const auto entry : entries)
+    for (const auto& entry : entries)
     {
         auto product = azrtti_cast<const ProductAssetBrowserEntry*>(entry);
         AZStd::string name;

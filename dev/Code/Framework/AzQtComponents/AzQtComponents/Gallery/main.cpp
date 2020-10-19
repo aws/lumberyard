@@ -27,7 +27,6 @@
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <AzQtComponents/Utilities/HandleDpiAwareness.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include "ComponentDemoWidget.h"
 
 #include <AzCore/Memory/SystemAllocator.h>

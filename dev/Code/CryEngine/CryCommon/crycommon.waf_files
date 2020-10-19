@@ -457,7 +457,8 @@
             "OceanConstants.h",
             "Codec.h",
             "PakLoadDataUtils.h",
-            "TPool.h"
+            "TPool.h",
+            "CryPhysicsDeprecation.h"
         ],
         "Common_h/RenderElements":
         [
@@ -859,7 +860,6 @@
             "ISubtitleManager.h",
             "ITestModule.h",
             "IUIDraw.h",
-            "IVehicleSystem.h",
             "IWeapon.h",
             "IWorldQuery.h"
         ]

@@ -13,12 +13,13 @@
 #pragma once
 
 #include "LegacyTerrain_precompiled.h"
+#include <IGem.h>
 #include <AzCore/Module/Module.h>
 
 namespace LegacyTerrain
 {
     class LegacyTerrainModule
-        : public AZ::Module
+        : public CryHooksModule
     {
     public:
         AZ_RTTI(LegacyTerrainModule, "{4774487F-71DC-4CA4-943C-A31CE05D0616}", AZ::Module);

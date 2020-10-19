@@ -346,7 +346,7 @@ void CResourceManager::UnloadFastLoadPaks()
     }
     m_fastLoadPakPaths.clear();
 
-    if (gEnv->pRenderer)
+    if (gEnv && gEnv->pRenderer)
     {
         gEnv->pRenderer->UnloadShaderStartupCache();
     }
@@ -645,7 +645,10 @@ void CResourceManager::Init()
 void CResourceManager::Shutdown()
 {
     UnloadAllLevelCachePaks(false);
-    GetISystem()->GetISystemEventDispatcher()->RemoveListener(this);
+    if (GetISystem() && GetISystem()->GetISystemEventDispatcher())
+    {
+        GetISystem()->GetISystemEventDispatcher()->RemoveListener(this);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

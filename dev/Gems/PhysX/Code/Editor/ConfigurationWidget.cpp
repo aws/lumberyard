@@ -45,12 +45,15 @@ namespace PhysX
             verticalLayout->addWidget(m_tabs);
 
             connect(m_settings, &SettingsWidget::onValueChanged,
-                this, [this](const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
-                             const PhysX::EditorConfiguration& editorConfiguration)
+                this, [this](const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary,
+                             const Physics::WorldConfiguration& worldConfiguration,
+                             const PhysX::EditorConfiguration& editorConfiguration,
+                             const PhysX::WindConfiguration& windConfiguration)
             {
                 m_materialLibrary = materialLibrary;
                 m_worldConfiguration = worldConfiguration;
                 m_physxConfiguration.m_editorConfiguration = editorConfiguration;
+                m_physxConfiguration.m_windConfiguration = windConfiguration;
                 emit onConfigurationChanged(m_physxConfiguration, m_collisionConfiguration, m_worldConfiguration, m_materialLibrary);
             });
 
@@ -87,7 +90,7 @@ namespace PhysX
             m_collisionConfiguration = collisionConfiguration;
             m_worldConfiguration = worldConfiguration;
             m_materialLibrary = materialLibrary;
-            m_settings->SetValue(m_materialLibrary, m_worldConfiguration, m_physxConfiguration.m_editorConfiguration);
+            m_settings->SetValue(m_materialLibrary, m_worldConfiguration, m_physxConfiguration.m_editorConfiguration, m_physxConfiguration.m_windConfiguration);
             m_collisionFiltering->SetConfiguration(m_collisionConfiguration.m_collisionLayers, m_collisionConfiguration.m_collisionGroups);
             m_pvd->SetValue(m_physxConfiguration.m_settings);
         }

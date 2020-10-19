@@ -16,6 +16,8 @@
 
 #include <ISystem.h>
 #include <I3DEngine.h>
+
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
 #include <IEntitySystem.h>
 
@@ -128,6 +130,7 @@ int CScriptBind_Physics::RegisterExplosionShape(IFunctionHandler* pH, const char
 //////////////////////////////////////////////////////////////////////////
 int CScriptBind_Physics::RegisterExplosionCrack(IFunctionHandler* pH, const char* sGeometryFile, int nIdMaterial)
 {
+#if ENABLE_CRY_PHYSICS
     IStatObj* pObj = gEnv->p3DEngine->LoadStatObjUnsafeManualRef(sGeometryFile, "#ForceBreakable", NULL, false);
     if (!pObj || pObj->IsDefaultObject())
     {
@@ -138,6 +141,7 @@ int CScriptBind_Physics::RegisterExplosionCrack(IFunctionHandler* pH, const char
     Vec3 vtx[3] = { pObj->GetHelperPos("1"), pObj->GetHelperPos("2"), pObj->GetHelperPos("3") };
     //@TODO: restore it.
     m_pPhysicalWorld->GetGeomManager()->RegisterCrack(pObj->GetPhysGeom()->pGeom, vtx, 0);
+#endif // ENABLE_CRY_PHYSICS
     return pH->EndFunction();
 }
 
@@ -340,3 +344,5 @@ int CScriptBind_Physics::SamplePhysEnvironment(IFunctionHandler* pH)
 
     return pH->EndFunction(*pObj);
 }
+
+#endif // ENABLE_CRY_PHYSICS

@@ -10,38 +10,43 @@
 *
 */
 
-var testAccounts = require('./test-accounts.js');
-var session = require('./session-helper.js');
+const testAccounts = require('./test-accounts.js');
+const session = require('./session-helper.js');
 
 /**
  * User Administrator Integration Test
  *
- * Tests user management screens.
+ * Tests user administration management for CloudGemPortal
  */
 describe('User Administration', function () {
-    var page = {
+    const page = {
         search: {
             dropdown: $('.search-dropdown'),
             options: $$('button.dropdown-item'),
             input: $(".search-text")
         },
         link: $('a.admin-user-mgt'),
+        linkText: "User Administration",
         linkClass: 'a.admin-user-mgt'
     }
 
     beforeAll(function () {
+        // Delete item can be off screen causing tests to fail with 'element not interactable' errors
+        browser.driver.manage().window().maximize();
         console.log("Opening: " + browser.params.url)
         browser.get(browser.params.url)
         console.log("Waiting for the Cloud Gem Portal to load.")
         browser.wait(until.urlContains(session.loginPath), 10000, "urlContains"); // Checks that the current URL contains the expected text
         console.log("Logging in as admin")
         session.loginAsAdministrator();
-        browser.wait(until.presenceOf(page.link), 20000, "Can't find user administration navigation bar link");
+        const userAdminLink = element(by.linkText("User Administration"))
+        browser.wait(until.presenceOf(userAdminLink), 20000, "Can't find user administration navigation bar link");
         browser.driver.sleep(2000)
-        page.link.click();
+        userAdminLink.click();
     });
 
     describe('Integration Tests', function () {
+        const EC = protractor.ExpectedConditions;
         it('should be able to login and create a user', function () {
             createTestUser();
         });
@@ -80,9 +85,10 @@ describe('User Administration', function () {
 
             // login as the admin account again
             session.loginAsAdministrator();
-            browser.wait(until.presenceOf(page.link), 10000, "Can't find user administration navigation bar link");
+            const userAdminLink = element(by.linkText("User Administration"))
+            browser.wait(until.presenceOf(userAdminLink), 20000, "Can't find user administration navigation bar link");
             browser.driver.sleep(2000)
-            page.link.click();
+            userAdminLink.click();
         });
 
         it('should be able to delete a user', function () {
@@ -93,8 +99,16 @@ describe('User Administration', function () {
             browser.wait(until.presenceOf(page.search.options.first()), 10000, "Can't access dropdown options for user administration search filtering");
             page.search.options.first().click();
             page.search.input.sendKeys(testAccounts.user.username);
+
             browser.wait(until.presenceOf(testUsernameClass), 10000, "Can't find test user accounts.  Ensure that the users are not split up over two pages.");
-            testUsernameClass.click();
+
+            // Find the row for the searched user
+            const testUserName = element(by.id(testAccounts.user.username));
+            // Find the delete action button for the row
+            const deleteElement = testUserName.element(by.css('i[title=Delete]'));
+
+            browser.wait(EC.elementToBeClickable(deleteElement), 5000);
+            deleteElement.click();
             $('button[type="submit"]').click();
             browser.driver.sleep(1000)
         });

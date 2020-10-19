@@ -72,3 +72,8 @@ QMenu::separator
     margin-top: 2px;
     margin-bottom: 3px;
 }
+
+QMenu.SourceControlMenu::item
+{
+    margin-left: 22px;
+}

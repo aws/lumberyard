@@ -12,6 +12,8 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "CryLegacy_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 #include "CryAction.h"
 #include "IGameRulesSystem.h"
 #include "ActionGame.h"
@@ -58,3 +60,4 @@ void CDelayedPlaneBreak::OnUpdate()
     }
     m_status = DONE;
 }
+#endif // ENABLE_CRY_PHYSICS

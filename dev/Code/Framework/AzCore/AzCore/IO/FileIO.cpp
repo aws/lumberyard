@@ -276,16 +276,16 @@ namespace AZ
 
         FileIOStream::FileIOStream()
             : m_handle(InvalidHandle)
-            , m_ownsHandle(true)
             , m_mode(OpenMode::Invalid)
+            , m_ownsHandle(true)
         {
 
         }
 
         FileIOStream::FileIOStream(HandleType fileHandle, AZ::IO::OpenMode mode, bool ownsHandle)
             : m_handle(fileHandle)
-            , m_ownsHandle(ownsHandle)
             , m_mode(mode)
+            , m_ownsHandle(ownsHandle)
         {
             
             FileIOBase* fileIO = FileIOBase::GetInstance();
@@ -295,9 +295,10 @@ namespace AZ
             m_filename = resolvedPath.data();
         }
 
-        FileIOStream::FileIOStream(const char* path, AZ::IO::OpenMode mode)
+        FileIOStream::FileIOStream(const char* path, AZ::IO::OpenMode mode, bool errorOnFailure)
             : m_handle(InvalidHandle)
             , m_mode(mode)
+            , m_errorOnFailure(errorOnFailure)
         {
             Open(path, mode);
         }
@@ -435,9 +436,9 @@ namespace AZ
             AZ_Assert(IsOpen(), "Cannot read from a FileIOStream that is not open.");
 
             AZ::u64 bytesRead = 0;
-            const Result result = FileIOBase::GetInstance()->Read(m_handle, oBuffer, bytes, false, &bytesRead);
+            const Result result = FileIOBase::GetInstance()->Read(m_handle, oBuffer, bytes, m_errorOnFailure, &bytesRead);
             (void)result;
-            AZ_Error("FileIOStream", result.GetResultCode() == ResultCode::Success, "Read failed.");
+            AZ_Error("FileIOStream", result.GetResultCode() == ResultCode::Success, "Read failed in file %s.", m_filename.empty() ? "NULL" : m_filename.c_str());
             return static_cast<SizeType>(bytesRead);
         }
 

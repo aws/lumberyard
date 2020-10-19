@@ -81,7 +81,9 @@ class SandboxIntegrationManager
     , private AzToolsFramework::EditorPickModeNotificationBus::Handler
     , private AzToolsFramework::EditorEvents::Bus::Handler
     , private AzFramework::AssetCatalogEventBus::Handler
+#if !defined(OTHER_ACTIVE) || !defined(ENABLE_OTHER_DEBUG_DISPLAY) || !ENABLE_OTHER_DEBUG_DISPLAY
     , private AzFramework::DebugDisplayRequestBus::Handler
+#endif
     , private AzFramework::DisplayContextRequestBus::Handler
     , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , private IUndoManagerListener
@@ -182,11 +184,15 @@ private:
     //////////////////////////////////////////////////////////////////////////
 
     // AzToolsFramework::DebugDisplayRequestBus
+#if !defined(OTHER_ACTIVE) || !defined(ENABLE_OTHER_DEBUG_DISPLAY) || !ENABLE_OTHER_DEBUG_DISPLAY
     void SetColor(float r, float g, float b, float a) override;
     void SetColor(const AZ::Color& color) override;
     void SetColor(const AZ::Vector4& color) override;
     void SetAlpha(float a) override;
     void DrawQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4) override;
+    void DrawQuad(float width, float height) override;
+    void DrawWireQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4) override;
+    void DrawWireQuad(float width, float height) override;
     void DrawQuadGradient(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4, const AZ::Vector4& firstColor, const AZ::Vector4& secondColor) override;
     void DrawTri(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3) override;
     void DrawTriangles(const AZStd::vector<AZ::Vector3>& vertices, const AZ::Color& color) override;
@@ -244,6 +250,7 @@ private:
     AZ::u32 ClearStateFlag(AZ::u32 state) override;
     void PushMatrix(const AZ::Transform& tm) override;
     void PopMatrix() override;
+#endif // OTHER_ACTIVE
 
     // AzFramework::DisplayContextRequestBus
     void SetDC(DisplayContext* dc) override;

@@ -16,6 +16,7 @@
 #include <AzFramework/Physics/Collision.h>
 #include <AzFramework/Physics/TerrainBus.h>
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 #include <PhysX/ComponentTypeIds.h>
 #include <PhysX/HeightFieldAsset.h>
 
@@ -42,6 +43,7 @@ namespace PhysX
     class TerrainComponent
         : public AZ::Component
         , public Physics::TerrainRequestBus::Handler
+        , private AzFramework::Terrain::TerrainDataNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(TerrainComponent, TerrainComponentTypeId);
@@ -65,8 +67,14 @@ namespace PhysX
         float GetHeight(float x, float y) override;
         Physics::RigidBodyStatic* GetTerrainTile(float x, float y) override;
 
+        // AzFramework::Terrain::TerrainDataNotificationBus
+        void OnTerrainDataCreateEnd() override;
+        void OnTerrainDataDestroyBegin() override;
+
     private:
         void LoadTerrain();
+        void EnableTerrain();
+        void DisableTerrain();
 
         AZStd::vector<AZStd::unique_ptr<Physics::RigidBodyStatic>> m_terrainTiles; ///< Terrain tile bodies.
         TerrainConfiguration m_configuration; ///< Terrain configuration.

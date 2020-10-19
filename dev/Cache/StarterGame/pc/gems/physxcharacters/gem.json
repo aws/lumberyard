@@ -13,7 +13,14 @@
                 "~>0.1"
             ],
             "_comment": "PhysX"
-        }        
+        },
+        {
+            "Uuid": "044a63ea67d04479aa5daf62ded9d9ca",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "EmotionFX"
+        }
     ],
     "GemFormatVersion": 3,
     "Uuid": "50f9ae1e09ac471bbd9d86ca8063ddf9",

@@ -125,6 +125,7 @@ namespace AZ
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("GetAssetPathById", &Data::AssetCatalogRequests::GetAssetPathById)
                 ->Event("GetAssetIdByPath", &Data::AssetCatalogRequests::GetAssetIdByPath)
+                ->Event("GetAssetTypeByDisplayName", &Data::AssetCatalogRequests::GetAssetTypeByDisplayName)
                 ;
         }
 

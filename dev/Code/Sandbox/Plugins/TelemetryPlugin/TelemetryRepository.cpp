@@ -17,6 +17,7 @@
 #include "TelemetryEventTimeline.h"
 #include "I3DEngine.h"
 #include "Objects/ObjectLayerManager.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -109,8 +110,9 @@ void CTelemetryRepository::ClearData(bool clearEditorObjs)
 
     if (GetIEditor()->GetDocument())
     {
-        float ts = (float)GetIEditor()->Get3DEngine()->GetTerrainSize();
-        m_octree.setWorldBox(AABB(Vec3(0, 0, 0), Vec3(ts, ts, ts)));
+        AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+        AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+        m_octree.setWorldBox(AABB(Vec3(0, 0, 0), Vec3(terrainAabb.GetWidth(), terrainAabb.GetHeight(), terrainAabb.GetDepth())));
     }
     m_octree.Clear();
 

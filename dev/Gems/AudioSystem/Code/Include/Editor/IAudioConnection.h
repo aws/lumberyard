@@ -19,21 +19,12 @@
 
 namespace AudioControls
 {
-    class IAudioSystemControl;
-
-    // lumberyard-refactor:
-    // since this class is in a file named IAudioConnection.h and this is a concrete class,
-    // it is named badly.  The 'I' should denote an interface.  Two ways to go here:
-    // 1) Make a real Interface class, keep it named IAudioConnection and derive a concrete
-    //    'shared' class that has all this implementation.
-    // 2) Rename the file and class to AudioConnection, then it is no longer confusing.
-
     //-------------------------------------------------------------------------------------------//
     class IAudioConnection
     {
     public:
-        IAudioConnection(CID nID)
-            : m_nID(nID)
+        IAudioConnection(CID id)
+            : m_id(id)
         {
         }
 
@@ -41,16 +32,7 @@ namespace AudioControls
 
         CID GetID() const
         {
-            return m_nID;
-        }
-
-        const AZStd::string& GetGroup() const
-        {
-            return m_sGroup;
-        }
-        void SetGroup(const AZStd::string& group)
-        {
-            m_sGroup = group;
+            return m_id;
         }
 
         virtual bool HasProperties()
@@ -63,7 +45,7 @@ namespace AudioControls
         }
 
     private:
-        CID m_nID;
-        AZStd::string m_sGroup;
+        CID m_id;
     };
+
 } // namespace AudioControls

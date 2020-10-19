@@ -139,7 +139,7 @@ namespace ScriptCanvas
 
             SlotId ExpressionNodeBase::HandleExtension(AZ::Crc32 extensionId)
             {
-                if (extensionId == GetExtensionId())
+                if (extensionId == GetExtensionId() && !m_isInError)
                 {
                     int value = 0;
                     AZStd::string name = "Value";
@@ -257,7 +257,7 @@ namespace ScriptCanvas
             }
 
             void ExpressionNodeBase::ParseFormat(bool signalError)
-            {                
+            {
                 ExpressionEvaluation::ParseOutcome parseOutcome = ParseExpression(m_format);
 
                 if (!parseOutcome.IsSuccess())
@@ -280,7 +280,6 @@ namespace ScriptCanvas
 
                     m_parsingFormat = true;
 
-                    AZStd::vector< AZStd::string > eraseVariables = m_expressionTree.GetVariables();
                     AZStd::unordered_map< AZStd::string, SlotCacheSetup > variableSlotMapping;
 
                     m_expressionTree = parseOutcome.GetValue();
@@ -293,6 +292,19 @@ namespace ScriptCanvas
 
                         if (slot)
                         {
+                            if (slot->IsExecution() || slot->IsOutput())
+                            {
+                                m_isInError = true;
+                                m_parseError = ExpressionEvaluation::ParsingError();
+                                m_parseError.m_offsetIndex = m_format.find_first_of(variableString);
+                                m_parseError.m_errorString = AZStd::string::format("Using reserved slot name \"%s\" in expression at position %zu", variableString.c_str(), m_parseError.m_offsetIndex);
+
+                                AZStd::string parseError = m_parseError.m_errorString;
+                                GetGraph()->ReportError((*this), "Parsing Error", parseError);
+
+                                return;
+                            }
+
                             SlotCacheSetup& cacheSetup = variableSlotMapping[variableString];
 
                             cacheSetup.m_previousId = slot->GetId();
@@ -308,19 +320,16 @@ namespace ScriptCanvas
                         }
                     }
 
-                    for (const AZStd::string& eraseName : eraseVariables)
+                    AZStd::vector<const Slot*> eraseSlots = GetAllSlotsByDescriptor(SlotDescriptors::DataIn());
+
+                    for (const Slot* eraseSlot : eraseSlots)
                     {
-                        Slot* slot = GetSlotByName(eraseName);
+                        // If we have the name in our mapping. We want to keep its connections since we're going to
+                        // recreate it.
+                        size_t newMapping = variableSlotMapping.count(eraseSlot->GetName());
+                        bool signalRemoval = newMapping == 0;
 
-                        if (slot)
-                        {
-                            // If we have the name in our mapping. We want to keep its connections since we're going to
-                            // recreate it.
-                            size_t newMapping = variableSlotMapping.count(eraseName);
-                            bool signalRemoval = newMapping == 0;
-
-                            RemoveSlot(slot->GetId(), signalRemoval);
-                        }
+                        RemoveSlot(eraseSlot->GetId(), signalRemoval);
                     }
 
                     // Start our counting from our raw variable position ignoring any other slots that might have been added.

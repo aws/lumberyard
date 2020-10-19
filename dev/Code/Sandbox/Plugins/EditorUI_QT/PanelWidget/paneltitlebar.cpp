@@ -26,6 +26,8 @@
 #include <Undo/Undo.h>
 #include "Util/Variable.h"
 
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
+
 PanelTitleBar::PanelTitleBar(QWidget* parent)
     : QCopyableWidget(parent)
     , ui(new Ui::PanelTitleBar)
@@ -35,6 +37,9 @@ PanelTitleBar::PanelTitleBar(QWidget* parent)
     QDockWidget* dw = qobject_cast<QDockWidget*>(parentWidget());
     ui->label->setText(dw->windowTitle());
     ui->label->installEventFilter(this);
+
+    AzQtComponents::CheckBox::applyExpanderStyle(ui->collapseCheckBox);
+    connect(ui->collapseCheckBox, &QCheckBox::clicked, this, [this] { toggleCollapsed(); repaintAll(); });
 
     ui->renameCheckButton->setObjectName("PanelTitleBarComfirmRenameBtn");
     storedContents = new QWidget(this);
@@ -151,6 +156,7 @@ void PanelTitleBar::toggleCollapsed()
     {
         m_callbackOnCollapse();
     }
+    ui->collapseCheckBox->setChecked(!m_collapsed);
 }
 
 void PanelTitleBar::repaintAll()

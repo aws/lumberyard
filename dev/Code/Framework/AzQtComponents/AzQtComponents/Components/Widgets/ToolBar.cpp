@@ -22,6 +22,7 @@
 #include <QSettings>
 #include <QStyleOptionToolBar>
 #include <QToolBar>
+#include <QToolButton>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'QCss::Declaration::d': class 'QExplicitlySharedDataPointer<QCss::Declaration::DeclarationData>' needs to have dll-interface to be used by clients of struct 'QCss::Declaration'
 #include <QtWidgets/private/qstylesheetstyle_p.h>
@@ -106,6 +107,17 @@ void ToolBar::setToolBarIconSize(QToolBar* toolbar, ToolBarIconSize size)
 
     // Repolish
     StyleManager::repolishStyleSheet(toolbar);
+}
+
+QToolButton* ToolBar::getToolBarExpansionButton(QToolBar* toolBar)
+{
+    if (!toolBar)
+    {
+        return nullptr;
+    }
+
+    auto children = toolBar->findChildren<QToolButton*>("qt_toolbar_ext_button", Qt::FindDirectChildrenOnly);
+    return children.isEmpty() ? nullptr : children.first();
 }
 
 bool ToolBar::polish(Style* style, QWidget* widget, const Config& config)

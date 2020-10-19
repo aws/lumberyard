@@ -43,6 +43,9 @@
         <height>18</height>
        </size>
       </property>
+      <property name="toolTip">
+       <string>View this asset</string>
+      </property>
       <property name="text">
        <string/>
       </property>

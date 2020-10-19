@@ -58,6 +58,8 @@ enum EPhysicsForeignIds
 #include "primitives.h"
 #include <physinterface.h> // <> required for Interfuscator
 
+#if ENABLE_CRY_PHYSICS
 extern "C" CRYPHYSICS_API IPhysicalWorld * CreatePhysicalWorld(struct ISystem* pLog);
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_IPHYSICS_H

@@ -32,6 +32,7 @@ public:
     };
 
     EditorPreferencesTreeWidgetItem(IPreferencesPage* page, const QPixmap& selectedImage, QPixmap& unselectedImage);
+    EditorPreferencesTreeWidgetItem(IPreferencesPage* page, const QIcon& icon);
     ~EditorPreferencesTreeWidgetItem();
 
     void SetActivePage(bool active);
@@ -41,6 +42,8 @@ public:
     IPreferencesPage* GetPreferencesPage() const;
 
 private:
+    void Setup(IPreferencesPage* page);
+
     IPreferencesPage* m_preferencesPage;
     QPixmap m_selectedImage;
     QPixmap m_unselectedImage;

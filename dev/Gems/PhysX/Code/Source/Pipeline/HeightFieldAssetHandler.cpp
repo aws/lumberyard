@@ -108,6 +108,8 @@ namespace PhysX
 
         bool HeightFieldAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
             HeightFieldAsset* physXHeightFieldAsset = asset.GetAs<HeightFieldAsset>();
             if (!physXHeightFieldAsset)
             {
@@ -164,6 +166,8 @@ namespace PhysX
 
         bool HeightFieldAssetHandler::SaveAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream)
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
             HeightFieldAsset* physXHeightFieldAsset = asset.GetAs<HeightFieldAsset>();
             if (!physXHeightFieldAsset)
             {

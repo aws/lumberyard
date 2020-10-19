@@ -50,9 +50,14 @@ namespace AssetProcessor
 
 namespace AssetUtilities
 {
+    inline constexpr char GameFolderOverrideParameter[] = "gamefolder";
+
     //! Set precision fingerprint timestamps will be truncated to avoid mismatches across systems/packaging with different file timestamp precisions
     //! Timestamps default to milliseconds.  A value of 1 will keep the default millisecond precision.  A value of 1000 will reduce the precision to seconds
     void SetTruncateFingerprintTimestamp(int precision);
+
+    //! Sets an override for using file hashing.  If override is true, the value of enable will be used instead of the settings file
+    void SetUseFileHashOverride(bool override, bool enable);
 
     //! Compute the root asset folder by scanning for marker files such as root.ini
     //! By Default, this searches the applications root and walks upwards, but you are allowed to instead
@@ -96,7 +101,7 @@ namespace AssetUtilities
     //! Reads the server address from the config file.
     QString ServerAddress();
 
-    int AllowedTimeZoneOffset();
+    bool ShouldUseFileHashing();
 
     //! Determine the name of the current game - for example, SamplesProject
     QString ComputeGameName(QString initialFolder = QString(), bool force = false);
@@ -226,6 +231,12 @@ namespace AssetUtilities
 
     //! interrogate a given file, which is specified as a full path name, and generate a fingerprint for it.
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail);
+
+    //! Returns a hash of the contents of the specified file
+    // hashMsDelay is only for automated tests to test that writing to a file while it's hashing does not cause a crash.
+    // hashMsDelay is not used in non-unit test builds.
+    AZ::u64 GetFileHash(const char* filePath, bool force = false, AZ::IO::SizeType* bytesReadOut = nullptr, int hashMsDelay = 0);
+    inline constexpr AZ::u64 FileHashBufferSize = 1024 * 64;
 
     //! Adjusts a timestamp to fix timezone settings and account for any precision adjustment needed
     std::uint64_t AdjustTimestamp(QDateTime timestamp);

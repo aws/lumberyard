@@ -12,6 +12,8 @@
 
 #if defined(BUILD_GAMELIFT_CLIENT)
 
+#include "GameLift_Traits.h"
+
 #include <AzCore/PlatformIncl.h>
 
 #include <GameLift/Session/GameLiftClientSession.h>
@@ -501,7 +503,11 @@ namespace GridMate
                 wb.Write(playerSessionId);
                 SetHandshakeUserData(wb.Get(), wb.Size());
 
-                Aws::String resolvedIp = m_playerSession.GetIpAddress();
+                string ip = m_playerSession.GetIpAddress().c_str();
+                string resolvedIp = ip;
+#if AZ_TRAIT_IPV6_REQUIRED
+                AZ_Assert(SocketDriverCommon::IPv4ToIPv6(ip, resolvedIp), "Invalid IPv4 address!");
+#endif
                 if (!resolvedIp.empty())
                 {
                     m_hostAddress = SocketDriverCommon::IPPortToAddressString(resolvedIp.c_str(), m_playerSession.GetPort());

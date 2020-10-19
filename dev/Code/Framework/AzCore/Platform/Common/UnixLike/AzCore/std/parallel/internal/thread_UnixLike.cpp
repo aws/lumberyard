@@ -38,7 +38,8 @@ namespace AZStd
             ti->execute();
 
             destroy_thread_info(ti);
-            EBUS_EVENT(ThreadEventBus, OnThreadExit, this_thread::get_id());
+            ThreadEventBus::Broadcast(&ThreadEventBus::Events::OnThreadExit, this_thread::get_id());
+            ThreadDrillerEventBus::Broadcast(&ThreadDrillerEventBus::Events::OnThreadExit, this_thread::get_id());
             pthread_exit(nullptr);
             return nullptr;
         }
@@ -86,7 +87,8 @@ namespace AZStd
             // Platform specific post thread creation action (setting thread name on some, affinity on others)
             Platform::PostCreateThread(tId, name, cpuId);
 
-            EBUS_EVENT(ThreadEventBus, OnThreadEnter, thread::id(tId), desc);
+            ThreadEventBus::Broadcast(&ThreadEventBus::Events::OnThreadEnter, thread::id(tId), desc);
+            ThreadDrillerEventBus::Broadcast(&ThreadDrillerEventBus::Events::OnThreadEnter, thread::id(tId), desc);
             return tId;
         }
     }

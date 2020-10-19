@@ -15,10 +15,12 @@
 #include <Vegetation/Descriptor.h>
 #include <SurfaceData/SurfaceTag.h>
 #include <AzCore/Asset/AssetManager.h>
-#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/std/sort.h>
+#include <Vegetation/DynamicSliceInstanceSpawner.h>
+#include <Vegetation/EmptyInstanceSpawner.h>
+#include <Vegetation/LegacyVegetationInstanceSpawner.h>
 
 //////////////////////////////////////////////////////////////////////
 // #pragma inline_depth(0)
@@ -71,9 +73,41 @@ namespace Vegetation
             {
                 classElement.RemoveElementByName(AZ_CRC("RadiusMax", 0x5e90f2ea));
             }
+            if (classElement.GetVersion() < 6)
+            {
+                AZStd::shared_ptr<InstanceSpawner> baseInstanceSpawner = LegacyVegetationInstanceSpawner::ConvertLegacyDescriptorData(classElement);
+                classElement.AddElementWithData(context, "InstanceSpawner", baseInstanceSpawner);
+            }
+            if (classElement.GetVersion() < 7)
+            {
+                // The only type of spawners supported prior to this version were legacy vegetation spawners.
+                classElement.AddElementWithData(context, "SpawnerType", AZStd::string("Legacy Vegetation"));
+            }
+            if (classElement.GetVersion() < 8)
+            {
+                // Spawner type was briefly stored as a display string instead of a TypeId.
+                AZStd::string spawnerType;
+                if (classElement.GetChildData(AZ_CRC("SpawnerType", 0xbabb9f23), spawnerType))
+                {
+                    AZ::TypeId newSpawnerType = azrtti_typeid<EmptyInstanceSpawner>();
+                    if (spawnerType == "Legacy Vegetation")
+                    {
+                        newSpawnerType = azrtti_typeid<LegacyVegetationInstanceSpawner>();
+                    }
+                    else if (spawnerType == "Dynamic Slice")
+                    {
+                        newSpawnerType = azrtti_typeid<DynamicSliceInstanceSpawner>();
+                    }
+
+                    classElement.RemoveElementByName(AZ_CRC("SpawnerType", 0xbabb9f23));
+                    classElement.AddElementWithData(context, "SpawnerType", newSpawnerType);
+                }
+            }
             return true;
         }
     }
+
+    AZStd::fixed_vector<AZStd::pair<AZ::TypeId, AZStd::string_view>, Descriptor::m_maxSpawnerTypesExpected> Descriptor::m_spawnerTypes;
 
     void Descriptor::Reflect(AZ::ReflectContext* context)
     {
@@ -91,12 +125,10 @@ namespace Vegetation
             serialize->RegisterGenericType<AZStd::vector<Descriptor>>();
 
             serialize->Class<Descriptor>()
-                ->Version(5, &DescriptorUtil::UpdateVersion)
-                ->Field("MeshAsset", &Descriptor::m_meshAsset)
-                ->Field("MaterialAsset", &Descriptor::m_materialAsset)
+                ->Version(8, &DescriptorUtil::UpdateVersion)
+                ->Field("SpawnerType", &Descriptor::m_spawnerType)
+                ->Field("InstanceSpawner", &Descriptor::m_instanceSpawner)
                 ->Field("Weight", &Descriptor::m_weight)
-                ->Field("AutoMerge", &Descriptor::m_autoMerge)
-                ->Field("UseTerrainColor", &Descriptor::m_useTerrainColor)
                 ->Field("Advanced", &Descriptor::m_advanced)
                 ->Field("PositionOverrideEnabled", &Descriptor::m_positionOverrideEnabled)
                 ->Field("PositionMinX", &Descriptor::m_positionMinX)
@@ -118,11 +150,6 @@ namespace Vegetation
                 ->Field("AltitudeFilterOverrideEnabled", &Descriptor::m_altitudeFilterOverrideEnabled)
                 ->Field("AltitudeFilterMin", &Descriptor::m_altitudeFilterMin)
                 ->Field("AltitudeFilterMax", &Descriptor::m_altitudeFilterMax)
-                ->Field("WindBending", &Descriptor::m_windBending)
-                ->Field("AirResistance", &Descriptor::m_airResistance)
-                ->Field("Stiffness", &Descriptor::m_stiffness)
-                ->Field("Damping", &Descriptor::m_damping)
-                ->Field("Variance", &Descriptor::m_variance)
                 ->Field("RadiusOverrideEnabled", &Descriptor::m_radiusOverrideEnabled)
                 ->Field("BoundMode", &Descriptor::m_boundMode)
                 ->Field("RadiusMin", &Descriptor::m_radiusMin)
@@ -136,8 +163,6 @@ namespace Vegetation
                 ->Field("InclusiveSurfaceFilterTags", &Descriptor::m_inclusiveSurfaceFilterTags)
                 ->Field("ExclusiveSurfaceFilterTags", &Descriptor::m_exclusiveSurfaceFilterTags)
                 ->Field("SurfaceTagDistance", &Descriptor::m_surfaceTagDistance)
-                ->Field("ViewDistRatio", &Descriptor::m_viewDistanceRatio)
-                ->Field("LodDistRatio", &Descriptor::m_lodDistanceRatio)
                 ;
 
             AZ::EditContext* edit = serialize->GetEditContext();
@@ -145,155 +170,155 @@ namespace Vegetation
             {
                 edit->Class<Descriptor>(
                     "Vegetation Descriptor", "Details used to create vegetation instances")
-                    ->DataElement(0, &Descriptor::m_meshAsset, "Mesh Asset", "Mesh asset (CGF)")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Descriptor::MeshAssetChanged)
-                    ->DataElement(0, &Descriptor::m_materialAsset, "Material Asset", "Material asset")
+                    // For this ComboBox to actually work, there is a PropertyHandler registration in EditorVegetationSystemComponent.cpp
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &Descriptor::m_spawnerType, "Instance Spawner", "The type of instances to spawn")
+                        ->Attribute(AZ::Edit::Attributes::GenericValueList, &Descriptor::GetSpawnerTypeList)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Descriptor::SpawnerTypeChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &Descriptor::m_instanceSpawner, "Instance", "Instance data")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(0, &Descriptor::m_weight, "Weight", "Weight counted against the total density of the placed vegetation sector")
-                    ->DataElement(0, &Descriptor::m_autoMerge, "AutoMerge", "Use in the auto merge mesh system or a stand alone vegetation instance")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
-                    ->DataElement(0, &Descriptor::m_useTerrainColor, "Use Terrain Color", "")
-                    ->DataElement(0, &Descriptor::m_advanced, "Use Advanced Settings", "Display advanced settings")
+                    ->DataElement(0, &Descriptor::m_advanced, "Display Per-Item Overrides", "Display the per-item override settings that can be used with filter and modifier components when those components have 'Allow Per-Item Overrides' enabled.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Position Modifier")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_positionOverrideEnabled, "Position Modifier Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_positionOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Position Modifier has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMinX, "Position Min X", "Minimum position offset on X axis.")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMinX, "Min X", "Minimum position offset on X axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -2.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 2.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMaxX, "Position Max X", "Maximum position offset on X axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsPositionFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMaxX, "Max X", "Maximum position offset on X axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -2.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 2.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMinY, "Position Min Y", "Minimum position offset on Y axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsPositionFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMinY, "Min Y", "Minimum position offset on Y axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -2.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 2.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMaxY, "Position Max Y", "Maximum position offset on Y axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsPositionFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMaxY, "Max Y", "Maximum position offset on Y axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -2.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 2.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMinZ, "Position Min Z", "Minimum position offset on Z axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsPositionFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMinZ, "Min Z", "Minimum position offset on Z axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -2.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 2.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMaxZ, "Position Max Z", "Maximum position offset on Z axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsPositionFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_positionMaxZ, "Max Z", "Maximum position offset on Z axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -2.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 2.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsPositionFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Rotation Modifier")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_rotationOverrideEnabled, "Rotation Modifier Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_rotationOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Rotation Modifier has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMinX, "Rotation Min X", "Minimum rotation offset on X axis.")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMinX, "Min X", "Minimum rotation offset on X axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -180.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMaxX, "Rotation Max X", "Maximum rotation offset on X axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRotationFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMaxX, "Max X", "Maximum rotation offset on X axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -180.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMinY, "Rotation Min Y", "Minimum rotation offset on Y axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRotationFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMinY, "Min Y", "Minimum rotation offset on Y axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -180.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMaxY, "Rotation Max Y", "Maximum rotation offset on Y axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRotationFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMaxY, "Max Y", "Maximum rotation offset on Y axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -180.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMinZ, "Rotation Min Z", "Minimum rotation offset on Z axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRotationFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMinZ, "Min Z", "Minimum rotation offset on Z axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -180.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMaxZ, "Rotation Max Z", "Maximum rotation offset on Z axis.")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRotationFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_rotationMaxZ, "Max Z", "Maximum rotation offset on Z axis.")
                             ->Attribute(AZ::Edit::Attributes::Min, std::numeric_limits<float>::lowest())
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, -180.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRotationFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Scale Modifier")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_scaleOverrideEnabled, "Scale Modifier Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_scaleOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Scale Modifier has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_scaleMin, "Scale Min", "")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_scaleMin, "Min", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 10.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.125f)
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_scaleMax, "Scale Max", "")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsScaleFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_scaleMax, "Max", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 10.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.125f)
                             ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsScaleFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Altitude Filter")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_altitudeFilterOverrideEnabled, "Altitude Filter Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_altitudeFilterOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Altitude Filter has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(0, &Descriptor::m_altitudeFilterMin, "Altitude Filter Min", "")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+                        ->DataElement(0, &Descriptor::m_altitudeFilterMin, "Min", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(0, &Descriptor::m_altitudeFilterMax, "Altitude Filter Max", "")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsAltitudeFilterReadOnly)
+                        ->DataElement(0, &Descriptor::m_altitudeFilterMax, "Max", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-
-                    ->ClassElement(AZ::Edit::ClassElements::Group, "Bending Influence")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        // The Bending value controls the procedural bending deformation of the vegetation objects; this works based off the amount of environment wind (WindVector) in the level.
-                        ->DataElement(0, &Descriptor::m_windBending, "Wind Bending", "Controls the wind bending deformation of the instances. No effect if AutoMerge is on.") 
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                            ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::m_autoMerge)
-                        // Specifically for AutoMerged vegetation - we make them readonly when not using AutoMerged.
-                        ->DataElement(0, &Descriptor::m_airResistance, "Air Resistance", "Decreases resistance to wind influence. Tied to the Wind vector and Breeze generation. No effect if AutoMerge is off.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::AutoMergeIsDisabled)
-                        ->DataElement(0, &Descriptor::m_stiffness, "Stiffness", "Controls the stiffness, how much it reacts to physics interaction, for AutoMerged vegetation. Controls how much force it takes to bend the asset. No effect if AutoMerge is off.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::AutoMergeIsDisabled)
-                        ->DataElement(0, &Descriptor::m_damping, "Damping", "Physics damping for AutoMerged vegetation. Reduces oscillation amplitude of bending objects. No effect if AutoMerge is off.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::AutoMergeIsDisabled)
-                        ->DataElement(0, &Descriptor::m_variance, "Variance", "Applies and increases noise movement. No effect if AutoMerge is off.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::AutoMergeIsDisabled)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsAltitudeFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Distance Between Filter (Radius)")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_radiusOverrideEnabled, "Distance Between Filter Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_radiusOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Distance Between Filter has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
                         ->DataElement(AZ::Edit::UIHandlers::ComboBox, &Descriptor::m_boundMode, "Bound Mode", "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetBoundModeVisibility)
                              ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
                             ->EnumAttribute(BoundMode::Radius, "Radius")
                             ->EnumAttribute(BoundMode::MeshRadius, "MeshRadius")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsDistanceBetweenFilterReadOnly)
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_radiusMin, "Radius Min", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
                             ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsRadiusReadOnly)
@@ -303,58 +328,55 @@ namespace Vegetation
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Surface Slope Alignment")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_surfaceAlignmentOverrideEnabled, "Surface Slope Alignment Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_surfaceAlignmentOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Surface Slope Alignment Modifier has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_surfaceAlignmentMin, "Surface Slope Alignment Min", "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                            ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_surfaceAlignmentMax, "Surface Slope Alignment Max", "")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_surfaceAlignmentMin, "Min", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsSurfaceAlignmentFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_surfaceAlignmentMax, "Max", "")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                            ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsSurfaceAlignmentFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Slope Filter")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_slopeFilterOverrideEnabled, "Slope Filter Override Enabled", "")
+                        ->DataElement(0, &Descriptor::m_slopeFilterOverrideEnabled, "Override Enabled", "Enable per-item override settings for this item when the Slope Filter has 'Allow Per-Item Overrides' enabled.")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_slopeFilterMin, "Slope Filter Min", "")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_slopeFilterMin, "Min", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_slopeFilterMax, "Slope Filter Max", "")
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsSlopeFilterReadOnly)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &Descriptor::m_slopeFilterMax, "Max", "")
                             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                             ->Attribute(AZ::Edit::Attributes::Max, 180.0f)
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsSlopeFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Surface Mask Filter")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &Descriptor::m_surfaceFilterOverrideMode, "Override Mode", "")
+                        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &Descriptor::m_surfaceFilterOverrideMode, "Override Mode", "Enable per-item override settings for this item when the Surface Mask Filter has 'Allow Per-Item Overrides' enabled.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
                             ->EnumAttribute(OverrideMode::Disable, "Disable")
                             ->EnumAttribute(OverrideMode::Replace, "Replace")
                             ->EnumAttribute(OverrideMode::Extend, "Extend")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::AttributesAndValues)
                         ->DataElement(0, &Descriptor::m_inclusiveSurfaceFilterTags, "Inclusion Tags", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsSurfaceTagFilterReadOnly)
                         ->DataElement(0, &Descriptor::m_exclusiveSurfaceFilterTags, "Exclusion Tags", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::IsSurfaceTagFilterReadOnly)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "")
                         ->DataElement(0, &Descriptor::m_surfaceTagDistance, "Surface Mask Depth Filter", "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
 
-                    ->ClassElement(AZ::Edit::ClassElements::Group, "View Settings")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->DataElement(0, &Descriptor::m_viewDistanceRatio, "Distance Ratio", "Controls the maximum view distance for vegetation instances.  No effect if AutoMerge is on.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
-                            ->Attribute(AZ::Edit::Attributes::Max, 1024.0f)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::m_autoMerge)
-                        ->DataElement(0, &Descriptor::m_lodDistanceRatio, "LOD Ratio", "Controls the distance where the vegetation LOD use less vegetation models.  No effect if AutoMerge is on.")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, &Descriptor::GetAdvancedGroupVisibility)
-                            ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
-                            ->Attribute(AZ::Edit::Attributes::Max, 1024.0f)
-                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &Descriptor::m_autoMerge)
                     ;
             }
         }
@@ -367,8 +389,9 @@ namespace Vegetation
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
                 ->Attribute(AZ::Script::Attributes::Module, "vegetation")
                 ->Constructor()
+                ->Property("spawnerType", &Descriptor::GetSpawnerType, &Descriptor::SetSpawnerType)
+                ->Property("spawner", &Descriptor::GetSpawner, &Descriptor::SetSpawner)
                 ->Property("weight", BehaviorValueProperty(&Descriptor::m_weight))
-                ->Property("autoMerge", BehaviorValueProperty(&Descriptor::m_autoMerge))
                 ->Property("surfaceTagDistance", BehaviorValueProperty(&Descriptor::m_surfaceTagDistance))
                 ->Property("surfaceFilterOverrideMode", 
                     [](Descriptor* descriptor) { return (AZ::u8)(descriptor->m_surfaceFilterOverrideMode); },
@@ -404,16 +427,6 @@ namespace Vegetation
                 ->Property("slopeFilterOverrideEnabled", BehaviorValueProperty(&Descriptor::m_slopeFilterOverrideEnabled))
                 ->Property("slopeFilterMin", BehaviorValueProperty(&Descriptor::m_slopeFilterMin))
                 ->Property("slopeFilterMax", BehaviorValueProperty(&Descriptor::m_slopeFilterMax))
-                ->Property("windBending", BehaviorValueProperty(&Descriptor::m_windBending))
-                ->Property("airResistance", BehaviorValueProperty(&Descriptor::m_airResistance))
-                ->Property("stiffness", BehaviorValueProperty(&Descriptor::m_stiffness))
-                ->Property("damping", BehaviorValueProperty(&Descriptor::m_damping))
-                ->Property("variance", BehaviorValueProperty(&Descriptor::m_variance))
-                ->Property("useTerrainColor", BehaviorValueProperty(&Descriptor::m_useTerrainColor))
-                ->Method("GetMeshAssetPath", &Descriptor::GetMeshAssetPath)
-                ->Method("SetMeshAssetPath", &Descriptor::SetMeshAssetPath)
-                ->Method("GetMaterialAssetPath", &Descriptor::GetMaterialAssetPath)
-                ->Method("SetMaterialAssetPath", &Descriptor::SetMaterialAssetPath)
                 ->Method("GetNumInclusiveSurfaceFilterTags", &Descriptor::GetNumInclusiveSurfaceFilterTags)
                 ->Method("GetInclusiveSurfaceFilterTag", &Descriptor::GetInclusiveSurfaceFilterTag)
                 ->Method("RemoveInclusiveSurfaceFilterTag", &Descriptor::RemoveInclusiveSurfaceFilterTag)
@@ -501,23 +514,44 @@ namespace Vegetation
 
     Descriptor::Descriptor()
     {
-        ResetAssets();
+        // Default instance spawner on new descriptors to legacy vegetation, at least for now.
+        m_instanceSpawner = AZStd::make_shared<LegacyVegetationInstanceSpawner>();
+        m_spawnerType = azrtti_typeid(*m_instanceSpawner);
     }
 
     Descriptor::~Descriptor()
     {
-        ResetAssets();
+    }
+
+    bool Descriptor::HasEquivalentInstanceSpawners(const Descriptor& rhs) const
+    {
+        bool instanceSpawnersMatch = false;
+
+        if (m_spawnerType == rhs.m_spawnerType)
+        {
+            if (m_instanceSpawner == rhs.m_instanceSpawner)
+            {
+                // This will match if they're both null, or both the same pointer.
+                instanceSpawnersMatch = true;
+            }
+            else
+            {
+                // Only match if they're both not null and have equivalent data.
+                if (m_instanceSpawner && rhs.m_instanceSpawner)
+                {
+                    instanceSpawnersMatch = (*m_instanceSpawner) == (*rhs.m_instanceSpawner);
+                }
+            }
+        }
+
+        return instanceSpawnersMatch;
     }
 
     bool Descriptor::operator==(const Descriptor& rhs) const
     {
         return
-            m_meshAsset == rhs.m_meshAsset &&
-            m_materialAsset.GetAssetPath() == rhs.m_materialAsset.GetAssetPath() &&
+            HasEquivalentInstanceSpawners(rhs) &&
             m_weight == rhs.m_weight &&
-            m_autoMerge == rhs.m_autoMerge &&
-            m_viewDistanceRatio == rhs.m_viewDistanceRatio &&
-            m_lodDistanceRatio == rhs.m_lodDistanceRatio &&
             m_surfaceTagDistance == rhs.m_surfaceTagDistance &&
             m_surfaceFilterOverrideMode == rhs.m_surfaceFilterOverrideMode &&
             m_inclusiveSurfaceFilterTags == rhs.m_inclusiveSurfaceFilterTags &&
@@ -550,79 +584,8 @@ namespace Vegetation
             m_altitudeFilterMax == rhs.m_altitudeFilterMax &&
             m_slopeFilterOverrideEnabled == rhs.m_slopeFilterOverrideEnabled &&
             m_slopeFilterMin == rhs.m_slopeFilterMin &&
-            m_slopeFilterMax == rhs.m_slopeFilterMax &&
-            m_windBending == rhs.m_windBending &&
-            m_airResistance == rhs.m_airResistance &&
-            m_stiffness == rhs.m_stiffness &&
-            m_damping == rhs.m_damping &&
-            m_variance == rhs.m_variance &&
-            m_useTerrainColor == rhs.m_useTerrainColor
+            m_slopeFilterMax == rhs.m_slopeFilterMax
             ;
-    }
-
-    void Descriptor::ResetAssets(bool resetMaterialOverride)
-    {
-        m_meshLoaded = false;
-        m_meshRadius = 0.0f;
-        m_meshAsset.Release();
-        m_meshAsset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::QueueLoad);
-        if (resetMaterialOverride)
-        {
-            m_materialOverride = nullptr;
-        }
-    }
-
-    void Descriptor::LoadAssets()
-    {
-        ResetAssets();
-        m_meshAsset.QueueLoad();
-
-        auto system = GetISystem();
-        auto engine = system ? system->GetI3DEngine() : nullptr;
-        if (engine)
-        {
-            const AZStd::string& materialPath = m_materialAsset.GetAssetPath();
-
-            auto materialManager = engine->GetMaterialManager();
-            if (!materialPath.empty() && materialManager)
-            {
-                m_materialOverride = materialManager->LoadMaterial(materialPath.c_str());
-                AZ_Warning("vegetation", m_materialOverride != materialManager->GetDefaultMaterial(), "Failed to load override Material \"%s\".", materialPath.c_str());
-            }
-        }
-    }
-
-    void Descriptor::UpdateAssets()
-    {
-        m_meshLoaded = m_meshAsset.IsReady() && m_meshAsset.Get()->m_statObj;
-        m_meshRadius = m_meshLoaded ? m_meshAsset.Get()->m_statObj->GetRadius() : 0.0f;
-    }
-
-    AZStd::string Descriptor::GetMeshAssetPath() const
-    {
-        AZStd::string assetPathString;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetPathString, &AZ::Data::AssetCatalogRequests::GetAssetPathById, m_meshAsset.GetId());
-        return assetPathString;
-    }
-
-    void Descriptor::SetMeshAssetPath(const AZStd::string& assetPath)
-    {
-        AZ::Data::AssetId assetId;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, assetPath.c_str(), AZ::Data::s_invalidAssetType, false);
-        if (assetId.IsValid())
-        {
-            m_meshAsset.Create(assetId, false);
-        }
-    }
-
-    AZStd::string Descriptor::GetMaterialAssetPath() const
-    {
-        return m_materialAsset.GetAssetPath();
-    }
-
-    void Descriptor::SetMaterialAssetPath(const AZStd::string& path)
-    {
-        m_materialAsset.SetAssetPath(path.c_str());
     }
 
     size_t Descriptor::GetNumInclusiveSurfaceFilterTags() const
@@ -681,46 +644,195 @@ namespace Vegetation
         m_exclusiveSurfaceFilterTags.push_back(SurfaceData::SurfaceTag(tag));
     }
 
-    const char* Descriptor::GetMeshName()
-    {
-        UpdateMeshAssetName();
-        return m_meshAssetName.c_str();
-    }
-
-    AZ::u32 Descriptor::MeshAssetChanged()
-    {
-        UpdateMeshAssetName(true);
-        return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
-    }
-
-    bool Descriptor::AutoMergeIsDisabled() const
-    {
-        return !m_autoMerge;
-    }
-
     AZ::u32 Descriptor::GetAdvancedGroupVisibility() const
     {
         return m_advanced ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
     }
 
-    void Descriptor::UpdateMeshAssetName(bool forceUpdate)
+    AZ::u32 Descriptor::GetBoundModeVisibility() const
     {
-        if (!forceUpdate && !m_meshAssetName.empty())
-        {
-            return;
-        }
+        // Only show Bound Mode if we're showing advanced settings *and* this type of instance spawner
+        // can provide radius data.  If not, the "MeshRadius" setting is meaningless, so don't allow it
+        // to be set.
+        return (m_advanced && m_instanceSpawner && m_instanceSpawner->HasRadiusData())
+            ? AZ::Edit::PropertyVisibility::Show
+            : AZ::Edit::PropertyVisibility::Hide;
+    }
 
-        m_meshAssetName = "<asset name>";
+    void Descriptor::RefreshSpawnerTypeList() const
+    {
+        m_spawnerTypes.clear();
 
-        if (m_meshAsset.GetId().IsValid())
+        // Find all registered types that are derived from InstanceSpawner, and get their display names.
+        // (To change the display name for a class, go to its EditContext and change the name passed in
+        // to the EditContext Class constructor)
+        AZ::SerializeContext* serializeContext{};
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        AZ_Assert(serializeContext, "No SerializeContext found.");
+        if (serializeContext)
         {
-            // Get the asset file name
-            m_meshAssetName = m_meshAsset.GetHint();
-            if (!m_meshAsset.GetHint().empty())
+            serializeContext->EnumerateDerived<InstanceSpawner>(
+            [&](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& classUuid) -> bool
             {
-                AzFramework::StringFunc::Path::GetFileName(m_meshAsset.GetHint().c_str(), m_meshAssetName);
-            }
+                auto spawnerDisplayName = classData->m_editData ? classData->m_editData->m_name : classData->m_name;
+                m_spawnerTypes.push_back(AZStd::make_pair(classData->m_typeId, spawnerDisplayName));
+                return true;
+            });
         }
+
+        // Alphabetically sort the list so that it has a well-defined order, regardless of what order we find the entries.
+        AZStd::sort(m_spawnerTypes.begin(), m_spawnerTypes.end(), [](const auto& lhs, const auto& rhs) {return lhs.second < rhs.second; });
+
+        AZ_Assert(!m_spawnerTypes.empty(), "No serialized InstanceSpawner types were found.");
+    }
+    
+    AZStd::vector<AZStd::pair<AZ::TypeId, AZStd::string>> Descriptor::GetSpawnerTypeList() const
+    {
+        if (m_spawnerTypes.empty())
+        {
+            RefreshSpawnerTypeList();
+        }
+
+        AZ_Assert(!m_spawnerTypes.empty(), "No serialized InstanceSpawner types were found.");
+
+        // Copy our static list into a new list with the proper types.
+        // This is necessary because the PropertyEditor doesn't always recognize alternate forms of string types,
+        // such as string_view or const char*.
+        AZStd::vector<AZStd::pair<AZ::TypeId, AZStd::string>> returnList;
+        returnList.reserve(m_spawnerTypes.size());
+        returnList.assign(m_spawnerTypes.begin(), m_spawnerTypes.end());
+
+        return returnList;
+    }
+
+    bool Descriptor::CreateInstanceSpawner(AZ::TypeId spawnerType, InstanceSpawner* spawnerToClone)
+    {
+        // Locate the registered Behavior class for the requested type.
+        const AZ::BehaviorClass* sourceClass = AZ::BehaviorContextHelper::GetClass(spawnerType);
+        if (!sourceClass)
+        {
+            // Can't find the new spawner type, so set back to the previous one.
+            AZ_Error("Vegetation", false, "Unrecognized spawner type: %s", spawnerType.ToString<AZStd::string>().c_str());
+            return false;
+        }
+
+        // Create (or clone) a new instance of the type, and verify that it's the type we expected.
+        AZ::BehaviorObject newInstance;
+        if (spawnerToClone)
+        {
+            AZ_Assert(spawnerType == azrtti_typeid(spawnerToClone), "Mismatched InstanceSpawner types");
+
+            AZ::BehaviorObject source(spawnerToClone, spawnerType);
+            newInstance = sourceClass->Clone(source);
+        }
+        else
+        {
+            newInstance = sourceClass->Create();
+        }
+
+        AZ_Assert(newInstance.m_address, "Failed to create requested spawner type: %s", spawnerType.ToString<AZStd::string>().c_str());
+        AZ_Assert(newInstance.m_typeId == spawnerType, "Unrecognized spawner type: %s", newInstance.m_typeId.ToString<AZStd::string>().c_str());
+        m_instanceSpawner = AZStd::shared_ptr<InstanceSpawner>(reinterpret_cast<InstanceSpawner*>(newInstance.m_address));
+        AZ_Assert(spawnerType == azrtti_typeid(*m_instanceSpawner), "Unrecognized spawner type: %s", m_instanceSpawner->RTTI_GetTypeName());
+
+        // Force the bound mode to use Radius if this type of spawner can't provide MeshRadius information.
+        if (!m_instanceSpawner->HasRadiusData())
+        {
+            m_boundMode = BoundMode::Radius;
+        }
+
+        // Make sure the spawner type stays in sync with the actual spawner type
+        m_spawnerType = spawnerType;
+
+        return true;
+    }
+
+    AZ::TypeId Descriptor::GetSpawnerType() const
+    {
+        return m_spawnerType;
+    }
+
+    void Descriptor::SetSpawnerType(const AZ::TypeId& spawnerType)
+    {
+        m_spawnerType = spawnerType;
+        SpawnerTypeChanged();
+    }
+
+    AZStd::any Descriptor::GetSpawner() const
+    {
+        // Note that this is bypassing our shared pointer, which has the potential to cause pointer lifetime
+        // issues, since scripts won't affect the shared pointer lifetime.
+        AZStd::any::type_info valueInfo;
+        valueInfo.m_id = azrtti_typeid(*m_instanceSpawner);
+        valueInfo.m_isPointer = false;
+        valueInfo.m_useHeap = true;
+        valueInfo.m_handler = [](AZStd::any::Action action, AZStd::any* dest, const AZStd::any* source)
+        {
+            switch (action)
+            {
+                case AZStd::any::Action::Reserve:
+                {
+                    // No-op
+                    break;
+                }
+                case AZStd::any::Action::Copy:
+                case AZStd::any::Action::Move:
+                {
+                    *reinterpret_cast<void**>(dest) = AZStd::any_cast<void>(const_cast<AZStd::any*>(source));
+                    break;
+                }
+                case AZStd::any::Action::Destroy:
+                {
+                    *reinterpret_cast<void**>(dest) = nullptr;
+                    break;
+                }
+            }
+        };
+
+        return AZStd::any(&(*m_instanceSpawner), valueInfo);
+    }
+
+    void Descriptor::SetSpawner(const AZStd::any& spawnerContainer)
+    {
+        bool success = false;
+
+        // Convert our AZStd::any container back to an InstanceSpawner pointer.
+        void* anyToVoidPtr = AZStd::any_cast<void>(&const_cast<AZStd::any&>(spawnerContainer));
+        InstanceSpawner* spawner = reinterpret_cast<InstanceSpawner*>(anyToVoidPtr);
+
+        if (spawner)
+        {
+            success = CreateInstanceSpawner(spawnerContainer.type(), spawner);
+        }
+
+        if (!success)
+        {
+            AZ_Error("Vegetation", false, "Error setting spawner to type: %s", spawnerContainer.type().ToString<AZStd::string>().c_str());
+        }
+    }
+
+
+    AZ::u32 Descriptor::SpawnerTypeChanged()
+    {
+        // Create a new InstanceSpawner if we changed the spawner type.
+        if (m_spawnerType != azrtti_typeid(*m_instanceSpawner))
+        {
+            bool success = CreateInstanceSpawner(m_spawnerType);
+
+            // If something went wrong creating the new one, still make sure our spawner type
+            // stays in sync with whatever existing spawner type we have.
+            if (!success)
+            {
+                m_spawnerType = azrtti_typeid(*m_instanceSpawner);
+            }
+
+            // If we change our instance spawner, refresh the entire tree.  The set of editable properties
+            // will change based on the new spawner type.
+            return AZ::Edit::PropertyRefreshLevels::EntireTree;
+        }
+
+        // Nothing changed, so nothing to refresh.
+        return AZ::Edit::PropertyRefreshLevels::None;
     }
 }
 

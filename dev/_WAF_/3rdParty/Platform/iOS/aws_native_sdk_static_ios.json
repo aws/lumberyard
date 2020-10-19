@@ -10,6 +10,9 @@
             "libpath_release": [
                 "lib/ios/Release"
             ],
+            "aws_cpp_sdk_gamelift_static/defines": [
+                "BUILD_GAMELIFT_CLIENT"
+            ],
             "aws_cpp_sdk_core_static/lib": [
                 "lib${aws_cpp_sdk_core}.a",
                 "lib${aws_dependencies}.a",

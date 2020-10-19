@@ -13,7 +13,36 @@
             "Source/LegacyTerrainModule.h",
             "Source/LegacyTerrainModule.cpp",
             "Source/LegacyTerrainLevelComponent.cpp",
-            "Source/LegacyTerrainLevelComponent.h"
+            "Source/LegacyTerrainLevelComponent.h",
+            "Source/terrain.cpp",
+            "Source/terrain_det_tex.cpp",
+            "Source/terrain_hmap.cpp",
+            "Source/terrain_edit.cpp",
+            "Source/terrain.h",
+            "Source/LegacyTerrainBase.h",
+            "Source/LegacyTerrainBase.cpp",
+            "Source/LegacyTerrainCVars.h",
+            "Source/LegacyTerrainCVars.cpp"
+        ],
+        "Source/Texture": [
+            "Source/Texture/MacroTexture.h",
+            "Source/Texture/MacroTexture.cpp",
+            "Source/Texture/MacroTextureImporter.h",
+            "Source/Texture/MacroTextureImporter.cpp",
+            "Source/Texture/TexturePool.h",
+            "Source/Texture/TexturePool.cpp"
+        ],
+        "Source/Sector": [
+            "Source/terrain_node.cpp",
+            "Source/terrain_node_compile.cpp",
+            "Source/terrain_sector.cpp",
+            "Source/terrain_sector_render.cpp",
+            "Source/terrain_sector_tex.cpp",
+            "Source/terrain_sector.h"
+        ],
+        "Source/Debug": [
+            "Source/Debug/TerrainProfiler.cpp",
+            "Source/Debug/TerrainProfiler.h"
         ]
     }
 }

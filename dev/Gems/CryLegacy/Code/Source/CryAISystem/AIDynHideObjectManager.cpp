@@ -115,6 +115,7 @@ void CAIDynHideObjectManager::GetHidePositionsWithinRange(std::vector<SDynamicOb
     IAISystem::tNavCapMask navCapMask, float passRadius,
     unsigned int lastNavNodeIndex)
 {
+#if ENABLE_CRY_PHYSICS
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_AI);
 
     hideSpots.resize(0);
@@ -380,6 +381,14 @@ void CAIDynHideObjectManager::GetHidePositionsWithinRange(std::vector<SDynamicOb
             hideSpots.push_back(pt);
         }
     }
+#else
+    AZ_UNUSED(hideSpots);
+    AZ_UNUSED(pos);
+    AZ_UNUSED(radius);
+    AZ_UNUSED(navCapMask);
+    AZ_UNUSED(passRadius);
+    AZ_UNUSED(lastNavNodeIndex);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 
@@ -429,6 +438,7 @@ bool CAIDynHideObjectManager::ValidateHideSpotLocation(const Vec3& pos, const SA
     Vec3 groundPos = pos;
     groundPos.z += capsuleMin;
     // Raycast to find ground pos.
+#if ENABLE_CRY_PHYSICS
     ray_hit hit;
     if (!gEnv->pPhysicalWorld->RayWorldIntersection(groundPos, Vec3(0, 0, -(capsuleMin + 1)), AICE_ALL,
             rwi_ignore_noncolliding | rwi_stop_at_pierceable, &hit, 1))
@@ -445,6 +455,7 @@ bool CAIDynHideObjectManager::ValidateHideSpotLocation(const Vec3& pos, const SA
         InvalidateHideSpotLocation(pos, objectEntId);
         return false;
     }
+#endif // ENABLE_CRY_PHYSICS
     return true;
 }
 

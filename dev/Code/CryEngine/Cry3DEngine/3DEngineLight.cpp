@@ -678,6 +678,11 @@ void C3DEngine::GetLightVolumes(threadID nThreadID, SLightVolume*& pLightVols, u
     m_LightVolumesMgr.GetLightVolumes(nThreadID, pLightVols, nNumVols);
 }
 
+uint16 C3DEngine::RegisterVolumeForLighting(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo)
+{
+    return m_LightVolumesMgr.RegisterVolume(vPos, fRadius, nClipVolumeRef, passInfo);
+}
+
 //////////////////////////////////////////////////////////////////////////
 #ifndef _RELEASE
 void CLightVolumesMgr::DrawDebug(const SRenderingPassInfo& passInfo)

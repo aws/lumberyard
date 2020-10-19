@@ -308,6 +308,7 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     if (m_env.pPhysicalWorld)
     {
         SIZER_COMPONENT_NAME(pSizer, "CryPhysics");
@@ -323,6 +324,7 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
             m_env.pPhysicalWorld->GetMemoryStatistics (pSizer);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (m_env.p3DEngine)
     {
@@ -554,6 +556,27 @@ int CSystem::GetApplicationInstance()
     }
 
     return m_iApplicationInstance;
+#else
+    return 0;
+#endif
+}
+
+int CSystem::GetApplicationLogInstance(const char* logFilePath)
+{
+#if AZ_TRAIT_OS_USE_WINDOWS_MUTEX
+    string suffix;
+    int instance = 0;
+    for (;; ++instance)
+    {
+        suffix.Format("(%d)", instance);
+
+        HANDLE instanceMutex = CreateMutex(NULL, TRUE, logFilePath + suffix);
+        if (GetLastError() != ERROR_ALREADY_EXISTS)
+        {
+            break;
+        }
+    }
+    return instance;
 #else
     return 0;
 #endif

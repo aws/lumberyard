@@ -18,20 +18,5 @@ namespace PhysX
     namespace UXNameConstants
     {
         const AZStd::string& GetPhysXDocsRoot();
-    }
-        
-    /// Constants for naming such as unit suffixes for physics properties.
-    namespace NameConstants
-    {
-        const AZStd::string& GetSuperscriptMinus();
-        const AZStd::string& GetSuperscriptOne();
-        const AZStd::string& GetSuperscriptTwo();
-        const AZStd::string& GetInterpunct();
-        const AZStd::string& GetSpeedUnit();
-        const AZStd::string& GetAngularVelocityUnit();
-        const AZStd::string& GetLengthUnit();
-        const AZStd::string& GetMassUnit();
-        const AZStd::string& GetInertiaUnit();
-        const AZStd::string& GetSleepThresholdUnit();
-    } // namespace NameConstants
+    } // namespace UXNameConstants
 } // namespace PhysX

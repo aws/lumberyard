@@ -59,11 +59,26 @@ namespace EditorPythonBindings
         //! Constructs a BehaviorClass using Python arguments 
         pybind11::object Construct(const AZ::BehaviorClass& behaviorClass, pybind11::args args);
 
+        //! Performs an equality operation to compare this object with another object
+        bool DoEqualityEvaluation(pybind11::object pythonOther);
+
+        //! Perform a comparison of a Python operator
+        enum class Comparison
+        {
+            LessThan,
+            LessThanOrEquals,
+            GreaterThan,
+            GreaterThanOrEquals
+        };
+        bool DoComparisonEvaluation(pybind11::object pythonOther, Comparison comparison);
+
     protected:
         void PrepareWrappedObject(const AZ::BehaviorClass& behaviorClass);
         void ReleaseWrappedObject();
         bool CreateDefault(const AZ::BehaviorClass* behaviorClass);
         void PopulateMethodsAndProperties(const AZ::BehaviorClass& behaviorClass);
+        void PopulateComparisonOperators(const AZ::BehaviorClass& behaviorClass);
+        bool CanConvertPythonToBehaviorValue(const AZ::BehaviorParameter& behaviorArg, pybind11::object pythonArg) const;
 
     private:
         enum class Ownership

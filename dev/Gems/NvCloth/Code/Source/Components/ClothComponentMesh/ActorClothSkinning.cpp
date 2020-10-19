@@ -142,45 +142,31 @@ namespace NvCloth
             return true;
         }
 
-        bool GetActorAndPose(AZ::EntityId entityId, EMotionFX::Actor*& actor, EMotionFX::Pose*& currentPose)
+        const AZ::Transform* GetSkinningMatrices(AZ::EntityId entityId)
         {
             EMotionFX::ActorInstance* actorInstance = nullptr;
             EMotionFX::Integration::ActorComponentRequestBus::EventResult(actorInstance, entityId, 
                 &EMotionFX::Integration::ActorComponentRequestBus::Events::GetActorInstance);
             if (!actorInstance)
             {
-                return false;
+                return nullptr;
             }
 
-            actor = actorInstance->GetActor();
-            if (!actor)
-            {
-                return false;
-            }
-
-            EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
+            const EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
             if (!transformData)
             {
-                return false;
+                return nullptr;
             }
 
-            currentPose = transformData->GetCurrentPose();
-            if (!currentPose)
-            {
-                return false;
-            }
-
-            return true;
+            return transformData->GetSkinningMatrices();
         }
 
-        SimParticleType ComputeSkinnedPosition(
-            const EMotionFX::Actor& actor,
-            const EMotionFX::Pose& pose,
+        AZ::Vector3 ComputeSkinnedPosition(
+            const AZ::Vector3& originalPosition,
             const SkinningInfo& skinningInfo,
-            const SimParticleType& originalPosition)
+            const AZ::Transform* skinningMatrices)
         {
-            EMotionFX::Transform overallSkinningTransform;
-            overallSkinningTransform.Zero();
+            AZ::Transform clothSkinningMatrix = AZ::Transform::CreateZero();
             for (int weightIndex = 0; weightIndex < MaxSkinningBones; ++weightIndex)
             {
                 if (skinningInfo.m_jointWeights[weightIndex] == 0)
@@ -188,21 +174,18 @@ namespace NvCloth
                     continue;
                 }
 
-                const AZ::u32 jointIndex = skinningInfo.m_jointIndices[weightIndex];
+                const AZ::u16 jointIndex = skinningInfo.m_jointIndices[weightIndex];
                 const float jointWeight = skinningInfo.m_jointWeights[weightIndex] / 255.0f;
 
-                EMotionFX::Transform skinningTransform;
-                skinningTransform = actor.GetInverseBindPoseTransform(jointIndex);
-                skinningTransform.Multiply(pose.GetModelSpaceTransform(jointIndex));
-                overallSkinningTransform.Add(skinningTransform, jointWeight);
+                // Blending matrices the same way done in GPU shaders, by adding each weighted matrix element by element.
+                // This way the skinning results are much similar to the skinning performed in GPU.
+                for (int i = 0; i < 3; ++i)
+                {
+                    clothSkinningMatrix.SetRow(i, clothSkinningMatrix.GetRow(i) + skinningMatrices[jointIndex].GetRow(i) * jointWeight);
+                }
             }
 
-            const physx::PxMat44 clothSkinningMatrix = PxMathConvert(overallSkinningTransform);
-
-            // Need to have w component set to 1 so that we transform using position too.
-            SimParticleType beforeSkinningPosition(originalPosition.getXYZ(), 1.0f);
-
-            return clothSkinningMatrix.transform(beforeSkinningPosition);
+            return clothSkinningMatrix * originalPosition;
         }
     }
 
@@ -227,18 +210,46 @@ namespace NvCloth
 
         AZStd::unique_ptr<ActorClothSkinning> actorClothSkinning = AZStd::make_unique<ActorClothSkinning>(entityId);
 
-        // Gather the indices of static / dynamic particles
+        AZStd::set<AZ::u16> staticParticleJointIndices;
+        AZStd::set<AZ::u16> dynamicParticleJointIndices;
+
+        // Gather the indices of static / dynamic particles and joints
         for (uint32_t particleIndex = 0; particleIndex < simParticles.size(); ++particleIndex)
         {
+            auto insertInfluentialJoints = [](const SkinningInfo& skinningInfo, AZStd::set<AZ::u16>& particleJointIndices)
+            {
+                // Insert the indices of the joints that influence the particle (weight is not 0)
+                for (int weightIndex = 0; weightIndex < MaxSkinningBones; ++weightIndex)
+                {
+                    if (skinningInfo.m_jointWeights[weightIndex] == 0)
+                    {
+                        continue;
+                    }
+
+                    const AZ::u16 jointIndex = skinningInfo.m_jointIndices[weightIndex];
+                    particleJointIndices.insert(jointIndex);
+                }
+            };
+
+            // Is an static particle?
             if (simParticles[particleIndex].w == 0.0f)
             {
                 actorClothSkinning->m_staticParticleIndices.push_back(particleIndex);
+                insertInfluentialJoints(skinningData[particleIndex], staticParticleJointIndices);
             }
             else
             {
                 actorClothSkinning->m_dynamicParticleIndices.push_back(particleIndex);
+                insertInfluentialJoints(skinningData[particleIndex], dynamicParticleJointIndices);
             }
         }
+
+        AZStd::set<AZ::u16> jointIndices = staticParticleJointIndices;
+        jointIndices.insert(dynamicParticleJointIndices.begin(), dynamicParticleJointIndices.end());
+
+        actorClothSkinning->m_staticParticleJointIndices.assign(staticParticleJointIndices.begin(), staticParticleJointIndices.end());
+        actorClothSkinning->m_dynamicParticleJointIndices.assign(dynamicParticleJointIndices.begin(), dynamicParticleJointIndices.end());
+        actorClothSkinning->m_jointIndices.assign(jointIndices.begin(), jointIndices.end());
 
         actorClothSkinning->m_skinningData = skinningData;
 
@@ -254,9 +265,8 @@ namespace NvCloth
         const AZStd::vector<SimParticleType>& originalPositions, 
         AZStd::vector<SimParticleType>& positions)
     {
-        EMotionFX::Actor* actor = nullptr;
-        EMotionFX::Pose* pose = nullptr;
-        if (!GetActorAndPose(m_entityId, actor, pose))
+        const AZ::Transform* skinningMatrices = GetSkinningMatrices(m_entityId);
+        if (!skinningMatrices)
         {
             return;
         }
@@ -265,16 +275,15 @@ namespace NvCloth
         {
             const uint32_t currentIndex = m_staticParticleIndices[index];
 
-            const SimParticleType skinnedPosition = ComputeSkinnedPosition(
-                *actor,
-                *pose,
+            const AZ::Vector3 skinnedPosition = ComputeSkinnedPosition(
+                PxMathConvert(originalPositions[currentIndex].getXYZ()),
                 m_skinningData[currentIndex],
-                originalPositions[currentIndex]);
+                skinningMatrices);
 
             // Avoid overwriting the w component that contains the inverse masses
-            positions[currentIndex].x = skinnedPosition.x;
-            positions[currentIndex].y = skinnedPosition.y;
-            positions[currentIndex].z = skinnedPosition.z;
+            positions[currentIndex].x = skinnedPosition.GetX();
+            positions[currentIndex].y = skinnedPosition.GetY();
+            positions[currentIndex].z = skinnedPosition.GetZ();
         }
     }
 
@@ -283,29 +292,31 @@ namespace NvCloth
         const AZStd::vector<SimParticleType>& originalPositions, 
         AZStd::vector<SimParticleType>& positions)
     {
-        EMotionFX::Actor* actor = nullptr;
-        EMotionFX::Pose* pose = nullptr;
-        if (!GetActorAndPose(m_entityId, actor, pose))
+        const AZ::Transform* skinningMatrices = GetSkinningMatrices(m_entityId);
+        if (!skinningMatrices)
         {
             return;
         }
 
         animationBlendFactor = AZ::GetClamp(animationBlendFactor, 0.0f, 1.0f);
+        if (animationBlendFactor == 0.0f)
+        {
+            return;
+        }
 
         for (uint32_t index = 0; index < m_dynamicParticleIndices.size(); ++index)
         {
             const int32_t currentIndex = m_dynamicParticleIndices[index];
 
-            const SimParticleType skinnedPosition = ComputeSkinnedPosition(
-                *actor,
-                *pose,
+            const AZ::Vector3 skinnedPosition = ComputeSkinnedPosition(
+                PxMathConvert(originalPositions[currentIndex].getXYZ()),
                 m_skinningData[currentIndex],
-                originalPositions[currentIndex]);
+                skinningMatrices);
 
             // Avoid overwriting the w component that contains the inverse masses
-            positions[currentIndex].x = AZ::Lerp(positions[currentIndex].x, skinnedPosition.x, animationBlendFactor);
-            positions[currentIndex].y = AZ::Lerp(positions[currentIndex].y, skinnedPosition.y, animationBlendFactor);
-            positions[currentIndex].z = AZ::Lerp(positions[currentIndex].z, skinnedPosition.z, animationBlendFactor);
+            positions[currentIndex].x = AZ::Lerp(positions[currentIndex].x, skinnedPosition.GetX(), animationBlendFactor);
+            positions[currentIndex].y = AZ::Lerp(positions[currentIndex].y, skinnedPosition.GetY(), animationBlendFactor);
+            positions[currentIndex].z = AZ::Lerp(positions[currentIndex].z, skinnedPosition.GetZ(), animationBlendFactor);
         }
     }
 
@@ -313,25 +324,23 @@ namespace NvCloth
         const AZStd::vector<SimParticleType>& originalPositions, 
         AZStd::vector<SimParticleType>& positions)
     {
-        EMotionFX::Actor* actor = nullptr;
-        EMotionFX::Pose* pose = nullptr;
-        if (!GetActorAndPose(m_entityId, actor, pose))
+        const AZ::Transform* skinningMatrices = GetSkinningMatrices(m_entityId);
+        if (!skinningMatrices)
         {
             return;
         }
 
         for (uint32_t currentIndex = 0; currentIndex < m_skinningData.size(); ++currentIndex)
         {
-            const SimParticleType skinnedPosition = ComputeSkinnedPosition(
-                *actor,
-                *pose,
+            const AZ::Vector3 skinnedPosition = ComputeSkinnedPosition(
+                PxMathConvert(originalPositions[currentIndex].getXYZ()),
                 m_skinningData[currentIndex],
-                originalPositions[currentIndex]);
+                skinningMatrices);
 
             // Avoid overwriting the w component that contains the inverse masses
-            positions[currentIndex].x = skinnedPosition.x;
-            positions[currentIndex].y = skinnedPosition.y;
-            positions[currentIndex].z = skinnedPosition.z;
+            positions[currentIndex].x = skinnedPosition.GetX();
+            positions[currentIndex].y = skinnedPosition.GetY();
+            positions[currentIndex].z = skinnedPosition.GetZ();
         }
     }
 } // namespace NvCloth

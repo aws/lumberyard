@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "unprojectionchecks.h"
@@ -317,3 +319,4 @@ int CCapsuleGeom::DrawToOcclusionCubemap(const geom_world_data* pgwd, int iStart
     return geombox.DrawToOcclusionCubemap(pgwd, iStartPrim, nPrims, iPass, cubeMap);
 }
 
+#endif // ENABLE_CRY_PHYSICS

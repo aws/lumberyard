@@ -126,11 +126,6 @@ void CAnimEnvironmentNode::Animate(SAnimContext& ac)
     {
         gEnv->p3DEngine->SetGlobalParameter(E3DPARAM_SKY_MOONROTATION, v);
     }
-
-    if (bUpdateSun || bUpdateMoon)
-    {
-        pTimeOfDay->Update(true, false);
-    }
 }
 
 void CAnimEnvironmentNode::CreateDefaultTracks()

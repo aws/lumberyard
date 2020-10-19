@@ -94,7 +94,32 @@ void DisplayContext::DrawQuad(const Vec3& p1, const Vec3& p2, const Vec3& p3, co
     Vec3 p[4] = { ToWorldSpacePosition(p1), ToWorldSpacePosition(p2), ToWorldSpacePosition(p3), ToWorldSpacePosition(p4) };
     pRenderAuxGeom->DrawTriangle(p[0], m_color4b, p[1], m_color4b, p[2], m_color4b);
     pRenderAuxGeom->DrawTriangle(p[2], m_color4b, p[3], m_color4b, p[0], m_color4b);
-    //pRenderAuxGeom->DrawPolyline( poly,4,true,m_color4b );
+}
+
+void DisplayContext::DrawQuad(float width, float height)
+{
+    pRenderAuxGeom->DrawQuad(width, height, m_matrixStack[m_currentMatrix], m_color4b);
+}
+
+void DisplayContext::DrawWireQuad(const Vec3& p1, const Vec3& p2, const Vec3& p3, const Vec3& p4)
+{
+    Vec3 p[4] = { ToWorldSpacePosition(p1), ToWorldSpacePosition(p2), ToWorldSpacePosition(p3), ToWorldSpacePosition(p4) };
+    pRenderAuxGeom->DrawPolyline(p, 4, true, m_color4b);
+}
+
+void DisplayContext::DrawWireQuad(float width, float height)
+{
+    const float halfWidth = width * 0.5f;
+    const float halfHeight = height * 0.5f;
+
+    const Vec3 p[4] =
+    {
+        ToWorldSpacePosition(Vec3(-halfWidth, 0.0f,  halfHeight)),
+        ToWorldSpacePosition(Vec3( halfWidth, 0.0f,  halfHeight)),
+        ToWorldSpacePosition(Vec3( halfWidth, 0.0f, -halfHeight)),
+        ToWorldSpacePosition(Vec3(-halfWidth, 0.0f, -halfHeight)),
+    };
+    pRenderAuxGeom->DrawPolyline(p, 4, true, m_color4b);
 }
 
 //////////////////////////////////////////////////////////////////////////

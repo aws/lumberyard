@@ -1,4 +1,4 @@
-﻿/*Reflect(AZ::ReflectContext* context)
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -10,7 +10,10 @@
 *
 */
 
+
 #include "LmbrCentral_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
 
 #include "ForceVolumeForces.h"
 #include <AzCore/Math/MathUtils.h>
@@ -25,7 +28,6 @@ namespace LmbrCentral
                 ->Field("Direction", &WorldSpaceForce::m_direction)
                 ->Field("Magnitude", &WorldSpaceForce::m_magnitude)
                 ;
-
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<WorldSpaceForce>(
@@ -102,7 +104,6 @@ namespace LmbrCentral
             serializeContext->Class<PointForce, Force>()
                 ->Field("Magnitude", &PointForce::m_magnitude)
                 ;
-
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<PointForce>(
@@ -140,7 +141,6 @@ namespace LmbrCentral
                 ->Field("TargetSpeed", &SplineFollowForce::m_targetSpeed)
                 ->Field("Lookahead", &SplineFollowForce::m_lookAhead)
                 ;
-
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<SplineFollowForce>(
@@ -188,7 +188,7 @@ namespace LmbrCentral
             AZ::Vector3 splineTangent = volume.m_spline->GetTangent(address);
 
             // http://www.matthewpeterkelly.com/tutorials/pdControl/index.html
-            float kp = pow((2 * AZ::Constants::Pi * m_frequency), 2);
+            float kp = aznumeric_cast<float>(pow((2 * AZ::Constants::Pi * m_frequency), 2));
             float kd = 2 * m_dampingRatio * (2 * AZ::Constants::Pi * m_frequency);
 
             AZ::Vector3 targetVelocity = splineTangent * m_targetSpeed;
@@ -271,7 +271,6 @@ namespace LmbrCentral
             serializeContext->Class<LinearDampingForce, Force>()
                 ->Field("Damping", &LinearDampingForce::m_damping)
                 ;
-
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<LinearDampingForce>(
@@ -299,3 +298,5 @@ namespace LmbrCentral
         return entity.m_velocity * -m_damping * entity.m_mass;
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS

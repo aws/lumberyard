@@ -10,6 +10,9 @@
 *
 */
 #include "CryLegacy_precompiled.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "ComponentPhysics.h"
 #include "Components/IComponentSerialization.h"
 
@@ -244,9 +247,11 @@ void CComponentPhysics::MoveChildPhysicsParts(IPhysicalEntity* pSrcRoot, IEntity
         }
         else
         {
+#if ENABLE_CRY_PHYSICS
             IEntity* pRootEntity = gEnv->pEntitySystem->GetEntityFromPhysics(amp.pTarget);
             gEnv->pSystem->Warning(VALIDATOR_MODULE_ENTITYSYSTEM, VALIDATOR_WARNING, 0, NULL,
                 "Failed to attach %s to %s", pChild->GetName(), pRootEntity ? pRootEntity->GetName() : "");
+#endif
             return;
         }
     }
@@ -2687,5 +2692,7 @@ void CComponentPhysics::EnableNetworkSerialization(bool enable)
         }
     }
 }
+
+#endif // ENABLE_CRY_PHYSICS
 
 

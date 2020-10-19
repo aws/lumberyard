@@ -21,4 +21,24 @@ TEST_F(AssetBuilderTests, Sanity)
     ASSERT_TRUE(true);
 }
 
-AZ_UNIT_TEST_HOOK();
+// Setup a custom environment so we can test the trace bus handler without the TraceBusRedirector blocking asserts
+class AssetBuilderTestEnvironment
+    : public AZ::Test::ITestEnvironment
+{
+public:
+    AZ_TEST_CLASS_ALLOCATOR(AssetBuilderTestEnvironment);
+
+
+protected:
+    void SetupEnvironment() override
+    {
+        
+    }
+
+    void TeardownEnvironment() override
+    {
+        
+    }
+};
+
+AZ_UNIT_TEST_HOOK(new AssetBuilderTestEnvironment);

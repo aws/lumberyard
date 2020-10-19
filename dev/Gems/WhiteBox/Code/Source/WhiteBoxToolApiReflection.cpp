@@ -17,6 +17,7 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <WhiteBox/EditorWhiteBoxComponentBus.h>
+#include <WhiteBox/WhiteBoxComponentBus.h>
 #include <WhiteBox/WhiteBoxToolApi.h>
 
 namespace WhiteBox
@@ -140,6 +141,12 @@ namespace WhiteBox
                         return Api::HideEdge(*WhiteBoxMeshFromHandle(*whiteBoxMeshHandle), edgeHandle);
                     })
                 ->Method(
+                    "FlipEdge",
+                    [](WhiteBoxMeshHandle* whiteBoxMeshHandle, Api::EdgeHandle edgeHandle)
+                    {
+                        return Api::FlipEdge(*WhiteBoxMeshFromHandle(*whiteBoxMeshHandle), edgeHandle);
+                    })
+                ->Method(
                     "AddPolygon",
                     [](WhiteBoxMeshHandle* whiteBoxMeshHandle, const Api::FaceVertHandlesList& faceVertHandles)
                     {
@@ -221,6 +228,11 @@ namespace WhiteBox
                 ->Attribute(AZ::Script::Attributes::Module, "whitebox.notification.bus")
                 ->Event(
                     "OnWhiteBoxMeshModified", &EditorWhiteBoxComponentNotificationBus::Events::OnWhiteBoxMeshModified);
+
+            behaviorContext->EBus<WhiteBoxComponentRequestBus>("WhiteBoxComponentRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "whitebox.request.bus")
+                ->Event("WhiteBoxIsVisible", &WhiteBoxComponentRequestBus::Events::WhiteBoxIsVisible);
 
             behaviorContext->Class<WhiteBoxUtil>("util")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)

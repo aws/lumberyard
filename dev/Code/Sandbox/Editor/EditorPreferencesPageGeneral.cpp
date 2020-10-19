@@ -21,6 +21,7 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzQtComponents/Components/StyleManager.h>
 
 // For ToolBarIconSize enum
 #include <AzQtComponents/Components/Widgets/ToolBar.h>
@@ -50,11 +51,12 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("StylusMode", &GeneralSettings::m_stylusMode)
         ->Field("LayerDoubleClicking", &GeneralSettings::m_bLayerDoubleClicking)
         ->Field("ShowNews", &GeneralSettings::m_bShowNews)
-        ->Field("EnableUI20", &GeneralSettings::m_enableUI2)
+        ->Field("EnableUI10", &GeneralSettings::m_enableUI1)
         ->Field("EnableSceneInspector", &GeneralSettings::m_enableSceneInspector)
         ->Field("RestoreViewportCamera", &GeneralSettings::m_restoreViewportCamera)
         ->Field("EnableLegacyUI", &GeneralSettings::m_enableLegacyUI)
-        ->Field("NewViewportInteractionModel", &GeneralSettings::m_enableNewViewportInteractionModel);
+        ->Field("NewViewportInteractionModel", &GeneralSettings::m_enableNewViewportInteractionModel)
+        ->Field("ParticlesNameSortingMode", &GeneralSettings::m_particlesNameSortingMode);
 
     serialize.Class<Messaging>()
         ->Version(2)
@@ -131,13 +133,17 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_restoreViewportCamera, EditorPreferencesGeneralRestoreViewportCameraSettingName, "Keep the original editor viewport transform when exiting game mode.")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bLayerDoubleClicking, "Enable Double Clicking in Layer Editor", "Enable Double Clicking in Layer Editor")
                 ->Attribute(AZ::Edit::Attributes::Visibility, shouldShowLegacyItems)
-            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableUI2, "Enable UI 2.0 (Preview)", "Enable this to switch the UI to the UI 2.0 styling")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableUI1, "Enable UI 1.0 (Deprecated)", "Enable this to switch the UI to the UI 1.0 styling")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSceneInspector, "Enable Scene Inspector (EXPERIMENTAL)", "Enable the option to inspect the internal data loaded from scene files like .fbx. This is an experimental feature. Restart the Scene Settings if the option is not visible under the Help menu.")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableLegacyUI, "Enable Legacy UI (DEPRECATED)", "Enable the deprecated legacy UI")
                 ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeLegacyUi)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableNewViewportInteractionModel, "Enable New Viewport Interaction Model (EXPERIMENTAL)", "Enable this option to preview an early version of Lumberyard's updated viewport, which makes modifying entities easier")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeNewViewportInteractionModel);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeNewViewportInteractionModel)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &GeneralSettings::m_particlesNameSortingMode, "Particles Name Sorting Mode", "Set particles name sorting in Particle Editor's Library")
+                ->EnumAttribute(ParticlesNameSortingMode::Off, "Off")
+                ->EnumAttribute(ParticlesNameSortingMode::Ascending, "Ascending (A-Z)")
+                ->EnumAttribute(ParticlesNameSortingMode::Descending, "Descending (Z-A)");
 
         editContext->Class<Messaging>("Messaging", "")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Messaging::m_showDashboard, "Show Welcome to Lumberyard at startup", "Show Welcome to Lumberyard at startup")
@@ -201,6 +207,23 @@ void CEditorPreferencesPage_General::GeneralSettings::SynchronizeLegacyUi()
 CEditorPreferencesPage_General::CEditorPreferencesPage_General()
 {
     InitializeSettings();
+
+    m_icon = QIcon(":/res/Global.svg");
+}
+
+const char* CEditorPreferencesPage_General::GetTitle()
+{
+    if (AzQtComponents::StyleManager::isUi10())
+    {
+        return "General";
+    }
+
+    return "General Settings";
+}
+
+QIcon& CEditorPreferencesPage_General::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_General::OnApply()
@@ -224,7 +247,8 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
     gSettings.enableLegacyUI = m_generalSettings.m_enableLegacyUI;
     gSettings.newViewportInteractionModel = m_generalSettings.m_enableNewViewportInteractionModel;
-    gSettings.bEnableUI2 = m_generalSettings.m_enableUI2;
+    gSettings.particlesNameSortingMode = m_generalSettings.m_particlesNameSortingMode;
+    gSettings.bEnableUI2 = !m_generalSettings.m_enableUI1;
 
     Editor::EditorQtApplication::instance()->EnableUI2(gSettings.bEnableUI2);
 
@@ -273,9 +297,9 @@ void CEditorPreferencesPage_General::OnApply()
     const bool changedLegacyUI = gSettings.enableLegacyUI != m_generalSettings.m_enableLegacyUIInitialValue;
     // If the UI2.0 settings were changed, request editor restart to make sure
     // that the style can be fully reinitialized
-    const bool changedUI2 = gSettings.bEnableUI2 != m_generalSettings.m_enableUI2InitialValue;
+    const bool changedUI1 = gSettings.bEnableUI2 == m_generalSettings.m_enableUI1InitialValue;
 
-    if (changedLegacyUI && changedUI2)
+    if (changedLegacyUI && changedUI1)
     {
         QMessageBox::warning(
             AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
@@ -287,15 +311,15 @@ void CEditorPreferencesPage_General::OnApply()
             AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
             QObject::tr("You must restart the Editor in order for your Legacy UI change to take effect."));
     }
-    else if (changedUI2)
+    else if (changedUI1)
     {
         QMessageBox::warning(
             AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
-            QObject::tr("Enabling or disabling UI 2.0 requires an editor restart to fully take effect. Please restart your editor."));
+            QObject::tr("Enabling or disabling UI 1.0 requires an editor restart to fully take effect. Please restart your editor."));
     }
 
     // If the UI 2.0 switch has been changed, send a Metrics event
-    if (changedUI2)
+    if (changedUI1)
     {
         if (gSettings.bEnableUI2)
         {
@@ -317,7 +341,7 @@ void CEditorPreferencesPage_General::OnApply()
                 ? QObject::tr(
                     "Restart the Editor in order for the Viewport Interaction Model (VIM) changes to take effect. "
                     "Some features are not currently supported in the latest version of the VIM. <a href=\""
-                    "https://docs.aws.amazon.com/lumberyard/latest/userguide/working-with-viewport-interaction-model.html"
+                    "https://docs.aws.amazon.com/console/lumberyard/viewport-interaction"
                     "\"> Learn More.<a/>")
                 : QObject::tr("Restart the Editor in order for the Viewport Interaction Model changes to take effect."));
 
@@ -343,13 +367,14 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_autoLoadLastLevel = gSettings.bAutoloadLastLevelAtStartup;
     m_generalSettings.m_stylusMode = gSettings.stylusMode;
     m_generalSettings.m_restoreViewportCamera = gSettings.restoreViewportCamera;
-    m_generalSettings.m_enableUI2 = gSettings.bEnableUI2;
-    m_generalSettings.m_enableUI2InitialValue = gSettings.bEnableUI2;
+    m_generalSettings.m_enableUI1 = !gSettings.bEnableUI2;
+    m_generalSettings.m_enableUI1InitialValue = !gSettings.bEnableUI2;
     m_generalSettings.m_enableSceneInspector = gSettings.enableSceneInspector;
     m_generalSettings.m_enableLegacyUI = gSettings.enableLegacyUI;
     m_generalSettings.m_enableLegacyUIInitialValue = gSettings.enableLegacyUI;
     m_generalSettings.m_enableNewViewportInteractionModel = gSettings.newViewportInteractionModel;
     m_generalSettings.m_enableNewViewportInteractionModelInitialValue = gSettings.newViewportInteractionModel;
+    m_generalSettings.m_particlesNameSortingMode = gSettings.particlesNameSortingMode;
 
     m_generalSettings.m_toolbarIconSize = static_cast<AzQtComponents::ToolBar::ToolBarIconSize>(gSettings.gui.nToolbarIconSize);
 

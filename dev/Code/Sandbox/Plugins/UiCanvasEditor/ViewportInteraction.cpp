@@ -22,6 +22,7 @@
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/Bus/UiEditorCanvasBus.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzQtComponents/Components/Widgets/ToolBar.h>
 
 static const float g_elementEdgeForgiveness = 10.0f;
 
@@ -97,6 +98,65 @@ namespace
     QCursor cursorRotate(CMFCUtils::LoadCursor(IDC_POINTER_OBJECT_ROTATE));
 } // anonymous namespace.
 
+class ViewportInteractionExpanderWatcher
+    : public QObject
+{
+public:
+    ViewportInteractionExpanderWatcher(QObject* parent = nullptr)
+        : QObject(parent)
+    {
+    }
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        switch (event->type())
+        {
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+            case QEvent::MouseButtonDblClick:
+            {
+                if (qobject_cast<QToolButton*>(obj))
+                {
+                    auto mouseEvent = static_cast<QMouseEvent*>(event);
+                    auto expansion = qobject_cast<QToolButton*>(obj);
+
+                    expansion->setPopupMode(QToolButton::InstantPopup);
+                    auto menu = new QMenu(expansion);
+
+                    auto toolbar = qobject_cast<QToolBar*>(expansion->parentWidget());
+
+                    for (auto toolbarAction : toolbar->actions())
+                    {
+                        auto actionWidget = toolbar->widgetForAction(toolbarAction);
+                        if (actionWidget && !actionWidget->isVisible() && !toolbarAction->text().isEmpty())
+                        {
+                            QString plainText = QTextDocumentFragment::fromHtml(actionWidget->toolTip()).toPlainText();
+                            toolbarAction->setText(plainText);
+                            menu->addAction(toolbarAction);
+                        }
+                    }
+
+                    if (menu->actions().count() == 0)
+                    {
+                        QAction* noAction = new QAction(this);
+                        noAction->setEnabled(false);
+                        noAction->setText(tr("Please resize the toolbar to see all the controls."));
+
+                        menu->addAction(noAction);
+                    }
+
+                    menu->exec(mouseEvent->globalPos());
+                    return true;
+                }
+
+                break;
+            }
+        }
+
+        return QObject::eventFilter(obj, event);
+    }
+};
+
 ViewportInteraction::ViewportInteraction(EditorWindow* editorWindow)
     : QObject()
     , m_editorWindow(editorWindow)
@@ -128,6 +188,7 @@ ViewportInteraction::ViewportInteraction(EditorWindow* editorWindow)
     , m_centerSquare(new ViewportIcon("Editor/Plugins/UiCanvasEditor/CanvasIcons/Transform_Gizmo_Center_Square.tif"))
     , m_dottedLine(new ViewportIcon("Editor/Plugins/UiCanvasEditor/CanvasIcons/DottedLine.tif"))
     , m_dragInteraction(nullptr)
+    , m_expanderWatcher(new ViewportInteractionExpanderWatcher(this))
 {
 }
 
@@ -780,6 +841,27 @@ void ViewportInteraction::InitializeToolbars()
 
         m_editorWindow->GetCoordinateSystemToolbarSection()->SetSnapToGridIsChecked(isSnapping);
     }
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_editorWindow->GetMainToolbar()))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_editorWindow->GetModeToolbar()))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_editorWindow->GetPreviewToolbar()))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(m_editorWindow->GetEnterPreviewToolbar()))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
+
 }
 
 const ViewportInteraction::TranslationAndScale& ViewportInteraction::GetCanvasViewportMatrixProps()

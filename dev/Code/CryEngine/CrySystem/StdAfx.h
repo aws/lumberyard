@@ -118,7 +118,6 @@ static inline int RoundToClosestMB(size_t memSize)
 #include <IEntitySystem.h>
 #include <I3DEngine.h>
 #include <ITimer.h>
-#include <IAudioSystem.h>
 #include <IPhysics.h>
 #include <IAISystem.h>
 #include <IXml.h>
@@ -147,7 +146,9 @@ struct ICryFont;
 struct I3DEngine;
 struct IMovieSystem;
 struct IAudioSystem;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 
 #endif //__cplusplus
 

@@ -131,6 +131,7 @@ void EntityCoverSampler::Update()
 
         if (queued.state == QueuedEntity::Queued)
         {
+#if ENABLE_CRY_PHYSICS
             if (IPhysicalEntity* physicalEntity = entity->GetPhysics())
             {
                 pe_status_nparts nparts;
@@ -202,6 +203,7 @@ void EntityCoverSampler::Update()
                     break;
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
 
             // nothing to sample
             if (queued.callback)

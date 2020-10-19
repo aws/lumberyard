@@ -1,7 +1,8 @@
 {
     "auto": {
         "Include": [
-            "Include/PhysX/EditorColliderComponentRequestBus.h"
+            "Include/PhysX/EditorColliderComponentRequestBus.h",
+            "Include/PhysX/EditorJointBus.h"
         ],
         "Source/Components": [
             "Source/EditorRigidBodyComponent.cpp",
@@ -15,7 +16,15 @@
             "Source/EditorSystemComponent.cpp",
             "Source/EditorSystemComponent.h",
             "Source/EditorForceRegionComponent.cpp",
-            "Source/EditorForceRegionComponent.h"
+            "Source/EditorForceRegionComponent.h",
+            "Source/EditorJointComponent.cpp",
+            "Source/EditorJointComponent.h",
+            "Source/EditorBallJointComponent.cpp",
+            "Source/EditorBallJointComponent.h",
+            "Source/EditorFixedJointComponent.cpp",
+            "Source/EditorFixedJointComponent.h",
+            "Source/EditorHingeJointComponent.cpp",
+            "Source/EditorHingeJointComponent.h"
         ],
         "Source/Pipeline": [
             "Source/Pipeline/MeshExporter.cpp",
@@ -92,8 +101,35 @@
             "Editor/ColliderAssetScaleMode.cpp",
             "Editor/DebugDraw.cpp",
             "Editor/DebugDraw.h",
+            "Editor/EditorJointConfiguration.cpp",
+            "Editor/EditorJointConfiguration.h",
+            "Editor/EditorJointComponentMode.cpp",
+            "Editor/EditorJointComponentMode.h",
+            "Editor/EditorSubComponentModeBase.cpp",
+            "Editor/EditorSubComponentModeBase.h",
+            "Editor/EditorSubComponentModeLinear.cpp",
+            "Editor/EditorSubComponentModeLinear.h",
+            "Editor/EditorSubComponentModeAngleCone.cpp",
+            "Editor/EditorSubComponentModeAngleCone.h",
+            "Editor/EditorSubComponentModeAnglePair.cpp",
+            "Editor/EditorSubComponentModeAnglePair.h",
+            "Editor/EditorSubComponentModeVec3.cpp",
+            "Editor/EditorSubComponentModeVec3.h",
+            "Editor/EditorSubComponentModeRotation.cpp",
+            "Editor/EditorSubComponentModeRotation.h",
+            "Editor/EditorSubComponentModeSnap.cpp",
+            "Editor/EditorSubComponentModeSnap.h",
+            "Editor/EditorSubComponentModeSnapPosition.cpp",
+            "Editor/EditorSubComponentModeSnapPosition.h",
+            "Editor/EditorSubComponentModeSnapRotation.cpp",
+            "Editor/EditorSubComponentModeSnapRotation.h",
+            "Editor/EditorViewportEntityPicker.cpp",
+            "Editor/EditorViewportEntityPicker.h",
             "Editor/PolygonPrismMeshUtils.cpp",
-            "Editor/PolygonPrismMeshUtils.h"
+            "Editor/PolygonPrismMeshUtils.h",
+            "Editor/EditorJointTypeDrawerBus.h",
+            "Editor/EditorJointTypeDrawer.cpp",
+            "Editor/EditorJointTypeDrawer.h"
         ]
     }
 }

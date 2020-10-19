@@ -67,7 +67,7 @@ namespace ScriptCanvas
 
                 if (!type.IsValid())
                 {
-                    return AZ::Failure(AZStd::string::format("Argument type at index: %d is not valid in ScriptCanvas, TypeId: %s", argument->m_typeId.ToString<AZStd::string>().data()));
+                    return AZ::Failure(AZStd::string::format("Argument type at index: %zu is not valid in ScriptCanvas, TypeId: %s", argIndex, argument->m_typeId.ToString<AZStd::string>().data()));
                 }
 
                 if ((argument->m_traits & AZ::BehaviorParameter::TR_THIS_PTR) && Data::IsValueType(type))
@@ -77,7 +77,7 @@ namespace ScriptCanvas
             }
             else
             {
-                return AZ::Failure(AZStd::string::format("Missing argument at index: %d", argIndex));
+                return AZ::Failure(AZStd::string::format("Missing argument at index: %zu", argIndex));
             }
         }
 
@@ -187,7 +187,7 @@ namespace ScriptCanvas
 
                     return argumentNamePtr && !argumentNamePtr->empty()
                         ? *argumentNamePtr
-                        : (AZStd::string::format("%s:%2d", argumentTypeName.data(), argIndex));
+                        : (AZStd::string::format("%s:%2zu", argumentTypeName.data(), argIndex));
                 }
 
                 return {};

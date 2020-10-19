@@ -242,7 +242,9 @@ namespace Audio
 } // namespace Audio
 struct SDefaultValidator;
 struct IDataProbe;
+#if ENABLE_CRY_PHYSICS
 class CPhysRenderer;
+#endif
 class CVisRegTest;
 class CThreadProfiler;
 
@@ -476,8 +478,10 @@ public:
     //! Host application (Editor) doesn't employ the Render cycle in ISystem,
     //! it may call this method to render the essential statistics
     void RenderStatistics () override;
+#if ENABLE_CRY_PHYSICS
     void RenderPhysicsHelpers() override;
     void RenderPhysicsStatistics(IPhysicalWorld* pWorld) override;
+#endif
 
     uint32 GetUsedMemory();
 
@@ -510,6 +514,7 @@ public:
     void SetAffinity();
     virtual const char* GetUserName();
     virtual int GetApplicationInstance();
+    int GetApplicationLogInstance(const char* logFilePath) override;
     virtual sUpdateTimes& GetCurrentUpdateTimeStats();
     virtual const sUpdateTimes* GetUpdateTimeStats(uint32&, uint32&);
 
@@ -524,7 +529,9 @@ public:
     IScriptSystem* GetIScriptSystem(){ return m_env.pScriptSystem; }
     I3DEngine* GetI3DEngine(){ return m_env.p3DEngine; }
     ICharacterManager* GetIAnimationSystem() {return m_env.pCharacterManager; }
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* GetIPhysicalWorld(){ return m_env.pPhysicalWorld; }
+#endif
     IMovieSystem* GetIMovieSystem() { return m_env.pMovieSystem; };
     IAISystem* GetAISystem(){ return m_env.pAISystem; }
     IMemoryManager* GetIMemoryManager(){ return m_pMemoryManager; }
@@ -535,8 +542,10 @@ public:
     ICmdLine* GetICmdLine(){ return m_pCmdLine; }
     IStreamEngine* GetStreamEngine();
     IValidator* GetIValidator() { return m_pValidator; };
+#if ENABLE_CRY_PHYSICS
     IPhysicsDebugRenderer* GetIPhysicsDebugRenderer();
     IPhysRenderer* GetIPhysRenderer();
+#endif
     IFrameProfileSystem* GetIProfileSystem() { return &m_FrameProfileSystem; }
     virtual IDiskProfiler* GetIDiskProfiler() { return m_pDiskProfiler; }
     CThreadProfiler* GetThreadProfiler() { return m_pThreadProfiler; }
@@ -761,8 +770,10 @@ private:
 
     bool InitConsole();
     bool InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInitParams& initParams);
+#if ENABLE_CRY_PHYSICS
     bool InitPhysics(const SSystemInitParams& initParams);
     bool InitPhysicsRenderer(const SSystemInitParams& initParams);
+#endif
 
     bool InitFont(const SSystemInitParams& initParams);
     bool InitAISystem(const SSystemInitParams& initParams);
@@ -966,7 +977,9 @@ private: // ------------------------------------------------------
 
     IMemoryManager* m_pMemoryManager;
 
+#if ENABLE_CRY_PHYSICS
     CPhysRenderer* m_pPhysRenderer;
+#endif
     CCamera m_PhysRendererCamera;
     ICVar* m_p_draw_helpers_str;
     int m_iJumpToPhysProfileEnt;
@@ -1098,6 +1111,7 @@ private: // ------------------------------------------------------
     ICVar* m_sys_firstlaunch;
     ICVar* m_sys_skip_input;
     ICVar* m_sys_asset_processor;
+    ICVar* m_sys_load_files_to_memory;
 
     ICVar* m_sys_physics_CPU;
 

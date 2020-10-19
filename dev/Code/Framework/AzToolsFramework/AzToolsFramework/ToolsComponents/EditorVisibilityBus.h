@@ -38,18 +38,6 @@ namespace AzToolsFramework
 
         /// Get whether this entity is set to be visible in the editor (individual state/flag).
         virtual bool GetVisibilityFlag() = 0;
-
-        /// LUMBERYARD_DEPRECATED(LY-102920)
-        /// ATTN: Do not use SetCurrentVisibility, instead use SetEntityVisibility in EditorEntityHelpers.h/cpp.
-        AZ_DEPRECATED(
-            virtual void SetCurrentVisibility(bool visibility) = 0;,
-            "Do not use SetCurrentVisibility, instead use SetEntityVisibility in EditorEntityHelpers.h/cpp.")
-
-        /// LUMBERYARD_DEPRECATED(LY-102920)
-        /// ATTN: Do not use GetCurrentVisibility, instead use EditorEntityInfoRequests::IsVisible.
-        AZ_DEPRECATED(
-            virtual bool GetCurrentVisibility() = 0;,
-            "Do not use GetCurrentVisibility, instead use EditorEntityInfoRequests::IsVisible.")
     };
 
     /// \ref EditorVisibilityRequests

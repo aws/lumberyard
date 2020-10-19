@@ -14,8 +14,11 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+
 #include <AzFramework/Scene/Scene.h>
 #include <AzFramework/Scene/SceneSystemBus.h>
+
+#include <AzToolsFramework/Editor/EditorSettingsAPIBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 
 namespace AzToolsFramework
@@ -35,6 +38,19 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<EditorSettingsAPIBus>("EditorSettingsAPIBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("BuildSettingsList", &EditorSettingsAPIRequests::BuildSettingsList)
+                ->Event("GetValue", &EditorSettingsAPIRequests::GetValue)
+                ->Event("SetValue", &EditorSettingsAPIRequests::SetValue)
+                ;
         }
     }
 

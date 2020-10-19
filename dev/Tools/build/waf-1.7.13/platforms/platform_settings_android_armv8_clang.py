@@ -11,6 +11,8 @@
 
 # System Imports
 import os
+import subprocess
+import sys
 
 # waflib imports
 from waflib import Errors, Logs, Utils
@@ -20,7 +22,6 @@ from waflib.Configure import conf
 
 
 PLATFORM = 'android_armv8_clang'
-
 
 # Required load_<PLATFORM>_common_settings(ctx)
 @conf
@@ -66,6 +67,23 @@ def load_android_armv8_clang_common_settings(ctx):
         env['LINKFLAGS'] += [
             '--sysroot={}'.format(platform_root_link),
         ]
+    else:
+        # Set the Sysroot for NDK 19 and above to allow AZ Code Generator to pickup on it
+        sysroot_path = os.path.join(ndk_root, 'toolchains', 'llvm', 'prebuilt', host_platform_to_toolchain_platform_subdir[host_platform], 'sysroot')
+        common_flags = [
+            '--sysroot={}'.format(sysroot_path)
+        ]
+        env['CFLAGS'] += common_flags[:]
+        env['CXXFLAGS'] += common_flags[:]
+
+    # Invoke the android NDK clang++ to retrieve the resource-dir to pass to AzCodeGenerator later
+    try:
+        resource_dir = subprocess.check_output([ctx.env['CXX'], '-print-resource-dir']).decode(sys.stdout.encoding or 'iso8859-1', 'replace').strip()
+        resource_dir_option = "-resource-dir=" + resource_dir
+        env['CFLAGS'].append(resource_dir_option)
+        env['CXXFLAGS'].append(resource_dir_option)
+    except Exception as error:
+        Logs.error('[ERROR] failed to retrieve resource-dir from "clang++ -print-resource-dir" invocation({})'.format(error))
 
     # Set the path to the android-arm gdbserver
     env['EXT_LIB_ANDROID_ARM64_GDBSERVER_PATH'] = ctx.add_to_android_cache(os.path.join(ctx.env['ANDROID_NDK_HOME'], 'prebuilt', 'android-arm64', 'gdbserver', 'gdbserver'))

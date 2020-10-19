@@ -152,7 +152,7 @@ struct IObjManager
     virtual int GetLoadedObjectCount() = 0;
 
     virtual uint16 CheckCachedNearestCubeProbe(IRenderNode* pEnt) = 0;
-    virtual int16 GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, bool bSpecular = true) = 0;
+    virtual int16 GetNearestCubeProbe(IVisArea* pVisArea, const AABB& objBox, bool bSpecular = true, bool bGetFirstProbe = true) = 0;
 
     virtual void RenderObject(IRenderNode* o, const AABB& objBox, float fEntDistance, EERType eERType, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;
     virtual void RenderVegetation(class CVegetation* pEnt, const AABB& objBox, float fEntDistance, SSectorTextureSet* pTerrainTexInfo, bool nCheckOcclusion, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter) = 0;

@@ -42,6 +42,8 @@ namespace AzToolsFramework
     class PropertyRowWidget : public QFrame
     {
         Q_OBJECT;
+        Q_PROPERTY(bool hasChildRows READ HasChildRows);
+        Q_PROPERTY(bool isTopLevel READ IsTopLevel);
     public:
         AZ_CLASS_ALLOCATOR(PropertyRowWidget, AZ::SystemAllocator, 0)
         PropertyRowWidget(QWidget* pParent);
@@ -77,6 +79,7 @@ namespace AzToolsFramework
 
         void SetParentRow(PropertyRowWidget* pParentRowWidget) { m_parentRow = pParentRowWidget; }
         PropertyRowWidget* GetParentRow() const { return m_parentRow; }
+        bool IsTopLevel() const;
 
         AZStd::vector<PropertyRowWidget*>& GetChildrenRows() { return m_childrenRows; }
         bool HasChildRows() const;
@@ -128,6 +131,15 @@ namespace AzToolsFramework
         void UpdateIndicator(const char* imagePath);
 
         void SetFilterString(const AZStd::string& str);
+
+        // Get notifications when widget refreshes should be prevented / restored
+        void PreventRefresh(bool shouldPrevent);
+
+        QVBoxLayout* GetLeftHandSideLayoutParent() { return m_leftHandSideLayoutParent; }
+        QToolButton* GetIndicatorButton() { return m_indicatorButton; }
+        QLabel* GetNameLabel() { return m_nameLabel; }
+        void SetIndentSize(int w);
+        void SetAsCustom(bool custom) { m_custom = custom; }
     protected:
         int CalculateLabelWidth() const;
 
@@ -139,6 +151,7 @@ namespace AzToolsFramework
         InstanceDataNode* ResolveToNodeByType(InstanceDataNode* startNode, const AZ::Uuid& typeId) const;
 
         QHBoxLayout* m_mainLayout;
+        QVBoxLayout* m_leftHandSideLayoutParent;
         QHBoxLayout* m_leftHandSideLayout;
         QHBoxLayout* m_middleLayout;
         QHBoxLayout* m_rightHandSideLayout;
@@ -151,7 +164,7 @@ namespace AzToolsFramework
         QWidget* m_leftAreaContainer;
         QWidget* m_middleAreaContainer;
 
-        QLabel* m_indicatorLabel;
+        QToolButton* m_indicatorButton;
         AzQtComponents::ElidingLabel* m_nameLabel;
         QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
         InstanceDataNode* m_sourceNode;
@@ -188,6 +201,7 @@ namespace AzToolsFramework
         bool m_initialized = false;
         bool m_isMultiSizeContainer = false;
         bool m_isFixedSizeOrSmartPtrContainer = false;
+        bool m_custom = false;
 
         bool m_isSelected = false;
         bool m_selectionEnabled = false;

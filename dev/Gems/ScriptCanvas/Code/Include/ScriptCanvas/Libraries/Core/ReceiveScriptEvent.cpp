@@ -513,8 +513,11 @@ namespace ScriptCanvas
                 m_handler->Disconnect();
                 m_connected = false;
 
-                SlotId onDisconnectSlotId = ReceiveScriptEventProperty::GetOnDisconnectedSlotId(this);
-                SignalOutput(onDisconnectSlotId);
+                if (IsActivated())
+                {
+                    SlotId onDisconnectSlotId = ReceiveScriptEventProperty::GetOnDisconnectedSlotId(this);
+                    SignalOutput(onDisconnectSlotId);
+                }
             }
 
             void ReceiveScriptEvent::Disconnect(bool queueDisconnect)

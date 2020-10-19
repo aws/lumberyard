@@ -61,9 +61,9 @@ namespace EditorPythonBindings
         , protected PythonMarshalTypeRequestBus::MultiHandler
     {
     public:
-        AZ_COMPONENT(PythonMarshalComponent, "{C733E1AD-9FDD-484E-A8D9-3EAB944B7841}");
+        AZ_COMPONENT(PythonMarshalComponent, "{C733E1AD-9FDD-484E-A8D9-3EAB944B7841}", AZ::Component);
 
-        static void Reflect(AZ::ReflectContext* context) {}
+        static void Reflect(AZ::ReflectContext* context);
 
         class TypeConverter
         {
@@ -72,7 +72,7 @@ namespace EditorPythonBindings
             virtual AZStd::optional<PythonMarshalComponent::PythonValueResult> BehaviorValueParameterToPython(AZ::BehaviorValueParameter& behaviorValue) = 0;
             virtual bool CanConvertPythonToBehaviorValue(BehaviorTraits traits, pybind11::object pyObj) const = 0;
         };
-        using TypeConverterPointer = AZStd::unique_ptr<TypeConverter>;
+        using TypeConverterPointer = AZStd::shared_ptr<TypeConverter>;
 
         void RegisterTypeConverter(const AZ::TypeId& typeId, TypeConverterPointer typeConverterPointer);
 

@@ -20,6 +20,8 @@
 
 namespace NvCloth
 {
+    class ClothComponentMesh;
+
     //! Class for in-editor Cloth Component.
     class EditorClothComponent
         : public AzToolsFramework::Components::EditorComponentBase
@@ -31,6 +33,7 @@ namespace NvCloth
         static void Reflect(AZ::ReflectContext* context);
 
         EditorClothComponent();
+        ~EditorClothComponent();
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
@@ -47,7 +50,14 @@ namespace NvCloth
         void OnMeshDestroyed() override;
 
     private:
+        bool IsSimulatedInEditor() const;
+        AZ::u32 OnSimulatedInEditorToggled();
+
+        void OnConfigurationChanged();
+
         ClothConfiguration m_config;
+
+        AZStd::unique_ptr<ClothComponentMesh> m_clothComponentMesh;
 
         // List of mesh nodes from the asset that contains cloth data.
         // This list is not serialized, it's compiled when the asset has been received via MeshComponentNotificationBus.
@@ -56,5 +66,6 @@ namespace NvCloth
         AZStd::string m_previousMeshNode;
 
         bool m_assetSupportsSkinnedAnimation = false;
+        bool m_simulateInEditor = false;
     };
 } // namespace NvCloth

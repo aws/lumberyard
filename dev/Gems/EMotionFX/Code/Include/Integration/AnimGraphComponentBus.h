@@ -189,12 +189,12 @@ namespace EMotionFX
             virtual bool GetVisualizeEnabled() = 0;
 
             /// Making a request to sync the anim graph with another animg graph
-            /// \param masterEntityId - the entity id of another anim graph.
-            virtual void SyncAnimGraph(AZ::EntityId masterEntityId) = 0;
+            /// \param leaderEntityId - the entity id of another anim graph.
+            virtual void SyncAnimGraph(AZ::EntityId leaderEntityId) = 0;
 
-            /// Making a request to desync from the anim graph to its master graph
-            /// \param masterEntityId - the entity id of another anim graph.
-            virtual void DesyncAnimGraph(AZ::EntityId masterEntityId) = 0;
+            /// Making a request to desync from the anim graph to its leader graph
+            /// \param leaderEntityId - the entity id of another anim graph.
+            virtual void DesyncAnimGraph(AZ::EntityId leaderEntityId) = 0;
         };
 
         using AnimGraphComponentRequestBus = AZ::EBus<AnimGraphComponentRequests>;
@@ -283,12 +283,12 @@ namespace EMotionFX
             virtual void OnAnimGraphRotationParameterChanged(EMotionFX::AnimGraphInstance* /*animGraphInstance*/, AZ::u32 parameterIndex, const AZ::Quaternion& beforeValue, const AZ::Quaternion& afterValue) {};
 
             /// Notifies listeners when an another anim graph trying to sync this graph
-            /// \param animGraphInstance - pointer to the servant anim graph instance
-            virtual void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) {};
+            /// \param animGraphInstance - pointer to the follower anim graph instance
+            virtual void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Follower)*/) {};
 
             /// Notifies listeners when an another anim graph trying to desync this graph
-            /// \param animGraphInstance - pointer to the servant anim graph instance
-            virtual void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) {};
+            /// \param animGraphInstance - pointer to the follower anim graph instance
+            virtual void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Follower)*/) {};
         };
 
         using AnimGraphComponentNotificationBus = AZ::EBus<AnimGraphComponentNotifications>;

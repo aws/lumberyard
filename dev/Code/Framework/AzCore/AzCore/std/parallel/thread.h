@@ -54,47 +54,31 @@ namespace AZStd
 
     struct thread_desc
     {
-        // Default thread desc settings
-        thread_desc()
-            : m_stack(0)
-            , m_stackSize(-1)
-            , m_priority(-100000)
-            , m_cpuId(AFFINITY_MASK_ALL)
-            , m_isJoinable(true)
-            , m_name("AZStd::thread")
-        {}
+        //! Debug thread name.
+        const char*     m_name{ "AZStd::thread" };
 
-        void*           m_stack;        ///< Stack memory pointer
+        //! Thread stack size. Default is -1, which means we will use the default stack size for each platform.
+        int             m_stackSize{ -1 };
+        
+        //! Windows: One of the following values:
+        //!     THREAD_PRIORITY_IDLE
+        //!     THREAD_PRIORITY_LOWEST
+        //!     THREAD_PRIORITY_BELOW_NORMAL
+        //!     THREAD_PRIORITY_NORMAL  (This is the default)
+        //!     THREAD_PRIORITY_ABOVE_NORMAL
+        //!     THREAD_PRIORITY_TIME_CRITICAL
+        //!
+        //! UnixLike platforms inherit calling thread priority by default,
+        //!     see platform specific implementations for more details
+        int             m_priority{ -100000 };
 
-        /**
-        *  Thread stack size.
-        *  Default is -1, which means we will use the default stack size for each platform.
-        */
-        int             m_stackSize;
+        //! The CPU ids (as a bitfield) that this thread will be running on, see \ref AZStd::thread_desc::m_cpuId.
+        //! Windows: This parameter is ignored.
+        //! On other platforms, each bit maps directly to the core numbers [0-n], default is 0
+        int             m_cpuId{ AFFINITY_MASK_ALL };
 
-        /**
-         *  Windows: One of the following values:
-         *      THREAD_PRIORITY_IDLE
-         *      THREAD_PRIORITY_LOWEST
-         *      THREAD_PRIORITY_BELOW_NORMAL
-         *      THREAD_PRIORITY_NORMAL  (This is the default)
-         *      THREAD_PRIORITY_ABOVE_NORMAL
-         *      THREAD_PRIORITY_TIME_CRITICAL
-         *
-         *  UnixLike platforms inherit calling thread priority by default,
-         *      see platform specific implementations for more details
-         */
-        int             m_priority;
-
-        /**
-         *  The CPU ids (as a bitfield) that this thread will be running on, see \ref AZStd::thread_desc::m_cpuId.
-         *  Windows: This parameter is ignored.
-         *  On other platforms, each bit maps directly to the core numbers [0-n], default is 0
-         */
-        int             m_cpuId;
-
-        bool            m_isJoinable;   ///< If we can join the thread.
-        const char*     m_name;         ///< Debug thread name.
+        //! If we can join the thread.
+        bool            m_isJoinable{ true };
     };
 
 

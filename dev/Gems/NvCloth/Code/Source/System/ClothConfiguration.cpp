@@ -23,7 +23,7 @@ namespace NvCloth
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<ClothConfiguration>()
-                ->Version(0)
+                ->Version(1)
                 ->Field("Mesh Node", &ClothConfiguration::m_meshNode)
                 ->Field("Mass", &ClothConfiguration::m_mass)
                 ->Field("Use Custom Gravity", &ClothConfiguration::m_useCustomGravity)
@@ -37,6 +37,7 @@ namespace NvCloth
                 ->Field("Linear Inertia", &ClothConfiguration::m_linearInteria)
                 ->Field("Angular Inertia", &ClothConfiguration::m_angularInteria)
                 ->Field("Centrifugal Inertia", &ClothConfiguration::m_centrifugalInertia)
+                ->Field("Use Custom Wind Velocity", &ClothConfiguration::m_useCustomWindVelocity)
                 ->Field("Wind Velocity", &ClothConfiguration::m_windVelocity)
                 ->Field("Air Drag Coefficient", &ClothConfiguration::m_airDragCoefficient)
                 ->Field("Air Lift Coefficient", &ClothConfiguration::m_airLiftCoefficient)

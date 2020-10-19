@@ -31,6 +31,7 @@ public:
 
     virtual const char* GetCategory() override { return "General Settings"; }
     virtual const char* GetTitle() override { return "Files"; }
+    virtual QIcon& GetIcon() override;
     virtual void OnApply() override;
     virtual void OnCancel() override {}
     virtual bool OnQueryCancel() override { return true; }
@@ -75,6 +76,7 @@ private:
     Files m_files;
     ExternalEditors m_editors;
     AutoBackup m_autoBackup;
+    QIcon m_icon;
 };
 
 

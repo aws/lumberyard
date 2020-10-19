@@ -10,8 +10,6 @@
 *
 */
 
-#pragma once
-
 #include <AzQtComponents/Components/TitleBarOverdrawScreenHandler_win.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler_win.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
@@ -47,6 +45,10 @@ void TitleBarOverdrawScreenHandler::registerWindow(QWindow* window)
     }
 
     m_window = window;
+    connect(m_window, &QObject::destroyed, this, [this] {
+        m_window = nullptr;
+    });
+
     connect(window, &QWindow::screenChanged, this, &TitleBarOverdrawScreenHandler::applyOverdrawMargins);
     window->installEventFilter(this);
 }
@@ -82,6 +84,13 @@ bool TitleBarOverdrawScreenHandler::eventFilter(QObject *watched, QEvent *event)
 
                 if (!dockWidget->isFloating())
                 {
+                    break;
+                }
+
+                if (m_window)
+                {
+                    // Window is already registered. This happens when a minimized window is restored from the
+                    // taskbar and a Show event is sent by QWidget before the WindowStateChange event is sent
                     break;
                 }
 

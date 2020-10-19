@@ -16,6 +16,7 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
 #include "utils.h"
 
 #if defined(USE_MATRIX_POOLS)
@@ -27,7 +28,6 @@ DECLARE_VECTORN_POOL(real, 256)
 #endif
 #endif
 
-int g_bHasSSE;
 inline float getlothresh(float) { return 1E-10f; }
 inline float gethithresh(float) { return 1E10f; }
 inline double getlothresh(double) { return 1E-20; }
@@ -1134,3 +1134,5 @@ void ForceCompilerToGenerateCodeForMatrixTemplates()
     mtxr.determinant();
     mtxr.invert();
 }
+
+#endif // ENABLE_CRY_PHYSICS

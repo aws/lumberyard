@@ -103,6 +103,8 @@ namespace VideoPlaybackFramework
                 ->Event("SetPlaybackSpeed", &VideoPlaybackRequestBus::Events::SetPlaybackSpeed)
                 ->Event("GetVideoPathname", &VideoPlaybackRequestBus::Events::GetVideoPathname)
                 ->Event("SetVideoPathname", &VideoPlaybackRequestBus::Events::SetVideoPathname)
+                ->Event("GetDestinationTextureName", &VideoPlaybackRequestBus::Events::GetDestinationTextureName)
+                ->Event("SetDestinationTextureName", &VideoPlaybackRequestBus::Events::SetDestinationTextureName)
                 ;
 
             behaviorContext->EBus<VideoPlaybackNotificationBus>("VideoPlaybackNotificationBus")

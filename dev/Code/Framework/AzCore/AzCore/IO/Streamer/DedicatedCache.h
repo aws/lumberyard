@@ -19,6 +19,10 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#if AZ_STREAMER_ADD_EXTRA_PROFILING_INFO
+#include <AzCore/std/parallel/mutex.h>
+#endif // AZ_STREAMER_ADD_EXTRA_PROFILING_INFO
+
 namespace AZ
 {
     namespace IO
@@ -46,7 +50,7 @@ namespace AZ
             void CreateDedicatedCache(const RequestPath& filePath, const FileRange& range) override;
             void DestroyDedicatedCache(const RequestPath& filePath, const FileRange& range) override;
             
-            void CollectStatistics(AZStd::vector<Statistic>& statistics) const override;
+            void CollectStatistics(AZStd::vector<Statistic>& statistics) override;
 
         private:
             void ReadFile(FileRequest* request); 
@@ -59,6 +63,12 @@ namespace AZ
             AZStd::vector<FileRange> m_cachedFileRanges;
             AZStd::vector<AZStd::unique_ptr<BlockCache>> m_cachedFileCaches;
             AZStd::vector<size_t> m_cachedFileRefCounts;
+
+#if AZ_STREAMER_ADD_EXTRA_PROFILING_INFO
+            AZStd::string_view AddOrUpdateCachedName(size_t index, AZStd::string&& name);
+            AZStd::vector<AZStd::string> m_cachedStatNames;
+            mutable AZStd::recursive_mutex m_cacheMutex;
+#endif // AZ_STREAMER_ADD_EXTRA_PROFILING_INFO
 
             u64 m_cacheSize;
             u32 m_blockSize;

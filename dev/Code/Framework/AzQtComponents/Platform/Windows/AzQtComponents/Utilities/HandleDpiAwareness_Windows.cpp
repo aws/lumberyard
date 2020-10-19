@@ -12,11 +12,9 @@
 
 #include <AzQtComponents/Utilities/HandleDpiAwareness.h>
 
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/fixed_vector.h>
-
-#include <AzCore/PlatformIncl.h>
-#include <VersionHelpers.h>
 
 namespace AzQtComponents
 {
@@ -42,18 +40,7 @@ namespace AzQtComponents
                     case PerScreenDpiAware:     // intentional fall-through (setting defaults to 2)
                     case Unset:                 // intentional fall-through
                     default:
-                        if (IsWindows8Point1OrGreater())
-                        {
-                            azstrcat(qpaArg, AZ_ARRAY_SIZE(qpaArg), "dpiawareness=2");
-                        }
-                        else
-                        {
-                            // We can't set dpiawareness=2 for Windows < 8.1, otherwise the title bars will break
-                            // on multiscreen setups with different dpis.
-                            // That's because TitleBarOverdrawHandlerWindows can't apply per screen frame margins
-                            // due to limits on the Windows API before Windows 10.
-                            azstrcat(qpaArg, AZ_ARRAY_SIZE(qpaArg), "dpiawareness=1");
-                        }
+                        azstrcat(qpaArg, AZ_ARRAY_SIZE(qpaArg), "dpiawareness=2");
                         break;
                 }
 

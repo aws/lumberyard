@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <AzFramework/Physics/Collision.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI_Internals.h>
 #include <AzFramework/Physics/World.h>
 #include <QWidget>
@@ -35,12 +34,16 @@ namespace PhysX
 
             explicit SettingsWidget(QWidget* parent = nullptr);
 
-            void SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
-                const PhysX::EditorConfiguration& editorConfiguration);
+            void SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary,
+                const Physics::WorldConfiguration& worldConfiguration,
+                const PhysX::EditorConfiguration& editorConfiguration,
+                const PhysX::WindConfiguration& windConfiguration);
 
         signals:
-            void onValueChanged(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
-                const PhysX::EditorConfiguration& editorConfiguration);
+            void onValueChanged(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary,
+                const Physics::WorldConfiguration& worldConfiguration,
+                const PhysX::EditorConfiguration& editorConfiguration,
+                const PhysX::WindConfiguration& windConfiguration);
 
         private:
             void CreatePropertyEditor(QWidget* parent);
@@ -56,6 +59,7 @@ namespace PhysX
             Physics::DefaultMaterialLibraryAssetReflectionWrapper m_defaultPhysicsMaterialLibrary;
             Physics::WorldConfiguration m_worldConfiguration;
             PhysX::EditorConfiguration m_editorConfiguration;
+            PhysX::WindConfiguration m_windConfiguration;
         };
     }
 }

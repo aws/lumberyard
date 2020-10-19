@@ -87,7 +87,7 @@ namespace EMotionFX
         {
             const AZ::u32 portNr = static_cast<AZ::u32>(i + INPUTPORT_START);
             SetupInputPort(
-                AZStd::string::format("Pose %d", i).c_str(),
+                AZStd::string::format("Pose %zu", i).c_str(),
                 portNr,
                 AttributePose::TYPE_ID,
                 portNr);

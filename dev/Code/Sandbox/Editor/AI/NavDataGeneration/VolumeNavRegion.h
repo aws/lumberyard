@@ -32,7 +32,9 @@
 struct IRenderer;
 struct I3DEngine;
 //struct IPhysicalEntity;
+#if ENABLE_CRY_PHYSICS
 struct IPhysicalWorld;
+#endif
 struct IGeometry;
 class CNavigation;
 

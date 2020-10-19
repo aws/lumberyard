@@ -326,6 +326,16 @@ public:
             return {};
         case Qt::UserRole:
             return QVariant().fromValue<CLayer*>(layer);
+        case Qt::TextColorRole:
+            switch (index.column())
+            {
+            case ColumnLayerName:
+            case ColumnMaterial:
+            case ColumnSplatMap:
+                return {};
+            default:
+                return QColor(0, 0, 0);
+            }
         default:
             return {};
         }

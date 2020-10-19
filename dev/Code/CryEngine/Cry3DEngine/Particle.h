@@ -15,11 +15,17 @@
 #define CRYINCLUDE_CRY3DENGINE_PARTICLE_H
 #pragma once
 
+#include "IParticles.h"
 #include "ParticleEffect.h"
 #include "ParticleMemory.h"
 #include "ParticleEnviron.h"
 #include "ParticleUtils.h"
 #include "CREParticle.h"
+
+#if !PARTICLES_USE_CRY_PHYSICS
+#include <CryPhysicsDeprecation.h>
+#include <AzFramework/Physics/WorldBodyBus.h>
+#endif
 
 class CParticleContainer;
 class CParticleSubEmitter;
@@ -154,11 +160,30 @@ protected:
 } _ALIGN(16);
 
 //////////////////////////////////////////////////////////////////////////
+
+#if !PARTICLES_USE_CRY_PHYSICS
+enum class CParticleCollision : uint8
+{
+    NONE = 0,
+    SELF = 1,
+    OTHER = 2,
+    BOTH = SELF | OTHER
+};
+
+inline CParticleCollision& operator|=(CParticleCollision& self, CParticleCollision rhs)
+{
+    self = static_cast<CParticleCollision>(static_cast<uint8>(self) | static_cast<uint8>(rhs));
+    return self;
+}
+#endif
+
 class CParticle
     : public CParticleSource
 {
 public:
 
+    CParticle() = default;
+    CParticle(const CParticle& other);
     ~CParticle();
 
     void Init(SParticleUpdateContext const& context, float fAge, CParticleSubEmitter* pEmitter, const EmitParticleData& data);
@@ -197,6 +222,10 @@ public:
         UpdateBounds(bb, *this);
     }
     void OffsetPosition(const Vec3& delta);
+
+#if !PARTICLES_USE_CRY_PHYSICS
+    void OnCollided(AZ::EntityId collidedWith);
+#endif
 
     // Associated structures.
     CParticleContainer& GetContainer() const
@@ -241,6 +270,7 @@ public:
 
     inline void GatherVertexData(SParticleVertexContext& Context, uint8 uAlpha, SParticleRenderData& renderData, SVF_Particle& baseVert) const;
     inline Vec2 CalculateConnectedTextureCoords(SParticleVertexContext& context) const;
+
 private:
 
     //////////////////////////////////////////////////////////////////////////
@@ -257,7 +287,11 @@ private:
     // Track sliding state.
     struct SSlideInfo
     {
+#if PARTICLES_USE_CRY_PHYSICS
         int                     physicalEntityId;   // Physical entity hit.
+#else // AZPhysics
+        AZ::EntityId            physicalEntityId;   // Physical entity hit.
+#endif
         Vec3                    vNormal;            // Normal of sliding surface.
         float                   fFriction;          // Sliding friction, proportional to normal force.
         float                   fSlidingTime;       // Cumulative amount of time sliding.
@@ -272,26 +306,39 @@ private:
         }
         void ClearSliding(const Vec3& vNormal_)
         {
+#if PARTICLES_USE_CRY_PHYSICS
             physicalEntityId = -1; // Defaulting to -1 to fallback to terrain collision (see GetPhysicalEntityById)
+#else // AZPhysics
+            physicalEntityId.SetInvalid(); // Defaulting to invalid to fallback to terrain collision (see GetPhysicalEntityById)
+#endif
             fFriction = 0;
             fSlidingTime = -1.f;
             vNormal = vNormal_;
         }
-        void SetSliding(IPhysicalEntity* pEntity_, const Vec3& vNormal_, float fFriction_)
+        void SetSliding(CryParticleHitEntity* entitySlidingAgainst, const Vec3& vNormal_, float fFriction_)
         {
-            physicalEntityId = gEnv->pPhysicalWorld->GetPhysicalEntityId(pEntity_);
+#if PARTICLES_USE_CRY_PHYSICS
+            physicalEntityId = gEnv->pPhysicalWorld->GetPhysicalEntityId(entitySlidingAgainst);
+#else // AZPhysics
+            physicalEntityId = entitySlidingAgainst ? entitySlidingAgainst->GetEntityId() : AZ::EntityId();
+#endif
             vNormal = vNormal_;
             fFriction = fFriction_;
             fSlidingTime = 0.f;
         }
+
         bool IsSliding() const
         {
             return fSlidingTime >= 0.f;
         }
 
-        IPhysicalEntity* GetPhysicalEntity() const
+        CryParticleHitEntity* GetPhysicalEntity() const
         {
+#if PARTICLES_USE_CRY_PHYSICS
             return gEnv->pPhysicalWorld->GetPhysicalEntityById(physicalEntityId);
+#else // AZPhysics
+            return SPhysEnviron::GetPhysicalEntityFromEntityId(physicalEntityId);
+#endif // PARTICLES_USE_CRY_PHYSICS
         }
     };
 
@@ -302,8 +349,13 @@ private:
         Vec3                vPathDir;               // Direction of reverse path.
         float               fPathLength;            // Length of reverse path.
         Vec3                vNormal;                // Normal of hit surface.
+#if PARTICLES_USE_CRY_PHYSICS
         int                 physicalEntityId;       // Physical entity hit.
         int                 nSurfaceIdx;            // Surface index of hit; -1 if no hit.
+#else // AZPhysics
+        AZ::EntityId        physicalEntityId;       // Physical entity hit.
+        Physics::Material*        material;       // Material hit; nullptr if no material.
+#endif
 
         SHitInfo()
         {
@@ -311,9 +363,14 @@ private:
         }
         void Clear()
         {
-            nSurfaceIdx = -1;
             fPathLength = 0.f;
+#if PARTICLES_USE_CRY_PHYSICS
+            nSurfaceIdx = -1;
             physicalEntityId = -1; // Defaulting to -1 to fallback to terrain collision (see GetPhysicalEntityById)
+#else // AZPhysics
+            material = nullptr;
+            physicalEntityId.SetInvalid(); // Defaulting to invalid to fallback to terrain collision (see GetPhysicalEntityById)
+#endif
         }
 
         bool HasPath() const
@@ -322,13 +379,21 @@ private:
         }
         bool HasHit() const
         {
+#if PARTICLES_USE_CRY_PHYSICS
             return nSurfaceIdx >= 0;
+#else
+            return material != nullptr;
+#endif
         }
         void SetMiss(const Vec3& vStart_, const Vec3& vEnd_)
         {
             SetHit(vStart_, vEnd_, Vec3(0.f));
         }
-        void SetHit(const Vec3& vStart_, const Vec3& vEnd_, const Vec3& vNormal_, int nSurfaceIdx_ = -1, IPhysicalEntity* pEntity_ = 0)
+#if PARTICLES_USE_CRY_PHYSICS
+        void SetHit(const Vec3& vStart_, const Vec3& vEnd_, const Vec3& vNormal_, int nSurfaceIdx_ = -1, CryParticleHitEntity* pEntity_ = 0)
+#else
+        void SetHit(const Vec3& vStart_, const Vec3& vEnd_, const Vec3& vNormal_, Physics::Material* material_ = nullptr, CryParticleHitEntity* pEntity_ = 0)
+#endif
         {
             vPos = vEnd_;
             vPathDir = vStart_ - vEnd_;
@@ -338,17 +403,26 @@ private:
                 vPathDir /= fPathLength;
             }
             vNormal = vNormal_;
+#if PARTICLES_USE_CRY_PHYSICS
             nSurfaceIdx = nSurfaceIdx_;
             physicalEntityId = gEnv->pPhysicalWorld->GetPhysicalEntityId(pEntity_);
+#else // AZPhysics
+            material = material_;
+            physicalEntityId = pEntity_ ? pEntity_->GetEntityId() : AZ::EntityId();
+#endif
         }
 
         // If path invalid, returns false.
         // If path valid returns true; if hit.dist < 1, then hit was matched.
-        bool TestHit(ray_hit& hit, const Vec3& vPos0, const Vec3& vPos1, const Vec3& vVel0, const Vec3& vVel1, float fMaxDev, float fRadius = 0.f) const;
+        bool TestHit(CryParticleRayHit& hit, const Vec3& vPos0, const Vec3& vPos1, const Vec3& vVel0, const Vec3& vVel1, float fMaxDev, float fRadius = 0.f) const;
 
-        IPhysicalEntity* GetPhysicalEntity() const
+        CryParticleHitEntity* GetPhysicalEntity() const
         {
+#if PARTICLES_USE_CRY_PHYSICS
             return gEnv->pPhysicalWorld->GetPhysicalEntityById(physicalEntityId);
+#else // AZPhysics
+            return SPhysEnviron::GetPhysicalEntityFromEntityId(physicalEntityId);
+#endif
         }
     };
 
@@ -381,7 +455,6 @@ private:
 
     SParticleHistory*           m_aPosHistory;                      // History of positions, for tail. Allocated and maintained by particle.
     SCollisionInfo*             m_pCollisionInfo;                   // Predicted collision info.
-
     // Base modifications (random variation, emitter strength) for this particle of variable parameters.
     // Stored as compressed fraction from 0..1.
     struct SBaseMods
@@ -450,6 +523,11 @@ private:
 
     //size scale from emitter's spawn parameter. save it in init since it has random element
     Vec3 m_sizeScale;
+
+#if !PARTICLES_USE_CRY_PHYSICS
+    CParticleCollision m_collided;
+    bool m_physicsActive = false;
+#endif // PARTICLES_USE_CRY_PHYSICS
 private:
 
     void SetState(SParticleState const& state)          { static_cast<SParticleState&>(*this) = state; }
@@ -475,11 +553,15 @@ private:
     float TravelSlide(SParticleState& state, SSlideInfo& sliding, float fTime, const Vec3& vExtAccel, float fMaxSlide, float fMinStepTime) const;
     void Move(SParticleState& state, float fTime, STargetForces const& forces) const;
     float MoveLinear(SParticleState& state, SCollisionInfo& coll, float fTime, STargetForces const& forces, float fMaxLinearDev, float fMaxSlideDev, float fMinStepTime) const;
-    bool CheckCollision(ray_hit& hit, float fTime, SParticleUpdateContext const& context, const STargetForces& forces, const SParticleState& stateNew, SCollisionInfo& collNew);
+    bool CheckCollision(CryParticleRayHit& hit, float fTime, SParticleUpdateContext const& context, const STargetForces& forces, const SParticleState& stateNew, SCollisionInfo& collNew);
 
     void Physicalize();
+#if PARTICLES_USE_CRY_PHYSICS
     int GetSurfaceIndex() const;
     void GetCollisionParams(int nCollSurfaceIdx, float& fElasticity, float& fDrag) const;
+#else
+    void GetCollisionParams(const Physics::Material* material, float& fElasticity, float& fDrag) const;
+#endif
 
     void ApplyCameraNonFacingFade(const SParticleVertexContext& context, SVF_Particle& vertex) const;
 

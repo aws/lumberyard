@@ -26,7 +26,7 @@ namespace ExpressionEvaluation
         {
         }
 
-        VariableDescriptor(const AZStd::string& displayName)
+        explicit VariableDescriptor(const AZStd::string& displayName)
             : m_displayName(displayName)
             , m_nameHash(AZ::Crc32(displayName))
         {

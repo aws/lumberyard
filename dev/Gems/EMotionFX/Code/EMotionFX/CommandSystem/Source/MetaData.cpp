@@ -306,7 +306,12 @@ namespace CommandSystem
         AZStd::string outResult;
         for (MCore::Command* command : metaDataCommands)
         {
-            if (!GetCommandManager()->ExecuteCommand(command, outResult, /*addToHistory =*/ false))
+            if (!GetCommandManager()->ExecuteCommand(command,
+                outResult,
+                /*addToHistory=*/false,
+                /*clearErrors=*/true,
+                /*handleErrors=*/true,
+                /*autoDeleteCommand=*/false))
             {
                 if (!outResult.empty())
                 {
@@ -317,5 +322,4 @@ namespace CommandSystem
         }
         return true;
     }
-
 } // namespace CommandSystem

@@ -171,10 +171,8 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     m_gui->m_objectTree->setDragDropOverwriteMode(false);
     m_gui->m_objectTree->setDragDropMode(QAbstractItemView::DragDrop);
     m_gui->m_objectTree->setDefaultDropAction(Qt::CopyAction);
-    m_gui->m_objectTree->setContextMenuPolicy(Qt::CustomContextMenu);
     m_gui->m_objectTree->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_gui->m_objectTree->setAutoScrollMargin(20);
-    connect(m_gui->m_objectTree, &QTreeView::customContextMenuRequested, this, &OutlinerWidget::OnOpenTreeContextMenu);
 
     // custom item delegate
     m_gui->m_objectTree->setItemDelegate(aznew OutlinerItemDelegate(m_gui->m_objectTree));
@@ -518,7 +516,7 @@ QItemSelection OutlinerWidget::BuildSelectionFromEntities(const EntityIdCollecti
     return selection;
 }
 
-void OutlinerWidget::OnOpenTreeContextMenu(const QPoint& pos)
+void OutlinerWidget::contextMenuEvent(QContextMenuEvent* event)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
 
@@ -627,7 +625,7 @@ void OutlinerWidget::OnOpenTreeContextMenu(const QPoint& pos)
         contextMenu->addSeparator();
     }
 
-    contextMenu->exec(m_gui->m_objectTree->mapToGlobal(pos));
+    contextMenu->exec(event->globalPos());
     delete contextMenu;
 }
 
@@ -1362,10 +1360,12 @@ static void SetEntityOutlinerState(Ui::OutlinerWidgetUI* entityOutlinerUi, const
 void OutlinerWidget::EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes)
 {
     SetEntityOutlinerState(m_gui, false);
+    setEnabled(false);
 }
 
 void OutlinerWidget::LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes)
 {
+    setEnabled(true);
     SetEntityOutlinerState(m_gui, true);
 }
 

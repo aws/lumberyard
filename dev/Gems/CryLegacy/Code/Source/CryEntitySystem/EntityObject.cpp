@@ -55,10 +55,12 @@ void CEntityObject::ReleaseObjects()
             pSkeletonAnim->SetEventCallback(0, 0);
         }
 
+#if ENABLE_CRY_PHYSICS
         if (ISkeletonPose* pSkeletonPose = pCharacter->GetISkeletonPose())
         {
             pSkeletonPose->DestroyCharacterPhysics(0);
         }
+#endif
 
         pCharacter->Release();
         pCharacter = NULL;
@@ -403,6 +405,7 @@ void CEntityObject::Render(IEntity* pEntity, SRendParams& rParams, int nRndFlags
         if (pFoliage)
         {
             pFoliage->SetFlags(pFoliage->GetFlags() & ~IFoliage::FLAG_FROZEN | -(int)(rParams.nMaterialLayers & MTL_LAYER_FROZEN) & IFoliage::FLAG_FROZEN);
+#if ENABLE_CRY_PHYSICS
             static ICVar* g_pWindActivationDist = gEnv->pConsole->GetCVar("e_FoliageWindActivationDist");
             float maxdist = g_pWindActivationDist ? g_pWindActivationDist->GetFVal() : 0.0f;
             Vec3 pos = m_worldTM.GetTranslation();
@@ -410,6 +413,7 @@ void CEntityObject::Render(IEntity* pEntity, SRendParams& rParams, int nRndFlags
             {
                 pStatObj->PhysicalizeFoliage(pEntity->GetPhysics(), m_worldTM, pFoliage, 0, 4);
             }
+#endif
         }
     }
 }

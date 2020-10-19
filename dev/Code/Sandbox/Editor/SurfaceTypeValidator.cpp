@@ -21,6 +21,7 @@
 
 void CSurfaceTypeValidator::Validate()
 {
+#if ENABLE_CRY_PHYSICS
     IObjectManager* pObjectManager = GetIEditor()->GetObjectManager();
     ISurfaceTypeManager* pSurfaceTypeManager = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceTypeManager();
     std::set<string> reportedMaterialNames;
@@ -84,8 +85,10 @@ void CSurfaceTypeValidator::Validate()
             pPhysicalEntity->Action(&ar, 1);
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 }
 
+#if ENABLE_CRY_PHYSICS
 void CSurfaceTypeValidator::GetUsedSubMaterials(pe_params_part* pPart, char usedSubMaterials[])
 {
     phys_geometry* pGeometriesToCheck[2];
@@ -130,3 +133,4 @@ void CSurfaceTypeValidator::GetUsedSubMaterials(pe_params_part* pPart, char used
         }
     }
 }
+#endif // ENABLE_CRY_PHYSICS

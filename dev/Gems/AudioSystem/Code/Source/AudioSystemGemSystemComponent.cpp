@@ -138,11 +138,11 @@ namespace AudioSystemGem
         bool success = false;
 
         // initialize audio system memory pool
-        if (!AZ::AllocatorInstance<Audio::AudioSystemAllocator>::IsReady())
+        if (!AZ::AllocatorInstance<AudioSystemAllocator>::IsReady())
         {
             const size_t poolSize = g_audioCVars.m_nATLPoolSize << 10;
 
-            Audio::AudioSystemAllocator::Descriptor allocDesc;
+            AudioSystemAllocator::Descriptor allocDesc;
 
             // Generic Allocator:
             allocDesc.m_allocationRecords = true;
@@ -154,7 +154,7 @@ namespace AudioSystemGem
                 allocDesc.m_heap.m_memoryBlockAlignment
             );
 
-            AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Create(allocDesc);
+            AZ::AllocatorInstance<AudioSystemAllocator>::Create(allocDesc);
         }
 
         if (CreateAudioSystem())
@@ -165,8 +165,7 @@ namespace AudioSystemGem
 
             // Initialize the implementation module...
             bool initImplSuccess = false;
-            Audio::Gem::AudioEngineGemRequestBus::BroadcastResult(initImplSuccess,
-                &Audio::Gem::AudioEngineGemRequestBus::Events::Initialize, initParams);
+            Gem::AudioEngineGemRequestBus::BroadcastResult(initImplSuccess, &Gem::AudioEngineGemRequestBus::Events::Initialize, initParams);
 
             if (initImplSuccess)
             {
@@ -176,7 +175,7 @@ namespace AudioSystemGem
             }
             else
             {
-                if (Audio::Gem::AudioEngineGemRequestBus::HasHandlers())
+                if (Gem::AudioEngineGemRequestBus::HasHandlers())
                 {
                     g_audioLogger.Log(eALT_ERROR, "The Audio Engine did not initialize correctly!");
                 }

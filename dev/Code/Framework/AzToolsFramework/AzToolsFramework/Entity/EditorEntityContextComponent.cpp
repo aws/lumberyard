@@ -74,7 +74,7 @@ namespace AzToolsFramework
             , public AZ::BehaviorEBusHandler
         {
             AZ_EBUS_BEHAVIOR_BINDER(EditorEntityContextNotificationBusHandler, "{159C07A6-BCB6-432E-BEBB-6AABF6C76989}", AZ::SystemAllocator,
-                OnEditorEntityCreated, OnEditorEntityDeleted);
+                OnEditorEntityCreated, OnEditorEntityDeleted, OnSliceInstantiated, OnSliceInstantiationFailed);
 
             void OnEditorEntityCreated(const AZ::EntityId& entityId) override
             {
@@ -84,6 +84,16 @@ namespace AzToolsFramework
             void OnEditorEntityDeleted(const AZ::EntityId& entityId) override
             {
                 Call(FN_OnEditorEntityDeleted, entityId);
+            }
+
+            void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket) override
+            {
+                Call(FN_OnSliceInstantiated, sliceAssetId, sliceAddress, ticket);
+            }
+
+            void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& ticket) override
+            {
+                Call(FN_OnSliceInstantiationFailed, sliceAssetId, ticket);
             }
         };
     }
@@ -111,6 +121,13 @@ namespace AzToolsFramework
 
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
+            behaviorContext->EBus<EditorEntityContextRequestBus>("EditorEntityContextRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Event("GetEditorEntityContextId", &EditorEntityContextRequests::GetEditorEntityContextId)
+                ;
+
             behaviorContext->EBus<EditorEntityContextNotificationBus>("EditorEntityContextNotificationBus")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                 ->Attribute(AZ::Script::Attributes::Category, "Editor")
@@ -118,6 +135,8 @@ namespace AzToolsFramework
                 ->Handler<Internal::EditorEntityContextNotificationBusHandler>()
                 ->Event("OnEditorEntityCreated", &EditorEntityContextNotification::OnEditorEntityCreated)
                 ->Event("OnEditorEntityDeleted", &EditorEntityContextNotification::OnEditorEntityDeleted)
+                ->Event("OnSliceInstantiated", &EditorEntityContextNotification::OnSliceInstantiated)
+                ->Event("OnSliceInstantiationFailed", &EditorEntityContextNotification::OnSliceInstantiationFailed)
                 ;
         }
     }
@@ -169,8 +188,8 @@ namespace AzToolsFramework
         GetRootSlice()->Instantiate();
 
         EditorEntityContextRequestBus::Handler::BusConnect();
-
         EditorEntityContextPickingRequestBus::Handler::BusConnect(GetContextId());
+        EditorLegacyGameModeNotificationBus::Handler::BusConnect();
     }
 
     //=========================================================================
@@ -178,8 +197,8 @@ namespace AzToolsFramework
     //=========================================================================
     void EditorEntityContextComponent::Deactivate()
     {
+        EditorLegacyGameModeNotificationBus::Handler::BusDisconnect();
         EditorEntityContextRequestBus::Handler::BusDisconnect();
-
         EditorEntityContextPickingRequestBus::Handler::BusDisconnect();
 
         DestroyContext();
@@ -206,17 +225,21 @@ namespace AzToolsFramework
     //=========================================================================
     AZ::EntityId EditorEntityContextComponent::CreateNewEditorEntity(const char* name)
     {
-        return CreateEditorEntity(name)->GetId();
+        AZ::Entity* entity = CreateEntity(name);
+        FinalizeEditorEntity(entity);
+        return entity->GetId();
     }
-    // LUMBERYARD_DEPRECATED(LY-103316)
+
     AZ::Entity* EditorEntityContextComponent::CreateEditorEntity(const char* name)
     {
         AZ::Entity* entity = CreateEntity(name);
         FinalizeEditorEntity(entity);
         return entity;
     }
-    // LUMBERYARD_DEPRECATED(LY-103316)
 
+    // Temporarily disable warnings while calling CreateEditorEntityWithId until
+    // the code can be moved directly to CreateNewEditorEntityWithId
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     //=========================================================================
     // EditorEntityContextRequestBus::CreateEditorEntityWithId
     //=========================================================================
@@ -232,7 +255,8 @@ namespace AzToolsFramework
 
         return newEntityId;
     }
-    // LUMBERYARD_DEPRECATED(LY-103316)
+    AZ_POP_DISABLE_WARNING
+
     AZ::Entity* EditorEntityContextComponent::CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId)
     {
         if (!entityId.IsValid())
@@ -260,7 +284,6 @@ namespace AzToolsFramework
         FinalizeEditorEntity(entity);
         return entity;
     }
-    // LUMBERYARD_DEPRECATED(LY-103316)
 
     //=========================================================================
     // EditorEntityContextComponent::FinalizeEditorEntity
@@ -1117,6 +1140,11 @@ namespace AzToolsFramework
         return m_isRunningGame;
     }
 
+    bool EditorEntityContextComponent::IsEditorRequestingGame()
+    {
+        return m_isRequestingGame;
+    }
+
     //=========================================================================
     // EntityContextRequestBus::IsEditorEntity
     //=========================================================================
@@ -1596,6 +1624,13 @@ namespace AzToolsFramework
         }
 
         HandleEntitiesAdded(deletedEntitiesRestored);
+
+        // Broadcast the created entity notification now after the restore is complete.
+        for (auto deletedEntity : deletedEntitiesRestored)
+        {
+            EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntityCreated, deletedEntity->GetId());
+        }
+
         if (!detachedEntitiesRestored.empty())
         {
             EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntitiesSliceOwnershipChanged, detachedEntitiesRestored);
@@ -1620,4 +1655,13 @@ namespace AzToolsFramework
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selectedEntities);
     }
 
+    void EditorEntityContextComponent::OnStartGameModeRequest()
+    {
+        m_isRequestingGame = true;
+    }
+
+    void EditorEntityContextComponent::OnStopGameModeRequest()
+    {
+        m_isRequestingGame = false;
+    }
 } // namespace AzToolsFramework

@@ -1,0 +1,23 @@
+{
+    "none":
+    {
+      "Include": [
+        "Include/AzManipulatorTestFramework/AzManipulatorTestFramework.h",
+        "Include/AzManipulatorTestFramework/AzManipulatorTestFrameworkFixture.h",
+        "Include/AzManipulatorTestFramework/ManipulatorTestViewportInteraction.h",
+        "Include/AzManipulatorTestFramework/ActionDispatcher.h",
+        "Include/AzManipulatorTestFramework/DirectManipulatorViewportInteraction.h",
+        "Include/AzManipulatorTestFramework/IndirectManipulatorViewportInteraction.h",
+        "Include/AzManipulatorTestFramework/ImmediateModeActionDispatcher.h",
+        "Include/AzManipulatorTestFramework/RetainedModeActionDispatcher.h"
+      ],
+      "Source": [
+        "Source/AzManipulatorTestFrameworkFixture.cpp",
+        "Source/ManipulatorTestViewportInteraction.cpp",
+        "Source/DirectManipulatorViewportInteraction.cpp",
+        "Source/IndirectManipulatorViewportInteraction.cpp",
+        "Source/ImmediateModeActionDispatcher.cpp",
+        "Source/RetainedModeActionDispatcher.cpp"
+      ]
+    }
+}

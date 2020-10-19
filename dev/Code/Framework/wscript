@@ -16,6 +16,7 @@ SUBFOLDERS = [
     'AzCore', 
     'AzFramework', 
     'AzGameFramework',
+    'AzManipulatorTestFramework',
     'AzQtComponents',
     'AzTest',
     'AzToolsFramework', 

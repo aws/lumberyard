@@ -18,6 +18,7 @@
 #include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 
 namespace UnitTest
 {
@@ -74,5 +75,29 @@ namespace UnitTest
         // check the view direction is in the same space as the manipulator (space + local transform)
         EXPECT_THAT(viewDirection, IsClose(AZ::Vector3::CreateAxisZ()));
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST(Manipulator, ScaleBasedOnCameraDistanceInFront)
+    {
+        AzFramework::CameraState cameraState{};
+        cameraState.m_position = AZ::Vector3::CreateAxisY(20.0f);
+        cameraState.m_forward = -AZ::Vector3::CreateAxisY();
+
+        const float scale =
+            AzToolsFramework::CalculateScreenToWorldMultiplier(AZ::Vector3::CreateZero(), cameraState);
+
+        EXPECT_NEAR(scale, 2.0f, std::numeric_limits<float>::epsilon());
+    }
+
+    TEST(Manipulator, ScaleBasedOnCameraDistanceToTheSide)
+    {
+        AzFramework::CameraState cameraState{};
+        cameraState.m_position = AZ::Vector3::CreateAxisY(20.0f);
+        cameraState.m_forward = -AZ::Vector3::CreateAxisY();
+
+        const float scale =
+            AzToolsFramework::CalculateScreenToWorldMultiplier(AZ::Vector3::CreateAxisX(-10.0f), cameraState);
+
+        EXPECT_NEAR(scale, 2.0f, std::numeric_limits<float>::epsilon());
     }
 } // namespace UnitTest

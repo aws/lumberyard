@@ -334,15 +334,6 @@ void C3DEngine::TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolum
     CFogVolumeRenderNode::TraceFogVolumes(vPos, objBBox, fogVolData, passInfo, fogVolumeShadingQuality);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-int C3DEngine::GetTerrainSize()
-{
-    AZ_Warning("LegacyTerrain", false, "%s has been deprecated. Use AzFramework::Terrain::TerrainDataRequestBus::GetTerrainAabb instead", __FUNCTION__);
-    AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
-    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
-    const int terrainSize = static_cast<int>(terrainAabb.GetWidth());
-    return terrainSize;
-}
 #include "ParticleEmitter.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -502,8 +493,9 @@ void C3DEngine::AsyncOctreeUpdate(IRenderNode* pEnt, int nSID, int nSIDConsidere
     {
         if (m_pObjectsTree == nullptr)
         {
-            const float terrainSize = (float)GetTerrainSize();
-            m_pObjectsTree = COctreeNode::Create(nSID, AABB(Vec3(0, 0, 0), Vec3(terrainSize, terrainSize, terrainSize)), NULL);
+            AZ::Aabb terrainAabb = AZ::Aabb::CreateFromPoint(AZ::Vector3::CreateZero());
+            AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainAabb, &AzFramework::Terrain::TerrainDataRequests::GetTerrainAabb);
+            m_pObjectsTree = COctreeNode::Create(nSID, AABB(Vec3(0, 0, 0), Vec3(terrainAabb.GetHeight(), terrainAabb.GetWidth(), terrainAabb.GetDepth())), NULL);
         }
 
         m_pObjectsTree->InsertObject(pEnt, aabb, fObjRadiusSqr, aabb.GetCenter());

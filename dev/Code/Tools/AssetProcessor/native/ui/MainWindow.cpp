@@ -14,7 +14,9 @@
 #include "AssetTreeFilterModel.h"
 #include "AssetTreeItem.h"
 #include "ConnectionEditDialog.h"
+#include "ProductAssetTreeItemData.h"
 #include "ProductAssetTreeModel.h"
+#include "SourceAssetTreeItemData.h"
 #include "SourceAssetTreeModel.h"
 
 #include <AzCore/base.h>
@@ -147,6 +149,9 @@ void MainWindow::Activate()
 {
     using namespace AssetProcessor;
 
+    m_sharedDbConnection = AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection>(aznew AzToolsFramework::AssetDatabase::AssetDatabaseConnection());
+    m_sharedDbConnection->OpenDatabase();
+
     ui->projectLabel->setText(QStringLiteral("%1: %2")
         .arg(tr("Project"))
         .arg(m_guiApplicationManager->GetGameName()));
@@ -176,13 +181,14 @@ void MainWindow::Activate()
     //Connection view
     ui->connectionTreeView->setModel(m_guiApplicationManager->GetConnectionManager());
     ui->connectionTreeView->setEditTriggers(QAbstractItemView::CurrentChanged);
-    ui->connectionTreeView->header()->resizeSection(ConnectionManager::StatusColumn, 100);
-    ui->connectionTreeView->header()->resizeSection(ConnectionManager::IdColumn, 60);
+    ui->connectionTreeView->header()->setSectionResizeMode(ConnectionManager::IdColumn, QHeaderView::Stretch);
+    ui->connectionTreeView->header()->setSectionResizeMode(ConnectionManager::AutoConnectColumn, QHeaderView::Fixed);
+    ui->connectionTreeView->header()->resizeSection(ConnectionManager::StatusColumn, 160);
     ui->connectionTreeView->header()->resizeSection(ConnectionManager::IpColumn, 150);
     ui->connectionTreeView->header()->resizeSection(ConnectionManager::PortColumn, 60);
     ui->connectionTreeView->header()->resizeSection(ConnectionManager::PlatformColumn, 60);
-    ui->connectionTreeView->header()->resizeSection(ConnectionManager::AutoConnectColumn, 40);
-    ui->connectionTreeView->header()->setSectionResizeMode(ConnectionManager::PlatformColumn, QHeaderView::Stretch);
+    ui->connectionTreeView->header()->resizeSection(ConnectionManager::AutoConnectColumn, 60);
+    
     ui->connectionTreeView->header()->setStretchLastSection(false);
     connect(ui->connectionTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::OnConnectionSelectionChanged);
 
@@ -299,7 +305,7 @@ void MainWindow::Activate()
     };
 
     const auto category = tr("Status");
-    for (const auto status : statuses)
+    for (const auto& status : statuses)
     {
         ui->jobFilteredSearchWidget->AddTypeFilter(category, JobsModel::GetStatusInString(status, 0, 0),
             QVariant::fromValue(status));
@@ -337,7 +343,7 @@ void MainWindow::Activate()
 
     // Asset view
     m_sourceAssetTreeFilterModel = new AssetProcessor::AssetTreeFilterModel(this);
-    m_sourceModel = new AssetProcessor::SourceAssetTreeModel(this);
+    m_sourceModel = new AssetProcessor::SourceAssetTreeModel(m_sharedDbConnection, this);
     m_sourceModel->Reset();
     m_sourceAssetTreeFilterModel->setSourceModel(m_sourceModel);
     ui->SourceAssetsTreeView->setModel(m_sourceAssetTreeFilterModel);
@@ -345,7 +351,7 @@ void MainWindow::Activate()
         m_sourceAssetTreeFilterModel, static_cast<void (QSortFilterProxyModel::*)(const QString&)>(&AssetTreeFilterModel::FilterChanged));
 
     m_productAssetTreeFilterModel = new AssetProcessor::AssetTreeFilterModel(this);
-    m_productModel = new AssetProcessor::ProductAssetTreeModel(this);
+    m_productModel = new AssetProcessor::ProductAssetTreeModel(m_sharedDbConnection, this);
     m_productModel->Reset();
     m_productAssetTreeFilterModel->setSourceModel(m_productModel);
     ui->ProductAssetsTreeView->setModel(m_productAssetTreeFilterModel);
@@ -371,10 +377,18 @@ void MainWindow::Activate()
         m_productModel,
         m_productAssetTreeFilterModel,
         ui->assetsTabWidget);
+    ui->productAssetDetailsPanel->SetScannerInformation(ui->missingDependencyScanResults, m_guiApplicationManager->GetAssetProcessorManager()->GetDatabaseConnection());
+    ui->productAssetDetailsPanel->SetScanQueueEnabled(false);
 
     connect(ui->SourceAssetsTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, ui->sourceAssetDetailsPanel, &SourceAssetDetailsPanel::AssetDataSelectionChanged);
     connect(ui->ProductAssetsTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, ui->productAssetDetailsPanel, &ProductAssetDetailsPanel::AssetDataSelectionChanged);
     connect(ui->assetsTabWidget, &QTabWidget::currentChanged, this, &MainWindow::OnAssetTabChange);
+
+    ui->ProductAssetsTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->ProductAssetsTreeView, &QWidget::customContextMenuRequested, this, &MainWindow::ShowProductAssetContextMenu);
+
+    ui->SourceAssetsTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->SourceAssetsTreeView, &QWidget::customContextMenuRequested, this, &MainWindow::ShowSourceAssetContextMenu);
 
     SetupAssetSelectionCaching();
 
@@ -512,7 +526,7 @@ void MainWindow::OnRescanButtonClicked()
 void MainWindow::OnSupportClicked(bool /*checked*/)
 {
     QDesktopServices::openUrl(
-        QStringLiteral("https://docs.aws.amazon.com/lumberyard/latest/userguide/asset-pipeline-processor.html"));
+        QStringLiteral("https://docs.aws.amazon.com/console/lumberyard/asset-processor"));
 }
 
 void MainWindow::EditConnection(const QModelIndex& index)
@@ -532,7 +546,7 @@ void MainWindow::OnConnectionContextMenu(const QPoint& point)
     bool isUserConnection = index.isValid() && index.data(ConnectionManager::UserConnectionRole).toBool();
     QMenu menu(this);
 
-    QAction* editConnectionAction = menu.addAction("&Edit Connection...");
+    QAction* editConnectionAction = menu.addAction("&Edit connection...");
     editConnectionAction->setEnabled(isUserConnection);
     connect(editConnectionAction, &QAction::triggered, this, [index, this] {
         EditConnection(index);
@@ -823,6 +837,7 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         {
             text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
             ui->timerContainerWidget->setVisible(false);
+            ui->productAssetDetailsPanel->SetScanQueueEnabled(false);
         }
         else
         {
@@ -830,6 +845,10 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
             text = tr("Idle...");
             ui->timerContainerWidget->setVisible(true);
             m_guiApplicationManager->RemoveOldTempFolders();
+            // Once the asset processor goes idle, enable the scan queue.
+            // This minimizes the potential for over-reporting missing dependencies (if a queued job would resolve them)
+            // and prevents running too many threads with too much work (scanning + processing jobs both take time).
+            ui->productAssetDetailsPanel->SetScanQueueEnabled(true);
         }
         break;
     case AssetProcessorStatus::Processing_Jobs:
@@ -840,6 +859,7 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         {
             text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
             ui->timerContainerWidget->setVisible(false);
+            ui->productAssetDetailsPanel->SetScanQueueEnabled(false);
         }
         else
         {
@@ -847,6 +867,10 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
             text = tr("Idle...");
             ui->timerContainerWidget->setVisible(true);
             m_guiApplicationManager->RemoveOldTempFolders();
+            // Once the asset processor goes idle, enable the scan queue.
+            // This minimizes the potential for over-reporting missing dependencies (if a queued job would resolve them)
+            // and prevents running too many threads with too much work (scanning + processing jobs both take time).
+            ui->productAssetDetailsPanel->SetScanQueueEnabled(true);
             AZ_TracePrintf(
                 AssetProcessor::ConsoleChannel,
                 "Job processing completed. Asset Processor is currently idle. Process time: %s\n",
@@ -855,6 +879,7 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         break;
     default:
         text = QString();
+        break;
     }
 
     ui->APStatusValueLabel->setText(QStringLiteral("%1: %2")
@@ -1093,15 +1118,15 @@ void MainWindow::ShowJobLogContextMenu(const QPoint& pos)
     }
 
     QMenu menu;
-    QAction* line = menu.addAction(tr("Copy Line"), this, [&]()
+    QAction* line = menu.addAction(tr("Copy line"), this, [&]()
     {
         QGuiApplication::clipboard()->setText(sourceIndex.data(LogTableModel::LogLineTextRole).toString());
     });
-    QAction* lineDetails = menu.addAction(tr("Copy Line With Details"), this, [&]()
+    QAction* lineDetails = menu.addAction(tr("Copy line with details"), this, [&]()
     {
         QGuiApplication::clipboard()->setText(sourceIndex.data(LogTableModel::CompleteLogLineTextRole).toString());
     });
-    menu.addAction(tr("Copy All"), this, [&]()
+    menu.addAction(tr("Copy all"), this, [&]()
     {
         QGuiApplication::clipboard()->setText(m_logsModel->toString(true));
     });
@@ -1173,107 +1198,403 @@ void MainWindow::ShowJobViewContextMenu(const QPoint& pos)
 
     const CachedJobInfo* item = cachedJobInfoAt(pos);
 
-    if (item)
+    if (!item)
     {
-        QMenu menu;
-        menu.setToolTipsVisible(true);
-
-        menu.addAction("Show in Asset Browser", this, [&]()
-        {
-            ConnectionManager* connectionManager = m_guiApplicationManager->GetConnectionManager();
-
-            QString filePath = FindAbsoluteFilePath(item);
-
-            AzToolsFramework::AssetSystem::WantAssetBrowserShowRequest requestMessage;
-
-            auto& connectionMap = connectionManager->getConnectionMap();
-            auto connections = connectionMap.values();
-            for (auto connection : connections)
-            {
-                using namespace AzFramework::AssetSystem;
-
-                // Ask the Editor, and only the Editor, if it wants to receive
-                // the message for showing an asset in the AssetBrowser.
-                // This also allows the Editor to send back it's Process ID, which
-                // allows the Windows platform to call AllowSetForegroundWindow()
-                // which is required to bring the Editor window to the foreground
-                if (connection->Identifier() == ConnectionIdentifiers::Editor)
-                {
-                    unsigned int connectionId = connection->ConnectionId();
-                    connection->SendRequest(requestMessage, [connectionManager, connectionId, filePath](AZ::u32 /*type*/, QByteArray callbackData) {
-                        SendShowInAssetBrowserResponse(filePath, connectionManager, connectionId, callbackData);
-                    });
-                }
-            }
-        });
-
-        // Only completed items will be available in the assets tab.
-        QAction* assetTabAction = menu.addAction("Show in Asset Tab", this, [&]()
-        {
-            ui->dialogStack->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
-            ui->buttonList->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
-            ui->sourceAssetDetailsPanel->GoToSource(item->m_elementId.GetInputAssetName().toUtf8().constData());
-        });
-        if (assetTabAction && item->m_jobState != AzToolsFramework::AssetSystem::JobStatus::Completed)
-        {
-            assetTabAction->setToolTip(tr("Only completed jobs are available in the asset tab."));
-            assetTabAction->setDisabled(true);
-        }
-        else if(assetTabAction)
-        {
-            assetTabAction->setToolTip(tr("Show the source asset for this job in the asset tab."));
-        }
-
-        menu.addAction(AzQtComponents::fileBrowserActionName(), this, [&]()
-        {
-            AzQtComponents::ShowFileOnDesktop(FindAbsoluteFilePath(item));
-        });
-
-        menu.addAction(tr("Open"), this, [&]()
-        {
-            QDesktopServices::openUrl(QUrl::fromLocalFile(FindAbsoluteFilePath(item)));
-        });
-
-        menu.addAction(tr("Copy"), this, [&]()
-        {
-            QGuiApplication::clipboard()->setText(FindAbsoluteFilePath(item));
-        });
-
-        // Get the internal path to the log file
-        const QModelIndex proxyIndex = ui->jobTreeView->indexAt(pos);
-        const QModelIndex sourceIndex = m_jobSortFilterProxy->mapToSource(proxyIndex);
-        QVariant pathVariant = m_jobsModel->data(sourceIndex, JobsModel::logFileRole);
-
-        // Get the absolute path of the log file
-        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-        char resolvedPath[AZ_MAX_PATH_LEN];
-        fileIO->ResolvePath(pathVariant.toByteArray().constData(), resolvedPath, AZ_MAX_PATH_LEN);
-
-        QFileInfo fileInfo(resolvedPath);
-        auto openLogFile = menu.addAction(tr("Open log file"), this, [&]()
-        {
-            QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.absoluteFilePath()));
-        });
-        openLogFile->setEnabled(fileInfo.exists());
-
-        auto logDir = fileInfo.absoluteDir();
-        auto openLogFolder = menu.addAction(tr("Open folder with log file"), this, [&]()
-        {
-            if (fileInfo.exists())
-            {
-                AzQtComponents::ShowFileOnDesktop(fileInfo.absoluteFilePath());
-            }
-            else
-            {
-                // If the file doesn't exist, but the directory does, just open the directory
-                AzQtComponents::ShowFileOnDesktop(logDir.absolutePath());
-            }
-        });
-        // Only open and show the folder if the file actually exists, otherwise it's confusing
-        openLogFolder->setEnabled(fileInfo.exists());
-
-        menu.exec(ui->jobTreeView->viewport()->mapToGlobal(pos));
+        return;
     }
+    QMenu menu;
+    menu.setToolTipsVisible(true);
+
+    menu.addAction("Show in Asset Browser", this, [&]()
+    {
+        ConnectionManager* connectionManager = m_guiApplicationManager->GetConnectionManager();
+
+        QString filePath = FindAbsoluteFilePath(item);
+
+        AzToolsFramework::AssetSystem::WantAssetBrowserShowRequest requestMessage;
+
+        auto& connectionMap = connectionManager->getConnectionMap();
+        auto connections = connectionMap.values();
+        for (auto connection : connections)
+        {
+            using namespace AzFramework::AssetSystem;
+
+            // Ask the Editor, and only the Editor, if it wants to receive
+            // the message for showing an asset in the AssetBrowser.
+            // This also allows the Editor to send back it's Process ID, which
+            // allows the Windows platform to call AllowSetForegroundWindow()
+            // which is required to bring the Editor window to the foreground
+            if (connection->Identifier() == ConnectionIdentifiers::Editor)
+            {
+                unsigned int connectionId = connection->ConnectionId();
+                connection->SendRequest(requestMessage, [connectionManager, connectionId, filePath](AZ::u32 /*type*/, QByteArray callbackData) {
+                    SendShowInAssetBrowserResponse(filePath, connectionManager, connectionId, callbackData);
+                });
+            }
+        }
+    });
+
+    // Only completed items will be available in the assets tab.
+    QAction* assetTabSourceAction = menu.addAction(tr("View source asset"), this, [&]()
+    {
+        ui->dialogStack->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
+        ui->buttonList->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
+        ui->sourceAssetDetailsPanel->GoToSource(item->m_elementId.GetInputAssetName().toUtf8().constData());
+    });
+
+    QString productMenuTitle(tr("View product asset..."));        
+    if (item->m_jobState != AzToolsFramework::AssetSystem::JobStatus::Completed)
+    {
+        QString disabledActionTooltip(tr("Only completed jobs are available in the Assets tab."));
+        assetTabSourceAction->setToolTip(disabledActionTooltip);
+        assetTabSourceAction->setDisabled(true);
+
+        // Disabled menus don't support tooltips, so add it as an action, instead.
+        QAction* productMenuAction = menu.addAction(productMenuTitle);
+        productMenuAction->setToolTip(disabledActionTooltip);
+        productMenuAction->setDisabled(true);
+    }
+    else
+    {
+        assetTabSourceAction->setToolTip(tr("Show the source asset for this job in the Assets tab."));
+
+        QMenu* productMenu = menu.addMenu(productMenuTitle);
+        productMenu->setToolTipsVisible(true);
+
+        bool anyProductsAvailableForJob = false;
+        m_sharedDbConnection->QueryJobByJobRunKey(
+            item->m_jobRunKey,
+            [&](AzToolsFramework::AssetDatabase::JobDatabaseEntry& jobEntry)
+        {
+            m_sharedDbConnection->QueryProductByJobID(
+                jobEntry.m_jobID,
+                [&](AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry)
+            {
+                if (productEntry.m_productName.empty())
+                {
+                    return true;
+                }
+                anyProductsAvailableForJob = true;
+                QAction* assetTabProductAction = productMenu->addAction(productEntry.m_productName.c_str(), this, [&, productEntry]()
+                {
+                    ui->dialogStack->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
+                    ui->buttonList->setCurrentIndex(static_cast<int>(DialogStackIndex::Assets));
+                    ui->sourceAssetDetailsPanel->GoToProduct(productEntry.m_productName);
+                });
+                assetTabProductAction->setToolTip("Shows this product asset in the Product Assets tab.");
+                return true; // Keep iterating, add all products.
+            });
+            return false; // Stop iterating, there should only be one job with this run key.
+        });
+
+        if (!anyProductsAvailableForJob)
+        {
+            // If there were no products, then show a disabled action with a tooltip.
+            // Disabled menus don't support tooltips, so remove the menu first.
+            menu.removeAction(productMenu->menuAction());
+            productMenu->deleteLater();
+            productMenu = nullptr;
+
+            QAction* productMenuAction = menu.addAction(productMenuTitle);
+            productMenuAction->setToolTip(tr("This job created no products."));
+            productMenuAction->setDisabled(true);
+        }
+    }
+
+    QAction* fileBrowserAction = menu.addAction(AzQtComponents::fileBrowserActionName(), this, [&]()
+    {
+        AzQtComponents::ShowFileOnDesktop(FindAbsoluteFilePath(item));
+    });
+    fileBrowserAction->setToolTip(tr("Opens a window in your operating system's file explorer to view the source asset for this job."));
+
+    menu.addAction(tr("Open"), this, [&]()
+    {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(FindAbsoluteFilePath(item)));
+    });
+
+    menu.addAction(tr("Copy"), this, [&]()
+    {
+        QGuiApplication::clipboard()->setText(FindAbsoluteFilePath(item));
+    });
+
+    // Get the internal path to the log file
+    const QModelIndex proxyIndex = ui->jobTreeView->indexAt(pos);
+    const QModelIndex sourceIndex = m_jobSortFilterProxy->mapToSource(proxyIndex);
+    QVariant pathVariant = m_jobsModel->data(sourceIndex, JobsModel::logFileRole);
+
+    // Get the absolute path of the log file
+    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+    char resolvedPath[AZ_MAX_PATH_LEN];
+    fileIO->ResolvePath(pathVariant.toByteArray().constData(), resolvedPath, AZ_MAX_PATH_LEN);
+
+    QFileInfo fileInfo(resolvedPath);
+    auto openLogFile = menu.addAction(tr("Open log file"), this, [&]()
+    {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.absoluteFilePath()));
+    });
+    openLogFile->setEnabled(fileInfo.exists());
+
+    auto logDir = fileInfo.absoluteDir();
+    auto openLogFolder = menu.addAction(tr("Open folder with log file"), this, [&]()
+    {
+        if (fileInfo.exists())
+        {
+            AzQtComponents::ShowFileOnDesktop(fileInfo.absoluteFilePath());
+        }
+        else
+        {
+            // If the file doesn't exist, but the directory does, just open the directory
+            AzQtComponents::ShowFileOnDesktop(logDir.absolutePath());
+        }
+    });
+    // Only open and show the folder if the file actually exists, otherwise it's confusing
+    openLogFolder->setEnabled(fileInfo.exists());
+
+    menu.exec(ui->jobTreeView->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::SelectJobAndMakeVisible(const QModelIndex& index)
+{
+    if (!index.isValid())
+    {
+        return;
+    }
+    // Make sure the job is visible, clear any existing filters.
+    // This has to be done before getting the filter index, because it will change.
+    ui->jobFilteredSearchWidget->ClearTextFilter();
+    ui->jobFilteredSearchWidget->ClearTypeFilter();
+
+    ui->dialogStack->setCurrentIndex(static_cast<int>(DialogStackIndex::Jobs));
+    ui->buttonList->setCurrentIndex(static_cast<int>(DialogStackIndex::Jobs));
+    QModelIndex proxyIndex = m_jobSortFilterProxy->mapFromSource(index);
+    ui->jobTreeView->scrollTo(proxyIndex, QAbstractItemView::ScrollHint::EnsureVisible);
+    // This isn't an asset tree, but use the same selection mode when selecting this row.
+    // Setting the current index works a bit better than just selecting, because the item will be treated as
+    // active for purposes of keyboard navigation and additional row highlighting (if the tree view itself gains focus)
+    ui->jobTreeView->selectionModel()->setCurrentIndex(proxyIndex, AssetProcessor::AssetTreeModel::GetAssetTreeSelectionFlags());
+}
+
+void MainWindow::ShowSourceAssetContextMenu(const QPoint& pos)
+{
+    using namespace AssetProcessor;
+    auto sourceAt = [this](const QPoint& pos)
+    {
+        const QModelIndex proxyIndex = ui->SourceAssetsTreeView->indexAt(pos);
+        const QModelIndex sourceIndex = m_sourceAssetTreeFilterModel->mapToSource(proxyIndex);
+        return static_cast<AssetTreeItem*>(sourceIndex.internalPointer());
+    };
+
+    const AssetTreeItem* cachedAsset = sourceAt(pos);
+
+    if (!cachedAsset)
+    {
+        return;
+    }
+    QMenu menu(this);
+    menu.setToolTipsVisible(true);
+    const AZStd::shared_ptr<const SourceAssetTreeItemData> sourceItemData = AZStd::rtti_pointer_cast<const SourceAssetTreeItemData>(cachedAsset->GetData());
+
+
+    QString jobMenuText(tr("View job..."));
+    QString productMenuText(tr("View product asset..."));
+    if (cachedAsset->getChildCount() > 0)
+    {
+        // Tooltips don't appear for disabled menus, so if this is a folder, create it as an action instead.
+        QAction* jobAction = menu.addAction(jobMenuText);
+        jobAction->setDisabled(true);
+        jobAction->setToolTip(tr("Folders do not have associated jobs."));
+
+        QAction* productAction = menu.addAction(productMenuText);
+        productAction->setDisabled(true);
+        productAction->setToolTip(tr("Folders do not have associated products."));
+    }
+    else
+    {
+        QMenu* jobMenu = menu.addMenu(jobMenuText);
+        jobMenu->setToolTipsVisible(true);
+        QMenu* productMenu = menu.addMenu(productMenuText);
+        productMenu->setToolTipsVisible(true);
+
+        m_sharedDbConnection->QueryJobBySourceID(sourceItemData->m_sourceInfo.m_sourceID,
+            [&](AzToolsFramework::AssetDatabase::JobDatabaseEntry& jobEntry)
+        {
+            QAction* jobAction = jobMenu->addAction(tr("with key %1 for platform %2").arg(jobEntry.m_jobKey.c_str(), jobEntry.m_platform.c_str()), this, [&, jobEntry]()
+            {
+                QModelIndex jobIndex = m_jobsModel->GetJobFromSourceAndJobInfo(sourceItemData->m_assetDbName, jobEntry.m_platform, jobEntry.m_jobKey);
+                SelectJobAndMakeVisible(jobIndex);
+            });
+            jobAction->setToolTip(tr("Show this job in the Jobs tab."));
+
+            m_sharedDbConnection->QueryProductByJobID(
+                jobEntry.m_jobID,
+                [&](AzToolsFramework::AssetDatabase::ProductDatabaseEntry& productEntry)
+            {
+                if (productEntry.m_productName.empty())
+                {
+                    return true;
+                }
+                QAction* productAction = productMenu->addAction(productEntry.m_productName.c_str(), this, [&, productEntry]()
+                {
+                    ui->sourceAssetDetailsPanel->GoToProduct(productEntry.m_productName);
+                });
+                productAction->setToolTip("Show this product in the product assets tab.");
+                return true; // Keep iterating, add all products.
+            });
+            return true; // Stop iterating, there should only be one job with this run key.
+        });
+    }
+
+    QAction* fileBrowserAction = menu.addAction(AzQtComponents::fileBrowserActionName(), this, [&]()
+    {
+        AZ::Outcome<QString> pathToSource = GetAbsolutePathToSource(*cachedAsset);
+        if (pathToSource.IsSuccess())
+        {
+            AzQtComponents::ShowFileOnDesktop(pathToSource.GetValue());
+        }
+    });
+    QString fileOrFolder(cachedAsset->getChildCount() > 0 ? tr("folder") : tr("file"));
+    fileBrowserAction->setToolTip(tr("Opens a window in your operating system's file explorer to view this %1.").arg(fileOrFolder));
+
+    QAction* copyFullPathAction = menu.addAction(tr("Copy full path"), this, [&]()
+    {
+        AZ::Outcome<QString> pathToSource = GetAbsolutePathToSource(*cachedAsset);
+        if (pathToSource.IsSuccess())
+        {
+            QGuiApplication::clipboard()->setText(pathToSource.GetValue());
+        }
+    });
+
+    copyFullPathAction->setToolTip(tr("Copies the full path to this file to your clipboard."));
+
+    QString reprocessFolder{ tr("Reprocess Folder") };
+    QString reprocessFile{ tr("Reprocess File") };
+
+    QAction* reprocessAssetAction = menu.addAction(cachedAsset->getChildCount() ? reprocessFolder : reprocessFile, this, [&]()
+    {
+        AZ::Outcome<QString> pathToSource = GetAbsolutePathToSource(*cachedAsset);
+        m_guiApplicationManager->GetAssetProcessorManager()->RequestReprocess(pathToSource.GetValue());
+    });
+
+    QString reprocessFolderTip{ tr("Put the source assets in the selected folder back in the processing queue") };
+    QString reprocessFileTip{ tr("Put the source asset back in the processing queue") };
+
+    reprocessAssetAction->setToolTip(cachedAsset->getChildCount() ? reprocessFolderTip : reprocessFileTip);
+
+    menu.exec(ui->SourceAssetsTreeView->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::ShowProductAssetContextMenu(const QPoint& pos)
+{
+    using namespace AssetProcessor;
+    auto productAt = [this](const QPoint& pos)
+    {
+        const QModelIndex proxyIndex = ui->ProductAssetsTreeView->indexAt(pos);
+        const QModelIndex sourceIndex = m_productAssetTreeFilterModel->mapToSource(proxyIndex);
+        return static_cast<AssetTreeItem*>(sourceIndex.internalPointer());
+    };
+
+    const AssetTreeItem* cachedAsset = productAt(pos);
+
+    if (!cachedAsset)
+    {
+        return;
+    }
+
+    QMenu menu(this);
+    menu.setToolTipsVisible(true);
+    const AZStd::shared_ptr<const ProductAssetTreeItemData> productItemData = AZStd::rtti_pointer_cast<const ProductAssetTreeItemData>(cachedAsset->GetData());
+
+    QAction* jobAction = menu.addAction("View job", this, [&]()
+    {
+        if (!productItemData)
+        {
+            return;
+        }
+
+        QModelIndex jobIndex = m_jobsModel->GetJobFromProduct(productItemData->m_databaseInfo, *m_sharedDbConnection);
+        SelectJobAndMakeVisible(jobIndex);
+    });
+
+    QAction* sourceAssetAction = menu.addAction("View source asset", this, [&]()
+    {
+        if (!productItemData)
+        {
+            return;
+        }
+        m_sharedDbConnection->QuerySourceByProductID(
+            productItemData->m_databaseInfo.m_productID,
+            [&](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry)
+        {
+            ui->sourceAssetDetailsPanel->GoToSource(sourceEntry.m_sourceName);
+            return false; // Don't keep iterating
+        });
+    });
+
+    if (cachedAsset->getChildCount() > 0)
+    {
+        sourceAssetAction->setDisabled(true);
+        sourceAssetAction->setToolTip(tr("Folders do not have source assets."));
+        jobAction->setDisabled(true);
+        jobAction->setToolTip(tr("Folders do not have associated jobs."));
+    }
+    else
+    {
+        sourceAssetAction->setToolTip(tr("Selects the source asset associated with this product asset."));
+        jobAction->setToolTip(tr("Selects the job that created this product asset in the Jobs tab."));
+    }
+
+    QAction* fileBrowserAction = menu.addAction(AzQtComponents::fileBrowserActionName(), this, [&]()
+    {
+        AZ::Outcome<QString> pathToProduct = GetAbsolutePathToProduct(*cachedAsset);
+        if (pathToProduct.IsSuccess())
+        {
+            AzQtComponents::ShowFileOnDesktop(pathToProduct.GetValue());
+        }
+        
+    });
+
+    QString fileOrFolder(cachedAsset->getChildCount() > 0 ? tr("folder") : tr("file"));
+    fileBrowserAction->setToolTip(tr("Opens a window in your operating system's file explorer to view this %1.").arg(fileOrFolder));
+
+    QAction* copyFullPathAction = menu.addAction(tr("Copy full path"), this, [&]()
+    {
+        AZ::Outcome<QString> pathToProduct = GetAbsolutePathToProduct(*cachedAsset);
+        if (pathToProduct.IsSuccess())
+        {
+            QGuiApplication::clipboard()->setText(pathToProduct.GetValue());
+        }
+    });
+
+    copyFullPathAction->setToolTip(tr("Copies the full path for this %1 to your clipboard.").arg(fileOrFolder));
+
+    QAction* sourceAssetReprocessAction = menu.addAction("Reprocess source asset", this, [&]()
+    {
+        if (!productItemData )
+        {
+            return;
+        }
+        m_sharedDbConnection->QuerySourceByProductID(
+            productItemData->m_databaseInfo.m_productID,
+            [&](AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry)
+        {
+            m_sharedDbConnection->QueryScanFolderByScanFolderID(sourceEntry.m_scanFolderPK,[&] (AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry scanfolder)
+            {
+                QString reprocessSource{ scanfolder.m_scanFolder.c_str() };
+                reprocessSource.append("/");
+                reprocessSource.append(sourceEntry.m_sourceName.c_str());
+                m_guiApplicationManager->GetAssetProcessorManager()->RequestReprocess(reprocessSource);
+                return false; // Don't keep iterating
+            });
+            return false; // Don't keep iterating
+        });
+    });
+    if (cachedAsset->getChildCount() > 0)
+    {
+        sourceAssetReprocessAction->setDisabled(true);
+    }
+    sourceAssetReprocessAction->setToolTip(tr("Reprocess the source asset which created this product"));
+
+    menu.exec(ui->ProductAssetsTreeView->viewport()->mapToGlobal(pos));
 }
 
 void MainWindow::ShowLogLineContextMenu(const QPoint& pos)
@@ -1293,15 +1614,15 @@ void MainWindow::ShowLogLineContextMenu(const QPoint& pos)
     }
 
     QMenu menu;
-    QAction* key = menu.addAction(tr("Copy Selected Key"), this, [&]()
+    QAction* key = menu.addAction(tr("Copy selected key"), this, [&]()
     {
         QGuiApplication::clipboard()->setText(sourceIndex.sibling(sourceIndex.row(), ContextDetailsLogTableModel::ColumnKey).data().toString());
     });
-    QAction* value = menu.addAction(tr("Copy Selected Value"), this, [&]()
+    QAction* value = menu.addAction(tr("Copy selected value"), this, [&]()
     {
         QGuiApplication::clipboard()->setText(sourceIndex.sibling(sourceIndex.row(), ContextDetailsLogTableModel::ColumnValue).data().toString());
     });
-    menu.addAction(tr("Copy All Values"), this, [&]()
+    menu.addAction(tr("Copy all values"), this, [&]()
     {
         auto model = qobject_cast<ContextDetailsLogTableModel*>(ui->jobContextLogTableView->model());
         QGuiApplication::clipboard()->setText(model->toString());

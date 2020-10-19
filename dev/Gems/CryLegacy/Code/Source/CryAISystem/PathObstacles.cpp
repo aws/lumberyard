@@ -731,7 +731,7 @@ void CPathObstacles::GetPathObstacles_AIObject(CAIObject* pObject, SPathObstacle
     // Special case - Ignore actors who are inside vehicles
     CAIActor* pActor = pObject->CastToCAIActor();
     IAIActorProxy* pActorProxy = (pActor ? pActor->GetProxy() : NULL);
-    if (!pActorProxy || pActorProxy->GetLinkedVehicleEntityId() == 0)
+    if (!pActorProxy)
     {
         CAIActor::ENavInteraction navInteraction = pathObstaclesInfo.pAIActor ? CAIActor::GetNavInteraction(pathObstaclesInfo.pAIActor, pObject) : CAIActor::NI_IGNORE;
         if (navInteraction == CAIActor::NI_STEER)
@@ -775,6 +775,7 @@ void CPathObstacles::GetPathObstacles_Vehicle(CAIObject* pObject, SPathObstacles
 {
     assert(pObject);
 
+#if ENABLE_CRY_PHYSICS
     IPhysicalEntity* pPhysicalEntity = pObject->GetPhysics();
     if (pPhysicalEntity)
     {
@@ -799,6 +800,10 @@ void CPathObstacles::GetPathObstacles_Vehicle(CAIObject* pObject, SPathObstacles
         // Not ignoring means we want to use its physical check, so we get an accurate hull shape for it.
         stl::push_back_unique(bIgnore ? pathObstaclesInfo.checkedPhysicsEntities : pathObstaclesInfo.queuedPhysicsEntities, pPhysicalEntity);
     }
+#else
+    AZ_UNUSED(pObject);
+    AZ_UNUSED(pathObstaclesInfo);
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //===================================================================
@@ -956,6 +961,7 @@ bool CPathObstacles::IsPhysicalEntityUsedAsDynamicObstacle(IPhysicalEntity* pPhy
 
     assert(pPhysicalEntity);
     bool usedAsDynamicObstacle = true;
+#if ENABLE_CRY_PHYSICS
     IEntity* pEntity = gEnv->pEntitySystem->GetEntityFromPhysics(pPhysicalEntity);
     if (pEntity)
     {
@@ -988,7 +994,7 @@ bool CPathObstacles::IsPhysicalEntityUsedAsDynamicObstacle(IPhysicalEntity* pPhy
             s_dynamicObstacleFlags[entityId] = usedAsDynamicObstacle;
         }
     }
-
+#endif
     return usedAsDynamicObstacle;
 }
 
@@ -1088,6 +1094,7 @@ void CPathObstacles::GetPathObstacles(TPathObstacles& obstacles, const AgentMove
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     // Check dynamic physical entities
     {
         AABB obstacleAABB = pNavPath->GetAABB(pathObstaclesInfo.maxDistToCheckAhead);
@@ -1121,6 +1128,7 @@ void CPathObstacles::GetPathObstacles(TPathObstacles& obstacles, const AgentMove
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // Check damage regions
     if (movementAbility.avoidanceAbilities & eAvoidance_DamageRegion)

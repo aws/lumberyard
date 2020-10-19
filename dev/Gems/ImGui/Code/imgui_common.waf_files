@@ -8,6 +8,7 @@
     "auto": {
         "Source": [
             "Include/ImGuiBus.h",
+            "Include/OtherActiveImGuiBus.h",
             "Source/ImGuiGem.h",
             "Source/ImGuiGem.cpp",
             "Source/ImGuiColorDefines.h",

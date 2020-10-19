@@ -704,7 +704,8 @@ namespace AZ
         }
 
         const size_t index = splineAddress.m_segmentIndex;
-        if (!m_closed && index >= segmentCount)
+        const bool outOfBoundsIndex = index >= segmentCount;
+        if (!m_closed && outOfBoundsIndex)
         {
             Vector3 lastVertex;
             if (m_vertexContainer.GetLastVertex(lastVertex))
@@ -715,8 +716,13 @@ namespace AZ
             return Vector3::CreateZero();
         }
 
-        const size_t nextIndex = (index + 1) % GetVertexCount();
-        return GetVertex(index).Lerp(GetVertex(nextIndex), splineAddress.m_segmentFraction);
+        // ensure the index is clamped within a safe range (cannot go past the last vertex)
+        const size_t safeIndex = GetMin(index, segmentCount - 1);
+        const size_t nextIndex = (safeIndex + 1) % GetVertexCount();
+        // if the index was out of bounds, ensure the segment fraction
+        // is 1 to return the very end of the spline loop
+        const float segmentFraction = outOfBoundsIndex ? 1.0f : splineAddress.m_segmentFraction;
+        return GetVertex(safeIndex).Lerp(GetVertex(nextIndex), segmentFraction);
     }
 
     Vector3 LinearSpline::GetNormal(const SplineAddress& splineAddress) const
@@ -868,7 +874,8 @@ namespace AZ
         }
 
         const size_t index = splineAddress.m_segmentIndex;
-        if (!m_closed && index >= segmentCount)
+        const bool outOfBoundsIndex = index >= segmentCount;
+        if (!m_closed && outOfBoundsIndex)
         {
             Vector3 lastVertex;
             if (m_vertexContainer.GetLastVertex(lastVertex))
@@ -879,15 +886,19 @@ namespace AZ
             return Vector3::CreateZero();
         }
 
-        const size_t nextIndex = (index + 1) % GetVertexCount();
+        // ensure the index is clamped within a safe range (cannot go past the last vertex)
+        const size_t safeIndex = GetMin(index, segmentCount - 1);
+        const size_t nextIndex = (safeIndex + 1) % GetVertexCount();
 
-        const float t = splineAddress.m_segmentFraction;
+        // if the index was out of bounds, ensure the segment fraction
+        // is 1 to return the very end of the spline loop
+        const float t = outOfBoundsIndex ? 1.0f : splineAddress.m_segmentFraction;
         const float invt = 1.0f - t;
         const float invtSq = invt * invt;
         const float tSq = t * t;
 
-        const Vector3& p0 = GetVertex(index);
-        const Vector3& p1 = m_bezierData[index].m_forward;
+        const Vector3& p0 = GetVertex(safeIndex);
+        const Vector3& p1 = m_bezierData[safeIndex].m_forward;
         const Vector3& p2 = m_bezierData[nextIndex].m_back;
         const Vector3& p3 = GetVertex(nextIndex);
 
@@ -1362,12 +1373,14 @@ namespace AZ
             }
         }
 
-        const size_t prevIndex = GetPrevIndexWrapped(index, 1, vertexCount);
-        const size_t nextIndex = (index + 1) % vertexCount;
-        const size_t nextNextIndex = (index + 2) % vertexCount;
+        // ensure the index is clamped within a safe range (cannot go past the last vertex)
+        const size_t safeIndex = GetMin(index, vertexCount - 1);
+        const size_t prevIndex = GetPrevIndexWrapped(safeIndex, 1, vertexCount);
+        const size_t nextIndex = (safeIndex + 1) % vertexCount;
+        const size_t nextNextIndex = (safeIndex + 2) % vertexCount;
 
         const Vector3& p0 = vertices[prevIndex];
-        const Vector3& p1 = vertices[index];
+        const Vector3& p1 = vertices[safeIndex];
         const Vector3& p2 = vertices[nextIndex];
         const Vector3& p3 = vertices[nextNextIndex];
 
@@ -1376,8 +1389,11 @@ namespace AZ
         const VectorFloat t2 = std::pow(p2.GetDistance(p1), m_knotParameterization) + t1;
         const VectorFloat t3 = std::pow(p3.GetDistance(p2), m_knotParameterization) + t2;
 
+        // if the index is out of bounds, ensure the segment fraction
+        // is 1 to return the very end of the spline loop
+        const float segmentFraction = index >= vertexCount ? 1.0f : splineAddress.m_segmentFraction;
         // Transform fraction from [0-1] to [t1,t2]
-        const VectorFloat t = t1.Lerp(t2, splineAddress.m_segmentFraction);
+        const VectorFloat t = t1.Lerp(t2, segmentFraction);
 
         // Barry and Goldman's pyramidal formulation
         const Vector3 a1 = (t1 - t) / t1 * p0 + t / t1 * p1;
@@ -1413,7 +1429,7 @@ namespace AZ
 
         const size_t vertexCount = GetVertexCount();
         size_t index = splineAddress.m_segmentIndex;
-        VectorFloat fraction = splineAddress.m_segmentFraction;
+        VectorFloat fraction = index >= vertexCount ? 1.0f : splineAddress.m_segmentFraction;
 
         if (!m_closed)
         {
@@ -1429,13 +1445,15 @@ namespace AZ
             }
         }
 
-        const size_t prevIndex = GetPrevIndexWrapped(index, 1, vertexCount);
-        const size_t nextIndex = (index + 1) % vertexCount;
-        const size_t nextNextIndex = (index + 2) % vertexCount;
+        // ensure the index is clamped within a safe range (cannot go past the last vertex)
+        const size_t safeIndex = GetMin(index, vertexCount - 1);
+        const size_t prevIndex = GetPrevIndexWrapped(safeIndex, 1, vertexCount);
+        const size_t nextIndex = (safeIndex + 1) % vertexCount;
+        const size_t nextNextIndex = (safeIndex + 2) % vertexCount;
 
         const AZStd::vector<Vector3>& vertices = m_vertexContainer.GetVertices();
         const Vector3& p0 = vertices[prevIndex];
-        const Vector3& p1 = vertices[index];
+        const Vector3& p1 = vertices[safeIndex];
         const Vector3& p2 = vertices[nextIndex];
         const Vector3& p3 = vertices[nextNextIndex];
 

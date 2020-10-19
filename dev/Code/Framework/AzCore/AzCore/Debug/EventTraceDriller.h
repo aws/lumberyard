@@ -25,7 +25,7 @@ namespace AZ
             : public Driller
             , public EventTraceDrillerBus::Handler
             , public EventTraceDrillerSetupBus::Handler
-            , public AZStd::ThreadEventBus::Handler
+            , public AZStd::ThreadDrillerEventBus::Handler
             , public AZ::TickBus::Handler
         {
         public:

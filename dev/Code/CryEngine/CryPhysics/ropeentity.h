@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYPHYSICS_ROPEENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 
 struct rope_vtx
 {
@@ -229,5 +230,7 @@ public:
     void AllocSubVtx();
     void FillVtxContactData(rope_vtx* pvtx, int iseg, SRopeCheckPart& cp, geom_contact* pcontact);
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_ROPEENTITY_H

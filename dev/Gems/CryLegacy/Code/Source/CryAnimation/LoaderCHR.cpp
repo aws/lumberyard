@@ -296,7 +296,9 @@ namespace SkelLoader_Helpers
             joint.m_strJointName      = &boneDesc.m_arrBoneName[0];
             joint.m_nJointCRC32Lower  = CCrc32::ComputeLowercase(&boneDesc.m_arrBoneName[0]);
             joint.m_nJointCRC32       = boneDesc.m_nControllerID;
+#if ENABLE_CRY_PHYSICS
             joint.m_PhysInfo          = boneDesc.m_PhysInfo[0];
+#endif
             joint.m_fMass             = boneDesc.m_fMass;
 
             pDefaultSkeleton->m_poseDefaultData.GetJointsAbsolute()[nBone] = QuatT(boneDesc.m_DefaultB2W);
@@ -321,11 +323,13 @@ namespace SkelLoader_Helpers
         }
         if (nRootCounter != 1)
         {
+#if ENABLE_CRY_PHYSICS
             //something went wrong. this model has multiple roots
             for (uint32 j = 0; j < numBones; j++)
             {
                 pDefaultSkeleton->m_arrModelJoints[j].m_PhysInfo.pPhysGeom = 0; //delete all "Chunk-IDs" to prevent the FatalError in the destructor.
             }
+#endif
             g_pISystem->Warning(VALIDATOR_MODULE_ANIMATION, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE, szFilePath, "CryAnimation: multiple root in skeleton. Please fix the model.");
             return false;
         }
@@ -522,14 +526,18 @@ bool CDefaultSkeleton::LoadNewSKEL(const char* szFilePath, uint32 nLoadingFlags)
     if (1)
     {
         uint32 numJoints = m_arrModelJoints.size();
+#if ENABLE_CRY_PHYSICS
         m_arrBackupPhysInfo.resize(numJoints);
         for (uint32 j = 0; j < numJoints; j++)
         {
             m_arrBackupPhysInfo[j] = m_arrModelJoints[j].m_PhysInfo;
         }
+#endif // ENABLE_CRY_PHYSICS
         m_arrBackupPhyBoneMeshes = pSkinningInfo->m_arrPhyBoneMeshes;
         m_arrBackupBoneEntities  = pSkinningInfo->m_arrBoneEntities;
+#if ENABLE_CRY_PHYSICS
         if (!SetupPhysicalProxies(m_arrBackupPhyBoneMeshes, m_arrBackupBoneEntities, pMaterial, szFilePath))
+#endif
         {
             return 0;
         }

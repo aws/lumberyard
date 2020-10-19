@@ -376,6 +376,7 @@ bool CDecalObject::MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint&
         {
         case eAlign:
         {
+#if ENABLE_CRY_PHYSICS
             Vec3 raySrc, rayDir;
             GetIEditor()->GetActiveView()->ViewToWorldRay(point, raySrc, rayDir);
             rayDir = rayDir.GetNormalized() * 1000.0f;
@@ -408,6 +409,10 @@ bool CDecalObject::MouseCallbackImpl(CViewport* view, EMouseEvent event, QPoint&
 
                 m_boWasModified = true;
             }
+#else
+            // Decal placement implementation
+            CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
             break;
         }
         case eRotate:

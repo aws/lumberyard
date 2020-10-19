@@ -20,6 +20,7 @@
 #include <IGameFramework.h>
 #include <ICryAnimation.h>
 #include "PostProcess/PostEffects.h"
+#include <IPostEffectGroup.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
@@ -3688,6 +3689,12 @@ void SRenderThread::SyncMainWithRender()
         return;
     }
 #ifndef STRIP_RENDER_THREAD
+
+    IPostEffectGroupManager* groupManager = gEnv->p3DEngine ? gEnv->p3DEngine->GetPostEffectGroups() : nullptr;
+    if (groupManager)
+    {
+        groupManager->BlendWithParameterCache();
+    }
 
     CRYPROFILE_SCOPE_PROFILE_MARKER("SyncMainWithRender");
 

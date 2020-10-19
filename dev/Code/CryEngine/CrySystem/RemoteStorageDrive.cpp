@@ -350,7 +350,7 @@ namespace AZ
             return s_fileNotFound;
         }
 
-        void RemoteStorageDrive::CollectStatistics(AZStd::vector<Statistic>& statistics) const
+        void RemoteStorageDrive::CollectStatistics(AZStd::vector<Statistic>& statistics)
         {
             using DoubleSeconds = AZStd::chrono::duration<double>;
             

@@ -26,8 +26,6 @@ namespace Multiplayer
         m_customMatchBackfillEnable = GetConsoleVarBoolValue("gamelift_flexmatch_enable");
         m_customMatchBackfillOnPlayerRemovedEnable = GetConsoleVarBoolValue("gamelift_flexmatch_onplayerremoved_enable");
         m_customMatchBackfillStartDelaySeconds = GetConsoleVarFloatValue("gamlift_flexmatch_start_delay");
-        m_minimumPlayerSessionCount = GetConsoleVarIntValue("gamelift_flexmatch_minimumplayersessioncount");
-
         AZ::SystemTickBus::Handler::BusConnect();
         GridMate::GameLiftServerServiceEventsBus::Handler::BusConnect(m_session->GetGridMate());
         GridMate::SessionEventBus::Handler::BusConnect(m_session->GetGridMate());
@@ -60,19 +58,21 @@ namespace Multiplayer
     {
         AZ_TracePrintf("Multiplayer", "calling OnMemberJoined FreeSlots:%d UsedSLots:%d", m_session->GetNumFreePublicSlots(), m_session->GetNumUsedPublicSlots());
 
-        // Start delayed matchbackfill after initial minimum players have joined.
-        if (m_session->GetNumUsedPublicSlots() == m_minimumPlayerSessionCount)
-        {
-            m_customMatchBackfillStart = true;
-            return;
-        }
-        
-        if (m_customMatchBackfillEnable && m_session->GetNumFreePublicSlots() > 0 // Need at least 1 free slot
-            && (m_session->GetNumUsedPublicSlots() > m_minimumPlayerSessionCount // Minimum number of players already exists for the one time delayed back fill
-            || (m_session->GetNumUsedPublicSlots() == m_minimumPlayerSessionCount && !m_customMatchBackfillStart))) // After initial delayed backfill rest of the times
+        // Need at least 1 free slot.
+        if (m_customMatchBackfillEnable // Custom match backfill is enabled
+            && !m_customMatchBackfillStart // Custom match backfill start delay has passed
+            && m_session->GetNumFreePublicSlots() > 0) // Need at least 1 free slot
         { 
             CallStartMatchmakingBackfill();
         }
+    }
+
+    void GameLiftMatchmakingComponent::OnSessionCreated(GridMate::GridSession* session)
+    {
+        AZ_UNUSED(session);
+
+        // Start delayed matchbackfill.
+        m_customMatchBackfillStart = true;
     }
 
     void GameLiftMatchmakingComponent::OnGameLiftGameSessionUpdated(GridMate::GameLiftServerService* service, const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession)
@@ -90,7 +90,7 @@ namespace Multiplayer
     void GameLiftMatchmakingComponent::OnMemberLeaving(GridMate::GridSession* session, GridMate::GridMember* member)
     {
         AZ_TracePrintf("Multiplayer", "calling OnMemberLeaving FreeSlots:%d UsedSLots:%d", m_session->GetNumFreePublicSlots(), m_session->GetNumUsedPublicSlots());
-        if (m_session->GetNumUsedPublicSlots() < m_minimumPlayerSessionCount)
+        if (m_session->GetNumUsedPublicSlots() == 0)
         {
             for (auto ticketId : m_matchmakingTicketIds)
             {

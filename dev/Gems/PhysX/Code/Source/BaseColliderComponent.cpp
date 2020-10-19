@@ -111,67 +111,6 @@ namespace PhysX
         m_shapeConfigList = shapeConfigList;
     }
 
-    // ColliderComponentRequestBus
-    AZStd::shared_ptr<Physics::ShapeConfiguration> BaseColliderComponent::GetShapeConfigFromEntity()
-    {
-        AZ_Warning("PhysX", false, "Colliders now support multiple shapes. GetShapeConfigFromEntity is deprecated, "
-            "but will return the shape configuration of only the first shape for compatibility. "
-            "Please use GetShapeConfigurations instead.");
-
-        if (!m_shapeConfigList.empty())
-        {
-            return m_shapeConfigList[0].second;
-        }
-
-        AZ_Warning("PhysX", false, "Collider has no associated shape/collider configurations, returning nullptr "
-            "for entity \"%s\".", GetEntity()->GetName().c_str());
-        return nullptr;
-    }
-
-    const Physics::ColliderConfiguration& BaseColliderComponent::GetColliderConfig()
-    {
-        AZ_Warning("PhysX", false, "Colliders now support multiple shapes. GetColliderConfig is deprecated, but for "
-            "compatibility will return the collider configuration of the first shape only. Please use "
-            "GetShapeConfigurations instead.");
-
-        if (!m_shapeConfigList.empty())
-        {
-            return *m_shapeConfigList[0].first;
-        }
-
-        AZ_Warning("PhysX", false, "Collider has no associated shape/collider configurations, returning default "
-            "collider configuration for entity \"%s\".", GetEntity()->GetName().c_str());
-        return s_defaultColliderConfig;
-    }
-
-    AZStd::shared_ptr<Physics::Shape> BaseColliderComponent::GetShape()
-    {
-        AZ_Warning("PhysX", false, "Colliders now support multiple shapes. GetShape is deprecated, but for "
-            "compatibility will return the first shape only. Please use GetShapes instead.");
-
-        if (!m_shapes.empty())
-        {
-            return m_shapes[0];
-        }
-
-        AZ_Warning("PhysX", false, "No shapes found for entity \"%s\".", GetEntity()->GetName().c_str());
-        return nullptr;
-    }
-
-    void* BaseColliderComponent::GetNativePointer()
-    {
-        AZ_Warning("PhysX", false, "Colliders now support multiple shapes. GetNativePointer is deprecated, but for "
-            "compatibility will return the native pointer for the first shape only. Please use GetShapes instead.");
-
-        if (!m_shapes.empty())
-        {
-            return m_shapes[0]->GetNativePointer();
-        }
-
-        AZ_Warning("PhysX", false, "No shapes found for entity \"%s\".", GetEntity()->GetName().c_str());
-        return nullptr;
-    }
-
     Physics::ShapeConfigurationList BaseColliderComponent::GetShapeConfigurations()
     {
         return m_shapeConfigList;

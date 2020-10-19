@@ -21,6 +21,7 @@
 
 #include "PropertyHelpers.h"
 #include "AzFramework/StringFunc/StringFunc.h"
+#include "CGFContent.h"
 
 static const char* const s_consolesLod0MarkerStr = "consoles_lod0";
 static const uint8 s_maxSkinningWeight = 0xFF;
@@ -125,6 +126,7 @@ static void ReportDuplicatedMeshNodeNames(const CContentCGF* pCGF)
 }
 
 //////////////////////////////////////////////////////////////////////////
+#if ENABLE_CRY_PHYSICS
 CStaticObjectCompiler::CStaticObjectCompiler(CPhysicsInterface* pPhysicsInterface, bool bConsole, int logVerbosityLevel)
     : m_pPhysicsInterface(pPhysicsInterface)
     , m_bConsole(bConsole)
@@ -139,6 +141,21 @@ CStaticObjectCompiler::CStaticObjectCompiler(CPhysicsInterface* pPhysicsInterfac
         m_pLODs[i] = 0;
     }
 }
+#else
+CStaticObjectCompiler::CStaticObjectCompiler(bool bConsole, int logVerbosityLevel)
+    : m_bConsole(bConsole)
+    , m_logVerbosityLevel(logVerbosityLevel)
+    , m_bOptimizePVRStripify(false)
+{
+    m_bSplitLODs = false;
+    m_bOwnLod0 = false;
+
+    for (int i = 0; i < MAX_LOD_COUNT; ++i)
+    {
+        m_pLODs[i] = 0;
+    }
+}
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 CStaticObjectCompiler::~CStaticObjectCompiler()
@@ -533,6 +550,7 @@ bool CStaticObjectCompiler::ValidateBoundingBoxes(CContentCGF* pCGF)
 //////////////////////////////////////////////////////////////////////////
 bool CStaticObjectCompiler::Physicalize(CContentCGF* pCompiledCGF, CContentCGF* pSrcCGF)
 {
+#if ENABLE_CRY_PHYSICS
     if (!m_pPhysicsInterface->GetGeomManager())
     {
         return false;
@@ -568,6 +586,7 @@ bool CStaticObjectCompiler::Physicalize(CContentCGF* pCompiledCGF, CContentCGF* 
     }
 
     m_pPhysicsInterface->ProcessBreakablePhysics(pCompiledCGF, pSrcCGF);
+#endif // ENABLE_CRY_PHYSICS
     return true;
 }
 
@@ -664,6 +683,7 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
         }
         return;
     }
+#if ENABLE_CRY_PHYSICS
     if (!m_pPhysicsInterface->GetGeomManager())
     {
         return;
@@ -1320,6 +1340,7 @@ foundtri:
     spine.pDamping = 0;
     spine.pThickness = 0;
     //START: Fix for Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1327,6 +1348,7 @@ void CStaticObjectCompiler::PrepareSkinData(CNodeCGF* pNode, const Matrix34& mtx
 {
     assert(pNode->pMesh->m_pPositionsF16 == 0);
 
+#if ENABLE_CRY_PHYSICS
     int i, j, nVtx;
     Vec3 vtx[4];
     geom_world_data gwd[2];
@@ -1389,6 +1411,7 @@ void CStaticObjectCompiler::PrepareSkinData(CNodeCGF* pNode, const Matrix34& mtx
     pGeoman->UnregisterGeometry(pSkelGeom);
     pSphereBig->Release();
     pSphere->Release();
+#endif // ENABLE_CRY_PHYSICS
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1396,10 +1419,12 @@ bool CStaticObjectCompiler::ProcessCompiledCGF(CContentCGF* pCGF)
 {
     assert(pCGF->GetExportInfo()->bCompiledCGF);
 
+#if ENABLE_CRY_PHYSICS
     if (!m_pPhysicsInterface->GetGeomManager())
     {
         return false;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // CGF is already compiled, so we just need to perform some validation and re-compiling steps.
 
@@ -1408,12 +1433,14 @@ bool CStaticObjectCompiler::ProcessCompiledCGF(CContentCGF* pCGF)
     m_pLODs[0] = pCGF;
     m_bOwnLod0 = false;
 
+#if ENABLE_CRY_PHYSICS
     const int nodeCount = pCGF->GetNodeCount();
     for (int i = 0; i < nodeCount; ++i)
     {
         CNodeCGF* const pNode = pCGF->GetNode(i);
         m_pPhysicsInterface->RephysicalizeNode(pNode, pCGF);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     CompileDeformablePhysData(pCGF);
 

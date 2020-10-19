@@ -34,13 +34,13 @@ public:
     {
     }
 
-    bool Initialize(const QString& systemRoot, const QString& rcExecutableFullPath) override
+    bool Initialize(const QString& /*systemRoot*/, const QString& /*rcExecutableFullPath*/) override
     {
         m_initialize++;
         return m_initializeResult;
     }
-    bool Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest, 
-        const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const override
+    bool Execute(const QString& /*inputFile*/, const QString& /*watchFolder*/, const QString& /*platformIdentifier*/, const QString& /*params*/, const QString& /*dest*/,
+        const AssetBuilderSDK::JobCancelListener* /*jobCancelListener*/, Result& result) const override
     {
         m_execute++;
         result = m_executeResultResult;
@@ -110,12 +110,12 @@ struct TestInternalRecognizerBasedBuilder
         }
     }
 
-    bool FindRC(QString& rcPathOut) override
+    bool FindRC(QString& /*rcPathOut*/) override
     {
         return true;
     }
 
-    QFileInfoList GetFilesInDirectory(const QString& directoryPath) override
+    QFileInfoList GetFilesInDirectory(const QString& /*directoryPath*/) override
     {
         QFileInfoList   mockFileInfoList;
         mockFileInfoList.append(m_testFileInfo);

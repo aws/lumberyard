@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -43,3 +45,5 @@ void CRayBV::GetNodeBV(const Matrix33& Rw, const Vec3& offsw, float scalew, BV*&
     g_BVray.aray.origin = Rw * m_pray->origin * scalew + offsw;
     g_BVray.aray.dir = Rw * m_pray->dir * scalew;
 }
+
+#endif // ENABLE_CRY_PHYSICS

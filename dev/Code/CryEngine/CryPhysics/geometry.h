@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_GEOMETRY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "overlapchecks.h"
 
 struct tritem
@@ -434,5 +436,7 @@ struct InitGeometryGlobals
 {
     InitGeometryGlobals();
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_GEOMETRY_H

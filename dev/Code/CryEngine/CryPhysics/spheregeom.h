@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_SPHEREGEOM_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 class CSphereGeom
     : public CPrimitive
 {
@@ -58,5 +60,7 @@ public:
     sphere m_sphere;
     CSingleBoxTree m_Tree;
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_SPHEREGEOM_H

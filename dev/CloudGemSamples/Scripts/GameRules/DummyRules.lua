@@ -10,5 +10,4 @@ DummyRules = {
 }
 
 function DummyRules.Server:OnStartLevel()
-	CryAction.SendGameplayEvent(NULL_ENTITY, eGE_GameStarted);
 end

@@ -22,8 +22,6 @@ namespace WhiteBox
 {
     namespace Pipeline
     {
-        const char* const WhiteBoxMeshAssetHandler::s_assetFileExtension = "wbm";
-
         WhiteBoxMeshAssetHandler::WhiteBoxMeshAssetHandler()
         {
             Register();
@@ -64,7 +62,7 @@ namespace WhiteBox
 
         void WhiteBoxMeshAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
         {
-            extensions.push_back(s_assetFileExtension);
+            extensions.emplace_back(AssetFileExtension);
         }
 
         const char* WhiteBoxMeshAssetHandler::GetAssetTypeDisplayName() const
@@ -150,15 +148,11 @@ namespace WhiteBox
                 return false;
             }
 
-            AZStd::vector<AZ::u8> buffer;
-            WhiteBox::Api::WriteMesh(*mesh, buffer);
-
-            const auto bytesWritten = stream->Write(buffer.size(), buffer.data());
-            const bool success = bytesWritten == buffer.size();
+            const bool success = WhiteBox::Api::SaveToWbm(*mesh, *stream);
 
             if (!success)
             {
-                AZ_Warning("", false, "Failed to write white box mesh asset:", asset.GetHint().c_str());
+                AZ_Warning("", false, "Failed to write WhiteBoxMesh Asset:", asset.GetHint().c_str());
             }
 
             return success;
@@ -177,7 +171,7 @@ namespace WhiteBox
                 }
             }
 
-            return true;
+            return false;
         }
 
         void WhiteBoxMeshAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)

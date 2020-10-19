@@ -173,7 +173,9 @@ private:
     static CGameContext* s_pGameContext;
 
     IEntitySystem* m_pEntitySystem;
+#if ENABLE_CRY_PHYSICS
     IPhysicalWorld* m_pPhysicalWorld;
+#endif
     IActorSystem* m_pActorSystem;
     CCryAction* m_pFramework;
     CActionGame* m_pGame;

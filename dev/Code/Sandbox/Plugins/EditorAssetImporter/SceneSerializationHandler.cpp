@@ -41,6 +41,7 @@ namespace AZ
     AZStd::shared_ptr<SceneAPI::Containers::Scene> SceneSerializationHandler::LoadScene(
         const AZStd::string& filePath, Uuid sceneSourceGuid)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
         namespace Utilities = AZ::SceneAPI::Utilities;
         using AZ::SceneAPI::Events::AssetImportRequest;
 
@@ -66,7 +67,6 @@ namespace AZ
             // Normalizing is not needed if the path is relative as Join(...) will also normalize.
             AzFramework::StringFunc::Path::Normalize(cleanPath);
         }
-        AZStd::to_lower(cleanPath.begin(), cleanPath.end());
 
         auto sceneIt = m_scenes.find(cleanPath);
         if (sceneIt != m_scenes.end())

@@ -45,7 +45,9 @@ namespace GraphicsReflectContext
         static float GetSunLongitude();
         static void SetSunLongitude(float longitude, bool forceUpdate);
 
+#if ENABLE_CRY_PHYSICS
         static AZ::Vector3 GetWindDirection();
         static void SetWindDirection(const AZ::Vector3& windDir);
+#endif // ENABLE_CRY_PHYSICS
     };
 }

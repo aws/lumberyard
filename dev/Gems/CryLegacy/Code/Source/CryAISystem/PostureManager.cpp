@@ -294,6 +294,7 @@ PostureManager::PostureQueryID PostureManager::QueryPosture(const PostureQuery& 
 
     // Gather information about mates
     Mates mates;
+#if ENABLE_CRY_PHYSICS
     if (postureQuery.checks & CheckFriendlyFire)
     {
         pe_status_pos ppos;
@@ -324,6 +325,7 @@ PostureManager::PostureQueryID PostureManager::QueryPosture(const PostureQuery& 
             }
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     // Update the postures.
     for (uint32 i = 0; i < runningPostureCount; ++i)
@@ -445,6 +447,7 @@ PostureManager::PostureQueryID PostureManager::QueryPosture(const PostureQuery& 
         QueuedRayID visibilityRayID = 0;
         QueuedRayID aimabilityRayID = 0;
 
+#if ENABLE_CRY_PHYSICS
         if (postureQuery.checks & CheckVisibility)
         {
             Vec3 eyeDir = postureQuery.target - posture.eye;
@@ -456,10 +459,12 @@ PostureManager::PostureQueryID PostureManager::QueryPosture(const PostureQuery& 
             ++awaitingResultCount;
         }
         else
+#endif // ENABLE_CRY_PHYSICS
         {
             ++positiveResultCount;
         }
 
+#if ENABLE_CRY_PHYSICS
         if (postureQuery.checks & CheckAimability)
         {
             aimabilityRayID = gAIEnv.pRayCaster->Queue(RayCastRequest::HighPriority,
@@ -469,6 +474,7 @@ PostureManager::PostureQueryID PostureManager::QueryPosture(const PostureQuery& 
             ++awaitingResultCount;
         }
         else
+#endif // ENABLE_CRY_PHYSICS
         {
             ++positiveResultCount;
         }
@@ -504,10 +510,12 @@ PostureManager::PostureQueryID PostureManager::QueryPosture(const PostureQuery& 
                         const Vec3 eyeToParentEye = parentPosture.eye - posture.eye;
                         if (!eyeToParentEye.IsZero())
                         {
+#if ENABLE_CRY_PHYSICS
                             leanabilityRayID = gAIEnv.pRayCaster->Queue(RayCastRequest::HighPriority,
                                     RayCastRequest(parentPosture.eye, eyeToParentEye, COVER_OBJECT_TYPES,
                                         HIT_COVER, skipListArray, skipListSize),
                                     functor(*this, &PostureManager::RayComplete));
+#endif // ENABLE_CRY_PHYSICS
 
                             --positiveResultCount;
                             ++awaitingResultCount;

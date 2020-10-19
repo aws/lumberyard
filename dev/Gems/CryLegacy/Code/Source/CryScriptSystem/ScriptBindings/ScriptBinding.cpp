@@ -53,7 +53,9 @@ void CScriptBindings::Init(ISystem* pSystem, IScriptSystem* pSS)
     m_binds.push_back(std::make_unique<CScriptBind_Sound>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Movie>(pSS, pSystem));
     m_binds.push_back(std::make_unique<CScriptBind_Script>(pSS, pSystem));
+#if ENABLE_CRY_PHYSICS
     m_binds.push_back(std::make_unique<CScriptBind_Physics>(pSS, pSystem));
+#endif
 
     //////////////////////////////////////////////////////////////////////////
     // Enumerate script surface types.

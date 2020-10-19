@@ -19,6 +19,7 @@
 #include "CryHeaders.h"
 #include <Common/RenderCapabilities.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
@@ -742,6 +743,7 @@ void CShaderMan::ShutDown(void)
     m_bInitialized = false;
 
     Terrain::TerrainShaderRequestBus::Handler::BusDisconnect();
+    AZ::MaterialNotificationEventBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1134,6 +1136,11 @@ void CShaderMan::mfInitGlobal (void)
 {
     SAFE_DELETE(m_pGlobalExt);
     SShaderGen* pShGen = mfCreateShaderGenInfo("RunTime", true);
+
+#if defined(_RELEASE)
+    AZ_Assert(pShGen, "Fatal error: could not find required shader 'RunTime'.  This is typically placed in @assets@/shaders.pak for release builds.  Make sure BuildReleaseAuxiliaryContent.py has been run and all shaders have been included in the release packaging build.");
+#endif
+    
     m_pGlobalExt = pShGen;
     if (pShGen)
     {
@@ -2037,7 +2044,38 @@ void CShaderMan::mfReleaseSystemShaders ()
     SAFE_RELEASE_FORCE(s_ShaderFur);
     SAFE_RELEASE_FORCE(s_ShaderVideo);
     m_bLoadedSystem = false;
+    m_systemShaders.clear();
 #endif
+}
+
+void CShaderMan::OnShaderLoaded(IShader* shader)
+{
+#if defined(AZ_ENABLE_TRACING) && defined(_RELEASE)
+    static bool displayedErrorOnce = false;
+
+    if((shader->GetFlags() & EF_NOTFOUND) && m_systemShaders.find(shader) != m_systemShaders.end())
+    {
+        static constexpr char message[] = "Unable to find system shader '%s'.  This will likely cause rendering issues, including a black screen.  Please make sure all required shaders are included in your pak files.";
+
+        AZ_Error("ShaderCore", false, message, shader->GetName());
+
+        if(!displayedErrorOnce)
+        {
+            displayedErrorOnce = true;
+
+            AZStd::string displayMessage = AZStd::string::format(message, shader->GetName());
+            displayMessage.append("  Check Game.log for the complete list of missing shaders.");
+
+            AZ::NativeUI::NativeUIRequestBus::Broadcast(&AZ::NativeUI::NativeUIRequestBus::Events::DisplayOkDialog, "Missing System Shader", displayMessage.c_str(), false);
+        }
+    }
+#endif
+}
+
+void CShaderMan::mfLoadSystemShader(const char* szName, CShader*& pStorage)
+{
+    sLoadShader(szName, pStorage);
+    m_systemShaders.emplace(pStorage);
 }
 
 void CShaderMan::mfLoadBasicSystemShaders()
@@ -2052,9 +2090,9 @@ void CShaderMan::mfLoadBasicSystemShaders()
 #ifndef NULL_RENDERER
     if (!m_bLoadedSystem && !gRenDev->IsShaderCacheGenMode())
     {
-        sLoadShader("Fallback", s_ShaderFallback);
-        sLoadShader("FixedPipelineEmu", s_ShaderFPEmu);
-        sLoadShader("UI", s_ShaderUI);
+        mfLoadSystemShader("Fallback", s_ShaderFallback);
+        mfLoadSystemShader("FixedPipelineEmu", s_ShaderFPEmu);
+        mfLoadSystemShader("UI", s_ShaderUI);
 
         mfRefreshSystemShader("Stereo", CShaderMan::s_ShaderStereo);
         mfRefreshSystemShader("Video", CShaderMan::s_ShaderVideo);
@@ -2076,15 +2114,15 @@ void CShaderMan::mfLoadDefaultSystemShaders()
     {
         m_bLoadedSystem = true;
 
-        sLoadShader("Fallback", s_ShaderFallback);
-        sLoadShader("FixedPipelineEmu", s_ShaderFPEmu);
-        sLoadShader("UI", s_ShaderUI);
-        sLoadShader("Light", s_ShaderLightStyles);
+        mfLoadSystemShader("Fallback", s_ShaderFallback);
+        mfLoadSystemShader("FixedPipelineEmu", s_ShaderFPEmu);
+        mfLoadSystemShader("UI", s_ShaderUI);
+        mfLoadSystemShader("Light", s_ShaderLightStyles);
 
-        sLoadShader("ShadowMaskGen", s_ShaderShadowMaskGen);
-        sLoadShader("HDRPostProcess", s_shHDRPostProcess);
+        mfLoadSystemShader("ShadowMaskGen", s_ShaderShadowMaskGen);
+        mfLoadSystemShader("HDRPostProcess", s_shHDRPostProcess);
 
-        sLoadShader("PostEffects", s_shPostEffects);
+        mfLoadSystemShader("PostEffects", s_shPostEffects);
 
 #if defined(FEATURE_SVO_GI)
         mfRefreshSystemShader("Total_Illumination", CShaderMan::s_ShaderSVOGI);

@@ -18,6 +18,7 @@
 #include <Mocks/ICryPakMock.h>
 #include <Mocks/ICVarMock.h>
 
+#include "XML/xml.h"
 #include <vector>
 
 class SystemEventDispatcherMock
@@ -154,4 +155,69 @@ TEST_F(SystemFixture, LocalizeStringInternal_ManyWhitespaceCharacters_CorrectlyT
 
     // since there are no localizations available it should not have gobbled up whitespace or altered it.
     EXPECT_STREQ(outString, testString);
+}
+
+TEST_F(SystemFixture, LocalizeLabel_LocalizationTestActive_CorrectlyTokenizes_FT)
+{
+    // override the Register function so we grab a pointer to the cvar value
+    int *cvarLocalizationTest = nullptr;
+    ON_CALL(m_console, Register(StrEq("sys_localization_test"),A<int*>(),A<int>(),A<int>(),_,_,_))
+        .WillByDefault([this, &cvarLocalizationTest](const char* sName, int* src, int iValue, int nFlags, const char* help, ConsoleVarFunc pChangeFunc, bool allowModify)
+    {
+        cvarLocalizationTest = src;
+        *src = iValue; // set the default
+        return &m_cvarMock;
+    });
+
+    UnitTestCLocalizedStringsManager manager(&m_system);
+    ASSERT_NE(cvarLocalizationTest, nullptr);
+
+    manager.SetLanguage("french");
+
+    constexpr bool reuseStrings = false;
+    constexpr bool cleanPools = false;
+    constexpr bool suppressWarnings = true;
+    AZStd::string xmlData(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\
+         <resources>\
+             <string key=\"hello\" comment=\"Greeting\" maxlength=\"20\">HelloTranslation</string>\
+         </resources>");
+
+    XmlParser parser(reuseStrings);
+    XmlNodeRef node = parser.ParseBuffer(xmlData.c_str(), xmlData.size(), cleanPools, suppressWarnings);
+
+    // return our XML node to avoid file IO
+    ON_CALL(m_system, LoadXmlFromFile(_,_))
+        .WillByDefault([&](const char* sFilename, bool bReuseStrings)
+    {
+        return node;
+    });
+    manager.LoadExcelXmlSpreadsheet("test.xml");
+
+    // expect we get a translated label with the default settings
+    string outString;
+    const char* testString = "@hello";
+    const char* translationString = "HelloTranslation";
+    manager.LocalizeLabel(testString, outString, false);
+    ASSERT_EQ(manager.m_capturedLabels.size(), 1);
+    EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), testString);
+    EXPECT_STREQ(outString, translationString);
+    manager.m_capturedLabels.clear();
+
+    // expect we get the label when localization test cvar is 1
+    *cvarLocalizationTest = 1;
+
+    manager.LocalizeLabel(testString, outString, false);
+    ASSERT_EQ(manager.m_capturedLabels.size(), 1);
+    EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), testString);
+    EXPECT_STREQ(outString, testString);
+    manager.m_capturedLabels.clear();
+
+    // expect we get the language when localization test cvar is 2
+    *cvarLocalizationTest = 2;
+
+    manager.LocalizeLabel(testString, outString, false);
+    ASSERT_EQ(manager.m_capturedLabels.size(), 1);
+    EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), testString);
+    EXPECT_STREQ(outString, "@french");
 }

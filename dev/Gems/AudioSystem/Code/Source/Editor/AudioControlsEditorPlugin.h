@@ -69,7 +69,7 @@ public:
 private:
     static AudioControls::CATLControlsModel ms_ATLModel;
     static AudioControls::QATLTreeModel ms_layoutModel;
-    static AZStd::set<AZStd::string> ms_currentFilenames;
+    static AudioControls::FilepathSet ms_currentFilenames;
     static Audio::IAudioProxy* ms_pIAudioProxy;
     static Audio::TAudioControlID ms_nAudioTriggerID;
 

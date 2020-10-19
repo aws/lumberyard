@@ -873,17 +873,17 @@ namespace EMotionFX
 
 
     // sync the current time with another node
-    void AnimGraphNode::SyncPlayTime(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode)
+    void AnimGraphNode::SyncPlayTime(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode)
     {
-        const float masterDuration = masterNode->GetDuration(animGraphInstance);
-        const float normalizedTime = (masterDuration > MCore::Math::epsilon) ? masterNode->GetCurrentPlayTime(animGraphInstance) / masterDuration : 0.0f;
+        const float leaderDuration = leaderNode->GetDuration(animGraphInstance);
+        const float normalizedTime = (leaderDuration > MCore::Math::epsilon) ? leaderNode->GetCurrentPlayTime(animGraphInstance) / leaderDuration : 0.0f;
         SetCurrentPlayTimeNormalized(animGraphInstance, normalizedTime);
     }
 
-    void AnimGraphNode::AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, ESyncMode syncMode, bool resync)
+    void AnimGraphNode::AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode, float weight, ESyncMode syncMode, bool resync)
     {
-        // exit if we don't want to sync or we have no master node to sync to
-        if (syncMode == SYNCMODE_DISABLED || masterNode == nullptr)
+        // exit if we don't want to sync or we have no leader node to sync to
+        if (syncMode == SYNCMODE_DISABLED || leaderNode == nullptr)
         {
             return;
         }
@@ -892,26 +892,26 @@ namespace EMotionFX
         if (syncMode == SYNCMODE_TRACKBASED)
         {
             // get the sync tracks
-            const AnimGraphSyncTrack* syncTrackA = masterNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetSyncTrack();
+            const AnimGraphSyncTrack* syncTrackA = leaderNode->FindOrCreateUniqueNodeData(animGraphInstance)->GetSyncTrack();
             const AnimGraphSyncTrack* syncTrackB = FindOrCreateUniqueNodeData(animGraphInstance)->GetSyncTrack();
 
             // if we have sync keys in both nodes, do the track based sync
             if (syncTrackA && syncTrackB && syncTrackA->GetNumEvents() > 0 && syncTrackB->GetNumEvents() > 0)
             {
-                SyncUsingSyncTracks(animGraphInstance, masterNode, syncTrackA, syncTrackB, weight, resync, /*modifyMasterSpeed*/false);
+                SyncUsingSyncTracks(animGraphInstance, leaderNode, syncTrackA, syncTrackB, weight, resync, /*modifyLeaderSpeed*/false);
                 return;
             }
         }
 
         // we either have no evens inside the sync tracks in both nodes, or we just want to sync based on full clips
-        SyncFullNode(animGraphInstance, masterNode, weight, /*modifyMasterSpeed*/false);
+        SyncFullNode(animGraphInstance, leaderNode, weight, /*modifyLeaderSpeed*/false);
     }
 
 
-    void AnimGraphNode::SyncFullNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed)
+    void AnimGraphNode::SyncFullNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode, float weight, bool modifyLeaderSpeed)
     {
-        SyncPlaySpeeds(animGraphInstance, masterNode, weight, modifyMasterSpeed);
-        SyncPlayTime(animGraphInstance, masterNode);
+        SyncPlaySpeeds(animGraphInstance, leaderNode, weight, modifyLeaderSpeed);
+        SyncPlayTime(animGraphInstance, leaderNode);
     }
 
 
@@ -934,9 +934,9 @@ namespace EMotionFX
     }
 
     // sync blend the play speed of two nodes
-    void AnimGraphNode::SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed)
+    void AnimGraphNode::SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* leaderNode, float weight, bool modifyLeaderSpeed)
     {
-        AnimGraphNodeData* uniqueDataA = masterNode->FindOrCreateUniqueNodeData(animGraphInstance);
+        AnimGraphNodeData* uniqueDataA = leaderNode->FindOrCreateUniqueNodeData(animGraphInstance);
         AnimGraphNodeData* uniqueDataB = FindOrCreateUniqueNodeData(animGraphInstance);
 
         float factorA;
@@ -947,7 +947,7 @@ namespace EMotionFX
             uniqueDataB->GetPlaySpeed(), uniqueDataB->GetDuration(),
             weight);
 
-        if (modifyMasterSpeed)
+        if (modifyLeaderSpeed)
         {
             uniqueDataA->SetPlaySpeed(interpolatedSpeed * factorA);
         }
@@ -955,77 +955,77 @@ namespace EMotionFX
         uniqueDataB->SetPlaySpeed(interpolatedSpeed * factorB);
     }
 
-    void AnimGraphNode::CalcSyncFactors(AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
+    void AnimGraphNode::CalcSyncFactors(AnimGraphInstance* animGraphInstance, const AnimGraphNode* leaderNode, const AnimGraphNode* followerNode, ESyncMode syncMode, float weight, float* outLeaderFactor, float* outFollowerFactor, float* outPlaySpeed)
     {
-        const AnimGraphNodeData* masterUniqueData = masterNode->FindOrCreateUniqueNodeData(animGraphInstance);
-        const AnimGraphNodeData* servantUniqueData = servantNode->FindOrCreateUniqueNodeData(animGraphInstance);
+        const AnimGraphNodeData* leaderUniqueData = leaderNode->FindOrCreateUniqueNodeData(animGraphInstance);
+        const AnimGraphNodeData* followerUniqueData = followerNode->FindOrCreateUniqueNodeData(animGraphInstance);
 
-        CalcSyncFactors(masterUniqueData->GetPlaySpeed(), masterUniqueData->GetSyncTrack(), masterUniqueData->GetSyncIndex(), masterUniqueData->GetDuration(),
-            servantUniqueData->GetPlaySpeed(), servantUniqueData->GetSyncTrack(), servantUniqueData->GetSyncIndex(), servantUniqueData->GetDuration(),
-            syncMode, weight, outMasterFactor, outServantFactor, outPlaySpeed);
+        CalcSyncFactors(leaderUniqueData->GetPlaySpeed(), leaderUniqueData->GetSyncTrack(), leaderUniqueData->GetSyncIndex(), leaderUniqueData->GetDuration(),
+            followerUniqueData->GetPlaySpeed(), followerUniqueData->GetSyncTrack(), followerUniqueData->GetSyncIndex(), followerUniqueData->GetDuration(),
+            syncMode, weight, outLeaderFactor, outFollowerFactor, outPlaySpeed);
     }
 
-    void AnimGraphNode::CalcSyncFactors(float masterPlaySpeed, const AnimGraphSyncTrack* masterSyncTrack, uint32 masterSyncTrackIndex, float masterDuration,
-        float servantPlaySpeed, const AnimGraphSyncTrack* servantSyncTrack, uint32 servantSyncTrackIndex, float servantDuration,
-        ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
+    void AnimGraphNode::CalcSyncFactors(float leaderPlaySpeed, const AnimGraphSyncTrack* leaderSyncTrack, uint32 leaderSyncTrackIndex, float leaderDuration,
+        float followerPlaySpeed, const AnimGraphSyncTrack* followerSyncTrack, uint32 followerSyncTrackIndex, float followerDuration,
+        ESyncMode syncMode, float weight, float* outLeaderFactor, float* outFollowerFactor, float* outPlaySpeed)
     {
-        // exit if we don't want to sync or we have no master node to sync to
+        // exit if we don't want to sync or we have no leader node to sync to
         if (syncMode == SYNCMODE_DISABLED)
         {
-            *outMasterFactor = 1.0f;
-            *outServantFactor = 1.0f;
+            *outLeaderFactor = 1.0f;
+            *outFollowerFactor = 1.0f;
 
-            // Use the master/source state playspeed when transitioning, do not blend playspeeds if syncing is disabled.
-            *outPlaySpeed = masterPlaySpeed;
+            // Use the leader/source state playspeed when transitioning, do not blend playspeeds if syncing is disabled.
+            *outPlaySpeed = leaderPlaySpeed;
             return;
         }
 
         // Blend playspeeds only if syncing is enabled.
-        *outPlaySpeed = AZ::Lerp(masterPlaySpeed, servantPlaySpeed, weight);
+        *outPlaySpeed = AZ::Lerp(leaderPlaySpeed, followerPlaySpeed, weight);
 
         // if one of the tracks is empty, sync the full clip
         if (syncMode == SYNCMODE_TRACKBASED)
         {
             // if we have sync keys in both nodes, do the track based sync
-            if (masterSyncTrack && servantSyncTrack && masterSyncTrack->GetNumEvents() > 0 && servantSyncTrack->GetNumEvents() > 0)
+            if (leaderSyncTrack && followerSyncTrack && leaderSyncTrack->GetNumEvents() > 0 && followerSyncTrack->GetNumEvents() > 0)
             {
                 // if the sync indices are invalid, act like no syncing
-                if (masterSyncTrackIndex == MCORE_INVALIDINDEX32 || servantSyncTrackIndex == MCORE_INVALIDINDEX32)
+                if (leaderSyncTrackIndex == MCORE_INVALIDINDEX32 || followerSyncTrackIndex == MCORE_INVALIDINDEX32)
                 {
-                    *outMasterFactor = 1.0f;
-                    *outServantFactor = 1.0f;
+                    *outLeaderFactor = 1.0f;
+                    *outFollowerFactor = 1.0f;
                     return;
                 }
 
                 // get the segment lengths
                 // TODO: handle motion clip start and end
-                uint32 masterSyncIndexNext = masterSyncTrackIndex + 1;
-                if (masterSyncIndexNext >= masterSyncTrack->GetNumEvents())
+                uint32 leaderSyncIndexNext = leaderSyncTrackIndex + 1;
+                if (leaderSyncIndexNext >= leaderSyncTrack->GetNumEvents())
                 {
-                    masterSyncIndexNext = 0;
+                    leaderSyncIndexNext = 0;
                 }
 
-                uint32 servantSyncIndexNext = servantSyncTrackIndex + 1;
-                if (servantSyncIndexNext >= servantSyncTrack->GetNumEvents())
+                uint32 followerSyncIndexNext = followerSyncTrackIndex + 1;
+                if (followerSyncIndexNext >= followerSyncTrack->GetNumEvents())
                 {
-                    servantSyncIndexNext = 0;
+                    followerSyncIndexNext = 0;
                 }
 
-                const float durationA = masterSyncTrack->CalcSegmentLength(masterSyncTrackIndex, masterSyncIndexNext);
-                const float durationB = servantSyncTrack->CalcSegmentLength(servantSyncTrackIndex, servantSyncIndexNext);
+                const float durationA = leaderSyncTrack->CalcSegmentLength(leaderSyncTrackIndex, leaderSyncIndexNext);
+                const float durationB = followerSyncTrack->CalcSegmentLength(followerSyncTrackIndex, followerSyncIndexNext);
                 const float timeRatio = (durationB > MCore::Math::epsilon) ? durationA / durationB : 0.0f;
                 const float timeRatio2 = (durationA > MCore::Math::epsilon) ? durationB / durationA : 0.0f;
-                *outMasterFactor = AZ::Lerp(1.0f, timeRatio, weight);
-                *outServantFactor = AZ::Lerp(timeRatio2, 1.0f, weight);
+                *outLeaderFactor = AZ::Lerp(1.0f, timeRatio, weight);
+                *outFollowerFactor = AZ::Lerp(timeRatio2, 1.0f, weight);
                 return;
             }
         }
 
         // calculate the factor based on full clip sync
-        const float timeRatio = (servantDuration > MCore::Math::epsilon) ? masterDuration / servantDuration : 0.0f;
-        const float timeRatio2 = (masterDuration > MCore::Math::epsilon) ? servantDuration / masterDuration : 0.0f;
-        *outMasterFactor = AZ::Lerp(1.0f, timeRatio, weight);
-        *outServantFactor = AZ::Lerp(timeRatio2, 1.0f, weight);
+        const float timeRatio = (followerDuration > MCore::Math::epsilon) ? leaderDuration / followerDuration : 0.0f;
+        const float timeRatio2 = (leaderDuration > MCore::Math::epsilon) ? followerDuration / leaderDuration : 0.0f;
+        *outLeaderFactor = AZ::Lerp(1.0f, timeRatio, weight);
+        *outFollowerFactor = AZ::Lerp(timeRatio2, 1.0f, weight);
     }
 
 
@@ -1045,7 +1045,7 @@ namespace EMotionFX
 
 
     // perform syncing using the sync tracks
-    void AnimGraphNode::SyncUsingSyncTracks(AnimGraphInstance* animGraphInstance, AnimGraphNode* syncWithNode, const AnimGraphSyncTrack* syncTrackA, const AnimGraphSyncTrack* syncTrackB, float weight, bool resync, bool modifyMasterSpeed)
+    void AnimGraphNode::SyncUsingSyncTracks(AnimGraphInstance* animGraphInstance, AnimGraphNode* syncWithNode, const AnimGraphSyncTrack* syncTrackA, const AnimGraphSyncTrack* syncTrackB, float weight, bool resync, bool modifyLeaderSpeed)
     {
         AnimGraphNode* nodeA = syncWithNode;
         AnimGraphNode* nodeB = this;
@@ -1188,7 +1188,7 @@ namespace EMotionFX
         const float factorB         = MCore::LinearInterpolate<float>(timeRatio2, 1.0f, weight);
         const float interpolatedSpeed   = MCore::LinearInterpolate<float>(uniqueDataA->GetPlaySpeed(), uniqueDataB->GetPlaySpeed(), weight);
 
-        if (modifyMasterSpeed)
+        if (modifyLeaderSpeed)
         {
             uniqueDataA->SetPlaySpeed(interpolatedSpeed * factorA);
         }
@@ -1865,8 +1865,8 @@ namespace EMotionFX
         }
         break;
 
-        // only the master
-        case EVENTMODE_MASTERONLY:
+        // only the leader
+        case EVENTMODE_LEADERONLY:
         {
             if (refDataNodeA)
             {
@@ -1875,8 +1875,8 @@ namespace EMotionFX
         }
         break;
 
-        // only the slave
-        case EVENTMODE_SLAVEONLY:
+        // only the follower
+        case EVENTMODE_FOLLOWERONLY:
         {
             if (nodeB)
             {
@@ -1888,7 +1888,7 @@ namespace EMotionFX
             }
             else if (refDataNodeA)
             {
-                refData->SetEventBuffer(refDataNodeA->GetEventBuffer()); // master is also slave
+                refData->SetEventBuffer(refDataNodeA->GetEventBuffer()); // leader is also follower
             }
         }
         break;
@@ -1949,7 +1949,7 @@ namespace EMotionFX
                 }
                 else if (refDataNodeA)
                 {
-                       refData->SetEventBuffer(refDataNodeA->GetEventBuffer()); // master is also slave
+                       refData->SetEventBuffer(refDataNodeA->GetEventBuffer()); // leader is also follower
                 }
             }
         }
@@ -1992,14 +1992,14 @@ namespace EMotionFX
     }
 
     // recursively collect active animgraph nodes
-    void AnimGraphNode::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
+    void AnimGraphNode::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
     {
         // check and add this node
         if (azrtti_typeid(this) == nodeType || nodeType.IsNull())
         {
             if (animGraphInstance->GetIsOutputReady(mObjectIndex)) // if we processed this node
             {
-                outNodes->Add(const_cast<AnimGraphNode*>(this));
+                outNodes->emplace_back(const_cast<AnimGraphNode*>(this));
             }
         }
 

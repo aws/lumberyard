@@ -152,7 +152,7 @@ namespace AzToolsFramework
 
         // Get all components on all selected entities so we can display a count of used components by type
         AZStd::unordered_set<AZ::Component*> allComponentsOnSelectedEntities;
-        for (const AZ::EntityId entityId : m_selectedEntityIds)
+        for (AZ::EntityId entityId : m_selectedEntityIds)
         {
             componentsOnEntity.clear();
             AzToolsFramework::GetAllComponentsForEntity(entityId, componentsOnEntity);
@@ -311,7 +311,7 @@ namespace AzToolsFramework
                 EntityCompositionRequestBus::Broadcast(&EntityCompositionRequests::AddComponentsToEntities, m_selectedEntityIds, AZ::ComponentTypeList{ componentClass->m_typeId });
                 AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::ButtonClick);
 
-                for (const AZ::EntityId entityId : m_selectedEntityIds)
+                for (AZ::EntityId entityId : m_selectedEntityIds)
                 {
                     // add component metrics event
                     EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, ComponentAdded, entityId, componentClass->m_typeId);

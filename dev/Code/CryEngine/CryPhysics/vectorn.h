@@ -18,6 +18,8 @@
 #define CRYINCLUDE_CRYPHYSICS_VECTORN_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 template <class ftype>
 class matrix_vector_product_tpl
 {
@@ -342,5 +344,8 @@ typedef vectorn_tpl<real> vectorn;
     int vectorn_tpl<ftype>::vecn_pool_pos = 0;         \
     template<>                                         \
     int vectorn_tpl<ftype>::vecn_pool_size = sz;
+
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_VECTORN_H

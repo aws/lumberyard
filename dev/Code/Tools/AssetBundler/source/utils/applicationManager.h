@@ -67,6 +67,16 @@ namespace AssetBundler
         FilePath m_assetCatalogFile;
     };
 
+    enum ComparisonRulesStepAction
+    {
+        Add,
+        AddToEnd,
+        Remove,
+        Move,
+        Edit,
+        Default,
+    };
+
     struct ComparisonRulesParams
     {
         AZ_CLASS_ALLOCATOR(ComparisonRulesParams, AZ::SystemAllocator, 0);
@@ -74,10 +84,18 @@ namespace AssetBundler
         AZStd::vector<AzToolsFramework::AssetFileInfoListComparison::ComparisonType> m_comparisonTypeList;
         AZStd::vector<AZStd::string> m_filePatternList;
         AZStd::vector<AzToolsFramework::AssetFileInfoListComparison::FilePatternType> m_filePatternTypeList;
+        AZStd::vector<AZStd::string> m_tokenNamesList;
+        AZStd::vector<AZStd::string> m_firstInputList;
+        AZStd::vector<AZStd::string> m_secondInputList;
         FilePath m_comparisonRulesFile;
+
+        ComparisonRulesStepAction m_comparisonRulesStepAction = ComparisonRulesStepAction::Default;
+        size_t m_initialLine = 0;
+        size_t m_destinationLine = 0;
+
         unsigned int m_intersectionCount = 0;
 
-        bool m_allowOverwrites = false;
+        bool m_print = false;
     };
 
     struct ComparisonParams
@@ -165,6 +183,9 @@ namespace AssetBundler
         bool OnPrintf(const char* window, const char* message) override;
         ////////////////////////////////////////////////////////////////////////////////////////////
 
+        AZStd::string GetCurrentProjectName() { return m_currentProjectName; }
+        AZStd::vector<AzToolsFramework::AssetUtils::GemInfo> GetGemInfoList() { return m_gemInfoList; }
+
     protected:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +239,11 @@ namespace AssetBundler
         AZ::Outcome<void, AZStd::string> LoadProjectDependenciesFile(AzFramework::PlatformFlags platformFlags);
         void PrintSeedList(const AZStd::string& seedListFileAbsolutePath);
         bool RunPlatformSpecificAssetListCommands(const AssetListsParams& params, AzFramework::PlatformFlags platformFlags);
-        void PrintAssetLists(const AssetListsParams& params, const AZStd::vector<AzFramework::PlatformId>& platformIds, bool printExistingFiles, const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList);
+        void PrintAssetLists(const AssetListsParams& params,
+            const AZStd::vector<AzFramework::PlatformId>& platformIds,
+            bool printExistingFiles,
+            const AZStd::unordered_set<AZ::Data::AssetId>& exclusionList,
+            const AZStd::vector<AZStd::string>& wildcardPatternExclusionList);
         AZStd::vector<FilePath> GetAllPlatformSpecificFilesOnDisk(const FilePath& platformIndependentFilePath, AzFramework::PlatformFlags platformFlags = AzFramework::PlatformFlags::Platform_NONE);
         AZ::Outcome<void, AZStd::string> ApplyBundleSettingsOverrides(
             AzToolsFramework::AssetBundleSettings& bundleSettings, 
@@ -227,8 +252,13 @@ namespace AssetBundler
             int bundleVersion, 
             int maxBundleSize);
         AZ::Outcome<void, AZStd::string> ParseComparisonTypesAndPatterns(const AzFramework::CommandLine* parser, ComparisonRulesParams& params);
+        AZ::Outcome<void, AZStd::string> ParseComparisonTypesAndPatternsForEditCommand(const AzFramework::CommandLine* parser, ComparisonRulesParams& params);
+        AZ::Outcome<void, AZStd::string> ParseComparisonRulesFirstAndSecondInputArgs(const AzFramework::CommandLine* parser, ComparisonRulesParams& params);
         AZ::Outcome<BundlesParamsList, AZStd::string> ParseBundleSettingsAndOverrides(const AzFramework::CommandLine* parser, const char* commandName);
-        void ConvertRulesParamsToComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison);
+        bool ConvertRulesParamsToComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison, size_t startingIndex);
+        bool EditComparisonData(const ComparisonRulesParams& params, AzToolsFramework::AssetFileInfoListComparison& assetListComparison, size_t index);
+        void PrintComparisonRules(const AzToolsFramework::AssetFileInfoListComparison& assetListComparison, const AZStd::string& comparisonRulesAbsoluteFilePath);
+        bool IsDefaultToken(const AZStd::string& pathOrToken);
         void PrintComparisonAssetList(const AzToolsFramework::AssetFileInfoList& infoList, const AZStd::string& resultName);
         //! Error message to display when neither of two optional arguments was found
         static AZStd::string GetBinaryArgOptionFailure(const char* arg1, const char* arg2);

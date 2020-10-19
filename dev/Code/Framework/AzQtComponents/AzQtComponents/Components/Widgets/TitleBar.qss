@@ -21,6 +21,12 @@ AzQtComponents--TitleBar[drawAsTabBar="true"]
     border: none;
 }
 
+AzQtComponents--TitleBar[drawSimple="true"]
+{
+    background-color: #222222;
+    border-bottom: 3px solid #111111;
+}
+
 AzQtComponents--TitleBar *
 {
     background-color: transparent;
@@ -29,8 +35,8 @@ AzQtComponents--TitleBar *
 AzQtComponents--TitleBar #title
 {
     font-family: "Amazon Ember";
-    font-size: 18px;
-    margin-left: 16px;
+    font-size: 14px;
+    margin-left: 10px;
     margin-right: 16px;
 }
 
@@ -43,20 +49,35 @@ AzQtComponents--DockBarButton
 {
     border: 0 none;
     qproperty-iconSize: 16px 16px;
-    min-width: 48px;
-    max-width: 48px;
+    min-width: 32px;
+    max-width: 32px;
     min-height: 32px;
     max-height: 32px;
 }
 
+AzQtComponents--TitleBar[drawAsTabBar="true"] #tabButtons
+{
+    margin-bottom: 3px;
+}
+
+AzQtComponents--TitleBar[drawAsTabBar="true"] #tabButtons AzQtComponents--DockBarButton
+{
+    qproperty-iconSize: 14px 14px;
+    border: 0 none;
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    max-height: 26px;
+}
+
 AzQtComponents--TitleBar[drawSimple="true"] AzQtComponents--DockBarButton
 {
-    qproperty-iconSize: 12px 12px;
+    qproperty-iconSize: 14px 14px;
     border: 0 none;
-    min-width: 32px;
-    max-width: 32px;
-    min-height: 14px;
-    max-height: 14px;
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
 }
 
 AzQtComponents--TabBar AzQtComponents--DockBarButton
@@ -69,14 +90,51 @@ AzQtComponents--TabBar AzQtComponents--DockBarButton
     max-height: 14px;
 }
 
+QToolButton#minimizeButton,
+QToolButton#maximizeButton,
+QToolButton#closeButton 
+{
+    qproperty-iconSize: 14px 14px;
+    background: transparent;
+    max-width: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+}
+
+QToolButton#minimizeButton:hover,
+QToolButton#maximizeButton:hover 
+{
+    background: rgba(255,255,255,0.1);
+}
+
+QToolButton#closeButton:hover {
+    background: #B80D1C;
+}
+
+AzQtComponents--TabWidget QToolButton#closeButton
+{
+    qproperty-icon: url(:/stylesheet/img/UI20/titlebar-close.svg);
+}
+
 AzQtComponents--DockBarButton.close
 {
     titlebar-close-icon: url(:/stylesheet/img/UI20/titlebar-close.svg);
 }
 
+AzQtComponents--TabWidget QToolButton#maximizeButton
+{
+    qproperty-icon: url(:/stylesheet/img/UI20/titlebar-maximize.svg);
+}
+
 AzQtComponents--DockBarButton.maximize
 {
     titlebar-maximize-icon: url(:/stylesheet/img/UI20/titlebar-maximize.svg);
+}
+
+AzQtComponents--TabWidget QToolButton#minimizeButton
+{
+    qproperty-icon: url(:/stylesheet/img/UI20/titlebar-minimize.svg);
 }
 
 AzQtComponents--DockBarButton.minimize

@@ -56,8 +56,10 @@ public:
     virtual uint16 GetLayerId() { return m_nLayerId; }
     virtual struct IRenderMesh* GetRenderMesh(int nLod);
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetPhysics() const;
     virtual void SetPhysics(IPhysicalEntity* pPhys);
+#endif // ENABLE_CRY_PHYSICS
     static bool IsMatrixValid(const Matrix34& mat);
     virtual void Dephysicalize(bool bKeepIfReferenced = false);
     virtual void Physicalize(bool bInstant = false);

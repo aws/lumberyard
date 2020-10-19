@@ -18,6 +18,8 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <LmbrCentral/Rendering/MaterialAsset.h>
+#include <LmbrCentral/Rendering/MeshAsset.h>
 #include <MathConversion.h>
 #include <I3DEngine.h>
 #include <ISystem.h>
@@ -241,18 +243,44 @@ namespace Vegetation
 
         AZStd::lock_guard<decltype(m_uniqueDescriptorsMutex)> lock(m_uniqueDescriptorsMutex);
 
+        AZStd::shared_ptr<InstanceSpawner> equivalentInstanceSpawner = descriptor.GetInstanceSpawner();
+
+        // Loop through all registered unique descriptors to look for the following:
+        // 1) Is there an exact match to this descriptor that we can reuse?
+        // 2) Is there an exact match to the descriptor's instance spawner that we can reuse?
         for (auto& descPair : m_uniqueDescriptors)
         {
             DescriptorPtr existingDescriptorPtr = descPair.first;
-            if (existingDescriptorPtr && *existingDescriptorPtr == descriptor)
+
+            if (existingDescriptorPtr)
             {
-                DescriptorDetails& details = descPair.second;
-                details.m_refCount++;
-                return existingDescriptorPtr;
+                // If the descriptors and their spawners both match, just reuse and return a
+                // pointer to the existing unique descriptor.
+                if (*existingDescriptorPtr == descriptor)
+                {
+                    DescriptorDetails& details = descPair.second;
+                    details.m_refCount++;  
+                    return existingDescriptorPtr;
+                }
+
+                // Keep track of any already-existing instance spawners that match the one in
+                // our new descriptor.  If we need to create a new unique descriptor pointer,
+                // we will at least try to reuse a instance spawner if it exists.
+                if (descriptor.HasEquivalentInstanceSpawners(*existingDescriptorPtr))
+                {
+                    equivalentInstanceSpawner = existingDescriptorPtr->GetInstanceSpawner();
+                }
             }
         }
 
+        // No existing Descriptor was found, so create a new one, but potentially reuse
+        // an existing InstanceSpawner if one was found.
         DescriptorPtr createdDescriptorPtr(new Descriptor(descriptor));
+        createdDescriptorPtr->SetInstanceSpawner(equivalentInstanceSpawner);
+
+        // Notify the descriptor that it's being registered as a new unique descriptor.
+        createdDescriptorPtr->OnRegisterUniqueDescriptor();
+
         m_uniqueDescriptors[createdDescriptorPtr] = DescriptorDetails();
         return createdDescriptorPtr;
     }
@@ -274,6 +302,9 @@ namespace Vegetation
             details.m_refCount--;
             if (details.m_refCount <= 0)
             {
+                // Notify the descriptor that it's being released as a unique descriptor.
+                existingDescriptorPtr->OnReleaseUniqueDescriptor();
+
                 //queue entry for garbage collection
                 m_uniqueDescriptorsToDelete[existingDescriptorPtr] = details;
                 m_uniqueDescriptors.erase(descItr);
@@ -285,7 +316,7 @@ namespace Vegetation
     {
         //only support valid, registered descriptors with loaded meshes
         AZStd::lock_guard<decltype(m_uniqueDescriptorsMutex)> lock(m_uniqueDescriptorsMutex);
-        return descriptorPtr && descriptorPtr->m_meshLoaded && m_uniqueDescriptors.find(descriptorPtr) != m_uniqueDescriptors.end();
+        return descriptorPtr && descriptorPtr->IsSpawnable() && m_uniqueDescriptors.find(descriptorPtr) != m_uniqueDescriptors.end();
     }
 
     void InstanceSystemComponent::GarbageCollectUniqueDescriptors()
@@ -297,8 +328,6 @@ namespace Vegetation
             const auto remaining = descriptorPtr.use_count();
             if (remaining == 2) //one for the container and one for the local
             {
-                DescriptorDetails& details = descItr->second;
-                ReleaseRenderGroup(details.m_groupPtr);
                 descItr = m_uniqueDescriptorsToDelete.erase(descItr);
                 continue;
             }
@@ -327,24 +356,13 @@ namespace Vegetation
         }
 
         // Doing this here risks a slighly inaccurate count if the Create*Node functions fail, but I need this to happen on the vegetation thread so the events are recorded in order.
-        VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::CreateInstance, instanceData.m_instanceId, instanceData.m_position, instanceData.m_id));
+        VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::CreateInstance, instanceData.m_instanceId, instanceData.m_position, instanceData.m_id));
 
-        if (instanceData.m_descriptorPtr->m_autoMerge)
-        {
-            //queue render node related tasks to process on the main thread
-            AddTask([this, instanceData]() {
-                CreateMergedMeshInstanceNode(instanceData);
-                m_createTaskCount--;
-            });
-        }
-        else
-        {
-            //queue render node related tasks to process on the main thread
-            AddTask([this, instanceData]() {
-                CreateCVegetationInstanceNode(instanceData);
-                m_createTaskCount--;
-            });
-        }
+        //queue render node related tasks to process on the main thread
+        AddTask([this, instanceData]() {
+            CreateInstanceNode(instanceData);
+            m_createTaskCount--;
+        });
 
         m_createTaskCount++;
     }
@@ -359,7 +377,7 @@ namespace Vegetation
         }
 
         // do this here so we retain a correct ordering of events based on the vegetation thread.
-        VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::DeleteInstance, instanceId));
+        VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::DeleteInstance, instanceId));
 
         //queue render node related tasks to process on the main thread
         AddTask([this, instanceId]() {
@@ -377,7 +395,7 @@ namespace Vegetation
 
     void InstanceSystemComponent::DestroyAllInstances()
     {
-        VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::DeleteAllInstances));
+        VEG_PROFILE_METHOD(DebugNotificationBus::TryQueueBroadcast(&DebugNotificationBus::Events::DeleteAllInstances));
 
         // make sure to clear out the instance work queue
         ClearTasks();
@@ -388,10 +406,11 @@ namespace Vegetation
             for (auto instancePair : m_instanceMap)
             {
                 InstanceId instanceId = instancePair.first;
-                IRenderNode* instanceNode = instancePair.second;
-                if (instanceNode)
+                DescriptorPtr descriptor = instancePair.second.first;
+                InstancePtr opaqueInstanceData = instancePair.second.second;
+                if (opaqueInstanceData)
                 {
-                    instanceNode->ReleaseNode();
+                    descriptor->DestroyInstance(instanceId, opaqueInstanceData);
                 }
                 ReleaseInstanceId(instanceId);
             }
@@ -409,8 +428,6 @@ namespace Vegetation
     void InstanceSystemComponent::Cleanup()
     {
         DestroyAllInstances();
-
-        ReleaseAllRenderGroups();
 
         {
             AZStd::lock_guard<decltype(m_uniqueDescriptorsMutex)> lock(m_uniqueDescriptorsMutex);
@@ -528,7 +545,7 @@ namespace Vegetation
         return instanceData.m_instanceId == InvalidInstanceId || m_instanceDeletionSet.find(instanceData.m_instanceId) != m_instanceDeletionSet.end();
     }
 
-    void InstanceSystemComponent::CreateCVegetationInstanceNode(const InstanceData& instanceData)
+    void InstanceSystemComponent::CreateInstanceNode(const InstanceData& instanceData)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
@@ -543,82 +560,51 @@ namespace Vegetation
             return;
         }
 
-        DescriptorRenderGroupPtr groupPtr = RegisterRenderGroup(instanceData.m_descriptorPtr);
-        if (!groupPtr || !groupPtr->IsReady())
+        // Only support valid, registered descriptors with loaded assets
+        if (!instanceData.m_descriptorPtr || !instanceData.m_descriptorPtr->IsLoaded())
         {
-            //could not locate registered vegetation render group but it's not an error
+            //descriptor and mesh must be valid but it's not an error
             //an edit, asset change, or other event could have released descriptors or render groups on this or another thread
             //this should result in a composition change and refresh
-            //so skip this instance
             return;
         }
 
-        IVegetation* instanceNode = (IVegetation*)m_engine->CreateRenderNode(eERType_Vegetation);
-        AZ_Assert(instanceNode, "Could not CreateRenderNode(eERType_Vegetation)!");
+        {
+            AZStd::lock_guard<decltype(m_uniqueDescriptorsMutex)> lock(m_uniqueDescriptorsMutex);
 
-        instanceNode->SetStatObjGroupIndex(groupPtr->GetId());
-        instanceNode->SetUniformScale(instanceData.m_scale);
-        instanceNode->SetPosition(AZVec3ToLYVec3(instanceData.m_position));
-        instanceNode->SetRotation(Ang3(AZQuaternionToLYQuaternion(instanceData.m_alignment * instanceData.m_rotation)));
-        instanceNode->SetDynamic(true); // this lets us track that this is a dynamic vegetation instance
-        instanceNode->PrepareBBox();
-        instanceNode->Physicalize();
-        m_engine->RegisterEntity(instanceNode);
-        m_instanceNodeToMergedMeshNodeRegistrationMap[instanceNode] = nullptr;
+            auto descItr = m_uniqueDescriptors.find(instanceData.m_descriptorPtr);
+            if (descItr == m_uniqueDescriptors.end())
+            {
+                //descriptor must be registered with the system to create an instance.
+                //it could have been removed or re-added while editing or deleting entities that control the registration
+                return;
+            }
+        }
 
-        AZStd::lock_guard<decltype(m_instanceMapMutex)> scopedLock(m_instanceMapMutex);
-        AZ_Assert(m_instanceMap.find(instanceData.m_instanceId) == m_instanceMap.end(), "InstanceId %llu is already in use!", instanceData.m_instanceId);
-        m_instanceMap[instanceData.m_instanceId] = instanceNode;
-        m_instanceCount = m_instanceMap.size();
+        InstancePtr opaqueInstanceData = instanceData.m_descriptorPtr->CreateInstance(instanceData);
+
+        if (opaqueInstanceData)
+        {
+            AZStd::lock_guard<decltype(m_instanceMapMutex)> scopedLock(m_instanceMapMutex);
+            AZ_Assert(m_instanceMap.find(instanceData.m_instanceId) == m_instanceMap.end(), "InstanceId %llu is already in use!", instanceData.m_instanceId);
+            m_instanceMap[instanceData.m_instanceId] = AZStd::make_pair(instanceData.m_descriptorPtr, opaqueInstanceData);
+            m_instanceCount = m_instanceMap.size();
+        }
     }
 
-    void InstanceSystemComponent::CreateMergedMeshInstanceNode(const InstanceData& instanceData)
+    void InstanceSystemComponent::RegisterMergedMeshInstance(InstancePtr instance, IRenderNode* mergedMeshNode)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
-
-        if (!m_engine)
-        {
-            AZ_Error("vegetation", m_engine, "Could not acquire I3DEngine!");
-            return;
-        }
-
-        if (IsInstanceSkippable(instanceData))
-        {
-            return;
-        }
-
-        DescriptorRenderGroupPtr groupPtr = RegisterRenderGroup(instanceData.m_descriptorPtr);
-        if (!groupPtr || !groupPtr->IsReady())
-        {
-            //could not locate registered vegetation render group but it's not an error
-            //an edit, asset change, or other event could have released descriptors or render groups on this or another thread
-            //this should result in a composition change and refresh
-            //so skip this instance
-            return;
-        }
-
-        IMergedMeshesManager::SInstanceSample sample;
-        sample.instGroupId = groupPtr->GetId();
-        sample.pos = AZVec3ToLYVec3(instanceData.m_position);
-        sample.scale = (uint8)SATURATEB(instanceData.m_scale * 64.0f); // [LY-90912] Need to expose VEGETATION_CONV_FACTOR from CryEngine\Cry3DEngine\Vegetation.h for use here
-        sample.q = AZQuaternionToLYQuaternion(instanceData.m_alignment * instanceData.m_rotation);
-        sample.q.NormalizeSafe();
-
-        const bool bRegister = false;
-        IRenderNode* mergedMeshNode = nullptr;
-        IRenderNode* instanceNode = m_engine->GetIMergedMeshesManager()->AddDynamicInstance(sample, &mergedMeshNode, bRegister);
-        AZ_Assert(instanceNode, "Could not AddDynamicInstance!");
-
-        if (instanceNode && mergedMeshNode)
+        if (instance && mergedMeshNode)
         {
             //merged mesh nodes should only refresh once for a batch of instances
-            m_instanceNodeToMergedMeshNodeRegistrationMap[instanceNode] = mergedMeshNode;
+            m_instanceNodeToMergedMeshNodeRegistrationMap[instance] = mergedMeshNode;
         }
+    }
 
-        AZStd::lock_guard<decltype(m_instanceMapMutex)> scopedLock(m_instanceMapMutex);
-        AZ_Assert(m_instanceMap.find(instanceData.m_instanceId) == m_instanceMap.end(), "InstanceId %llu is already in use!", instanceData.m_instanceId);
-        m_instanceMap[instanceData.m_instanceId] = instanceNode;
-        m_instanceCount = m_instanceMap.size();
+    void InstanceSystemComponent::ReleaseMergedMeshInstance(InstancePtr instance)
+    {
+        //stop tracking this node for registration
+        m_instanceNodeToMergedMeshNodeRegistrationMap.erase(instance);
     }
 
     void InstanceSystemComponent::CreateInstanceNodeBegin()
@@ -646,7 +632,7 @@ namespace Vegetation
 
         for (auto nodePair : m_instanceNodeToMergedMeshNodeRegistrationMap)
         {
-            IRenderNode* instanceNode = nodePair.first;
+            InstancePtr instanceNode = nodePair.first;
             IRenderNode* mergedMeshNode = nodePair.second;
             if (instanceNode && mergedMeshNode)
             {
@@ -667,25 +653,24 @@ namespace Vegetation
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
 
-        IRenderNode* instanceNode = nullptr;
+        DescriptorPtr descriptor = nullptr;
+        InstancePtr opaqueInstanceData = nullptr;
 
         {
             AZStd::lock_guard<decltype(m_instanceMapMutex)> scopedLock(m_instanceMapMutex);
             auto instanceItr = m_instanceMap.find(instanceId);
             if (instanceItr != m_instanceMap.end())
             {
-                instanceNode = instanceItr->second;
+                descriptor = instanceItr->second.first;
+                opaqueInstanceData = instanceItr->second.second;
                 m_instanceMap.erase(instanceItr);
             }
             m_instanceCount = m_instanceMap.size();
         }
 
-        if (instanceNode)
+        if (opaqueInstanceData)
         {
-            instanceNode->ReleaseNode();
-
-            //stop tracking this node for registration
-            m_instanceNodeToMergedMeshNodeRegistrationMap.erase(instanceNode);
+            descriptor->DestroyInstance(instanceId, opaqueInstanceData);
         }
         ReleaseInstanceId(instanceId);
     }
@@ -772,78 +757,4 @@ namespace Vegetation
         CreateInstanceNodeEnd();
     }
 
-    DescriptorRenderGroupPtr InstanceSystemComponent::RegisterRenderGroup(DescriptorPtr descriptorPtr)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
-
-        //only support render groups with valid, registered descriptors and loaded meshes
-        if (!descriptorPtr || !descriptorPtr->m_meshAsset.IsReady())
-        {
-            //descriptor and mesh must be valid but it's not an error
-            //an edit, asset change, or other event could have released descriptors or render groups on this or another thread
-            //this should result in a composition change and refresh
-            return DescriptorRenderGroupPtr();
-        }
-
-        AZStd::lock_guard<decltype(m_uniqueDescriptorsMutex)> lock(m_uniqueDescriptorsMutex);
-
-        auto descItr = m_uniqueDescriptors.find(descriptorPtr);
-        if (descItr == m_uniqueDescriptors.end())
-        {
-            //descriptor must be registered with the system to have an associated render group
-            //but could have been removed or re-added while editing or deleting entities that control the registration
-            return DescriptorRenderGroupPtr();
-        }
-
-        DescriptorDetails& details = descItr->second;
-        if (details.m_groupPtr && details.m_groupPtr->IsReady())
-        {
-            //render group is already available so return immediately
-            return details.m_groupPtr;
-        }
-
-        //search for an existing, matching group to share/reference before creating a new one
-        for (auto& descPair : m_uniqueDescriptors)
-        {
-            DescriptorPtr descPtr2 = descPair.first;
-            if (descriptorPtr != descPtr2)
-            {
-                DescriptorDetails& details2 = descPair.second;
-                if (descPtr2 && details2.m_groupPtr && details2.m_groupPtr->IsReady())
-                {
-                    //different descriptors that have identical render-related settings will share the same render group
-                    if (DescriptorRenderGroup::ShouldDescriptorsShareGroup(*descriptorPtr, *descPtr2))
-                    {
-                        //a match was found so share a reference to this descriptor's group and return immediately
-                        details.m_groupPtr = details2.m_groupPtr;
-                        return details.m_groupPtr;
-                    }
-                }
-            }
-        }
-
-        //no valid or comparable render group was found so create a new one to associate with the current descriptor
-        details.m_groupPtr.reset(aznew DescriptorRenderGroup(*descriptorPtr, m_engine));
-        return details.m_groupPtr;
-    }
-
-    void InstanceSystemComponent::ReleaseRenderGroup(DescriptorRenderGroupPtr& groupPtr)
-    {
-        //release reference to render group
-        //when final reference is released, the static object instance group and id will reset and release
-        groupPtr.reset();
-    }
-
-    void InstanceSystemComponent::ReleaseAllRenderGroups()
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
-
-        AZStd::lock_guard<decltype(m_uniqueDescriptorsMutex)> lock(m_uniqueDescriptorsMutex);
-
-        for (auto& descPair : m_uniqueDescriptors)
-        {
-            DescriptorDetails& details = descPair.second;
-            ReleaseRenderGroup(details.m_groupPtr);
-        }
-    }
 }

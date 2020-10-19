@@ -15,14 +15,15 @@
 #define CRYINCLUDE_EDITOR_CONTROLS_CONSOLESCB_H
 #pragma once
 
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QPlainTextEdit>
-#include <QtWidgets/QPushButton>
+#include <EditorPreferencesBus.h>
 
 #include <QAbstractTableModel>
-#include <QStyledItemDelegate>
+#include <QDialog>
+#include <QLineEdit>
+#include <QPlainTextEdit>
+#include <QPushButton>
 #include <QScopedPointer>
+#include <QStyledItemDelegate>
 
 class QMenu;
 class ConsoleWidget;
@@ -96,9 +97,6 @@ public:
 
     void SetVarBlock(CVarBlock* varBlock);
 
-Q_SIGNALS:
-    void editInProgress() const;
-
 private:
     CVarBlock* m_varBlock;
 };
@@ -155,6 +153,7 @@ private:
 
 class CConsoleSCB
     : public QWidget
+    , private EditorPreferencesNotificationBus::Handler
 {
     Q_OBJECT
 public:
@@ -171,8 +170,10 @@ public:
 
     static void AddToPendingLines(const QString& text, bool bNewLine);        // call this function instead of AddToConsole() until an instance of CConsoleSCB exists to prevent messages from getting lost
 
-public Q_SLOTS:
-    void OnStyleSettingsChanged();
+    // EditorPreferencesNotificationBus...
+    void OnEditorPreferencesChanged() override;
+
+    void RefreshStyle();
 
 private Q_SLOTS:
     void showVariableEditor();

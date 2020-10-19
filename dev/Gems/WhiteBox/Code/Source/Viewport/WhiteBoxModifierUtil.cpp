@@ -42,6 +42,7 @@ namespace WhiteBox
             float m_distance;
             GeometryIntersection m_type;
         };
+
         AZStd::array<IntersectionType, 3> intersections
             {IntersectionType{IntersectionDistance(edgeIntersection), GeometryIntersection::Edge},
              IntersectionType{IntersectionDistance(polygonIntersection), GeometryIntersection::Polygon},
@@ -49,7 +50,7 @@ namespace WhiteBox
 
         AZStd::sort(
             AZStd::begin(intersections), AZStd::end(intersections),
-            [](const IntersectionType& lhs, const IntersectionType rhs)
+            [](const IntersectionType& lhs, const IntersectionType& rhs)
             {
                 return lhs.m_distance < rhs.m_distance;
             });

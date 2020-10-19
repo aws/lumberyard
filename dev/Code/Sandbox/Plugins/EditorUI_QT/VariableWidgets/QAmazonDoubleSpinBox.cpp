@@ -19,7 +19,7 @@
 
 
 QAmazonDoubleSpinBox::QAmazonDoubleSpinBox(QWidget* parent)
-    : QDoubleSpinBox(parent)
+    : AzQtComponents::DoubleSpinBox(parent)
 {
     setDecimals(m_precision);
     lineEdit()->installEventFilter(this);

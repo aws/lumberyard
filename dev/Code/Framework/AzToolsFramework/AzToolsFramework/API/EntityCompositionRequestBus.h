@@ -85,8 +85,12 @@ namespace AzToolsFramework
         *          outcome contains a string describing what went wrong.
         */
         virtual AddExistingComponentsOutcome AddExistingComponentsToEntityById(const AZ::EntityId& entityId, const AZStd::vector<AZ::Component*>& componentsToAdd) = 0;
+
         //! LUMBERYARD_DEPRECATED(LY-103316)
-        virtual AddExistingComponentsOutcome AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd) = 0;
+        AZ_DEPRECATED(
+            virtual AddExistingComponentsOutcome AddExistingComponentsToEntity(
+                AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd) = 0;,
+            "AddExistingComponentsToEntity is deprecated, please use AddExistingComponentsToEntityById instead");
 
         // Removing a component can only cause the following to occur:
         // 1) Invalidate other components by removing missing services

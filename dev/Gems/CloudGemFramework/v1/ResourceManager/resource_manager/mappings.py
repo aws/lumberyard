@@ -28,20 +28,21 @@ _MAPPINGS_KEY_PREFIX = "mappings/"
 
 
 def list(context, args):
-
     protected = context.config.user_default_deployment in context.config.get_protected_deployment_name()
-    list = []
+    _list = []
 
     mappings = context.config.user_settings.get('Mappings', {})
 
     for key, value in six.iteritems(mappings):
         value['Name'] = key
-        list.append(value)
+        _list.append(value)
 
-    context.view.mapping_list(context.config.default_deployment, list, protected)
+    context.view.mapping_list(context.config.default_deployment, _list, protected)
+
 
 def force_update(context, args):
     update(context, args, True)
+
 
 def update(context, args, force=False):
     # Has the project been initialized?
@@ -123,6 +124,7 @@ def set_launcher_deployment(context, deployment_name):
     with open(launcher_deployment_file, 'w') as out_file:
         json.dump({"LauncherDeployment": deployment_name}, out_file)
 
+
 def __update_with_deployment(context, args):
     deployment_name = args.deployment
     if deployment_name not in context.config.deployment_names:
@@ -135,6 +137,7 @@ def __update_user_mappings_from_file(context, player_mappings_file):
     with open(player_mappings_file) as mappings_file:
         mappings = json.load(mappings_file)
     context.config.set_user_mappings(mappings.get("LogicalMappings", {}))
+
 
 def __update_logical_mappings_files(context, deployment_name, args=None):
     exclusions = __get_mapping_exclusions(context)
@@ -157,6 +160,7 @@ def __update_logical_mappings_files(context, deployment_name, args=None):
     __update_launcher(context, deployment_name, 'Player', player_mappings, args)
     __update_launcher(context, deployment_name, 'Server', None, args)
 
+
 def __update_launcher(context, deployment_name, role, mappings=None, args=None):
     if mappings is None:
         mappings = __get_mappings(context, deployment_name, __get_mapping_exclusions(context), role, args)
@@ -172,6 +176,7 @@ def __update_launcher(context, deployment_name, role, mappings=None, args=None):
     logicalMappingsPath = os.path.join(logicalMappingsPath, logicalMappingsFileName)
 
     context.config.save_json(logicalMappingsPath, outData)
+
 
 def __logical_mapping_file_path(context):
     logicalMappingsPath = context.config.root_directory_path
@@ -191,6 +196,7 @@ def __remove_old_mapping_files(context, deployment_name=None):
         os.remove(player_mappings_file)
     if os.path.exists(server_mappings_file) and context.config.validate_writable(server_mappings_file):
         os.remove(server_mappings_file)
+
 
 def __remove_all_old_mapping_files(context):
     logicalMappingsPath = __logical_mapping_file_path(context)
@@ -258,7 +264,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                     stack_arn=stack_id,
                     resource_type=description['ResourceType'],
                     physical_id=physical_resource_id,
-                    optional = True,
+                    optional=True,
                     lambda_client=lambda_client
                 )
                 if resource_arn and resource_arn in player_accessible_arns:
@@ -274,7 +280,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
     if k_exchange_token_handler_name not in exclusions:
         login_exchange_handler = context.stack.get_physical_resource_id(context.config.project_stack_id, k_exchange_token_handler_name)
         if login_exchange_handler is not None:
-            mappings[k_exchange_token_handler_name] = { 'PhysicalResourceId': login_exchange_handler, 'ResourceType': 'AWS::Lambda::Function' }
+            mappings[k_exchange_token_handler_name] = {'PhysicalResourceId': login_exchange_handler, 'ResourceType': 'AWS::Lambda::Function'}
 
     # now let's grab the player identity stuff and make sure we add it to the mappings.
     access_stack_arn = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
@@ -292,13 +298,13 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                 }
 
     if 'region' not in exclusions:
-        mappings['region'] = { 'PhysicalResourceId': region, 'ResourceType': 'Configuration' }
+        mappings['region'] = {'PhysicalResourceId': region, 'ResourceType': 'Configuration'}
 
     if 'account_id' not in exclusions:
-        mappings['account_id'] = { 'PhysicalResourceId': account_id, 'ResourceType': 'Configuration' }
+        mappings['account_id'] = {'PhysicalResourceId': account_id, 'ResourceType': 'Configuration'}
 
     if 'server_role_arn' not in exclusions and role is not 'AuthenticatedPlayer':
-        mappings['server_role_arn'] = { 'PhysicalResourceId': server_role_arn, 'ResourceType': 'Configuration' }
+        mappings['server_role_arn'] = {'PhysicalResourceId': server_role_arn, 'ResourceType': 'Configuration'}
 
     return mappings
 
@@ -306,8 +312,10 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
 def __is_service_api_resource(description):
     return description.get('ResourceType', '') == 'Custom::ServiceApi'
 
+
 def __is_user_pool_resource(description):
     return description.get('ResourceType', '') == 'Custom::CognitoUserPool'
+
 
 def __add_service_api_mapping(context, logical_name, resource_description, mappings):
     found = False
@@ -331,8 +339,8 @@ def __add_service_api_mapping(context, logical_name, resource_description, mappi
         resource_group_name = logical_name.split('.')[0]
         raise HandledError('The {} resource group template defines a ServiceApi resource but does not provide a ServiceUrl Output value.'.format(resource_group_name))
 
-def __get_player_accessible_arns(context, deployment_name, role, args=None):
 
+def __get_player_accessible_arns(context, deployment_name, role, args=None):
     player_accessible_arns = set()
 
     deployment_access_stack_id = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
@@ -359,7 +367,7 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
 
         statements = policy_document.get('Statement', [])
         if not isinstance(statements, type([])):  # def list above hides list
-            statements = [ statements ]
+            statements = [statements]
 
         for statement in statements:
             if statement.get('Effect', '') != 'Allow':
@@ -367,15 +375,15 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
 
             resource_arns = statement.get('Resource', [])
             if not isinstance(resource_arns, type([])):  # def list above hides list
-                resource_arns = [ resource_arns ]
+                resource_arns = [resource_arns]
 
             for resource_arn in resource_arns:
                 player_accessible_arns.add(__trim_player_accessible_arn(resource_arn))
 
     return player_accessible_arns
 
-def __trim_player_accessible_arn(arn):
 
+def __trim_player_accessible_arn(arn):
     # Remove any suffix from arns that have them, we want only the base are
     # so it matches the arn generated from the physical resource id later.
 

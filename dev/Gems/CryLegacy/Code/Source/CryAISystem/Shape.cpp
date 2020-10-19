@@ -23,6 +23,7 @@
 #include "DebugDrawContext.h"
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
+#include <AzFramework/Terrain/TerrainDataRequestBus.h>
 
 static const float BIN_WIDTH = 3.0f;
 
@@ -962,7 +963,12 @@ void CAIShape::DebugDraw()
 float CAIShape::GetDrawZ(float x, float y)
 {
     I3DEngine* pEngine = gEnv->p3DEngine;
-    float terrainZ = pEngine->GetTerrainElevation(x, y);
+
+    float terrainZ = AzFramework::Terrain::TerrainDataRequests::GetDefaultTerrainHeight();
+    AzFramework::Terrain::TerrainDataRequestBus::BroadcastResult(terrainZ
+        , &AzFramework::Terrain::TerrainDataRequests::GetHeightFromFloats
+        , x, y, AzFramework::Terrain::TerrainDataRequests::Sampler::BILINEAR, nullptr);
+
     Vec3 pt(x, y, 0);
     float waterZ = OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(pt) : pEngine->GetWaterLevel(&pt);
     return max(terrainZ, waterZ);

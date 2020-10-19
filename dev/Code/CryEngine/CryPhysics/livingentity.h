@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYPHYSICS_LIVINGENTITY_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 const int SZ_ACTIONS = 128;
 const int SZ_HISTORY = 128;
 
@@ -277,5 +279,7 @@ public:
 
     static le_precomp_data s_precompData[MAX_PHYS_THREADS + 1];
 };
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYPHYSICS_LIVINGENTITY_H

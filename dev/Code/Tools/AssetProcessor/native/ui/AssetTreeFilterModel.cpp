@@ -27,6 +27,7 @@ namespace AssetProcessor
         // If the search was changed, clear the asset that had visibility forced.
         m_pathToForceVisibleAsset.clear();
         setFilterRegExp(newFilter);
+        setFilterCaseSensitivity(Qt::CaseInsensitive);
         invalidateFilter();
     }
 
@@ -57,7 +58,15 @@ namespace AssetProcessor
         // It's common to find assets referenced by UUID and not by name or path.
         // For example, asset references in AZ data files (like slices) are stored on disk as UUIDs.
         // It's useful to be able to search for an asset by UUID.
-        AZ::Uuid filterAsUuid = AZ::Uuid::CreateString(filter.pattern().toUtf8());
+        QString searchStr = filter.pattern();
+        // If a subId is provided just ignore that bit and pass in the UUID string since that's what we're
+        // going to search against
+        auto subidPos = searchStr.indexOf(':');
+        if (subidPos != -1)
+        {
+            searchStr = searchStr.mid(0, subidPos);
+        }
+        AZ::Uuid filterAsUuid = AZ::Uuid::CreateStringPermissive(searchStr.toUtf8(), 0);
 
         return DescendantMatchesFilter(*assetTreeItem, filter, filterAsUuid);
     }

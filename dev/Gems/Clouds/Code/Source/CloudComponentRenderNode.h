@@ -113,8 +113,6 @@ namespace CloudsGem
         void SetBBox(const AABB& WSBBox) override;
         void FillBBox(AABB& aabb) override { aabb = GetBBox(); }
         void OffsetPosition(const Vec3& delta) override {}
-        IPhysicalEntity* GetPhysics() const override { return nullptr; }
-        void SetPhysics(IPhysicalEntity* pPhys) override {}
         void SetMaterial(MaterialPtr pMat) override;
         MaterialPtr GetMaterial(Vec3* pHitPos = nullptr) override;
         MaterialPtr GetMaterialOverride() override { return GetMaterial(); }

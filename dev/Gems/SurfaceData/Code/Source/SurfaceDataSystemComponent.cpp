@@ -54,18 +54,29 @@ namespace SurfaceData
                 ->Constructor()
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "surface_data")
                 ->Property("entityId", BehaviorValueProperty(&SurfacePoint::m_entityId))
                 ->Property("position", BehaviorValueProperty(&SurfacePoint::m_position))
                 ->Property("normal", BehaviorValueProperty(&SurfacePoint::m_normal))
                 ->Property("masks", BehaviorValueProperty(&SurfacePoint::m_masks))
                 ;
 
-            behaviorContext->Class<SurfaceDataSystemComponent>()->RequestBus("SurfaceDataSystemRequestBus");
+            behaviorContext->Class<SurfaceDataSystemComponent>()
+                ->RequestBus("SurfaceDataSystemRequestBus")
+                ;
 
             behaviorContext->EBus<SurfaceDataSystemRequestBus>("SurfaceDataSystemRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "surface_data")
                 ->Event("GetSurfacePoints", &SurfaceDataSystemRequestBus::Events::GetSurfacePoints)
+                ;
+
+            behaviorContext->EBus<SurfaceDataSystemNotificationBus>("SurfaceDataSystemNotificationBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
+                ->Attribute(AZ::Script::Attributes::Module, "surface_data")
+                ->Event("OnSurfaceChanged", &SurfaceDataSystemNotificationBus::Events::OnSurfaceChanged)
                 ;
         }
     }

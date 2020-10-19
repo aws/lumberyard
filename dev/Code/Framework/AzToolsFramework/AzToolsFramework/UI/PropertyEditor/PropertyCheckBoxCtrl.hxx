@@ -35,6 +35,7 @@ namespace AzToolsFramework
 
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();
+        QCheckBox* GetCheckBox() { return m_checkBox; }
         void UpdateTabOrder();
 
         void SetCheckBoxToolTip(const char* text);

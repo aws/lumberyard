@@ -242,6 +242,7 @@ namespace EMStudio
         }
 
         MorphTargetGroupWidget* morphTargetGroup = new MorphTargetGroupWidget(name, mCurrentActorInstance, morphTargets, morphTargetInstances, mDialogStack);
+        morphTargetGroup->setObjectName("EMFX.MorphTargetsWindowPlugin.MorphTargetGroupWidget");
         mMorphTargetGroups.push_back(morphTargetGroup);
 
         mDialogStack->Add(morphTargetGroup, name);
@@ -294,7 +295,7 @@ namespace EMStudio
         MorphTargetsWindowPlugin* morphTargetsWindow = (MorphTargetsWindowPlugin*)plugin;
 
         // is the plugin visible? only update it if it is visible
-        if (morphTargetsWindow->GetDockWidget()->visibleRegion().isEmpty() == false)
+        if (GetManager()->GetIgnoreVisibility() || !morphTargetsWindow->GetDockWidget()->visibleRegion().isEmpty())
         {
             morphTargetsWindow->ReInit(true);
         }
@@ -314,7 +315,7 @@ namespace EMStudio
         MorphTargetsWindowPlugin* morphTargetsWindow = (MorphTargetsWindowPlugin*)plugin;
 
         // is the plugin visible? only update it if it is visible
-        if (morphTargetsWindow->GetDockWidget()->visibleRegion().isEmpty() == false)
+        if (GetManager()->GetIgnoreVisibility() || !morphTargetsWindow->GetDockWidget()->visibleRegion().isEmpty())
         {
             morphTargetsWindow->UpdateMorphTarget(name);
         }

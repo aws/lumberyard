@@ -231,7 +231,7 @@ namespace CommandSystem
         animGraph->RecursiveReinit();
         animGraph->RecursiveInvalidateUniqueDatas();
 
-        // register master animgraph
+        // register leader animgraph
         GetCommandManager()->ExecuteCommandInsideCommand("Unselect -animGraphIndex SELECT_ALL", resultString);
         GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -animGraphID %d", animGraph->GetID()), resultString);
 
@@ -782,7 +782,7 @@ namespace CommandSystem
 
         const size_t numFileNames = filenames.size();
 
-        AZStd::string commandString = AZStd::string::format("%s %d anim graph%s", reload ? "Reload" : "Load", numFileNames, numFileNames > 1 ? "s" : "");
+        AZStd::string commandString = AZStd::string::format("%s %zu anim graph%s", reload ? "Reload" : "Load", numFileNames, numFileNames > 1 ? "s" : "");
         MCore::CommandGroup commandGroup(commandString.c_str());
 
         // Iterate over all filenames and load the anim graphs.

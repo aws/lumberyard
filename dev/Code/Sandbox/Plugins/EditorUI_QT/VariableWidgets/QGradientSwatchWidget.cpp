@@ -93,6 +93,8 @@ QGradientSwatchWidget::QGradientSwatchWidget(SCurveEditorContent content, QGradi
     UpdateAlpha();
     setSimpleViewMode(true);
     UpdateSimpleGradient();
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    setSizePolicy(sizePolicy);
 }
 
 void QGradientSwatchWidget::SetCurve(ISplineInterpolator* spline)

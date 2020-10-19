@@ -15,6 +15,8 @@
 #define _CRE_BREAKABLE_GLASS_CONFIG_
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 //==================================================================================================
 // Name: CREBreakableGlassConfig
 // Desc: Breakable glass defines and platform-specific configuration
@@ -66,5 +68,7 @@
 #define GLASSCFG_MAX_NUM_CRACK_VERTS            (GLASSCFG_MAX_NUM_PLANE_VERTS * 2)
 #define GLASSCFG_MAX_NUM_PLANE_INDS             (GLASSCFG_MAX_NUM_PLANE_VERTS * 3)
 #define GLASSCFG_MAX_NUM_CRACK_INDS             (GLASSCFG_MAX_NUM_CRACK_VERTS * 6)
+
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // _CRE_BREAKABLE_GLASS_CONFIG_

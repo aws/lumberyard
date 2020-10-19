@@ -49,6 +49,8 @@ namespace AZ
         class SliceInstanceAddress
         {
         public:
+            AZ_TYPE_INFO(SliceInstanceAddress, "{94142EA2-1319-44D5-82C8-A6D9D34A63BC}");
+
             SliceInstanceAddress();
             SliceInstanceAddress(SliceReference* reference, SliceInstance* instance);
             SliceInstanceAddress(const SliceInstanceAddress& RHS);

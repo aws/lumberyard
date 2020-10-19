@@ -167,6 +167,11 @@ namespace AzToolsFramework
 
         if (metadataEntity.GetState() == AZ::Entity::ES_INIT)
         {
+            // Always invalidate the entity dependencies when loading in the editor
+            // (we don't know what code has changed since the last time the editor was run and the services provided/required
+            // by entities might have changed)
+            metadataEntity.InvalidateDependencies();
+
             metadataEntity.Activate();
         }
 

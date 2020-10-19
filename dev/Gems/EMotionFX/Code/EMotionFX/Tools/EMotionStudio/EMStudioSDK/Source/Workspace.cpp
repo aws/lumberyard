@@ -29,6 +29,8 @@
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+
 #include <QApplication>
 #include <QMessageBox>
 #include <QSettings>
@@ -56,19 +58,42 @@ namespace EMStudio
         }
 
         AZStd::string commandString;
+        AZStd::string resultFileName = filename;
 
-        // Always load products from the cache folder.
-        AZStd::string cacheFilename = filename;
-        GetMainWindow()->GetFileManager()->RelocateToAssetCacheFolder(cacheFilename);
+        // If the filename is in the asset source folder, we relocated it to the cache folder first.
+        if (GetMainWindow()->GetFileManager()->IsFileInAssetSource(resultFileName))
+        {
+            GetMainWindow()->GetFileManager()->RelocateToAssetCacheFolder(resultFileName);
+        }
 
-        // Retrieve relative filename.
-        AZStd::string relativeFilename = cacheFilename.c_str();
-        EMotionFX::GetEMotionFX().GetFilenameRelativeTo(&relativeFilename, EMotionFX::GetEMotionFX().GetAssetCacheFolder().c_str());
+        if (GetMainWindow()->GetFileManager()->IsFileInAssetCache(resultFileName))
+        {
+            // Retrieve relative filename for file in cache folder.
+            EMotionFX::GetEMotionFX().GetFilenameRelativeTo(&resultFileName, EMotionFX::GetEMotionFX().GetAssetCacheFolder().c_str());
+            resultFileName = "@assets@/" + resultFileName;
+        }
+        else
+        {
+            // If the filename is not in asset source folder or cache folder, then we try find it using the asset system.
+            bool success = false;
+            AZStd::string watchFolder;
+            AZ::Data::AssetInfo assetInfo;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, filename.c_str(), assetInfo, watchFolder);
+            if (success)
+            {
+                // In this case, the file likely exists in the other folder detectived by AP (e.g Gems/something/Assets)
+                // AP will process this file and move the processed file in cache folder.
+                resultFileName = "@assets@/" + assetInfo.m_relativePath;
+            }
+            else
+            {
+                // If the file can't be detected by the AP, then we store an absolute path instead.
+                // This will result in workspace not compatible when using by other machine.
+                AZ_Warning("EMotionFX", true, "File %s is not cannot be found in the asset system, using absolute path instead.");
+            }
+        }
 
-        AZStd::string finalFilename = "@assets@/";
-        finalFilename += relativeFilename;
-
-        commandString = AZStd::string::format("%s -filename \"%s\"", command, finalFilename.c_str());
+        commandString = AZStd::string::format("%s -filename \"%s\"", command, resultFileName.c_str());
 
         if (additionalParameters)
         {

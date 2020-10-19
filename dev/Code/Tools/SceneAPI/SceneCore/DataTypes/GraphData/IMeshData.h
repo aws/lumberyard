@@ -75,6 +75,18 @@ namespace AZ
 
                 virtual unsigned int GetVertexIndex(int faceIndex, int vertexIndexInFace) const = 0;
                 static const int s_invalidMaterialId = 0;
+
+                // Set the unit size of the mesh, from the point of FBX SDK
+                void SetUnitSizeInMeters(float size) { m_unitSizeInMeters = size; }
+                float GetUnitSizeInMeters() const { return m_unitSizeInMeters; }
+
+                // Set the original unit size of the mesh, from the point of FBX SDK
+                void SetOriginalUnitSizeInMeters(float size) { m_originalUnitSizeInMeters = size; }
+                float GetOriginalUnitSizeInMeters() const { return m_originalUnitSizeInMeters; }
+
+            private:
+                float m_unitSizeInMeters = 1.f;
+                float m_originalUnitSizeInMeters = 1.f;
             };
         }  //namespace DataTypes
     }  //namespace SceneAPI

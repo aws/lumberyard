@@ -34,6 +34,12 @@ def build(bld):
     # 'WWISELTX' = LTX version of Wwise SDK (default)
     wwise_flavor = 'WWISELTX'
 
+    # Don't change these values!
+    # Set these attributes on bld context for use in layout creation
+    # (See also Config_wwise.h)
+    bld.audio_middleware = 'wwise'
+    bld.audio_config_file = 'wwise_config.json'
+
     # Check if we can build Wwise for this build configuration...
     is_gem_valid = build_supports_wwise_sdk(bld, wwise_flavor)
 
@@ -53,15 +59,16 @@ def build(bld):
         vs_filter           = 'Gems/Audio',
 
         file_list           = ['audioenginewwise.waf_files',
-                                'audioenginewwise_editor.waf_files'],
+                               'audioenginewwise_editor.waf_files'],
 
         includes            = [bld.Path('Code/CryEngine/CryCommon'),
-                                bld.Path('Gems/AudioEngineWwise/Code/Source'),
-                                bld.Path('Gems/AudioEngineWwise/Code/Source/Editor'),
-                                bld.Path('Gems/AudioEngineWwise/Code/Source/Engine'),
-                                bld.Path('Gems/AudioSystem/Code/Include/Editor'),
-                                bld.Path('Gems/AudioSystem/Code/Include/Engine'),
-                                bld.Path('Code/Sandbox/Editor')],
+                               bld.Path('Gems/AudioEngineWwise/Code/Source'),
+                               bld.Path('Gems/AudioEngineWwise/Code/Source/Builder'),
+                               bld.Path('Gems/AudioEngineWwise/Code/Source/Editor'),
+                               bld.Path('Gems/AudioEngineWwise/Code/Source/Engine'),
+                               bld.Path('Gems/AudioSystem/Code/Include/Editor'),
+                               bld.Path('Gems/AudioSystem/Code/Include/Engine'),
+                               bld.Path('Code/Sandbox/Editor')],
 
         defines             = ['AUDIO_ENGINE_WWISE_EDITOR'] + non_release_defines,
 
@@ -70,7 +77,7 @@ def build(bld):
 
         platforms           = ['win', 'darwin', 'linux'],
 
-        use                 = ['EditorCommon'],
+        use                 = ['EditorCommon', 'AssetBuilderSDK'],
         uselib              = [wwise_flavor, 'QT5CORE'],
         features            = ['qt5'],
 
@@ -83,10 +90,10 @@ def build(bld):
 
         # Note: 'test_all_includes' and 'test_all_defines' are broken.
         # They don't properly add include search paths or preprocessor defines to the VS projects.
-        debug_test_includes             = testing_includes,
-        profile_test_includes           = testing_includes,
-        debug_test_defines              = testing_editor_defines,
-        profile_test_defines            = testing_editor_defines,
+        debug_test_includes     = testing_includes,
+        profile_test_includes   = testing_includes,
+        debug_test_defines      = testing_editor_defines,
+        profile_test_defines    = testing_editor_defines,
     )
 
     #
@@ -123,10 +130,10 @@ def build(bld):
 
         # Note: 'test_all_includes' and 'test_all_defines' are broken.
         # They don't properly add include search paths or preprocessor defines to the VS projects.
-        debug_test_includes                 = testing_includes,
-        profile_test_includes               = testing_includes,
-        debug_test_defines                  = testing_defines,
-        profile_test_defines                = testing_defines,
+        debug_test_includes     = testing_includes,
+        profile_test_includes   = testing_includes,
+        debug_test_defines      = testing_defines,
+        profile_test_defines    = testing_defines,
 
         Editor = editor_kw
     )
@@ -135,7 +142,6 @@ def build(bld):
     # Define a stub Gem module that doesn't contain any real code
     #
     stub_kw = dict(
-        # General
         disable_pch = True,
         file_list = ['audioenginewwise_stub.waf_files'],
         disable_tests = True,

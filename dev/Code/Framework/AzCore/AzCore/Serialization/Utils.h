@@ -97,6 +97,7 @@ namespace AZ
         bool IsMapContainerType(const AZ::Uuid& type);
         bool IsContainerType(const AZ::Uuid& type);
         bool IsOutcomeType(const AZ::Uuid& type);
+        bool IsPairContainerType(const AZ::Uuid& type);
 
         AZ::TypeId GetGenericContainerType(const AZ::TypeId& type);
         bool IsGenericContainerType(const AZ::TypeId& type);

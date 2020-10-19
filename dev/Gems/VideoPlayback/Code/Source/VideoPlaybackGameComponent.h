@@ -65,8 +65,10 @@ namespace AZ
             void SetIsAutoPlay(bool isAutoPlay) final;
             float GetPlaybackSpeed() final;
             void SetPlaybackSpeed(float speedFactor) final;
-            AZStd::string GetVideoPathname() final;
-            void SetVideoPathname(AZStd::string videoPath) final;
+            AZStd::string GetVideoPathname() const final;
+            void SetVideoPathname(const AZStd::string& videoPath) final;
+            AZStd::string GetDestinationTextureName() const final;
+            void SetDestinationTextureName(const AZStd::string& destinationTextureName) final;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

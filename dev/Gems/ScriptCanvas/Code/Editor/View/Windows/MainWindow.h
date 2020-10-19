@@ -187,7 +187,7 @@ namespace ScriptCanvasEditor
     class VariableDockWidget;
     class UnitTestDockWidget;
     class BatchOperatorTool;
-    class ScriptCanvasBatchConverter;
+    class ScriptCanvasBatchConverter;    
     class LoggingWindow;
     class GraphValidationDockWidget;
     class MainWindowStatusWidget;
@@ -218,7 +218,7 @@ namespace ScriptCanvasEditor
         , private AzToolsFramework::ToolsApplicationNotificationBus::Handler
     {
         Q_OBJECT
-    private:        
+    private:
         friend class BatchOperatorTool;
         friend class ScriptCanvasBatchConverter;
         friend class Workspace;
@@ -228,7 +228,8 @@ namespace ScriptCanvasEditor
             RefreshPropertyGrid = 1,
             CloseWindow = 1 << 1,
             UpdateSaveMenuState = 1 << 2,
-            CloseCurrentGraph = 1 << 3
+            CloseCurrentGraph = 1 << 3,
+            CloseNextTabAction = 1 << 4
         };
 
     public:
@@ -385,6 +386,7 @@ namespace ScriptCanvasEditor
         void CloseAllTabs();
         void CloseAllTabsBut(int index);
         void CopyPathToClipboard(int index);
+        void OnActiveFileStateChanged();
 
         void CloseNextTab();
 
@@ -403,6 +405,7 @@ namespace ScriptCanvasEditor
         const CategoryInformation* FindNodePaletteCategoryInformation(AZStd::string_view categoryPath) const override;
         const NodePaletteModelInformation* FindNodePaletteModelInformation(const ScriptCanvas::NodeTypeIdentifier& nodeType) const override;
         ////
+
         AZ::Outcome<int, AZStd::string> CreateScriptCanvasAsset(AZStd::string_view assetPath, AZ::Data::AssetType assetType, int tabIndex = -1);
         AZ::Outcome<int, AZStd::string> UpdateScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvas::ScriptCanvasAssetBase>& scriptCanvasAsset);
         
@@ -743,7 +746,7 @@ namespace ScriptCanvasEditor
 
         AZStd::unordered_map< AZ::Data::AssetId, TypeDefs::EntityComponentId > m_assetCreationRequests;
 
-        BatchOperatorTool* m_batchConverter;
+        BatchOperatorTool* m_batchTool;
 
         ScriptCanvas::Debugger::ClientTransceiver m_clientTRX;
         GraphCanvas::StyleManager m_styleManager;

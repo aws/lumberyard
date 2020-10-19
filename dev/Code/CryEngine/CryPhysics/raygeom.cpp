@@ -13,6 +13,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "utils.h"
 #include "primitives.h"
 #include "bvtree.h"
@@ -112,3 +114,5 @@ int CRayGeom::RegisterIntersection(primitive* pprim1, primitive* pprim2, geometr
     }
     return 1;
 }
+
+#endif // ENABLE_CRY_PHYSICS

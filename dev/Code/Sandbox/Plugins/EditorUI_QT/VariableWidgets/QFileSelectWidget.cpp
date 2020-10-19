@@ -43,6 +43,8 @@ QFileSelectWidget::QFileSelectWidget(QWidget* parent)
     connect(ui->path, SIGNAL(currentIndexChanged(int)), this, SLOT(onCurrentIdxChanged(int)));
     
     ui->path->installEventFilter(this);
+    QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(sizePolicy);
 }
 
 QFileSelectWidget::~QFileSelectWidget()

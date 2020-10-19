@@ -10,25 +10,26 @@
 *
 */
 
-#include <AzQtComponents/Components/Widgets/PushButton.h>
-#include <AzQtComponents/Components/Style.h>
-#include <AzQtComponents/Components/ConfigHelpers.h>
-#include <AzQtComponents/Components/HighDpiHelperFunctions.h>
 #include <AzCore/Casting/numeric_cast.h>
+
+#include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/Widgets/PushButton.h>
 
 #include <QStyleFactory>
 
-#include <QToolButton>
-#include <QPushButton>
-#include <QPainter>
-#include <QStyleOption>
-#include <QVariant>
-#include <QSettings>
-#include <QPixmap>
 #include <QImage>
+#include <QPainter>
+#include <QPixmap>
 #include <QPixmapCache>
+#include <QPushButton>
+#include <QSettings>
+#include <QStyleOption>
+#include <QToolButton>
+#include <QVariant>
 
 #include <QtWidgets/private/qstyle_p.h>
+#include <QtWidgets/private/qstylehelper_p.h>
 
 namespace AzQtComponents
 {
@@ -379,7 +380,7 @@ PushButton::Config PushButton::defaultConfig()
     config.primary.normal.start = QColor("#8156CF");
     config.primary.normal.end = QColor("#6441A4");
 
-    config.secondary.disabled.start = QColor("#BBBBBB");
+    config.secondary.disabled.start = QColor("#888888");
     config.secondary.disabled.end = QColor("#888888");
 
     config.secondary.sunken.start = QColor("#444444");
@@ -517,14 +518,14 @@ void PushButton::drawSmallIconLabel(const Style* style, const QStyleOptionToolBu
 
 static QRect defaultArrowRect(const QStyleOptionToolButton* buttonOption)
 {
-    static const QRect rect {0, 0, qRound(AzQStyleHelper::dpiScaled(14, AzQStyleHelper::dpi(buttonOption))), qRound(AzQStyleHelper::dpiScaled(8, AzQStyleHelper::dpi(buttonOption)))};
+    static const QRect rect {0, 0, qRound(QStyleHelper::dpiScaled(14, QStyleHelper::dpi(buttonOption))), qRound(QStyleHelper::dpiScaled(8, QStyleHelper::dpi(buttonOption)))};
     return rect;
 }
 
 static QPixmap initializeDownArrowPixmap(const QColor& arrowColor, const QStyleOptionToolButton* buttonOption, const QRect& rect, Qt::ArrowType type = Qt::DownArrow)
 {
-    const int arrowWidth = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(14, AzQStyleHelper::dpi(buttonOption)));
-    const int arrowHeight = aznumeric_cast<int>(AzQStyleHelper::dpiScaled(8, AzQStyleHelper::dpi(buttonOption)));
+    const int arrowWidth = aznumeric_cast<int>(QStyleHelper::dpiScaled(14, QStyleHelper::dpi(buttonOption)));
+    const int arrowHeight = aznumeric_cast<int>(QStyleHelper::dpiScaled(8, QStyleHelper::dpi(buttonOption)));
 
     const int arrowMax = qMin(arrowHeight, arrowWidth);
     const int rectMax = qMin(rect.height(), rect.width());

@@ -507,7 +507,7 @@ namespace EMotionFX
     }
 
  
-    void AnimGraphReferenceNode::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
+    void AnimGraphReferenceNode::RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const
     {
         AnimGraphNode::RecursiveCollectActiveNodes(animGraphInstance, outNodes, nodeType);
 

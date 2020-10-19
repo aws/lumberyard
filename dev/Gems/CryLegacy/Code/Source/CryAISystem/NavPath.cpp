@@ -2055,11 +2055,13 @@ ETriState CNavPath::CanTargetPointBeReached(CTargetPointRequest& request, const 
     }
     else
     {
+#if ENABLE_CRY_PHYSICS
         if (OverlapCapsule(Lineseg(candidatePt, request.targetPoint), radius, AICE_ALL))
         {
             AILogComment("CNavPath::CanTargetPointBeReached no 3D passability for %s", szAIActorName);
             return request.result = eTS_false;
         }
+#endif // ENABLE_CRY_PHYSICS
     }
 
     AILogComment("CNavPath::CanTargetPointBeReached Accepting new path target point (%5.2f, %5.2f, %5.2f) for %s",

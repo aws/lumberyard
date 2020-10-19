@@ -406,6 +406,7 @@ private:
 
     SDrawObjMesh m_sphereObj[ e_auxObjNumLOD ];
     SDrawObjMesh m_diskObj[ e_auxObjNumLOD ];
+    SDrawObjMesh m_quadObj[ e_auxObjNumLOD ];
     SDrawObjMesh m_coneObj[ e_auxObjNumLOD ];
     SDrawObjMesh m_cylinderObj[ e_auxObjNumLOD ];
 

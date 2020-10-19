@@ -20,6 +20,8 @@
 #include <QEvent>
 #include <QMouseEvent>
 
+#include <AzQtComponents/Components/Style.h>
+
 #define STRETCH_VALUE 10
 
 DefaultViewWidget::DefaultViewWidget(QWidget* parent)
@@ -55,6 +57,18 @@ DefaultViewWidget::DefaultViewWidget(QWidget* parent)
     }
     SetSpaceAtTop(STANDARD_TOP_SPACING);
     m_layout->addItem(m_bottomStretch);
+
+    m_separatorContainer = new QFrame(this);
+    m_separatorContainer->setObjectName("SeparatorContainer");
+    QBoxLayout* separatorLayout = new QHBoxLayout(m_separatorContainer);
+    separatorLayout->setContentsMargins(QMargins(0, 0, 0, 0));
+    m_separatorContainer->setLayout(separatorLayout);
+
+    m_separator = new QFrame(m_separatorContainer);
+    AzQtComponents::Style::addClass(m_separator, "separator");
+    m_separator->setFrameShape(QFrame::HLine);
+    separatorLayout->addWidget(m_separator);
+    m_layout->addWidget(m_separatorContainer);
 }
 
 DefaultViewWidget::~DefaultViewWidget()

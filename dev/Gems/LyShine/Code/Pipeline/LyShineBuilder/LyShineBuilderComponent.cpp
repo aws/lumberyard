@@ -46,7 +46,7 @@ namespace LyShine
 
             AzToolsFramework::Fingerprinting::TypeFingerprinter fingerprinter(*serializeContext);
             AzToolsFramework::Fingerprinting::TypeFingerprint allComponents = fingerprinter.GenerateFingerprintForAllTypes(types);
-            AZStd::string builderAnalysisFingerprint = AZStd::string::format("%llu", allComponents);
+            AZStd::string builderAnalysisFingerprint = AZStd::string::format("%zu", allComponents);
 
             // Register UI Canvas Builder
             AssetBuilderSDK::AssetBuilderDesc uiBuilderDescriptor;

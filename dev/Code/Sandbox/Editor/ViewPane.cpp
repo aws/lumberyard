@@ -28,24 +28,132 @@
 #include "MainWindow.h"
 #include "QtViewPaneManager.h"
 
-#include <QMouseEvent>
 #include <QDebug>
-#include <QToolBar>
-#include <QLayout>
 #include <QLabel>
+#include <QLayout>
+#include <QMouseEvent>
 #include <QScrollArea>
+#include <QToolBar>
+
 #include <AzCore/RTTI/BehaviorContext.h>
-
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzQtComponents/Components/Style.h>
 
+//////////////////////////////////////////////////////////////////////////
+// ViewportTitleExpanderWatcher
+//////////////////////////////////////////////////////////////////////////
+class ViewportTitleExpanderWatcher
+    : public QObject
+{
+public:
+    ViewportTitleExpanderWatcher(QObject* parent = nullptr, CViewportTitleDlg* viewportDlg = nullptr)
+        : QObject(parent)
+        , m_viewportDlg(viewportDlg)
+    {
+    }
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        if (m_viewportDlg)
+        {
+            switch (event->type())
+            {
+                case QEvent::MouseButtonPress:
+                case QEvent::MouseButtonRelease:
+                case QEvent::MouseButtonDblClick:
+                {
+                    if (qobject_cast<QToolButton*>(obj))
+                    {
+                        auto mouseEvent = static_cast<QMouseEvent*>(event);
+                        auto expansion = qobject_cast<QToolButton*>(obj);
+
+                        expansion->setPopupMode(QToolButton::InstantPopup);
+                        auto menu = new QMenu(expansion);
+
+                        auto toolbar = qobject_cast<QToolBar*>(expansion->parentWidget());
+
+                        auto toolWidgets = toolbar->findChildren<QWidget*>();
+
+                        if (toolWidgets.count() > 0)
+                        {
+                            for (auto toolWidget : toolWidgets)
+                            {
+                                if (AzQtComponents::Style::hasClass(toolWidget, "expanderMenu_hide"))
+                                {
+                                    continue;
+                                }
+
+                                // Handle labels with submenus
+                                if (auto toolLabel = qobject_cast<QLabel*>(toolWidget))
+                                {
+                                    if (!toolLabel->isVisible())
+                                    {
+                                        // Manually turn the custom context menus into submenus
+                                        if (toolLabel->objectName() == "m_fovStaticCtrl")
+                                        {
+                                            QAction* newAction = menu->addMenu(m_viewportDlg->GetFovMenu());
+                                            newAction->setText(QString("FOV: %1").arg(toolLabel->text()));
+                                        }
+                                        else if (toolLabel->objectName() == "m_ratioStaticCtrl")
+                                        {
+                                            QAction* newAction = menu->addMenu(m_viewportDlg->GetAspectMenu());
+                                            newAction->setText(QString("Ratio: %1").arg(toolLabel->text()));
+                                        }
+                                        else if (toolLabel->objectName() == "m_sizeStaticCtrl")
+                                        {
+                                            QAction* newAction = menu->addMenu(m_viewportDlg->GetResolutionMenu());
+                                            newAction->setText(QString("%1").arg(toolLabel->text()));
+                                        }
+                                        else
+                                        {
+                                            // Don't add actions for other Labels
+                                            continue;
+                                        }
+                                    }
+                                }
+
+                                // Handle ToolButtons
+                                if (auto toolButton = qobject_cast<QToolButton*>(toolWidget))
+                                {
+                                    if (!toolButton->isVisible() && !toolButton->text().isEmpty())
+                                    {
+                                        QAction* action = new QAction(toolButton->text(), menu);
+
+                                        action->setEnabled(toolButton->isEnabled());
+                                        action->setCheckable(toolButton->isCheckable());
+                                        action->setChecked(toolButton->isChecked());
+
+                                        connect(action, &QAction::triggered, toolButton, &QToolButton::clicked);
+
+                                        menu->addAction(action);
+                                    }
+                                }
+                            }
+                        }
+
+                        menu->exec(mouseEvent->globalPos());
+                        return true;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        return QObject::eventFilter(obj, event);
+    }
+
+private:
+    CViewportTitleDlg* m_viewportDlg = nullptr;
+};
 
 /////////////////////////////////////////////////////////////////////////////
 // CLayoutViewPane
-
 //////////////////////////////////////////////////////////////////////////
 CLayoutViewPane::CLayoutViewPane(QWidget* parent)
     : AzQtComponents::ToolBarArea(parent)
     , m_viewportTitleDlg(this)
+    , m_expanderWatcher(new ViewportTitleExpanderWatcher(this, &m_viewportTitleDlg))
 {
     m_viewport = 0;
     m_active = 0;
@@ -70,6 +178,11 @@ CLayoutViewPane::CLayoutViewPane(QWidget* parent)
     connect(toolbar, &QWidget::customContextMenuRequested, &m_viewportTitleDlg, &QWidget::customContextMenuRequested);
 
     setContextMenuPolicy(Qt::NoContextMenu);
+
+    if (QToolButton* expansion = AzQtComponents::ToolBar::getToolBarExpansionButton(toolbar))
+    {
+        expansion->installEventFilter(m_expanderWatcher);
+    }
 
     m_id = -1;
 }
@@ -448,15 +561,12 @@ void CLayoutViewPane::ShowTitleMenu()
     }
     action->setChecked(IsFullscreen());
 
-    if (gEnv->pRenderer->GetRenderType() == eRT_Other)
-    {
-        action = root.addAction(tr("Configure Layout... (Disabled when other is active)"));
-        action->setDisabled(true);
-    }
-    else
-    {
-        action = root.addAction(tr("Configure Layout..."));
-    }
+#ifdef OTHER_ACTIVE
+    action = root.addAction(tr("Configure Layout... (Disabled when other is active)"));
+    action->setDisabled(true);
+#else
+    action = root.addAction(tr("Configure Layout..."));
+#endif
 
     // NOTE: this must be a QueuedConnection, so that it executes after the menu is deleted.
     // Changing the layout can cause the current "this" pointer to be deleted
@@ -533,6 +643,16 @@ void CLayoutViewPane::SetFullscreenViewport(bool b)
 void CLayoutViewPane::SetFocusToViewportSearch()
 {
     m_viewportTitleDlg.SetFocusToSearchField();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CLayoutViewPane::SetFocusToViewport()
+{
+    if (m_viewport)
+    {
+        m_viewport->window()->activateWindow();
+        m_viewport->setFocus();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -621,6 +741,71 @@ namespace
 
         return "";
     }
+
+    unsigned int PyGetViewportCount()
+    {
+        CLayoutWnd* layout = GetIEditor()->GetViewManager()->GetLayout();
+        return layout ? layout->GetViewPaneCount() : 0;
+    }
+
+    unsigned int PyGetActiveViewport()
+    {
+        CLayoutWnd* layout = GetIEditor()->GetViewManager()->GetLayout();
+        if (layout)
+        {
+            CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
+
+            for (unsigned int index = 0; index < layout->GetViewPaneCount(); index++)
+            {
+                if (viewPane == layout->GetViewPaneByIndex(index))
+                {
+                    return index;
+                }
+            }
+        }
+
+        AZ_Error("Main", false, "No active viewport found.");
+        return 0;
+    }
+
+    void PySetActiveViewport(unsigned int viewportIndex)
+    {
+        bool success = false;
+        CLayoutWnd* layout = GetIEditor()->GetViewManager()->GetLayout();
+        if (layout)
+        {
+            CLayoutViewPane* viewPane = layout->GetViewPaneByIndex(viewportIndex);
+            if (viewPane)
+            {
+                viewPane->SetFocusToViewport();
+                MainWindow::instance()->SetActiveView(viewPane);
+                success = true;
+            }
+        }
+        AZ_Error("Main", success, "Active viewport was not set successfully.");
+    }
+
+    unsigned int PyGetViewPaneLayout()
+    {
+        CLayoutWnd* layout = GetIEditor()->GetViewManager()->GetLayout();
+        return layout ? layout->GetLayout() : ET_Layout0;
+    }
+
+    void PySetViewPaneLayout(unsigned int layoutId)
+    {
+        if ((layoutId >= ET_Layout0) && (layoutId <= ET_Layout8))
+        {
+            CLayoutWnd* layout = GetIEditor()->GetViewManager()->GetLayout();
+            if (layout)
+            {
+                layout->CreateLayout(static_cast<EViewLayout>(layoutId));
+            }
+        }
+        else
+        {
+            AZ_Error("Main", false, "Invalid layout (%u), only values from %u to %u are valid.", layoutId, ET_Layout0, ET_Layout8);
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -645,6 +830,11 @@ namespace AzToolsFramework
             addLegacyGeneral(behaviorContext->Method("bind_viewport", PyBindViewport, nullptr, "Binds the viewport to a specific view like 'Top', 'Front', 'Perspective'."));
             addLegacyGeneral(behaviorContext->Method("get_viewport_expansion_policy", PyGetViewportExpansionPolicy, nullptr, "Returns whether viewports are auto-resized with the main window ('AutoExpand') or if they remain a fixed size ('FixedSize')."));
             addLegacyGeneral(behaviorContext->Method("set_viewport_expansion_policy", PySetViewportExpansionPolicy, nullptr, "Sets whether viewports are auto-resized with the main window ('AutoExpand') or if they remain a fixed size ('FixedSize')."));
+            addLegacyGeneral(behaviorContext->Method("get_viewport_count", PyGetViewportCount, nullptr, "Get the total number of viewports."));
+            addLegacyGeneral(behaviorContext->Method("get_active_viewport", PyGetActiveViewport, nullptr, "Get the active viewport index."));
+            addLegacyGeneral(behaviorContext->Method("set_active_viewport", PySetActiveViewport, nullptr, "Set the active viewport by index."));
+            addLegacyGeneral(behaviorContext->Method("get_view_pane_layout", PyGetViewPaneLayout, nullptr, "Get the active view pane layout."));
+            addLegacyGeneral(behaviorContext->Method("set_view_pane_layout", PySetViewPaneLayout, nullptr, "Set the active view pane layout."));
         }
     }
 }

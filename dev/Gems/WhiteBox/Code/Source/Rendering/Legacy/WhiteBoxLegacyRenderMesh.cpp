@@ -45,8 +45,6 @@ namespace WhiteBox
         const AABB GetBBox() const override;
         void SetBBox(const AABB& WSBBox) override;
         void OffsetPosition(const Vec3& delta) override;
-        struct IPhysicalEntity* GetPhysics() const override;
-        void SetPhysics(IPhysicalEntity* phys) override;
         void SetMaterial(_smart_ptr<IMaterial> mat) override;
         _smart_ptr<IMaterial> GetMaterial(Vec3* hitPos = nullptr) override;
         _smart_ptr<IMaterial> GetMaterialOverride() override;
@@ -63,6 +61,7 @@ namespace WhiteBox
 
         void UpdateTransformAndBounds(const Matrix34& renderTransform);
         bool UpdateWhiteBoxMaterial(const WhiteBoxMaterial& whiteboxMaterial);
+        bool GetMeshVisibility() const;
         void SetMeshVisibility(bool visibility);
 
     private:
@@ -74,6 +73,7 @@ namespace WhiteBox
         AZStd::unique_ptr<IStatObj> m_statObj;
         Matrix34 m_renderTransform;
         AABB m_worldAabb;
+        bool m_visible = true;
     };
 
     LegacyRenderNode::LegacyRenderNode() = default;
@@ -304,18 +304,6 @@ namespace WhiteBox
     }
 
     /*IRenderNode*/
-    struct IPhysicalEntity* LegacyRenderNode::GetPhysics() const
-    {
-        return nullptr;
-    }
-
-    /*IRenderNode*/
-    void LegacyRenderNode::SetPhysics(IPhysicalEntity* /*phys*/)
-    {
-        // todo
-    }
-
-    /*IRenderNode*/
     void LegacyRenderNode::SetMaterial(_smart_ptr<IMaterial> /*mat*/)
     {
         // todo
@@ -412,12 +400,21 @@ namespace WhiteBox
         SetRndFlags(flags);
     }
 
-    void LegacyRenderNode::SetMeshVisibility(bool visibility)
+    bool LegacyRenderNode::GetMeshVisibility() const
     {
-        float opacity = visibility ? 1.0f : 0.0f;
-        auto mat = GetMaterial();
-        mat->SetGetMaterialParamFloat("opacity", opacity, false);
-        SetShadowRenderFlags(visibility);
+        return m_visible;
+    }
+
+    void LegacyRenderNode::SetMeshVisibility(const bool visibility)
+    {
+        if (visibility != m_visible)
+        {
+            float opacity = visibility ? 1.0f : 0.0f;
+            auto mat = GetMaterial();
+            mat->SetGetMaterialParamFloat("opacity", opacity, false);
+            SetShadowRenderFlags(visibility);
+            m_visible = visibility;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -453,6 +450,16 @@ namespace WhiteBox
         {
             m_renderNode->UpdateWhiteBoxMaterial(material);
         }
+    }
+
+    bool LegacyRenderMesh::IsVisible() const
+    {
+        if (m_renderNode)
+        {
+            m_renderNode->GetMeshVisibility();
+        }
+
+        return false;
     }
 
     void LegacyRenderMesh::SetVisiblity(bool visibility)

@@ -96,6 +96,7 @@ LAZY_MIGRATION = 'IsLazyMigration'
 PENDING_PROJECT_STACK_ID = 'PendingProjectStackId'
 PROJECT_STACK_ID = 'ProjectStackId'
 FRAMEWORK_VERSION_KEY = 'FrameworkVersion'
+CUSTOM_DOMAIN_NAME = 'CustomDomainName'
 
 CROSS_GEM_RESOLVER_KEY = 'CrossGemCommunicationInterfaceResolver'
 

@@ -64,6 +64,9 @@ namespace EMStudio
         void OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent);
 
     private:
+        void SaveExpandStates();
+        void RestoreExpandStates();
+
         AnimGraphPlugin*            mPlugin;
         NodePaletteModel*           mModel;
         QTreeView*                  mTreeView;
@@ -71,5 +74,8 @@ namespace EMStudio
         EventHandler*               mEventHandler;
         QVBoxLayout*                mLayout;
         QLabel*                     mInitialText;
+
+        // Cache the expanded states.
+        AZStd::unordered_set<EMotionFX::AnimGraphObject::ECategory> m_expandedCatagory;
     };
 }   // namespace EMStudio

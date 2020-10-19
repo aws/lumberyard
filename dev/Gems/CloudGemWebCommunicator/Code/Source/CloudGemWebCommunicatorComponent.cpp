@@ -90,7 +90,6 @@ namespace CloudGemWebCommunicator
 
     CloudGemWebCommunicatorComponent::CloudGemWebCommunicatorComponent()
     {
-        SetupJobManager();
     }
 
     CloudGemWebCommunicatorComponent::~CloudGemWebCommunicatorComponent()
@@ -189,6 +188,7 @@ namespace CloudGemWebCommunicator
 
     void CloudGemWebCommunicatorComponent::Init()
     {
+        SetupJobManager();
     }
 
     void CloudGemWebCommunicatorComponent::Activate()
@@ -252,7 +252,7 @@ namespace CloudGemWebCommunicator
             m_endpointPort = aznumeric_caster(thisResult.EndpointPort);
             m_connectionType = thisResult.ConnectionType;
 
-            AZ_TracePrintf("CloudCanvas","Device successfully registered - %s", resultStr.c_str());
+            AZ_TracePrintf("CloudCanvas", "Device successfully registered - %s", resultStr.c_str());
             WriteDeviceInfo();
             ReadCertificate(GetDeviceCertPath());
             EBUS_EVENT(CloudGemWebCommunicatorUpdateBus, RegistrationStatusChanged, GetRegistrationStatus());
@@ -270,12 +270,12 @@ namespace CloudGemWebCommunicator
         return true;
     }
 
-    AZStd::string CloudGemWebCommunicatorComponent::GetResolvedPath(const char* filePath) 
+    AZStd::string CloudGemWebCommunicatorComponent::GetResolvedPath(const char* filePath)
     {
         char resolvedGameFolder[AZ_MAX_PATH_LEN] = { 0 };
         AZ::IO::FileIOBase::GetInstance()->ResolvePath(filePath, resolvedGameFolder, AZ_MAX_PATH_LEN);
         return resolvedGameFolder;
-    }       
+    }
 
     AZStd::string CloudGemWebCommunicatorComponent::GetDeviceInfoFilePath() const
     {
@@ -315,7 +315,7 @@ namespace CloudGemWebCommunicator
         return ReadDeviceInfo();
     }
 
-    bool CloudGemWebCommunicatorComponent::ReadDeviceInfo() 
+    bool CloudGemWebCommunicatorComponent::ReadDeviceInfo()
     {
         AZ::IO::HandleType inputFile;
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetDirectInstance();
@@ -352,8 +352,8 @@ namespace CloudGemWebCommunicator
             m_connectionType.clear();
 
             auto itr = parseDoc.FindMember("endpoint");
-            if(itr != parseDoc.MemberEnd() && itr->value.IsString())
-            {  
+            if (itr != parseDoc.MemberEnd() && itr->value.IsString())
+            {
                 m_endpoint = itr->value.GetString();
             }
 
@@ -363,7 +363,7 @@ namespace CloudGemWebCommunicator
                 m_endpointPort = itr->value.GetInt();
             }
 
-            itr = parseDoc.FindMember("connectionType"); 
+            itr = parseDoc.FindMember("connectionType");
             if (itr != parseDoc.MemberEnd() && itr->value.IsString())
             {
                 m_connectionType = itr->value.GetString();
@@ -375,7 +375,7 @@ namespace CloudGemWebCommunicator
         return true;
     }
 
-    AZStd::string CloudGemWebCommunicatorComponent::GetCAPath() 
+    AZStd::string CloudGemWebCommunicatorComponent::GetCAPath()
     {
         CloudCanvas::RequestRootCAFileResult requestResult;
         AZStd::string filePath;
@@ -434,12 +434,12 @@ namespace CloudGemWebCommunicator
     }
 
 
-    AZStd::string CloudGemWebCommunicatorComponent::GetKeyPath() 
+    AZStd::string CloudGemWebCommunicatorComponent::GetKeyPath()
     {
         return GetUserOrStorage("certs/aws/webcommunicatorkey.pem");
     }
 
-    AZStd::string CloudGemWebCommunicatorComponent::GetDeviceCertPath() 
+    AZStd::string CloudGemWebCommunicatorComponent::GetDeviceCertPath()
     {
         return GetUserOrStorage("certs/aws/webcommunicatordevice.pem");
     }
@@ -456,8 +456,8 @@ namespace CloudGemWebCommunicator
         outputFile.Close();
         return true;
     }
-    
-    bool CloudGemWebCommunicatorComponent::ReadCertificate(const AZStd::string& filePath) 
+
+    bool CloudGemWebCommunicatorComponent::ReadCertificate(const AZStd::string& filePath)
     {
         AZ::IO::HandleType inputFile;
         AZ::IO::FileIOBase::GetDirectInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
@@ -566,11 +566,11 @@ namespace CloudGemWebCommunicator
             AZ_Warning("CloudCanvas", false, "Already disconnecting");
             return returnCode;
         }
-        
+
         AZ::EntityId entityId = GetEntityId();
         auto disconnectLambda = [entityId, this]()
         {
-            awsiotsdk::ResponseCode disconnectCode { awsiotsdk::ResponseCode::SUCCESS };
+            awsiotsdk::ResponseCode disconnectCode{ awsiotsdk::ResponseCode::SUCCESS };
             if (m_iotClient && m_iotClient->IsConnected())
             {
                 disconnectCode = m_iotClient->Disconnect(cMqttTimeout);
@@ -579,19 +579,19 @@ namespace CloudGemWebCommunicator
                 // in the case where disconnect timed out, or something else was wrong
                 AZ_Error("CloudCanvas", !m_iotClient->IsConnected(), "IOT client failed to disconnect when requested. Will force disconnect.");
             }
-            
+
             {
                 AZStd::lock_guard<AZStd::mutex> channelLock{ m_channelMutex };
                 m_channelList.clear();
             }
-            
-            // by passing nullptr to GotConnectionResponse we will free the client, shut down all 
-            // the network connection threads and free resources. GotConnectionResponse will also 
+
+            // by passing nullptr to GotConnectionResponse we will free the client, shut down all
+            // the network connection threads and free resources. GotConnectionResponse will also
             // update the connection status to be DISCONNECTED
             std::shared_ptr<awsiotsdk::MqttClient> client{ nullptr };
             EBUS_QUEUE_EVENT_ID(entityId, CloudGemWebCommunicatorLibraryResponseBus, GotConnectionResponse, disconnectCode, client);
         };
-        
+
         AZ::Job* disconnectJob = AZ::CreateJobFunction(AZStd::bind(disconnectLambda), true, m_jobContext);
         SetConnectionStatus(ConnectionStatus::DISCONNECTING);
         EBUS_EVENT(CloudGemWebCommunicatorUpdateBus, ConnectionStatusChanged, GetConnectionStatus());
@@ -619,17 +619,17 @@ namespace CloudGemWebCommunicator
         std::shared_ptr<awsiotsdk::NetworkConnection> connectionPtr;
 
         connectionPtr = std::make_shared<awsiotsdk::network::WebSocketConnection>(endpoint.c_str(), endpointPort,
-                caPath.c_str(), GetEndpointRegion(endpoint).c_str(),
-                accountCredentials.GetAWSAccessKeyId().c_str(),
-                accountCredentials.GetAWSSecretKey().c_str(),
-                accountCredentials.GetSessionToken().c_str(),
-                cTimeoutMS,
-                cTimeoutMS,
-                cTimeoutMS, true);
+            caPath.c_str(), GetEndpointRegion(endpoint).c_str(),
+            accountCredentials.GetAWSAccessKeyId().c_str(),
+            accountCredentials.GetAWSSecretKey().c_str(),
+            accountCredentials.GetSessionToken().c_str(),
+            cTimeoutMS,
+            cTimeoutMS,
+            cTimeoutMS, true);
 
         if (!connectionPtr)
         {
-            AZ_TracePrintf("CloudCanvas","WebSocket Connection failed!");
+            AZ_TracePrintf("CloudCanvas", "WebSocket Connection failed!");
         }
         else
         {
@@ -670,9 +670,9 @@ namespace CloudGemWebCommunicator
                 cTimeoutMS, true);
         auto rc = connectionPtr->Initialize();
 
-        if (rc != awsiotsdk::ResponseCode::SUCCESS) 
+        if (rc != awsiotsdk::ResponseCode::SUCCESS)
         {
-            AZ_Warning("CloudCanvas", false,"Failed to initialize SSL Connection with rc : %d", static_cast<int>(rc));
+            AZ_Warning("CloudCanvas", false, "Failed to initialize SSL Connection with rc : %d", static_cast<int>(rc));
         }
         else
         {
@@ -686,7 +686,7 @@ namespace CloudGemWebCommunicator
         return m_certificateSN;
     }
 
-    AZStd::string CloudGemWebCommunicatorComponent::GetCognitoClientId() 
+    AZStd::string CloudGemWebCommunicatorComponent::GetCognitoClientId()
     {
         AZStd::string clientId;
         EBUS_EVENT_RESULT(clientId, CloudGemFramework::CloudCanvasPlayerIdentityBus, GetIdentityId);
@@ -715,7 +715,7 @@ namespace CloudGemWebCommunicator
         const bool cCleanSession = true;
         const std::chrono::seconds keepAliveSeconds{ 30 };
         mqttClient = std::shared_ptr<awsiotsdk::MqttClient>(awsiotsdk::MqttClient::Create(connectionPtr, cMqttTimeout));
-        if (nullptr == mqttClient) 
+        if (nullptr == mqttClient)
         {
             AZ_Warning("CloudCanvas", false, "MQTT client creation failed!");
             responseCode = awsiotsdk::ResponseCode::FAILURE;
@@ -728,7 +728,7 @@ namespace CloudGemWebCommunicator
             awsiotsdk::mqtt::Version::MQTT_3_1_1, keepAliveSeconds,
             std::move(client_id), nullptr, nullptr, nullptr);
 
-        if(responseCode == awsiotsdk::ResponseCode::MQTT_CONNACK_CONNECTION_ACCEPTED || responseCode == awsiotsdk::ResponseCode::SUCCESS)
+        if (responseCode == awsiotsdk::ResponseCode::MQTT_CONNACK_CONNECTION_ACCEPTED || responseCode == awsiotsdk::ResponseCode::SUCCESS)
         {
             AZ_TracePrintf("CloudCanvas", "MQTT client created successfully");
             responseCode = awsiotsdk::ResponseCode::SUCCESS;
@@ -746,7 +746,7 @@ namespace CloudGemWebCommunicator
     }
     bool CloudGemWebCommunicatorComponent::RequestConnection(const AZStd::string& connectionType)
     {
-        return Connect(connectionType,m_endpoint, m_endpointPort);
+        return Connect(connectionType, m_endpoint, m_endpointPort);
     }
     bool CloudGemWebCommunicatorComponent::RequestDisconnect()
     {
@@ -777,7 +777,7 @@ namespace CloudGemWebCommunicator
             }
             Subscribe(subscriptionList);
         },
-        [](ServiceAPI::get_client_channelsRequestJob* job)
+            [](ServiceAPI::get_client_channelsRequestJob* job)
         {
             AZ_UNUSED(job);
             AZ_TracePrintf("CloudCanvas", "Get_client_channelRequest failed %s", job->error.message.c_str());
@@ -789,7 +789,7 @@ namespace CloudGemWebCommunicator
 
     bool CloudGemWebCommunicatorComponent::RequestSubscribeChannel(const AZStd::string& channelName)
     {
-        return RequestSubscribeChannelList(AZStd::vector<AZStd::string> { channelName} );
+        return RequestSubscribeChannelList(AZStd::vector<AZStd::string> { channelName});
     }
 
     bool CloudGemWebCommunicatorComponent::RequestSubscribeChannelList(const AZStd::vector<AZStd::string>& channelList)
@@ -800,8 +800,8 @@ namespace CloudGemWebCommunicator
             return false;
         }
 
-        // verify the requested channels are valid. if we try to subscribe to an invalid channel the iot SDK creates 
-        // a network connection that cannot be removed until the client is destroyed and will start accumulating SSL 
+        // verify the requested channels are valid. if we try to subscribe to an invalid channel the iot SDK creates
+        // a network connection that cannot be removed until the client is destroyed and will start accumulating SSL
         // errors which can lead to instability/crashing on OSX
         auto requestJob = ServiceAPI::get_client_channelsRequestJob::Create([this, channelList](ServiceAPI::get_client_channelsRequestJob* job)
         {
@@ -827,7 +827,7 @@ namespace CloudGemWebCommunicator
             }
             Subscribe(channelList);
         },
-        [](ServiceAPI::get_client_channelsRequestJob* job)
+            [](ServiceAPI::get_client_channelsRequestJob* job)
         {
             AZ_UNUSED(job);
             AZ_TracePrintf("CloudCanvas", "RequestSubscribeChannelList failed to get valid channel list %s", job->error.message.c_str());
@@ -868,7 +868,7 @@ namespace CloudGemWebCommunicator
             auto thisResult = job->result;
             AZ_TracePrintf("CloudCanvas", "PostClientMessage succeeded");
         },
-        [this](ServiceAPI::client_channel_broadcastRequestJob* job)
+            [this](ServiceAPI::client_channel_broadcastRequestJob* job)
         {
             auto thisResult = job->result;
 
@@ -885,11 +885,11 @@ namespace CloudGemWebCommunicator
 
     void CloudGemWebCommunicatorComponent::GotMessage(const AZStd::string channelName, const AZStd::string payload)
     {
-        AZ_TracePrintf("CloudCanvas","Received Message on topic %s: %s", channelName.c_str(), payload.c_str());
+        AZ_TracePrintf("CloudCanvas", "Received Message on topic %s: %s", channelName.c_str(), payload.c_str());
         EBUS_EVENT(CloudGemWebCommunicatorUpdateBus, MessageReceived, channelName, payload);
     }
 
-    awsiotsdk::ResponseCode CloudGemWebCommunicatorComponent::Subscribe(const AZStd::vector<AZStd::string>& topicList) 
+    awsiotsdk::ResponseCode CloudGemWebCommunicatorComponent::Subscribe(const AZStd::vector<AZStd::string>& topicList)
     {
         if (!m_iotClient)
         {
@@ -938,7 +938,7 @@ namespace CloudGemWebCommunicator
             {
                 AZStd::lock_guard<AZStd::mutex> subscriptionLock{ m_subscriptionMutex };
                 auto channelIter = channelList.begin();
-                while(channelIter != channelList.end())
+                while (channelIter != channelList.end())
                 {
                     if (GetSubscriptionStatus(*channelIter) == "Subscribed")
                     {
@@ -986,7 +986,7 @@ namespace CloudGemWebCommunicator
         return awsiotsdk::ResponseCode::SUCCESS;
     }
 
-    void CloudGemWebCommunicatorComponent::GotSubscribeResponse(ResponseCodeType responseCode,  AZStd::vector<AZStd::string> channelList, std::shared_ptr<awsiotsdk::MqttClient> connectionClient)
+    void CloudGemWebCommunicatorComponent::GotSubscribeResponse(ResponseCodeType responseCode, AZStd::vector<AZStd::string> channelList, std::shared_ptr<awsiotsdk::MqttClient> connectionClient)
     {
         for (auto channelName : channelList)
         {

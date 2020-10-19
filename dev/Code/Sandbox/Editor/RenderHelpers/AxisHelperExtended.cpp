@@ -14,7 +14,9 @@
 #include "StdAfx.h"
 #include "AxisHelperExtended.h"
 
+#if ENABLE_CRY_PHYSICS
 #include <IPhysics.h>
+#endif
 
 #include "Objects/DisplayContext.h"
 #include "Include/IDisplayViewport.h"
@@ -48,6 +50,8 @@ void CAxisHelperExtended::DrawAxes(DisplayContext& dc, const Matrix34& matrix, b
 
     CBaseObject* pCurObject = pSel->GetObject(numSels - 1); // get just last object for simple check
 
+    // Add current selection to the elements to be skipped
+#if ENABLE_CRY_PHYSICS
     m_skipEntities.resize(0);
     for (int i = 0; i < numSels; ++i)
     {
@@ -58,6 +62,9 @@ void CAxisHelperExtended::DrawAxes(DisplayContext& dc, const Matrix34& matrix, b
             m_skipEntities.push_back(pSkipEntity);
         }
     }
+#else
+    CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
 
     Vec3 x = Vec3(1, 0, 0);
     Vec3 y = Vec3(0, 1, 0);
@@ -160,6 +167,7 @@ void CAxisHelperExtended::DrawAxis(DisplayContext& dc, const Vec3& vDir, const V
 
     if (bUsePhysicalProxy)
     {
+#if ENABLE_CRY_PHYSICS
         int nFlags = rwi_stop_at_pierceable | rwi_ignore_terrain_holes;
         ray_hit hit;
         hit.pCollider = 0;
@@ -169,6 +177,9 @@ void CAxisHelperExtended::DrawAxis(DisplayContext& dc, const Vec3& vDir, const V
         {
             fDist = (hit.pt - m_vPos).GetLength();
         }
+#else
+        CRY_PHYSICS_REPLACEMENT_ASSERT();
+#endif // ENABLE_CRY_PHYSICS
     }
     else
     {

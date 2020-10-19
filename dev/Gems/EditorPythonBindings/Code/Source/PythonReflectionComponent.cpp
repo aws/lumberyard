@@ -25,6 +25,7 @@
 #include <AzCore/PlatformDef.h>
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 
 #include <AzCore/PlatformDef.h>
 #include <AzCore/IO/SystemFile.h>
@@ -39,8 +40,130 @@ namespace EditorPythonBindings
         static constexpr const char* s_default = "default";
         static constexpr const char* s_globals = "globals";
 
-        // a dummy structure for pybind11 to bind to for static constants and enums from the Behavior Context 
-        struct StaticPropertyHolder {};
+        // a structure for pybind11 to bind to hold constants, properties, and enums from the Behavior Context 
+        struct StaticPropertyHolder final
+        {
+            AZ_CLASS_ALLOCATOR(StaticPropertyHolder, AZ::SystemAllocator, 0);
+
+            StaticPropertyHolder() = default;
+            ~StaticPropertyHolder() = default;
+
+            bool AddToScope(pybind11::module scope)
+            {
+                m_behaviorContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(m_behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+                AZ_Error("python", m_behaviorContext, "Behavior context not available");
+                if (m_behaviorContext == nullptr)
+                {
+                    return false;
+                }               
+
+                m_fullName = PyModule_GetName(scope.ptr());
+
+                pybind11::setattr(scope, "__getattr__", pybind11::cpp_function([this](const char* attribute)
+                {
+                    return this->GetPropertyValue(attribute);
+                }));
+                pybind11::setattr(scope, "__setattr__", pybind11::cpp_function([this](const char* attribute, pybind11::object value)
+                {
+                    return this->SetPropertyValue(attribute, value);
+                }));
+
+                return true;
+            }
+
+            void AddProperty(AZStd::string_view name, AZ::BehaviorProperty* behaviorProperty)
+            {
+                AZStd::string baseName(name);
+                Scope::FetchScriptName(behaviorProperty->m_attributes, baseName);
+                AZ::Crc32 namedKey(baseName);
+                if (m_properties.find(namedKey) == m_properties.end())
+                {
+                    m_properties[namedKey] = behaviorProperty;
+                }
+                else
+                {
+                    AZ_Warning("python", false, "Skipping duplicate property named %s\n", baseName.c_str());
+                }
+            }
+
+        protected:
+
+            void SetPropertyValue(const char* attributeName, pybind11::object value)
+            {
+                auto behaviorPropertyIter = m_properties.find(AZ::Crc32(attributeName));
+                if (behaviorPropertyIter != m_properties.end())
+                {
+                    AZ::BehaviorProperty* property = behaviorPropertyIter->second;
+                    AZ_Error("python", property->m_setter, "%s is not a writable property in %s.", attributeName, m_fullName.c_str());
+                    if (property->m_setter)
+                    {
+                        EditorPythonBindings::Call::StaticMethod(property->m_setter, pybind11::args(pybind11::make_tuple(value)));
+                    }
+                }
+            }
+
+            pybind11::object GetPropertyValue(const char* attributeName)
+            {
+                AZ::Crc32 crcAttributeName(attributeName);
+                auto behaviorPropertyIter = m_properties.find(crcAttributeName);
+                if (behaviorPropertyIter != m_properties.end())
+                {
+                    AZ::BehaviorProperty* property = behaviorPropertyIter->second;
+                    AZ_Error("python", property->m_getter, "%s is not a readable property in %s.", attributeName, m_fullName.c_str());
+                    if (property->m_getter)
+                    {
+                        return EditorPythonBindings::Call::StaticMethod(property->m_getter, pybind11::args());
+                    }
+                }
+                return pybind11::cast<pybind11::none>(Py_None);
+            }
+
+            AZ::BehaviorContext* m_behaviorContext = nullptr;
+            AZStd::unordered_map<AZ::Crc32, AZ::BehaviorProperty*> m_properties;
+            AZStd::string m_fullName;
+        };
+
+        using StaticPropertyHolderPointer = AZStd::unique_ptr<StaticPropertyHolder>;
+        using StaticPropertyHolderMapEntry = AZStd::pair<pybind11::module, StaticPropertyHolderPointer>;
+
+        struct StaticPropertyHolderMap final
+            : public AZStd::unordered_map<AZStd::string, StaticPropertyHolderMapEntry>
+        {
+            Module::PackageMapType m_packageMap;
+
+            void AddToScope()
+            {
+                for (auto&& element : *this)
+                {
+                    StaticPropertyHolderMapEntry& entry = element.second;
+                    entry.second->AddToScope(entry.first);
+                }
+            }
+
+            void AddProperty(pybind11::module scope, const AZStd::string& propertyName, AZ::BehaviorProperty* behaviorProperty)
+            {
+                AZStd::string scopeName = PyModule_GetName(scope.ptr());
+                auto&& iter = find(scopeName);
+                if (iter == end())
+                {
+                    StaticPropertyHolder* holder = aznew StaticPropertyHolder();
+                    insert(AZStd::make_pair(scopeName, StaticPropertyHolderMapEntry{ scope, holder }));
+                    holder->AddProperty(propertyName, behaviorProperty);
+                }
+                else
+                {
+                    StaticPropertyHolderMapEntry& entry = iter->second;
+                    entry.second->AddProperty(propertyName, behaviorProperty);
+                }
+                PythonSymbolEventBus::Broadcast(&PythonSymbolEventBus::Events::LogGlobalProperty, scopeName, propertyName, behaviorProperty);
+            }
+
+            pybind11::module DetermineScope(pybind11::module scope, const AZStd::string& fullName)
+            {
+                return Module::DeterminePackageModule(m_packageMap, fullName, scope, scope, false);
+            }
+        };
 
         AZStd::string PyResolvePath(AZStd::string_view path)
         {
@@ -61,8 +184,16 @@ namespace EditorPythonBindings
         }
     }
 
+    //////////////////////////////////////////////////////////////////////////
+    // PythonReflectionComponent
+
     void PythonReflectionComponent::Reflect(AZ::ReflectContext* context)
     {
+        if (auto&& serialize = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serialize->Class<PythonReflectionComponent, AZ::Component>()
+                ->Version(0);
+        }
     }
 
     void PythonReflectionComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -144,13 +275,22 @@ namespace EditorPythonBindings
         }
 
         // add global properties flagged for Automation as Python static class properties
-        pybind11::class_<Internal::StaticPropertyHolder> staticPropertyHolder(globalsModule, "property");
+        m_staticPropertyHolderMap = AZStd::make_shared<Internal::StaticPropertyHolderMap>();
+        struct GlobalPropertyHolder {};
+        pybind11::class_<GlobalPropertyHolder> staticPropertyHolder(globalsModule, "property");
         for (const auto& propertyEntry : behaviorContext->m_properties)
         {
             const AZStd::string& propertyName = propertyEntry.first;
             AZ::BehaviorProperty* behaviorProperty = propertyEntry.second;
             if (Scope::IsBehaviorFlaggedForEditor(behaviorProperty->m_attributes))
             {
+                auto propertyScopeName = Module::GetName(behaviorProperty->m_attributes);
+                if (propertyScopeName)
+                {
+                    pybind11::module scope = m_staticPropertyHolderMap->DetermineScope(parentModule, *propertyScopeName);
+                    m_staticPropertyHolderMap->AddProperty(scope, propertyName, behaviorProperty);
+                }
+
                 //  log global property symbol
                 AZStd::string subModuleName = pybind11::cast<AZStd::string>(globalsModule.attr("__name__"));
                 PythonSymbolEventBus::Broadcast(&PythonSymbolEventBus::Events::LogGlobalProperty, subModuleName, propertyName, behaviorProperty);
@@ -181,8 +321,15 @@ namespace EditorPythonBindings
                 }
             }
         }
+
+        m_staticPropertyHolderMap->AddToScope();
     }
 
+    void PythonReflectionComponent::OnPreFinalize()
+    {
+        m_staticPropertyHolderMap.reset();
+    }
+    
     void PythonReflectionComponent::OnImportModule(PyObject* module)
     {
         pybind11::module parentModule = pybind11::cast<pybind11::module>(module);

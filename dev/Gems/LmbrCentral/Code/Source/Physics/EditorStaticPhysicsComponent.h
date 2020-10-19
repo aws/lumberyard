@@ -9,6 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if ENABLE_CRY_PHYSICS
+
 #pragma once
 
 #include "EditorPhysicsComponent.h"
@@ -43,6 +46,7 @@ namespace LmbrCentral
         {
             EditorPhysicsComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("StaticPhysicsService", 0x20ca6e80));
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         EditorStaticPhysicsComponent() = default;
@@ -63,3 +67,5 @@ namespace LmbrCentral
         EditorStaticPhysicsConfig m_configuration;
     };
 } // namespace LmbrCentral
+
+#endif // ENABLE_CRY_PHYSICS

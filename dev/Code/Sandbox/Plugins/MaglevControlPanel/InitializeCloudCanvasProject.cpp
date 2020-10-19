@@ -43,12 +43,12 @@
 static const char* PROJECT_ADMIN_LABEL = "You must be an AWS admin to initialize your Cloud Canvas project.";
 static const char* PROJECT_DETAILS_IAM_CREDENTIALS_LABEL =
     "You must provide IAM credentials for an AWS account admin. "
-    "Click <a style='color:#4285F4; text-decoration:none' href=\"http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-tutorial.html\">here</a> "
+    "Click <a style='color:#4285F4; text-decoration:none' href=\"https://docs.aws.amazon.com/console/lumberyard/cloudcanvas\">here</a> "
     "for instructions on locating existing credentials or setting up an AWS account admin.";
 
-static const char* AFFIRM_REVIEW_BUTTON_LABEL = "Cloud Canvas will deploy AWS resources to your account using your CloudFormation templates.  There is no additional charge for Cloud Canvas or CloudFormation.  You pay for AWS resources created using Cloud Canvas and CloudFormation in the same manner as if you created them manually.  You only pay for what you use, as you use it; there are no minimum fees and no required upfront commitments, and most services include a free tier.  <a style='color:#4285F4;' href='https ://docs.aws.amazon.com/lumberyard/userguide/cloud-canvas'>Learn more</a>";
+static const char* AFFIRM_REVIEW_BUTTON_LABEL = "Cloud Canvas will deploy AWS resources to your account using your CloudFormation templates.  There is no additional charge for Cloud Canvas or CloudFormation.  You pay for AWS resources created using Cloud Canvas and CloudFormation in the same manner as if you created them manually.  You only pay for what you use, as you use it; there are no minimum fees and no required upfront commitments, and most services include a free tier.  <a style='color:#4285F4;' href='https://docs.aws.amazon.com/console/lumberyard/cloudcanvas'>Learn more</a>";
 
-static const char* ADMIN_ROLES_REVIEW_LABEL = "Create the optional ProjectAdmin and ProjectOwner roles, which could impact security. <a style='color:#4285F4;' href='https://docs.aws.amazon.com/lumberyard/latest/userguide/cloud-canvas-built-in-roles-and-policies.html'>Learn more</a>.";
+static const char* ADMIN_ROLES_REVIEW_LABEL = "Create the optional ProjectAdmin and ProjectOwner roles, which could impact security. <a style='color:#4285F4;' href='https://docs.aws.amazon.com/console/lumberyard/cloudcanvas/access-control'>Learn more</a>.";
 
 
 static const char* CREATE_BUTTON = "Create Button";

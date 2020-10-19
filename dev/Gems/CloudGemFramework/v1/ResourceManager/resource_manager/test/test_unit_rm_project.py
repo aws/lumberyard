@@ -106,7 +106,7 @@ class UnitTest_Project(unittest.TestCase):
         self.assertEqual(1, context.stack.name_exists.call_count)
         context.stack.name_exists.assert_called_with(args.stack_name, args.region)
 
-    def __project_create_sets_admin_roles_creates_stack(self, create_admin_roles, mock_session_call, mock_botocore_session_call):
+    def __project_create_sets_admin_roles_and_custom_domain_name_creates_stack(self, create_admin_roles, custom_domain_name, mock_session_call, mock_botocore_session_call):
         # GIVEN
         project_url = "TEST_URL"
         mock_botocore_session = mock_botocore_session_call.return_value
@@ -121,6 +121,7 @@ class UnitTest_Project(unittest.TestCase):
 
         # Small Hack to avoid having to simulate loading/saving of of local_project_settings
         type(context.config).create_admin_roles = mock.PropertyMock(return_value=True if create_admin_roles else False)
+        type(context.config).custom_domain_name = mock.PropertyMock(return_value=custom_domain_name if custom_domain_name else '')
 
         args = mock.MagicMock()
         args.region = 'VALID_REGION'
@@ -128,6 +129,7 @@ class UnitTest_Project(unittest.TestCase):
         args.stack_name = "TESTSTACKNAME"
         args.create_admin_roles = create_admin_roles
         args.record_cognito_pools = False
+        args.custom_domain_name = custom_domain_name
 
         # WHEN
         unit_common_utils.make_os_path_patcher([True])
@@ -147,7 +149,8 @@ class UnitTest_Project(unittest.TestCase):
             created_callback=unit_common_utils.AnyArg(),
             capabilities=context.stack.confirm_stack_operation(),
             timeout_in_minutes=30,
-            parameters={'CreateAdminRoles': 'true' if args.create_admin_roles else 'false'},
+            parameters={'CreateAdminRoles': 'true' if args.create_admin_roles else 'false', 
+                        'CustomDomainName': args.custom_domain_name if args.custom_domain_name else ''},
             tags=[{'Value': args.stack_name, 'Key': 'cloudcanvas:project-name'}]
         )
 
@@ -158,7 +161,8 @@ class UnitTest_Project(unittest.TestCase):
             parameters={
                 'ProjectName': util.get_stack_name_from_arn(context.config.project_stack_id),
                 'ConfigurationKey': mock_uploader.key,
-                'CreateAdminRoles': 'true' if args.create_admin_roles else 'false'
+                'CreateAdminRoles': 'true' if args.create_admin_roles else 'false',
+                'CustomDomainName': args.custom_domain_name if args.custom_domain_name else ''
             },
             pending_resource_status=unit_common_utils.AnyArg(),
             capabilities=context.stack.confirm_stack_operation(),
@@ -168,19 +172,38 @@ class UnitTest_Project(unittest.TestCase):
     @mock.patch("botocore.session.Session")
     @mock.patch("boto3.session.Session")
     def test_project_create_with_admin_roles_creates_stack(self, mock_session_call, mock_botocore_session_call):
-        self.__project_create_sets_admin_roles_creates_stack(create_admin_roles=True, mock_session_call=mock_session_call,
+        self.__project_create_sets_admin_roles_and_custom_domain_name_creates_stack(create_admin_roles=True, custom_domain_name=None, mock_session_call=mock_session_call,
                                                              mock_botocore_session_call=mock_botocore_session_call)
 
     @mock.patch("botocore.session.Session")
     @mock.patch("boto3.session.Session")
     def test_project_create_with_no_admin_roles_creates_stack(self, mock_session_call, mock_botocore_session_call):
-        self.__project_create_sets_admin_roles_creates_stack(create_admin_roles=False, mock_session_call=mock_session_call,
+        self.__project_create_sets_admin_roles_and_custom_domain_name_creates_stack(create_admin_roles=False, custom_domain_name=None, mock_session_call=mock_session_call,
                                                              mock_botocore_session_call=mock_botocore_session_call)
 
     @mock.patch("botocore.session.Session")
     @mock.patch("boto3.session.Session")
     def test_project_create_with_default_admin_roles_creates_stack(self, mock_session_call, mock_botocore_session_call):
-        self.__project_create_sets_admin_roles_creates_stack(create_admin_roles=None, mock_session_call=mock_session_call,
+        self.__project_create_sets_admin_roles_and_custom_domain_name_creates_stack(create_admin_roles=None, custom_domain_name=None, mock_session_call=mock_session_call,
+                                                             mock_botocore_session_call=mock_botocore_session_call)
+
+
+    @mock.patch("botocore.session.Session")
+    @mock.patch("boto3.session.Session")
+    def test_project_create_with_custom_domain_name_creates_stack(self, mock_session_call, mock_botocore_session_call):
+        self.__project_create_sets_admin_roles_and_custom_domain_name_creates_stack(create_admin_roles=None, custom_domain_name='TestCustomDomainName', mock_session_call=mock_session_call,
+                                                             mock_botocore_session_call=mock_botocore_session_call)
+
+    @mock.patch("botocore.session.Session")
+    @mock.patch("boto3.session.Session")
+    def test_project_create_with_empty_custom_domain_name_creates_stack(self, mock_session_call, mock_botocore_session_call):
+        self.__project_create_sets_admin_roles_and_custom_domain_name_creates_stack(create_admin_roles=None, custom_domain_name='', mock_session_call=mock_session_call,
+                                                             mock_botocore_session_call=mock_botocore_session_call)
+
+    @mock.patch("botocore.session.Session")
+    @mock.patch("boto3.session.Session")
+    def test_project_create_with_default_custom_domain_name_creates_stack(self, mock_session_call, mock_botocore_session_call):
+        self.__project_create_sets_admin_roles_and_custom_domain_name_creates_stack(create_admin_roles=None, custom_domain_name=None, mock_session_call=mock_session_call,
                                                              mock_botocore_session_call=mock_botocore_session_call)
 
     @staticmethod

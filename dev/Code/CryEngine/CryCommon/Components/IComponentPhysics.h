@@ -13,6 +13,8 @@
 #define CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTPHYSICS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include <IComponent.h>
 #include <ComponentType.h>
 
@@ -246,5 +248,6 @@ struct IComponentPhysics
 };
 
 DECLARE_SMART_POINTERS(IComponentPhysics);
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTPHYSICS_H

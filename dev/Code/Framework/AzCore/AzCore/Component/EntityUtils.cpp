@@ -159,8 +159,7 @@ namespace AZ
             return entity ? FindDerivedComponents(entity, typeId) : Entity::ComponentArrayType();
         }
 
-       
-        bool CheckDeclaresSerializeBaseClass(SerializeContext* context, const TypeId& typeToFind, const TypeId& typeToExamine)
+        bool EnumerateBaseRecursive(SerializeContext* context, const EnumerateBaseRecursiveVisitor& baseClassVisitor, const TypeId& typeToExamine)
         {
             AZ_Assert(context, "CheckDeclaresSerializeBaseClass called with no serialize context.");
             if (!context)
@@ -170,50 +169,101 @@ namespace AZ
 
             AZStd::fixed_vector<TypeId, 64> knownBaseClasses = { typeToExamine };  // avoid allocating heap here if possible.  64 types are 64*sizeof(Uuid) which is only 1k.
             bool foundBaseClass = false;
-            auto baseClassVisitorFn = [&typeToFind, &foundBaseClass, &knownBaseClasses](const AZ::SerializeContext::ClassData* reflectedBase, const TypeId& /*rttiBase*/)
+            auto enumerateBaseVisitor = [&foundBaseClass, &baseClassVisitor, &knownBaseClasses](const AZ::SerializeContext::ClassData* classData, const TypeId& examineTypeId)
             {
-                // SerializeContext::EnumerateBase() iterates:
-                // - the immediate base classes reflected to SerializeContext.
-                // - then it iterates the entire tree of base classes from the AZ_RTTI info.
-                // We only care about base classes reflected to SerializeContext,
-                // so stop iterating once we stop receiving SerializeContext::ClassData*.
-                if (!reflectedBase)
+                if (!classData)
                 {
                     return false;
                 }
 
-                // Stop iterating if we've found what we are looking for!
-                if (reflectedBase->m_typeId == typeToFind)
-                {
-                    foundBaseClass = true;
-                    return false;
-                }
-
-                // EnumerateBase() only iterates 1 level of reflected base classes.
-                // if we haven't found what we are looking for yet, push base classes into queue for further exploration.
-                if (AZStd::find(knownBaseClasses.begin(), knownBaseClasses.end(), reflectedBase->m_typeId) == knownBaseClasses.end())
+                if (AZStd::find(knownBaseClasses.begin(), knownBaseClasses.end(), classData->m_typeId) == knownBaseClasses.end())
                 {
                     if (knownBaseClasses.size() == 64)
                     {
                         // this should be pretty unlikely since a single class would have to have many other classes in its heirarchy
                         // and it'd all have to be basically in one layer, as we are popping as we explore.
                         AZ_WarningOnce("EntityUtils", false, "While trying to find a base class, all available slots were consumed.  consider increasing the size of knownBaseClasses.\n");
-                        // we cannot continue any futher, assume we did not find it.
+                        // we cannot continue any further, assume we did not find it.
                         return false;
                     }
-                    knownBaseClasses.push_back(reflectedBase->m_typeId);
+                    knownBaseClasses.push_back(classData->m_typeId);
+                }
+
+                return baseClassVisitor(classData, examineTypeId);
+            };
+
+            while (!knownBaseClasses.empty() && !foundBaseClass)
+            {
+                TypeId toExamine = knownBaseClasses.back();
+                knownBaseClasses.pop_back();
+
+                context->EnumerateBase(enumerateBaseVisitor, toExamine);
+            }
+
+            return foundBaseClass;
+        }
+
+        bool CheckIfClassIsDeprecated(SerializeContext* context, const TypeId& typeToExamine)
+        {
+            bool isDeprecated = false;
+            auto classVisitorFn = [&isDeprecated](const AZ::SerializeContext::ClassData* classData, const TypeId& /*rttiBase*/)
+            {
+                // Stop iterating once we stop receiving SerializeContext::ClassData*.
+                if (!classData)
+                {
+                    return false;
+                }
+
+                // Stop iterating if we've found that the class is deprecated
+                if (classData->IsDeprecated())
+                {
+                    isDeprecated = true;
+                    return false;
                 }
 
                 return true; // keep iterating
             };
 
-            while (!knownBaseClasses.empty())
+            // Check if the type is deprecated
+            const AZ::SerializeContext::ClassData* classData = context->FindClassData(typeToExamine);
+            if (classData->IsDeprecated())
             {
-                TypeId toExamine = knownBaseClasses.back();
-                knownBaseClasses.pop_back();
-
-                context->EnumerateBase(baseClassVisitorFn, toExamine);
+                return true;
             }
+
+            // Check if any of its bases are deprecated
+            EnumerateBaseRecursive(context, classVisitorFn, typeToExamine);
+
+            return isDeprecated;
+        }
+       
+        bool CheckDeclaresSerializeBaseClass(SerializeContext* context, const TypeId& typeToFind, const TypeId& typeToExamine)
+        {
+            AZ_Assert(context, "CheckDeclaresSerializeBaseClass called with no serialize context.");
+            if (!context)
+            {
+                return false;
+            }
+
+            bool foundBaseClass = false;
+            auto baseClassVisitorFn = [&typeToFind, &foundBaseClass](const AZ::SerializeContext::ClassData* reflectedBase, const TypeId& /*rttiBase*/)
+            {
+                if (!reflectedBase)
+                {
+                    foundBaseClass = false;
+                    return false; // stop iterating
+                }
+
+                foundBaseClass = (reflectedBase->m_typeId == typeToFind);
+                if (foundBaseClass)
+                {
+                    return false; // we have a base, stop iterating
+                }
+
+                return true; // keep iterating
+            };
+
+            EnumerateBaseRecursive(context, baseClassVisitorFn, typeToExamine);
 
             return foundBaseClass;
         }

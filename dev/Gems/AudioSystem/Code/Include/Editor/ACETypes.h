@@ -13,8 +13,10 @@
 
 #pragma once
 
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/string/string.h>
 
 namespace AudioControls
 {
@@ -38,5 +40,7 @@ namespace AudioControls
 
     static const CID ACE_INVALID_CID = 0;
     static const TImplControlType AUDIO_IMPL_INVALID_TYPE = 0;
+
+    using FilepathSet = AZStd::set<AZStd::string>;
 
 } // namespace AudioControls

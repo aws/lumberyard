@@ -1,5 +1,5 @@
-__version__ = "5.12.4"
-__version_info__ = (5, 12, 4, "", "")
+__version__ = "5.12.5"
+__version_info__ = (5, 12, 5, "a", "1")
 
 # PYSIDE-932: Python 2 cannot import 'zipfile' for embedding while being imported, itself.
 # We simply pre-load all imports for the signature extension.

@@ -16,6 +16,7 @@
 #include <AudioAllocators.h>
 #include <AudioLogger.h>
 
+#include <AzCore/Math/Random.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/std/typetraits/is_integral.h>
 #include <AzCore/std/typetraits/is_unsigned.h>
@@ -26,6 +27,14 @@
 namespace Audio
 {
     extern CAudioLogger g_audioLogger;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    static inline float frand_symm()
+    {
+        static AZ::SimpleLcgRandom rand(AZStd::GetTimeNowMicroSecond());
+        // return random float [-1.f, 1.f)
+        return rand.GetRandomFloat() * 2.f - 1.f;
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     template<typename TMap, typename TKey>
@@ -88,65 +97,65 @@ namespace Audio
     class CSmoothFloat
     {
     public:
-        explicit CSmoothFloat(const float fAlpha, const float fPrecision, const float fInitValue = 0.0f)
-            : m_fValue(fInitValue)
-            , m_fTarget(fInitValue)
-            , m_bIsActive(false)
-            , m_fAlpha(std::fabsf(fAlpha))
-            , m_fPrecision(std::fabsf(fPrecision))
+        explicit CSmoothFloat(const float smoothFactor, const float precision, const float initialValue = 0.0f)
+            : m_value(initialValue)
+            , m_target(initialValue)
+            , m_isActive(false)
+            , m_smoothFactor(AZ::GetAbs(smoothFactor))
+            , m_precision(AZ::GetAbs(precision))
         {}
 
         ~CSmoothFloat() {}
 
-        void Update(const float fUpdateIntervalMS)
+        void Update(const float smoothFactorOverride = -1.f)
         {
-            if (m_bIsActive)
+            if (m_isActive)
             {
-                if (std::fabsf(m_fTarget - m_fValue) > m_fPrecision)
+                if (AZ::GetAbs(m_target - m_value) > m_precision)
                 {
-                    // still need not reached the target within the specified precision
-                    m_fValue += (m_fTarget - m_fValue) * m_fAlpha;
+                    // still haven't reached the target within the specified precision, smooth towards it.
+                    const float smoothFactor = (smoothFactorOverride < 0.f) ? m_smoothFactor : smoothFactorOverride;
+                    m_value += (m_target - m_value) / (smoothFactor * smoothFactor + 1.f);
                 }
                 else
                 {
-                    //reached the target within the last update frame
-                    m_fValue = m_fTarget;
-                    m_bIsActive = false;
+                    // reached the target (within precision) this update, disable smoothing until a new target is set.
+                    m_value = m_target;
+                    m_isActive = false;
                 }
             }
         }
 
         float GetCurrent() const
         {
-            return m_fValue;
+            return m_value;
         }
 
-        void SetNewTarget(const float fNewTarget, const bool bReset = false)
+        void SetNewTarget(const float newTarget, const bool reset = false)
         {
-            if (bReset)
+            if (reset)
             {
-                m_fTarget = fNewTarget;
-                m_fValue = fNewTarget;
+                Reset(newTarget);
             }
-            else if (std::fabsf(fNewTarget - m_fTarget) > m_fPrecision)
+            else if (AZ::GetAbs(newTarget - m_target) > m_precision)
             {
-                m_fTarget = fNewTarget;
-                m_bIsActive = true;
+                m_target = newTarget;
+                m_isActive = true;
             }
         }
 
-        void Reset(const float fInitValue = 0.0f)
+        void Reset(const float initialValue = 0.0f)
         {
-            m_fValue = m_fTarget = fInitValue;
-            m_bIsActive = false;
+            m_value = m_target = initialValue;
+            m_isActive = false;
         }
 
     private:
-        float m_fValue;
-        float m_fTarget;
-        bool m_bIsActive;
-        const float m_fAlpha;
-        const float m_fPrecision;
+        float m_value;
+        float m_target;
+        bool m_isActive;
+        const float m_smoothFactor;
+        const float m_precision;
     };
 
     /*!

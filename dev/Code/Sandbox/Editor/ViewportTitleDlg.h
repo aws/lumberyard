@@ -20,6 +20,7 @@
 #include <AzCore/Component/Component.h>
 
 #include <functional>
+#include <QSharedPointer>
 
 // CViewportTitleDlg dialog
 class CLayoutViewPane;
@@ -77,6 +78,10 @@ public:
 
     bool eventFilter(QObject* object, QEvent* event) override;
 
+    QMenu* const GetFovMenu();
+    QMenu* const GetAspectMenu();
+    QMenu* const GetResolutionMenu();
+
 protected:
     virtual void OnInitDialog();
     QMenu *InitializeViewportSearchMenu();
@@ -91,7 +96,6 @@ protected:
     void OnViewportSearchButtonClicked(const QAction* clickedAction);
     void OnViewportSearchClear();
 
-
     QString m_title;
 
     CLayoutViewPane* m_pViewPane;
@@ -105,7 +109,6 @@ protected:
     QStringList m_customFOVPresets;
     QStringList m_customAspectRatioPresets;
 
-
     uint64 m_displayInfoCallbackIndex;
 
     void UnhideUnfreezeAll();
@@ -117,13 +120,20 @@ protected:
 
     void OnMenuFOVCustom();
 
+    void CreateFOVMenu();
     void PopUpFOVMenu();
 
     void OnMenuAspectRatioCustom();
+    void CreateAspectMenu();
     void PopUpAspectMenu();
 
     void OnMenuResolutionCustom();
+    void CreateResolutionMenu();
     void PopUpResolutionMenu();
+
+    QMenu* m_fovMenu = nullptr;
+    QMenu* m_aspectMenu = nullptr;
+    QMenu* m_resolutionMenu = nullptr;
 
     QScopedPointer<Ui::ViewportTitleDlg> m_ui;
 

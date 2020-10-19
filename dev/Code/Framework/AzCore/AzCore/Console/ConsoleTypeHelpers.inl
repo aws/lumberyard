@@ -161,7 +161,8 @@ namespace AZ
                     return false;
                 }
 
-                if ((value >= std::numeric_limits<TYPE>::min()) && (value <= std::numeric_limits<TYPE>::max()))
+                //Note: std::numeric_limits<>::min and max have extra parentheses here to min/max being evaluated as macros, to avoid colliding with min/max in Windows.h
+                if ((value >= (std::numeric_limits<TYPE>::min)()) && (value <= (std::numeric_limits<TYPE>::max)()))
                 {
                     outValue = static_cast<TYPE>(value);
                     return true;

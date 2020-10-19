@@ -48,6 +48,7 @@ namespace EMotionFX
 
         void UpdateMotionSetComboBox() override;
 
+        QComboBox* GetMotionSetComboBox() const;
     private slots:
         void OnMotionSetChanged(int index);
 

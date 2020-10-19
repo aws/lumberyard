@@ -127,13 +127,13 @@ namespace EMotionFX
             MorphTargetRuleReadOnly::MorphTargetRuleReadOnly(size_t morphAnimationCount)
                 : m_morphAnimationCount(morphAnimationCount)
             {
-                m_descriptionText = AZStd::string::format("%i morph target motions imported", morphAnimationCount);
+                m_descriptionText = AZStd::string::format("%zu morph target motions imported", morphAnimationCount);
             }
 
             void MorphTargetRuleReadOnly::SetMorphAnimationCount(size_t morphAnimationCount)
             {
                 m_morphAnimationCount = morphAnimationCount;
-                m_descriptionText = AZStd::string::format("%i morph target motions imported", morphAnimationCount);
+                m_descriptionText = AZStd::string::format("%zu morph target motions imported", morphAnimationCount);
             }
 
             size_t MorphTargetRuleReadOnly::GetMorphAnimationCount() const

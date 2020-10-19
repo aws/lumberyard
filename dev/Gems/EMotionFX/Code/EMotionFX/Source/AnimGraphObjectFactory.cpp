@@ -89,8 +89,8 @@
 
 #include "AnimGraphTriggerAction.h"
 #include "AnimGraphParameterAction.h"
-#include "AnimGraphServantParameterAction.h"
-#include "AnimGraphSymbolicServantParameterAction.h"
+#include "AnimGraphFollowerParameterAction.h"
+#include "AnimGraphSymbolicFollowerParameterAction.h"
 #include "Allocators.h"
 
 namespace EMotionFX
@@ -144,8 +144,8 @@ namespace EMotionFX
 
         TriggerActionSetup::Reflect(context);
         AnimGraphParameterAction::Reflect(context);
-        AnimGraphServantParameterAction::Reflect(context);
-        AnimGraphSymbolicServantParameterAction::Reflect(context);
+        AnimGraphFollowerParameterAction::Reflect(context);
+        AnimGraphSymbolicFollowerParameterAction::Reflect(context);
         AnimGraphTriggerAction::Reflect(context);
 
         // Blend tree
@@ -262,8 +262,8 @@ namespace EMotionFX
             azrtti_typeid<AnimGraphPlayTimeCondition>(),
             azrtti_typeid<AnimGraphTagCondition>(),
             azrtti_typeid<AnimGraphParameterAction>(),
-            azrtti_typeid<AnimGraphServantParameterAction>(),
-            azrtti_typeid<AnimGraphSymbolicServantParameterAction>(),
+            azrtti_typeid<AnimGraphFollowerParameterAction>(),
+            azrtti_typeid<AnimGraphSymbolicFollowerParameterAction>(),
             azrtti_typeid<BlendTreeRotationLimitNode>(),
             azrtti_typeid<BlendTreeRotationMath2Node>()
         };

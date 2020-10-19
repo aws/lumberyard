@@ -1659,7 +1659,7 @@ void CTrackViewDopeSheetBase::MouseMoveMove(const QPoint& p, Qt::KeyboardModifie
         m_keyTimeOffset = timeOffset;
     }
 
-    // The time of the selected keys has likely just changed. OnKeySelectionChanged() so the 
+    // The time of the selected keys has likely just changed. OnKeySelectionChanged() so the
     // UI elements of the key properties control will update.
     pSequence->OnKeySelectionChanged();
 }
@@ -2016,10 +2016,17 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
         clamp_tpl<AZ::u8>(FloatToIntRet(vColor.y), 0, 255),
         clamp_tpl<AZ::u8>(FloatToIntRet(vColor.z), 0, 255),
         255);
+    m_colorUpdateTrack = pTrack;
+    m_colorUpdateKeyTime = keyTime;
+
     AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, QString(), this);
     dlg.setWindowTitle(tr("Select Color"));
     dlg.setCurrentColor(defaultColor);
     dlg.setSelectedColor(defaultColor);
+
+    // Allows live update of colors on key creation
+    QObject::connect(&dlg, &AzQtComponents::ColorPicker::currentColorChanged, this, &CTrackViewDopeSheetBase::OnCurrentColorChange);
+
     if (dlg.exec() == QDialog::Accepted)
     {
         const AZ::Color col = dlg.currentColor();
@@ -2032,16 +2039,16 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
 
             AzToolsFramework::ScopedUndoBatch undoBatch("Set Key");
             const unsigned int numChildNodes = pTrack->GetChildCount();
-            for (int i = 0; i < numChildNodes; ++i)
+            for (int subTrackIndex = 0; subTrackIndex < numChildNodes; ++subTrackIndex)
             {
-                CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
+                CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(subTrackIndex));
                 if (IsOkToAddKeyHere(subTrack, keyTime))
                 {
                     CTrackViewKeyHandle newKey = subTrack->CreateKey(keyTime);
 
                     I2DBezierKey bezierKey;
                     newKey.GetKey(&bezierKey);
-                    bezierKey.value = Vec2(keyTime, colArray[i]);
+                    bezierKey.value = Vec2(keyTime, colArray[subTrackIndex]);
                     newKey.SetKey(&bezierKey);
 
                     keyCreated = true;
@@ -2050,13 +2057,27 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
             undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
     }
+    //Remove added keys for live update
+    else
+    {
+        const unsigned int numChildNodes = m_colorUpdateTrack->GetChildCount();
+        for (int subTrackIndex = 0; subTrackIndex < numChildNodes; ++subTrackIndex)
+        {
+            CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(m_colorUpdateTrack->GetChild(subTrackIndex));
+            CTrackViewKeyHandle subTrackKey = subTrack->GetKeyByTime(m_colorUpdateKeyTime);
+            if (subTrackKey.IsValid())
+            {
+                subTrackKey.Delete();
+            }
+        }
+    }
 
     return keyCreated;
 }
 
 void CTrackViewDopeSheetBase::OnCurrentColorChange(const AZ::Color& color)
 {
-    // This is while the color picker is up 
+    // This is while the color picker is up
     // so we want to update the property but not store an undo
     UpdateColorKey(AzQtComponents::toQColor(color), false);
 }
@@ -2092,9 +2113,9 @@ void CTrackViewDopeSheetBase::UpdateColorKey(const QColor& color, bool addToUndo
 void CTrackViewDopeSheetBase::UpdateColorKeyHelper(const ColorF& color)
 {
     const unsigned int numChildNodes = m_colorUpdateTrack->GetChildCount();
-    for (int i = 0; i < numChildNodes; ++i)
+    for (int subTrackIndex = 0; subTrackIndex < numChildNodes; ++subTrackIndex)
     {
-        CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(m_colorUpdateTrack->GetChild(i));
+        CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(m_colorUpdateTrack->GetChild(subTrackIndex));
         CTrackViewKeyHandle subTrackKey = subTrack->GetKeyByTime(m_colorUpdateKeyTime);
         I2DBezierKey bezierKey;
         if (subTrackKey.IsValid())
@@ -2109,7 +2130,7 @@ void CTrackViewDopeSheetBase::UpdateColorKeyHelper(const ColorF& color)
         }
 
         bezierKey.value.x = m_colorUpdateKeyTime;
-        bezierKey.value.y = color[i];
+        bezierKey.value.y = color[subTrackIndex];
         subTrackKey.SetKey(&bezierKey);
     }
 }
@@ -2151,7 +2172,7 @@ void CTrackViewDopeSheetBase::EditSelectedColorKey(CTrackViewTrack* pTrack)
                 // We canceled out of the color picker, revert to color held before opening it
                 UpdateColorKey(AzQtComponents::toQColor(defaultColor), false);
             }
-        }      
+        }
     }
 }
 
@@ -2998,7 +3019,7 @@ CTrackViewKeyHandle CTrackViewDopeSheetBase::CheckCursorOnStartEndTimeAdjustBar(
     CTrackViewTrack* pTrack = GetTrackFromPoint(point);
 
     if (!pTrack || (pTrack->GetParameterType() != AnimParamType::Animation &&
-                    pTrack->GetParameterType() != AnimParamType::TimeRanges && 
+                    pTrack->GetParameterType() != AnimParamType::TimeRanges &&
                     pTrack->GetValueType() != AnimValueType::CharacterAnim &&
                     pTrack->GetValueType() != AnimValueType::AssetBlend))
     {

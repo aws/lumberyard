@@ -13,6 +13,8 @@
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 
+#include <QDir>
+
 namespace AssetProcessor
 {
 
@@ -45,5 +47,69 @@ namespace AssetProcessor
             m_hasDatabaseInfo = false;
         }
 
+    }
+
+    QString BuildAbsolutePathToFile(const AZStd::shared_ptr<const SourceAssetTreeItemData> file)
+    {
+        QDir scanFolder(file->m_scanFolderInfo.m_scanFolder.c_str());
+        QString sourceName = file->m_sourceInfo.m_sourceName.c_str();
+
+        // If a scan folder has a prefix, then source files in those scan folders will have that
+        // prefix prepended in the asset database. Strip that prefix off for building the actual absolute path to the file.
+        if (!file->m_scanFolderInfo.m_outputPrefix.empty())
+        {
+            QRegExp prefixRemovalRegex(QString("^%1/").arg(file->m_scanFolderInfo.m_outputPrefix.c_str()));
+            sourceName.remove(prefixRemovalRegex);
+        }
+        return scanFolder.filePath(sourceName);
+    }
+
+    AZ::Outcome<QString> GetAbsolutePathToSource(const AssetTreeItem& source)
+    {
+        if (source.getChildCount() > 0)
+        {
+            // Folders are special case, they only exist in the interface and don't exist in the asset database.
+            // Figure out a path to this folder by finding a descendant that isn't a folder, taking the absolute
+            // path of that file, and stripping off the path after this folder.
+            size_t directoriesToRemove = 0;
+            const AssetTreeItem* searchForFile = &source;
+            while (searchForFile)
+            {
+                if (searchForFile->getChildCount() == 0)
+                {
+                    const AZStd::shared_ptr<const SourceAssetTreeItemData> sourceItemData =
+                        AZStd::rtti_pointer_cast<const SourceAssetTreeItemData>(searchForFile->GetData());
+                    if (!sourceItemData)
+                    {
+                        return AZ::Failure();
+                    }
+                    QFileInfo fileInfo(BuildAbsolutePathToFile(sourceItemData));
+                    QDir fileFolder(fileInfo.absoluteDir());
+
+                    // The file found wasn't a directory, it was removed when absolute dir was called on the QFileInfo above.
+                    while (directoriesToRemove > 1)
+                    {
+                        fileFolder.cdUp();
+                        --directoriesToRemove;
+                    }
+                    return AZ::Success(fileFolder.absolutePath());
+                }
+                else
+                {
+                    searchForFile = searchForFile->GetChild(0);
+                }
+                ++directoriesToRemove;
+            }
+            return AZ::Failure();
+        }
+        else
+        {
+            const AZStd::shared_ptr<const SourceAssetTreeItemData> sourceItemData = AZStd::rtti_pointer_cast<const SourceAssetTreeItemData>(source.GetData());
+            if (!sourceItemData)
+            {
+                return AZ::Failure();
+            }
+            return AZ::Success(BuildAbsolutePathToFile(sourceItemData));
+        }
     }
 }

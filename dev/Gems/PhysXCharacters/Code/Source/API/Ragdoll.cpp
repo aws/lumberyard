@@ -107,7 +107,8 @@ namespace PhysXCharacters
             return;
         }
 
-        pxScene->lockWrite();
+        PHYSX_SCENE_WRITE_LOCK(pxScene);
+
         for (size_t nodeIndex = 0; nodeIndex < numNodes; nodeIndex++)
         {
             physx::PxRigidDynamic* pxActor = GetPxRigidDynamic(nodeIndex);
@@ -135,7 +136,6 @@ namespace PhysXCharacters
                 }
             }
         }
-        pxScene->unlockWrite();
 
         m_isSimulated = true;
     }
@@ -152,7 +152,8 @@ namespace PhysXCharacters
         physx::PxScene* pxScene = static_cast<physx::PxScene*>(world->GetNativePointer());
         const size_t numNodes = m_nodes.size();
 
-        pxScene->lockWrite();
+        PHYSX_SCENE_WRITE_LOCK(pxScene);
+
         for (size_t nodeIndex = 0; nodeIndex < numNodes; nodeIndex++)
         {
             pxScene->removeActor(*GetPxRigidDynamic(nodeIndex));
@@ -166,7 +167,6 @@ namespace PhysXCharacters
                 }
             }
         }
-        pxScene->unlockWrite();
 
         m_isSimulated = false;
     }

@@ -59,7 +59,7 @@ void WalkVariables(const T& treeObject, const T2& callback, QString path = "")
 {
     for (int i = 0; i < treeObject.GetNumVariables(); i++)
     {
-        auto * var = treeObject.GetVariable(i);
+        auto* var = treeObject.GetVariable(i);
 
         // generate new path
         QString subPath = path;
@@ -180,7 +180,7 @@ void CAttributeView::copyItem(const CAttributeItem* item, bool bRecursively)
     CopyItemVariables(item, bRecursively, m_variableCopyList);
 }
 
-void CAttributeView::CopyItemVariables(const CAttributeItem* item, bool recursive, /*out*/ QVector<TSmartPtr<IVariable>> & variableList)
+void CAttributeView::CopyItemVariables(const CAttributeItem* item, bool recursive, /*out*/ QVector<TSmartPtr<IVariable>>& variableList)
 {
     if (item->getVar() != nullptr)
     {
@@ -265,7 +265,7 @@ void CAttributeView::pasteItem(CAttributeItem* attribute)
     AZ_Assert(toVariables.size() == m_variableCopyList.size(), "pasteItem should only be called if checkPasteItem return true");
 
     //do the copy
-    for (int varIdx = 0; varIdx<m_variableCopyList.size(); varIdx++)
+    for (int varIdx = 0; varIdx < m_variableCopyList.size(); varIdx++)
     {
         //some curves were disabled so don't copy them
         if (toItems[varIdx]->isEnabled())
@@ -295,7 +295,7 @@ bool CAttributeView::checkPasteItem(CAttributeItem* attribute)
     }
 
     //check type for each variable
-    for (int varIdx = 0 ; varIdx<m_variableCopyList.size(); varIdx++)
+    for (int varIdx = 0; varIdx < m_variableCopyList.size(); varIdx++)
     {
         if (!CanCopyVariable(m_variableCopyList[varIdx], toVariables[varIdx]))
         {
@@ -358,7 +358,7 @@ QVector<CAttributeItem*> CAttributeView::findItemsByVar(IVariable* var)
 CAttributeItem* CAttributeView::findItemByVar(IVariable* var)
 {
     QVector<CAttributeItem*> list = findItemsByVar(var);
-    if (list.count() > 0 )
+    if (list.count() > 0)
     {
         return list.takeFirst();
     }
@@ -405,7 +405,7 @@ void CAttributeView::FillFromConfiguration()
     //remove custom panels. it will trigger SignalRmovePanel for each of the custom panels
     m_scrollAreaWidget->ClearCustomPanels();
 
-    for (auto & panel : m_config.GetRoot().panels)
+    for (auto& panel : m_config.GetRoot().panels)
     {
         if (PanelExist(panel.innerGroup.name))
         {
@@ -430,7 +430,7 @@ void CAttributeView::FillFromConfiguration()
     }
 
     //connect to inheritance's enum change signal to refresh the tab
-    CAttributeItem *item = findItemByPath("Emitter.Inheritance");
+    CAttributeItem* item = findItemByPath("Emitter.Inheritance");
     if (item)
     {
         connect(item, &CAttributeItem::SignalEnumChanged, this, &CAttributeView::SignalRefreshAttributes);
@@ -510,7 +510,7 @@ void CAttributeView::ImportPanel(const QString data, bool isFilePath)
         return;
     }
 
-    for (auto & panel : custompanel->GetRoot().panels)
+    for (auto& panel : custompanel->GetRoot().panels)
     {
         QDockWidget* newpanel = nullptr;
 
@@ -595,7 +595,7 @@ void CAttributeView::WriteToBuffer(QByteArray& out)
     QMap<QString, bool>::iterator iter;
 
     // Write panels
-    for (auto & panel : m_panels)
+    for (auto& panel : m_panels)
     {
         QDomElement panelNode = doc.createElement("panel");
         CAttributeListView* dockPanel = static_cast<CAttributeListView*>(panel);
@@ -797,7 +797,7 @@ void CAttributeView::BuildDefaultUI()
     m_panels.clear();
     m_scrollAreaWidget->ClearAllPanels();*/
 
-    for (auto & panel : m_defaultConfig.GetRoot().panels)
+    for (auto& panel : m_defaultConfig.GetRoot().panels)
     {
         if (PanelExist(panel.innerGroup.name))
         {
@@ -880,10 +880,10 @@ void CAttributeView::OnEndReload()
     //Make sure all attribute items trigger the update callback
 
     std::function<void(CAttributeItem*)> func = [&func](CAttributeItem* item)
-        {
-            item->TriggerUpdateCallback();
-            item->ForEachChild(func);
-        };
+    {
+        item->TriggerUpdateCallback();
+        item->ForEachChild(func);
+    };
     for (int i = 0; i < m_children.size(); i++)
     {
         func(m_children[i]);
@@ -1343,6 +1343,8 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
         bool enableDynamicFriction = false;
         bool enableThickness = false;
         bool enableDensity = false;
+        bool isPhysics = false;
+        bool isCollision = false;
 
         if (isGPU)
         {
@@ -1351,6 +1353,7 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
         }
         else
         {
+#if PARTICLES_USE_CRY_PHYSICS
             if (value.compare("SimpleCollision") == 0)
             {
                 enableOnCollideTerrain = true;
@@ -1358,30 +1361,64 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
                 enableOnCollideDynamicObjects = true;
                 enableBounciness = true;
                 enableDynamicFriction = true;
+                isCollision = true;
+                isPhysics = false;
             }
             else if (value.compare("SimplePhysics") == 0)
             {
                 enableSurfaceType = true;
                 enableThickness = true;
                 enableDensity = true;
+                isCollision = true;
+                isPhysics = true;
             }
             else if (value.compare("RigidBody") == 0)
             {
                 enableMaxCollisionEvents = true;
                 enableSurfaceType = true;
                 enableDensity = true;
+                isCollision = true;
+                isPhysics = true;
             }
+#else
+            if (value.compare("SimpleCollision") == 0)
+            {
+                enableOnCollideTerrain = true;
+                enableOnCollideStaticObjects = true;
+                enableOnCollideDynamicObjects = true;
+                isCollision = true;
+                isPhysics = false;
+            }
+            else if (value.compare("RigidBody") == 0)
+            {
+                enableThickness = true;
+                enableMaxCollisionEvents = true;
+                enableSurfaceType = true;
+                enableDensity = true;
+                isCollision = true;
+                isPhysics = true;
+            }
+#endif // PARTICLES_USE_CRY_PHYSICS
         }
 
         SetEnabledFromPath("Collision.Collide_Terrain", enableOnCollideTerrain);
         SetEnabledFromPath("Collision.Collide_Static_Objects", enableOnCollideStaticObjects);
         SetEnabledFromPath("Collision.Collide_Dynamic_Objects", enableOnCollideDynamicObjects);
-        SetEnabledFromPath("Collision.Max_Collision_Events", enableMaxCollisionEvents);
+        SetEnabledFromPath("Collision.Max_Collision_Events", isPhysics);
         SetEnabledFromPath("Collision.Elasticity", enableBounciness);
         SetEnabledFromPath("Collision.Surface_Type", enableSurfaceType);
         SetEnabledFromPath("Collision.Dynamic_Friction", enableDynamicFriction);
         SetEnabledFromPath("Collision.Thickness", enableThickness);
         SetEnabledFromPath("Collision.Density", enableDensity);
+        SetEnabledFromPath("Collision.Collision_Fraction", isCollision);
+        SetEnabledFromPath("Collision.Collision_Cutoff_Distance", isCollision);
+        SetEnabledFromPath("Collision.Final_Collision", isCollision);
+#if !PARTICLES_USE_CRY_PHYSICS
+        SetEnabledFromPath("Collision.Use_Self_Collision", isPhysics);
+        SetEnabledFromPath("Collision.Collision_Layer", isPhysics);
+        SetEnabledFromPath("Collision.Collision_Group", isPhysics);
+        SetEnabledFromPath("Collision.Physics_Material", isCollision);
+#endif
     }
     //is this the physics type property
     else if (varPath.compare("Appearance.Geometry", Qt::CaseInsensitive) == 0)
@@ -1413,6 +1450,20 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
     }
     else if (varPath.compare("Emitter.Emitter_Type", Qt::CaseInsensitive) == 0)
     {
+        //enable/disable collision attributes based on physics type
+        bool enableOnCollideTerrain = false;
+        bool enableOnCollideStaticObjects = false;
+        bool enableOnCollideDynamicObjects = false;
+        bool enableMaxCollisionEvents = false;
+        bool enableBounciness = false;
+        bool enableSurfaceType = false;
+        bool enableDynamicFriction = false;
+        bool enableThickness = false;
+        bool enableDensity = false;
+        bool isPhysics = false;
+
+        IVariable* physType = GetVarFromPath("Collision.Physics_Type");
+
         ResolveVisibility();
         //this will synchronize the emitter shape between cpu and gpu when swapping between them.
         QString value = "";
@@ -1427,8 +1478,12 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
                 value = "ANGLE";
             }
             gpuVar->SetDisplayValue(value);
-            
+
             SetMaxParticleCount(PARTICLE_PARAMS_MAX_COUNT_GPU);
+
+
+            enableThickness = true;
+            enableBounciness = true;
         }
         else
         {
@@ -1438,7 +1493,48 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
             cpuVar->SetDisplayValue(value);
 
             SetMaxParticleCount(PARTICLE_PARAMS_MAX_COUNT_CPU);
+
+            QString physTypeValue = physType->GetDisplayValue();
+
+            if (physTypeValue.compare("SimpleCollision") == 0)
+            {
+                enableOnCollideTerrain = true;
+                enableOnCollideStaticObjects = true;
+                enableOnCollideDynamicObjects = true;
+                enableBounciness = true;
+                enableDynamicFriction = true;
+                isPhysics = false;
+            }
+            else if (physTypeValue.compare("SimplePhysics") == 0)
+            {
+                enableSurfaceType = true;
+                enableThickness = true;
+                enableDensity = true;
+                isPhysics = true;
+            }
+            else if (physTypeValue.compare("RigidBody") == 0)
+            {
+                enableMaxCollisionEvents = true;
+                enableSurfaceType = true;
+                enableDensity = true;
+                isPhysics = true;
+            }
         }
+
+        SetEnabledFromPath("Collision.Collide_Terrain", enableOnCollideTerrain);
+        SetEnabledFromPath("Collision.Collide_Static_Objects", enableOnCollideStaticObjects);
+        SetEnabledFromPath("Collision.Collide_Dynamic_Objects", enableOnCollideDynamicObjects);
+        SetEnabledFromPath("Collision.Max_Collision_Events", enableMaxCollisionEvents);
+        SetEnabledFromPath("Collision.Elasticity", enableBounciness);
+        SetEnabledFromPath("Collision.Surface_Type", enableSurfaceType);
+        SetEnabledFromPath("Collision.Dynamic_Friction", enableDynamicFriction);
+        SetEnabledFromPath("Collision.Thickness", enableThickness);
+        SetEnabledFromPath("Collision.Density", enableDensity);
+#if !PARTICLES_USE_CRY_PHYSICS
+        SetEnabledFromPath("Collision.Use_Self_Collision", isPhysics);
+        SetEnabledFromPath("Collision.Collision_Layer", isPhysics);
+        SetEnabledFromPath("Collision.Collision_Group", isPhysics);
+#endif
     }
     else if (varPath.compare("Beam.Segment_Type", Qt::CaseInsensitive) == 0)
     {
@@ -1479,7 +1575,7 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
     else if (varPath.compare("Emitter.Spawn_Indirection", Qt::CaseInsensitive) == 0)
     {
         //will need modify continuous attribute to false and disable it
-        IVariable *varContinuous = GetVarFromPath("Timing.Continuous");
+        IVariable* varContinuous = GetVarFromPath("Timing.Continuous");
         QString value = var->GetDisplayValue();
         bool disable = ParticleParams::ESpawn::TypeInfo().MatchName(ParticleParams::ESpawn::ParentDeath, value.toUtf8().data())
             || ParticleParams::ESpawn::TypeInfo().MatchName(ParticleParams::ESpawn::ParentCollide, value.toUtf8().data());
@@ -1506,6 +1602,13 @@ void CAttributeView::UpdateLogicalChildren(IVariable* var)
         SetEnabledFromPath("Size.Size_Y", !value);
         SetEnabledFromPath("Size.Size_Z", !value);
     }
+#if !PARTICLES_USE_CRY_PHYSICS
+    // Not supported yet
+    else if (varPath.compare("Advanced.Force_Generation", Qt::CaseInsensitive) == 0)
+    {
+        SetEnabledFromPath("Advanced.Force_Generation", false);
+    }
+#endif
 }
 
 void CAttributeView::SetMaxParticleCount(int maxCount)
@@ -2037,7 +2140,7 @@ CParticleItem* CAttributeView::GetCurrentItem()
 
 bool CAttributeView::ValidateUserChangeEnum(IVariable* var, const QString& newText)
 {
-    if(var == GetVarFromPath("Emitter.Emitter_Shape") || var == GetVarFromPath("Emitter.Emitter_Gpu_Shape"))
+    if (var == GetVarFromPath("Emitter.Emitter_Shape") || var == GetVarFromPath("Emitter.Emitter_Gpu_Shape"))
     {
         return ValidateEmitterShapeChange();
     }
@@ -2092,7 +2195,7 @@ bool CAttributeView::HandleUserChangedEnum(IVariable* var, const QString& newVar
         return false;
 
     }
-    else if ( var == GetVarFromPath("Angles.Facing_Gpu"))
+    else if (var == GetVarFromPath("Angles.Facing_Gpu"))
     {
         //keep cpu facing sync
         IVariable* cpuVar = GetVarFromPath("Angles.Facing");

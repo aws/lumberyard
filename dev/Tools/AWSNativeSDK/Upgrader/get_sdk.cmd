@@ -28,7 +28,7 @@ GOTO :EOF
 SET PYTHON=%PYTHON_DIR%\python3.cmd
 IF EXIST "%PYTHON%" GOTO PYTHON_EXISTS
 
-ECHO Could not find python.cmd in %PYTHON_DIR%
+ECHO Could not find python3.cmd in %PYTHON_DIR%
 GOTO :EOF
 
 :PYTHON_EXISTS

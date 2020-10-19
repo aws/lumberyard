@@ -365,27 +365,27 @@ class Parallel(object):
 							st = Task.RUN_ME	# but forcing the task to run anyways
 
 							# override the inputs for special handling
-							for input in tsk.inputs:
-								if input.abspath() in file_filter_list:
-									# patch output file to handle special commands
-									override_output_file = self.bld.is_option_true('show_preprocessed_file')  or self.bld.is_option_true('show_disassembly')
-									if override_output_file == True:
+							if len(tsk.outputs) > 0:
+								for input in tsk.inputs:
+									if input.abspath() in file_filter_list:
+										# patch output file to handle special commands
+										override_output_file = self.bld.is_option_true('show_preprocessed_file')  or self.bld.is_option_true('show_disassembly')
+										if override_output_file == True:
+											# Get file extension
+											if self.bld.is_option_true('show_disassembly'):
+												file_ext = '.diasm'
+											elif self.bld.is_option_true('show_preprocessed_file'):
+												file_ext = '.i'
+											else:
+												self.bld.fatal("Command option file extension output file implementation missing.")
 
-										# Get file extension
-										if self.bld.is_option_true('show_disassembly'):
-											file_ext = '.diasm'
-										elif self.bld.is_option_true('show_preprocessed_file'):
-											file_ext = '.i'
-										else:
-											self.bld.fatal("Command option file extension output file implementation missing.")
-														
-										# Set output file
-										out_file = input.change_ext(file_ext)
-										tsk.outputs[0] = out_file
-										
-										# Add post build message to allow VS user to open the file
-										if getattr(self.bld.options, 'execsolution', ""):
-											self.bld.post_build_msg_warning.append('%s(0): warning: %s.' % (out_file.abspath(), "Click here to open output file"))
+											# Set output file
+											out_file = input.change_ext(file_ext)
+											tsk.outputs[0] = out_file
+
+											# Add post build message to allow VS user to open the file
+											if getattr(self.bld.options, 'execsolution', ""):
+												self.bld.post_build_msg_warning.append('%s(0): warning: %s.' % (out_file.abspath(), "Click here to open output file"))
 							# fallout, resume normal task processing with the overrides
 			except Exception:
 				self.processed += 1

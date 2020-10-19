@@ -12,12 +12,13 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+
+#if ENABLE_CRY_PHYSICS
+
 #include "RopeRenderNode.h"
 #include "VisAreas.h"
 #include "ObjMan.h"
 #include "MatMan.h"
-
-#include "IAudioSystem.h"
 
 class TubeSurface
     : public _i_reference_target_t
@@ -1941,3 +1942,4 @@ void CRopeRenderNode::OffsetPosition(const Vec3& delta)
     }
 }
 
+#endif // ENABLE_CRY_PHYSICS

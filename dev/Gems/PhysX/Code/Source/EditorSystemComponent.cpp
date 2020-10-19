@@ -15,9 +15,12 @@
 #include "EditorSystemComponent.h"
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/Physics/CollisionNotificationBus.h>
+#include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <PhysX/ConfigurationBus.h>
 #include <Editor/ConfigStringLineEditCtrl.h>
+#include <Editor/EditorJointConfiguration.h>
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 
 namespace PhysX
@@ -27,6 +30,11 @@ namespace PhysX
 
     void EditorSystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        EditorJointLimitConfig::Reflect(context);
+        EditorJointLimitPairConfig::Reflect(context);
+        EditorJointLimitConeConfig::Reflect(context);
+        EditorJointConfig::Reflect(context);
+
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorSystemComponent, AZ::Component>()
@@ -43,6 +51,7 @@ namespace PhysX
         editorWorldConfiguration.m_fixedTimeStep = 0.0f;
 
         m_editorWorld = AZ::Interface<Physics::System>::Get()->CreateWorldCustom(Physics::EditorPhysicsWorldId, editorWorldConfiguration);
+        m_editorWorld->SetEventHandler(this);
 
         PhysX::RegisterConfigStringLineEditHandler(); // Register custom unique string line edit control
 
@@ -71,15 +80,62 @@ namespace PhysX
         m_editorWorldDirty = true;
     }
 
+    void EditorSystemComponent::OnTriggerEnter(const Physics::TriggerEvent& triggerEvent)
+    {
+        Physics::TriggerNotificationBus::QueueEvent(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerEnter, triggerEvent);
+    }
+
+    void EditorSystemComponent::OnTriggerExit(const Physics::TriggerEvent& triggerEvent)
+    {
+        Physics::TriggerNotificationBus::QueueEvent(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerExit, triggerEvent);
+    }
+
+    void EditorSystemComponent::OnCollisionBegin(const Physics::CollisionEvent& event)
+    {
+        Physics::CollisionEvent collisionEvent = event;
+        Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
+        AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
+        AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
+        Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
+    }
+
+    void EditorSystemComponent::OnCollisionPersist(const Physics::CollisionEvent& event)
+    {
+        Physics::CollisionEvent collisionEvent = event;
+        Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
+        AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
+        AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
+        Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
+    }
+
+    void EditorSystemComponent::OnCollisionEnd(const Physics::CollisionEvent& event)
+    {
+        Physics::CollisionEvent collisionEvent = event;
+        Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
+        AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
+        AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
+        Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
+    }
+
     void EditorSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
         m_intervalCountdown -= deltaTime;
 
-        if (m_editorWorldDirty && m_editorWorld && m_intervalCountdown <= 0.0f)
+        if (m_onlyTickOnDirty)
         {
-            m_editorWorld->Update(s_fixedDeltaTime);
-            m_intervalCountdown = s_minEditorWorldUpdateInterval;
-            m_editorWorldDirty = false;
+            if (m_editorWorldDirty && m_editorWorld && m_intervalCountdown <= 0.0f)
+            {
+                m_editorWorld->Update(s_fixedDeltaTime);
+                m_intervalCountdown = s_minEditorWorldUpdateInterval;
+                m_editorWorldDirty = false;
+            }
+        }
+        else
+        {
+            if (m_editorWorld)
+            {
+                m_editorWorld->Update(deltaTime);
+            }
         }
     }
 

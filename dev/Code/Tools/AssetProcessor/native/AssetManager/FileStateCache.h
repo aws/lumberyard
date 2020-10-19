@@ -17,6 +17,7 @@
 #include <QString>
 #include <QSet>
 #include <QFileInfo>
+#include <AzCore/Interface/Interface.h>
 
 namespace AssetProcessor
 {
@@ -40,35 +41,36 @@ namespace AssetProcessor
         bool m_isDirectory{};
     };
 
-    class FileStateRequests
-        : public AZ::EBusTraits
+    struct IFileStateRequests
     {
-    public:
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-        typedef AZStd::recursive_mutex MutexType;
-        static const bool LocklessDispatch = true; // FileStateCache is being fed information from outside the ebus so we have to do our own locking anyway
+        AZ_RTTI(IFileStateRequests, "{2D883B3A-DCA3-4CE0-976C-4511C3277371}");
+
+        IFileStateRequests() = default;
+        virtual ~IFileStateRequests() = default;
+
+        using FileHash = AZ::u64;
 
         /// Fetches info on the file/directory if it exists.  Returns true if it exists, false otherwise
         virtual bool GetFileInfo(const QString& absolutePath, FileStateInfo* foundFileInfo) const = 0;
         /// Convenience function to check if a file or directory exists.
         virtual bool Exists(const QString& absolutePath) const = 0;
+        virtual bool GetHash(const QString& absolutePath, FileHash* foundHash) = 0;
+
+        AZ_DISABLE_COPY_MOVE(IFileStateRequests);
     };
-
-    using FileStateRequestBus = AZ::EBus<FileStateRequests>;
-
+    
     class FileStateBase
-        : public FileStateRequestBus::Handler
+        : public IFileStateRequests
     {
     public:
         FileStateBase()
         {
-            BusConnect();
+            AZ::Interface<IFileStateRequests>::Register(this);
         }
 
         virtual ~FileStateBase()
         {
-            BusDisconnect();
+            AZ::Interface<IFileStateRequests>::Unregister(this);
         }
 
         /// Bulk adds file state to the cache
@@ -91,9 +93,11 @@ namespace AssetProcessor
     {
     public:
 
+
         // FileStateRequestBus implementation
         bool GetFileInfo(const QString& absolutePath, FileStateInfo* foundFileInfo) const override;
         bool Exists(const QString& absolutePath) const override;
+        bool GetHash(const QString& absolutePath, FileHash* foundHash) override;
 
         void AddInfoSet(QSet<AssetFileInfo> infoSet) override;
         void AddFile(const QString& absolutePath) override;
@@ -101,6 +105,9 @@ namespace AssetProcessor
         void RemoveFile(const QString& absolutePath) override;
 
     private:
+
+        /// Invalidates the hash for a file so it will be re-computed next time it's requested
+        void InvalidateHash(const QString& absolutePath);
 
         /// Handles converting a file path into a uniform format for use as a map key
         QString PathToKey(const QString& absolutePath) const;
@@ -113,6 +120,8 @@ namespace AssetProcessor
 
         mutable AZStd::recursive_mutex m_mapMutex;
         QHash<QString, FileStateInfo> m_fileInfoMap;
+        
+        QHash<QString, FileHash> m_fileHashMap;
 
         using LockGuardType = AZStd::lock_guard<decltype(m_mapMutex)>;
     };
@@ -125,5 +134,6 @@ namespace AssetProcessor
         // FileStateRequestBus implementation
         bool GetFileInfo(const QString& absolutePath, FileStateInfo* foundFileInfo) const override;
         bool Exists(const QString& absolutePath) const override;
+        bool GetHash(const QString& absolutePath, FileHash* foundHash) override;
     };
 } // namespace AssetProcessor

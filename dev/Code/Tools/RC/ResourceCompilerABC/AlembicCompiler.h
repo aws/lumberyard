@@ -304,7 +304,9 @@ private:
     // Error count
     AZStd::atomic_uint m_errorCount;
 
+#if ENABLE_CRY_PHYSICS
     CPhysWorldLoader m_physLoader;
+#endif
 };
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERABC_ALEMBICCOMPILER_H

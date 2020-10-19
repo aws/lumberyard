@@ -38,6 +38,7 @@ namespace AzQtComponents
         void mousePressEvent(QMouseEvent *event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
+        void mouseDoubleClickEvent(QMouseEvent* event) override;
         void finishDrag();
 
         static bool IsTabbed(QDockWidget* dockWidget);
@@ -48,6 +49,7 @@ namespace AzQtComponents
         void tabCountChanged(int count);
         void tabWidgetInserted(QWidget* widget);
         void undockTab(int index);
+        void tabBarDoubleClicked();
 
     protected:
         void closeEvent(QCloseEvent* event) override;

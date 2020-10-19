@@ -168,7 +168,9 @@ public:
 
     virtual void SetTransformDelegate(ITransformDelegate* pTransformDelegate) override;
 
+#if ENABLE_CRY_PHYSICS
     virtual IPhysicalEntity* GetCollisionEntity() const;
+#endif
 
     virtual void SetMaterial(CMaterial* mtl);
     virtual CMaterial* GetRenderMaterial() const;

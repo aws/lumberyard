@@ -17,26 +17,32 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
+#include <Vegetation/InstanceSpawner.h>
+#include <Vegetation/LegacyVegetationInstanceSpawner.h>
+
 namespace Vegetation
 {
 
     void StaticVegetationSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services)
     {
-    
+        services.push_back(AZ_CRC("StaticVegetationSystemService", 0xa787444a));
     }
 
     void StaticVegetationSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services)
     {
-
+        services.push_back(AZ_CRC("StaticVegetationSystemService", 0xa787444a));
     }
 
     void StaticVegetationSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& services)
     {
-
+        services.push_back(AZ_CRC("VegetationSystemService", 0xa2322728));
+        services.push_back(AZ_CRC("VegetationInstanceSystemService", 0x823a6007));
     }
 
     void StaticVegetationSystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        LegacyVegetationInstanceSpawner::Reflect(context);
+
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {

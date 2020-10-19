@@ -12,6 +12,7 @@
 *.ma.swatches
 *.bak
 *.bak2
+*.akd
 Solutions
 BinTemp
 *.options

@@ -27,7 +27,6 @@
 
 // ugly: for GetMovementController()
 #include "IActorSystem.h"
-#include "IVehicleSystem.h"
 
 #include "INetwork.h"
 
@@ -1229,6 +1228,7 @@ bool CGameObject::NetSerialize(TSerialize ser, EEntityAspects aspect, uint8 prof
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     if (aspect == eEA_Physics && !m_pProfileManager)
     {
         if (IComponentSerializationPtr serializationComponent = GetEntity()->GetComponent<IComponentSerialization>())
@@ -1240,6 +1240,7 @@ bool CGameObject::NetSerialize(TSerialize ser, EEntityAspects aspect, uint8 prof
             return false;
         }
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (aspect == eEA_Script)
     {
@@ -1258,10 +1259,12 @@ NetworkAspectType CGameObject::GetNetSerializeAspects()
         aspects |= iter->pExtension->GetNetSerializeAspects();
     }
 
+#if ENABLE_CRY_PHYSICS
     if (!m_bNoSyncPhysics && (GetEntity()->GetComponent<IComponentPhysics>() || m_pProfileManager))
     {
         aspects |= eEA_Physics;
     }
+#endif // ENABLE_CRY_PHYSICS
 
     if (GetEntity()->GetComponent<IComponentScript>())
     {
@@ -1738,12 +1741,14 @@ void CGameObject::HandleEvent(const SGameObjectEvent& evt)
         break;
     case eGFE_DisablePhysics:
     {
+#if ENABLE_CRY_PHYSICS
         if (IPhysicalEntity* pEnt = GetEntity()->GetPhysics())
         {
             pe_action_awake awake;
             awake.bAwake = false;
             pEnt->Action(&awake);
         }
+#endif // ENABLE_CRY_PHYSICS
     }
     break;
     }
@@ -2083,10 +2088,6 @@ IMovementController* CGameObject::GetMovementController()
     if (pActor != NULL)
     {
         return pActor->GetMovementController();
-    }
-    else if (IVehicle* pVehicle = CCryAction::GetCryAction()->GetIVehicleSystem()->GetVehicle(m_pEntity->GetId()))
-    {
-        return pVehicle->GetMovementController();
     }
     else
     {

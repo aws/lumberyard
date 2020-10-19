@@ -415,17 +415,6 @@ void CDecalRenderNode::Render(const SRendParams& rParam, const SRenderingPassInf
 }
 
 
-IPhysicalEntity* CDecalRenderNode::GetPhysics() const
-{
-    return 0;
-}
-
-
-void CDecalRenderNode::SetPhysics(IPhysicalEntity*)
-{
-}
-
-
 void CDecalRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
 {
     if (m_decal)

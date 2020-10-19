@@ -30,7 +30,7 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             MotionAsset();
-
+            void SetData(EMotionFX::SkeletalMotion* motion);  // Only Used for testing
             EMotionFXPtr<EMotionFX::SkeletalMotion> m_emfxMotion;
         };
 

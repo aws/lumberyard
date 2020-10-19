@@ -92,7 +92,9 @@ namespace PhysX
 
     void TerrainComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
-        (void)dependent;
+        // Depends on TerrainService, but not required. Simply guarantees that if a "TerrainService" component
+        // exists it will be activated before the PhysX Terrain component is activated.
+        dependent.push_back(AZ_CRC_CE("TerrainService"));
     }
 
     TerrainComponent::TerrainComponent(const TerrainConfiguration& configuration)
@@ -102,15 +104,33 @@ namespace PhysX
 
     void TerrainComponent::Activate()
     {
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusConnect();
+
+        bool isTerrainPresent = AzFramework::Terrain::TerrainDataRequestBus::HasHandlers();
+        if (isTerrainPresent)
+        {
+            EnableTerrain();
+        }
+    }
+
+    void TerrainComponent::Deactivate()
+    {
+        AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
+
+        DisableTerrain();
+    }
+
+    void TerrainComponent::EnableTerrain()
+    {
         m_terrainTiles.clear();
         Physics::TerrainRequestBus::Handler::BusConnect(GetEntityId());
         LoadTerrain();
         Utils::LogWarningIfMultipleComponents<Physics::TerrainRequestBus>(
-            "TerrainComponent", 
+            "TerrainComponent",
             "Multiple TerrainComponents found in the scene on these entities:");
     }
 
-    void TerrainComponent::Deactivate()
+    void TerrainComponent::DisableTerrain()
     {
         Physics::TerrainRequestBus::Handler::BusDisconnect();
         m_terrainTiles.clear();
@@ -148,6 +168,16 @@ namespace PhysX
             return m_terrainTiles[0].get();
         }
         return nullptr;
+    }
+
+    void TerrainComponent::OnTerrainDataCreateEnd()
+    {
+        EnableTerrain();
+    }
+
+    void TerrainComponent::OnTerrainDataDestroyBegin()
+    {
+        DisableTerrain();
     }
 
     void TerrainComponent::LoadTerrain()

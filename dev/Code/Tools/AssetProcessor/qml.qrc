@@ -13,7 +13,7 @@
     <file>qml/main.qml</file>
     <file>qml/ConnectionTab.qml</file>
     <file>qml/ConnectionsTabView.qml</file>
-    <file>AssetProcessor.png</file>
+    <file>lyassetprocessor.png</file>
     <file>i18n/qml_en_us.qm</file>
     <file>i18n/qml_ww_ww.qm</file>
   </qresource>

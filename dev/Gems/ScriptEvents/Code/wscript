@@ -22,7 +22,7 @@ def build(bld):
         win_features    = ['crcfix'],
 
         includes        = ['Include', 'Include/ScriptEvents', 'Source'],
-        export_includes = ['.', 'Include', 'Include/ScriptCanvas'],
+        export_includes = ['.', 'Include', 'Include/ScriptEvents'],
 
         use             = ['AzCore', 'AzFramework'],
 

@@ -81,6 +81,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser.add_argument('--end-date', required=False, help='End date value for WINDOW staging (NEVER or date/time in format January 15 2018 14:30) - UTC time')
     subparser.add_argument('--all', required=False, action='store_true', help='Upload all paks regardless of file check')
     subparser.add_argument('--signing', required=False, action='store_true', help='Add file signatures to the content table for client side verification')
+    subparser.add_argument('--invalidate-existing-files', required=False, action='store_true', help='Remove a file from CloudFront edge caches if exists')
 
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_upload_manifest_content)
@@ -93,6 +94,7 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     subparser.add_argument('--end-date', required=False, help='End date value for WINDOW staging (NEVER or date/time in format January 15 2018 14:30) - UTC time')
     subparser.add_argument('--signing', required=False, action='store_true', help='Add file signatures to the content table for client side verification')
     subparser.add_argument('--bundle-type', required=False, default='pak', help='Type of bundle (by file extension, pak for example) to search for')
+    subparser.add_argument('--invalidate-existing-files', required=False, action='store_true', help='Remove a file from CloudFront edge caches if exists')
 
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.upload_folder_command)
@@ -103,6 +105,13 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
 
     add_common_args(subparser)
     subparser.set_defaults(func=cloudfront.command_upload_cloudfront_key)
+
+    subparser = dynamic_content_subparsers.add_parser('invalidate-file', help='Remove a file from CloudFront edge caches before it expires')
+    subparser.add_argument('--file-path', required=True, help='File name in bucket')
+    subparser.add_argument('--caller-reference', required=True, help='A value to uniquely identify an invalidation request.')
+
+    add_common_args(subparser)
+    subparser.set_defaults(func=cloudfront.command_invalidate_file)
 
     subparser = dynamic_content_subparsers.add_parser('compare-bucket-content', help='Compare manifest content to the bucket using HEAD Metadata checks')
     subparser.add_argument('--manifest-path', required=False, help='Path to the manifest to use')

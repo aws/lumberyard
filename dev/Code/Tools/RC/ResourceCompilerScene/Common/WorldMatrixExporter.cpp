@@ -16,11 +16,9 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphUpwardsIterator.h>
-#include <SceneAPI/SceneCore/Containers/Views/SceneGraphChildIterator.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
+#include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IOriginRule.h>
-#include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
-#include <SceneAPI/SceneCore/DataTypes/GraphData/ITransform.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <RC/ResourceCompilerScene/Common/CommonExportContexts.h>
 #include <RC/ResourceCompilerScene/Common/WorldMatrixExporter.h>
@@ -67,34 +65,9 @@ namespace AZ
             AZStd::shared_ptr<const SceneDataTypes::IOriginRule> rule = context.m_group.GetRuleContainerConst().FindFirstByType<SceneDataTypes::IOriginRule>();
             if (rule)
             {
-                if (rule->GetTranslation() != Vector3(0.0f, 0.0f, 0.0f) || !rule->GetRotation().IsIdentity())
-                {
-                    m_cachedRootMatrix = Transform::CreateFromQuaternionAndTranslation(rule->GetRotation(), rule->GetTranslation());
-                    m_cachedRootMatrixIsSet = true;
-                }
-
-                if (rule->GetScale() != 1.0f)
-                {
-                    float scale = rule->GetScale();
-                    m_cachedRootMatrix.MultiplyByScale(Vector3(scale, scale, scale));
-                    m_cachedRootMatrixIsSet = true;
-                }
-
-                if (!rule->GetOriginNodeName().empty() && !rule->UseRootAsOrigin())
-                {
-                    const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
-                    SceneContainers::SceneGraph::NodeIndex index = graph.Find(rule->GetOriginNodeName());
-                    if (index.IsValid())
-                    {
-                        Transform worldMatrix = Transform::CreateIdentity();
-                        if (ConcatenateMatricesUpwards(worldMatrix, graph.ConvertToHierarchyIterator(index), graph))
-                        {
-                            worldMatrix.InvertFull();
-                            m_cachedRootMatrix *= worldMatrix;
-                            m_cachedRootMatrixIsSet = true;
-                        }
-                    }
-                }
+                m_cachedRootMatrix = SceneAPI::Utilities::GetOriginRuleTransform(*rule, context.m_scene.GetGraph());
+                m_cachedRootMatrixIsSet = !m_cachedRootMatrix.IsClose(Transform::CreateIdentity());
+                            
                 return m_cachedRootMatrixIsSet ? SceneEvents::ProcessingResult::Success : SceneEvents::ProcessingResult::Ignored;
             }
             else
@@ -113,8 +86,8 @@ namespace AZ
             Transform worldMatrix = Transform::CreateIdentity();
 
             const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
-            HierarchyStorageIterator nodeIterator = graph.ConvertToHierarchyIterator(context.m_nodeIndex);
-            bool translated = ConcatenateMatricesUpwards(worldMatrix, nodeIterator, graph);
+            SceneAPI::Containers::SceneGraph::HierarchyStorageConstIterator nodeIterator = graph.ConvertToHierarchyIterator(context.m_nodeIndex);
+            bool translated = SceneAPI::Utilities::ConcatenateMatricesUpwards(worldMatrix, nodeIterator, graph);
 
             AZ_Assert(m_cachedGroup == &context.m_group, "NodeExportContext doesn't belong to chain of previously called MeshGroupExportContext.");
             if (m_cachedRootMatrixIsSet)
@@ -122,9 +95,7 @@ namespace AZ
                 worldMatrix = m_cachedRootMatrix * worldMatrix;
                 translated = true;
             }
-
  
-
             //If we aren't merging nodes we need to put the transforms into the localTM
             //due to how the CGFSaver works inside the ResourceCompilerPC code. 
             if (!context.m_container.GetExportInfo()->bMergeAllNodes)
@@ -138,51 +109,6 @@ namespace AZ
             context.m_node.bIdentityMatrix = !translated;
 
             return SceneEvents::ProcessingResult::Success;
-        }
-
-        bool WorldMatrixExporter::ConcatenateMatricesUpwards(Transform& transform, const HierarchyStorageIterator& nodeIterator, const SceneContainers::SceneGraph& graph) const
-        {
-            bool translated = false;
-
-            auto view = SceneViews::MakeSceneGraphUpwardsView(graph, nodeIterator, graph.GetContentStorage().cbegin(), true);
-            for (auto it = view.begin(); it != view.end(); ++it)
-            {
-                if (!(*it))
-                {
-                    continue;
-                }
-
-                const SceneDataTypes::ITransform* nodeTransform = azrtti_cast<const SceneDataTypes::ITransform*>(it->get());
-                if (nodeTransform)
-                {
-                    transform = nodeTransform->GetMatrix() * transform;
-                    translated = true;
-                }
-                else
-                {
-                    bool endPointTransform = MultiplyEndPointTransforms(transform, it.GetHierarchyIterator(), graph);
-                    translated = translated || endPointTransform;
-                }
-            }
-            return translated;
-        }
-
-        bool WorldMatrixExporter::MultiplyEndPointTransforms(Transform& transform, const HierarchyStorageIterator& nodeIterator, const SceneContainers::SceneGraph& graph) const
-        {
-            // If the translation is not an end point it means it's its own group as opposed to being
-            //      a component of the parent, so only list end point children.
-            auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, nodeIterator, 
-                graph.GetContentStorage().begin(), true);
-            auto result = AZStd::find_if(view.begin(), view.end(), SceneContainers::DerivedTypeFilter<SceneDataTypes::ITransform>());
-            if (result != view.end())
-            {
-                transform = azrtti_cast<const SceneDataTypes::ITransform*>(result->get())->GetMatrix() * transform;
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         void WorldMatrixExporter::TransformToMatrix34(Matrix34& out, const Transform& in) const

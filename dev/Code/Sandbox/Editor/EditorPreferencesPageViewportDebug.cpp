@@ -54,6 +54,12 @@ void CEditorPreferencesPage_ViewportDebug::Reflect(AZ::SerializeContext& seriali
 CEditorPreferencesPage_ViewportDebug::CEditorPreferencesPage_ViewportDebug()
 {
     InitializeSettings();
+    m_icon = QIcon(":/res/Debug.svg");
+}
+
+QIcon& CEditorPreferencesPage_ViewportDebug::GetIcon()
+{
+    return m_icon;
 }
 
 void CEditorPreferencesPage_ViewportDebug::OnApply()

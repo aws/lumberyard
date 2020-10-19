@@ -23,6 +23,8 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Math/Random.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <Tests/AZTestShared/Utils/Utils.h>
+
 
 #include <gtest/gtest.h>
 // For GetTypeName<T>()
@@ -1572,6 +1574,40 @@ namespace UnitTest
         AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
+    TEST_F(EBus, CopyConstructorOfEBusHandler_CopyFromConnected_DoesNotAssert)
+    {
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        {
+            MutexBusHandler sourceHandler;
+            // Connect source handler to InterfaceWithMutexBus and then copy it over to a new instance
+            // Afterwards disconnect the source handler from the InterfaceWithMutexBus
+            sourceHandler.BusConnect(1);
+            // Copy behavior which connects to source handler's bus if
+            // Source handler was connected may be unexpected but it should not assert
+            MutexBusHandler targetHandler(sourceHandler);
+            sourceHandler.BusDisconnect();
+            targetHandler.BusDisconnect();
+        }
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
+    }
+
+    TEST_F(EBus, CopyOperatorOfEBusHandler_CopyToConnected_DoesNotAssert)
+    {
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        {
+            MutexBusHandler targetHandler;
+            // Connect source handler to InterfaceWithMutexBus and then copy it over to a new instance
+            // Afterwards disconnect the source handler from the InterfaceWithMutexBus
+            targetHandler.BusConnect(1);
+            // Copy behavior which connects to source handler's bus if
+            // Source handler was connected may be unexpected but it should not assert
+            MutexBusHandler sourceHandler;
+            targetHandler = sourceHandler;
+            sourceHandler.BusDisconnect();
+            targetHandler.BusDisconnect();
+        }
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
+    }
     /**
     * Tests multi-bus handler (a singe ebus instance that can connect to multiple buses)
     */
@@ -1788,6 +1824,32 @@ namespace UnitTest
         delete m_jobManager;
         AllocatorInstance<ThreadPoolAllocator>::Destroy();
         AllocatorInstance<PoolAllocator>::Destroy();
+    }
+
+    class QueueEbusTest
+        : public ScopedAllocatorSetupFixture
+    {
+
+    };
+
+    TEST_F(QueueEbusTest, QueueMessageNoQueueing_QueueMessage_Warning)
+    {
+        using namespace QueueMessageTest;
+        {
+            AZ::Test::AssertAbsorber assertAbsorber;
+            QueueMessage();
+            EXPECT_EQ(assertAbsorber.m_warningCount, 0);
+        }
+        QueueTestSingleBus::ExecuteQueuedEvents();
+        QueueTestSingleBus::AllowFunctionQueuing(false);
+        {
+            AZ::Test::AssertAbsorber assertAbsorber;
+            QueueMessage();
+            EXPECT_EQ(assertAbsorber.m_warningCount, 1);
+        }
+        QueueTestMultiBus::ExecuteQueuedEvents();
+        QueueTestSingleBus::AllowFunctionQueuing(true);
+
     }
 
     class ConnectDisconnectInterface

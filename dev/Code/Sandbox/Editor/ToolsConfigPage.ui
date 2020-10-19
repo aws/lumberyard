@@ -52,56 +52,32 @@
           <item>
            <widget class="QToolButton" name="m_buttonMacroNew">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_00.png</normaloff>:/macros/btn_listedit_00.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Add.svg</normaloff>:/Gallery/Add.svg</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="m_buttonMacroDelete">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_01.png</normaloff>:/macros/btn_listedit_01.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Delete.svg</normaloff>:/Gallery/Delete.svg</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="m_buttonMacroUp">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_02.png</normaloff>:/macros/btn_listedit_02.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Goto-next-level.svg</normaloff>:/Gallery/Goto-next-level.svg</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="m_buttonMacroDown">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_03.png</normaloff>:/macros/btn_listedit_03.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Goto-previous-level.svg</normaloff>:/Gallery/Goto-previous-level.svg</iconset>
             </property>
            </widget>
           </item>
@@ -156,56 +132,32 @@
           <item>
            <widget class="QToolButton" name="m_buttonCommandNew">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_00.png</normaloff>:/macros/btn_listedit_00.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Add.svg</normaloff>:/Gallery/Add.svg</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="m_buttonCommandDelete">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_01.png</normaloff>:/macros/btn_listedit_01.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Delete.svg</normaloff>:/Gallery/Delete.svg</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="m_buttonCommandUp">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_02.png</normaloff>:/macros/btn_listedit_02.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Goto-next-level.svg</normaloff>:/Gallery/Goto-next-level.svg</iconset>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="m_buttonCommandDown">
             <property name="icon">
-             <iconset resource="MainWindow.qrc">
-              <normaloff>:/macros/btn_listedit_03.png</normaloff>:/macros/btn_listedit_03.png</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>14</width>
-              <height>12</height>
-             </size>
+             <iconset>
+              <normaloff>:/Gallery/Goto-previous-level.svg</normaloff>:/Gallery/Goto-previous-level.svg</iconset>
             </property>
            </widget>
           </item>
@@ -357,7 +309,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="MainWindow.qrc"/>
+  <include location="../../Framework/AzQtComponents/AzQtComponents/Components/resources.qrc"/>
  </resources>
  <connections/>
 </ui>

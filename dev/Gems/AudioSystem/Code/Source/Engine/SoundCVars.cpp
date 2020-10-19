@@ -15,7 +15,7 @@
 #include <AudioLogger.h>
 #include <AudioSystem_Traits_Platform.h>
 
-#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <ISystem.h>
 #include <IConsole.h>
@@ -26,6 +26,93 @@ namespace Audio
 {
     extern CAudioLogger g_audioLogger;
 
+#if !AUDIO_ENABLE_CRY_PHYSICS
+
+    // CVar: s_EnableRaycasts
+    // Usage: s_EnableRaycasts=true (false)
+    AZ_CVAR_EXTERNABLE(bool, s_EnableRaycasts, true,
+        nullptr,
+        AZ::ConsoleFunctorFlags::Null,
+        "Set to true/false to globally enable/disable raycasting for audio occlusion & obstruction.");
+
+    // CVar: s_RaycastMinDistance
+    // Usage: s_RaycastMinDistance=0.5
+    // Note: This callback defines an "absolute" minimum constant that the value of the CVar should not go below.
+    //       We clamp the value to this minimum if it goes below this.
+    AZ_CVAR_EXTERNABLE(float, s_RaycastMinDistance, 0.5f,
+        [](const float& minDist) -> void
+        {
+            if (minDist >= s_RaycastMaxDistance)
+            {
+                AZ_Warning("SoundCVars", false,
+                    "CVar 's_RaycastMinDistance' (%f) needs to be less than 's_RaycastMaxDistance' (%f).\n"
+                    "Audio raycasts won't run until the distance range is fixed.\n",
+                    static_cast<float>(s_RaycastMinDistance), static_cast<float>(s_RaycastMaxDistance));
+            }
+
+            static constexpr float s_absoluteMinRaycastDistance = 0.1f;
+            s_RaycastMinDistance = AZ::GetMax(minDist, s_absoluteMinRaycastDistance);
+            AZ_Warning("SoundCVars", s_RaycastMinDistance == minDist,
+                "CVar 's_RaycastMinDistance' will be clamped to an absolute minimum value of %f.\n", s_absoluteMinRaycastDistance);
+        },
+        AZ::ConsoleFunctorFlags::Null,
+        "Raycasts for obstruction/occlusion are not sent for sounds whose distance to the listener is less than this value.");
+
+    // CVar: s_RaycastMaxDistance
+    // Usage: s_RaycastMaxDistance=100.0
+    // Note: This callback defines an "absolute" maximum constant that the value of the CVar should not go above.
+    //       We clamp the value to this maximum if it goes above this.
+    AZ_CVAR_EXTERNABLE(float, s_RaycastMaxDistance, 100.f,
+        [](const float& maxDist) -> void
+        {
+            if (maxDist <= s_RaycastMinDistance)
+            {
+                AZ_Warning("SoundCVars", false,
+                    "CVar 's_RaycastMaxDistance' (%f) needs to be greater than 's_RaycastMinDistance' (%f).\n"
+                    "Audio raycasts won't run until the distance range is fixed.\n",
+                    static_cast<float>(s_RaycastMaxDistance), static_cast<float>(s_RaycastMinDistance));
+            }
+
+            static constexpr float s_absoluteMaxRaycastDistance = 1000.f;
+            s_RaycastMaxDistance = AZ::GetMin(maxDist, s_absoluteMaxRaycastDistance);
+            AZ_Warning("SoundCVars", s_RaycastMaxDistance == maxDist,
+                "CVar 's_RaycastMaxDistance' will be clamped to an absolute maximum value of %f.\n", s_absoluteMaxRaycastDistance);
+        },
+        AZ::ConsoleFunctorFlags::Null,
+        "Raycasts for obstruction/occlusion are not sent for sounds whose distance to the listener is greater than this value.");
+
+    // CVar: s_RaycastCacheTimeMs
+    // Usage: s_RaycastCacheTimeMs=250.0
+    // Note: This callback defines an "absolute" minimum constant that the value of the CVar should not go below.
+    //       We clamp the value to this minimum if it goes below this.
+    AZ_CVAR_EXTERNABLE(float, s_RaycastCacheTimeMs, 250.f,
+        [](const float& cacheTimeMs) -> void
+        {
+            static constexpr float s_absoluteMinRaycastCacheTimeMs = 1 / 60.f;
+            s_RaycastCacheTimeMs = AZ::GetMax(cacheTimeMs, s_absoluteMinRaycastCacheTimeMs);
+            AZ_Warning("SoundCVars", cacheTimeMs == s_RaycastCacheTimeMs,
+                "CVar 's_RaycastCacheTimeMs' will be clamped to an absolute minimum of %f.\n", s_absoluteMinRaycastCacheTimeMs);
+        },
+        AZ::ConsoleFunctorFlags::Null,
+        "Physics raycast results are given this amount of time before they are considered dirty and need to be recast.");
+
+    // CVar: s_RaycastSmoothFactor
+    // Usage: s_RaycastSmoothFactor=5.0
+    AZ_CVAR_EXTERNABLE(float, s_RaycastSmoothFactor, 7.f,
+        [](const float& smoothFactor) ->void
+        {
+            static constexpr float s_absoluteMinRaycastSmoothFactor = 0.f;
+            static constexpr float s_absoluteMaxRaycastSmoothFactor = 10.f;
+            s_RaycastSmoothFactor = AZ::GetClamp(smoothFactor, s_absoluteMinRaycastSmoothFactor, s_absoluteMaxRaycastSmoothFactor);
+            AZ_Warning("SoundCVars", s_RaycastSmoothFactor == smoothFactor,
+                "CVar 's_RaycastSmoothFactor' was be clamped to an absolute range of [%f, %f].\n",
+                s_absoluteMinRaycastSmoothFactor, s_absoluteMaxRaycastSmoothFactor);
+        },
+        AZ::ConsoleFunctorFlags::Null,
+        "How slowly the smoothing of obstruction/occlusion values should smooth to target: delta / (smoothFactor^2 + 1).  "
+        "Low values will smooth faster, high values will smooth slower.");
+#endif // !AUDIO_ENABLE_CRY_PHYSICS
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CSoundCVars::CSoundCVars()
         : m_nATLPoolSize(0)
@@ -33,9 +120,11 @@ namespace Audio
         , m_nAudioObjectPoolSize(0)
         , m_nAudioEventPoolSize(0)
         , m_nAudioProxiesInitType(0)
+#if AUDIO_ENABLE_CRY_PHYSICS
         , m_fOcclusionMaxDistance(0.0f)
         , m_fOcclusionMaxSyncDistance(0.0f)
         , m_fFullObstructionMaxDistance(0.0f)
+#endif // AUDIO_ENABLE_CRY_PHYSICS
         , m_fPositionUpdateThreshold(0.0f)
         , m_fVelocityTrackingThreshold(0.0f)
         , m_audioListenerTranslationPercentage(0.f)
@@ -68,9 +157,11 @@ namespace Audio
 
         // Common Cross-Platform Defaults
         m_nAudioProxiesInitType         = 0;
-        m_fOcclusionMaxDistance         = 500.0f;
+#if AUDIO_ENABLE_CRY_PHYSICS
+        m_fOcclusionMaxDistance         = 100.0f;
         m_fOcclusionMaxSyncDistance     = 10.0f;
         m_fFullObstructionMaxDistance   = 5.0f;
+#endif // AUDIO_ENABLE_CRY_PHYSICS
         m_fPositionUpdateThreshold      = 0.1f;
         m_fVelocityTrackingThreshold    = 0.1f;
 
@@ -94,22 +185,26 @@ namespace Audio
             "Usage: s_FileCacheManagerSize [0/...]\n"
             "Default: " AZ_TRAIT_AUDIOSYSTEM_FILE_CACHE_MANAGER_SIZE_DEFAULT_TEXT "\n");
 
+#if AUDIO_ENABLE_CRY_PHYSICS
+
         REGISTER_CVAR2("s_OcclusionMaxDistance", &m_fOcclusionMaxDistance, m_fOcclusionMaxDistance, VF_CHEAT | VF_CHEAT_NOCHECK,
             "Obstruction/Occlusion is not calculated for the sounds whose distance to the listener is greater than this value.\n"
             "Setting this value to 0 disables obstruction/occlusion calculations.\n"
             "Usage: s_OcclusionMaxDistance [0/...]\n"
-            "Default: 500 m\n");
+            "Default: 100 (100 meters)\n");
 
         REGISTER_CVAR2("s_OcclusionMaxSyncDistance", &m_fOcclusionMaxSyncDistance, m_fOcclusionMaxSyncDistance, VF_CHEAT | VF_CHEAT_NOCHECK,
             "Physics rays are processed synchronously for the sounds that are closer to the listener than this value, and asynchronously\n"
             "for the rest (possible performance optimization).\n"
             "Usage: s_OcclusionMaxSyncDistance [0/...]\n"
-            "Default: 10 m\n");
+            "Default: 10 (10 meters)\n");
 
         REGISTER_CVAR2("s_FullObstructionMaxDistance", &m_fFullObstructionMaxDistance, m_fFullObstructionMaxDistance, VF_CHEAT | VF_CHEAT_NOCHECK,
             "For the sounds whose distance to the listener is greater than this value, the obstruction value gets attenuated with distance.\n"
             "Usage: s_FullObstructionMaxDistance [0/...]\n"
             "Default: 5 m\n");
+
+#endif // AUDIO_ENABLE_CRY_PHYSICS
 
         REGISTER_CVAR2("s_PositionUpdateThreshold", &m_fPositionUpdateThreshold, m_fPositionUpdateThreshold, VF_CHEAT | VF_CHEAT_NOCHECK,
             "An audio object has to move by at least this amount to issue a position update request to the audio system.\n"
@@ -176,6 +271,16 @@ namespace Audio
             "If the third argument is provided, the AudioSwitch is set on the AudioObject with the given ID,\n"
             "otherwise, the AudioSwitch is set on the GlobalAudioObject\n"
             "Usage: s_SetSwitchState SurfaceType concrete 601 or s_SetSwitchState weather rain\n");
+
+        REGISTER_COMMAND("s_LoadPreload", CmdLoadPreload, VF_CHEAT,
+            "Load an Audio Preload to the FileCacheManager.\n"
+            "The first argument is the name of the ATL preload.\n"
+            "Usage: s_LoadPreload GlobalBank\n");
+
+        REGISTER_COMMAND("s_UnloadPreload", CmdUnloadPreload, VF_CHEAT,
+            "Unload an Audio Preload from the FileCacheManager.\n"
+            "The first argument is the name of the ATL Prelaod.\n"
+            "Usage: s_UnloadPreload GlobalBank\n");
 
         REGISTER_COMMAND("s_PlayFile", CmdPlayFile, VF_CHEAT,
             "Play an audio file directly.  Uses Audio Input Source (Wwise).\n"
@@ -271,50 +376,47 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CSoundCVars::UnregisterVariables()
     {
-        IConsole* const pConsole = gEnv->pConsole;
-        if (pConsole)
-        {
-            pConsole->UnregisterVariable("s_ATLPoolSize");
-            pConsole->UnregisterVariable("s_OcclusionMaxDistance");
-            pConsole->UnregisterVariable("s_OcclusionMaxSyncDistance");
-            pConsole->UnregisterVariable("s_FullObstructionMaxDistance");
-            pConsole->UnregisterVariable("s_PositionUpdateThreshold");
-            pConsole->UnregisterVariable("s_VelocityTrackingThreshold");
-            pConsole->UnregisterVariable("s_FileCacheManagerSize");
-            pConsole->UnregisterVariable("s_AudioObjectPoolSize");
-            pConsole->UnregisterVariable("s_AudioEventPoolSize");
-            pConsole->UnregisterVariable("s_AudioProxiesInitType");
+        UNREGISTER_CVAR("s_ATLPoolSize");
 
-            pConsole->UnregisterVariable("s_AudioListenerTranslationYOffset");
-            pConsole->UnregisterVariable("s_AudioListenerTranslationPercentage");
+#if AUDIO_ENABLE_CRY_PHYSICS
+        UNREGISTER_CVAR("s_OcclusionMaxDistance");
+        UNREGISTER_CVAR("s_OcclusionMaxSyncDistance");
+        UNREGISTER_CVAR("s_FullObstructionMaxDistance");
+#endif // AUDIO_ENABLE_CRY_PHYSICS
+
+        UNREGISTER_CVAR("s_PositionUpdateThreshold");
+        UNREGISTER_CVAR("s_VelocityTrackingThreshold");
+        UNREGISTER_CVAR("s_FileCacheManagerSize");
+        UNREGISTER_CVAR("s_AudioObjectPoolSize");
+        UNREGISTER_CVAR("s_AudioEventPoolSize");
+        UNREGISTER_CVAR("s_AudioProxiesInitType");
+        UNREGISTER_CVAR("s_AudioListenerTranslationYOffset");
+        UNREGISTER_CVAR("s_AudioListenerTranslationPercentage");
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-            pConsole->UnregisterVariable("s_ExecuteTrigger");
-            pConsole->UnregisterVariable("s_StopTrigger");
-            pConsole->UnregisterVariable("s_SetRtpc");
-            pConsole->UnregisterVariable("s_SetSwitchState");
-            pConsole->UnregisterVariable("s_PlayFile");
-            pConsole->UnregisterVariable("s_PlayExternalSource");
-            pConsole->UnregisterVariable("s_SetPanningMode");
+        UNREGISTER_COMMAND("s_ExecuteTrigger");
+        UNREGISTER_COMMAND("s_StopTrigger");
+        UNREGISTER_COMMAND("s_SetRtpc");
+        UNREGISTER_COMMAND("s_SetSwitchState");
+        UNREGISTER_COMMAND("s_LoadPreload");
+        UNREGISTER_COMMAND("s_UnloadPreload");
+        UNREGISTER_COMMAND("s_PlayFile");
+        UNREGISTER_COMMAND("s_PlayExternalSource");
+        UNREGISTER_COMMAND("s_SetPanningMode");
 
-            pConsole->UnregisterVariable("s_IgnoreWindowFocus");
-            pConsole->UnregisterVariable("s_DrawAudioDebug");
-            pConsole->UnregisterVariable("s_FileCacheManagerDebugFilter");
-            pConsole->UnregisterVariable("s_AudioLoggingOptions");
-            pConsole->UnregisterVariable("s_ShowActiveAudioObjectsOnly");
-            pConsole->UnregisterVariable("s_AudioTriggersDebugFilter");
-            pConsole->UnregisterVariable("s_AudioObjectsDebugFilter");
+        UNREGISTER_CVAR("s_IgnoreWindowFocus");
+        UNREGISTER_CVAR("s_DrawAudioDebug");
+        UNREGISTER_CVAR("s_FileCacheManagerDebugFilter");
+        UNREGISTER_CVAR("s_AudioLoggingOptions");
+        UNREGISTER_CVAR("s_ShowActiveAudioObjectsOnly");
+        UNREGISTER_CVAR("s_AudioTriggersDebugFilter");
+        UNREGISTER_CVAR("s_AudioObjectsDebugFilter");
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-        }
-        else
-        {
-            AZ_Warning("CSoundCVars", false, 
-                "Wwise Impl CVar Unregistration - IConsole is already null or was never initialized.");
-        }
     }
 
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CSoundCVars::CmdExecuteTrigger(IConsoleCmdArgs* pCmdArgs)
     {
@@ -514,6 +616,68 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CSoundCVars::CmdLoadPreload(IConsoleCmdArgs* cmdArgs)
+    {
+        const int argCount = cmdArgs->GetArgCount();
+
+        if (argCount == 2)
+        {
+            const char* preloadName = cmdArgs->GetArg(1);
+
+            TAudioPreloadRequestID preloadId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
+            AudioSystemRequestBus::BroadcastResult(preloadId, &AudioSystemRequestBus::Events::GetAudioPreloadRequestID, preloadName);
+            if (preloadId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            {
+                SAudioRequest request;
+                SAudioManagerRequestData<eAMRT_PRELOAD_SINGLE_REQUEST> requestData(preloadId);
+                request.nFlags = eARF_PRIORITY_NORMAL;
+                request.pData = &requestData;
+
+                AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+            }
+            else
+            {
+                g_audioLogger.Log(eALT_ERROR, "Preload named %s not found", preloadName);
+            }
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_ERROR, "Usage: s_LoadPreload [PreloadName]");
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CSoundCVars::CmdUnloadPreload(IConsoleCmdArgs* cmdArgs)
+    {
+        const int argCount = cmdArgs->GetArgCount();
+
+        if (argCount == 2)
+        {
+            const char* preloadName = cmdArgs->GetArg(1);
+
+            TAudioPreloadRequestID preloadId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
+            AudioSystemRequestBus::BroadcastResult(preloadId, &AudioSystemRequestBus::Events::GetAudioPreloadRequestID, preloadName);
+            if (preloadId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            {
+                SAudioRequest request;
+                SAudioManagerRequestData<eAMRT_UNLOAD_SINGLE_REQUEST> requestData(preloadId);
+                request.nFlags = eARF_PRIORITY_NORMAL;
+                request.pData = &requestData;
+
+                AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+            }
+            else
+            {
+                g_audioLogger.Log(eALT_ERROR, "Preload named %s not found", preloadName);
+            }
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_ERROR, "Usage: s_UnloadPreload [PreloadName]");
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CSoundCVars::CmdPlayFile(IConsoleCmdArgs* cmdArgs)
     {
         const int argCount = cmdArgs->GetArgCount();
@@ -523,7 +687,7 @@ namespace Audio
             const char* filename = cmdArgs->GetArg(1);
 
             AZStd::string fileext;
-            AzFramework::StringFunc::Path::GetExtension(filename, fileext, false);
+            AZ::StringFunc::Path::GetExtension(filename, fileext, false);
 
             AudioInputSourceType audioInputType = AudioInputSourceType::Unsupported;
 

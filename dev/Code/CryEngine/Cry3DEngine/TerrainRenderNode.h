@@ -65,9 +65,6 @@ namespace Terrain
         void SetBBox(const AABB& WSBBox) override {}
         void OffsetPosition(const Vec3& delta) override {}
 
-        struct IPhysicalEntity* GetPhysics() const override { return nullptr; }
-        void SetPhysics(IPhysicalEntity* pPhys) override {}
-
         void SetMaterial(_smart_ptr<IMaterial> pMat) override { m_material = pMat; };
         _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = nullptr) override { return m_material; }
         _smart_ptr<IMaterial> GetMaterialOverride() override { return nullptr; }

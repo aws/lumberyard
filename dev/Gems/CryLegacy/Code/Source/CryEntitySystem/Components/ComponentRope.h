@@ -14,6 +14,8 @@
 #define CRYINCLUDE_CRYENTITYSYSTEM_COMPONENTS_COMPONENTROPE_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
+
 #include "Components/IComponentRope.h"
 
 // forward declarations.
@@ -64,6 +66,7 @@ protected:
     int m_nSegmentsOrg;
     float m_texTileVOrg;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_COMPONENTS_COMPONENTROPE_H
 

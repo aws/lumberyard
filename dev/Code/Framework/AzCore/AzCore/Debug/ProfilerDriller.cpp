@@ -28,7 +28,7 @@ namespace AZ
         //=========================================================================
         ProfilerDriller::ProfilerDriller()
         {
-            AZStd::ThreadEventBus::Handler::BusConnect();
+            AZStd::ThreadDrillerEventBus::Handler::BusConnect();
         }
 
         //=========================================================================
@@ -37,7 +37,7 @@ namespace AZ
         //=========================================================================
         ProfilerDriller::~ProfilerDriller()
         {
-            AZStd::ThreadEventBus::Handler::BusDisconnect();
+            AZStd::ThreadDrillerEventBus::Handler::BusDisconnect();
         }
 
         //=========================================================================

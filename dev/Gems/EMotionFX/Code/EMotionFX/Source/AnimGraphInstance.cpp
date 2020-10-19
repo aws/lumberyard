@@ -119,18 +119,18 @@ namespace EMotionFX
         // remove all the internal attributes (from node ports etc)
         RemoveAllInternalAttributes();
 
-        // Remove all master graph
-        for (AnimGraphInstance* servant : m_servantGraphs)
+        // Remove all leader graph
+        for (AnimGraphInstance* follower : m_followerGraphs)
         {
-            servant->RemoveMasterGraph(this);
+            follower->RemoveLeaderGraph(this);
         }
-        m_servantGraphs.clear();
+        m_followerGraphs.clear();
 
-        for (AnimGraphInstance* master : m_masterGraphs)
+        for (AnimGraphInstance* leader : m_leaderGraphs)
         {
-            master->RemoveServantGraph(this, false);
+            leader->RemoveFollowerGraph(this, false);
         }
-        m_masterGraphs.clear();
+        m_leaderGraphs.clear();
 
         // unregister from the animgraph
         mAnimGraph->RemoveAnimGraphInstance(this);
@@ -517,6 +517,34 @@ namespace EMotionFX
     {
         mParamValues.Insert(index, nullptr);
         ReInitParameterValue(index);
+    }
+
+
+    // move the parameter from old index to new index
+    void AnimGraphInstance::MoveParameterValue(uint32 oldIndex, uint32 newIndex)
+    {
+        MCore::Attribute* oldAttribute = mParamValues[oldIndex];
+
+        // if old index is greater than new index, move elements between oldIndex and newIndex to the right of new index
+        // otherwise, move to the left of new index
+        if (oldIndex > newIndex)
+        {
+            for (uint32 paramIndex = oldIndex; paramIndex > newIndex; paramIndex--)
+            {
+                const uint32 prevIndex = paramIndex - 1;
+                mParamValues[paramIndex] = mParamValues[prevIndex];
+            }
+            mParamValues[newIndex] = oldAttribute;
+        }
+        else
+        {
+            for (uint32 paramIndex = oldIndex; paramIndex < newIndex; paramIndex++)
+            {
+                const uint32 nexIndex = paramIndex + 1;
+                mParamValues[paramIndex] = mParamValues[nexIndex];
+            }
+            mParamValues[newIndex] = oldAttribute;
+        }
     }
 
     void AnimGraphInstance::ResetUniqueDatas()
@@ -987,9 +1015,9 @@ namespace EMotionFX
 
 
     // recursively collect all active anim graph nodes
-    void AnimGraphInstance::CollectActiveAnimGraphNodes(MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType)
+    void AnimGraphInstance::CollectActiveAnimGraphNodes(AZStd::vector<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType)
     {
-        outNodes->Clear(false);
+        outNodes->clear();
         mAnimGraph->GetRootStateMachine()->RecursiveCollectActiveNodes(this, outNodes, nodeType);
     }
 
@@ -1095,60 +1123,60 @@ namespace EMotionFX
     }
    
 
-    void AnimGraphInstance::AddServantGraph(AnimGraphInstance* servant, bool registerMasterInsideServant)
+    void AnimGraphInstance::AddFollowerGraph(AnimGraphInstance* follower, bool registerLeaderInsideFollower)
     {
-        const auto& it = AZStd::find(m_servantGraphs.begin(), m_servantGraphs.end(), servant);
-        if (it == m_servantGraphs.end())
+        const auto& it = AZStd::find(m_followerGraphs.begin(), m_followerGraphs.end(), follower);
+        if (it == m_followerGraphs.end())
         {
-            m_servantGraphs.emplace_back(servant);
+            m_followerGraphs.emplace_back(follower);
         }
 
-        if (registerMasterInsideServant)
+        if (registerLeaderInsideFollower)
         {
-            servant->AddMasterGraph(this);
-        }
-    }
-
-    void AnimGraphInstance::RemoveServantGraph(AnimGraphInstance* servant, bool removeMasterFromServant)
-    {
-        const auto& it = AZStd::find(m_servantGraphs.begin(), m_servantGraphs.end(), servant);
-        if (it != m_servantGraphs.end())
-        {
-            m_servantGraphs.erase(it);
-        }
-
-        if (removeMasterFromServant)
-        {
-            servant->RemoveMasterGraph(this);
+            follower->AddLeaderGraph(this);
         }
     }
 
-    AZStd::vector<AnimGraphInstance*>& AnimGraphInstance::GetServantGraphs()
+    void AnimGraphInstance::RemoveFollowerGraph(AnimGraphInstance* follower, bool removeLeaderFromFollower)
     {
-        return m_servantGraphs;
-    }
-
-    void AnimGraphInstance::AddMasterGraph(AnimGraphInstance* master)
-    {
-        const auto& it = AZStd::find(m_masterGraphs.begin(), m_masterGraphs.end(), master);
-        if (it == m_masterGraphs.end())
+        const auto& it = AZStd::find(m_followerGraphs.begin(), m_followerGraphs.end(), follower);
+        if (it != m_followerGraphs.end())
         {
-            m_masterGraphs.emplace_back(master);
+            m_followerGraphs.erase(it);
+        }
+
+        if (removeLeaderFromFollower)
+        {
+            follower->RemoveLeaderGraph(this);
         }
     }
 
-    void AnimGraphInstance::RemoveMasterGraph(AnimGraphInstance* master)
+    AZStd::vector<AnimGraphInstance*>& AnimGraphInstance::GetFollowerGraphs()
     {
-        const auto& it = AZStd::find(m_masterGraphs.begin(), m_masterGraphs.end(), master);
-        if (it != m_masterGraphs.end())
+        return m_followerGraphs;
+    }
+
+    void AnimGraphInstance::AddLeaderGraph(AnimGraphInstance* leader)
+    {
+        const auto& it = AZStd::find(m_leaderGraphs.begin(), m_leaderGraphs.end(), leader);
+        if (it == m_leaderGraphs.end())
         {
-            m_masterGraphs.erase(it);
+            m_leaderGraphs.emplace_back(leader);
         }
     }
 
-    AZStd::vector<AnimGraphInstance*>& AnimGraphInstance::GetMasterGraphs()
+    void AnimGraphInstance::RemoveLeaderGraph(AnimGraphInstance* leader)
     {
-        return m_masterGraphs;
+        const auto& it = AZStd::find(m_leaderGraphs.begin(), m_leaderGraphs.end(), leader);
+        if (it != m_leaderGraphs.end())
+        {
+            m_leaderGraphs.erase(it);
+        }
+    }
+
+    AZStd::vector<AnimGraphInstance*>& AnimGraphInstance::GetLeaderGraphs()
+    {
+        return m_leaderGraphs;
     }
 
     void AnimGraphInstance::CreateSnapshot(bool authoritative)

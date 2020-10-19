@@ -127,6 +127,7 @@ namespace GraphicsReflectContext
         }
     }
 
+#if ENABLE_CRY_PHYSICS
     AZ::Vector3 Environment::GetWindDirection()
     {
         const Vec3 windDir = gEnv->p3DEngine->GetGlobalWind(false);
@@ -138,6 +139,7 @@ namespace GraphicsReflectContext
         const Vec3 windDirVec = AZVec3ToLYVec3(windDir);
         gEnv->p3DEngine->SetWind(windDirVec);
     }
+#endif // ENABLE_CRY_PHYSICS
 
     void Environment::Reflect(AZ::ReflectContext* context)
     {
@@ -187,6 +189,7 @@ namespace GraphicsReflectContext
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Sun's Longitude in the sky")
                 ->Method("GetSunLongitude", &GetSunLongitude, { {} })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Gets Sun's Longitude in the sky")
+#if ENABLE_CRY_PHYSICS
                 ->Method("SetWindDirection",
                     &SetWindDirection,
                      { { 
@@ -195,6 +198,7 @@ namespace GraphicsReflectContext
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets global wind's direction")
                 ->Method("GetWindDirection", &GetWindDirection, { {} })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Gets global wind's direction")
+#endif // ENABLE_CRY_PHYSICS
                 ;
         }
     }

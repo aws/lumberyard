@@ -1,6 +1,0 @@
-<download name="StarterGame" type="Map">
- <index src="filelist.xml" dest="filelist.xml"/>
- <files>
-  <file src="level.pak" dest="level.pak" size="12300248" md5="d22c79ec5040cc0e1cc23cafbbad9b75"/>
- </files>
-</download>

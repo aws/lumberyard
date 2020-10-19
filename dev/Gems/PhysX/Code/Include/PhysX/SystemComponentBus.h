@@ -78,7 +78,9 @@ namespace PhysX
         /// @param vertices Pointer to beginning of vertex data.
         /// @param vertexCount Number of vertices in mesh.
         /// @return Result of cooking.
-        virtual bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) = 0;
+        AZ_DEPRECATED(
+            virtual bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) = 0;,
+            "CookConvexMeshToFile is deprecated, CookConvexMeshToFile has been moved to Physics::System::CookConvexMeshToFile")
 
         // LUMBERYARD_DEPRECATED(LY-109437)
         //! @deprecated Deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory
@@ -87,7 +89,9 @@ namespace PhysX
         /// @param vertexCount Number of vertices in mesh.
         /// @param result The resulting memory buffer.
         /// @return Result of cooking.
-        virtual bool CookConvexMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount, AZStd::vector<AZ::u8>& result) = 0;
+        AZ_DEPRECATED(
+            virtual bool CookConvexMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount, AZStd::vector<AZ::u8>& result) = 0;,
+            "CookConvexMeshToMemory is deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory")
 
         // LUMBERYARD_DEPRECATED(LY-109437)
         //! @deprecated Deprecated, CookTriangleMeshToFile has been moved to Physics::System::CookTriangleMeshToFile
@@ -98,8 +102,9 @@ namespace PhysX
         /// @param indices Pointer to beginning of index data.
         /// @param indexCount Number of indices in mesh.
         /// @return Result of cooking.
-        virtual bool CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
-            const AZ::u32* indices, AZ::u32 indexCount) = 0;
+        AZ_DEPRECATED(virtual bool CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount) = 0;,
+            "CookTriangleMeshToFile is deprecated, CookTriangleMeshToFile has been moved to Physics::System::CookTriangleMeshToFile")
 
         // LUMBERYARD_DEPRECATED(LY-109437)
         //! @deprecated Deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory
@@ -110,8 +115,9 @@ namespace PhysX
         /// @param indexCount Number of indices in mesh.
         /// @param result The resulting memory buffer.
         /// @return Result of cooking.
-        virtual bool CookTriangleMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount,
-            const AZ::u32* indices, AZ::u32 indexCount, AZStd::vector<AZ::u8>& result) = 0;
+        AZ_DEPRECATED(virtual bool CookTriangleMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount, AZStd::vector<AZ::u8>& result) = 0;,
+            "CookTriangleMeshToMemory is deprecated, CookConvexMeshToMemory has been moved to Physics::System::CookConvexMeshToMemory")
 
         // LUMBERYARD_DEPRECATED(LY-109437)
         //! @deprecated Deprecated, AddColliderComponentToEntity has been moved to Physics::System::AddColliderComponentToEntity
@@ -120,7 +126,9 @@ namespace PhysX
         /// @param colliderConfiguration Configuration of the collider.
         /// @param shapeConfiguration Configuration of the shape of the collider.
         /// @param addEditorComponents Tells whether to add the Editor version of the collider component or the Game one.
-        virtual void AddColliderComponentToEntity(AZ::Entity* entity, const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration, bool addEditorComponents = false) = 0;
+        AZ_DEPRECATED(virtual void AddColliderComponentToEntity(
+            AZ::Entity* entity, const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration, bool addEditorComponents = false) = 0;,
+            "AddColliderComponentToEntity is deprecated, AddColliderComponentToEntity has been moved to Physics::System::AddColliderComponentToEntity");
 
         /// Creates PhysX collision filter data from generic collision filtering settings.
         /// @param layer The collision layer the object belongs to.

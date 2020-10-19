@@ -122,12 +122,13 @@ namespace EMStudio
             CreateViewOptionEntry(contextMenu, "Joint Orientations", RENDER_NODEORIENTATION);
             CreateViewOptionEntry(contextMenu, "Actor Bind Pose", RENDER_ACTORBINDPOSE);
             contextMenu->addSeparator();
-            CreateViewOptionEntry(contextMenu, "Hit Detection Colliders", RENDER_HITDETECTION_COLLIDERS);
-            CreateViewOptionEntry(contextMenu, "Ragdoll Colliders", RENDER_RAGDOLL_COLLIDERS);
-            CreateViewOptionEntry(contextMenu, "Ragdoll Joint Limits", RENDER_RAGDOLL_JOINTLIMITS);
-            CreateViewOptionEntry(contextMenu, "Cloth Colliders", RENDER_CLOTH_COLLIDERS);
-            CreateViewOptionEntry(contextMenu, "Simulated Object Colliders", RENDER_SIMULATEDOBJECT_COLLIDERS);
-            CreateViewOptionEntry(contextMenu, "Simulated Joints", RENDER_SIMULATEJOINTS);
+            CreateViewOptionEntry(contextMenu, "Hit Detection Colliders", RENDER_HITDETECTION_COLLIDERS, /*visible=*/true, ":/EMotionFX/HitDetection.svg");
+            CreateViewOptionEntry(contextMenu, "Ragdoll Colliders", RENDER_RAGDOLL_COLLIDERS, /*visible=*/true, ":/EMotionFX/Collider.svg");
+            CreateViewOptionEntry(contextMenu, "Ragdoll Joint Limits", RENDER_RAGDOLL_JOINTLIMITS, /*visible=*/true, ":/EMotionFX/JointLimit.svg");
+            CreateViewOptionEntry(contextMenu, "Cloth Colliders", RENDER_CLOTH_COLLIDERS, /*visible=*/true, ":/EMotionFX/Cloth.svg");
+            CreateViewOptionEntry(contextMenu, "Simulated Object Colliders", RENDER_SIMULATEDOBJECT_COLLIDERS, /*visible=*/true, ":/EMotionFX/Collider.svg");
+            CreateViewOptionEntry(contextMenu, "Simulated Joints", RENDER_SIMULATEJOINTS, /*visible=*/true);
+
             contextMenu->addSeparator();
             CreateViewOptionEntry(contextMenu, "Motion Extraction", RENDER_MOTIONEXTRACTION);
             contextMenu->addSeparator();
@@ -238,11 +239,17 @@ namespace EMStudio
         }
     }
 
-    void RenderViewWidget::CreateViewOptionEntry(QMenu* menu, const char* menuEntryName, int32 actionIndex, bool visible)
+    void RenderViewWidget::CreateViewOptionEntry(QMenu* menu, const char* menuEntryName, int32 actionIndex, bool visible, const char* iconFilename)
     {
         QAction* action = menu->addAction(menuEntryName);
         action->setCheckable(true);
         action->setVisible(visible);
+
+        if (iconFilename)
+        {
+            action->setIcon(QIcon(iconFilename));
+        }
+
         if (actionIndex >= 0)
         {
             mActions[actionIndex] = action;

@@ -54,6 +54,7 @@ namespace EMotionFX
 
         // Colliders
         m_collidersWidget = new ColliderContainerWidget(QIcon(":/EMotionFX/Collider.svg"), result); // use the ragdoll white collider icon because it's generic to all colliders.
+        m_collidersWidget->setObjectName("EMFX.SimulatedObjectColliderWidget.ColliderContainerWidget");
         connect(m_collidersWidget, &ColliderContainerWidget::RemoveCollider, this, &SimulatedObjectColliderWidget::OnRemoveCollider);
         layout->addWidget(m_collidersWidget);
 

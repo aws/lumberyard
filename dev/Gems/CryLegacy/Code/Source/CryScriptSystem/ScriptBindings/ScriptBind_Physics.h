@@ -15,6 +15,7 @@
 #define CRYINCLUDE_CRYSCRIPTSYSTEM_SCRIPTBINDINGS_SCRIPTBIND_PHYSICS_H
 #pragma once
 
+#if ENABLE_CRY_PHYSICS
 #include <IScriptSystem.h>
 
 struct ISystem;
@@ -107,6 +108,7 @@ private:
     I3DEngine* m_p3DEngine;
     IPhysicalWorld* m_pPhysicalWorld;
 };
+#endif // ENABLE_CRY_PHYSICS
 
 #endif // CRYINCLUDE_CRYSCRIPTSYSTEM_SCRIPTBINDINGS_SCRIPTBIND_PHYSICS_H
 

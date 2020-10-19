@@ -512,16 +512,17 @@ namespace UnitTest
         interactionEvent.m_mouseEvent = ViewportInteraction::MouseEvent::Move;
 
         // Simulate a mouse event
-        bool handled = false;
-        AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(handled,
-            &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
+        using MouseInteractionResult = AzToolsFramework::ViewportInteraction::MouseInteractionResult;
+        MouseInteractionResult handled = MouseInteractionResult::None;
+        EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(
+            handled, &EditorInteractionSystemViewportSelectionRequestBus::Events::InternalHandleAllMouseInteractions,
             interactionEvent);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Then
         // Check it was handled by the component mode.
-        EXPECT_TRUE(handled);
+        EXPECT_EQ(handled, MouseInteractionResult::Viewport);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 

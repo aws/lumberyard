@@ -41,7 +41,9 @@ public:
     virtual void Stop(bool stop);
     // ~IGroundEffect
 
+#if ENABLE_CRY_PHYSICS
     void OnRayCastDataReceived(const QueuedRayID& rayID, const RayCastResult& result);
+#endif
 
 protected:
 

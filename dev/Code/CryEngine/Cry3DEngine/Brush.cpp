@@ -398,14 +398,18 @@ void CBrush::PhysicalizeOnHeap(IGeneralMemoryHeap* pHeap, bool bInstant)
 
     if (!bInstant)
     {
+#if ENABLE_CRY_PHYSICS
         gEnv->pPhysicalWorld->RegisterBBoxInPODGrid(&WSBBox.min);
+#endif
         return;
     }
 
     // create new
     if (!m_pPhysEnt)
     {
+#if ENABLE_CRY_PHYSICS
         m_pPhysEnt = GetSystem()->GetIPhysicalWorld()->CreatePhysicalEntity(PE_STATIC, NULL, (IRenderNode*)this, PHYS_FOREIGN_ID_STATIC, -1, pHeap);
+#endif
         if (!m_pPhysEnt)
         {
             return;
@@ -640,7 +644,9 @@ void CBrush::Dephysicalize(bool bKeepIfReferenced)
     AABB WSBBox = GetBBox();
 
     // delete old physics
+#if ENABLE_CRY_PHYSICS
     if (m_pPhysEnt && 0 != GetSystem()->GetIPhysicalWorld()->DestroyPhysicalEntity(m_pPhysEnt, ((int)bKeepIfReferenced) * 4))
+#endif
     {
         m_pPhysEnt = 0;
     }
@@ -664,6 +670,7 @@ void CBrush::Dematerialize()
     UpdateExecuteAsPreProcessJobFlag();
 }
 
+#if ENABLE_CRY_PHYSICS
 IPhysicalEntity* CBrush::GetPhysics() const
 {
     return m_pPhysEnt;
@@ -674,6 +681,7 @@ void CBrush::SetPhysics(IPhysicalEntity* pPhys)
 {
     m_pPhysEnt = pPhys;
 }
+#endif // ENABLE_CRY_PHYSICS
 
 //////////////////////////////////////////////////////////////////////////
 bool CBrush::IsMatrixValid(const Matrix34& mat)

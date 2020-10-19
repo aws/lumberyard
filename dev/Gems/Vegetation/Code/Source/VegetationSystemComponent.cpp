@@ -21,6 +21,10 @@
 #include <AzFramework/Asset/GenericAssetHandler.h>
 
 #include <Vegetation/Ebuses/FilterRequestBus.h>
+#include <Vegetation/Ebuses/InstanceSystemRequestBus.h>
+#include <Vegetation/InstanceSpawner.h>
+#include <Vegetation/EmptyInstanceSpawner.h>
+#include <Vegetation/DynamicSliceInstanceSpawner.h>
 
 #include <CrySystemBus.h>
 
@@ -66,6 +70,9 @@ namespace Vegetation
 
     void VegetationSystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        InstanceSpawner::Reflect(context);
+        EmptyInstanceSpawner::Reflect(context);
+        DynamicSliceInstanceSpawner::Reflect(context);
         Descriptor::Reflect(context);
         AreaConfig::Reflect(context);
         AreaComponentBase::Reflect(context);
@@ -117,5 +124,4 @@ namespace Vegetation
     {
         Details::UnregisterAssethandlers();
     }
-
 }

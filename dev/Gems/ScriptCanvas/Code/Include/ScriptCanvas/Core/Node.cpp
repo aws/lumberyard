@@ -407,6 +407,7 @@ namespace ScriptCanvas
 
     Node::~Node()
     {
+        DatumNotificationBus::Handler::BusDisconnect();
         NodeRequestBus::Handler::BusDisconnect();
     }
 

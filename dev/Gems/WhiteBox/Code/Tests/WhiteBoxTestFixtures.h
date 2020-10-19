@@ -12,13 +12,14 @@
 
 #pragma once
 
-#ifdef AZ_TESTS_ENABLED
-
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzTest/AzTest.h>
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <WhiteBox/WhiteBoxToolApi.h>
 #include <tuple>
 
+#include "EditorWhiteBoxComponent.h"
 #include "Rendering/WhiteBoxRenderData.h"
 
 namespace UnitTest
@@ -49,6 +50,40 @@ namespace UnitTest
 
         WhiteBox::Api::WhiteBoxMeshPtr m_whiteBox;
     };
+
+    class EditorWhiteBoxComponentTestFixture : public ToolsApplicationFixture
+    {
+    public:
+        void SetUpEditorFixtureImpl() override;
+        void TearDownEditorFixtureImpl() override;
+
+        AZ::EntityId m_whiteBoxEntityId;
+        WhiteBox::EditorWhiteBoxComponent* m_whiteBoxComponent = nullptr;
+        AZStd::unique_ptr<AZ::ComponentDescriptor> m_whiteBoxComponentDescriptor;
+    };
+
+    inline void EditorWhiteBoxComponentTestFixture::SetUpEditorFixtureImpl()
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(
+            serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
+        m_whiteBoxComponentDescriptor =
+            AZStd::unique_ptr<AZ::ComponentDescriptor>(WhiteBox::EditorWhiteBoxComponent::CreateDescriptor());
+        m_whiteBoxComponentDescriptor->Reflect(serializeContext);
+
+        AZ::Entity* whiteBoxEntity = nullptr;
+        m_whiteBoxEntityId = CreateDefaultEditorEntity("WhiteBox", &whiteBoxEntity);
+
+        whiteBoxEntity->Deactivate();
+        m_whiteBoxComponent = whiteBoxEntity->CreateComponent<WhiteBox::EditorWhiteBoxComponent>();
+        whiteBoxEntity->Activate();
+    }
+
+    inline void EditorWhiteBoxComponentTestFixture::TearDownEditorFixtureImpl()
+    {
+        m_whiteBoxComponentDescriptor.reset();
+    }
 
     struct FaceTestData
     {
@@ -123,5 +158,3 @@ namespace UnitTest
     public:
     };
 } // namespace UnitTest
-
-#endif // AZ_TESTS_ENABLED

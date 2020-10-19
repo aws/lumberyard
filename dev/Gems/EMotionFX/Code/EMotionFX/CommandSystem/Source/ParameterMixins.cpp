@@ -323,7 +323,7 @@ namespace EMotionFX
         const size_t numConditions = transition->GetNumConditions();
         if (m_conditionIndex.value() >= numConditions)
         {
-            outResult = AZStd::string::format("Cannot get transition condition at index %d. The transition only has %d conditions and the index is out of range.", m_conditionIndex.value(), numConditions);
+            outResult = AZStd::string::format("Cannot get transition condition at index %zu. The transition only has %zu conditions and the index is out of range.", m_conditionIndex.value(), numConditions);
             return nullptr;
         }
 
@@ -486,6 +486,49 @@ namespace EMotionFX
             AZStd::string tempString;
             parameters.GetValue(s_parameterName, "", tempString);
             m_contents = tempString; // string to optional conversion
+        }
+        return true;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinSerializedMembers, EMotionFX::CommandAllocator, 0)
+    const char* ParameterMixinSerializedMembers::s_parameterName = "serializedMembers";
+
+    void ParameterMixinSerializedMembers::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<ParameterMixinSerializedMembers>()
+            ->Version(1)
+            ->Field("serializedMembers", &ParameterMixinSerializedMembers::m_serializedMembers)
+            ;
+    }
+
+    void ParameterMixinSerializedMembers::InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired)
+    {
+        const char* description = "Serialized member variables.";
+        if (isParameterRequired)
+        {
+            syntax.AddRequiredParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING);
+        }
+        else
+        {
+            syntax.AddParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        }
+    }
+
+    bool ParameterMixinSerializedMembers::SetCommandParameters(const MCore::CommandLine& parameters)
+    {
+        if (parameters.CheckIfHasParameter(s_parameterName))
+        {
+            AZStd::string tempString;
+            parameters.GetValue(s_parameterName, "", tempString);
+            m_serializedMembers = tempString; // string to optional conversion
         }
         return true;
     }

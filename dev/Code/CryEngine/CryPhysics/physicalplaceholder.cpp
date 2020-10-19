@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 
+#if ENABLE_CRY_PHYSICS
+
 #include "bvtree.h"
 #include "geometry.h"
 #include "geoman.h"
@@ -27,7 +29,7 @@
 
 IPhysicalWorld* CPhysicalPlaceholder::GetWorld() const
 {
-    CPhysicalWorld* pWorld = NULL;
+    IPhysicalWorld* pWorld = NULL;
     if (g_nPhysWorlds == 1)
     {
         pWorld = g_pPhysWorlds[0];
@@ -48,7 +50,7 @@ CPhysicalEntity* CPhysicalPlaceholder::GetEntity()
     CPhysicalEntity* pEntBuddy;
     if (!m_pEntBuddy)
     {
-        CPhysicalWorld* pWorld = NULL;
+        IPhysicalWorld* pWorld = NULL;
         if (g_nPhysWorlds == 1)
         {
             pWorld = g_pPhysWorlds[0];
@@ -61,9 +63,9 @@ CPhysicalEntity* CPhysicalPlaceholder::GetEntity()
             }
         }
         PREFAST_ASSUME(pWorld);
-        if (pWorld->m_pPhysicsStreamer)
+        if (IPhysicsStreamer* pStreamer = pWorld->GetPhysicsStreamer())
         {
-            pWorld->m_pPhysicsStreamer->CreatePhysicalEntity(m_pForeignData, m_iForeignData, m_iForeignFlags);
+            pStreamer->CreatePhysicalEntity(m_pForeignData, m_iForeignData, m_iForeignFlags);
             pEntBuddy = m_pEntBuddy ? (CPhysicalEntity*)m_pEntBuddy : &g_StaticPhysicalEntity;
         }
         else
@@ -319,3 +321,5 @@ void CPhysicalPlaceholder::StepBack(float time_interval)
 {
     return GetEntity()->StepBack(time_interval);
 }
+
+#endif // ENABLE_CRY_PHYSICS

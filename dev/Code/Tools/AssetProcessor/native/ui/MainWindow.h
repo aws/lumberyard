@@ -20,6 +20,14 @@
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <QElapsedTimer>
 
+namespace AzToolsFramework
+{
+    namespace AssetDatabase
+    {
+        class AssetDatabaseConnection;
+    }
+}
+
 namespace Ui {
     class MainWindow;
 }
@@ -167,11 +175,16 @@ private:
     void JobSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
     void JobLogSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
     void DesktopOpenJobLogs();
+    // Switches to the Job tab of the Asset Processor, clears any current searches, scroll to, and select the job at the given index.
+    void SelectJobAndMakeVisible(const QModelIndex& index);
 
     void ResetLoggingPanel();
     void ShowJobViewContextMenu(const QPoint& pos);
     void ShowLogLineContextMenu(const QPoint& pos);
     void ShowJobLogContextMenu(const QPoint& pos);
+
+    void ShowProductAssetContextMenu(const QPoint& pos);
+    void ShowSourceAssetContextMenu(const QPoint& pos);
 
     void ResetTimers();
     void CheckStartAnalysisTimers();
@@ -189,6 +202,8 @@ private:
     qint64 m_scanTime{ 0 };
     qint64 m_analysisTime{ 0 };
     qint64 m_processTime{ 0 };
+
+    AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> m_sharedDbConnection;
 
     AZStd::string m_cachedSourceAssetSelection;
     AZStd::string m_cachedProductAssetSelection;

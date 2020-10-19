@@ -6,7 +6,9 @@
             "UnitTest/MockComponentApplication.h",
             "UnitTest/MockComponentApplication.cpp",
             "UnitTest/UnitTest.h",
-            "UnitTest/TestTypes.h"
+            "UnitTest/TestTypes.h",
+            "UnitTest/Helpers.h",
+            "UnitTest/Helpers.cpp"
         ],
         "UnitTest/Mocks": 
         [

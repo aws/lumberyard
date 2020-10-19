@@ -13,6 +13,7 @@
 #include "EditorLayerComponent.h"
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
@@ -29,6 +30,8 @@
 #include <AzToolsFramework/ToolsComponents/EditorLockComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <AzToolsFramework/Commands/EntityStateCommand.h>
+#include <AzCore/Script/ScriptContextAttributes.h>
 
 #include <QCryptographicHash>
 AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
@@ -107,6 +110,25 @@ namespace AzToolsFramework
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorLayerComponent::m_editableLayerProperties, "Layer Properties", "Layer properties that are saved to the layer file, and not the level.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly);
                 }
+            }
+
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<EditorLayerComponentRequestBus>("EditorLayerComponentRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "layers")
+                    ->Event("SetVisibility", &EditorLayerComponentRequestBus::Events::SetLayerChildrenVisibility)
+                    ->Event("SetLayerColor", &EditorLayerComponentRequestBus::Events::SetLayerColor)
+                    ->Event("GetColorPropertyValue", &EditorLayerComponentRequestBus::Events::GetColorPropertyValue)
+                    ;
+                behaviorContext->Class<EditorLayerComponent>("EditorLayerComponent")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "layers")
+                    ->Method("CreateLayerEntityFromName", &EditorLayerComponent::CreateLayerEntityFromName)
+                    ->Attribute(AZ::Script::Attributes::Alias, "create_layer_entity")
+                    ->Method("RecoverLayer", &EditorLayerComponent::RecoverLayer)
+                    ->Attribute(AZ::Script::Attributes::Alias, "recover_layer")
+                    ;
             }
         }
 
@@ -227,6 +249,11 @@ namespace AzToolsFramework
             // LY uses AZ classes for serialization, but the color to display needs to be a Qt color.
             // Ignore the alpha channel, it's not represented visually.
             return QColor::fromRgbF(m_editableLayerProperties.m_color.GetR(), m_editableLayerProperties.m_color.GetG(), m_editableLayerProperties.m_color.GetB());
+        }
+
+        AZ::Color EditorLayerComponent::GetColorPropertyValue()
+        {
+            return m_editableLayerProperties.m_color;
         }
 
         AzToolsFramework::Layers::LayerProperties::SaveFormat EditorLayerComponent::GetSaveFormat()
@@ -366,14 +393,13 @@ namespace AzToolsFramework
             }
 
             QString myLayerFileName = QString("%1.%2").arg(m_layerFileName.c_str()).arg(GetLayerExtension());
+            QString fullLayerPath(layerFolder.filePath(myLayerFileName));
             if (!layerFolder.exists(myLayerFileName))
             {
                 return LayerResult(
                     LayerResultStatus::Error,
-                    QObject::tr("Unable to access layer %1.").arg(layerFolder.absoluteFilePath(myLayerFileName)));
+                    QObject::tr("Unable to access layer %1.").arg(fullLayerPath));
             }
-
-            QString fullLayerPath(layerFolder.filePath(myLayerFileName));
 
             // Lumberyard will read in the layer in whatever format it's in, so there's no need to check what the save format is set to.
             // The save format is also set in this object that is being loaded, so it wouldn't even be available.
@@ -383,10 +409,20 @@ namespace AzToolsFramework
             {
                 return LayerResult(
                     LayerResultStatus::Error,
-                    QObject::tr("Unable to load from disk layer %1.").arg(layerFolder.absoluteFilePath(myLayerFileName)));
+                    QObject::tr("Unable to load from disk layer %1.").arg(fullLayerPath));
             }
 
-            return PopulateFromLoadedLayerData(*m_loadedLayer, sliceInstances, uniqueEntities);
+            LayerResult readLayerResult = PopulateFromLoadedLayerData(*m_loadedLayer, sliceInstances, uniqueEntities);
+            if (readLayerResult.IsSuccess())
+            {
+                QCryptographicHash layerHash(QCryptographicHash::Sha1);
+                LayerResult layerFileHashResult = GetFileHash(fullLayerPath, layerHash);
+                if (layerFileHashResult.IsSuccess())
+                {
+                    m_layerLoadedInEditorHash = layerHash.result();
+                }
+            }
+            return readLayerResult;
         }
 
         LayerResult EditorLayerComponent::PopulateFromLoadedLayerData(
@@ -538,67 +574,70 @@ namespace AzToolsFramework
             // Note that the layer entity itself is not included in the layer.
             // This is intentional, it allows the level to track what layers exist and only
             // load the layers it expects to see.
-            GatherAllNonLayerNonSliceDescendants(entityList, layer, entityIdsToEntityPtrs, *transformComponent);
-
-
             AZ::SliceComponent* rootSlice = nullptr;
-            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(rootSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
-            if (rootSlice)
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+                rootSlice,
+                &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+            AZ_Assert(
+                rootSlice,
+                "EditorLayerComponent::PrepareLayerForSaving: Unable to gather non slice descendants since the root slice is unavailable.");
+
+            GatherAllNonLayerNonSliceDescendants(entityList, layer, entityIdsToEntityPtrs, *transformComponent, *rootSlice);
+
+            AZ::SliceComponent::SliceList& slices = rootSlice->GetSlices();
+            for (AZ::SliceComponent::SliceReference& sliceReference : slices)
             {
-                AZ::SliceComponent::SliceList& slices = rootSlice->GetSlices();
-                for (AZ::SliceComponent::SliceReference& sliceReference : slices)
+                // Don't save the root slice instance in the layer.
+                if (sliceReference.GetSliceAsset().Get()->GetComponent() == rootSlice)
                 {
-                    // Don't save the root slice instance in the layer.
-                    if (sliceReference.GetSliceAsset().Get()->GetComponent() == rootSlice)
+                    continue;
+                }
+                AZ::SliceComponent::SliceReference::SliceInstances& sliceInstances = sliceReference.GetInstances();
+                for (AZ::SliceComponent::SliceInstance& sliceInstance : sliceInstances)
+                {
+                    const AZ::SliceComponent::InstantiatedContainer* instantiated = sliceInstance.GetInstantiated();
+                    if (!instantiated || instantiated->m_entities.empty())
                     {
                         continue;
                     }
-                    AZ::SliceComponent::SliceReference::SliceInstances& sliceInstances = sliceReference.GetInstances();
-                    for (AZ::SliceComponent::SliceInstance& sliceInstance : sliceInstances)
+                    AZ::Entity* rootEntity = instantiated->m_entities[0];
+
+                    AzToolsFramework::Components::TransformComponent* sliceTransform =
+                        rootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+
+                    if (!sliceTransform)
                     {
-                        const AZ::SliceComponent::InstantiatedContainer* instantiated = sliceInstance.GetInstantiated();
-                        if (!instantiated || instantiated->m_entities.empty())
+                        continue;
+                    }
+
+                    for (AZ::TransformInterface* transformLayerSearch = sliceTransform;
+                        transformLayerSearch != nullptr && transformLayerSearch->GetParent() != nullptr;
+                        transformLayerSearch = transformLayerSearch->GetParent())
+                    {
+                        bool sliceAncestorParentIsLayer = false;
+                        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                            sliceAncestorParentIsLayer,
+                            transformLayerSearch->GetParentId(),
+                            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+                        bool amISliceAncestorParent = transformLayerSearch->GetParentId() == GetEntityId();
+
+                        if (sliceAncestorParentIsLayer && !amISliceAncestorParent)
                         {
-                            continue;
+                            // This slice instance will be handled by a different layer.
+                            break;
                         }
-                        AZ::Entity* rootEntity = instantiated->m_entities[0];
-
-                        AzToolsFramework::Components::TransformComponent* sliceTransform =
-                            rootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                        if (!sliceTransform)
+                        else if (amISliceAncestorParent)
                         {
-                            continue;
-                        }
-
-                        for (AZ::TransformInterface* transformLayerSearch = sliceTransform;
-                            transformLayerSearch != nullptr && transformLayerSearch->GetParent() != nullptr;
-                            transformLayerSearch = transformLayerSearch->GetParent())
-                        {
-                            bool sliceAncestorParentIsLayer = false;
-                            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-                                sliceAncestorParentIsLayer,
-                                transformLayerSearch->GetParentId(),
-                                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-
-                            bool amISliceAncestorParent = transformLayerSearch->GetParentId() == GetEntityId();
-
-                            if (sliceAncestorParentIsLayer && !amISliceAncestorParent)
-                            {
-                                // This slice instance will be handled by a different layer.
-                                break;
-                            }
-                            else if (amISliceAncestorParent)
-                            {
-                                sliceReference.ComputeDataPatch(&sliceInstance);
-                                layer.m_sliceAssetsToSliceInstances[sliceReference.GetSliceAsset()].insert(&sliceInstance);
-                                layerInstances[&sliceReference].insert(&sliceInstance);
-                                break;
-                            }
+                            sliceReference.ComputeDataPatch(&sliceInstance);
+                            layer.m_sliceAssetsToSliceInstances[sliceReference.GetSliceAsset()].insert(&sliceInstance);
+                            layerInstances[&sliceReference].insert(&sliceInstance);
+                            break;
                         }
                     }
                 }
             }
+            
             return LayerResult::CreateSuccess();
         }
 
@@ -700,21 +739,15 @@ namespace AzToolsFramework
             {
                 return LayerResult(LayerResultStatus::Error, QObject::tr("Unable to access directory %1.").arg(layerDirectory));
             }
+
+            // Generate a hash of what was actually written to disk, don't use the in-memory stream.
+            // This makes it easy to account for things like newline differences between operating systems.
+            QCryptographicHash tempLayerHash(QCryptographicHash::Sha1);
+
             QString layerFileName(QString("%1.%2").arg(layerBaseFileName.c_str()).arg(GetLayerExtension()));
             QString layerFullPath(layerFolder.absoluteFilePath(layerFileName));
-
             if (layerFolder.exists(layerFileName))
             {
-                QCryptographicHash layerHash(QCryptographicHash::Sha1);
-                layerErrorResult = GetFileHash(layerFullPath, layerHash);
-                if (!layerErrorResult.IsSuccess())
-                {
-                    return CleanupTempFileAndFolder(tempLayerFullPath, layerTempFolder, &layerErrorResult);
-                }
-
-                // Generate a hash of what was actually written to disk, don't use the in-memory stream.
-                // This makes it easy to account for things like newline differences between operating systems.
-                QCryptographicHash tempLayerHash(QCryptographicHash::Sha1);
                 layerErrorResult = GetFileHash(tempLayerFullPath, tempLayerHash);
                 if (!layerErrorResult.IsSuccess())
                 {
@@ -722,7 +755,7 @@ namespace AzToolsFramework
                 }
 
                 // This layer file hasn't actually changed, so return a success.
-                if (layerHash.result() == tempLayerHash.result())
+                if (m_layerLoadedInEditorHash == tempLayerHash.result())
                 {
                     SetUnsavedChanges(false);
                     return CleanupTempFileAndFolder(tempLayerFullPath, layerTempFolder, nullptr);
@@ -785,6 +818,8 @@ namespace AzToolsFramework
                 LayerResult failure(LayerResultStatus::Error, QObject::tr("Unable to save layer %1.").arg(layerFullPath));
                 return CleanupTempFileAndFolder(tempLayerFullPath, layerTempFolder, &failure);
             }
+
+            m_layerLoadedInEditorHash = tempLayerHash.result();
             SetUnsavedChanges(false);
             m_overwriteCheck = false;
             return CleanupTempFolder(layerTempFolder, nullptr);
@@ -1044,19 +1079,13 @@ namespace AzToolsFramework
             EntityList& entityList,
             EditorLayer& layer,
             const AZStd::unordered_map<AZ::EntityId, AZ::Entity*>& entityIdsToEntityPtrs,
-            AzToolsFramework::Components::TransformComponent& transformComponent) const
+            AzToolsFramework::Components::TransformComponent& transformComponent,
+            AZ::SliceComponent& rootSlice) const
         {
             AZStd::vector<AZ::EntityId> children = transformComponent.GetChildren();
+
             for (AZ::EntityId child : children)
             {
-                AZStd::unordered_map<AZ::EntityId, AZ::Entity*>::const_iterator childEntityIdToPtr =
-                    entityIdsToEntityPtrs.find(child);
-                if (childEntityIdToPtr == entityIdsToEntityPtrs.end())
-                {
-                    // We only want loose entities, ignore slice entities, they are tracked differently.
-                    continue;
-                }
-
                 bool isChildLayerEntity = false;
                 AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
                     isChildLayerEntity,
@@ -1070,14 +1099,27 @@ namespace AzToolsFramework
                     continue;
                 }
 
-                entityList.push_back(childEntityIdToPtr->second);
-                layer.m_layerEntities.push_back(childEntityIdToPtr->second);
+                AZ::Entity* childEntity = nullptr;
+                AZStd::unordered_map<AZ::EntityId, AZ::Entity*>::const_iterator childEntityIdToPtr =
+                    entityIdsToEntityPtrs.find(child);
+                if (childEntityIdToPtr != entityIdsToEntityPtrs.end())
+                {
+                    // We only want loose entities, ignore slice entities, they are tracked differently.
+                    childEntity = childEntityIdToPtr->second;
+                    entityList.push_back(childEntity);
+                    layer.m_layerEntities.push_back(childEntity);
+                }
+                else
+                {
+                    // Child is a slice instance. Keep gathering its non slice descendants if any.
+                    childEntity = rootSlice.FindEntity(child);
+                }
 
                 AzToolsFramework::Components::TransformComponent* childTransform =
-                childEntityIdToPtr->second->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                    childEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
                 if (childTransform)
                 {
-                    GatherAllNonLayerNonSliceDescendants(entityList, layer, entityIdsToEntityPtrs, *childTransform);
+                    GatherAllNonLayerNonSliceDescendants(entityList, layer, entityIdsToEntityPtrs, *childTransform, rootSlice);
                 }
             }
         }
@@ -1306,6 +1348,12 @@ namespace AzToolsFramework
             return LayerResult::CreateSuccess();
         }
 
+        AZ::EntityId EditorLayerComponent::CreateLayerEntityFromName(const AZStd::string& name)
+        {
+            AZ::Color layerColor(0.5f, 0.5f, 0.5f, 1.0f);
+            return CreateLayerEntity(name, layerColor, LayerProperties::SaveFormat::Xml);
+        }
+
         AZ::EntityId EditorLayerComponent::CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const LayerProperties::SaveFormat& saveFormat, const AZ::EntityId& optionalEntityId)
         {
             AzToolsFramework::ScopedUndoBatch undo("New Layer");
@@ -1351,6 +1399,7 @@ namespace AzToolsFramework
 
             newLayer->SetLayerColor(layerColor);
             newLayer->SetSaveFormat(saveFormat);
+            newLayer->SetOverwriteFlag(true);
 
             AZStd::vector<AZ::Component*> newComponents;
             newComponents.push_back(newLayer);
@@ -1382,6 +1431,9 @@ namespace AzToolsFramework
 
             AZStd::string newLayerName;
             AZ::EntityId layerParentId;
+
+            // Create undo batch now so that any ancestor creation is included in the recovery undo.
+            AzToolsFramework::ScopedUndoBatch undo("RecoverLayer");
             if (!CanAttemptToRecoverLayerAndGetLayerInfo(fullFilePath, newLayerName, layerParentId))
             {
                 return;
@@ -1427,7 +1479,7 @@ namespace AzToolsFramework
                 return isSafeToRecoverResult;
             }
 
-            AzToolsFramework::ScopedUndoBatch undo("RecoverLayer");
+            AzToolsFramework::ScopedUndoBatch undo("RecoverEditorLayer");
 
             LayerProperties::SaveFormat saveFormat = LayerProperties::SaveFormat::Xml;
             
@@ -1466,6 +1518,15 @@ namespace AzToolsFramework
                 &AzToolsFramework::EditorEntityContextRequestBus::Events::AddEditorEntities,
                 editorLayer->m_layerEntities);
 
+            // Make commands for the entities that have been created, so that they get removed/recreated on undo/redo.
+            for (AZ::Entity* entity : editorLayer->m_layerEntities)
+            {
+                EntityCreateCommand* command = aznew EntityCreateCommand(static_cast<AZ::u64>(entity->GetId()));
+                command->Capture(entity);
+                command->SetParent(undo.GetUndoBatch());
+            }
+
+
             AZStd::unordered_set<const AZ::SliceComponent::SliceInstance*> instances;
             rootSlice->AddSliceInstances(sliceInstancesToAddToScene, instances);
 
@@ -1474,6 +1535,14 @@ namespace AzToolsFramework
                 EditorEntityContextRequestBus::Broadcast(
                     &EditorEntityContextRequests::AddEditorSliceEntities,
                     sliceInstanceIter->GetInstantiated()->m_entities);
+
+                // Add create commands for the slice creation to the undo buffer.
+                for (AZ::Entity* entity : sliceInstanceIter->GetInstantiated()->m_entities)
+                {
+                    EntityCreateCommand* command = aznew EntityCreateCommand(static_cast<AZ::u64>(entity->GetId()));
+                    command->Capture(entity);
+                    command->SetParent(undo.GetUndoBatch());
+                }
             }
 
             return LayerResult::CreateSuccess();

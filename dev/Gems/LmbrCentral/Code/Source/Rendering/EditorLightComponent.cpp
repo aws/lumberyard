@@ -2048,11 +2048,6 @@ namespace LmbrCentral
         return transformedAABB;
     }
 
-    struct IPhysicalEntity* EditorLightComponent::CubemapPreview::GetPhysics() const
-    {
-        return nullptr;
-    }
-
     _smart_ptr<IMaterial> EditorLightComponent::CubemapPreview::GetMaterial(Vec3* pHitPos)
     {
         return m_statObj ? m_statObj->GetMaterial() : nullptr;

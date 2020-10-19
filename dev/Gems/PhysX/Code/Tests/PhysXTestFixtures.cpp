@@ -11,7 +11,8 @@
 */
 
 #include <PhysX_precompiled.h>
-#include "PhysXTestFixtures.h"
+#include <Tests/PhysXTestFixtures.h>
+#include <Tests/PhysXTestUtil.h>
 
 namespace PhysX
 {
@@ -21,12 +22,16 @@ namespace PhysX
         m_defaultWorld->SetEventHandler(this);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
+
+        m_dummyTerrainComponentDescriptor = DummyTestTerrainComponent::CreateDescriptor();
     }
 
     void PhysXDefaultWorldTest::TearDown()
     {
         Physics::DefaultWorldBus::Handler::BusDisconnect();
         m_defaultWorld = nullptr;
+        m_dummyTerrainComponentDescriptor->ReleaseDescriptor();
+        m_dummyTerrainComponentDescriptor = nullptr;
     }
 
     AZStd::shared_ptr<Physics::World> PhysXDefaultWorldTest::GetDefaultWorld()

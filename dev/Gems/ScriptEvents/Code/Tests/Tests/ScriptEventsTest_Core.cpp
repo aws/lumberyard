@@ -390,7 +390,7 @@ namespace ScriptEventsTests
                     const AZStd::string* argumentNamePtr = behaviorMethod0->GetArgumentName(argIndex);
                     const AZStd::string argName = argumentNamePtr && !argumentNamePtr->empty()
                         ? *argumentNamePtr
-                        : (AZStd::string::format("%s:%d", argumentTypeName.c_str(), argIndex));
+                        : (AZStd::string::format("%s:%zu", argumentTypeName.c_str(), argIndex));
 
                     AZ_TracePrintf("Script Events", "(%d): %s : %s\n", argIndex, argName.c_str(), argumentTypeName.c_str());
                 }

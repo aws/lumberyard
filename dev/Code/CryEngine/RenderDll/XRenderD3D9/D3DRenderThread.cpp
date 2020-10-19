@@ -612,7 +612,9 @@ void CD3D9Renderer::RT_PrecacheDefaultShaders()
 
 void CD3D9Renderer::RT_ResetGlass()
 {
+#if ENABLE_CRY_PHYSICS
     CREBreakableGlassBuffer::RT_ReleaseInstance();
+#endif
 }
 
 void CD3D9Renderer::SetRendererCVar(ICVar* pCVar, const char* pArgText, const bool bSilentMode)

@@ -153,6 +153,7 @@ namespace PhysX
 
         static void ConvertCryPhysToPhysx(CNodeCGF* pNode, AZStd::vector<Vec3>& vertices, AZStd::vector<AZ::u32>& indices, AZStd::vector<AZ::u16>& faceMaterials, AZStd::vector<AZStd::string>& materialNames)
         {
+#if ENABLE_CRY_PHYSICS
             CPhysWorldLoader physLoader;
             IPhysicalWorld* pPhysWorld = physLoader.GetWorldPtr();
             AZ_Assert(pPhysWorld, "CGF to PhysX cooking: No CryPhysics world");
@@ -178,6 +179,12 @@ namespace PhysX
                 else
                 {
                     pPhysGeom = geomManager->LoadPhysGeometry(stmIn, 0, 0, 0);
+                }
+
+                if (!pPhysGeom)
+                {
+                    //CryPhysics is disabled.
+                    return;
                 }
 
                 int geomType = pPhysGeom->pGeom->GetType();
@@ -303,6 +310,7 @@ namespace PhysX
                     AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Discovered physicalized node of other then GEOM_TRIMESH type, skipping.\n");
                 }
             }
+#endif // ENABLE_CRY_PHYSICS
         }
 
         static bool ConvertCGFToPhysX(const char* sourcePath, MeshAssetData& assetData, const AZStd::string& platformIdentifier)
@@ -446,6 +454,7 @@ namespace PhysX
                 AssetBuilderSDK::JobProduct jobProduct(fileName);
                 jobProduct.m_productAssetType = AZ::AzTypeInfo<MeshAsset>::Uuid();
                 jobProduct.m_productSubID = AssetBuilderSDK::ConstructSubID(1, 0, 0);
+                jobProduct.m_dependenciesHandled = true; // This builder has no product dependencies
 
                 response.m_outputProducts.push_back(jobProduct);
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;

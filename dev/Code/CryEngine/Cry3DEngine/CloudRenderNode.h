@@ -46,8 +46,6 @@ public:
     virtual const char* GetName() const { return "Cloud"; }
     virtual Vec3 GetPos(bool bWorldOnly = true) const;
     virtual void Render(const SRendParams& rParam, const SRenderingPassInfo& passInfo);
-    virtual IPhysicalEntity* GetPhysics() const { return 0; }
-    virtual void SetPhysics(IPhysicalEntity*) {}
     void SetMaterial(_smart_ptr<IMaterial> pMat) override { m_pMaterial = pMat; }
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL);
     virtual _smart_ptr<IMaterial> GetMaterialOverride() { return m_pMaterial; }

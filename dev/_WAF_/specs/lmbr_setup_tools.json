@@ -8,6 +8,7 @@
     "modules" :
     [
         "AzQtComponents",
+        "AzToolsFrameworkTests",
         "SetupAssistant",
         "SetupAssistantBatch",
         "GemRegistry",

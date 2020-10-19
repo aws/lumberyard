@@ -142,6 +142,7 @@ void PostEffectGroup::SetParam(const char* name, const PostEffectGroupParam& val
 void PostEffectGroup::ClearParams()
 {
     m_params.clear();
+    m_manager->ClearParameterCache();
     if (m_enable)
     {
         m_lastUpdateFrame = gEnv->nMainFrameID;
@@ -160,6 +161,7 @@ void PostEffectGroup::ApplyAtPosition(const Vec3& position)
 
 void PostEffectGroup::BlendWith(AZStd::unordered_map<AZStd::string, PostEffectGroupParam>& paramMap)
 {
+    AZ_TRACE_METHOD();
     if (!m_enable && m_disableDuration >= m_blendOut.GetKeyRangeEnd())
     {
         return;
@@ -176,7 +178,9 @@ void PostEffectGroup::BlendWith(AZStd::unordered_map<AZStd::string, PostEffectGr
     }
     for (auto& param : m_params)
     {
-        if (paramMap.find(param.first) == paramMap.end())
+        auto mapElementIt = paramMap.find(param.first);
+        constexpr size_t dummyTypeIndex = 3;
+        if (mapElementIt == paramMap.end() || mapElementIt->second.index() == dummyTypeIndex)
         {
             paramMap[param.first] = param.second;
         }
@@ -193,7 +197,7 @@ void PostEffectGroup::BlendWith(AZStd::unordered_map<AZStd::string, PostEffectGr
                 m_blendOut.InterpolateFloat(m_disableDuration, blendOutAmount);
             }
             blendVisitor.Init(m_enable, blendInAmount * blendOutAmount * (m_fadeDistance ? m_strength : 1.f));
-            paramMap[param.first] = AZStd::visit(blendVisitor, paramMap[param.first], param.second);
+            mapElementIt->second = AZStd::visit(blendVisitor, mapElementIt->second, param.second);
         }
     }
 }
@@ -408,20 +412,40 @@ void PostEffectGroupManager::OnCatalogAssetChanged(const AZ::Data::AssetId& asse
     }
 }
 
-void PostEffectGroupManager::SyncMainWithRender()
+void PostEffectGroupManager::BlendWithParameterCache()
 {
-    // Blend postprocessing params
-    m_paramCache.clear();
+    AZ_TRACE_METHOD();
 
-    // Flip our buffers and clear
-    m_fillThreadIndex = (m_fillThreadIndex + 1) & 1;
-    m_groupsToggledThisFrame[m_fillThreadIndex].clear();
+    for (auto& param : m_paramCache)
+    {
+        param.second = '\0';
+    }
 
     for (auto& group : m_groups)
     {
         group->BlendWith(m_paramCache);
         group->ResetStrength();
     }
+}
+
+void PostEffectGroupManager::ClearParameterCache()
+{
+    m_paramCache.clear();
+}
+
+void PostEffectGroupManager::SyncMainWithRender()
+{
+    AZ_TRACE_METHOD();
+
+    if (gEnv->IsEditor())
+    {
+        BlendWithParameterCache();
+    }
+
+    // Flip our buffers and clear
+    m_fillThreadIndex = (m_fillThreadIndex + 1) & 1;
+    m_groupsToggledThisFrame[m_fillThreadIndex].clear();
+
     SyncVisitor syncVisitor;
     for (auto& param : m_paramCache)
     {

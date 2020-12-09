@@ -56,6 +56,7 @@ namespace EMotionFX
 
             void Update() override;
 
+            void OnReferenceAnimGraphAssetChanged();
             AnimGraphInstance* m_referencedAnimGraphInstance = nullptr;
 
             // Cache the mappings.

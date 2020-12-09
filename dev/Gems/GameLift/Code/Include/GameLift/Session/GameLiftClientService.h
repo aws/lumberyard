@@ -109,7 +109,8 @@ namespace GridMate
             GameLift_Initing, ///< Pending GameLift SDK initialization
             GameLift_Ready, ///< GameLift SDK is ready to use
             GameLift_Failed, ///< GameLift SDK failed to initialize
-            GameLift_Terminated ///< Current instance was force terminated by the user (only applies to the server)
+            GameLift_Terminated, ///< Current instance was force terminated by the user (only applies to the server)
+            GameLift_ProcessEnd_Failed ///< Current process failed to end safely (only applies to the server)
         };
 
         GameLiftClientServiceDesc m_serviceDesc;

@@ -8,19 +8,17 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+import warnings
 
-from __future__ import print_function
-import boto3
-from botocore.exceptions import ClientError
-import datetime
-import json
-from resource_manager.test import lmbr_aws_test_support
-from resource_manager.test import base_stack_test
-from requests_aws4auth import AWS4Auth
 import requests
-import time
+from requests_aws4auth import AWS4Auth
 
-REGION='us-east-1'
+from resource_manager.test import base_stack_test
+from resource_manager.test import lmbr_aws_test_support
+
+
+REGION = 'us-east-1'
+
 
 class IntegrationTest_CloudGemComputeFarm_BasicFunctionality(base_stack_test.BaseStackTestCase):
 
@@ -33,8 +31,13 @@ class IntegrationTest_CloudGemComputeFarm_BasicFunctionality(base_stack_test.Bas
 
     def __init__(self, *args, **kwargs):
         super(IntegrationTest_CloudGemComputeFarm_BasicFunctionality, self).__init__(*args, **kwargs)
+        self.deployment_name_override = 'td1'  # Avoid issues with responses being too long
 
     def setUp(self):
+        # Ignore warnings based on https://github.com/boto/boto3/issues/454 for now
+        # Needs to be set per tests as its reset between integration tests
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning)
+
         self.prepare_test_environment("cloud_gem_compute_farm_test")
         self.register_for_shared_resources()
         self.enable_shared_gem(self.GEM_NAME, 'v1')
@@ -63,7 +66,8 @@ class IntegrationTest_CloudGemComputeFarm_BasicFunctionality(base_stack_test.Bas
         response = self.__service_get('/fleetconfig', admin_auth=True)
         self.context['fleetconfig'] = response
         self.assertTrue(isinstance(response, dict))
-        self.assertEquals(len(response), 0)
+        self.assertEquals(len(response), 1)  # 'CloudCanvas_request_id' should be present
+        self.assertTrue(response['CloudCanvas_request_id'])
 
     def __999_cleanup(self):
         if self.FAST_TEST_RERUN:
@@ -78,15 +82,15 @@ class IntegrationTest_CloudGemComputeFarm_BasicFunctionality(base_stack_test.Bas
 
     def __service_get(self, path, params=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, expected_status_code=200):
         return self.__service_call('GET', path, params=params, anonymous_auth=anonymous_auth, player_auth=player_auth,
-                player_credentials=player_credentials, admin_auth=admin_auth, expected_status_code=expected_status_code)
+                                   player_credentials=player_credentials, admin_auth=admin_auth, expected_status_code=expected_status_code)
 
     def __service_put(self, path, body=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, expected_status_code=200):
         return self.__service_call('PUT', path, body=body, anonymous_auth=anonymous_auth, player_auth=player_auth,
-                player_credentials=player_credentials, admin_auth=admin_auth, expected_status_code=expected_status_code)
+                                   player_credentials=player_credentials, admin_auth=admin_auth, expected_status_code=expected_status_code)
 
     def __service_post(self, path, body=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, expected_status_code=200):
         return self.__service_call('POST', path, body=body, anonymous_auth=anonymous_auth, player_auth=player_auth,
-                player_credentials=player_credentials, admin_auth=admin_auth, expected_status_code=expected_status_code)
+                                   player_credentials=player_credentials, admin_auth=admin_auth, expected_status_code=expected_status_code)
 
     def __service_call(self, method, path, body=None, params=None, anonymous_auth=False, player_auth=False, player_credentials=None, admin_auth=False, assumed_role=None, expected_status_code=200):
         url = self.__get_service_url(path)
@@ -121,8 +125,8 @@ class IntegrationTest_CloudGemComputeFarm_BasicFunctionality(base_stack_test.Bas
 
         response = requests.request(method, url, auth=auth, json=body, params=params)
 
-        self.assertEquals(response.status_code, expected_status_code,
-            'Expected status code {} but got {}, response: {}'.format(expected_status_code, response.status_code, response.text))
+        self.assertEquals(response.status_code, expected_status_code, 'Expected status code {} but got {}, response: {}'.format(
+            expected_status_code, response.status_code, response.text))
 
         if response.status_code == 200:
             result = response.json().get('result', None)

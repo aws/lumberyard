@@ -36,7 +36,7 @@ namespace WwiseBuilder
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.bnk", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.wem", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = azrtti_typeid<WwiseBuilderWorker>();
-        builderDescriptor.m_version = 2;
+        builderDescriptor.m_version = 3;
         builderDescriptor.m_createJobFunction = AZStd::bind(&WwiseBuilderWorker::CreateJobs, &m_wwiseBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&WwiseBuilderWorker::ProcessJob, &m_wwiseBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
 

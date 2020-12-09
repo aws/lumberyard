@@ -92,6 +92,40 @@ namespace UnitTest
             static_assert(AZStd::is_same_v<typename TypeParam::period, typename TypeParam::expected_period>, "duration period type does not match expected period type");
         }
     }
+    namespace Comparisons
+    {
+        TEST_F(DurationTest, Comparisons_SameType)
+        {
+            constexpr AZStd::chrono::milliseconds threeMillis(3);
+            constexpr AZStd::chrono::milliseconds oneMillis(1);
+            constexpr AZStd::chrono::milliseconds oneMillisAgain(1);
+
+            static_assert(oneMillis == oneMillisAgain);
+            static_assert(threeMillis > oneMillis);
+            static_assert(oneMillis < threeMillis);
+            static_assert(threeMillis >= oneMillis);
+            static_assert(oneMillis <= threeMillis);
+            static_assert(threeMillis >= threeMillis);
+            static_assert(threeMillis <= threeMillis);
+        }
+        TEST_F(DurationTest, Comparisons_DifferentType)
+        {
+            constexpr AZStd::chrono::milliseconds threeMillis(3);
+            constexpr AZStd::chrono::milliseconds oneMillis(1);
+            // different types:
+            constexpr AZStd::chrono::microseconds threeMillisButInMicroseconds(3000);
+            constexpr AZStd::chrono::microseconds oneMilliButInMicroseconds(1000);
+
+            static_assert(threeMillisButInMicroseconds > oneMillis);
+            static_assert(oneMilliButInMicroseconds < threeMillis);
+            static_assert(threeMillis == threeMillisButInMicroseconds);
+            static_assert(oneMilliButInMicroseconds == oneMillis);
+            static_assert(threeMillisButInMicroseconds >= threeMillis);
+            static_assert(threeMillisButInMicroseconds <= threeMillis);
+            static_assert(threeMillisButInMicroseconds >= oneMillis);
+            static_assert(oneMilliButInMicroseconds <= threeMillis);
+        }
+    }
 
     // Test for std::duration arithmatic operations
     namespace ArithmaticOperators

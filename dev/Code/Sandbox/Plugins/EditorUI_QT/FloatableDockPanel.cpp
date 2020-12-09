@@ -15,8 +15,9 @@
 #include "qcoreevent.h"
 #include <QShortcutEvent>
 
-FloatableDockPanel::FloatableDockPanel(const QString& title, QWidget* parent, Qt::WindowFlags flags)
+FloatableDockPanel::FloatableDockPanel(const QString& title, QWidget* parent, Qt::WindowFlags flags, bool maximized)
     : QDockWidget(title, parent, flags)
+    , m_maximized{ maximized }
 {
     connect(this, &QDockWidget::topLevelChanged, this, &FloatableDockPanel::onFloatingStatusChanged);
 }
@@ -37,7 +38,7 @@ void FloatableDockPanel::onFloatingStatusChanged(bool floating)
         }
 #endif
         setWindowFlags(flags);
-        showMaximized();
+        m_maximized ? showMaximized() :show();
     }
     else
     {

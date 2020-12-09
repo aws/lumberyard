@@ -286,7 +286,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
     }
 
     QImage qImage(scaledImage.GetWidth(), scaledImage.GetHeight(), QImage::Format_RGB32);
-    memcpy(qImage.bits(), scaledImage.GetData(), qImage.byteCount());
+    memcpy(qImage.bits(), scaledImage.GetData(), qImage.sizeInBytes());
     m_staticBitmap->setPixmap(QPixmap::fromImage(qImage));
 
     if (m_bShowHistogram && scaledImage.GetData())

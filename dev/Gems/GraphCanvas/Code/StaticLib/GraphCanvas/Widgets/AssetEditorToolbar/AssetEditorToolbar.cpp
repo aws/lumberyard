@@ -327,7 +327,7 @@ namespace GraphCanvas
     {
         if (m_commentPresetActionGroup == nullptr)
         {
-            m_commentPresetActionGroup = aznew CommentPresetsMenuActionGroup();
+            m_commentPresetActionGroup = aznew CreateCommentPresetMenuActionGroup();
             m_commentPresetActionGroup->PopulateMenu(m_commentPresetsMenu);
         }
 
@@ -338,7 +338,7 @@ namespace GraphCanvas
     {
         if (m_nodeGroupPresetActionGroup == nullptr)
         {
-            m_nodeGroupPresetActionGroup = aznew NodeGroupPresetsMenuActionGroup();
+            m_nodeGroupPresetActionGroup = aznew CreateNodeGroupPresetMenuActionGroup();
             m_nodeGroupPresetActionGroup->PopulateMenu(m_nodeGroupPresetsMenu);
         }
 
@@ -365,7 +365,7 @@ namespace GraphCanvas
             }
 
             if (reaction == ContextMenuAction::SceneReaction::PostUndo)
-            {                
+            {
                 GraphModelRequestBus::Event(m_activeGraphId, &GraphModelRequests::RequestUndoPoint);
             }
 

@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "ScriptHelpDialog.h"
 #include <AzToolsFramework/API/EditorPythonConsoleBus.h>
+#include <AzQtComponents/Components/Widgets/LineEdit.h>
 #include <ui_ScriptHelpDialog.h>
 
 #include <QVBoxLayout>
@@ -31,6 +32,8 @@ HeaderView::HeaderView(QWidget* parent)
     : QHeaderView(Qt::Horizontal, parent)
     , m_commandFilter(new QLineEdit(this))
     , m_moduleFilter(new QLineEdit(this))
+    , m_descriptionFilter(new QLineEdit(this))
+    , m_exampleFilter(new QLineEdit(this))
 {
     // Allow the header sections to be clickable so we can change change the
     // sort order on click
@@ -41,6 +44,13 @@ HeaderView::HeaderView(QWidget* parent)
     connect(this, &QHeaderView::sectionResized, this, &HeaderView::repositionLineEdits);
     connect(m_commandFilter, &QLineEdit::textChanged, this, &HeaderView::commandFilterChanged);
     connect(m_moduleFilter, &QLineEdit::textChanged, this, &HeaderView::moduleFilterChanged);
+    connect(m_descriptionFilter, &QLineEdit::textChanged, this, &HeaderView::descriptionFilterChanged);
+    connect(m_exampleFilter, &QLineEdit::textChanged, this, &HeaderView::exampleFilterChanged);
+
+    AzQtComponents::LineEdit::applySearchStyle(m_commandFilter);
+    AzQtComponents::LineEdit::applySearchStyle(m_moduleFilter);
+    AzQtComponents::LineEdit::applySearchStyle(m_descriptionFilter);
+    AzQtComponents::LineEdit::applySearchStyle(m_exampleFilter);
 
     // Calculate our height offset to embed our line edits in the header
     const int margins = frameWidth() * 2 + 1;
@@ -67,6 +77,8 @@ void HeaderView::repositionLineEdits()
     const int lineEditYPos = headerHeight - m_lineEditHeightOffset;
     const int col0Width = sectionSize(0);
     const int col1Width = sectionSize(1);
+    const int col2Width = sectionSize(2);
+    const int col3Width = sectionSize(3);
     const int adjustment = 2;
 
     if (col0Width <= adjustment || col1Width <= adjustment)
@@ -76,12 +88,19 @@ void HeaderView::repositionLineEdits()
 
     m_commandFilter->setFixedWidth(col0Width - adjustment);
     m_moduleFilter->setFixedWidth(col1Width - adjustment);
+    m_descriptionFilter->setFixedWidth(col2Width - adjustment);
+    m_exampleFilter->setFixedWidth(col3Width - adjustment);
 
     m_commandFilter->move(1, lineEditYPos);
     m_moduleFilter->move(col0Width + 1, lineEditYPos);
+    m_descriptionFilter->move(col0Width + col1Width + 1, lineEditYPos);
+    m_exampleFilter->move(col0Width + col1Width + col2Width + 1, lineEditYPos);
 
     m_commandFilter->show();
     m_moduleFilter->show();
+    m_descriptionFilter->show();
+    // The example field is currently unused so will always be empty. Remove this when examples are added.
+    m_exampleFilter->hide();
 }
 
 ScriptHelpProxyModel::ScriptHelpProxyModel(QObject* parent)
@@ -98,8 +117,9 @@ bool ScriptHelpProxyModel::filterAcceptsRow(int source_row, const QModelIndex& s
 
     const QString command = sourceModel()->index(source_row, ScriptHelpModel::ColumnCommand).data(Qt::DisplayRole).toString().toLower();
     const QString module = sourceModel()->index(source_row, ScriptHelpModel::ColumnModule).data(Qt::DisplayRole).toString().toLower();
+    const QString description = sourceModel()->index(source_row, ScriptHelpModel::ColumnDescription).data(Qt::DisplayRole).toString().toLower();
 
-    return command.contains(m_commandFilter) && module.contains(m_moduleFilter);
+    return command.contains(m_commandFilter) && module.contains(m_moduleFilter) && description.contains(m_descriptionFilter);
 }
 
 void ScriptHelpProxyModel::setCommandFilter(const QString& text)
@@ -118,6 +138,26 @@ void ScriptHelpProxyModel::setModuleFilter(const QString& text)
     if (m_moduleFilter != lowerText)
     {
         m_moduleFilter = lowerText;
+        invalidateFilter();
+    }
+}
+
+void ScriptHelpProxyModel::setDescriptionFilter(const QString& text)
+{
+    const QString lowerText = text.toLower();
+    if (m_descriptionFilter != lowerText)
+    {
+        m_descriptionFilter = lowerText;
+        invalidateFilter();
+    }
+}
+
+void ScriptHelpProxyModel::setExampleFilter(const QString& text)
+{
+    const QString lowerText = text.toLower();
+    if (m_exampleFilter != lowerText)
+    {
+        m_exampleFilter = lowerText;
         invalidateFilter();
     }
 }
@@ -150,10 +190,6 @@ QVariant ScriptHelpModel::data(const QModelIndex& index, int role) const
         else if (col == ColumnDescription)
         {
             return item.description;
-        }
-        else if (col == ColumnExample)
-        {
-            return item.example;
         }
     }
 
@@ -245,16 +281,22 @@ ScriptTableView::ScriptTableView(QWidget* parent)
     setSelectionBehavior(QAbstractItemView::SelectRows);
     setSelectionMode(QAbstractItemView::ContiguousSelection); // Not very useful for this dialog, but the MFC code allowed to select many rows
 
-    static const std::array<int, ScriptHelpModel::ColumnCount> colWidths = { { 100, 60, 300, 200 } };
+    static const std::array<int, ScriptHelpModel::ColumnCount> colWidths = { { 100, 60, 300 } };
     for (int col = 0; col < ScriptHelpModel::ColumnCount; ++col)
     {
         setColumnWidth(col, colWidths[col]);
     }
 
+    setAlternatingRowColors(true);
+
     connect(headerView, &HeaderView::commandFilterChanged,
         m_proxyModel, &ScriptHelpProxyModel::setCommandFilter);
     connect(headerView, &HeaderView::moduleFilterChanged,
         m_proxyModel, &ScriptHelpProxyModel::setModuleFilter);
+    connect(headerView, &HeaderView::descriptionFilterChanged,
+        m_proxyModel, &ScriptHelpProxyModel::setDescriptionFilter);
+    connect(headerView, &HeaderView::exampleFilterChanged,
+        m_proxyModel, &ScriptHelpProxyModel::setExampleFilter);
 }
 
 CScriptHelpDialog::CScriptHelpDialog(QWidget* parent)
@@ -264,6 +306,8 @@ CScriptHelpDialog::CScriptHelpDialog(QWidget* parent)
     ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     setWindowTitle(tr("Script Help"));
+    setMinimumSize(QSize(480, 360));
+
     connect(ui->tableView, &ScriptTableView::doubleClicked, this, &CScriptHelpDialog::OnDoubleClick);
 }
 

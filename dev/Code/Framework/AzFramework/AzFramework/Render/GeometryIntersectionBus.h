@@ -48,13 +48,14 @@ namespace AzFramework
                 using BusPtr = typename Bus::BusPtr;
                 using Context = typename Bus::Context;
                 using HandlerNode = typename Bus::HandlerNode;
+                using ConnectLockGuard = typename Bus::ConnectLockGuard;
                 using BusIdType = typename Bus::BusIdType;
 
-                static void Connect(BusPtr& busPtr, Context& context, HandlerNode& handler, const BusIdType& id)
+                static void Connect(BusPtr&, Context&, HandlerNode&, ConnectLockGuard&, const BusIdType& id)
                 {
                     IntersectionRequests::OnConnect(id);
                 }
-                static void Disconnect(Context& context, HandlerNode& handler, BusPtr& busPtr)
+                static void Disconnect(Context&, HandlerNode& handler, BusPtr&)
                 {
                     IntersectionRequests::OnDisconnect(handler.GetBusId());
                 }

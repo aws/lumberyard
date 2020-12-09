@@ -40,7 +40,7 @@ namespace ImageProcessingEditor
     public slots:
         void OnCheckBoxStateChanged(bool checked);
         void OnRestButton();
-        void OnChangePreset(const QString& text);
+        void OnChangePreset(int index);
         void OnPresetInfoButton();
 
     protected:

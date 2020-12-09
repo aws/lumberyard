@@ -132,7 +132,13 @@ namespace GraphCanvas
     {
         QGraphicsWidget::resizeEvent(resizeEvent);
 
-        GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SignalBoundsChanged);
+        // For some reason when you first begin to drag a node widget, it resizes itself from old size to 0. Causing it to resize the group it's in.
+        //
+        // Kind of a quick patch to avoid that happening since there's nothing obvious in a callstack where the faulty resize is coming from.
+        if (!resizeEvent->newSize().isEmpty())
+        {
+            GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SignalBoundsChanged);
+        }
     }
     
     void NodeFrameGraphicsWidget::OnDeleteItem()

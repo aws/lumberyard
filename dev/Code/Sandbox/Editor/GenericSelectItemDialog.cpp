@@ -138,7 +138,7 @@ void CGenericSelectItemDialog::ReloadTree()
         }
 
         Q_ASSERT(hRoot);
-        hRoot->setData(0, Qt::UserRole, qVariantFromValue<void*>(&item));
+        hRoot->setData(0, Qt::UserRole, QVariant::fromValue<void*>(&item));
 
         if (!m_preselect.isEmpty() && m_preselect.compare(name, Qt::CaseInsensitive) == 0)
         {

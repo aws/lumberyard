@@ -38,10 +38,10 @@
  <Variable Name="Fog color (radial)" Color="0.98071569,0.45318985,0.047061842">
   <Spline Keys="0.246307:(0.153386:0.183291:0.207216):36,0.272655:(0.974165:0.357883:0.00368236):36,0.501099:(0.993456:0.618577:0.123086):36,0.729135:(0.973445:0.358807:0.00367651):36,0.751809:(0.156336:0.182823:0.208937):36,"/>
  </Variable>
- <Variable Name="Fog color (radial) multiplier" Value="0.55782259">
+ <Variable Name="Fog color (radial) multiplier" Value="0.55782264">
   <Spline Keys="0.243056:0.063:36,0.301134:0.556934:36,0.665065:0.557871:36,0.734176:0.0632247:36,"/>
  </Variable>
- <Variable Name="Fog radial size" Value="0.85000002">
+ <Variable Name="Fog radial size" Value="0.84999996">
   <Spline Keys="0:0.85:65572,1:0.85:65572,"/>
  </Variable>
  <Variable Name="Fog radial lobe" Value="0">
@@ -62,7 +62,7 @@
  <Variable Name="Volumetric fog: Ramp influence" Value="0.69999993">
   <Spline Keys="0:0.7:36,0.25:0.7:36,0.462637:0.7:36,0.5:0.7:36,0.583333:0.7:36,0.646282:0.7:36,0.75:0.7:36,1:0.7:36,"/>
  </Variable>
- <Variable Name="Volumetric fog: Shadow darkening" Value="0.2">
+ <Variable Name="Volumetric fog: Shadow darkening" Value="0.20000002">
   <Spline Keys="0:0.2:36,0.25:0.2:36,0.462637:0.2:36,0.5:0.2:65572,0.583333:0.2:36,0.75:0.2:36,1:0.2:36,"/>
  </Variable>
  <Variable Name="Volumetric fog: Shadow darkening sun" Value="0.31330821">
@@ -104,7 +104,7 @@
  <Variable Name="Volumetric fog 2: Fog albedo color (sun radial)" Color="1,1,1">
   <Spline Keys="0:(1:1:1):0,1:(1:1:1):0,"/>
  </Variable>
- <Variable Name="Volumetric fog 2: Anisotropy factor (sun radial)" Value="0.94999999">
+ <Variable Name="Volumetric fog 2: Anisotropy factor (sun radial)" Value="0.95000005">
   <Spline Keys="0:0.95:0,1:0.95:0,"/>
  </Variable>
  <Variable Name="Volumetric fog 2: Blend factor for sun scattering" Value="1">
@@ -140,7 +140,7 @@
  <Variable Name="Sky light: Sun intensity multiplier" Value="157.17451">
   <Spline Keys="0:81:36,0.267943:81.4634:36,0.49691:314.965:65572,0.717954:81.4634:36,1:81:36,"/>
  </Variable>
- <Variable Name="Sky light: Mie scattering" Value="68.628441">
+ <Variable Name="Sky light: Mie scattering" Value="68.628448">
   <Spline Keys="0:66:36,0.513021:69.6187:65572,1:66:36,"/>
  </Variable>
  <Variable Name="Sky light: Rayleigh scattering" Value="0.058781937">
@@ -209,7 +209,7 @@
  <Variable Name="Cloud shading: Sun custom color multiplier" Value="0.050000001">
   <Spline Keys="0:0.05:36,1:0.05:36,"/>
  </Variable>
- <Variable Name="Cloud shading: Sun custom color influence" Value="0.0075910501">
+ <Variable Name="Cloud shading: Sun custom color influence" Value="0.0075910506">
   <Spline Keys="0:0.125:36,0.207229:0.117028:36,0.348494:0.0069352:36,0.660335:0.007622:36,0.805812:0.120569:36,1:0.125:36,"/>
  </Variable>
  <Variable Name="Sun shafts visibility" Value="0">
@@ -218,7 +218,7 @@
  <Variable Name="Sun rays visibility" Value="1.5000272">
   <Spline Keys="0:0.2:36,0.244398:0.2:36,0.255345:1.50013:36,0.75:1.5:36,0.757349:0.2:36,1:0.2:36,"/>
  </Variable>
- <Variable Name="Sun rays attenuation" Value="1.4999999">
+ <Variable Name="Sun rays attenuation" Value="1.5">
   <Spline Keys="0:1.5:36,1:1.5:36,"/>
  </Variable>
  <Variable Name="Sun rays suncolor influence" Value="0.5">
@@ -239,10 +239,10 @@
  <Variable Name="Static skybox multiplier" Value="1">
   <Spline Keys="0:1:0,1:1:0,"/>
  </Variable>
- <Variable Name="Film curve shoulder scale" Value="2.5401194">
+ <Variable Name="Film curve shoulder scale" Value="2.5401192">
   <Spline Keys="0:3:36,0.229167:3:36,0.462637:2.13796:36,0.5:2:36,0.770833:3:36,1:3:36,"/>
  </Variable>
- <Variable Name="Film curve midtones scale" Value="0.84673935">
+ <Variable Name="Film curve midtones scale" Value="0.84673929">
   <Spline Keys="0.248351:0.75093:65572,0.5:1:36,0.73869:0.749923:36,"/>
  </Variable>
  <Variable Name="Film curve toe scale" Value="1">
@@ -272,7 +272,7 @@
  <Variable Name="EV Max" Value="17">
   <Spline Keys="0:17:0,1:17:0,"/>
  </Variable>
- <Variable Name="EV Auto compensation" Value="1.4999999">
+ <Variable Name="EV Auto compensation" Value="1.5">
   <Spline Keys="0:1.5:0,1:1.5:0,"/>
  </Variable>
  <Variable Name="Bloom amount" Value="1.99675">
@@ -293,31 +293,31 @@
  <Variable Name="Dof: blur amount" Value="0.15000001">
   <Spline Keys="0.0158432:0.15:65572,0.646282:0.15:36,"/>
  </Variable>
- <Variable Name="Cascade 0: Bias" Value="0.1">
+ <Variable Name="Cascade 0: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:36,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:65572,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 0: Slope Bias" Value="64">
   <Spline Keys="0:64:36,0.25:64:36,0.5:64:65572,0.75:64:36,1:64:36,"/>
  </Variable>
- <Variable Name="Cascade 1: Bias" Value="0.1">
+ <Variable Name="Cascade 1: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:36,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:65572,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 1: Slope Bias" Value="8">
   <Spline Keys="0:8:36,0.25:8:36,0.5:8:65572,0.75:8:36,1:8:36,"/>
  </Variable>
- <Variable Name="Cascade 2: Bias" Value="0.1">
+ <Variable Name="Cascade 2: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:36,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:65572,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 2: Slope Bias" Value="4">
   <Spline Keys="0:4:36,0.25:4:36,0.5:4:65572,0.75:4:36,1:4:36,"/>
  </Variable>
- <Variable Name="Cascade 3: Bias" Value="0.1">
+ <Variable Name="Cascade 3: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:36,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:36,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 3: Slope Bias" Value="1">
   <Spline Keys="0:1:36,0.25:1:36,0.5:1:65572,0.75:1:36,1:1:36,"/>
  </Variable>
- <Variable Name="Cascade 4: Bias" Value="0.1">
+ <Variable Name="Cascade 4: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:0,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:65572,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 4: Slope Bias" Value="1">
@@ -329,13 +329,13 @@
  <Variable Name="Cascade 5: Slope Bias" Value="1">
   <Spline Keys="0:1:0,0.25:1:36,0.5:1:65572,0.75:1:36,1:1:36,"/>
  </Variable>
- <Variable Name="Cascade 6: Bias" Value="0.1">
+ <Variable Name="Cascade 6: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:0,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:36,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 6: Slope Bias" Value="1">
   <Spline Keys="0:1:0,0.25:1:36,0.5:1:65572,0.75:1:36,1:1:36,"/>
  </Variable>
- <Variable Name="Cascade 7: Bias" Value="0.1">
+ <Variable Name="Cascade 7: Bias" Value="0.099999994">
   <Spline Keys="0:0.1:0,0.25:0.1:36,0.462637:0.1:36,0.5:0.1:36,0.75:0.1:36,1:0.1:36,"/>
  </Variable>
  <Variable Name="Cascade 7: Slope Bias" Value="1">

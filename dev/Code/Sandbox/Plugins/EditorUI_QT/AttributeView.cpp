@@ -112,7 +112,7 @@ CAttributeView::CAttributeView(QWidget* parent)
     QScrollBar* vscrollBar = m_scrollArea->verticalScrollBar();
     connect(vscrollBar, &QScrollBar::valueChanged, this, [this](int v)
         {
-            setValue(m_currLibraryName + "_scroll", QString().sprintf("%d", v));
+            setValue(m_currLibraryName + "_scroll", QString().asprintf("%d", v));
         });
     connect(m_scrollAreaWidget, &PanelWidget::SignalRenamePanel, this, &CAttributeView::RenamePanel);
     connect(m_scrollAreaWidget, &PanelWidget::SignalExportPanel, this, &CAttributeView::ExportPanel);
@@ -902,7 +902,7 @@ void CAttributeView::ResolveVisibility()
 void CAttributeView::RestoreScrollPosition()
 {
     QScrollBar* vscrollBar = m_scrollArea->verticalScrollBar();
-    const int scrollValue = atoi(getValue(m_currLibraryName + "_scroll", QString().sprintf("%d", vscrollBar->value())).toStdString().c_str());
+    const int scrollValue = atoi(getValue(m_currLibraryName + "_scroll", QString().asprintf("%d", vscrollBar->value())).toStdString().c_str());
     vscrollBar->setValue(scrollValue);
 }
 
@@ -918,7 +918,7 @@ void CAttributeView::BuildCollapseUncollapseAllMenu()
             {
                 for (QAction* a : m_contextMenuCollapseSinglePanelActions)
                 {
-                    QCollapsePanel* panel = static_cast<QCollapsePanel*>(a->userData(0));
+                    QCollapsePanel* panel = a->property("collapse_panel").value<QCollapsePanel*>();
                     if (!panel)
                     {
                         continue;
@@ -935,7 +935,7 @@ void CAttributeView::BuildCollapseUncollapseAllMenu()
             {
                 for (QAction* a : m_contextMenuCollapseSinglePanelActions)
                 {
-                    QCollapsePanel* panel = static_cast<QCollapsePanel*>(a->userData(0));
+                    QCollapsePanel* panel = a->property("collapse_panel").value<QCollapsePanel*>();
                     if (!panel)
                     {
                         continue;

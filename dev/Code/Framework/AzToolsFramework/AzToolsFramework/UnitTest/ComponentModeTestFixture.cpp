@@ -26,6 +26,7 @@ namespace UnitTest
         m_app.RegisterComponentDescriptor(AzToolsFramework::ComponentModeFramework::AnotherPlaceholderEditorComponent::CreateDescriptor());
         m_app.RegisterComponentDescriptor(AzToolsFramework::ComponentModeFramework::DependentPlaceholderEditorComponent::CreateDescriptor());
         m_app.RegisterComponentDescriptor(AzToolsFramework::ComponentModeFramework::TestComponentModeComponent<OverrideMouseInteractionComponentMode>::CreateDescriptor());
+        m_app.RegisterComponentDescriptor(AzToolsFramework::ComponentModeFramework::IncompatiblePlaceholderEditorComponent::CreateDescriptor());
 
         m_editorActions.Connect();
     }

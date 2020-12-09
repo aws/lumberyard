@@ -864,7 +864,7 @@ struct SSystemInitParams
         pSharedEnvironment = nullptr;
     }
 
-    bool UseAssetCache() const
+    bool HasAssetCache() const
     {
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
         char checkPath[AZ_MAX_PATH_LEN] = { 0 };
@@ -873,6 +873,24 @@ struct SSystemInitParams
 #else
         return false;
 #endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
+    }
+
+    //! Can be used to determine whether an asset cache will exists even before
+    //! launching the asset processor.
+    bool WillAssetCacheExist() const
+    {
+#if defined(REMOTE_ASSET_PROCESSOR) //REMOTE_ASSET_PROCESSOR is defined except in release 
+        if (HasAssetCache())
+        {
+            return true;
+        }
+
+        if ((!bTestMode && remoteFileIO) || waitForConnection)
+        {
+            return true;
+        }
+#endif
+        return false;
     }
 };
 

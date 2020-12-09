@@ -693,7 +693,7 @@ void CPersistentDebug::OnWriteToConsole(const char* sText, bool bNewLine)
 
         if (display)
         {
-            Add2DText(sText, 1.0f, ColorF(1.0f, 1.0f, 1.0f), 20.0f);
+            Add2DText(sText, 16.0f, ColorF(1.0f, 1.0f, 1.0f), 20.0f);
         }
     }
 }

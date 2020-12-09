@@ -55,7 +55,7 @@ namespace Camera
                 m_view->LinkTo(GetEntity());
                 UpdateCamera();
             }
-            MakeActiveView();
+            SetActiveView(true);
         }
         CameraRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
@@ -95,7 +95,7 @@ namespace Camera
         if (serializeContext)
         {
             serializeContext->Class<EditorCameraComponent, AzToolsFramework::Components::EditorComponentBase>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Field of View", &EditorCameraComponent::m_fov)
                 ->Field("Near Clip Plane Distance", &EditorCameraComponent::m_nearClipPlaneDistance)
                 ->Field("Far Clip Plane Distance", &EditorCameraComponent::m_farClipPlaneDistance)
@@ -105,6 +105,7 @@ namespace Camera
                 ->Field("ViewButton", &EditorCameraComponent::m_viewButton)
                 ->Field("FrustumLengthPercent", &EditorCameraComponent::m_frustumViewPercentLength)
                 ->Field("FrustumDrawColor", &EditorCameraComponent::m_frustumDrawColor)
+                ->Field("AutoActivate", &EditorCameraComponent::m_autoActivate)
                 ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -140,6 +141,8 @@ namespace Camera
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 10.f)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c))
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCameraComponent::m_autoActivate, "Auto-activate",
+                        "Switch the view to this camera when the camera entity is activated")
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Debug")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
@@ -290,12 +293,51 @@ namespace Camera
         UpdateCamera();
     }
 
-    void EditorCameraComponent::MakeActiveView()
+    bool EditorCameraComponent::ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) const
     {
-        m_prevViewId = AZ::u32(m_viewSystem->GetActiveViewId());
-        m_viewSystem->SetActiveView(m_view);
-        UpdateCamera();
+        return m_view->ProjectWorldPointToScreen(worldPoint, outScreenPoint);
     }
+
+    bool EditorCameraComponent::UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) const
+    {
+        return m_view->UnprojectScreenPointToWorld(screenPoint, outWorldPoint);
+    }
+
+    bool EditorCameraComponent::ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) const
+    {
+        return m_view->ProjectWorldPointToViewport(worldPoint, viewport, outViewportPoint);
+    }
+
+    bool EditorCameraComponent::UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) const
+    {
+        return m_view->UnprojectViewportPointToWorld(viewportPoint, viewport, outWorldPoint);
+    }
+
+    void EditorCameraComponent::GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix) const
+    {
+        m_view->GetProjectionMatrix(m_nearClipPlaneDistance, m_farClipPlaneDistance, outProjectionMatrix);
+    }
+
+    bool EditorCameraComponent::IsActiveView() const
+    {
+        return(m_view && m_viewSystem->GetActiveView() == m_view);
+    }
+
+    void EditorCameraComponent::SetActiveView(bool active)
+    {
+        if (active)
+        {
+            m_prevViewId = AZ::u32(m_viewSystem->GetActiveViewId());
+            m_viewSystem->SetActiveView(m_view);
+            UpdateCamera();
+        }
+        else if (m_prevViewId && IsActiveView())
+        {
+            m_viewSystem->SetActiveView(m_prevViewId);
+            m_prevViewId = 0;
+        }
+    }
+
 
     void EditorCameraComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
@@ -354,6 +396,7 @@ namespace Camera
         properties.m_specifyFrustumDimensions = m_specifyDimensions;
         properties.m_frustumWidth = m_frustumWidth;
         properties.m_frustumHeight = m_frustumHeight;
+        properties.m_autoActivate = m_autoActivate;
         CameraComponent* cameraComponent = gameEntity->CreateComponent<CameraComponent>(properties);
     }
 

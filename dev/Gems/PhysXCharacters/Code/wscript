@@ -51,7 +51,7 @@ def build(bld):
         pch               = pch_file,
         use               = ['AzFramework'],
         uselib            = [physx_sdk_lib],
-        test_all_use      = ['AzPhysicsTests'],
+        test_all_use      = ['AzPhysicsTests', 'AzTestShared'],
         win_features      = ['crcfix'],
         
         editor            = dict(

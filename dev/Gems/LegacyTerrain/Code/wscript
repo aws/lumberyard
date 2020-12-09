@@ -19,14 +19,13 @@ def build(bld):
         raise Exception("The <Legacy Terrain> Gem requires the terrain editor tools to be enabled.")
     bld.DefineGem(
         includes          = ['.',
-                             'Include',
+                             'include',
                              bld.Path('Code/CryEngine/CryCommon'),
                              bld.Path('Code/CryEngine/RenderDll')],
         win_features      = ['crcfix'],    
         use_required_gems = True,
 
         editor = dict(
-            platforms   = ['win', 'darwin'],
             features    = ['qt5', 'crcfix'],
             uselib      = [
                            'QT5CORE',

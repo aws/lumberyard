@@ -85,6 +85,9 @@ namespace LmbrCentral
         incompatible.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
         incompatible.push_back(AZ_CRC("SphereShapeService", 0x90c8dc80));
         incompatible.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
+        incompatible.push_back(AZ_CRC("TubeShapeService", 0x3fe791b4));
+        incompatible.push_back(AZ_CRC("PrismShapeService", 0x8dbfb417));
+        incompatible.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
     }
     void EditorRandomTimedSpawnerComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {

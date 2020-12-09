@@ -102,7 +102,9 @@ namespace AzQtComponents
         void handleToolBarIconSizeChange();
         void fixToolBarSizeConstraints(QToolBar* tb);
         void polishToolbar(QToolBar*);
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
         QPainterPath borderLineEditRect(const QRect& rect, bool rounded = true) const;
+AZ_POP_DISABLE_WARNING
         void drawLineEditIcon(QPainter* painter, const QRect& rect, const int flavor) const;
         void drawStyledLineEdit(const QLineEdit* le, QPainter* painter, const QPainterPath& path) const;
         void drawSearchLineEdit(const QLineEdit* le, QPainter* painter, const QPainterPath& path, const QColor& borderColor) const;

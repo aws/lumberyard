@@ -11,11 +11,11 @@
 */
 #include "QAmazonDoubleSpinBox.h"
 
+#include <QApplication>
+#include <QDebug>
 #include <QLineEdit>
 #include <QMouseEvent>
-#include <QDebug>
-#include <QApplication>
-#include <QtWidgets/QDesktopWidget>
+#include <QScreen>
 
 
 QAmazonDoubleSpinBox::QAmazonDoubleSpinBox(QWidget* parent)
@@ -89,8 +89,7 @@ void QAmazonDoubleSpinBox::MouseEvent(QEvent* event)
             spinBox->stepBy(distance);
             m_lastMousePosition = mouseEvent->globalPos();
 
-            int screenId = QApplication::desktop()->screenNumber(mousePos);
-            QRect screenSize = QApplication::desktop()->screen(screenId)->geometry();
+            QRect screenSize = QApplication::screenAt(mousePos)->geometry();
             if (mouseEvent->globalPos().y() >= screenSize.height() - 1)
             {
                 mousePos.setY(1);

@@ -9,9 +9,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # $Revision: #16 $
-
-from __future__ import print_function
-
 import argparse
 import copy
 import ctypes
@@ -21,17 +18,18 @@ import importlib
 import importlib.util
 import json
 import os
+import platform
 import subprocess
 import sys
 import threading
 import time
 import warnings
-import platform
-
-from typing import List
 from functools import cmp_to_key
+from typing import List
 
 from six import iteritems
+
+import path_utils
 
 # Test are divided into to categories: unit tests and integration tests.
 #
@@ -69,8 +67,6 @@ from six import iteritems
 #     enabled.
 #
 
-import path_utils
-
 TYPE_INTEGRATION_TEST = "integration_test"
 TYPE_UNIT_TEST = "unit_test"
 
@@ -86,10 +82,11 @@ DEFAULT_CPP_TEST_GEM = CPP_GEM_MAP["Bin64vc141.Debug.Test"]
 # What needs to be omitted from the code coverage run
 COVERAGE_OMIT = ','.join(
     [
-        os.path.join('*', 'temp', '*'),  # any temp files that were created
-        os.path.join('*', 'test', '*'),  # any unit test files
+        os.path.join('*', 'temp', '*'),    # any temp files that were created
+        os.path.join('*', 'test', '*'),    # any unit test files
         os.path.join('*', '__init__.py'),  # any init files
         os.path.join('*', 'python', '*'),  # any other python libs
+        os.path.join('*', 'lib', '*'),     # any 3rd party python libs
     ])
 
 # These gems do not currently have unit tests, so they need to be manually checked during code coverage jobs
@@ -1571,14 +1568,15 @@ def output_table(items, specs, sort_column_count=1, indent=False, first_sort_col
         output_message(line)
 
 
-def flatten(toFlatten, separator):
+def flatten(to_flatten, separator):
     flattened = ""
-    for item in toFlatten:
+    for item in to_flatten:
         if isinstance(item, list):
             flattened += flatten(item, separator)
         else:
             flattened += item + separator
     return flattened
+
 
 def process_suite_environment_value(value):
     if type(value) is list:

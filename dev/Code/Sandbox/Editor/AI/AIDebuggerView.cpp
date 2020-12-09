@@ -277,10 +277,10 @@ QSize CAIDebuggerView::sizeHint() const
 //////////////////////////////////////////////////////////////////////////
 void CAIDebuggerView::wheelEvent(QWheelEvent* event)
 {
-    if (m_timelineRect.contains(event->pos()) || m_rulerRect.contains(event->pos()))
+    if (m_timelineRect.contains(event->position().toPoint()) || m_rulerRect.contains(event->position().toPoint()))
     {
         float   val = (event->angleDelta().y() / (float)WHEEL_DELTA) * 0.75f;
-        int x = event->x() - m_timelineRect.left();
+        int x = event->position().x() - m_timelineRect.left();
         float   mouseTime = ClientToTime(x);
 
         if (val > 0)
@@ -1575,7 +1575,7 @@ void CAIDebuggerView::DrawList(QPainter& dc)
 
     for (size_t i = 0; i < m_streams.size(); i++)
     {
-        m_streams[i].nameWidth = smallMetrics.width(m_streams[i].name);
+        m_streams[i].nameWidth = smallMetrics.horizontalAdvance(m_streams[i].name);
     }
 
     int texth = normalMetrics.height();

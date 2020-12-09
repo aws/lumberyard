@@ -92,7 +92,8 @@ namespace Prop
         { IVariable::DT_AUDIO_ENVIRONMENT, "Audio Environment", ePropertyAudioEnvironment, 6 },
         { IVariable::DT_AUDIO_PRELOAD_REQUEST, "Audio Preload Request", ePropertyAudioPreloadRequest, 6 },
         { IVariable::DT_SIMPLE, "Custom", ePropertyFlowCustomData, -1 },
-        { IVariable::DT_UI_ELEMENT, "UiElement", ePropertyUiElement, -1 }
+        { IVariable::DT_UI_ELEMENT, "UiElement", ePropertyUiElement, -1 },
+        { IVariable::DT_ASSET, "Asset Id", ePropertyAsset, -1 }
     };
 
     static const int NumPropertyTypes = sizeof(s_propertyTypeNames) / sizeof(s_propertyTypeNames[0]);

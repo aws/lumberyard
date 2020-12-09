@@ -84,9 +84,22 @@ bool GetPositionFromString(QString er, float* x, float* y, float* z)
 CErrorReportTableModel::CErrorReportTableModel(QObject* parent)
     : AbstractSortModel(parent)
 {
-    m_imageList.push_back(QPixmap(":/error_report_00.png"));
-    m_imageList.push_back(QPixmap(":/error_report_01.png"));
-    m_imageList.push_back(QPixmap(":/error_report_02.png"));
+    QIcon error_icon = QIcon(":/error_report_error.svg");
+    error_icon.addFile(":/error_report_error.svg", QSize(), QIcon::Selected);
+    m_imageList.push_back(error_icon);
+
+    // VALIDATOR_ERROR_DBGBRK - this is never used but we need to space the icon list correctly.
+    QIcon dbg_icon = QIcon(":/error_report_error.svg");
+    dbg_icon.addFile(":/error_report_error.svg", QSize(), QIcon::Selected);
+    m_imageList.push_back(dbg_icon);
+
+    QIcon warning_icon = QIcon(":/error_report_warning.svg");
+    warning_icon.addFile(":/error_report_warning.svg", QSize(), QIcon::Selected);
+    m_imageList.push_back(warning_icon);
+
+    QIcon comment_icon = QIcon(":/error_report_comment.svg");
+    comment_icon.addFile(":/error_report_comment.svg", QSize(), QIcon::Selected);
+    m_imageList.push_back(comment_icon);
 }
 
 CErrorReportTableModel::~CErrorReportTableModel()

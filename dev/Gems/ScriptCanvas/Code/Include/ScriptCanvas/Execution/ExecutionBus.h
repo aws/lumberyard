@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -14,6 +14,7 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/EBus/Event.h>
 #include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 
 #include <ScriptCanvas/Core/Core.h>
@@ -47,4 +48,31 @@ namespace ScriptCanvas
     };
 
     using ExecutionRequestBus = AZ::EBus<ExecutionRequests>;
+
+    class ExecutionTimingNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
+        using BusIdType = AZ::EntityId;
+
+        virtual AZStd::sys_time_t GetInstantDurationInMicroseconds() = 0;
+        virtual double GetInstantDurationInMilliseconds() = 0;
+
+        virtual AZStd::sys_time_t GetLatentDurationInMicroseconds() = 0;
+        virtual double GetLatentDurationInMilliseconds() = 0;
+
+        virtual AZStd::sys_time_t GetReadyDurationInMicroseconds() = 0;
+        virtual double GetReadyDurationInMilliseconds() = 0;
+
+        virtual AZ::Event<size_t>* GetLatentStartTimerEvent() = 0;
+        virtual AZ::Event<size_t>* GetLatentStopTimerEvent() = 0;
+
+        // Keep alternative ebus timing
+        virtual void OnLatentStart(size_t latentId) = 0;
+        virtual void OnLatentStop(size_t latentId) = 0;
+    };
+
+    using ExecutionTimingNotificationsBus = AZ::EBus<ExecutionTimingNotifications>;
 }

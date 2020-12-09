@@ -765,6 +765,8 @@
         "Controls/ReflectedPropertyCtrl": [
             "Controls/ReflectedPropertyControl/PropertyAnimationCtrl.cpp",
             "Controls/ReflectedPropertyControl/PropertyAnimationCtrl.h",
+            "Controls/ReflectedPropertyControl/PropertyAssetCtrl.cpp",
+            "Controls/ReflectedPropertyControl/PropertyAssetCtrl.h",
             "Controls/ReflectedPropertyControl/PropertyGenericCtrl.cpp",
             "Controls/ReflectedPropertyControl/PropertyGenericCtrl.h",
             "Controls/ReflectedPropertyControl/PropertyMiscCtrl.cpp",
@@ -1082,6 +1084,7 @@
             "AboutDialog.h",
             "AboutDialog.ui",
             "AnimUtils.h",
+            "CVarMenu.h",
             "DatabaseFrameWnd.h",
             "DatabaseFrameWnd.ui",
             "DatabaseFrameWnd.qrc",
@@ -1486,6 +1489,7 @@
             "TerrainPanel.h"
         ],
         "Python": [
+            "PythonEditorEventsBus.h",
             "PythonEditorFuncs.cpp",
             "PythonEditorFuncs.h"
         ],
@@ -1585,6 +1589,7 @@
         ],
         "Source Files": [
             "AboutDialog.cpp",
+            "CVarMenu.cpp",            
             "DatabaseFrameWnd.cpp",
             "Dialogs/DuplicatedObjectsHandlerDlg.cpp",
             "Dialogs/DuplicatedObjectsHandlerDlg.ui",
@@ -1707,6 +1712,7 @@
         "TrackView/Dialog/Key Dialogs": [
             "TrackView/2DBezierKeyUIControls.cpp",
             "TrackView/AssetBlendKeyUIControls.cpp",
+            "TrackView/AssetIdKeyUIControls.cpp",
             "TrackView/CaptureKeyUIControls.cpp",
             "TrackView/CharacterKeyUIControls.cpp",
             "TrackView/ConsoleKeyUIControls.cpp",

@@ -159,7 +159,7 @@ QString UIUtils::ColorToString(const QColor& color)
 {
     float r, g, b, a;
     ColorGammaToLinear(color, r, g, b, a);
-    return QString().sprintf("%f,%f,%f", r, g, b);
+    return QString().asprintf("%f,%f,%f", r, g, b);
 }
 
 void UIUtils::ColorGammaToLinear(const QColor& color, float& r, float& g, float& b, float& a)

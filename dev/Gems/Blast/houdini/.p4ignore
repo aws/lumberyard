@@ -1,0 +1,4 @@
+*.exp
+*.ilk
+*.o
+build/

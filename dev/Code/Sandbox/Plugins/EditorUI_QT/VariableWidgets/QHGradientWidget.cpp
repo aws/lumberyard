@@ -13,14 +13,14 @@
 #include "QHGradientWidget.h"
 #include <VariableWidgets/ui_QHGradientWidget.h>
 
-
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 #include <QPainter>
 #include <QResizeEvent>
 #include <QtMath>
 #include <QPropertyAnimation>
 #include <QToolTip>
-#include "QCustomColorDialog.h"
 #include "UIFactory.h"
 
 const static QColor kDefaultColor           = QColor(255, 255, 255);
@@ -328,11 +328,14 @@ void QHGradientWidget::mouseDoubleClickEvent(QMouseEvent* e)
                     addKey(x, QColor(r, g, b), true);
                 }
 #else
-                QCustomColorDialog* dlg = UIFactory::GetColorPicker(m_gradientMap[i]);
-                if (dlg->exec() == QDialog::Accepted)
+                QColor existingColor = m_gradientMap[i];
+
+                const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, AzQtComponents::fromQColor(existingColor), tr("Select Color"));
+                QColor selectedColor = AzQtComponents::ToQColor(color);
+                if (selectedColor != existingColor)
                 {
                     const float x = e->localPos().x() / width();
-                    addKey(x, dlg->GetColor(), true);
+                    addKey(x, selectedColor, true);
                 }
 #endif
             }
@@ -399,7 +402,7 @@ void QHGradientWidget::mouseMoveEvent(QMouseEvent* e)
         if (x >= 0 && x < m_gradientMap.size())
         {
             const QColor& c = m_gradientMap[x];
-            QToolTip::showText(e->globalPos(), QString().sprintf("%.3f -> R%d G%d B%d", 1.0f / width() * x, c.red(), c.green(), c.blue()), this);
+            QToolTip::showText(e->globalPos(), QString().asprintf("%.3f -> R%d G%d B%d", 1.0f / width() * x, c.red(), c.green(), c.blue()), this);
             cursor = Qt::CrossCursor;
         }
     }
@@ -473,7 +476,7 @@ void QHGradientWidget::showTooltip(const Key& key)
     const float x = t * width();
     const QColor& c = key.m_color;
     QPoint pos = mapToGlobal(QPoint(x, kGradientHeight));
-    QToolTip::showText(pos, QString().sprintf("%.3f -> R%d G%d B%d", t, c.red(), c.green(), c.blue()), this);
+    QToolTip::showText(pos, QString().asprintf("%.3f -> R%d G%d B%d", t, c.red(), c.green(), c.blue()), this);
 }
 
 void QHGradientWidget::onUpdateGradient(const int flags)
@@ -530,10 +533,13 @@ void QHGradientWidget::onPickColor(Key& key)
         onUpdateGradient(FLAG_UPDATE_DISPLAY_GRADIENT | FLAG_UPDATE_KEYS);
     }
 #else
-    QCustomColorDialog* dlg = UIFactory::GetColorPicker(key.m_color);
-    if (dlg->exec() == QDialog::Accepted)
+    const QColor existingColor = key.m_color;
+
+    const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, AzQtComponents::fromQColor(existingColor), tr("Select Color"));
+    QColor selectedColor = AzQtComponents::ToQColor(color);
+    if (selectedColor != existingColor)
     {
-        key.m_color = dlg->GetColor();
+        key.m_color = selectedColor;
         onUpdateGradient(FLAG_UPDATE_DISPLAY_GRADIENT | FLAG_UPDATE_KEYS);
     }
 #endif

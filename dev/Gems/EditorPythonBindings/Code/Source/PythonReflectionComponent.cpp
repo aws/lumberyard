@@ -26,6 +26,7 @@
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
 
 #include <AzCore/PlatformDef.h>
 #include <AzCore/IO/SystemFile.h>
@@ -172,6 +173,19 @@ namespace EditorPythonBindings
             return { pyPath };
         }
 
+        void RegisterAliasIfExists(pybind11::module pathsModule, AZStd::string_view alias, AZStd::string_view attribute)
+        {
+            const char* aliasPath = AZ::IO::FileIOBase::GetInstance()->GetAlias(alias.data());
+            if (aliasPath)
+            {
+                pathsModule.attr(attribute.data()) = aliasPath;
+            }
+            else
+            {
+                pathsModule.attr(attribute.data()) = "";
+            }
+        }
+
         void RegisterPaths(pybind11::module parentModule)
         {
             pybind11::module pathsModule = parentModule.def_submodule("paths");
@@ -179,8 +193,21 @@ namespace EditorPythonBindings
             {
                 return PyResolvePath(path);
             });
-            pathsModule.attr("devroot") = PyResolvePath("@devroot@").c_str();
-            pathsModule.attr("engroot") = PyResolvePath("@engroot@").c_str();
+            pathsModule.def("ensure_alias", [](const char* alias, const char* path)
+            {
+                const char* aliasPath = AZ::IO::FileIOBase::GetInstance()->GetAlias(alias);
+                if (aliasPath == nullptr)
+                {
+                    AZ::IO::FileIOBase::GetInstance()->SetAlias(alias, path);
+                }
+            });
+
+            RegisterAliasIfExists(pathsModule, "@devroot@", "devroot");
+            RegisterAliasIfExists(pathsModule, "@engroot@", "engroot");
+            RegisterAliasIfExists(pathsModule, "@assets@", "assets");
+            RegisterAliasIfExists(pathsModule, "@devassets@", "devassets");
+            RegisterAliasIfExists(pathsModule, "@log@", "log");
+            RegisterAliasIfExists(pathsModule, "@root@", "root");
         }
     }
 
@@ -192,23 +219,25 @@ namespace EditorPythonBindings
         if (auto&& serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<PythonReflectionComponent, AZ::Component>()
-                ->Version(0);
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>{AZ_CRC_CE("AssetBuilder")})
+                ;
         }
     }
 
     void PythonReflectionComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("PythonLegacyService", 0x56c1a561));
+        provided.push_back(PythonReflectionService);
     }
 
     void PythonReflectionComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("PythonLegacyService", 0x56c1a561));
+        incompatible.push_back(PythonReflectionService);
     }
 
     void PythonReflectionComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("PythonSystemService", 0x98e7cd4d));
+        required.push_back(PythonEmbeddedService);
     }
 
     void PythonReflectionComponent::Activate()
@@ -329,7 +358,6 @@ namespace EditorPythonBindings
     {
         m_staticPropertyHolderMap.reset();
     }
-    
     void PythonReflectionComponent::OnImportModule(PyObject* module)
     {
         pybind11::module parentModule = pybind11::cast<pybind11::module>(module);

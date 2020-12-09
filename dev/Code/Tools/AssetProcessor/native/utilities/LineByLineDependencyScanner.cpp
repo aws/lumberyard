@@ -198,7 +198,7 @@ namespace AssetProcessor
 
         // Don't use a greedy search, a given line may have multiple start/end quotes, find the smallest
         // thing that looks like a path. This search won't find things that look like paths without file extensions.
-        AZStd::regex pathRegex(R"(([\w\\/]*?\.[\w\d\.]*))");
+        AZStd::regex pathRegex(R"(([\w\\/-]*?\.[\w\d\.-]*))");
         int currentLineIndex = 1; // Most file editing software starts at line 1, not 0.
         for (const AZStd::string& line : fileLines)
         {

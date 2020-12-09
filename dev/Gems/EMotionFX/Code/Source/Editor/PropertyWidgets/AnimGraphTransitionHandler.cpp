@@ -139,7 +139,7 @@ namespace EMotionFX
             EMStudio::AttributesWindow* attributesWindow = animGraphPlugin->GetAttributesWindow();
             for (int i = first; i <= last; ++i)
             {
-                const QModelIndex modelIndex = parent.child(i, 0);
+                const QModelIndex modelIndex = parent.model()->index(i, 0, parent);
                 if (modelIndex == attributesWindow->GetModelIndex())
                 {
                     m_transitionSelector.ResetUI();

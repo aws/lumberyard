@@ -115,7 +115,7 @@ public:
         if (minimalWidth_ == 0)
         {
             QFontMetrics fm(tree->font());
-            minimalWidth_ = (int)fm.width(QString::fromLocal8Bit(labelUndecorated())) + 6 + (icon_.isNull() ? 0 : 18);
+            minimalWidth_ = (int)fm.horizontalAdvance(QString::fromLocal8Bit(labelUndecorated())) + 6 + (icon_.isNull() ? 0 : 18);
         }
         return minimalWidth_;
     }

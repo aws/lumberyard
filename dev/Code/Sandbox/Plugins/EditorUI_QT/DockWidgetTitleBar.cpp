@@ -75,12 +75,16 @@ FluidTabBar* DockWidgetTitleBar::SetupFluidTabBar()
         l->getContentsMargins(&left, &top, &right, &bottom);
         l->setContentsMargins(left, top, right, 0);
         FluidTabBar* tabBar = new FluidTabBar(this);
-
+        tabBar->setObjectName("DockWidgetTitleBar.TabBar");
         QPalette pal = tabBar->palette();
         for (int i = 0; i < 17; i++)
         {
             pal.setColor((QPalette::ColorRole)i, QColor(255, 0, 0, 0));
         }
+
+        setStyleSheet(QString("background-color:#565656;"));
+        tabBar->setStyleSheet(QString("background-color:#2F2F2F;"));
+
         tabBar->setPalette(pal);
 
         tabBar->setObjectName("DockWidgetTitleBarTabs");

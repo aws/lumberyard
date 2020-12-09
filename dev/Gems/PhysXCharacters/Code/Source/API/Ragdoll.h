@@ -15,6 +15,7 @@
 #include <AzFramework/Physics/RagdollPhysicsBus.h>
 #include <AzFramework/Physics/Ragdoll.h>
 #include <API/RagdollNode.h>
+#include <AzFramework/Physics/World.h>
 
 namespace PhysXCharacters
 {
@@ -23,6 +24,7 @@ namespace PhysXCharacters
     /// PhysX specific implementation of generic physics API Ragdoll class.
     class Ragdoll
         : public Physics::Ragdoll
+        , private Physics::WorldNotificationBus::Handler
     {
     public:
         friend class RagdollComponent;
@@ -33,7 +35,7 @@ namespace PhysXCharacters
 
         Ragdoll();
         Ragdoll(const Ragdoll&) = delete;
-        ~Ragdoll() = default;
+        ~Ragdoll();
 
         void AddNode(AZStd::unique_ptr<RagdollNode> node);
         void SetParentIndices(const ParentIndices& parentIndices);
@@ -43,10 +45,13 @@ namespace PhysXCharacters
 
         // Physics::Ragdoll
         void EnableSimulation(const Physics::RagdollState& initialState) override;
+        void EnableSimulationQueued(const Physics::RagdollState& initialState) override;
         void DisableSimulation() override;
+        void DisableSimulationQueued() override;
         bool IsSimulated() override;
         void GetState(Physics::RagdollState& ragdollState) const override;
         void SetState(const Physics::RagdollState& ragdollState) override;
+        void SetStateQueued(const Physics::RagdollState& ragdollState) override;
         void GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const override;
         void SetNodeState(size_t nodeIndex, const Physics::RagdollNodeState& nodeState) override;
         Physics::RagdollNode* GetNode(size_t nodeIndex) const override;
@@ -68,9 +73,22 @@ namespace PhysXCharacters
         void RemoveFromWorld(Physics::World&) override;
 
     private:
+        void ApplyQueuedEnableSimulation();
+        void ApplyQueuedSetState();
+        void ApplyQueuedDisableSimulation();
+
+        // Physics::WorldNotificationBus
+        void OnPrePhysicsUpdate(float fixedDeltaTime) override;
+
         AZStd::vector<AZStd::unique_ptr<RagdollNode>> m_nodes;
         ParentIndices m_parentIndices;
         AZ::Outcome<size_t> m_rootIndex = AZ::Failure();
         bool m_isSimulated;
+        /// Queued initial state for the ragdoll, for EnableSimulationQueued, to be applied prior to the world update.
+        Physics::RagdollState m_queuedInitialState;
+        /// Holds a queued state for SetState, to be applied prior to the physics world update.
+        Physics::RagdollState m_queuedState;
+        /// Used to track whether a call to DisableSimulation has been queued.
+        bool m_queuedDisableSimulation = false;
     };
 } // namespace PhysXCharacters

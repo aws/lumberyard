@@ -32,6 +32,7 @@
 #include <QMenu>
 #include <QTimer>
 #include <QWindow>
+#include <QTextLayout>
 
 #include <QtWidgets/private/qstylesheetstyle_p.h>
 
@@ -930,7 +931,6 @@ SpinBox::Config SpinBox::defaultConfig()
     return config;
 }
 
-
 void SpinBox::setHasError(QAbstractSpinBox* spinbox, bool hasError)
 {
     if (hasError != spinbox->property(HasError).toBool())
@@ -1607,10 +1607,36 @@ namespace internal
         QLineEdit::keyPressEvent(ev);
     }
 
+    static void setLineEditTextFormat(QLineEdit* lineEdit, const QList<QTextLayout::FormatRange>& formats)
+    {
+        if (!lineEdit)
+            return;
+
+        QList<QInputMethodEvent::Attribute> attributes;
+        foreach (const QTextLayout::FormatRange& fr, formats)
+        {
+            QInputMethodEvent::AttributeType type = QInputMethodEvent::TextFormat;
+            int start = fr.start;
+            int length = fr.length;
+            QVariant value = fr.format;
+            attributes.append(QInputMethodEvent::Attribute(type, start, length, value));
+        }
+        QInputMethodEvent event(QString(), attributes);
+        QCoreApplication::sendEvent(lineEdit, &event);
+    }
+
+    static void clearLineEditTextFormat(QLineEdit* lineEdit)
+    {
+        setLineEditTextFormat(lineEdit, QList<QTextLayout::FormatRange>());
+    }
+
     void SpinBoxLineEdit::paintEvent(QPaintEvent* event)
     {
-        QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>(parent());
+        QAbstractSpinBox* abstractSpinBox = qobject_cast<QAbstractSpinBox*>(parent());
+        QSpinBox* spinBox = reinterpret_cast<QSpinBox*>(abstractSpinBox);
         bool fixLeftAlignment = !spinBox->property(g_hoveredPropertyName).toBool() && !hasFocus();
+        int suffixSize = spinBox->suffix().size();
+        QString beforeText;
         int cursorPos = 0;
         if (fixLeftAlignment)
         {
@@ -1618,7 +1644,28 @@ namespace internal
             cursorPos = cursorPosition();
             setCursorPosition(0);
         }
+        if (suffixSize)
+        {
+            QList<QTextLayout::FormatRange> formats;
+            int size = text().size();
+
+            QTextCharFormat f;
+            f.setForeground(QColor(0x888888));
+
+            QTextLayout::FormatRange fr_task;
+            fr_task.start = size - suffixSize;
+            fr_task.length = suffixSize;
+            fr_task.format = f;
+
+            formats.append(fr_task);
+
+            setLineEditTextFormat(this, formats);
+        }
         QLineEdit::paintEvent(event);
+        if (suffixSize)
+        {
+            clearLineEditTextFormat(this);
+        }
         if (fixLeftAlignment)
         {
             setCursorPosition(cursorPos);

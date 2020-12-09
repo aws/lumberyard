@@ -1426,8 +1426,8 @@ namespace EMStudio
                             //outputPortName.ConvertToNonBreakingHTMLSpaces();
                             //inputPortName.ConvertToNonBreakingHTMLSpaces();
 
-                            int columnSourceWidth = boldFontMetrics.width(sourceNodeName.c_str()) + boldFontMetrics.width(" ") + fontMetrics.width("(Port: ") +  fontMetrics.width(outputPortName.c_str()) + fontMetrics.width(")");
-                            int columnTargetWidth = boldFontMetrics.width(targetNodeName.c_str()) + boldFontMetrics.width(" ") + fontMetrics.width("(Port: ") +  fontMetrics.width(inputPortName.c_str()) + fontMetrics.width(")");
+                            int columnSourceWidth = boldFontMetrics.horizontalAdvance(sourceNodeName.c_str()) + boldFontMetrics.horizontalAdvance(" ") + fontMetrics.horizontalAdvance("(Port: ") +  fontMetrics.horizontalAdvance(outputPortName.c_str()) + fontMetrics.horizontalAdvance(")");
+                            int columnTargetWidth = boldFontMetrics.horizontalAdvance(targetNodeName.c_str()) + boldFontMetrics.horizontalAdvance(" ") + fontMetrics.horizontalAdvance("(Port: ") +  fontMetrics.horizontalAdvance(inputPortName.c_str()) + fontMetrics.horizontalAdvance(")");
 
                             // construct the html tooltip string
                             toolTipString += AZStd::string::format("<qt><table border=\"0\"><tr><td width=\"%i\"><p style=\"color:rgb(%i,%i,%i)\"><b>%s </b>(Port: %s)</p></td> <td>to</td> <td width=\"%i\"><p style=\"color:rgb(%i,%i,%i)\"><b>%s </b>(Port: %s)</p></td></tr>", columnSourceWidth, sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.c_str(), outputPortName.c_str(), columnTargetWidth, targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str(), inputPortName.c_str());
@@ -1459,11 +1459,11 @@ namespace EMStudio
                             // construct the html tooltip string
                             if (sourceNode && targetNode)
                             {
-                                toolTipString += AZStd::string::format("<td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td> <td>to</td> <td width=\"%i\"><b><nobr><p style=\"color:rgb(%i,%i,%i)\">%s</p></nobr></b></td>", boldFontMetrics.width(sourceNodeName.c_str()), sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.c_str(), boldFontMetrics.width(targetNodeName.c_str()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str());
+                                toolTipString += AZStd::string::format("<td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td> <td>to</td> <td width=\"%i\"><b><nobr><p style=\"color:rgb(%i,%i,%i)\">%s</p></nobr></b></td>", boldFontMetrics.horizontalAdvance(sourceNodeName.c_str()), sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.c_str(), boldFontMetrics.horizontalAdvance(targetNodeName.c_str()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str());
                             }
                             else if (targetNode)
                             {
-                                toolTipString += AZStd::string::format("<td>to</td> <td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td>", boldFontMetrics.width(targetNodeName.c_str()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str());
+                                toolTipString += AZStd::string::format("<td>to</td> <td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td>", boldFontMetrics.horizontalAdvance(targetNodeName.c_str()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str());
                             }
 
                             toolTipString += "</tr></table></qt>";
@@ -1854,7 +1854,7 @@ namespace EMStudio
             QModelIndexList modelIndexesForParent;
             for (int row = first; row <= last; ++row)
             {
-                const QModelIndex childModelIndex = parent.child(row, 0);
+                const QModelIndex childModelIndex = parent.model()->index(row, 0, parent);
                 const AnimGraphModel::ModelItemType type = childModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
                 switch (type)
                 {
@@ -1897,7 +1897,7 @@ namespace EMStudio
             QModelIndexList modelIndexesForParent;
             for (int row = first; row <= last; ++row)
             {
-                const QModelIndex childModelIndex = parent.child(row, 0);
+                const QModelIndex childModelIndex = parent.model()->index(row, 0, parent);
                 const AnimGraphModel::ModelItemType type = childModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
                 switch (type)
                 {

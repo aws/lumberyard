@@ -113,6 +113,12 @@ namespace GraphCanvas
         m_displayLabel->update();
     }
 
+    void StringNodePropertyDisplay::OnSystemTick()
+    {
+        SubmitValue();
+        AZ::SystemTickBus::Handler::BusDisconnect();
+    }
+
     void StringNodePropertyDisplay::EditStart()
     {
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::LockEditState, this);
@@ -158,6 +164,14 @@ namespace GraphCanvas
         }
     }
 
+    void StringNodePropertyDisplay::OnFocusOut()
+    {
+        // String property changes can sometimes change the visual layouts of nodes.
+        // Need to delay this to the start of the next tick to avoid running into
+        // issues with Qt processing.
+        AZ::SystemTickBus::Handler::BusConnect();
+    }
+
     void StringNodePropertyDisplay::SetupProxyWidget()
     {
         if (!m_lineEdit)
@@ -179,12 +193,12 @@ namespace GraphCanvas
             });
 
             QObject::connect(m_lineEdit, &Internal::FocusableLineEdit::OnFocusOut, [this]()
-            { 
-                this->EditFinished();
+            {
+                this->OnFocusOut();
             });
 
-            QObject::connect(m_lineEdit, &QLineEdit::editingFinished, [this]() 
-            { 
+            QObject::connect(m_lineEdit, &QLineEdit::returnPressed, [this]()
+            {
                 this->SubmitValue();
             });            
 

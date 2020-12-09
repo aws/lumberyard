@@ -97,6 +97,7 @@ namespace Rain
         {
             return m_enabled;
         }
+        void SetEnabled(bool enabled) override;
 
         /*
             Note: If a user needs to call many setters it's best to not use the 

@@ -32,6 +32,7 @@ namespace AZ
             const static AZ::Crc32 Category = AZ_CRC("Category", 0x064c19c1); ///< Provide a category to allow for partitioning/sorting/ordering of the element
             const static AZ::Crc32 Deprecated = AZ_CRC("Deprecated", 0xfe49a138); ///< Marks a reflected class, method, EBus or property as deprecated. 
             const static AZ::Crc32 DisallowBroadcast = AZ_CRC("DisallowBroadcast", 0x389b0ac7); ///< Marks a reflected EBus as not allowing Broadcasts, only Events.
+            const static AZ::Crc32 ClassConstantValue = AZ_CRC_CE("ClassConstantValue"); ///< Indicates the property is backed by a constant value
             ///< This attribute can be attached to the EditContext Attribute of a reflected class, the BehaviorContext Attribute of a reflected class, method, ebus or property.
             ///< ExcludeFlags can be used to prevent elements from appearing in List, Documentation, etc...
             const static AZ::Crc32 ExcludeFrom = AZ_CRC("ExcludeFrom", 0xa98972fe);
@@ -90,6 +91,8 @@ namespace AZ
                 IndexRead, // given a key/index, you should return a value at this key/index. Keep in mind that IndexRead/Write functions can't take string as index as it's reserved for functions and properties
                 IndexWrite, // given a key/index and a value, you can store it in the class
             };
+
+            const static AZ::Crc32 AssetType = AZ_CRC("AssetType", 0xabbf8d5f); ///< Provide an asset type for a generic AssetId method
         } // Attributes
     } // Script
 

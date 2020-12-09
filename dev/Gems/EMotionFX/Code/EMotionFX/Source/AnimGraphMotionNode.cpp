@@ -995,7 +995,7 @@ namespace EMotionFX
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphMotionNode::OnMotionIdsChanged)
             ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::ValuesOnly)
             ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionNode::m_loop, "Loop", "Loop the motion?")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphMotionNode::InvalidateUniqueDatas)

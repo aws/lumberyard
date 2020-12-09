@@ -980,8 +980,9 @@ void SandboxIntegrationManager::UpdateObjectModeCursor(AZ::u32& cursorId, AZStd:
     }
 }
 
-void SandboxIntegrationManager::OnEntityPickModeStarted()
+void SandboxIntegrationManager::OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration)
 {
+    AZ_UNUSED(pickModeConfiguration);
     m_inObjectPickMode = true;
 
     // Currently this object pick mode is activated only via PropertyEntityIdCtrl picker.
@@ -2017,6 +2018,11 @@ void SandboxIntegrationManager::SetupFileExtensionMap()
 void SandboxIntegrationManager::RegisterViewPane(const char* name, const char* category, const AzToolsFramework::ViewPaneOptions& viewOptions, const WidgetCreationFunc& widgetCreationFunc)
 {
     QtViewPaneManager::instance()->RegisterPane(name, category, widgetCreationFunc, viewOptions);
+}
+
+void SandboxIntegrationManager::RegisterCustomViewPane(const char* name, const char* category, const AzToolsFramework::ViewPaneOptions& viewOptions)
+{
+    QtViewPaneManager::instance()->RegisterPane(name, category, nullptr, viewOptions);
 }
 
 void SandboxIntegrationManager::UnregisterViewPane(const char* name)

@@ -94,7 +94,7 @@ namespace AzToolsFramework
             AZ::Vector3 LocalPositionOffset() const { return m_current.m_localPositionOffset; }
             AZ::Vector2 ScreenOffset() const
             {
-                return ViewportInteraction::Vector2FromScreenVector(
+                return AzFramework::Vector2FromScreenVector(
                     m_current.m_screenPosition - m_start.m_screenPosition);
             }
         };

@@ -157,11 +157,12 @@ void StyledDockWidgetPage::showMainWindow()
     // DockMainWindow to have Qt::Tool window flags. This is annoying on macOS, as the main window
     // is then always displayed on top, and also appears to prevent GammaRay from working until the
     // main window has been closed.
-    auto wrapper = new AzQtComponents::WindowDecorationWrapper(AzQtComponents::WindowDecorationWrapper::OptionNone);
-    wrapper->setObjectName("wrapper");
+    using AzQtComponents::WindowDecorationWrapper;
+    auto wrapper = new WindowDecorationWrapper(WindowDecorationWrapper::OptionAutoAttach |
+        WindowDecorationWrapper::OptionAutoTitleBarButtons, m_mainWindow);
+
     m_mainWindow = new AzQtComponents::DockMainWindow(this);
     m_mainWindow->setObjectName("mainWindow");
-    wrapper->setGuest(m_mainWindow);
     m_mainWindow->resize(800, 600);
     m_mainWindow->setAttribute(Qt::WA_DeleteOnClose);
     auto fancyDocking = new AzQtComponents::FancyDocking(m_mainWindow);
@@ -215,7 +216,10 @@ void StyledDockWidgetPage::showMainWindow()
     auto galleryCenter = mapToGlobal(frameGeometry().center());
     auto mainWindowCenter = m_mainWindow->mapToGlobal(m_mainWindow->frameGeometry().center());
     m_mainWindow->window()->move(galleryCenter - mainWindowCenter);
-    m_mainWindow->show();
+    m_mainWindow->setParent(wrapper, m_mainWindow->windowFlags());
+    // Ensure the wrapper doesn't reset the window size
+    m_mainWindow->resize(m_mainWindow->size());
+    wrapper->show();
 
     QSettings* settings = new QSettings(fancyDocking);
 

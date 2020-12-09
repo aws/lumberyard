@@ -202,9 +202,76 @@ void CRenderMeshUtils::RayIntersectionAsync(SIntersectionData* pIntersectionRMDa
     }
 }
 
+bool GetVertColorAndTC(SIntersectionData& rIntersectionRMData, SRayHitInfo& hitInfo)
+{
+    int nPosStride = rIntersectionRMData.nPosStride;
+    uint8* pPos = rIntersectionRMData.pPos;
+
+    int nUVStride = rIntersectionRMData.nUVStride;
+    uint8* pUV = rIntersectionRMData.pUV;
+
+    int nColStride = rIntersectionRMData.nColStride;
+    uint8* pCol = rIntersectionRMData.pCol;
+
+    vtx_idx* pInds = rIntersectionRMData.pInds;
+
+    int I0 = pInds[hitInfo.nHitTriID + 0];
+    int I1 = pInds[hitInfo.nHitTriID + 1];
+    int I2 = pInds[hitInfo.nHitTriID + 2];
+
+    // get tri vertices
+    Vec3& tv0 = *((Vec3*)&pPos[nPosStride * I0]);
+    Vec3& tv1 = *((Vec3*)&pPos[nPosStride * I1]);
+    Vec3& tv2 = *((Vec3*)&pPos[nPosStride * I2]);
+
+    float u = 0.f, v = 0.f, w = 0.f;
+    if (GetBarycentricCoordinates(tv0, tv1, tv2, hitInfo.vHitPos, u, v, w, 16.0f))
+    {
+        float arrVertWeight[3] = { max(0.f, u), max(0.f, v), max(0.f, w) };
+        float fDiv = 1.f / (arrVertWeight[0] + arrVertWeight[1] + arrVertWeight[2]);
+        arrVertWeight[0] *= fDiv;
+        arrVertWeight[1] *= fDiv;
+        arrVertWeight[2] *= fDiv;
+
+        Vec2 tc0 = *((Vec2*)&pUV[nUVStride * I0]);
+        Vec2 tc1 = *((Vec2*)&pUV[nUVStride * I1]);
+        Vec2 tc2 = *((Vec2*)&pUV[nUVStride * I2]);
+
+        hitInfo.vHitTC = tc0 * arrVertWeight[0] + tc1 * arrVertWeight[1] + tc2 * arrVertWeight[2];
+
+        Vec4 c0 = (*(ColorB*)&pCol[nColStride * I0]).toVec4();
+        Vec4 c1 = (*(ColorB*)&pCol[nColStride * I1]).toVec4();
+        Vec4 c2 = (*(ColorB*)&pCol[nColStride * I2]).toVec4();
+
+        // get tangent basis
+        int nTangsStride = rIntersectionRMData.nTangsStride;
+        byte* pTangs = rIntersectionRMData.pTangs;
+
+        Vec4 tangent[3];
+        Vec4 bitangent[3];
+        int arrId[3] = { I0, I1, I2 };
+        for (int ii = 0; ii < 3; ii++)
+        {
+            SPipTangents tb = *(SPipTangents*)&pTangs[nTangsStride * arrId[ii]];
+
+            tb.GetTB(tangent[ii], bitangent[ii]);
+        }
+
+        hitInfo.vHitTangent = (tangent[0] * arrVertWeight[0] + tangent[1] * arrVertWeight[1] + tangent[2] * arrVertWeight[2]);
+        hitInfo.vHitBitangent = (bitangent[0] * arrVertWeight[0] + bitangent[1] * arrVertWeight[1] + bitangent[2] * arrVertWeight[2]);
+        hitInfo.vHitColor = (c0 * arrVertWeight[0] + c1 * arrVertWeight[1] + c2 * arrVertWeight[2]) / 255.f;
+        return true;
+    }
+    return false;
+}
+
 bool CRenderMeshUtils::RayIntersectionImpl(SIntersectionData* pIntersectionRMData, SRayHitInfo* phitInfo, _smart_ptr<IMaterial> pMtl, bool bAsync)
 {
+#ifdef RENDER_MESH_TRIANGLE_HASH_MAP_SUPPORT
     IF (phitInfo->bGetVertColorAndTC, 0)
+#else
+    IF (phitInfo->bGetVertColorAndTC && phitInfo->inRay.direction.IsZero(), 0)
+#endif
     {
         return RayIntersectionFastImpl(*pIntersectionRMData, *phitInfo, pMtl, bAsync);
     }
@@ -379,6 +446,7 @@ bool CRenderMeshUtils::RayIntersectionImpl(SIntersectionData* pIntersectionRMDat
                     {
                         vHitPos = vOut;
                         hitInfo.nHitMatID = nChunkMatID;
+                        hitInfo.nHitTriID = i;
                         tri[0] = tv0;
                         tri[1] = tv1;
                         tri[2] = tv2;
@@ -389,6 +457,7 @@ bool CRenderMeshUtils::RayIntersectionImpl(SIntersectionData* pIntersectionRMDat
                         fMinDistance2 = fDistance2;
                         vHitPos = vOut;
                         hitInfo.nHitMatID = nChunkMatID;
+                        hitInfo.nHitTriID = i;
                         tri[0] = tv0;
                         tri[1] = tv1;
                         tri[2] = tv2;
@@ -414,6 +483,7 @@ bool CRenderMeshUtils::RayIntersectionImpl(SIntersectionData* pIntersectionRMDat
                         {
                             vHitPos = vOut;
                             hitInfo.nHitMatID = nChunkMatID;
+                            hitInfo.nHitTriID = i;
                             tri[0] = tv0;
                             tri[1] = tv2;
                             tri[2] = tv1;
@@ -424,6 +494,7 @@ bool CRenderMeshUtils::RayIntersectionImpl(SIntersectionData* pIntersectionRMDat
                             fMinDistance2 = fDistance2;
                             vHitPos = vOut;
                             hitInfo.nHitMatID = nChunkMatID;
+                            hitInfo.nHitTriID = i;
                             tri[0] = tv0;
                             tri[1] = tv2;
                             tri[2] = tv1;
@@ -450,6 +521,13 @@ AnyHit:
             hitInfo.vTri1 = tri[1];
             hitInfo.vTri2 = tri[2];
         }
+
+#ifndef RENDER_MESH_TRIANGLE_HASH_MAP_SUPPORT
+        if (hitInfo.bGetVertColorAndTC && hitInfo.nHitTriID >= 0 && !inRay.direction.IsZero())
+        {
+            GetVertColorAndTC(rIntersectionRMData, hitInfo);
+        }
+#endif
 
         if (pMtl)
         {
@@ -554,7 +632,7 @@ bool CRenderMeshUtils::RayIntersectionFastImpl(SIntersectionData& rIntersectionR
             {
                 float fDistance = (hitInfo.inReferencePoint - vOut).GetLengthFast();
 
-                if (fDistance < fBestDist)
+                if (fBestDist == 0.f || fDistance < fBestDist)
                 {
                     bAnyHit = true;
                     fBestDist = fDistance;
@@ -642,52 +720,7 @@ bool CRenderMeshUtils::RayIntersectionFastImpl(SIntersectionData& rIntersectionR
 
         if (hitInfo.bGetVertColorAndTC && hitInfo.nHitTriID >= 0 && !inRay.direction.IsZero())
         {
-            int I0 = pInds[hitInfo.nHitTriID + 0];
-            int I1 = pInds[hitInfo.nHitTriID + 1];
-            int I2 = pInds[hitInfo.nHitTriID + 2];
-
-            // get tri vertices
-            Vec3& tv0 = *((Vec3*)&pPos[nPosStride * I0]);
-            Vec3& tv1 = *((Vec3*)&pPos[nPosStride * I1]);
-            Vec3& tv2 = *((Vec3*)&pPos[nPosStride * I2]);
-
-            float u = 0.f, v = 0.f, w = 0.f;
-            if (GetBarycentricCoordinates(tv0, tv1, tv2, hitInfo.vHitPos, u, v, w, 16.0f))
-            {
-                float arrVertWeight[3] = { max(0.f, u), max(0.f, v), max(0.f, w) };
-                float fDiv = 1.f / (arrVertWeight[0] + arrVertWeight[1] + arrVertWeight[2]);
-                arrVertWeight[0] *= fDiv;
-                arrVertWeight[1] *= fDiv;
-                arrVertWeight[2] *= fDiv;
-
-                Vec2 tc0 = ((Vec2f16*)&pUV[nUVStride * I0])->ToVec2();
-                Vec2 tc1 = ((Vec2f16*)&pUV[nUVStride * I1])->ToVec2();
-                Vec2 tc2 = ((Vec2f16*)&pUV[nUVStride * I2])->ToVec2();
-
-                hitInfo.vHitTC = tc0 * arrVertWeight[0] + tc1 * arrVertWeight[1] + tc2 * arrVertWeight[2];
-
-                Vec4 c0 = (*(ColorB*)&pCol[nColStride * I0]).toVec4();
-                Vec4 c1 = (*(ColorB*)&pCol[nColStride * I1]).toVec4();
-                Vec4 c2 = (*(ColorB*)&pCol[nColStride * I2]).toVec4();
-
-                // get tangent basis
-                int nTangsStride = rIntersectionRMData.nTangsStride;
-                byte* pTangs = rIntersectionRMData.pTangs;
-
-                Vec4 tangent[3];
-                Vec4 bitangent[3];
-                int arrId[3] = {I0, I1, I2};
-                for (int ii = 0; ii < 3; ii++)
-                {
-                    SPipTangents tb = *(SPipTangents*)&pTangs[nTangsStride * arrId[ii]];
-
-                    tb.GetTB(tangent[ii], bitangent[ii]);
-                }
-
-                hitInfo.vHitTangent  = (tangent[0] * arrVertWeight[0] + tangent[1] * arrVertWeight[1] + tangent[2] * arrVertWeight[2]);
-                hitInfo.vHitBitangent = (bitangent[0] * arrVertWeight[0] + bitangent[1] * arrVertWeight[1] + bitangent[2] * arrVertWeight[2]);
-                hitInfo.vHitColor = (c0 * arrVertWeight[0] + c1 * arrVertWeight[1] + c2 * arrVertWeight[2]) / 255.f;
-            }
+            GetVertColorAndTC(rIntersectionRMData, hitInfo);
         }
     }
 

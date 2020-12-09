@@ -464,7 +464,7 @@ namespace Driller
                 break;
             }
         }
-        else if (role == Qt::TextColorRole) // the renderer wants to know what the text color of this cell should be.REturn a color or null.
+        else if (role == Qt::ForegroundRole) // the renderer wants to know what the text color of this cell should be.REturn a color or null.
         {
             switch (event->GetEventType())
             {

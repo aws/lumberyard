@@ -69,6 +69,10 @@ namespace AzToolsFramework
             /// or when the source is in a different folder or in a different location (such as inside gems)
             virtual bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath) = 0;
 
+            /// Convert a relative product asset path like "blah/test.tga" to a full source path path.
+            /// Similar to GetFullSourcePathFromRelativeProductPath but returns the result so that it can be used by Python bindings.
+            virtual AZStd::string ReturnFullSourcePathFromRelativeProductPath(const AZStd::string& relPath) = 0;
+
             //! retrieve an Az::Data::AssetInfo class for the given assetId.  this may map to source too in which case rootFilePath will be non-empty.
             virtual bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) = 0;
 

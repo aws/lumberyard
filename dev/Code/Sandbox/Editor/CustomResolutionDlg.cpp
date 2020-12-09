@@ -50,9 +50,9 @@ void CCustomResolutionDlg::OnInitDialog()
 
     QString maxDimensionString;
     QTextStream(&maxDimensionString) 
-        << "Maximum Dimension: " << maxRes << endl 
-        << endl
-        << "Note: Dimensions over 4K may be" << endl
+        << "Maximum Dimension: " << maxRes << Qt::endl 
+        << Qt::endl
+        << "Note: Dimensions over 4K may be" << Qt::endl
         << "unstable depending on hardware.";
     
     m_ui->m_maxDimension->setText(maxDimensionString);

@@ -23,6 +23,9 @@ namespace EditorPythonBindings
         //! logs a behavior class type
         virtual void LogClass(AZStd::string_view moduleName, AZ::BehaviorClass* behaviorClass) = 0;
 
+        //! logs a behavior class type with an override to its name
+        virtual void LogClassWithName(AZStd::string_view moduleName, AZ::BehaviorClass* behaviorClass, AZStd::string_view className) = 0;
+
         //! logs a static class method with a specified global method name
         virtual void LogClassMethod(AZStd::string_view moduleName, AZStd::string_view globalMethodName, AZ::BehaviorClass* behaviorClass, AZ::BehaviorMethod* behaviorMethod) = 0;
 

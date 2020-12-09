@@ -192,17 +192,17 @@ namespace
     //////////////////////////////////////////////////////////////////////////
     void PyEnterSimulationMode()
     {
-        if (GetIEditor()->GetGameEngine())
+        if (!GetIEditor()->IsInSimulationMode())
         {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(true);
+            CCryEditApp::instance()->OnSwitchPhysics();
         }
     }
 
     void PyExitSimulationMode()
     {
-        if (GetIEditor()->GetGameEngine())
+        if (GetIEditor()->IsInSimulationMode())
         {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(false);
+            CCryEditApp::instance()->OnSwitchPhysics();
         }
     }
 
@@ -337,7 +337,7 @@ namespace
             return;
         }
 
-        inputArguments = QString(pArguments).split(" ", QString::SkipEmptyParts);
+        inputArguments = QString(pArguments).split(" ", Qt::SkipEmptyParts);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1117,6 +1117,252 @@ struct PyDumpBindings
 };
 
 //////////////////////////////////////////////////////////////////////////
+
+namespace AzToolsFramework
+{
+    void PythonEditorComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<EditorLayerPythonRequestBus>("PythonEditorBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "python_editor_funcs")
+                ->Event("GetCVar", &EditorLayerPythonRequestBus::Events::GetCVar)
+                ->Event("SetCVar", &EditorLayerPythonRequestBus::Events::SetCVar)
+                ->Event("SetCVarFromString", &EditorLayerPythonRequestBus::Events::SetCVarFromString)
+                ->Event("SetCVarFromInteger", &EditorLayerPythonRequestBus::Events::SetCVarFromInteger)
+                ->Event("SetCVarFromFloat", &EditorLayerPythonRequestBus::Events::SetCVarFromFloat)
+                ->Event("RunConsole", &EditorLayerPythonRequestBus::Events::PyRunConsole)
+                ->Event("EnterGameMode", &EditorLayerPythonRequestBus::Events::EnterGameMode)
+                ->Event("IsInGameMode", &EditorLayerPythonRequestBus::Events::IsInGameMode)
+                ->Event("ExitGameMode", &EditorLayerPythonRequestBus::Events::ExitGameMode)
+                ->Event("EnterSimulationMode", &EditorLayerPythonRequestBus::Events::EnterSimulationMode)
+                ->Event("IsInSimulationMode", &EditorLayerPythonRequestBus::Events::IsInSimulationMode)
+                ->Event("ExitSimulationMode", &EditorLayerPythonRequestBus::Events::ExitSimulationMode)
+                ->Event("RunLua", &EditorLayerPythonRequestBus::Events::RunLua)
+                ->Event("RunFile", &EditorLayerPythonRequestBus::Events::RunFile)
+                ->Event("RunFileParameters", &EditorLayerPythonRequestBus::Events::RunFileParameters)
+                ->Event("ExecuteCommand", &EditorLayerPythonRequestBus::Events::ExecuteCommand)
+                ->Event("MessageBoxOkCancel", &EditorLayerPythonRequestBus::Events::MessageBoxOkCancel)
+                ->Event("MessageBoxYesNo", &EditorLayerPythonRequestBus::Events::MessageBoxYesNo)
+                ->Event("MessageBoxOk", &EditorLayerPythonRequestBus::Events::MessageBoxOk)
+                ->Event("EditBox", &EditorLayerPythonRequestBus::Events::EditBox)
+                ->Event("EditBoxCheckDataType", &EditorLayerPythonRequestBus::Events::EditBoxCheckDataType)
+                ->Event("OpenFileBox", &EditorLayerPythonRequestBus::Events::OpenFileBox)
+                ->Event("GetAxisConstraint", &EditorLayerPythonRequestBus::Events::GetAxisConstraint)
+                ->Event("SetAxisConstraint", &EditorLayerPythonRequestBus::Events::SetAxisConstraint)
+                ->Event("GetEditMode", &EditorLayerPythonRequestBus::Events::GetEditMode)
+                ->Event("SetEditMode", &EditorLayerPythonRequestBus::Events::SetEditMode)
+                ->Event("GetPakFromFile", &EditorLayerPythonRequestBus::Events::GetPakFromFile)
+                ->Event("Log", &EditorLayerPythonRequestBus::Events::Log)
+                ->Event("Undo", &EditorLayerPythonRequestBus::Events::Undo)
+                ->Event("Redo", &EditorLayerPythonRequestBus::Events::Redo)
+                ->Event("DrawLabel", &EditorLayerPythonRequestBus::Events::DrawLabel)
+                ->Event("ComboBox", &EditorLayerPythonRequestBus::Events::ComboBox)
+                ->Event("SetHidemaskAll", &EditorLayerPythonRequestBus::Events::SetHidemaskAll)
+                ->Event("SetHidemaskNone", &EditorLayerPythonRequestBus::Events::SetHidemaskNone)
+                ->Event("SetHidemaskInvert", &EditorLayerPythonRequestBus::Events::SetHidemaskInvert)
+                ->Event("SetHidemask", &EditorLayerPythonRequestBus::Events::SetHidemask)
+                ->Event("GetHidemask", &EditorLayerPythonRequestBus::Events::GetHidemask)
+                ;
+        }
+    }
+
+    void PythonEditorComponent::Activate()
+    {
+        EditorLayerPythonRequestBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void PythonEditorComponent::Deactivate()
+    {
+        EditorLayerPythonRequestBus::Handler::BusDisconnect();
+    }
+
+    const char* PythonEditorComponent::GetCVar(const char* pName)
+    {
+        return PyGetCVarAsString(pName);
+    }
+
+    void PythonEditorComponent::SetCVar(const char* pName, const AZStd::any& value)
+    {
+        return PySetCVarFromAny(pName, value);
+    }
+
+    void PythonEditorComponent::SetCVarFromString(const char* pName, const char* pValue)
+    {
+        return PySetCVarFromString(pName, pValue);
+    }
+
+    void PythonEditorComponent::SetCVarFromInteger(const char* pName, int pValue)
+    {
+        return PySetCVarFromInt(pName, pValue);
+    }
+
+    void PythonEditorComponent::SetCVarFromFloat(const char* pName, float pValue)
+    {
+        return PySetCVarFromFloat(pName, pValue);
+    }
+
+    void PythonEditorComponent::PyRunConsole(const char* text)
+    {
+        return ::PyRunConsole(text);
+    }
+
+    void PythonEditorComponent::EnterGameMode()
+    {
+        return PyEnterGameMode();
+    }
+
+    bool PythonEditorComponent::IsInGameMode()
+    {
+        return PyIsInGameMode();
+    }
+
+    void PythonEditorComponent::ExitGameMode()
+    {
+        return PyExitGameMode();
+    }
+
+    void PythonEditorComponent::EnterSimulationMode()
+    {
+        return PyEnterSimulationMode();
+    }
+
+    bool PythonEditorComponent::IsInSimulationMode()
+    {
+        return PyIsInSimulationMode();
+    }
+
+    void PythonEditorComponent::ExitSimulationMode()
+    {
+        return PyExitSimulationMode();
+    }
+
+    void PythonEditorComponent::RunLua(const char *text)
+    {
+        return PyRunLua(text);
+    }
+
+    void PythonEditorComponent::RunFile(const char *pFile)
+    {
+        return PyRunFile(pFile);
+    }
+
+    void PythonEditorComponent::RunFileParameters(const char* pFile, const char* pArguments)
+    {
+        return PyRunFileWithParameters(pFile, pArguments);
+    }
+
+    void PythonEditorComponent::ExecuteCommand(const char* cmdline)
+    {
+        return PyExecuteCommand(cmdline);
+    }
+
+    bool PythonEditorComponent::MessageBoxOkCancel(const char* pMessage)
+    {
+        return PyMessageBox(pMessage);
+    }
+
+    bool PythonEditorComponent::MessageBoxYesNo(const char* pMessage)
+    {
+        return PyMessageBoxYesNo(pMessage);
+    }
+
+    bool PythonEditorComponent::MessageBoxOk(const char* pMessage)
+    {
+        return PyMessageBoxOK(pMessage);
+    }
+
+    AZStd::string PythonEditorComponent::EditBox(AZStd::string_view pTitle)
+    {
+        return PyEditBox(pTitle);
+    }
+
+    AZStd::any PythonEditorComponent::EditBoxCheckDataType(const char* pTitle)
+    {
+        return PyEditBoxAndCheckProperty(pTitle);
+    }
+
+    AZStd::string PythonEditorComponent::OpenFileBox()
+    {
+        return PyOpenFileBox();
+    }
+
+    const char* PythonEditorComponent::GetAxisConstraint()
+    {
+        return PyGetAxisConstraint();
+    }
+
+    void PythonEditorComponent::SetAxisConstraint(AZStd::string_view pConstrain)
+    {
+        return PySetAxisConstraint(pConstrain);
+    }
+
+    const char* PythonEditorComponent::GetEditMode()
+    {
+        return PyGetEditMode();
+    }
+
+    void PythonEditorComponent::SetEditMode(AZStd::string_view pEditMode)
+    {
+        return PySetEditMode(pEditMode);
+    }
+
+    const char* PythonEditorComponent::GetPakFromFile(const char* filename)
+    {
+        return PyGetPakFromFile(filename);
+    }
+
+    void PythonEditorComponent::Log(const char* pMessage)
+    {
+        return PyLog(pMessage);
+    }
+
+    void PythonEditorComponent::Undo()
+    {
+        return PyUndo();
+    }
+
+    void PythonEditorComponent::Redo()
+    {
+        return PyRedo();
+    }
+
+    void PythonEditorComponent::DrawLabel(int x, int y, float size, float r, float g, float b, float a, const char* pLabel)
+    {
+        return PyDrawLabel(x, y, size, r, g, b, a, pLabel);
+    }
+
+    AZStd::string PythonEditorComponent::ComboBox(AZStd::string title, AZStd::vector<AZStd::string> values, int selectedIdx)
+    {
+        return PyComboBox(title, values, selectedIdx);
+    }
+
+    void PythonEditorComponent::SetHidemaskAll()
+    {
+        return PySetHideMaskAll();
+    }
+
+    void PythonEditorComponent::SetHidemaskNone()
+    {
+        return PySetHideMaskNone();
+    }
+
+    void PythonEditorComponent::SetHidemaskInvert()
+    {
+        return PySetHideMaskInvert();
+    }
+
+    void PythonEditorComponent::SetHidemask(const char* pName, bool bAdd)
+    {
+        return PySetHideMask(pName, bAdd);
+    }
+
+    bool PythonEditorComponent::GetHidemask(const char* pName)
+    {
+        return PyGetHideMask(pName);
+    }
+}
 
 namespace AzToolsFramework
 {

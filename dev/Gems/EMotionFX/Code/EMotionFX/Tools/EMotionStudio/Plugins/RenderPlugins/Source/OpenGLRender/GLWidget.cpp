@@ -113,7 +113,6 @@ namespace EMStudio
 
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setRenderHint(QPainter::HighQualityAntialiasing);
 
         // don't render in case the render widget is hidden
         if (isHidden())

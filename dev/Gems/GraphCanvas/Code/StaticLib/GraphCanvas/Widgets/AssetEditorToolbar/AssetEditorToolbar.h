@@ -26,9 +26,9 @@ namespace Ui
 
 namespace GraphCanvas
 {    
-    class CommentPresetsMenuActionGroup;
+    class CreateCommentPresetMenuActionGroup;
+    class CreateNodeGroupPresetMenuActionGroup;
     class EditorContextMenu;
-    class NodeGroupPresetsMenuActionGroup;
 
     class AssetEditorToolbar
         : public QWidget
@@ -91,15 +91,15 @@ namespace GraphCanvas
         void OnPresetActionTriggered(QAction* action);
 
         EditorContextMenu*              m_commentPresetsMenu;
-        CommentPresetsMenuActionGroup*  m_commentPresetActionGroup;
+        CreateCommentPresetMenuActionGroup*  m_commentPresetActionGroup;
 
         EditorContextMenu*                  m_nodeGroupPresetsMenu;
-        NodeGroupPresetsMenuActionGroup*    m_nodeGroupPresetActionGroup;
+        CreateNodeGroupPresetMenuActionGroup*    m_nodeGroupPresetActionGroup;
         
         EditorId m_editorId;
         GraphId m_activeGraphId;
 
-        bool m_viewDisabled;
+        bool m_viewDisabled = false;
     
         AZStd::unique_ptr<Ui::AssetEditorToolbar> m_ui;
     };

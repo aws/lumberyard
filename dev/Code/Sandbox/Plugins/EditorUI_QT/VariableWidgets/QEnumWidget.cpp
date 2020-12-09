@@ -74,9 +74,9 @@ QEnumWidget::QEnumWidget(CAttributeItem* parent)
     setSizePolicy(sizePolicy);
 
     // connect to particle variable
-    connect(this, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::activated), this, &QEnumWidget::onUserChange);
+    connect(this, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::textActivated), this, &QEnumWidget::onUserChange);
 
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
 }
 
 QEnumWidget::~QEnumWidget()

@@ -35,6 +35,10 @@ namespace AZ
                     const ISceneNodeSelectionList&());
                 MOCK_CONST_METHOD0(GetId, 
                     const Uuid&());
+                MOCK_METHOD1(SetName,
+                    void(AZStd::string&&));
+                MOCK_METHOD1(OverrideId,
+                    void(const Uuid&));
 
                 // IGroup
                 MOCK_CONST_METHOD0(GetName, 

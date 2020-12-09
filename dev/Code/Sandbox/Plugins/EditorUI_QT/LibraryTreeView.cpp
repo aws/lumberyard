@@ -196,20 +196,20 @@ void CLibraryTreeView::fillFromLibrary()
                     CRY_ASSERT(m_nameToNode[parent]);
 
                     //if the item does not exist add it
-                    CBaseLibraryItem* item = static_cast<CBaseLibraryItem*>(mngr->FindItemByName(QString(libraryName + "." + accumulatedGroup)));
-                    if (!item)
+                    CBaseLibraryItem* itemToAdd = static_cast<CBaseLibraryItem*>(mngr->FindItemByName(QString(libraryName + "." + accumulatedGroup)));
+                    if (!itemToAdd)
                     {
-                        item = static_cast<CBaseLibraryItem*>(mngr->CreateItem(m_baseLibrary));
-                        item->SetName(accumulatedGroup.toUtf8().data());
-                        item->IsParticleItem = false; //items that exist in path but not in reality are folders
+                        itemToAdd = static_cast<CBaseLibraryItem*>(mngr->CreateItem(m_baseLibrary));
+                        itemToAdd->SetName(accumulatedGroup.toUtf8().data());
+                        itemToAdd->IsParticleItem = false; //items that exist in path but not in reality are folders
                     }
-                    else if (item->IsParticleItem == -1)
+                    else if (itemToAdd->IsParticleItem == -1)
                     {
-                        item->IsParticleItem = true;
+                        itemToAdd->IsParticleItem = true;
                     }
 
-                    CLibraryTreeViewItem* child = new CLibraryTreeViewItem(m_nameToNode[parent], mngr, item->GetFullName(), LIBRARY_TREEVIEW_NAME_COLUMN, LIBRARY_TREEVIEW_INDICATOR_COLUMN);
-                    child->SetItem(item);
+                    CLibraryTreeViewItem* child = new CLibraryTreeViewItem(m_nameToNode[parent], mngr, itemToAdd->GetFullName(), LIBRARY_TREEVIEW_NAME_COLUMN, LIBRARY_TREEVIEW_INDICATOR_COLUMN);
+                    child->SetItem(itemToAdd);
                     child->SetName(accumulatedGroup, false);
                     child->SetLibraryName(libraryName);
                     m_nameToNode[accumulatedGroup] = child; //add as possible parent in the future.
@@ -219,16 +219,7 @@ void CLibraryTreeView::fillFromLibrary()
     }
 
     //Create empty item. This is to add empty space in the bottom of library tree. 
-    CLibraryTreeViewItem* child = new CLibraryTreeViewItem(m_nameToNode[""], mngr, QTUI_UNPARENT_ITEMNAME, LIBRARY_TREEVIEW_NAME_COLUMN, LIBRARY_TREEVIEW_INDICATOR_COLUMN);
-    child->SetEnabled(false); 
-    //make this item unselecteable
-    child->setFlags(Qt::NoItemFlags);
-    child->SetItem(nullptr);
-    child->SetName("", false); // set display name
-    child->FromString(QTUI_UNPARENT_ITEMNAME); //set lookup name
-    child->SetLibraryName(libraryName);
-    child->SetVirtual(true);
-    m_nameToNode[libraryName + QTUI_UNPARENT_ITEMNAME] = child;
+    m_nameToNode[libraryName + QTUI_UNPARENT_ITEMNAME] = nullptr;
 
     const ParticlesNameSortingMode sortingMode = GetIEditor()->GetEditorSettings()->particlesNameSortingMode;
     if (sortingMode != ParticlesNameSortingMode::Off)
@@ -307,7 +298,7 @@ void CLibraryTreeView::refreshActiveState()
         restoreExpandState(restoreState);
         blockSignals(false);
     }
-    if (invisibleRootItem()->childCount() <= 1) //One empty tree item for each library tree
+    if (invisibleRootItem()->childCount() < 1)
     {
         emit SignalTreeViewEmpty();
     }
@@ -874,7 +865,7 @@ QSize CLibraryTreeView::GetSizeOfContents()
 void CLibraryTreeView::OnMenuRequested(const QPoint& pos)
 {
     CLibraryTreeViewItem* item = static_cast<CLibraryTreeViewItem*>(itemAt(pos));
-    if (item && !item->ToString().contains(QTUI_UNPARENT_ITEMNAME)) // Unparent Item should not pop out context menu
+    if (item)
     {
         ContextMenu* menu = new ContextMenu(this);
         //ignore selection
@@ -1043,7 +1034,7 @@ void CLibraryTreeView::OnRowInserted(const QModelIndex& parentIndex, int first, 
         }
         else                 // we are in a valid child
         {
-            index = parentIndex.child(i, 0);
+            index = parentIndex.model()->index(i, 0, parentIndex);
         }
 
         // get the QTreeWidgetItem of the index of the root element that has been moved
@@ -1160,10 +1151,7 @@ void CLibraryTreeView::UpdateItemStyle(CLibraryTreeViewItem* item)
     }
     else
     {
-        if (!item->ToString().contains(QTUI_UNPARENT_ITEMNAME))
-        {
-            item->setIcon(LIBRARY_TREEVIEW_NAME_COLUMN, (item->childCount()> 0 && item->isExpanded()) ? *m_iconFolderOpen : *m_iconFolderClosed);
-        }
+        item->setIcon(LIBRARY_TREEVIEW_NAME_COLUMN, (item->childCount()> 0 && item->isExpanded()) ? *m_iconFolderOpen : *m_iconFolderClosed);
     }
     // With adding new lod and group icon, double the icon width to 32 to hold two icons
     setIconSize(QSize(32, 16));

@@ -32,7 +32,6 @@
 
 namespace AzQtComponents
 {
-
 static QString g_horizontalSliderClass = QStringLiteral("HorizontalSlider");
 static QString g_verticalSliderClass = QStringLiteral("VerticalSlider");
 static QPoint g_horizontalToolTip;
@@ -97,7 +96,11 @@ static QString g_midPointStyleClass = QStringLiteral("MidPoint");
 CustomSlider::CustomSlider(Qt::Orientation orientation, QWidget *parent)
     : QSlider(orientation, parent)
 {
+}
 
+void CustomSlider::initStyleOption(QStyleOptionSlider& option)
+{
+    QSlider::initStyleOption(&option);
 }
 
 void CustomSlider::mousePressEvent(QMouseEvent* ev)
@@ -269,7 +272,63 @@ int Slider::valueFromPosition(QSlider* slider, const QPoint& pos, int width, int
 
 int Slider::valueFromPos(const QPoint& pos) const
 {
-    return valueFromPosition(m_slider, pos, width(), height(), rect().bottom());
+    int localDistance = getDistanceFromVisibleGrooveStart(pos);
+    int totalLength = getVisibleGrooveLength();
+
+    // Vertical slider values are reversed so that min is at the bottom and max is at the top
+    bool rangeReversed = (m_slider->orientation() == Qt::Vertical);
+    return QStyle::sliderValueFromPosition(m_slider->minimum(), m_slider->maximum(), localDistance, totalLength, rangeReversed);
+}
+
+QRect Slider::getVisibleGrooveRect() const
+{
+    QStyleOptionSlider option;
+    m_slider->initStyleOption(option);
+
+    int handleThickness = m_slider->style()->pixelMetric(QStyle::PM_SliderThickness, &option, m_slider);
+    QRect grooveRect = m_slider->style()->subControlRect(QStyle::CC_Slider, &option, QStyle::SC_SliderGroove, m_slider);
+    QPoint grooveCenter = grooveRect.center();
+    int grooveLength = orientation() == Qt::Horizontal ? grooveRect.width() : grooveRect.height();
+    int visibleGrooveLength = grooveLength - handleThickness;
+    if (m_slider->orientation() == Qt::Horizontal)
+    {
+        grooveRect.setWidth(visibleGrooveLength);
+    }
+    else
+    {
+        grooveRect.setHeight(visibleGrooveLength);
+    }
+    grooveRect.moveCenter(grooveCenter);
+    return grooveRect;
+}
+
+int Slider::getVisibleGrooveLength() const
+{
+    QRect visibleGrooveRect = getVisibleGrooveRect();
+    int visibleGrooveLength = orientation() == Qt::Horizontal ? visibleGrooveRect.width() : visibleGrooveRect.height();
+    return visibleGrooveLength;
+}
+
+int Slider::getVisibleGrooveStart() const
+{
+    QStyleOptionSlider option;
+    m_slider->initStyleOption(option);
+
+    int handleThickness = m_slider->style()->pixelMetric(QStyle::PM_SliderThickness, &option, m_slider);
+    return handleThickness / 2;
+}
+
+int Slider::getDistanceFromVisibleGrooveStart(const QPoint& point) const
+{
+    int distanceFromSlider = orientation() == Qt::Horizontal ? point.x() : point.y();
+    int distanceFromVisibleGrooveStart = distanceFromSlider - getVisibleGrooveStart();
+    return distanceFromVisibleGrooveStart;
+}
+
+bool Slider::isPointInVisibleGrooveArea(const QPoint& point) const
+{
+    int distance = getDistanceFromVisibleGrooveStart(point);
+    return (distance >= 0 && distance <= getVisibleGrooveLength());
 }
 
 void Slider::showHoverToolTip(const QString& toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset)
@@ -305,20 +364,28 @@ bool Slider::eventFilter(QObject* watched, QEvent* event)
                 auto mEvent = static_cast<QMouseEvent*>(event);
                 m_mousePos = mEvent->pos();
 
-                const QString toolTipText = QStringLiteral("%1%2%3").arg(m_toolTipPrefix, hoverValueText(valueFromPos(m_mousePos)), m_toolTipPostfix);
-
-                QPoint globalPosition = parentWidget()->mapToGlobal(pos());
-
-                QPoint offsetPos;
-                if (m_slider->orientation() == Qt::Horizontal)
+                bool showToolTip = isPointInVisibleGrooveArea(m_mousePos);
+                if (showToolTip)
                 {
-                    offsetPos = g_horizontalToolTip + m_toolTipOffset;
+                    const QString toolTipText = QStringLiteral("%1%2%3").arg(m_toolTipPrefix, hoverValueText(valueFromPos(m_mousePos)), m_toolTipPostfix);
+
+                    QPoint globalPosition = parentWidget()->mapToGlobal(pos());
+
+                    QPoint offsetPos;
+                    if (m_slider->orientation() == Qt::Horizontal)
+                    {
+                        offsetPos = g_horizontalToolTip + m_toolTipOffset;
+                    }
+                    else
+                    {
+                        offsetPos = g_verticalToolTip + m_toolTipOffset;
+                    }
+                    showHoverToolTip(toolTipText, globalPosition, m_slider, this, width(), height(), offsetPos);
                 }
                 else
                 {
-                    offsetPos = g_verticalToolTip + m_toolTipOffset;
+                    QToolTip::hideText();
                 }
-                showHoverToolTip(toolTipText, globalPosition, m_slider, this, width(), height(), offsetPos);
             }
             break;
 
@@ -381,23 +448,25 @@ QRect Slider::sliderHandleRect(const Style* style, const QStyleOptionSlider* opt
     }
     else
     {
-        const auto grooveRect = sliderGrooveRect(style, option, widget, config);
-        const auto center = style->QCommonStyle::subControlRect(QStyle::CC_Slider, option, QStyle::SC_SliderHandle, widget).center();
-        int handleSize = config.slider.handle.sizeMinusMargin;
-        if (isHovered)
+        const QRect grooveRect = sliderGrooveRect(style, option, widget, config);
+        QRect handleRect = style->QCommonStyle::subControlRect(QStyle::CC_Slider, option, QStyle::SC_SliderHandle, widget);
+        QPoint handleCenter = handleRect.center();
+        if (!isHovered)
         {
-            handleSize = config.slider.handle.hoverSize;
+            // Adjust handle rect based on the smaller handle size when not hovered
+            int newHandleSize = config.slider.handle.sizeMinusMargin;
+            handleRect.setSize(QSize(newHandleSize, newHandleSize));
         }
-        QRect handle(0, 0, handleSize, handleSize);
         if (option->orientation == Qt::Horizontal)
         {
-            handle.moveCenter({ center.x(), grooveRect.center().y() });
+            handleRect.moveCenter({ handleCenter.x(), grooveRect.center().y() });
         }
         else
         {
-            handle.moveCenter({ grooveRect.center().x(), center.y() });
+            handleRect.moveCenter({ grooveRect.center().x(), handleCenter.y() });
         }
-        return handle;
+
+        return handleRect;
     }
 
     return {};
@@ -416,20 +485,17 @@ QRect Slider::sliderGrooveRect(const Style* style, const QStyleOptionSlider* opt
     }
     else
     {
-        const auto handleMid = config.slider.handle.size / 2;
-        auto rect = style->QCommonStyle::subControlRect(QProxyStyle::CC_Slider, option, QProxyStyle::SC_SliderGroove, widget);        
+        QRect grooveRect = style->QCommonStyle::subControlRect(QProxyStyle::CC_Slider, option, QProxyStyle::SC_SliderGroove, widget);        
         if (option->orientation == Qt::Horizontal)
         {
-            rect.adjust(handleMid, 0, -handleMid, 0);
-            rect.setHeight(config.slider.grove.width);
+            grooveRect.setHeight(config.slider.grove.width);
         }
         else
         {
-            rect.adjust(0, handleMid, 0, -handleMid);
-            rect.setWidth(config.slider.grove.width);
+            grooveRect.setWidth(config.slider.grove.width);
         }
-        rect.moveCenter(widget->rect().center());
-        return rect;
+        grooveRect.moveCenter(widget->rect().center());
+        return grooveRect;
     }
 
     return {};
@@ -484,25 +550,70 @@ bool Slider::drawSlider(const Style* style, const QStyleOption* option, QPainter
         else if (auto sliderWidget = qobject_cast<const Slider*>(widget->parentWidget()))
         {
             const QColor handleColor = option->state & QStyle::State_Enabled ? config.slider.handle.color : config.slider.handle.colorDisabled;
-            const QRect grooveRect = sliderGrooveRect(style, sliderOption, widget, config);
+            const QRect visibleGrooveRect = sliderWidget->getVisibleGrooveRect();
 
             // only show the hover highlight if the mouse is hovered over the control, and the slider isn't being clicked on or dragged
-            const bool mouseIsOnHandler = !sliderWidget->m_mousePos.isNull();
-            const bool isHovered = mouseIsOnHandler && !(QApplication::mouseButtons() & Qt::MouseButton::LeftButton);
-            const QRect handleRect = sliderHandleRect(style, sliderOption, widget, config, mouseIsOnHandler);
+            const bool mouseIsOnControl = !sliderWidget->m_mousePos.isNull();
+            const bool isHovered = mouseIsOnControl && !(QApplication::mouseButtons() & Qt::MouseButton::LeftButton);
+            const QRect handleRect = sliderHandleRect(style, sliderOption, widget, config, mouseIsOnControl);
+            Qt::Orientation orientation = sliderOption->orientation;
 
             //draw the groove background, without highlight colors from the mouse hover or the selected value
-            painter->fillRect(grooveRect, config.slider.grove.color);
-
-            if (style->hasClass(widget, g_midPointStyleClass))
+            if (option->state & QStyle::State_Enabled)
             {
-                drawMidPointMarker(painter, config, sliderOption->orientation, grooveRect, handleColor);
+                painter->fillRect(visibleGrooveRect, config.slider.grove.color);
 
-                drawMidPointGrooveHighlights(painter, config, grooveRect, handleRect, handleColor, isHovered, sliderWidget->m_mousePos, sliderOption->orientation);
+                if (style->hasClass(widget, g_midPointStyleClass))
+                {
+                    QPoint valueGrooveStart = orientation == Qt::Horizontal ? QPoint(visibleGrooveRect.center().x(), visibleGrooveRect.top()) : QPoint(visibleGrooveRect.left(), visibleGrooveRect.center().y());
+                    QPoint handleMiddle = orientation == Qt::Horizontal ? QPoint(handleRect.x(), visibleGrooveRect.bottom()) : QPoint(visibleGrooveRect.right(), handleRect.bottom());
+
+                    //color the grove from the mid to the handle to show the amount selected
+                    painter->fillRect(QRect(valueGrooveStart, handleMiddle), handleColor);
+
+                    drawMidPointMarker(painter, config, sliderOption->orientation, visibleGrooveRect, handleColor);
+                }
+                else
+                {
+                    QPoint valueGrooveStart = orientation == Qt::Horizontal ? visibleGrooveRect.topLeft() : visibleGrooveRect.bottomLeft();
+                    QPoint valueGrooveEnd = orientation == Qt::Horizontal ? QPoint(handleRect.x(), visibleGrooveRect.bottom()) : QPoint(visibleGrooveRect.right(), handleRect.y());
+
+                    //color the grove from the start to the handle
+                    painter->fillRect(QRect(valueGrooveStart, valueGrooveEnd), handleColor);
+                }
             }
             else
             {
-                drawGrooveHighlights(painter, config, grooveRect, handleRect, handleColor, isHovered, sliderWidget->m_mousePos, sliderOption->orientation);
+                const int disabledGap = 5;
+                QRect firstGrooveRect;
+                QRect lastGrooveRect;
+                if (orientation == Qt::Horizontal)
+                {
+                    firstGrooveRect = QRect(visibleGrooveRect.topLeft(), QPoint(handleRect.left() - disabledGap, visibleGrooveRect.bottom()));
+                    lastGrooveRect = QRect(QPoint(handleRect.right() + disabledGap, visibleGrooveRect.top()), visibleGrooveRect.bottomRight());
+                }
+                else
+                {
+                    firstGrooveRect = QRect(visibleGrooveRect.topLeft(), QPoint(visibleGrooveRect.right(), handleRect.top() - disabledGap));
+                    lastGrooveRect = QRect(QPoint(visibleGrooveRect.left(), handleRect.bottom() + disabledGap), visibleGrooveRect.bottomRight());
+                }
+                if(firstGrooveRect.width() > 0 && firstGrooveRect.height() > 0)
+                    painter->fillRect(firstGrooveRect, config.slider.grove.color);
+                if (lastGrooveRect.width() > 0 && lastGrooveRect.height() > 0)
+                    painter->fillRect(lastGrooveRect, config.slider.grove.color);
+            }
+
+            bool drawHighlights = sliderWidget->isPointInVisibleGrooveArea(sliderWidget->m_mousePos) && isHovered;
+            if (drawHighlights)
+            {
+                if (style->hasClass(widget, g_midPointStyleClass))
+                {
+                    drawMidPointGrooveHighlights(painter, config, visibleGrooveRect, handleRect, sliderWidget->m_mousePos, sliderOption->orientation);
+                }
+                else
+                {
+                    drawGrooveHighlights(painter, config, visibleGrooveRect, handleRect, sliderWidget->m_mousePos, sliderOption->orientation);
+                }
             }
 
             drawHandle(option, painter, config, handleRect, handleColor);
@@ -523,84 +634,74 @@ void Slider::drawMidPointMarker(QPainter* painter, const Slider::Config& config,
     painter->fillRect(rect, midMarkerColor);
 }
 
-void Slider::drawMidPointGrooveHighlights(QPainter* painter, const Slider::Config& config, const QRect& grooveRect, const QRect& handleRect, const QColor& handleColor, bool isHovered, const QPoint& mousePos, Qt::Orientation orientation)
+void Slider::drawMidPointGrooveHighlights(QPainter* painter, const Slider::Config& config, const QRect& grooveRect, const QRect& handleRect, const QPoint& mousePos, Qt::Orientation orientation)
 {
     QPoint valueGrooveStart = orientation == Qt::Horizontal ? QPoint(grooveRect.center().x(), grooveRect.top()) : QPoint(grooveRect.left(), grooveRect.center().y());
-    QPoint valueGrooveEnd = orientation == Qt::Horizontal ? QPoint(handleRect.x(), grooveRect.bottom()) : QPoint(grooveRect.center().x(), handleRect.bottom());
 
-    //color the grove from the mid to the handle to show the amount selected
-    painter->fillRect(QRect(valueGrooveStart, valueGrooveEnd), handleColor);
+    QPoint hoveredEnd;
+    QPoint hoveredStart = valueGrooveStart;
 
-    if (isHovered)
+    if (orientation == Qt::Horizontal)
     {
-        QPoint hoveredEnd;
-        QPoint hoveredStart = valueGrooveStart;
+        const auto x = qBound(grooveRect.left(), mousePos.x(), grooveRect.right());
+        hoveredEnd = QPoint(x, grooveRect.bottom());
 
-        if (orientation == Qt::Horizontal)
+        // be careful not to completely cover the value highlight
+        if (((handleRect.x() < valueGrooveStart.x()) && (mousePos.x() < handleRect.x())) ||
+            ((handleRect.x() > valueGrooveStart.x()) && (mousePos.x() > handleRect.x())))
         {
-            const auto x = qBound(grooveRect.left(), mousePos.x(), grooveRect.right());
-            hoveredEnd = QPoint(x, grooveRect.bottom());
-
-            // be careful not to completely cover the value highlight
-            if (((handleRect.x() < valueGrooveStart.x()) && (mousePos.x() < handleRect.x())) || ((handleRect.x() > valueGrooveStart.x()) && (mousePos.x() > handleRect.x())))
-            {
-                hoveredStart.setX(handleRect.x());
-            }
+            hoveredStart.setX(handleRect.x());
         }
-        else
-        {
-            const auto y = qBound(grooveRect.top(), mousePos.y(), grooveRect.bottom());
-            hoveredEnd = QPoint(grooveRect.right(), y);
-
-            // be careful not to completely cover the value highlight
-            if (((handleRect.y() < valueGrooveStart.y()) && (mousePos.y() < handleRect.y())) || ((handleRect.y() > valueGrooveStart.y()) && (mousePos.y() > handleRect.y())))
-            {
-                hoveredStart.setY(handleRect.y());
-            }
-        }
-
-        painter->fillRect(QRect(hoveredStart, hoveredEnd), config.slider.grove.colorHovered);
     }
+    else
+    {
+        const auto y = qBound(grooveRect.top(), mousePos.y(), grooveRect.bottom());
+        hoveredEnd = QPoint(grooveRect.right(), y);
+
+        // be careful not to completely cover the value highlight
+        if (((handleRect.y() < valueGrooveStart.y()) && (mousePos.y() < handleRect.y())) ||
+            ((handleRect.y() > valueGrooveStart.y()) && (mousePos.y() > handleRect.y())))
+        {
+            hoveredStart.setY(handleRect.y());
+        }
+    }
+
+    painter->fillRect(QRect(hoveredStart, hoveredEnd), config.slider.grove.colorHovered);
 }
 
-void Slider::drawGrooveHighlights(QPainter* painter, const Slider::Config& config, const QRect& grooveRect, const QRect& handleRect, const QColor& handleColor, bool isHovered, const QPoint& mousePos, Qt::Orientation orientation)
+void Slider::drawGrooveHighlights(QPainter* painter, const Slider::Config& config, const QRect& grooveRect, const QRect& handleRect,
+                                  const QPoint& mousePos, Qt::Orientation orientation)
 {
     QPoint valueGrooveStart = orientation == Qt::Horizontal ? grooveRect.topLeft() : grooveRect.bottomLeft();
-    QPoint handleMiddle = orientation == Qt::Horizontal ? QPoint(handleRect.x(), grooveRect.bottom()) : QPoint(grooveRect.right(), handleRect.y());
+    QPoint valueGrooveEnd = orientation == Qt::Horizontal ? QPoint(handleRect.x(), grooveRect.bottom()) : QPoint(grooveRect.right(), handleRect.y());
 
-    //color the grove from the mid to the handle
-    painter->fillRect(QRect(valueGrooveStart, handleMiddle), handleColor);
+    QPoint hoveredStart = valueGrooveStart;
+    QPoint hoveredEnd;
 
-    if (isHovered)
+    if (orientation == Qt::Horizontal)
     {
-        QPoint hoveredStart = valueGrooveStart;
-        QPoint hoveredEnd;
+        const auto x = qBound(grooveRect.left(), mousePos.x(), grooveRect.right());
 
-        if (orientation == Qt::Horizontal)
+        if (x > valueGrooveEnd.x())
         {
-            const auto x = qBound(grooveRect.left(), mousePos.x(), grooveRect.right());
-
-            if (x > handleMiddle.x())
-            {
-                hoveredStart.setX(handleMiddle.x());
-            }
-
-            hoveredEnd = QPoint(x, grooveRect.bottom());
-        }
-        else
-        {
-            const auto y = qBound(grooveRect.top(), mousePos.y(), grooveRect.bottom());
-
-            if (y < handleMiddle.y())
-            {
-                hoveredStart.setY(handleMiddle.y());
-            }
-
-            hoveredEnd = QPoint(grooveRect.right(), y);
+            hoveredStart.setX(valueGrooveEnd.x());
         }
 
-        painter->fillRect(QRect(hoveredStart, hoveredEnd), config.slider.grove.colorHovered);
+        hoveredEnd = QPoint(x, grooveRect.bottom());
     }
+    else
+    {
+        const auto y = qBound(grooveRect.top(), mousePos.y(), grooveRect.bottom());
+
+        if (y < valueGrooveEnd.y())
+        {
+            hoveredStart.setY(valueGrooveEnd.y());
+        }
+
+        hoveredEnd = QPoint(grooveRect.right(), y);
+    }
+
+    painter->fillRect(QRect(hoveredStart, hoveredEnd), config.slider.grove.colorHovered);
 }
 
 void Slider::drawHandle(const QStyleOption* option, QPainter* painter, const Slider::Config& config, const QRect& handleRect, const QColor& handleColor)
@@ -616,7 +717,7 @@ void Slider::drawHandle(const QStyleOption* option, QPainter* painter, const Sli
     else
     {
         auto pen = painter->pen();
-        pen.setBrush(option->palette.background());
+        pen.setBrush(option->palette.window());
         painter->setPen(pen);
     }
     painter->setBrush(handleColor);
@@ -839,17 +940,17 @@ double SliderDouble::convertPowerCurveValue(double value, bool fromSlider) const
     else
     {
         // Calculate the midpoint value of our slider range based on the normalized midpoint curve value
-        const int sliderMax = m_slider->maximum();
-        const int sliderMin = m_slider->minimum();
+        const double sliderMax = aznumeric_cast<double>(m_slider->maximum());
+        const double sliderMin = aznumeric_cast<double>(m_slider->minimum());
         const double range = sliderMax - sliderMin;
-        const int sliderMidpoint = sliderMin + static_cast<int>(m_curveMidpoint * range);
+        const double sliderMidpoint = sliderMin + (m_curveMidpoint * range);
 
         // Power curve variables based on the various slider min, midpoint, and max values
-        const double a = ((sliderMin * sliderMax) - (sliderMidpoint * sliderMidpoint)) / (sliderMin - (2 * sliderMidpoint) + sliderMax);
-        const double b = std::pow(sliderMidpoint - sliderMin, 2) / (sliderMin - (2 * sliderMidpoint) + sliderMax);
-        const double c = 2 * std::log((sliderMax - sliderMidpoint) / (sliderMidpoint - sliderMin));
+        const double a = ((sliderMin * sliderMax) - (sliderMidpoint * sliderMidpoint)) / (sliderMin - (2.0 * sliderMidpoint) + sliderMax);
+        const double b = std::pow(sliderMidpoint - sliderMin, 2.0) / (sliderMin - (2.0 * sliderMidpoint) + sliderMax);
+        const double c = 2.0 * std::log((sliderMax - sliderMidpoint) / (sliderMidpoint - sliderMin));
 
-        const double sliderValue = static_cast<int>(normalizedValue * static_cast<double>(m_numSteps - 1));
+        const double sliderValue = normalizedValue * aznumeric_cast<double>(m_numSteps - 1);
         const double newSliderValue = std::log((sliderValue - a) / b) / c;
         return sliderMin + (newSliderValue * range);
     }

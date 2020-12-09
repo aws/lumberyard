@@ -52,6 +52,7 @@ class ToolbarCustomizationDialog;
 class QWidgetAction;
 class ActionManager;
 class ShortcutDispatcher;
+class CVarMenu;
 
 namespace AzQtComponents
 {
@@ -242,6 +243,12 @@ private:
     QWidget* CreateSelectObjectComboBox();
 
     QToolButton* CreateUndoRedoButton(int command);
+
+    QToolButton* CreateEnvironmentModeButton();
+    QToolButton* CreateDebugModeButton();
+    void InitEnvironmentModeMenu(CVarMenu* environmentModeMenu);
+    void InitDebugModeMenu(CVarMenu* debugModeMenu);
+
 private Q_SLOTS:
     void ShowKeyboardCustomization();
     void ExportKeyboardShortcuts();

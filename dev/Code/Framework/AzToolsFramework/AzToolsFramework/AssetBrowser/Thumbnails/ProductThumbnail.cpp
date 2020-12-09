@@ -24,7 +24,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // ProductThumbnail
         //////////////////////////////////////////////////////////////////////////
-        static const char* DEFAULT_PRODUCT_ICON_PATH = "Editor/Icons/AssetBrowser/DefaultProduct_16.png";
+        static const char* DEFAULT_PRODUCT_ICON_PATH = "Editor/Icons/AssetBrowser/DefaultProduct_16.svg";
 
         ProductThumbnail::ProductThumbnail(Thumbnailer::SharedThumbnailKey key, int thumbnailSize)
             : Thumbnail(key, thumbnailSize)
@@ -64,9 +64,10 @@ namespace AzToolsFramework
                 // no pixmap specified - use default.
                 iconPath = QString::fromUtf8(DEFAULT_PRODUCT_ICON_PATH);
             }
-            m_pixmap = QPixmap(iconPath); // make sure your icons are the correct size.
-            
-            if (m_pixmap.isNull())
+
+            m_icon = QIcon(iconPath);
+
+            if (m_icon.isNull())
             {
                 m_state = State::Failed;
             }

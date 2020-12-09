@@ -40,6 +40,8 @@ namespace Rain
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::TransformNotificationBus::Handler
         , public AzFramework::EntityDebugDisplayEventBus::Handler
+        , public AZ::TickBus::Handler
+        , public Rain::RainComponentRequestBus::Handler
     {
     public:
         friend class RainConverter;
@@ -59,6 +61,9 @@ namespace Rain
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
+
+        // TickBus
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
         // AzFrameowrk::EntityDebugDisplayEventBus
         void DisplayEntityViewport(
@@ -80,13 +85,78 @@ namespace Rain
             incompatible.push_back(AZ_CRC("RainService"));
         }
 
+        // RainComponentRequestBus::Handler
+        void Enable() override;
+        void Disable() override;
+        void Toggle() override;
+
+        bool IsEnabled() override;
+        void SetEnabled(bool enabled) override;
+
+        /*
+            Note: If a user needs to call many setters it's best to not use the
+            individual setters. Instead call GetRainOptions, modify the object
+            and then call SetRainOptions. That way you're not calling UpdateRain
+            more than once.
+        */
+
+        bool GetUseVisAreas() override;
+        void SetUseVisAreas(bool useVisAreas) override;
+
+        bool GetDisableOcclusion() override;
+        void SetDisableOcclusion(bool disableOcclusion) override;
+
+        float GetRadius() override;
+        void SetRadius(float radius) override;
+
+        float GetAmount() override;
+        void SetAmount(float amount) override;
+
+        float GetDiffuseDarkening() override;
+        void SetDiffuseDarkening(float diffuseDarkening) override;
+
+        float GetRainDropsAmount() override;
+        void SetRainDropsAmount(float rainDropsAmount) override;
+
+        float GetRainDropsSpeed() override;
+        void SetRainDropsSpeed(float rainDropsSpeed) override;
+
+        float GetRainDropsLighting() override;
+        void SetRainDropsLighting(float rainDropsLighting) override;
+
+        float GetPuddlesAmount() override;
+        void SetPuddlesAmount(float puddlesAmount) override;
+
+        float GetPuddlesMaskAmount() override;
+        void SetPuddlesMaskAmount(float puddlesMaskAmount) override;
+
+        float GetPuddlesRippleAmount() override;
+        void SetPuddlesRippleAmount(float puddlesRippleAmount) override;
+
+        float GetSplashesAmount() override;
+        void SetSplashesAmount(float splashesAmount) override;
+
+        RainOptions GetRainOptions() override;
+        void SetRainOptions(RainOptions rainOptions) override;
+
+        /**
+         * Sends this component's rain parameters to the engine
+         *
+         * If the component is disabled or the "amount" of this rain object is 0
+         * the engine will attempt to disable rain. Rain can be re-enabled if another
+         * rain component updates and overrides that setting.
+         */
+        void UpdateRain() override;
+
     private:
         //Reflected Data
         bool m_enabled = true;
+        bool m_renderInEditMode = false;
         RainOptions m_rainOptions;
 
         //Unreflected Data
         AZ::Vector3 m_currentWorldPos;
+        AZ::Transform m_currentWorldTransform;
     };
 
     class RainConverter : public AZ::LegacyConversion::LegacyConversionEventBus::Handler

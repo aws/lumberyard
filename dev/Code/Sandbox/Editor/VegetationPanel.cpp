@@ -489,7 +489,11 @@ bool VegetationCategoryTreeModel::setData(const QModelIndex& index, const QVaria
             {
                 object->SetHidden(value.toInt() == Qt::Unchecked);
             }
-            emit dataChanged(index.child(0, 0), index.child(category->second->m_objects.size() - 1, 0), { Qt::CheckStateRole });
+            emit dataChanged(
+                this->index(0, 0, index),
+                this->index(category->second->m_objects.size() - 1, 0, index),
+                { Qt::CheckStateRole }
+            );
             return true;
         }
         }
@@ -651,7 +655,10 @@ void CategoryItemSelectionModel::select(const QItemSelection& selection, QItemSe
             int rows = model()->rowCount(first);
             if (rows > 0)
             {
-                newSelection.append({ first.child(0, 0), first.child(rows - 1, 0) });
+                newSelection.append({
+                    first.model()->index(0, 0, first),
+                    first.model()->index(rows - 1, 0, first)
+                });
             }
             QItemSelectionModel::select(newSelection, command | QItemSelectionModel::Clear);
             return;
@@ -735,17 +742,9 @@ CVegetationPanel::~CVegetationPanel()
 /////////////////////////////////////////////////////////////////////////////
 // CVegetationPanel message handlers
 
-void CVegetationPanel::OnBrushRadiusChange()
+void CVegetationPanel::OnBrushRadiusSliderChange()
 {
-    double radius = m_ui->brushRadiusSpin->value();
-    m_ui->brushRadiusSlider->setValue(radius * 100);
-    m_tool->SetBrushRadius(radius);
-}
-
-void CVegetationPanel::OnBrushRadiusSliderChange(int value)
-{
-    double radius = value / 100.0;
-    m_ui->brushRadiusSpin->setValue(radius);
+    double radius = m_ui->brushRadiusSlider->value();
     m_tool->SetBrushRadius(radius);
 }
 
@@ -815,8 +814,9 @@ void CVegetationPanel::OnInitDialog()
     m_enabledOnObjectSelected << m_ui->mergeButton;
     connect(m_ui->putSelectionToCategoryButton, &QToolButton::clicked, this, &CVegetationPanel::OnInstancesToCategory);
 
-    connect(m_ui->brushRadiusSpin, &QDoubleSpinBox::editingFinished, this, &CVegetationPanel::OnBrushRadiusChange);
-    connect(m_ui->brushRadiusSlider, &QSlider::sliderMoved, this, &CVegetationPanel::OnBrushRadiusSliderChange);
+    m_ui->brushRadiusSlider->setRange(1.0, 100.0);
+    auto sliderDoubleComboValueChanged = static_cast<void(AzQtComponents::SliderDoubleCombo::*)()>(&AzQtComponents::SliderDoubleCombo::valueChanged);
+    connect(m_ui->brushRadiusSlider, sliderDoubleComboValueChanged, this, &CVegetationPanel::OnBrushRadiusSliderChange);
     connect(m_ui->paintObjectsButton, &QPushButton::clicked, this, &CVegetationPanel::OnPaint);
     connect(m_ui->removeDuplicatedButton, &QPushButton::clicked, this, &CVegetationPanel::OnRemoveDuplVegetation);
 
@@ -1176,7 +1176,7 @@ void CVegetationPanel::SelectObject(CVegetationObject* object, bool bAddToSelect
 void CVegetationPanel::SetBrush(float r)
 {
     QSignalBlocker sliderBlocker(m_ui->brushRadiusSlider);
-    m_ui->brushRadiusSpin->setValue(r);
+    m_ui->brushRadiusSlider->setValue(r);
 }
 
 //////////////////////////////////////////////////////////////////////////

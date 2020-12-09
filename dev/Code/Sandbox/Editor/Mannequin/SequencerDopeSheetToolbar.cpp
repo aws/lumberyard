@@ -41,12 +41,12 @@ CSequencerDopeSheetToolbar::CSequencerDopeSheetToolbar(QWidget* parent)
     m_timeWindow->setDisplayFormat(QStringLiteral("mm:ss:zzz"));
     m_timeWindow->setMaximumTime(QTime(0,59,59,999));
     m_timeWindow->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    m_timeWindow->setFixedWidth(fontMetrics().width('0') * 9);
+    m_timeWindow->setFixedWidth(fontMetrics().horizontalAdvance('0') * 9);
     m_frameWindow->setFrame(false);
     m_frameWindow->setPrefix(QStringLiteral("("));
     m_frameWindow->setSuffix(QStringLiteral(")"));
     m_frameWindow->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    m_frameWindow->setFixedWidth(fontMetrics().width('0') * 4);
+    m_frameWindow->setFixedWidth(fontMetrics().horizontalAdvance('0') * 4);
     m_frameWindow->setRange(0, 29);
 
     auto cLayout = new QHBoxLayout;

@@ -74,6 +74,7 @@ namespace GridMate
         void OnGameLiftGameSessionStarted(const Aws::GameLift::Server::Model::GameSession& gameSession) override;        
         void OnGameLiftGameSessionUpdated(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession) override;
         void OnGameLiftServerWillTerminate() override;
+        void OnProcessEndFailed() override;
 
         // GridMateService interface
         void OnServiceRegistered(IGridMate* gridMate) override;
@@ -95,7 +96,8 @@ namespace GridMate
             GameLift_Initing, ///< Pending GameLift SDK initialization
             GameLift_Ready, ///< GameLift SDK is ready to use
             GameLift_Failed, ///< GameLift SDK failed to initialize
-            GameLift_Terminated ///< Current instance was force terminated by the user (only applies to the server)
+            GameLift_Terminated, ///< Current instance was force terminated by the user (only applies to the server)
+            GameLift_ProcessEndFailed ///< Current process failed to end safely)
         };
 
         GameLiftServerServiceDesc m_serviceDesc;

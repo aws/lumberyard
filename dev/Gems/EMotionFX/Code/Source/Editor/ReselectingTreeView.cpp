@@ -26,7 +26,7 @@ namespace EMotionFX
         outIndicies.push_back(index);
         for (int i = 0; i < model()->rowCount(index); ++i)
         {
-            RecursiveGetAllChildren(index.child(i, 0), outIndicies);
+            RecursiveGetAllChildren(model()->index(i, 0, index), outIndicies);
         }
     }
 

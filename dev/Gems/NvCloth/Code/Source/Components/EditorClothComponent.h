@@ -12,11 +12,13 @@
 
 #pragma once
 
+#include <AzCore/std/containers/unordered_set.h>
+
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
-#include <System/ClothConfiguration.h>
+#include <Components/ClothConfiguration.h>
 
 namespace NvCloth
 {
@@ -38,14 +40,14 @@ namespace NvCloth
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
-        // EditorComponentBase overrides
+        // EditorComponentBase overrides ...
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-        // AZ::Component overrides
+        // AZ::Component overrides ...
         void Activate() override;
         void Deactivate() override;
 
-        // LmbrCentral::MeshComponentNotificationBus::Handler overrides
+        // LmbrCentral::MeshComponentNotificationBus::Handler overrides ...
         void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void OnMeshDestroyed() override;
 
@@ -54,6 +56,8 @@ namespace NvCloth
         AZ::u32 OnSimulatedInEditorToggled();
 
         void OnConfigurationChanged();
+
+        bool ContainsBackstopData(AssetHelper* assetHelper, const AZStd::string& meshNode) const;
 
         ClothConfiguration m_config;
 
@@ -65,7 +69,8 @@ namespace NvCloth
 
         AZStd::string m_previousMeshNode;
 
-        bool m_assetSupportsSkinnedAnimation = false;
+        AZStd::unordered_set<AZStd::string> m_meshNodesWithBackstopData;
+
         bool m_simulateInEditor = false;
     };
 } // namespace NvCloth

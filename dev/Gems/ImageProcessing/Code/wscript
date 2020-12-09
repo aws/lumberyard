@@ -22,7 +22,7 @@ def build(bld):
                                            'AzQtComponents',
                                            'AssetBuilderSDK'],
     
-            includes                    = ['include',
+            includes                    = ['Include',
                                            'Source',
                                            bld.Path('Code/CryEngine/CryCommon'),
                                            bld.ThirdPartyPath('squish')],

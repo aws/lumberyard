@@ -228,7 +228,7 @@ namespace AZ
 
 
     template <typename... Params>
-    void Event<Params...>::Signal(Params&&... params) const
+    void Event<Params...>::Signal(const Params&... params) const
     {
         m_updating = true;
 

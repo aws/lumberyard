@@ -52,6 +52,7 @@
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponent.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+#include <AzToolsFramework/API/ViewPaneOptions.h>
 #include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
@@ -190,6 +191,22 @@ namespace AzToolsFramework
             void EntityDeregistered(AZ::EntityId entityId) override
             {
                 Call(FN_EntityDeregistered, entityId);
+            }
+        };
+
+        struct ViewPaneCallbackBusHandler final
+            : public ViewPaneCallbackBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+            AZ_EBUS_BEHAVIOR_BINDER(ViewPaneCallbackBusHandler, "{3C4C85D4-0F0F-4ECA-A635-142F5DF68CF8}", AZ::SystemAllocator,
+                CreateViewPaneWidget);
+
+            AZ::u64 CreateViewPaneWidget() override
+            {
+                AZ::u64 widgetWindowId;
+                CallResult(widgetWindowId, FN_CreateViewPaneWidget);
+
+                return widgetWindowId;
             }
         };
 
@@ -439,14 +456,24 @@ namespace AzToolsFramework
 
     void ToolsApplication::Start(const Descriptor& descriptor, const StartupParameters& startupParameters/* = StartupParameters()*/)
     {
+        m_engineConfigInitialized = false;
         Application::Start(descriptor, startupParameters);
-        InitializeEngineConfig();
     }
 
     void ToolsApplication::Start(const char* applicationDescriptorFile, const StartupParameters& startupParameters/* = StartupParameters()*/)
     {
+        m_engineConfigInitialized = false;
         Application::Start(applicationDescriptorFile, startupParameters);
-        InitializeEngineConfig();
+    }
+
+    void ToolsApplication::CalculateAppRoot(const char* appRootOverride)
+    {
+        Application::CalculateAppRoot(appRootOverride);
+
+        if (!m_engineConfigInitialized)
+        {
+            InitializeEngineConfig();
+        }
     }
 
     void ToolsApplication::InitializeEngineConfig()
@@ -456,6 +483,8 @@ namespace AzToolsFramework
         {
             AZ_Warning(AzToolsFramework::Internal::s_startupLogWindow, false, "Defaulting engine root path to '%s'", m_assetRoot);
         }
+
+        m_engineConfigInitialized = true;
     }
 
 
@@ -553,6 +582,33 @@ namespace AzToolsFramework
                 ->Event("EntityRegistered", &ToolsApplicationEvents::EntityRegistered)
                 ->Event("EntityDeregistered", &ToolsApplicationEvents::EntityDeregistered)
                 ;
+
+            behaviorContext->Class<ViewPaneOptions>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Property("isDeletable", BehaviorValueProperty(&ViewPaneOptions::isDeletable))
+                ->Property("showInMenu", BehaviorValueProperty(&ViewPaneOptions::showInMenu))
+                ->Property("canHaveMultipleInstances", BehaviorValueProperty(&ViewPaneOptions::canHaveMultipleInstances))
+                ->Property("isPreview", BehaviorValueProperty(&ViewPaneOptions::isPreview))
+                ;
+
+            behaviorContext->EBus<EditorRequestBus>("EditorRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Event("RegisterCustomViewPane", &EditorRequests::RegisterCustomViewPane)
+                ->Event("UnregisterViewPane", &EditorRequests::UnregisterViewPane)
+                ;
+
+            behaviorContext->EBus<ViewPaneCallbackBus>("ViewPaneCallbackBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Handler<Internal::ViewPaneCallbackBusHandler>()
+                ->Event("CreateViewPaneWidget", &ViewPaneCallbacks::CreateViewPaneWidget)
+                ;
+
         }
     }
 

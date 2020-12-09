@@ -538,5 +538,113 @@ void QToolTipWidget::QArrow::paintEvent(QPaintEvent* event)
     //painter.setRenderHint(QPainter::Antialiasing, false);
 }
 
+QToolTipWrapper::QToolTipWrapper(QWidget* parent)
+    : QObject(parent)
+{
+}
+
+void QToolTipWrapper::SetTitle(QString title)
+{
+    m_title = title;
+}
+
+void QToolTipWrapper::SetContent(QString content)
+{
+    AddSpecialContent("REPLACE CONTENT", content);
+}
+
+void QToolTipWrapper::AppendContent(QString content)
+{
+    AddSpecialContent("ADD TO CONTENT", content);
+}
+
+void QToolTipWrapper::AddSpecialContent(QString type, QString dataStream)
+{
+    if (type == "REPLACE CONTENT")
+    {
+        m_contentOperations.clear();
+    }
+    m_contentOperations.push_back({type, dataStream});
+}
+
+void QToolTipWrapper::UpdateOptionalData(QString optionalData)
+{
+    m_contentOperations.push_back({"UPDATE OPTIONAL", optionalData});
+}
+
+void QToolTipWrapper::Display(QRect targetRect, QToolTipWidget::ArrowDirection preferredArrowDir)
+{
+    GetOrCreateToolTip()->Display(targetRect, preferredArrowDir);
+}
+
+void QToolTipWrapper::TryDisplay(QPoint mousePos, const QWidget * widget, QToolTipWidget::ArrowDirection preferredArrowDir)
+{
+    GetOrCreateToolTip()->TryDisplay(mousePos, widget, preferredArrowDir);
+}
+
+void QToolTipWrapper::TryDisplay(QPoint mousePos, const QRect & widget, QToolTipWidget::ArrowDirection preferredArrowDir)
+{
+    GetOrCreateToolTip()->TryDisplay(mousePos, widget, preferredArrowDir);
+}
+
+void QToolTipWrapper::hide()
+{
+    DestroyToolTip();
+}
+
+void QToolTipWrapper::show()
+{
+    GetOrCreateToolTip()->show();
+}
+
+bool QToolTipWrapper::isVisible() const
+{
+    return m_actualTooltip && m_actualTooltip->isVisible();
+}
+
+void QToolTipWrapper::update()
+{
+    if (m_actualTooltip)
+    {
+        m_actualTooltip->update();
+    }
+}
+
+void QToolTipWrapper::ReplayContentOperations(QToolTipWidget* tooltipWidget)
+{
+    tooltipWidget->SetTitle(m_title);
+    for (const auto& operation : m_contentOperations)
+    {
+        if (operation.first == "UPDATE OPTIONAL")
+        {
+            tooltipWidget->UpdateOptionalData(operation.second);
+        }
+        else
+        {
+            tooltipWidget->AddSpecialContent(operation.first, operation.second);
+        }
+    }
+}
+
+QToolTipWidget * QToolTipWrapper::GetOrCreateToolTip()
+{
+    if (!m_actualTooltip)
+    {
+        QToolTipWidget* tooltipWidget = new QToolTipWidget(static_cast<QWidget*>(parent()));
+        tooltipWidget->setAttribute(Qt::WA_DeleteOnClose);
+        ReplayContentOperations(tooltipWidget);
+        m_actualTooltip = tooltipWidget;
+    }
+    return m_actualTooltip.data();
+}
+
+void QToolTipWrapper::DestroyToolTip()
+{
+    if (m_actualTooltip)
+    {
+        m_actualTooltip->deleteLater();
+    }
+}
+
 #include <Controls/QToolTipWidget.moc>
 

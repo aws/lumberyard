@@ -163,12 +163,12 @@ namespace GraphCanvas
             return false;
         }
 
-        virtual bool CanHandleReferenceMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
+        virtual CanHandleMimeEventOutcome CanHandleReferenceMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
         {
             AZ_UNUSED(endpoint);
             AZ_UNUSED(mimeData);
 
-            return false;
+            return AZ::Failure(AZStd::string(""));
         }
 
         virtual bool HandleReferenceMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
@@ -223,12 +223,12 @@ namespace GraphCanvas
             return false;
         }
 
-        virtual bool CanHandleValueMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
+        virtual CanHandleMimeEventOutcome CanHandleValueMimeEvent(const Endpoint& endpoint, const QMimeData* mimeData)
         {
             AZ_UNUSED(endpoint);
             AZ_UNUSED(mimeData);
 
-            return false;
+            return AZ::Failure(AZStd::string(""));
         }
 
         // Returns whether or not the mime event was successsfully handled.

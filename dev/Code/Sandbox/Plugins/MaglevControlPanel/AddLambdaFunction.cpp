@@ -289,12 +289,15 @@ Note that Tools\lmbr_aws\AWSResourceManager\default-project-content\project-code
 is the origional source for the discovery_utils.py file found in the game project directory.
 
 */
-const QSet<QString> AddLambdaFunction::ACCESSIBLE_TYPES = QSet<QString>::fromList(
-    QList<QString> {
-        "AWS::DynamoDB::Table",
-        "AWS::Lambda::Function",
-        "AWS::SQS::Queue",
-        "AWS::SNS::Topic",
-        "AWS::S3::Bucket"
-    }
+
+QList<QString> list = {
+    "AWS::DynamoDB::Table",
+    "AWS::Lambda::Function",
+    "AWS::SQS::Queue",
+    "AWS::SNS::Topic",
+    "AWS::S3::Bucket"
+};
+
+const QSet<QString> AddLambdaFunction::ACCESSIBLE_TYPES = QSet<QString>(
+    list.begin(), list.end()
 );

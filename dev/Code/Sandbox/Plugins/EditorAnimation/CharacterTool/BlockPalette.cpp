@@ -77,7 +77,7 @@ static void CalculateLayout(BlockPaletteLayout* layout, const BlockPaletteConten
     {
         const BlockPaletteItem& item = content.items[i];
         SLayoutItem litem;
-        int elementWidth = metrics.width(QString::fromLocal8Bit(item.name.c_str())) + 2 * ELEMENT_MARGIN;
+        int elementWidth = metrics.horizontalAdvance(QString::fromLocal8Bit(item.name.c_str())) + 2 * ELEMENT_MARGIN;
 
         litem.rect = AddElementToLayout(&layout->height, &currentLeft, width, elementWidth, lineHeight, padding);
         layout->items.push_back(litem);
@@ -186,7 +186,7 @@ static void DrawItem(QPainter& painter, const SLayoutItem& litem, const BlockPal
         font.setPointSizeF(oldFont.pointSizeF() * 0.666f);
         painter.setFont(font);
         QString str;
-        str.sprintf("%d", hotkey);
+        str.asprintf("%d", hotkey);
         painter.setBrush(QColor(0, 0, 0, 128));
         painter.drawText(hotkeyRect, str, QTextOption(Qt::AlignBottom | Qt::AlignLeft));
         painter.setFont(oldFont);
@@ -580,9 +580,9 @@ void BlockPalette::mousePressEvent(QMouseEvent* ev)
             for (int i = 0; i < 10; ++i)
             {
                 QString text;
-                text.sprintf("%d", (i + 1) % 10);
+                text.asprintf("%d", (i + 1) % 10);
                 QString shortcut;
-                shortcut.sprintf("Ctrl+%d", (i + 1) % 10);
+                shortcut.asprintf("Ctrl+%d", (i + 1) % 10);
                 hotkeyMenu->addAction(text, this, SLOT(OnMenuAssignHotkey()), QKeySequence(shortcut))->setData(int((i + 1) % 10));
             }
         }

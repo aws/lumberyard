@@ -308,14 +308,14 @@ void CAttributeItem::ResolveVisibility(const QVector<QString>& visibilityVars)
     if (m_configGroup != NULL)
     {
         // Use GetConfigVisibility Function to get settings from config
-        QStringList visibilityList = m_attributeView->GetConfigGroupVisibility(m_configGroup->name).split(";", QString::SplitBehavior::SkipEmptyParts);
+        QStringList visibilityList = m_attributeView->GetConfigGroupVisibility(m_configGroup->name).split(";", Qt::SkipEmptyParts);
         CheckVisibility(visibilityList, isVisible);
 
     }
     if (m_configItem != NULL)
     {
         // Use GetConfigVisibility Function to get settings from config
-        QStringList visibilityList = m_attributeView->GetConfigItemVisibility(m_configItem->as).split(";", QString::SplitBehavior::SkipEmptyParts);
+        QStringList visibilityList = m_attributeView->GetConfigItemVisibility(m_configItem->as).split(";", Qt::SkipEmptyParts);
         CheckVisibility(visibilityList, isVisible);
     }
 
@@ -337,7 +337,7 @@ void CAttributeItem::CheckVisibility(QStringList visibilityList, bool& isVisible
 
     for (QString visibilityGroup : visibilityList)
     {
-        QStringList IdAndValue = visibilityGroup.split(":", QString::SplitBehavior::SkipEmptyParts);
+        QStringList IdAndValue = visibilityGroup.split(":", Qt::SkipEmptyParts);
         // IdAndValue should contain two QStrings. First QString is the varName, Second QString is the values.
         if (IdAndValue.size() != 2)
         {
@@ -351,7 +351,7 @@ void CAttributeItem::CheckVisibility(QStringList visibilityList, bool& isVisible
         IVariable* emitterType = m_attributeView->getVariableFromName(varName);
         QString currentKey = emitterType->GetDisplayValue();
 
-        QStringList listWithSupportedItems = IdAndValue[1].split(",", QString::SplitBehavior::SkipEmptyParts);
+        QStringList listWithSupportedItems = IdAndValue[1].split(",", Qt::SkipEmptyParts);
         CompareVisibility(isVisible, currentKey, listWithSupportedItems, "all");
         if (!isVisible)
         {
@@ -675,7 +675,7 @@ void CAttributeItem::CreateDataType(IVariable* var)
             QString extraInfo;
             if (desc.m_type != ePropertyInvalid)
             {
-                extraInfo = QString().sprintf(" - Unimplemented type# %d", desc.m_type);
+                extraInfo = QString().asprintf(" - Unimplemented type# %d", desc.m_type);
             }
 
             addToLayout(&desc, var, new QColumnWidget(this, getVarName(var, false) + extraInfo, nullptr));
@@ -722,7 +722,7 @@ void CAttributeItem::CreateChildAttributes_ConfigGroup(const CAttributeViewConfi
             {
                 // attribute not found, make a placeholder
                 QString extraInfo;
-                extraInfo = QString().sprintf("(@ %s)", grp->items[id.index].as.toUtf8().data());
+                extraInfo = QString().asprintf("(@ %s)", grp->items[id.index].as.toUtf8().data());
                 m_layout->addWidget(new QColumnWidget(this, extraInfo, nullptr));
             }
             else
@@ -906,7 +906,7 @@ bool CAttributeItem::InsertDragableGroup(const CAttributeViewConfig::config::ite
         {
             // attribute not found, make a placeholder
             QString extraInfo;
-            extraInfo = QString().sprintf("(@ %s)", item->as.toUtf8().data());
+            extraInfo = QString().asprintf("(@ %s)", item->as.toUtf8().data());
             layout->addWidget(new QColumnWidget(this, extraInfo, nullptr));
         }
         else
@@ -1005,7 +1005,7 @@ void CAttributeItem::CreateDragableGroups(const CAttributeViewConfig::config::gr
             {
                 // attribute not found, make a placeholder
                 QString extraInfo;
-                extraInfo = QString().sprintf("(@ %s)", grp->items[id.index].as.toUtf8().data());
+                extraInfo = QString().asprintf("(@ %s)", grp->items[id.index].as.toUtf8().data());
                 m_layout->addWidget(new QColumnWidget(this, extraInfo, nullptr));
             }
             else

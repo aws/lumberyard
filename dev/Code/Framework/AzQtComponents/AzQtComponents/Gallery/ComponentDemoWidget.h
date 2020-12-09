@@ -39,6 +39,7 @@ private:
 
     QScopedPointer<Ui::ComponentDemoWidget> ui;
     QMenu* m_editMenu = nullptr;
+    bool m_metricsEnabled = false;
 };
 
 

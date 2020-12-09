@@ -145,6 +145,8 @@ namespace ScriptCanvasEditor
 
         const ScriptCanvas::ScriptCanvasId& GetActiveScriptCanvasId() const;
 
+        bool IsValidVariableType(const ScriptCanvas::Data::Type& dataType) const;
+
     public slots:
         void OnCreateVariable(ScriptCanvas::Data::Type varType);
         void OnCreateNamedVariable(const AZStd::string& variableName, ScriptCanvas::Data::Type varType);

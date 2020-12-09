@@ -1666,8 +1666,9 @@ namespace AzToolsFramework
     void EntityPropertyEditor::OnAddComponent()
     {
         AZStd::vector<AZ::ComponentServiceType> serviceFilter;
+        AZStd::vector<AZ::ComponentServiceType> incompatibleServiceFilter;
         QRect globalRect = GetWidgetGlobalRect(m_gui->m_addComponentButton) | GetWidgetGlobalRect(m_gui->m_componentList);
-        ShowComponentPalette(m_componentPalette, globalRect.topLeft(), globalRect.size(), serviceFilter);
+        ShowComponentPalette(m_componentPalette, globalRect.topLeft(), globalRect.size(), serviceFilter, incompatibleServiceFilter);
     }
 
     void EntityPropertyEditor::GotSceneSourceControlStatus(SourceControlFileInfo& fileInfo)
@@ -2572,9 +2573,13 @@ namespace AzToolsFramework
         }
     }
 
-    void EntityPropertyEditor::OnRequestRequiredComponents(const QPoint& position, const QSize& size, const AZStd::vector<AZ::ComponentServiceType>& services)
+    void EntityPropertyEditor::OnRequestRequiredComponents(
+        const QPoint& position, 
+        const QSize& size, 
+        const AZStd::vector<AZ::ComponentServiceType>& services, 
+        const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices)
     {
-        ShowComponentPalette(m_componentPalette, position, size, services);
+        ShowComponentPalette(m_componentPalette, position, size, services, incompatibleServices);
     }
 
     void EntityPropertyEditor::HideComponentPalette()
@@ -2587,7 +2592,8 @@ namespace AzToolsFramework
         ComponentPaletteWidget* componentPalette,
         const QPoint& position,
         const QSize& size,
-        const AZStd::vector<AZ::ComponentServiceType>& serviceFilter)
+        const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+        const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter)
     {
         HideComponentPalette();
 
@@ -2595,7 +2601,7 @@ namespace AzToolsFramework
         ToolsApplicationRequests::Bus::BroadcastResult(areEntitiesEditable, &ToolsApplicationRequests::AreEntitiesEditable, m_selectedEntityIds);
         if (areEntitiesEditable)
         {
-            componentPalette->Populate(m_serializeContext, m_selectedEntityIds, m_componentFilter, serviceFilter);
+            componentPalette->Populate(m_serializeContext, m_selectedEntityIds, m_componentFilter, serviceFilter, incompatibleServiceFilter);
             componentPalette->Present();
             componentPalette->setGeometry(QRect(position, size));
         }

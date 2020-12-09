@@ -69,7 +69,6 @@ namespace UnitTest
         PolygonPrismShapeComponentRequestBus::Event(entity.GetId(), &PolygonPrismShapeComponentRequests::SetVertices, vertices);
     }
 
-
     TEST_F(PolygonPrismShapeTest, PolygonShapeComponent_IsPointInside)
     {
         Entity entity;
@@ -608,5 +607,23 @@ namespace UnitTest
         PolygonPrismShape copyShape(sourceShape);
         AZ_TEST_STOP_TRACE_SUPPRESSION(0);
         sourceShape.Deactivate();
+    }
+
+    TEST_F(AllocatorsFixture, PolygonPrismFilledMeshClearedWithLessThanThreeVertices)
+    {
+        // given
+        // invalid vertex data (less than three vertices)
+        const auto vertices = AZStd::vector<AZ::Vector2>{AZ::Vector2(0.0f, 0.0f), AZ::Vector2(1.0f, 0.0f)};
+
+        // fill polygon prism mesh with some initial triangle data (to ensure it's cleared)
+        PolygonPrismMesh polygonPrismMesh;
+        polygonPrismMesh.m_triangles = AZStd::vector<AZ::Vector3>{
+            AZ::Vector3(0.0f, 0.0f, 0.0f), AZ::Vector3(0.0f, 1.0f, 0.0f), AZ::Vector3(1.0f, 0.0f, 0.0f)};
+
+        // when
+        GeneratePolygonPrismMesh(vertices, 1.0f, polygonPrismMesh);
+
+        // then
+        EXPECT_TRUE(polygonPrismMesh.m_triangles.empty());
     }
 }

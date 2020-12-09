@@ -132,6 +132,11 @@ namespace ScriptCanvas
 
             void Repeater::OnTimeElapsed()
             {
+                size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+                if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+                {
+                    m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+                }
                 m_repetionCount--;
                 SignalOutput(RepeaterProperty::GetActionSlotId(this), ScriptCanvas::ExecuteMode::UntilNodeIsFoundInStack);
 
@@ -139,6 +144,10 @@ namespace ScriptCanvas
                 {
                     StopTimer();
                     SignalOutput(RepeaterProperty::GetCompleteSlotId(this));
+                    if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+                    {
+                        m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+                    }
                 }
             }
         }

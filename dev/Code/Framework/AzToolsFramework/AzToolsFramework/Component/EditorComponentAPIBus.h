@@ -27,6 +27,23 @@ namespace AzToolsFramework
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
+        //! The EntityType works as a namespace of Components.
+        //! There are different types of Entities and sometimes they work as singleton entities.
+        //! - The most common entity type is "Game", and there can be as many instances of "Game"
+        //! entities as fit in memory. Most Components are attachable to "Game" entities,
+        //! but not all of them are. In particular, some Components are singletons for the
+        //! current Level and they can only be attached to the "Level" Entity.
+        //! - The "Level" Entity is a singleton Entity for the current game Level. Components like
+        //! the "Legacy Terrain" Component can only be attached to the "Level" Entity, this means
+        //! in the legacy renderer there can only be one Terrain system for the whole level.
+        //! When searching or querying for Components, it is necessary to specify the type of Entity.
+        //! For example calling FindComponentTypeIdsByEntityType(["Legacy Terrain"], EntityType::Game)
+        //! will yield no results, but FindComponentTypeIdsByEntityType(["Legacy Terrain"], EntityType::Level)
+        //! should definitely yield results if the Legacy Terrain Gem is enabled.
+        //! - There's also the "System" Entity, a system/application wide singleton. All System Components are attached
+        //! to it. The System Components provide services that sustain the execution of the game as an application.
+        //! - "Layer" entities are used to group several "Game" or "Layer" entities to help organize
+        //! the data in the Editor, just like folders in the file system are useful to group and organize files.
         enum class EntityType
         {
             Game,
@@ -35,14 +52,6 @@ namespace AzToolsFramework
             Level
         };
 
-        //! LUMBERYARD_DEPRECATED(LY-106816)
-        //! Use FindComponentTypeIdsByEntityType instead.
-        //! Finds the component ids from their type names. Only searches for typedId for Entity Type "Game".
-        AZ_DEPRECATED(
-            virtual AZStd::vector<AZ::Uuid> FindComponentTypeIds(
-                const AZStd::vector<AZStd::string>& componentTypeNames) = 0;,
-            "FindComponentTypeIds is deprecated, please use FindComponentTypeIdsByEntityType instead.")
-
         //! This method requires the filter @entityType because it is possible that two components
         //! With different uuids to have the same name. But, the chances of collision is reduced by specifying
         //! the entity type.
@@ -50,12 +59,6 @@ namespace AzToolsFramework
 
         //! Finds the component names from their type ids
         virtual AZStd::vector<AZStd::string> FindComponentTypeNames(const AZ::ComponentTypeList& componentTypeIds) = 0;
-
-        //! LUMBERYARD_DEPRECATED(LY-106816)
-        //! Use BuildComponentTypeNameListByEntityType instead.
-        //! Returns the full list of names for all components that can be created for Game Entity type (aka inGameMenu).
-        AZ_DEPRECATED(virtual AZStd::vector<AZStd::string> BuildComponentTypeNameList() = 0;,
-            "BuildComponentTypeNameList is deprecated, please use BuildComponentTypeNameListByEntityType instead.")
 
         //! Returns the full list of names for all components that can be created for the given Entity type (aka type of Menu).
         virtual AZStd::vector<AZStd::string> BuildComponentTypeNameListByEntityType(EntityType entityType) = 0;

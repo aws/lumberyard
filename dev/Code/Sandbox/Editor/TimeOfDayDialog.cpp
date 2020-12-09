@@ -247,13 +247,13 @@ void CHDRPane::UpdateFilmCurve()
     for (int i = 0; i <= gridX; ++i)
     {
         QString label;
-        label.sprintf("%.4g", powf(10.0f, minX + (maxX - minX) * static_cast<float>(i) / gridX));
+        label.asprintf("%.4g", powf(10.0f, minX + (maxX - minX) * static_cast<float>(i) / gridX));
         labelsX.push_back(label);
     }
     for (int i = 0; i <= gridY; ++i)
     {
         QString label;
-        label.sprintf("%.1f", i * stepY);
+        label.asprintf("%.1f", i * stepY);
         labelsY.push_back(label);
     }
     m_filmCurveCtrl->SetGrid(gridX, gridY, labelsX, labelsY);

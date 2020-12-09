@@ -13,6 +13,7 @@
 def build(bld):
     bld.DefineGem(
         # General
+        target      = "EditorPythonBindings",
         disable_pch = True,
 
         # This is an Editor only gem
@@ -28,6 +29,8 @@ def build(bld):
             win_features = ['crcfix'],
             darwin_file_list = ['editorpythonbindings_editor_stub.waf_files'],
             darwin_disable_tests = True,
-            enable_rtti = True
+            enable_rtti = True,
+            msvc_cxxflags  = ['/EHsc'],
+            clang_cxxflags = ['-fexceptions']
          )
     )

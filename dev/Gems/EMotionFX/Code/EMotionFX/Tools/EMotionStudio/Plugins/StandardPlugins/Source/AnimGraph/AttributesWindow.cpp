@@ -766,8 +766,8 @@ namespace EMStudio
         EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
         MCore::CommandGroup commandGroup;
 
-        if (pasteTransitionProperties &&
-            m_copyPasteClipboard.m_transition.IsSuccess())
+        pasteTransitionProperties = (pasteTransitionProperties && m_copyPasteClipboard.m_transition.IsSuccess());
+        if (pasteTransitionProperties)
         {
             CommandSystem::AdjustTransition(transition,
                 /*isDisabled=*/AZStd::nullopt,
@@ -791,6 +791,12 @@ namespace EMStudio
                 commandGroup.AddCommand(addConditionCommand);
             }
         }
+
+        const AZStd::string groupName = AZStd::string::format("Pasted transition %s%s%s",
+            pasteTransitionProperties ? "properties " : "",
+            pasteTransitionProperties && pasteConditions ? "and " : "",
+            pasteConditions ? "conditions" : "");
+        commandGroup.SetGroupName(groupName);
 
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
@@ -822,8 +828,8 @@ namespace EMStudio
             return;
         }
 
-        AZStd::string commandString;
         MCore::CommandGroup commandGroup;
+        commandGroup.SetGroupName("Pasted transition conditions");
 
         AZ::u32 numPastedConditions = 0;
         const size_t numConditions = m_copyPasteClipboard.m_conditions.size();
@@ -846,14 +852,17 @@ namespace EMStudio
             numPastedConditions++;
         }
 
-        AZStd::string result;
-        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+        if (!commandGroup.IsEmpty())
         {
-            AZ_Error("EMotionFX", false, result.c_str());
-        }
+            AZStd::string result;
+            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+            {
+                AZ_Error("EMotionFX", false, result.c_str());
+            }
 
-        // Send LyMetrics event.
-        MetricsEventSender::SendPasteConditionsEvent(numPastedConditions);
+            // Send LyMetrics event.
+            MetricsEventSender::SendPasteConditionsEvent(numPastedConditions);
+        }
     }
 
     void AttributesWindow::AddTransitionAction(const AZ::TypeId& actionType)

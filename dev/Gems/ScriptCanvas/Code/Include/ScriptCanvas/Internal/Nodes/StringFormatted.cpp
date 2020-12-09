@@ -15,6 +15,8 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Serialization/Utils.h>
 
+#include <ScriptCanvas/Core/Graph.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
@@ -233,19 +235,7 @@ namespace ScriptCanvas
 
             void StringFormatted::OnPropertyChanged()
             {
-                // When handling an extension we need to signal out right away since the extension needs the slot to exist immediately
-                if (m_isHandlingExtension)
-                {
-                    ParseFormat();
-                }
-                // Otherwise we want to delay until the top of the system tick, since adding/removing slots has a lot of side-effects which can cause a variety of crashes
-                // through elements being deleted while they are being dispatched to.
-                else
-                {
-                    AZ::SystemTickBus::QueueFunction([this]() {
-                        this->ParseFormat();
-                    });
-                }
+                ParseFormat();
             }
 
             void StringFormatted::RelayoutNode()
@@ -372,6 +362,32 @@ namespace ScriptCanvas
                     if (mappingIter == newMapping.end())
                     {
                         auto slotIdIter = m_formatSlotMap.find(name);
+
+                        if (GetSlotByName(name.c_str()) != nullptr)
+                        {
+                            const auto& slotList = GetSlots();
+
+                            AZStd::string reservedSlotNames;
+
+                            for (const auto& slot : slotList)
+                            {
+                                if (newMapping.find(slot.GetName()) == newMapping.end())
+                                {
+                                    if (!reservedSlotNames.empty())
+                                    {
+                                        reservedSlotNames.append(", ");
+                                    }
+
+                                    reservedSlotNames.append(slot.GetName());
+                                }
+                            }
+
+                            format = match.suffix();
+
+                            AZStd::string errorReport = AZStd::string::format("Attempting to use one of the reserved names '%s' in string display. Skipping input name", reservedSlotNames.c_str());
+                            GetGraph()->ReportError((*this), GetNodeName(),errorReport);
+                            continue;
+                        }
 
                         // If the slot has never existed, create it
                         DynamicDataSlotConfiguration dataSlotConfiguration;

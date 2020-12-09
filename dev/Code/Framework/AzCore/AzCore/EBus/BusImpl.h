@@ -27,6 +27,8 @@
 #include <AzCore/EBus/Policies.h>
 
 #include <AzCore/std/parallel/scoped_lock.h>
+#include <AzCore/std/parallel/shared_mutex.h>
+#include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/conditional.h>
 #include <AzCore/std/typetraits/function_traits.h>
@@ -46,6 +48,7 @@ namespace AZ
         bool try_lock() { return true; }
         void unlock() {}
     };
+
 
     /**
      * Indicates that EBusTraits::BusIdType is not set.
@@ -78,6 +81,10 @@ namespace AZ
         {
             explicit NullLockGuard(Lock&) {}
             NullLockGuard(Lock&, AZStd::adopt_lock_t) {}
+
+            void lock() {}
+            bool try_lock() { return true; }
+            void unlock() {}
         };
     }
 

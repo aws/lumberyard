@@ -23,7 +23,7 @@ class EDITOR_QT_UI_API FloatableDockPanel
 {
     Q_OBJECT
 public:
-    explicit FloatableDockPanel(const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+    explicit FloatableDockPanel(const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = Qt::WindowFlags(), bool maximized = true);
     void SetHotkeyHandler(QObject* obj, AZStd::function<void(QKeyEvent* e)> hotkeyHandler);
     void SetShortcutHandler(QObject* obj, AZStd::function<bool(QShortcutEvent* e)> shortcutHandler);
 private Q_SLOTS:
@@ -33,5 +33,6 @@ protected:
     AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
     QMap<QObject*, AZStd::function<void(QKeyEvent* e)> > m_hotkeyHandlers;
     QMap<QObject*, AZStd::function<bool(QShortcutEvent* e)> > m_shortcutHandlers;
+    bool m_maximized;
     AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 };

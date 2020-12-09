@@ -1662,7 +1662,14 @@ IIndexedMesh* CRenderMesh::GetIndexedMesh(IIndexedMesh* pIdxMesh)
 
     strided_pointer<Vec3> pVtx;
     strided_pointer<SPipTangents> pTangs;
+    strided_pointer<SMeshNormal> pNorm;
+
     pVtx.data = (Vec3*)GetPosPtr(pVtx.iStride, FSL_READ);
+
+    if (CRenderer::CV_r_readMeshNormals)
+    {
+        pNorm.data = (SMeshNormal*)GetNormPtr(pNorm.iStride, FSL_READ);
+    }
 
     bool texCoordAllocationSucceeded = true;
     AZStd::vector<strided_pointer<Vec2>> stridedTexCoordPointers;
@@ -1688,11 +1695,10 @@ IIndexedMesh* CRenderMesh::GetIndexedMesh(IIndexedMesh* pIdxMesh)
         return NULL;
     }
 
-    
     for (uint32 i = 0; i < m_nVerts; i++)
     {
         pMesh->m_pPositions[i] = pVtx[i];
-        pMesh->m_pNorms    [i] = SMeshNormal(Vec3(0, 0, 1));//pNorm[i];
+        pMesh->m_pNorms[i] = pNorm.data == NULL ? SMeshNormal(Vec3(0, 0, 1)) : pNorm[i];
         pMesh->m_pTangents [i] = SMeshTangents(pTangs[i]);
     }
 
@@ -3815,7 +3821,8 @@ const PodArray<std::pair<int, int> >* CRenderMesh::GetTrisForPosition(const Vec3
     {
         return &iter->second;
     }
-
+#else
+    AZ_Assert(false, "NOT IMPLEMENTED: CRenderMesh::GetTrisForPosition(const Vec3& vPos, _smart_ptr<IMaterial> pMaterial)");
 #endif
 
     return 0;

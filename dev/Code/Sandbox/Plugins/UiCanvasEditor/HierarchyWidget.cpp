@@ -1034,8 +1034,10 @@ void HierarchyWidget::DeleteSelectedItems()
     DeleteSelectedItems(selectedItems());
 }
 
-void HierarchyWidget::OnEntityPickModeStarted()
+void HierarchyWidget::OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration)
 {
+    AZ_UNUSED(pickModeConfiguration);
+
     setDragEnabled(false);
     m_currentItemBeforePickMode = currentIndex();
     m_selectionModeBeforePickMode = selectionMode();

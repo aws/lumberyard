@@ -365,7 +365,7 @@ void PropertyRow::Serialize(IArchive& ar)
     ar(ConstStringWrapper(constStrings_, name_), "name", "name");
     ar(ConstStringWrapper(constStrings_, label_), "label", "label");
     ar(ConstStringWrapper(constStrings_, typeName_), "type", "type");
-    ar(reinterpret_cast<std::vector<SharedPtr<PropertyRow> >&>(children_), "children", "!^children");   
+    ar(reinterpret_cast<std::vector<SharedPtr<PropertyRow> >&>(children_), "children", "!^children");
     if(ar.IsInput()){
         labelChanged_ = true;
         layoutChanged_ = true;
@@ -663,7 +663,7 @@ void PropertyRow::updateTextSizeInitial(const QPropertyTree* tree, int index, bo
         hash = calculateHash(font, hash);
         if(hash != textHash_ || fontChanged){
             QFontMetrics fm(*font);
-            textSizeInitial_ = fm.width(text);
+            textSizeInitial_ = fm.horizontalAdvance(text);
             textHash_ = hash;
         }
     }
@@ -1180,8 +1180,8 @@ bool PropertyRow::onContextMenu(QMenu &menu, QPropertyTree* tree)
                 menu.addSeparator();
             }
 
-            menu.addAction("Insert Before", handler, SLOT(onMenuChildInsertBefore()), QKeySequence("Shift+Insert"))->setEnabled(!container->userReadOnly());
-            menu.addAction("Remove", handler, SLOT(onMenuChildRemove()), QKeySequence("Delete"))->setEnabled(!container->userReadOnly());
+                menu.addAction("Insert Before", handler, SLOT(onMenuChildInsertBefore()), QKeySequence("Shift+Insert"))->setEnabled(!container->userReadOnly());
+                menu.addAction("Remove", handler, SLOT(onMenuChildRemove()), QKeySequence("Delete"))->setEnabled(!container->userReadOnly());
         }
     }
 
@@ -1433,7 +1433,7 @@ void PropertyRow::drawRow(QPainter& painter, const QPropertyTree* tree, int inde
 }
 
 void PropertyRow::drawPlus(QPainter& p, const QPropertyTree* tree, const QRect& rect, bool expanded, bool selected, bool grayed) const
-{   
+{    
     QStyleOption option;
     option.rect = rect;
     option.state = QStyle::State_Enabled | QStyle::State_Children;
@@ -1496,7 +1496,7 @@ bool PropertyRow::canBeDroppedOn(const PropertyRow* parentRow, const PropertyRow
         if(defaultRow && strcmp(defaultRow->typeName(), typeName()) == 0)
             return true;
     }
-    return false;   
+    return false;    
 }
 
 void PropertyRow::dropInto(PropertyRow* parentRow, PropertyRow* cursorRow, QPropertyTree* tree, bool before)
@@ -1553,7 +1553,7 @@ void PropertyRow::intersect(const PropertyRow* row)
         if (matchingRow == 0) {
             children_.erase(children_.begin() + i);
             --i;
-        }   
+        }    
         else {
             children_[i]->intersect(matchingRow);
         }
@@ -1811,7 +1811,7 @@ QRect PropertyRow::validatorErrorIconRect(const QPropertyTree* tree) const
 
 QRect PropertyRow::validatorWarningIconRect(const QPropertyTree* tree) const
 {
-    QRect r = validatorErrorIconRect(tree); 
+    QRect r = validatorErrorIconRect(tree);    
     int width = validatorHasWarnings_ && !expanded_ ? r.height() : 0;
     return QRect(r.left() - width, pos_.y(), width, r.height());
 }
@@ -1880,7 +1880,7 @@ int RowWidthCache::getOrUpdate(const QPropertyTree* tree, const PropertyRow* row
     if (newHash != valueHash)
     {
         QFontMetrics fm(*font);
-        width = fm.width(value.c_str()) + 6 + extraSpace;
+        width = fm.horizontalAdvance(value.c_str()) + 6 + extraSpace;
         if (width < 24)
             width = 24;
         valueHash = newHash;

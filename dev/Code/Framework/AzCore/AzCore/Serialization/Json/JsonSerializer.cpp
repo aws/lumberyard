@@ -145,12 +145,14 @@ namespace AZ
         }
         else
         {
+            ResultCode result(Tasks::WriteValue);
             if (storeTypeId == StoreTypeId::Yes)
             {
                 node.AddMember(rapidjson::StringRef(JsonSerialization::TypeIdFieldIdentifier),
                     StoreTypeName(classData, context), context.GetJsonAllocator());
+                result = ResultCode(Tasks::WriteValue, Outcomes::Success);
             }
-            return StoreClass(node, object, defaultObject, classData, context);
+            return result.Combine(StoreClass(node, object, defaultObject, classData, context));
         }
     }
 

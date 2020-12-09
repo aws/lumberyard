@@ -51,6 +51,8 @@ namespace SceneLoggingExample
 
         // Forward the call to the LoadingComponent so that the call bindings get deactivated.
         AZ::SceneAPI::Events::CallProcessorBus::Handler::BusDisconnect();
+
+        AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
     }
 
     // Loading starts by announcing that loading will begin shortly. This provides an opportunity to prepare 

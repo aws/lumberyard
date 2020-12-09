@@ -81,6 +81,8 @@
         ],
         "Source/Rendering":
         [
+            "Source/Rendering/EditorClipVolumeComponent.h",
+            "Source/Rendering/EditorClipVolumeComponent.cpp",
             "Source/Rendering/EditorDecalComponent.h",
             "Source/Rendering/EditorDecalComponent.cpp",
             "Source/Rendering/EditorLensFlareComponent.h",

@@ -685,7 +685,7 @@ ActionsDock::ActionsDock(CDialogEditorDialog* dialog, QWidget* parent)
 
     QWidget* container = new QWidget(this);
     QPalette pal(palette());
-    pal.setColor(QPalette::Background, pal.color(QPalette::Base));
+    pal.setColor(QPalette::Window, pal.color(QPalette::Base));
     container->setAutoFillBackground(true);
     container->setPalette(pal);
 

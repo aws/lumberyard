@@ -502,7 +502,7 @@ namespace EMStudio
                 for (int c = 0; c < columnCount; ++c)
                 {
                     QTableWidgetItem* tableWidgetItem = mMotionTable->item(row, c);
-                    mMotionTable->setItemSelected(tableWidgetItem, true);
+                    tableWidgetItem->setSelected(true);
                 }
             }
         }
@@ -744,6 +744,7 @@ namespace EMStudio
 
             // add the remove menu
             QAction* removeAction = menu.addAction("Remove Selected Motions");
+            removeAction->setObjectName("EMFX.MotionListWindow.RemoveSelectionMotionsAction");
             connect(removeAction, &QAction::triggered, this, &MotionListWindow::RemoveMotionsRequested);
 
             menu.addSeparator();

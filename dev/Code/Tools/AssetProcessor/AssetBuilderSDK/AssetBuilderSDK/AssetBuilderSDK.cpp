@@ -164,6 +164,20 @@ namespace AssetBuilderSDK
                 ->Version(1)
                 ->Field("Pattern", &AssetBuilderPattern::m_pattern)
                 ->Field("Type", &AssetBuilderPattern::m_type);
+
+            serializeContext->RegisterGenericType<AZStd::vector<AssetBuilderPattern>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<AssetBuilderPattern>("AssetBuilderPattern")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Property("pattern", BehaviorValueProperty(&AssetBuilderPattern::m_pattern))
+                ->Property("type", BehaviorValueProperty(&AssetBuilderPattern::m_type))
+                ->Enum<aznumeric_cast<int>(AssetBuilderPattern::PatternType::Wildcard)>("Wildcard")
+                ->Enum<aznumeric_cast<int>(AssetBuilderPattern::PatternType::Regex)>("Regex");
         }
     }
 
@@ -355,6 +369,27 @@ namespace AssetBuilderSDK
                 Field("Fail On Error", &JobDescriptor::m_failOnError)->
                 Field("Job Dependency List", &JobDescriptor::m_jobDependencyList)->
                 Field("Check Server", &JobDescriptor::m_checkServer);
+
+            serializeContext->RegisterGenericType<AZStd::vector<JobDescriptor>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<JobDescriptor>("JobDescriptor")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Constructor<const AZStd::string&, AZStd::string, const char*>()
+                ->Property("jobParameters", BehaviorValueProperty(&JobDescriptor::m_jobParameters))
+                ->Property("additionalFingerprintInfo", BehaviorValueProperty(&JobDescriptor::m_additionalFingerprintInfo))
+                ->Property("jobKey", BehaviorValueProperty(&JobDescriptor::m_jobKey))
+                ->Property("priority", BehaviorValueProperty(&JobDescriptor::m_priority))
+                ->Property("checkExclusiveLock", BehaviorValueProperty(&JobDescriptor::m_checkExclusiveLock))
+                ->Property("checkServer", BehaviorValueProperty(&JobDescriptor::m_checkServer))
+                ->Property("jobDependencyList", BehaviorValueProperty(&JobDescriptor::m_jobDependencyList))
+                ->Property("failOnError", BehaviorValueProperty(&JobDescriptor::m_failOnError))
+                ->Method("set_platform_identifier", &JobDescriptor::SetPlatformIdentifier)
+                ->Method("get_platform_identifier", &JobDescriptor::GetPlatformIdentifier);
         }
     }
 
@@ -470,6 +505,17 @@ namespace AssetBuilderSDK
                 Version(1)->
                 Field("Platform Identifier", &PlatformInfo::m_identifier)->
                 Field("Tags on Platform", &PlatformInfo::m_tags);
+
+            serializeContext->RegisterGenericType<AZStd::vector<PlatformInfo>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<PlatformInfo>("PlatformInfo")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("identifier", BehaviorValueProperty(&PlatformInfo::m_identifier))
+                ->Property("tags", BehaviorValueProperty(&PlatformInfo::m_tags));
         }
     }
 
@@ -501,6 +547,19 @@ namespace AssetBuilderSDK
                 Field("Enabled Platforms", &CreateJobsRequest::m_enabledPlatforms)->
                 Field("Source File UUID", &CreateJobsRequest::m_sourceFileUUID);
         }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<CreateJobsRequest>("CreateJobsRequest")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("builderId", BehaviorValueProperty(&CreateJobsRequest::m_builderid))
+                ->Property("watchFolder", BehaviorValueProperty(&CreateJobsRequest::m_watchFolder))
+                ->Property("sourceFile", BehaviorValueProperty(&CreateJobsRequest::m_sourceFile))
+                ->Property("sourceFileUUID", BehaviorValueProperty(&CreateJobsRequest::m_sourceFileUUID))
+                ->Property("enabledPlatforms", BehaviorValueProperty(&CreateJobsRequest::m_enabledPlatforms));
+        }
+
     }
 
     ProductDependency::ProductDependency(AZ::Data::AssetId dependencyId, const AZStd::bitset<64>& flags)
@@ -517,7 +576,20 @@ namespace AssetBuilderSDK
                 Version(1)->
                 Field("Dependency Id", &ProductDependency::m_dependencyId)->
                 Field("Flags", &ProductDependency::m_flags);
+
+            serializeContext->RegisterGenericType<AZStd::vector<ProductDependency>>();
         }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<ProductDependency>("ProductDependency")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Property("dependencyId", BehaviorValueProperty(&ProductDependency::m_dependencyId))
+                ->Property("flags", BehaviorValueProperty(&ProductDependency::m_flags));
+        }
+
     }
 
     ProductPathDependency::ProductPathDependency(AZStd::string_view dependencyPath, ProductPathDependencyType dependencyType)
@@ -540,6 +612,20 @@ namespace AssetBuilderSDK
                 Version(1)->
                 Field("Dependency Path", &ProductPathDependency::m_dependencyPath)->
                 Field("Dependency Type", &ProductPathDependency::m_dependencyType);
+
+            serializeContext->RegisterGenericType<AZStd::vector<ProductPathDependency>>();
+            serializeContext->RegisterGenericType<AZStd::unordered_set<ProductPathDependency>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<ProductPathDependency>("ProductPathDependency")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("dependencyPath", BehaviorValueProperty(&ProductPathDependency::m_dependencyPath))
+                ->Property("dependencyType", BehaviorValueProperty(&ProductPathDependency::m_dependencyType))
+                ->Enum<aznumeric_cast<int>(ProductPathDependencyType::ProductFile)>("ProductFile")
+                ->Enum<aznumeric_cast<int>(ProductPathDependencyType::SourceFile)>("SourceFile");
         }
     }
 
@@ -1000,6 +1086,24 @@ namespace AssetBuilderSDK
                 Field("Dependencies", &JobProduct::m_dependencies)->
                 Field("Relative Path Dependencies", &JobProduct::m_pathDependencies)->
                 Field("Dependencies Handled", &JobProduct::m_dependenciesHandled);
+
+            serializeContext->RegisterGenericType<AZStd::vector<JobProduct>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<JobProduct>("JobProduct")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Constructor<const AZStd::string&, AZ::Data::AssetType, AZ::u32>()
+                ->Property("productFileName", BehaviorValueProperty(&JobProduct::m_productFileName))
+                ->Property("productAssetType", BehaviorValueProperty(&JobProduct::m_productAssetType))
+                ->Property("productSubID", BehaviorValueProperty(&JobProduct::m_productSubID))
+                ->Property("productDependencies", BehaviorValueProperty(&JobProduct::m_dependencies))
+                ->Property("pathDependencies", BehaviorValueProperty(&JobProduct::m_pathDependencies))
+                ->Property("dependenciesHandled", BehaviorValueProperty(&JobProduct::m_dependenciesHandled));
+            ;
         }
     }
 
@@ -1023,6 +1127,22 @@ namespace AssetBuilderSDK
                 Field("Source File Dependency List", &ProcessJobRequest::m_sourceFileDependencyList)->
                 Field("Source File UUID", &ProcessJobRequest::m_sourceFileUUID);
         }
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<ProcessJobRequest>("ProcessJobRequest")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("sourceFile", BehaviorValueProperty(&ProcessJobRequest::m_sourceFile))
+                ->Property("watchFolder", BehaviorValueProperty(&ProcessJobRequest::m_watchFolder))
+                ->Property("fullPath", BehaviorValueProperty(&ProcessJobRequest::m_fullPath))
+                ->Property("builderGuid", BehaviorValueProperty(&ProcessJobRequest::m_builderGuid))
+                ->Property("jobDescription", BehaviorValueProperty(&ProcessJobRequest::m_jobDescription))
+                ->Property("tempDirPath", BehaviorValueProperty(&ProcessJobRequest::m_tempDirPath))
+                ->Property("platformInfo", BehaviorValueProperty(&ProcessJobRequest::m_platformInfo))
+                ->Property("sourceFileDependencyList", BehaviorValueProperty(&ProcessJobRequest::m_sourceFileDependencyList))
+                ->Property("sourceFileUUID", BehaviorValueProperty(&ProcessJobRequest::m_sourceFileUUID))
+                ->Property("jobId", BehaviorValueProperty(&ProcessJobRequest::m_jobId));
+        }
     }
 
     void ProcessJobResponse::Reflect(AZ::ReflectContext* context)
@@ -1036,11 +1156,53 @@ namespace AssetBuilderSDK
                 Field("Requires SubId Generation", &ProcessJobResponse::m_requiresSubIdGeneration)->
                 Field("Source To Reprocess", &ProcessJobResponse::m_sourcesToReprocess);
         }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<ProcessJobResponse>("ProcessJobResponse")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("outputProducts", BehaviorValueProperty(&ProcessJobResponse::m_outputProducts))
+                ->Property("resultCode", BehaviorValueProperty(&ProcessJobResponse::m_resultCode))
+                ->Property("requiresSubIdGeneration", BehaviorValueProperty(&ProcessJobResponse::m_requiresSubIdGeneration))
+                ->Property("sourcesToReprocess", BehaviorValueProperty(&ProcessJobResponse::m_sourcesToReprocess))
+                ->Enum<aznumeric_cast<int>(ProcessJobResultCode::ProcessJobResult_Success)>("Success")
+                ->Enum<aznumeric_cast<int>(ProcessJobResultCode::ProcessJobResult_Failed)>("Failed")
+                ->Enum<aznumeric_cast<int>(ProcessJobResultCode::ProcessJobResult_Crashed)>("Crashed")
+                ->Enum<aznumeric_cast<int>(ProcessJobResultCode::ProcessJobResult_Cancelled)>("Cancelled")
+                ->Enum<aznumeric_cast<int>(ProcessJobResultCode::ProcessJobResult_NetworkIssue)>("NetworkIssue");
+        }
     }
 
     bool ProcessJobResponse::Succeeded() const
     {
         return m_resultCode == ProcessJobResultCode::ProcessJobResult_Success;
+    }
+
+    void InitializeReflectContext(AZ::ReflectContext* context)
+    {
+        ProductPathDependency::Reflect(context);
+        SourceFileDependency::Reflect(context);
+        JobDependency::Reflect(context);
+        JobDescriptor::Reflect(context);
+        AssetBuilderPattern::Reflect(context);
+        ProductDependency::Reflect(context);
+        JobProduct::Reflect(context);
+        AssetBuilderDesc::Reflect(context);
+
+        RegisterBuilderRequest::Reflect(context);
+        RegisterBuilderResponse::Reflect(context);
+        CreateJobsRequest::Reflect(context);
+        CreateJobsResponse::Reflect(context);
+        ProcessJobRequest::Reflect(context);
+        ProcessJobResponse::Reflect(context);
+
+        BuilderHelloRequest::Reflect(context);
+        BuilderHelloResponse::Reflect(context);
+        CreateJobsNetRequest::Reflect(context);
+        CreateJobsNetResponse::Reflect(context);
+        ProcessJobNetRequest::Reflect(context);
+        ProcessJobNetResponse::Reflect(context);
     }
 
     void InitializeSerializationContext()
@@ -1050,28 +1212,19 @@ namespace AssetBuilderSDK
         EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
 
-        ProductPathDependency::Reflect(serializeContext);
-        SourceFileDependency::Reflect(serializeContext);
-        JobDependency::Reflect(serializeContext);
-        JobDescriptor::Reflect(serializeContext);
-        AssetBuilderPattern::Reflect(serializeContext);
-        ProductDependency::Reflect(serializeContext);
-        JobProduct::Reflect(serializeContext);
-        AssetBuilderDesc::Reflect(serializeContext);
+        InitializeReflectContext(serializeContext);
+    }
 
-        RegisterBuilderRequest::Reflect(serializeContext);
-        RegisterBuilderResponse::Reflect(serializeContext);
-        CreateJobsRequest::Reflect(serializeContext);
-        CreateJobsResponse::Reflect(serializeContext);
-        ProcessJobRequest::Reflect(serializeContext);
-        ProcessJobResponse::Reflect(serializeContext);
+    void InitializeBehaviorContext()
+    {
+        AZ::BehaviorContext* behaviorContext = nullptr;
 
-        BuilderHelloRequest::Reflect(serializeContext);
-        BuilderHelloResponse::Reflect(serializeContext);
-        CreateJobsNetRequest::Reflect(serializeContext);
-        CreateJobsNetResponse::Reflect(serializeContext);
-        ProcessJobNetRequest::Reflect(serializeContext);
-        ProcessJobNetResponse::Reflect(serializeContext);
+        EBUS_EVENT_RESULT(behaviorContext, AZ::ComponentApplicationBus, GetBehaviorContext);
+        AZ_Error("asset", behaviorContext, "Unable to retrieve behavior context.");
+        if (behaviorContext)
+        {
+            InitializeReflectContext(behaviorContext);
+        }
     }
 
     AssetBuilderSDK::JobCancelListener::JobCancelListener(AZ::u64 jobId)
@@ -1109,6 +1262,22 @@ namespace AssetBuilderSDK
                 Field("Source File Dependency Path", &SourceFileDependency::m_sourceFileDependencyPath)->
                 Field("Source File Dependency UUID", &SourceFileDependency::m_sourceFileDependencyUUID)->
                 Field("Source Dependency Type", &SourceFileDependency::m_sourceDependencyType);
+
+            serializeContext->RegisterGenericType<AZStd::vector<SourceFileDependency>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<SourceFileDependency>("SourceFileDependency")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Constructor<const AZStd::string&, AZ::Uuid, SourceFileDependency::SourceFileDependencyType>()
+                ->Property("sourceFileDependencyPath", BehaviorValueProperty(&SourceFileDependency::m_sourceFileDependencyPath))
+                ->Property("sourceFileDependencyUUID", BehaviorValueProperty(&SourceFileDependency::m_sourceFileDependencyUUID))
+                ->Property("sourceDependencyType", BehaviorValueProperty(&SourceFileDependency::m_sourceDependencyType))
+                ->Enum<aznumeric_cast<int>(SourceFileDependency::SourceFileDependencyType::Absolute)>("Absolute")
+                ->Enum<aznumeric_cast<int>(SourceFileDependency::SourceFileDependencyType::Wildcards)>("Wildcards");
         }
     }
 
@@ -1119,6 +1288,14 @@ namespace AssetBuilderSDK
             serializeContext->Class<RegisterBuilderRequest>()->
                 Version(1)->
                 Field("FilePath", &RegisterBuilderRequest::m_filePath);
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<RegisterBuilderRequest>("RegisterBuilderRequest")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("filePath", BehaviorValueProperty(&RegisterBuilderRequest::m_filePath));
         }
     }
 
@@ -1134,6 +1311,22 @@ namespace AssetBuilderSDK
                 ->Field("BusId", &AssetBuilderDesc::m_busId)
                 ->Field("Version", &AssetBuilderDesc::m_version)
                 ->Field("AnalysisFingerprint", &AssetBuilderDesc::m_analysisFingerprint);
+
+            serializeContext->RegisterGenericType<AZStd::vector<AssetBuilderDesc>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<AssetBuilderDesc>("AssetBuilderDesc")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Property("analysisFingerprint", BehaviorValueProperty(&AssetBuilderDesc::m_analysisFingerprint))
+                ->Property("busId", BehaviorValueProperty(&AssetBuilderDesc::m_busId))
+                ->Property("flags", BehaviorValueProperty(&AssetBuilderDesc::m_flags))
+                ->Property("name", BehaviorValueProperty(&AssetBuilderDesc::m_name))
+                ->Property("patterns", BehaviorValueProperty(&AssetBuilderDesc::m_patterns))
+                ->Property("version", BehaviorValueProperty(&AssetBuilderDesc::m_version));
         }
     }
 
@@ -1144,6 +1337,15 @@ namespace AssetBuilderSDK
             serializeContext->Class<RegisterBuilderResponse>()
                 ->Version(1)
                 ->Field("Asset Builder Desc List", &RegisterBuilderResponse::m_assetBuilderDescList);
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<RegisterBuilderResponse>("RegisterBuilderResponse")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Constructor()
+                ->Property("assetBuilderDescList", BehaviorValueProperty(&RegisterBuilderResponse::m_assetBuilderDescList));
         }
     }
 
@@ -1161,6 +1363,19 @@ namespace AssetBuilderSDK
                 Field("Result Code", &CreateJobsResponse::m_result)->
                 Field("Source File Dependency List", &CreateJobsResponse::m_sourceFileDependencyList)->
                 Field("Create Job Outputs", &CreateJobsResponse::m_createJobOutputs);
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<CreateJobsResponse>("CreateJobsResponse")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("result", BehaviorValueProperty(&CreateJobsResponse::m_result))
+                ->Property("sourceFileDependencyList", BehaviorValueProperty(&CreateJobsResponse::m_sourceFileDependencyList))
+                ->Property("createJobOutputs", BehaviorValueProperty(&CreateJobsResponse::m_createJobOutputs))
+                ->Enum<aznumeric_cast<int>(CreateJobsResultCode::Failed)>("ResultFailed")
+                ->Enum<aznumeric_cast<int>(CreateJobsResultCode::ShuttingDown)>("ResultShuttingDown")
+                ->Enum<aznumeric_cast<int>(CreateJobsResultCode::Success)>("ResultSuccess");
         }
     }
 
@@ -1304,6 +1519,22 @@ namespace AssetBuilderSDK
                 Field("Job Key", &JobDependency::m_jobKey)->
                 Field("Platform Identifier", &JobDependency::m_platformIdentifier)->
                 Field("Job Dependency Type", &JobDependency::m_type);
+
+            serializeContext->RegisterGenericType<AZStd::vector<JobDependency>>();
+        }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<JobDependency>("JobDependency")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Module, "asset.builder")
+                ->Property("sourceFile", BehaviorValueProperty(&JobDependency::m_sourceFile))
+                ->Property("jobKey", BehaviorValueProperty(&JobDependency::m_jobKey))
+                ->Property("platformIdentifier", BehaviorValueProperty(&JobDependency::m_platformIdentifier))
+                ->Property("type", BehaviorValueProperty(&JobDependency::m_type))
+                ->Enum<aznumeric_cast<int>(JobDependencyType::Fingerprint)>("Fingerprint")
+                ->Enum<aznumeric_cast<int>(JobDependencyType::Order)>("Order")
+                ->Enum<aznumeric_cast<int>(JobDependencyType::OrderOnce)>("OrderOnce");
         }
     }
 

@@ -47,7 +47,7 @@ namespace LUAEditor
             bool HasContext(const char* contextName) const override;
             void RegisterThumbnailProvider(AzToolsFramework::Thumbnailer::SharedThumbnailProvider provider, const char* contextName) override;
             AzToolsFramework::Thumbnailer::SharedThumbnail GetThumbnail(AzToolsFramework::Thumbnailer::SharedThumbnailKey thumbnailKey, const char* contextName) override;
-
+            bool IsLoading(AzToolsFramework::Thumbnailer::SharedThumbnailKey thumbnailKey, const char* contextName) override;
         private:
             AzToolsFramework::Thumbnailer::SharedThumbnail m_nullThumbnail;
         };

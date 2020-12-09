@@ -222,9 +222,7 @@ namespace AzQtComponents
 
     static QPoint screenCenter(QWidget* w)
     {
-        const QDesktopWidget* desktop = QApplication::desktop();
-        const int screenNumber = desktop->screenNumber(w);
-        return desktop->availableGeometry(screenNumber).center();
+        return w->screen()->availableGeometry().center();
     }
 
     void WindowDecorationWrapper::centerInParent()

@@ -23,6 +23,7 @@
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/std/smart_ptr/intrusive_base.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Script/ScriptContextAttributes.h>
@@ -295,9 +296,16 @@ namespace AZ
 
     namespace Internal
     {
+        const AZ::TypeId& GetUnderlyingTypeId(const IRttiHelper& enumRttiHelper);
+        
         // Converts sourceAddress to targetType
         inline bool ConvertValueTo(void* sourceAddress, const IRttiHelper* sourceRtti, const AZ::Uuid& targetType, void*& targetAddress, BehaviorParameter::TempValueParameterAllocator& tempAllocator)
         {
+            // Check see if the underlying typeid is an enum whose typeIds match
+            if (GetUnderlyingTypeId(*sourceRtti) == targetType)
+            {
+                return true;
+            }
             // convert
             void* convertedAddress = sourceRtti->Cast(sourceAddress, targetType);
             if (convertedAddress && convertedAddress != sourceAddress) // if we converted as we have a different address
@@ -561,7 +569,7 @@ namespace AZ
             using FunctionPointer = R(C::*)(Args...);
             using FunctionPointerConst = R(C::*)(Args...) const;
 
-            static const int s_isBusIdParameter = (EventType == BE_EVENT_ID || EventType == BE_QUEUE_EVENT_ID) ? 1 : 0;
+            static constexpr int s_isBusIdParameter = (EventType == BE_EVENT_ID || EventType == BE_QUEUE_EVENT_ID) ? 1 : 0;
             static const int s_startArgumentIndex = 1; // +1 for result type
             static const int s_startNamedArgumentIndex = s_startArgumentIndex + s_isBusIdParameter; // +1 for result type, +1 (optional for busID)
 
@@ -1198,8 +1206,8 @@ namespace AZ
         template<class Bus, typename AZStd::enable_if<!AZStd::is_same<typename Bus::BusIdType, AZ::NullBusId>::value>::type* = nullptr>
         void EBusSetIdFeatures(BehaviorEBus* ebus)
         {
-            Internal::SetParameters<typename Bus::BusIdType>(&ebus->m_idParam);
-            ebus->m_getCurrentId = aznew Internal::BehaviorMethodImpl<const typename Bus::BusIdType*()>(&Bus::GetCurrentBusId, this, AZStd::string(Bus::GetName()) + "::GetCurrentBusId");
+            AZ::Internal::SetParameters<typename Bus::BusIdType>(&ebus->m_idParam);
+            ebus->m_getCurrentId = aznew AZ::Internal::BehaviorMethodImpl<const typename Bus::BusIdType*()>(&Bus::GetCurrentBusId, this, AZStd::string(Bus::GetName()) + "::GetCurrentBusId");
         }
 
         template<class Bus, typename AZStd::enable_if<AZStd::is_same<typename Bus::BusIdType, AZ::NullBusId>::value>::type* = nullptr>
@@ -1216,7 +1224,7 @@ namespace AZ
         template<class Bus, typename AZStd::enable_if<Bus::Traits::EnableEventQueue>::type* = nullptr>
         BehaviorMethod* QueueFunctionMethod()
         {
-            return aznew Internal::BehaviorMethodImpl<void(BehaviorEBus::QueueFunctionType, void*, void*)>(&QueueFunction<Bus>, this, AZStd::string(Bus::GetName()) + "::QueueFunction");
+            return aznew AZ::Internal::BehaviorMethodImpl<void(BehaviorEBus::QueueFunctionType, void*, void*)>(&QueueFunction<Bus>, this, AZStd::string(Bus::GetName()) + "::QueueFunction");
         }
 
         template<class Bus, typename AZStd::enable_if<!Bus::Traits::EnableEventQueue>::type* = nullptr>
@@ -1404,9 +1412,9 @@ namespace AZ
 
         bool IsTypeReflected(AZ::Uuid typeId) const override;
 
-        struct GlobalMethodBuilder : public Internal::GenericAttributes<GlobalMethodBuilder>
+        struct GlobalMethodBuilder : public AZ::Internal::GenericAttributes<GlobalMethodBuilder>
         {
-            typedef Internal::GenericAttributes<GlobalMethodBuilder> Base;
+            typedef AZ::Internal::GenericAttributes<GlobalMethodBuilder> Base;
             GlobalMethodBuilder(BehaviorContext* context, const char* methodName, BehaviorMethod* method);
             ~GlobalMethodBuilder();
             GlobalMethodBuilder* operator->();
@@ -1415,9 +1423,9 @@ namespace AZ
             BehaviorMethod* m_method;
         };
          
-        struct GlobalPropertyBuilder : public Internal::GenericAttributes<GlobalPropertyBuilder>
+        struct GlobalPropertyBuilder : public AZ::Internal::GenericAttributes<GlobalPropertyBuilder>
         {
-            typedef Internal::GenericAttributes<GlobalPropertyBuilder> Base;
+            typedef AZ::Internal::GenericAttributes<GlobalPropertyBuilder> Base;
 
             GlobalPropertyBuilder(BehaviorContext* context, BehaviorProperty* prop);
             ~GlobalPropertyBuilder();
@@ -1428,9 +1436,9 @@ namespace AZ
 
         /// Internal structure to maintain class information while we are describing a class.
         template<class C>
-        struct ClassBuilder : public Internal::GenericAttributes<ClassBuilder<C>>
+        struct ClassBuilder : public AZ::Internal::GenericAttributes<ClassBuilder<C>>
         {
-            typedef Internal::GenericAttributes<ClassBuilder<C>> Base;
+            typedef AZ::Internal::GenericAttributes<ClassBuilder<C>> Base;
 
             //////////////////////////////////////////////////////////////////////////
             /// Internal implementation
@@ -1505,9 +1513,9 @@ namespace AZ
 
         /// Internal structure to maintain EBus information while describing it.
         template<typename Bus>
-        struct EBusBuilder : public Internal::EBusAttributes<Bus>
+        struct EBusBuilder : public AZ::Internal::EBusAttributes<Bus>
         {
-            typedef Internal::EBusAttributes<Bus> Base;
+            typedef AZ::Internal::EBusAttributes<Bus> Base;
 
             EBusBuilder(BehaviorContext* context, BehaviorEBus* behaviorEBus);
             ~EBusBuilder();
@@ -2079,7 +2087,7 @@ namespace AZ
     template<typename T>
     inline void BehaviorValueParameter::StoreInTempData(T&& value)
     {
-        Internal::SetParameters<T>(this);
+        AZ::Internal::SetParameters<T>(this);
         m_value = m_tempData.allocate(sizeof(T), AZStd::alignment_of<T>::value, 0);
         *reinterpret_cast<AZStd::decay_t<T>*>(m_value) = AZStd::move(value);
     }
@@ -2088,7 +2096,7 @@ namespace AZ
     template<class T>
     AZ_FORCE_INLINE void BehaviorValueParameter::Set(T* value)
     {
-        Internal::SetParameters<AZStd::decay_t<T>>(this);
+        AZ::Internal::SetParameters<AZStd::decay_t<T>>(this);
         m_value = (void*)value;
     }
 
@@ -2149,7 +2157,7 @@ namespace AZ
             void* valueAddress = GetValueAddress();
             if (valueAddress) // should we make null value to convert to anything?
             {
-                return Internal::ConvertValueTo(valueAddress, m_azRtti, typeId, m_value, m_tempData);
+                return AZ::Internal::ConvertValueTo(valueAddress, m_azRtti, typeId, m_value, m_tempData);
             }
         }
         return m_typeId == typeId;
@@ -2296,7 +2304,7 @@ namespace AZ
             {
                 valueAddress = *reinterpret_cast<void**>(valueAddress); // pointer to a pointer
             }
-            isResult = Internal::ConvertValueTo(valueAddress, GetRttiHelper<Type>(), m_typeId, m_value, m_tempData);
+            isResult = AZ::Internal::ConvertValueTo(valueAddress, GetRttiHelper<Type>(), m_typeId, m_value, m_tempData);
         }
         else if (m_typeId.IsNull()) // if nullptr we can accept any type, by pointer or reference
         {
@@ -2370,7 +2378,7 @@ namespace AZ
     template<class Getter>
     bool BehaviorProperty::SetGetter(Getter getter, BehaviorClass* currentClass, BehaviorContext* context, const AZStd::false_type&)
     {
-        typedef Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Getter>::type>::type> GetterType;
+        typedef AZ::Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Getter>::type>::type> GetterType;
         m_getter = aznew GetterType(getter, context, AZStd::string::format("%s::%s::Getter", currentClass ? currentClass->m_name.c_str() : "", m_name.c_str()));
 
         if (AZStd::is_class<typename GetterType::ClassType>::value)
@@ -2441,7 +2449,7 @@ namespace AZ
     template<class Setter>
     bool BehaviorProperty::SetSetter(Setter setter, BehaviorClass* currentClass, BehaviorContext* context, const AZStd::false_type&)
     {
-        typedef Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Setter>::type>::type> SetterType;
+        typedef AZ::Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Setter>::type>::type> SetterType;
         m_setter = aznew SetterType(setter, context, AZStd::string::format("%s::%s::Setter", currentClass ? currentClass->m_name.c_str() : "", m_name.c_str()));
         if (AZStd::is_class<typename SetterType::ClassType>::value)
         {
@@ -2547,7 +2555,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::Set(Event e, const char* eventName, BehaviorContext* context)
     {
-        m_broadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_broadcast = aznew AZ::Internal::BehaviorEBusEvent<EBus, AZ::Internal::BE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
         m_broadcast->m_name = eventName;
 
         SetEvent<EBus>(e, eventName, context, typename AZStd::is_same<typename EBus::BusIdType, NullBusId>::type());
@@ -2567,7 +2575,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
     {
-        m_event = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_event = aznew AZ::Internal::BehaviorEBusEvent<EBus, AZ::Internal::BE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
         m_event->m_name = eventName;
     }
 
@@ -2583,7 +2591,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
     {
-        m_queueBroadcast = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_queueBroadcast = aznew AZ::Internal::BehaviorEBusEvent<EBus, AZ::Internal::BE_QUEUE_BROADCAST, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
         m_queueBroadcast->m_name = eventName;
     }
 
@@ -2599,7 +2607,7 @@ namespace AZ
     template<class EBus, class Event>
     void BehaviorEBusEventSender::SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/)
     {
-        m_queueEvent = aznew Internal::BehaviorEBusEvent<EBus, Internal::BE_QUEUE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
+        m_queueEvent = aznew AZ::Internal::BehaviorEBusEvent<EBus, AZ::Internal::BE_QUEUE_EVENT_ID, typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Event>::type>::type>(e, context);
         m_queueEvent->m_name = eventName;
     }
 
@@ -2645,7 +2653,7 @@ namespace AZ
             m_events[i].m_name = name;
             m_events[i].m_eventId = AZ::Crc32(name);
             m_events[i].m_function = nullptr;
-            Internal::SetFunctionParameters<typename AZStd::remove_pointer<Event>::type>::Set(m_events[i].m_parameters);
+            AZ::Internal::SetFunctionParameters<typename AZStd::remove_pointer<Event>::type>::Set(m_events[i].m_parameters);
             m_events[i].m_metadataParameters.resize(m_events[i].m_parameters.size());
         }
     }
@@ -2661,7 +2669,7 @@ namespace AZ
             m_events[i].m_name = name.data();
             m_events[i].m_eventId = AZ::Crc32(name.data());
             m_events[i].m_function = nullptr;
-            Internal::SetFunctionParameters<typename AZStd::remove_pointer<Event>::type>::Set(m_events[i].m_parameters);
+            AZ::Internal::SetFunctionParameters<typename AZStd::remove_pointer<Event>::type>::Set(m_events[i].m_parameters);
             m_events[i].m_metadataParameters.resize(m_events[i].m_parameters.size());
             for (size_t argIndex = 0; argIndex < args.size(); ++argIndex)
             {
@@ -2730,7 +2738,7 @@ namespace AZ
     template<class... Values>
     BehaviorValues* BehaviorContext::MakeDefaultValues(Values&&... values)
     {
-        return !IsRemovingReflection() ? aznew Internal::BehaviorValuesSpecialization<Values...>(AZStd::forward<Values>(values)...) : nullptr;
+        return !IsRemovingReflection() ? aznew AZ::Internal::BehaviorValuesSpecialization<Values...>(AZStd::forward<Values>(values)...) : nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2828,7 +2836,7 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     template<class C>
     BehaviorContext::ClassBuilder<C>::ClassBuilder(BehaviorContext* context, BehaviorClass* behaviorClass)
-        : Internal::GenericAttributes<ClassBuilder<C>>(context)
+        : AZ::Internal::GenericAttributes<ClassBuilder<C>>(context)
         , m_class(behaviorClass)
     {
         if (behaviorClass)
@@ -2868,7 +2876,7 @@ namespace AZ
         }
         if (m_class)
         {
-            BehaviorMethod* constructor = aznew Internal::BehaviorMethodImpl<void(C* address, Params...)>(&Construct<C, Params...>, Base::m_context, AZStd::string::format("%s::Constructor", m_class->m_name.c_str()));
+            BehaviorMethod* constructor = aznew AZ::Internal::BehaviorMethodImpl<void(C* address, Params...)>(&Construct<C, Params...>, Base::m_context, AZStd::string::format("%s::Constructor", m_class->m_name.c_str()));
             m_class->m_constructors.push_back(constructor);
         }
         return this;
@@ -2959,7 +2967,7 @@ namespace AZ
         }
 
         AZ_Assert(!AZStd::is_member_function_pointer<Function>::value, "This is a member %s method declared as global! use script.Class<Type>(Name)->Method()->Value()!\n", name);
-        typedef Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Function>::type>::type> BehaviorMethodType;
+        typedef AZ::Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Function>::type>::type> BehaviorMethodType;
         BehaviorMethod* method = aznew BehaviorMethodType(f, this, name);
         method->m_debugDescription = dbgDesc;
 
@@ -3057,7 +3065,7 @@ namespace AZ
     {
         if (m_class)
         {
-            typedef Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Function>::type>::type> BehaviorMethodType;
+            typedef AZ::Internal::BehaviorMethodImpl<typename AZStd::RemoveFunctionConst<typename AZStd::remove_pointer<Function>::type>::type> BehaviorMethodType;
             BehaviorMethod* method = aznew BehaviorMethodType(f, Base::m_context, AZStd::string::format("%s::%s", m_class->m_name.c_str(), name));
             method->m_debugDescription = dbgDesc;
 
@@ -3149,6 +3157,8 @@ namespace AZ
     BehaviorContext::ClassBuilder<C>* BehaviorContext::ClassBuilder<C>::Enum(const char* name)
     {
         Property(name, []() { return Value; }, nullptr);
+        BehaviorContext::ClassBuilder<C>::Attribute(AZ::Script::Attributes::ClassConstantValue, true);
+
         return this;
     }
 
@@ -3468,11 +3478,11 @@ namespace AZ
         {
             AZ_Assert(creator != nullptr && destructor != nullptr, "Both creator and destructor should be provided!");
 
-            BehaviorMethod* createHandler = aznew Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<HandlerCreator>::type>(creator, Base::m_context, m_ebus->m_name + "::CreateHandler");
-            BehaviorMethod* destroyHandler = aznew Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<HandlerDestructor>::type>(destructor, Base::m_context, m_ebus->m_name + "::DestroyHandler");
+            BehaviorMethod* createHandler = aznew AZ::Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<HandlerCreator>::type>(creator, Base::m_context, m_ebus->m_name + "::CreateHandler");
+            BehaviorMethod* destroyHandler = aznew AZ::Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<HandlerDestructor>::type>(destructor, Base::m_context, m_ebus->m_name + "::DestroyHandler");
             // OnDemandReflect the types in all the handler Event functions
             m_ebus->m_ebusHandlerOnDemandReflector = AZStd::make_unique<ScopedBehaviorOnDemandReflector>(*Base::m_context);
-            Internal::OnDemandReflectFunctions(m_ebus->m_ebusHandlerOnDemandReflector.get(), typename HandlerType::EventFunctionsParameterPack{});
+            AZ::Internal::OnDemandReflectFunctions(m_ebus->m_ebusHandlerOnDemandReflector.get(), typename HandlerType::EventFunctionsParameterPack{});
 
             // check than the handler returns the expected type
             if (createHandler->GetResult()->m_typeId != AzTypeInfo<BehaviorEBusHandler>::Uuid() || destroyHandler->GetArgument(0)->m_typeId != AzTypeInfo<BehaviorEBusHandler>::Uuid())
@@ -4147,10 +4157,13 @@ namespace AZ
                 arguments = newArguments;
             }
 
-            if (s_isBusIdParameter && !arguments[0].ConvertTo(m_parameters[1].m_typeId))
+            if constexpr (s_isBusIdParameter)
             {
-                AZ_Warning("Behavior", false, "Invalid BusIdType type can't convert! %s -> %s", arguments[0].m_name, m_parameters[1].m_name);
-                return false;
+                if (!arguments[0].ConvertTo(m_parameters[1].m_typeId))
+                {
+                    AZ_Warning("Behavior", false, "Invalid BusIdType type can't convert! %s -> %s", arguments[0].m_name, m_parameters[1].m_name);
+                    return false;
+                }
             }
 
             for (size_t i = s_startNamedArgumentIndex; i < AZ_ARRAY_SIZE(m_parameters); ++i)
@@ -4162,7 +4175,7 @@ namespace AZ
                 }
             }
 
-            Internal::EBusCaller<EventType, EBus, R, Args...>::Call(m_functionPtr, &arguments[0], result, AZStd::make_index_sequence<sizeof...(Args)>());
+            AZ::Internal::EBusCaller<EventType, EBus, R, Args...>::Call(m_functionPtr, &arguments[0], result, AZStd::make_index_sequence<sizeof...(Args)>());
 
             return true;
         }
@@ -4511,7 +4524,7 @@ namespace AZ
         template<class T>
         void GenericAttributes<Owner>::SetAttributeContextData(T value, AZ::Attribute* attribute, const AZStd::true_type& /* is_function<remove_pointer<T>::type> && is_member_function_pointer<T>*/)
         {
-            BehaviorMethod* method = aznew Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<T>::type>(value, m_context, AZStd::string("Function-Attribute"));
+            BehaviorMethod* method = aznew AZ::Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<T>::type>(value, m_context, AZStd::string("Function-Attribute"));
             attribute->SetContextData(method, &DestroyAttributeMethod);
         }
 
@@ -4540,21 +4553,21 @@ namespace AZ
 
         template<typename Bus>
         class EBusAttributes :
-            public Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>
+            public AZ::Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>
         {
         protected:
 
-            using Base = Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>;
+            using Base = AZ::Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>;
 
             EBusAttributes(BehaviorContext* context)
-                : Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>(context)
+                : AZ::Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>(context)
             {
             }
 
             void SetEBusEventSender(BehaviorEBusEventSender* ebusSender);
 
         public:
-            using Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>::Attribute;
+            using AZ::Internal::GenericAttributes<BehaviorContext::EBusBuilder<Bus>>::Attribute;
             template<class T>
             BehaviorContext::EBusBuilder<Bus>* Attribute(Crc32 idCrc, T value);
 

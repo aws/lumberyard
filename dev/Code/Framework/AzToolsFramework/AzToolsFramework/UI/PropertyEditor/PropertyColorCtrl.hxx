@@ -28,6 +28,7 @@ class QLineEdit;
 class QPushButton;
 class QToolButton;
 class QLabel;
+class QRegExpValidator;
 
 namespace AzToolsFramework
 {
@@ -64,6 +65,8 @@ namespace AzToolsFramework
 
         void SetColorEditorConfiguration(const ColorEditorConfiguration& configuration);
 
+        void setAlphaChannelEnabled(bool enabled);
+
     signals:
         void valueChanged(QColor newValue);
         void currentColorChanged(const QColor& color);
@@ -90,6 +93,8 @@ namespace AzToolsFramework
         AZ::Color TransformColor(const AZ::Color& color, uint32_t fromColorSpaceId, uint32_t toColorSpaceId) const;
         QColor TransformColor(const QColor& color, uint32_t fromColorSpaceId, uint32_t toColorSpaceId) const;
 
+        QRegExpValidator* CreateTextEditValidator() const;
+
         QToolButton* m_pDefaultButton;
         AzQtComponents::ColorPicker* m_pColorDialog;
 
@@ -98,6 +103,8 @@ namespace AzToolsFramework
 
         QLineEdit* m_colorEdit;
         QColor m_color;
+
+        bool m_alphaChannelEnabled;
     };
 
     template <class ValueType>

@@ -24,6 +24,8 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzFramework/Network/SocketConnection.h>
 
+#include <AzQtComponents/Components/StyledBusyLabel.h>
+
 namespace AzToolsFramework
 {
     namespace AssetDatabase
@@ -80,6 +82,7 @@ namespace AzToolsFramework
             AssetBrowserModel* GetAssetBrowserModel() override;
             bool AreEntriesReady() override;
             void PickAssets(AssetSelectionModel& selection, QWidget* parent) override;
+            AzQtComponents::StyledBusyLabel* GetStyledBusyLabel() override;
 
             //////////////////////////////////////////////////////////////////////////
             // AssetCatalogEventBus
@@ -132,6 +135,8 @@ namespace AzToolsFramework
             void NotifyUpdateThread();
 
             void HandleFileInfoNotification(const void* buffer, unsigned int bufferSize);
+
+            AzQtComponents::StyledBusyLabel* m_styledBusyLabel;
         };
     }
 } // namespace AssetBrowser

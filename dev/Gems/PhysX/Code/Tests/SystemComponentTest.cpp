@@ -36,7 +36,8 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Component/EntityId.h>
 
-namespace PhysXEditorTests {
+namespace PhysXEditorTests
+{
     class MockWorldRequestBusHandler
         : public Physics::WorldRequestBus::Handler
     {
@@ -92,30 +93,6 @@ namespace PhysXEditorTests {
         MOCK_METHOD1(OnWorldCreated, void(Physics::World*));
     };
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    TEST_F(PhysXEditorFixture, SetConfiguration_ForwardsConfigChangesToWorldRequestBus)
-    {
-        testing::StrictMock<MockWorldRequestBusHandler> mockHandler;
-
-        // Initialize new configs with some non-default values.
-        const AZ::Vector3 newGravity(2.f, 5.f, 7.f);
-        const float newFixedTimeStep = 0.008f;
-        const float newMaxTimeStep = 0.034f;
-
-        PhysX::Configuration newConfiguration;
-
-        newConfiguration.m_worldConfiguration.m_gravity = newGravity;
-        newConfiguration.m_worldConfiguration.m_fixedTimeStep = newFixedTimeStep;
-        newConfiguration.m_worldConfiguration.m_maxTimeStep = newMaxTimeStep;
-
-        EXPECT_CALL(mockHandler, SetGravity(newGravity)).Times(1);
-        EXPECT_CALL(mockHandler, SetMaxDeltaTime(newMaxTimeStep)).Times(1);
-        EXPECT_CALL(mockHandler, SetFixedDeltaTime(newFixedTimeStep)).Times(1);
-
-        AZ::Interface<PhysX::ConfigurationRequests>::Get()->SetConfiguration(newConfiguration);
-    }
-    AZ_POP_DISABLE_WARNING
-
     TEST_F(PhysXEditorFixture, SetWorldConfiguration_ForwardsConfigChangesToWorldRequestBus)
     {
         testing::StrictMock<MockWorldRequestBusHandler> mockHandler;
@@ -147,4 +124,4 @@ namespace PhysXEditorTests {
         const AZ::Crc32 worldId("SystemNotificationBusTestWorld");
         auto world = AZ::Interface<Physics::System>::Get()->CreateWorld(worldId);
     }
-}
+} // namespace PhysXEditorTests

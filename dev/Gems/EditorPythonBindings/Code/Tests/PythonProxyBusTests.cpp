@@ -216,6 +216,7 @@ namespace UnitTest
         virtual void OnPing(AZ::u64 count) = 0;
         virtual void OnPong(AZ::u64 count) = 0;
         virtual void MultipleInputs(AZ::u64 one, AZ::s8 two, AZStd::string_view three) = 0;
+        virtual AZStd::string OnAddFish(AZStd::string_view value) = 0;
     };
     using PythonTestSingleAddressNotificationBus = AZ::EBus<PythonTestSingleAddressNotifications>;
 
@@ -224,7 +225,7 @@ namespace UnitTest
         , public AZ::BehaviorEBusHandler
     {
         AZ_EBUS_BEHAVIOR_BINDER(PythonTestNotificationHandler, "{97052D15-A4E8-461B-B065-91D16E31C4F7}", AZ::SystemAllocator, 
-            OnPing, OnPong, MultipleInputs);
+            OnPing, OnPong, MultipleInputs, OnAddFish);
 
         virtual ~PythonTestNotificationHandler() = default;
 
@@ -241,6 +242,13 @@ namespace UnitTest
         void MultipleInputs(AZ::u64 one, AZ::s8 two, AZStd::string_view three) override
         {
             Call(FN_MultipleInputs, one, two, three);
+        }
+
+        AZStd::string OnAddFish(AZStd::string_view value) override
+        {
+            AZStd::string result;
+            CallResult(result, FN_OnAddFish, value);
+            return result;
         }
 
         static AZ::u64 s_pongCount;
@@ -260,6 +268,13 @@ namespace UnitTest
             PythonTestSingleAddressNotificationBus::Broadcast(&PythonTestSingleAddressNotificationBus::Events::OnPong, s_pongCount);
         }
 
+        static AZStd::string DoAddFish(AZStd::string value)
+        {
+            AZStd::string result;
+            PythonTestSingleAddressNotificationBus::BroadcastResult(result, &PythonTestSingleAddressNotificationBus::Events::OnAddFish, value);
+            return result;
+        }
+
         static void Reset()
         {
             s_pingCount = 0;
@@ -277,6 +292,7 @@ namespace UnitTest
                     ->Event("on_ping", &PythonTestSingleAddressNotificationBus::Events::OnPing)
                     ->Event("on_pong", &PythonTestSingleAddressNotificationBus::Events::OnPong)
                     ->Event("MultipleInputs", &PythonTestSingleAddressNotificationBus::Events::MultipleInputs)
+                    ->Event("OnAddFish", &PythonTestSingleAddressNotificationBus::Events::OnAddFish)
                     ;
 
                 // for testing from Python to send out the events
@@ -285,6 +301,7 @@ namespace UnitTest
                     ->Attribute(AZ::Script::Attributes::Module, "test")
                     ->Method("do_ping", &PythonTestNotificationHandler::DoPing)
                     ->Method("do_pong", &PythonTestNotificationHandler::DoPong)
+                    ->Method("do_add_fish", &PythonTestNotificationHandler::DoAddFish)
                     ;
             }
         }
@@ -853,4 +870,60 @@ namespace UnitTest
 
         EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::NoAddressConnect)]);
     }
-}
+
+    TEST_F(PythonBusProxyTests, NotificationsWithResult)
+    {
+        PythonTestNotificationHandler pythonTestNotificationHandler;
+        pythonTestNotificationHandler.Reflect(m_app.GetBehaviorContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+
+        enum class LogTypes
+        {
+            Skip = 0,
+            WithResult
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "WithResult"))
+                {
+                    return aznumeric_cast<int>(LogTypes::WithResult);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.bus
+                import azlmbr.test
+
+                def on_add_fish(args):
+                    value = args[0] + 'fish'
+                    return value
+
+                handler = azlmbr.test.PythonTestSingleAddressNotificationBusHandler()
+                handler.connect()
+                handler.add_callback('OnAddFish', on_add_fish)
+
+                babblefish = azlmbr.test.PythonTestNotificationHandler_do_add_fish('babble')
+                if (babblefish == 'babblefish'):
+                    print('WithResult_babblefish')
+
+                handler.disconnect()
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed on with Python exception: %s", e.what());
+        }
+        e.Deactivate();
+
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[static_cast<int>(LogTypes::WithResult)]);
+    }}

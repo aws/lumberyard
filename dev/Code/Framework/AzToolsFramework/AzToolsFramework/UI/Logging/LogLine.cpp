@@ -21,6 +21,7 @@
 
 #include <QColor>
 #include <QDateTime>
+#include <QLocale>
 
 namespace AzToolsFramework
 {
@@ -388,7 +389,7 @@ namespace AzToolsFramework
             const AZStd::string From = " from ";
             const AZStd::string EOL = "\n";
 
-            AZStd::string dateTime = QDateTime::fromMSecsSinceEpoch(m_messageTime).toString(Qt::SystemLocaleShortDate).toUtf8().data();
+            AZStd::string dateTime = QLocale::system().toString(QDateTime::fromMSecsSinceEpoch(m_messageTime), QLocale::ShortFormat).toUtf8().data();
             AZStd::string severity;
             switch (m_type)
             {
@@ -449,7 +450,7 @@ namespace AzToolsFramework
                 }
                 if (column == 1)
                 {
-                    return QVariant(QDateTime::fromMSecsSinceEpoch(m_messageTime).toString(Qt::SystemLocaleShortDate));
+                    return QVariant(QLocale::system().toString(QDateTime::fromMSecsSinceEpoch(m_messageTime), QLocale::ShortFormat));
                 }
                 else if (column == 2) // window
                 {
@@ -475,7 +476,7 @@ namespace AzToolsFramework
                     break;
                 }
             }
-            else if (role == Qt::TextColorRole) // the renderer wants to know what the text color of this cell should be.  Return a color or empty QVariant()
+            else if (role == Qt::ForegroundRole) // the renderer wants to know what the text color of this cell should be.  Return a color or empty QVariant()
             {
                 switch (m_type)
                 {

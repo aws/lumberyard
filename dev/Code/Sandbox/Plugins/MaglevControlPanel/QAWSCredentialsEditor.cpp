@@ -24,10 +24,11 @@
 #include <QDesktopServices>
 #include <QDesktopWidget>
 #include <QDialogButtonBox>
+#include <QMessageBox>
 #include <QRadioButton>
+#include <QScreen>
 #include <QScrollArea>
 #include <QUrl>
-#include <QMessageBox>
 
 #include <Resource.h>
 
@@ -524,7 +525,7 @@ void AddProfileDialog::SetBoxTitle(const QString& newValue)
 
 void AddProfileDialog::MoveCenter()
 {
-    QRect scr = QApplication::desktop()->screenGeometry(0);
+    QRect scr = QApplication::primaryScreen()->geometry();
     move(scr.center() - rect().center());
 }
 

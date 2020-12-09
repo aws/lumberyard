@@ -12,14 +12,15 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
+
 #include <QProxyStyle>
 
 class QPushButton;
-class QToolButton;
-class QSettings;
 class QRectF;
-class QStyleOptionToolButton;
+class QSettings;
 class QStyleOptionComplex;
+class QStyleOptionToolButton;
+class QToolButton;
 
 namespace AzQtComponents
 {
@@ -49,16 +50,18 @@ namespace AzQtComponents
      *   Small Icon QToolButton style, specified via PushButton::applySmallIconStyle(toolButton);
      *
      */
+
+    //! Class to handle styling and painting of QPushButton controls.
     class AZ_QT_COMPONENTS_API PushButton
     {
     public:
-
         struct Gradient
         {
-            QColor start;
-            QColor end;
+            QColor start;           //!< Gradient start color (top).
+            QColor end;             //!< Gradient end color (bottom).
         };
 
+        //! Structure to specify multiple gradients for different widget states.
         struct ColorSet
         {
             Gradient disabled;
@@ -103,40 +106,31 @@ namespace AzQtComponents
             int menuIndicatorPadding;
         };
 
+        //! Style configuration for the PushButton class.
         struct Config
         {
-            ColorSet primary;
-            ColorSet secondary;
+            ColorSet primary;               //!< Background colors for the primary PushButton style.
+            ColorSet secondary;             //!< Background colors for the secondary PushButton style.
             Border defaultBorder;
             Border disabledBorder;
             Border focusedBorder;
-            Frame defaultFrame;
-            SmallIcon smallIcon;
-            IconButton iconButton;
-            DropdownButton dropdownButton;
+            Frame defaultFrame; 
+            SmallIcon smallIcon;            //!< Style configuration for small icon buttons.
+            IconButton iconButton;          //!< Style configuration for icon buttons.
+            DropdownButton dropdownButton;  //!< Style configuration for dropdown buttons.
         };
 
-        /*!
-        * Applies the Primary styling to a QPushButton.
-        * Explicit way to call QPushButton::setDefault(true);
-        */
+        //! Applies the Primary styling to a QPushButton.
         static void applyPrimaryStyle(QPushButton* button);
 
-        /*!
-        * Applies the SmallIcon styling to a QToolButton.
-        * Same as
-        *   AzQtComponents::Style::addClass(button, "SmallIcon");
-        */
+        //! Applies the Primary styling to a QToolButton.
         static void applySmallIconStyle(QToolButton* button);
 
-        /*!
-        * Loads the button config data from a settings object.
-        */
+        //! Sets the PushButton style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the PushButton.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default button config data.
-        */
+        //! Gets the default PushButton style configuration.
         static Config defaultConfig();
 
     private:

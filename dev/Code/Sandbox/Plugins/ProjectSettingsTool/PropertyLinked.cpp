@@ -48,8 +48,8 @@ namespace ProjectSettingsTool
     {
         QLayout* myLayout = layout();
         QIcon icon;
-        icon.addPixmap(QPixmap("://link.png"), QIcon::Normal, QIcon::On);
-        icon.addPixmap(QPixmap("://broken_link.png"), QIcon::Normal, QIcon::Off);
+        icon.addFile("://link.svg", QSize(), QIcon::Normal, QIcon::On);
+        icon.addFile("://broken_link.svg", QSize(), QIcon::Normal, QIcon::Off);
 
         m_linkButton = new QPushButton(this);
         m_linkButton->setIcon(icon);

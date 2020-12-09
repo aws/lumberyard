@@ -16,8 +16,7 @@
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
-#include <System/ClothConfiguration.h>
-
+#include <Components/ClothConfiguration.h>
 #include <Components/ClothComponentMesh/ClothComponentMesh.h>
 
 namespace NvCloth
@@ -41,11 +40,11 @@ namespace NvCloth
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
     protected:
-        // AZ::Component overrides
+        // AZ::Component overrides ...
         void Activate() override;
         void Deactivate() override;
 
-        // LmbrCentral::MeshComponentNotificationBus::Handler overrides
+        // LmbrCentral::MeshComponentNotificationBus::Handler overrides ...
         void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void OnMeshDestroyed() override;
 

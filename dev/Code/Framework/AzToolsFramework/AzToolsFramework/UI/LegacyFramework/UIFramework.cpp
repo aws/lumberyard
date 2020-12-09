@@ -354,7 +354,7 @@ namespace AzToolsFramework
             else
             {
                 // if we couldn't find the Qt plugins folder, try all folders on the path...
-                QStringList pathSegments = QString::fromUtf8(qgetenv("PATH")).split(";", QString::SkipEmptyParts);
+                QStringList pathSegments = QString::fromUtf8(qgetenv("PATH")).split(";", Qt::SkipEmptyParts);
                 for (auto element : pathSegments)
                 {
                     QDir newDir(element);

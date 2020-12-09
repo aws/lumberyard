@@ -11,19 +11,21 @@
 */
 #pragma once
 
-#include <AzQtComponents/AzQtComponentsAPI.h>
 #include <AzCore/Math/Color.h>
+#include <AzQtComponents/AzQtComponentsAPI.h>
 #include <QWidget>
 
 namespace AzQtComponents
 {
-    class Swatch;
     class ColorHexEdit;
+    class Swatch;
 
+    //! A control to select color properties via a ColorPicker dialog.
     class AZ_QT_COMPONENTS_API ColorLabel
         : public QWidget
     {
         Q_OBJECT //AUTOMOC
+
     public:
         ColorLabel(QWidget* parent = nullptr);
         ColorLabel(const AZ::Color& color, QWidget* parent = nullptr);
@@ -31,12 +33,15 @@ namespace AzQtComponents
 
         AZ::Color color() const { return m_color; }
 
+        //! Sets the visibility of the LineEdit showing the hex value for the color.
         void setTextInputVisible(bool visible);
 
     Q_SIGNALS:
+        //! Triggered when the color value is changed.
         void colorChanged(const AZ::Color& color);
 
     public Q_SLOTS:
+        //! Sets the color value to the one provided.
         void setColor(const AZ::Color& color);
 
     protected:

@@ -63,7 +63,7 @@ class OutlinerWidget
 public:
     AZ_CLASS_ALLOCATOR(OutlinerWidget, AZ::SystemAllocator, 0)
 
-    OutlinerWidget(QWidget* pParent = NULL, Qt::WindowFlags flags = 0);
+    OutlinerWidget(QWidget* pParent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
     virtual ~OutlinerWidget();
 
 private Q_SLOTS:
@@ -87,7 +87,7 @@ private:
     virtual void EntityStrongHighlightRequested(AZ::EntityId) override;
 
     // EditorPickModeNotificationBus
-    void OnEntityPickModeStarted() override;
+    void OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration) override;
     void OnEntityPickModeStopped() override;
 
     // EditorEntityContextNotificationBus
@@ -163,6 +163,7 @@ private:
     void OnEnableSelectionUpdates(bool enable);
     void OnDropEvent();
     bool m_inObjectPickMode;
+    bool m_enableLayerPicking;
 
     void InvalidateFilter();
     void ClearFilter();

@@ -15,6 +15,7 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
+#include <AzQtComponents/Utilities/ScreenUtilities.h>
 
 #include <Components/ui_FilteredSearchWidget.h>
 
@@ -56,6 +57,8 @@ namespace AzQtComponents
     static const QString g_categoryKey = QStringLiteral("category");
     static const QString g_displayNameKey = QStringLiteral("displayName");
     static const QString g_enabledKey = QStringLiteral("enabled");
+
+    static const int FilterWindowWidthPadding = 100;// Amount to add to filter window to account for initial spacing and scrollbar.
 
     const char* FilteredSearchWidget::s_filterDataProperty = "filterData";
     const char* const s_filterSearchWidgetName = "filteredSearchWidget";
@@ -140,6 +143,8 @@ namespace AzQtComponents
         , m_unfilteredData(nullptr)
     {
         Q_ASSERT(parent != nullptr);
+
+        setObjectName("SearchTypeSelector");
 
         // Force an update if the stylesheet reloads; for some reason, this doesn't automatically happen without this
         auto style = qApp->style();
@@ -229,6 +234,7 @@ namespace AzQtComponents
     void SearchTypeSelector::resetData()
     {
         m_estimatedTableHeight = 0;
+        m_estimatedTableWidth = 0;
 
         m_filteredItemIndices.clear();
         m_model->clear();
@@ -338,6 +344,13 @@ namespace AzQtComponents
                 m_model->appendRow(item);
             }
 
+            int textWidth = fontMetrics().horizontalAdvance(filter.displayName);
+            if (textWidth > m_estimatedTableWidth)
+            {
+                m_estimatedTableWidth = textWidth;
+            }
+
+
             if (!firstItem)
             {
                 firstItem = item;
@@ -404,8 +417,8 @@ namespace AzQtComponents
 
     static QRect findScreenGeometry(const QPoint& globalPos)
     {
-        QDesktopWidget* desktop = QApplication::desktop();
-        return desktop->availableGeometry(globalPos);
+        QScreen* screen = Utilities::ScreenAtPoint(globalPos);
+        return screen->availableGeometry();
     }
 
     void SearchTypeSelector::maximizeGeometryToFitScreen()
@@ -497,6 +510,8 @@ namespace AzQtComponents
         m_unfilteredData = &searchTypes;
 
         RepopulateDataModel();
+
+        setFixedWidth(m_estimatedTableWidth + FilterWindowWidthPadding);
     }
 
     QTreeView* SearchTypeSelector::GetTree()
@@ -717,7 +732,7 @@ namespace AzQtComponents
 
     bool FilteredSearchWidget::hasStringFilter() const
     {
-        return m_ui->textSearch->text().isEmpty();
+        return !m_ui->textSearch->text().isEmpty();
     }
 
     void FilteredSearchWidget::SetTextFilter(const QString& textFilter)

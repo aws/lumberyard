@@ -209,6 +209,7 @@ protected:
     const char* GetAbsoluteDevRootFolderPath() override { return ""; }
     bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& relativeProductPath) { return true; }
     bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullSourcePath) { return true; }
+    AZStd::string ReturnFullSourcePathFromRelativeProductPath(const AZStd::string& relPath) override { return ""; }
     bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) { return true; }
     bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) { return true; }
     bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) { return true; }

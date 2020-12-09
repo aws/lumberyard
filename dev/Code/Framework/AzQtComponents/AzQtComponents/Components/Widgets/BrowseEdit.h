@@ -13,10 +13,11 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
+
+#include <QColor>
 #include <QFrame>
 #include <QIcon>
 #include <QString>
-#include <QColor>
 
 class QSettings;
 class QLineEdit;
@@ -27,10 +28,13 @@ namespace AzQtComponents
 {
     class Style;
 
+    //! A widget combining a Line Edit and a Push Button. Use this widget when you want to extend a Line Edit with support for user interaction.
     class AZ_QT_COMPONENTS_API BrowseEdit
         : public QFrame
     {
         Q_OBJECT //AUTOMOC
+
+        //! Read-only value indicating whether or not user input satisfies the inputMask condition and any validator. Default value is true.
         Q_PROPERTY(bool acceptableInput READ hasAcceptableInput NOTIFY hasAcceptableInputChanged)
     public:
         typedef LineEdit::Config Config;
@@ -38,67 +42,83 @@ namespace AzQtComponents
         BrowseEdit(QWidget* parent = nullptr);
         ~BrowseEdit();
 
-        // double click of the read-only line edit will trigger the attached button
+        //! Sets the Icon for the button attached to this BrowseEdit.
         void setAttachedButtonIcon(const QIcon& icon);
+        //! Returns the Icon currently being used by the button attached to this BrowseEdit.
         QIcon attachedButtonIcon() const;
 
-        // use a separate button, because UX spec calls for a clear button to be enabled when the line edit is read-only
-        bool isClearButtonEnabled() const;
+        //! Enables the clear button on the Browse Edit.
         void setClearButtonEnabled(bool enable);
+        //! Returns true if the clear button is currently enabled on this Browse Edit.
+        bool isClearButtonEnabled() const;
 
-        bool isLineEditReadOnly() const;
+        //! Renders the BrowseEdit read-only. Double clicking on the read-only text will trigger the attached button.
         void setLineEditReadOnly(bool readOnly);
+        //! Returns true if the text of this BrowseEdit is currently read-only.
+        bool isLineEditReadOnly() const;
 
+        //! Sets the placeholder text for the BrowseEdit.
+        //! This is the message shown when the current text value is an empty string.
         void setPlaceholderText(const QString& placeholderText);
+        //! Returns the current placeholder text for the BrowseEdit.
         QString placeholderText() const;
 
+        //! Sets the text value for the BrowseEdit.
         void setText(const QString& text);
+        //! Gets the text value from the BrowseEdit.
         QString text() const;
 
+        //! Sets the error message shown when hovering on the warning icon
+        //! when the current text value is not acceptable.
         void setErrorToolTip(const QString& toolTipText);
+        //! Returns the current error message for this BrowseEdit.
         QString errorToolTip() const;
 
-        // set the validator
+        //! Sets a validator on the BrowseEdit.
         void setValidator(const QValidator* validator);
+        //! Returns a pointer to the validator object on the BrowseEdit, if set.
         const QValidator* validator() const;
+
+        //! Returns true if the current text value is accepted by the currently set validator.
         bool hasAcceptableInput() const;
 
-        // Use this if you need to do non-standard things with the cursor
+        //! Returns a pointer to the underlying LineEdit.
         QLineEdit* lineEdit() const;
 
-        /*!
-        * Loads the config data from a settings object.
-        */
+        //! Sets the BrowseEdit style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the BrowseEdit.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default config data.
-        */
+        //! Gets the default BrowseEdit style configuration.
         static Config defaultConfig();
 
-        /*!
-         * Displays the browse edit as a drop target. The valid argument indicates
-         * whether the line edit is a valid drop target or not.
-         */
+        //! Applies the drop target styling to the BrowseEdit.
+        //! @param browseEdit Pointer to the BrowseEdit instance to apply the style on.
+        //! @param valid Whether the BrowseEdit is a valid drop target or not.
         static void applyDropTargetStyle(BrowseEdit* browseEdit, bool valid);
 
-        /*!
-         * Removes the drop target style from the BrowseEdit.
-         */
+        //! Remove the drop target styling from the BrowseEdit.
+        //! @param browseEdit Pointer to the BrowseEdit instance to remove the style from.
         static void removeDropTargetStyle(BrowseEdit* browseEdit);
 
     Q_SIGNALS:
+        //! Triggered when the button attached to the BrowseEdit is triggered.
         void attachedButtonTriggered();
-
+        //! Triggered when the user has finished editing the BrowseEdit's value.
         void editingFinished();
+        //! Triggered when the return button is pressed while the BrowseEdit is focused.
         void returnPressed();
+        //! Triggered when the text value in the BrowseEdit is changed,
+        //! either by the user or programmatically.
         void textChanged(const QString& text);
+        //! Triggered when the text value in the BrowseEdit is edited by the user.
         void textEdited(const QString& text);
+        //! Triggered when the text value changes from acceptable to non acceptable
+        //! and vice versa, based on the current validator.
         void hasAcceptableInputChanged(bool acceptable);
 
     protected:
         bool eventFilter(QObject* watched, QEvent* event) override;
-        void mouseDoubleClickEvent(QMouseEvent* event) override;
         bool event(QEvent* event) override;
         void setHasAcceptableInput(bool acceptable);
 

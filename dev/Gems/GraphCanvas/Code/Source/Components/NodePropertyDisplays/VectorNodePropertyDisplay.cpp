@@ -67,7 +67,9 @@ namespace GraphCanvas
         m_layout->setContentsMargins(0, 0, 0, 0);
         
         m_textLabel = aznew GraphCanvasLabel();
+        m_textLabel->SetRoundedCornersMode(GraphCanvasLabel::RoundedCornersMode::LeftCorners);
         m_valueLabel = aznew GraphCanvasLabel();
+        m_valueLabel->SetRoundedCornersMode(GraphCanvasLabel::RoundedCornersMode::RightCorners);
         
         m_layout->addItem(m_textLabel);
         m_layout->addItem(m_valueLabel);
@@ -140,7 +142,7 @@ namespace GraphCanvas
         m_displayWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
         QGraphicsLinearLayout* displayLayout = new QGraphicsLinearLayout(Qt::Orientation::Horizontal);
-        displayLayout->setSpacing(0);
+        displayLayout->setSpacing(5);
         displayLayout->setContentsMargins(0, 0, 0, 0);
         displayLayout->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 

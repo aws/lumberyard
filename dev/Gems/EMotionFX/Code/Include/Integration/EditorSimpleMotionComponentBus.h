@@ -24,8 +24,38 @@ namespace EMotionFX
             : public AZ::ComponentBus
         {
         public:
+            virtual void LoopMotion(bool enable) = 0;
+            virtual bool GetLoopMotion() const = 0;
+
+            virtual void RetargetMotion(bool enable) = 0;
+            virtual bool GetRetargetMotion() const = 0;
+
+            virtual void ReverseMotion(bool enable) = 0;
+            virtual bool GetReverseMotion() const = 0;
+
+            virtual void MirrorMotion(bool enable) = 0;
+            virtual bool GetMirrorMotion() const = 0;
+
+            virtual void SetPlaySpeed(float speed) = 0;
+            virtual float GetPlaySpeed() const = 0;
+
+            virtual void PlayTime(float time) = 0;
+            virtual float GetPlayTime() const = 0;
+
+            virtual void Motion(AZ::Data::AssetId assetId) = 0;
+            virtual AZ::Data::AssetId  GetMotion() const = 0;
+
+            virtual void BlendInTime(float time) = 0;
+            virtual float GetBlendInTime() const = 0;
+
+            virtual void BlendOutTime(float time) = 0;
+            virtual float GetBlendOutTime() const = 0;
+
+            virtual void PlayMotion() = 0;
+
             virtual void SetPreviewInEditor(bool enable) = 0;
             virtual bool GetPreviewInEditor() const = 0;
+
             virtual float GetAssetDuration(const AZ::Data::AssetId& assetId) = 0;
         };
         using EditorSimpleMotionComponentRequestBus = AZ::EBus<EditorSimpleMotionComponentRequests>;

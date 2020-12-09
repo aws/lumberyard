@@ -10,69 +10,14 @@
 *
 */
 
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphItemDelegate.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NavigationLinkWidget.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/RoleFilterProxyModel.h>
-#include <MysticQt/Source/MysticQtManager.h>
 #include <QHBoxLayout>
-#include <QIcon>
-#include <QStylePainter>
 
 namespace EMStudio
 {
-    NavigationItemWidget::NavigationItemWidget(const QModelIndex& modelIndex, QWidget* parent)
-        : QPushButton(parent)
-        , m_modelIndex(modelIndex)
-    {
-        
-        m_itemDelegate = new AnimGraphItemDelegate(parent);
-        m_itemDelegate->setModelData(this, const_cast<QAbstractItemModel*>(modelIndex.model()), modelIndex);
-
-        setStyleSheet("border: none; font-size: 11px; color: #e9e9e9;");
-
-        connect(m_modelIndex.model(), &QAbstractItemModel::dataChanged, this, &NavigationItemWidget::OnDataChanged);
-    }
-
-    void NavigationItemWidget::OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles)
-    {
-        const QItemSelectionRange range(topLeft, bottomRight);
-        if (range.contains(m_modelIndex))
-        {
-            setText(m_modelIndex.data(Qt::DisplayRole).toString());
-        }
-    }
-
-    void NavigationItemWidget::enterEvent(QEvent *event)
-    {
-        setCursor(Qt::PointingHandCursor);
-    }
-
-    void NavigationItemWidget::leaveEvent(QEvent *event)
-    {
-        setCursor(Qt::ArrowCursor);
-    }
-
-    void NavigationItemWidget::paintEvent(QPaintEvent* event)
-    {
-        QStylePainter painter(this);
-        QStyleOptionViewItem options;
-        options.initFrom(this);
-        options.displayAlignment = Qt::AlignCenter;
-        options.decorationAlignment = Qt::AlignCenter;
-        m_itemDelegate->paint(&painter, options, m_modelIndex);
-    }
-
-    QSize NavigationItemWidget::sizeHint() const
-    {
-        QStyleOptionViewItem options;
-        options.initFrom(this);
-        options.displayAlignment = Qt::AlignCenter;
-        options.decorationAlignment = Qt::AlignCenter;
-        return m_itemDelegate->sizeHint(options, m_modelIndex);
-    }
-
     NavigationLinkWidget::NavigationLinkWidget(AnimGraphPlugin* plugin, QWidget* parent)
         : QWidget(parent)
         , m_plugin(plugin)
@@ -85,23 +30,26 @@ namespace EMStudio
         mainLayout->setAlignment(Qt::AlignLeft);
         setLayout(mainLayout);
 
+        // Use the breadcrumbs component to visualize and interact with the navigation
+        m_breadCrumbs = new AzQtComponents::BreadCrumbs(this);
+        m_breadCrumbs->setPushPathOnLinkActivation(false);
+        connect(m_breadCrumbs, &AzQtComponents::BreadCrumbs::linkClicked, this, &NavigationLinkWidget::OnBreadCrumbsLinkClicked);
+        layout()->addWidget(m_breadCrumbs);
+
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         setMaximumHeight(28);
         setFocusPolicy(Qt::ClickFocus);
-
-        m_navigationPathImg = MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/NavPath.png").pixmap(QSize(16, 16));
 
         m_roleFilterProxyModel = new RoleFilterProxyModel(m_plugin->GetAnimGraphModel(), this);
         m_roleFilterProxyModel->setFilteredRoles({ Qt::DecorationRole });
 
         connect(&m_plugin->GetAnimGraphModel(), &AnimGraphModel::FocusChanged, this, &NavigationLinkWidget::OnFocusChanged);
+        connect(&m_plugin->GetAnimGraphModel(), &AnimGraphModel::dataChanged, this, &NavigationLinkWidget::OnDataChanged);
     }
-
 
     NavigationLinkWidget::~NavigationLinkWidget()
     {
     }
-
 
     void NavigationLinkWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {
@@ -110,17 +58,7 @@ namespace EMStudio
 
         if (!newFocusParent.isValid() || newFocusParent != oldFocusParent)
         {
-            // TODO: we could do better and remove from the right, if we hit the newFocusParent then we can stop and not recreate the whole list
-            // However, the arrow in between makes it tricky 
-
-            // Remove all the child widgets
-            QLayoutItem* item = layout()->takeAt(0);
-            while (item)
-            {
-                delete item->widget();
-                delete item;
-                item = layout()->takeAt(0);
-            }
+            m_modelIndexes.clear();
         }
 
         if (newFocusParent != oldFocusParent)
@@ -128,18 +66,37 @@ namespace EMStudio
             // If we are focusing on a new parent, add all the hierarchy 
             if (newFocusParent.isValid())
             {
-                AddToNavigation(newFocusParent, true);
+                AddToNavigation(newFocusParent);
+                UpdateBreadCrumbsPath();
             }
         }
     }
 
-    void NavigationLinkWidget::OnItemClicked(const QModelIndex& newModelIndex)
+    void NavigationLinkWidget::OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles)
     {
-        m_plugin->GetAnimGraphModel().Focus(newModelIndex);
+        // Check if breadcrumbs path needs to be updated
+        const QItemSelectionRange range(topLeft, bottomRight);
+        for (const QPersistentModelIndex& modelIndex : m_modelIndexes)
+        {
+            if (range.contains(modelIndex))
+            {
+                UpdateBreadCrumbsPath();
+                break;
+            }
+        }
     }
-    
 
-    void NavigationLinkWidget::AddToNavigation(const QModelIndex& modelIndex, bool isLastWidget)
+    void NavigationLinkWidget::OnBreadCrumbsLinkClicked(const QString& linkPath, int linkIndex)
+    {
+        AZ_UNUSED(linkPath);
+
+        if (linkIndex >= 0 && linkIndex < m_modelIndexes.size())
+        {
+            m_plugin->GetAnimGraphModel().Focus(m_modelIndexes[linkIndex]);
+        }
+    }
+
+    void NavigationLinkWidget::AddToNavigation(const QModelIndex& modelIndex)
     {
         QModelIndex parent = modelIndex.parent();
         if (parent.isValid())
@@ -147,19 +104,21 @@ namespace EMStudio
             AddToNavigation(parent);
         }
 
-        QModelIndex proxyItem = m_roleFilterProxyModel->mapFromSource(modelIndex);
+        m_modelIndexes.push_back(modelIndex);
+    }
 
-        NavigationItemWidget* item = new NavigationItemWidget(proxyItem, this);
-        connect(item, &QPushButton::clicked, [this, modelIndex](bool) { OnItemClicked(modelIndex); });
-        layout()->addWidget(item);
-
-        if (!isLastWidget)
+    void NavigationLinkWidget::UpdateBreadCrumbsPath()
+    {
+        QString breadCrumbsPath;
+        for (int i = 0; i < m_modelIndexes.size(); ++i)
         {
-            QLabel* spacer = new QLabel("", this);
-            spacer->setFixedSize(QSize(16, 16));
-            spacer->setPixmap(m_navigationPathImg);
-            layout()->addWidget(spacer);
+            if (i > 0)
+            {
+                breadCrumbsPath.append('/');
+            }
+            breadCrumbsPath.append(m_modelIndexes[i].data(Qt::DisplayRole).toString());
         }
+        m_breadCrumbs->setCurrentPath(breadCrumbsPath);
     }
 
 } // namespace EMStudio

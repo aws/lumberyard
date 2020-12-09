@@ -99,6 +99,11 @@ namespace AZ
             void SetupEnvironment() override;
             void TeardownEnvironment() override;
 
+            //! Destroys system allocator and tears down trace bus.
+            //! Invoked by TearDownEnvironment.
+            //! For gems with custom allocators that need to be destroyed before the system allocator, override this function to customize allocator destroy order.
+            virtual void TeardownAllocatorAndTraceBus();
+
         private:
             GemTestApplication* m_application;
             AZ::Entity* m_systemEntity;

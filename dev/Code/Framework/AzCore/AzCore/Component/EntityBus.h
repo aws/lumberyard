@@ -97,16 +97,15 @@ namespace AZ
         struct EntityEventsConnectionPolicy
             : public EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
             {
-                EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, id);
 
                 Entity* entity = nullptr;
                 EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, id);
                 if (entity)
                 {
                     const AZ::Entity::State entityState = entity->GetState();
-
                     if (entityState >= Entity::ES_INIT)
                     {
                         handler->OnEntityExists(id);

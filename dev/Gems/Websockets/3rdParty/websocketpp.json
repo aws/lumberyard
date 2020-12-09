@@ -1,0 +1,9 @@
+{
+    "name": "WEB_SOCKET_PP",
+    "source": "@GEM@/External/websocketpp-master",
+    "description": "WebSocketPP Library",
+    "header_only": "True",
+    "includes": [
+        "."
+    ]
+}

@@ -21,16 +21,17 @@
 #include <AzQtComponents/Components/Widgets/ElidingLabel.h>
 
 #include <QApplication>
-#include <QDockWidget>
-#include <QHBoxLayout>
-#include <QMouseEvent>
-#include <QWindow>
-#include <QMenu>
 #include <QDesktopWidget>
-#include <QtGui/private/qhighdpiscaling_p.h>
+#include <QDockWidget>
 #include <QLabel>
+#include <QMenu>
+#include <QMouseEvent>
+#include <QHBoxLayout>
+#include <QOperatingSystemVersion>
 #include <QStackedLayout>
 #include <QVector>
+#include <QWindow>
+#include <QtGui/private/qhighdpiscaling_p.h>
 
 namespace AzQtComponents
 {
@@ -574,7 +575,7 @@ namespace AzQtComponents
 #ifdef Q_OS_WIN
         // On Win < 10 we're not overlapping the titlebar, removing it works fine there.
         // On Win < 10 we use native resizing of the top border.
-        return QSysInfo::windowsVersion() >= QSysInfo::WV_WINDOWS10;
+        return QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10);
 #else
         return true;
 #endif
@@ -1006,7 +1007,7 @@ namespace AzQtComponents
         }
 
         // Workaround QTBUG-47543
-        if (QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10)
+        if (QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10))
         {
             update();
         }

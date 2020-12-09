@@ -139,6 +139,8 @@
             "Include/ScriptCanvas/Execution/ExecutionContext.cpp",
             "Include/ScriptCanvas/Execution/ExecutionContext.h",
             "Include/ScriptCanvas/Execution/ExecutionBus.h",
+            "Include/ScriptCanvas/Execution/ExecutionPerformanceTimer.cpp",
+            "Include/ScriptCanvas/Execution/ExecutionPerformanceTimer.h",
             "Include/ScriptCanvas/Execution/NativeHostDeclarations.cpp",
             "Include/ScriptCanvas/Execution/NativeHostDeclarations.h",
             "Include/ScriptCanvas/Execution/NativeHostDefinitions.cpp",

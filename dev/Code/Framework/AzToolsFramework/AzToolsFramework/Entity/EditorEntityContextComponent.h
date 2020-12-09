@@ -38,9 +38,6 @@ namespace AzFramework
 
 namespace AzToolsFramework
 {
-    // This disables the warning about calling deprecated functions.  It is necessary because several functions from
-    // EditorEntityContextRequestBus have been deprecated, and the bus handling causes these functions to be called here.
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /**
      * System component responsible for owning the edit-time entity context.
      *
@@ -76,14 +73,7 @@ namespace AzToolsFramework
         void ResetEditorContext() override;
 
         AZ::EntityId CreateNewEditorEntity(const char* name) override;
-        // LUMBERYARD_DEPRECATED(LY-103316)
-        AZ_DEPRECATED(AZ::Entity* CreateEditorEntity(const char* name) override;,
-            "CreateEditorEntity is deprecated, please use CreateNewEditorEntity");
         AZ::EntityId CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId) override;
-        // LUMBERYARD_DEPRECATED(LY-103316)
-        AZ_DEPRECATED(
-            AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) override;,
-            "CreateEditorEntityWithId is deprecated, please use CreateNewEditorEntityWithId");
         void AddEditorEntity(AZ::Entity* entity) override;
         void AddEditorEntities(const EntityList& entities) override;
         void AddEditorSliceEntities(const EntityList& entities) override;
@@ -175,6 +165,7 @@ namespace AzToolsFramework
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
             dependent.push_back(AZ_CRC("AssetDatabaseService", 0x3abf5601));
+            dependent.push_back(AZ_CRC("SliceSystemService", 0x1a5b7aad));
         }
 
     protected:
@@ -233,7 +224,6 @@ namespace AzToolsFramework
         // array of types of required components added to all Editor entities with EditorEntityContextRequestBus::Events::AddRequiredComponents()
         AZ::ComponentTypeList m_requiredEditorComponentTypes;
     };
-    AZ_POP_DISABLE_WARNING
 } // namespace AzToolsFramework
 
 #endif // AZTOOLSFRAMEWORK_EDITORENTITYCONTEXTCOMPONENT_H

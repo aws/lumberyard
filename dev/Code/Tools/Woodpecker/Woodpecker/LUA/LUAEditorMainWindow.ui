@@ -134,9 +134,6 @@
    <property name="styleSheet">
     <string notr="true"/>
    </property>
-   <property name="features">
-    <set>QDockWidget::AllDockWidgetFeatures</set>
-   </property>
    <property name="windowTitle">
     <string>Watched Variables</string>
    </property>

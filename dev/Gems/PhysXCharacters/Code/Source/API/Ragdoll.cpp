@@ -14,7 +14,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/Physics/SystemBus.h>
-#include <AzFramework/Physics/World.h>
 #include <API/Ragdoll.h>
 #include <API/Utils.h>
 #include <Include/PhysXCharacters/NativeTypeIdentifiers.h>
@@ -87,6 +86,42 @@ namespace PhysXCharacters
     {
     }
 
+    Ragdoll::~Ragdoll()
+    {
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
+    }
+
+    void Ragdoll::ApplyQueuedEnableSimulation()
+    {
+        if (m_queuedInitialState.empty())
+        {
+            return;
+        }
+
+        EnableSimulation(m_queuedInitialState);
+        m_queuedInitialState.clear();
+    }
+
+    void Ragdoll::ApplyQueuedSetState()
+    {
+        if (m_queuedState.empty())
+        {
+            return;
+        }
+
+        SetState(m_queuedState);
+        m_queuedState.clear();
+    }
+
+    void Ragdoll::ApplyQueuedDisableSimulation()
+    {
+        if (m_queuedDisableSimulation)
+        {
+            DisableSimulation();
+        }
+        m_queuedDisableSimulation = false;
+    }
+
     // Physics::Ragdoll
     void Ragdoll::EnableSimulation(const Physics::RagdollState& initialState)
     {
@@ -137,7 +172,24 @@ namespace PhysXCharacters
             }
         }
 
+        Physics::WorldNotificationBus::Handler::BusConnect(world->GetWorldId());
+
         m_isSimulated = true;
+    }
+
+    void Ragdoll::EnableSimulationQueued(const Physics::RagdollState& initialState)
+    {
+        if (m_isSimulated)
+        {
+            return;
+        }
+
+        AZStd::shared_ptr<Physics::World> world;
+        Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+
+        Physics::WorldNotificationBus::Handler::BusConnect(world->GetWorldId());
+
+        m_queuedInitialState = initialState;
     }
 
     void Ragdoll::DisableSimulation()
@@ -146,6 +198,8 @@ namespace PhysXCharacters
         {
             return;
         }
+
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
 
         AZStd::shared_ptr<Physics::World> world;
         Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
@@ -169,6 +223,11 @@ namespace PhysXCharacters
         }
 
         m_isSimulated = false;
+    }
+
+    void Ragdoll::DisableSimulationQueued()
+    {
+        m_queuedDisableSimulation = true;
     }
 
     bool Ragdoll::IsSimulated()
@@ -201,6 +260,11 @@ namespace PhysXCharacters
         {
             SetNodeState(nodeIndex, ragdollState[nodeIndex]);
         }
+    }
+
+    void Ragdoll::SetStateQueued(const Physics::RagdollState& ragdollState)
+    {
+        m_queuedState = ragdollState;
     }
 
     void Ragdoll::GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const
@@ -380,5 +444,13 @@ namespace PhysXCharacters
         {
             node->GetRigidBody().RemoveFromWorld(world);
         }
+    }
+
+    // Physics::WorldNotificationBus
+    void Ragdoll::OnPrePhysicsUpdate(float fixedDeltaTime)
+    {
+        ApplyQueuedEnableSimulation();
+        ApplyQueuedSetState();
+        ApplyQueuedDisableSimulation();
     }
 } // namespace PhysXCharacters

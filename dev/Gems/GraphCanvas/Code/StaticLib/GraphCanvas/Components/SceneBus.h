@@ -180,6 +180,9 @@ namespace GraphCanvas
         //! Hides the specified graph member from the scene.
         virtual bool Hide(const AZ::EntityId& graphMember) = 0;
 
+        //! Returns whether or not the specified member is hidden or not
+        virtual bool IsHidden(const AZ::EntityId& graphMember) const = 0;
+
         //! Enables the specified graph member in the graph
         virtual bool Enable(const NodeId& nodeId) = 0;
 
@@ -362,11 +365,19 @@ namespace GraphCanvas
         virtual void RemoveUnusedNodes() = 0;
         virtual void RemoveUnusedElements() = 0;
 
-        virtual void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) = 0;
+        virtual void HandleProposalDaisyChainWithGroup(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint, AZ::EntityId groupTarget) = 0;
+
+        virtual void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint)
+        {
+            HandleProposalDaisyChainWithGroup(startNode, slotType, connectionType, screenPoint, focusPoint, AZ::EntityId());
+        }
 
         virtual void StartNudging(const AZStd::unordered_set<AZ::EntityId>& fixedNodes) = 0;
         virtual void FinalizeNudging() = 0;
         virtual void CancelNudging() = 0;
+
+        // Helper method to find the topmost group at a particular point
+        virtual AZ::EntityId FindTopmostGroupAtPoint(QPointF scenePoint) = 0;
 
         // Signals used to managge the state around the generic add position
         virtual QPointF SignalGenericAddPositionUseBegin() = 0;
@@ -497,7 +508,14 @@ namespace GraphCanvas
         virtual void OnViewRegistered() {}
 
         virtual void OnGraphLoadBegin() {}
+
+        // Signaled once the load is complete.
         virtual void OnGraphLoadComplete() {}
+
+        // Signaled once the load is complete, but after the LoadComplete signal.
+        // Used right now to let Groups remap their internals on load. Then deal with collapsing
+        // in the finalize.
+        virtual void PostOnGraphLoadComplete() {}
     };
 
     using SceneNotificationBus = AZ::EBus<SceneNotifications>;
@@ -526,11 +544,6 @@ namespace GraphCanvas
 
         //! Get the scene that the entity belongs to (directly or indirectly), if any.
         virtual AZ::EntityId GetScene() const = 0;
-
-        //! Locks the node to be moved by an external source. The SceneMemberId is the Id of the SceneMember
-        //! that is locking this element in order to move it.
-        virtual bool LockForExternalMovement(const AZ::EntityId& /*sceneMemberId*/) = 0;
-        virtual void UnlockForExternalMovement(const AZ::EntityId& /*sceneMemberId*/) = 0;
     };
 
     using SceneMemberRequestBus = AZ::EBus<SceneMemberRequests>;

@@ -82,12 +82,7 @@ namespace PhysXCharacters
         Physics::CollisionGroup collisionGroup;
         Physics::CollisionRequestBus::BroadcastResult(collisionGroup, &Physics::CollisionRequests::GetCollisionGroupById, characterConfig.m_collisionGroupId);
 
-        PhysX::SystemRequestsBus::BroadcastResult(m_filterData, &PhysX::SystemRequests::CreateFilterData,
-            characterConfig.m_collisionLayer, collisionGroup);
-        m_pxControllerFilters = physx::PxControllerFilters(&m_filterData);
-        m_pxControllerFilters.mFilterFlags = physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::ePREFILTER;
-        m_pxControllerFilters.mFilterCallback = this;
-        m_pxControllerFilters.mCCTFilterCallback = this;
+        UpdatePxControllerFilters(characterConfig.m_collisionLayer, collisionGroup);
 
         physx::PxRigidDynamic* actor = nullptr;
         physx::PxU32 numShapes = 0;
@@ -330,6 +325,8 @@ namespace PhysXCharacters
         }
         
         m_shape->SetCollisionLayer(layer);
+
+        UpdatePxControllerFilters(layer, m_shape->GetCollisionGroup());
     }
 
     void CharacterController::SetCollisionGroup(const Physics::CollisionGroup& group)
@@ -341,6 +338,8 @@ namespace PhysXCharacters
         }
 
         m_shape->SetCollisionGroup(group);
+
+        UpdatePxControllerFilters(m_shape->GetCollisionLayer(), group);
     }
 
     Physics::CollisionLayer CharacterController::GetCollisionLayer() const
@@ -802,5 +801,15 @@ namespace PhysXCharacters
         {
             AZ_Error("PhysX Character Controller", false, "Half forward extent is only defined for box controllers.");
         }
+    }
+
+    void CharacterController::UpdatePxControllerFilters(Physics::CollisionLayer collisionLayer, Physics::CollisionGroup collisionGroup)
+    {
+        PhysX::SystemRequestsBus::BroadcastResult(m_filterData, &PhysX::SystemRequests::CreateFilterData,
+            collisionLayer, collisionGroup);
+        m_pxControllerFilters = physx::PxControllerFilters(&m_filterData);
+        m_pxControllerFilters.mFilterFlags = physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::ePREFILTER;
+        m_pxControllerFilters.mFilterCallback = this;
+        m_pxControllerFilters.mCCTFilterCallback = this;
     }
 } // namespace PhysXCharacters

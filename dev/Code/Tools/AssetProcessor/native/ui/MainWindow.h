@@ -116,7 +116,8 @@ public Q_SLOTS:
 
 protected Q_SLOTS:
     void ApplyConfig();
-
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
 private:
 
     class LogSortFilterProxy : public QSortFilterProxyModel
@@ -193,11 +194,19 @@ private:
     void CheckEndProcessTimer();
     QString FormatStringTime(qint64 timeMs) const;
 
+    /// Refreshes the filter in the Asset Tab at a set time interval.
+    /// TreeView filters can be expensive to refresh every time an item is added, so refreshing on a set schedule
+    /// keeps the view up-to-date without causing a performance bottleneck. 
+    void IntervalAssetTabFilterRefresh();
+    /// Fires off one final refresh before invalidating the filter refresh timer.
+    void ShutdownAssetTabFilterRefresh();
+
     void SetupAssetSelectionCaching();
 
     QElapsedTimer m_scanTimer;
     QElapsedTimer m_analysisTimer;
     QElapsedTimer m_processTimer;
+    QElapsedTimer m_filterRefreshTimer;
 
     qint64 m_scanTime{ 0 };
     qint64 m_analysisTime{ 0 };

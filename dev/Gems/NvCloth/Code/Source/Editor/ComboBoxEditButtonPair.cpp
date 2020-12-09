@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <Editor/ComboBoxEditButtonPair.h>
 
 namespace NvCloth

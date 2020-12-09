@@ -25,6 +25,7 @@
 #include <QCompleter>
 #include <QDialogButtonBox>
 #include <QFileSystemModel>
+#include <QIcon>
 #include <QKeyEvent>
 #include <QMessageBox>
 
@@ -68,7 +69,9 @@ public:
             }
             if (bm.width() == iconSize && bm.height() == iconSize)
             {
-                m_iconImages.push_back(bm);
+                QIcon icon(bm);
+                icon.addPixmap(bm, QIcon::Selected);
+                m_iconImages.push_back(icon);
                 m_iconFiles.push_back(path);
             }
         }
@@ -98,7 +101,7 @@ public:
     }
 
 private:
-    QVector<QPixmap> m_iconImages;
+    QVector<QIcon> m_iconImages;
     QStringList m_iconFiles;
 };
 

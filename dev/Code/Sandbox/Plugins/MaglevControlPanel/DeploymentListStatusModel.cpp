@@ -53,7 +53,7 @@ void DeploymentListStatusModel::UpdateRow(const QList<QStandardItem*>& row, cons
 
     row[ResourceStatusColumn]->setText(AWSUtil::MakePrettyResourceStatusText(map["StackStatus"].toString()));
     row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusTooltip(map["StackStatus"].toString(), map["StackStatusReason"].toString()), Qt::ToolTipRole);
-    row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusColor(map["StackStatus"].toString()), Qt::TextColorRole);
+    row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusColor(map["StackStatus"].toString()), Qt::ForegroundRole);
 
     if (map.contains("LastUpdateTime"))
     {

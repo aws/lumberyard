@@ -16,8 +16,13 @@
 #pragma once
 
 #include "Util/FileChangeMonitor.h"
-#include <QTreeWidget>
-#include <QPixmap>
+#include <QList>
+#include <QStandardItem>
+#include <QTreeView>
+#include <QIcon>
+
+class QSortFilterProxyModel;
+class QStandardItemModel;
 
 //! Case insensetive less key for any type convertable to const char*.
 struct qstring_icmp
@@ -29,13 +34,15 @@ struct qstring_icmp
 };
 
 class CFolderTreeCtrl
-    : public QTreeWidget
+    : public QTreeView
     , public CFileChangeMonitorListener
 {
+    Q_OBJECT // AUTOMOC
+
     friend class CTreeItem;
 
     class CTreeItem
-        : public QTreeWidgetItem
+        : public QStandardItem
     {
         // Only allow destruction through std::unique_ptr
         friend struct std::default_delete<CTreeItem>;
@@ -47,7 +54,6 @@ class CFolderTreeCtrl
 
         void Remove();
         CTreeItem* AddChild(const QString& name, const QString& path, const int image);
-        bool HasChildren() const { return childCount() > 0; }
         QString GetPath() const { return m_path; }
     private:
         ~CTreeItem();
@@ -65,14 +71,22 @@ public:
     void init(const QStringList& folders, const QString& fileNameSpec,
         const QString& rootName, bool bDisableMonitor = false, bool bFlatTree = true);
 
-    QString GetPath(QTreeWidgetItem* item) const;
-    bool IsFolder(QTreeWidgetItem* item) const;
-    bool IsFile(QTreeWidgetItem* item) const;
+    QString GetPath(QStandardItem* item) const;
+    bool IsFolder(QStandardItem* item) const;
+    bool IsFile(QStandardItem* item) const;
 
-    QPixmap GetPixmap(int image) const;
+    QIcon GetItemIcon(int image) const;
+    QList<QStandardItem*> GetSelectedItems() const;
+
+    void SetSearchFilter(const QString& searchText);
+
+Q_SIGNALS:
+    void ItemDoubleClicked(QStandardItem* item);
+
+protected Q_SLOTS:
+    void OnIndexDoubleClicked(const QModelIndex& index);
 
 protected:
-    void showEvent(QShowEvent* event) override;
     virtual void OnFileMonitorChange(const SFileChangeInfo& rChange);
     void contextMenuEvent(QContextMenuEvent* e) override;
 
@@ -82,6 +96,8 @@ protected:
     void AddItem(const QString& path);
     void RemoveItem(const QString& path);
     CTreeItem* GetItem(const QString& path);
+
+    QStandardItem* GetSourceItemByIndex(const QModelIndex& index) const;
 
     QString CalculateFolderFullPath(const QStringList& splittedFolder, int idx);
     CTreeItem* CreateFolderItems(const QString& folder);
@@ -97,9 +113,11 @@ protected:
     QStringList m_folders;
     QString m_rootName;
     std::map<QString, unsigned int> m_foldersSegments;
-    QPixmap m_folderPixmap;
-    QPixmap m_filePixmap;
+    QIcon m_folderIcon;
+    QIcon m_fileIcon;
 
+    QSortFilterProxyModel* m_proxyModel = nullptr;
+    QStandardItemModel* m_model = nullptr;
     std::map< QString, CTreeItem*, qstring_icmp > m_pathToTreeItem;
 };
 

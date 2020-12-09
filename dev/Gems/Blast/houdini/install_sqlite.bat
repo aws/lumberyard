@@ -1,0 +1,1 @@
+cmake -E copy "%~dp0sqlite\sqlite3.dll" "C:/PROGRA~1/SIDEEF~1/HOUDIN~1.532\python27\dlls\sqlite3.dll"

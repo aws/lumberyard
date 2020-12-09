@@ -15,6 +15,7 @@
 #include <AzCore/std/algorithm.h>
 #include <mach/kern_return.h>
 #include <unistd.h>
+#include <AzCore/std/chrono/clocks.h>
 
 /**
  * This file is to be included from the semaphore.h only. It should NOT be included by the user.
@@ -57,7 +58,7 @@ namespace AZStd
         AZ_Assert(result == 0, "semaphore_destroy error for max count semaphore:%s\n", strerror(errno));
     }
 
-    AZ_FORCE_INLINE void semaphore::acquire()
+    inline void semaphore::acquire()
     {
         int result = semaphore_signal(m_maxCountSemaphore);
         (void)result;
@@ -71,8 +72,12 @@ namespace AZStd
     AZ_FORCE_INLINE bool semaphore::try_acquire_for(const chrono::duration<Rep, Period>& rel_time)
     {
         mach_timespec_t mts;
-        mts.tv_sec = static_cast<unsigned int>(chrono::seconds(rel_time).count());
-        mts.tv_nsec = static_cast<clock_res_t>(chrono::nanoseconds(rel_time).count());
+        // note that in the mach kernel (Mac), semaphore_timedwait is used instead of the posix
+        // sem_timedwait.  The major difference is that semaphore_timedwait expects a delta time
+        // wheras sem_timedwait expects an absolute time. 
+        mts.tv_sec = static_cast<unsigned int>(chrono::duration_cast<chrono::seconds>(rel_time).count());
+        chrono::duration<Rep, Period> remainder = rel_time - chrono::seconds(mts.tv_sec);
+        mts.tv_nsec = static_cast<clock_res_t>(chrono::duration_cast<chrono::nanoseconds>(remainder).count());
 
         int result = 0;
         while ((result = semaphore_timedwait(m_semaphore, mts)) == -1 && errno == EINTR)
@@ -88,7 +93,19 @@ namespace AZStd
         return result == 0;
     }
 
-    AZ_FORCE_INLINE void semaphore::release(unsigned int releaseCount)
+    template <class Clock, class Duration>
+    AZ_FORCE_INLINE bool semaphore::try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
+    {
+        auto nowTime = chrono::system_clock::now();
+        if (nowTime >= abs_time)
+        {
+            return false; // we have already timed out.
+        }
+        auto deltaTime = abs_time - nowTime;
+        return try_acquire_for(deltaTime);
+    }
+
+    inline void semaphore::release(unsigned int releaseCount)
     {
         int result = semaphore_wait(m_maxCountSemaphore);
         AZ_Assert(result == 0, "semaphore_wait error for max count semaphore: %s\n", strerror(errno));
@@ -107,7 +124,7 @@ namespace AZStd
         }
     }
 
-    AZ_FORCE_INLINE semaphore::native_handle_type semaphore::native_handle()
+    inline semaphore::native_handle_type semaphore::native_handle()
     {
         return &m_semaphore;
     }

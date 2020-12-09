@@ -67,6 +67,7 @@ namespace AzToolsFramework
             AddedFileHashField = 27,
             AddedLastScanTimeField = 28,
             AddedScanTimeSecondsSinceEpochField = 29,
+            ChangedSortFunctionFromQSortToStdStableSort = 30,
             //Add all new versions before this
             DatabaseVersionCount,
             LatestVersion = DatabaseVersionCount - 1

@@ -53,7 +53,7 @@ public:
             return behavior->GetName();
 
         case Qt::UserRole:
-            return qVariantFromValue<CAIBehavior*>(behavior);
+            return QVariant::fromValue<CAIBehavior*>(behavior);
         }
 
         return {};
@@ -166,19 +166,19 @@ void CAIDialog::OnInitDialog()
     m_propWnd->OpenChildWindow( GetSafeHwnd(),rc,true );
     m_propWnd->ForceRefresh();
     m_propWnd->Show(1);
-	*/
+    */
 
-	// EXCEPTION: OCX Property Pages should return FALSE
+    // EXCEPTION: OCX Property Pages should return FALSE
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CAIDialog::ReloadBehaviors()
 {
     m_behaviorsModel->Reload();
-	}
+}
 
 void CAIDialog::SetAIBehavior(const QString& behavior)
-	{
+{
     m_aiBehavior = behavior;
 
     auto index = m_behaviorsModel->match(m_behaviorsModel->index(0, 0), Qt::DisplayRole, m_aiBehavior, 1, Qt::MatchFixedString);

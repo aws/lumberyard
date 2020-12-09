@@ -25,10 +25,82 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+namespace CustomTest
+{
+    template <typename T>
+    struct MyTemplate
+    {
+        MyTemplate() = default;
+        MyTemplate(T value) : m_value(value) {}
+        T m_value = {};
+    };
+}
+
+
+namespace AZ
+{
+    template<typename T>
+    struct OnDemandReflection<CustomTest::MyTemplate<T>>
+    {
+        using MyTemplateType = CustomTest::MyTemplate<T>;
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+            {
+                behaviorContext->Class<MyTemplateType>()
+                    ->Attribute(Script::Attributes::Scope, Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(Script::Attributes::Module, "test.template")
+                    ->Property("Value", BehaviorValueProperty(&MyTemplateType::m_value))
+                    ;
+            }
+        }
+    };
+
+    AZ_TYPE_INFO_TEMPLATE(CustomTest::MyTemplate, "{82B9D060-F077-4FAA-9EF4-EF4C3A2A6332}", AZ_TYPE_INFO_CLASS);
+}
+
 namespace UnitTest
 {
     //////////////////////////////////////////////////////////////////////////
     // test class/struts
+    struct CustomTypeHolder
+    {
+        AZ_TYPE_INFO(MyTemplate, "{46543B40-D8AF-4498-BCD0-2FF2A040B42C}");
+
+        CustomTest::MyTemplate<float> m_testFloat;
+        CustomTest::MyTemplate<AZStd::string> m_testString;
+        CustomTest::MyTemplate<int> m_testInt;
+
+        CustomTypeHolder()
+            : m_testFloat(42.0f)
+            , m_testString("42")
+            , m_testInt(42)
+        {
+        }
+
+        void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->RegisterGenericType<CustomTest::MyTemplate<float>>();
+                serializeContext->RegisterGenericType<CustomTest::MyTemplate<AZStd::string>>();
+                serializeContext->RegisterGenericType<CustomTest::MyTemplate<int>>();
+            }
+
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->Class<CustomTypeHolder>()
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Module, "test")
+                    ->Method("set_float", [](CustomTypeHolder& self, float value) { self.m_testFloat.m_value = value; })
+                    ->Property("test_float", BehaviorValueProperty(&CustomTypeHolder::m_testFloat))
+                    ->Property("test_string", BehaviorValueProperty(&CustomTypeHolder::m_testString))
+                    ->Property("test_int", BehaviorValueProperty(&CustomTypeHolder::m_testInt))
+                    ;
+            }
+        }
+    };
 
     struct Descriptor final
     {
@@ -340,5 +412,68 @@ namespace UnitTest
         e.Deactivate();
         EXPECT_EQ(3, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::AccessAnyList)]);
         EXPECT_EQ(5, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::ReplaceAnyList)]);
+    }
+
+    TEST_F(PythonReflectAnyContainerTests, CustomTypeTemplates)
+    {
+        enum class LogTypes
+        {
+            Skip = 0,
+            Float,
+            String,
+            Integer
+        };
+
+        m_testSink.m_evaluateMessage = [](const char* window, const char* message) -> int
+        {
+            if (AzFramework::StringFunc::Equal(window, "python"))
+            {
+                if (AzFramework::StringFunc::StartsWith(message, "Float"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Float);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "String"))
+                {
+                    return aznumeric_cast<int>(LogTypes::String);
+                }
+                else if (AzFramework::StringFunc::StartsWith(message, "Integer"))
+                {
+                    return aznumeric_cast<int>(LogTypes::Integer);
+                }
+            }
+            return aznumeric_cast<int>(LogTypes::Skip);
+        };
+
+        CustomTypeHolder customTypeHolder;
+        customTypeHolder.Reflect(m_app.GetBehaviorContext());
+        customTypeHolder.Reflect(m_app.GetSerializeContext());
+
+        AZ::Entity e;
+        Activate(e);
+        SimulateEditorBecomingInitialized();
+        try
+        {
+            pybind11::exec(R"(
+                import azlmbr.test
+                import azlmbr.test.template
+
+                templateFloat = azlmbr.test.template.CustomTest_MyTemplate_float(40.0 + 2.0)
+                print('Float - created template with float')
+
+                templateString = azlmbr.test.template.CustomTest_MyTemplate_string('forty-two')
+                print('String - created template with string')
+
+                templateInt = azlmbr.test.template.CustomTest_MyTemplate_int(40 + 2)
+                print('Integer - created template with int')
+            )");
+        }
+        catch (const std::exception& e)
+        {
+            AZ_Error("UnitTest", false, "Failed with %s", e.what());
+        }
+        e.Deactivate();
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Float)]);
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::String)]);
+        EXPECT_EQ(1, m_testSink.m_evaluationMap[aznumeric_cast<int>(LogTypes::Integer)]);
     }
 }

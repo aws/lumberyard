@@ -985,15 +985,15 @@ namespace CharacterTool {
             QString text;
             if (i < 10 - 1)
             {
-                text.sprintf("&%d. %s\t%s", int(i + 1), file.c_str(), path.c_str());
+                text.asprintf("&%d. %s\t%s", int(i + 1), file.c_str(), path.c_str());
             }
             else if (i == 10 - 1)
             {
-                text.sprintf("1&0. %s\t%s", file.c_str(), path.c_str());
+                text.asprintf("1&0. %s\t%s", file.c_str(), path.c_str());
             }
             else
             {
-                text.sprintf("%d. %s\t%s", int(i + 1), file.c_str(), path.c_str());
+                text.asprintf("%d. %s\t%s", int(i + 1), file.c_str(), path.c_str());
             }
             QAction* action = recentMenu->addAction(text);
             action->setData(QString::fromLocal8Bit(fullPath));

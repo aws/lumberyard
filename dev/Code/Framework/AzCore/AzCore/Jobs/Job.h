@@ -60,8 +60,12 @@ namespace AZ
          * If a JobContext is not specified, then the currently processing job's context will be
          * used, or the global context from JobContext::SetGlobalContext will be used if this is a top-level job.
          * isAutoDelete if true will call delete on the job after it's complete.
+         * isCompletion will allow the job to run when the dependent count is zero without being scheduled.
+         * priority is used to sort jobs such that higher priority jobs are run before lower priority ones.
+         *          The valid range is -128 (lowest priority) to 127 (highest priority), the default is 0,
+         *          and jobs with equal priority values will be run in the same order as added to the queue.
          */
-        Job(bool isAutoDelete, JobContext* context);
+        Job(bool isAutoDelete, JobContext* context, bool isCompletion = false, AZ::s8 priority = 0);
 
         virtual ~Job() { }
 
@@ -130,6 +134,11 @@ namespace AZ
          */
         bool IsAutoDelete() const;
 
+        /*
+         * Check if the job is a completion job.
+         */
+        bool IsCompletion() const;
+
         /**
          * Starts this job, and then uses this thread to assist with job processing until it is complete. This can
          * only be called on a non-worker thread. Please think twice when using this function, it is not guaranteed to
@@ -163,6 +172,11 @@ namespace AZ
         void DecrementDependentCount();
         /*@}*/
 
+        /*
+         * Get the priority of this job.
+         */
+        AZ::s8 GetPriority() const;
+
 #ifdef AZ_DEBUG_JOB_STATE
         int GetState() const    { return m_state; }
 #endif // AZ_DEBUG_JOB_STATE
@@ -194,9 +208,15 @@ namespace AZ
             //flags
             FLAG_AUTO_DELETE = (1 << 31),
             FLAG_CHILD_JOBS  = (1 << 30),
+            FLAG_COMPLETION  = (1 << 29), // Completion runs in place when it's dependency count is zero (no need to be scheduled)
+            FLAG_RESERVED    = (1 << 28), // Reserved, can be used in the future if needed
 
-            //24 bits for count
-            FLAG_DEPENDENTCOUNT_MASK = 0x00ffffff
+            //8 bits for priority
+            FLAG_PRIORITY_MASK = 0x0ff00000,
+            FLAG_PRIORITY_START_BIT = 20,
+
+            //20 bits for count
+            FLAG_DEPENDENTCOUNT_MASK = 0x000fffff
         };
 
     protected:
@@ -223,7 +243,7 @@ namespace AZ
     //============================================================================================================
     //============================================================================================================
 
-    inline Job::Job(bool isAutoDelete, JobContext* context)
+    inline Job::Job(bool isAutoDelete, JobContext* context, bool isCompletion, AZ::s8 priority)
     {
         if (context)
         {
@@ -239,6 +259,11 @@ namespace AZ
         {
             countAndFlags |= (unsigned int)FLAG_AUTO_DELETE;
         }
+        if (isCompletion)
+        {
+            countAndFlags |= (unsigned int)FLAG_COMPLETION;
+        }
+        countAndFlags |= (unsigned int)((priority << FLAG_PRIORITY_START_BIT) & FLAG_PRIORITY_MASK);
         SetDependentCountAndFlags(countAndFlags);
         StoreDependent(NULL);
 
@@ -265,7 +290,8 @@ namespace AZ
 #endif
         unsigned int countAndFlags = GetDependentCountAndFlags();
         AZ_Assert((countAndFlags & (unsigned int)FLAG_AUTO_DELETE) == 0, "You can't call reset on AutoDelete jobs!");
-        countAndFlags = (countAndFlags & ~(FLAG_DEPENDENTCOUNT_MASK)) | 1;
+        // Remove the FLAG_DEPENDENTCOUNT_MASK and FLAG_CHILD_JOBS flags
+        countAndFlags = (countAndFlags & (~(FLAG_DEPENDENTCOUNT_MASK) & ~(FLAG_CHILD_JOBS))) | 1;
         SetDependentCountAndFlags(countAndFlags);
         if (isClearDependent)
         {
@@ -367,7 +393,10 @@ namespace AZ
         JobCancelGroup* cancelGroup = m_context->GetCancelGroup();
         if (cancelGroup && cancelGroup->IsCancelled())
         {
-            return true;
+            if (!IsCompletion()) // always run completion jobs, as they can be holding a synchronization primitive
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -375,6 +404,11 @@ namespace AZ
     AZ_FORCE_INLINE bool Job::IsAutoDelete() const
     {
         return (GetDependentCountAndFlags() & (unsigned int)FLAG_AUTO_DELETE) ? true : false;
+    }
+
+    AZ_FORCE_INLINE bool Job::IsCompletion() const
+    {
+        return (GetDependentCountAndFlags() & (unsigned int)FLAG_COMPLETION) ? true : false;
     }
 
     AZ_FORCE_INLINE void Job::StartAndAssistUntilComplete()
@@ -461,6 +495,11 @@ namespace AZ
                 m_context->GetJobManager().AddPendingJob(this);
             }
         }
+    }
+
+    inline AZ::s8 Job::GetPriority() const
+    {
+        return (GetDependentCountAndFlags() >> FLAG_PRIORITY_START_BIT) & 0xff;
     }
 
 #ifdef AZ_DEBUG_JOB_STATE

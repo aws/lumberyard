@@ -180,25 +180,35 @@ namespace ScriptCanvasEditor
 
     StatisticsDialog::~StatisticsDialog()
     {
+        AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
     }
-
+    
     void StatisticsDialog::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
     {
-        AZ::Data::AssetInfo assetInfo;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
-        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>()
-            || assetInfo.m_assetType == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
+        if (m_scriptCanvasAssetTreeRoot)
         {
-            m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId, assetInfo.m_assetType);
+            AZ::Data::AssetInfo assetInfo;
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, assetId);
+            if (assetInfo.m_assetId.IsValid())
+            {
+                if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>()
+                    || assetInfo.m_assetType == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
+                {
+                    m_scriptCanvasAssetTreeRoot->RegisterAsset(assetId, assetInfo.m_assetType);
+                }
+            }
         }
     }
-
+    
+    void StatisticsDialog::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
+    {
+        OnCatalogAssetChanged(assetId);
+    }
+    
     void StatisticsDialog::OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId)
     {
-        AZ::Data::AssetInfo assetInfo;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetId);
-        if (assetInfo.m_assetType == azrtti_typeid<ScriptCanvasAsset>()
-            || assetInfo.m_assetType == azrtti_typeid<ScriptCanvas::ScriptCanvasFunctionAsset>())
+        // at this point, the asset is gone.  You can't search for it in the catalog.
+        if (m_scriptCanvasAssetTreeRoot)
         {
             m_scriptCanvasAssetTreeRoot->RemoveAsset(assetId);
         }

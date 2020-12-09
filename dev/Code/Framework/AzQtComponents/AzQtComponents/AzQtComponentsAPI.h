@@ -11,6 +11,23 @@
 */
 #pragma once
 
+/**
+ * \mainpage
+ * 
+ * Introduced with Amazon Lumberyard version 1.25 and the release of UI 2.0, Lumberyard’s
+ * custom Qt widget library provides developers with access to the same UI components used
+ * throughout Lumberyard. Using this library, UI developers can build their own tools and
+ * extensions for Lumberyard, while maintaining a coherent and standardized UI experience.
+ * This custom library provides new and extended widgets, and includes a set of styles and
+ * user interaction patterns that are applied on top of the Qt framework - the C++ library
+ * that Lumberyard relies on for its UI. The library can be extended to support your own customizations and modifications. 
+ * 
+ * With this UI 2.0 API reference guide, we're working towards offering a full and comprehensive
+ * API refernce for all tools developers that are extending Lumberyard. The API reference
+ * is intended for C++ programmers building tools. For UX designers looking to understand
+ * the best patterns and practices when making a tool to comfortably integrate with
+ * the Lumberyard editor, see the [UI 2.0 design guide](https://docs.aws.amazon.com/lumberyard/latest/ui/).
+ */
 #include <AzCore/PlatformDef.h>
 
 #if defined(AZ_QT_COMPONENTS_STATIC)

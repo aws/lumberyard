@@ -83,8 +83,15 @@ namespace Physics
         /// @param initialState State for initializing the ragdoll positions, orientations and velocities.
         virtual void EnableSimulation(const RagdollState& initialState) = 0;
 
+        /// Queues inserting the ragdoll into the physics simulation, to be executed before the next physics update.
+        /// @param initialState State for initializing the ragdoll positions, orientations and velocities.
+        virtual void EnableSimulationQueued(const RagdollState& initialState) = 0;
+
         /// Removes the ragdoll from physics simulation.
         virtual void DisableSimulation() = 0;
+
+        /// Queues removing the ragdoll from the physics simulation, to be executed before the next physics update.
+        virtual void DisableSimulationQueued() = 0;
 
         /// Is the ragdoll currently simulated?
         /// @result True in case the ragdoll is simulated, false if not.
@@ -98,6 +105,11 @@ namespace Physics
         /// Updates the state for all of the bodies in the ragdoll using the input ragdoll state.
         /// @param ragdollState The state with which to update the ragdoll.
         virtual void SetState(const RagdollState& ragdollState) = 0;
+
+        /// Queues updating the state for all of the bodies in the ragdoll using the input ragdoll state.
+        /// The new state is applied before the next physics update.
+        /// @param ragdollState The state with which to update the ragdoll.
+        virtual void SetStateQueued(const RagdollState& ragdollState) = 0;
 
         /// Writes the state for an individual body in the ragdoll to the provided output.
         /// The caller owns the output state and can safely manipulate it without affecting the physics simulation.

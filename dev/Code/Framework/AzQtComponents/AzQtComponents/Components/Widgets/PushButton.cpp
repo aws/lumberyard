@@ -16,14 +16,14 @@
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 
-#include <QStyleFactory>
-
+#include <QDialogButtonBox>
 #include <QImage>
 #include <QPainter>
 #include <QPixmap>
 #include <QPixmapCache>
 #include <QPushButton>
 #include <QSettings>
+#include <QStyleFactory>
 #include <QStyleOption>
 #include <QToolButton>
 #include <QVariant>
@@ -34,6 +34,7 @@
 namespace AzQtComponents
 {
 
+static QString g_primaryClass = QStringLiteral("Primary");
 static QString g_smallIconClass = QStringLiteral("SmallIcon");
 
 void PushButton::applyPrimaryStyle(QPushButton* button)
@@ -61,6 +62,40 @@ bool PushButton::polish(Style* style, QWidget* widget, const PushButton::Config&
 {
     QToolButton* toolButton = qobject_cast<QToolButton*>(widget);
     QPushButton* pushButton = qobject_cast<QPushButton*>(widget);
+
+    if (pushButton != nullptr)
+    {
+        // Edge cases for dialog box buttons.
+        QDialogButtonBox* dialogButtonBox = qobject_cast<QDialogButtonBox*>(widget->parent());
+
+        // Detect if this is the first button in a dialog box.
+        bool isFirstInDialog = (dialogButtonBox != nullptr) &&
+            (dialogButtonBox->nextInFocusChain() == pushButton);
+
+        // Detect if other buttons in the dialog box have been marked as default.
+        bool otherButtonInDialogIsDefault = false;
+        if (dialogButtonBox != nullptr)
+        {
+            for (auto dialogButton : dialogButtonBox->buttons())
+            {
+                QPushButton* dialogPushButton = qobject_cast<QPushButton*>(dialogButton);
+                if (dialogPushButton->isDefault())
+                {
+                    otherButtonInDialogIsDefault = true;
+                }
+            }
+        }
+
+        // For dialogs, highlight the first button if no default button has been specified.
+        if (pushButton->isDefault() || (isFirstInDialog && !otherButtonInDialogIsDefault))
+        {
+            AzQtComponents::Style::addClass(pushButton, g_primaryClass);
+        }
+        else
+        {
+            AzQtComponents::Style::removeClass(pushButton, g_primaryClass);
+        }
+    }
 
     if ((style->hasClass(widget, g_smallIconClass) && (toolButton != nullptr)))
     {
@@ -154,8 +189,7 @@ bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* opt
         QColor gradientStartColor;
         QColor gradientEndColor;
 
-        bool isDefault = buttonOption && (buttonOption->features & QStyleOptionButton::DefaultButton);
-        const bool isPrimary = isDefault || (style->hasClass(widget, QLatin1String("Primary")));
+        const bool isPrimary = (style->hasClass(widget, g_primaryClass));
 
         selectColors(option, isPrimary ? config.primary : config.secondary, isDisabled, gradientStartColor, gradientEndColor);
 
@@ -380,8 +414,8 @@ PushButton::Config PushButton::defaultConfig()
     config.primary.normal.start = QColor("#8156CF");
     config.primary.normal.end = QColor("#6441A4");
 
-    config.secondary.disabled.start = QColor("#888888");
-    config.secondary.disabled.end = QColor("#888888");
+    config.secondary.disabled.start = QColor("#666666");
+    config.secondary.disabled.end = QColor("#666666");
 
     config.secondary.sunken.start = QColor("#444444");
     config.secondary.sunken.end = QColor("#444444");
@@ -414,7 +448,7 @@ PushButton::Config PushButton::defaultConfig()
     config.smallIcon.arrowWidth = 10;
 
     config.iconButton.activeColor = QColor("#00A1C9");
-    config.iconButton.disabledColor = QColor("#AAAAAA");
+    config.iconButton.disabledColor = QColor("#999999");
     config.iconButton.selectedColor = QColor("#FFFFFF");
 
     config.dropdownButton.indicatorArrowDown = QPixmap(QStringLiteral(":/stylesheet/img/UI20/dropdown-button-arrow.svg"));

@@ -24,6 +24,9 @@
 #include <CryCommon/StatObjBus.h>
 
 #include "VegetationMap.h"
+#include <VegetationObject.h>
+#include <AzFramework/IO/LocalFileIO.h>
+#include <IMissingAssetResolver.h>
 
 #ifdef LY_TERRAIN_EDITOR
 #include <Terrain/Heightmap.h>
@@ -41,6 +44,41 @@ public:
 
 namespace UnitTest
 {
+    struct ErrorReportMock
+        : IErrorReport
+    {
+
+        MOCK_METHOD0(Clear, void());
+        MOCK_METHOD0(Display, void());
+        MOCK_METHOD1(GetError, CErrorRecord& (int));
+        MOCK_CONST_METHOD0(GetErrorCount, int());
+        MOCK_CONST_METHOD0(IsEmpty, bool());
+        MOCK_CONST_METHOD0(IsImmediateMode, bool());
+        MOCK_METHOD1(Report, void(SValidatorRecord&));
+        MOCK_METHOD1(ReportError, void(CErrorRecord&));
+        MOCK_METHOD1(SetCurrentFile, void(const QString&));
+        MOCK_METHOD1(SetCurrentValidatorItem, void(CBaseLibraryItem*));
+        MOCK_METHOD1(SetCurrentValidatorObject, void(CBaseObject*));
+        MOCK_METHOD1(SetImmediateMode, void(bool));
+        MOCK_METHOD1(SetShowErrors, void(bool));
+    };
+
+    struct MissingAssetResolverMock
+        : IMissingAssetResolver
+    {
+        MOCK_METHOD2(AcceptRequest, void (uint32, const char*));
+        MOCK_METHOD4(AddResolveRequest, uint32 (const char*, const TMissingAssetResolveCallback&, char, bool));
+        MOCK_METHOD2(CancelRequest, void (const TMissingAssetResolveCallback&, uint32));
+        MOCK_METHOD1(CancelRequest, void (uint32));
+        MOCK_CONST_METHOD1(GetAssetSearcherById, IAssetSearcher* (int));
+        MOCK_METHOD0(GetReport, CMissingAssetReport* ());
+        MOCK_METHOD1(OnEditorNotifyEvent, void (EEditorNotifyEvent));
+        MOCK_METHOD0(PumpEvents, void ());
+        MOCK_METHOD0(Shutdown, void ());
+        MOCK_METHOD0(StartResolver, void ());
+        MOCK_METHOD0(StopResolver, void ());
+    };
+
     class VegetationMapTestFixture
         : public UnitTest::AllocatorsTestFixture
         , private StatInstGroupEventBus::Handler
@@ -71,6 +109,8 @@ namespace UnitTest
             ON_CALL(m_data->m_mockEditor, GetSystem()).WillByDefault(::testing::Return(&(m_data->m_mockSystem)));
             ON_CALL(m_data->m_mockEditor, GetRenderer()).WillByDefault(::testing::Return(nullptr));
             ON_CALL(m_data->m_mockEditor, Get3DEngine()).WillByDefault(::testing::Return(&(m_data->m_mock3DEngine)));
+            ON_CALL(m_data->m_mockEditor, GetErrorReport()).WillByDefault(::testing::Return(&m_data->m_mockErrorReport));
+            ON_CALL(m_data->m_mockEditor, GetMissingAssetResolver()).WillByDefault(::testing::Return(&(m_data->m_missingAssetResolver)));
 
             ON_CALL(m_data->m_mockSystem, GetI3DEngine()).WillByDefault(::testing::Return(&(m_data->m_mock3DEngine)));
 
@@ -81,12 +121,20 @@ namespace UnitTest
             ON_CALL(m_data->m_mockHeightmap, GetOceanLevel()).WillByDefault(::testing::Return(0.0f));
 #endif // #ifdef LY_TERRAIN_EDITOR
 
+            m_localFileIO = aznew AZ::IO::LocalFileIO();
+
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+            AZ::IO::FileIOBase::SetInstance(m_localFileIO);
+
             StatInstGroupEventBus::Handler::BusConnect();
         }
 
         void TearDown() override
         {
             StatInstGroupEventBus::Handler::BusDisconnect();
+
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+            delete m_localFileIO;
 
             SetIEditor(nullptr);
 
@@ -118,6 +166,8 @@ namespace UnitTest
             ::testing::NiceMock<SystemMock> m_mockSystem;
             ::testing::NiceMock<CEditorMock> m_mockEditor;
             ::testing::NiceMock<I3DEngineMock> m_mock3DEngine;
+            ::testing::NiceMock<ErrorReportMock> m_mockErrorReport;
+            ::testing::NiceMock<MissingAssetResolverMock> m_missingAssetResolver;
 #ifdef LY_TERRAIN_EDITOR
             ::testing::NiceMock<CHeightmapMock> m_mockHeightmap;
 #endif // #ifdef LY_TERRAIN_EDITOR
@@ -127,6 +177,8 @@ namespace UnitTest
         AZStd::unique_ptr<DataMembers> m_data;
 
         AZ::Entity* m_systemEntity = nullptr;
+        AZ::IO::FileIOBase* m_localFileIO = nullptr;
+
         StatInstGroupId m_groupId{ 0 };
 
     private:
@@ -139,6 +191,67 @@ namespace UnitTest
         SavedState m_savedState;
     };
 
+    struct MockAssetSystem
+        : AzFramework::AssetSystemRequestBus::Handler
+    {
+        MockAssetSystem()
+        {
+            BusConnect();
+        }
+
+        ~MockAssetSystem()
+        {
+            BusDisconnect();
+        }
+
+        AzFramework::AssetSystem::AssetStatus CompileAssetSync(const AZStd::string& assetPath) override
+        {
+            m_compileSync = assetPath;
+
+            return AzFramework::AssetSystem::AssetStatus::AssetStatus_Queued;
+        }
+
+        MOCK_METHOD1(CompileAssetSync_FlushIO, AzFramework::AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(CompileAssetSyncById, AzFramework::AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD1(CompileAssetSyncById_FlushIO, AzFramework::AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD4(ConfigureSocketConnection, bool (const AZStd::string&, const AZStd::string&, const AZStd::string&, const AZStd::string&));
+        MOCK_METHOD1(Connect, bool (const char*));
+        MOCK_METHOD2(ConnectWithTimeout, bool (const char*, AZStd::chrono::duration<float>));
+        MOCK_METHOD0(Disconnect, bool ());
+        MOCK_METHOD1(EscalateAssetBySearchTerm, bool (AZStd::string_view));
+        MOCK_METHOD1(EscalateAssetByUuid, bool (const AZ::Uuid&));
+        MOCK_METHOD0(GetAssetProcessorPingTimeMilliseconds, float ());
+        MOCK_METHOD1(GetAssetStatus, AzFramework::AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(GetAssetStatus_FlushIO, AzFramework::AssetSystem::AssetStatus (const AZStd::string&));
+        MOCK_METHOD1(GetAssetStatusById, AzFramework::AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD1(GetAssetStatusById_FlushIO, AzFramework::AssetSystem::AssetStatus (const AZ::Data::AssetId&));
+        MOCK_METHOD3(GetUnresolvedProductReferences, void (AZ::Data::AssetId, AZ::u32&, AZ::u32&));
+        MOCK_METHOD0(SaveCatalog, bool ());
+        MOCK_METHOD1(SetAssetProcessorIP, void (const AZStd::string&));
+        MOCK_METHOD1(SetAssetProcessorPort, void (AZ::u16));
+        MOCK_METHOD1(SetBranchToken, void (const AZStd::string&));
+        MOCK_METHOD1(SetProjectName, void (const AZStd::string&));
+        MOCK_METHOD0(ShowAssetProcessor, void ());
+        MOCK_METHOD1(ShowInAssetProcessor, void (const AZStd::string&));
+
+        AZStd::string m_compileSync;
+    };
+
+    TEST_F(VegetationMapTestFixture, LoadVegObject_AssetSyncRequested)
+    {
+        MockAssetSystem assetSystem;
+        const int maxVegetationInstances = 1;
+
+        CVegetationMap vegMap(maxVegetationInstances);
+        const int worldSize = 1024;
+        vegMap.Allocate(worldSize, false);
+
+        CVegetationObject* testVegObject = vegMap.CreateObject();
+        testVegObject->SetFileName("TestFile");
+        testVegObject->LoadObject();
+
+        ASSERT_STREQ(assetSystem.m_compileSync.c_str(), "TestFile");
+    }
 
     TEST_F(VegetationMapTestFixture, InstantiateEmptySuccess)
     {

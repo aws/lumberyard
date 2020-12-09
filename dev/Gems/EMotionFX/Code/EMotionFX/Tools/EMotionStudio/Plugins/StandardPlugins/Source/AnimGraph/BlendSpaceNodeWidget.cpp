@@ -85,7 +85,7 @@ void BlendSpaceNodeWidget::RenderTextBox(QPainter& painter, const QPointF& point
 
     QFontMetrics fontMetrics(font);
 
-    const int boxWidth = fontMetrics.width(text);
+    const int boxWidth = fontMetrics.horizontalAdvance(text);
     const int boxHeight = fontMetrics.height();
 
     const int halfBoxWidth = static_cast<int>(static_cast<float>(boxWidth) * 0.5f + 0.5f);

@@ -578,6 +578,10 @@ bool CImageDDSFile::SetHeaderFromMemory(byte* pFileStart, byte* pFileAfterHeader
 #define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
 #include "Xenia/DDSImage_cpp_xenia.inl"
 #endif
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
+#include "Salem/DDSImage_cpp_salem.inl"
+#endif
     if (imageFlags & CImageExtensionHelper::EIF_AttachedAlpha)
     {
         m_Flags |= FIM_HAS_ATTACHED_ALPHA;

@@ -800,6 +800,7 @@
             "Maestro/Types/AnimParamType.h",
             "Maestro/Types/AnimValue.h",
             "Maestro/Types/AnimValueType.h",
+            "Maestro/Types/AssetKey.h",
             "Maestro/Types/AssetBlendKey.h",
             "Maestro/Types/AssetBlends.h",
             "Maestro/Types/SequenceType.h"

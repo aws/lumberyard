@@ -721,6 +721,11 @@ bool OutlinerListModel::canDropMimeDataForEntityIds(const QMimeData* data, Qt::D
         return false;
     }
 
+    if (!CanReparentEntities(newParentId, entityIdListContainer.m_layerIds))
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -1060,8 +1065,11 @@ bool OutlinerListModel::dropMimeDataEntities(const QMimeData* data, Qt::DropActi
     AZ::EntityId newParentId = GetEntityFromIndex(parent);
     AZ::EntityId beforeEntityId = GetEntityFromIndex(index(row, 0, parent));
     AzToolsFramework::EntityIdList topLevelEntityIds;
-    topLevelEntityIds.reserve(entityIdListContainer.m_entityIds.size());
+    topLevelEntityIds.reserve(entityIdListContainer.m_entityIds.size() + entityIdListContainer.m_layerIds.size());
+
     AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::FindTopLevelEntityIdsInactive, entityIdListContainer.m_entityIds, topLevelEntityIds);
+    AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::FindTopLevelEntityIdsInactive, entityIdListContainer.m_layerIds, topLevelEntityIds);
+
     if (!ReparentEntities(newParentId, topLevelEntityIds, beforeEntityId))
     {
         return false;
@@ -1075,7 +1083,7 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
     if (selectedEntityIds.empty())
     {
-        return false;
+        return true;
     }
 
     // Ignore entities not owned by the editor context. It is assumed that all entities belong
@@ -1162,6 +1170,11 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
 bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const AzToolsFramework::EntityIdList &selectedEntityIds, const AZ::EntityId& beforeEntityId)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+    if (selectedEntityIds.empty())
+    {
+        return false;
+    }
+
     if (!CanReparentEntities(newParentId, selectedEntityIds))
     {
         return false;
@@ -1266,11 +1279,21 @@ QMimeData* OutlinerListModel::mimeData(const QModelIndexList& indexes) const
             AZ::EntityId entityId = GetEntityFromIndex(index);
             if (entityId.IsValid())
             {
-                entityIdList.m_entityIds.push_back(entityId);
+                bool isLayerEntity = false;
+                AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(isLayerEntity, entityId, &AzToolsFramework::Layers::EditorLayerComponentRequests::HasLayer);
+
+                if (isLayerEntity)
+                {
+                    entityIdList.m_layerIds.push_back(entityId);
+                }
+                else
+                {
+                    entityIdList.m_entityIds.push_back(entityId);
+                }
             }
         }
     }
-    if (entityIdList.m_entityIds.empty())
+    if (entityIdList.m_entityIds.empty() && entityIdList.m_layerIds.empty())
     {
         return nullptr;
     }
@@ -2437,7 +2460,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
     QPalette checkboxPalette;
     QColor transparentColor(0, 0, 0, 0);
-    checkboxPalette.setColor(QPalette::ColorRole::Background, transparentColor);
+    checkboxPalette.setColor(QPalette::Window, transparentColor);
 
     const bool isSliceRoot = index.data(OutlinerListModel::SliceBackgroundRole).value<bool>();
     const int slicePillCornerRadius = 4;
@@ -2593,7 +2616,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             int textWidthAvailable = textRect.width();
             // Qt uses "..." for elide, but there doesn't seem to be a way to retrieve this exact string from Qt.
             // Subtract the elide string from the width available, so it can actually appear.
-            textWidthAvailable -= fontMetrics.width(QObject::tr("..."));
+            textWidthAvailable -= fontMetrics.horizontalAdvance(QObject::tr("..."));
             if (!layerInfoString.isEmpty())
             {
                 // The layer info string includes HTML markup, which can cause an issue computing the width.
@@ -2602,7 +2625,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
                 QString htmlStripped = layerInfoString;
                 htmlStripped.remove(htmlMarkupRegex);
                 const float layerInfoPadding = 1.2f;
-                textWidthAvailable -= fontMetrics.width(htmlStripped) * layerInfoPadding;
+                textWidthAvailable -= fontMetrics.horizontalAdvance(htmlStripped) * layerInfoPadding;
             }
 
             entityNameRichText = fontMetrics.elidedText(optionV4.text, Qt::TextElideMode::ElideRight, textWidthAvailable);

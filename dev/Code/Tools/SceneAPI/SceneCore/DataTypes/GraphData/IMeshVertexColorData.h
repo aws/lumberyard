@@ -21,12 +21,37 @@ namespace AZ
     {
         namespace DataTypes
         {
+            enum class ColorChannel : AZ::u8
+            {
+                Red = 0,
+                Green,
+                Blue,
+                Alpha
+            };
+
             struct Color
             {
-                float red;
-                float green;
-                float blue;
-                float alpha;
+                union
+                {
+                    struct
+                    {
+                        float red;
+                        float green;
+                        float blue;
+                        float alpha;
+                    };
+                    float m_channels[4];
+                };
+
+                Color(float r, float g, float b, float a)
+                    : red(r), green(g), blue(b), alpha(a)
+                {
+                }
+
+                float GetChannel(ColorChannel channel) const
+                {
+                    return m_channels[static_cast<AZ::u8>(channel)];
+                }
             };
 
             class IMeshVertexColorData

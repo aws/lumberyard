@@ -52,7 +52,7 @@ namespace EMotionFX
             outIndicies.push_back(index);
             for (int i = 0; i < treeView->model()->rowCount(index); ++i)
             {
-                RecursiveGetAllChildren(treeView, index.child(i, 0), outIndicies);
+                RecursiveGetAllChildren(treeView, treeView->model()->index(i, 0, index), outIndicies);
             }
         }
 

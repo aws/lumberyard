@@ -12,44 +12,75 @@
 
 #pragma once
 
-#include <Cry_Math.h> // Needed for Vec3
+#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/std/containers/array.h>
 
-#include <System/DataTypes.h>
+#include <NvCloth/ITangentSpaceHelper.h>
 
 namespace NvCloth
 {
-    //! Calculates the tangent space base for a given mesh
-    class TangentSpaceCalculation
+    //! Implementation of the ITangentSpaceHelper interface.
+    class TangentSpaceHelper
+        : public AZ::Interface<ITangentSpaceHelper>::Registrar
     {
     public:
-        void Calculate(
-            const AZStd::vector<SimParticleType>& vertices,
+        AZ_RTTI(TangentSpaceHelper, "{2F8400BF-045A-49C3-B9D1-356011907E62}", ITangentSpaceHelper);
+
+    protected:
+        // ITangentSpace overrides ...
+        bool CalculateNormals(
+            const AZStd::vector<SimParticleFormat>& vertices,
             const AZStd::vector<SimIndexType>& indices,
-            const AZStd::vector<SimUVType>& uvs);
-
-        size_t GetBaseCount() const;
-
-        // Returns an orthogonal base (perpendicular and normalized)
-        void GetBase(AZ::u32 index, Vec3& tangent, Vec3& bitangent, Vec3& normal) const;
-        Vec3 GetTangent(AZ::u32 index) const;
-        Vec3 GetBitangent(AZ::u32 index) const;
-        Vec3 GetNormal(AZ::u32 index) const;
+            AZStd::vector<AZ::Vector3>& outNormals) override;
+        bool CalculateTangentsAndBitagents(
+            const AZStd::vector<SimParticleFormat>& vertices,
+            const AZStd::vector<SimIndexType>& indices,
+            const AZStd::vector<SimUVType>& uvs,
+            const AZStd::vector<AZ::Vector3>& normals,
+            AZStd::vector<AZ::Vector3>& outTangents,
+            AZStd::vector<AZ::Vector3>& outBitangents) override;
+        bool CalculateTangentSpace(
+            const AZStd::vector<SimParticleFormat>& vertices,
+            const AZStd::vector<SimIndexType>& indices,
+            const AZStd::vector<SimUVType>& uvs,
+            AZStd::vector<AZ::Vector3>& outTangents,
+            AZStd::vector<AZ::Vector3>& outBitangents,
+            AZStd::vector<AZ::Vector3>& outNormals) override;
 
     private:
-        struct Base33
-        {
-            Base33() = default;
-            Base33(const Vec3& tangent, const Vec3& bitangent, const Vec3& normal);
+        using TriangleIndices = AZStd::array<SimIndexType, 3>;
+        using TrianglePositions = AZStd::array<AZ::Vector3, 3>;
+        using TriangleUVs = AZStd::array<SimUVType, 3>;
+        using TriangleEdges = AZStd::array<AZ::Vector3, 2>;
 
-            Vec3 m_tangent = Vec3(0.0f, 0.0f, 0.0f);
-            Vec3 m_bitangent = Vec3(0.0f, 0.0f, 0.0f);
-            Vec3 m_normal = Vec3(0.0f, 0.0f, 0.0f);
-        };
+        void GetTriangleData(
+            size_t triangleIndex,
+            const AZStd::vector<SimIndexType>& indices,
+            const AZStd::vector<SimParticleFormat>& vertices,
+            TriangleIndices& triangleIndices,
+            TrianglePositions& trianglePositions,
+            TriangleEdges& triangleEdges);
 
-        void AddNormalToBase(AZ::u32 index, const Vec3& normal);
-        void AddUVToBase(AZ::u32 index, const Vec3& u, const Vec3& v);
-        float CalcAngleBetween(const Vec3& a, const Vec3& b);
+        void GetTriangleData(
+            size_t triangleIndex,
+            const AZStd::vector<SimIndexType>& indices,
+            const AZStd::vector<SimParticleFormat>& vertices,
+            const AZStd::vector<SimUVType>& uvs,
+            TriangleIndices& triangleIndices,
+            TrianglePositions& trianglePositions,
+            TriangleEdges& triangleEdges,
+            TriangleUVs& triangleUVs);
 
-        AZStd::vector<Base33> m_baseVectors;
+        bool ComputeNormal(const TriangleEdges& triangleEdges, AZ::Vector3& normal);
+
+        bool ComputeTangentAndBitangent(
+            const TriangleUVs& triangleUVs, const TriangleEdges& triangleEdges,
+            AZ::Vector3& tangent, AZ::Vector3& bitangent);
+
+        void AdjustTangentAndBitangent(
+            const AZ::Vector3& normal, AZ::Vector3& tangent, AZ::Vector3& bitangent);
+
+        float GetVertexWeightInTriangle(AZ::u32 vertexIndexInTriangle, const TrianglePositions& trianglePositions);
     };
 } // namespace NvCloth

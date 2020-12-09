@@ -66,7 +66,7 @@ protected:
 private:
     QHash<int, int> m_alignments;
     std::vector<CErrorRecord> m_errorRecords;
-    QVector<QPixmap> m_imageList;
+    QVector<QIcon> m_imageList;
 };
 
 Q_DECLARE_METATYPE(const CErrorRecord*)

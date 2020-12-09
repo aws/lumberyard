@@ -705,13 +705,18 @@ namespace EMotionFX
                 }
             }
 
-            // Extract cloth data from cloth modifiers
-            EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothInverseMassesLayer = nullptr;
-            SceneDataTypes::IMeshVertexColorData* clothInverseMassData = nullptr;
-            AZStd::tie(clothInverseMassesLayer, clothInverseMassData) = ExtractClothInfo(graph, meshNodeIndex, context.m_group, numOrgVerts, lodLevel);
-            if (clothInverseMassesLayer)
+            // Get the cloth data (only for full mesh LOD 0).
+            const AZStd::vector<AZ::Color> clothData = (lodLevel == 0)
+                ? SceneDataTypes::IClothRule::FindClothData(
+                    graph, meshNodeIndex, meshData->GetVertexCount(), context.m_group.GetRuleContainerConst())
+                : AZStd::vector<AZ::Color>{};
+
+            // Create the cloth layer.
+            EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothLayer = nullptr;
+            if (!clothData.empty())
             {
-                meshBuilder->AddLayer(clothInverseMassesLayer);
+                clothLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_CLOTH_DATA, false, false);
+                meshBuilder->AddLayer(clothLayer);
             }
 
             // Create the color layers.
@@ -872,21 +877,11 @@ namespace EMotionFX
                         bitangentLayer->SetCurrentVertexValue(&bitangentVec);
                     }
 
-                    // Feed the cloth inverse masses
-                    if (clothInverseMassesLayer)
+                    // Feed the cloth data
+                    if (!clothData.empty())
                     {
-                        AZ::Color inverseMassColor(1.0f, 1.0f, 1.0f, 1.0f);
-                        if (clothInverseMassData)
-                        {
-                            const auto& color = clothInverseMassData->GetColor(vertexIndex);
-                            inverseMassColor.Set(
-                                AZ::GetClamp<float>(color.red, 0.0f, 1.0f), 
-                                AZ::GetClamp<float>(color.green, 0.0f, 1.0f),
-                                AZ::GetClamp<float>(color.blue, 0.0f, 1.0f),
-                                AZ::GetClamp<float>(color.alpha, 0.0f, 1.0f));
-                        }
-                        AZ::u32 inverseMassU32 = inverseMassColor.ToU32();
-                        clothInverseMassesLayer->SetCurrentVertexValue(&inverseMassU32);
+                        const AZ::u32 clothVertexDataU32 = clothData[vertexIndex].ToU32();
+                        clothLayer->SetCurrentVertexValue(&clothVertexDataU32);
                     }
 
                     meshBuilder->AddPolygonVertex(orgVertexNumber);
@@ -1159,60 +1154,6 @@ namespace EMotionFX
                 return lodName.substr(0, pos);
             }
             return lodName;
-        }
-
-        ActorBuilder::ClothLayerAndData ActorBuilder::ExtractClothInfo(SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
-            const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel)
-        {
-            EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothInverseMassesLayer = nullptr;
-            SceneDataTypes::IMeshVertexColorData* clothInverseMassData = nullptr;
-
-            // Cloth meshes only created for LOD 0 (full mesh)
-            if (lodLevel == 0)
-            {
-                const auto& groupRules = group.GetRuleContainerConst();
-                for (size_t ruleIndex = 0; ruleIndex < groupRules.GetRuleCount(); ++ruleIndex)
-                {
-                    const SceneDataTypes::IClothRule* clothRule = azrtti_cast<const SceneDataTypes::IClothRule*>(groupRules.GetRule(ruleIndex).get());
-                    if (!clothRule)
-                    {
-                        continue;
-                    }
-
-                    // Reached a cloth rule for this mesh node?
-                    SceneContainers::SceneGraph::NodeIndex clothMeshNodeIndex = graph.Find(clothRule->GetMeshNodeName());
-                    if (clothMeshNodeIndex != meshNodeIndex)
-                    {
-                        continue;
-                    }
-
-                    // If a color layer is already created it means there are more than 1 cloth rule affecting the same mesh.
-                    if (clothInverseMassesLayer != nullptr)
-                    {
-                        AZ_TracePrintf(SceneUtil::WarningWindow, "Different cloth rules chose the same mesh node, only using the first cloth rule.");
-                        continue;
-                    }
-
-                    // Create layer
-                    clothInverseMassesLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES, false/*isScale*/, true/*isDeformable*/);
-
-                    // Find the Vertex Color Data for the cloth
-                    if (!clothRule->IsVertexColorStreamDisabled() &&
-                        !clothRule->GetVertexColorStreamName().empty())
-                    {
-                        clothInverseMassData = FindVertexColorData(graph, meshNodeIndex, clothRule->GetVertexColorStreamName());
-                        if (!clothInverseMassData)
-                        {
-                            AZ_TracePrintf(SceneUtil::WarningWindow,
-                                "Vertex color stream '%s' not found for mesh node '%s', used for cloth inverse mass values.",
-                                clothRule->GetVertexColorStreamName().c_str(),
-                                clothRule->GetMeshNodeName().c_str());
-                        }
-                    }
-                }
-            }
-
-            return AZStd::make_tuple(clothInverseMassesLayer, clothInverseMassData);
         }
     } // namespace Pipeline
 } // namespace EMotionFX

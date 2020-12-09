@@ -15,30 +15,45 @@
 #include "qmenubar.h"
 #include "IEditorParticleUtils.h"
 #include "qmessagebox.h"
-#include <QStyle>
-#include <QDesktopWidget>
+
 #include <QApplication>
+#include <QLineEdit>
+#include <QScreen>
 #include <QSettings>
+#include <QStyle>
+
+KeyWidgetItem::KeyWidgetItem(QWidget* parent)
+    : QWidget(parent)
+{
+    m_gridLayout = new QGridLayout(this);
+    m_gridLayout->setColumnStretch(0, 2);
+    m_gridLayout->setColumnStretch(1, 3);
+    m_label = new QLabel();
+    m_gridLayout->addWidget(m_label, 0, 0, Qt::AlignRight);
+}
+
+KeyWidgetItem::~KeyWidgetItem()
+{
+}
+
+void KeyWidgetItem::SetCapture(QKeySequenceCaptureWidget* capture)
+{
+    m_captureWidget = capture;
+    m_gridLayout->addWidget(m_captureWidget, 0, 1);
+}
 
 QKeySequenceEditorDialog::QKeySequenceEditorDialog(QWidget* parent)
 {
-    formLayout = new QFormLayout(this);
-    layout = new QGridLayout(this);
     setWindowTitle("HotKey Configuration");
-    scrollArea = new QScrollArea(this);
-    scrollWidget = new QWidget(scrollArea);
-    scrollWidget->setLayout(formLayout);
-    scrollArea->setWidget(scrollWidget);
-    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->adjustSize();
+    layout = new QGridLayout(this);
+    m_treeWidget = new QTreeWidget(this);
+    m_treeWidget->setColumnCount(1);
+    m_treeWidget->setHeaderHidden(true);
+    m_treeWidget->setAlternatingRowColors(true);
+    m_treeWidget->setProperty("HotkeyLabel", "Standard");
+
     resetHotkeys();
     BuildLayout();
-
-
-    scrollArea->setMinimumWidth(scrollWidget->size().width() + style()->pixelMetric(QStyle::PM_ScrollBarExtent));
-
 
     //Create menu
     menuButton = new QPushButton(this);
@@ -61,7 +76,7 @@ QKeySequenceEditorDialog::QKeySequenceEditorDialog(QWidget* parent)
                     m_hotkeys.takeAt(0);
                 }
                 m_hotkeys = GetIEditor()->GetParticleUtils()->HotKey_GetKeys();
-                qStableSort(m_hotkeys);
+                std::stable_sort(m_hotkeys.begin(), m_hotkeys.end(), std::less<HotKey>());
                 scrollWidget->adjustSize();
 
                 for (QPair<QLabel*, QKeySequenceCaptureWidget*> field : m_fields)
@@ -94,7 +109,7 @@ QKeySequenceEditorDialog::QKeySequenceEditorDialog(QWidget* parent)
                 m_hotkeys.takeAt(0);
             }
             m_hotkeys = GetIEditor()->GetParticleUtils()->HotKey_GetKeys();
-            qStableSort(m_hotkeys);
+            std::stable_sort(m_hotkeys.begin(), m_hotkeys.end(), std::less<HotKey>());
             scrollWidget->adjustSize();
 
             for (QPair<QLabel*, QKeySequenceCaptureWidget*> field : m_fields)
@@ -120,6 +135,7 @@ QKeySequenceEditorDialog::QKeySequenceEditorDialog(QWidget* parent)
 
     //create buttons
     okButton = new QPushButton(tr("Ok"), this);
+    okButton->setAutoDefault(true);
     connect(okButton, &QPushButton::clicked, this, [&]()
         {
             if (ValidateKeys())
@@ -136,15 +152,14 @@ QKeySequenceEditorDialog::QKeySequenceEditorDialog(QWidget* parent)
             reject();
         });
 
-    layout->addWidget(scrollArea, 0, 0, 1, 4);
+    layout->addWidget(m_treeWidget, 0, 0, 1, 4);
     layout->addWidget(menuButton, 1, 0, 1, 1);
     layout->setColumnStretch(1, 2);
     layout->setColumnMinimumWidth(1, 61);
     layout->addWidget(okButton, 1, 2, 1, 1);
     layout->addWidget(cancelButton, 1, 3, 1, 1);
-    formLayout->setContentsMargins(0, 0, 2, 5);
     setLayout(layout);
-    setMinimumHeight(256);
+    setMinimumSize(500, 400);
 }
 
 QKeySequenceEditorDialog::~QKeySequenceEditorDialog()
@@ -154,10 +169,7 @@ QKeySequenceEditorDialog::~QKeySequenceEditorDialog()
 
 void QKeySequenceEditorDialog::BuildLayout()
 {
-    while (formLayout->count() > 0)
-    {
-        formLayout->takeAt(0);
-    }
+    m_treeWidget->clear();
     for (unsigned int i = 0; i < m_fields.count(); i++)
     {
         SAFE_DELETE(m_fields[i].first);
@@ -167,31 +179,34 @@ void QKeySequenceEditorDialog::BuildLayout()
     {
         m_fields.takeAt(0);
     }
-    qStableSort(m_hotkeys);
-    scrollWidget->setLayout(formLayout);
+    std::stable_sort(m_hotkeys.begin(), m_hotkeys.end(), std::less<HotKey>());
     QString lastCategory = "";
+    QTreeWidgetItem* parent;
     for (HotKey key : m_hotkeys)
     {
         if (key.path.split('.').first() != lastCategory)
         {
-            QLabel* catLabel = new QLabel(this);
-            catLabel->setText(key.path.split('.').first());
-            catLabel->setProperty("HotkeyLabel", "Category");
-            formLayout->addRow(catLabel);
-            lastCategory = catLabel->text();
+            QStringList strings;
+            lastCategory = key.path.split('.').first();
+            strings << lastCategory;
+            parent = new QTreeWidgetItem(strings);
+            m_treeWidget->addTopLevelItem(parent);
         }
         m_fields.push_back(QPair<QLabel*, QKeySequenceCaptureWidget*>(
-                new QLabel("   " + key.path.split('.').back(), this),
-                new QKeySequenceCaptureWidget(this, key.path, key.sequence.toString())));
+                new QLabel("   " + key.path.split('.').back(), nullptr),
+                new QKeySequenceCaptureWidget(nullptr, key.path, key.sequence.toString())));
 
         m_fields.back().second->SetCallbackOnFieldChanged([&](QKeySequenceCaptureWidget* field) -> bool
             {
                 return this->onFieldUpdate(field);
             });
-        formLayout->addRow(m_fields.back().first, m_fields.back().second);
+        QTreeWidgetItem* treeWidgetItem = new QTreeWidgetItem;
+        KeyWidgetItem* widgetItem = new KeyWidgetItem();
+        parent->addChild(treeWidgetItem);
+        widgetItem->SetLabel(key.path.split('.').back());
+        widgetItem->SetCapture(m_fields.back().second);
+        m_treeWidget->setItemWidget(treeWidgetItem, 0, widgetItem);
     }
-    scrollWidget->adjustSize();
-    scrollArea->adjustSize();
 }
 
 void QKeySequenceEditorDialog::SetHotKeysFromEditor()
@@ -278,8 +293,7 @@ void QKeySequenceEditorDialog::resetHotkeys()
         m_hotkeys.takeAt(0);
     }
     m_hotkeys = GetIEditor()->GetParticleUtils()->HotKey_GetKeys();
-    qStableSort(m_hotkeys);
-    scrollWidget->adjustSize();
+    std::stable_sort(m_hotkeys.begin(), m_hotkeys.end(), std::less<HotKey>());
 
     for (QPair<QLabel*, QKeySequenceCaptureWidget*> field : m_fields)
     {
@@ -325,7 +339,7 @@ void QKeySequenceEditorDialog::LoadSessionState()
     QSettings settings("Amazon", "Lumberyard");
     QString group = "Hotkey Editor/";
     settings.beginGroup(group);
-    QRect desktop = QApplication::desktop()->availableGeometry();
+    QRect desktop = QApplication::primaryScreen()->geometry();
 
     //start with a decent size, or last saved size
     resize(settings.value("size", QSize(width(), height())).toSize());
@@ -341,3 +355,5 @@ void QKeySequenceEditorDialog::hideEvent(QHideEvent* e)
     StoreSessionState();
     QDialog::hideEvent(e);
 }
+
+#include <VariableWidgets/QKeySequenceEditorDialog.moc>

@@ -73,6 +73,8 @@ namespace AzToolsFramework
 
         void SetAcceptedEntityContext(AzFramework::EntityContextId contextId);
 
+        void SetAllowLayerAssignment(bool enableLayerAssignment);
+
     signals:
         void OnEntityIdChanged(AZ::EntityId newEntityId);
 
@@ -95,6 +97,7 @@ namespace AzToolsFramework
 
         EntityIdQLineEdit* m_entityIdLineEdit;
         QToolButton* m_pickButton;
+        bool m_enableLayerAssignment;
         AZStd::vector<AZ::ComponentServiceType> m_requiredServices;
         AZStd::vector<AZ::ComponentServiceType> m_incompatibleServices;
         AzFramework::EntityContextId m_acceptedEntityContextId;

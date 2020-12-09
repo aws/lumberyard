@@ -676,7 +676,7 @@ void CUiAnimViewNodesCtrl::UpdateUiAnimNodeRecord(CRecord* pRecord, CUiAnimViewA
     }
     else if (nodeType == eUiAnimNodeType_Group)
     {
-        pRecord->setBackgroundColor(0, QColor(220, 255, 220));
+        pRecord->setBackground(0, QColor(220, 255, 220));
         pRecord->setSizeHint(0, QSize(30, 20));
     }
     else if (nodeType == eUiAnimNodeType_Material)
@@ -706,11 +706,11 @@ void CUiAnimViewNodesCtrl::UpdateUiAnimNodeRecord(CRecord* pRecord, CUiAnimViewA
     // Mark the active director and other directors properly.
     if (pAnimNode->IsActiveDirector())
     {
-        pRecord->setBackgroundColor(0, BACK_COLOR_FOR_ACTIVE_DIRECTOR);
+        pRecord->setBackground(0, BACK_COLOR_FOR_ACTIVE_DIRECTOR);
     }
     else if (nodeType == eUiAnimNodeType_Director)
     {
-        pRecord->setBackgroundColor(0, BACK_COLOR_FOR_INACTIVE_DIRECTOR);
+        pRecord->setBackground(0, BACK_COLOR_FOR_INACTIVE_DIRECTOR);
     }
 }
 

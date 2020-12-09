@@ -16,6 +16,8 @@
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 #include <AzToolsFramework/AssetBrowser/Views/EntryDelegate.h>
 
+#include <AzQtComponents/Components/StyledBusyLabel.h>
+
 #include <QApplication>
 AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // 4251: class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
                                                                // 4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
@@ -124,8 +126,22 @@ namespace AzToolsFramework
             {
                 return 0;
             }
-            QPixmap pixmap = thumbnail->GetPixmap();
-            painter->drawPixmap(point.x(), point.y(), size.width(), size.height(), pixmap);
+            bool thumbnailLoading;
+            ThumbnailerRequestsBus::BroadcastResult(thumbnailLoading, &ThumbnailerRequests::IsLoading, thumbnailKey, m_thumbnailContext.c_str());
+            if (thumbnailLoading)
+            {
+                AzQtComponents::StyledBusyLabel* busyLabel;
+                AssetBrowserComponentRequestBus::BroadcastResult(busyLabel , &AssetBrowserComponentRequests::GetStyledBusyLabel);
+                if (busyLabel)
+                {
+                    busyLabel->DrawTo(painter, QRectF(point.x(), point.y(), size.width(), size.height()));
+                }
+            }
+            else
+            {
+                QPixmap pixmap = thumbnail->GetPixmap(size);
+                painter->drawPixmap(point.x(), point.y(), size.width(), size.height(), pixmap);
+            }
             return m_iconSize;
         }
     } // namespace Thumbnailer

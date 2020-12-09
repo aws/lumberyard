@@ -64,7 +64,7 @@ namespace ImageProcessing
 
             for (int i = 0; i < imgFormats.size(); ++i)
             {
-                if (imgFormats[i].toLower() == QString(extension).toLower())
+                if (QString::fromUtf8(imgFormats[i]).toLower() == QString(extension).toLower())
                 {
                     return true;
                 }

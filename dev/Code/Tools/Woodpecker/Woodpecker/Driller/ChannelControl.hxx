@@ -42,7 +42,7 @@ namespace Driller
         Q_OBJECT;
     public:
         AZ_CLASS_ALLOCATOR(ChannelControl,AZ::SystemAllocator,0);
-        ChannelControl( const char* channelName, AnnotationsProvider* ptrAnnotations, QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        ChannelControl( const char* channelName, AnnotationsProvider* ptrAnnotations, QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         virtual ~ChannelControl(void);
 
         struct 
@@ -109,7 +109,7 @@ namespace Driller
             void InformOfMouseRelease(Qt::MouseButton button, FrameNumberType frame, FrameNumberType range, int modifiers );
             void InformOfMouseWheel( FrameNumberType frame, int wheelAmount, FrameNumberType range, int modifiers );
             QWidget* DrillDownRequest(FrameNumberType atFrame);
-            void OptionsRequest();			
+            void OptionsRequest();
             void ExpandedContracted();
 
             void AddConfigurationWidgets(QLayout* configurationLayout);

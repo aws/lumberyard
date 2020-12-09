@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>602</width>
+    <width>600</width>
     <height>300</height>
    </rect>
   </property>
@@ -28,20 +28,33 @@
         <number>2</number>
        </property>
        <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+        <layout class="QVBoxLayout" name="verticalLayout_42">
+         <property name="leftMargin">
+          <number>3</number>
          </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Fixed</enum>
+         <property name="topMargin">
+          <number>21</number>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>102</height>
-          </size>
+         <property name="bottomMargin">
+          <number>24</number>
          </property>
-        </spacer>
+         <item>
+          <widget class="QSvgWidget" name="m_logo" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>250</width>
+             <height>60</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>250</width>
+             <height>60</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QLabel" name="m_TransparentVersion">
@@ -134,7 +147,7 @@
        <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Artwork from Lumberyard Starter Game</string>
+          <string>Artwork from New World</string>
          </property>
         </widget>
        </item>
@@ -217,6 +230,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QSvgWidget</class>
+   <extends>QWidget</extends>
+   <header>qsvgwidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

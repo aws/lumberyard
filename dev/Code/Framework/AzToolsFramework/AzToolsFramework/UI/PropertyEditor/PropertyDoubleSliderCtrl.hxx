@@ -22,20 +22,6 @@
 
 namespace AzToolsFramework
 {
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    // LUMBERYARD_DEPRECATED(LY-108271)
-    class AZ_DEPRECATED(, "DHPropertyDoubleSlider is deprecated, please use AzQtComponents::SliderDoubleCombo instead")
-        DHPropertyDoubleSlider
-        : public AzQtComponents::SliderDoubleCombo
-    {
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(DHPropertyDoubleSlider, AZ::SystemAllocator, 0);
-
-        explicit DHPropertyDoubleSlider(QWidget* parent = nullptr);
-    };
-    AZ_POP_DISABLE_WARNING
-
     class PropertyDoubleSliderCtrl
         : public QWidget
     {

@@ -37,6 +37,7 @@ namespace LmbrCentral
         // must have at least one triangle
         if (vertices.size() < 3)
         {
+            meshTriangles.clear();
             return;
         }
 

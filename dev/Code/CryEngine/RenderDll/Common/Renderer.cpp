@@ -883,6 +883,8 @@ int CRenderer::CV_r_OutputShaderSourceFiles = 0;
 // Specular antialiasing
 int CRenderer::CV_r_SpecularAntialiasing = 1;
 
+int CRenderer::CV_r_readMeshNormals = 0;
+
 // Console
 float CRenderer::CV_r_minConsoleFontSize;
 float CRenderer::CV_r_maxConsoleFontSize;
@@ -2081,6 +2083,11 @@ void CRenderer::InitRenderer()
     REGISTER_CVAR3("r_UseSpecularAntialiasing", CV_r_SpecularAntialiasing, 1, VF_NULL,
         "Enable specular antialiasing.\n"
         "Usage: r_UseSpecularAntialiasing [0/1]");
+
+    REGISTER_CVAR3("r_readMeshNormals", CV_r_readMeshNormals, 0, VF_NULL,
+        "Enable reading the normals from the mesh.\n"
+        "Usage: CV_r_readMeshNormals [0/1]"
+        "Default: 0 (Do not read normals from the mesh)");
 
     static string aaModesDesc = "Enables post process based anti-aliasing modes.\nUsage: r_AntialiasingMode [n]\n";
 
@@ -4868,6 +4875,10 @@ void CRenderer::FreeResources(int nFlags)
                 }
                 storage.Free();
 
+                for (int f = 0; f < m_RP.m_SMFrustums[i][j].size(); ++f)
+                {
+                    m_RP.m_SMFrustums[i][j][f].pDepthTex = nullptr;     //prevent texture leak since TArray does not call ~ShadowMapFrustum() in .Free()
+                }
                 m_RP.m_SMFrustums[i][j].Free();
                 m_RP.m_SMCustomFrustumIDs[i][j].Free();
                 m_RP.m_DLights[i][j].Free();
@@ -6095,6 +6106,11 @@ void CRenderer::EF_ClearLightsList()
     ASSERT_IS_MAIN_THREAD(m_pRT)
     assert(SRendItem::m_RecurseLevel[m_RP.m_nFillThreadID] >= 0);
     m_RP.m_DLights[m_RP.m_nFillThreadID][SRendItem::m_RecurseLevel[m_RP.m_nFillThreadID]].SetUse(0);
+    for (int i = 0; i < m_RP.m_SMFrustums[m_RP.m_nFillThreadID][SRendItem::m_RecurseLevel[m_RP.m_nFillThreadID]].size(); ++i)
+    {
+        //need to manually decrement the refcount for pDepthTex before clearing the list (since it bypasses the destructor)
+        m_RP.m_SMFrustums[m_RP.m_nFillThreadID][SRendItem::m_RecurseLevel[m_RP.m_nFillThreadID]][i].pDepthTex = nullptr;
+    }
     m_RP.m_SMFrustums[m_RP.m_nFillThreadID][SRendItem::m_RecurseLevel[m_RP.m_nFillThreadID]].SetUse(0);
     m_RP.m_SMCustomFrustumIDs[m_RP.m_nFillThreadID][SRendItem::m_RecurseLevel[m_RP.m_nFillThreadID]].SetUse(0);
 

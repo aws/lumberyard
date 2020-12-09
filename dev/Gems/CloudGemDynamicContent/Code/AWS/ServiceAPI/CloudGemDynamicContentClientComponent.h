@@ -48,27 +48,29 @@ namespace ServiceAPI {
     
     extern const char* LmbrAWS_CodeGen_Component_UUID;
     
-    extern const char* LmbrAWS_CodeGen_PortalFileRequest_UUID;
-    
-    extern const char* LmbrAWS_CodeGen_PortalFileListResults_UUID;
-    
-    extern const char* LmbrAWS_CodeGen_ResponseHandler_UUID;
-    
     extern const char* LmbrAWS_CodeGen_NotificationBus1_UUID;
     
     extern const char* LmbrAWS_CodeGen_RequestBus1_UUID;
     
-    extern const char* LmbrAWS_CodeGen_RequestData_UUID;
-    
-    extern const char* LmbrAWS_CodeGen_FileRequestResults_UUID;
-    
-    extern const char* LmbrAWS_CodeGen_FileRequestResult_UUID;
+    extern const char* LmbrAWS_CodeGen_ResponseHandler_UUID;
     
     extern const char* LmbrAWS_CodeGen_ServiceStatus_UUID;
     
+    extern const char* LmbrAWS_CodeGen_PortalFileInfo_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_PortalFileRequest_UUID;
+    
     extern const char* LmbrAWS_CodeGen_PortalFileRequestList_UUID;
     
-    extern const char* LmbrAWS_CodeGen_PortalFileInfo_UUID;
+    extern const char* LmbrAWS_CodeGen_PortalFileListResults_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_RequestDataItem_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_RequestData_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_FileRequestResult_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_FileRequestResults_UUID;
     
 
     // redefs
@@ -82,22 +84,14 @@ namespace ServiceAPI {
 
     
     
-    using RequestDataPropertyFileList = AZStd::vector<AZStd::string>;
-
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestDataPropertyFileList& list);
-    
-    
-    
-    struct RequestData
+    struct ServiceStatus
     {
 
-        AZ_TYPE_INFO(RequestData, LmbrAWS_CodeGen_RequestData_UUID)
-        AZ_CLASS_ALLOCATOR(RequestData, AZ::SystemAllocator, 0)
+        AZ_TYPE_INFO(ServiceStatus, LmbrAWS_CodeGen_ServiceStatus_UUID)
+        AZ_CLASS_ALLOCATOR(ServiceStatus, AZ::SystemAllocator, 0)
 
         
-        bool ManifestData{false};
-        
-        RequestDataPropertyFileList FileList;
+        AZStd::string status;
         
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
@@ -105,53 +99,26 @@ namespace ServiceAPI {
         static void Reflect(AZ::ReflectContext* reflection);
     };
 
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestData& item);
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ServiceStatus& item);
     
     
     
-    struct FileRequestResult
+    struct PortalFileInfo
     {
 
-        AZ_TYPE_INFO(FileRequestResult, LmbrAWS_CodeGen_FileRequestResult_UUID)
-        AZ_CLASS_ALLOCATOR(FileRequestResult, AZ::SystemAllocator, 0)
+        AZ_TYPE_INFO(PortalFileInfo, LmbrAWS_CodeGen_PortalFileInfo_UUID)
+        AZ_CLASS_ALLOCATOR(PortalFileInfo, AZ::SystemAllocator, 0)
 
-        
-        AZStd::string Hash;
-        
-        AZStd::string PresignedURL;
         
         AZStd::string FileName;
         
-        AZStd::string FileStatus;
+        AZStd::string StagingStatus;
         
-        AZStd::string Signature;
+        AZStd::string StagingStart;
         
-        AZStd::string Size;
+        AZStd::string StagingEnd;
         
-
-        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
-
-        static void Reflect(AZ::ReflectContext* reflection);
-    };
-
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResult& item);
-    
-    
-    
-    using FileRequestResultArray = AZStd::vector<FileRequestResult>;
-
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResultArray& list);
-    
-    
-    
-    struct FileRequestResults
-    {
-
-        AZ_TYPE_INFO(FileRequestResults, LmbrAWS_CodeGen_FileRequestResults_UUID)
-        AZ_CLASS_ALLOCATOR(FileRequestResults, AZ::SystemAllocator, 0)
-
-        
-        FileRequestResultArray ResultList;
+        AZStd::string Parent;
         
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
@@ -159,7 +126,7 @@ namespace ServiceAPI {
         static void Reflect(AZ::ReflectContext* reflection);
     };
 
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResults& item);
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const PortalFileInfo& item);
     
     
     
@@ -170,13 +137,13 @@ namespace ServiceAPI {
         AZ_CLASS_ALLOCATOR(PortalFileRequest, AZ::SystemAllocator, 0)
 
         
-        AZStd::string StagingEnd;
+        AZStd::string FileName;
         
         AZStd::string StagingStatus;
         
         AZStd::string StagingStart;
         
-        AZStd::string FileName;
+        AZStd::string StagingEnd;
         
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
@@ -213,33 +180,6 @@ namespace ServiceAPI {
     
     
     
-    struct PortalFileInfo
-    {
-
-        AZ_TYPE_INFO(PortalFileInfo, LmbrAWS_CodeGen_PortalFileInfo_UUID)
-        AZ_CLASS_ALLOCATOR(PortalFileInfo, AZ::SystemAllocator, 0)
-
-        
-        AZStd::string StagingEnd;
-        
-        AZStd::string StagingStatus;
-        
-        AZStd::string StagingStart;
-        
-        AZStd::string Parent;
-        
-        AZStd::string FileName;
-        
-
-        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
-
-        static void Reflect(AZ::ReflectContext* reflection);
-    };
-
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const PortalFileInfo& item);
-    
-    
-    
     using PortalFileListResultsPropertyResults = AZStd::vector<PortalFileInfo>;
 
     bool WriteJson(CloudGemFramework::JsonWriter& writer, const PortalFileListResultsPropertyResults& list);
@@ -265,14 +205,16 @@ namespace ServiceAPI {
     
     
     
-    struct ServiceStatus
+    struct RequestDataItem
     {
 
-        AZ_TYPE_INFO(ServiceStatus, LmbrAWS_CodeGen_ServiceStatus_UUID)
-        AZ_CLASS_ALLOCATOR(ServiceStatus, AZ::SystemAllocator, 0)
+        AZ_TYPE_INFO(RequestDataItem, LmbrAWS_CodeGen_RequestDataItem_UUID)
+        AZ_CLASS_ALLOCATOR(RequestDataItem, AZ::SystemAllocator, 0)
 
         
-        AZStd::string status;
+        AZStd::string FileName;
+        
+        AZStd::string FileVersion;
         
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
@@ -280,7 +222,88 @@ namespace ServiceAPI {
         static void Reflect(AZ::ReflectContext* reflection);
     };
 
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ServiceStatus& item);
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestDataItem& item);
+    
+    
+    
+    using RequestDataPropertyFileList = AZStd::vector<RequestDataItem>;
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestDataPropertyFileList& list);
+    
+    
+    
+    struct RequestData
+    {
+
+        AZ_TYPE_INFO(RequestData, LmbrAWS_CodeGen_RequestData_UUID)
+        AZ_CLASS_ALLOCATOR(RequestData, AZ::SystemAllocator, 0)
+
+        
+        RequestDataPropertyFileList FileList;
+        
+        bool ManifestData{false};
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestData& item);
+    
+    
+    
+    struct FileRequestResult
+    {
+
+        AZ_TYPE_INFO(FileRequestResult, LmbrAWS_CodeGen_FileRequestResult_UUID)
+        AZ_CLASS_ALLOCATOR(FileRequestResult, AZ::SystemAllocator, 0)
+
+        
+        AZStd::string FileName;
+        
+        AZStd::string FileStatus;
+        
+        AZStd::string PresignedURL;
+        
+        AZStd::string Signature;
+        
+        AZStd::string Size;
+        
+        AZStd::string Hash;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResult& item);
+    
+    
+    
+    using FileRequestResultArray = AZStd::vector<FileRequestResult>;
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResultArray& list);
+    
+    
+    
+    struct FileRequestResults
+    {
+
+        AZ_TYPE_INFO(FileRequestResults, LmbrAWS_CodeGen_FileRequestResults_UUID)
+        AZ_CLASS_ALLOCATOR(FileRequestResults, AZ::SystemAllocator, 0)
+
+        
+        FileRequestResultArray ResultList;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResults& item);
     
     
 
@@ -289,110 +312,6 @@ namespace ServiceAPI {
     CLOUD_GEM_SERVICE(CloudGemDynamicContent);
 
 
-    
-    class PostClientContentRequest
-        : public CloudGemFramework::ServiceRequest
-    {
-    public:
-        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_POST, "/client/content");
-
-        struct Parameters
-        {
-            
-            RequestData request_content;
-            
-
-            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
-
-            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
-        };
-
-        
-        FileRequestResults result;
-        
-
-        Parameters parameters;
-    };
-
-
-    using PostClientContentRequestJob = CloudGemFramework::ServiceRequestJob<PostClientContentRequest>;
-    
-    class PostPortalContentRequest
-        : public CloudGemFramework::ServiceRequest
-    {
-    public:
-        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_POST, "/portal/content");
-
-        struct Parameters
-        {
-            
-            PortalFileRequestList request_content;
-            
-
-            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
-
-            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
-        };
-
-        
-        PortalFileListResults result;
-        
-
-        Parameters parameters;
-    };
-
-
-    using PostPortalContentRequestJob = CloudGemFramework::ServiceRequestJob<PostPortalContentRequest>;
-    
-    class DeletePortalContentRequest
-        : public CloudGemFramework::ServiceRequest
-    {
-    public:
-        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_DELETE, "/portal/content");
-
-        struct Parameters
-        {
-            
-
-            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
-
-            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
-        };
-
-        
-        PortalFileRequestList result;
-        
-
-        Parameters parameters;
-    };
-
-
-    using DeletePortalContentRequestJob = CloudGemFramework::ServiceRequestJob<DeletePortalContentRequest>;
-    
-    class GetPortalContentRequest
-        : public CloudGemFramework::ServiceRequest
-    {
-    public:
-        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_GET, "/portal/content");
-
-        struct Parameters
-        {
-            
-
-            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
-
-            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
-        };
-
-        
-        PortalFileListResults result;
-        
-
-        Parameters parameters;
-    };
-
-
-    using GetPortalContentRequestJob = CloudGemFramework::ServiceRequestJob<GetPortalContentRequest>;
     
     class GetServiceStatusRequest
         : public CloudGemFramework::ServiceRequest
@@ -418,33 +337,6 @@ namespace ServiceAPI {
 
 
     using GetServiceStatusRequestJob = CloudGemFramework::ServiceRequestJob<GetServiceStatusRequest>;
-    
-    class DeletePortalInfoRequest
-        : public CloudGemFramework::ServiceRequest
-    {
-    public:
-        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_DELETE, "/portal/info/{file_name}");
-
-        struct Parameters
-        {
-            
-            AZStd::string file_name;
-            
-
-            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
-
-            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
-        };
-
-        
-        PortalFileRequestList result;
-        
-
-        Parameters parameters;
-    };
-
-
-    using DeletePortalInfoRequestJob = CloudGemFramework::ServiceRequestJob<DeletePortalInfoRequest>;
     
     class GetPortalInfoRequest
         : public CloudGemFramework::ServiceRequest
@@ -473,6 +365,137 @@ namespace ServiceAPI {
 
     using GetPortalInfoRequestJob = CloudGemFramework::ServiceRequestJob<GetPortalInfoRequest>;
     
+    class DeletePortalInfoRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_DELETE, "/portal/info/{file_name}");
+
+        struct Parameters
+        {
+            
+            AZStd::string file_name;
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        PortalFileRequestList result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using DeletePortalInfoRequestJob = CloudGemFramework::ServiceRequestJob<DeletePortalInfoRequest>;
+    
+    class GetPortalContentRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_GET, "/portal/content");
+
+        struct Parameters
+        {
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        PortalFileListResults result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using GetPortalContentRequestJob = CloudGemFramework::ServiceRequestJob<GetPortalContentRequest>;
+    
+    class DeletePortalContentRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_DELETE, "/portal/content");
+
+        struct Parameters
+        {
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        PortalFileRequestList result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using DeletePortalContentRequestJob = CloudGemFramework::ServiceRequestJob<DeletePortalContentRequest>;
+    
+    class PostPortalContentRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_POST, "/portal/content");
+
+        struct Parameters
+        {
+            
+            PortalFileRequestList request_content;
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        PortalFileListResults result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using PostPortalContentRequestJob = CloudGemFramework::ServiceRequestJob<PostPortalContentRequest>;
+    
+    class PostClientContentRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDynamicContent, HttpMethod::HTTP_POST, "/client/content");
+
+        struct Parameters
+        {
+            
+            RequestData request_content;
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        FileRequestResults result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using PostClientContentRequestJob = CloudGemFramework::ServiceRequestJob<PostClientContentRequest>;
+    
 
 
     // Notification bus for this component
@@ -480,90 +503,6 @@ namespace ServiceAPI {
         : public AZ::ComponentBus
     {
     public:
-        
-        /**
-         * Sent when the request is a success
-         *
-         * Params:
-         *    jsonOutput:       The output receieved from the lambda call
-         *    request:          The AWS Lambda request object
-         */
-        
-        virtual void OnPostClientContentRequestSuccess(const FileRequestResults response);
-        
-
-        /**
-         * Sent when the request fails
-         *
-         * Params:
-         *    error:           The output receieved from the lambda call,
-         *                     could be function error or an issue with the request
-         *    request:         The AWS Lambda request object
-         */
-        virtual void OnPostClientContentRequestError(const CloudGemFramework::Error error);
-        
-        /**
-         * Sent when the request is a success
-         *
-         * Params:
-         *    jsonOutput:       The output receieved from the lambda call
-         *    request:          The AWS Lambda request object
-         */
-        
-        virtual void OnPostPortalContentRequestSuccess(const PortalFileListResults response);
-        
-
-        /**
-         * Sent when the request fails
-         *
-         * Params:
-         *    error:           The output receieved from the lambda call,
-         *                     could be function error or an issue with the request
-         *    request:         The AWS Lambda request object
-         */
-        virtual void OnPostPortalContentRequestError(const CloudGemFramework::Error error);
-        
-        /**
-         * Sent when the request is a success
-         *
-         * Params:
-         *    jsonOutput:       The output receieved from the lambda call
-         *    request:          The AWS Lambda request object
-         */
-        
-        virtual void OnDeletePortalContentRequestSuccess(const PortalFileRequestList response);
-        
-
-        /**
-         * Sent when the request fails
-         *
-         * Params:
-         *    error:           The output receieved from the lambda call,
-         *                     could be function error or an issue with the request
-         *    request:         The AWS Lambda request object
-         */
-        virtual void OnDeletePortalContentRequestError(const CloudGemFramework::Error error);
-        
-        /**
-         * Sent when the request is a success
-         *
-         * Params:
-         *    jsonOutput:       The output receieved from the lambda call
-         *    request:          The AWS Lambda request object
-         */
-        
-        virtual void OnGetPortalContentRequestSuccess(const PortalFileListResults response);
-        
-
-        /**
-         * Sent when the request fails
-         *
-         * Params:
-         *    error:           The output receieved from the lambda call,
-         *                     could be function error or an issue with the request
-         *    request:         The AWS Lambda request object
-         */
-        virtual void OnGetPortalContentRequestError(const CloudGemFramework::Error error);
         
         /**
          * Sent when the request is a success
@@ -594,6 +533,27 @@ namespace ServiceAPI {
          *    request:          The AWS Lambda request object
          */
         
+        virtual void OnGetPortalInfoRequestSuccess(const PortalFileInfo response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnGetPortalInfoRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
         virtual void OnDeletePortalInfoRequestSuccess(const PortalFileRequestList response);
         
 
@@ -615,7 +575,7 @@ namespace ServiceAPI {
          *    request:          The AWS Lambda request object
          */
         
-        virtual void OnGetPortalInfoRequestSuccess(const PortalFileInfo response);
+        virtual void OnGetPortalContentRequestSuccess(const PortalFileListResults response);
         
 
         /**
@@ -626,7 +586,70 @@ namespace ServiceAPI {
          *                     could be function error or an issue with the request
          *    request:         The AWS Lambda request object
          */
-        virtual void OnGetPortalInfoRequestError(const CloudGemFramework::Error error);
+        virtual void OnGetPortalContentRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnDeletePortalContentRequestSuccess(const PortalFileRequestList response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnDeletePortalContentRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnPostPortalContentRequestSuccess(const PortalFileListResults response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnPostPortalContentRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnPostClientContentRequestSuccess(const FileRequestResults response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnPostClientContentRequestError(const CloudGemFramework::Error error);
         
     };
 
@@ -638,48 +661,28 @@ namespace ServiceAPI {
     public:
         AZ_EBUS_BEHAVIOR_BINDER(BehaviorCloudGemDynamicContentNotificationBusHandler, LmbrAWS_CodeGen_NotificationBus1_UUID, AZ::SystemAllocator
         
-        , OnPostClientContentRequestSuccess
-        , OnPostClientContentRequestError
-        
-        , OnPostPortalContentRequestSuccess
-        , OnPostPortalContentRequestError
-        
-        , OnDeletePortalContentRequestSuccess
-        , OnDeletePortalContentRequestError
-        
-        , OnGetPortalContentRequestSuccess
-        , OnGetPortalContentRequestError
-        
         , OnGetServiceStatusRequestSuccess
         , OnGetServiceStatusRequestError
-        
-        , OnDeletePortalInfoRequestSuccess
-        , OnDeletePortalInfoRequestError
         
         , OnGetPortalInfoRequestSuccess
         , OnGetPortalInfoRequestError
         
+        , OnDeletePortalInfoRequestSuccess
+        , OnDeletePortalInfoRequestError
+        
+        , OnGetPortalContentRequestSuccess
+        , OnGetPortalContentRequestError
+        
+        , OnDeletePortalContentRequestSuccess
+        , OnDeletePortalContentRequestError
+        
+        , OnPostPortalContentRequestSuccess
+        , OnPostPortalContentRequestError
+        
+        , OnPostClientContentRequestSuccess
+        , OnPostClientContentRequestError
+        
         );
-        
-        
-        void OnPostClientContentRequestSuccess(const FileRequestResults response) override;
-        
-        void OnPostClientContentRequestError(const CloudGemFramework::Error error) override;
-        
-        
-        void OnPostPortalContentRequestSuccess(const PortalFileListResults response) override;
-        
-        void OnPostPortalContentRequestError(const CloudGemFramework::Error error) override;
-        
-        
-        void OnDeletePortalContentRequestSuccess(const PortalFileRequestList response) override;
-        
-        void OnDeletePortalContentRequestError(const CloudGemFramework::Error error) override;
-        
-        
-        void OnGetPortalContentRequestSuccess(const PortalFileListResults response) override;
-        
-        void OnGetPortalContentRequestError(const CloudGemFramework::Error error) override;
         
         
         void OnGetServiceStatusRequestSuccess(const ServiceStatus response) override;
@@ -687,14 +690,34 @@ namespace ServiceAPI {
         void OnGetServiceStatusRequestError(const CloudGemFramework::Error error) override;
         
         
+        void OnGetPortalInfoRequestSuccess(const PortalFileInfo response) override;
+        
+        void OnGetPortalInfoRequestError(const CloudGemFramework::Error error) override;
+        
+        
         void OnDeletePortalInfoRequestSuccess(const PortalFileRequestList response) override;
         
         void OnDeletePortalInfoRequestError(const CloudGemFramework::Error error) override;
         
         
-        void OnGetPortalInfoRequestSuccess(const PortalFileInfo response) override;
+        void OnGetPortalContentRequestSuccess(const PortalFileListResults response) override;
         
-        void OnGetPortalInfoRequestError(const CloudGemFramework::Error error) override;
+        void OnGetPortalContentRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnDeletePortalContentRequestSuccess(const PortalFileRequestList response) override;
+        
+        void OnDeletePortalContentRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnPostPortalContentRequestSuccess(const PortalFileListResults response) override;
+        
+        void OnPostPortalContentRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnPostClientContentRequestSuccess(const FileRequestResults response) override;
+        
+        void OnPostClientContentRequestError(const CloudGemFramework::Error error) override;
         
     };
     class CloudGemDynamicContentResponseHandler;
@@ -707,23 +730,11 @@ namespace ServiceAPI {
         virtual ~CloudGemDynamicContentRequests() {}
         
         
-        virtual void PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler);
-        
-        
-        
-        virtual void PostPortalContent(const PortalFileRequestList& request_content, CloudGemDynamicContentResponseHandler* responseHandler);
-        
-        
-        
-        virtual void DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler);
-        
-        
-        
-        virtual void GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler);
-        
-        
-        
         virtual void GetServiceStatus(CloudGemDynamicContentResponseHandler* responseHandler);
+        
+        
+        
+        virtual void GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler);
         
         
         
@@ -731,7 +742,19 @@ namespace ServiceAPI {
         
         
         
-        virtual void GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler);
+        virtual void GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler);
+        
+        
+        
+        virtual void DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler);
+        
+        
+        
+        virtual void PostPortalContent(const PortalFileRequestList& request_content, CloudGemDynamicContentResponseHandler* responseHandler);
+        
+        
+        
+        virtual void PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler);
         
         
     };
@@ -748,26 +771,26 @@ namespace ServiceAPI {
 
         virtual ~CloudGemDynamicContentResponseHandler() {}
         
-        virtual void HandlePostClientContentSuccess(PostClientContentRequestJob* job, AZ::EntityId entityId);
-        virtual void HandlePostClientContentError(PostClientContentRequestJob* job, AZ::EntityId entityId);
-        
-        virtual void HandlePostPortalContentSuccess(PostPortalContentRequestJob* job, AZ::EntityId entityId);
-        virtual void HandlePostPortalContentError(PostPortalContentRequestJob* job, AZ::EntityId entityId);
-        
-        virtual void HandleDeletePortalContentSuccess(DeletePortalContentRequestJob* job, AZ::EntityId entityId);
-        virtual void HandleDeletePortalContentError(DeletePortalContentRequestJob* job, AZ::EntityId entityId);
-        
-        virtual void HandleGetPortalContentSuccess(GetPortalContentRequestJob* job, AZ::EntityId entityId);
-        virtual void HandleGetPortalContentError(GetPortalContentRequestJob* job, AZ::EntityId entityId);
-        
         virtual void HandleGetServiceStatusSuccess(GetServiceStatusRequestJob* job, AZ::EntityId entityId);
         virtual void HandleGetServiceStatusError(GetServiceStatusRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandleGetPortalInfoSuccess(GetPortalInfoRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetPortalInfoError(GetPortalInfoRequestJob* job, AZ::EntityId entityId);
         
         virtual void HandleDeletePortalInfoSuccess(DeletePortalInfoRequestJob* job, AZ::EntityId entityId);
         virtual void HandleDeletePortalInfoError(DeletePortalInfoRequestJob* job, AZ::EntityId entityId);
         
-        virtual void HandleGetPortalInfoSuccess(GetPortalInfoRequestJob* job, AZ::EntityId entityId);
-        virtual void HandleGetPortalInfoError(GetPortalInfoRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetPortalContentSuccess(GetPortalContentRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetPortalContentError(GetPortalContentRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandleDeletePortalContentSuccess(DeletePortalContentRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleDeletePortalContentError(DeletePortalContentRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandlePostPortalContentSuccess(PostPortalContentRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePostPortalContentError(PostPortalContentRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandlePostClientContentSuccess(PostClientContentRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePostClientContentError(PostClientContentRequestJob* job, AZ::EntityId entityId);
         
     };
 
@@ -791,19 +814,11 @@ namespace ServiceAPI {
         {
             
             
-            
-            
-            RequestData::Reflect(reflection);
-            
-            
-            
-            FileRequestResult::Reflect(reflection);
+            ServiceStatus::Reflect(reflection);
             
             
             
-            
-            
-            FileRequestResults::Reflect(reflection);
+            PortalFileInfo::Reflect(reflection);
             
             
             
@@ -817,17 +832,29 @@ namespace ServiceAPI {
             
             
             
-            PortalFileInfo::Reflect(reflection);
-            
-            
-            
             
             
             PortalFileListResults::Reflect(reflection);
             
             
             
-            ServiceStatus::Reflect(reflection);
+            RequestDataItem::Reflect(reflection);
+            
+            
+            
+            
+            
+            RequestData::Reflect(reflection);
+            
+            
+            
+            FileRequestResult::Reflect(reflection);
+            
+            
+            
+            
+            
+            FileRequestResults::Reflect(reflection);
             
             
 
@@ -854,19 +881,19 @@ namespace ServiceAPI {
                 behaviorContext->EBus<CloudGemDynamicContentRequestBus>("CloudGemDynamicContentRequestBus")
                     // one of these for each function
                     
-                    ->Event("PostClientContent", &CloudGemDynamicContentRequestBus::Events::PostClientContent)
-                    
-                    ->Event("PostPortalContent", &CloudGemDynamicContentRequestBus::Events::PostPortalContent)
-                    
-                    ->Event("DeletePortalContent", &CloudGemDynamicContentRequestBus::Events::DeletePortalContent)
-                    
-                    ->Event("GetPortalContent", &CloudGemDynamicContentRequestBus::Events::GetPortalContent)
-                    
                     ->Event("GetServiceStatus", &CloudGemDynamicContentRequestBus::Events::GetServiceStatus)
+                    
+                    ->Event("GetPortalInfo", &CloudGemDynamicContentRequestBus::Events::GetPortalInfo)
                     
                     ->Event("DeletePortalInfo", &CloudGemDynamicContentRequestBus::Events::DeletePortalInfo)
                     
-                    ->Event("GetPortalInfo", &CloudGemDynamicContentRequestBus::Events::GetPortalInfo)
+                    ->Event("GetPortalContent", &CloudGemDynamicContentRequestBus::Events::GetPortalContent)
+                    
+                    ->Event("DeletePortalContent", &CloudGemDynamicContentRequestBus::Events::DeletePortalContent)
+                    
+                    ->Event("PostPortalContent", &CloudGemDynamicContentRequestBus::Events::PostPortalContent)
+                    
+                    ->Event("PostClientContent", &CloudGemDynamicContentRequestBus::Events::PostClientContent)
                     
                     ;
                 behaviorContext->EBus<CloudGemDynamicContentNotificationBus>("CloudGemDynamicContentNotificationBus")
@@ -878,23 +905,11 @@ namespace ServiceAPI {
         // Functions from the swagger definitions
         
         
-        void PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler) override;
-        
-        
-        
-        void PostPortalContent(const PortalFileRequestList& request_content, CloudGemDynamicContentResponseHandler* responseHandler) override;
-        
-        
-        
-        void DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler) override;
-        
-        
-        
-        void GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler) override;
-        
-        
-        
         void GetServiceStatus(CloudGemDynamicContentResponseHandler* responseHandler) override;
+        
+        
+        
+        void GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler) override;
         
         
         
@@ -902,7 +917,19 @@ namespace ServiceAPI {
         
         
         
-        void GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler) override;
+        void GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler) override;
+        
+        
+        
+        void DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler) override;
+        
+        
+        
+        void PostPortalContent(const PortalFileRequestList& request_content, CloudGemDynamicContentResponseHandler* responseHandler) override;
+        
+        
+        
+        void PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler) override;
         
         
     };

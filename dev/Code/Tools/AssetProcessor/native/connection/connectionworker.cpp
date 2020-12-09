@@ -48,12 +48,12 @@ ConnectionWorker::ConnectionWorker(qintptr /*socketDescriptor*/, QObject* parent
 #endif
 }
 
-
 ConnectionWorker::~ConnectionWorker()
 {
 #if defined(DEBUG_NEGOTATION)
     AZ_TracePrintf(AssetProcessor::DebugChannel, "ConnectionWorker::~:  %p", this);
 #endif
+    thread()->quit();
 }
 
 bool ConnectionWorker::ReadMessage(QTcpSocket& socket, AssetProcessor::Message& message)

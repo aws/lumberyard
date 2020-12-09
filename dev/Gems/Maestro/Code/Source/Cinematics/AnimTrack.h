@@ -167,6 +167,7 @@ public:
     virtual void GetValue(float time, Quat& value) { assert(0); };
     virtual void GetValue(float time, bool& value) { assert(0); };
     virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
+    virtual void GetValue(float time, AZ::Data::AssetId& value) { assert(0); }
 
     //////////////////////////////////////////////////////////////////////////
     // Set track value at specified time.
@@ -178,6 +179,7 @@ public:
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) { assert(0); };
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); };
     virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
+    virtual void SetValue(float time, const AZ::Data::AssetId& value, bool bDefault = false) { assert(0); }
 
     virtual void OffsetKeyPosition(const Vec3& value) { assert(0); };
     virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) { assert(0); };

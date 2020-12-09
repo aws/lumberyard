@@ -33,6 +33,8 @@ namespace AZ
                 AZ_RTTI(IMeshGroup, "{74D45E45-81EE-4AD4-83B5-F37EB98D847C}", ISceneNodeGroup);
 
                 ~IMeshGroup() override = default;
+                virtual void SetName(AZStd::string&& name) = 0;
+                virtual void OverrideId(const Uuid& id) = 0;
             };
         }  // DataTypes
     }  // SceneAPI

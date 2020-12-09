@@ -60,7 +60,7 @@ public: // types
 
 public: // member functions
 
-    explicit EditorWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = 0);
+    explicit EditorWindow(QWidget* parent = nullptr, Qt::WindowFlags flags = Qt::WindowFlags());
     virtual ~EditorWindow();
 
     // you are required to implement this to satisfy the unregister/registerclass requirements on "RegisterQtViewPane"

@@ -294,7 +294,7 @@ void CCurveEditorCtrl::paintEvent(QPaintEvent* event)
             {
                 if (m_labelsY.empty())
                 {
-                    str.sprintf("%0.2f", y);
+                    str.asprintf("%0.2f", y);
                 }
                 else
                 {
@@ -323,7 +323,7 @@ void CCurveEditorCtrl::paintEvent(QPaintEvent* event)
             {
                 if (m_labelsX.empty())
                 {
-                    str.sprintf("%0.2f", x);
+                    str.asprintf("%0.2f", x);
                 }
                 else
                 {
@@ -390,7 +390,7 @@ void CCurveEditorCtrl::paintEvent(QPaintEvent* event)
         const Vec2& crtPos = m_points[m_selectedIndices[0]].pos;
 
         dc.setBrush(CurveEditor::kColor_TextCrtPos);
-        str.sprintf("(%0.2f,%0.2f)", crtPos.x, crtPos.y);
+        str.asprintf("(%0.2f,%0.2f)", crtPos.x, crtPos.y);
         textSize = fntMetrics.tightBoundingRect(str);
         const int kOffsetFromPointer = 5;
         QPoint txtPos(m_lastMousePoint.x() + kOffsetFromPointer, m_lastMousePoint.y() + kOffsetFromPointer);

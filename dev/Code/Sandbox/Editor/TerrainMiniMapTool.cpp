@@ -97,6 +97,7 @@ public:
 
     void ReloadValues();
     void InitPanel();
+    void DisablePanel();
 
     ///////////////////////////////////////////////////////////////////////////
     // AzFramework::Terrain::TerrainDataNotificationBus::Handler START
@@ -148,6 +149,11 @@ CTerrainMiniMapPanel::CTerrainMiniMapPanel(class CTerrainMiniMapTool* tool, QWid
 }
 
 CTerrainMiniMapPanel::~CTerrainMiniMapPanel()
+{
+    DisablePanel();
+}
+
+void CTerrainMiniMapPanel::DisablePanel()
 {
     AzFramework::Terrain::TerrainDataNotificationBus::Handler::BusDisconnect();
 }
@@ -312,6 +318,8 @@ void CTerrainMiniMapTool::EndEditParams()
     if (s_panelId)
     {
         GetIEditor()->RemoveRollUpPage(ROLLUP_TERRAIN, s_panelId);
+        // The panel can exist for a few frames after we remove it so we need to make sure to disable it so it doesn't receive or process events
+        s_panel->DisablePanel();
         s_panelId = 0;
         s_panel = 0;
     }

@@ -43,6 +43,9 @@ namespace AzToolsFramework
             //! if no thumbnail matching found, one of ThumbnailProviders will attempt to create
             //! If no compatible providers found, MissingThumbnail will be returned
             virtual SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) = 0;
+
+            //! Return whether the thumbnail is loading.
+           virtual bool IsLoading(SharedThumbnailKey thumbnailKey, const char* contextName) = 0;
         };
 
         using ThumbnailerRequestBus = AZ::EBus<ThumbnailerRequests>;

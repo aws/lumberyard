@@ -510,7 +510,7 @@ namespace LUAEditor
     {
         if (event->modifiers() & Qt::ControlModifier)
         {
-            const int delta = event->delta();
+            const int delta = event->angleDelta().y();
             if (delta < 0)
             {
                 ZoomOut();
@@ -530,7 +530,7 @@ namespace LUAEditor
     {
         setFont(font);
         QFontMetrics metrics(font);
-        setTabStopWidth(metrics.width(' ') * tabSize);
+        setTabStopDistance(metrics.horizontalAdvance(' ') * tabSize);
 
         update();
     }

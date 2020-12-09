@@ -23,6 +23,7 @@
 
 class QColorEyeDropper;
 
+// LUMBERYARD_DEPRECATED(LY-121217)
 class EDITOR_QT_UI_API QCustomColorDialog
     : public QDialog
 {

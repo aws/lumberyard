@@ -41,6 +41,8 @@ namespace AzToolsFramework
 
         //! Create a new slice asset from the given Entity
         virtual bool CreateNewSlice(const AZ::EntityId& entityId, const char* assetPath) = 0;
+
+        virtual void ShowPushDialog(const EntityIdList& entityIds) = 0;
     };
 
     using SliceRequestBus = AZ::EBus<SliceRequests>;

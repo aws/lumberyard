@@ -131,6 +131,22 @@ namespace AZ
         typedef typename Bus::Context Context;
 
         /**
+        * Default MutexType used for connecting, disconnecting
+        * and dispatch when enabled
+        */
+        typedef typename Bus::MutexType MutexType;
+
+        /**
+        * Lock type used for connecting to the bus.  When NullMutex isn't used as the
+        * default mutex this will be a unique lock to allow for unlocking before connection
+        * dispatches which some specialized policies perform
+        *
+        * E.g RequestConnect -> LockMutex -> ConnectInternal ->
+        * UnlockMutex -> ExecuteHandlerMethod -> Return
+        */
+        typedef typename Bus::Context::ConnectLockGuard ConnectLockGuard;
+
+        /**
          * Connects a handler to an EBus address.
          * @param ptr[out] A pointer that will be bound to the EBus address that
          * the handler will be connected to.
@@ -138,7 +154,7 @@ namespace AZ
          * @param handler The handler to connect to the EBus address.
          * @param id The ID of the EBus address that the handler will be connected to.
          */
-        static void Connect(BusPtr& ptr, Context& context, HandlerNode& handler, const BusIdType& id = 0);
+        static void Connect(BusPtr& ptr, Context& context, HandlerNode& handler, ConnectLockGuard& contextLock, const BusIdType& id = 0);
 
         /**
          * Disconnects a handler from an EBus address.
@@ -239,28 +255,26 @@ namespace AZ
         void Execute()
         {
             AZ_Warning("System", m_isActive, "You are calling execute queued functions on a bus which has not activated its function queuing! Call YourBus::AllowFunctionQueuing(true)!");
-            while (true)
+
+            MessageQueueType activeQueue;
+
+            //////////////////////////////////////////////////////////////////////////
+            // Pop element from the queue.
             {
-                BusMessageCall invoke;
-
-                //////////////////////////////////////////////////////////////////////////
-                // Pop element from the queue.
+                AZStd::lock_guard<MutexType> lock(m_messagesMutex);
+                size_t numMessages = m_messages.size();
+                if (numMessages == 0)
                 {
-                    AZStd::lock_guard<MutexType> lock(m_messagesMutex);
-                    size_t numMessages = m_messages.size();
-                    if (numMessages == 0)
-                    {
-                        break;
-                    }
-                    AZStd::swap(invoke, m_messages.front());
-                    m_messages.pop();
-                    if (numMessages == 1)
-                    {
-                        m_messages.get_container().clear(); // If it was the last message, free all memory.
-                    }
+                    return;
                 }
-                //////////////////////////////////////////////////////////////////////////
+                AZStd::swap(activeQueue, m_messages);
+            }
+            //////////////////////////////////////////////////////////////////////////
 
+            while(!activeQueue.empty())
+            {
+                BusMessageCall invoke = activeQueue.front();
+                activeQueue.pop();
                 invoke();
             }
         }
@@ -299,7 +313,7 @@ namespace AZ
     // Implementations
     ////////////////////////////////////////////////////////////
     template <class Bus>
-    void EBusConnectionPolicy<Bus>::Connect(BusPtr&, Context&, HandlerNode&, const BusIdType&)
+    void EBusConnectionPolicy<Bus>::Connect(BusPtr&, Context&, HandlerNode&, ConnectLockGuard&, const BusIdType&)
     {
     }
 

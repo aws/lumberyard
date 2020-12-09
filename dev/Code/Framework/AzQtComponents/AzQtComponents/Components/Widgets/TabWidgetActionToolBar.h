@@ -19,11 +19,7 @@ class QToolButton;
 
 namespace AzQtComponents
 {
-    /**
-     * A widget displaying QAction objects using QPushButton widgets.
-     * It binds to the parent events and filter action events to create, change and remove
-     * buttons according when an action is added, changed or removed on the parent widget.
-     */
+    //! Displays custom buttons on the right side of the tab bar widget.
     class AZ_QT_COMPONENTS_API TabWidgetActionToolBar
         : public QWidget
     {
@@ -33,6 +29,7 @@ namespace AzQtComponents
         explicit TabWidgetActionToolBar(QWidget* parent = nullptr);
 
     signals:
+        //! Triggered when the actions are changed.
         void actionsChanged();
 
     protected:

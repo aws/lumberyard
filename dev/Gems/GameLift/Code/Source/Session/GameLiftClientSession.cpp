@@ -506,7 +506,8 @@ namespace GridMate
                 string ip = m_playerSession.GetIpAddress().c_str();
                 string resolvedIp = ip;
 #if AZ_TRAIT_IPV6_REQUIRED
-                AZ_Assert(SocketDriverCommon::IPv4ToIPv6(ip, resolvedIp), "Invalid IPv4 address!");
+                bool iPv4ToIPv6Ret = SocketDriverCommon::IPv4ToIPv6(ip, resolvedIp);
+                AZ_Assert(iPv4ToIPv6Ret, "Invalid IPv4 address!");
 #endif
                 if (!resolvedIp.empty())
                 {

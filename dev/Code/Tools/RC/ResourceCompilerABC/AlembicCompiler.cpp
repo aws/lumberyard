@@ -453,8 +453,7 @@ bool AlembicCompiler::Process()
 {
     const string& sourcePath = m_CC.GetSourcePath();
 
-    const bool bDialog = m_CC.config->GetAsBool("userdialog", false, false);
-    if (!bDialog && !m_CC.bForceRecompiling && UpToDateFileHelpers::FileExistsAndUpToDate(GetOutputPath(), sourcePath))
+    if (!m_CC.bForceRecompiling && UpToDateFileHelpers::FileExistsAndUpToDate(GetOutputPath(), sourcePath))
     {
         // The file is up-to-date
         m_CC.pRC->AddInputOutputFilePair(sourcePath, GetOutputPath());

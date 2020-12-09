@@ -47,7 +47,9 @@ namespace Rain
 
                 ->Event("Toggle", &RainComponentRequestBus::Events::Toggle)
 
+                ->Event("SetEnabled", &RainComponentRequestBus::Events::SetEnabled)
                 ->Event("IsEnabled", &RainComponentRequestBus::Events::IsEnabled)
+                ->VirtualProperty("Enabled", "IsEnabled", "SetEnabled")
 
                 ->Event("SetUseVisAreas", &RainComponentRequestBus::Events::SetUseVisAreas)
                 ->Event("GetUseVisAreas", &RainComponentRequestBus::Events::GetUseVisAreas)
@@ -99,7 +101,6 @@ namespace Rain
 
                 ->Event("SetRainOptions", &RainComponentRequestBus::Events::SetRainOptions)
                 ->Event("GetRainOptions", &RainComponentRequestBus::Events::GetRainOptions)
-                ->VirtualProperty("RainOptions", "GetRainOptions", "SetRainOptions")
 
                 ->Event("UpdateRain", &RainComponentRequestBus::Events::UpdateRain)
 
@@ -284,6 +285,12 @@ namespace Rain
     void RainComponent::Toggle()
     {
         m_enabled = !m_enabled;
+        UpdateRain();
+    }
+
+    void RainComponent::SetEnabled(bool enabled)
+    {
+        m_enabled = enabled;
         UpdateRain();
     }
 

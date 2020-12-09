@@ -22,9 +22,21 @@
 #include <QVector>
 #include <QVBoxLayout>
 
+#include <memory>
+
+class IQToolTip
+{
+public:
+    virtual void SetTitle(QString title) = 0;
+    virtual void SetContent(QString content) = 0;
+    virtual void AppendContent(QString content) = 0;
+    virtual void AddSpecialContent(QString type, QString dataStream) = 0;
+    virtual void UpdateOptionalData(QString optionalData) = 0;
+};
 
 class EDITOR_CORE_API QToolTipWidget
     : public QWidget
+    , public IQToolTip
 {
 public:
     enum class ArrowDirection
@@ -49,11 +61,11 @@ public:
     };
     QToolTipWidget(QWidget* parent);
     ~QToolTipWidget();
-    void SetTitle(QString title);
-    void SetContent(QString content);
-    void AppendContent(QString content);
-    void AddSpecialContent(QString type, QString dataStream);
-    void UpdateOptionalData(QString optionalData);
+    void SetTitle(QString title) override;
+    void SetContent(QString content) override;
+    void AppendContent(QString content) override;
+    void AddSpecialContent(QString type, QString dataStream) override;
+    void UpdateOptionalData(QString optionalData) override;
     void Display(QRect targetRect, ArrowDirection preferredArrowDir);
 
     //! Displays the tooltip on the given widget, only if the mouse is over it.
@@ -89,4 +101,47 @@ protected:
     const int m_shadowRadius = 5;
     bool m_includeTextureShortcuts; //added since Qt does not support modifier only shortcuts
 };
+
+// HACK: The EditorUI_QT classes all were keeping persistent references to QToolTipWidgets around
+// This led to many, many top-level widget creations, which led to many platform-side window allocations
+// which led to crashes in Qt5.15. As this is legacy code, this is a drop-in replacement that only
+// allocates the actual QToolTipWidget (and thus platform window) while the tooltip is visible
+class EDITOR_CORE_API QToolTipWrapper
+    : public QObject
+    , public IQToolTip
+{
+public:
+    QToolTipWrapper(QWidget* parent);
+
+    void SetTitle(QString title) override;
+    void SetContent(QString content) override;
+    void AppendContent(QString content) override;
+    void AddSpecialContent(QString type, QString dataStream) override;
+    void UpdateOptionalData(QString optionalData) override;
+
+    void Display(QRect targetRect, QToolTipWidget::ArrowDirection preferredArrowDir);
+    void TryDisplay(QPoint mousePos, const QWidget* widget, QToolTipWidget::ArrowDirection preferredArrowDir);
+    void TryDisplay(QPoint mousePos, const QRect& widget, QToolTipWidget::ArrowDirection preferredArrowDir);
+    void hide();
+    void show();
+    bool isVisible() const;
+    void update();
+    void repaint(){update();} //Things really shouldn't be calling repaint on these...
+
+    void Hide(){hide();}
+    void close(){hide();}
+
+private:
+    void ReplayContentOperations(QToolTipWidget* tooltipWidget);
+
+    QToolTipWidget* GetOrCreateToolTip();
+    void DestroyToolTip();
+
+    QPointer<QToolTipWidget> m_actualTooltip;
+
+    QString m_title;
+    QVector<QPair<QString, QString>> m_contentOperations;
+};
+
+
 #endif // QToolTipWidget_h__

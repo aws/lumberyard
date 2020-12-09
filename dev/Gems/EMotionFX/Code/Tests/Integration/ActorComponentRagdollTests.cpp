@@ -40,12 +40,15 @@ namespace EMotionFX
         }
 
         void EnableSimulation(const Physics::RagdollState& initialState) override {}
+        void EnableSimulationQueued(const Physics::RagdollState& initialState) override {}
         void DisableSimulation() override {}
+        void DisableSimulationQueued() override {}
 
         Physics::Ragdoll* GetRagdoll() override { return m_ragdoll; }
 
         void GetState(Physics::RagdollState& ragdollState) const override {}
         void SetState(const Physics::RagdollState& ragdollState) override {}
+        void SetStateQueued(const Physics::RagdollState& ragdollState) override {}
 
         void GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const override {}
         void SetNodeState(size_t nodeIndex, const Physics::RagdollNodeState& nodeState) override {}

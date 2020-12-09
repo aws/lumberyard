@@ -28,22 +28,30 @@
 using namespace AZ;
 using namespace AZ::Internal;
 
-
-void WorkQueue::LocalPushBack(Job* job)
+bool CompareJobPriorities(AZ::s8 value, const Job* job)
 {
-    LockGuard lock(m_lock);
-    m_queue.push_back(job);
+    return value > job->GetPriority();
 }
 
-Job* WorkQueue::LocalPopBack()
+void WorkQueue::LocalInsert(Job* job)
+{
+    LockGuard lock(m_lock);
+    const AZStd::deque<Job*>::const_iterator locationToinsert = AZStd::upper_bound(m_queue.begin(),
+        m_queue.end(),
+        job->GetPriority(),
+        CompareJobPriorities);
+    m_queue.insert(locationToinsert, job);
+}
+
+Job* WorkQueue::LocalPopFront()
 {
     LockGuard lock(m_lock);
 
     Job* result = nullptr;
     if (!m_queue.empty())
     {
-        result = m_queue.back();
-        m_queue.pop_back();
+        result = m_queue.front();
+        m_queue.pop_front();
     }
 
     return result;
@@ -119,11 +127,29 @@ void JobManagerWorkStealing::AddPendingJob(Job* job)
 #endif
 
     AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::JobManagerDetailed, job, "AzCore Job Queued Awaiting Execute");
-    const bool isThisManagersWorkerThread = info ? (info->m_owningManager == this && info->m_isWorker) : false;
-    if (isThisManagersWorkerThread)
+
+    if (job->IsCompletion())
     {
-        //current thread is a worker, push to the local queue
-        info->m_pendingJobs.LocalPushBack(job);
+        // This is a completion job.  Process it in place, as it only signals (no work).
+        AZ::Job* currentJob = nullptr;
+        if (info)
+        {
+            currentJob = info->m_currentJob;
+            info->m_currentJob = job;
+        }
+        Process(job);
+        if (info)
+        {
+            info->m_currentJob = currentJob;
+#ifdef JOBMANAGER_ENABLE_STATS
+            ++info->m_jobsDone;
+#endif
+        }
+    }
+    else if (info && info->m_isWorker && (info->m_owningManager == this))
+    {
+        //current thread is a worker, insert into the local queue based on the job's priority
+        info->m_pendingJobs.LocalInsert(job);
 #ifdef JOBMANAGER_ENABLE_STATS
         ++info->m_jobsForked;
 #endif
@@ -132,11 +158,15 @@ void JobManagerWorkStealing::AddPendingJob(Job* job)
     }
     else
     {
-        //current thread is not a worker thread, push to the global queue
+        //current thread is not a worker thread, insert into the global queue based on the job's priority
         if (IsAsynchronous())
         {
             AZStd::lock_guard<GlobalQueueMutexType> lock(m_globalJobQueueMutex);
-            m_globalJobQueue.push(job);
+            const GlobalJobQueue::const_iterator locationToinsert = AZStd::upper_bound(m_globalJobQueue.begin(),
+                m_globalJobQueue.end(),
+                job->GetPriority(),
+                CompareJobPriorities);
+            m_globalJobQueue.insert(locationToinsert, job);
 
             //checking/changing global queue empty state or worker availability must be done atomically while holding the global queue lock
             ActivateWorker();
@@ -145,7 +175,11 @@ void JobManagerWorkStealing::AddPendingJob(Job* job)
         {
             {
                 AZStd::lock_guard<GlobalQueueMutexType> lock(m_globalJobQueueMutex);
-                m_globalJobQueue.push(job);
+                const GlobalJobQueue::const_iterator locationToinsert = AZStd::upper_bound(m_globalJobQueue.begin(),
+                    m_globalJobQueue.end(),
+                    job->GetPriority(),
+                    CompareJobPriorities);
+                m_globalJobQueue.insert(locationToinsert, job);
             }
 
             //no workers, so must process the jobs right now
@@ -362,7 +396,7 @@ void JobManagerWorkStealing::ProcessJobsInternal(ThreadInfo* info, Job* suspende
                 if (!m_globalJobQueue.empty())
                 {
                     job = m_globalJobQueue.front();
-                    m_globalJobQueue.pop();
+                    m_globalJobQueue.pop_front();
 #ifdef JOBMANAGER_ENABLE_STATS
                     ++info->m_globalJobs;
 #endif
@@ -373,7 +407,7 @@ void JobManagerWorkStealing::ProcessJobsInternal(ThreadInfo* info, Job* suspende
         if (!job && pendingJobs)
         {
             //nothing on the global queue, try to pop from the local queue
-            job = pendingJobs->LocalPopBack();
+            job = pendingJobs->LocalPopFront();
         }
 
         bool isTerminated = false;
@@ -403,7 +437,7 @@ void JobManagerWorkStealing::ProcessJobsInternal(ThreadInfo* info, Job* suspende
                 //pop a new job from the local queue
                 if (pendingJobs)
                 {
-                    job = pendingJobs->LocalPopBack();
+                    job = pendingJobs->LocalPopFront();
                     if (job)
                     {
                         // not necessary, just an optimization - wakeup sleeping threads, there's work to be done
@@ -495,7 +529,7 @@ void JobManagerWorkStealing::ProcessJobsSynchronous(ThreadInfo* info, Job* suspe
     while (!m_globalJobQueue.empty())
     {
         Job* job = m_globalJobQueue.front();
-        m_globalJobQueue.pop();
+        m_globalJobQueue.pop_front();
 
         info->m_currentJob = job;
         Process(job);

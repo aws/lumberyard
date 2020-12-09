@@ -186,6 +186,8 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         virtual void RegisterVariableType(const ScriptCanvas::Data::Type& variabletype) = 0;
+
+        virtual bool IsValidVariableType(const ScriptCanvas::Data::Type& variableType) const = 0;
     };
 
     using VariablePaletteRequestBus = AZ::EBus<VariablePaletteRequests>;

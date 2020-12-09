@@ -48,7 +48,8 @@ namespace GraphCanvas
     private:
 
         void ClearAvailableItems();
-        void AddAvailableItem(const GraphCanvas::GraphCanvasTreeItem* item);
+        void AddAvailableItem(const GraphCanvas::GraphCanvasTreeItem* item, bool signalAdd);
+        void RemoveAvailableItem(const GraphCanvas::GraphCanvasTreeItem* item);
 
         AZStd::vector<const GraphCanvas::GraphCanvasTreeItem*> m_availableItems;
     };
@@ -75,7 +76,12 @@ namespace GraphCanvas
 
         QCompleter* GetCompleter();
 
+        void OnModelElementAdded(const GraphCanvasTreeItem* treeItem);
+        void OnModelElementAboutToBeRemoved(const GraphCanvasTreeItem* treeItem);
+
     private:
+
+        void ProcessItemForUnfilteredModel(const GraphCanvasTreeItem* currentItem, bool signalAdd = false);
 
         QCompleter m_unfilteredCompleter;
         QCompleter m_sourceSlotCompleter;

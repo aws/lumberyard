@@ -307,6 +307,10 @@ bool CVegetationTool::OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& po
 
     // Reset selected region.
     view->ResetSelectionRegion();
+
+    // reset aggregated manipulator offset
+    m_manipulatorOffset = ZERO;
+
     return true;
 }
 
@@ -1412,8 +1416,13 @@ void CVegetationTool::OnManipulatorDrag(CViewport* view, ITransformManipulator* 
     // get current axis constrains.
     if (editMode == eEditModeMove)
     {
+        // The offset value passed to this function is the value since the manipulator was started dragging (i.e. when LMB is pressed)
+        // but MoveSelected will apply this offset to the current position. We compute the desired offset based on previous applied manipulator drags
+        Vec3 offsetThisDrag = value - m_manipulatorOffset;
+        m_manipulatorOffset = value;
+
         GetIEditor()->RestoreUndo();
-        MoveSelected(view, value, true);
+        MoveSelected(view, offsetThisDrag, true);
     }
     if (editMode == eEditModeRotate)
     {

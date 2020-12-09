@@ -1087,7 +1087,7 @@ void GraphicsSettingsDialog::accept()
     int result = QMessageBox::Yes;
 
     //Pop out the warning dialog for customized setting
-    result = QMessageBox::question(this, "Warning", "A non-tested setting could potientially crash the game if the setting does not match the device. Are you sure you want to apply the customized setting?",
+    result = QMessageBox::question(this, "Warning", "A non-tested setting could potentially crash the game if the setting does not match the device. Are you sure you want to apply the customized setting?",
             QMessageBox::Yes, QMessageBox::No);
 
     //Save and exit

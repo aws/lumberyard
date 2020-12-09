@@ -86,8 +86,11 @@ namespace SurfaceData
                 ->Attribute(AZ::Script::Attributes::Category, "Vegetation")
                 ->Attribute(AZ::Script::Attributes::Module, "surface_data")
                 ->Method("SetTag", &SurfaceTag::SetTag)
+                ->Method("FromCRC", &SurfaceTag::FromCRC)
                 ->Method("Equal", &SurfaceTag::operator==)
                 ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                ->Method("ToString", &SurfaceTag::ToString)
+                ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
                 ;
         }
     }
@@ -154,6 +157,11 @@ namespace SurfaceData
 
         AZStd::sort(selectableTags.begin(), selectableTags.end(), [](const auto& lhs, const auto& rhs) {return lhs.second < rhs.second;});
         return selectableTags;
+    }
+
+    AZStd::string SurfaceTag::ToString() const
+    {
+        return AZStd::string::format("%s (0x%08x)", GetDisplayName().c_str(), m_surfaceTagCrc);
     }
 
     AZStd::string SurfaceTag::GetDisplayName() const

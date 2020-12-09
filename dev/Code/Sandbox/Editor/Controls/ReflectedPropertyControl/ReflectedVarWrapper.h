@@ -305,5 +305,16 @@ private:
     QScopedPointer<CReflectedVarMotion > m_reflectedVar;
 };
 
+class ReflectedVarAssetAdapter
+    : public ReflectedVarAdapter
+{
+public:
+    void SetVariable(IVariable* pVariable) override;
+    void SyncReflectedVarToIVar(IVariable* pVariable) override;
+    void SyncIVarToReflectedVar(IVariable* pVariable) override;
+    CReflectedVar* GetReflectedVar() override { return m_reflectedVar.data(); }
+private:
+    QScopedPointer<CReflectedVarAsset> m_reflectedVar;
+};
 
 #endif // CRYINCLUDE_EDITOR_UTILS_REFLECTEDVARWRAPPER_H

@@ -396,8 +396,12 @@ namespace LmbrCentral
             SRayHitInfo hi;
             hi.inReferencePoint = AZVec3ToLYVec3(rayStartLocal);
             hi.inRay = Ray(hi.inReferencePoint, AZVec3ToLYVec3(rayDistNormLocal));
+            hi.bInFirstHit = true;
+            hi.bGetVertColorAndTC = true;
+
             if (geometry->RayIntersection(hi))
             {
+                result.m_uv = LYVec2ToAZVec2(hi.vHitTC);
                 result.m_worldPosition = transform * LYVec3ToAZVec3(hi.vHitPos);
                 result.m_worldNormal = inverseTransform.GetTranspose3x3().Multiply3x3(LYVec3ToAZVec3(hi.vHitNormal)).GetNormalized();
                 result.m_distance = (result.m_worldPosition - ray.m_startWorldPosition).GetLength();
@@ -622,6 +626,106 @@ namespace LmbrCentral
     void EditorMeshComponent::SetVisibility(bool visible)
     {
         m_mesh.SetVisible(visible);
+    }
+
+    float EditorMeshComponent::GetOpacity()
+    {
+        return m_mesh.GetOpacity();
+    }
+
+    void EditorMeshComponent::SetOpacity(float opacity)
+    {
+        m_mesh.SetOpacity(opacity);
+    }
+
+    float EditorMeshComponent::GetMaxViewDistance()
+    {
+        return m_mesh.GetMaxViewDistance();
+    }
+
+    void EditorMeshComponent::SetMaxViewDistance(float maxViewDistance)
+    {
+        m_mesh.SetMaxViewDistance(maxViewDistance);
+    }
+
+    float EditorMeshComponent::GetViewDistanceMultiplier()
+    {
+        return m_mesh.GetViewDistanceMultiplier();
+    }
+
+    void EditorMeshComponent::SetViewDistanceMultiplier(float viewDistanceMultiplier)
+    {
+        m_mesh.SetViewDistanceMultiplier(viewDistanceMultiplier);
+    }
+
+    AZ::u32 EditorMeshComponent::GetLODDistanceRatio()
+    {
+        return m_mesh.GetLODDistanceRatio();
+    }
+
+    void EditorMeshComponent::SetLODDistanceRatio(AZ::u32 lodDistanceRatio)
+    {
+        m_mesh.SetLODDistanceRatio(lodDistanceRatio);
+    }
+
+    bool EditorMeshComponent::GetCastShadows()
+    {
+        return m_mesh.GetCastShadows();
+    }
+
+    void EditorMeshComponent::SetCastShadows(bool shouldCastShadows)
+    {
+        m_mesh.SetCastShadows(shouldCastShadows);
+    }
+
+    bool EditorMeshComponent::GetLODBasedOnBoundingBoxes()
+    {
+        return m_mesh.GetLODBasedOnBoundingBoxes();
+    }
+
+    void EditorMeshComponent::SetLODBasedOnBoundingBoxes(bool lodBasedOnBoundingBoxes)
+    {
+        m_mesh.SetLODBasedOnBoundingBoxes(lodBasedOnBoundingBoxes);
+    }
+
+    bool EditorMeshComponent::GetUseVisAreas()
+    {
+        return m_mesh.GetUseVisAreas();
+    }
+
+    void EditorMeshComponent::SetUseVisAreas(bool useVisAreas)
+    {
+        m_mesh.SetUseVisAreas(useVisAreas);
+    }
+
+    bool EditorMeshComponent::GetReceiveWind()
+    {
+        return m_mesh.GetReceiveWind();
+    }
+
+    void EditorMeshComponent::SetReceiveWind(bool shouldReceiveWind)
+    {
+        m_mesh.SetReceiveWind(shouldReceiveWind);
+    }
+
+    bool EditorMeshComponent::GetAcceptDecals()
+    {
+        return m_mesh.GetAcceptDecals();
+    }
+
+    void EditorMeshComponent::SetAcceptDecals(bool shouldAcceptDecals)
+    {
+        m_mesh.SetAcceptDecals(shouldAcceptDecals);
+    }
+
+    bool EditorMeshComponent::GetDeformableMesh()
+    {
+        return m_mesh.GetDeformableMesh();
+    }
+
+    void EditorMeshComponent::SetDeformableMesh(bool isDeformableMesh)
+    {
+        m_mesh.SetDeformableMesh(isDeformableMesh);
     }
 
     void EditorMeshComponent::AffectNavmesh()

@@ -80,7 +80,7 @@ namespace
             m_sourcePixmap->fill(Qt::transparent);
             
             QPainter painter(m_sourcePixmap);
-            painter.setRenderHint(QPainter::RenderHint::HighQualityAntialiasing);
+            painter.setRenderHint(QPainter::RenderHint::Antialiasing);
             
             QPen pen;
             pen.setWidth(4);
@@ -109,7 +109,7 @@ namespace
             m_sourcePixmap->fill(Qt::transparent);
 
             QPainter painter(m_sourcePixmap);
-            painter.setRenderHint(QPainter::RenderHint::HighQualityAntialiasing);
+            painter.setRenderHint(QPainter::RenderHint::Antialiasing);
 
             painter.fillRect(QRectF(0, 0, 8, 8), QColor(0, 0, 0));
             painter.fillRect(QRectF(8, 8, 8, 8), QColor(0, 0, 0));
@@ -133,7 +133,7 @@ namespace
             m_sourcePixmap->fill(Qt::transparent);
 
             QPainter painter(m_sourcePixmap);
-            painter.setRenderHint(QPainter::RenderHint::HighQualityAntialiasing);
+            painter.setRenderHint(QPainter::RenderHint::Antialiasing);
 
             painter.fillRect(QRectF(0, 0, 8, 8), QColor(0, 0, 0));
             painter.fillRect(QRectF(8, 8, 8, 8), QColor(1, 1, 1));
@@ -190,7 +190,7 @@ namespace GraphCanvas
         QRectF drawRect = QRectF(0, 0, pixmap->width(), pixmap->height());
 
         QPainter painter(pixmap);
-        painter.setRenderHint(QPainter::HighQualityAntialiasing);
+        painter.setRenderHint(QPainter::Antialiasing);
 
         for (int i = 0; i < m_paletteSwatches.size(); ++i)
         {
@@ -222,7 +222,7 @@ namespace GraphCanvas
         QRectF drawRect = QRectF(0, 0, pixmap->width(), pixmap->height());
 
         QPainter painter(pixmap);
-        painter.setRenderHint(QPainter::HighQualityAntialiasing);
+        painter.setRenderHint(QPainter::Antialiasing);
 
         for (int i=0; i < m_paletteSwatches.size(); ++i)
         {
@@ -254,7 +254,7 @@ namespace GraphCanvas
         QRectF drawRect = QRectF(0, 0, pixmap->width(), pixmap->height());
 
         QPainter painter(pixmap);
-        painter.setRenderHint(QPainter::HighQualityAntialiasing);
+        painter.setRenderHint(QPainter::Antialiasing);
 
         for (int i = 0; i < m_paletteSwatches.size(); ++i)
         {
@@ -727,13 +727,13 @@ namespace GraphCanvas
         m_pixmapCache[key] = pixmap;
     }
 
-    int StyleManager::FindLayerZValue(AZStd::string_view layer)
+    int StyleManager::FindLayer(AZStd::string_view layer)
     {
         AZ::Crc32 layerId(layer.data());
 
         Styling::StyleHelper* styleHelper = FindCreateStyleHelper(layer);
 
-        return styleHelper->GetAttribute(GraphCanvas::Styling::Attribute::ZValue, 0);
+        return styleHelper->GetAttribute(GraphCanvas::Styling::Attribute::Layer, 0);
     }
 
     int StyleManager::GetSteppedWidth(int gridSteps)

@@ -87,7 +87,7 @@ namespace LUAEditor
         Q_OBJECT;
     public:
         AZ_CLASS_ALLOCATOR(LUAEditorMainWindow,AZ::SystemAllocator,0);
-        LUAEditorMainWindow(QStandardItemModel* dataModel, bool connectedState, QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        LUAEditorMainWindow(QStandardItemModel* dataModel, bool connectedState, QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         virtual ~LUAEditorMainWindow(void);
 
         bool OnGetPermissionToShutDown();

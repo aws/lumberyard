@@ -74,7 +74,7 @@ namespace AzToolsFramework
         bool ConsumeViewportMouseRelease(const ViewportInteraction::MouseInteraction&);
         bool ConsumeViewportMouseWheel(const ViewportInteraction::MouseInteraction&);
 
-        /// ManipulatorManagerRequestBus::Handler
+        // ManipulatorManagerRequestBus ...
         void RegisterManipulator(AZStd::shared_ptr<BaseManipulator> manipulator) override;
         void UnregisterManipulator(BaseManipulator* manipulator) override;
         void DeleteManipulatorBound(Picking::RegisteredBoundId boundId) override;
@@ -82,6 +82,7 @@ namespace AzToolsFramework
         Picking::RegisteredBoundId UpdateBound(
             ManipulatorId manipulatorId, Picking::RegisteredBoundId boundId,
             const Picking::BoundRequestShapeBase& boundShapeData) override;
+        bool Interacting() const override { return m_activeManipulator != nullptr; }
      
         void DrawManipulators(
             AzFramework::DebugDisplayRequests& debugDisplay,
@@ -91,11 +92,11 @@ namespace AzToolsFramework
         // LUMBERYARD_DEPRECATED(LY-117150)
         /// Check if the modifier key state has changed - if so we may need to refresh
         /// certain manipulator bounds.
-        void CheckModifierKeysChanged(
-            ViewportInteraction::KeyboardModifiers keyboardModifiers,
-            const ViewportInteraction::MousePick& mousePick);
-
-        bool Interacting() const override { return m_activeManipulator != nullptr; }
+        AZ_DEPRECATED(
+            void CheckModifierKeysChanged(
+                ViewportInteraction::KeyboardModifiers keyboardModifiers,
+                const ViewportInteraction::MousePick& mousePick),
+            "CheckModifierKeysChanged is deprecated and will be removed in a future release");
 
     protected:
         /// @param rayOrigin The origin of the ray to test intersection with.

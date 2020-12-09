@@ -15,6 +15,7 @@
 
 #include <Editor/Objects/BaseObject.h>
 #include <Objects/EntityObject.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 #include <MathConversion.h>
 
@@ -28,8 +29,9 @@ namespace Rain
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorRainComponent, EditorComponentBase>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Enabled", &EditorRainComponent::m_enabled)
+                ->Field("RenderInEditMode", &EditorRainComponent::m_renderInEditMode)
                 ->Field("Options", &EditorRainComponent::m_rainOptions)
                 ;
 
@@ -44,6 +46,7 @@ namespace Rain
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/rain-component")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorRainComponent::m_enabled, "Enabled", "Sets if the rain is enabled")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorRainComponent::m_renderInEditMode, "Render In Edit Mode", "Should rain render in edit mode")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorRainComponent::m_rainOptions, "Options", "Options for rain simulation")
                     ;
 
@@ -104,6 +107,11 @@ namespace Rain
                     ;
             }
         }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<EditorRainComponent>()->RequestBus("RainComponentRequestBus");
+        }
     }
 
     void EditorRainComponent::Activate()
@@ -112,17 +120,27 @@ namespace Rain
 
         AzToolsFramework::Components::EditorComponentBase::Activate();
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+        Rain::RainComponentRequestBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
 
         m_currentWorldPos = AZ::Vector3::CreateZero();
         AZ::TransformBus::EventResult(m_currentWorldPos, GetEntityId(), &AZ::TransformBus::Events::GetWorldTranslation);
+
+        m_currentWorldTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(m_currentWorldTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        AZ::TickBus::Handler::BusConnect();
     }
 
     void EditorRainComponent::Deactivate()
     {
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
+        Rain::RainComponentRequestBus::Handler::BusDisconnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect(GetEntityId());
+
+        AZ::TickBus::Handler::BusDisconnect();
+        TurnOffRain();
+        Rain::RainComponentRequestBus::Broadcast(&Rain::RainComponentRequestBus::Events::UpdateRain);
 
         EditorComponentBase::Deactivate();
     }
@@ -130,6 +148,191 @@ namespace Rain
     void EditorRainComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_currentWorldPos = world.GetPosition();
+        m_currentWorldTransform = world;
+    }
+
+    void EditorRainComponent::Enable()
+    {
+        m_enabled = true;
+        UpdateRain();
+    }
+
+    void EditorRainComponent::Disable()
+    {
+        m_enabled = false;
+        UpdateRain();
+    }
+
+    void EditorRainComponent::Toggle()
+    {
+        m_enabled = !m_enabled;
+        UpdateRain();
+    }
+
+    bool EditorRainComponent::IsEnabled()
+    {
+        return m_enabled;
+    }
+
+    void EditorRainComponent::SetEnabled(bool enabled)
+    {
+        m_enabled = enabled;
+        UpdateRain();
+    }
+
+    bool EditorRainComponent::GetUseVisAreas()
+    {
+        return m_rainOptions.m_useVisAreas;
+    }
+
+    void EditorRainComponent::SetUseVisAreas(bool useVisAreas)
+    {
+        m_rainOptions.m_useVisAreas = useVisAreas;
+        UpdateRain();
+    }
+
+    bool EditorRainComponent::GetDisableOcclusion()
+    {
+        return m_rainOptions.m_disableOcclusion;
+    }
+
+    void EditorRainComponent::SetDisableOcclusion(bool disableOcclusion)
+    {
+        m_rainOptions.m_disableOcclusion = disableOcclusion;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetRadius()
+    {
+        return m_rainOptions.m_radius;
+    }
+
+    void EditorRainComponent::SetRadius(float radius)
+    {
+        m_rainOptions.m_radius = radius;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetAmount()
+    {
+        return m_rainOptions.m_amount;
+    }
+
+    void EditorRainComponent::SetAmount(float amount)
+    {
+        m_rainOptions.m_amount = amount;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetDiffuseDarkening()
+    {
+        return m_rainOptions.m_diffuseDarkening;
+    }
+
+    void EditorRainComponent::SetDiffuseDarkening(float diffuseDarkening)
+    {
+        m_rainOptions.m_diffuseDarkening = diffuseDarkening;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetRainDropsAmount()
+    {
+        return m_rainOptions.m_rainDropsAmount;
+    }
+
+    void EditorRainComponent::SetRainDropsAmount(float rainDropsAmount)
+    {
+        m_rainOptions.m_rainDropsAmount = rainDropsAmount;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetRainDropsSpeed()
+    {
+        return m_rainOptions.m_rainDropsSpeed;
+    }
+
+    void EditorRainComponent::SetRainDropsSpeed(float rainDropsSpeed)
+    {
+        m_rainOptions.m_rainDropsSpeed = rainDropsSpeed;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetRainDropsLighting()
+    {
+        return m_rainOptions.m_rainDropsLighting;
+    }
+
+    void EditorRainComponent::SetRainDropsLighting(float rainDropsLighting)
+    {
+        m_rainOptions.m_rainDropsLighting = rainDropsLighting;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetPuddlesAmount()
+    {
+        return m_rainOptions.m_puddlesAmount;
+    }
+
+    void EditorRainComponent::SetPuddlesAmount(float puddlesAmount)
+    {
+        m_rainOptions.m_puddlesAmount = puddlesAmount;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetPuddlesMaskAmount()
+    {
+        return m_rainOptions.m_puddlesMaskAmount;
+    }
+
+    void EditorRainComponent::SetPuddlesMaskAmount(float puddlesMaskAmount)
+    {
+        m_rainOptions.m_puddlesMaskAmount = puddlesMaskAmount;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetPuddlesRippleAmount()
+    {
+        return m_rainOptions.m_puddlesRippleAmount;
+    }
+
+    void EditorRainComponent::SetPuddlesRippleAmount(float puddlesRippleAmount)
+    {
+        m_rainOptions.m_puddlesRippleAmount = puddlesRippleAmount;
+        UpdateRain();
+    }
+
+    float EditorRainComponent::GetSplashesAmount()
+    {
+        return m_rainOptions.m_splashesAmount;
+    }
+
+    void EditorRainComponent::SetSplashesAmount(float splashesAmount)
+    {
+        m_rainOptions.m_splashesAmount = splashesAmount;
+        UpdateRain();
+    }
+
+    RainOptions EditorRainComponent::GetRainOptions()
+    {
+        return m_rainOptions;
+    }
+
+    void EditorRainComponent::SetRainOptions(RainOptions rainOptions)
+    {
+        m_rainOptions = rainOptions;
+        UpdateRain();
+    }
+
+    void EditorRainComponent::UpdateRain()
+    {
+        //If the rain component is disabled, set the rain amount to 0
+        if (!m_enabled)
+        {
+            TurnOffRain();
+            return;
+        }
+
+        UpdateRainSettings(m_currentWorldTransform, m_rainOptions);
     }
 
     void EditorRainComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -139,6 +342,17 @@ namespace Rain
             component->m_enabled = m_enabled;
             component->m_rainOptions = m_rainOptions;
         }
+    }
+
+    void EditorRainComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
+    {
+        if (!m_enabled || (!m_renderInEditMode && gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode()))
+        {
+            TurnOffRain();
+            return;
+        }
+
+        UpdateRainSettings(m_currentWorldTransform, m_rainOptions);
     }
 
     void EditorRainComponent::DisplayEntityViewport(

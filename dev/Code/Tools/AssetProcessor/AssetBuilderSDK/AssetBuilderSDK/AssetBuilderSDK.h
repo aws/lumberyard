@@ -133,6 +133,7 @@ namespace AssetBuilderSDK
     //! Initializes the serialization context with all the reflection information for AssetBuilderSDK structures
     //! Should be called on startup by standalone builders.  Builders run by AssetBuilder will have this set up already
     void InitializeSerializationContext();
+    void InitializeBehaviorContext();
 
     //! This method is used for logging builder related messages/error
     //! Do not use this inside ProcessJob, use AZ_TracePrintF instead.  This is only for general messages about your builder, not for job-specific messages
@@ -894,6 +895,16 @@ namespace AssetBuilderSDK
         AZStd::thread_id m_jobThreadId;
     };
 } // namespace AssetBuilderSDK
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(AssetBuilderSDK::AssetBuilderPattern::PatternType, "{8519E97D-1159-4CA4-A6DD-16043349B15A}");
+    AZ_TYPE_INFO_SPECIALIZE(AssetBuilderSDK::CreateJobsResultCode, "{D3F90549-CE6C-4155-BE19-33E4C05373DB}");
+    AZ_TYPE_INFO_SPECIALIZE(AssetBuilderSDK::JobDependencyType, "{854ADE4E-0C2F-43BC-B5F6-8D99C26A17DF}");
+    AZ_TYPE_INFO_SPECIALIZE(AssetBuilderSDK::ProcessJobResultCode, "{15797D63-4980-436A-9DE1-E0CCA9B5DB19}");
+    AZ_TYPE_INFO_SPECIALIZE(AssetBuilderSDK::ProductPathDependencyType, "{EF77742B-9627-4072-B431-396AA7183C80}");
+    AZ_TYPE_INFO_SPECIALIZE(AssetBuilderSDK::SourceFileDependency::SourceFileDependencyType, "{BE9C8805-DB17-4500-944A-EB33FD0BE347}");
+}
 
 //! This macro should be used by every AssetBuilder to register itself,
 //! AssetProcessor uses these exported function to identify whether a dll is an Asset Builder or not

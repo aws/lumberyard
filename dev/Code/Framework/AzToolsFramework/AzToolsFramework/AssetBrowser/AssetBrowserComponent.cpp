@@ -55,6 +55,9 @@ namespace AzToolsFramework
             , m_changeset(new AssetEntryChangeset(m_databaseConnection, m_rootEntry))
         {
             m_assetBrowserModel->SetRootEntry(m_rootEntry);
+            // Create a single StyledBusyLabel that entries can use while loading.
+            m_styledBusyLabel = new AzQtComponents::StyledBusyLabel();
+            m_styledBusyLabel->SetIsBusy(true);
         }
 
         AssetBrowserComponent::~AssetBrowserComponent() {}
@@ -160,6 +163,11 @@ namespace AzToolsFramework
             dialog.exec();
         }
 
+        AzQtComponents::StyledBusyLabel* AssetBrowserComponent::GetStyledBusyLabel()
+        {
+            return m_styledBusyLabel;
+        }
+
         void AssetBrowserComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
         {
             m_changeset->Synchronize();
@@ -196,67 +204,67 @@ namespace AzToolsFramework
             {
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".abc"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/ABC_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/ABC_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".bnk"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Audio_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Audio_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".cgf"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/LegacyMesh_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/LegacyMesh_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".font"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Font_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Font_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".fontfamily"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Font_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Font_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".i_caf"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/LegacyAnimation_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/LegacyAnimation_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".inputbindings"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/InputBindings_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/InputBindings_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".lua"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Lua_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Lua_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".mtl"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Material_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Material_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), AzToolsFramework::SliceUtilities::GetSliceFileExtension().c_str()))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Slice_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Slice_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".skin"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/LegacySkin_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/LegacySkin_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".ttf"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/Font_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/Font_16.svg");
                 }
 
                 if (AzFramework::StringFunc::Equal(extension.c_str(), ".xml"))
                 {
-                    return SourceFileDetails("Editor/Icons/AssetBrowser/XML_16.png");
+                    return SourceFileDetails("Editor/Icons/AssetBrowser/XML_16.svg");
                 }
 
 
@@ -268,7 +276,7 @@ namespace AzToolsFramework
                     const char* sourceFormatExtension = sourceFormats[sourceImageFormatIndex];
                     if (AzFramework::StringFunc::Equal(extension.c_str(), sourceFormatExtension))
                     {
-                        return SourceFileDetails("Editor/Icons/AssetBrowser/Image_16.png");
+                        return SourceFileDetails("Editor/Icons/AssetBrowser/Image_16.svg");
                     }
                 }
             }

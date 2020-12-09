@@ -19,6 +19,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -675,6 +676,29 @@ namespace EditorPythonBindings
             return true;
         }
 
+        AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> ConvertPythonElement(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pythonElement, const AZ::TypeId& elementTypeId, AZ::BehaviorValueParameter& outValue)
+        {
+            // first try to convert using the element's type ID
+            AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> result;
+            PythonMarshalTypeRequestBus::EventResult(result, elementTypeId, &PythonMarshalTypeRequestBus::Events::PythonToBehaviorValueParameter, traits, pythonElement, outValue);
+            if (result)
+            {
+                return result;
+            }
+            else if (pybind11::isinstance<EditorPythonBindings::PythonProxyObject>(pythonElement))
+            {
+                AZ::BehaviorValueParameter behaviorArg;
+                behaviorArg.m_traits = traits;
+                behaviorArg.m_typeId = elementTypeId;
+
+                if (Convert::PythonProxyObjectToBehaviorValueParameter(behaviorArg, pythonElement, outValue))
+                {
+                    return { { true, nullptr } };
+                }
+            }
+            return AZStd::nullopt;
+        }
+
         class TypeConverterDictionary final
             : public PythonMarshalComponent::TypeConverter
         {
@@ -1126,6 +1150,234 @@ namespace EditorPythonBindings
             }
         };
 
+        class TypeConverterSet
+            : public PythonMarshalComponent::TypeConverter
+        {
+        public:
+            AZ::GenericClassInfo* m_genericClassInfo = nullptr;
+            const AZ::SerializeContext::ClassData* m_classData = nullptr;
+            const AZ::TypeId m_typeId = {};
+
+            TypeConverterSet(AZ::GenericClassInfo* genericClassInfo, const AZ::SerializeContext::ClassData* classData, const AZ::TypeId& typeId)
+                : m_genericClassInfo(genericClassInfo)
+                , m_classData(classData)
+                , m_typeId(typeId)
+            {
+            }
+
+            // handle a vector of Behavior Class values
+            AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> PythonToBehaviorObjectSet(const AZ::TypeId& elementType, const AZ::BehaviorClass* behaviorClass, PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj, AZ::BehaviorValueParameter& outValue)
+            {
+                auto iteratorToInsertMethod = behaviorClass->m_methods.find("Insert");
+                if (iteratorToInsertMethod == behaviorClass->m_methods.end())
+                {
+                    AZ_Error("python", false, "The AZStd::unordered_set BehaviorClass reflection is missing the Insert method!");
+                    return AZStd::nullopt;
+                }
+
+                // prepare the AZStd::unordered_set container
+                AZ::BehaviorObject instance = behaviorClass->Create();
+                AZ::BehaviorMethod* insertMethod = iteratorToInsertMethod->second;
+
+                size_t itemCount = 0;
+                pybind11::set pySet(pyObj);
+                for (auto pyItem = pySet.begin(); pyItem != pySet.end(); ++pyItem)
+                {
+                    auto pyObjItem = pybind11::cast<pybind11::object>(*pyItem);
+                    AZ::BehaviorValueParameter elementValue;
+                    auto result = ConvertPythonElement(traits, pyObjItem, elementType, elementValue);
+                    if (result && result.value().first)
+                    {
+                        AZ::BehaviorValueParameter parameters[2];
+
+                        // set the 'this' pointer
+                        parameters[0].m_value = instance.m_address;
+                        parameters[0].m_typeId = instance.m_typeId;
+
+                        // set the value element
+                        parameters[1].Set(elementValue);
+
+                        insertMethod->Call(parameters, 2);
+                        ++itemCount;
+                    }
+                    else
+                    {
+                        AZ_Warning("python", false, "Convert to behavior element type %s for the unordered_set<> failed to marshal Python input %s",
+                            elementType.ToString<AZStd::string>().c_str(), Convert::GetPythonTypeName(pyObjItem).c_str());
+                        return AZStd::nullopt;
+                    }
+                }
+
+                AZ_Warning("python", itemCount == pySet.size(), "Python Set size:%d does not match the size of the unordered_set:%d", pySet.size(), itemCount);
+
+                outValue.m_value = instance.m_address;
+                outValue.m_typeId = instance.m_typeId;
+                outValue.m_traits = traits;
+
+                auto deleteVector = [behaviorClass, instance]()
+                {
+                    behaviorClass->Destroy(instance);
+                };
+                return { { true, deleteVector } };
+            }
+
+            AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> PythonToBehaviorSerializedSet(const AZ::TypeId& elementType, PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj, AZ::BehaviorValueParameter& outValue)
+            {
+                // fetch the container parts
+                const AZ::SerializeContext::ClassData* classData = m_genericClassInfo->GetClassData();
+                const AZ::SerializeContext::ClassElement* classElement = classData->m_container->GetElement(classData->m_container->GetDefaultElementNameCrc());
+
+                // prepare the AZStd::unordered_set container
+                AZ::SerializeContext* serializeContext = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+                AZStd::any* newVector = new AZStd::any(serializeContext->CreateAny(m_typeId));
+                void* instance = AZStd::any_cast<void>(newVector);
+
+                size_t itemCount = 0;
+                pybind11::set pySet(pyObj);
+                for (auto pyItem = pySet.begin(); pyItem != pySet.end(); ++pyItem)
+                {
+                    auto pyObjItem = pybind11::cast<pybind11::object>(*pyItem);
+                    AZ::BehaviorValueParameter elementValue;
+                    auto elementResult = ConvertPythonElement(traits, pyObjItem, elementType, elementValue);
+                    if (elementResult && elementResult.value().first)
+                    {
+                        void* destination = classData->m_container->ReserveElement(instance, classElement);
+                        AZ_Error("python", destination, "Could not allocate via ReserveElement()");
+                        if (destination)
+                        {
+                            serializeContext->CloneObjectInplace(destination, elementValue.m_value, elementType);
+                            ++itemCount;
+                        }
+                    }
+                    else
+                    {
+                        AZ_Warning("python", false, "Convert to serialized element type %s for the unordered_set<> failed to marshal Python input %s",
+                            elementType.ToString<AZStd::string>().c_str(), Convert::GetPythonTypeName(pyObjItem).c_str());
+                        return AZStd::nullopt;
+                    }
+                }
+
+                AZ_Warning("python", itemCount == pySet.size(), "Python list size:%d does not match the size of the unordered_set:%d", pySet.size(), itemCount);
+
+                outValue.m_name = classData->m_name;
+                outValue.m_value = instance;
+                outValue.m_typeId = m_typeId;
+                outValue.m_traits = traits;
+
+                auto deleteVector = [newVector]()
+                {
+                    delete newVector;
+                };
+                return { { true, deleteVector } };
+            }
+
+            AZStd::optional<PythonMarshalTypeRequests::BehaviorValueResult> PythonToBehaviorValueParameter(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj, AZ::BehaviorValueParameter& outValue) override
+            {
+                AZStd::vector<AZ::Uuid> typeList = AZ::Utils::GetContainedTypes(m_typeId);
+                if (typeList.empty())
+                {
+                    AZ_Warning("python", false, "The unordered_set container type for %s had no types; expected one type", m_classData->m_name);
+                    return AZStd::nullopt;
+                }
+                else if (PySet_Check(pyObj.ptr()) == false)
+                {
+                    AZ_Warning("python", false, "Expected a Python Set as input");
+                    return AZStd::nullopt;
+                }
+
+                const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(m_typeId);
+                if (behaviorClass)
+                {
+                    return PythonToBehaviorObjectSet(typeList[0], behaviorClass, traits, pyObj, outValue);
+                }
+                return PythonToBehaviorSerializedSet(typeList[0], traits, pyObj, outValue);
+            }
+
+            AZStd::optional<PythonMarshalTypeRequests::DeallocateFunction> HandleSetElement(AZ::BehaviorObject& behaviorObject, pybind11::set pythonSet)
+            {
+                AZ::BehaviorValueParameter source;
+                source.m_value = behaviorObject.m_address;
+                source.m_typeId = behaviorObject.m_typeId;
+
+                AZStd::optional<PythonMarshalTypeRequests::PythonValueResult> result;
+                PythonMarshalTypeRequestBus::EventResult(result, source.m_typeId, &PythonMarshalTypeRequestBus::Events::BehaviorValueParameterToPython, source);
+                if (result.has_value())
+                {
+                    pythonSet.add(result.value().first);
+                    return AZStd::move(result.value().second);
+                }
+
+                // return back a 'list of opaque Behavior Objects' back to the caller if not a 'simple' type
+                pybind11::object value = PythonProxyObjectManagement::CreatePythonProxyObject(behaviorObject.m_typeId, behaviorObject.m_address);
+                if (!value.is_none())
+                {
+                    pythonSet.add(value);
+                }
+                return AZStd::nullopt;
+            }
+
+            AZStd::optional<PythonMarshalTypeRequests::PythonValueResult> BehaviorValueParameterToPython(AZ::BehaviorValueParameter& behaviorValue) override
+            {
+                auto* container = m_classData->m_container;
+                AZ_Error("python", container, "Set container class data is missing");
+                if (container == nullptr)
+                {
+                    return AZStd::nullopt;
+                }
+
+                if (behaviorValue.ConvertTo(m_typeId))
+                {
+                    auto deleterList = AZStd::make_shared<AZStd::vector<PythonMarshalTypeRequests::DeallocateFunction>>();
+                    pybind11::set pythonSet;
+
+                    auto elementCallback = [this, pythonSet, deleterList](void* instancePointer, const auto& elementClassId, const auto* elementGenericClassData, const auto* genericClassElement)
+                    {
+                        AZ::BehaviorObject behaviorObject(instancePointer, elementClassId);
+                        auto result = this->HandleSetElement(behaviorObject, pythonSet);
+                        if (result)
+                        {
+                            if (result.value())
+                            {
+                                deleterList->emplace_back(AZStd::move(result.value()));
+                            }
+                        }
+                        return true;
+                    };
+                    container->EnumElements(behaviorValue.m_value, elementCallback);
+
+                    PythonMarshalTypeRequests::PythonValueResult result;
+                    result.first = pythonSet;
+
+                    if (!deleterList->empty())
+                    {
+                        AZStd::weak_ptr<AZStd::vector<PythonMarshalTypeRequests::DeallocateFunction>> cleanUp(deleterList);
+                        result.second = [cleanUp]()
+                        {
+                            auto cleanupList = cleanUp.lock();
+                            if (cleanupList)
+                            {
+                                AZStd::for_each(cleanupList->begin(), cleanupList->end(), [](auto& deleteMe) { deleteMe(); });
+                            }
+                        };
+                    }
+
+                    return result;
+                }
+                return AZStd::nullopt;
+            }
+
+            bool CanConvertPythonToBehaviorValue(PythonMarshalTypeRequests::BehaviorTraits traits, pybind11::object pyObj) const override
+            {
+                AZStd::vector<AZ::Uuid> typeList = AZ::Utils::GetContainedTypes(m_typeId);
+                if (typeList.empty())
+                {
+                    return false;
+                }
+                return (PySet_Check(pyObj.ptr()) != false);
+            }
+        };
+
         class TypeConverterPair final
             : public PythonMarshalComponent::TypeConverter
         {
@@ -1406,6 +1658,10 @@ namespace EditorPythonBindings
                 {
                     registrant(typeId, AZStd::make_unique<TypeConverterPair>(serializeContext->FindGenericClassInfo(typeId), classData, typeId));
                 }
+                else if (AZ::Utils::IsSetContainerType(typeId))
+                {
+                    registrant(typeId, AZStd::make_unique<TypeConverterSet>(serializeContext->FindGenericClassInfo(typeId), classData, typeId));
+                }
                 return true;
             };
 
@@ -1446,6 +1702,23 @@ namespace EditorPythonBindings
         return converterEntry->second->BehaviorValueParameterToPython(behaviorValue);
     }
 
+    //////////////////////////////////////////////////////////////////////////
+    // PythonMarshalComponent
+    void PythonMarshalComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(PythonMarshalingService);
+    }
+
+    void PythonMarshalComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(PythonMarshalingService);
+    }
+
+    void PythonMarshalComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(PythonEmbeddedService);
+    }
+
     bool PythonMarshalComponent::CanConvertPythonToBehaviorValue(BehaviorTraits traits, pybind11::object pyObj) const
     {
         const auto* typeId = PythonMarshalTypeRequestBus::GetCurrentBusId();
@@ -1473,7 +1746,9 @@ namespace EditorPythonBindings
         if (auto&& serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<PythonMarshalComponent, AZ::Component>()
-                ->Version(0);
+                ->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>{AZ_CRC_CE("AssetBuilder")})
+                ;
         }
     }
 

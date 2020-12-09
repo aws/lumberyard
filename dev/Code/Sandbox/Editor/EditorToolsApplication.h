@@ -49,6 +49,9 @@ namespace EditorInternal
         // From AzToolsFramework::ToolsApplication
         void CreateReflectionManager() override;
         void Reflect(AZ::ReflectContext* context) override;
+        void CalculateAppRoot(const char* appRootOverride = nullptr) override;
+
+        void SetupAliasConfigStorage(SSystemInitParams initParams);
 
     protected:
         // From EditorToolsApplicationRequests

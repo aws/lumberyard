@@ -13,12 +13,16 @@
 #pragma once
 
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/std/function/function_template.h>
 
-#include <System/DataTypes.h>
+#include <Utils/AssetHelper.h>
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace NvCloth
 {
@@ -26,12 +30,13 @@ namespace NvCloth
     struct ClothConfiguration
     {
         AZ_CLASS_ALLOCATOR(ClothConfiguration, AZ::SystemAllocator, 0);
-        AZ_RTTI(ClothConfiguration, "{96E2AF5E-3C98-4872-8F90-F56302A44F2A}");
+        AZ_TYPE_INFO(ClothConfiguration, "{96E2AF5E-3C98-4872-8F90-F56302A44F2A}");
 
         static void Reflect(AZ::ReflectContext* context);
 
         virtual ~ClothConfiguration() = default;
 
+        bool IsUsingWorldBusGravity() const { return !m_useCustomGravity; }
         bool IsUsingWindBus() const { return !m_useCustomWindVelocity; }
 
         AZStd::string m_meshNode;
@@ -42,13 +47,19 @@ namespace NvCloth
         AZ::Vector3 m_customGravity = AZ::Vector3(0.0f, 0.0f, -9.81f);
         float m_gravityScale = 1.0f;
 
-        // Blend factor of cloth simulation with authored skinning animation
-        // 0 - Cloth mesh fully simulated
-        // 1 - Cloth mesh fully animated
-        float m_animationBlendFactor = 0.0f;
-
         // Global stiffness frequency
         float m_stiffnessFrequency = 10.0f;
+
+        // Motion constraints Parameters
+        float m_motionConstraintsMaxDistance = 10.0f;
+        float m_motionConstraintsScale = 1.0f;
+        float m_motionConstraintsBias = 0.0f;
+        float m_motionConstraintsStiffness = 1.0f;
+
+        // Backstop Parameters
+        float m_backstopRadius = 0.1f;
+        float m_backstopBackOffset = 0.0f;
+        float m_backstopFrontOffset = 0.0f;
 
         // Damping parameters
         AZ::Vector3 m_damping = AZ::Vector3(0.2f, 0.2f, 0.2f);
@@ -71,6 +82,7 @@ namespace NvCloth
         float m_collisionFriction = 0.0f;
         float m_collisionMassScale = 0.0f;
         bool m_continuousCollisionDetection = false;
+        bool m_collisionAffectsStaticParticles = false;
 
         // Self Collision parameters
         float m_selfCollisionDistance = 0.0f;
@@ -83,6 +95,7 @@ namespace NvCloth
         // Quality parameters
         float m_solverFrequency = 300.0f;
         uint32_t m_accelerationFilterIterations = 30;
+        bool m_removeStaticTriangles = true;
 
         // Fabric phases parameters
         float m_horizontalStiffness = 1.0f;
@@ -107,29 +120,14 @@ namespace NvCloth
         // it's unnecessary for the clients using ClothConfiguration.
         friend class EditorClothComponent;
 
-        // Callback function set by the EditorClothComponent to gather the list of mesh nodes,
-        // showed to the user in a combo box for the m_meshNode member.
+        // Callback functions set by the EditorClothComponent.
         AZStd::function<MeshNodeList()> m_populateMeshNodeListCallback;
-
-        // Used in the StringList attribute of the combobox for m_meshNode member.
-        // The StringList attribute doesn't work with the AZStd::function directly, so
-        // this function will just call m_populateMeshNodeListCallback if it has been set.
-        MeshNodeList PopulateMeshNodeList();
-
-        // Callback function set by the EditorClothComponent to show animation blend parameter.
-        AZStd::function<bool()> m_showAnimationBlendFactorCallback;
-
-        // Used in the Visible attribute of m_animationBlendFactor member.
-        // The Visible attribute doesn't work with the AZStd::function directly, so
-        // this function will just call m_showAnimationBlendFactorCallback if it has been set.
-        bool ShowAnimationBlendFactor();
-
-        // Callback function set by the EditorClothComponent to provide the entity id to the combobox widget.
+        AZStd::function<bool()> m_hasBackstopDataCallback;
         AZStd::function<AZ::EntityId()> m_getEntityIdCallback;
 
-        // Used in the EntityId attribute of the combobox for m_meshNode member.
-        // The EntityId attribute doesn't work with the AZStd::function directly, so
-        // this function will just call m_getEntityIdCallback if it has been set.
+        // Used by data elements in EditorClothComponent edit context.
+        MeshNodeList PopulateMeshNodeList();
+        bool HasBackstopData();
         AZ::EntityId GetEntityId();
     };
 } // namespace NvCloth

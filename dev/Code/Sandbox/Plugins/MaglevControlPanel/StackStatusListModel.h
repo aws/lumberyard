@@ -71,7 +71,7 @@ protected:
     bool m_isReady {
         false
     };
-    QTime m_lastRefreshTime;
+    QElapsedTimer m_lastRefreshTime;
 
     bool IsRefreshTime()
     {
@@ -127,7 +127,7 @@ protected:
         {
             row[BaseType::PendingActionColumn]->setText(AWSUtil::MakePrettyPendingActionText(pendingAction));
             row[BaseType::PendingActionColumn]->setData(AWSUtil::MakePrettyPendingReasonTooltip(map["PendingReason"].toString()), Qt::ToolTipRole);
-            row[BaseType::PendingActionColumn]->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::TextColorRole);
+            row[BaseType::PendingActionColumn]->setData(AWSUtil::MakePrettyPendingActionColor(pendingAction), Qt::ForegroundRole);
         }
         
     }
@@ -147,9 +147,9 @@ protected:
     {
         auto compare = [column](const QVariantMap& v1, const QVariantMap& v2)
             {
-                return v1[column] < v2[column];
+                return v1[column].toString() < v2[column].toString();
             };
 
-        qSort(list.begin(), list.end(), compare);
+        std::sort(list.begin(), list.end(), compare);
     }
 };

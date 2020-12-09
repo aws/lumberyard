@@ -23,14 +23,6 @@ AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    DHPropertyDoubleSlider::DHPropertyDoubleSlider(QWidget* pParent)
-        : AzQtComponents::SliderDoubleCombo(pParent)
-    {
-
-    }
-    AZ_POP_DISABLE_WARNING
-
     PropertyDoubleSliderCtrl::PropertyDoubleSliderCtrl(QWidget* pParent)
         : QWidget(pParent)
     {

@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "SecureWebsocketClient_Platform.h",
+            "WebsocketClient_Platform.h",
+            "../Common/Unimplemented/SecureWebsocketClient_Unimplemented.h",
+            "../Common/Unimplemented/SecureWebsocketClient_Unimplemented.cpp",
+            "../Common/Unimplemented/WebsocketClient_Unimplemented.h",
+            "../Common/Unimplemented/WebsocketClient_Unimplemented.cpp"
+        ]
+    }
+}

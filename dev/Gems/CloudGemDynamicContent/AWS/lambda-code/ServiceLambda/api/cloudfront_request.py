@@ -61,7 +61,7 @@ def _get_cdn_data():
     return _get_cdn_data.key_data
 
 # Algorithm based on https://boto3.readthedocs.io/en/latest/reference/services/cloudfront.html#generate-a-signed-url-for-amazon-cloudfront
-def get_cdn_presigned(file_name):
+def get_cdn_presigned(file_name, version_id=None):
     print('Getting presigned url for {} from CDN - {}'.format(file_name, cdn_name))
     cdn_key_name, cdn_key_data = _get_cdn_data()
     print('Got key name {} data {}'.format(cdn_key_name, cdn_key_data))
@@ -87,7 +87,9 @@ def get_cdn_presigned(file_name):
 
     cloudfront_signer = CloudFrontSigner(cdn_key_name, _rsa_signer)
 
-    url = 'https://' + get_cdn_presigned.cdn_domain + '/' + file_name
+    url = 'https://' + get_cdn_presigned.cdn_domain + '/' + file_name 
+    if version_id:
+        url += '?versionId=' + version_id
     print('Retrieving signed url for {}'.format(url))
 
     signed_url = cloudfront_signer.generate_presigned_url(url, date_less_than=expire_time)

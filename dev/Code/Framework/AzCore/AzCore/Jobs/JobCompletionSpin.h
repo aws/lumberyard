@@ -33,7 +33,7 @@ namespace AZ
         AZ_CLASS_ALLOCATOR(JobCompletionSpin, ThreadPoolAllocator, 0)
 
         JobCompletionSpin(JobContext* context = nullptr)
-            : Job(false, context)
+            : Job(false, context, true)
             , m_mutex(true) //locked initially
         {
         }

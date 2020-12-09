@@ -18,6 +18,7 @@
 
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
+#include <GraphCanvas/Components/Nodes/Group/NodeGroupBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/Nodes/NodeConfiguration.h>
 #include <GraphCanvas/Components/SceneBus.h>
@@ -37,6 +38,7 @@ namespace GraphCanvas
         , public SlotNotificationBus::MultiHandler
         , public ComponentSaveDataInterface<NodeSaveData>
         , public ConnectionNotificationBus::Handler
+        , public GroupableSceneMemberRequestBus::Handler
     {
         friend class NodeSerializer;
     public:
@@ -93,10 +95,7 @@ namespace GraphCanvas
         void SignalMemberSetupComplete() override;
 
         AZ::EntityId GetScene() const override;
-
-        bool LockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
-        void UnlockForExternalMovement(const AZ::EntityId& sceneMemberId) override;
-        ////
+        ////        
 
         // SceneMemberNotificationsBus
         void OnSceneReady() override;
@@ -149,6 +148,15 @@ namespace GraphCanvas
         void OnMoveFinalized(bool isValidConnection) override;
         ////
 
+        // GroupableSceneMemberRequests
+        bool IsGrouped() const override;
+        const AZ::EntityId& GetGroupId() const override;
+
+        void RegisterToGroup(const AZ::EntityId& groupId) override;
+        void UnregisterFromGroup(const AZ::EntityId& groupId) override;
+        void RemoveFromGroup() override;
+        ////
+
     protected:
 
         void HideUnusedSlotsImpl();
@@ -164,7 +172,7 @@ namespace GraphCanvas
         NodeConfiguration m_configuration;
 
         AZ::EntityId m_wrappingNode;
-        AZ::EntityId m_lockingSceneMember;
+        AZ::EntityId m_owningGroupId;
 
         //! Stores custom user data for this node
         AZStd::any m_userData;

@@ -10,16 +10,18 @@
 #
 
 from __future__ import print_function
-import json
-import boto3
-import CloudCanvas
-import os
-from cgf_utils import custom_resource_utils
-from botocore.exceptions import ClientError
-import fleet_status
-import datetime
 
+import datetime
+import json
+import os
+
+import boto3
+import fleet_status
 from botocore.client import Config
+from botocore.exceptions import ClientError
+
+import CloudCanvas
+from cgf_utils import custom_resource_utils
 
 FLEET_CONFIGURATION_KEY = 'fleet_configuration.json'
 SUCCEED_STATUS = 'SUCCEED'
@@ -42,17 +44,21 @@ def post_fleet_config(config):
 
     return SUCCEED_STATUS
 
+
 def get_fleet_config():
     client = boto3.client('s3', config=Config(signature_version='s3v4'))
+    bucket = ""
+    body = {}
 
-    try:       
-        response = client.get_object(Bucket=CloudCanvas.get_setting("computefarm"), Key=FLEET_CONFIGURATION_KEY)
+    try:
+        bucket = CloudCanvas.get_setting("computefarm")
+        response = client.get_object(Bucket=bucket, Key=FLEET_CONFIGURATION_KEY)
         body = json.loads(response["Body"].read())
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDenied':
-            print('Error retrieving Fleet Configuration: {}'.format(e))
+            print(f'Error retrieving Fleet Configuration for {bucket}:{FLEET_CONFIGURATION_KEY}. {e}')
             return {}
-    
+
     if 'instanceNum' in body:
         # Attempt to load the current number of instances from the autoscaling group; leave it as-is if unavailable
         try:
@@ -63,20 +69,23 @@ def get_fleet_config():
 
     return body
 
+
 def get_amis():
     client = boto3.client('ec2')
     response = client.describe_images(Owners=['self'])
     result = response['Images']
     result.sort(key=lambda x: x['Name'])
-    
+
     return result
-    
+
+
 def get_key_pairs():
     client = boto3.client('ec2')
     response = client.describe_key_pairs()
     result = [item['KeyName'] for item in response['KeyPairs']]
-    
+
     return result
+
 
 def create_launch_configuration(config):
     startup_script = INSTANCE_STARTUP_SCRIPT % {
@@ -101,16 +110,18 @@ def create_launch_configuration(config):
             'AssociatePublicIpAddress': True,
             'UserData': startup_script
         }
-        
+
         if len(config['keyPair']):
             params['KeyName'] = config['keyPair']
-        
+
         __get_autoscaling_client().create_launch_configuration(**params)
-        
+
     except ClientError as e:
+        print(f'Error creating launch_configuration. {e}')
         return e.response['Error']['Code']
 
     return SUCCEED_STATUS
+
 
 def create_or_update_autoscaling_group(config):
     cur_config = get_fleet_config()
@@ -119,54 +130,60 @@ def create_or_update_autoscaling_group(config):
     try:
         if create_autoscaling_group:
             __get_autoscaling_client().create_auto_scaling_group(
-                AutoScalingGroupName = config['autoScalingGroupName'],
-                LaunchConfigurationName = config['launchConfigurationName'],
-                MinSize = config['minSize'],
-                MaxSize = config['maxSize'],
-                VPCZoneIdentifier = ",".join([CloudCanvas.get_setting("EC2Subnet" + x) for x in ("A", "B", "C")])
-                )
+                AutoScalingGroupName=config['autoScalingGroupName'],
+                LaunchConfigurationName=config['launchConfigurationName'],
+                MinSize=config['minSize'],
+                MaxSize=config['maxSize'],
+                VPCZoneIdentifier=",".join([CloudCanvas.get_setting("EC2Subnet" + x) for x in ("A", "B", "C")])
+            )
             config['updateTime'] = '{}'.format(datetime.datetime.now(fleet_status.utcinfo()))
         else:
             __get_autoscaling_client().update_auto_scaling_group(
-                AutoScalingGroupName = config['autoScalingGroupName'],
-                LaunchConfigurationName = config['launchConfigurationName'],
-                MinSize = config['minSize'],
-                MaxSize = config['maxSize'],
-                VPCZoneIdentifier = ",".join([CloudCanvas.get_setting("EC2Subnet" + x) for x in ("A", "B", "C")])
-                )
+                AutoScalingGroupName=config['autoScalingGroupName'],
+                LaunchConfigurationName=config['launchConfigurationName'],
+                MinSize=config['minSize'],
+                MaxSize=config['maxSize'],
+                VPCZoneIdentifier=",".join([CloudCanvas.get_setting("EC2Subnet" + x) for x in ("A", "B", "C")])
+            )
             if config['minSize'] != cur_config.get('instanceNum'):
                 config['updateTime'] = '{}'.format(datetime.datetime.now(fleet_status.utcinfo()))
     except ClientError as e:
+        print(f'Error creating or updating autoscaling group. {e}')
         return e.response['Error']['Code']
 
     post_fleet_config(config)
     return SUCCEED_STATUS
+
 
 def delete_autoscaling_group(name):
     try:
         __get_autoscaling_client().delete_auto_scaling_group(
             AutoScalingGroupName=name,
             ForceDelete=True
-            )
+        )
 
         client = boto3.client('s3', config=Config(signature_version='s3v4'))
         client.delete_object(Bucket=CloudCanvas.get_setting("computefarm"), Key=FLEET_CONFIGURATION_KEY)
     except ClientError as e:
+        print(f'Error deleting autoscaling group. {e}')
         return e.response['Error']['Code']
 
     return SUCCEED_STATUS
+
 
 def delete_launch_configuration(name):
     try:
         response = __get_autoscaling_client().delete_launch_configuration(
             LaunchConfigurationName=name
-            )
+        )
     except ClientError as e:
+        print(f'Error deleting launch_configuration. {e}')
         return e.response['Error']['Code']
 
     return SUCCEED_STATUS
 
+
 def __get_autoscaling_client():
-    if not hasattr(__get_autoscaling_client,'autoscaling_group'):
+    if not hasattr(__get_autoscaling_client, 'autoscaling_group'):
         __get_autoscaling_client.autoscaling_group = boto3.client('autoscaling')
     return __get_autoscaling_client.autoscaling_group

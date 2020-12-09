@@ -28,7 +28,7 @@ namespace AZ
         AZ_CLASS_ALLOCATOR(JobCompletion, ThreadPoolAllocator, 0)
 
         JobCompletion(JobContext* context = nullptr)
-            : Job(false, context)
+            : Job(false, context, true)
         {
         }
 
@@ -64,7 +64,6 @@ namespace AZ
         }
 
         AZStd::semaphore m_semaphore;
-        volatile bool m_isWaiting;
     };
 }
 

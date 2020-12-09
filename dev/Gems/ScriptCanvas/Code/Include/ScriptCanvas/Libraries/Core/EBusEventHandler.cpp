@@ -220,6 +220,9 @@ namespace ScriptCanvas
                 // Set the auto connect value to the serialized value to give the setter 
                 // the chance to overrule it if the node's Connect slot is manually connected.
                 SetAutoConnectToGraphOwner(m_autoConnectToGraphOwner);
+
+                ExecutionTimingNotificationsBus::EventResult(m_latentStartTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStartTimerEvent);
+                ExecutionTimingNotificationsBus::EventResult(m_latentStopTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStopTimerEvent);
             }
 
             void EBusEventHandler::OnPostActivate()
@@ -704,7 +707,16 @@ namespace ScriptCanvas
                 }
 
                 // now, this should pass execution off to the nodes that will push their output into this result input
+                size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+                if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+                {
+                    m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+                }
                 SignalOutput(ebusEventEntry.m_eventSlotId, ExecuteMode::UntilNodeIsFoundInStack);
+                if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+                {
+                    m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+                }
 
                 // route executed nodes output to my input, and my input to the result
                 if (ebusEventEntry.IsExpectingResult())

@@ -15,6 +15,7 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/std/parallel/thread.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/Asset/AssetBundleManifest.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -37,6 +38,10 @@ namespace AzToolsFramework
     using AssetCatalogRequestBus = AZ::Data::AssetCatalogRequestBus;
 
     const char AssetBundleComponent::DeltaCatalogName[] = "DeltaCatalog.xml";
+
+    constexpr int SleepTimeMS = 250;
+    constexpr int InjectFileRetryCount = 4;
+
 
     bool MaxSizeExceeded(AZ::u64 totalFileSize, AZ::u64 bundleSize, AZ::u64 assetCatalogFileSizeBuffer, AZ::u64 maxSizeInBytes)
     {
@@ -611,10 +616,21 @@ namespace AzToolsFramework
     {
         AZ_TracePrintf(logWindowName, "Injecting file (%s) into bundle (%s).\n", filePath.c_str(), archiveFilePath.c_str());
         bool fileAddedToArchive = false;
-        ArchiveCommandsBus::BroadcastResult(fileAddedToArchive, &AzToolsFramework::ArchiveCommands::AddFileToArchiveBlocking, archiveFilePath, workingDirectory, filePath);
+        int retryCount = InjectFileRetryCount;
+        while (!fileAddedToArchive && retryCount)
+        {
+            ArchiveCommandsBus::BroadcastResult(fileAddedToArchive, &AzToolsFramework::ArchiveCommands::AddFileToArchiveBlocking, archiveFilePath, workingDirectory, filePath);
+            --retryCount;
+            if (!fileAddedToArchive && retryCount)
+            {
+                AZ_Error(logWindowName, false, "Failed to insert file (%s) into bundle (%s). Retrying.", filePath.c_str(), archiveFilePath.c_str());
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(SleepTimeMS));
+            }
+        }
+
         if (!fileAddedToArchive)
         {
-            AZ_Error(logWindowName, false, "Failed to insert file (%s) into bundle (%s).", filePath.c_str(), archiveFilePath.c_str());
+            AZ_Error(logWindowName, false, "Failed to insert file (%s) into bundle (%s) after %d retries.", filePath.c_str(), archiveFilePath.c_str(), InjectFileRetryCount);
         }
         return fileAddedToArchive;
     }

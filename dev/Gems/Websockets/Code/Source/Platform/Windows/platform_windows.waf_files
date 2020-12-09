@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Source/Platform/Windows":
+        [
+            "SecureWebsocketClient_Platform.h",
+            "WebsocketClient_Platform.h",
+            "../Common/Default/SecureWebsocketClient_Default.h",
+            "../Common/Default/SecureWebsocketClient_Default.cpp",
+            "../Common/Default/WebsocketClient_Default.h",
+            "../Common/Default/WebsocketClient_Default.cpp"
+        ]
+    }
+}

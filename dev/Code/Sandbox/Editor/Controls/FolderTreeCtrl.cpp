@@ -20,6 +20,8 @@
 #include <QtWinExtras/QtWin>
 #endif
 #include <QRegularExpression>
+#include <QSortFilterProxyModel>
+#include <QStandardItemModel>
 #include <AzQtComponents/Utilities/DesktopUtilities.h>
 
 enum ETreeImage
@@ -38,7 +40,7 @@ enum CustomRoles
 //////////////////////////////////////////////////////////////////////////
 CFolderTreeCtrl::CFolderTreeCtrl(const QStringList& folders, const QString& fileNameSpec,
     const QString& rootName, bool bDisableMonitor, bool bFlatTree, QWidget* parent)
-    : QTreeWidget(parent)
+    : QTreeView(parent)
     , m_rootTreeItem(nullptr)
     , m_folders(folders)
     , m_fileNameSpec(fileNameSpec)
@@ -50,7 +52,7 @@ CFolderTreeCtrl::CFolderTreeCtrl(const QStringList& folders, const QString& file
 }
 
 CFolderTreeCtrl::CFolderTreeCtrl(QWidget* parent)
-    : QTreeWidget(parent)
+    : QTreeView(parent)
     , m_rootTreeItem(nullptr)
     , m_bDisableMonitor(false)
     , m_bFlatStyle(true)
@@ -61,11 +63,20 @@ CFolderTreeCtrl::CFolderTreeCtrl(QWidget* parent)
 
 void CFolderTreeCtrl::init(const QStringList& folders, const QString& fileNameSpec, const QString& rootName, bool bDisableMonitor /*= false*/, bool bFlatTree /*= true*/)
 {
+    m_model = new QStandardItemModel(this);
+    m_proxyModel = new QSortFilterProxyModel(this);
+    m_proxyModel->setRecursiveFilteringEnabled(true);
+
+    m_proxyModel->setSourceModel(m_model);
+    setModel(m_proxyModel);
+
     m_folders = folders;
     m_fileNameSpec = fileNameSpec;
     m_rootName = rootName;
     m_bDisableMonitor = bDisableMonitor;
     m_bFlatStyle = bFlatTree;
+    m_fileIcon = QIcon(":/TreeView/default-icon.svg");
+    m_folderIcon = QIcon(":/TreeView/folder-icon.svg");
 
     for (auto item = m_folders.begin(), end = m_folders.end(); item != end; ++item)
     {
@@ -85,10 +96,16 @@ void CFolderTreeCtrl::init(const QStringList& folders, const QString& fileNameSp
         }
     }
 
-    headerItem()->setHidden(true);
+    setHeaderHidden(true);
+
+    QObject::connect(this, &QTreeView::doubleClicked, this, &CFolderTreeCtrl::OnIndexDoubleClicked);
+
+    InitTree();
+
+    setSortingEnabled(true);
 }
 
-QString CFolderTreeCtrl::GetPath(QTreeWidgetItem* item) const
+QString CFolderTreeCtrl::GetPath(QStandardItem* item) const
 {
     CTreeItem* treeItem = static_cast<CTreeItem*>(item);
 
@@ -100,26 +117,15 @@ QString CFolderTreeCtrl::GetPath(QTreeWidgetItem* item) const
     return "";
 }
 
-bool CFolderTreeCtrl::IsFolder(QTreeWidgetItem* item) const
+bool CFolderTreeCtrl::IsFolder(QStandardItem* item) const
 {
-    return item->data(0, IsFolderRole).toBool();
+    return item->data(IsFolderRole).toBool();
 }
 
-bool CFolderTreeCtrl::IsFile(QTreeWidgetItem* item) const
+bool CFolderTreeCtrl::IsFile(QStandardItem* item) const
 {
     return !IsFolder(item);
 }
-
-void CFolderTreeCtrl::showEvent(QShowEvent* event)
-{
-    m_filePixmap = QPixmap(QStringLiteral("arhitype_tree_%1.png").arg(static_cast<int>(eTreeImage_File), 2, 10, QLatin1Char('0')));
-    m_folderPixmap = QPixmap(QStringLiteral("arhitype_tree_%1.png").arg(static_cast<int>(eTreeImage_Folder), 2, 10, QLatin1Char('0')));
-
-    InitTree();
-
-    QTreeWidget::showEvent(event);
-}
-
 
 CFolderTreeCtrl::~CFolderTreeCtrl()
 {
@@ -130,6 +136,20 @@ CFolderTreeCtrl::~CFolderTreeCtrl()
     if (!m_bDisableMonitor)
     {
         CFileChangeMonitor::Instance()->Unsubscribe(this);
+    }
+}
+
+void CFolderTreeCtrl::OnIndexDoubleClicked(const QModelIndex& index)
+{
+    if (!m_proxyModel || !m_model)
+    {
+        return;
+    }
+
+    QStandardItem* item = GetSourceItemByIndex(index);
+    if (item)
+    {
+        Q_EMIT ItemDoubleClicked(item);
     }
 }
 
@@ -164,9 +184,15 @@ void CFolderTreeCtrl::OnFileMonitorChange(const SFileChangeInfo& rChange)
 
 void CFolderTreeCtrl::contextMenuEvent(QContextMenuEvent* e)
 {
-    QTreeWidgetItem* item = itemAt(e->pos());
+    if (!m_model)
+    {
+        return;
+    }
 
-    if (item == NULL)
+    auto index = indexAt(e->pos());
+    QStandardItem* item = GetSourceItemByIndex(index);
+
+    if (!item)
     {
         return;
     }
@@ -205,7 +231,7 @@ void CFolderTreeCtrl::InitTree()
     }
 
 
-    m_rootTreeItem->setExpanded(true);
+    expandAll();
 }
 
 void CFolderTreeCtrl::LoadTreeRec(const QString& currentFolder)
@@ -262,7 +288,8 @@ void CFolderTreeCtrl::AddItem(const QString& path)
 
     Path::Split(path, folder, fileNameWithoutExtension, ext);
 
-    if (path.contains(QRegExp(m_fileNameSpec, Qt::CaseInsensitive, QRegExp::Wildcard)))
+    auto regex = QRegExp(m_fileNameSpec, Qt::CaseInsensitive, QRegExp::Wildcard);
+    if (regex.exactMatch(path))
     {
         CTreeItem* folderTreeItem = CreateFolderItems(folder);
         folderTreeItem->AddChild(fileNameWithoutExtension, path, eTreeImage_File);
@@ -294,6 +321,20 @@ CFolderTreeCtrl::CTreeItem* CFolderTreeCtrl::GetItem(const QString& path)
     }
 
     return findIter->second;
+}
+
+QStandardItem* CFolderTreeCtrl::GetSourceItemByIndex(const QModelIndex& index) const
+{
+    if (!m_proxyModel || !m_model)
+    {
+        return nullptr;
+    }
+
+    // Since our tree view has a proxy model to handle the sorting/filtering, any index
+    // found on the tree view (e.g. the selected index) needs to be mapped back to the source
+    // model to find the actual item.
+    auto sourceIndex = m_proxyModel->mapToSource(index);
+    return m_model->itemFromIndex(sourceIndex);
 }
 
 QString CFolderTreeCtrl::CalculateFolderFullPath(const QStringList& splittedFolder, int idx)
@@ -334,12 +375,9 @@ CFolderTreeCtrl::CTreeItem* CFolderTreeCtrl::CreateFolderItems(const QString& fo
             {
                 currentTreeItem = folderItem;
             }
-
-            currentTreeItem->setExpanded(true);
         }
     }
 
-    m_rootTreeItem->setExpanded(true);
     return currentTreeItem;
 }
 
@@ -357,7 +395,7 @@ void CFolderTreeCtrl::RemoveEmptyFolderItems(const QString& folder)
             continue;
         }
 
-        if (!folderItem->HasChildren())
+        if (!folderItem->hasChildren())
         {
             folderItem->Remove();
         }
@@ -384,9 +422,33 @@ void CFolderTreeCtrl::ShowInExplorer(const QString& path)
     AzQtComponents::ShowFileOnDesktop(absolutePath);
 }
 
-QPixmap CFolderTreeCtrl::GetPixmap(int image) const
+QIcon CFolderTreeCtrl::GetItemIcon(int image) const
 {
-    return image == eTreeImage_File ? m_filePixmap : m_folderPixmap;
+    return image == eTreeImage_File ? m_fileIcon : m_folderIcon;
+}
+
+QList<QStandardItem*> CFolderTreeCtrl::GetSelectedItems() const
+{
+    QList<QStandardItem*> items;
+
+    for (auto index : selectedIndexes())
+    {
+        QStandardItem* item = GetSourceItemByIndex(index);
+        if (item)
+        {
+            items.append(item);
+        }
+    }
+
+    return items;
+}
+
+void CFolderTreeCtrl::SetSearchFilter(const QString& searchText)
+{
+    if (m_proxyModel)
+    {
+        m_proxyModel->setFilterFixedString(searchText);
+    }
 }
 
 
@@ -394,26 +456,24 @@ QPixmap CFolderTreeCtrl::GetPixmap(int image) const
 // CFolderTreeCtrl::CTreeItem
 //////////////////////////////////////////////////////////////////////////
 CFolderTreeCtrl::CTreeItem::CTreeItem(CFolderTreeCtrl& folderTreeCtrl, const QString& path)
-    : m_folderTreeCtrl(folderTreeCtrl)
+    : QStandardItem(folderTreeCtrl.GetItemIcon(eTreeImage_Folder), folderTreeCtrl.m_rootName)
+    , m_folderTreeCtrl(folderTreeCtrl)
     , m_path(path)
 {
-    setData(0, Qt::DisplayRole, m_folderTreeCtrl.m_rootName);
-    setData(0, Qt::DecorationRole, folderTreeCtrl.GetPixmap(eTreeImage_Folder));
-    setData(0, IsFolderRole, true);
+    setData(true, IsFolderRole);
 
-    folderTreeCtrl.addTopLevelItem(this);
+    m_folderTreeCtrl.m_model->invisibleRootItem()->appendRow(this);
     m_folderTreeCtrl.m_pathToTreeItem[ m_path ] = this;
 }
 
 CFolderTreeCtrl::CTreeItem::CTreeItem(CFolderTreeCtrl& folderTreeCtrl, CFolderTreeCtrl::CTreeItem* parent,
     const QString& name, const QString& path, const int image)
-    : m_folderTreeCtrl(folderTreeCtrl)
+    : QStandardItem(folderTreeCtrl.GetItemIcon(image), name)
+    , m_folderTreeCtrl(folderTreeCtrl)
     , m_path(path)
 {
-    parent->addChild(this);
-    setData(0, Qt::DisplayRole, name);
-    setData(0, Qt::DecorationRole, folderTreeCtrl.GetPixmap(image));
-    setData(0, IsFolderRole, image == eTreeImage_Folder);
+    parent->appendRow(this);
+    setData(image == eTreeImage_Folder, IsFolderRole);
 
     m_folderTreeCtrl.m_pathToTreeItem[ m_path ] = this;
 }
@@ -426,15 +486,22 @@ CFolderTreeCtrl::CTreeItem::~CTreeItem()
 void CFolderTreeCtrl::CTreeItem::Remove()
 {
     // Root can't be deleted this way
-    if (parent())
+    if (auto parentItem = parent())
     {
-        parent()->removeChild(this);
+        int numRows = parentItem->rowCount();
+        for (int i = 0; i < numRows; ++i)
+        {
+            if (parentItem->child(i) == this)
+            {
+                parentItem->removeRow(i);
+                break;
+            }
+        }
     }
 }
 
 CFolderTreeCtrl::CTreeItem* CFolderTreeCtrl::CTreeItem::AddChild(const QString& name, const QString& path, const int image)
 {
     CTreeItem* newItem = new CTreeItem(m_folderTreeCtrl, this, name, path, image);
-    sortChildren(0, Qt::AscendingOrder);
     return newItem;
 }

@@ -120,7 +120,7 @@ private:
 
     QGridLayout layout;
 
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
     bool m_allowAlpha;
 
     void SetLabelIcon(QLabel& label, QString alias);

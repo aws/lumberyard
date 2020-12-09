@@ -147,6 +147,8 @@ namespace EMotionFX
             return;
         }
 
+        bool disableRagdollQueued = false;
+
         // Case 1: Ragdoll used this frame and was already used last frame.
         if (m_ragdollUsedThisFrame && m_ragdoll->IsSimulated())
         {
@@ -174,7 +176,7 @@ namespace EMotionFX
                 }
             }
 
-            m_ragdoll->SetState(m_targetState);
+            m_ragdoll->SetStateQueued(m_targetState);
         }
         // Case 2: Do we need to activate the ragdoll?
         else if (m_ragdollUsedThisFrame && !m_ragdoll->IsSimulated())
@@ -188,7 +190,7 @@ namespace EMotionFX
             }
 
             // Activate the ragdoll and set the transforms and initial velocities for the ragdoll nodes.
-            m_ragdoll->EnableSimulation(m_currentState);
+            m_ragdoll->EnableSimulationQueued(m_currentState);
 
             m_lastState = m_currentState;
             m_targetState = m_currentState;
@@ -201,10 +203,11 @@ namespace EMotionFX
         // Case 3: The ragdoll is not needed anymore, deactivate it.
         else if (!m_ragdollUsedThisFrame && m_ragdoll->IsSimulated())
         {
-            m_ragdoll->DisableSimulation();
+            m_ragdoll->DisableSimulationQueued();
+            disableRagdollQueued = true;
         }
 
-        if (!m_ragdoll->IsSimulated())
+        if (disableRagdollQueued || !m_ragdoll->IsSimulated())
         {
             m_lastState = m_currentState;
             AZ::Vector3 currentPos;

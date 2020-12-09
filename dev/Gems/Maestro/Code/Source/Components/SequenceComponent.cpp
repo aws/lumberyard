@@ -21,6 +21,7 @@
 #include <Maestro/Types/AssetBlends.h>
 #include <Maestro/Types/AssetBlendKey.h>
 #include <Cinematics/AssetBlendTrack.h>
+#include <Cinematics/AssetTrack.h>
 #include <Cinematics/CompoundSplineTrack.h>
 #include <Cinematics/BoolTrack.h>
 #include <Cinematics/CharacterTrack.h>
@@ -169,6 +170,7 @@ namespace Maestro
         CSoundTrack::Reflect(context);
         CTrackEventTrack::Reflect(context);
         CAssetBlendTrack::Reflect(context);
+        CAssetTrack::Reflect(context);
 
         // Nodes
         CAnimSequence::Reflect(context);
@@ -274,6 +276,12 @@ namespace Maestro
     {
         const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
         EBUS_EVENT_ID(ebusId, Maestro::SequenceAgentComponentRequestBus, GetAssetDuration, returnValue, componentId, assetId);
+    }
+
+    void SequenceComponent::GetAssetTypeName(AZStd::string& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress)
+    {
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        Maestro::SequenceAgentComponentRequestBus::Event(ebusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAssetTypeName, returnValue, animatableAddress);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -58,8 +58,8 @@ namespace EMotionFX
         }
 
         // Assert motion was added
-        ASSERT_EQ(GetMotionManager().GetNumMotions(), 1) << "Expected to have no motions for the Manager";
-        ASSERT_EQ(table->rowCount(), 1) << "Expected the table to have no rows yet";
+        ASSERT_EQ(GetMotionManager().GetNumMotions(), 1) << "Expected to have 1 motion for the Manager";
+        ASSERT_EQ(table->rowCount(), 1) << "Expected the table to have 1 row";
 
         // Assert asset name is in table
         QTableWidgetItem* item = table->item(0, 0);

@@ -1160,7 +1160,7 @@ void CAssetViewer::scrollContentsBy(int dx, int dy)
 
 void CAssetViewer::wheelEvent(QWheelEvent* event)
 {
-    m_yOffset -= event->delta();
+    m_yOffset -= event->angleDelta().y();
     m_pEnsureVisible = NULL;
     UpdateScrollBar();
     UpdateVisibility();
@@ -1498,7 +1498,7 @@ void CAssetViewer::DrawAsset(QPainter* painter, IAssetItem* poItem, QRect& roUpd
         rcBorder.adjust(-4, -4, 4, 4);
     }
 
-    painter->drawRoundRect(rcBorder, kBorderRadius, kBorderRadius);
+    painter->drawRoundedRect(rcBorder, kBorderRadius, kBorderRadius);
 
     //
     // draw selection rect
@@ -1511,7 +1511,7 @@ void CAssetViewer::DrawAsset(QPainter* painter, IAssetItem* poItem, QRect& roUpd
 
         painter->setPen(QPen(QColor(255, 255, 0), 2));
         painter->setBrush(Qt::NoBrush);
-        painter->drawRoundRect(stSelectionRect, kBorderRadius, kBorderRadius);
+        painter->drawRoundedRect(stSelectionRect, kBorderRadius, kBorderRadius);
     }
 
     DrawThumbnail(painter, poItem, roUpdateRect);

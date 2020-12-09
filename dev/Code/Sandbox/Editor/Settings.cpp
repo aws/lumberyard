@@ -18,10 +18,11 @@
 
 #include <sstream>
 #include <QGuiApplication>
+#include <QOperatingSystemVersion>
 #include <QScreen>
-#include <QSysInfo>
 #include <QtUtilWin.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 #pragma comment(lib, "Gdi32.lib")
@@ -246,8 +247,8 @@ SEditorSettings::SEditorSettings()
     //////////////////////////////////////////////////////////////////////////
     // Initialize GUI settings.
     //////////////////////////////////////////////////////////////////////////
-    gui.bWindowsVista = QSysInfo::WindowsVersion >= QSysInfo::WV_VISTA;
-
+    gui.bWindowsVista = QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::Windows7);
+    
     gui.nToolbarIconSize = static_cast<int>(AzQtComponents::ToolBar::ToolBarIconSize::Default);
 
     int lfHeight = 8;// -MulDiv(8, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
@@ -703,11 +704,6 @@ void SEditorSettings::Save()
     SaveValue("Settings\\Slices", "DynamicByDefault", sliceSettings.dynamicByDefault);
 
     //////////////////////////////////////////////////////////////////////////
-    // UI 2.0 Settings
-    //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings", "EnableUI10", !bEnableUI2);
-
-    //////////////////////////////////////////////////////////////////////////
     // Particle sorting settings
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings", "ParticlesNameSortingMode", static_cast<int>(particlesNameSortingMode));
@@ -974,13 +970,6 @@ void SEditorSettings::Load()
     LoadValue("Settings\\Slices", "DynamicByDefault", sliceSettings.dynamicByDefault);
 
     //////////////////////////////////////////////////////////////////////////
-    // UI 2.0 Settings
-    //////////////////////////////////////////////////////////////////////////
-    bool enableUI1 = false;
-    LoadValue("Settings", "EnableUI10", enableUI1);
-    bEnableUI2 = !enableUI1;
-
-    //////////////////////////////////////////////////////////////////////////
     // Particle sorting settings
     //////////////////////////////////////////////////////////////////////////
     int tmpParticlesNameSortingMode = static_cast<int>(particlesNameSortingMode);
@@ -1064,7 +1053,9 @@ void SEditorSettings::LoadDefaultGamePaths()
         searchPaths[EDITOR_PATH_MATERIALS].push_back((Path::GetEditingGameDataFolder() + "/Materials").c_str());
     }
 
-    searchPaths[EDITOR_PATH_UI_ICONS].push_back("Editor\\UI\\Icons");
+    AZStd::string iconsPath;
+    AzFramework::StringFunc::Path::Join(Path::GetEditingRootFolder().c_str(), "Editor/UI/Icons", iconsPath);
+    searchPaths[EDITOR_PATH_UI_ICONS].push_back(iconsPath.c_str());
 }
 
 //////////////////////////////////////////////////////////////////////////

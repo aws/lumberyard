@@ -1283,6 +1283,18 @@ namespace AzToolsFramework
         }
     }
 
+    int PropertyRowWidget::GetLevel() const
+    {
+        int level = 0;
+
+        for (PropertyRowWidget* parent = GetParentRow(); parent; parent = parent->GetParentRow())
+        {
+            level++;
+        }
+
+        return level;
+    }
+
     bool PropertyRowWidget::IsTopLevel() const
     {
         // We're a top level row if we're the first ancestor in the hierarchy with a visible, non-empty label
@@ -1304,6 +1316,26 @@ namespace AzToolsFramework
             }
         }
         return canBeTopLevel(this);
+    }
+
+    void PropertyRowWidget::AppendDefaultLabelToName(bool doAppend)
+    {
+        if (!m_sourceNode || !doAppend || !m_isContainer)
+        {
+            return;
+        }
+
+        // Move the number of elements text to after the name.
+        m_defaultLabel->hide();
+        m_nameLabel->setText(QString("%1 (%2)").arg(GetNodeDisplayName(*m_sourceNode).c_str()).arg(QString("%1 elements").arg(m_containerSize)));
+
+        // Give the name more room to prevent elision.
+        m_defaultLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+
+        m_middleAreaContainer->setMinimumWidth(0);
+
+        m_mainLayout->setStretch(0, 1);
+        m_mainLayout->setStretch(1, 0);
     }
 
     bool PropertyRowWidget::HasChildRows() const

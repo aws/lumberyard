@@ -15,7 +15,7 @@
 #include <QFile>
 #include <QDir>
 #include <QTextStream>
-#include <QTime>
+#include <QElapsedTimer>
 #include <QCoreApplication>
 
 #include <AzCore/std/parallel/thread.h>
@@ -78,7 +78,7 @@ namespace UnitTestUtils
 
     bool BlockUntil(bool& varToWatch, int millisecondsMax)
     {
-        QTime limit;
+        QElapsedTimer limit;
         limit.start();
         varToWatch = false;
         while ((!varToWatch) && (limit.elapsed() < millisecondsMax))

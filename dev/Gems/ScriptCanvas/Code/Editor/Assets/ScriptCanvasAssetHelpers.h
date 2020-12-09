@@ -171,37 +171,28 @@ namespace ScriptCanvasEditor
         {
             bool isValidSourceFile = true;
 
-            // Let's find the source file on disk
-            AZStd::string watchFolder;
-            AZ::Data::AssetInfo assetInfo;
-            bool sourceInfoFound{};
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, filePath.c_str(), assetInfo, watchFolder);
-
-            if (sourceInfoFound)
+            if (scriptCanvasId.IsValid())
             {
-                if (scriptCanvasId.IsValid())
+                bool isRuntimeGraph = false;
+                EditorGraphRequestBus::EventResult(isRuntimeGraph, scriptCanvasId, &EditorGraphRequests::IsRuntimeGraph);
+
+                if (isRuntimeGraph)
                 {
-                    bool isRuntimeGraph = false;
-                    EditorGraphRequestBus::EventResult(isRuntimeGraph, scriptCanvasId, &EditorGraphRequests::IsRuntimeGraph);
+                    ScriptCanvasAssetDescription assetDescription;
 
-                    if (isRuntimeGraph)
+                    if (!AZ::StringFunc::EndsWith(filePath, assetDescription.GetExtensionImpl(), false))
                     {
-                        ScriptCanvasAssetDescription assetDescription;
-
-                        if (!AZ::StringFunc::EndsWith(filePath, assetDescription.GetExtensionImpl(), false))
-                        {
-                            isValidSourceFile = false;
-                        }
+                        isValidSourceFile = false;
                     }
-                    // Assume it's a function for now
-                    else
-                    {
-                        ScriptCanvas::ScriptCanvasFunctionDescription assetDescription;
+                }
+                // Assume it's a function for now
+                else
+                {
+                    ScriptCanvas::ScriptCanvasFunctionDescription assetDescription;
 
-                        if (!AZ::StringFunc::EndsWith(filePath, assetDescription.GetExtensionImpl(), false))
-                        {
-                            isValidSourceFile = false;
-                        }
+                    if (!AZ::StringFunc::EndsWith(filePath, assetDescription.GetExtensionImpl(), false))
+                    {
+                        isValidSourceFile = false;
                     }
                 }
             }

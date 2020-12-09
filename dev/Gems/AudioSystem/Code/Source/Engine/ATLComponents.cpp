@@ -1847,13 +1847,7 @@ namespace Audio
         {
             auto const atlEvent = audioEventPair.second;
 
-            const char* name = m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID);
-            if (!name)
-            {
-                continue;
-            }
-
-            AZStd::string triggerName(name);
+            AZStd::string triggerName(m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID));
             AZStd::to_lower(triggerName.begin(), triggerName.end());
 
             if (AudioDebugDrawFilter(triggerName, triggerFilter))
@@ -1953,13 +1947,7 @@ namespace Audio
         {
             auto const audioObject = audioObjectPair.second;
 
-            const char* name = m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID());
-            if (!name)
-            {
-                continue;
-            }
-
-            AZStd::string audioObjectName(name);
+            AZStd::string audioObjectName(m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID()));
             AZStd::to_lower(audioObjectName.begin(), audioObjectName.end());
 
             bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
@@ -1996,13 +1984,7 @@ namespace Audio
         {
             auto const audioObject = audioObjectPair.second;
 
-            const char* name = m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID());
-            if (!name)
-            {
-                continue;
-            }
-
-            AZStd::string audioObjectName(name);
+            AZStd::string audioObjectName(m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID()));
             AZStd::to_lower(audioObjectName.begin(), audioObjectName.end());
 
             bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);

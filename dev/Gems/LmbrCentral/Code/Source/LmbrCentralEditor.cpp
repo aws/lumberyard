@@ -33,6 +33,7 @@
 #include "Physics/EditorStaticPhysicsComponent.h"
 #include "Physics/EditorWindVolumeComponent.h"
 #include "Physics/EditorForceVolumeComponent.h"
+#include "Rendering/EditorClipVolumeComponent.h"
 #include "Rendering/EditorDecalComponent.h"
 #include "Rendering/EditorLensFlareComponent.h"
 #include "Rendering/EditorLightComponent.h"
@@ -103,6 +104,7 @@ namespace LmbrCentral
             EditorForceVolumeComponent::CreateDescriptor(),
             EditorTriggerAreaComponent::CreateDescriptor(),
 #endif // ENABLE_CRY_PHYSICS
+            EditorClipVolumeComponent::CreateDescriptor(),
             EditorDecalComponent::CreateDescriptor(),
             EditorLensFlareComponent::CreateDescriptor(),
             EditorLightComponent::CreateDescriptor(),

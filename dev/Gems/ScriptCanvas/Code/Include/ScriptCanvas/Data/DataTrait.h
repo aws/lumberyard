@@ -170,7 +170,7 @@ namespace ScriptCanvas
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<ColorType>(); }
             static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Color(); }
             static AZStd::string GetName(const Data::Type& = {}) { return "Color"; }
-            static Type GetDefault(const Data::Type& = {}) { return ColorType::CreateZero(); }
+            static Type GetDefault(const Data::Type& = {}) { return ColorType::CreateFromRgba(0, 0, 0, 255); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
         };
 

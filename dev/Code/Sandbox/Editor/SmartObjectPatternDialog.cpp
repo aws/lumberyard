@@ -44,7 +44,7 @@ CSmartObjectPatternDialog::~CSmartObjectPatternDialog()
 
 void CSmartObjectPatternDialog::SetPattern(const QString& sPattern)
 {
-    qobject_cast<QStringListModel*>(m_ui->m_wndList->model())->setStringList(sPattern.split(QStringLiteral("|"), QString::SkipEmptyParts));
+    qobject_cast<QStringListModel*>(m_ui->m_wndList->model())->setStringList(sPattern.split(QStringLiteral("|"), Qt::SkipEmptyParts));
 }
 
 QString CSmartObjectPatternDialog::GetPattern() const

@@ -208,31 +208,6 @@ namespace PhysX
         AZStd::string m_localWindTag = "wind";
     };
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    // LUMBERYARD_DEPRECATED(LY-109358)
-    /// @deprecated Please use PhysXConfiguration instead.
-    class AZ_DEPRECATED(,"Configuration is deprecated, please use PhysXConfiguration instead")
-        Configuration
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(Configuration, AZ::SystemAllocator, 0);
-        AZ_RTTI(Configuration, "{9C342C95-3E27-437C-9C15-FEE651C824DD}");
-
-        virtual ~Configuration() = default;
-
-        Settings m_settings; ///< PhysX specific settings.
-        Physics::WorldConfiguration m_worldConfiguration; ///< Default world configuration.
-        Physics::CollisionLayers m_collisionLayers; ///< Collision layers defined in the project.
-        Physics::CollisionGroups m_collisionGroups; ///< Collision groups defined in the project.
-        EditorConfiguration m_editorConfiguration; ///< Editor configuration for PhysX.
-
-        // Configuration is loaded very early on when the asset system is not yet initialized
-        // We have to set the NoLoad rule here to avoid having a dummy asset with no valid data
-        AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary 
-            = AZ::Data::AssetLoadBehavior::NoLoad;  ///< Project-wide Default Physics Material library.
-    };
-    AZ_POP_DISABLE_WARNING
-
     /// Configuration structure for PhysX.
     /// Used to initialize the PhysX Gem.
     class PhysXConfiguration
@@ -255,7 +230,6 @@ namespace PhysX
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
     };
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// Configuration requests.
     class ConfigurationRequests
     {
@@ -268,60 +242,30 @@ namespace PhysX
         ConfigurationRequests(ConfigurationRequests&&) = delete;
         ConfigurationRequests& operator=(ConfigurationRequests&&) = delete;
 
-        // LUMBERYARD_DEPRECATED(LY-109358)
-        /// @deprecated Please use the alternative configuration getters such as
-        /// SystemRequests::GetWorldConfiguration, SystemRequests::GetMaterialLibraryPtr,
-        /// CollisionRequests::GetCollisionConfiguration, ConfigurationRequests::GetPhysXConfiguration instead.
-        AZ_DEPRECATED(virtual const Configuration& GetConfiguration() = 0;,
-            "GetConfiguration is deprecated, please use the alternative configuration getters such as "
-            "SystemRequests::GetWorldConfiguration, SystemRequests::GetMaterialLibraryPtr, "
-            "CollisionRequests::GetCollisionConfiguration and ConfigurationRequests::GetPhysXConfiguration instead.")
-        // LUMBERYARD_DEPRECATED(LY-109358)
-        /// @deprecated Please use the alternative configuration getters such as
-        /// SystemRequests::SetWorldConfiguration, SystemRequests::SetMaterialLibraryPtr,
-        /// CollisionRequests::SetCollisionConfiguration, ConfigurationRequests::SetPhysXConfiguration instead.
-        AZ_DEPRECATED(virtual void SetConfiguration(const Configuration& configuration) = 0;,
-            "SetConfiguration is deprecated, please use the alternative configuration getters such as "
-            "SystemRequests::SetWorldConfiguration, SystemRequests::SetMaterialLibraryPtr, "
-            "CollisionRequests::SetCollisionConfiguration and ConfigurationRequests::SetPhysXConfiguration instead.")
-
         virtual const PhysXConfiguration& GetPhysXConfiguration() = 0;
         virtual void SetPhysXConfiguration(const PhysXConfiguration& configuration) = 0;
 
     protected:
         virtual ~ConfigurationRequests() = default;
     };
-    AZ_POP_DISABLE_WARNING
 
     using ConfigurationRequestBus = AZ::EBus<ConfigurationRequests, ConfigurationRequestsTraits>;
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// Configuration notifications.
     class ConfigurationNotifications
         : public AZ::EBusTraits
     {
     public:
-        // LUMBERYARD_DEPRECATED(LY-109358)
-        /// @deprecated Please use OnPhysXConfigurationLoaded instead.
-        AZ_DEPRECATED(virtual void OnConfigurationLoaded() {},
-            "OnConfigurationLoaded is deprecated, please use OnPhysXConfigurationLoaded instead.")
         /// Raised when the PhysX configuration has been loaded.
         virtual void OnPhysXConfigurationLoaded() {};
-
-        // LUMBERYARD_DEPRECATED(LY-109358)
-        /// @deprecated Please use OnPhysXConfigurationRefreshed instead.
-        AZ_DEPRECATED(virtual void OnConfigurationRefreshed(const Configuration&) {},
-            "OnConfigurationRefreshed is deprecated, please use OnPhysXConfigurationRefreshed instead.");
         /// Raised when the PhysX configuration has been refreshed.
         virtual void OnPhysXConfigurationRefreshed(const PhysXConfiguration&) {};
-
         /// Raised when the default material library has changed
         virtual void OnDefaultMaterialLibraryChanged(const AZ::Data::AssetId&) {}
 
     protected:
         ~ConfigurationNotifications() = default;
     };
-    AZ_POP_DISABLE_WARNING
 
     using ConfigurationNotificationBus = AZ::EBus<ConfigurationNotifications>;
 }

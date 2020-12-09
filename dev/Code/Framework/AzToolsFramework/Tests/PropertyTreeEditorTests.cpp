@@ -25,6 +25,10 @@
 
 #include <QtTest/QtTest>
 #include <QApplication>
+#include <QPointF>
+
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEntityIdCtrl.hxx>
+#include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
 
 namespace UnitTest
 {
@@ -100,6 +104,9 @@ namespace UnitTest
         AZ::Data::Asset<MockAssetData> m_myAssetData;
         AzFramework::SimpleAssetReference<TestSimpleAsset> m_myTestSimpleAsset;
 
+        AZ::EntityId m_myAcceptLayerEntityId;
+        AZ::EntityId m_myNonLayerEntityId;
+
         struct PropertyTreeEditorNestedTester
         {
             AZ_TYPE_INFO(PropertyTreeEditorTester, "{F5814544-424D-41C5-A5AB-632371615B6A}");
@@ -136,10 +143,12 @@ namespace UnitTest
                     ->Field("myMap", &PropertyTreeEditorTester::m_myMap)
                     ->Field("mySubBlock", &PropertyTreeEditorTester::m_mySubBlock)
                     ->Field("myHiddenDouble", &PropertyTreeEditorTester::m_myHiddenDouble)
-                    ->Field("myReadOnlyShort", &PropertyTreeEditorTester::m_myReadOnlyShort)                    
+                    ->Field("myReadOnlyShort", &PropertyTreeEditorTester::m_myReadOnlyShort)
                     ->Field("nestedTesterHiddenChildren", &PropertyTreeEditorTester::m_nestedTesterHiddenChildren)
                     ->Field("myAssetData", &PropertyTreeEditorTester::m_myAssetData)
                     ->Field("myTestSimpleAsset", &PropertyTreeEditorTester::m_myTestSimpleAsset)
+                    ->Field("myAcceptLayerEntityId", &PropertyTreeEditorTester::m_myAcceptLayerEntityId)
+                    ->Field("myNonLayerEntityId", &PropertyTreeEditorTester::m_myNonLayerEntityId)
                     ;
 
                 serializeContext->Class<PropertyTreeEditorNestedTester>()
@@ -176,7 +185,10 @@ namespace UnitTest
                             ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
                         ->DataElement(0, &PropertyTreeEditorTester::m_mySubBlock, "My Sub Block", "sub block test")
                             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)                            
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myAcceptLayerEntityId, "Accepts Layer Entity Id", "An EntityId that accepts Layer entities.")
+                            ->Attribute(AZ::Edit::Attributes::EnableLayerAssignment, true)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myNonLayerEntityId, "Non Layer EntityId", "An EntityId that does not accept layer entities.")
                         ->ClassElement(AZ::Edit::ClassElements::Group, "Grouped")
                             ->DataElement(AZ::Edit::UIHandlers::Default, &PropertyTreeEditorTester::m_myGroupedString, "My Grouped String", "A test grouped string.")
                         ;
@@ -767,6 +779,127 @@ namespace UnitTest
             EXPECT_FALSE(propertyTreeEditorTester.m_myAssetData.GetId().IsValid());
             EXPECT_TRUE(propertyTreeEditorTester.m_myTestSimpleAsset.GetAssetPath().empty());
         }
+    }
+
+    class PropertyWidgetTest
+        : public ToolsApplicationFixture
+    {
+    };
+
+    TEST_F(PropertyWidgetTest, EntityIdControlDropTest_EditorEntity)
+    {
+        AZ::EntityId nonLayerEntityId = CreateDefaultEditorEntity("New Entity");
+
+        AzToolsFramework::EditorEntityIdContainer editorEntityIdList;
+        editorEntityIdList.m_entityIds.emplace_back(nonLayerEntityId);
+
+        QMimeData* nonLayerOnlyMimeData = new QMimeData();
+
+        {
+            AZStd::vector<char> encoded;
+            EXPECT_TRUE(editorEntityIdList.ToBuffer(encoded));
+
+            QByteArray encodedData;
+            encodedData.resize((int)encoded.size());
+            memcpy(encodedData.data(), encoded.data(), encoded.size());
+
+            nonLayerOnlyMimeData->setData(AzToolsFramework::EditorEntityIdContainer::GetMimeType(), encodedData);
+        }
+
+        QDropEvent nonLayerDropEvent(QPointF(0, 0), Qt::DropAction::CopyAction, nonLayerOnlyMimeData, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+
+        PropertyEntityIdCtrl propertyEntityIdCtrl;
+        EXPECT_FALSE(propertyEntityIdCtrl.GetEntityId().IsValid());
+
+        propertyEntityIdCtrl.dropEvent(&nonLayerDropEvent);
+        EXPECT_TRUE(propertyEntityIdCtrl.GetEntityId().IsValid());
+        EXPECT_TRUE(nonLayerEntityId.IsValid());
+        EXPECT_EQ(propertyEntityIdCtrl.GetEntityId(), nonLayerEntityId);
+    }
+
+    TEST_F(PropertyWidgetTest, EntityIdControlDropTest_LayerEntityTest_SetFailure)
+    {
+        AZ::EntityId nonLayerEntityId = CreateDefaultEditorEntity("New Entity");
+        AZ::EntityId layerEntityId = CreateEditorLayerEntity("New Layer Entity");
+
+        AzToolsFramework::EditorEntityIdContainer layerOnlyEntityIdList;
+        layerOnlyEntityIdList.m_layerIds.emplace_back(layerEntityId);
+
+        QMimeData* layerOnlyMimeData = new QMimeData();
+
+        {
+            AZStd::vector<char> encoded;
+            EXPECT_TRUE(layerOnlyEntityIdList.ToBuffer(encoded));
+
+            QByteArray encodedData;
+            encodedData.resize((int)encoded.size());
+            memcpy(encodedData.data(), encoded.data(), encoded.size());
+
+            layerOnlyMimeData->setData(AzToolsFramework::EditorEntityIdContainer::GetMimeType(), encodedData);
+        }
+
+        AzToolsFramework::EditorEntityIdContainer noLayerEntityIdList;
+        noLayerEntityIdList.m_entityIds.emplace_back(nonLayerEntityId);
+
+        QMimeData* nonLayerOnlyMimeData = new QMimeData();
+
+        {
+            AZStd::vector<char> encoded;
+            EXPECT_TRUE(noLayerEntityIdList.ToBuffer(encoded));
+
+            QByteArray encodedData;
+            encodedData.resize((int)encoded.size());
+            memcpy(encodedData.data(), encoded.data(), encoded.size());
+
+            nonLayerOnlyMimeData->setData(AzToolsFramework::EditorEntityIdContainer::GetMimeType(), encodedData);
+        }
+
+        QDropEvent nonLayerDropEvent(QPointF(0, 0), Qt::DropAction::CopyAction, nonLayerOnlyMimeData, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+        QDropEvent layerDropEvent(QPointF(0, 0), Qt::DropAction::CopyAction, layerOnlyMimeData, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+
+        PropertyEntityIdCtrl propertyEntityIdCtrl;
+        EXPECT_FALSE(propertyEntityIdCtrl.GetEntityId().IsValid());
+
+        propertyEntityIdCtrl.dropEvent(&nonLayerDropEvent);
+        EXPECT_TRUE(propertyEntityIdCtrl.GetEntityId().IsValid());
+        EXPECT_TRUE(nonLayerEntityId.IsValid());
+        EXPECT_EQ(propertyEntityIdCtrl.GetEntityId(), nonLayerEntityId);
+
+        propertyEntityIdCtrl.dropEvent(&layerDropEvent);
+        EXPECT_EQ(propertyEntityIdCtrl.GetEntityId(), nonLayerEntityId);
+    }
+
+    TEST_F(PropertyWidgetTest, EntityIdControlDropTest_LayerEntityTest_SetSuccess)
+    {
+        AZ::EntityId layerEntityId = CreateEditorLayerEntity("New Layer Entity");
+
+        AzToolsFramework::EditorEntityIdContainer layerOnlyEntityIdList;
+        layerOnlyEntityIdList.m_layerIds.emplace_back(layerEntityId);
+
+        QMimeData* layerOnlyMimeData = new QMimeData();
+
+        {
+            AZStd::vector<char> encoded;
+            EXPECT_TRUE(layerOnlyEntityIdList.ToBuffer(encoded));
+
+            QByteArray encodedData;
+            encodedData.resize((int)encoded.size());
+            memcpy(encodedData.data(), encoded.data(), encoded.size());
+
+            layerOnlyMimeData->setData(AzToolsFramework::EditorEntityIdContainer::GetMimeType(), encodedData);
+        }
+
+        QDropEvent layerDropEvent(QPointF(0, 0), Qt::DropAction::CopyAction, layerOnlyMimeData, Qt::MouseButton::NoButton, Qt::KeyboardModifier::NoModifier);
+
+        PropertyEntityIdCtrl propertyEntityIdCtrl;
+        EXPECT_FALSE(propertyEntityIdCtrl.GetEntityId().IsValid());
+
+        propertyEntityIdCtrl.SetAllowLayerAssignment(true);
+
+        propertyEntityIdCtrl.dropEvent(&layerDropEvent);
+        EXPECT_TRUE(propertyEntityIdCtrl.GetEntityId().IsValid());
+        EXPECT_TRUE(layerEntityId.IsValid());
+        EXPECT_EQ(propertyEntityIdCtrl.GetEntityId(), layerEntityId);
     }
 
 } // namespace UnitTest

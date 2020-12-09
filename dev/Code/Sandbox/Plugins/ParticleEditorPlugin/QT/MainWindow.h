@@ -151,7 +151,7 @@ private slots:
     void Library_CopyTreeItems(QVector < CLibraryTreeViewItem* > items, bool copyAsChild = false);
     void Library_ItemPasted(IDataBaseItem* target, bool overrideSafety = false);
     void Library_ItemsPastedToFolder(IDataBaseLibrary* lib, const QStringList& PasteList);
-    void Library_ItemDuplicated(const QString& itemPath, QString pasteTo);
+    void Library_ItemDuplicated(const QString& itemPath);
 
     void Library_TreeFilledFromLibrary(IDataBaseLibrary* lib, CLibraryTreeView* view);
     void Library_ItemDragged(CLibraryTreeViewItem* item);

@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 #include <Editor/MeshNodeHandler.h>

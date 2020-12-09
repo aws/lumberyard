@@ -24,6 +24,12 @@ namespace AZ
         {
             class ISceneNodeGroup;
         }
+
+        namespace Containers
+        {
+            class Scene;
+            class SceneGraph;
+        }
     }
 }
 
@@ -49,25 +55,27 @@ namespace NvCloth
 
             static void Reflect(AZ::ReflectContext* context);
 
-            // BehaviorComponent overrides
+            // BehaviorComponent overrides ...
             void Activate() override;
             void Deactivate() override;
 
-            // ManifestMetaInfoBus overrides
+            // ManifestMetaInfoBus::Handler overrides ...
             void GetAvailableModifiers(
                 AZ::SceneAPI::Events::ManifestMetaInfo::ModifiersList& modifiers,
                 const AZ::SceneAPI::Containers::Scene& scene,
                 const AZ::SceneAPI::DataTypes::IManifestObject& target) override;
             void InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) override;
 
-            // AssetImportRequestBus overrides
+            // AssetImportRequestBus::Handler overrides ....
             AZ::SceneAPI::Events::ProcessingResult UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action, RequestingApplication requester) override;
 
         protected:
             bool IsValidGroupType(const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group) const;
 
             bool UpdateClothRules(AZ::SceneAPI::Containers::Scene& scene);
-            bool UpdateClothRule(const AZ::SceneAPI::Containers::Scene& scene, const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group, ClothRule& clothRule);
+            bool UpdateClothRule(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group, ClothRule& clothRule);
+
+            bool ContainsVertexColorStream(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZStd::string& streamName) const;
         };
     } // namespace Pipeline
 } // namespace NvCloth

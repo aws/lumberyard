@@ -10,20 +10,25 @@
 *
 */
 #include <stdafx.h>
-#include <AzCore/std/smart_ptr/make_shared.h>
+
+#include <EditorCoreAPI.h>
+#include <IAWSResourceManager.h>
+#include <MaglevControlPanelPlugin.h>
 #include <QAWSCredentialsEditor.h>
+#include <RoleSelectionView.moc>
+
+#include <AzCore/std/smart_ptr/make_shared.h>
+
 #include <QApplication>
 #include <QDesktopServices>
 #include <QDesktopWidget>
 #include <QDialogButtonBox>
-#include <QUrl>
 #include <QErrorMessage>
 #include <QRadioButton>
+#include <QScreen>
 #include <QScrollArea>
-#include <RoleSelectionView.moc>
-#include <EditorCoreAPI.h>
-#include <IAWSResourceManager.h>
-#include <MaglevControlPanelPlugin.h>
+#include <QUrl>
+
 #include <algorithm>
 
 using namespace AZStd;
@@ -160,7 +165,7 @@ void ScrollSelectionDialog::CloseWindow()
 
 void ScrollSelectionDialog::MoveCenter()
 {
-    QRect scr = QApplication::desktop()->screenGeometry(0);
+    QRect scr = QApplication::primaryScreen()->geometry();
     move(scr.center() - rect().center());
 }
 

@@ -29,6 +29,10 @@
 
 // set this to 1 to enable debug display
 #define UI_CANVAS_ON_MESH_DEBUG 0
+#endif // !defined(_RELEASE)
+
+#if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Render/GeometryIntersectionStructures.h>
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +302,7 @@ namespace
 UiCanvasOnMeshComponent::UiCanvasOnMeshComponent()
 {}
 
+#if ENABLE_CRY_PHYSICS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasOnMeshComponent::ProcessCollisionInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint)
 {
@@ -309,6 +314,13 @@ bool UiCanvasOnMeshComponent::ProcessRayHitInputEvent(const AzFramework::InputCh
 {
     return ProcessCollisionInputEventInternal(inputSnapshot, rayHit.iPrim, rayHit.pt, rayHit.pCollider, rayHit.ipart);
 }
+
+#else
+bool UiCanvasOnMeshComponent::ProcessHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AzFramework::RenderGeometry::RayResult& rayResult)
+{
+    return ProcessCollisionInputEventInternal(inputSnapshot, rayResult);
+}
+#endif // ENABLE_CRY_PHYSICS
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasOnMeshComponent::OnCanvasLoadedIntoEntity(AZ::EntityId uiCanvasEntity)
@@ -385,6 +397,7 @@ void UiCanvasOnMeshComponent::Deactivate()
     UiCanvasManagerNotificationBus::Handler::BusDisconnect();
 }
 
+#if ENABLE_CRY_PHYSICS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint, IPhysicalEntity* collider, int partIndex)
 {
@@ -429,6 +442,39 @@ bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const AzFramewo
 
     return false;
 }
+#else
+bool UiCanvasOnMeshComponent::ProcessCollisionInputEventInternal(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AzFramework::RenderGeometry::RayResult& rayResult)
+{
+    AZ::EntityId canvasEntityId = GetCanvas();
+
+    if (canvasEntityId.IsValid())
+    {
+        // Cache bus pointer as it will be used twice
+        UiCanvasBus::BusPtr uiCanvasInterfacePtr;
+        UiCanvasBus::Bind(uiCanvasInterfacePtr, canvasEntityId);
+        if (!uiCanvasInterfacePtr)
+        {
+            return false;
+        }
+
+        AZ::Vector2 canvasSize;
+        UiCanvasBus::EventResult(canvasSize, uiCanvasInterfacePtr, &UiCanvasInterface::GetCanvasSize);
+
+        AZ::Vector2 canvasPoint = AZ::Vector2(rayResult.m_uv.GetX() * canvasSize.GetX(), rayResult.m_uv.GetY() * canvasSize.GetY());
+
+        bool handledByCanvas = false;
+        UiCanvasBus::EventResult(handledByCanvas, uiCanvasInterfacePtr,
+            &UiCanvasInterface::HandleInputPositionalEvent, inputSnapshot, canvasPoint);
+
+        if (handledByCanvas)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+#endif // ENABLE_CRY_PHYSICS
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiCanvasOnMeshComponent::GetCanvas()

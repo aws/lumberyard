@@ -57,7 +57,7 @@ void ResourceGroupListStatusModel::UpdateRow(const QList<QStandardItem*>& row, c
     {
         row[ResourceStatusColumn]->setText(AWSUtil::MakePrettyResourceStatusText(resourceStatus));
         row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusTooltip(resourceStatus, map["ResourceStatusReason"].toString()), Qt::ToolTipRole);
-        row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusColor(resourceStatus), Qt::TextColorRole);
+        row[ResourceStatusColumn]->setData(AWSUtil::MakePrettyResourceStatusColor(resourceStatus), Qt::ForegroundRole);
     }
 
     auto timestamp = map["Timestamp"].toDateTime().toLocalTime().toString();

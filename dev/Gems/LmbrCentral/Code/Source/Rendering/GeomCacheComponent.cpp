@@ -92,6 +92,11 @@ namespace LmbrCentral
 
                 ->Event("GetTimeRemaining", &GeometryCacheComponentRequestBus::Events::GetTimeRemaining)
 
+                ->Event("SetGeomCacheAsset", &GeometryCacheComponentRequestBus::Events::SetGeomCacheAsset)
+                ->Attribute(AZ::Script::Attributes::AssetType, "Geom Cache")
+                ->Event("GetGeomCacheAsset", &GeometryCacheComponentRequestBus::Events::GetGeomCacheAssetId)
+                ->VirtualProperty("GeomCacheAsset", "GetGeomCacheAsset", "SetGeomCacheAsset")
+
                 ->Event("SetVisible", &GeometryCacheComponentRequestBus::Events::SetVisible)
                 ->Event("GetVisible", &GeometryCacheComponentRequestBus::Events::GetVisible)
                 ->VirtualProperty("Visible", "GetVisible", "SetVisible")
@@ -106,15 +111,12 @@ namespace LmbrCentral
 
                 ->Event("SetFirstFrameStandIn", &GeometryCacheComponentRequestBus::Events::SetFirstFrameStandIn)
                 ->Event("GetFirstFrameStandIn", &GeometryCacheComponentRequestBus::Events::GetFirstFrameStandIn)
-                ->VirtualProperty("FirstFrameStandIn", "GetFirstFrameStandIn", "SetFirstFrameStandIn")
 
                 ->Event("SetLastFrameStandIn", &GeometryCacheComponentRequestBus::Events::SetLastFrameStandIn)
                 ->Event("GetLastFrameStandIn", &GeometryCacheComponentRequestBus::Events::GetLastFrameStandIn)
-                ->VirtualProperty("LastFrameStandIn", "GetLastFrameStandIn", "SetLastFrameStandIn")
 
                 ->Event("SetStandIn", &GeometryCacheComponentRequestBus::Events::SetStandIn)
                 ->Event("GetStandIn", &GeometryCacheComponentRequestBus::Events::GetStandIn)
-                ->VirtualProperty("StandIn", "GetStandIn", "SetStandIn")
 
                 ->Event("SetStandInDistance", &GeometryCacheComponentRequestBus::Events::SetStandInDistance)
                 ->Event("GetStandInDistance", &GeometryCacheComponentRequestBus::Events::GetStandInDistance)
@@ -123,7 +125,33 @@ namespace LmbrCentral
                 ->Event("SetStreamInDistance", &GeometryCacheComponentRequestBus::Events::SetStreamInDistance)
                 ->Event("GetStreamInDistance", &GeometryCacheComponentRequestBus::Events::GetStreamInDistance)
                 ->VirtualProperty("StreamInDistance", "GetStreamInDistance", "SetStreamInDistance")
+                ->Event("SetMinSpec", &GeometryCacheComponentRequestBus::Events::SetMinSpec)
+                ->Event("GetMinSpec", &GeometryCacheComponentRequestBus::Events::GetMinSpec)
+                ->VirtualProperty("MinSpec", "GetMinSpec", "SetMinSpec")
 
+                ->Event("SetPlayOnStart", &GeometryCacheComponentRequestBus::Events::SetPlayOnStart)
+                ->Event("GetPlayOnStart", &GeometryCacheComponentRequestBus::Events::GetPlayOnStart)
+                ->VirtualProperty("PlayOnStart", "GetPlayOnStart", "SetPlayOnStart")
+
+                ->Event("SetMaxViewDistance", &GeometryCacheComponentRequestBus::Events::SetMaxViewDistance)
+                ->Event("GetMaxViewDistance", &GeometryCacheComponentRequestBus::Events::GetMaxViewDistance)
+                ->VirtualProperty("MaxViewDistance", "GetMaxViewDistance", "SetMaxViewDistance")
+
+                ->Event("SetViewDistanceMultiplier", &GeometryCacheComponentRequestBus::Events::SetViewDistanceMultiplier)
+                ->Event("GetViewDistanceMultiplier", &GeometryCacheComponentRequestBus::Events::GetViewDistanceMultiplier)
+                ->VirtualProperty("ViewDistanceMultiplier", "GetViewDistanceMultiplier", "SetViewDistanceMultiplier")
+
+                ->Event("SetLODDistanceRatio", &GeometryCacheComponentRequestBus::Events::SetLODDistanceRatio)
+                ->Event("GetLODDistanceRatio", &GeometryCacheComponentRequestBus::Events::GetLODDistanceRatio)
+                ->VirtualProperty("LODDistanceRatio", "GetLODDistanceRatio", "SetLODDistanceRatio")
+
+                ->Event("SetCastShadows", &GeometryCacheComponentRequestBus::Events::SetCastShadows)
+                ->Event("GetCastShadows", &GeometryCacheComponentRequestBus::Events::GetCastShadows)
+                ->VirtualProperty("CastShadows", "GetCastShadows", "SetCastShadows")
+
+                ->Event("SetUseVisAreas", &GeometryCacheComponentRequestBus::Events::SetUseVisAreas)
+                ->Event("GetUseVisAreas", &GeometryCacheComponentRequestBus::Events::GetUseVisAreas)
+                ->VirtualProperty("UseVisAreas", "GetUseVisAreas", "SetUseVisAreas")
                 ;
 
             behaviorContext->EBus<GeometryCacheComponentNotificationBus>("GeometryCacheComponentNotificationBus")
@@ -429,32 +457,44 @@ namespace LmbrCentral
 
     void GeometryCacheCommon::SetGeomCacheAsset(const AZ::Data::AssetId& id)
     {
-        DestroyGeomCache();
-        m_geomCacheAsset.Create(id);
-        CreateGeomCache();
+        if (m_geomCacheAsset.GetId() != id)
+        {
+            DestroyGeomCache();
+            m_geomCacheAsset.Create(id);
+            CreateGeomCache();
+        }
     }
 
     void GeometryCacheCommon::SetVisible(bool visible)
     {
-        m_visible = visible;
-        OnRenderOptionsChanged();
+        if (m_visible != visible)
+        {
+            m_visible = visible;
+            OnRenderOptionsChanged();
+        }
     }
 
     void GeometryCacheCommon::SetLoop(bool loop)
     {
-        m_loop = loop;
-        OnLoopChanged();
+        if (m_loop != loop)
+        {
+            m_loop = loop;
+            OnLoopChanged();
+        }
     }
 
     void GeometryCacheCommon::SetStartTime(float startTime)
     {
-        m_startTime = startTime;
-        OnStartTimeChanged();
+        if (m_startTime != startTime)
+        {
+            m_startTime = startTime;
+            OnStartTimeChanged();
+        }
     }
 
     void GeometryCacheCommon::SetFirstFrameStandIn(AZ::EntityId entityId)
     {
-        if (!entityId.IsValid())
+        if (!entityId.IsValid() || m_firstFrameStandin == entityId)
         {
             return;
         }
@@ -474,7 +514,7 @@ namespace LmbrCentral
 
     void GeometryCacheCommon::SetLastFrameStandIn(AZ::EntityId entityId)
     {
-        if (!entityId.IsValid())
+        if (!entityId.IsValid() || m_lastFrameStandin == entityId)
         {
             return;
         }
@@ -494,7 +534,7 @@ namespace LmbrCentral
 
     void GeometryCacheCommon::SetStandIn(AZ::EntityId entityId)
     {
-        if (!entityId.IsValid())
+        if (!entityId.IsValid() || m_standin == entityId)
         {
             return;
         }
@@ -519,8 +559,74 @@ namespace LmbrCentral
 
     void GeometryCacheCommon::SetStreamInDistance(float streamInDistance)
     {
-        m_streamInDistance = streamInDistance;
-        OnStreamInDistanceChanged();
+        if (m_streamInDistance != streamInDistance)
+        {
+            m_streamInDistance = streamInDistance;
+            OnStreamInDistanceChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetMinSpec(EngineSpec minSpec)
+    {
+        if (m_minSpec != minSpec)
+        {
+            m_minSpec = minSpec;
+            OnRenderOptionsChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetPlayOnStart(bool playOnStart)
+    {
+        if (m_playOnStart != playOnStart)
+        {
+            m_playOnStart = playOnStart;
+            OnPlayOnStartChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetMaxViewDistance(float maxViewDistance)
+    {
+        if (m_maxViewDistance != maxViewDistance)
+        {
+            m_maxViewDistance = maxViewDistance;
+            OnMaxViewDistanceChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetViewDistanceMultiplier(float viewDistanceMultiplier)
+    {
+        if (m_viewDistanceMultiplier != viewDistanceMultiplier)
+        {
+            m_viewDistanceMultiplier = viewDistanceMultiplier;
+            OnViewDistanceMultiplierChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetLODDistanceRatio(AZ::u32 lodDistanceRatio)
+    {
+        if (m_lodDistanceRatio != lodDistanceRatio)
+        {
+            m_lodDistanceRatio = lodDistanceRatio;
+            OnLODDistanceRatioChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetCastShadows(bool castShadows)
+    {
+        if (m_castShadows != castShadows)
+        {
+            m_castShadows = castShadows;
+            OnRenderOptionsChanged();
+        }
+    }
+
+    void GeometryCacheCommon::SetUseVisAreas(bool useVisAreas)
+    {
+        if (m_useVisAreas != useVisAreas)
+        {
+            m_useVisAreas = useVisAreas;
+            OnRenderOptionsChanged();
+        }
     }
 
     void GeometryCacheCommon::OnRenderOptionsChanged()

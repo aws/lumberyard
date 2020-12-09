@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <AzCore/Console/IConsole.h>
 
 #include <AzFramework/Viewport/ViewportColors.h>
@@ -19,9 +17,10 @@
 
 #include <Components/ClothComponentMesh/ClothDebugDisplay.h>
 #include <Components/ClothComponentMesh/ActorClothColliders.h>
+#include <Components/ClothComponentMesh/ClothConstraints.h>
 #include <Components/ClothComponentMesh/ClothComponentMesh.h>
 
-#include <System/Cloth.h>
+#include <NvCloth/ICloth.h>
 
 namespace NvCloth
 {
@@ -41,6 +40,16 @@ namespace NvCloth
         " 0 - Disabled\n"
         " 1 - Cloth colliders");
 
+    AZ_CVAR(int32_t, cloth_DebugDrawMotionConstraints, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Draw cloth motion constraints:\n"
+        " 0 - Disabled\n"
+        " 1 - Cloth motion constraints");
+
+    AZ_CVAR(int32_t, cloth_DebugDrawBackstop, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Draw cloth backstop:\n"
+        " 0 - Disabled\n"
+        " 1 - Cloth backstop");
+
     ClothDebugDisplay::ClothDebugDisplay(ClothComponentMesh* clothComponentMesh)
         : m_clothComponentMesh(clothComponentMesh)
     {
@@ -57,7 +66,9 @@ namespace NvCloth
     {
         return cloth_DebugDraw > 0
             || cloth_DebugDrawNormals > 0
-            || cloth_DebugDrawColliders > 0;
+            || cloth_DebugDrawColliders > 0
+            || cloth_DebugDrawMotionConstraints > 0
+            || cloth_DebugDrawBackstop > 0;
     }
 
     void ClothDebugDisplay::DisplayEntityViewport(
@@ -66,7 +77,7 @@ namespace NvCloth
     {
         AZ_UNUSED(viewportInfo);
 
-        if (!IsDebugDrawEnabled() || !m_clothComponentMesh->m_clothSimulation)
+        if (!IsDebugDrawEnabled() || !m_clothComponentMesh->m_cloth)
         {
             return;
         }
@@ -92,6 +103,16 @@ namespace NvCloth
             DisplayColliders(debugDisplay);
         }
 
+        if (cloth_DebugDrawMotionConstraints > 0)
+        {
+            DisplayMotionConstraints(debugDisplay);
+        }
+
+        if (cloth_DebugDrawBackstop > 0)
+        {
+            DisplaySeparationConstraints(debugDisplay);
+        }
+
         debugDisplay.PopMatrix();
     }
 
@@ -100,27 +121,28 @@ namespace NvCloth
         const float particleAlpha = 1.0f;
         const float particleRadius = 0.007f;
 
-        const auto& clothRenderParticles = m_clothComponentMesh->GetRenderParticles();
+        const auto& clothRenderParticles = m_clothComponentMesh->m_cloth->GetParticles();
 
         for(const auto& particle : clothRenderParticles)
         {
-            const AZ::Vector3 position(particle.x, particle.y, particle.z);
-            const AZ::Vector4 color = AZ::Vector4::CreateFromVector3AndFloat(AZ::Vector3(particle.w), particleAlpha);
+            const AZ::Vector4 color = AZ::Vector4::CreateFromVector3AndFloat(AZ::Vector3(particle.GetW()), particleAlpha);
             debugDisplay.SetColor(color);
-            debugDisplay.DrawBall(position, particleRadius, false/*drawShaded*/);
+            debugDisplay.DrawBall(particle.GetAsVector3(), particleRadius, false/*drawShaded*/);
         }
     }
 
     void ClothDebugDisplay::DisplayWireCloth(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        const auto& clothIndices = m_clothComponentMesh->m_clothSimulation->GetInitialIndices();
-        const auto& clothRenderParticles = m_clothComponentMesh->GetRenderParticles();
+        const float lineAlpha = 1.0f;
+
+        const auto& clothIndices = m_clothComponentMesh->m_cloth->GetInitialIndices();
+        const auto& clothRenderParticles = m_clothComponentMesh->m_cloth->GetParticles();
 
         const size_t numIndices = clothIndices.size();
         if (numIndices % 3 != 0)
         {
             AZ_Warning("ClothDebugDisplay", false, 
-                "Cloth indices contains a list of triangles but its count (%d) is not a multiple of 3.", numIndices);
+                "Cloth indices contains a list of triangles but its count (%zu) is not a multiple of 3.", numIndices);
             return;
         }
 
@@ -129,15 +151,15 @@ namespace NvCloth
             const SimIndexType& vertexIndex0 = clothIndices[index + 0];
             const SimIndexType& vertexIndex1 = clothIndices[index + 1];
             const SimIndexType& vertexIndex2 = clothIndices[index + 2];
-            const SimParticleType& particle0 = clothRenderParticles[vertexIndex0];
-            const SimParticleType& particle1 = clothRenderParticles[vertexIndex1];
-            const SimParticleType& particle2 = clothRenderParticles[vertexIndex2];
-            const AZ::Vector3 position0(particle0.x, particle0.y, particle0.z);
-            const AZ::Vector3 position1(particle1.x, particle1.y, particle1.z);
-            const AZ::Vector3 position2(particle2.x, particle2.y, particle2.z);
-            const AZ::Vector4 color0 = AZ::Vector4::CreateFromVector3(AZ::Vector3(particle0.w));
-            const AZ::Vector4 color1 = AZ::Vector4::CreateFromVector3(AZ::Vector3(particle1.w));
-            const AZ::Vector4 color2 = AZ::Vector4::CreateFromVector3(AZ::Vector3(particle2.w));
+            const SimParticleFormat& particle0 = clothRenderParticles[vertexIndex0];
+            const SimParticleFormat& particle1 = clothRenderParticles[vertexIndex1];
+            const SimParticleFormat& particle2 = clothRenderParticles[vertexIndex2];
+            const AZ::Vector3 position0 = particle0.GetAsVector3();
+            const AZ::Vector3 position1 = particle1.GetAsVector3();
+            const AZ::Vector3 position2 = particle2.GetAsVector3();
+            const AZ::Vector4 color0 = AZ::Vector4::CreateFromVector3AndFloat(AZ::Vector3(particle0.GetW()), lineAlpha);
+            const AZ::Vector4 color1 = AZ::Vector4::CreateFromVector3AndFloat(AZ::Vector3(particle1.GetW()), lineAlpha);
+            const AZ::Vector4 color2 = AZ::Vector4::CreateFromVector3AndFloat(AZ::Vector3(particle2.GetW()), lineAlpha);
             debugDisplay.DrawLine(position0, position1, color0, color1);
             debugDisplay.DrawLine(position1, position2, color1, color2);
             debugDisplay.DrawLine(position2, position0, color2, color0);
@@ -146,22 +168,18 @@ namespace NvCloth
 
     void ClothDebugDisplay::DisplayNormals(AzFramework::DebugDisplayRequests& debugDisplay, bool showTangents)
     {
-        const auto& clothIndices = m_clothComponentMesh->m_clothSimulation->GetInitialIndices();
-        const auto& clothRenderParticles = m_clothComponentMesh->GetRenderParticles();
-        const auto& clothRenderTangentSpaces = m_clothComponentMesh->GetRenderTangentSpaces();
+        const auto& clothRenderData = m_clothComponentMesh->GetRenderData();
 
-        const size_t numIndices = clothIndices.size();
-        if (numIndices % 3 != 0)
+        const auto& clothRenderParticles = clothRenderData.m_particles;
+        const auto& clothRenderTangents = clothRenderData.m_tangents;
+        const auto& clothRenderBitangents = clothRenderData.m_bitangents;
+        const auto& clothRenderNormals = clothRenderData.m_normals;
+
+        if (clothRenderParticles.size() != clothRenderNormals.size())
         {
             AZ_Warning("ClothDebugDisplay", false,
-                "Cloth indices contains a list of triangles but its count (%d) is not a multiple of 3.", numIndices);
-            return;
-        }
-        if (clothRenderParticles.size() != clothRenderTangentSpaces.GetBaseCount())
-        {
-            AZ_Warning("ClothDebugDisplay", false,
-                "Number of cloth particles (%d) doesn't match with the number of tangent spaces (%d).", 
-                clothRenderParticles.size(), clothRenderTangentSpaces.GetBaseCount());
+                "Number of cloth particles (%zu) doesn't match with the number of normals (%zu).", 
+                clothRenderParticles.size(), clothRenderNormals.size());
             return;
         }
 
@@ -172,27 +190,22 @@ namespace NvCloth
         const AZ::Vector4 colorTangent = AZ::Colors::Red.GetAsVector4();
         const AZ::Vector4 colorBitangent = AZ::Colors::Green.GetAsVector4();
 
-        for (size_t index = 0; index < numIndices; ++index)
+        for (size_t i = 0; i < clothRenderParticles.size(); ++i)
         {
-            const SimIndexType& vertexIndex = clothIndices[index];
+            if (m_clothComponentMesh->m_meshRemappedVertices[i] < 0)
+            {
+                // Removed particle
+                continue;
+            }
 
-            const SimParticleType& particle = clothRenderParticles[vertexIndex];
-            const AZ::Vector3 position(particle.x, particle.y, particle.z);
+            const AZ::Vector3 position = clothRenderParticles[i].GetAsVector3();
 
-            const Vec3 normalVec3 = clothRenderTangentSpaces.GetNormal(vertexIndex);
-            const AZ::Vector3 normal(normalVec3.x, normalVec3.y, normalVec3.z);
-
-            debugDisplay.DrawLine(position, position + normalLength * normal, colorNormal, colorNormal);
+            debugDisplay.DrawLine(position, position + normalLength * clothRenderNormals[i], colorNormal, colorNormal);
 
             if (showTangents)
             {
-                const Vec3 tangentVec3 = clothRenderTangentSpaces.GetTangent(vertexIndex);
-                const Vec3 bitangentVec3 = clothRenderTangentSpaces.GetBitangent(vertexIndex);
-                const AZ::Vector3 tangent(tangentVec3.x, tangentVec3.y, tangentVec3.z);
-                const AZ::Vector3 bitangent(bitangentVec3.x, bitangentVec3.y, bitangentVec3.z);
-
-                debugDisplay.DrawLine(position, position + tangentLength * tangent, colorTangent, colorTangent);
-                debugDisplay.DrawLine(position, position + bitangentLength * bitangent, colorBitangent, colorBitangent);
+                debugDisplay.DrawLine(position, position + tangentLength * clothRenderTangents[i], colorTangent, colorTangent);
+                debugDisplay.DrawLine(position, position + bitangentLength * clothRenderBitangents[i], colorBitangent, colorBitangent);
             }
         }
     }
@@ -204,33 +217,75 @@ namespace NvCloth
             return;
         }
 
-        if (m_clothComponentMesh->IsClothFullyAnimated())
-        {
-            return;
-        }
-
         for (const SphereCollider& collider : m_clothComponentMesh->m_actorClothColliders->GetSphereColliders())
         {
-            DrawSphereCollider(debugDisplay, collider.m_radius, collider.m_currentModelSpaceTransform);
+            DrawSphere(debugDisplay, collider.m_radius, collider.m_currentModelSpaceTransform.GetPosition(), AzFramework::ViewportColors::DeselectedColor);
         }
 
         for (const CapsuleCollider& collider : m_clothComponentMesh->m_actorClothColliders->GetCapsuleColliders())
         {
-            DrawCapsuleCollider(debugDisplay, collider.m_radius, collider.m_height, collider.m_currentModelSpaceTransform);
+            DrawCapsule(debugDisplay, collider.m_radius, collider.m_height, collider.m_currentModelSpaceTransform, AzFramework::ViewportColors::DeselectedColor);
         }
     }
 
-    void ClothDebugDisplay::DrawSphereCollider(AzFramework::DebugDisplayRequests& debugDisplay, float radius, const AZ::Transform& transform)
+    void ClothDebugDisplay::DisplayMotionConstraints(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        debugDisplay.PushMatrix(transform);
-        debugDisplay.SetColor(AzFramework::ViewportColors::DeselectedColor);
-        debugDisplay.DrawBall(AZ::Vector3::CreateZero(), radius, false/*drawShaded*/);
-        debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
-        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), radius);
-        debugDisplay.PopMatrix();
+        const AZ::Vector4 particleColor = AZ::Colors::Green.GetAsVector4();
+        const AZ::Vector4 staticPraticleColor = AZ::Colors::Black.GetAsVector4();
+        const AZ::Vector4 lineColor = AZ::Colors::Magenta.GetAsVector4();
+        const float ballsize = 0.008f;
+
+        for (const auto& constraint : m_clothComponentMesh->m_motionConstraints)
+        {
+            const AZ::Vector3 position = constraint.GetAsVector3();
+            const float radius = constraint.GetW();
+
+            debugDisplay.SetColor((radius > 0.0f) ? particleColor : staticPraticleColor);
+            debugDisplay.DrawBall(position, ballsize, false/*drawShaded*/);
+            debugDisplay.DrawLine(position, position + AZ::Vector3::CreateAxisY(radius), lineColor, lineColor);
+        }
     }
 
-    void ClothDebugDisplay::DrawCapsuleCollider(AzFramework::DebugDisplayRequests& debugDisplay, float radius, float height, const AZ::Transform& transform)
+    void ClothDebugDisplay::DisplaySeparationConstraints(AzFramework::DebugDisplayRequests& debugDisplay)
+    {
+        if (m_clothComponentMesh->m_separationConstraints.empty())
+        {
+            return;
+        }
+
+        const AZ::Vector4 sphereColor = AZ::Colors::Red.GetAsVector4();
+        const AZ::Vector4 lineColor = AZ::Colors::Aqua.GetAsVector4();
+
+        const auto& particles = m_clothComponentMesh->m_cloth->GetParticles();
+
+        for (size_t i = 0; i < particles.size(); ++i)
+        {
+            const AZ::Vector3 position = m_clothComponentMesh->m_separationConstraints[i].GetAsVector3();
+            const float radius = m_clothComponentMesh->m_separationConstraints[i].GetW();
+
+            DrawSphere(debugDisplay, radius, position, sphereColor);
+
+            debugDisplay.DrawLine(position, particles[i].GetAsVector3(), lineColor, lineColor);
+        }
+    }
+
+    void ClothDebugDisplay::DrawSphere(
+        AzFramework::DebugDisplayRequests& debugDisplay,
+        float radius,
+        const AZ::Vector3& position,
+        const AZ::Color& color)
+    {
+        debugDisplay.SetColor(color);
+        debugDisplay.DrawBall(position, radius, false/*drawShaded*/);
+        debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
+        debugDisplay.DrawWireSphere(position, radius);
+    }
+
+    void ClothDebugDisplay::DrawCapsule(
+        AzFramework::DebugDisplayRequests& debugDisplay,
+        float radius, float height,
+        const AZ::Transform& transform,
+        const AZ::Color& color)
     {
         debugDisplay.PushMatrix(transform);
 
@@ -250,7 +305,7 @@ namespace NvCloth
             capsuleLineBuffer
         );
 
-        debugDisplay.DrawTrianglesIndexed(capsuleVertexBuffer, capsuleIndexBuffer, AzFramework::ViewportColors::DeselectedColor);
+        debugDisplay.DrawTrianglesIndexed(capsuleVertexBuffer, capsuleIndexBuffer, color);
         debugDisplay.DrawLines(capsuleLineBuffer, AzFramework::ViewportColors::WireColor);
 
         debugDisplay.PopMatrix();

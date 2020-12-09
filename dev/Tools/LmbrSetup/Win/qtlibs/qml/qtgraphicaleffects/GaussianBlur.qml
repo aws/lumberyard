@@ -262,7 +262,7 @@ Item {
     /*! \internal */
     property int _kernelSize: _kernelRadius * 2 + 1;
     /*! \internal */
-    property int _dpr: Screen.devicePixelRatio;
+    property real _dpr: Screen.devicePixelRatio;
     /*! \internal */
     property bool _alphaOnly: false;
     /*! \internal */

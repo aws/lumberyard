@@ -53,6 +53,11 @@ namespace LmbrCentral
         virtual AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() = 0;
 
         /**
+         * Returns the asset id used by the mesh
+         */
+        virtual AZ::Data::AssetId GetMeshAssetId() { return GetMeshAsset().GetId(); }
+
+        /**
         * Returns true if the mesh is currently visible
         */
         virtual bool GetVisibility() { return true; }
@@ -61,6 +66,107 @@ namespace LmbrCentral
         * Sets the current visibility of the mesh
         */
         virtual void SetVisibility(bool isVisible) {}
+
+        /**
+        * Returns the opacity of the mesh
+        */
+        virtual float GetOpacity() { return 1.0f; }
+
+        /**
+        * Sets the opacity of the mesh
+        */
+        virtual void SetOpacity(float /*opacity*/) {}
+
+        /**
+        * Returns the maximum view distance of the mesh
+        */
+        virtual float GetMaxViewDistance() { return FLT_MAX; }
+
+        /**
+        * Sets the maximum view distance of the mesh
+        */
+        virtual void SetMaxViewDistance(float /*maxViewDistance*/) {}
+
+        /**
+        * Returns the scale of max view distance
+        */
+        virtual float GetViewDistanceMultiplier() { return 1.0f; }
+
+        /**
+        * Sets the scale of max view distance
+        */
+        virtual void SetViewDistanceMultiplier(float /*viewDistanceMultiplier*/) {}
+
+        /**
+        * Returns the ratio used to scale LOD distances
+        */
+        virtual AZ::u32 GetLODDistanceRatio() { return 100; }
+
+        /**
+        * Sets the ratio used to scale LOD distances
+        */
+        virtual void SetLODDistanceRatio(AZ::u32 /*lodDistanceRatio*/) {}
+
+        /**
+        * Returns if this mesh should cast shadows
+        */
+        virtual bool GetCastShadows() { return true; }
+
+        /**
+        * Sets if this mesh should cast shadows
+        */
+        virtual void SetCastShadows(bool /*shouldCastShadows*/) {}
+
+        /**
+        * Returns if the mesh LOD be based on bounding boxes
+        */
+        virtual bool GetLODBasedOnBoundingBoxes() { return false; }
+
+        /**
+        * Sets if the mesh LOD be based on bounding boxes
+        */
+        virtual void SetLODBasedOnBoundingBoxes(bool /*lodBasedOnBoundingBoxes*/) {}
+
+        /**
+        * Returns if VisAreas should be used to control the mesh visibility
+        */
+        virtual bool GetUseVisAreas() { return true; }
+
+        /**
+        * Sets if VisAreas should be used to control the mesh visibility
+        */
+        virtual void SetUseVisAreas(bool /*useVisAreas*/) {}
+
+        /**
+        * Returns if the mesh should receive wind
+        */
+        virtual bool GetReceiveWind() { return false; }
+
+        /**
+        * Sets if the mesh should receive wind
+        */
+        virtual void SetReceiveWind(bool /*shouldReceiveWind*/) {}
+
+        /**
+        * Returns if the mesh should accept decals
+        */
+        virtual bool GetAcceptDecals() { return true; }
+
+        /**
+        * Sets if the mesh should accept decals
+        */
+        virtual void SetAcceptDecals(bool /*shouldAcceptDecals*/) {}
+
+        /**
+        * Returns if the mesh is deformable
+        */
+        virtual bool GetDeformableMesh() { return false; }
+
+        /**
+        * Sets if the mesh is deformable
+        */
+        virtual void SetDeformableMesh(bool /*isDeformableMesh*/) {}
+
     };
 
     using MeshComponentRequestBus = AZ::EBus<MeshComponentRequests>;
@@ -160,9 +266,9 @@ namespace LmbrCentral
         struct ConnectionPolicy
             : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
             {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, id);
 
                 AZ::Data::Asset<AZ::Data::AssetData> asset;
                 EBUS_EVENT_ID_RESULT(asset, id, MeshComponentRequestBus, GetMeshAsset);

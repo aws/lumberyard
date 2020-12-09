@@ -16,13 +16,13 @@
 #include "QFileSelectWidget.h"
 #include "BaseVariableWidget.h"
 #include <Controls/QToolTipWidget.h>
-
+#include <AzQtComponents/Components/Widgets/BrowseEdit.h>
 
 class QBitmapPreviewDialogImp;
 class CAttributeView;
 
 class QFileSelectResourceWidget
-    : public QFileSelectWidget
+    : public QWidget
     , public CBaseVariableWidget
 {
     Q_OBJECT
@@ -30,26 +30,31 @@ public:
     explicit QFileSelectResourceWidget(CAttributeItem* parent, CAttributeView* attributeView,
         int propertyType);
 
-    virtual void setPath(const QString& path) override;
-    virtual void setVar(IVariable* var) override;
-    virtual void onVarChanged(IVariable* var) override;
+    virtual void setPath(const QString& path);
+    virtual void setVar(IVariable* var);
+    virtual void onVarChanged(IVariable* var);
 
 protected:
-    virtual void onOpenSelectDialog() override;
-    virtual void onSelectedIndexChanged(int index) override;
-    virtual void onReturnPressed() override;
-    virtual QString pathFilter(const QString& path) override;
-    virtual bool eventFilter(QObject* obj, QEvent* event) override;
+    virtual void onOpenSelectDialog();
+    virtual void onReturnPressed();
+    virtual void onClearButtonClicked();
+    virtual QString pathFilter(const QString& path);
+    virtual bool eventFilter(QObject* obj, QEvent* event);
 
 private:
     void OpenSourceFile();
+    QPushButton* addButton(const QString& caption, const QString& tooltip, int row, int col, int rowspan, int colspan, const QIcon* icon = nullptr);
+    void UpdatePreviewTooltip(QString filePath, QPoint position, bool showTooltip);
 
     QVector<QPushButton*> m_btns; //added to allow event testing for custom tooltips
-    QToolTipWidget* m_tooltip;
+    AzQtComponents::BrowseEdit* m_browseEdit;
+    QGridLayout* m_gridLayout;
+    QToolTipWrapper* m_tooltip;
     bool m_ignoreSetVar;
     int m_propertyType;
     bool m_hasFocus;
     CAttributeView* m_attributeView;
+    QPoint m_lastTooltipPos;
 };
 
 #endif // QFILESELECTMODELWIDGET_H

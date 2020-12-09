@@ -96,7 +96,13 @@ namespace EMotionFX
                     ->Event("GetRenderCharacter", &ActorComponentRequestBus::Events::GetRenderCharacter)
                     ->Event("SetRenderCharacter", &ActorComponentRequestBus::Events::SetRenderCharacter)
                     ->VirtualProperty("RenderCharacter", "GetRenderCharacter", "SetRenderCharacter")
-                ;
+
+                    ->Event("SetActorAsset", &ActorComponentRequestBus::Events::SetActorAsset)
+                        ->Attribute(AZ::Script::Attributes::AssetType, "EMotion FX Actor")
+                    ->Event("GetActorAsset", &ActorComponentRequestBus::Events::GetActorAssetId)
+                    ->VirtualProperty("ActorAsset", "GetActorAsset", "SetActorAsset")
+
+                    ;
 
                 behaviorContext->Class<ActorComponent>()->RequestBus("ActorComponentRequestBus");
 
@@ -246,6 +252,32 @@ namespace EMotionFX
                     m_renderActorInstance->SetIsVisible(m_configuration.m_renderCharacter);
                 }
             }
+        }
+
+        void ActorComponent::SetActorAsset(const AZ::Data::AssetId& id)
+        {
+            if (m_configuration.m_actorAsset.GetId() != id && id.IsValid())
+            {
+                AZ::Data::AssetBus::Handler::BusDisconnect();
+                AZ::Data::AssetBus::Handler::BusConnect(id);
+                m_configuration.m_actorAsset.Create(id, true);
+            }
+        }
+
+        AZ::Data::Asset<AZ::Data::AssetData> ActorComponent::GetActorAsset()
+        {
+            return m_configuration.m_actorAsset;
+        }
+
+        const AZ::Data::AssetId& ActorComponent::GetActorAssetId()
+        {
+            return m_configuration.m_actorAsset->GetId();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        SkinningMethod ActorComponent::GetSkinningMethod() const
+        {
+            return m_configuration.m_skinningMethod;
         }
 
         //////////////////////////////////////////////////////////////////////////

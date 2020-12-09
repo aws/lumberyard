@@ -19,6 +19,7 @@
 #include "ProjectSettingsContainer.h"
 #include "ProjectSettingsValidator.h"
 #include "PropertyImagePreview.h"
+#include "PropertyFileSelect.h"
 #include "PropertyLinked.h"
 #include "Utils.h"
 #include "ValidationHandler.h"
@@ -135,6 +136,7 @@ namespace ProjectSettingsTool
     void ProjectSettingsToolWindow::RegisterHandlersAndBusses()
     {
         m_propertyHandlers.push_back(PropertyFuncValLineEditHandler::Register(m_validationHandler.get()));
+        m_propertyHandlers.push_back(PropertyFuncValBrowseEditHandler::Register(m_validationHandler.get()));
         m_propertyHandlers.push_back(PropertyFileSelectHandler::Register(m_validationHandler.get()));
         m_propertyHandlers.push_back(PropertyImagePreviewHandler::Register(m_validationHandler.get()));
         m_linkHandler = PropertyLinkedHandler::Register(m_validationHandler.get());
@@ -279,6 +281,8 @@ namespace ProjectSettingsTool
     {
         // setup
         m_ui->setupUi(this);
+
+        AzQtComponents::TabWidget::applySecondaryStyle(m_ui->platformTabs, false);
 
         ResizeTabs(m_ui->platformTabs->currentIndex());
 
@@ -593,9 +597,9 @@ namespace ProjectSettingsTool
                     {
                         m_ui->reconfigureLog->show();
                     #if defined(AZ_PLATFORM_WINDOWS)
-                        m_reconfigureProcess.start(QString("cmd.exe /C %1").arg("lmbr_waf.bat configure"));
+                        m_reconfigureProcess.start("cmd.exe", { QString("/C %1").arg("lmbr_waf.bat configure") });
                     #elif defined(AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
-                        m_reconfigureProcess.start(QString("/bin/sh %1").arg("lmbr_waf.sh configure"));
+                        m_reconfigureProcess.start("/bin/sh", { QString("%1").arg("lmbr_waf.sh configure") });
                     #else
                         #error "Needs to be implemented"
                     #endif

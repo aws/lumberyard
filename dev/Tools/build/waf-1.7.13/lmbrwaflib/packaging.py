@@ -629,6 +629,7 @@ class package_task(Task):
         self.gem_types = kw.get('gem_types', [Gem.Module.Type.GameModule])
         self.resources = kw.get('resources', [])
         self.dir_resources = kw.get('dir_resources', [])
+        self.custom_frameworks = kw.get('custom_frameworks', [])
         self.assets_source = kw.get('assets_node', None)
         self.finalize_func = kw.get('finalize_func', lambda *args: None)
 
@@ -705,8 +706,13 @@ class package_task(Task):
                     else:
                         self.dependencies.update(get_dependencies_recursively_for_task_gen(ctx, gem_module_task_gen))
 
-    def codesign_executable_file(self,path_to_executable):
-        run_subprocess(['codesign', '-s', '-', path_to_executable], fail_on_error=True)
+    def codesign_executable_file(self, path_to_executable):
+        signing_identity = '-'
+        if 'EXPANDED_CODE_SIGN_IDENTITY' in os.environ:
+            signing_identity = os.environ['EXPANDED_CODE_SIGN_IDENTITY']
+        else:
+            Logs.warn('[WARN] No code signing identity found! Using ad hoc signing.')
+        run_subprocess(['codesign', '-f', '-s', signing_identity, path_to_executable], fail_on_error=True)
 
 
     def process_executable(self):
@@ -816,6 +822,38 @@ class package_task(Task):
             if not os.path.islink(dst):
                 post_copy_cleanup(frameworks_node.make_node(framework_name))
 
+    def process_custom_frameworks(self):
+        """
+        This function copies custom/3rdParty frameworks into the .app package
+        """
+        if not self.bld.is_apple_platform(self.bld.platform):
+            return
+
+        executable_dest_node = self.binaries_out
+
+        def run_command(cmd_with_args):
+            try:
+                subprocess.check_call(cmd_with_args)
+                return 0
+            except subprocess.CalledProcessError as err:
+                Logs.warn('Command {} failed with error: {}'.format(err.cmd, err.stderr))
+                return err.returncode
+
+        def copy_frameworks(src, dest):
+            copy_cmd = ['cp', '-R', src, dest]
+            return run_command(copy_cmd)
+
+        for custom_framework in self.custom_frameworks:
+            if not os.path.isabs(custom_framework):
+                custom_framework = os.path.join(self.bld.engine_node.abspath(), custom_framework)
+            base_name = os.path.basename(custom_framework)
+            frameworks_dir = os.path.join(executable_dest_node.abspath(), 'Frameworks')
+            os.makedirs(frameworks_dir, exist_ok=True)
+            out_path = os.path.join(frameworks_dir, base_name)
+            if copy_frameworks(custom_framework, out_path):
+                self.bld.fatal('[ERROR] Failed to copy custom frameworks to package!')
+            self.codesign_executable_file(out_path)
+
     def process_resources(self):
         resources_dest_node = self.resources_out
         resources = getattr(self, 'resources', None)
@@ -825,6 +863,9 @@ class package_task(Task):
 
         if 'qtlibs' in self.dir_resources:
             self.process_qt()
+
+        if self.custom_frameworks:
+            self.process_custom_frameworks()
 
         for res_dir in self.dir_resources:
             Logs.debug('package: extra directory to link/copy into the package is: {}'.format(res_dir))

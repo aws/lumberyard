@@ -1243,10 +1243,18 @@ AZ_POP_DISABLE_WARNING
 
     void SimpleAssetPropertyHandlerDefault::ConsumeAttribute(PropertyAssetCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        Q_UNUSED(GUI);
-        Q_UNUSED(attrib);
-        Q_UNUSED(attrValue);
         Q_UNUSED(debugName);
+
+        if (attrib == AZ_CRC("BrowseIcon", 0x507d7a4f))
+        {
+            AZStd::string iconPath;
+            attrValue->Read<AZStd::string>(iconPath);
+
+            if (!iconPath.empty())
+            {
+                GUI->SetBrowseButtonIcon(QIcon(iconPath.c_str()));
+            }
+        }
     }
 
     void SimpleAssetPropertyHandlerDefault::WriteGUIValuesIntoProperty(size_t index, PropertyAssetCtrl* GUI, property_t& instance, InstanceDataNode* node)

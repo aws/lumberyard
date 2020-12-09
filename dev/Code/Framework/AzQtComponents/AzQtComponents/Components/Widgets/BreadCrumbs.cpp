@@ -79,6 +79,26 @@ namespace AzQtComponents
         return m_currentPath;
     }
 
+    void BreadCrumbs::setCurrentPath(const QString& newPath)
+    {
+        m_currentPath = newPath;
+
+        // clean up the path to use all the first separator in the list of separators
+        m_currentPath.replace(g_windowsSeparator, g_separator);
+
+        fillLabel();
+    }
+
+    bool BreadCrumbs::getPushPathOnLinkActivation() const
+    {
+        return m_pushPathOnLinkActivation;
+    }
+
+    void BreadCrumbs::setPushPathOnLinkActivation(bool pushPath)
+    {
+        m_pushPathOnLinkActivation = pushPath;
+    }
+
     QWidget* BreadCrumbs::createSeparator()
     {
         QFrame* line = new QFrame(this);
@@ -207,7 +227,7 @@ namespace AzQtComponents
     void BreadCrumbs::fillLabel()
     {
         QString htmlString = "";
-        const QStringList fullPath = m_currentPath.split(g_separator, QString::SkipEmptyParts);
+        const QStringList fullPath = m_currentPath.split(g_separator, Qt::SkipEmptyParts);
         m_truncatedPaths = fullPath;
 
         // used to measure the width used by the path
@@ -254,12 +274,7 @@ namespace AzQtComponents
 
     void BreadCrumbs::changePath(const QString& newPath)
     {
-        m_currentPath = newPath;
-
-        // clean up the path to use all the first separator in the list of separators
-        m_currentPath = m_currentPath.replace(g_windowsSeparator, g_separator);
-
-        fillLabel();
+        setCurrentPath(newPath);
 
         Q_EMIT pathChanged(m_currentPath);
     }
@@ -321,7 +336,12 @@ namespace AzQtComponents
 
     void BreadCrumbs::onLinkActivated(const QString& link)
     {
-        pushPath(link);
+        int linkIndex = link.count(g_separator);
+        Q_EMIT linkClicked(link, linkIndex);
+        if (m_pushPathOnLinkActivation)
+        {
+            pushPath(link);
+        }
     }
 
     QString BreadCrumbs::buildPathFromList(const QStringList& fullPath, int pos)
@@ -334,7 +354,11 @@ namespace AzQtComponents
         QString path;
         for (int i = 0; i < pos; i++)
         {
-            path.append(fullPath.value(i) + g_separator);
+            path.append(fullPath.value(i));
+            if (i < pos - 1)
+            {
+                path.append(g_separator);
+            }
         }
 
         return path;
@@ -346,7 +370,7 @@ namespace AzQtComponents
         for (int i = m_truncatedPaths.size() - 1; i >= 0; i--)
         {
             hiddenPaths.addAction(m_truncatedPaths.at(i), [this, i]() {
-                pushPath(buildPathFromList(m_truncatedPaths, i + 1));
+                onLinkActivated(buildPathFromList(m_truncatedPaths, i + 1));
             });
         }
 

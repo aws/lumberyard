@@ -44,6 +44,8 @@ namespace AzToolsFramework
         Q_OBJECT;
         Q_PROPERTY(bool hasChildRows READ HasChildRows);
         Q_PROPERTY(bool isTopLevel READ IsTopLevel);
+        Q_PROPERTY(int getLevel READ GetLevel);
+        Q_PROPERTY(bool appendDefaultLabelToName WRITE AppendDefaultLabelToName)
     public:
         AZ_CLASS_ALLOCATOR(PropertyRowWidget, AZ::SystemAllocator, 0)
         PropertyRowWidget(QWidget* pParent);
@@ -79,7 +81,11 @@ namespace AzToolsFramework
 
         void SetParentRow(PropertyRowWidget* pParentRowWidget) { m_parentRow = pParentRowWidget; }
         PropertyRowWidget* GetParentRow() const { return m_parentRow; }
+        int GetLevel() const;
         bool IsTopLevel() const;
+
+        // Remove the default label and append the text to the name label.
+        void AppendDefaultLabelToName(bool doAppend);
 
         AZStd::vector<PropertyRowWidget*>& GetChildrenRows() { return m_childrenRows; }
         bool HasChildRows() const;

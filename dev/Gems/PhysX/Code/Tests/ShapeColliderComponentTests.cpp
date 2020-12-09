@@ -20,6 +20,7 @@
 #include <EditorForceRegionComponent.h>
 #include <ShapeColliderComponent.h>
 #include <RigidBodyComponent.h>
+#include <StaticRigidBodyComponent.h>
 #include <RigidBodyStatic.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
@@ -121,7 +122,6 @@ namespace PhysXEditorTests
         EXPECT_TRUE(gameEntity->FindComponent(LmbrCentral::BoxShapeComponentTypeId) != nullptr);
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithBox_CorrectRuntimeGeometry)
     {
         // create an editor entity with a shape collider component and a box shape component
@@ -137,7 +137,7 @@ namespace PhysXEditorTests
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
 
         // since there was no editor rigid body component, the runtime entity should have a static rigid body
-        const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        const auto* staticBody = gameEntity->FindComponent<PhysX::StaticRigidBodyComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
 
         PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
@@ -153,7 +153,6 @@ namespace PhysXEditorTests
         EXPECT_TRUE(aabb.GetMax().IsClose(0.5f * boxDimensions));
         EXPECT_TRUE(aabb.GetMin().IsClose(-0.5f * boxDimensions));
     }
-    AZ_POP_DISABLE_WARNING
 
     void SetPolygonPrismVertices(AZ::EntityId entityId, const AZStd::vector<AZ::Vector2>& vertices)
     {
@@ -177,7 +176,6 @@ namespace PhysXEditorTests
         }
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithPolygonPrism_CorrectRuntimeGeometry)
     {
         // create an editor entity with a shape collider component and a polygon prism shape component
@@ -197,7 +195,7 @@ namespace PhysXEditorTests
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
 
         // since there was no editor rigid body component, the runtime entity should have a static rigid body
-        const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        const auto* staticBody = gameEntity->FindComponent<PhysX::StaticRigidBodyComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
 
         PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
@@ -220,7 +218,6 @@ namespace PhysXEditorTests
         EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(3.0f, 3.0f, 2.0f)));
         EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3::CreateZero()));
     }
-    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinder_CorrectRuntimeComponents)
     {
@@ -237,7 +234,6 @@ namespace PhysXEditorTests
         EXPECT_TRUE(gameEntity->FindComponent(LmbrCentral::CylinderShapeComponentTypeId) != nullptr);
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithValidRadiusAndValidHeight_CorrectRuntimeGeometry)
     {
         // create an editor entity with a shape collider component and a cylinder shape component
@@ -258,7 +254,7 @@ namespace PhysXEditorTests
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
         
         // since there was no editor rigid body component, the runtime entity should have a static rigid body
-        const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        const auto* staticBody = gameEntity->FindComponent<PhysX::StaticRigidBodyComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
 
         PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
@@ -285,7 +281,6 @@ namespace PhysXEditorTests
         EXPECT_TRUE(AZ::GetAbs(vecMax.GetX()) <= validRadius);
         EXPECT_TRUE(AZ::GetAbs(vecMax.GetX()) <= validRadius);        
     }
-    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithCylinderWithNullRadius_HandledGracefully)
     {
@@ -312,7 +307,6 @@ namespace PhysXEditorTests
         ValidateInvalidEditorShapeColliderComponentParams(0.f, -1.f);
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithUnsupportedShape_HandledGracefully)
     {
         Physics::ErrorHandler unsupportedShapeWarningHandler("Unsupported shape");
@@ -330,7 +324,7 @@ namespace PhysXEditorTests
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
 
         // since there was no editor rigid body component, the runtime entity should have a static rigid body
-        const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        const auto* staticBody = gameEntity->FindComponent<PhysX::StaticRigidBodyComponent>()->GetStaticRigidBody();
         const auto* pxRigidStatic = static_cast<const physx::PxRigidStatic*>(staticBody->GetNativePointer());
 
         PHYSX_SCENE_READ_LOCK(pxRigidStatic->getScene());
@@ -338,7 +332,6 @@ namespace PhysXEditorTests
         // there should be no shapes on the rigid body because the cylinder is not supported
         EXPECT_EQ(pxRigidStatic->getNbShapes(), 0);
     }
-    AZ_POP_DISABLE_WARNING
 
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_ShapeColliderWithBoxAndRigidBody_CorrectRuntimeComponents)
     {
@@ -390,7 +383,6 @@ namespace PhysXEditorTests
         EXPECT_TRUE(aabb.GetMin().IsClose(-0.5f * boxDimensions));
     }
 
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     TEST_F(PhysXEditorFixture, EditorShapeColliderComponent_TransformChanged_ColliderUpdated)
     {
         // create an editor entity with a shape collider component and a box shape component
@@ -411,12 +403,11 @@ namespace PhysXEditorTests
 
         // make a game entity and check its bounding box is consistent with the changed transform
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
-        const auto* staticBody = gameEntity->FindComponent<PhysX::ShapeColliderComponent>()->GetStaticRigidBody();
+        const auto* staticBody = gameEntity->FindComponent<PhysX::StaticRigidBodyComponent>()->GetStaticRigidBody();
         AZ::Aabb aabb = staticBody->GetAabb();
         EXPECT_TRUE(aabb.GetMax().IsClose(translation + 0.5f * scale * boxDimensions));
         EXPECT_TRUE(aabb.GetMin().IsClose(translation - 0.5f * scale * boxDimensions));
     }
-    AZ_POP_DISABLE_WARNING
 
     void SetTrigger(PhysX::EditorShapeColliderComponent* editorShapeColliderComponent, bool isTrigger)
     {

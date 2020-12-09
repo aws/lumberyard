@@ -58,8 +58,11 @@ namespace EMotionFX
             bool GetRenderCharacter() const override;
             void SetRenderCharacter(bool enable) override;
             size_t GetNumJoints() const override;
+            SkinningMethod GetSkinningMethod() const override;
 
             // EditorActorComponentRequestBus::Handler
+            void SetActorAsset(const AZ::Data::AssetId& id) override;
+            AZ::Data::Asset<AZ::Data::AssetData> GetActorAsset() override;
             const AZ::Data::AssetId& GetActorAssetId() override;
             AZ::EntityId GetAttachedToEntityId() const override;
 
@@ -116,7 +119,6 @@ namespace EMotionFX
             // AZ::Data::AssetBus::Handler
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
-            void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             // AZ::TransformNotificationBus::Handler
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;

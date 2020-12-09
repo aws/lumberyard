@@ -204,9 +204,8 @@ namespace AzToolsFramework
         bool HasSavedExpandState(AZ::u32 pathKey) const;
 
         PropertyModificationRefreshLevel m_queuedRefreshLevel;
-        // If a full refresh is queued at a higher level (Entity Property Editor for example), we may need to pause
-        // partial refreshes from occurring until the full refresh is complete.
         bool m_preventRefresh = false;
+        bool m_lastEnabledState = true;
 
         bool m_hideRootProperties;
         bool m_queuedTabOrderRefresh;
@@ -1855,6 +1854,7 @@ namespace AzToolsFramework
             // Make sure the dialog stays on top ready for dropping onto
             dialog.setWindowFlags(Qt::WindowStaysOnTopHint);
             dialog.show();
+            dialog.adjustSize();
 
             m_releasePrompt = false;
 
@@ -1976,15 +1976,36 @@ namespace AzToolsFramework
         m_impl->m_queuedRefreshLevel = Refresh_None;
     }
 
-    void ReflectedPropertyEditor::PreventRefresh(bool shouldPrevent)
+    void ReflectedPropertyEditor::PreventDataAccess(bool shouldPrevent)
     {
+        // This is a no-op if we're already not blocking refresh actions
+        if (!m_impl->m_preventRefresh && !shouldPrevent)
+        {
+            return;
+        }
+
         // If we've set this to true twice in a row, then when one of them sets it to false, refreshes will be allowed
         // potentially before the second caller is ready for them.  This case should get examined to see why nested calls
         // are happening.  Either m_preventRefresh might need to turn into a refcount to allow nesting, or the assert might
         // be invalid, or the nesting shouldn't occur at all.
         AZ_Assert(!(m_impl->m_preventRefresh && shouldPrevent), 
                   "PreventRefresh set to 'true' twice.  If multiple different callers are setting this, it might need to become a refcount.");
+
+        // Prevent property refreshes while we're disabled This avoids us accidentally refreshing during a destructive change.
+        // This can occur in the event of a refresh occurring in a higher-level construct (e.g. the component entity inspector)
         m_impl->m_preventRefresh = shouldPrevent;
+
+        // If we're preventing refreshes, we should also block user input to avoid any dangerous data access or mutation
+        if (shouldPrevent)
+        {
+            m_impl->m_lastEnabledState = isEnabled();
+            setEnabled(false);
+        }
+        // Otherwise, we should restore our enabled state to whatever it was before we were set to prevent access
+        else
+        {
+            setEnabled(m_impl->m_lastEnabledState);
+        }
     }
 
     void ReflectedPropertyEditor::QueueInvalidation(PropertyModificationRefreshLevel level)

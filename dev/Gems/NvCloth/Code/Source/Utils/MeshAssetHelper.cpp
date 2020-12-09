@@ -10,11 +10,11 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <platform.h> // Needed for MeshAsset.h
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/MeshAsset.h>
+
+#include <IIndexedMesh.h> // Needed for SMeshColor
 
 #include <Utils/MeshAssetHelper.h>
 
@@ -41,7 +41,7 @@ namespace NvCloth
             return;
         }
 
-        if (!statObj->GetClothInverseMasses().empty())
+        if (!statObj->GetClothData().empty())
         {
             meshNodes.push_back(statObj->GetCGFNodeName().c_str());
         }
@@ -52,7 +52,7 @@ namespace NvCloth
             IStatObj::SSubObject* subObject = statObj->GetSubObject(i);
             if (subObject &&
                 subObject->pStatObj &&
-                !subObject->pStatObj->GetClothInverseMasses().empty())
+                !subObject->pStatObj->GetClothData().empty())
             {
                 meshNodes.push_back(subObject->pStatObj->GetCGFNodeName().c_str());
             }
@@ -62,10 +62,10 @@ namespace NvCloth
     bool MeshAssetHelper::ObtainClothMeshNodeInfo(
         const AZStd::string& meshNode, 
         MeshNodeInfo& meshNodeInfo,
-        AZStd::vector<SimParticleType>& meshParticles,
-        AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs)
+        MeshClothInfo& meshClothInfo)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
+
         AZ::Data::Asset<LmbrCentral::MeshAsset> meshAsset;
         LmbrCentral::MeshComponentRequestBus::EventResult(
             meshAsset, m_entityId, &LmbrCentral::MeshComponentRequestBus::Events::GetMeshAsset);
@@ -110,9 +110,14 @@ namespace NvCloth
 
         if (selectedStatObj)
         {
-            bool dataCopied = CopyDataFromRenderMesh(
-                *selectedStatObj->GetRenderMesh(), selectedStatObj->GetClothInverseMasses(),
-                meshParticles, meshIndices, meshUVs);
+            bool dataCopied = false;
+
+            if (IRenderMesh* renderMesh = selectedStatObj->GetRenderMesh())
+            {
+                dataCopied = CopyDataFromRenderMesh(
+                    *renderMesh, selectedStatObj->GetClothData(),
+                    meshClothInfo);
+            }
 
             if (dataCopied)
             {
@@ -121,9 +126,9 @@ namespace NvCloth
                 MeshNodeInfo::SubMesh subMesh;
                 subMesh.m_primitiveIndex = primitiveIndex;
                 subMesh.m_verticesFirstIndex = 0;
-                subMesh.m_numVertices = meshParticles.size();
+                subMesh.m_numVertices = meshClothInfo.m_particles.size();
                 subMesh.m_indicesFirstIndex = 0;
-                subMesh.m_numIndices = meshIndices.size();
+                subMesh.m_numIndices = meshClothInfo.m_indices.size();
 
                 meshNodeInfo.m_lodLevel = 0; // Cloth is alway in LOD 0
                 meshNodeInfo.m_subMeshes.push_back(subMesh);
@@ -142,10 +147,8 @@ namespace NvCloth
 
     bool MeshAssetHelper::CopyDataFromRenderMesh(
         IRenderMesh& renderMesh,
-        const AZStd::vector<float>& clothInverseMasses,
-        AZStd::vector<SimParticleType>& meshParticles,
-        AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs)
+        const AZStd::vector<SMeshColor>& renderMeshClothData,
+        MeshClothInfo& meshClothInfo)
     {
         const int numVertices = renderMesh.GetNumVerts();
         const int numIndices = renderMesh.GetNumInds();
@@ -153,12 +156,12 @@ namespace NvCloth
         {
             return false;
         }
-        else if (numVertices != clothInverseMasses.size())
+        else if (numVertices != renderMeshClothData.size())
         {
             AZ_Error("MeshAssetHelper", false,
-                "Number of vertices (%d) doesn't match the number of cloth inverse masses (%d)",
+                "Number of vertices (%d) doesn't match the number of cloth data (%zu)",
                 numVertices,
-                clothInverseMasses.size());
+                renderMeshClothData.size());
             return false;
         }
 
@@ -175,29 +178,47 @@ namespace NvCloth
 
             const SimUVType uvZero(0.0f, 0.0f);
 
-            meshParticles.resize(numVertices);
-            meshUVs.resize(numVertices);
+            meshClothInfo.m_particles.resize_no_construct(numVertices);
+            meshClothInfo.m_uvs.resize_no_construct(numVertices);
+            meshClothInfo.m_motionConstraints.resize_no_construct(numVertices);
+            meshClothInfo.m_backstopData.resize_no_construct(numVertices);
             for (int index = 0; index < numVertices; ++index)
             {
-                meshParticles[index].x = renderMeshVertices[index].x;
-                meshParticles[index].y = renderMeshVertices[index].y;
-                meshParticles[index].z = renderMeshVertices[index].z;
-                meshParticles[index].w = clothInverseMasses[index];
+                const ColorB clothVertexDataColorB = renderMeshClothData[index].GetRGBA();
+                const AZ::Color clothVertexData(
+                    clothVertexDataColorB.r,
+                    clothVertexDataColorB.g,
+                    clothVertexDataColorB.b,
+                    clothVertexDataColorB.a);
 
-                meshUVs[index] = (renderMeshUVs.data) ? SimUVType(renderMeshUVs[index].x, renderMeshUVs[index].y) : uvZero;
+                const float inverseMass = clothVertexData.GetR();
+                const float motionConstraint = clothVertexData.GetG();
+                const float backstopOffset = AZ::GetClamp(static_cast<float>(clothVertexData.GetB()) * 2.0f - 1.0f, -1.0f, 1.0f); // Convert range from [0,1] -> [-1,1]
+                const float backstopRadius = clothVertexData.GetA();
+
+                meshClothInfo.m_particles[index].Set(
+                    renderMeshVertices[index].x,
+                    renderMeshVertices[index].y,
+                    renderMeshVertices[index].z,
+                    inverseMass);
+
+                meshClothInfo.m_motionConstraints[index] = motionConstraint;
+                meshClothInfo.m_backstopData[index].Set(backstopOffset, backstopRadius);
+
+                meshClothInfo.m_uvs[index] = (renderMeshUVs.data) ? SimUVType(renderMeshUVs[index].x, renderMeshUVs[index].y) : uvZero;
             }
 
-            meshIndices.resize(numIndices);
+            meshClothInfo.m_indices.resize_no_construct(numIndices);
             // Fast copy when SimIndexType is the same size as the vtx_idx.
-            if (sizeof(SimIndexType) == sizeof(vtx_idx))
+            if constexpr (sizeof(SimIndexType) == sizeof(vtx_idx))
             {
-                memcpy(meshIndices.data(), renderMeshIndices, numIndices * sizeof(SimIndexType));
+                memcpy(meshClothInfo.m_indices.data(), renderMeshIndices, numIndices * sizeof(SimIndexType));
             }
             else
             {
                 for (int index = 0; index < numIndices; ++index)
                 {
-                    meshIndices[index] = static_cast<SimIndexType>(renderMeshIndices[index]);
+                    meshClothInfo.m_indices[index] = static_cast<SimIndexType>(renderMeshIndices[index]);
                 }
             }
 

@@ -266,7 +266,7 @@ public:
             default:
                 return {};
             }
-        case Qt::BackgroundColorRole:
+        case Qt::BackgroundRole:
             switch (index.column())
             {
             case ColumnMinHeight:
@@ -326,7 +326,7 @@ public:
             return {};
         case Qt::UserRole:
             return QVariant().fromValue<CLayer*>(layer);
-        case Qt::TextColorRole:
+        case Qt::ForegroundRole:
             switch (index.column())
             {
             case ColumnLayerName:

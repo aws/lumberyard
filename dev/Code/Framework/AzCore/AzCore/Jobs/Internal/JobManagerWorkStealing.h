@@ -34,8 +34,8 @@ namespace AZ
         class WorkQueue final
         {
         public:
-            void LocalPushBack(Job *job);
-            Job* LocalPopBack();
+            void LocalInsert(Job *job);
+            Job* LocalPopFront();
             Job* TryStealFront();
 
         private:
@@ -135,7 +135,7 @@ namespace AZ
 
             const ThreadList m_workerThreads; //no mutex required for this list, it's only assigned during startup, must be declared after m_threads and m_initSemaphore
 
-            using GlobalJobQueue = AZStd::queue<Job*, AZStd::deque<Job*>>;
+            using GlobalJobQueue = AZStd::deque<Job*>;
             using GlobalQueueMutexType = AZStd::mutex;
 
             GlobalJobQueue              m_globalJobQueue;

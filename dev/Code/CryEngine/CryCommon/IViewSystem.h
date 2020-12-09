@@ -256,6 +256,12 @@ struct IView
     virtual void SetZoomedScale(const float scale) = 0;
     virtual void SetActive(const bool bActive) = 0;
     virtual void UpdateAudioListener(const Matrix34& rMatrix) = 0;
+
+    virtual bool ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) = 0;
+    virtual bool UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) = 0;
+    virtual bool ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) = 0;
+    virtual bool UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) = 0;
+    virtual void GetProjectionMatrix(const float nearClipPlane, const float farClipPlane, AZ::Matrix4x4& outProjectionMatrix) = 0;
 };
 
 struct IViewSystemListener

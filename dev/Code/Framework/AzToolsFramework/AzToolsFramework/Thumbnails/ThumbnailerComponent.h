@@ -48,7 +48,7 @@ namespace AzToolsFramework
             bool HasContext(const char* contextName) const override;
             void RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName) override;
             SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) override;
-
+            bool IsLoading(SharedThumbnailKey thumbnailKey, const char* contextName) override;
 
         private:
             AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<ThumbnailContext>> m_thumbnails;

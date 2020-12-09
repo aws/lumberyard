@@ -408,24 +408,50 @@ namespace AudioControls
         switch (type)
         {
         case eWCT_WWISE_EVENT:
-            return ":/Editor/WwiseIcons/event_nor.png";
+            return ":/Editor/WwiseIcons/event_nor.svg";
         case eWCT_WWISE_RTPC:
-            return ":/Editor/WwiseIcons/gameparameter_nor.png";
+            return ":/Editor/WwiseIcons/gameparameter_nor.svg";
         case eWCT_WWISE_SWITCH:
-            return ":/Editor/WwiseIcons/switch_nor.png";
+            return ":/Editor/WwiseIcons/switch_nor.svg";
         case eWCT_WWISE_AUX_BUS:
-            return ":/Editor/WwiseIcons/auxbus_nor.png";
+            return ":/Editor/WwiseIcons/auxbus_nor.svg";
         case eWCT_WWISE_SOUND_BANK:
-            return ":/Editor/WwiseIcons/soundbank_nor.png";
+            return ":/Editor/WwiseIcons/soundbank_nor.svg";
         case eWCT_WWISE_GAME_STATE:
-            return ":/Editor/WwiseIcons/state_nor.png";
+            return ":/Editor/WwiseIcons/state_nor.svg";
         case eWCT_WWISE_SWITCH_GROUP:
-            return ":/Editor/WwiseIcons/switchgroup_nor.png";
+            return ":/Editor/WwiseIcons/switchgroup_nor.svg";
         case eWCT_WWISE_GAME_STATE_GROUP:
-            return ":/Editor/WwiseIcons/stategroup_nor.png";
+            return ":/Editor/WwiseIcons/stategroup_nor.svg";
         default:
             // should make a "default"/empty icon...
-            return ":/Editor/WwiseIcons/switchgroup_nor.png";
+            return ":/Editor/WwiseIcons/switchgroup_nor.svg";
+        }
+    }
+
+    const AZStd::string_view CAudioSystemEditor_wwise::GetTypeIconSelected(TImplControlType type) const
+    {
+        switch (type)
+        {
+        case eWCT_WWISE_EVENT:
+            return ":/Editor/WwiseIcons/event_nor_hover.svg";
+        case eWCT_WWISE_RTPC:
+            return ":/Editor/WwiseIcons/gameparameter_nor_hover.svg";
+        case eWCT_WWISE_SWITCH:
+            return ":/Editor/WwiseIcons/switch_nor_hover.svg";
+        case eWCT_WWISE_AUX_BUS:
+            return ":/Editor/WwiseIcons/auxbus_nor_hover.svg";
+        case eWCT_WWISE_SOUND_BANK:
+            return ":/Editor/WwiseIcons/soundbank_nor_hover.svg";
+        case eWCT_WWISE_GAME_STATE:
+            return ":/Editor/WwiseIcons/state_nor_hover.svg";
+        case eWCT_WWISE_SWITCH_GROUP:
+            return ":/Editor/WwiseIcons/switchgroup_nor_hover.svg";
+        case eWCT_WWISE_GAME_STATE_GROUP:
+            return ":/Editor/WwiseIcons/stategroup_nor_hover.svg";
+        default:
+            // should make a "default"/empty icon...
+            return ":/Editor/WwiseIcons/switchgroup_nor_hover.svg";
         }
     }
 

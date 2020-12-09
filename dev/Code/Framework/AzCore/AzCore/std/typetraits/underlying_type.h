@@ -17,6 +17,9 @@
 namespace AZStd
 {
     using std::underlying_type;
+
+    template< class T >
+    using underlying_type_t = typename std::underlying_type<T>::type;
 }
 
 #endif // AZSTD_TYPE_TRAITS_UNDERLYING_TYPE_INCLUDED

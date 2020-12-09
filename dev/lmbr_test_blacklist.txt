@@ -24,6 +24,7 @@ osvr.*
 (lib)?PhysX.*
 PxFoundation.*\.(dll|dylib|so)
 PxPvdSDK.*\.(dll|dylib|so)
+(lib)?NvBlast.*
 (lib)?PVRTexLib.*
 python.*
 (lib)?qt5.*

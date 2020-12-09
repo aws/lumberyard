@@ -70,10 +70,10 @@ namespace AZ
             struct AssetJobConnectionPolicy
                 : public EBusConnectionPolicy<Bus>
             {
-                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
                 {
                     typename Bus::BusIdType actualId = AssetInternal::ResolveAssetId(id);
-                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, actualId);
+                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler,connectLock,  actualId);
 
                     // If the asset is loaded or failed already, deliver the status update immediately
                     // Note that we check IsReady here, ReadyPreNotify must be tested because there is
@@ -81,11 +81,14 @@ namespace AZ
                     Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
-                        if (assetData->IsReady())
+                        bool isReady = assetData->IsReady();
+                        bool isError = assetData->IsError();
+                        connectLock.unlock();
+                        if (isReady)
                         {
                             handler->OnAssetReady(assetData);
                         }
-                        else if (assetData->IsError())
+                        else if (isError)
                         {
                             handler->OnAssetError(assetData);
                         }

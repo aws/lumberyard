@@ -736,7 +736,9 @@ namespace ServiceAPI {
                     editContext->Class<CloudGemMessageOfTheDayClientComponent>("CloudGemMessageOfTheDayClientComponent", "CloudGemMessageOfTheDay Component")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                             ->Attribute(AZ::Edit::Attributes::Category, "Cloud Canvas Gems")
-                            ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"));
+                            ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
+                            ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/CloudGemMessageOfTheDay.svg")
+                            ;
                 }
             }
 

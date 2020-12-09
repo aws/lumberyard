@@ -63,7 +63,7 @@ protected:
     bool LaunchShaderCompiler() const;
 
     void StartWafCommand(const char* commandType, const AZStd::string& commandArgs);
-    bool RunBlockingCommand(const AZStd::string& command, QString* output = nullptr) const;
+    bool RunBlockingCommand(const QString& program, const QStringList& arguments, QString* output = nullptr) const;
 
     static StringOutcome LoadJsonData(const AZStd::string& file, rapidjson::Document& jsonData);
     static StringOutcome GetUserSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption);

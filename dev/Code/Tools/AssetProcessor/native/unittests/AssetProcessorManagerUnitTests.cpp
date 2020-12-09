@@ -88,7 +88,7 @@ namespace AssetProcessor
         void sortAssetToProcessResultList(QList<JobDetails>& processResults)
         {
             //Sort the processResults based on platforms
-            qSort(processResults.begin(), processResults.end(),
+            std::sort(processResults.begin(), processResults.end(),
                 [](const JobDetails& first, const JobDetails& second)
                 {
                     if (first.m_jobEntry.m_platformInfo.m_identifier == second.m_jobEntry.m_platformInfo.m_identifier)

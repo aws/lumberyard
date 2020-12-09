@@ -58,7 +58,7 @@ QColumnWidget::QCustomLabel::QCustomLabel(const QString& label, CAttributeItem* 
         SetCollapsible(collapsible);
     }
     
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
 }
 
 QColumnWidget::QCustomLabel::~QCustomLabel()
@@ -101,7 +101,7 @@ bool QColumnWidget::QCustomLabel::event(QEvent* e)
         QPoint p = mapToGlobal(QPoint(0, 0));
         p.setX(p.x() + indent());
         QFontMetrics fm(font());
-        QRect widgetRect = QRect(p, QSize(fm.width(text()), fm.height()));
+        QRect widgetRect = QRect(p, QSize(fm.horizontalAdvance(text()), fm.height()));
 
         GetIEditor()->GetParticleUtils()->ToolTip_BuildFromConfig(m_tooltip, m_parent->getAttributeView()->GetVariablePath(m_variable), "", QString(m_parent->getVar()->GetDisplayValue()), isEnabled());
 

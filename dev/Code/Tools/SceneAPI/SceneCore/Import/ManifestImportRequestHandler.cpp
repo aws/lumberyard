@@ -11,9 +11,11 @@
 */
 
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <SceneAPI/SceneCore/Import/ManifestImportRequestHandler.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
@@ -27,6 +29,7 @@ namespace AZ
         namespace Import
         {
             const char* ManifestImportRequestHandler::s_extension = ".assetinfo";
+            const char* ManifestImportRequestHandler::s_generated = ".generated"; // support for foo.fbx.assetinfo.generated
 
             void ManifestImportRequestHandler::Activate()
             {
@@ -62,8 +65,37 @@ namespace AZ
                 scene.SetManifestFilename(AZStd::move(manifestPath));
                 if (!file.IsOpen())
                 {
-                    // If there's no manifest file, the default settings will do.
-                    return Events::LoadingResult::Ignored;
+                    const char* assetCacheRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@root@");
+                    if (!assetCacheRoot)
+                    {
+                        // If there's no cache root folder, the default settings will do.
+                        return Events::LoadingResult::Ignored;
+                    }
+
+                    // looking for filename in the pattern of sourceFileName.extension.assetinfo.generated in the cache
+                    AZStd::string filename = path;
+                    AZ::StringFunc::Path::GetFullFileName(filename.c_str(), filename);
+                    filename += s_extension;
+                    filename += s_generated;
+
+                    AZStd::string altManifestPath = path;
+                    AzFramework::ApplicationRequests::Bus::Broadcast(
+                        &AzFramework::ApplicationRequests::Bus::Events::MakePathRootRelative,
+                        altManifestPath);
+
+                    AZ::StringFunc::Path::GetFolderPath(altManifestPath.c_str(), altManifestPath);
+
+                    AZStd::string generatedAssetInfoPath;
+                    AZ::StringFunc::Path::Join(assetCacheRoot, altManifestPath.c_str(), generatedAssetInfoPath);
+                    AZ::StringFunc::Path::ConstructFull(generatedAssetInfoPath.c_str(), filename.c_str(), generatedAssetInfoPath);
+
+                    file.Open(generatedAssetInfoPath.c_str(), IO::SystemFile::SF_OPEN_READ_ONLY);
+                    if (!file.IsOpen())
+                    {
+                        // If there's no manifest file, the default settings will do.
+                        return Events::LoadingResult::Ignored;
+                    }
+                    scene.SetManifestFilename(AZStd::move(generatedAssetInfoPath));
                 }
 
                 IO::SystemFileStream fileStream(&file, false);
@@ -78,3 +110,4 @@ namespace AZ
         } // namespace Import
     } // namespace SceneAPI
 } // namespace AZ
+

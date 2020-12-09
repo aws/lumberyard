@@ -47,6 +47,7 @@ namespace Maestro
         AZ::Uuid GetAnimatedAddressTypeId(const AnimatablePropertyAddress& animatableAddress) override;
 
         void GetAssetDuration(AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId) override;
+        void GetAssetTypeName(AZStd::string& returnValue, const AnimatablePropertyAddress& animatableAddress) override;
 
         void ConnectSequence(const AZ::EntityId& sequenceEntityId) override;
         void DisconnectSequence() override;

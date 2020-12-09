@@ -188,6 +188,7 @@
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Console/IConsole.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/std/containers/map.h>
@@ -387,6 +388,34 @@ void RecentFileList::WriteList()
 namespace
 {
     static const char* s_CryEditAppInstanceName = "CryEditAppInstanceName";
+
+    void PyRunFile(const AZ::StringSet& args)
+    {
+        if (args.empty())
+        {
+            // We expect at least "pyRunFile" and the filename
+            AZ_Warning("editor", false, "The pyRunFile requires a file script name.");
+            return;
+        }
+        else if (args.size() == 1)
+        {
+            // If we only have "pyRunFile filename", there are no args to pass through.
+            AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(
+                &AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilename,
+                args.front().c_str());
+        }
+        else
+        {
+            // We have "pyRunFile filename x y z", so copy everything past filename into a new vector
+            AZStd::vector<AZStd::string_view> pythonArgs;
+            AZStd::transform(args.begin() + 1, args.end(), std::back_inserter(pythonArgs), [](auto&& value) { return value; });
+            AzToolsFramework::EditorPythonRunnerRequestBus::Broadcast(
+                &AzToolsFramework::EditorPythonRunnerRequestBus::Events::ExecuteByFilenameWithArgs,
+                args[0],
+                pythonArgs);
+        }
+    }
+    AZ_CONSOLEFREEFUNC("pyRunFile", PyRunFile, AZ::ConsoleFunctorFlags::Null, "Runs the Python script from the console.");
 
     //! We have explicitly not exposed this CloseCurrentLevel API to Python Scripting since the Editor
     //! doesn't officially support it (it doesn't exist in the File menu). It is used for cases
@@ -1350,7 +1379,7 @@ static void ExportLegacyEntityConversionLog(QStandardItemModel* model)
     {
         columnNames.append(model->headerData(i, Qt::Horizontal).toString());
     }
-    stream << columnNames.join(",") << endl;
+    stream << columnNames.join(",") << Qt::endl;
 
     // Then, write out all the rows, again ignoring the first column since
     // it's just a status icon
@@ -1370,7 +1399,7 @@ static void ExportLegacyEntityConversionLog(QStandardItemModel* model)
             items.append("\"" + item->text() + "\"");
         }
 
-        stream << items.join(",") << endl;
+        stream << items.join(",") << Qt::endl;
     }
 
     // Write out the file
@@ -3114,6 +3143,14 @@ BOOL CCryEditApp::InitInstance()
         m_pEditor->InitFinished();
     }
 
+    // Make sure Python is started before we attempt to restore the Editor layout, since the user
+    // might have custom view panes in the saved layout that will need to be registered.
+    auto editorPythonEventsInterface = AZ::Interface<AzToolsFramework::EditorPythonEventsInterface>::Get();
+    if (editorPythonEventsInterface)
+    {
+        editorPythonEventsInterface->StartPython();
+    }
+
     if (!GetIEditor()->IsInMatEditMode() && !GetIEditor()->IsInConsolewMode())
     {
         bool restoreDefaults = !mainWindowWrapper->restoreGeometryFromSettings();
@@ -3171,12 +3208,6 @@ BOOL CCryEditApp::InitInstance()
         {
             MainWindow::instance()->setFocus();
         }
-    }
-
-    auto editorPythonEventsInterface = AZ::Interface<AzToolsFramework::EditorPythonEventsInterface>::Get();
-    if (editorPythonEventsInterface)
-    {
-        editorPythonEventsInterface->StartPython();
     }
 
     if (!InitConsole())
@@ -6337,6 +6368,12 @@ namespace UndoRedo
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnSwitchPhysics()
 {
+    if (GetIEditor()->GetGameEngine() && !GetIEditor()->GetGameEngine()->GetSimulationMode() && !GetIEditor()->GetGameEngine()->IsLevelLoaded())
+    {
+        // Don't allow physics to be toggled on if we haven't loaded a level yet
+        return;
+    }
+
     QWaitCursor wait;
 
     AZStd::unique_ptr<AzToolsFramework::ScopedUndoBatch> undoBatch;
@@ -6622,6 +6659,15 @@ void CCryEditApp::OnUpdatePlayGame(QAction* action)
 //////////////////////////////////////////////////////////////////////////
 CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */, const TerrainTextureExportSettings& terrainTextureSettings)
 {
+    // If we are creating a new level and we're in simulate mode, then switch it off before we do anything else
+    if (GetIEditor()->GetGameEngine() && GetIEditor()->GetGameEngine()->GetSimulationMode())
+    {
+        // Preserve the modified flag, we don't want this switch of physics to change that flag
+        bool bIsDocModified = GetIEditor()->GetDocument()->IsModified();
+        OnSwitchPhysics();
+        GetIEditor()->GetDocument()->SetModifiedFlag(bIsDocModified);
+    }
+
     const QScopedValueRollback<bool> rollback(m_creatingNewLevel);
     m_creatingNewLevel = true;
     GetIEditor()->Notify(eNotify_OnBeginCreate);
@@ -6963,6 +7009,15 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
     if (m_openingLevel)
     {
         return GetIEditor()->GetDocument();
+    }
+
+    // If we are loading and we're in simulate mode, then switch it off before we do anything else
+    if (GetIEditor()->GetGameEngine() && GetIEditor()->GetGameEngine()->GetSimulationMode())
+    {
+        // Preserve the modified flag, we don't want this switch of physics to change that flag
+        bool bIsDocModified = GetIEditor()->GetDocument()->IsModified();
+        OnSwitchPhysics();
+        GetIEditor()->GetDocument()->SetModifiedFlag(bIsDocModified);
     }
 
     // We're about to start loading a level, so start recording errors to display at the end.
@@ -7320,7 +7375,7 @@ void CCryEditApp::SaveTagLocations()
         {
             stream <<
                 m_tagLocations[i].x << "," << m_tagLocations[i].y << "," <<  m_tagLocations[i].z << "," <<
-                m_tagAngles[i].x << "," << m_tagAngles[i].y << "," << m_tagAngles[i].z << endl;
+                m_tagAngles[i].x << "," << m_tagAngles[i].y << "," << m_tagAngles[i].z << Qt::endl;
         }
     }
 }
@@ -8920,6 +8975,13 @@ void CCryEditApp::AddToRecentFileList(const QString& lpszPathName)
 {
     // In later MFC implementations (WINVER >= 0x0601) files must exist before they can be added to the recent files list.
     // Here we override the new CWinApp::AddToRecentFileList code with the old implementation to remove this requirement.
+
+    if (IsInAutotestMode())
+    {
+        // Never add to the recent file list when in auto test mode
+        // This would cause issues for devs running tests locally impacting their normal workflows/setups
+        return;
+    }
 
     if (GetRecentFileList())
     {

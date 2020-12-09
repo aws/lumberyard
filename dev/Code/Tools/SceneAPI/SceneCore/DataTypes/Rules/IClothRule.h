@@ -12,7 +12,12 @@
 
 #pragma once
 
+#include <AzCore/Math/Color.h>
+
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
+#include <SceneAPI/SceneCore/Containers/SceneGraph.h>
+#include <SceneAPI/SceneCore/Containers/RuleContainer.h>
+#include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 namespace AZ
 {
@@ -21,7 +26,7 @@ namespace AZ
         namespace DataTypes
         {
             /// This class is the interface for the cloth rule (aka cloth modifier).
-            /// It exposes functions to access the data the user can set in a cloth rule.
+            /// It exposes functions to extract cloth data.
             class IClothRule
                 : public IRule
             {
@@ -33,12 +38,46 @@ namespace AZ
                 /// Returns the name of the mesh node inside the FBX that will be exported as cloth.
                 virtual const AZStd::string& GetMeshNodeName() const = 0;
 
-                /// Returns the name of the vertex color stream inside the FBX that contains the cloth inverse masses.
-                virtual const AZStd::string& GetVertexColorStreamName() const = 0;
+                /// Returns cloth data from the mesh node selected in the cloth rule.
+                virtual AZStd::vector<AZ::Color> ExtractClothData(const Containers::SceneGraph& graph, const size_t numVertices) const = 0;
 
-                /// Returns whether or not the vertex color stream was explicitly disabled by the user.
-                virtual bool IsVertexColorStreamDisabled() const = 0;
+                /// Finds the cloth rule affecting a mesh node and extracts cloth data.
+                static AZStd::vector<AZ::Color> FindClothData(
+                    const AZ::SceneAPI::Containers::SceneGraph& graph,
+                    const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex,
+                    const size_t numVertices,
+                    const AZ::SceneAPI::Containers::RuleContainer& rules)
+                {
+                    AZStd::vector<AZ::Color> clothData;
 
+                    const char* meshNodeName = graph.GetNodeName(meshNodeIndex).GetPath();
+
+                    for (size_t ruleIndex = 0; ruleIndex < rules.GetRuleCount(); ++ruleIndex)
+                    {
+                        const IClothRule* clothRule = azrtti_cast<const IClothRule*>(rules.GetRule(ruleIndex).get());
+                        if (!clothRule)
+                        {
+                            continue;
+                        }
+
+                        // Reached a cloth rule for this mesh node?
+                        if (meshNodeName != clothRule->GetMeshNodeName())
+                        {
+                            continue;
+                        }
+
+                        // If there is already cloth data it means there is more than 1 cloth rule affecting the same mesh.
+                        if (!clothData.empty())
+                        {
+                            AZ_TracePrintf(AZ::SceneAPI::Utilities::WarningWindow, "Different cloth rules chose the same mesh node, only using the first cloth rule.");
+                            continue;
+                        }
+
+                        clothData = clothRule->ExtractClothData(graph, numVertices);
+                    }
+
+                    return clothData;
+                }
             };
         } //namespace DataTypes
     } //namespace SceneAPI

@@ -1804,6 +1804,17 @@ void CVisAreaManager::ClearRegion(const AABB& region)
     }
 }
 
+void CVisAreaManager::ClearTerrainNodes()
+{
+    for (const CVisArea* area : m_lstVisAreas)
+    {
+        if (area->m_pObjectsTree)
+        {
+            area->m_pObjectsTree->UpdateTerrainNodes(nullptr);
+        }
+    }
+}
+
 void CVisAreaManager::MarkAllSectorsAsUncompiled(const IRenderNode* pRenderNode)
 {
     for (int p = 0; p < m_lstPortals.Count(); p++)

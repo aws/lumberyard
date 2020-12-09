@@ -70,7 +70,7 @@ namespace EMStudio
         const int rows = m_modelIndex.model()->rowCount(m_modelIndex);
         for (int row = 0; row < rows; ++row)
         {
-            const QModelIndex childIndex = m_modelIndex.child(row, 0);
+            const QModelIndex childIndex = m_modelIndex.model()->index(row, 0, m_modelIndex);
             if (childIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::CONNECTION)
             {
                 EMotionFX::BlendTreeConnection* connection = childIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();

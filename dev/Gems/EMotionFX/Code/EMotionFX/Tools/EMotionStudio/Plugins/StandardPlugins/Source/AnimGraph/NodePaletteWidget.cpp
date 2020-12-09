@@ -267,7 +267,7 @@ namespace EMStudio
 
         const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = m_plugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
         AZStd::vector<AZStd::pair<EMotionFX::AnimGraphObject*, bool>> nodes;
-        for (const auto categoryName : m_categoryNames)
+        for (const auto& categoryName : m_categoryNames)
         {
             nodes.clear();
             const EMotionFX::AnimGraphNode::ECategory category = categoryName.first;
@@ -452,6 +452,13 @@ namespace EMStudio
         pixmap.fill(nodeColor);
         QIcon icon(pixmap);
         icon.addPixmap(pixmap, QIcon::Selected);
+
+        // Create a disabled state for the icon.
+        QPixmap disabledPixmap(QSize(12, 8));
+        QColor disabledNodeColor(51, 51, 51, 255);
+        disabledPixmap.fill(disabledNodeColor);
+        icon.addPixmap(disabledPixmap, QIcon::Disabled);
+
         return icon;
     }
 

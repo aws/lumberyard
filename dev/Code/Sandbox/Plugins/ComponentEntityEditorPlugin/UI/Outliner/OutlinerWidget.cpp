@@ -34,6 +34,7 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 #include <AzToolsFramework/UI/ComponentPalette/ComponentPaletteUtil.hxx>
 
 #include <QGraphicsOpacityEffect>
@@ -1113,12 +1114,13 @@ void OutlinerWidget::SelectSliceRoot()
    MainWindow::instance()->OnGotoSliceRoot();
 }
 
-void OutlinerWidget::OnEntityPickModeStarted()
+void OutlinerWidget::OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration)
 {
     m_gui->m_objectTree->setDragEnabled(false);
     m_gui->m_objectTree->setSelectionMode(QAbstractItemView::NoSelection);
     m_gui->m_objectTree->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_inObjectPickMode = true;
+    m_enableLayerPicking = pickModeConfiguration.m_enableLayerPicking;
 }
 
 void OutlinerWidget::OnEntityPickModeStopped()
@@ -1134,10 +1136,19 @@ void OutlinerWidget::OnTreeItemClicked(const QModelIndex &index)
     if (m_inObjectPickMode)
     {
         const AZ::EntityId entityId = GetEntityIdFromIndex(index);
+
         if (entityId.IsValid())
         {
-            AzToolsFramework::EditorPickModeRequestBus::Broadcast(
-                &AzToolsFramework::EditorPickModeRequests::PickModeSelectEntity, entityId);
+            bool isLayerEntity = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(isLayerEntity, entityId, &AzToolsFramework::Layers::EditorLayerComponentRequests::HasLayer);
+
+            // Restrict entity selection based on what the current pick mode is
+            // Currently only version is for layer entities.
+            if (m_enableLayerPicking || !isLayerEntity)
+            {
+                AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+                    &AzToolsFramework::EditorPickModeRequests::PickModeSelectEntity, entityId);
+            }
         }
 
         AzToolsFramework::EditorPickModeRequestBus::Broadcast(

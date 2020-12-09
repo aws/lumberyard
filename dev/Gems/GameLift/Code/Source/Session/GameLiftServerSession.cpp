@@ -511,12 +511,13 @@ namespace GridMate
 
     void GameLiftServerSession::Shutdown()
     {
-        Aws::GameLift::GenericOutcome outcome = GetGameLiftServerSDKWrapper().lock()->TerminateGameSession();
+        Aws::GameLift::GenericOutcome outcome = GetGameLiftServerSDKWrapper().lock()->ProcessEnding();
         if (!outcome.IsSuccess())
         {
-            AZ_Warning("GridMate", outcome.IsSuccess(), "GameLift session failed to terminate:%s:%s\n",
+            AZ_Warning("GridMate", outcome.IsSuccess(), "Attempt to end process failed:%s:%s\n",
                 outcome.GetError().GetErrorName().c_str(),
                 outcome.GetError().GetErrorMessage().c_str());
+            
                 return;
         }
 

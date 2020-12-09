@@ -167,7 +167,7 @@ void AIEntityClassesModel::SetAIEntityClasses(const QString& sAIEntityClasses)
         item.second = false;
     }
 
-    QStringList entityClasses = sAIEntityClasses.split(QRegularExpression(QStringLiteral("[ ,]")), QString::SkipEmptyParts);
+    QStringList entityClasses = sAIEntityClasses.split(QRegularExpression(QStringLiteral("[ ,]")), Qt::SkipEmptyParts);
 
     for (auto& entityClass : entityClasses)
     {

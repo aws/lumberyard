@@ -90,8 +90,14 @@ namespace EMotionFX
                         ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)
                     ->VirtualProperty("LoopMotion", "GetLoopMotion", "LoopMotion")
                     ->Event("RetargetMotion", &SimpleMotionComponentRequestBus::Events::RetargetMotion)
+                    ->Event("GetRetargetMotion", &SimpleMotionComponentRequestBus::Events::GetRetargetMotion)
+                    ->VirtualProperty("RetargetMotion", "GetRetargetMotion", "RetargetMotion")
                     ->Event("ReverseMotion", &SimpleMotionComponentRequestBus::Events::ReverseMotion)
+                    ->Event("GetReverseMotion", &SimpleMotionComponentRequestBus::Events::GetReverseMotion)
+                    ->VirtualProperty("ReverseMotion", "GetReverseMotion", "ReverseMotion")
                     ->Event("MirrorMotion", &SimpleMotionComponentRequestBus::Events::MirrorMotion)
+                    ->Event("GetMirrorMotion", &SimpleMotionComponentRequestBus::Events::GetMirrorMotion)
+                    ->VirtualProperty("MirrorMotion", "GetMirrorMotion", "MirrorMotion")
                     ->Event("SetPlaySpeed", &SimpleMotionComponentRequestBus::Events::SetPlaySpeed)
                     ->Event("GetPlaySpeed", &SimpleMotionComponentRequestBus::Events::GetPlaySpeed)
                         ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)
@@ -104,15 +110,12 @@ namespace EMotionFX
                         ->Attribute(AZ::Script::Attributes::Ignore, true)
                     ->Event("GetMotion", &SimpleMotionComponentRequestBus::Events::GetMotion)
                         ->Attribute(AZ::Script::Attributes::Ignore, true)
-                    ->VirtualProperty("Motion", "GetMotion", "Motion")
                     ->Event("BlendInTime", &SimpleMotionComponentRequestBus::Events::BlendInTime)
                     ->Event("GetBlendInTime", &SimpleMotionComponentRequestBus::Events::GetBlendInTime)
                         ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)
-                    ->VirtualProperty("BlendInTime", "GetBlendInTime", "BlendInTime")
                     ->Event("BlendOutTime", &SimpleMotionComponentRequestBus::Events::BlendOutTime)
                     ->Event("GetBlendOutTime", &SimpleMotionComponentRequestBus::Events::GetBlendOutTime)
                         ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)
-                    ->VirtualProperty("BlendOutTime", "GetBlendOutTime", "BlendOutTime")
                     ->Event("PlayMotion", &SimpleMotionComponentRequestBus::Events::PlayMotion)
                     ;
 
@@ -273,6 +276,11 @@ namespace EMotionFX
             }
         }
 
+        bool SimpleMotionComponent::GetRetargetMotion() const
+        {
+            return m_configuration.m_retarget;
+        }
+
         void SimpleMotionComponent::ReverseMotion(bool enable)
         {
             m_configuration.m_reverse = enable;
@@ -282,6 +290,11 @@ namespace EMotionFX
             }
         }
 
+        bool SimpleMotionComponent::GetReverseMotion() const
+        {
+            return m_configuration.m_reverse;
+        }
+
         void SimpleMotionComponent::MirrorMotion(bool enable)
         {
             m_configuration.m_mirror = enable;
@@ -289,6 +302,11 @@ namespace EMotionFX
             {
                 m_motionInstance->SetMirrorMotion(enable);
             }
+        }
+
+        bool SimpleMotionComponent::GetMirrorMotion() const
+        {
+            return m_configuration.m_mirror;
         }
 
         void SimpleMotionComponent::SetPlaySpeed(float speed)

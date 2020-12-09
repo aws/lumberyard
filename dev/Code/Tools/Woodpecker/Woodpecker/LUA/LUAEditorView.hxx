@@ -47,7 +47,7 @@ namespace LUAEditor
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(LUADockWidget,AZ::SystemAllocator,0);
-        LUADockWidget(QWidget *parent, Qt::WindowFlags flags = 0);
+        LUADockWidget(QWidget *parent, Qt::WindowFlags flags = Qt::WindowFlags());
 
         virtual void closeEvent(QCloseEvent *event);
         const AZStd::string& assetId() const { return m_assetId; }

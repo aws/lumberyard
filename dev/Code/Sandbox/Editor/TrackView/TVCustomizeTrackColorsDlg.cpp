@@ -150,53 +150,53 @@ void CTVCustomizeTrackColorsDlg::OnInitDialog()
     // Create a label and a color button for each track.
     int col = 0, i = 0;
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
-	{
-		const QString labelText = entry.name;
+    {
+        const QString labelText = entry.name;
 
-		if(!labelText.isEmpty())
-		{
-			m_aLabels[i] = new QLabel(m_ui->frame);
-			m_aLabels[i]->setGeometry(labelRect);
-			m_aLabels[i]->setText(labelText);
+        if(!labelText.isEmpty())
+        {
+            m_aLabels[i] = new QLabel(m_ui->frame);
+            m_aLabels[i]->setGeometry(labelRect);
+            m_aLabels[i]->setText(labelText);
 
                 m_colorButtons[i] = new ColorButton(m_ui->frame);
-			m_colorButtons[i]->setGeometry(buttonRect);
+            m_colorButtons[i]->setGeometry(buttonRect);
 
-			if(entry.paramType.GetType() == AnimParamType::User)
-			{
-				assert(kOthersEntryIndex <= i);
-				if (i == kOthersEntryIndex)
+            if(entry.paramType.GetType() == AnimParamType::User)
+            {
+                assert(kOthersEntryIndex <= i);
+                if (i == kOthersEntryIndex)
                     {
-					m_colorButtons[i]->SetColor(s_colorForOthers);
+                    m_colorButtons[i]->SetColor(s_colorForOthers);
                     }
-				else if(i == kDisabledEntryIndex)
+                else if(i == kDisabledEntryIndex)
                     {
-					m_colorButtons[i]->SetColor(s_colorForDisabled);
+                    m_colorButtons[i]->SetColor(s_colorForDisabled);
                     }
-				else if(i == kMutedEntryIndex)
+                else if(i == kMutedEntryIndex)
                     {
-					m_colorButtons[i]->SetColor(s_colorForMuted);
+                    m_colorButtons[i]->SetColor(s_colorForMuted);
                     }
                 }
-			else
-			{
-				m_colorButtons[i]->SetColor(s_trackColors[entry.paramType]);
-			}
-		}
+            else
+            {
+                m_colorButtons[i]->SetColor(s_trackColors[entry.paramType]);
+            }
+        }
 
-		if(i % kMaxRows == kMaxRows - 1)
-		{
-			++col;
-			labelRect.moveTopLeft(QPoint(30+kColumnWidth*col, 30));
-			buttonRect.moveTopLeft(QPoint(180+kColumnWidth*col, 30));
-		}
-		else
-		{
-			labelRect.translate(0, kRowHeight);
-			buttonRect.translate(0, kRowHeight);
-		}
-		++i;
-	});
+        if(i % kMaxRows == kMaxRows - 1)
+        {
+            ++col;
+            labelRect.moveTopLeft(QPoint(30+kColumnWidth*col, 30));
+            buttonRect.moveTopLeft(QPoint(180+kColumnWidth*col, 30));
+        }
+        else
+        {
+            labelRect.translate(0, kRowHeight);
+            buttonRect.translate(0, kRowHeight);
+        }
+        ++i;
+    });
 
     // Resize this dialog to fit the contents.
     const QSize size(60 + kColumnWidth * (col + 1), 100 + kMaxRows * kRowHeight);
@@ -214,13 +214,13 @@ void CTVCustomizeTrackColorsDlg::OnApply()
 {
     int i = 0;
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
-	{
-		if(entry.paramType.GetType() != AnimParamType::User)
-		{
+    {
+        if(entry.paramType.GetType() != AnimParamType::User)
+        {
                 s_trackColors[entry.paramType] = m_colorButtons[i]->Color();
-		}
-		++i;
-	});
+        }
+        ++i;
+    });
 
     s_colorForOthers = m_colorButtons[kOthersEntryIndex]->Color();
     s_colorForDisabled = m_colorButtons[kDisabledEntryIndex]->Color();
@@ -233,14 +233,14 @@ void CTVCustomizeTrackColorsDlg::OnResetAll()
 {
     int i = 0;
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
-	{
-		const QString labelText = entry.name;
-		if(!labelText.isEmpty())
-		{
-			m_colorButtons[i]->SetColor(entry.defaultColor);
-		}
-		++i;
-	});
+    {
+        const QString labelText = entry.name;
+        if(!labelText.isEmpty())
+        {
+            m_colorButtons[i]->SetColor(entry.defaultColor);
+        }
+        ++i;
+    });
 }
 
 void CTVCustomizeTrackColorsDlg::SaveColors(const char* sectionName)
@@ -317,18 +317,18 @@ void CTVCustomizeTrackColorsDlg::Export(const QString& fullPath) const
 
     int i = 0;
     std::for_each(g_trackEntries, g_trackEntries + arraysize(g_trackEntries), [&](const STrackEntry& entry)
-	{
-		if(entry.paramType.GetType() != AnimParamType::User)
-		{
-			XmlNodeRef entryNode = customTrackColorsNode->newChild("entry");
+    {
+        if(entry.paramType.GetType() != AnimParamType::User)
+        {
+            XmlNodeRef entryNode = customTrackColorsNode->newChild("entry");
 
-			// Serialization is const safe
-			CAnimParamType &paramType = const_cast<CAnimParamType&>( entry.paramType );
-			paramType.Serialize( entryNode, false );
+            // Serialization is const safe
+            CAnimParamType &paramType = const_cast<CAnimParamType&>( entry.paramType );
+            paramType.Serialize( entryNode, false );
                 entryNode->setAttr("color", m_colorButtons[i]->Color().rgb());
-		}
-		++i;
-	});
+        }
+        ++i;
+    });
 
     XmlNodeRef othersNode = customTrackColorsNode->newChild("others");
     othersNode->setAttr("color", m_colorButtons[kOthersEntryIndex]->Color().rgb());
@@ -363,9 +363,9 @@ bool CTVCustomizeTrackColorsDlg::Import(const QString& fullPath)
         // Get the entry index for this param type.
         const STrackEntry* pEntry = std::find_if(g_trackEntries, g_trackEntries + arraysize(g_trackEntries),
                 [=](const STrackEntry& entry)
-		{ 
-			return entry.paramType == paramType;
-		});
+        { 
+            return entry.paramType == paramType;
+        });
         int entryIndex = pEntry - g_trackEntries;
         if (entryIndex >= arraysize(g_trackEntries)) // If not found, skip this.
         {

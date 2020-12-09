@@ -46,7 +46,7 @@ namespace AzQtComponents
             int widest = 0;
             for (const QString& label : labels)
             {
-                widest = std::max(widest, metrics.width(label));
+                widest = std::max(widest, metrics.horizontalAdvance(label));
             }
 
             return widest;

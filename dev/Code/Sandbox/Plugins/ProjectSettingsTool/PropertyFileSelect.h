@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "PropertyFuncValLineEdit.h"
+#include "PropertyFuncValBrowseEdit.h"
 
 // Forward declare
 class QPushButton;
@@ -23,7 +23,7 @@ namespace ProjectSettingsTool
     class ValidationHandler;
 
     class PropertyFileSelectCtrl
-        : public PropertyFuncValLineEditCtrl
+        : public PropertyFuncValBrowseEditCtrl
     {
         Q_OBJECT
 

@@ -133,13 +133,6 @@ namespace EMotionFX
 
             AZStd::string_view RemoveLODSuffix(const AZStd::string_view& lodName);
 
-            using ClothLayerAndData = AZStd::tuple<
-                EMotionFX::MeshBuilderVertexAttributeLayerUInt32*,
-                AZ::SceneAPI::DataTypes::IMeshVertexColorData*>;
-
-            ClothLayerAndData ExtractClothInfo(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex,
-                const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel);
-
         protected:
             AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;
         private:

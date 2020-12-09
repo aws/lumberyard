@@ -11,21 +11,22 @@
 */
 #pragma once
 
-#include <QWidget>
 #include <QDockWidget>
 #include <QTreeWidget>
+#include <QWidget>
 
 class QCheckBox;
-class QPushButton;
 class QDoubleSpinBox;
-class QLabel;
-struct SLodInfo;
 class QHBoxLayout;
-class QVBoxLayout;
+class QLabel;
+class QToolButton;
 class QTreeWidget;
-struct IParticleEffect;
+class QVBoxLayout;
+
 class CLibraryTreeViewItem;
 class CParticleItem;
+struct IParticleEffect;
+struct SLodInfo;
 
 class LODTreeWidget
     : public QTreeWidget
@@ -100,7 +101,7 @@ private:
     QCheckBox*      m_TitleActive;
     QLabel*         m_TitleLabel;
     QDoubleSpinBox* m_TitleDistanceBox;
-    QPushButton*    m_TitleCrossButton;
+    QToolButton*    m_TitleCrossButton;
 
     //Body
     LODTreeWidget* m_LodTree;

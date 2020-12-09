@@ -149,5 +149,6 @@ namespace GraphCanvas
         virtual AZ::Outcome<DragDropState> OnDragEnterEvent(QGraphicsSceneDragDropEvent* dragDropEvent) = 0;
         virtual void OnDragLeaveEvent(QGraphicsSceneDragDropEvent* dragDropEvent) = 0;
         virtual void OnDropEvent(QGraphicsSceneDragDropEvent* dropEvent) = 0;
+        virtual void OnDropCancelled() = 0;
     };
 }

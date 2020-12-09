@@ -59,6 +59,94 @@ namespace UnitTest
         EXPECT_TRUE(invokedValue == -1);
     }
 
+    TEST_F(EventTests, TestEventRValueParam)
+    {
+        int32_t invokedValue = 0;
+
+        AZ::Event<int32_t> testEvent;
+        AZ::Event<int32_t>::Handler testHandler([&invokedValue](int32_t value) { invokedValue = value; });
+
+        testHandler.Connect(testEvent);
+
+        int32_t value = 1;
+
+        EXPECT_TRUE(invokedValue == 0);
+        testEvent.Signal(value);
+        EXPECT_TRUE(invokedValue == 1);
+    }
+
+    TEST_F(EventTests, TestEventRefParam)
+    {
+        int32_t invokedValue = 0;
+
+        AZ::Event<int32_t&> testEvent;
+        AZ::Event<int32_t&>::Handler testHandler([&invokedValue](int32_t& value) { invokedValue = value++; });
+
+        testHandler.Connect(testEvent);
+
+        int32_t value = 1;
+
+        EXPECT_TRUE(invokedValue == 0);
+        testEvent.Signal(value);
+        EXPECT_TRUE(invokedValue == 1);
+        EXPECT_TRUE(value == 2);
+        testEvent.Signal(value);
+        EXPECT_TRUE(invokedValue == 2);
+        EXPECT_TRUE(value == 3);
+    }
+
+    TEST_F(EventTests, TestEventConstRefParam)
+    {
+        int32_t invokedValue = 0;
+
+        AZ::Event<const int32_t&> testEvent;
+        AZ::Event<const int32_t&>::Handler testHandler([&invokedValue](const int32_t& value) { invokedValue = value; });
+
+        testHandler.Connect(testEvent);
+
+        int32_t value = 1;
+
+        EXPECT_TRUE(invokedValue == 0);
+        testEvent.Signal(value);
+        EXPECT_TRUE(invokedValue == 1);
+    }
+
+    TEST_F(EventTests, TestEventPointerParam)
+    {
+        int32_t invokedValue = 0;
+
+        AZ::Event<int32_t*> testEvent;
+        AZ::Event<int32_t*>::Handler testHandler([&invokedValue](int32_t* value) { invokedValue = (*value)++; });
+
+        testHandler.Connect(testEvent);
+
+        int32_t value = 1;
+
+        EXPECT_TRUE(invokedValue == 0);
+        testEvent.Signal(&value);
+        EXPECT_TRUE(invokedValue == 1);
+        EXPECT_TRUE(value == 2);
+        testEvent.Signal(&value);
+        EXPECT_TRUE(invokedValue == 2);
+        EXPECT_TRUE(value == 3);
+    }
+
+    TEST_F(EventTests, TestEventConstPointerParam)
+    {
+        int32_t invokedValue = 0;
+
+        AZ::Event<const int32_t*> testEvent;
+        AZ::Event<const int32_t*>::Handler testHandler([&invokedValue](const int32_t* value) { invokedValue = *value; });
+
+        testHandler.Connect(testEvent);
+
+        int32_t value = 1;
+
+        EXPECT_TRUE(invokedValue == 0);
+        testEvent.Signal(&value);
+        EXPECT_TRUE(invokedValue == 1);
+    }
+
     TEST_F(EventTests, TestEventMultiParam)
     {
         int32_t invokedValue1 = 0;

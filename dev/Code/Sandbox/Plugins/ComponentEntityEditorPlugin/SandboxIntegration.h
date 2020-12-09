@@ -120,6 +120,7 @@ private:
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorRequests::Bus::Handler overrides
     void RegisterViewPane(const char* name, const char* category, const AzToolsFramework::ViewPaneOptions& viewOptions, const WidgetCreationFunc& widgetCreationFunc) override;
+    void RegisterCustomViewPane(const char* name, const char* category, const AzToolsFramework::ViewPaneOptions& viewOptions) override;
     void UnregisterViewPane(const char* name) override;
     QWidget* GetViewPaneWidget(const char* viewPaneName) override;
     void OpenViewPane(const char* paneName) override;
@@ -166,7 +167,7 @@ private:
     //////////////////////////////////////////////////////////////////////////
 
     // EditorPickModeNotificationBus
-    void OnEntityPickModeStarted() override;
+    void OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration) override;
     void OnEntityPickModeStopped() override;
 
     //////////////////////////////////////////////////////////////////////////

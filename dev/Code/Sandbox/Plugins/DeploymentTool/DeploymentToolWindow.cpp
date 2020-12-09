@@ -22,6 +22,8 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
 #include <ILevelSystem.h>
 #include <ISystem.h>
@@ -184,6 +186,9 @@ DeploymentToolWindow::DeploymentToolWindow(QWidget* parent)
     connect(m_ui->addDeviceFarmDevicePoolButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnAddDeviceFarmDevicePoolButtonClick);
     connect(m_ui->removeDeviceFarmDevicePoolButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnRemoveDeviceFarmDevicePoolButtonClick);
 
+    AzQtComponents::CheckBox::applyToggleSwitchStyle(m_ui->buildGameCheckBox);
+    AzQtComponents::CheckBox::applyToggleSwitchStyle(m_ui->loadCurrentLevelCheckBox);
+    AzQtComponents::TabWidget::applySecondaryStyle(m_ui->deployTargetsTabWidget);
 
     QStringList headerLabels;
     headerLabels.append("Status");
@@ -812,7 +817,7 @@ void DeploymentToolWindow::OnDeleteAllRunsAction()
             runArns.push_back(m_ui->deviceFarmRunsTable->item(row, deviceFarmRunsTableColumnName)->data(Qt::UserRole).toString().toUtf8().data());
         }
 
-        for (const AZStd::string runArn : runArns)
+        for (const AZStd::string& runArn : runArns)
         {
             m_deviceFarmDriver->DeleteRun(
                 runArn,

@@ -414,6 +414,7 @@ namespace AZ
     template <class T>
     struct AzTypeInfo<T, true /* is_enum */>
     {
+        typedef typename AZStd::RemoveEnum<T>::type UnderlyingType;
         static const char* Name() { return nullptr; }
         template<typename TypeIdResolverTag = CanonicalTypeIdTag>
         static const AZ::TypeId& Uuid() { static AZ::TypeId nullUuid = AZ::TypeId::CreateNull(); return nullUuid; }
@@ -421,8 +422,8 @@ namespace AZ
         {
             TypeTraits typeTraits{};
             // Track the C++ type traits required by the SerializeContext
-            typeTraits |= std::is_signed<T>::value ? TypeTraits::is_signed : typeTraits;
-            typeTraits |= std::is_unsigned<T>::value ? TypeTraits::is_unsigned : typeTraits;
+            typeTraits |= std::is_signed<UnderlyingType>::value ? TypeTraits::is_signed : typeTraits;
+            typeTraits |= std::is_unsigned<UnderlyingType>::value ? TypeTraits::is_unsigned : typeTraits;
             typeTraits |= TypeTraits::is_enum;
             return typeTraits;
         }
@@ -481,8 +482,8 @@ namespace AZ
         static constexpr TypeTraits GetTypeTraits()                   \
         {                                                             \
             TypeTraits typeTraits{};                                  \
-            typeTraits |= std::is_signed<_ClassName>::value ? TypeTraits::is_signed : typeTraits; \
-            typeTraits |= std::is_unsigned<_ClassName>::value ? TypeTraits::is_unsigned : typeTraits; \
+            typeTraits |= std::is_signed<AZStd::RemoveEnumT<_ClassName>>::value ? TypeTraits::is_signed : typeTraits; \
+            typeTraits |= std::is_unsigned<AZStd::RemoveEnumT<_ClassName>>::value ? TypeTraits::is_unsigned : typeTraits; \
             typeTraits |= std::is_enum<_ClassName>::value ? TypeTraits::is_enum: typeTraits; \
             return typeTraits;                                        \
         }                                                             \
@@ -988,13 +989,13 @@ namespace AZ
 
 #define AZ_TYPE_INFO_INTERNAL_1(_ClassName) static_assert(false, "You must provide a ClassName,ClassUUID")
 #define AZ_TYPE_INFO_INTERNAL_2(_ClassName, _ClassUuid)        \
-    void TYPEINFO_Enable();                                    \
+    void TYPEINFO_Enable(){}                                   \
     static const char* TYPEINFO_Name() { return #_ClassName; } \
     static const AZ::TypeId& TYPEINFO_Uuid() { static AZ::TypeId s_uuid(_ClassUuid); return s_uuid; }
 
 // Template class type info
 #define AZ_TYPE_INFO_INTERNAL_TEMPLATE(_ClassName, _ClassUuid, ...)\
-    void TYPEINFO_Enable();\
+    void TYPEINFO_Enable() {}\
     static const char* TYPEINFO_Name() {\
          static char typeName[128] = { 0 };\
          if (typeName[0]==0) {\

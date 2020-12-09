@@ -122,7 +122,7 @@ namespace CharacterTool {
         void setFilterString(const QString& filter)
         {
             m_filter = filter;
-            m_filterParts = m_filter.split(' ', QString::SkipEmptyParts);
+            m_filterParts = m_filter.split(' ', Qt::SkipEmptyParts);
             m_acceptCache.clear();
         }
 
@@ -833,7 +833,7 @@ namespace CharacterTool {
         ExplorerEntries entries;
 
         QString str = QApplication::clipboard()->text();
-        QStringList items = str.split("\n", QString::SkipEmptyParts);
+        QStringList items = str.split("\n", Qt::SkipEmptyParts);
         for (int subtree = 0; subtree < NUM_SUBTREES; ++subtree)
         {
             for (size_t i = 0; i < items.size(); ++i)

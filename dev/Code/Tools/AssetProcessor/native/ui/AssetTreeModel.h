@@ -55,7 +55,6 @@ namespace AssetProcessor
         virtual void ResetModel() = 0;
 
         AZStd::unique_ptr<AssetTreeItem> m_root;
-        QFileIconProvider m_fileProvider; // Cache the icon provider, it's expensive to construct.
         AZStd::shared_ptr<AzToolsFramework::AssetDatabase::AssetDatabaseConnection> m_sharedDbConnection;
 
         QIcon m_errorIcon;

@@ -436,6 +436,11 @@ namespace AzToolsFramework
                 }
             }
         }
+
+        void AssetBrowserTreeView::Update()
+        {
+            update();
+        }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework
 #include <AssetBrowser/Views/AssetBrowserTreeView.moc>

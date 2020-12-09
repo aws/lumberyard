@@ -49,6 +49,20 @@ namespace EMotionFX
                 const char* motionFile = entry->GetFilename();
                 AZ::Data::AssetId motionAssetId;
                 EBUS_EVENT_RESULT(motionAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, motionFile, azrtti_typeid<MotionAsset>(), false);
+                
+                // if it failed to find it, it might be still compiling - try forcing an immediate compile:
+                if (!motionAssetId.IsValid())
+                {
+                    AZ_TracePrintf("EMotionFX", "Motion \"%s\" is missing, requesting the asset system to compile it now.\n", motionFile);
+                    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::CompileAssetSync, motionFile);
+                    // and then try again:
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(motionAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, motionFile, azrtti_typeid<MotionAsset>(), false);
+                    if (motionAssetId.IsValid())
+                    {
+                        AZ_TracePrintf("EMotionFX", "Motion \"%s\" successfully compiled.\n", motionFile);
+                    }
+                }
+
                 if (motionAssetId.IsValid())
                 {
                     for (const auto& motionAsset : m_assetData->m_motionAssets)
@@ -159,9 +173,19 @@ namespace EMotionFX
                 }
                 assetData->m_emfxMotionSet->SetFilename(assetFilename.c_str());
             }
-
-            // Get the motions in the motion set.
+            
+            // now load them in:
             const EMotionFX::MotionSet::MotionEntries& motionEntries = assetData->m_emfxMotionSet->GetMotionEntries();
+            // Get the motions in the motion set.  Escalate them to the top of the build queue first so that they can be done in parallel.
+            // This call is fire-and-forget and is very lightweight.
+            for (const auto& item : motionEntries)
+            {
+                const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
+                const char* motionFilename = motionEntry->GetFilename();
+                AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::EscalateAssetBySearchTerm, motionFilename);
+            }
+            
+            // now that they're all escalated, the asset processor will be processing them across all threads, and we can request them one by one:
             for (const auto& item : motionEntries)
             {
                 const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
@@ -171,6 +195,21 @@ namespace EMotionFX
                 // Jump on the AssetBus for the asset, and queue load.
                 AZ::Data::AssetId motionAssetId;
                 EBUS_EVENT_RESULT(motionAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, motionFilename, AZ::Data::s_invalidAssetType, false);
+
+                // if it failed to find it, it might be still compiling - try forcing an immediate compile.  CompileAssetSync
+                // will block until the compilation completes AND the catalog is up to date.
+                if (!motionAssetId.IsValid())
+                {
+                    AZ_TracePrintf("EMotionFX", "Motion \"%s\" is missing, requesting the asset system to compile it now.\n", motionFilename);
+                    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::CompileAssetSync, motionFilename);
+                    // and then try again:
+                    AZ::Data::AssetCatalogRequestBus::BroadcastResult(motionAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, motionFilename, azrtti_typeid<MotionAsset>(), false);
+                    if (motionAssetId.IsValid())
+                    {
+                        AZ_TracePrintf("EMotionFX", "Motion \"%s\" successfully compiled.\n", motionFilename);
+                    }
+                }
+
                 if (motionAssetId.IsValid())
                 {
                     AZ::Data::Asset<MotionAsset> motionAsset = AZ::Data::AssetManager::Instance().

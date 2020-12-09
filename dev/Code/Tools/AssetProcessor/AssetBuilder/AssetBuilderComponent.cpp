@@ -17,6 +17,7 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/Asset/AssetManager.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/IO/LocalFileIO.h>
@@ -107,6 +108,9 @@ void AssetBuilderComponent::Activate()
     BuilderBus::Handler::BusConnect();
     AssetBuilderSDK::AssetBuilderBus::Handler::BusConnect();
     AzToolsFramework::AssetDatabase::AssetDatabaseRequestsBus::Handler::BusConnect();
+
+    // the asset builder app never writes source files, only assets, so there is no need to do any kind of asset upgrading
+    AZ::Data::AssetManager::Instance().SetAssetInfoUpgradingEnabled(false);
 }
 
 void AssetBuilderComponent::Deactivate()
@@ -172,9 +176,6 @@ bool AssetBuilderComponent::Run()
         }
     }
 
-    AZ_TracePrintf("AssetBuilderComponent", "Run:  Initializing the serialization context for the BuilderSDK.\n");
-    AssetBuilderSDK::InitializeSerializationContext();
-
     AZ_TracePrintf("AssetBuilderComponent", "Run: Connecting back to Asset Processor...\n");
     if (!ConnectToAssetProcessor())
     {
@@ -187,7 +188,7 @@ bool AssetBuilderComponent::Run()
 
     if(!builderApplication)
     {
-        AZ_Error("AssetBuilder", false, "Failed to retreive IBuilderApplication interface");
+        AZ_Error("AssetBuilder", false, "Failed to retrieve IBuilderApplication interface");
         return false;
     }
 

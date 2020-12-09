@@ -19,11 +19,14 @@
 #include "DockWidgetPlugin.h"
 
 // include Qt related
-#include <QMainWindow>
+#include <QApplication>
 #include <QDir>
+#include <QMainWindow>
+#include <QRandomGenerator>
 #include <QTime>
 #include <QVariant>
-#include <QApplication>
+
+#include <AzQtComponents/Utilities/RandomNumberGenerator.h>
 
 // include MCore related
 #include <MCore/Source/StringConversions.h>
@@ -174,13 +177,17 @@ namespace EMStudio
         AZStd::string randomString;
 
         // random seed
-        qsrand(QTime(0, 0, 0).secsTo(QTime::currentTime()));
+        AzQtComponents::GetRandomGenerator()->seed(QTime(0, 0, 0).secsTo(QTime::currentTime()));
 
         // repeat until we found a free ID
         for (;; )
         {
             // generate a string from a set of random numbers
-            randomString = AZStd::string::format("PLUGIN%d%d%d", qrand(), qrand(), qrand());
+            randomString = AZStd::string::format("PLUGIN%d%d%d",
+               AzQtComponents::GetRandomGenerator()->generate(),
+               AzQtComponents::GetRandomGenerator()->generate(),
+               AzQtComponents::GetRandomGenerator()->generate()
+            );
 
             // check if we have a conflict with a current plugin
             bool hasConflict = false;

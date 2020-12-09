@@ -40,6 +40,8 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
 
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     setWindowTitle(tr("New Level"));
+    setMaximumSize(QSize(320, 280));
+    adjustSize();
 
     // Default level folder is root (Levels/)
     m_ilevelFolders = 0;

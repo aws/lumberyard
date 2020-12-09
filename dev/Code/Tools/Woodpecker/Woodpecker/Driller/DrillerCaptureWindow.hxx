@@ -70,7 +70,7 @@ namespace Driller
     public:
         AZ_TYPE_INFO(DrillerCaptureWindow, "08AF3402-FCFA-4441-910D-9F994BD0D146");
         AZ_CLASS_ALLOCATOR(DrillerCaptureWindow,AZ::SystemAllocator,0);
-        DrillerCaptureWindow(CaptureMode captureMode, int identity, QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        DrillerCaptureWindow(CaptureMode captureMode, int identity, QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         DrillerCaptureWindow(const DrillerCaptureWindow&)
             : m_identity(0)
         {
@@ -188,7 +188,7 @@ namespace Driller
         bool m_draggingPlaybackLoopEnd;
         bool m_draggingAnything;        
         bool m_manipulatingScrollBar;        
-        DrillerDataContainer*	m_data;			///< Pointer to driller data class. 
+        DrillerDataContainer* m_data; ///< Pointer to driller data class. 
         QString m_tmpCaptureFilename;
         QString m_currentDataFilename;
         AnnotationsProvider m_AnnotationProvider;
@@ -234,7 +234,7 @@ namespace Driller
         void OnOpenWorkspaceFile(QString fileName, bool openDrillerFileAlso); // just open it
         void OnApplyWorkspaceFile(QString fileName);
         void OnSaveDrillerFile();        
-        void OnSaveWorkspaceFile(QString fileName, bool automated = false);		
+        void OnSaveWorkspaceFile(QString fileName, bool automated = false);
 
         void PlaybackTick();
         void OnUpdateScrollSize();

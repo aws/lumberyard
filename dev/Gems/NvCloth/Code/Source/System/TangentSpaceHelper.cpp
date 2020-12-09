@@ -10,274 +10,381 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
-#include <AzCore/std/containers/array.h>
-
-#include <Utils/TangentSpaceCalculation.h>
+#include <System/TangentSpaceHelper.h>
 
 namespace NvCloth
 {
     namespace
     {
-        Vec3 PxVec4ToVec3(const physx::PxVec4& pxVec)
-        {
-            return Vec3(pxVec.x, pxVec.y, pxVec.z);
-        }
+        const float Tolerance = 0.0001f;
     }
 
-    void TangentSpaceCalculation::Calculate(
-        const AZStd::vector<SimParticleType>& vertices,
+    bool TangentSpaceHelper::CalculateNormals(
+        const AZStd::vector<SimParticleFormat>& vertices,
         const AZStd::vector<SimIndexType>& indices,
-        const AZStd::vector<SimUVType>& uvs)
+        AZStd::vector<AZ::Vector3>& outNormals)
     {
-        AZ_Error("TangentSpaceCalculation", (indices.size() % 3) == 0,
-            "Size of list of indices (%d) is not a multiple of 3.",
-            indices.size());
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
 
-        AZ::u32 triangleCount = indices.size() / 3;
-        AZ::u32 vertexCount = vertices.size();
-
-        // Reset results with the right number of elements
-        m_baseVectors = AZStd::vector<Base33>(vertexCount);
-
-        using TriangleIndices = AZStd::array<SimIndexType, 3>;
-        using TrianglePositions = AZStd::array<Vec3, 3>;
-        using TriangleUVs = AZStd::array<SimUVType, 3>;
-        using TriangleEdges = AZStd::array<Vec3, 2>;
-
-        AZStd::vector<TriangleIndices> trianglesIndices;
-        AZStd::vector<TrianglePositions> trianglesPositions;
-        AZStd::vector<TriangleUVs> trianglesUVs;
-        AZStd::vector<TriangleEdges> trianglesEdges;
-
-        trianglesIndices.reserve(triangleCount);
-        trianglesPositions.reserve(triangleCount);
-        trianglesUVs.reserve(triangleCount);
-        trianglesEdges.reserve(triangleCount);
-
-        // Precalculate triangles' indices, positions, UVs and edges.
-        for (AZ::u32 i = 0; i < triangleCount; ++i)
+        if ((indices.size() % 3) != 0)
         {
-            const TriangleIndices triangleIndices =
-            {{
-                indices[i * 3 + 0],
-                indices[i * 3 + 1],
-                indices[i * 3 + 2]
-            }};
-            const TrianglePositions trianglePositions =
-            {{
-                PxVec4ToVec3(vertices[triangleIndices[0]]),
-                PxVec4ToVec3(vertices[triangleIndices[1]]),
-                PxVec4ToVec3(vertices[triangleIndices[2]])
-            }};
-            const TriangleUVs triangleUVs =
-            {{
-                uvs[triangleIndices[0]],
-                uvs[triangleIndices[1]],
-                uvs[triangleIndices[2]]
-            }};
-            const TriangleEdges triangleEdges =
-            {{
-                trianglePositions[1] - trianglePositions[0],
-                trianglePositions[2] - trianglePositions[0]
-            }};
-            trianglesIndices.push_back(AZStd::move(triangleIndices));
-            trianglesPositions.push_back(AZStd::move(trianglePositions));
-            trianglesUVs.push_back(AZStd::move(triangleUVs));
-            trianglesEdges.push_back(AZStd::move(triangleEdges));
+            AZ_Error("TangentSpaceHelper", false,
+                "Size of list of indices (%zu) is not a multiple of 3.",
+                indices.size());
+            return false;
         }
 
-        // base vectors per triangle
-        AZStd::vector<Base33> triangleBases;
-        triangleBases.reserve(triangleCount);
+        const size_t triangleCount = indices.size() / 3;
+        const size_t vertexCount = vertices.size();
 
-        // calculate the base vectors per triangle
+        // Reset results
+        outNormals.resize(vertexCount, AZ::Vector3::CreateZero());
+
+        // calculate the normals per triangle
+        for (size_t i = 0; i < triangleCount; ++i)
         {
-            const float identityInfluence = 0.01f;
-            const Base33 identityBase(
-                Vec3(identityInfluence, 0.0f, 0.0f),
-                Vec3(0.0f, identityInfluence, 0.0f),
-                Vec3(0.0f, 0.0f, identityInfluence));
+            TriangleIndices triangleIndices;
+            TrianglePositions trianglePositions;
+            TriangleEdges triangleEdges;
+            GetTriangleData(
+                i, indices, vertices,
+                triangleIndices, trianglePositions, triangleEdges);
 
-            for (AZ::u32 i = 0; i < triangleCount; ++i)
+            AZ::Vector3 normal;
+            ComputeNormal(triangleEdges, normal);
+
+            // distribute the normals to the vertices.
+            for (AZ::u32 vertexIndexInTriangle = 0; vertexIndexInTriangle < 3; ++vertexIndexInTriangle)
             {
-                const auto& trianglePositions = trianglesPositions[i];
-                const auto& triangleUVs = trianglesUVs[i];
-                const auto& triangleEdges = trianglesEdges[i];
+                const float weight = GetVertexWeightInTriangle(vertexIndexInTriangle, trianglePositions);
 
-                // calculate tangent vectors
+                const SimIndexType vertexIndex = triangleIndices[vertexIndexInTriangle];
 
-                Vec3 normal = triangleEdges[0].cross(triangleEdges[1]);
-
-                // Avoid situations where the edges are parallel resulting in an invalid normal.
-                // This can happen if the simulation moves particles of triangle to the same spot or very far away.
-                if (normal.IsZero(0.0001f))
-                {
-                    // Use the identity base with low influence to leave other valid triangles to
-                    // affect these vertices. In case no other triangle affects the vertices the base
-                    // will still be valid with identity values as it gets normalized later.
-                    triangleBases.push_back(identityBase);
-                    continue;
-                }
-
-                normal.normalize();
-
-                const float deltaU1 = triangleUVs[1].GetX() - triangleUVs[0].GetX();
-                const float deltaU2 = triangleUVs[2].GetX() - triangleUVs[0].GetX();
-                const float deltaV1 = triangleUVs[1].GetY() - triangleUVs[0].GetY();
-                const float deltaV2 = triangleUVs[2].GetY() - triangleUVs[0].GetY();
-
-                const float div = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
-
-                if (_isnan(div))
-                {
-                    AZ_Error("TangentSpaceCalculation", false,
-                        "Vertices 0,1,2 have broken texture coordinates v0:(%f : %f : %f) v1:(%f : %f : %f) v2:(%f : %f : %f)",
-                        trianglePositions[0].x, trianglePositions[0].y, trianglePositions[0].z,
-                        trianglePositions[1].x, trianglePositions[1].y, trianglePositions[1].z,
-                        trianglePositions[2].x, trianglePositions[2].y, trianglePositions[2].z);
-                    return;
-                }
-
-                Vec3 tangent, bitangent;
-
-                if (div != 0.0f)
-                {
-                    // 2D triangle area = (u1*v2-u2*v1)/2
-                    const float a = deltaV2; // /div was removed - no required because of normalize()
-                    const float b = -deltaV1;
-                    const float c = -deltaU2;
-                    const float d = deltaU1;
-
-                    // /fAreaMul2*fAreaMul2 was optimized away -> small triangles in UV should contribute less and
-                    // less artifacts (no divide and multiply)
-                    tangent = (triangleEdges[0] * a + triangleEdges[1] * b) * fsgnf(div);
-                    bitangent = (triangleEdges[0] * c + triangleEdges[1] * d) * fsgnf(div);
-                }
-                else
-                {
-                    tangent = Vec3(1.0f, 0.0f, 0.0f);
-                    bitangent = Vec3(0.0f, 1.0f, 0.0f);
-                }
-
-                triangleBases.push_back(Base33(tangent, bitangent, normal));
+                outNormals[vertexIndex] += normal * AZStd::max(weight, Tolerance);
             }
         }
 
-        // distribute the normals and uv vectors to the vertices
+        // adjust the normals per vertex
+        for (auto& outNormal : outNormals)
         {
-            // we create a new tangent base for every vertex index that has a different normal (later we split further for mirrored use)
-            // and sum the base vectors (weighted by angle and mirrored if necessary)
-            for (AZ::u32 i = 0; i < triangleCount; ++i)
+            outNormal.NormalizeSafe(Tolerance);
+
+            // Safety check for situations where simulation gets out of control.
+            // Particles' positions can have huge floating point values that
+            // could lead to non-finite numbers when calculating tangent spaces.
+            if (!outNormal.IsFinite())
             {
-                const auto& triangleIndices = trianglesIndices[i];
-                const auto& trianglePositions = trianglesPositions[i];
+                outNormal = AZ::Vector3::CreateAxisZ();
+            }
+        }
 
-                Base33& triBase = triangleBases[i];
+        return true;
+    }
 
-                // for each triangle vertex
-                for (AZ::u32 e = 0; e < 3; ++e)
-                {
-                    // weight by angle to fix the L-Shape problem
-                    const float weight = CalcAngleBetween(
-                        trianglePositions[(e + 2) % 3] - trianglePositions[e],
-                        trianglePositions[(e + 1) % 3] - trianglePositions[e]);
+    bool TangentSpaceHelper::CalculateTangentsAndBitagents(
+        const AZStd::vector<SimParticleFormat>& vertices,
+        const AZStd::vector<SimIndexType>& indices,
+        const AZStd::vector<SimUVType>& uvs,
+        const AZStd::vector<AZ::Vector3>& normals,
+        AZStd::vector<AZ::Vector3>& outTangents,
+        AZStd::vector<AZ::Vector3>& outBitangents)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
 
-                    triBase.m_normal *= AZStd::max(weight, 0.0001f);
-                    triBase.m_tangent *= weight;
-                    triBase.m_bitangent *= weight;
+        if ((indices.size() % 3) != 0)
+        {
+            AZ_Error("TangentSpaceHelper", false,
+                "Size of list of indices (%zu) is not a multiple of 3.",
+                indices.size());
+            return false;
+        }
 
-                    AddNormalToBase(triangleIndices[e], triBase.m_normal);
-                    AddUVToBase(triangleIndices[e], triBase.m_tangent, triBase.m_bitangent);
-                }
+        if (vertices.size() != uvs.size())
+        {
+            AZ_Error("TangentSpaceHelper", false,
+                "Number of vertices (%zu) does not match the number of uvs (%zu).",
+                vertices.size(), uvs.size());
+            return false;
+        }
+
+        if (vertices.size() != normals.size())
+        {
+            AZ_Error("TangentSpaceHelper", false,
+                "Number of vertices (%zu) does not match the number of normals (%zu).",
+                vertices.size(), normals.size());
+            return false;
+        }
+
+        const size_t triangleCount = indices.size() / 3;
+        const size_t vertexCount = vertices.size();
+
+        // Reset results
+        outTangents.resize(vertexCount, AZ::Vector3::CreateZero());
+        outBitangents.resize(vertexCount, AZ::Vector3::CreateZero());
+
+        // calculate the base vectors per triangle
+        for (size_t i = 0; i < triangleCount; ++i)
+        {
+            TriangleIndices triangleIndices;
+            TrianglePositions trianglePositions;
+            TriangleEdges triangleEdges;
+            TriangleUVs triangleUVs;
+            GetTriangleData(
+                i, indices, vertices, uvs,
+                triangleIndices, trianglePositions, triangleEdges, triangleUVs);
+
+            AZ::Vector3 tangent, bitangent;
+            ComputeTangentAndBitangent(triangleUVs, triangleEdges, tangent, bitangent);
+
+            // distribute the uv vectors to the vertices.
+            for (AZ::u32 vertexIndexInTriangle = 0; vertexIndexInTriangle < 3; ++vertexIndexInTriangle)
+            {
+                const float weight = GetVertexWeightInTriangle(vertexIndexInTriangle, trianglePositions);
+
+                const SimIndexType vertexIndex = triangleIndices[vertexIndexInTriangle];
+
+                outTangents[vertexIndex] += tangent * weight;
+                outBitangents[vertexIndex] += bitangent * weight;
             }
         }
 
         // adjust the base vectors per vertex
+        for (size_t i = 0; i < vertexCount; ++i)
         {
-            for (auto& ref : m_baseVectors)
+            AdjustTangentAndBitangent(normals[i], outTangents[i], outBitangents[i]);
+
+            // Safety check for situations where simulation gets out of control.
+            // Particles' positions can have huge floating point values that
+            // could lead to non-finite numbers when calculating tangent spaces.
+            if (!outTangents[i].IsFinite() ||
+                !outBitangents[i].IsFinite())
             {
-                // rotate u and v in n plane
-
-                Vec3 nOut = ref.m_normal;
-                nOut.normalize();
-
-                // project u in n plane
-                // project v in n plane
-                Vec3 uOut = ref.m_tangent - nOut * (nOut.Dot(ref.m_tangent));
-                Vec3 vOut = ref.m_bitangent - nOut * (nOut.Dot(ref.m_bitangent));
-
-                ref.m_tangent = uOut;
-                ref.m_tangent.normalize();
-
-                ref.m_bitangent = vOut;
-                ref.m_bitangent.normalize();
-
-                ref.m_normal = nOut;
+                outTangents[i] = AZ::Vector3::CreateAxisX();
+                outBitangents[i] = AZ::Vector3::CreateAxisY();
             }
         }
 
-        AZ_Error("TangentSpaceCalculation", GetBaseCount() == vertices.size(),
-            "Number of tangent spaces (%d) doesn't match with the number of input vertices (%d).",
-            GetBaseCount(), vertices.size());
+        return true;
     }
 
-    size_t TangentSpaceCalculation::GetBaseCount() const
+    bool TangentSpaceHelper::CalculateTangentSpace(
+        const AZStd::vector<SimParticleFormat>& vertices,
+        const AZStd::vector<SimIndexType>& indices,
+        const AZStd::vector<SimUVType>& uvs,
+        AZStd::vector<AZ::Vector3>& outTangents,
+        AZStd::vector<AZ::Vector3>& outBitangents,
+        AZStd::vector<AZ::Vector3>& outNormals)
     {
-        return m_baseVectors.size();
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
+
+        if ((indices.size() % 3) != 0)
+        {
+            AZ_Error("TangentSpaceHelper", false,
+                "Size of list of indices (%zu) is not a multiple of 3.",
+                indices.size());
+            return false;
+        }
+
+        if (vertices.size() != uvs.size())
+        {
+            AZ_Error("TangentSpaceHelper", false,
+                "Number of vertices (%zu) does not match the number of uvs (%zu).",
+                vertices.size(), uvs.size());
+            return false;
+        }
+
+        const size_t triangleCount = indices.size() / 3;
+        const size_t vertexCount = vertices.size();
+
+        // Reset results
+        outTangents.resize(vertexCount, AZ::Vector3::CreateZero());
+        outBitangents.resize(vertexCount, AZ::Vector3::CreateZero());
+        outNormals.resize(vertexCount, AZ::Vector3::CreateZero());
+
+        // calculate the base vectors per triangle
+        for (size_t i = 0; i < triangleCount; ++i)
+        {
+            TriangleIndices triangleIndices;
+            TrianglePositions trianglePositions;
+            TriangleEdges triangleEdges;
+            TriangleUVs triangleUVs;
+            GetTriangleData(
+                i, indices, vertices, uvs,
+                triangleIndices, trianglePositions, triangleEdges, triangleUVs);
+
+            AZ::Vector3 tangent, bitangent, normal;
+            if (ComputeNormal(triangleEdges, normal))
+            {
+                ComputeTangentAndBitangent(triangleUVs, triangleEdges, tangent, bitangent);
+            }
+            else
+            {
+                // Use the identity base with low influence to leave other valid triangles to
+                // affect these vertices. In case no other triangle affects the vertices the base
+                // will still be valid with identity values as it gets normalized later.
+                const float identityInfluence = 0.01f;
+                tangent = AZ::Vector3::CreateAxisX(identityInfluence);
+                bitangent = AZ::Vector3::CreateAxisY(identityInfluence);
+            }
+
+            // distribute the normals and uv vectors to the vertices.
+            for (AZ::u32 vertexIndexInTriangle = 0; vertexIndexInTriangle < 3; ++vertexIndexInTriangle)
+            {
+                const float weight = GetVertexWeightInTriangle(vertexIndexInTriangle, trianglePositions);
+
+                const SimIndexType vertexIndex = triangleIndices[vertexIndexInTriangle];
+
+                outNormals[vertexIndex] += normal * AZStd::max(weight, Tolerance);
+                outTangents[vertexIndex] += tangent * weight;
+                outBitangents[vertexIndex] += bitangent * weight;
+            }
+        }
+
+        // adjust the base vectors per vertex
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            outNormals[i].NormalizeSafe(Tolerance);
+
+            AdjustTangentAndBitangent(outNormals[i], outTangents[i], outBitangents[i]);
+
+            // Safety check for situations where simulation gets out of control.
+            // Particles' positions can have huge floating point values that
+            // could lead to non-finite numbers when calculating tangent spaces.
+            if (!outNormals[i].IsFinite() ||
+                !outTangents[i].IsFinite() ||
+                !outBitangents[i].IsFinite())
+            {
+                outTangents[i] = AZ::Vector3::CreateAxisX();
+                outBitangents[i] = AZ::Vector3::CreateAxisY();
+                outNormals[i] = AZ::Vector3::CreateAxisZ();
+            }
+        }
+
+        return true;
     }
 
-    void TangentSpaceCalculation::GetBase(AZ::u32 index, Vec3& tangent, Vec3& bitangent, Vec3& normal) const
+    void TangentSpaceHelper::GetTriangleData(
+        size_t triangleIndex,
+        const AZStd::vector<SimIndexType>& indices,
+        const AZStd::vector<SimParticleFormat>& vertices,
+        TriangleIndices& triangleIndices,
+        TrianglePositions& trianglePositions,
+        TriangleEdges& triangleEdges)
     {
-        tangent = GetTangent(index);
-        bitangent = GetBitangent(index);
-        normal = GetNormal(index);
+        triangleIndices =
+        {{
+            indices[triangleIndex * 3 + 0],
+            indices[triangleIndex * 3 + 1],
+            indices[triangleIndex * 3 + 2]
+        }};
+        trianglePositions =
+        {{
+            vertices[triangleIndices[0]].GetAsVector3(),
+            vertices[triangleIndices[1]].GetAsVector3(),
+            vertices[triangleIndices[2]].GetAsVector3()
+        }};
+        triangleEdges =
+        {{
+            trianglePositions[1] - trianglePositions[0],
+            trianglePositions[2] - trianglePositions[0]
+        }};
     }
 
-    Vec3 TangentSpaceCalculation::GetTangent(AZ::u32 index) const
+    void TangentSpaceHelper::GetTriangleData(
+        size_t triangleIndex,
+        const AZStd::vector<SimIndexType>& indices,
+        const AZStd::vector<SimParticleFormat>& vertices,
+        const AZStd::vector<SimUVType>& uvs,
+        TriangleIndices& triangleIndices,
+        TrianglePositions& trianglePositions,
+        TriangleEdges& triangleEdges,
+        TriangleUVs& triangleUVs)
     {
-        return m_baseVectors[index].m_tangent;
+        GetTriangleData(
+            triangleIndex, indices, vertices,
+            triangleIndices, trianglePositions, triangleEdges);
+        triangleUVs =
+        {{
+            uvs[triangleIndices[0]],
+            uvs[triangleIndices[1]],
+            uvs[triangleIndices[2]]
+        }};
     }
 
-    Vec3 TangentSpaceCalculation::GetBitangent(AZ::u32 index) const
+    bool TangentSpaceHelper::ComputeNormal(const TriangleEdges& triangleEdges, AZ::Vector3& normal)
     {
-        return m_baseVectors[index].m_bitangent;
+        normal = triangleEdges[0].Cross(triangleEdges[1]);
+
+        // Avoid situations where the edges are parallel resulting in an invalid normal.
+        // This can happen if the simulation moves particles of triangle to the same spot or very far away.
+        if (normal.IsZero(Tolerance))
+        {
+            // Use the identity base with low influence to leave other valid triangles to
+            // affect these vertices. In case no other triangle affects the vertices the base
+            // will still be valid with identity values as it gets normalized later.
+            const float identityInfluence = 0.01f;
+            normal = AZ::Vector3::CreateAxisZ(identityInfluence);
+            return false;
+        }
+
+        normal.Normalize();
+
+        return true;
     }
 
-    Vec3 TangentSpaceCalculation::GetNormal(AZ::u32 index) const
+    bool TangentSpaceHelper::ComputeTangentAndBitangent(
+        const TriangleUVs& triangleUVs, const TriangleEdges& triangleEdges,
+        AZ::Vector3& tangent, AZ::Vector3& bitangent)
     {
-        return m_baseVectors[index].m_normal;
+        const float deltaU1 = triangleUVs[1].GetX() - triangleUVs[0].GetX();
+        const float deltaU2 = triangleUVs[2].GetX() - triangleUVs[0].GetX();
+        const float deltaV1 = triangleUVs[1].GetY() - triangleUVs[0].GetY();
+        const float deltaV2 = triangleUVs[2].GetY() - triangleUVs[0].GetY();
+
+        const float div = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
+
+        if (AZ::IsClose(div, 0.0f, Tolerance))
+        {
+            tangent = AZ::Vector3::CreateAxisX();
+            bitangent = AZ::Vector3::CreateAxisY();
+            return false;
+        }
+
+        // 2D triangle area = (u1*v2-u2*v1)/2
+        const float a = deltaV2; // /div was removed - no required because of normalize()
+        const float b = -deltaV1;
+        const float c = -deltaU2;
+        const float d = deltaU1;
+
+        const float signDiv = AZ::GetSign(div);
+
+        // /fAreaMul2*fAreaMul2 was optimized away -> small triangles in UV should contribute less and
+        // less artifacts (no divide and multiply)
+        tangent = (triangleEdges[0] * a + triangleEdges[1] * b) * signDiv;
+        bitangent = (triangleEdges[0] * c + triangleEdges[1] * d) * signDiv;
+
+        return true;
     }
 
-    void TangentSpaceCalculation::AddNormalToBase(AZ::u32 index, const Vec3& normal)
+    void TangentSpaceHelper::AdjustTangentAndBitangent(
+        const AZ::Vector3& normal, AZ::Vector3& tangent, AZ::Vector3& bitangent)
     {
-        m_baseVectors[index].m_normal += normal;
+        // Calculate handedness of the bitangent
+        AZ::Vector3 bitangentReference = normal.Cross(tangent);
+        const float handedness = (bitangentReference.Dot(bitangent) < 0.0f) ? -1.0f : 1.0f;
+
+        // Apply Gram-Schmidt method to make tangent perpendicular to normal.
+        tangent -= normal * normal.Dot(tangent);
+        tangent.NormalizeSafe(Tolerance);
+
+        bitangent = normal.Cross(tangent) * handedness;
     }
 
-    void TangentSpaceCalculation::AddUVToBase(AZ::u32 index, const Vec3& u, const Vec3& v)
+    float TangentSpaceHelper::GetVertexWeightInTriangle(AZ::u32 vertexIndexInTriangle, const TrianglePositions& trianglePositions)
     {
-        m_baseVectors[index].m_tangent += u;
-        m_baseVectors[index].m_bitangent += v;
-    }
-
-    float TangentSpaceCalculation::CalcAngleBetween(const Vec3& a, const Vec3& b)
-    {
-        double lengthQ = sqrt(a.len2() * b.len2());
-
-        // to prevent division by zero
-        lengthQ = AZStd::max(lengthQ, 1e-8);
-
-        double cosAngle = a.Dot(b) / lengthQ;
-
-        // acosf is not available on every platform. acos_tpl clamps cosAngle to [-1,1].
-        return static_cast<float>(acos_tpl(cosAngle));
-    }
-
-    TangentSpaceCalculation::Base33::Base33(const Vec3& tangent, const Vec3& bitangent, const Vec3& normal)
-        : m_tangent(tangent)
-        , m_bitangent(bitangent)
-        , m_normal(normal)
-    {
+        // weight by angle to fix the L-Shape problem
+        const AZ::Vector3 edgeA = trianglePositions[(vertexIndexInTriangle + 2) % 3] - trianglePositions[vertexIndexInTriangle];
+        const AZ::Vector3 edgeB = trianglePositions[(vertexIndexInTriangle + 1) % 3] - trianglePositions[vertexIndexInTriangle];
+        return edgeA.AngleSafe(edgeB);
     }
 } // namespace NvCloth

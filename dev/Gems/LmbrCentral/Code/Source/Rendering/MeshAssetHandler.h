@@ -72,6 +72,7 @@ namespace LmbrCentral
         AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
         bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
         bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
+        AZ::Data::AssetId AssetMissingInCatalog(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void DestroyAsset(AZ::Data::AssetPtr ptr) override;
         void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
         void ProcessQueuedAssetRequests() override;
@@ -89,6 +90,8 @@ namespace LmbrCentral
 
         void Register();
         void Unregister();
+
+        AZ::Data::AssetId m_missingMeshAssetId;
     };
 
     /**

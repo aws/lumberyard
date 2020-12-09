@@ -36,7 +36,7 @@ namespace Driller
             QString windowsPath = filePath;
             windowsPath.replace('/', "\\");
             QProcess process;
-            process.start("explorer /select," + windowsPath);
+            process.start("explorer", { " /select," + windowsPath });
             process.waitForFinished();
 #else
             QProcess::startDetached("/usr/bin/osascript", {"-e",

@@ -22,6 +22,12 @@ namespace ScriptCanvas
 {
     namespace Nodes
     {
+        void LerpBetween::OnActivate()
+        {
+            ExecutionTimingNotificationsBus::EventResult(m_latentStartTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStartTimerEvent);
+            ExecutionTimingNotificationsBus::EventResult(m_latentStopTimerEvent, this->GetOwningScriptCanvasId(), &ExecutionTimingNotifications::GetLatentStopTimerEvent);
+        }
+
         void LerpBetween::OnInit()
         {
             SetupInternalSlotReferences();
@@ -203,6 +209,11 @@ namespace ScriptCanvas
         
         void LerpBetween::SignalLerpStep(float percent)
         {
+            size_t latentExecutionId = static_cast<size_t>(AZStd::GetTimeNowMicroSecond());
+            if (m_latentStartTimerEvent && m_latentStartTimerEvent->HasHandlerConnected())
+            {
+                m_latentStartTimerEvent->Signal(AZStd::move(latentExecutionId));
+            }
             Data::Type displayType = GetDisplayType(AZ::Crc32("LerpGroup"));
 
             Datum stepDatum(displayType, Datum::eOriginality::Original);
@@ -237,7 +248,11 @@ namespace ScriptCanvas
             PushOutput(percentDatum, *GetSlot(m_percentSlotId));
             PushOutput(stepDatum, *GetSlot(m_stepSlotId));
             
-            SignalOutput(LerpBetweenProperty::GetTickSlotId(this));            
+            SignalOutput(LerpBetweenProperty::GetTickSlotId(this));
+            if (m_latentStopTimerEvent && m_latentStopTimerEvent->HasHandlerConnected())
+            {
+                m_latentStopTimerEvent->Signal(AZStd::move(latentExecutionId));
+            }
         }
         
         bool LerpBetween::IsGroupConnected() const

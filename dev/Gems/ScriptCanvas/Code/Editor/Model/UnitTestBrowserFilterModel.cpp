@@ -355,7 +355,7 @@ namespace ScriptCanvasEditor
                 {
                     if (filterAcceptsRow(i, sourceIndex))
                     {
-                        bool updateOk = SetCheckState(sourceIndex.child(i, 0), newState);
+                        bool updateOk = SetCheckState(sourceIndex.model()->index(i, 0, sourceIndex), newState);
 
                         if (!updateOk)
                         {
@@ -367,7 +367,7 @@ namespace ScriptCanvasEditor
 
                 if (rowCount > 0)
                 {
-                    Q_EMIT dataChanged(sourceIndex.child(0, 0), sourceIndex.child(rowCount - 1, 0));
+                    Q_EMIT dataChanged(sourceModel()->index(0, 0, sourceIndex), sourceModel()->index(rowCount - 1, 0, sourceIndex));
                 }
 
                 break;

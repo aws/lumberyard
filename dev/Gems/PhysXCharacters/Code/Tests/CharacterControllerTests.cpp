@@ -20,6 +20,7 @@
 #include <PhysXCharacters/SystemBus.h>
 #include <System/SystemComponent.h>
 
+#include <AzCore/UnitTest/Helpers.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <PhysX/ComponentTypeIds.h>
 #include <PhysX/SystemComponentBus.h>
@@ -60,13 +61,6 @@ namespace PhysXCharacters
             ASSERT_TRUE(m_controller != nullptr);
 
             m_controller->SetBasePosition(AZ::Vector3::CreateZero());
-        }
-
-        ~ControllerTestBasis()
-        {
-            m_controller = nullptr;
-            m_world = nullptr;
-            m_floor = nullptr;
         }
 
         void Update(const AZ::Vector3& movementDelta, AZ::u32 numTimeSteps = 1)
@@ -125,8 +119,6 @@ namespace PhysXCharacters
             basePosition = newBasePosition;
             basis.Update(movementDelta);
         }
-
-        box = nullptr;
     }
 
     TEST_F(PhysXCharactersTest, CharacterController_MovingDiagonallyTowardsStaticBox_SlidesAlongBox)
@@ -149,8 +141,6 @@ namespace PhysXCharacters
             EXPECT_NEAR(vy, 1.0f, 1e-3f);
             basis.Update(movementDelta);
         }
-
-        box = nullptr;
     }
 
     TEST_F(PhysXCharactersTest, CharacterController_MovingOnSlope_CannotMoveAboveMaximumSlopeAngle)
@@ -244,9 +234,6 @@ namespace PhysXCharacters
         EXPECT_TRUE(basis.m_controller->GetVelocity().IsClose(AZ::Vector3::CreateZero()));
         baseHeight = basis.m_controller->GetBasePosition().GetZ();
         EXPECT_NEAR(baseHeight, expectedBaseHeight, 1e-3f);
-
-        shortStep = nullptr;
-        tallStep = nullptr;
     }
 
     using CharacterControllerFixture = ::testing::TestWithParam<Physics::ShapeType>;
@@ -283,8 +270,6 @@ namespace PhysXCharacters
         const float vy = velocity.GetY();
         EXPECT_NEAR(vx, 1.0f, 1e-3f);
         EXPECT_NEAR(vy, 0.0f, 1e-3f);
-
-        box = nullptr;
     }
 
     TEST_P(CharacterControllerFixture, CharacterController_ResizingToNegativeHeight_EmitsError)
@@ -328,8 +313,6 @@ namespace PhysXCharacters
         AZ::Vector3 boxPosition = box->GetPosition();
         float x = boxPosition.GetX();
         EXPECT_GT(x, 2.0f);
-
-        box = nullptr;
     }
 
     TEST_F(PhysXCharactersTest, CharacterController_RaycastAgainstController_ReturnsHit)
@@ -442,5 +425,41 @@ namespace PhysXCharacters
 
         AZ::TransformNotificationBus::Event(characterEntity->GetId(), &AZ::TransformNotificationBus::Events::OnTransformChanged, AZ::Transform::CreateIdentity(), AZ::Transform::CreateIdentity());
         EXPECT_EQ(errorHandler.GetErrorCount(), 0);
+    }
+    TEST_F(PhysXCharactersTest, CharacterController_SetNoneCollisionGroupAfterCreation_DoesNotTrigger)
+    {
+        // Create character
+        auto characterConfiguration = AZStd::make_unique<Physics::CharacterConfiguration>();
+        auto characterShapeConfiguration = AZStd::make_unique<Physics::CapsuleShapeConfiguration>();
+        characterShapeConfiguration->m_height = 1.0f;
+        characterShapeConfiguration->m_radius = 1.0f;
+
+        auto characterEntity = AZStd::make_unique<AZ::Entity>("CharacterEntity");
+        characterEntity->CreateComponent<AzFramework::TransformComponent>()->SetWorldTM(AZ::Transform::Identity());
+        characterEntity->CreateComponent<PhysXCharacters::CharacterControllerComponent>(AZStd::move(characterConfiguration), AZStd::move(characterShapeConfiguration));
+        characterEntity->Init();
+        characterEntity->Activate();
+
+        // Create unit box located near character, collides with character by default
+        auto box = Physics::AddStaticUnitBoxToWorld(GetDefaultWorld().get(), AZ::Vector3(1.0f, 0.0f, 0.0f));
+
+        // Assign 'None' collision group to character controller - it should not collide with the box
+        AZStd::string collisionGroupName;
+        Physics::CollisionRequestBus::BroadcastResult(collisionGroupName,
+            &Physics::CollisionRequests::GetCollisionGroupName, Physics::CollisionGroup::None);
+
+        Physics::CollisionFilteringRequestBus::Event(
+            characterEntity->GetId(), &Physics::CollisionFilteringRequests::SetCollisionGroup, collisionGroupName, AZ::Crc32());
+
+        // Try to move character in direction of the box
+        const AZ::Vector3 deltaPosition(2.0f, 0.0f, 0.0f);
+
+        AZ::Vector3 result;
+        Physics::CharacterRequestBus::EventResult(result,
+            characterEntity->GetId(), &Physics::CharacterRequestBus::Events::TryRelativeMove, deltaPosition, 1.0f);
+
+        // With 'None' collision group assigned, character is expected to pass through the box to target position
+        AZ::Vector3 characterTranslation = characterEntity->GetTransform()->GetWorldTranslation();
+        EXPECT_THAT(characterTranslation, UnitTest::IsClose(deltaPosition));
     }
 } // namespace PhysXCharacters

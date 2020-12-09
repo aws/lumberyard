@@ -20,33 +20,37 @@
 #include <AzToolsFramework/Manipulators/LinearManipulator.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
 #include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 #include <QApplication>
+#include <QMessageBox>
 
-using Vertex2LoookupReverseIter = AZStd::reverse_iterator<typename AzToolsFramework::IndexedTranslationManipulator<AZ::Vector2>::VertexLookup*>;
-using Vertex3LoookupReverseIter = AZStd::reverse_iterator<typename AzToolsFramework::IndexedTranslationManipulator<AZ::Vector3>::VertexLookup*>;
+using Vertex2LookupReverseIter =
+    AZStd::reverse_iterator<typename AzToolsFramework::IndexedTranslationManipulator<AZ::Vector2>::VertexLookup*>;
+using Vertex3LookupReverseIter =
+    AZStd::reverse_iterator<typename AzToolsFramework::IndexedTranslationManipulator<AZ::Vector3>::VertexLookup*>;
 
 namespace std
 {
     template <>
-    struct iterator_traits<Vertex2LoookupReverseIter>
+    struct iterator_traits<Vertex2LookupReverseIter>
     {
-        using difference_type = typename Vertex2LoookupReverseIter::difference_type;
-        using value_type = typename Vertex2LoookupReverseIter::value_type;
-        using iterator_category = typename Vertex2LoookupReverseIter::iterator_category;
-        using pointer = typename Vertex2LoookupReverseIter::pointer;
-        using reference = typename Vertex2LoookupReverseIter::reference;
+        using difference_type = typename Vertex2LookupReverseIter::difference_type;
+        using value_type = typename Vertex2LookupReverseIter::value_type;
+        using iterator_category = typename Vertex2LookupReverseIter::iterator_category;
+        using pointer = typename Vertex2LookupReverseIter::pointer;
+        using reference = typename Vertex2LookupReverseIter::reference;
     };
 
     template <>
-    struct iterator_traits<Vertex3LoookupReverseIter>
+    struct iterator_traits<Vertex3LookupReverseIter>
     {
-        using difference_type = typename Vertex3LoookupReverseIter::difference_type;
-        using value_type = typename Vertex3LoookupReverseIter::value_type;
-        using iterator_category = typename Vertex3LoookupReverseIter::iterator_category;
-        using pointer = typename Vertex3LoookupReverseIter::pointer;
-        using reference = typename Vertex3LoookupReverseIter::reference;
+        using difference_type = typename Vertex3LookupReverseIter::difference_type;
+        using value_type = typename Vertex3LookupReverseIter::value_type;
+        using iterator_category = typename Vertex3LookupReverseIter::iterator_category;
+        using pointer = typename Vertex3LookupReverseIter::pointer;
+        using reference = typename Vertex3LookupReverseIter::reference;
     };
 }
 
@@ -797,19 +801,43 @@ namespace AzToolsFramework
     }
 
     template<typename Vertex>
+    static bool CanDeleteSelection(const AZ::EntityId entityId, const int64_t selectedCount)
+    {
+        size_t vertexCount = 0;
+        AZ::VariableVerticesRequestBus<Vertex>::EventResult(
+            vertexCount, entityId, &AZ::VariableVerticesRequestBus<Vertex>::Handler::Size);
+
+        // prevent deleting all vertices
+        const int64_t remaining = aznumeric_cast<int64_t>(vertexCount) - selectedCount;
+        return remaining >= 1;
+    }
+
+    template<typename Vertex>
     void EditorVertexSelectionVariable<Vertex>::DestroySelected()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
-        ScopedUndoBatch duplicateUndo("Delete Vertices");
-        ScopedUndoBatch::MarkEntityDirty(EditorVertexSelectionBase<Vertex>::GetEntityId());
+        const AZ::EntityId entityId = EditorVertexSelectionBase<Vertex>::GetEntityId();
 
-        // if translation manipulator is active, remove it and destroy the vertex at its
-        // index when receiving this event and enable the hover manipulator bounds again
-        // so points can be inserted again
-        if (EditorVertexSelectionBase<Vertex>::m_translationManipulator)
+        ScopedUndoBatch duplicateUndo("Delete Vertices");
+        ScopedUndoBatch::MarkEntityDirty(entityId);
+
+        // if the translation manipulator is active, remove it and destroy the vertices associated with it
+        // enable the hover manipulator bounds so points can be inserted again
+        if (auto* manipulator = EditorVertexSelectionBase<Vertex>::m_translationManipulator.get())
         {
-            // keep a ref to translation manipulator while removing it so it is not destroyed prematurely
+            if (!CanDeleteSelection<Vertex>(entityId, manipulator->m_vertices.size()))
+            {
+                QMessageBox::information(
+                    AzToolsFramework::GetActiveWindow(), "Information",
+                    "It is not possible to delete all vertices.",
+                    QMessageBox::Ok, QMessageBox::NoButton);
+
+                return;
+            }
+
+            // keep an additional reference to the translation manipulator while removing it so it is not
+            // destroyed prematurely
             AZStd::shared_ptr<IndexedTranslationManipulator<Vertex>> translationManipulator =
                 EditorVertexSelectionBase<Vertex>::m_translationManipulator;
 

@@ -1180,7 +1180,10 @@ ConsoleVariableEditor::ConsoleVariableEditor(QWidget* parent)
     setWindowTitle(tr("Console Variables"));
 
     // Setup our table view, don't show the actual headers
-    m_tableView->setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
+    m_tableView->setEditTriggers(QAbstractItemView::SelectedClicked
+        | QAbstractItemView::DoubleClicked
+        | QAbstractItemView::EditKeyPressed
+        | QAbstractItemView::CurrentChanged);
     m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tableView->verticalHeader()->hide();
     m_tableView->horizontalHeader()->hide();

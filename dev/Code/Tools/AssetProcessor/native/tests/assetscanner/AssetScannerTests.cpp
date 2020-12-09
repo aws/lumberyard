@@ -12,7 +12,7 @@
 
 #include <native/tests/assetscanner/AssetScannerTests.h>
 #include <native/unittests/UnitTestRunner.h>
-#include <QTime>
+#include <QElapsedTimer>
 #include <QCoreApplication>
 #include <native/AssetManager/assetScanner.h>
 #include <native/utilities/PlatformConfiguration.h>
@@ -44,7 +44,7 @@ namespace AssetProcessor
 
     bool AssetScannerTest::BlockUntilScanComplete(int millisecondsMax)
     {
-        QTime limit;
+        QElapsedTimer limit;
         limit.start();
         while ((!m_scanComplete) && (limit.elapsed() < millisecondsMax))
         {

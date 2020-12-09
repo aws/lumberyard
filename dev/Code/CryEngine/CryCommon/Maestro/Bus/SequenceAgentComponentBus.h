@@ -78,6 +78,9 @@ namespace Maestro
         //! Track View will expect some components (those using AZ::Data::AssetBlends as a virtual property) to supply a GetAssetDuration event
         //! so Track View can query the duration of an asset (like a motion) without having any knowledge of that that asset is.
         virtual void GetAssetDuration(AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId) = 0;
+
+        //! Get the asset type specified by the AZ::Script::Attributes::AssetType attribute so that setters that take an asset id can know what type may be required
+        virtual void GetAssetTypeName(AZStd::string& returnValue, const AnimatablePropertyAddress& animatableAddress) = 0;
     };
 
     using SequenceAgentComponentRequestBus = AZ::EBus<SequenceAgentComponentRequests>;

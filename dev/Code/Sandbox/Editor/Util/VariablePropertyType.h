@@ -79,7 +79,8 @@ enum PropertyType
     ePropertyAudioPreloadRequest,
     ePropertyFlowCustomData,
     ePropertyUiElement,
-    ePropertyMotion
+    ePropertyMotion,
+    ePropertyAsset
 };
 
 namespace Prop

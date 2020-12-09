@@ -1,0 +1,12 @@
+{
+    "none":
+    {
+      "Tests": [
+        "Tests/PythonAssetBuilderTest.cpp",
+        "Tests/PythonBuilderRegisterTest.cpp",
+        "Tests/PythonBuilderCreateJobsTest.cpp",
+        "Tests/PythonBuilderProcessJobTest.cpp",
+        "Tests/PythonBuilderTestShared.h"
+      ]
+    }
+}

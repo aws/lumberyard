@@ -23,7 +23,7 @@
 class CAttributeItem;
 struct IVariable;
 class QBitmapPreviewDialogImp;
-class QToolTipWidget;
+class QToolTipWrapper;
 class QCheckBox;
 
 class QColumnWidget
@@ -52,7 +52,7 @@ class QColumnWidget
 
     private:
         CAttributeItem* m_parent;
-        QToolTipWidget* m_tooltip;
+        QToolTipWrapper* m_tooltip;
         int m_propertyType;
         IVariable* m_variable;
         bool m_collapsible;

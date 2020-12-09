@@ -164,6 +164,9 @@ namespace AZ
 
             const static AZ::Crc32 MaxLength = AZ_CRC("MaxLength", 0x385c7325);
 
+            // Entity Id property
+            const static AZ::Crc32 EnableLayerAssignment = AZ_CRC("EnableLayerAssignment", 0x8cee6f56);
+
             //! Specifies the URL to load for a component
             //!
             //! **Element type to use this with:**   AZ::Edit::ClassElements::EditorData, which you reflect using

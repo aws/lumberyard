@@ -320,7 +320,7 @@ namespace ScriptCanvas
                             }
                         }
 
-                        AZStd::sort_heap(varNameToIdList.begin(), varNameToIdList.end(), [](const AZStd::pair<VariableId, AZStd::string>& lhs, const AZStd::pair<VariableId, AZStd::string>& rhs)
+                        AZStd::sort(varNameToIdList.begin(), varNameToIdList.end(), [](const AZStd::pair<VariableId, AZStd::string>& lhs, const AZStd::pair<VariableId, AZStd::string>& rhs)
                         {
                             return lhs.second < rhs.second;
                         });

@@ -119,7 +119,7 @@ namespace GraphCanvas
         //! Get user data from this connection
         virtual AZStd::any* GetUserData() = 0;
 
-        virtual void ChainProposalCreation(const QPointF& scenePos, const QPoint& screenPos) = 0;
+        virtual void ChainProposalCreation(const QPointF& scenePos, const QPoint& screenPos, AZ::EntityId groupTarget) = 0;
     };
 
     using ConnectionRequestBus = AZ::EBus<ConnectionRequests>;

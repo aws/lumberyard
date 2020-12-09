@@ -26,9 +26,6 @@ namespace PhysX
 {
     class RigidBodyStatic;
 
-    // This disables the warning about calling deprecated functions.  It is necessary because several functions from
-    // ColliderComponentRequestBus have been deprecated, and the bus handling causes these functions to be called here.
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
     /// Base class for all runtime collider components.
     class BaseColliderComponent
         : public AZ::Component
@@ -48,10 +45,6 @@ namespace PhysX
         // ColliderComponentRequestBus
         Physics::ShapeConfigurationList GetShapeConfigurations() override;
         AZStd::vector<AZStd::shared_ptr<Physics::Shape>> GetShapes() override;
-        AZ_DEPRECATED(bool IsStaticRigidBody() override;,
-            "IsStaticRigidBody is deprecated, please use a StaticRigidBodyComponent directly instead.")
-        AZ_DEPRECATED(PhysX::RigidBodyStatic* GetStaticRigidBody() override;,
-            "GetStaticRigidBody is deprecated, please use a StaticRigidBodyComponent directly instead.")
 
         // TransformNotificationsBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
@@ -133,5 +126,4 @@ namespace PhysX
         // GetColliderConfig is complete.
         static const Physics::ColliderConfiguration s_defaultColliderConfig;
     };
-    AZ_POP_DISABLE_WARNING
 }

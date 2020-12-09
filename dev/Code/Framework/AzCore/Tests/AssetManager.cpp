@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -3533,7 +3533,7 @@ namespace UnitTest
             while (threadCount > 0 && !timedOut)
             {
                 AZStd::unique_lock<AZStd::mutex> lock(mutex);
-                timedOut = cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5));
+                timedOut = (AZStd::cv_status::timeout == cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5)));
             }
 
             EXPECT_TRUE(threadCount == 0);
@@ -3640,7 +3640,7 @@ namespace UnitTest
             while (threadCount > 0 && !timedOut)
             {
                 AZStd::unique_lock<AZStd::mutex> lock(mutex);
-                timedOut = cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5));
+                timedOut = (AZStd::cv_status::timeout == cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5)));
             }
 
             EXPECT_TRUE(threadCount == 0);
@@ -3747,7 +3747,7 @@ namespace UnitTest
             while (threadCount > 0 && !timedOut)
             {
                 AZStd::unique_lock<AZStd::mutex> lock(mutex);
-                timedOut = cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5));
+                timedOut = (AZStd::cv_status::timeout == cv.wait_until(lock, AZStd::chrono::system_clock::now() + AZStd::chrono::seconds(5)));
             }
 
             EXPECT_TRUE(threadCount == 0);

@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#define AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE GridMate::Driver::BSD_AF_INET
+#define AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE GridMate::Driver::BSD_AF_INET6
 #define AZ_TRAIT_MULTIPLAYER_ASSIGN_NETWORK_FAMILY 0
 #define AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID static_assert(false, "Unused")
 #define AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID_DESC static_assert(false, "Unused")

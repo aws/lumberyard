@@ -69,12 +69,12 @@ namespace ScriptCanvas
         {
             AZ_Warning("ScriptCanvas", false, "Using Deprecated GetInput method call. Please switch to FindDatum call instead, this method will be removed in a future update.");
             return FindDatum(slotId);
-        }        
+        }
 
         virtual void FindModifiableDatumView(const SlotId& slotId, ModifiableDatumView& datumView) = 0;
 
         //! Determines whether the slot on this node with the specified slot id can accept values of the specified type
-        virtual bool SlotAcceptsType(const SlotId&, const Data::Type&) const = 0;
+        virtual AZ::Outcome<void, AZStd::string> SlotAcceptsType(const SlotId&, const Data::Type&) const = 0;
 
         //! Gets the input for the given SlotId
         virtual Data::Type GetSlotDataType(const SlotId& slotId) const = 0;

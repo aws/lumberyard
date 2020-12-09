@@ -488,7 +488,7 @@ namespace Charts
         currentFont.setPointSize(currentFont.pointSize() - 1);
         painter->setFont(currentFont);
 
-        int w = painter->fontMetrics().width(GetLabel());
+        int w = painter->fontMetrics().horizontalAdvance(GetLabel());
         int h = painter->fontMetrics().height();
 
         int centerHeight = graphBounds.top() + (graphBounds.height() / 2);
@@ -550,7 +550,7 @@ namespace Charts
                 text = QString("%1").arg((AZ::s64)division);
             }
 
-            int textW = painter->fontMetrics().width(text);
+            int textW = painter->fontMetrics().horizontalAdvance(text);
             painter->setPen(solidPen);
             painter->drawText(lineStart.x() - textW - 2, (int)lineStart.y() + fontH / 2, text);
         }
@@ -588,7 +588,7 @@ namespace Charts
             width = 1;
         }
 
-        float textSpaceRequired = (float)painter->fontMetrics().width("9,999,999.99");
+        float textSpaceRequired = (float)painter->fontMetrics().horizontalAdvance("9,999,999.99");
 
         int fontH = painter->fontMetrics().height();
 
@@ -633,7 +633,7 @@ namespace Charts
                 text = QString("%1").arg((AZ::s64)division);
             }
 
-            int textW = painter->fontMetrics().width(text);
+            int textW = painter->fontMetrics().horizontalAdvance(text);
 
             painter->setPen(solidPen);
             painter->drawText(lineStart.x() - textW / 2, startPoint.y() + fontH, text);

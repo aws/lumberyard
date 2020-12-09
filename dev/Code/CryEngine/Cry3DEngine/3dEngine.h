@@ -20,6 +20,7 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Math/Aabb.h>
+#include <StatObjBus.h>
 
 #ifdef DrawText
 #undef DrawText
@@ -626,6 +627,7 @@ struct SNameChunk
 class C3DEngine
     : public I3DEngine
     , public Cry3DEngineBase
+    , private StatObjEventBus::MultiHandler
 {
 public:
 
@@ -1605,7 +1607,10 @@ private:
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-
+    //////////////////////////////////////////////////////////////////////////
+    // StatObjBus MultiHandler:
+    void OnStatObjReloaded() override;
+    //////////////////////////////////////////////////////////////////////////
 
     void ResetCasterCombinationsCache();
 

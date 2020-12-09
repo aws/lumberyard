@@ -22,29 +22,20 @@
 namespace ProjectSettingsTool
 {
     PropertyFileSelectCtrl::PropertyFileSelectCtrl(QWidget* pParent)
-        : PropertyFuncValLineEditCtrl(pParent)
+        : PropertyFuncValBrowseEditCtrl(pParent)
         , m_selectFunctor(nullptr)
     {
-        QLayout* myLayout = layout();
-        m_selectButton = new QPushButton("...", this);
-        m_selectButton->setFlat(true);
-        m_selectButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_selectButton->setFixedSize(QSize(16, 16));
-        m_selectButton->setContentsMargins(0, 0, 0, 0);
-        m_selectButton->setToolTip("Browse...");
-        myLayout->addWidget(m_selectButton);
-
         // Turn on clear button by default
-        m_pLineEdit->setClearButtonEnabled(true);
+        browseEdit()->setClearButtonEnabled(true);
 
-        connect(m_selectButton, &QPushButton::clicked, this, &PropertyFileSelectCtrl::SelectFile);
+        connect(browseEdit(), &AzQtComponents::BrowseEdit::attachedButtonTriggered, this, &PropertyFileSelectCtrl::SelectFile);
     }
 
     void PropertyFileSelectCtrl::SelectFile()
     {
         if (m_selectFunctor != nullptr)
         {
-            QString path = m_selectFunctor(m_pLineEdit->text());
+            QString path = m_selectFunctor(browseEdit()->text());
             if (!path.isEmpty())
             {
                 SetValueUser(path);
@@ -69,7 +60,7 @@ namespace ProjectSettingsTool
         }
         else
         {
-            PropertyFuncValLineEditCtrl::ConsumeAttribute(attrib, attrValue, debugName);
+            PropertyFuncValBrowseEditCtrl::ConsumeAttribute(attrib, attrValue, debugName);
         }
     }
 

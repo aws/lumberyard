@@ -461,11 +461,11 @@ namespace StripChart
 
     void DataStrip::wheelEvent(QWheelEvent* event)
     {
-        int numDegrees = event->delta() / 8;
+        int numDegrees = event->angleDelta().y() / 8;
         int numSteps = numDegrees / 15;
         // +step := zoom IN
         // -step := zoom OUT
-        QPoint zoomPt = event->pos() - m_Inset.topLeft();
+        QPoint zoomPt = event->position().toPoint() - m_Inset.topLeft();
 
         float zoomRatioX = (float)zoomPt.x() / (float)m_Inset.width();
         float zoomRatioY = (1.0f - ((float)zoomPt.y() / (float)m_Inset.height())); // because up is higher
@@ -838,7 +838,7 @@ namespace StripChart
 
     void DataStrip::RenderHorizCallouts(QPainter* painter)
     {
-        float textSpaceRequired = (float)painter->fontMetrics().width("9,999,999.99");
+        float textSpaceRequired = (float)painter->fontMetrics().horizontalAdvance("9,999,999.99");
         int fontH = painter->fontMetrics().height();
 
         AZStd::vector<float> divisions;
@@ -875,7 +875,7 @@ namespace StripChart
                 text = QString("%1").arg((AZ::s64)currentUnit);
             }
 
-            int textW = painter->fontMetrics().width(text);
+            int textW = painter->fontMetrics().horizontalAdvance(text);
 
             painter->setPen(solidPen);
             painter->drawText((int)leftEdge.x() - textW / 2, m_Inset.bottom() + fontH, text);
@@ -927,7 +927,7 @@ namespace StripChart
                 text = QString("%1").arg((AZ::s64)currentUnit);
             }
 
-            int textW = painter->fontMetrics().width(text);
+            int textW = painter->fontMetrics().horizontalAdvance(text);
             painter->setPen(solidPen);
             painter->drawText(m_Inset.left() - textW - 2, (int)leftEdge.y() + fontH / 2, text);
         }
@@ -946,7 +946,7 @@ namespace StripChart
     void DataStrip::ZoomExtents(Charts::AxisType axis)
     {
         switch (axis)
-        {			
+        {
         case Charts::AxisType::Horizontal:
             if (m_Axis)
             {
@@ -967,7 +967,7 @@ namespace StripChart
     void DataStrip::ZoomManual(Charts::AxisType axis, float minValue, float maxValue)
     {
         switch (axis)
-        {		
+        {
         case Charts::AxisType::Horizontal:
             if (m_Axis)
             {
@@ -982,7 +982,7 @@ namespace StripChart
             break;
         default:
             AZ_Assert(false, "ERROR: Unkown axis(%i) in ZoomExtents", axis);
-        }		
+        }
     }
 
     bool DataStrip::IsValidChannelId(int channelId) const

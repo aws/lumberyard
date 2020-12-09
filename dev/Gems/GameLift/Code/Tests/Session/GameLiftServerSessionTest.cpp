@@ -140,7 +140,7 @@ public:
 
     void TearDown() override
     {
-        EXPECT_CALL(*((GameLiftServerSDKWrapperMock*)m_serverService->GetGameLiftServerSDKWrapper().lock().get()), TerminateGameSession()).Times(1);
+        EXPECT_CALL(*((GameLiftServerSDKWrapperMock*)m_serverService->GetGameLiftServerSDKWrapper().lock().get()), ProcessEnding()).Times(1);
         m_serverSession->Shutdown();
         delete m_serverSession;
 

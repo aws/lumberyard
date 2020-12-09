@@ -10,11 +10,10 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
+#include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <System/ClothConfiguration.h>
+#include <Components/ClothConfiguration.h>
 
 namespace NvCloth
 {
@@ -23,14 +22,20 @@ namespace NvCloth
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<ClothConfiguration>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Mesh Node", &ClothConfiguration::m_meshNode)
                 ->Field("Mass", &ClothConfiguration::m_mass)
                 ->Field("Use Custom Gravity", &ClothConfiguration::m_useCustomGravity)
                 ->Field("Custom Gravity", &ClothConfiguration::m_customGravity)
                 ->Field("Gravity Scale", &ClothConfiguration::m_gravityScale)
-                ->Field("Animation Blend Factor", &ClothConfiguration::m_animationBlendFactor)
                 ->Field("Stiffness Frequency", &ClothConfiguration::m_stiffnessFrequency)
+                ->Field("Motion Constraints Max Distance", &ClothConfiguration::m_motionConstraintsMaxDistance)
+                ->Field("Motion Constraints Scale", &ClothConfiguration::m_motionConstraintsScale)
+                ->Field("Motion Constraints Bias", &ClothConfiguration::m_motionConstraintsBias)
+                ->Field("Motion Constraints Stiffness", &ClothConfiguration::m_motionConstraintsStiffness)
+                ->Field("Backstop Radius", &ClothConfiguration::m_backstopRadius)
+                ->Field("Backstop Back Offset", &ClothConfiguration::m_backstopBackOffset)
+                ->Field("Backstop Front Offset", &ClothConfiguration::m_backstopFrontOffset)
                 ->Field("Damping", &ClothConfiguration::m_damping)
                 ->Field("Linear Drag", &ClothConfiguration::m_linearDrag)
                 ->Field("Angular Drag", &ClothConfiguration::m_angularDrag)
@@ -45,6 +50,7 @@ namespace NvCloth
                 ->Field("Collision Friction", &ClothConfiguration::m_collisionFriction)
                 ->Field("Collision Mass Scale", &ClothConfiguration::m_collisionMassScale)
                 ->Field("Continuous Collision Detection", &ClothConfiguration::m_continuousCollisionDetection)
+                ->Field("Collision Affects Static Particles", &ClothConfiguration::m_collisionAffectsStaticParticles)
                 ->Field("Self Collision Distance", &ClothConfiguration::m_selfCollisionDistance)
                 ->Field("Self Collision Stiffness", &ClothConfiguration::m_selfCollisionStiffness)
                 ->Field("Horizontal Stiffness", &ClothConfiguration::m_horizontalStiffness)
@@ -67,6 +73,7 @@ namespace NvCloth
                 ->Field("Tether Constraint Scale", &ClothConfiguration::m_tetherConstraintScale)
                 ->Field("Solver Frequency", &ClothConfiguration::m_solverFrequency)
                 ->Field("Acceleration Filter Iterations", &ClothConfiguration::m_accelerationFilterIterations)
+                ->Field("Remove Static Triangles", &ClothConfiguration::m_removeStaticTriangles)
                 ;
         }
     }
@@ -80,11 +87,11 @@ namespace NvCloth
         return {};
     }
 
-    bool ClothConfiguration::ShowAnimationBlendFactor()
+    bool ClothConfiguration::HasBackstopData()
     {
-        if (m_showAnimationBlendFactorCallback)
+        if (m_hasBackstopDataCallback)
         {
-            return m_showAnimationBlendFactorCallback();
+            return m_hasBackstopDataCallback();
         }
         return false;
     }

@@ -453,6 +453,7 @@ def __add_deployment_commands(deployment_subparser):
     subparser.add_argument('--delete', nargs='+', required=False, help='The tags to delete from the deployment')
     subparser.add_argument('--clear', action='store_true', required=False, help='Clear all tags for the deployment')
     subparser.add_argument('--list', action='store_true', required=False, help='List all tags on a deployment')
+    __add_common_args(subparser)
     subparser.set_defaults(func=deployment.tags)
 
 

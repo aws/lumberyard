@@ -17,17 +17,27 @@
 
 #include <CrySystemBus.h>
 
-#include <NvCloth/SystemBus.h>
+#include <NvCloth/IClothSystem.h>
+#include <NvCloth/ICloth.h>
+#include <NvCloth/ISolver.h>
 
-#include <System/DataTypes.h>
+#include <System/Factory.h>
+#include <System/Solver.h>
+#include <System/Fabric.h>
+#include <System/Cloth.h>
 
 namespace NvCloth
 {
+    //! Implementation of the IClothSystem interface.
+    //!
+    //! This class has the responsibility to initialize and tear down NvCloth library.
+    //! It owns all Solvers, Cloths and Fabrics, and it manages their creation and destruction.
+    //! It's also the responsible for updating (on Physics Tick) all the solvers that are not flagged as "user simulated".
     class SystemComponent
         : public AZ::Component
         , protected CrySystemEventBus::Handler
-        , public SystemRequestBus::Handler
-        , public AZ::TickBus::Handler
+        , protected IClothSystem
+        , protected AZ::TickBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{89DF5C48-64AC-4B8E-9E61-0D4C7A7B5491}");
@@ -38,35 +48,57 @@ namespace NvCloth
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
+        static void InitializeNvClothLibrary();
+        static void TearDownNvClothLibrary();
+
+        //! Returns true when there is no error reported.
+        static bool CheckLastClothError();
+
+        //! Resets the last error reported by NvCloth.
+        static void ResetLastClothError();
+
     protected:
-        // AZ::Component overrides
+        // AZ::Component overrides ...
         void Activate() override;
         void Deactivate() override;
 
-        // CrySystemEventBus overrides
+        // CrySystemEventBus::Handler overrides ...
         void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams) override;
         void OnCrySystemShutdown(ISystem& system) override;
 
-        // NvCloth::SystemRequestBus::Handler overrides
-        nv::cloth::Factory* GetClothFactory() override;
-        void AddCloth(nv::cloth::Cloth* cloth) override;
-        void RemoveCloth(nv::cloth::Cloth* cloth) override;
+        // IClothSystem overrides ...
+        ISolver* FindOrCreateSolver(const AZStd::string& name) override;
+        void DestroySolver(ISolver*& solver) override;
+        ISolver* GetSolver(const AZStd::string& name) override;
+        ICloth* CreateCloth(
+            const AZStd::vector<SimParticleFormat>& initialParticles,
+            const FabricCookedData& fabricCookedData) override;
+        void DestroyCloth(ICloth*& cloth) override;
+        ICloth* GetCloth(ClothId clothId) override;
+        bool AddCloth(ICloth* cloth, const AZStd::string& solverName = DefaultSolverName) override;
+        void RemoveCloth(ICloth* cloth) override;
 
-        // AZ::TickBus::Handler overrides
+        // AZ::TickBus::Handler overrides ...
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
         int GetTickOrder() override;
 
     private:
-        void InitializeNvClothLibrary();
-        void TearDownNvClothLibrary();
+        void InitializeSystem();
+        void DestroySystem();
 
-        void CreateNvClothFactory();
-        void DestroyNvClothFactory();
+        FabricId FindOrCreateFabric(const FabricCookedData& fabricCookedData);
+        void DestroyFabric(FabricId fabricId);
 
-        // Cloth Factory that creates all other objects
-        FactoryUniquePtr m_factory;
+        // Factory that creates all the solvers, fabric and cloths.
+        AZStd::unique_ptr<Factory> m_factory;
 
-        // Cloth Solver that contains all cloths
-        SolverUniquePtr m_solver;
+        // List of all the solvers created.
+        AZStd::vector<AZStd::unique_ptr<Solver>> m_solvers;
+
+        // List of all the fabrics created.
+        AZStd::unordered_map<FabricId, AZStd::unique_ptr<Fabric>> m_fabrics;
+
+        // List of all the cloths created.
+        AZStd::unordered_map<ClothId, AZStd::unique_ptr<Cloth>> m_cloths;
     };
 } // namespace NvCloth

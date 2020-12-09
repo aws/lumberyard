@@ -39,7 +39,7 @@ QPresetWidget::QPresetWidget(QString _name, QWidget* _value, QWidget* parent)
     layout->addWidget(name, 0, 1);
     layout->setContentsMargins(0, 0, 0, 0);
     setLayout(layout);
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 }
 

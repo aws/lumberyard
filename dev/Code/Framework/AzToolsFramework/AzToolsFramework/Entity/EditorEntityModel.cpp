@@ -638,12 +638,12 @@ namespace AzToolsFramework
         }
     }
 
-    void EditorEntityModel::EntitiesAboutToBeCloned()
+    void EditorEntityModel::OnEntitiesAboutToBeCloned()
     {
         m_forceAddToBack = true;
     }
 
-    void EditorEntityModel::EntitiesCloned()
+    void EditorEntityModel::OnEntitiesCloned()
     {
         m_forceAddToBack = false;
     }

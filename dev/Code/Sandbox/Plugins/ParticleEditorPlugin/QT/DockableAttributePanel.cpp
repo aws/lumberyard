@@ -42,7 +42,7 @@
 
 
 DockableAttributePanel::DockableAttributePanel(QWidget* parent)
-    : FloatableDockPanel("", parent)
+    : FloatableDockPanel("", parent, Qt::WindowFlags(), false)
     , m_titleBar(nullptr)
     , m_attributeView(nullptr)
     , m_openParticleTabBar(nullptr)
@@ -775,7 +775,7 @@ void DockableAttributePanel::RefreshParameterUI(CParticleItem* item, SLodInfo* l
         if (m_attributeView->getPanelWidget()->isEmpty())
         {
             m_attributeView->Clear();
-            QString particlePath = QString().sprintf("%s.%s", item->GetLibrary()->GetName().toUtf8().constData(), item->GetName().toUtf8().constData());
+            QString particlePath = QString().asprintf("%s.%s", item->GetLibrary()->GetName().toUtf8().constData(), item->GetName().toUtf8().constData());
             m_attributeView->InitConfiguration(particlePath);
             LoadSessionState(); //configure the UI the way the user wants it to be.
         }

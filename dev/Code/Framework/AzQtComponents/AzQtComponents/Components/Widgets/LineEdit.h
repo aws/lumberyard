@@ -14,125 +14,115 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option")
-#include <QPointer>
 #include <QColor>
+#include <QPointer>
 #include <QSize>
 #include <QStyleOption>
 AZ_POP_DISABLE_WARNING
 
 class QLineEdit;
-class QSettings;
 class QPainter;
 class QProxyStyle;
+class QSettings;
 class QToolButton;
 
 namespace AzQtComponents
 {
-    class Style;
-    class LineEditWatcher;
     class BrowseEdit;
+    class LineEditWatcher;
+    class Style;
 
-    /**
-     * Class to provide extra functionality for working with Line Edit controls.
-     *
-     * QLineEdit controls are styled in LineEdit.qss
-     *
-     */
+    //! Class to handle styling and painting of QLineEdit widgets.
     class AZ_QT_COMPONENTS_API LineEdit
     {
     public:
+        //! Style configuration for the LineEdit class.
         struct Config
         {
-            int borderRadius;
+            int borderRadius;                   //!< Border radius in pixels. All corners get the same border radius.
             QColor borderColor;
-            QColor hoverBackgroundColor;
-            QColor hoverBorderColor;
-            int hoverLineWidth;
-            QColor focusedBorderColor;
-            int focusedLineWidth;
-            QColor errorBorderColor;
-            int errorLineWidth;
             QColor placeHolderTextColor;
-            QString clearImage;
-            QSize clearImageSize;
-            QString errorImage;
-            QSize errorImageSize;
-            int iconSpacing;
-            int iconMargin;
-            bool autoSelectAllOnClickFocus;
-            int dropFrameOffset;
-            int dropFrameRadius;
+            QColor hoverBorderColor;
+            QColor hoverBackgroundColor;
+            int hoverLineWidth;                 //!< Border thickness for the hover state, in pixels.
+            QColor focusedBorderColor;
+            int focusedLineWidth;               //!< Border thickness for the focused state, in pixels.
+            QColor errorBorderColor;
+            int errorLineWidth;                 //!< Border thickness for the error state, in pixels.
+            QString clearImage;                 //!< Path to the clear icon. Svg images recommended.
+            QString clearImageDisabled;         //!< Path to the disabled clear icon. Svg images recommended.
+            QSize clearImageSize;               //!< Size of the clear icon. Size must be proportional to the icon's ratio.
+            QString errorImage;                 //!< Path to the error icon. Svg images recommended.
+            QSize errorImageSize;               //!< Size of the error icon. Size must be proportional to the icon's ratio.
+            int iconSpacing;                    //!< Spacing value for the icons, in pixels. All directions get the same spacing.
+            int iconMargin;                     //!< Margin value for the icons, in pixels. All directions get the same margin.
+            bool autoSelectAllOnClickFocus;     //!< Determines if all the text is selected when the LineEdit gains focus.
+            int dropFrameOffset;                //!< Offset around the frame drawn when the LineEdit is a drop target, in pixels.
+            int dropFrameRadius;                //!< Radius of the frame drawn when the LineEdit is a drop target, in pixels.
 
+            //! Returns the current LineEdit border width.
+            //! @param option The QStyleOption containing the style parameters for the LineEdit.
+            //! @param hasError Whether the LineEdit is in an error state.
+            //! @param dropTarget Whether the LineEdit is currently a drop target.
             int getLineWidth(const QStyleOption* option, bool hasError, bool dropTarget) const;
+            //! Returns the current LineEdit border color.
+            //! @param option The QStyleOption containing the style parameters for the LineEdit.
+            //! @param hasError Whether the LineEdit is in an error state.
+            //! @param dropTarget Whether the LineEdit is currently a drop target.
             QColor getBorderColor(const QStyleOption* option, bool hasError, bool dropTarget) const;
+            //! Returns the LineEdit background color.
+            //! @param option The QStyleOption containing the style parameters for the LineEdit.
+            //! @param hasError Whether the LineEdit is in an error state.
+            //! @param isDropTarget Whether the LineEdit is currently a drop target.
+            //! @param widget Pointer to the LineEdit widget.
             QColor getBackgroundColor(const QStyleOption* option, bool hasError, bool isDropTarget, const QWidget* widget) const;
         };
 
-        /*!
-         * Adds a search icon to the left of the QLineEdit
-         */
+        //! Applies the "Search" style class to a QLineEdit.
         static void applySearchStyle(QLineEdit* lineEdit);
-
-        /*!
-         * Removes the search icon from the left of the QLineEdit
-         */
+        //! Removes the "Search" style class from a QLineEdit.
         static void removeSearchStyle(QLineEdit* lineEdit);
 
-        /*!
-         * Displays the line edit as a drop target. The valid argument indicates
-         * whether the line edit is a valid drop target or not.
-         */
+        //! Applies the "DropTarget" style class to a QLineEdit.
+        //! @param valid Whether the QLineEdit is a valid drop target or not.
         static void applyDropTargetStyle(QLineEdit* lineEdit, bool valid);
-
-        /*!
-         * Removes the drop target style from the QLineEdit.
-         */
+        //! Removes the "DropTarget" style class from a QLineEdit.
         static void removeDropTargetStyle(QLineEdit* lineEdit);
 
-        /*!
-        * Loads the config data from a settings object.
-        */
+        //! Sets the LineEdit style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the LineEdit.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default config data.
-        */
+        //! Gets the default LineEdit style configuration.
         static Config defaultConfig();
 
-        /*!
-         * Set the message to display in a tooltip if the QLineEdit validator
-         * detects an error.
-         */
+        //! Sets the message to display in a tooltip if the QLineEdit validator
+        //! detects an error.
         static void setErrorMessage(QLineEdit* lineEdit, const QString& error);
 
-        /*!
-         * Set external error state in addition to validator and inputMask.
-         * This value is OR'ed with validators.
-         */
+        //! Set external error state.
+        //! The global error state is calculated by an OR operation between
+        //! external error state, validator and inputMask.
         static void setExternalError(QLineEdit* lineEdit, bool hasExternalError);
 
-        /*!
-         * Error indicator is enabled by default. Allow the developer to disable it.
-         */
+        //! Sets whether an error icon and message should be displayed when the
+        //! LineEdit is in an error state. Default value is true.
         static void setErrorIconEnabled(QLineEdit* lineEdit, bool enabled);
+        //! Returns true if the error icon will be shown if an error state is detected.
         static bool errorIconEnabled(QLineEdit* lineEdit);
 
-        /*!
-         * Get the QLineEdit QToolButton created when QLineEdit::setClearButtonEnabled(true) is
-         * called. Returns nullptr if the clear button has not been created yet.
-         */
+        //! Returns a pointer to the QToolButton created when QLineEdit::setClearButtonEnabled(true)
+        //! is called. Returns nullptr if the clear button has not been created yet.
         static QToolButton* getClearButton(const QLineEdit* lineEdit);
 
-        /*!
-         * The clear button on readonly line edits is not enabled by default. This function allows
-         * the developer to override this option.
-         */
+        //! Enables the clear button to be displayed on read-only LineEdits. Default value is false.
         static void setEnableClearButtonWhenReadOnly(QLineEdit* lineEdit, bool enabled);
 
     private:
-        friend class Style;
-        friend class EditorProxyStyle;
         friend class BrowseEdit;
+        friend class EditorProxyStyle;
+        friend class Style;
+
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // needs to have dll-interface to be used by clients of class 'AzQtComponents::LineEdit'
         static QPointer<LineEditWatcher> s_lineEditWatcher;
         AZ_POP_DISABLE_WARNING

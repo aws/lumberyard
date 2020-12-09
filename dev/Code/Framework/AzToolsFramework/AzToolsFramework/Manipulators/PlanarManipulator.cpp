@@ -251,11 +251,6 @@ namespace AzToolsFramework
             localOrientation, m_localTransform.GetTranslation());
     }
 
-    void PlanarManipulator::SetView(AZStd::unique_ptr<ManipulatorView>&& view)
-    {
-        m_manipulatorViews.emplace_back(AZStd::move(view));
-    }
-
     void PlanarManipulator::InvalidateImpl()
     {
         for (auto& view : m_manipulatorViews)

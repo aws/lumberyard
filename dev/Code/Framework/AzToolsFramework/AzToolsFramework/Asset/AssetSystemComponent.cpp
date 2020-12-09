@@ -235,6 +235,14 @@ namespace AzToolsFramework
                     ->Event("SaveAssetAs", &AssetEditor::AssetEditorWidgetRequests::SaveAssetAs)
                     ->Event("OpenAssetById", &AssetEditor::AssetEditorWidgetRequests::OpenAssetById)
                     ;
+
+                behaviorContext->EBus<AzToolsFramework::AssetSystemRequestBus>("AssetSystemRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                    ->Event("ReturnFullSourcePathFromRelativeProductPath", &AzToolsFramework::AssetSystem::AssetSystemRequest::ReturnFullSourcePathFromRelativeProductPath)
+                    ;
             }
         }
 
@@ -312,6 +320,13 @@ namespace AzToolsFramework
                 fullPath = "";
                 return false;
             }
+        }
+
+        AZStd::string AssetSystemComponent::ReturnFullSourcePathFromRelativeProductPath(const AZStd::string& relPath)
+        {
+            AZStd::string sourcePathResult;
+            GetFullSourcePathFromRelativeProductPath(relPath, sourcePathResult);
+            return sourcePathResult;
         }
 
         bool AssetSystemComponent::GetAbsoluteAssetDatabaseLocation(AZStd::string& result)

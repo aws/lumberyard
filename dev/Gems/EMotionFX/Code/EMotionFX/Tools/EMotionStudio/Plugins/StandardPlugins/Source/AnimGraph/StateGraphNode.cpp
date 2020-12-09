@@ -830,7 +830,7 @@ namespace EMStudio
 
     int32 StateGraphNode::CalcRequiredWidth()
     {
-        const uint32 headerWidth = mHeaderFontMetrics->width(mElidedName) + 40;
+        const uint32 headerWidth = mHeaderFontMetrics->horizontalAdvance(mElidedName) + 40;
 
         // make sure the node is at least 100 units in width
         return MCore::Max<uint32>(headerWidth, 100);

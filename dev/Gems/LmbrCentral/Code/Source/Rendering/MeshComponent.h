@@ -32,6 +32,12 @@
 #include <LmbrCentral/Rendering/MeshAsset.h>
 #include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
+#if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Entity/EntityContext.h>
+#include <AzFramework/Render/GeometryIntersectionBus.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#endif
+
 namespace LmbrCentral
 {
     class MaterialOwnerRequestBusHandlerImpl;
@@ -142,6 +148,26 @@ namespace LmbrCentral
 
         void SetVisible(bool isVisible);
         bool GetVisible();
+        float GetOpacity();
+        void SetOpacity(float opacity);
+        float GetMaxViewDistance();
+        void SetMaxViewDistance(float maxViewDistance);
+        float GetViewDistanceMultiplier();
+        void SetViewDistanceMultiplier(float viewDistanceMultiplier);
+        AZ::u32 GetLODDistanceRatio();
+        void SetLODDistanceRatio(AZ::u32 lodDistanceRatio);
+        bool GetCastShadows();
+        void SetCastShadows(bool shouldCastShadows);
+        bool GetLODBasedOnBoundingBoxes();
+        void SetLODBasedOnBoundingBoxes(bool lodBasedOnBoundingBoxes);
+        bool GetUseVisAreas();
+        void SetUseVisAreas(bool useVisAreas);
+        bool GetReceiveWind();
+        void SetReceiveWind(bool shouldReceiveWind);
+        bool GetAcceptDecals();
+        void SetAcceptDecals(bool shouldAcceptDecals);
+        bool GetDeformableMesh();
+        void SetDeformableMesh(bool isDeformableMesh);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -154,6 +180,11 @@ namespace LmbrCentral
 
         //! This function caches off the static flag stat of the transform;
         void SetTransformStaticState(bool isStatic);
+        const AZ::Transform& GetTransform() const;
+
+#if !ENABLE_CRY_PHYSICS
+        void SetContextId(AzFramework::EntityContextId contextId) { m_contextId = contextId; }
+#endif
 
     protected:
 
@@ -289,6 +320,10 @@ namespace LmbrCentral
 
         // Helper to store indices for meshes to be modified by other components.
         MeshModificationRequestHelper m_modificationHelper;
+
+#if !ENABLE_CRY_PHYSICS
+        AzFramework::EntityContextId m_contextId;
+#endif
     };
 
 
@@ -300,6 +335,9 @@ namespace LmbrCentral
         , public RenderNodeRequestBus::Handler
         , public LegacyMeshComponentRequestBus::Handler
         , public RenderBoundsRequestBus::Handler
+#if !ENABLE_CRY_PHYSICS
+        , public AzFramework::RenderGeometry::IntersectionRequestBus::Handler
+#endif
     {
     public:
         friend class EditorMeshComponent;
@@ -327,6 +365,26 @@ namespace LmbrCentral
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_meshRenderNode.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
+        float GetOpacity() override;
+        void SetOpacity(float opacity) override;
+        float GetMaxViewDistance() override;
+        void SetMaxViewDistance(float maxViewDistance) override;
+        float GetViewDistanceMultiplier() override;
+        void SetViewDistanceMultiplier(float viewDistanceMultiplier) override;
+        AZ::u32 GetLODDistanceRatio() override;
+        void SetLODDistanceRatio(AZ::u32 lodDistanceRatio) override;
+        bool GetCastShadows() override;
+        void SetCastShadows(bool shouldCastShadows) override;
+        bool GetLODBasedOnBoundingBoxes() override;
+        void SetLODBasedOnBoundingBoxes(bool lodBasedOnBoundingBoxes) override;
+        bool GetUseVisAreas() override;
+        void SetUseVisAreas(bool useVisAreas) override;
+        bool GetReceiveWind() override;
+        void SetReceiveWind(bool shouldReceiveWind) override;
+        bool GetAcceptDecals() override;
+        void SetAcceptDecals(bool shouldAcceptDecals) override;
+        bool GetDeformableMesh() override;
+        void SetDeformableMesh(bool isDeformableMesh) override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -357,6 +415,15 @@ namespace LmbrCentral
         // MeshComponentRequestBus interface implementation
         IStatObj* GetStatObj() override;
         ///////////////////////////////////
+
+#if !ENABLE_CRY_PHYSICS
+        //////////////////////////////////////////////////////////////////////////
+        // IntersectionNotificationBus interface implementation
+        AzFramework::RenderGeometry::RayResult RenderGeometryIntersect(const AzFramework::RenderGeometry::RayRequest& ray) override;
+        AZ::Aabb GetGeometryBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+#endif
+
     protected:
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -380,7 +447,6 @@ namespace LmbrCentral
 
         void RequireSendingRenderMeshForEditing(size_t lodIndex, size_t primitiveIndex);
         void NoRenderMeshesForEditing();
-
 
         //////////////////////////////////////////////////////////////////////////
         // Reflected Data

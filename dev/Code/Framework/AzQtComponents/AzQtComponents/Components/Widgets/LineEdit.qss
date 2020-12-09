@@ -34,8 +34,8 @@ QPlainText:disabled,
 QPlainTextEdit:disabled,
 QLineEdit:disabled
 {
-    background-color: #777777;
-    color: #D4D4D4;
+    background-color: #666666;
+    color: #999999;
 }
 
 QAbstractItemView QLineEdit

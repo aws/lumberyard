@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <Integration/ActorComponentBus.h>
 
 // Needed to access the Mesh information inside Actor.
@@ -58,11 +56,11 @@ namespace NvCloth
                     continue;
                 }
 
-                const bool hasClothInverseMasses = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES) != nullptr);
-                if (hasClothInverseMasses)
+                const bool hasClothData = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_DATA) != nullptr);
+                if (hasClothData)
                 {
                     const EMotionFX::Node* node = actor->GetSkeleton()->GetNode(nodeIndex);
-                    AZ_Assert(node, "Invalid node %d in actor '%s'", nodeIndex, actor->GetFileNameString().c_str());
+                    AZ_Assert(node, "Invalid node %u in actor '%s'", nodeIndex, actor->GetFileNameString().c_str());
                     meshNodes.push_back(node->GetNameString());
                 }
             }
@@ -72,10 +70,10 @@ namespace NvCloth
     bool ActorAssetHelper::ObtainClothMeshNodeInfo(
         const AZStd::string& meshNode,
         MeshNodeInfo& meshNodeInfo,
-        AZStd::vector<SimParticleType>& meshParticles,
-        AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs)
+        MeshClothInfo& meshClothInfo)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Cloth);
+
         EMotionFX::ActorInstance* actorInstance = nullptr;
         EMotionFX::Integration::ActorComponentRequestBus::EventResult(
             actorInstance, m_entityId, &EMotionFX::Integration::ActorComponentRequestBus::Events::GetActorInstance);
@@ -134,7 +132,7 @@ namespace NvCloth
 
         if (emfxMesh)
         {
-            bool dataCopied = CopyDataFromEMotionFXMesh(*emfxMesh, meshParticles, meshIndices, meshUVs);
+            bool dataCopied = CopyDataFromEMotionFXMesh(*emfxMesh, meshClothInfo);
 
             if (dataCopied)
             {
@@ -167,9 +165,7 @@ namespace NvCloth
 
     bool ActorAssetHelper::CopyDataFromEMotionFXMesh(
         const EMotionFX::Mesh& emfxMesh,
-        AZStd::vector<SimParticleType>& meshParticles,
-        AZStd::vector<SimIndexType>& meshIndices,
-        AZStd::vector<SimUVType>& meshUVs)
+        MeshClothInfo& meshClothInfo)
     {
         const int numVertices = emfxMesh.GetNumVertices();
         const int numIndices = emfxMesh.GetNumIndices();
@@ -180,42 +176,51 @@ namespace NvCloth
 
         const uint32* sourceIndices = emfxMesh.GetIndices();
         const AZ::Vector3* sourcePositions = static_cast<AZ::Vector3*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
-        const AZ::u32* sourceClothInverseMasses = static_cast<AZ::u32*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_INVMASSES));
+        const AZ::u32* sourceClothData = static_cast<AZ::u32*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_CLOTH_DATA));
         const AZ::Vector2* sourceUVs = static_cast<AZ::Vector2*>(emfxMesh.FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0)); // first UV set
 
-        if (!sourceIndices || !sourcePositions || !sourceClothInverseMasses)
+        if (!sourceIndices || !sourcePositions || !sourceClothData)
         {
             return false;
         }
 
         const SimUVType uvZero(0.0f, 0.0f);
 
-        meshParticles.resize(numVertices);
-        meshUVs.resize(numVertices);
+        meshClothInfo.m_particles.resize_no_construct(numVertices);
+        meshClothInfo.m_uvs.resize_no_construct(numVertices);
+        meshClothInfo.m_motionConstraints.resize_no_construct(numVertices);
+        meshClothInfo.m_backstopData.resize_no_construct(numVertices);
         for (int index = 0; index < numVertices; ++index)
         {
-            meshParticles[index].x = sourcePositions[index].GetX();
-            meshParticles[index].y = sourcePositions[index].GetY();
-            meshParticles[index].z = sourcePositions[index].GetZ();
+            AZ::Color clothVertexData;
+            clothVertexData.FromU32(sourceClothData[index]);
 
-            AZ::Color inverseMassColor;
-            inverseMassColor.FromU32(sourceClothInverseMasses[index]);
-            meshParticles[index].w = inverseMassColor.GetR(); // Cloth inverse masses is in the red channel
+            const float inverseMass = clothVertexData.GetR();
+            const float motionConstraint = clothVertexData.GetG();
+            const float backstopOffset = AZ::GetClamp(static_cast<float>(clothVertexData.GetB()) * 2.0f - 1.0f, -1.0f, 1.0f); // Convert range from [0,1] -> [-1,1]
+            const float backstopRadius = clothVertexData.GetA();
 
-            meshUVs[index] = (sourceUVs) ? sourceUVs[index] : uvZero;
+            meshClothInfo.m_particles[index].Set(
+                sourcePositions[index],
+                inverseMass);
+
+            meshClothInfo.m_motionConstraints[index] = motionConstraint;
+            meshClothInfo.m_backstopData[index].Set(backstopOffset, backstopRadius);
+
+            meshClothInfo.m_uvs[index] = (sourceUVs) ? SimUVType(sourceUVs[index].GetX(), sourceUVs[index].GetY()) : uvZero;
         }
 
-        meshIndices.resize(numIndices);
+        meshClothInfo.m_indices.resize_no_construct(numIndices);
         // Fast copy when SimIndexType is the same size as the EMFX indices type.
-        if (sizeof(SimIndexType) == sizeof(uint32))
+        if constexpr (sizeof(SimIndexType) == sizeof(uint32))
         {
-            memcpy(meshIndices.data(), sourceIndices, numIndices * sizeof(SimIndexType));
+            memcpy(meshClothInfo.m_indices.data(), sourceIndices, numIndices * sizeof(SimIndexType));
         }
         else
         {
             for (int index = 0; index < numIndices; ++index)
             {
-                meshIndices[index] = static_cast<SimIndexType>(sourceIndices[index]);
+                meshClothInfo.m_indices[index] = static_cast<SimIndexType>(sourceIndices[index]);
             }
         }
 

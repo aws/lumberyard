@@ -40,6 +40,7 @@ namespace GraphCanvas
     class GraphCanvasTreeModel
         : public QAbstractItemModel
     {
+        Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(GraphCanvasTreeModel, AZ::SystemAllocator, 0);
         static void Reflect(AZ::ReflectContext* reflectContext);
@@ -67,8 +68,13 @@ namespace GraphCanvas
         QModelIndex CreateIndex(GraphCanvasTreeItem* treeItem, int column = 0);
         QModelIndex CreateParentIndex(GraphCanvasTreeItem* treeItem, int column = 0);
 
-        void ChildAboutToBeAdded(GraphCanvasTreeItem* treeItem, int position = -1);
-        void OnChildAdded();
+        void ChildAboutToBeAdded(GraphCanvasTreeItem* parentItem, int position = -1);
+        void OnChildAdded(GraphCanvasTreeItem* itemAdded);
+
+    signals:
+
+        void OnTreeItemAdded(const GraphCanvasTreeItem* treeItem);
+        void OnTreeItemAboutToBeRemoved(const GraphCanvasTreeItem* treeItem);
         
     public:
 

@@ -150,7 +150,7 @@ namespace AzFramework
 
             AZSOCKET m_socket;//the socket for our connection
             AZStd::mutex m_sendQueueMutex;
-            AZStd::mutex m_responseHandlerMutex;
+            AZStd::recursive_mutex m_responseHandlerMutex;
             AZStd::atomic<EConnectionState> m_connectionState;
             AZStd::atomic_uint m_requestSerial;
             AZStd::atomic<SocketConnection::TMessageCallbackHandle> m_nextHandlerId;

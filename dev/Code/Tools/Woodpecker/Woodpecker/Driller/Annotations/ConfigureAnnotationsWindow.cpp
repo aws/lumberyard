@@ -43,7 +43,7 @@ namespace Driller
     {
         if (index == QModelIndex())
         {
-            return 0;
+            return Qt::ItemFlags();
         }
 
         if (index.column() == 0)

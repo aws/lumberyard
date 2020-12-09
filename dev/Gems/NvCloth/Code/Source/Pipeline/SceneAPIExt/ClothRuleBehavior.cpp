@@ -9,9 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "NvCloth_precompiled.h"
 
 #include <SceneAPI/SceneCore/Containers/Scene.h>
+#include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
 
 #include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
@@ -73,8 +73,10 @@ namespace NvCloth
                 ClothRule* clothRule = azrtti_cast<ClothRule*>(&target);
 
                 // Set default values
-                clothRule->SetMeshNodeName(ClothRule::m_defaultChooseNodeName);
-                clothRule->SetVertexColorStreamName(ClothRule::m_defaultInverseMassString);
+                clothRule->SetMeshNodeName(ClothRule::DefaultChooseNodeName);
+                clothRule->SetInverseMassesStreamName(ClothRule::DefaultInverseMassesString);
+                clothRule->SetMotionConstraintsStreamName(ClothRule::DefaultMotionConstraintsString);
+                clothRule->SetBackstopStreamName(ClothRule::DefaultBackstopString);
             }
         }
 
@@ -126,7 +128,7 @@ namespace NvCloth
                     {
                         if (isValidGroupType)
                         {
-                            rulesUpdated = UpdateClothRule(scene, group, *clothRule) || rulesUpdated;
+                            rulesUpdated = UpdateClothRule(scene.GetGraph(), group, *clothRule) || rulesUpdated;
                         }
                         else
                         {
@@ -148,56 +150,79 @@ namespace NvCloth
             return rulesUpdated;
         }
 
-        bool ClothRuleBehavior::UpdateClothRule(const AZ::SceneAPI::Containers::Scene& scene, const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group, ClothRule& clothRule)
+        bool ClothRuleBehavior::UpdateClothRule(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::DataTypes::ISceneNodeGroup& group, ClothRule& clothRule)
         {
             bool ruleUpdated = false;
 
-            if (clothRule.GetMeshNodeName() != ClothRule::m_defaultChooseNodeName)
+            if (clothRule.GetMeshNodeName() != ClothRule::DefaultChooseNodeName)
             {
                 bool foundMeshNode = false;
-                const AZStd::string& meshNodemName = clothRule.GetMeshNodeName();
+                const AZStd::string& meshNodeName = clothRule.GetMeshNodeName();
 
-                const auto& selectedNodesList = group.GetSceneNodeSelectionList();
-                for (size_t i = 0; i < selectedNodesList.GetSelectedNodeCount(); ++i)
+                if (!meshNodeName.empty())
                 {
-                    if (meshNodemName == selectedNodesList.GetSelectedNode(i))
+                    const auto& selectedNodesList = group.GetSceneNodeSelectionList();
+                    for (size_t i = 0; i < selectedNodesList.GetSelectedNodeCount(); ++i)
                     {
-                        foundMeshNode = true;
-                        break;
+                        if (meshNodeName == selectedNodesList.GetSelectedNode(i))
+                        {
+                            foundMeshNode = true;
+                            break;
+                        }
                     }
                 }
 
                 // Mesh node selected in the cloth rule is not part of the list of selected nodes anymore, set the default value.
                 if (!foundMeshNode)
                 {
-                    clothRule.SetMeshNodeName(ClothRule::m_defaultChooseNodeName);
+                    clothRule.SetMeshNodeName(ClothRule::DefaultChooseNodeName);
                     ruleUpdated = true;
                 }
             }
 
-            if (clothRule.GetVertexColorStreamName() != ClothRule::m_defaultInverseMassString)
+            // If the Vertex Color Stream selected for the inverse masses doesn't exist anymore, set the default value.
+            if (!clothRule.IsInverseMassesStreamDisabled() &&
+                !ContainsVertexColorStream(graph, clothRule.GetInverseMassesStreamName()))
             {
-                const AZStd::string& vertexColorStreamName = clothRule.GetVertexColorStreamName();
+                clothRule.SetInverseMassesStreamName(ClothRule::DefaultInverseMassesString);
+                ruleUpdated = true;
+            }
 
-                const auto& graph = scene.GetGraph();
-                auto graphNames = graph.GetNameStorage();
+            // If the Vertex Color Stream selected for the motion constraints doesn't exist anymore, set the default value.
+            if (!clothRule.IsMotionConstraintsStreamDisabled() &&
+                !ContainsVertexColorStream(graph, clothRule.GetMotionConstraintsStreamName()))
+            {
+                clothRule.SetMotionConstraintsStreamName(ClothRule::DefaultMotionConstraintsString);
+                ruleUpdated = true;
+            }
 
-                auto found = AZStd::find_if(graphNames.cbegin(), graphNames.cend(), 
-                    [&vertexColorStreamName](const AZ::SceneAPI::Containers::SceneGraph::NameStorageType& graphName)
-                    {
-                        return vertexColorStreamName == graphName.GetName();
-                    });
-
-                // Vertex Color Stream selected in the cloth rule doesn't exist anymore, set the default value.
-                if (found == graphNames.cend())
-                {
-                    clothRule.SetVertexColorStreamName(ClothRule::m_defaultInverseMassString);
-                    ruleUpdated = true;
-                }
+            // If the Vertex Color Stream selected for the backstop doesn't exist anymore, set the default value.
+            if (!clothRule.IsBackstopStreamDisabled() &&
+                !ContainsVertexColorStream(graph, clothRule.GetBackstopStreamName()))
+            {
+                clothRule.SetBackstopStreamName(ClothRule::DefaultBackstopString);
+                ruleUpdated = true;
             }
 
             return ruleUpdated;
         }
-        
+
+        bool ClothRuleBehavior::ContainsVertexColorStream(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZStd::string& streamName) const
+        {
+            if (streamName.empty())
+            {
+                return false;
+            }
+
+            auto graphNames = graph.GetNameStorage();
+
+            auto graphNameIt = AZStd::find_if(graphNames.cbegin(), graphNames.cend(),
+                [&streamName](const AZ::SceneAPI::Containers::SceneGraph::NameStorageType& graphName)
+                {
+                    return streamName == graphName.GetName();
+                });
+
+            return graphNameIt != graphNames.cend();
+        }
     } // namespace Pipeline
 } // namespace NvCloth

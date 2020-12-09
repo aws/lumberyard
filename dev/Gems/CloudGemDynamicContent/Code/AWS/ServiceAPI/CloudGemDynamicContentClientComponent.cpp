@@ -27,27 +27,29 @@ namespace ServiceAPI {
     
     const char* LmbrAWS_CodeGen_Component_UUID= "{30f2b6b0-e3fe-11e6-ac87-40e230988dca}";
     
-    const char* LmbrAWS_CodeGen_PortalFileRequest_UUID= "{f6e760d2-e139-42e2-8b9c-b9a8dbbf8abc}";
-    
-    const char* LmbrAWS_CodeGen_PortalFileListResults_UUID= "{f0a7dafb-d85c-46c5-b3e1-a90086d18f1e}";
-    
-    const char* LmbrAWS_CodeGen_ResponseHandler_UUID= "{3873e63a-2e53-44fa-85bd-7585e8c2017f}";
-    
     const char* LmbrAWS_CodeGen_NotificationBus1_UUID= "{a5160fb4-cbfb-453e-8713-311ac05165b9}";
     
     const char* LmbrAWS_CodeGen_RequestBus1_UUID= "{f9d01db8-3b10-4afc-92be-2e7ecfc6678d}";
     
-    const char* LmbrAWS_CodeGen_RequestData_UUID= "{a7bee76e-cf1a-4b42-8bda-5353d2c51f4c}";
-    
-    const char* LmbrAWS_CodeGen_FileRequestResults_UUID= "{850ec908-0416-44f4-8567-3f6192e08984}";
-    
-    const char* LmbrAWS_CodeGen_FileRequestResult_UUID= "{89ea2795-e558-48ee-8a8a-3d4e984c3133}";
+    const char* LmbrAWS_CodeGen_ResponseHandler_UUID= "{3873e63a-2e53-44fa-85bd-7585e8c2017f}";
     
     const char* LmbrAWS_CodeGen_ServiceStatus_UUID= "{038a7126-89ec-4bac-8f09-2574e80712a9}";
     
+    const char* LmbrAWS_CodeGen_PortalFileInfo_UUID= "{cf6f02c5-12ad-49ae-9281-3c4aacb30d4a}";
+    
+    const char* LmbrAWS_CodeGen_PortalFileRequest_UUID= "{f6e760d2-e139-42e2-8b9c-b9a8dbbf8abc}";
+    
     const char* LmbrAWS_CodeGen_PortalFileRequestList_UUID= "{9035bd2a-ab01-436c-85f8-a7391ad539a4}";
     
-    const char* LmbrAWS_CodeGen_PortalFileInfo_UUID= "{cf6f02c5-12ad-49ae-9281-3c4aacb30d4a}";
+    const char* LmbrAWS_CodeGen_PortalFileListResults_UUID= "{f0a7dafb-d85c-46c5-b3e1-a90086d18f1e}";
+    
+    const char* LmbrAWS_CodeGen_RequestDataItem_UUID= "{c2a0371d-37a7-49bd-be3c-488c8401d83f}";
+    
+    const char* LmbrAWS_CodeGen_RequestData_UUID= "{a7bee76e-cf1a-4b42-8bda-5353d2c51f4c}";
+    
+    const char* LmbrAWS_CodeGen_FileRequestResult_UUID= "{89ea2795-e558-48ee-8a8a-3d4e984c3133}";
+    
+    const char* LmbrAWS_CodeGen_FileRequestResults_UUID= "{850ec908-0416-44f4-8567-3f6192e08984}";
     
 
     void Configure()
@@ -73,30 +75,13 @@ namespace ServiceAPI {
 
     
     
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestDataPropertyFileList& list)
-    {
-        bool ok = true;
-        ok = ok && writer.StartArray();
-        for (auto item : list)
-        {
-            ok = ok && WriteJson(writer, item);
-        }
-        ok = ok && writer.EndArray();
-        return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestData& item)
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ServiceStatus& item)
     {
             bool ok = true;
             ok = ok && writer.StartObject();
             
-            ok = ok && writer.Key("ManifestData");
-            ok = ok && WriteJson(writer, item.ManifestData);
-            
-            ok = ok && writer.Key("FileList");
-            ok = ok && WriteJson(writer, item.FileList);
+            ok = ok && writer.Key("status");
+            ok = ok && WriteJson(writer, item.status);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -104,56 +89,25 @@ namespace ServiceAPI {
     
     
     
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResult& item)
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const PortalFileInfo& item)
     {
             bool ok = true;
             ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("Hash");
-            ok = ok && WriteJson(writer, item.Hash);
-            
-            ok = ok && writer.Key("PresignedURL");
-            ok = ok && WriteJson(writer, item.PresignedURL);
             
             ok = ok && writer.Key("FileName");
             ok = ok && WriteJson(writer, item.FileName);
             
-            ok = ok && writer.Key("FileStatus");
-            ok = ok && WriteJson(writer, item.FileStatus);
+            ok = ok && writer.Key("StagingStatus");
+            ok = ok && WriteJson(writer, item.StagingStatus);
             
-            ok = ok && writer.Key("Signature");
-            ok = ok && WriteJson(writer, item.Signature);
+            ok = ok && writer.Key("StagingStart");
+            ok = ok && WriteJson(writer, item.StagingStart);
             
-            ok = ok && writer.Key("Size");
-            ok = ok && WriteJson(writer, item.Size);
+            ok = ok && writer.Key("StagingEnd");
+            ok = ok && WriteJson(writer, item.StagingEnd);
             
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResultArray& list)
-    {
-        bool ok = true;
-        ok = ok && writer.StartArray();
-        for (auto item : list)
-        {
-            ok = ok && WriteJson(writer, item);
-        }
-        ok = ok && writer.EndArray();
-        return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResults& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("ResultList");
-            ok = ok && WriteJson(writer, item.ResultList);
+            ok = ok && writer.Key("Parent");
+            ok = ok && WriteJson(writer, item.Parent);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -166,8 +120,8 @@ namespace ServiceAPI {
             bool ok = true;
             ok = ok && writer.StartObject();
             
-            ok = ok && writer.Key("StagingEnd");
-            ok = ok && WriteJson(writer, item.StagingEnd);
+            ok = ok && writer.Key("FileName");
+            ok = ok && WriteJson(writer, item.FileName);
             
             ok = ok && writer.Key("StagingStatus");
             ok = ok && WriteJson(writer, item.StagingStatus);
@@ -175,8 +129,8 @@ namespace ServiceAPI {
             ok = ok && writer.Key("StagingStart");
             ok = ok && WriteJson(writer, item.StagingStart);
             
-            ok = ok && writer.Key("FileName");
-            ok = ok && WriteJson(writer, item.FileName);
+            ok = ok && writer.Key("StagingEnd");
+            ok = ok && WriteJson(writer, item.StagingEnd);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -212,32 +166,6 @@ namespace ServiceAPI {
     
     
     
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const PortalFileInfo& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("StagingEnd");
-            ok = ok && WriteJson(writer, item.StagingEnd);
-            
-            ok = ok && writer.Key("StagingStatus");
-            ok = ok && WriteJson(writer, item.StagingStatus);
-            
-            ok = ok && writer.Key("StagingStart");
-            ok = ok && WriteJson(writer, item.StagingStart);
-            
-            ok = ok && writer.Key("Parent");
-            ok = ok && WriteJson(writer, item.Parent);
-            
-            ok = ok && writer.Key("FileName");
-            ok = ok && WriteJson(writer, item.FileName);
-            
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
     bool WriteJson(CloudGemFramework::JsonWriter& writer, const PortalFileListResultsPropertyResults& list)
     {
         bool ok = true;
@@ -266,13 +194,104 @@ namespace ServiceAPI {
     
     
     
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ServiceStatus& item)
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestDataItem& item)
     {
             bool ok = true;
             ok = ok && writer.StartObject();
             
-            ok = ok && writer.Key("status");
-            ok = ok && WriteJson(writer, item.status);
+            ok = ok && writer.Key("FileName");
+            ok = ok && WriteJson(writer, item.FileName);
+            
+            ok = ok && writer.Key("FileVersion");
+            ok = ok && WriteJson(writer, item.FileVersion);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestDataPropertyFileList& list)
+    {
+        bool ok = true;
+        ok = ok && writer.StartArray();
+        for (auto item : list)
+        {
+            ok = ok && WriteJson(writer, item);
+        }
+        ok = ok && writer.EndArray();
+        return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const RequestData& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("FileList");
+            ok = ok && WriteJson(writer, item.FileList);
+            
+            ok = ok && writer.Key("ManifestData");
+            ok = ok && WriteJson(writer, item.ManifestData);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResult& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("FileName");
+            ok = ok && WriteJson(writer, item.FileName);
+            
+            ok = ok && writer.Key("FileStatus");
+            ok = ok && WriteJson(writer, item.FileStatus);
+            
+            ok = ok && writer.Key("PresignedURL");
+            ok = ok && WriteJson(writer, item.PresignedURL);
+            
+            ok = ok && writer.Key("Signature");
+            ok = ok && WriteJson(writer, item.Signature);
+            
+            ok = ok && writer.Key("Size");
+            ok = ok && WriteJson(writer, item.Size);
+            
+            ok = ok && writer.Key("Hash");
+            ok = ok && WriteJson(writer, item.Hash);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResultArray& list)
+    {
+        bool ok = true;
+        ok = ok && writer.StartArray();
+        for (auto item : list)
+        {
+            ok = ok && WriteJson(writer, item);
+        }
+        ok = ok && writer.EndArray();
+        return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const FileRequestResults& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("ResultList");
+            ok = ok && WriteJson(writer, item.ResultList);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -281,74 +300,6 @@ namespace ServiceAPI {
     
 
     // Generated Function Parameters
-    
-    bool PostClientContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
-    {
-                bool ok = true;
-                
-                
-                ok = ok && request.WriteJsonBodyParameter(*this);
-                return ok;
-    }
-
-    bool PostClientContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
-    {
-        bool ok = true;
-        
-        ok = ok && CloudGemDynamicContent::ServiceAPI::WriteJson(writer, request_content);
-        
-        return ok;
-    }
-    
-    bool PostPortalContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
-    {
-                bool ok = true;
-                
-                
-                ok = ok && request.WriteJsonBodyParameter(*this);
-                return ok;
-    }
-
-    bool PostPortalContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
-    {
-        bool ok = true;
-        
-        ok = ok && CloudGemDynamicContent::ServiceAPI::WriteJson(writer, request_content);
-        
-        return ok;
-    }
-    
-    bool DeletePortalContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
-    {
-                bool ok = true;
-                
-                
-                ok = ok && request.WriteJsonBodyParameter(*this);
-                return ok;
-    }
-
-    bool DeletePortalContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
-    {
-        bool ok = true;
-        
-        return ok;
-    }
-    
-    bool GetPortalContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
-    {
-                bool ok = true;
-                
-                
-                ok = ok && request.WriteJsonBodyParameter(*this);
-                return ok;
-    }
-
-    bool GetPortalContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
-    {
-        bool ok = true;
-        
-        return ok;
-    }
     
     bool GetServiceStatusRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
     {
@@ -360,24 +311,6 @@ namespace ServiceAPI {
     }
 
     bool GetServiceStatusRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
-    {
-        bool ok = true;
-        
-        return ok;
-    }
-    
-    bool DeletePortalInfoRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
-    {
-                bool ok = true;
-                
-                ok = ok && request.SetPathParameter("{""file_name""}", file_name);
-                
-                
-                ok = ok && request.WriteJsonBodyParameter(*this);
-                return ok;
-    }
-
-    bool DeletePortalInfoRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
         
@@ -402,6 +335,92 @@ namespace ServiceAPI {
         return ok;
     }
     
+    bool DeletePortalInfoRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                ok = ok && request.SetPathParameter("{""file_name""}", file_name);
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool DeletePortalInfoRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        return ok;
+    }
+    
+    bool GetPortalContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool GetPortalContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        return ok;
+    }
+    
+    bool DeletePortalContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool DeletePortalContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        return ok;
+    }
+    
+    bool PostPortalContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool PostPortalContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        ok = ok && CloudGemDynamicContent::ServiceAPI::WriteJson(writer, request_content);
+        
+        return ok;
+    }
+    
+    bool PostClientContentRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool PostClientContentRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        ok = ok && CloudGemDynamicContent::ServiceAPI::WriteJson(writer, request_content);
+        
+        return ok;
+    }
+    
 
 
 
@@ -409,29 +428,14 @@ namespace ServiceAPI {
     // CloudGemDynamicContentNotificationBus
     
     
-    void CloudGemDynamicContentNotifications::OnPostClientContentRequestSuccess(const FileRequestResults response) { }
-    
-    void CloudGemDynamicContentNotifications::OnPostClientContentRequestError(const CloudGemFramework::Error error) { }
-    
-    
-    void CloudGemDynamicContentNotifications::OnPostPortalContentRequestSuccess(const PortalFileListResults response) { }
-    
-    void CloudGemDynamicContentNotifications::OnPostPortalContentRequestError(const CloudGemFramework::Error error) { }
-    
-    
-    void CloudGemDynamicContentNotifications::OnDeletePortalContentRequestSuccess(const PortalFileRequestList response) { }
-    
-    void CloudGemDynamicContentNotifications::OnDeletePortalContentRequestError(const CloudGemFramework::Error error) { }
-    
-    
-    void CloudGemDynamicContentNotifications::OnGetPortalContentRequestSuccess(const PortalFileListResults response) { }
-    
-    void CloudGemDynamicContentNotifications::OnGetPortalContentRequestError(const CloudGemFramework::Error error) { }
-    
-    
     void CloudGemDynamicContentNotifications::OnGetServiceStatusRequestSuccess(const ServiceStatus response) { }
     
     void CloudGemDynamicContentNotifications::OnGetServiceStatusRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDynamicContentNotifications::OnGetPortalInfoRequestSuccess(const PortalFileInfo response) { }
+    
+    void CloudGemDynamicContentNotifications::OnGetPortalInfoRequestError(const CloudGemFramework::Error error) { }
     
     
     void CloudGemDynamicContentNotifications::OnDeletePortalInfoRequestSuccess(const PortalFileRequestList response) { }
@@ -439,57 +443,28 @@ namespace ServiceAPI {
     void CloudGemDynamicContentNotifications::OnDeletePortalInfoRequestError(const CloudGemFramework::Error error) { }
     
     
-    void CloudGemDynamicContentNotifications::OnGetPortalInfoRequestSuccess(const PortalFileInfo response) { }
+    void CloudGemDynamicContentNotifications::OnGetPortalContentRequestSuccess(const PortalFileListResults response) { }
     
-    void CloudGemDynamicContentNotifications::OnGetPortalInfoRequestError(const CloudGemFramework::Error error) { }
+    void CloudGemDynamicContentNotifications::OnGetPortalContentRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDynamicContentNotifications::OnDeletePortalContentRequestSuccess(const PortalFileRequestList response) { }
+    
+    void CloudGemDynamicContentNotifications::OnDeletePortalContentRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDynamicContentNotifications::OnPostPortalContentRequestSuccess(const PortalFileListResults response) { }
+    
+    void CloudGemDynamicContentNotifications::OnPostPortalContentRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDynamicContentNotifications::OnPostClientContentRequestSuccess(const FileRequestResults response) { }
+    
+    void CloudGemDynamicContentNotifications::OnPostClientContentRequestError(const CloudGemFramework::Error error) { }
     
 
 
     // BehaviorContext CloudGemDynamicContentNotificationBus handler implementation
-    
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostClientContentRequestSuccess(const FileRequestResults response)
-    {
-        Call(FN_OnPostClientContentRequestSuccess, response);
-    }
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostClientContentRequestError(const CloudGemFramework::Error error)
-    {
-        Call(FN_OnPostClientContentRequestError, error);
-    }
-    
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostPortalContentRequestSuccess(const PortalFileListResults response)
-    {
-        Call(FN_OnPostPortalContentRequestSuccess, response);
-    }
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostPortalContentRequestError(const CloudGemFramework::Error error)
-    {
-        Call(FN_OnPostPortalContentRequestError, error);
-    }
-    
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnDeletePortalContentRequestSuccess(const PortalFileRequestList response)
-    {
-        Call(FN_OnDeletePortalContentRequestSuccess, response);
-    }
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnDeletePortalContentRequestError(const CloudGemFramework::Error error)
-    {
-        Call(FN_OnDeletePortalContentRequestError, error);
-    }
-    
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalContentRequestSuccess(const PortalFileListResults response)
-    {
-        Call(FN_OnGetPortalContentRequestSuccess, response);
-    }
-    
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalContentRequestError(const CloudGemFramework::Error error)
-    {
-        Call(FN_OnGetPortalContentRequestError, error);
-    }
     
     
     void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetServiceStatusRequestSuccess(const ServiceStatus response)
@@ -500,6 +475,17 @@ namespace ServiceAPI {
     void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetServiceStatusRequestError(const CloudGemFramework::Error error)
     {
         Call(FN_OnGetServiceStatusRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalInfoRequestSuccess(const PortalFileInfo response)
+    {
+        Call(FN_OnGetPortalInfoRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalInfoRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnGetPortalInfoRequestError, error);
     }
     
     
@@ -514,37 +500,58 @@ namespace ServiceAPI {
     }
     
     
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalInfoRequestSuccess(const PortalFileInfo response)
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalContentRequestSuccess(const PortalFileListResults response)
     {
-        Call(FN_OnGetPortalInfoRequestSuccess, response);
+        Call(FN_OnGetPortalContentRequestSuccess, response);
     }
     
-    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalInfoRequestError(const CloudGemFramework::Error error)
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnGetPortalContentRequestError(const CloudGemFramework::Error error)
     {
-        Call(FN_OnGetPortalInfoRequestError, error);
+        Call(FN_OnGetPortalContentRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnDeletePortalContentRequestSuccess(const PortalFileRequestList response)
+    {
+        Call(FN_OnDeletePortalContentRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnDeletePortalContentRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnDeletePortalContentRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostPortalContentRequestSuccess(const PortalFileListResults response)
+    {
+        Call(FN_OnPostPortalContentRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostPortalContentRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnPostPortalContentRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostClientContentRequestSuccess(const FileRequestResults response)
+    {
+        Call(FN_OnPostClientContentRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDynamicContentNotificationBusHandler::OnPostClientContentRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnPostClientContentRequestError, error);
     }
     
 
     // CloudGemDynamicContentRequestBus
     
     
-    void CloudGemDynamicContentRequests::PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler) { }
-    
-    
-    
-    void CloudGemDynamicContentRequests::PostPortalContent(const PortalFileRequestList& request_content, CloudGemDynamicContentResponseHandler* responseHandler) { }
-    
-    
-    
-    void CloudGemDynamicContentRequests::DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler) { }
-    
-    
-    
-    void CloudGemDynamicContentRequests::GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler) { }
-    
-    
-    
     void CloudGemDynamicContentRequests::GetServiceStatus(CloudGemDynamicContentResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDynamicContentRequests::GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler) { }
     
     
     
@@ -552,59 +559,23 @@ namespace ServiceAPI {
     
     
     
-    void CloudGemDynamicContentRequests::GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler) { }
+    void CloudGemDynamicContentRequests::GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDynamicContentRequests::DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDynamicContentRequests::PostPortalContent(const PortalFileRequestList& request_content, CloudGemDynamicContentResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDynamicContentRequests::PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler) { }
     
     
 
     // CloudGemDynamicContentResponseHandler
-    
-    void CloudGemDynamicContentResponseHandler::HandlePostClientContentSuccess(PostClientContentRequestJob* job, AZ::EntityId entityId)
-    {
-        
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostClientContentRequestSuccess, job->result);
-        
-    }
-
-    void CloudGemDynamicContentResponseHandler::HandlePostClientContentError(PostClientContentRequestJob* job, AZ::EntityId entityId)
-    {
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostClientContentRequestError, job->error);
-    }
-    
-    void CloudGemDynamicContentResponseHandler::HandlePostPortalContentSuccess(PostPortalContentRequestJob* job, AZ::EntityId entityId)
-    {
-        
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostPortalContentRequestSuccess, job->result);
-        
-    }
-
-    void CloudGemDynamicContentResponseHandler::HandlePostPortalContentError(PostPortalContentRequestJob* job, AZ::EntityId entityId)
-    {
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostPortalContentRequestError, job->error);
-    }
-    
-    void CloudGemDynamicContentResponseHandler::HandleDeletePortalContentSuccess(DeletePortalContentRequestJob* job, AZ::EntityId entityId)
-    {
-        
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnDeletePortalContentRequestSuccess, job->result);
-        
-    }
-
-    void CloudGemDynamicContentResponseHandler::HandleDeletePortalContentError(DeletePortalContentRequestJob* job, AZ::EntityId entityId)
-    {
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnDeletePortalContentRequestError, job->error);
-    }
-    
-    void CloudGemDynamicContentResponseHandler::HandleGetPortalContentSuccess(GetPortalContentRequestJob* job, AZ::EntityId entityId)
-    {
-        
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalContentRequestSuccess, job->result);
-        
-    }
-
-    void CloudGemDynamicContentResponseHandler::HandleGetPortalContentError(GetPortalContentRequestJob* job, AZ::EntityId entityId)
-    {
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalContentRequestError, job->error);
-    }
     
     void CloudGemDynamicContentResponseHandler::HandleGetServiceStatusSuccess(GetServiceStatusRequestJob* job, AZ::EntityId entityId)
     {
@@ -616,6 +587,18 @@ namespace ServiceAPI {
     void CloudGemDynamicContentResponseHandler::HandleGetServiceStatusError(GetServiceStatusRequestJob* job, AZ::EntityId entityId)
     {
         EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetServiceStatusRequestError, job->error);
+    }
+    
+    void CloudGemDynamicContentResponseHandler::HandleGetPortalInfoSuccess(GetPortalInfoRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalInfoRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDynamicContentResponseHandler::HandleGetPortalInfoError(GetPortalInfoRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalInfoRequestError, job->error);
     }
     
     void CloudGemDynamicContentResponseHandler::HandleDeletePortalInfoSuccess(DeletePortalInfoRequestJob* job, AZ::EntityId entityId)
@@ -630,16 +613,52 @@ namespace ServiceAPI {
         EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnDeletePortalInfoRequestError, job->error);
     }
     
-    void CloudGemDynamicContentResponseHandler::HandleGetPortalInfoSuccess(GetPortalInfoRequestJob* job, AZ::EntityId entityId)
+    void CloudGemDynamicContentResponseHandler::HandleGetPortalContentSuccess(GetPortalContentRequestJob* job, AZ::EntityId entityId)
     {
         
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalInfoRequestSuccess, job->result);
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalContentRequestSuccess, job->result);
         
     }
 
-    void CloudGemDynamicContentResponseHandler::HandleGetPortalInfoError(GetPortalInfoRequestJob* job, AZ::EntityId entityId)
+    void CloudGemDynamicContentResponseHandler::HandleGetPortalContentError(GetPortalContentRequestJob* job, AZ::EntityId entityId)
     {
-        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalInfoRequestError, job->error);
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnGetPortalContentRequestError, job->error);
+    }
+    
+    void CloudGemDynamicContentResponseHandler::HandleDeletePortalContentSuccess(DeletePortalContentRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnDeletePortalContentRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDynamicContentResponseHandler::HandleDeletePortalContentError(DeletePortalContentRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnDeletePortalContentRequestError, job->error);
+    }
+    
+    void CloudGemDynamicContentResponseHandler::HandlePostPortalContentSuccess(PostPortalContentRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostPortalContentRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDynamicContentResponseHandler::HandlePostPortalContentError(PostPortalContentRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostPortalContentRequestError, job->error);
+    }
+    
+    void CloudGemDynamicContentResponseHandler::HandlePostClientContentSuccess(PostClientContentRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostClientContentRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDynamicContentResponseHandler::HandlePostClientContentError(PostClientContentRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDynamicContentNotificationBus, OnPostClientContentRequestError, job->error);
     }
     
 
@@ -663,7 +682,7 @@ namespace ServiceAPI {
 
     
     
-    void CloudGemDynamicContentClientComponent::PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler)
+    void CloudGemDynamicContentClientComponent::GetServiceStatus(CloudGemDynamicContentResponseHandler* responseHandler)
     
     {
         // Cache our entityId in case the entity goes away
@@ -677,28 +696,194 @@ namespace ServiceAPI {
         AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
 
         // Create job
-        PostClientContentRequestJob* requestJob = PostClientContentRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](PostClientContentRequestJob* successJob)
+        GetServiceStatusRequestJob* requestJob = GetServiceStatusRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetServiceStatusRequestJob* successJob)
             {
                 // handle success
                 CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (successHandler)
                 {
-                    successHandler->HandlePostClientContentSuccess(successJob, entityId);
+                    successHandler->HandleGetServiceStatusSuccess(successJob, entityId);
                 }
             },
-            [responseHandler, defaultResponseHandler, entityId](PostClientContentRequestJob* failedJob)
+            [responseHandler, defaultResponseHandler, entityId](GetServiceStatusRequestJob* failedJob)
             {
                 // handle error
                 CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (failureHandler)
                 {
-                    failureHandler->HandlePostClientContentError(failedJob, entityId);
+                    failureHandler->HandleGetServiceStatusError(failedJob, entityId);
                 }
             }
         );
         
-        requestJob->parameters.request_content = request_content;
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDynamicContentClientComponent::GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        GetPortalInfoRequestJob* requestJob = GetPortalInfoRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetPortalInfoRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleGetPortalInfoSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](GetPortalInfoRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleGetPortalInfoError(failedJob, entityId);
+                }
+            }
+        );
+        
+        
+        requestJob->parameters.file_name = file_name;
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDynamicContentClientComponent::DeletePortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        DeletePortalInfoRequestJob* requestJob = DeletePortalInfoRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](DeletePortalInfoRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleDeletePortalInfoSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](DeletePortalInfoRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleDeletePortalInfoError(failedJob, entityId);
+                }
+            }
+        );
+        
+        
+        requestJob->parameters.file_name = file_name;
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDynamicContentClientComponent::GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        GetPortalContentRequestJob* requestJob = GetPortalContentRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetPortalContentRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleGetPortalContentSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](GetPortalContentRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleGetPortalContentError(failedJob, entityId);
+                }
+            }
+        );
+        
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDynamicContentClientComponent::DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        DeletePortalContentRequestJob* requestJob = DeletePortalContentRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](DeletePortalContentRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleDeletePortalContentSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](DeletePortalContentRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleDeletePortalContentError(failedJob, entityId);
+                }
+            }
+        );
         
         
         
@@ -749,7 +934,7 @@ namespace ServiceAPI {
     }
     
     
-    void CloudGemDynamicContentClientComponent::DeletePortalContent(CloudGemDynamicContentResponseHandler* responseHandler)
+    void CloudGemDynamicContentClientComponent::PostClientContent(const RequestData& request_content, CloudGemDynamicContentResponseHandler* responseHandler)
     
     {
         // Cache our entityId in case the entity goes away
@@ -763,195 +948,29 @@ namespace ServiceAPI {
         AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
 
         // Create job
-        DeletePortalContentRequestJob* requestJob = DeletePortalContentRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](DeletePortalContentRequestJob* successJob)
+        PostClientContentRequestJob* requestJob = PostClientContentRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](PostClientContentRequestJob* successJob)
             {
                 // handle success
                 CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (successHandler)
                 {
-                    successHandler->HandleDeletePortalContentSuccess(successJob, entityId);
+                    successHandler->HandlePostClientContentSuccess(successJob, entityId);
                 }
             },
-            [responseHandler, defaultResponseHandler, entityId](DeletePortalContentRequestJob* failedJob)
+            [responseHandler, defaultResponseHandler, entityId](PostClientContentRequestJob* failedJob)
             {
                 // handle error
                 CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (failureHandler)
                 {
-                    failureHandler->HandleDeletePortalContentError(failedJob, entityId);
+                    failureHandler->HandlePostClientContentError(failedJob, entityId);
                 }
             }
         );
         
+        requestJob->parameters.request_content = request_content;
         
-        
-        requestJob->Start();
-    }
-    
-    
-    void CloudGemDynamicContentClientComponent::GetPortalContent(CloudGemDynamicContentResponseHandler* responseHandler)
-    
-    {
-        // Cache our entityId in case the entity goes away
-        AZ::EntityId entityId;
-        if (m_entity)
-        {
-            entityId = m_entity->GetId();
-        }
-
-        // Cache our default response handler in case this component goes away
-        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
-
-        // Create job
-        GetPortalContentRequestJob* requestJob = GetPortalContentRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](GetPortalContentRequestJob* successJob)
-            {
-                // handle success
-                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (successHandler)
-                {
-                    successHandler->HandleGetPortalContentSuccess(successJob, entityId);
-                }
-            },
-            [responseHandler, defaultResponseHandler, entityId](GetPortalContentRequestJob* failedJob)
-            {
-                // handle error
-                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (failureHandler)
-                {
-                    failureHandler->HandleGetPortalContentError(failedJob, entityId);
-                }
-            }
-        );
-        
-        
-        
-        requestJob->Start();
-    }
-    
-    
-    void CloudGemDynamicContentClientComponent::GetServiceStatus(CloudGemDynamicContentResponseHandler* responseHandler)
-    
-    {
-        // Cache our entityId in case the entity goes away
-        AZ::EntityId entityId;
-        if (m_entity)
-        {
-            entityId = m_entity->GetId();
-        }
-
-        // Cache our default response handler in case this component goes away
-        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
-
-        // Create job
-        GetServiceStatusRequestJob* requestJob = GetServiceStatusRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](GetServiceStatusRequestJob* successJob)
-            {
-                // handle success
-                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (successHandler)
-                {
-                    successHandler->HandleGetServiceStatusSuccess(successJob, entityId);
-                }
-            },
-            [responseHandler, defaultResponseHandler, entityId](GetServiceStatusRequestJob* failedJob)
-            {
-                // handle error
-                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (failureHandler)
-                {
-                    failureHandler->HandleGetServiceStatusError(failedJob, entityId);
-                }
-            }
-        );
-        
-        
-        
-        requestJob->Start();
-    }
-    
-    
-    void CloudGemDynamicContentClientComponent::DeletePortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler)
-    
-    {
-        // Cache our entityId in case the entity goes away
-        AZ::EntityId entityId;
-        if (m_entity)
-        {
-            entityId = m_entity->GetId();
-        }
-
-        // Cache our default response handler in case this component goes away
-        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
-
-        // Create job
-        DeletePortalInfoRequestJob* requestJob = DeletePortalInfoRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](DeletePortalInfoRequestJob* successJob)
-            {
-                // handle success
-                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (successHandler)
-                {
-                    successHandler->HandleDeletePortalInfoSuccess(successJob, entityId);
-                }
-            },
-            [responseHandler, defaultResponseHandler, entityId](DeletePortalInfoRequestJob* failedJob)
-            {
-                // handle error
-                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (failureHandler)
-                {
-                    failureHandler->HandleDeletePortalInfoError(failedJob, entityId);
-                }
-            }
-        );
-        
-        
-        requestJob->parameters.file_name = file_name;
-        
-        
-        requestJob->Start();
-    }
-    
-    
-    void CloudGemDynamicContentClientComponent::GetPortalInfo(const AZStd::string& file_name, CloudGemDynamicContentResponseHandler* responseHandler)
-    
-    {
-        // Cache our entityId in case the entity goes away
-        AZ::EntityId entityId;
-        if (m_entity)
-        {
-            entityId = m_entity->GetId();
-        }
-
-        // Cache our default response handler in case this component goes away
-        AZStd::shared_ptr < CloudGemDynamicContentResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
-
-        // Create job
-        GetPortalInfoRequestJob* requestJob = GetPortalInfoRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](GetPortalInfoRequestJob* successJob)
-            {
-                // handle success
-                CloudGemDynamicContentResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (successHandler)
-                {
-                    successHandler->HandleGetPortalInfoSuccess(successJob, entityId);
-                }
-            },
-            [responseHandler, defaultResponseHandler, entityId](GetPortalInfoRequestJob* failedJob)
-            {
-                // handle error
-                CloudGemDynamicContentResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
-                if (failureHandler)
-                {
-                    failureHandler->HandleGetPortalInfoError(failedJob, entityId);
-                }
-            }
-        );
-        
-        
-        requestJob->parameters.file_name = file_name;
         
         
         requestJob->Start();
@@ -960,37 +979,31 @@ namespace ServiceAPI {
 
     
     
-    
-    
-    bool RequestData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    bool ServiceStatus::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
-        if (strcmp(key, "ManifestData") == 0) return reader.Accept(ManifestData);
-        
-        if (strcmp(key, "FileList") == 0) return reader.Accept(FileList);
+        if (strcmp(key, "status") == 0) return reader.Accept(status);
         
         return reader.Ignore();
     }
 
-    void RequestData::Reflect(AZ::ReflectContext* reflection)
+    void ServiceStatus::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
 
         if (serializeContext)
         {
-            serializeContext->Class<RequestData>()
+            serializeContext->Class<ServiceStatus>()
                 ->Version(1);
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
         if (behaviorContext)
         {
-            behaviorContext->Class<RequestData>("CloudGemDynamicContent_RequestData")
+            behaviorContext->Class<ServiceStatus>("CloudGemDynamicContent_ServiceStatus")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
-                ->Property("ManifestData", BehaviorValueProperty(&RequestData::ManifestData))
-            
-                ->Property("FileList", BehaviorValueProperty(&RequestData::FileList))
+                ->Property("status", BehaviorValueProperty(&ServiceStatus::status))
             
             ;
         }
@@ -998,85 +1011,47 @@ namespace ServiceAPI {
     
     
     
-    bool FileRequestResult::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    bool PortalFileInfo::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
-        
-        if (strcmp(key, "Hash") == 0) return reader.Accept(Hash);
-        
-        if (strcmp(key, "PresignedURL") == 0) return reader.Accept(PresignedURL);
         
         if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
         
-        if (strcmp(key, "FileStatus") == 0) return reader.Accept(FileStatus);
+        if (strcmp(key, "StagingStatus") == 0) return reader.Accept(StagingStatus);
         
-        if (strcmp(key, "Signature") == 0) return reader.Accept(Signature);
+        if (strcmp(key, "StagingStart") == 0) return reader.Accept(StagingStart);
         
-        if (strcmp(key, "Size") == 0) return reader.Accept(Size);
+        if (strcmp(key, "StagingEnd") == 0) return reader.Accept(StagingEnd);
+        
+        if (strcmp(key, "Parent") == 0) return reader.Accept(Parent);
         
         return reader.Ignore();
     }
 
-    void FileRequestResult::Reflect(AZ::ReflectContext* reflection)
+    void PortalFileInfo::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
 
         if (serializeContext)
         {
-            serializeContext->Class<FileRequestResult>()
+            serializeContext->Class<PortalFileInfo>()
                 ->Version(1);
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
         if (behaviorContext)
         {
-            behaviorContext->Class<FileRequestResult>("CloudGemDynamicContent_FileRequestResult")
+            behaviorContext->Class<PortalFileInfo>("CloudGemDynamicContent_PortalFileInfo")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
-                ->Property("Hash", BehaviorValueProperty(&FileRequestResult::Hash))
+                ->Property("FileName", BehaviorValueProperty(&PortalFileInfo::FileName))
             
-                ->Property("PresignedURL", BehaviorValueProperty(&FileRequestResult::PresignedURL))
+                ->Property("StagingStatus", BehaviorValueProperty(&PortalFileInfo::StagingStatus))
             
-                ->Property("FileName", BehaviorValueProperty(&FileRequestResult::FileName))
+                ->Property("StagingStart", BehaviorValueProperty(&PortalFileInfo::StagingStart))
             
-                ->Property("FileStatus", BehaviorValueProperty(&FileRequestResult::FileStatus))
+                ->Property("StagingEnd", BehaviorValueProperty(&PortalFileInfo::StagingEnd))
             
-                ->Property("Signature", BehaviorValueProperty(&FileRequestResult::Signature))
-            
-                ->Property("Size", BehaviorValueProperty(&FileRequestResult::Size))
-            
-            ;
-        }
-    }
-    
-    
-    
-    
-    
-    bool FileRequestResults::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "ResultList") == 0) return reader.Accept(ResultList);
-        
-        return reader.Ignore();
-    }
-
-    void FileRequestResults::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<FileRequestResults>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<FileRequestResults>("CloudGemDynamicContent_FileRequestResults")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("ResultList", BehaviorValueProperty(&FileRequestResults::ResultList))
+                ->Property("Parent", BehaviorValueProperty(&PortalFileInfo::Parent))
             
             ;
         }
@@ -1087,13 +1062,13 @@ namespace ServiceAPI {
     bool PortalFileRequest::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
-        if (strcmp(key, "StagingEnd") == 0) return reader.Accept(StagingEnd);
+        if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
         
         if (strcmp(key, "StagingStatus") == 0) return reader.Accept(StagingStatus);
         
         if (strcmp(key, "StagingStart") == 0) return reader.Accept(StagingStart);
         
-        if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
+        if (strcmp(key, "StagingEnd") == 0) return reader.Accept(StagingEnd);
         
         return reader.Ignore();
     }
@@ -1114,13 +1089,13 @@ namespace ServiceAPI {
             behaviorContext->Class<PortalFileRequest>("CloudGemDynamicContent_PortalFileRequest")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
-                ->Property("StagingEnd", BehaviorValueProperty(&PortalFileRequest::StagingEnd))
+                ->Property("FileName", BehaviorValueProperty(&PortalFileRequest::FileName))
             
                 ->Property("StagingStatus", BehaviorValueProperty(&PortalFileRequest::StagingStatus))
             
                 ->Property("StagingStart", BehaviorValueProperty(&PortalFileRequest::StagingStart))
             
-                ->Property("FileName", BehaviorValueProperty(&PortalFileRequest::FileName))
+                ->Property("StagingEnd", BehaviorValueProperty(&PortalFileRequest::StagingEnd))
             
             ;
         }
@@ -1162,54 +1137,6 @@ namespace ServiceAPI {
     
     
     
-    bool PortalFileInfo::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "StagingEnd") == 0) return reader.Accept(StagingEnd);
-        
-        if (strcmp(key, "StagingStatus") == 0) return reader.Accept(StagingStatus);
-        
-        if (strcmp(key, "StagingStart") == 0) return reader.Accept(StagingStart);
-        
-        if (strcmp(key, "Parent") == 0) return reader.Accept(Parent);
-        
-        if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
-        
-        return reader.Ignore();
-    }
-
-    void PortalFileInfo::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<PortalFileInfo>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<PortalFileInfo>("CloudGemDynamicContent_PortalFileInfo")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("StagingEnd", BehaviorValueProperty(&PortalFileInfo::StagingEnd))
-            
-                ->Property("StagingStatus", BehaviorValueProperty(&PortalFileInfo::StagingStatus))
-            
-                ->Property("StagingStart", BehaviorValueProperty(&PortalFileInfo::StagingStart))
-            
-                ->Property("Parent", BehaviorValueProperty(&PortalFileInfo::Parent))
-            
-                ->Property("FileName", BehaviorValueProperty(&PortalFileInfo::FileName))
-            
-            ;
-        }
-    }
-    
-    
-    
     
     
     bool PortalFileListResults::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
@@ -1244,31 +1171,159 @@ namespace ServiceAPI {
     
     
     
-    bool ServiceStatus::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    bool RequestDataItem::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
-        if (strcmp(key, "status") == 0) return reader.Accept(status);
+        if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
+        
+        if (strcmp(key, "FileVersion") == 0) return reader.Accept(FileVersion);
         
         return reader.Ignore();
     }
 
-    void ServiceStatus::Reflect(AZ::ReflectContext* reflection)
+    void RequestDataItem::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
 
         if (serializeContext)
         {
-            serializeContext->Class<ServiceStatus>()
+            serializeContext->Class<RequestDataItem>()
                 ->Version(1);
         }
 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
         if (behaviorContext)
         {
-            behaviorContext->Class<ServiceStatus>("CloudGemDynamicContent_ServiceStatus")
+            behaviorContext->Class<RequestDataItem>("CloudGemDynamicContent_RequestDataItem")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
-                ->Property("status", BehaviorValueProperty(&ServiceStatus::status))
+                ->Property("FileName", BehaviorValueProperty(&RequestDataItem::FileName))
+            
+                ->Property("FileVersion", BehaviorValueProperty(&RequestDataItem::FileVersion))
+            
+            ;
+        }
+    }
+    
+    
+    
+    
+    
+    bool RequestData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "FileList") == 0) return reader.Accept(FileList);
+        
+        if (strcmp(key, "ManifestData") == 0) return reader.Accept(ManifestData);
+        
+        return reader.Ignore();
+    }
+
+    void RequestData::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<RequestData>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<RequestData>("CloudGemDynamicContent_RequestData")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("FileList", BehaviorValueProperty(&RequestData::FileList))
+            
+                ->Property("ManifestData", BehaviorValueProperty(&RequestData::ManifestData))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool FileRequestResult::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
+        
+        if (strcmp(key, "FileStatus") == 0) return reader.Accept(FileStatus);
+        
+        if (strcmp(key, "PresignedURL") == 0) return reader.Accept(PresignedURL);
+        
+        if (strcmp(key, "Signature") == 0) return reader.Accept(Signature);
+        
+        if (strcmp(key, "Size") == 0) return reader.Accept(Size);
+        
+        if (strcmp(key, "Hash") == 0) return reader.Accept(Hash);
+        
+        return reader.Ignore();
+    }
+
+    void FileRequestResult::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<FileRequestResult>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<FileRequestResult>("CloudGemDynamicContent_FileRequestResult")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("FileName", BehaviorValueProperty(&FileRequestResult::FileName))
+            
+                ->Property("FileStatus", BehaviorValueProperty(&FileRequestResult::FileStatus))
+            
+                ->Property("PresignedURL", BehaviorValueProperty(&FileRequestResult::PresignedURL))
+            
+                ->Property("Signature", BehaviorValueProperty(&FileRequestResult::Signature))
+            
+                ->Property("Size", BehaviorValueProperty(&FileRequestResult::Size))
+            
+                ->Property("Hash", BehaviorValueProperty(&FileRequestResult::Hash))
+            
+            ;
+        }
+    }
+    
+    
+    
+    
+    
+    bool FileRequestResults::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "ResultList") == 0) return reader.Accept(ResultList);
+        
+        return reader.Ignore();
+    }
+
+    void FileRequestResults::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<FileRequestResults>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<FileRequestResults>("CloudGemDynamicContent_FileRequestResults")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("ResultList", BehaviorValueProperty(&FileRequestResults::ResultList))
             
             ;
         }

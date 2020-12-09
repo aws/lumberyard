@@ -59,9 +59,10 @@ enum AmazonToolbarVersions
     TOOLBARS_WITH_PLAY_GAME = 2,
     TOOLBARS_WITH_PERSISTENT_VISIBILITY = 3,
     TOOLBARS_WITH_DEPLOY = 4,
+    TOOLBARS_WITHOUT_CVAR_MODES = 5,
 
     //TOOLBAR_VERSION = 1
-    TOOLBAR_VERSION = TOOLBARS_WITH_PERSISTENT_VISIBILITY
+    TOOLBAR_VERSION = TOOLBARS_WITHOUT_CVAR_MODES
 };
 
 struct InternalAmazonToolbarList
@@ -308,7 +309,21 @@ void ToolbarManager::SanitizeToolbars(const QMap<QString, AmazonToolbar>& oldSta
 {
     // All standard toolbars must be present
     auto stdToolbars = m_standardToolbars;
-    const int numStandardToolbars = stdToolbars.size();
+
+    if (m_loadedVersion < TOOLBARS_WITHOUT_CVAR_MODES)
+    {
+        // Check if any standard toolbars have been deprecated and no longer exist
+        for (const auto& oldStandardToolbar : oldStandard)
+        {
+            if (!stdToolbars.contains(oldStandardToolbar.GetName()))
+            {
+                // Add an empty standard toolbar as placeholder for the deprecated standard
+                // toolbar so that it is kept around with only the user added actions or
+                // removed from the toolbar list if it does not contain any custom actions
+                stdToolbars.append(AmazonToolbar(oldStandardToolbar.GetName(), oldStandardToolbar.GetTranslatedName()));
+            }
+        }
+    }
 
     // make a set of the loaded toolbars
     QMap<QString, AmazonToolbar> toolbarSet;
@@ -356,7 +371,7 @@ void ToolbarManager::SanitizeToolbars(const QMap<QString, AmazonToolbar>& oldSta
                 {
                     if (!newCommands.contains(previousCommand))
                     {
-                        custom.remove(previousCommand);
+                        custom.removeOne(previousCommand);
                     }
                 }
 
@@ -369,6 +384,12 @@ void ToolbarManager::SanitizeToolbars(const QMap<QString, AmazonToolbar>& oldSta
                     {
                         custom.push_back(command);
                     }
+                }
+
+                newToolbar.Clear();
+                for (int actionId : custom)
+                {
+                    newToolbar.AddAction(actionId);
                 }
             }
 
@@ -402,6 +423,31 @@ void ToolbarManager::SanitizeToolbars(const QMap<QString, AmazonToolbar>& oldSta
     {
         return t.GetName().isEmpty() || (removeSubstanceToolbar && t.GetName() == SUBSTANCE_TOOLBAR_NAME);
     }), m_toolbars.end());
+
+    if (m_loadedVersion < TOOLBARS_WITHOUT_CVAR_MODES)
+    {
+        // Remove any empty deprecated toolbars that haven't been customized, or
+        // rename and keep the toolbar if a custom action has been added
+        m_toolbars.erase(std::remove_if(m_toolbars.begin(), m_toolbars.end(), [](AmazonToolbar& toolbar)
+            {
+                const QString& toolbarName = toolbar.GetName();
+                if (toolbarName == "debugViewsToolbar"
+                    || toolbarName == "environmentModesToolbar"
+                    || toolbarName == "viewModesToolbar")
+                {
+                    if (toolbar.ActionIds().isEmpty())
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        QString newToolbarName = QString("%1 (Deprecated)").arg(toolbar.GetTranslatedName());
+                        toolbar.SetName(newToolbarName, newToolbarName);                        
+                    }
+                }
+                return false;
+            }), m_toolbars.end());
+    }
 }
 
 void ToolbarManager::SaveToolbar(EditableQToolBar* toolbar)
@@ -582,6 +628,10 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
     t.AddAction(ID_TOOLBAR_WIDGET_SNAP_GRID, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_SNAP_ANGLE, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_RULER, ORIGINAL_TOOLBAR_VERSION);
+
+    t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
+    t.AddAction(ID_TOOLBAR_WIDGET_ENVIRONMENT_MODE, ORIGINAL_TOOLBAR_VERSION);
+    t.AddAction(ID_TOOLBAR_WIDGET_DEBUG_MODE, ORIGINAL_TOOLBAR_VERSION);
 
     if (GetIEditor()->IsLegacyUIEnabled())
     {

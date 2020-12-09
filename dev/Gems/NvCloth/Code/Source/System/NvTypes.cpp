@@ -10,10 +10,9 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
+#include <System/NvTypes.h>
 
-#include <System/DataTypes.h>
-
+// NvCloth library includes
 #include <NvCloth/Factory.h>
 #include <NvCloth/Solver.h>
 #include <NvCloth/Fabric.h>

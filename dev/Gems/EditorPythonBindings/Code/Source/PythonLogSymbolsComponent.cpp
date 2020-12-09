@@ -213,13 +213,18 @@ namespace EditorPythonBindings
 
     void PythonLogSymbolsComponent::LogClass(AZStd::string_view moduleName, AZ::BehaviorClass* behaviorClass)
     {
+        LogClassWithName(moduleName, behaviorClass, behaviorClass->m_name.c_str());
+    }
+
+    void PythonLogSymbolsComponent::LogClassWithName(AZStd::string_view moduleName, AZ::BehaviorClass* behaviorClass, AZStd::string_view className)
+    {
         Internal::FileHandle fileHandle(OpenModuleAt(moduleName));
         if (fileHandle.IsValid())
         {
             // Behavior Class types with member methods and properties
             AZStd::string buffer;
             AzFramework::StringFunc::Append(buffer, "class ");
-            AzFramework::StringFunc::Append(buffer, behaviorClass->m_name.c_str());
+            AzFramework::StringFunc::Append(buffer, className.data());
             AzFramework::StringFunc::Append(buffer, ":\n");
             AZ::IO::FileIOBase::GetInstance()->Write(fileHandle, buffer.c_str(), buffer.size());
             buffer.clear();

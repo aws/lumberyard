@@ -328,7 +328,9 @@ void CMannNewSubADBFilterDialog::OnFrag2Used()
         m_fragUsedIDList->setData(target, index.data(Qt::DisplayRole), Qt::DisplayRole);
     }
 
-    qSort(selected.begin(), selected.end(), qGreater<QModelIndex>());
+    // This line doesn't make sense (it's sorting by QModelIndex?) and QModelIndex::operator> was deprecated in Qt 5.15
+    // Removing the line, leaving this comment here in case this breaks something
+    // std::sort(selected.begin(), selected.end(), std::greater<QModelIndex>());
     for (auto removal = selected.cbegin(); removal != selected.cend(); ++removal)
     {
         m_fragIDList->removeRow(removal->row());
@@ -353,7 +355,9 @@ void CMannNewSubADBFilterDialog::OnUsed2Frag()
         m_fragIDList->setData(target, index.data(Qt::DisplayRole), Qt::DisplayRole);
     }
 
-    qSort(selected.begin(), selected.end(), qGreater<QModelIndex>());
+    // This line doesn't make sense (it's sorting by QModelIndex?) and QModelIndex::operator> was deprecated in Qt 5.15
+    // Removing the line, leaving this comment here in case this breaks something
+    // std::sort(selected.begin(), selected.end(), std::greater<QModelIndex>());
     for (auto removal : selected)
     {
         m_fragUsedIDList->removeRow(removal.row());

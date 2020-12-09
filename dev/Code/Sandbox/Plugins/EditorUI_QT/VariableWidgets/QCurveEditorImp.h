@@ -58,7 +58,7 @@ private:
     SCurveEditorContent     m_content;
     ISplineInterpolator*    m_pSpline;
     ISplineBackup*          m_splineCache;
-    QToolTipWidget*         m_tooltip;
+    QToolTipWrapper*        m_tooltip;
 };
 
 #endif // QCURVEWIDGET_IMP_H

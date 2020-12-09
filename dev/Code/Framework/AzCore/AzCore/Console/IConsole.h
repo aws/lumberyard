@@ -172,6 +172,19 @@ static constexpr AZ::ThreadSafety ConsoleThreadSafety<_TYPE, std::enable_if_t<st
 //!        ** YOU HAVE NO GUARANTEES AS TO WHAT THREAD WILL INVOKE YOUR FUNCTION ** It is the responsibility of the implementor of the console function to ensure thread safety
 //! @param _FLAGS a set of AzFramework::ConsoleFunctorFlags used to mutate behaviour
 //! @param _DESC a description of the cvar
-#define AZ_CONSOLEFREEFUNC(_FUNCTION, _FLAGS, _DESC) \
+#define AZ_CONSOLEFREEFUNC_3(_FUNCTION, _FLAGS, _DESC) \
     static AZ::ConsoleFunctor<void, false> \
         Functor##_FUNCTION(#_FUNCTION, _DESC, _FLAGS, &_FUNCTION)
+
+//! Implements a console functor for a non-member function.
+//! 
+//! @param _FUNCTION the method to invoke
+//!        ** YOU HAVE NO GUARANTEES AS TO WHAT THREAD WILL INVOKE YOUR FUNCTION ** It is the responsibility of the implementor of the console function to ensure thread safety
+//! @param _NAME the name the of the function in the console
+//! @param _FLAGS a set of AzFramework::ConsoleFunctorFlags used to mutate behaviour
+//! @param _DESC a description of the cvar
+#define AZ_CONSOLEFREEFUNC_4(_NAME, _FUNCTION, _FLAGS, _DESC) \
+    static AZ::ConsoleFunctor<void, false> \
+        Functor##_FUNCTION(_NAME, _DESC, _FLAGS, &_FUNCTION)
+
+#define AZ_CONSOLEFREEFUNC(...) AZ_MACRO_SPECIALIZE(AZ_CONSOLEFREEFUNC_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))

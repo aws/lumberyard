@@ -15,10 +15,12 @@
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/ComponentMode/ComponentModeCollection.h>
 #include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorPendingCompositionBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <AzToolsFramework/Viewport/ActionBus.h>
@@ -596,6 +598,47 @@ namespace UnitTest
             AzToolsFramework::ComponentModeFramework::CouldBeginComponentModeWithEntity(entityId);
 
         EXPECT_FALSE(couldBeginComponentMode);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(ComponentModeTestFixture, CannotEnterComponentModeWhenThereArePendingComponents)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::Entity* entity = nullptr;
+        AZ::EntityId entityId = CreateDefaultEditorEntity("ComponentModeEntity", &entity);
+
+        entity->Deactivate();
+
+        AzToolsFramework::EntityCompositionRequestBus::Broadcast(
+            &AzToolsFramework::EntityCompositionRequestBus::Events::AddComponentsToEntities,
+            AzToolsFramework::EntityIdList{entityId},
+            AZ::ComponentTypeList{ AZ::AzTypeInfo<AnotherPlaceholderEditorComponent>::Uuid() });
+
+        AzToolsFramework::EntityCompositionRequestBus::Broadcast(
+            &AzToolsFramework::EntityCompositionRequestBus::Events::AddComponentsToEntities,
+            AzToolsFramework::EntityIdList{entityId},
+            AZ::ComponentTypeList{AZ::AzTypeInfo<IncompatiblePlaceholderEditorComponent>::Uuid()});
+
+        entity->Activate();
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        SelectEntities(AzToolsFramework::EntityIdList{entityId});
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        AZ::Entity::ComponentArrayType pendingComponents;
+        AzToolsFramework::EditorPendingCompositionRequestBus::Event(
+            entityId, &AzToolsFramework::EditorPendingCompositionRequestBus::Events::GetPendingComponents,
+            pendingComponents);
+
+        // ensure we do have pending components
+        EXPECT_EQ(pendingComponents.size(), 1);
+        // cannot enter Component Mode with pending components
+        EXPECT_FALSE(AzToolsFramework::ComponentModeFramework::CouldBeginComponentModeWithEntity(entityId));
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 } // namespace UnitTest

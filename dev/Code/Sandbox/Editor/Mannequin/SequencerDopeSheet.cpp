@@ -30,6 +30,7 @@ SKeyColour READONLY_KEY_COLOUR = {
     { 150, 150, 150 }, { 150, 150, 150 }, { 150, 150, 150 }
 };
 #include <QPainter>
+#include <QPainterPath>
 
 namespace
 {

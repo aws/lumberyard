@@ -19,7 +19,8 @@ namespace LmbrCentral
     //Forward decl
     enum class StandinType : AZ::u32;
 
-    class EditorGeometryCacheComponentRequests
+    class AZ_DEPRECATED(,"TheEditorGeometryCacheComponentRequests bus has been deprecated in favor of using the GeometryCacheComponentRequestsBus")
+        EditorGeometryCacheComponentRequests
         : public AZ::ComponentBus
     {
     public:
@@ -34,8 +35,10 @@ namespace LmbrCentral
          * The geom cache will not render when the current graphics spec is 
          * below this minimum spec. 
          */
+        AZ_DEPRECATED(,"The SetMinSpec event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetMinSpec(EngineSpec minSpec) = 0;
         //! Gets the minimum spec for the Geom Cache
+        AZ_DEPRECATED(,"The GetMinSpec event has been moved to the GeometryCacheComponentRequests bus")
         virtual EngineSpec GetMinSpec() = 0;
 
         /**
@@ -44,8 +47,10 @@ namespace LmbrCentral
          * When set to true the Geometry Cache will play in the editor. In game
          * mode the Geom Cache will begin playing immediately. 
          */
+        AZ_DEPRECATED(,"The SetPlayOnStart event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetPlayOnStart(bool playOnStart) = 0;
         //! Gets whether or not the Geom Cache's animation will play on start
+        AZ_DEPRECATED(,"The GetPlayOnStart event has been moved to the GeometryCacheComponentRequests bus")
         virtual bool GetPlayOnStart() = 0;
 
         /**
@@ -54,12 +59,14 @@ namespace LmbrCentral
          * The actual max view distance is calculated from 
          * maxViewDistance * viewDistanceMultiplier. 
          */
+        AZ_DEPRECATED(,"The SetMaxViewDistance event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetMaxViewDistance(float maxViewDistance) = 0;
         /**
          * Gets the max view distance that the Geom Cache will be visible from
          *
          * This is the max view distance without the view distance multiplier
          */
+        AZ_DEPRECATED(,"The GetMaxViewDistance event has been moved to the GeometryCacheComponentRequests bus")
         virtual float GetMaxViewDistance() = 0;
 
         /**
@@ -71,8 +78,10 @@ namespace LmbrCentral
          *
          * A value of 1.0 will leave the max view distance as the actual max view distance.
          */
+        AZ_DEPRECATED(,"The SetViewDistanceMultiplier event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetViewDistanceMultiplier(float viewDistanceMultiplier) = 0;
         //! Gets the view distance multiplier
+        AZ_DEPRECATED(,"The GetViewDistanceMultiplier event has been moved to the GeometryCacheComponentRequests bus")
         virtual float GetViewDistanceMultiplier() = 0;
 
         /**
@@ -81,22 +90,28 @@ namespace LmbrCentral
          * The LOD Distance ratio affects how LODs are chosen. A lower value means
          * less detailed LODs are used at shorter view distances.
          */
+        AZ_DEPRECATED(,"The SetLODDistanceRatio event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetLODDistanceRatio(AZ::u32 lodDistanceRatio) = 0;
         //! Gets the LOD Distance Ratio
+        AZ_DEPRECATED(,"The GetLODDistanceRatio event has been moved to the GeometryCacheComponentRequests bus")
         virtual AZ::u32 GetLODDistanceRatio() = 0;
 
         //! Sets whether or not the Geometry Cache will cast shadows
+        AZ_DEPRECATED(,"The SetCastShadows event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetCastShadows(bool castShadows) = 0;
         //! Gets whether or not the Geometry Cache casts shadows
+        AZ_DEPRECATED(,"The GetCastShadows event has been moved to the GeometryCacheComponentRequests bus")
         virtual bool GetCastShadows() = 0;
 
         //! Sets whether or not the Geometry Cache will be affected by VisAreas and Portals
+        AZ_DEPRECATED(,"The SetUseVisAreas event has been moved to the GeometryCacheComponentRequests bus")
         virtual void SetUseVisAreas(bool useVisAreas) = 0;
         //! Gets whether or not the Geometry Cache is affected by VisAreas and Portals
+        AZ_DEPRECATED(,"The GetUseVisAreas event has been moved to the GeometryCacheComponentRequests bus")
         virtual bool GetUseVisAreas() = 0;
     };
 
-    using EditorGeometryCacheComponentRequestBus = AZ::EBus<EditorGeometryCacheComponentRequests>;
+    DEPRECATE_EBUS(EditorGeometryCacheComponentRequests, EditorGeometryCacheComponentRequestBus, "The EditorGeometryCacheComponentRequestBus has been deprecated in favor of using the GeometryCacheComponentRequestBus");
 
     class GeometryCacheComponentRequests
         : public AZ::ComponentBus
@@ -153,6 +168,11 @@ namespace LmbrCentral
          * Gets the geom cache asset in use by this component
          */
         virtual AZ::Data::Asset<AZ::Data::AssetData> GetGeomCacheAsset() = 0;
+
+        /**
+         * Gets the geom cache asset id in use by this component
+         */
+        virtual AZ::Data::AssetId GetGeomCacheAssetId() { return GetGeomCacheAsset().GetId(); }
 
         /**
          * Sets whether or not the Geometry Cache will be processed for rendering
@@ -328,6 +348,73 @@ namespace LmbrCentral
          * @return A pointer to the geometry cache's internal render node
          */
         virtual IGeomCacheRenderNode* GetGeomCacheRenderNode() = 0;
+
+        /**
+         * Sets the minimum spec for the Geometry Cache
+         *
+         * The geom cache will not render when the current graphics spec is
+         * below this minimum spec.
+         */
+        virtual void SetMinSpec(EngineSpec minSpec) = 0;
+        //! Gets the minimum spec for the Geom Cache
+        virtual EngineSpec GetMinSpec() = 0;
+
+        /**
+         * Sets whether or not the Geom Cache's animation will play on start
+         *
+         * When set to true the Geometry Cache will play in the editor. In game
+         * mode the Geom Cache will begin playing immediately.
+         */
+        virtual void SetPlayOnStart(bool playOnStart) = 0;
+        //! Gets whether or not the Geom Cache's animation will play on start
+        virtual bool GetPlayOnStart() = 0;
+
+        /**
+         * Sets the max view distance that this Geom Cache will be visible from
+         *
+         * The actual max view distance is calculated from
+         * maxViewDistance * viewDistanceMultiplier.
+         */
+        virtual void SetMaxViewDistance(float maxViewDistance) = 0;
+        /**
+         * Gets the max view distance that the Geom Cache will be visible from
+         *
+         * This is the max view distance without the view distance multiplier
+         */
+        virtual float GetMaxViewDistance() = 0;
+
+        /**
+         * Sets the view distance multiplier
+         *
+         * The view distance multiplier is multiplied into the max view distance
+         * to determine how far you can be from the Geom Cache before it stops
+         * being rendered.
+         *
+         * A value of 1.0 will leave the max view distance as the actual max view distance.
+         */
+        virtual void SetViewDistanceMultiplier(float viewDistanceMultiplier) = 0;
+        //! Gets the view distance multiplier
+        virtual float GetViewDistanceMultiplier() = 0;
+
+        /**
+         * Sets the LOD Distance Ratio
+         *
+         * The LOD Distance ratio affects how LODs are chosen. A lower value means
+         * less detailed LODs are used at shorter view distances.
+         */
+        virtual void SetLODDistanceRatio(AZ::u32 lodDistanceRatio) = 0;
+        //! Gets the LOD Distance Ratio
+        virtual AZ::u32 GetLODDistanceRatio() = 0;
+
+        //! Sets whether or not the Geometry Cache will cast shadows
+        virtual void SetCastShadows(bool castShadows) = 0;
+        //! Gets whether or not the Geometry Cache casts shadows
+        virtual bool GetCastShadows() = 0;
+
+        //! Sets whether or not the Geometry Cache will be affected by VisAreas and Portals
+        virtual void SetUseVisAreas(bool useVisAreas) = 0;
+        //! Gets whether or not the Geometry Cache is affected by VisAreas and Portals
+        virtual bool GetUseVisAreas() = 0;
     };
 
     using GeometryCacheComponentRequestBus = AZ::EBus<GeometryCacheComponentRequests>;

@@ -264,6 +264,12 @@ namespace Maestro
         EBUS_EVENT_ID(ebusId, Maestro::SequenceAgentComponentRequestBus, GetAssetDuration, returnValue, componentId, assetId);
     }
 
+    void EditorSequenceComponent::GetAssetTypeName(AZStd::string& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress)
+    {
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        Maestro::SequenceAgentComponentRequestBus::Event(ebusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAssetTypeName, returnValue, animatableAddress);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void EditorSequenceComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {

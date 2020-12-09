@@ -16,6 +16,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
+#include <EditorPythonBindings/EditorPythonBindingsSymbols.h>
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzFramework/IO/LocalFileIO.h>
@@ -170,17 +171,17 @@ namespace QtForPython
 
     void QtForPythonSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("QtForPythonService", 0x946c0ae9));
+        provided.push_back(AZ_CRC_CE("QtForPythonService"));
     }
 
     void QtForPythonSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("QtForPythonService", 0x946c0ae9));
+        incompatible.push_back(AZ_CRC_CE("QtForPythonService"));
     }
 
     void QtForPythonSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("PythonSystemService", 0x98e7cd4d));
+        required.push_back(EditorPythonBindings::PythonEmbeddedService);
     }
 
     void QtForPythonSystemComponent::Activate()

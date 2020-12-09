@@ -17,6 +17,7 @@
 #include <AzCore/std/functional.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/parallel/mutex.h>
 
 namespace AzFramework
 {
@@ -88,6 +89,7 @@ namespace AzFramework
     {
     public:
         using Bus = AZ::EBus<EngineConnectionEvents>;
+        using MutexType = AZStd::recursive_mutex; // this is invoked from different threads!
 
         EngineConnectionEvents() = default;
         ~EngineConnectionEvents() = default;

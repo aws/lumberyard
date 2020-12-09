@@ -14,66 +14,69 @@
 
 #include <AzCore/Component/Entity.h>
 
-#include <System/DataTypes.h>
+#include <NvCloth/Types.h>
 
 namespace NvCloth
 {
+    //! Maximum number of bones that can influence a particle.
     static const int MaxSkinningBones = 4;
+
+    //! Skinning information of a particle.
     struct SkinningInfo
     {
+        //! Weights of each joint that influence the particle.
         AZStd::array<AZ::u8, MaxSkinningBones> m_jointWeights;
+
+        //! List of joints that influence the particle.
         AZStd::array<AZ::u16, MaxSkinningBones> m_jointIndices;
     };
 
-    //! Class to retrieve skinning information from an actor on the same entity and use that data to apply skinning to
-    //! cloth anchor vertices.
+    //! Class to retrieve skinning information from an actor on the same entity
+    //! and use that data to apply skinning to vertices.
     class ActorClothSkinning
     {
     public:
         AZ_TYPE_INFO(ActorClothSkinning, "{3E7C664D-096B-4126-8553-3241BA965533}");
 
+        virtual ~ActorClothSkinning() = default;
+
         static AZStd::unique_ptr<ActorClothSkinning> Create(
             AZ::EntityId entityId, 
-            const AZStd::vector<SimParticleType>& simParticles, 
-            const AZStd::string& meshNode);
+            const AZStd::string& meshNode,
+            const size_t numSimParticles,
+            const AZStd::vector<int>& meshRemappedVertices);
 
         explicit ActorClothSkinning(AZ::EntityId entityId);
 
-        // Updates the static particles with the current pose of the actor.
-        void UpdateStaticParticles(
-            const AZStd::vector<SimParticleType>& originalPositions, 
-            AZStd::vector<SimParticleType>& positions);
+        //! Updates skinning with the current pose of the actor.
+        virtual void UpdateSkinning() = 0;
 
-        // Updates the dynamic particles with the current pose of the actor.
-        void UpdateDynamicParticles(
-            float animationBlendFactor, 
-            const AZStd::vector<SimParticleType>& originalPositions, 
-            AZStd::vector<SimParticleType>& positions);
+        //! Applies skinning to a list of positions.
+        //! @note w components are not affected.
+        virtual void ApplySkinning(
+            const AZStd::vector<AZ::Vector4>& originalPositions, 
+            AZStd::vector<AZ::Vector4>& positions) = 0;
 
-        // Updates all the particles with the current pose of the actor.
-        void UpdateParticles(
-            const AZStd::vector<SimParticleType>& originalPositions, 
-            AZStd::vector<SimParticleType>& positions);
+        //! Updates visibility variables.
+        void UpdateActorVisibility();
 
-    private:
+        //! Returns true if actor is currently visible on screen.
+        bool IsActorVisible() const;
+
+        //! Returns true if actor was visible on screen in previous update.
+        bool WasActorVisible() const;
+
+    protected:
         AZ::EntityId m_entityId;
 
         // Skinning information of all particles
         AZStd::vector<SkinningInfo> m_skinningData;
 
-        // Indices of particles that are static (its inverse mass is 0)
-        AZStd::vector<uint32_t> m_staticParticleIndices;
-
-        // Indices of particles that are dynamic (its inverse mass is not 0)
-        AZStd::vector<uint32_t> m_dynamicParticleIndices;
-
         // Collection of skeleton joint indices that influence the particles
         AZStd::vector<AZ::u16> m_jointIndices;
 
-        // Collection of skeleton joint indices that influence the static particles
-        AZStd::vector<AZ::u16> m_staticParticleJointIndices;
-
-        // Collection of skeleton joint indices that influence the dynamic particles
-        AZStd::vector<AZ::u16> m_dynamicParticleJointIndices;
+        // Visibility variables
+        bool m_wasActorVisible = false;
+        bool m_isActorVisible = false;
     };
 }// namespace NvCloth

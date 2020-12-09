@@ -413,18 +413,6 @@ namespace AzToolsFramework
         bool IsReparentNonTrivial(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);
 
         /**
-         * Performs the necessary clones on orphaned slice and subslice entities while reparenting existing loose entities and slices.  The source 
-         * entities of the clones will be destroyed. 
-         * \param entityId The target entity to reparent
-         * \param newParentId The target parent entity
-         * \return The root ID of the new entity hierarchy after necessary cloning/reparenting
-         */
-         // LUMBERYARD_DEPRECATED(LY-108703)
-        AZ_DEPRECATED(
-            AZ::EntityId ReparentNonTrivialEntityHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);,
-            "ReparentNonTrivialEntityHierarchy is deprecated, please instead use ReparentNonTrivialSliceInstanceHierarchy")
-
-        /**
          * Performs the necessary detach operations on orphaned slice and subslice entities while reparenting existing loose entities and slices.
          * \param entityId The target entity to reparent
          * \param newParentId The target parent entity

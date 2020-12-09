@@ -246,7 +246,7 @@ QString MiniLessParser::process(const QString& styleSheet)
     m_lineNumber = 0;
     m_lastCharacter = QChar();
 
-    QStringList lines = styleSheet.split(QRegExp("[\\n\\r]"), QString::SkipEmptyParts);
+    QStringList lines = styleSheet.split(QRegExp("[\\n\\r]"), Qt::SkipEmptyParts);
     for (QString& line : lines)
     {
         parseLine(line);

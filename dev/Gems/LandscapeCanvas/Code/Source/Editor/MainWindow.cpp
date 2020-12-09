@@ -1668,8 +1668,10 @@ namespace LandscapeCanvasEditor
         m_ignoreGraphUpdates = false;
     }
 
-    void MainWindow::OnEntityPickModeStarted()
+    void MainWindow::OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration)
     {
+        AZ_UNUSED(pickModeConfiguration);
+
         m_inObjectPickMode = true;
     }
 

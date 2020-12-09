@@ -66,7 +66,7 @@ namespace {
 
         QStringList LocationPath() const
         {
-            return Location().split('/', QString::SkipEmptyParts);
+            return Location().split('/', Qt::SkipEmptyParts);
         }
 
         QString Description() const
@@ -627,8 +627,8 @@ void CSmartObjectStateDialog::OnInitDialog(const QString& soString, bool hasAdva
     auto match = slicer.match(soString);
     if (match.hasMatch())
     {
-        QStringList included = match.captured("included").split(',', QString::SkipEmptyParts);
-        QStringList excluded = match.captured("excluded").split(',', QString::SkipEmptyParts);
+        QStringList included = match.captured("included").split(',', Qt::SkipEmptyParts);
+        QStringList excluded = match.captured("excluded").split(',', Qt::SkipEmptyParts);
         OnRefreshBtn(included, excluded);
     }
 }

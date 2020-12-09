@@ -69,6 +69,11 @@ namespace LmbrCentral
         // EditorParticleComponentRequestBus interface implementation
         void SetEmitter(const AZStd::string& emitterName, const AZStd::string& libPath) override;
 
+        AZ::EntityId GetTargetEntityId() override;
+        void SetTargetEntityId(AZ::EntityId entityId) override;
+
+        void Show() override;
+        void Hide() override;
         void SetVisibility(bool visible) override;
         void Enable(bool enable) override;
         void SetColorTint(const AZ::Color& tint) override;
@@ -79,6 +84,9 @@ namespace LmbrCentral
         void SetParticleSizeScaleX(float scale) override;
         void SetParticleSizeScaleY(float scale) override;
         void SetParticleSizeScaleZ(float scale) override;
+        void SetParticleSizeScaleRandom(float scale) override;
+        void SetPulsePeriod(float pulse) override;
+
         bool GetVisibility() override;
         bool GetEnable() override;
         AZ::Color GetColorTint() override;
@@ -89,6 +97,35 @@ namespace LmbrCentral
         float GetParticleSizeScaleX() override;
         float GetParticleSizeScaleY() override;
         float GetParticleSizeScaleZ() override;
+        float GetParticleSizeScaleRandom() override;
+        float GetPulsePeriod() override;
+        float GetLifetimeStrength() override;
+        void SetLifetimeStrength(float strenth) override;
+        bool GetEnablePreRoll() override;
+        void EnablePreRoll(bool enable) override;
+
+        bool GetIgnoreRotation() override;
+        void SetIgnoreRotation(bool ignore) override;
+        bool GetNotAttached() override;
+        void SetNotAttached(bool ignore) override;
+        bool GetUseBoundingBox() override;
+        void SetUseBoundingBox(bool useBox) override;
+        bool GetUseLOD() override;
+        void SetUseLOD(bool activate) override;
+
+        bool IsAudioEnabled() override;
+        void EnableAudio(bool enable) override;
+        const AZStd::string& GetRTPC() override;
+        void SetRTPC(const AZStd::string& rtpc) override;
+
+        float GetViewDistMultiplier() override;
+        void SetViewDistMultiplier(float multiplier) override;
+
+        bool GetUseVisArea() override;
+        void SetUseVisArea(bool enable) override;
+
+        ParticleEmitterSettings GetEmitterSettings() override;
+
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

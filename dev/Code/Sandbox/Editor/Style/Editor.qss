@@ -46,6 +46,58 @@ AzToolsFramework--ComponentEditorHeader #Title[IsOverridden="true"]
     color: #F5A623;
 }
 
+/* Asset Editor */
+Ui--AssetEditorHeader
+{
+    margin: 0px;
+    padding: 0px;
+}
+
+Ui--AssetEditorHeader *
+{
+    height: 16px;
+    background-color: #272727;
+}
+
+Ui--AssetEditorHeader #Background
+{
+    margin: 0px;
+    padding: 2px 7px 3px 7px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background-image: none;
+    background-color: #272727;
+}
+
+Ui--AssetEditorHeader #Name
+{
+    height: 16px;
+    font: italic;
+    background-color: transparent;
+}
+
+Ui--AssetEditorHeader #Location
+{
+    height: 16px;
+    font: italic;
+    background-color: transparent;
+}
+
+#AssetEditorWidgetPropertyEditor AzToolsFramework--PropertyRowWidget[isTopLevel="true"]
+{
+    qproperty-appendDefaultLabelToName:1;
+}
+
+#AssetEditorWidgetPropertyEditor AzToolsFramework--PropertyRowWidget[isTopLevel="false"]
+{
+    qproperty-appendDefaultLabelToName:0;
+}
+
+#AssetEditorWidgetPropertyEditor AzToolsFramework--PropertyRowWidget[getLevel="1"][hasChildRows="true"]
+{
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 /* Set the Script Canvas search highlight color */
 GraphCanvas--NodePaletteTreeView
 {

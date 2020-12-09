@@ -20,8 +20,7 @@ import azlmbr.whitebox.api as api
 from azlmbr.entity import EntityId
 
 # get Component Type for WhiteBoxMesh
-typeIdsList = editor.EditorComponentAPIBus(bus.Broadcast, 'FindComponentTypeIds', ["White Box"])
-whiteBoxMeshComponentTypeId = typeIdsList[0]
+whiteBoxMeshComponentTypeId = get_white_box_component_type()
 
 # use old White Box entity to hold White Box component if it exists, otherwise use a new one
 newEntityId = None

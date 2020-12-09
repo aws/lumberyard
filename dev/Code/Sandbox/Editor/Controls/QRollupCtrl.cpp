@@ -55,7 +55,7 @@ QRollupCtrlButton::QRollupCtrlButton(QWidget* parent)
     : QToolButton(parent)
     , selected(true)
 {
-    setBackgroundRole(QPalette::Background);
+    setBackgroundRole(QPalette::Window);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
     setFocusPolicy(Qt::NoFocus);
 

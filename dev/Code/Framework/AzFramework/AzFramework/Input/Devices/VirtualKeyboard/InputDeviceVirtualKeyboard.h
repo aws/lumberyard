@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzFramework/Input/Buses/Requests/InputTextEntryRequestBus.h>
+#include <AzFramework/Input/Buses/Requests/InputDeviceScreenRequestBus.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
 #include <AzFramework/Input/Devices/InputDevice.h>
 
@@ -25,6 +26,7 @@ namespace AzFramework
     //! platform that supports a virtual keyboard.
     class InputDeviceVirtualKeyboard : public InputDevice
                                      , public InputTextEntryRequestBus::Handler
+                                     , public InputDeviceScreenRequestBus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,6 +110,14 @@ namespace AzFramework
         //! \ref AzFramework::InputDeviceRequests::TickInputDevice
         void TickInputDevice() override;
 
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceScreenRequests::EnableSleepTimer
+        void EnableIdleSleepTimer(bool enabled) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceScreenRequests::GetSafeFrame
+        void GetSafeFrame(float& left, float& top, float& right, float& bottom) override;
+
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Alias for verbose container class
@@ -168,6 +178,14 @@ namespace AzFramework
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Tick/update the input device to broadcast all input events since the last frame
             virtual void TickInputDevice() = 0;
+            
+            ////////////////////////////////////////////////////////////////////////////////////////////
+            //! Enable the idle sleep timer on the input device.
+            virtual void EnableIdleSleepTimer(bool enabled);
+
+            ////////////////////////////////////////////////////////////////////////////////////////////
+            //! Get the safe frame without keyboard on the input device.
+            virtual void GetSafeFrame(float& left, float& top, float& right, float& bottom);
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Queue raw command event to be processed in the next call to ProcessRawEventQueues.

@@ -248,6 +248,8 @@ namespace PhysX
 
     void RigidBodyComponent::CreatePhysics()
     {
+        BodyConfigurationComponentBus::EventResult(m_configuration, GetEntityId(), &BodyConfigurationComponentRequests::GetRigidBodyConfiguration);
+
         // Create rigid body
         SetupConfiguration();
         m_rigidBody = AZ::Interface<Physics::System>::Get()->CreateRigidBody(m_configuration);

@@ -49,7 +49,11 @@ QCollapsePanel::QCollapsePanel(QWidget* parent, CAttributeItem* attributeItem)
         QAction* action = new QAction(objectName(), nullptr);
         action->setCheckable(true);
         action->setChecked(!isCollapsed());
-        action->setUserData(0, this);
+
+        QVariant qv;
+        qv.setValue(this);
+        action->setProperty("collapse_panel", qv);
+
         action->connect(action, &QAction::triggered, this, [this, action](bool state)
             {
                 setCollapsed(!isCollapsed());

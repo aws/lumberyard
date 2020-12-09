@@ -114,7 +114,8 @@ namespace ScriptCanvas
 
             LerpBetween() = default;
             ~LerpBetween() override = default;
-            
+
+            void OnActivate() override;
             void OnInit() override;
             void OnDeactivate() override;
             void OnConfigured() override;
@@ -215,6 +216,10 @@ namespace ScriptCanvas
             
             Datum m_startDatum;
             Datum m_differenceDatum;
+
+            // performance timing related events
+            AZ::Event<size_t>* m_latentStartTimerEvent = nullptr;
+            AZ::Event<size_t>* m_latentStopTimerEvent = nullptr;
         };
 
 #undef LERPABLE_TYPES

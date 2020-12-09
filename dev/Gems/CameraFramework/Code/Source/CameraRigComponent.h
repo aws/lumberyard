@@ -19,6 +19,7 @@ namespace Camera
     class ICameraLookAtBehavior;
     class ICameraTargetAcquirer;
     class ICameraTransformBehavior;
+    class ICameraZoomBehavior;
 
     //////////////////////////////////////////////////////////////////////////
     /// The CameraRigComponent holds a recipe of behaviors.
@@ -55,6 +56,8 @@ namespace Camera
         AZStd::vector<ICameraTargetAcquirer*> m_targetAcquirers;
         AZStd::vector<ICameraLookAtBehavior*> m_lookAtBehaviors;
         AZStd::vector<ICameraTransformBehavior*> m_transformBehaviors;
+        AZStd::vector<ICameraZoomBehavior*> m_zoomBehaviors;
+        float m_initialFov;
         AZ::Transform m_initialTransform;
     };
 } // Camera

@@ -18,11 +18,12 @@ import azlmbr.object
 import azlmbr.math
 import azlmbr.whitebox.api as api
 from azlmbr.entity import EntityId
+from azlmbr.entity import EntityType
 
 
 # get Component Type for WhiteBoxMesh
 def get_white_box_component_type():
-    typeIdsList = editor.EditorComponentAPIBus(bus.Broadcast, 'FindComponentTypeIds', ["White Box"])
+    typeIdsList = editor.EditorComponentAPIBus(bus.Broadcast, 'FindComponentTypeIdsByEntityType', ['White Box'], EntityType().Game)
     whiteBoxMeshComponentTypeId = typeIdsList[0]
 
     return whiteBoxMeshComponentTypeId

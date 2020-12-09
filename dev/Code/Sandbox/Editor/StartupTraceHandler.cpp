@@ -173,6 +173,7 @@ namespace SandboxEditor
                 message, 
                 QMessageBox::Ok,
                 mainWindow);
+            msg.setTextInteractionFlags(Qt::TextSelectableByMouse);
             msg.exec();
         });
     }

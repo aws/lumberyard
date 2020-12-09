@@ -363,7 +363,7 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
         // If the material doesn't exist check if it's queued or being compiled. If so it means the file will become available shortly (as
         //      GetAssetStatus will push it to the top of the queue) and hot loading will take care of the file. If it's in a broken state,
         //      remove it as if loading failed.
-        AzFramework::AssetSystem::AssetStatus status;
+        AzFramework::AssetSystem::AssetStatus status = AzFramework::AssetSystem::AssetStatus_Unknown;
         AzFramework::AssetSystemRequestBus::BroadcastResult(status, &AzFramework::AssetSystemRequestBus::Events::GetAssetStatus, filename);
 
         switch (status)

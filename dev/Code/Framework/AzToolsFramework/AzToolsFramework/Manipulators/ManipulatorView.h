@@ -72,12 +72,6 @@ namespace AzToolsFramework
     protected:
         AZ::Color m_mouseOverColor = BaseManipulator::s_defaultMouseOverColor; ///< What color should the manipulator
                                                                                ///< be when the mouse is hovering over it.
-        // LUMBERYARD_DEPRECATED(LY-117143)
-        Picking::RegisteredBoundId m_boundId = Picking::InvalidBoundId; ///< Used for hit detection.
-        ManipulatorManagerId m_managerId = InvalidManipulatorManagerId; /// The manipulator manager this view has been registered with.
-        bool m_screenSizeFixed = true; ///< Should manipulator size be adjusted based on camera distance.
-        bool m_boundDirty = true; ///< Do the bounds need to be recalculated.
-
         /// Scale the manipulator based on the distance
         /// from the camera if m_screenSizeFixed is true.
         AZ::VectorFloat ManipulatorViewScaleMultiplier(
@@ -88,6 +82,12 @@ namespace AzToolsFramework
         /// been created to use for dimensions for rendering.
         void RefreshBoundInternal(
             ManipulatorManagerId managerId, ManipulatorId manipulatorId, const Picking::BoundRequestShapeBase& bound);
+
+    private:
+        Picking::RegisteredBoundId m_boundId = Picking::InvalidBoundId; ///< Used for hit detection.
+        ManipulatorManagerId m_managerId = InvalidManipulatorManagerId; /// The manipulator manager this view has been registered with.
+        bool m_screenSizeFixed = true; ///< Should manipulator size be adjusted based on camera distance.
+        bool m_boundDirty = true; ///< Do the bounds need to be recalculated.
     };
 
     // A collection of views (a manipulator may have 1 - * views)

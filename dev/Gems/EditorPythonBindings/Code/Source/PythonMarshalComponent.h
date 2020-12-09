@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include <EditorPythonBindings/EditorPythonBindingsSymbols.h>
+
 #include <Source/PythonUtility.h>
 #include <Source/PythonCommon.h>
 #include <pybind11/pybind11.h>
@@ -61,9 +63,12 @@ namespace EditorPythonBindings
         , protected PythonMarshalTypeRequestBus::MultiHandler
     {
     public:
-        AZ_COMPONENT(PythonMarshalComponent, "{C733E1AD-9FDD-484E-A8D9-3EAB944B7841}", AZ::Component);
+        AZ_COMPONENT(PythonMarshalComponent, PythonMarshalComponentTypeId, AZ::Component);
 
         static void Reflect(AZ::ReflectContext* context);
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
         class TypeConverter
         {

@@ -22,6 +22,7 @@ namespace UnitTest
     AZ_PUSH_DISABLE_WARNING(4100, "-Wno-unused-parameter")
     // matcher to make tests easier to read and failures more useful (more information is included in the output)
     MATCHER_P(IsClose, v, "") { return arg.IsClose(v); }
+    MATCHER_P2(IsClose, v, t, "") { return arg.IsClose(v, t); }
     AZ_POP_DISABLE_WARNING
 } // namespace UnitTest
 

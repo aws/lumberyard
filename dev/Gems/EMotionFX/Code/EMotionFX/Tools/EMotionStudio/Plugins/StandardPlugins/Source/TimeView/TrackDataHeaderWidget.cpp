@@ -411,19 +411,25 @@ namespace EMStudio
     {
         plugin->SetRedrawFlag();
 
-        const int numDegrees = event->delta() / 8;
-        const int numSteps = numDegrees / 15;
-        float delta = numSteps / 10.0f;
-        //double multiplier     = 1.0 - delta;
-
-        double zoomDelta = delta * 4 * MCore::Clamp(plugin->GetTimeScale() / 2.0, 1.0, 22.0);
-        if (event->orientation() == Qt::Vertical)
+        // Vertical
         {
+            const int numDegrees = event->angleDelta().y() / 8;
+            const int numSteps = numDegrees / 15;
+            float delta = numSteps / 10.0f;
+
+            double zoomDelta = delta * 4 * MCore::Clamp(plugin->GetTimeScale() / 2.0, 1.0, 22.0);
+
             plugin->SetScale(plugin->GetTimeScale() + zoomDelta);
         }
 
-        if (event->orientation() == Qt::Horizontal)
+        // Horizontal
         {
+            const int numDegrees = event->angleDelta().x() / 8;
+            const int numSteps = numDegrees / 15;
+            float delta = numSteps / 10.0f;
+
+            double zoomDelta = delta * 4 * MCore::Clamp(plugin->GetTimeScale() / 2.0, 1.0, 22.0);
+
             if (EMotionFX::GetRecorder().GetIsRecording() == false)
             {
                 if (delta > 0)
@@ -439,7 +445,6 @@ namespace EMStudio
             }
         }
     }
-
 
     // handle mouse wheel event
     void TrackDataHeaderWidget::wheelEvent(QWheelEvent* event)

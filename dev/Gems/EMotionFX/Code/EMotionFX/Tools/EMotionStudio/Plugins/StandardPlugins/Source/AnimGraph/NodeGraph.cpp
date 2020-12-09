@@ -225,7 +225,7 @@ namespace EMStudio
                 // add the playspeed
                 if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_PLAYSPEED))
                 {
-                    mQtTempString.sprintf("Play Speed = %.2f", emfxNode->GetPlaySpeed(animGraphInstance));
+                    mQtTempString.asprintf("Play Speed = %.2f", emfxNode->GetPlaySpeed(animGraphInstance));
                     painter.drawText(textPosition, mQtTempString);
                     textPosition.setY(textPosition.y() + heightSpacing);
                 }
@@ -233,7 +233,7 @@ namespace EMStudio
                 // add the global weight
                 if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_GLOBALWEIGHT))
                 {
-                    mQtTempString.sprintf("Global Weight = %.2f", uniqueData->GetGlobalWeight());
+                    mQtTempString.asprintf("Global Weight = %.2f", uniqueData->GetGlobalWeight());
                     painter.drawText(textPosition, mQtTempString);
                     textPosition.setY(textPosition.y() + heightSpacing);
                 }
@@ -241,7 +241,7 @@ namespace EMStudio
                 // add the sync
                 if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_SYNCSTATUS))
                 {
-                    mQtTempString.sprintf("Synced = %s", animGraphInstance->GetIsSynced(emfxNode->GetObjectIndex()) ? "Yes" : "No");
+                    mQtTempString.asprintf("Synced = %s", animGraphInstance->GetIsSynced(emfxNode->GetObjectIndex()) ? "Yes" : "No");
                     painter.drawText(textPosition, mQtTempString);
                     textPosition.setY(textPosition.y() + heightSpacing);
                 }
@@ -249,7 +249,7 @@ namespace EMStudio
                 // add the play position
                 if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_PLAYPOSITION))
                 {
-                    mQtTempString.sprintf("Play Time = %.3f / %.3f", uniqueData->GetCurrentPlayTime(), uniqueData->GetDuration());
+                    mQtTempString.asprintf("Play Time = %.3f / %.3f", uniqueData->GetCurrentPlayTime(), uniqueData->GetDuration());
                     painter.drawText(textPosition, mQtTempString);
                     textPosition.setY(textPosition.y() + heightSpacing);
                 }
@@ -415,7 +415,7 @@ namespace EMStudio
                         QPoint connectionAttachPoint = visualConnection->CalcFinalRect().center();
 
                         const int halfTextHeight = 6;
-                        const int textWidth = mFontMetrics->width(m_tempStringA.c_str());
+                        const int textWidth = mFontMetrics->horizontalAdvance(m_tempStringA.c_str());
                         const int halfTextWidth = textWidth / 2;
 
                         const QRect textRect(connectionAttachPoint.x() - halfTextWidth - 1, connectionAttachPoint.y() - halfTextHeight, textWidth + 4, halfTextHeight * 2);
@@ -704,9 +704,6 @@ namespace EMStudio
         MCore::Timer timer;
 #endif
 
-        //  painter.setRenderHint( QPainter::HighQualityAntialiasing );
-        //  painter.setRenderHint( QPainter::TextAntialiasing );
-
         // calculate the visible rect
         QRect visibleRect;
         visibleRect = QRect(0, 0, width, height);
@@ -934,7 +931,7 @@ namespace EMStudio
             const int rows = modelIndex.model()->rowCount(modelIndex);
             for (int row = 0; row < rows; ++row)
             {
-                const QModelIndex childConnection = modelIndex.child(row, 0);
+                const QModelIndex childConnection = modelIndex.model()->index(row, 0, modelIndex);
                 selection.select(childConnection, childConnection);
             }
         }
@@ -2376,7 +2373,7 @@ namespace EMStudio
         const int rows = m_currentModelIndex.model()->rowCount(m_currentModelIndex);
         for (int row = 0; row < rows; ++row)
         {
-            const QModelIndex modelIndex = m_currentModelIndex.child(row, 0);
+            const QModelIndex modelIndex = m_currentModelIndex.model()->index(row, 0, m_currentModelIndex);
             const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
             if (itemType == AnimGraphModel::ModelItemType::NODE)
             {
@@ -2402,7 +2399,7 @@ namespace EMStudio
         // do another iteration over the element's rows to create the transitions
         for (int row = 0; row < rows; ++row)
         {
-            const QModelIndex modelIndex = m_currentModelIndex.child(row, 0);
+            const QModelIndex modelIndex = m_currentModelIndex.model()->index(row, 0, m_currentModelIndex);
             const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
             if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
             {

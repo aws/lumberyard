@@ -257,6 +257,11 @@ namespace LegacyTerrain
             LegacyTerrainBase::Get3DEngine()->GetIObjectTree()->UpdateTerrainNodes();
         }
 
+        if (LegacyTerrainBase::Get3DEngine()->GetIVisAreaManager())
+        {
+            LegacyTerrainBase::Get3DEngine()->GetIVisAreaManager()->ClearTerrainNodes();
+        }
+
         AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateNull());
 
         AzFramework::Terrain::TerrainDataNotificationBus::Broadcast(&AzFramework::Terrain::TerrainDataNotifications::OnTerrainDataDestroyEnd);

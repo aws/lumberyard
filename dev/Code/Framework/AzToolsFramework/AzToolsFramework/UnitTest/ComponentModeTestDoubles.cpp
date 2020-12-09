@@ -60,6 +60,18 @@ namespace AzToolsFramework
             }
         }
 
+        void AnotherPlaceholderEditorComponent::GetProvidedServices(
+            AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC_CE("InterestingService"));
+        }
+
+        void AnotherPlaceholderEditorComponent::GetIncompatibleServices(
+            AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC_CE("InterestingService"));
+        }
+
         void AnotherPlaceholderEditorComponent::Activate()
         {
             EditorComponentBase::Activate();
@@ -125,6 +137,43 @@ namespace AzToolsFramework
             m_componentModeDelegate.Disconnect();
         }
 
+        void IncompatiblePlaceholderEditorComponent::Reflect(AZ::ReflectContext* context)
+        {
+            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<IncompatiblePlaceholderEditorComponent>()
+                    ->Version(0)
+                    ->Field("ComponentMode", &IncompatiblePlaceholderEditorComponent::m_componentModeDelegate);
+            }
+        }
+
+        void IncompatiblePlaceholderEditorComponent::GetProvidedServices(
+            AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC_CE("InterestingService"));
+        }
+
+        void IncompatiblePlaceholderEditorComponent::GetIncompatibleServices(
+            AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC_CE("InterestingService"));
+        }
+
+        void IncompatiblePlaceholderEditorComponent::Activate()
+        {
+            EditorComponentBase::Activate();
+
+            m_componentModeDelegate.ConnectWithSingleComponentMode<
+                IncompatiblePlaceholderEditorComponent, AnotherPlaceHolderComponentMode>(
+                    AZ::EntityComponentIdPair(GetEntityId(), GetId()), nullptr);
+        }
+
+        void IncompatiblePlaceholderEditorComponent::Deactivate()
+        {
+            EditorComponentBase::Deactivate();
+            m_componentModeDelegate.Disconnect();
+        }
+
         ComponentModeActionSignalNotificationChecker::ComponentModeActionSignalNotificationChecker(int busId)
         {
             ComponentModeActionSignalNotificationBus::Handler::BusConnect(busId);
@@ -154,7 +203,7 @@ namespace AzToolsFramework
 
         AZStd::vector<AzToolsFramework::ActionOverride> PlaceHolderComponentMode::PopulateActionsImpl()
         {
-            const AZ::Crc32 placeHolderComponentModeAction = AZ_CRC("com.amazon.action.placeholder.test", 0x77a171ec);
+            const AZ::Crc32 placeHolderComponentModeAction = AZ_CRC_CE("com.amazon.action.placeholder.test");
 
             return AZStd::vector<AzToolsFramework::ActionOverride>
             {

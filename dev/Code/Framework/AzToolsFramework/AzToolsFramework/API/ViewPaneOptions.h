@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/RTTI/TypeInfo.h>
+
 #include <QRect>
 #include <QKeySequence>
 #include <QString>
@@ -20,6 +22,8 @@ namespace AzToolsFramework
 {
     struct ViewPaneOptions
     {
+        AZ_TYPE_INFO(ViewPaneOptions, "{E9FB803A-2A47-4BCF-8A50-AB4C9D73AED2}");
+
         QRect paneRect = QRect(50, 50, 1000, 800);                      ///< default size/position of the view pane, if no previous state is saved
         Qt::DockWidgetArea preferedDockingArea = Qt::NoDockWidgetArea;  ///< default docking area to place the view pane in, if no previous state is saved
         bool isDeletable = true;                                        ///< set to false if you want the view pane to hide on close, instead of being deleted

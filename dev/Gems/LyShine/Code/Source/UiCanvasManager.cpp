@@ -38,6 +38,9 @@
 #endif
 
 #if !ENABLE_CRY_PHYSICS
+#include <AzFramework/Entity/GameEntityContextBus.h>
+#include <AzFramework/Render/Intersector.h>
+#include <MathConversion.h>
 #include <CryPhysicsDeprecation.h>
 #endif
 
@@ -812,7 +815,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
     // First we need to construct a ray from the either the center of the screen or the mouse position.
     // This requires knowledge of the camera
     // for initial testing we will just use a ray in the center of the viewport
-    CCamera& cam = GetISystem()->GetViewCamera();
+    const CCamera& cam = GetISystem()->GetIRenderer()->GetCamera();
 
     // construct a ray from the camera position in the view direction of the camera
     const float rayLength = 5000.0f;
@@ -832,12 +835,16 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
         const float viewportYInverted = cam.GetViewSurfaceZ() - viewportPos.GetY();
 
         // Unproject to get the screen position in world space, use arbitrary Z that is within the depth range
-        Vec3 flippedViewportPos(viewportPos.GetX(), viewportYInverted, 0.5f);
-        Vec3 unprojectedPos;
-        cam.Unproject(flippedViewportPos, unprojectedPos);
+        Vec3 flippedViewportRayOrigin(viewportPos.GetX(), viewportYInverted, 0.f);
+        Vec3 flippedViewportRayForward(viewportPos.GetX(), viewportYInverted, 1.f);
+
+        cam.Unproject(flippedViewportRayOrigin, rayOrigin);
+
+        Vec3 unprojectedPosForward;
+        cam.Unproject(flippedViewportRayForward, unprojectedPosForward);
 
         // We want a vector relative to the camera origin
-        Vec3 rayVec = unprojectedPos - rayOrigin;
+        Vec3 rayVec = unprojectedPosForward - rayOrigin;
 
         // we want to ensure that the ray is a certain length so normalize it and scale it
         rayVec.NormalizeSafe();
@@ -880,8 +887,48 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
         }
     }
 #else
-    // Raycast using graphics 
-    CRY_PHYSICS_REPLACEMENT_ASSERT();
+
+    AzFramework::EntityContextId gameContextId;
+    AzFramework::GameEntityContextRequestBus::BroadcastResult(gameContextId,
+        &AzFramework::GameEntityContextRequests::GetGameEntityContextId);
+
+    AzFramework::RenderGeometry::RayRequest request;
+    request.m_startWorldPosition = LYVec3ToAZVec3(rayOrigin);
+    request.m_endWorldPosition = LYVec3ToAZVec3(rayOrigin + rayDirection);
+
+    AzFramework::RenderGeometry::RayResult rayResult;
+    AzFramework::RenderGeometry::IntersectorBus::EventResult(rayResult, gameContextId,
+        &AzFramework::RenderGeometry::IntersectorInterface::RayIntersect, request);
+
+    if (rayResult)
+    {
+        AZ::EntityId hitEntity = rayResult.m_entityAndComponent.GetEntityId();
+        if (hitEntity.IsValid())
+        {
+            AZ::EntityId canvasEntityId;
+            UiCanvasRefBus::EventResult(canvasEntityId, hitEntity, &UiCanvasRefInterface::GetCanvas);
+            if (canvasEntityId.IsValid())
+            {
+                // Checkif the UI canvas referenced by the hit entity supports automatic input
+                bool doesCanvasSupportInput = false;
+                UiCanvasBus::EventResult(doesCanvasSupportInput, canvasEntityId, &UiCanvasInterface::GetIsPositionalInputSupported);
+
+                if (doesCanvasSupportInput)
+                {
+                    // set the hit details to the hit entity, it will convert into canvas coords and send to canvas
+                    bool handled = false;
+                    UiCanvasOnMeshBus::EventResult(handled, hitEntity,
+                        &UiCanvasOnMeshInterface::ProcessHitInputEvent, inputSnapshot, rayResult);
+
+                    if (handled)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
 #endif // ENABLE_CRY_PHYSICS
 
     return false;

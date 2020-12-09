@@ -52,7 +52,7 @@ void ModeToolbar::AddModes(EditorWindow* parent)
     m_group = new QActionGroup(this);
 
     int i = 0;
-    for (const auto& m : ViewportInteraction::InteractionMode())
+    for (const auto m : ViewportInteraction::InteractionMode())
     {
         int key = (Qt::Key_1 + i++);
 

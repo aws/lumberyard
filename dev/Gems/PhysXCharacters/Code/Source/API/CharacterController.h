@@ -12,6 +12,7 @@
 
 #pragma once
 #include <AzFramework/Physics/Character.h>
+#include <AzFramework/Physics/Collision.h>
 #include <PhysX/UserDataTypes.h>
 #include <PxPhysicsAPI.h>
 
@@ -125,6 +126,8 @@ namespace PhysXCharacters
         /// from the desired velocity, for example if the character is stuck in a corner its observed velocity may be
         /// zero in spite of having a non-zero desired velocity.
         void UpdateObservedVelocity(const AZ::Vector3& observedVelocity);
+
+        void UpdatePxControllerFilters(Physics::CollisionLayer collisionLayer, Physics::CollisionGroup collisionGroup);
 
         physx::PxController* m_pxController = nullptr; ///< The underlying PhysX controller.
         float m_minimumMovementDistance = 0.0f; ///< To avoid jittering, the controller will not attempt to move distances below this.

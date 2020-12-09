@@ -54,8 +54,8 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // SourceControlThumbnail
         //////////////////////////////////////////////////////////////////////////
-        static const char* WRITABLE_ICON_PATH = "Editor/Icons/AssetBrowser/Writable_16.png";
-        static const char* NONWRITABLE_ICON_PATH = "Editor/Icons/AssetBrowser/NonWritable_16.png";
+        static const char* WRITABLE_ICON_PATH = "Editor/Icons/AssetBrowser/Writable_16.svg";
+        static const char* NONWRITABLE_ICON_PATH = "Editor/Icons/AssetBrowser/NonWritable_16.svg";
 
         bool SourceControlThumbnail::m_readyForUpdate = true;
 
@@ -105,16 +105,16 @@ namespace AzToolsFramework
             {
                 if (fileInfo.HasFlag(AzToolsFramework::SCF_Writeable))
                 {
-                    m_pixmap = QPixmap(WRITABLE_ICON_PATH);
+                    m_icon = QIcon(WRITABLE_ICON_PATH);
                 }
                 else
                 {
-                    m_pixmap = QPixmap(NONWRITABLE_ICON_PATH);
+                    m_icon = QIcon(NONWRITABLE_ICON_PATH);
                 }
             }
             else
             {
-                m_pixmap = QPixmap();
+                m_icon = QIcon();
             }
             m_readyForUpdate = true;
             emit Updated();

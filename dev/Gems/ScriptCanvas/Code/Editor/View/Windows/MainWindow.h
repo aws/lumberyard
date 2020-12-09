@@ -239,7 +239,7 @@ namespace ScriptCanvasEditor
 
     private:
         // UIRequestBus
-        QWidget* GetMainWindow() override { return qobject_cast<QWidget*>(this); }
+        QMainWindow* GetMainWindow() override { return qobject_cast<QMainWindow*>(this); }
         void OpenValidationPanel();
         //
 
@@ -255,6 +255,8 @@ namespace ScriptCanvasEditor
 
         // VariablePaletteRequestBus
         void RegisterVariableType(const ScriptCanvas::Data::Type& variableType) override;
+
+        bool IsValidVariableType(const ScriptCanvas::Data::Type& dataType) const override;
         ////
 
         // GraphCanvas::AssetEditorRequestBus
@@ -269,7 +271,7 @@ namespace ScriptCanvasEditor
 
         void ShowAssetPresetsMenu(GraphCanvas::ConstructType constructType);
 
-        GraphCanvas::ContextMenuAction::SceneReaction ShowSceneContextMenu(const QPoint& screenPoint, const QPointF& scenePoint) override;
+        GraphCanvas::ContextMenuAction::SceneReaction ShowSceneContextMenuWithGroup(const QPoint& screenPoint, const QPointF& scenePoint, AZ::EntityId groupTarget) override;
 
         GraphCanvas::ContextMenuAction::SceneReaction ShowNodeContextMenu(const AZ::EntityId& nodeId, const QPoint& screenPoint, const QPointF& scenePoint) override;
 
@@ -280,9 +282,12 @@ namespace ScriptCanvasEditor
 
         GraphCanvas::ContextMenuAction::SceneReaction ShowBookmarkContextMenu(const AZ::EntityId& bookmarkId, const QPoint& screenPoint, const QPointF& scenePoint) override;
 
-        GraphCanvas::ContextMenuAction::SceneReaction ShowConnectionContextMenu(const AZ::EntityId& connectionId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+        GraphCanvas::ContextMenuAction::SceneReaction ShowConnectionContextMenuWithGroup(const AZ::EntityId& connectionId, const QPoint& screenPoint, const QPointF& scenePoint, AZ::EntityId groupTarget) override;
 
         GraphCanvas::ContextMenuAction::SceneReaction ShowSlotContextMenu(const AZ::EntityId& slotId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+
+        GraphCanvas::Endpoint CreateNodeForProposalWithGroup(const AZ::EntityId& connectionId, const GraphCanvas::Endpoint& endpoint, const QPointF& scenePoint, const QPoint& screenPoint, AZ::EntityId groupTarget) override;
+        void OnWrapperNodeActionWidgetClicked(const AZ::EntityId& wrapperNode, const QRect& actionWidgetBoundingRect, const QPointF& scenePoint, const QPoint& screenPoint) override;
         ////
 
         // SystemTickBus
@@ -291,11 +296,7 @@ namespace ScriptCanvasEditor
 
         //! ScriptCanvas::BatchOperationsNotificationBus
         void OnCommandStarted(AZ::Crc32 commandTag);
-        void OnCommandFinished(AZ::Crc32 commandTag);
-
-        // UI Handlers        
-        GraphCanvas::Endpoint CreateNodeForProposal(const AZ::EntityId& connectionId, const GraphCanvas::Endpoint& endpoint, const QPointF& scenePoint, const QPoint& screenPoint) override;
-        void OnWrapperNodeActionWidgetClicked(const AZ::EntityId& wrapperNode, const QRect& actionWidgetBoundingRect, const QPointF& scenePoint, const QPoint& screenPoint) override;
+        void OnCommandFinished(AZ::Crc32 commandTag);        
 
         // File menu
         void OnFileNew();
@@ -434,6 +435,8 @@ namespace ScriptCanvasEditor
 
         // GraphCanvasSettingsRequestBus
         double GetSnapDistance() const override;
+
+        bool IsGroupDoubleClickCollapseEnabled() const override;
 
         bool IsBookmarkViewportControlEnabled() const override;
 

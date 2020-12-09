@@ -30,7 +30,7 @@
 QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 QT_FORWARD_DECLARE_CLASS(QHBoxLayout)
 QT_FORWARD_DECLARE_CLASS(QGridLayout)
-QT_FORWARD_DECLARE_CLASS(QPushButton)
+QT_FORWARD_DECLARE_CLASS(QToolButton)
 QT_FORWARD_DECLARE_CLASS(QFileDialog)
 QT_FORWARD_DECLARE_CLASS(QTableWidget)
 QT_FORWARD_DECLARE_CLASS(QTableWidgetItem)
@@ -110,11 +110,11 @@ namespace EMStudio
         AZStd::vector<AZStd::string>            mAttachments;
         AZStd::string                           mNodeBeforeSelectionWindow;
 
-        QPushButton*                            mOpenAttachmentButton;
-        QPushButton*                            mOpenDeformableAttachmentButton;
-        QPushButton*                            mRemoveButton;
-        QPushButton*                            mClearButton;
-        QPushButton*                            mCancelSelectionButton;
+        QToolButton*                            mOpenAttachmentButton;
+        QToolButton*                            mOpenDeformableAttachmentButton;
+        QToolButton*                            mRemoveButton;
+        QToolButton*                            mClearButton;
+        QToolButton*                            mCancelSelectionButton;
 
         NodeSelectionWindow*                    mNodeSelectionWindow;
 

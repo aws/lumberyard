@@ -315,7 +315,7 @@ void CTrackViewDopeSheetBase::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    float z = (event->delta() > 0) ? (m_timeScale * 1.25f) : (m_timeScale * 0.8f);
+    float z = (event->angleDelta().y() > 0) ? (m_timeScale * 1.25f) : (m_timeScale * 0.8f);
     // Use m_mouseOverPos to get the local position in the timeline view instead of
     // event->pos() which seems to include the variable left panel of the view that
     // lists the tracks.

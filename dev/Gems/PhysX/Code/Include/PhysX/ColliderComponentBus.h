@@ -17,44 +17,38 @@
 #include <AzFramework/Physics/ShapeConfiguration.h>
 #include <AzFramework/Physics/Shape.h>
 
+#include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/WorldBody.h>
+
 namespace PhysX
 {
     class Shape;
     class RigidBodyStatic;
 
-    /// Messages serviced by a PhysX collider component.
-    /// A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
+    //! Messages serviced by a PhysX collider component.
+    //! A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
     class ColliderComponentRequests
         : public AZ::ComponentBus
     {
     public:
-        /// Gets the collection of collider configuration / shape configuration pairs used to define the collider's shapes.
+        //! Gets the collection of collider configuration / shape configuration pairs used to define the collider's shapes.
         virtual Physics::ShapeConfigurationList GetShapeConfigurations() = 0;
 
-        /// Gets the collection of physics shapes associated with the collider.
+        //! Gets the collection of physics shapes associated with the collider.
         virtual AZStd::vector<AZStd::shared_ptr<Physics::Shape>> GetShapes() = 0;
-
-        // LUMBERYARD_DEPRECATED(LY-108535)
-        /// @deprecated Please use StaticRigidBodyComponent directly instead.
-        /// Checks if this collider component is associated with a static rigid body.
-        /// Checks whether this collider component exists on an entity without a rigid body component,
-        /// in which case a static rigid body will automatically be created.
-        /// @return true if static rigid body is created for this collider component
-        AZ_DEPRECATED(virtual bool IsStaticRigidBody() = 0;,
-            "IsStaticRigidBody is deprecated, please use a StaticRigidBodyComponent directly instead.")
-
-        // LUMBERYARD_DEPRECATED(LY-108535)
-        /// @deprecated Please use StaticRigidBodyComponent directly instead.
-        /// Gets the static rigid body associated with the collider if one was created.
-        /// @return the static rigid body pointer
-         AZ_DEPRECATED(virtual PhysX::RigidBodyStatic* GetStaticRigidBody() = 0;,
-            "GetStaticRigidBody is deprecated, please use a StaticRigidBodyComponent directly instead.")
     };
+
     using ColliderComponentRequestBus = AZ::EBus<ColliderComponentRequests>;
 
-    /// Events dispatched by a PhysX collider component.
-    /// A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
-    //! LUMBERYARD_DEPRECATED(LY-114678) Use Physics::ColliderComponentEvents instead
-    using ColliderComponentEvents = Physics::ColliderComponentEvents;
-    using ColliderComponentEventBus = AZ::EBus<Physics::ColliderComponentEvents>;
+    //! Allows to supply rigid/world body configuration to [Static]RigidBodyComponent without invoking relevant constructor,
+    //! e. g. when attaching component from another gem.
+    class BodyConfigurationComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual Physics::RigidBodyConfiguration GetRigidBodyConfiguration() = 0;
+        virtual Physics::WorldBodyConfiguration GetWorldBodyConfiguration() = 0;
+    };
+
+    using BodyConfigurationComponentBus = AZ::EBus<BodyConfigurationComponentRequests>;
 } // namespace PhysX

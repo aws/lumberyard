@@ -365,22 +365,26 @@ namespace EMotionFX
                 }
 
                 // Send render meshes for editing by other components if required.
-                for (const LmbrCentral::MeshModificationRequestHelper::MeshLODPrimIndex& meshIndices : m_modificationHelper.MeshesToEdit())
+                if (!m_modificationHelper.GetMeshModified())
                 {
-                    if (meshIndices.lodIndex >= m_renderMeshesPerLOD.size() ||
-                        meshIndices.primitiveIndex >= m_renderMeshesPerLOD[meshIndices.lodIndex].size())
+                    for (const LmbrCentral::MeshModificationRequestHelper::MeshLODPrimIndex& meshIndices : m_modificationHelper.MeshesToEdit())
                     {
-                        AZ_Warning("ActorRenderNode", false, "Mesh indices out of range");
-                        continue;
-                    }
+                        if (meshIndices.lodIndex >= m_renderMeshesPerLOD.size() ||
+                            meshIndices.primitiveIndex >= m_renderMeshesPerLOD[meshIndices.lodIndex].size())
+                        {
+                            AZ_Warning("ActorRenderNode", false, "Mesh indices out of range");
+                            continue;
+                        }
 
-                    IRenderMesh* renderMesh = m_renderMeshesPerLOD[meshIndices.lodIndex][meshIndices.primitiveIndex];
-                    LmbrCentral::MeshModificationNotificationBus::Event(
-                        m_entityId,
-                        &LmbrCentral::MeshModificationNotificationBus::Events::ModifyMesh,
-                        meshIndices.lodIndex,
-                        meshIndices.primitiveIndex,
-                        renderMesh);
+                        IRenderMesh* renderMesh = m_renderMeshesPerLOD[meshIndices.lodIndex][meshIndices.primitiveIndex];
+                        LmbrCentral::MeshModificationNotificationBus::Event(
+                            m_entityId,
+                            &LmbrCentral::MeshModificationNotificationBus::Events::ModifyMesh,
+                            meshIndices.lodIndex,
+                            meshIndices.primitiveIndex,
+                            renderMesh);
+                    }
+                    m_modificationHelper.SetMeshModified(true);
                 }
 
                 const bool morphsUpdated = MorphTargetWeightsWereUpdated(useLodIndex);
@@ -568,7 +572,7 @@ namespace EMotionFX
 
         float CryRenderActorInstance::GetMaxViewDist()
         {
-            return (100.f * GetViewDistanceMultiplier()); // \todo
+            return (100.f * IRenderNode::GetViewDistanceMultiplier()); // \todo
         }
 
         void CryRenderActorInstance::GetMemoryUsage(class ICrySizer* /*pSizer*/) const

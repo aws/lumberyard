@@ -182,7 +182,7 @@ bool AssetImporterManager::OnBrowseFiles()
 void AssetImporterManager::OnBrowseDestinationFilePath(QLineEdit* destinationLineEdit)
 {
     QFileDialog fileDialog;
-    fileDialog.setFileMode(QFileDialog::DirectoryOnly);
+    fileDialog.setOption(QFileDialog::ShowDirsOnly, true);
     fileDialog.setViewMode(QFileDialog::List);
     fileDialog.setWindowModality(Qt::WindowModality::ApplicationModal);
     fileDialog.setWindowTitle(tr("Select import destination"));

@@ -115,9 +115,4 @@ namespace AzToolsFramework
             view->Invalidate(GetManipulatorManagerId());
         }
     }
-
-    void SelectionManipulator::SetView(AZStd::unique_ptr<ManipulatorView>&& view)
-    {
-        m_manipulatorViews.emplace_back(AZStd::move(view));
-    }
 }

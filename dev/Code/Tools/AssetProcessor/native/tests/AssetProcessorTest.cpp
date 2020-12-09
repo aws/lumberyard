@@ -23,7 +23,7 @@
 #include <native/unittests/UnitTestRunner.h>
 
 #include <QCoreApplication>
-#include <QTime>
+#include <QElapsedTimer>
 
 AZ_UNIT_TEST_HOOK(new BaseAssetProcessorTestEnvironment)
 
@@ -140,7 +140,7 @@ namespace AssetProcessor
                     failMessage = message;
                 });
 
-                QTime time;
+                QElapsedTimer time;
                 time.start();
 
                 actualTest->StartTest();

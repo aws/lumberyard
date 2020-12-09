@@ -22,8 +22,7 @@ namespace ScriptCanvasEditor
 {
     ScriptCanvasMemoryAsset::ScriptCanvasMemoryAsset()
         : m_sourceInError(false)
-        , m_triggerSaveCallback(false)
-        , m_triggerSourceChangedFromTickBus(false)
+        , m_triggerErrorSaveCallback(false)
     {
         m_undoState = AZStd::make_unique<SceneUndoState>(this);
     }
@@ -323,12 +322,12 @@ namespace ScriptCanvasEditor
 
     void ScriptCanvasMemoryAsset::OnSystemTick()
     {
-        if (m_triggerSaveCallback && m_onSaveCallback)
+        if (m_triggerErrorSaveCallback && m_onSaveCallback)
         {
             AZ::SystemTickBus::Handler::BusDisconnect();
 
             m_onSaveCallback(false, m_inMemoryAsset, AZ::Data::AssetId());
-            m_triggerSaveCallback = false;
+            m_triggerErrorSaveCallback = false;
         }
         else if (m_triggerSourceChangedFromTickBus && m_onSaveCallback)
         {
@@ -536,6 +535,9 @@ namespace ScriptCanvasEditor
         AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, normPath);
         m_pendingSave.emplace_back(normPath);
 
+        // Store the onSave callback so that we can call it from the proper place
+        m_onSaveCallback = onSaveCallback;
+
         m_relativePath.clear();
         m_scanFolder.clear();
         m_sourceUuid = AZ::Data::AssetId();
@@ -587,10 +589,7 @@ namespace ScriptCanvasEditor
                                 savedSuccess = false;
                             }
                         }
-                    }
-
-                    // Store the onSave callback so that we can call it from the proper place
-                    m_onSaveCallback = onSaveCallback;
+                    }                    
 
                     if (savedSuccess)
                     {
@@ -621,12 +620,17 @@ namespace ScriptCanvasEditor
                         else
                         {
                             AZ_TracePrintf("Script Canvas", "Script Canvas successfully saved as Asset \"%s\" but is outside of project scope and cannot be loaded.", saveInfo.m_streamName.data());
-                            m_triggerSaveCallback = true;
+                            m_triggerErrorSaveCallback = true;
                         }
 
                         m_sourceRemoved = false;
                         m_saveAsPath.clear();
                     }
+                }
+                else
+                {
+                    AZ_TracePrintf("Script Canvas", "Script Canvas failed to open temporary file, unable to complete save action.");
+                    m_triggerErrorSaveCallback = true;
                 }
             });
 

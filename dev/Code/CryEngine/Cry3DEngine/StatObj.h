@@ -496,9 +496,9 @@ private:
     SSyncToRenderMeshContext* m_pAsyncUpdateContext;
 
     //////////////////////////////////////////////////////////////////////////
-    // Cloth inverse masses
+    // Cloth data
     //////////////////////////////////////////////////////////////////////////
-    AZStd::vector<float> m_clothInverseMasses;
+    AZStd::vector<SMeshColor> m_clothData;
 
     //////////////////////////////////////////////////////////////////////////
     // METHODS.
@@ -806,7 +806,7 @@ public:
     IStatObj* GetLodLevel0() override { return m_pLod0; }
     void SetLodLevel0(IStatObj* lod) override { m_pLod0 = lod; }
 
-    AZStd::vector<float>& GetClothInverseMasses() override { return m_clothInverseMasses; }
+    AZStd::vector<SMeshColor>& GetClothData() override { return m_clothData; }
 
 protected:
     // Called by async stream callback.
@@ -860,7 +860,7 @@ protected:
     /// LOD support for touch bending vegetation
     void InitializeSkinnedChunk();
 
-    void FillClothInverseMasses(CMesh& mesh);
+    void FillClothData(CMesh& mesh);
 
 } _ALIGN(8);
 

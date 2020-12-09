@@ -46,32 +46,34 @@
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Utilities/TextUtilities.h>
 
-#include <QObject>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QApplication>
-#include <QPushButton>
-#include <QToolButton>
 #include <QCheckBox>
-#include <QRadioButton>
+#include <QComboBox>
+#include <QDebug>
 #include <QFile>
-#include <QSettings>
 #include <QFileSystemWatcher>
-#include <QStyleOptionToolButton>
+#include <QHeaderView>
+#include <QKeyEvent>
+#include <QKeySequenceEdit>
+#include <QLineEdit>
+#include <QListView>
+#include <QObject>
 #include <QPainter>
 #include <QPixmapCache>
 #include <QProgressBar>
+#include <QPushButton>
+#include <QRadioButton>
 #include <QScopedValueRollback>
 #include <QSet>
-#include <QLineEdit>
-#include <QHeaderView>
-#include <QComboBox>
-#include <QDebug>
-#include <QKeyEvent>
-#include <QTextEdit>
-#include <QKeySequenceEdit>
-#include <QListView>
+#include <QSettings>
+#include <QStyleOptionToolButton>
 #include <QTableView>
-#include <QtWidgets/private/qstylesheetstyle_p.h>
+#include <QTextEdit>
+#include <QToolButton>
 #include <QtGui/private/qscreen_p.h>
+#include <QtWidgets/private/qstylesheetstyle_p.h>
+AZ_POP_DISABLE_WARNING
 
 #include <QtWidgets/private/qstylehelper_p.h>
 
@@ -619,7 +621,7 @@ namespace AzQtComponents
             }
             break;
 
-            case PE_IndicatorViewItemCheck:
+            case PE_IndicatorItemViewItemCheck:
             {
                 if (ComboBox::drawItemCheckIndicator(this, option, painter, widget, m_data->comboBoxConfig))
                 {
@@ -998,6 +1000,7 @@ namespace AzQtComponents
                 break;
 
             case QStyle::PM_SliderThickness:
+            case QStyle::PM_SliderControlThickness: // used by qCommonStyle::subControlRect()
             {
                 int thickness = Slider::sliderThickness(this, option, widget, m_data->sliderConfig);
                 if (thickness != -1)

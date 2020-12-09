@@ -4,7 +4,9 @@
             "Source/LmbrCentral_precompiled.cpp",
             "Source/LmbrCentral_precompiled.h",
             "Source/LmbrCentral.h",
-            "Source/LmbrCentral.cpp"
+            "Source/LmbrCentral.cpp",
+            "Source/AliasComponent.h",
+            "Source/AliasComponent.cpp"
         ]
     },
     "auto": {
@@ -42,10 +44,15 @@
         "Include/Geometry": [
             "include/LmbrCentral/Geometry/GeometrySystemComponentBus.h"
         ],
-        "Include/Dependency": [
+        "Include/Dependency":
+        [
             "include/LmbrCentral/Dependency/DependencyMonitor.h",
             "include/LmbrCentral/Dependency/DependencyMonitor.inl",
             "include/LmbrCentral/Dependency/DependencyNotificationBus.h"
+        ],
+        "Include/FileSystem":
+        [
+            "include/LmbrCentral/FileSystem/AliasConfiguration.h"
         ],
         "Include/Physics": [
             "include/LmbrCentral/Physics/ColliderComponentBus.h",
@@ -60,6 +67,7 @@
             "include/LmbrCentral/Physics/WaterNotificationBus.h"
         ],
         "Include/Rendering": [
+            "include/LmbrCentral/Rendering/ClipVolumeComponentBus.h",
             "include/LmbrCentral/Rendering/DecalComponentBus.h",
             "include/LmbrCentral/Rendering/LensFlareAsset.h",
             "include/LmbrCentral/Rendering/LensFlareComponentBus.h",
@@ -206,6 +214,8 @@
             "Source/Physics/BusForwarding/BusForwarding.cpp"
         ],
         "Source/Rendering": [
+            "Source/Rendering/ClipVolumeComponent.h",
+            "Source/Rendering/ClipVolumeComponent.cpp",
             "Source/Rendering/DecalComponent.h",
             "Source/Rendering/DecalComponent.cpp",
             "Source/Rendering/ParticleComponent.h",

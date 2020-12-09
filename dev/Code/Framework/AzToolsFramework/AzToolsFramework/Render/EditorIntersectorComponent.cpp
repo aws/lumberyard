@@ -20,8 +20,6 @@ namespace AzToolsFramework
 {
     namespace Components
     {
-        void EditorIntersectorComponent::Init() {}
-
         void EditorIntersectorComponent::Activate()
         {
             AzFramework::EntityContextId editorContextId;
@@ -38,12 +36,13 @@ namespace AzToolsFramework
 
         void EditorIntersectorComponent::Reflect(AZ::ReflectContext* context)
         {
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<EditorIntersectorComponent, AZ::Component>()
                     ->Version(0)
                     ;
             }
         }
-    }
-}
+    } // namespace Components
+
+} // namespace AzToolsFramework

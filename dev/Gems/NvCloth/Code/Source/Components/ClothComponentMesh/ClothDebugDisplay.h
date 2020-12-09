@@ -18,8 +18,9 @@ namespace NvCloth
 {
     class ClothComponentMesh;
 
+    //! Manages the debug display of a ClothComponentMesh.
     class ClothDebugDisplay
-        : private AzFramework::EntityDebugDisplayEventBus::Handler
+        : protected AzFramework::EntityDebugDisplayEventBus::Handler
     {
     public:
         AZ_TYPE_INFO(ClothDebugDisplay, "{306A2A30-8BB1-4D0F-9776-324CA1D90ABE}");
@@ -27,20 +28,24 @@ namespace NvCloth
         ClothDebugDisplay(ClothComponentMesh* clothComponentMesh);
         ~ClothDebugDisplay();
 
+        //! Returns true when any debug cloth information must be displayed.
         bool IsDebugDrawEnabled() const;
 
-    private:
-        // AzFramework::EntityDebugDisplayEventBus::Handler overrides
+    protected:
+        // AzFramework::EntityDebugDisplayEventBus::Handler overrides ...
         void DisplayEntityViewport(
             const AzFramework::ViewportInfo& viewportInfo,
             AzFramework::DebugDisplayRequests& debugDisplay) override;
 
+    private:
         void DisplayParticles(AzFramework::DebugDisplayRequests& debugDisplay);
         void DisplayWireCloth(AzFramework::DebugDisplayRequests& debugDisplay);
         void DisplayNormals(AzFramework::DebugDisplayRequests& debugDisplay, bool showTangents);
         void DisplayColliders(AzFramework::DebugDisplayRequests& debugDisplay);
-        void DrawSphereCollider(AzFramework::DebugDisplayRequests& debugDisplay, float radius, const AZ::Transform& transform);
-        void DrawCapsuleCollider(AzFramework::DebugDisplayRequests& debugDisplay, float radius, float height, const AZ::Transform& transform);
+        void DisplayMotionConstraints(AzFramework::DebugDisplayRequests& debugDisplay);
+        void DisplaySeparationConstraints(AzFramework::DebugDisplayRequests& debugDisplay);
+        void DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay, float radius, const AZ::Vector3& position, const AZ::Color& color);
+        void DrawCapsule(AzFramework::DebugDisplayRequests& debugDisplay, float radius, float height, const AZ::Transform& transform, const AZ::Color& color);
 
         ClothComponentMesh* m_clothComponentMesh = nullptr;
     };

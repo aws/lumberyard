@@ -218,7 +218,7 @@ QViewport::~QViewport()
 void QViewport::UpdateBackgroundColor()
 {
     QPalette pal(palette());
-    pal.setColor(QPalette::Background, QColor(m_settings->background.topColor.r,
+    pal.setColor(QPalette::Window, QColor(m_settings->background.topColor.r,
             m_settings->background.topColor.g,
             m_settings->background.topColor.b,
             m_settings->background.topColor.a));
@@ -1229,7 +1229,7 @@ void QViewport::wheelEvent(QWheelEvent* ev)
     Vec3 ydir = qt.GetColumn1().GetNormalized();
     Vec3 pos = qt.t;
     const float wheelSpeed = m_settings->camera.zoomSpeed * (m_fastMode ? m_settings->camera.fastMoveMultiplier : 1.0f) * (m_slowMode ? m_settings->camera.slowMoveMultiplier : 1.0f);
-    pos += 0.01f * ydir * aznumeric_cast<float>(ev->delta()) * wheelSpeed;
+    pos += 0.01f * ydir * aznumeric_cast<float>(ev->angleDelta().y()) * wheelSpeed;
     qt.t = pos;
     CameraMoved(qt, false);
 }

@@ -194,7 +194,7 @@ void CAssetBrowserReportControl::setModel(QAbstractItemModel* model)
         order[newIndex] = logicalIndex;
     }
     QList<int> visualIndexes = order.keys();
-    qSort(visualIndexes);
+    std::sort(visualIndexes.begin(), visualIndexes.end());
     for (int visualIndex : visualIndexes)
     {
         header()->moveSection(header()->visualIndex(order[visualIndex]), visualIndex);

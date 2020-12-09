@@ -140,6 +140,7 @@ namespace UnitTest
         const char* GetAbsoluteDevRootFolderPath() override { return ""; };
         bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& outputPath) override { return false; };
         bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullPath) override { return false; };
+        AZStd::string ReturnFullSourcePathFromRelativeProductPath(const AZStd::string& relPath) override { return ""; }
         bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) override { return false; };
         bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override
         {

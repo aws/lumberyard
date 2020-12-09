@@ -135,10 +135,11 @@ void StackResourcesWidget::OnResourceTableDoubleClicked(const QModelIndex& thisI
             auto curIndex = selectionModel->currentIndex();
             auto curData = m_view->m_treeView->model()->data(curIndex).toString();
 
-            auto templateFileIndex = selectionModel->currentIndex().child(ResourceGroupNode::ChildNodes::ResourceGroupTemplateFilePathNode, 0);
+            QModelIndex index = selectionModel->currentIndex();
+            auto templateFileIndex = index.model()->index(ResourceGroupNode::ChildNodes::ResourceGroupTemplateFilePathNode, 0, index);
             if (templateFileIndex.isValid())
             {
-                auto resourceIndex = templateFileIndex.child(thisRow, 0);
+                auto resourceIndex = templateFileIndex.model()->index(thisRow, 0, templateFileIndex);
                 if (resourceIndex.isValid())
                 {
                     selectionModel->setCurrentIndex(resourceIndex, QItemSelectionModel::ClearAndSelect);

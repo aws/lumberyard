@@ -606,7 +606,7 @@ void DockableLibraryTreeView::OnFirstShowing()
     //this function forces the sizing to correct itself when the widget is displayed.
     //otherwise when Level is first loaded it will not show the default view
     update();
-    if (m_treeView->topLevelItemCount() > 1) //Item count always > 1 since there is an empty "unparent" item
+    if (m_treeView->topLevelItemCount() > 0)
     {
         ShowDefaultView();
         ShowTreeView();

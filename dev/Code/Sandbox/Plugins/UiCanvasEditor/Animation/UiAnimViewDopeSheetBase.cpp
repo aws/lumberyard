@@ -306,9 +306,9 @@ void CUiAnimViewDopeSheetBase::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    float z = (event->delta() > 0) ? (m_timeScale * 1.25f) : (m_timeScale * 0.8f);
+    float z = (event->angleDelta().y() > 0) ? (m_timeScale * 1.25f) : (m_timeScale * 0.8f);
 
-    const QPoint pt = event->pos();
+    const QPoint pt = event->position().toPoint();
 
     float fAnchorTime = TimeFromPointUnsnapped(pt);
     SetTimeScale(z, fAnchorTime);

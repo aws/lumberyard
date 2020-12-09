@@ -15,7 +15,7 @@
 #ifdef EDITOR_QT_UI_EXPORTS
 #include <VariableWidgets/QColorDescriptorWidget.moc>
 #endif
-#include "qcoreevent.h"
+#include <qcoreevent.h>
 #include "../AttributeView.h"
 #include "IEditorParticleUtils.h"
 #include "../Utils.h"
@@ -137,7 +137,7 @@ QColorDescriptorWidget::QColorDescriptorWidget(QWidget* parent)
     lightEdit.setAlignment(Qt::AlignRight);
 
     setLayout(&layout);
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
 
     hueSlider.setProperty("ColorSlider", true);
     satSlider.setProperty("ColorSlider", true);

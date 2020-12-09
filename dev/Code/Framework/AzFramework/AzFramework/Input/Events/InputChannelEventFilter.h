@@ -51,95 +51,95 @@ namespace AzFramework
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Class that filters input channel events based on whitelisted input channels and devices.
-    class InputChannelEventFilterWhitelist : public InputChannelEventFilter
+    //! Class that filters input channel events based on included input channels and devices.
+    class InputChannelEventFilterInclusionList : public InputChannelEventFilter
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Constructor. By default the filter will be constructed to whitelist all input events.
-        //! \param[in] channelNameCrc32 The input channel name (Crc32) to whitelist (default any)
-        //! \param[in] deviceNameCrc32 The input device name (Crc32) to whitelist (default any)
-        //! \param[in] localUserId The local user id to whitelist (default any)
-        explicit InputChannelEventFilterWhitelist(const AZ::Crc32& channelNameCrc32 = AnyChannelNameCrc32,
-                                                  const AZ::Crc32& deviceNameCrc32 = AnyDeviceNameCrc32,
-                                                  const LocalUserId& localUserId = LocalUserIdAny);
+        //! Constructor. By default the filter will be constructed to include all input events.
+        //! \param[in] channelNameCrc32 The input channel name (Crc32) to include (default any)
+        //! \param[in] deviceNameCrc32 The input device name (Crc32) to include (default any)
+        //! \param[in] localUserId The local user id to include (default any)
+        explicit InputChannelEventFilterInclusionList(const AZ::Crc32& channelNameCrc32 = AnyChannelNameCrc32,
+                                                      const AZ::Crc32& deviceNameCrc32 = AnyDeviceNameCrc32,
+                                                      const LocalUserId& localUserId = LocalUserIdAny);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Default copying
-        AZ_DEFAULT_COPY(InputChannelEventFilterWhitelist);
+        AZ_DEFAULT_COPY(InputChannelEventFilterInclusionList);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
-        ~InputChannelEventFilterWhitelist() override = default;
+        ~InputChannelEventFilterInclusionList() override = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputChannelEventFilter::DoesPassFilter
         bool DoesPassFilter(const InputChannel& inputChannel) const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add an input channel name to the whitelist
-        //! \param[in] channelNameCrc32 The input channel name (Crc32) to add to the whitelist
-        void WhitelistChannelName(const AZ::Crc32& channelNameCrc32);
+        //! Add an input channel name to the inclusion list
+        //! \param[in] channelNameCrc32 The input channel name (Crc32) to add to the inclusion list
+        void IncludeChannelName(const AZ::Crc32& channelNameCrc32);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add an input device name to the whitelist
-        //! \param[in] channelNameCrc32 The input device name (Crc32) to add to the whitelist
-        void WhitelistDeviceName(const AZ::Crc32& deviceNameCrc32);
+        //! Add an input device name to the inclusion list
+        //! \param[in] channelNameCrc32 The input device name (Crc32) to add to the inclusion list
+        void IncludeDeviceName(const AZ::Crc32& deviceNameCrc32);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add a local user id to the whitelist
-        //! \param[in] localUserId The local user id to add to the whitelist
-        void WhitelistLocalUserId(LocalUserId localUserId);
+        //! Add a local user id to the inclusion list
+        //! \param[in] localUserId The local user id to add to the inclusion list
+        void IncludeLocalUserId(LocalUserId localUserId);
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        AZStd::unordered_set<AZ::Crc32>   m_channelNameCrc32Whitelist; //!< Channel name whitelist
-        AZStd::unordered_set<AZ::Crc32>   m_deviceNameCrc32Whitelist;  //!< Device name whitelist
-        AZStd::unordered_set<LocalUserId> m_localUserIdWhitelist;      //!< Local user whitelist
+        AZStd::unordered_set<AZ::Crc32>   m_channelNameCrc32InclusionList; //!< Channel name inclusion list
+        AZStd::unordered_set<AZ::Crc32>   m_deviceNameCrc32InclusionList;  //!< Device name inclusion list
+        AZStd::unordered_set<LocalUserId> m_localUserIdInclusionList;      //!< Local user inclusion list
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Class that filters input channel events based on blacklisted input channels and devices.
-    class InputChannelEventFilterBlacklist : public InputChannelEventFilter
+    //! Class that filters input channel events based on excluded input channels and devices.
+    class InputChannelEventFilterExclusionList : public InputChannelEventFilter
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Constructor. By default the filter will be constructed to blacklist no input events.
-        InputChannelEventFilterBlacklist();
+        //! Constructor. By default the filter will be constructed to exclude no input events.
+        InputChannelEventFilterExclusionList();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Default copying
-        AZ_DEFAULT_COPY(InputChannelEventFilterBlacklist);
+        AZ_DEFAULT_COPY(InputChannelEventFilterExclusionList);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
-        ~InputChannelEventFilterBlacklist() override = default;
+        ~InputChannelEventFilterExclusionList() override = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputChannelEventFilter::DoesPassFilter
         bool DoesPassFilter(const InputChannel& inputChannel) const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add an input channel name to the blacklist
-        //! \param[in] channelNameCrc32 The input channel name (Crc32) to add to the blacklist
-        void BlacklistChannelName(const AZ::Crc32& channelNameCrc32);
+        //! Add an input channel name to the exclusion list
+        //! \param[in] channelNameCrc32 The input channel name (Crc32) to add to the exclusion list
+        void ExcludeChannelName(const AZ::Crc32& channelNameCrc32);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add an input device name to the blacklist
-        //! \param[in] channelNameCrc32 The input device name (Crc32) to add to the blacklist
-        void BlacklistDeviceName(const AZ::Crc32& deviceNameCrc32);
+        //! Add an input device name to the exclusion list
+        //! \param[in] channelNameCrc32 The input device name (Crc32) to add to the exclusion list
+        void ExcludeDeviceName(const AZ::Crc32& deviceNameCrc32);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add a local user id to the blacklist
-        //! \param[in] localUserId The local user id to to add to the blacklist
-        void BlacklistLocalUserId(LocalUserId localUserId);
+        //! Add a local user id to the exclusion list
+        //! \param[in] localUserId The local user id to to add to the exclusion list
+        void ExcludeLocalUserId(LocalUserId localUserId);
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        AZStd::unordered_set<AZ::Crc32>   m_channelNameCrc32Blacklist; //!< Channel name blacklist
-        AZStd::unordered_set<AZ::Crc32>   m_deviceNameCrc32Blacklist;  //!< Device name blacklist
-        AZStd::unordered_set<LocalUserId> m_localUserIdBlacklist;      //!< Local user blacklist
+        AZStd::unordered_set<AZ::Crc32>   m_channelNameCrc32ExclusionList; //!< Channel name exclusion list
+        AZStd::unordered_set<AZ::Crc32>   m_deviceNameCrc32ExclusionList;  //!< Device name exclusion list
+        AZStd::unordered_set<LocalUserId> m_localUserIdExclusionList;      //!< Local user exclusion list
     };
 } // namespace AzFramework

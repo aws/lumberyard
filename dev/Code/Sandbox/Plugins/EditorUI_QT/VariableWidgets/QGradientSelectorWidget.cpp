@@ -14,13 +14,13 @@
 
 #include "QCustomGradientWidget.h"
 #include "CurveEditorContent.h"
-#include "qmessagebox.h"
-#include "qfile.h"
-#include "qxmlstream.h"
 #include "ISplines.h"
 #include "QGradientSwatchWidget.h"
-#include "qbrush.h"
-#include "qsettings.h"
+#include <qfile.h>
+#include <qmessagebox.h>
+#include <qxmlstream.h>
+#include <qbrush.h>
+#include <qsettings.h>
 
 
 QGradientSelectorWidget::QGradientSelectorWidget(QWidget* parent /*= 0*/)

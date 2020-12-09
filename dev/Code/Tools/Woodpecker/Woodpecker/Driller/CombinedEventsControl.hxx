@@ -48,7 +48,7 @@ namespace Driller
         Q_OBJECT;
     public:
         AZ_CLASS_ALLOCATOR(CombinedEventsControl,AZ::SystemAllocator,0);
-        CombinedEventsControl( QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        CombinedEventsControl( QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         virtual ~CombinedEventsControl(void);
 
         void SetIdentity(int identity);
@@ -65,7 +65,7 @@ namespace Driller
         EventNumberType m_ScrubberIndex;
         void SanitizeScrubberIndex();
 
-        QWidget *m_Contents;		
+        QWidget *m_Contents;
 
         CollapsiblePanel* m_collapsiblePanel;
 
@@ -90,7 +90,7 @@ namespace Driller
         public slots:
             void MouseClickInformed( int newValue );
             void MouseMoveInformed( int newValue );
-            void OnEventScrubberboxChanged( int newValue );			
+            void OnEventScrubberboxChanged( int newValue );
             void SetScrubberFrame( FrameNumberType frame );
             void OnEventTrackRequestEventFocus(Driller::EventNumberType);
 
@@ -108,7 +108,7 @@ namespace Driller
     public:
 
         AZ_CLASS_ALLOCATOR(CEQDataTrack,AZ::SystemAllocator,0);
-        CEQDataTrack( QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        CEQDataTrack( QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         virtual ~CEQDataTrack(void);
     };
 

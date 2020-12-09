@@ -164,7 +164,7 @@ namespace Path
     //! @param filepath [IN] path
     inline QStringList SplitIntoSegments(const QString& path)
     {
-        return path.split(QRegularExpression(QStringLiteral(R"([\\/])")), QString::SkipEmptyParts);
+        return path.split(QRegularExpression(QStringLiteral(R"([\\/])")), Qt::SkipEmptyParts);
     }
 
     //! Extract extension from full specified file path.

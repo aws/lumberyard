@@ -2,7 +2,7 @@
  <SubMaterials>
   <Material Name="DoorsMAT" MtlFlags="524416" DccMaterialHash="0" Shader="Illum" GenMask="200800000080002" StringGenMask="%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0.099898733,0.099898733,0.099898733,1" Emittance="0,0,0,0" Opacity="1" Shininess="122.00001" vertModifType="0" LayerAct="1">
    <Textures>
-    <Texture Map="Diffuse" File="objects//buildings/building_doorblue_01_diff.dds"/>
+    <Texture Map="Diffuse" File="objects/buildings/building_doorblue_01_diff.dds"/>
     <Texture Map="Bumpmap" File="objects/airship/airship_door_01_ddna.dds"/>
     <Texture Map="Emittance" File="objects/airship/airship_door_01_emis.dds"/>
    </Textures>

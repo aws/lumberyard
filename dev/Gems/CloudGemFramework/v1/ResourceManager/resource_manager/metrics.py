@@ -10,19 +10,25 @@
 #
 # $Revision: #1 $
 
-import os
+import atexit
 import ctypes
+import os
 import platform
 import sys
-import traceback
 import time
-import atexit
+import traceback
 
 # Global reference to the lymetrics dll
 lymetrics_dll = None
 
-# Refresh interval for lymetrics publishing
-process_interval_in_seconds = 2
+# Ly Metrics configuration
+LY_METRICS_PROCESS_INTERVAL_IN_SECONDS = 2  # Refresh interval for lymetrics publishing
+LY_METRICS_BUILD_TIME = 0   # Build time - default to 0
+LY_METRICS_DO_API_INIT_SHUTDOWN = True
+LY_METRICS_APPLICATION_NAME = "lmbraws"
+LY_METRICS_PROJECT_ID = None
+LY_METRICS_STATUS_FILE_PATH = None
+LY_METRICS_BASE_VERSION = None
 
 
 def __get_lymetrics_library_path(path_override=None):
@@ -52,7 +58,17 @@ def __load_lymetrics_library(path_override=None):
         try:
             dll = ctypes.cdll.LoadLibrary(dll_path)
             dll.LyMetrics_CreateEvent.restype = ctypes.c_uint64
-            dll.LyMetrics_Initialize("lmbraws", process_interval_in_seconds, True, None, None)
+
+            # Ly-Metrics configuration
+            dll.LyMetrics_Initialize(
+                LY_METRICS_APPLICATION_NAME,
+                LY_METRICS_PROCESS_INTERVAL_IN_SECONDS,
+                LY_METRICS_DO_API_INIT_SHUTDOWN,
+                LY_METRICS_PROJECT_ID,
+                LY_METRICS_STATUS_FILE_PATH,
+                LY_METRICS_BUILD_TIME,
+                LY_METRICS_BASE_VERSION
+            )
         except Exception as e:
             print("ERROR: Failed to load lymetrics library. {}".format(e))
             dll = None

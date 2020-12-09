@@ -1003,10 +1003,25 @@ namespace ScriptCanvasEditor
 
     UnsavedChangesOptions MainWindow::ShowSaveDialog(const QString& filename)
     {
+        bool wasActive = m_autoSaveTimer.isActive();
+
+        if (wasActive)
+        {
+            m_autoSaveTimer.stop();
+        }
+
         UnsavedChangesOptions shouldSaveResults = UnsavedChangesOptions::INVALID;
         UnsavedChangesDialog dialog(filename, this);
         dialog.exec();
         shouldSaveResults = dialog.GetResult();
+
+        // If the auto save timer was active, and we cancelled our save dialog, we want
+        // to resume the auto save timer.
+        if (shouldSaveResults == UnsavedChangesOptions::CANCEL_WITHOUT_SAVING
+            || shouldSaveResults == UnsavedChangesOptions::INVALID)
+        {
+            RestartAutoTimerSave(wasActive);
+        }
 
         return shouldSaveResults;
     }
@@ -1036,8 +1051,13 @@ namespace ScriptCanvasEditor
     }
 
     void MainWindow::RegisterVariableType(const ScriptCanvas::Data::Type& variableType)
-    {        
+    {
         m_variablePaletteTypes.insert(ScriptCanvas::Data::ToAZType(variableType));
+    }
+
+    bool MainWindow::IsValidVariableType(const ScriptCanvas::Data::Type& dataType) const
+    {
+        return m_variableDockWidget->IsValidVariableType(dataType);
     }
 
     void MainWindow::OpenValidationPanel()
@@ -2932,11 +2952,11 @@ namespace ScriptCanvasEditor
                 // The last tab has been removed.
                 SetActiveAsset({});
             }
-            else
-            {
-                // Handling various close all events because the save is async need to deal with this in a bunch of different ways
-                AddSystemTickAction(SystemTickActionFlag::CloseNextTabAction);
-            }
+            
+            // Handling various close all events because the save is async need to deal with this in a bunch of different ways
+            // Always want to trigger this, even if we don't have any active tabs to avoid doubling the clean-up
+            // information
+            AddSystemTickAction(SystemTickActionFlag::CloseNextTabAction);
         }
     }
 
@@ -3743,7 +3763,7 @@ namespace ScriptCanvasEditor
         return sceneEntityId;
     }
 
-    GraphCanvas::Endpoint MainWindow::CreateNodeForProposal(const AZ::EntityId& connectionId, const GraphCanvas::Endpoint& endpoint, const QPointF& scenePoint, const QPoint& screenPoint)
+    GraphCanvas::Endpoint MainWindow::CreateNodeForProposalWithGroup(const AZ::EntityId& connectionId, const GraphCanvas::Endpoint& endpoint, const QPointF& scenePoint, const QPoint& screenPoint, AZ::EntityId groupTarget)
     {
         PushPreventUndoStateUpdate();
 
@@ -3791,6 +3811,8 @@ namespace ScriptCanvasEditor
                     position.SetX(aznumeric_cast<float>(scenePoint.x() - horizontalOffset));
 
                     GraphCanvas::GeometryRequestBus::Event(retVal.GetNodeId(), &GraphCanvas::GeometryRequests::SetPosition, position);
+
+                    GraphCanvas::GraphUtils::AddElementToGroup(finalNode.m_graphCanvasId, groupTarget);
 
                     GraphCanvas::SceneNotificationBus::Event(graphCanvasGraphId, &GraphCanvas::SceneNotifications::PostCreationEvent);
                 }
@@ -3872,7 +3894,7 @@ namespace ScriptCanvasEditor
     }
 
     //! Hook for receiving context menu events for each QGraphicsScene
-    GraphCanvas::ContextMenuAction::SceneReaction MainWindow::ShowSceneContextMenu(const QPoint& screenPoint, const QPointF& scenePoint)
+    GraphCanvas::ContextMenuAction::SceneReaction MainWindow::ShowSceneContextMenuWithGroup(const QPoint& screenPoint, const QPointF& scenePoint, AZ::EntityId groupTarget)
     {
         bool tryDaisyChain = (QApplication::keyboardModifiers() & Qt::KeyboardModifier::ShiftModifier) != 0;
 
@@ -3907,13 +3929,16 @@ namespace ScriptCanvasEditor
                 GraphCanvas::GeometryRequestBus::EventResult(position, finalNode.m_graphCanvasId, &GraphCanvas::GeometryRequests::GetPosition);
                 GraphCanvas::GeometryRequestBus::Event(finalNode.m_graphCanvasId, &GraphCanvas::GeometryRequests::SetPosition, position);
 
+                // If we have a valid group target. We're going to want to add the element to the group.
+                GraphCanvas::GraphUtils::AddElementToGroup(finalNode.m_graphCanvasId, groupTarget);
+
                 GraphCanvas::SceneNotificationBus::Event(graphCanvasGraphId, &GraphCanvas::SceneNotifications::PostCreationEvent);
 
                 if (tryDaisyChain)
                 {
-                    QTimer::singleShot(50, [graphCanvasGraphId, finalNode, screenPoint, scenePoint]()
+                    QTimer::singleShot(50, [graphCanvasGraphId, finalNode, screenPoint, scenePoint, groupTarget]()
                     {
-                        GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::HandleProposalDaisyChain, finalNode.m_graphCanvasId, GraphCanvas::SlotTypes::ExecutionSlot, GraphCanvas::CT_Output, screenPoint, scenePoint);
+                        GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::HandleProposalDaisyChainWithGroup, finalNode.m_graphCanvasId, GraphCanvas::SlotTypes::ExecutionSlot, GraphCanvas::CT_Output, screenPoint, scenePoint, groupTarget);
                     });
                 }
             }
@@ -3977,7 +4002,7 @@ namespace ScriptCanvasEditor
         return HandleContextMenu(contextMenu, bookmarkId, screenPoint, scenePoint);
     }
 
-    GraphCanvas::ContextMenuAction::SceneReaction MainWindow::ShowConnectionContextMenu(const AZ::EntityId& connectionId, const QPoint& screenPoint, const QPointF& scenePoint)
+    GraphCanvas::ContextMenuAction::SceneReaction MainWindow::ShowConnectionContextMenuWithGroup(const AZ::EntityId& connectionId, const QPoint& screenPoint, const QPointF& scenePoint, AZ::EntityId groupTarget)
     {
         PushPreventUndoStateUpdate();
 
@@ -4054,6 +4079,8 @@ namespace ScriptCanvasEditor
                             nudgingController.FinalizeNudging();
                         }
 
+                        GraphCanvas::GraphUtils::AddElementToGroup(finalNode.m_graphCanvasId, groupTarget);
+
                         GraphCanvas::SceneNotificationBus::Event(graphCanvasGraphId, &GraphCanvas::SceneNotifications::PostCreationEvent);
                     }
                 }
@@ -4111,7 +4138,10 @@ namespace ScriptCanvasEditor
             CloseNextTab();
         }
 
-        AZ::SystemTickBus::Handler::BusDisconnect();
+        if (m_systemTickActions == 0)
+        {
+            AZ::SystemTickBus::Handler::BusDisconnect();
+        }
     }
 
     void MainWindow::OnCommandStarted(AZ::Crc32)
@@ -4432,6 +4462,16 @@ namespace ScriptCanvasEditor
         return 10.0;
     }
 
+    bool MainWindow::IsGroupDoubleClickCollapseEnabled() const
+    {
+        if (m_userSettings)
+        {
+            return m_userSettings->m_enableGroupDoubleClickCollapse;
+        }
+
+        return true;
+    }
+
     bool MainWindow::IsBookmarkViewportControlEnabled() const
     {
         if (m_userSettings)
@@ -4698,6 +4738,8 @@ namespace ScriptCanvasEditor
 
         ui->action_New_Function->setEnabled(false);
         ui->action_New_Script->setEnabled(false);
+
+        m_autoSaveTimer.stop();
     }
 
     void MainWindow::EnableAssetView(ScriptCanvasMemoryAsset::pointer memoryAsset)

@@ -64,6 +64,7 @@ namespace InputNodes
     protected:
         //////////////////////////////////////////////////////////////////////////
         /// Node
+        void OnActivate() override;
         void OnPostActivate() override;
         void OnDeactivate() override;
 
@@ -72,5 +73,10 @@ namespace InputNodes
         void OnPressed(float value) override;
         void OnHeld(float value) override;
         void OnReleased(float value) override;
+
+    private:
+        // performance timing related events
+        AZ::Event<size_t>* m_latentStartTimerEvent = nullptr;
+        AZ::Event<size_t>* m_latentStopTimerEvent = nullptr;
     };
 } // namespace Input

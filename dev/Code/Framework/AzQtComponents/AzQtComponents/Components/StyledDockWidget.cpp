@@ -18,13 +18,14 @@
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 
+#include <QGuiApplication>
 #include <QMainWindow>
 #include <QMouseEvent>
+#include <QOperatingSystemVersion>
 #include <QPainter>
-#include <QGuiApplication>
-#include <QWindow>
-#include <QStylePainter>
 #include <QStyleOptionFrame>
+#include <QStylePainter>
+#include <QWindow>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 6, 1) && defined(Q_OS_WIN32)
 #include <QtGui/private/qwindow_p.h>
@@ -42,8 +43,7 @@ namespace AzQtComponents
     static bool forceSkipTitleBarOverdraw()
     {
 #ifdef Q_OS_WIN
-        static bool isWin10 = QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
-        if (!isWin10)
+        if ((QOperatingSystemVersion::current() < QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10)))
         {
             // non-win10 never uses title bar overdraw
             return true;

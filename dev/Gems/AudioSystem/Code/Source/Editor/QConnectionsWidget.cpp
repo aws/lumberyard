@@ -263,7 +263,10 @@ namespace AudioControls
         {
             const TImplControlType type = middlewareControl->GetType();
 
-            QListWidgetItem* listItem = new QListWidgetItem(QIcon(QString(audioSystemImpl->GetTypeIcon(type).data())), QString(middlewareControl->GetName().c_str()));
+            QIcon icon = QIcon(QString(audioSystemImpl->GetTypeIcon(type).data()));
+            icon.addFile(QString(audioSystemImpl->GetTypeIconSelected(type).data()), QSize(), QIcon::Selected);
+
+            QListWidgetItem* listItem = new QListWidgetItem(icon, QString(middlewareControl->GetName().c_str()));
             listItem->setData(eMDR_ID, middlewareControl->GetId());
             listItem->setData(eMDR_LOCALIZED, middlewareControl->IsLocalized());
             if (middlewareControl->IsPlaceholder())

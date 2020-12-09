@@ -37,8 +37,15 @@ CStartupLogoDialog::CStartupLogoDialog(QString versionText, QString richTextCopy
  
     s_pLogoWindow = this;
 
-    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_1_26.png"));
-    setFixedSize(m_backgroundImage.size());
+    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_1_27.png"));
+    setFixedSize(QSize(600, 300));
+
+    // Prepare background image
+    QImage backgroundImage(QStringLiteral(":/StartupLogoDialog/splashscreen_1_27.png"));
+    m_backgroundImage = QPixmap::fromImage(backgroundImage.scaled(m_enforcedWidth, m_enforcedHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+
+    // Draw the Lumberyard logo from svg
+    m_ui->m_logo->load(QStringLiteral(":/StartupLogoDialog/lumberyard_logo.svg"));
 
     m_ui->m_TransparentConfidential->setObjectName("copyrightNotice");
     m_ui->m_TransparentConfidential->setTextFormat(Qt::RichText);

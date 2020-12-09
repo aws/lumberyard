@@ -52,7 +52,7 @@ public:
         {
             // Calculate default editor size and position.
             // For landscape screens, use 75% of the screen. For portrait screens, use 95% of screen width and 4:3 aspect ratio
-            QRect deskRect = QApplication::desktop()->availableGeometry();
+            QRect deskRect = QApplication::primaryScreen()->availableGeometry();
             float availableWidth = (float)deskRect.width() * ((deskRect.width() > deskRect.height()) ? 0.75f : 0.95f);
             float availableHeight = (float)deskRect.height() * 0.75f;
             float editorWidth = availableWidth;

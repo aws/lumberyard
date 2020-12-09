@@ -16,6 +16,7 @@
 #include <Editor/Objects/BaseObject.h>
 #include <Objects/EntityObject.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <MathConversion.h>
 
 //Legacy for conversion
@@ -28,8 +29,9 @@ namespace Snow
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorSnowComponent, EditorComponentBase>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Enabled", &EditorSnowComponent::m_enabled)
+                ->Field("RenderInEditMode", &EditorSnowComponent::m_renderInEditMode)
                 ->Field("Options", &EditorSnowComponent::m_snowOptions)
                 ;
 
@@ -45,6 +47,7 @@ namespace Snow
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSnowComponent::m_enabled, "Enabled", "Sets if the snow is enabled")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorSnowComponent::UpdateSnow)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSnowComponent::m_renderInEditMode, "Render In Edit Mode", "Should snow render in edit mode")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSnowComponent::m_snowOptions, "Options", "Options for snow simulation")
                     ;
 
@@ -128,6 +131,11 @@ namespace Snow
                     ;
             }
         }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<EditorSnowComponent>()->RequestBus("SnowComponentRequestBus");
+        }
     }
 
     void EditorSnowComponent::Activate()
@@ -136,6 +144,7 @@ namespace Snow
 
         AzToolsFramework::Components::EditorComponentBase::Activate();
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+        Snow::SnowComponentRequestBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         AZ::TickBus::Handler::BusConnect();
 
@@ -151,6 +160,7 @@ namespace Snow
     {
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
         AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
+        Snow::SnowComponentRequestBus::Handler::BusDisconnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect(GetEntityId());
         AZ::TickBus::Handler::BusDisconnect();
 
@@ -166,6 +176,167 @@ namespace Snow
         EditorComponentBase::Deactivate();
     }
 
+    void EditorSnowComponent::Enable()
+    {
+        m_enabled = true;
+        UpdateSnow();
+    }
+
+    void EditorSnowComponent::Disable()
+    {
+        m_enabled = false;
+        UpdateSnow();
+    }
+
+    void EditorSnowComponent::Toggle()
+    {
+        m_enabled = !m_enabled;
+        UpdateSnow();
+    }
+
+    bool EditorSnowComponent::IsEnabled()
+    {
+        return m_enabled;
+    }
+
+    void EditorSnowComponent::SetEnabled(bool enabled)
+    {
+        m_enabled = enabled;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetRadius()
+    {
+        return m_snowOptions.m_radius;
+    }
+
+    void EditorSnowComponent::SetRadius(float radius)
+    {
+        m_snowOptions.m_radius = radius;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowAmount()
+    {
+        return m_snowOptions.m_snowAmount;
+    }
+
+    void EditorSnowComponent::SetSnowAmount(float snowAmount)
+    {
+        m_snowOptions.m_snowAmount = snowAmount;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetFrostAmount()
+    {
+        return m_snowOptions.m_frostAmount;
+    }
+
+    void EditorSnowComponent::SetFrostAmount(float frostAmount)
+    {
+        m_snowOptions.m_frostAmount = frostAmount;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSurfaceFreezing()
+    {
+        return m_snowOptions.m_surfaceFreezing;
+    }
+
+    void EditorSnowComponent::SetSurfaceFreezing(float surfaceFreezing)
+    {
+        m_snowOptions.m_surfaceFreezing = surfaceFreezing;
+        UpdateSnow();
+    }
+
+    AZ::u32 EditorSnowComponent::GetSnowFlakeCount()
+    {
+        return m_snowOptions.m_snowFlakeCount;
+    }
+
+    void EditorSnowComponent::SetSnowFlakeCount(AZ::u32 snowFlakeCount)
+    {
+        m_snowOptions.m_snowFlakeCount = snowFlakeCount;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowFlakeSize()
+    {
+        return m_snowOptions.m_snowFlakeSize;
+    }
+
+    void EditorSnowComponent::SetSnowFlakeSize(float snowFlakeSize)
+    {
+        m_snowOptions.m_snowFlakeSize = snowFlakeSize;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowFallBrightness()
+    {
+        return m_snowOptions.m_snowFallBrightness;
+    }
+
+    void EditorSnowComponent::SetSnowFallBrightness(float snowFallBrightness)
+    {
+        m_snowOptions.m_snowFallBrightness = snowFallBrightness;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowFallGravityScale()
+    {
+        return m_snowOptions.m_snowFallGravityScale;
+    }
+
+    void EditorSnowComponent::SetSnowFallGravityScale(float snowFallGravityScale)
+    {
+        m_snowOptions.m_snowFallGravityScale = snowFallGravityScale;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowFallWindScale()
+    {
+        return m_snowOptions.m_snowFallWindScale;
+    }
+
+    void EditorSnowComponent::SetSnowFallWindScale(float snowFallWindScale)
+    {
+        m_snowOptions.m_snowFallWindScale = snowFallWindScale;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowFallTurbulence()
+    {
+        return m_snowOptions.m_snowFallTurbulence;
+    }
+
+    void EditorSnowComponent::SetSnowFallTurbulence(float snowFallTurbulence)
+    {
+        m_snowOptions.m_snowFallTurbulence = snowFallTurbulence;
+        UpdateSnow();
+    }
+
+    float EditorSnowComponent::GetSnowFallTurbulenceFreq()
+    {
+        return m_snowOptions.m_snowFallTurbulenceFreq;
+    }
+
+    void EditorSnowComponent::SetSnowFallTurbulenceFreq(float snowFallTurbulenceFreq)
+    {
+        m_snowOptions.m_snowFallTurbulenceFreq = snowFallTurbulenceFreq;
+        UpdateSnow();
+    }
+
+    SnowOptions EditorSnowComponent::GetSnowOptions()
+    {
+        return m_snowOptions;
+    }
+
+    void EditorSnowComponent::SetSnowOptions(SnowOptions snowOptions)
+    {
+        m_snowOptions = snowOptions;
+        UpdateSnow();
+    }
+
     void EditorSnowComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
     {
         m_currentWorldTransform = world;
@@ -175,7 +346,7 @@ namespace Snow
     void EditorSnowComponent::UpdateSnow()
     {
         //If the snow component is disabled, set the snow amount to 0
-        if (!m_enabled || gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
+        if (!m_enabled || (!m_renderInEditMode && gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode()))
         {
             TurnOffSnow();
             return;

@@ -15,9 +15,11 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/Entity.h>
+#include <AzFramework/Components/CameraBus.h>
 #include "CameraFramework/ICameraTargetAcquirer.h"
 #include "CameraFramework/ICameraLookAtBehavior.h"
 #include "CameraFramework/ICameraTransformBehavior.h"
+#include "CameraFramework/ICameraZoomBehavior.h"
 
 namespace Camera
 {
@@ -36,6 +38,10 @@ namespace Camera
         {
             delete transformBehavior;
         }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            delete zoomBehavior;
+        }
     }
 
     void CameraRigComponent::Init()
@@ -51,6 +57,10 @@ namespace Camera
         for (ICameraTransformBehavior* transformBehavior : m_transformBehaviors)
         {
             transformBehavior->Init();
+        }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->Init();
         }
     }
 
@@ -75,6 +85,13 @@ namespace Camera
         {
             transformBehavior->Activate(GetEntityId());
         }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->Activate(GetEntityId());
+        }
+
+        // Get initial fov so that each frame we start from the initial unaltered value
+        CameraRequestBus::EventResult(m_initialFov, GetEntityId(), &CameraRequestBus::Events::GetFovDegrees);
 
         m_initialTransform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(m_initialTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
@@ -97,6 +114,10 @@ namespace Camera
         {
             transformBehavior->Deactivate();
         }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->Deactivate();
+        }
     }
 
     void CameraRigComponent::Reflect(AZ::ReflectContext* reflection)
@@ -110,12 +131,15 @@ namespace Camera
                 ->Version(1);
             serializeContext->Class<ICameraTransformBehavior>()
                 ->Version(1);
+            serializeContext->Class<ICameraZoomBehavior>()
+                ->Version(1);
 
             serializeContext->Class<CameraRigComponent, AZ::Component>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Target Acquirers", &CameraRigComponent::m_targetAcquirers)
                 ->Field("Look-at Behaviors", &CameraRigComponent::m_lookAtBehaviors)
-                ->Field("Camera Transform Behaviors", &CameraRigComponent::m_transformBehaviors);
+                ->Field("Camera Transform Behaviors", &CameraRigComponent::m_transformBehaviors)
+                ->Field("Zoom Behaviors", &CameraRigComponent::m_zoomBehaviors);
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
@@ -123,6 +147,7 @@ namespace Camera
                 editContext->Class<ICameraTargetAcquirer>("ICameraTargetAcquirer", "Base class for all target acquirers.  Implementations can be found in other gems");
                 editContext->Class<ICameraLookAtBehavior>("ICameraLookAtBehavior", "Base class for all look at behaviors. Implementations can be found in other gems");
                 editContext->Class<ICameraTransformBehavior>("ICameraTransformBehavior", "Base class for all transform behaviors. Implementations can be found in other gems");
+                editContext->Class<ICameraZoomBehavior>("ICameraZoomBehavior", "Base class for all zoom behaviors. Implementations can be found in other gems");
 
                 editContext->Class<CameraRigComponent>( "Camera Rig", "The Camera Rig component can be used to add and remove behaviors to drive your camera entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
@@ -139,7 +164,11 @@ namespace Camera
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &CameraRigComponent::m_transformBehaviors, "Transform behaviors",
                     "A list of behaviors that run in order, each having the chance to sequentially modify the camera's transform based on the look-at transform")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(0, &CameraRigComponent::m_zoomBehaviors, "Zoom Behaviors",
+                        "A list of behaviors that run in order, each having the chance to sequentially modify the camera's zoom")
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ;
             }
         }
     }
@@ -189,5 +218,14 @@ namespace Camera
 
         // Step 4 Alert the camera component of the new desired transform
         EBUS_EVENT_ID(GetEntityId(), AZ::TransformBus, SetWorldTM, finalTransform);
+
+        // Step 5 Modify the zoom of the camera behavior
+        float finalZoom = 1.0f;
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->ModifyZoom(targetTransform, finalZoom);
+        }
+        float fov = m_initialFov / finalZoom;
+        CameraRequestBus::Event(GetEntityId(), &CameraRequestBus::Events::SetFovDegrees, fov);
     }
 } //namespace Camera

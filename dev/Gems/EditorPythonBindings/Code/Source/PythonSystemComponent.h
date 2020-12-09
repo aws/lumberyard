@@ -11,6 +11,8 @@
  */
 #pragma once
 
+#include <EditorPythonBindings/EditorPythonBindingsSymbols.h>
+
 #include <AzCore/Component/Component.h>
 #include <AzToolsFramework/API/EditorPythonConsoleBus.h>
 #include <AzToolsFramework/API/EditorPythonRunnerRequestsBus.h>
@@ -28,7 +30,7 @@ namespace EditorPythonBindings
         , protected AzToolsFramework::EditorPythonRunnerRequestBus::Handler
     {
     public:
-        AZ_COMPONENT(PythonSystemComponent, "{97F88B0F-CF68-4623-9541-549E59EE5F0C}", AZ::Component);
+        AZ_COMPONENT(PythonSystemComponent, PythonSystemComponentTypeId, AZ::Component);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -44,9 +46,10 @@ namespace EditorPythonBindings
 
         ////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorPythonEventsInterface
-        bool StartPython() override;
-        bool StopPython() override;
+        bool StartPython(bool silenceWarnings = false) override;
+        bool StopPython(bool silenceWarnings = false) override;
         void WaitForInitialization() override;
+        void ExecuteWithLock(AZStd::function<void()> executionCallback) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -58,9 +61,10 @@ namespace EditorPythonBindings
         ////////////////////////////////////////////////////////////////////////
         
     private:
-        // handle multiple Python initializers
+        // handle multiple Python initializers and threads
         AZStd::atomic_int m_initalizeWaiterCount {0};
         AZStd::semaphore m_initalizeWaiter;
+        AZStd::recursive_mutex m_lock;
     
         enum class Result
         {

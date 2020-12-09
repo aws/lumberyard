@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/PlatformIncl.h>
+
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
@@ -80,9 +82,9 @@ namespace ScriptEvents
 
             bool GetMethod(AZStd::string_view eventName, AZ::BehaviorMethod*& outMethod);
 
-            AZ::BehaviorEBus* GetBehaviorBus(AZ::u32 version = std::numeric_limits<AZ::u32>::max())
+            AZ::BehaviorEBus* GetBehaviorBus(AZ::u32 version = (std::numeric_limits<AZ::u32>::max)())
             {
-                if (version == std::numeric_limits<AZ::u32>::max())
+                if (version == (std::numeric_limits<AZ::u32>::max)())
                 {
                     return m_behaviorEBus[m_maxVersion];
                 }

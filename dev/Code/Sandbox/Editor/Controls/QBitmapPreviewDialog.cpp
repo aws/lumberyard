@@ -9,12 +9,16 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "StdAfx.h"
+
 #include "QBitmapPreviewDialog.h"
 #include <Controls/ui_QBitmapPreviewDialog.h>
-#include <QPainter>
-#include "qapplication.h"
+
+#include <QApplication>
 #include <QDesktopWidget>
+#include <QPainter>
+#include <QScreen>
 
 void QBitmapPreviewDialog::ImageData::setRgba8888(const void* buffer, const int& w, const int& h)
 {
@@ -95,7 +99,7 @@ void QBitmapPreviewDialog::setFullSize(const bool& fullSize)
 {
     if (fullSize)
     {
-        QSize desktop = QApplication::desktop()->availableGeometry(ui->m_placeholderBitmap->pos()).size();
+        QSize desktop = QApplication::screenAt(ui->m_placeholderBitmap->pos())->availableGeometry().size();
         QSize image = m_imageMain.m_image.size();
         QPoint location = mapToGlobal(ui->m_placeholderBitmap->pos());
         QSize finalSize;

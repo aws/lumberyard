@@ -17,15 +17,9 @@
 
 namespace AzQtComponents
 {
-        /**  Extends the QLabel widget to automatically truncate (elide) the label text
-    *    with ellipsis (...) if it doesn't fit within the width of the widget.
-
-    *    The tooltip for the label is also set to include the full label text
-    *    as well as an optional description, for example:
-    *      Truncated Display:  "A long label that..."
-    *      Tooltip:  "A long label that didn't fit
-    *                 Here is where the optional description will show"
-    */
+    //! Extends the QLabel widget to automatically elide the label text with an
+    //! ellipsis (...) if it doesn't fit within the width of the widget.
+    //! On hover, a tooltip will show the full label text, plus an optional description.
     class AZ_QT_COMPONENTS_API ElidingLabel
         : public QLabel
     {
@@ -34,31 +28,52 @@ namespace AzQtComponents
         explicit ElidingLabel(const QString& text, QWidget* parent = nullptr);
         explicit ElidingLabel(QWidget* parent = nullptr) : ElidingLabel("", parent) {}
 
+        //! Sets the label text.
         void SetText(const QString& text) { setText(text); }
+        //! Sets the label text.
         void setText(const QString& text);
-
-        void SetFilter(const QString& filter) { setFilter(filter); }
-        void setFilter(const QString& filter);
-
+        //! Returns the full label text.
         const QString& Text() const { return text(); }
+        //! Returns the full label text.
         const QString& text() const { return m_text; }
+        //! Returns the elided text of the label as it is currently shown.
         const QString& ElidedText() { return elidedText(); }
+        //! Returns the elided text of the label as it is currently shown.
         const QString& elidedText() { return m_elidedText; }
 
-        void SetDescription(const QString& description) { setDescription(description); }
-        void setDescription(const QString& description);
+        //! Set the label's filter string.
+        void SetFilter(const QString& filter) { setFilter(filter); }
+        //! Set the label's filter string.
+        //! If the filter string is a substring of the current text, it will appear highlighted
+        //! in the label. Used in conjunction with search filters to highlight results.
+        void setFilter(const QString& filter);
 
+        //! Sets the description for this label.
+        void SetDescription(const QString& description) { setDescription(description); }
+        //! Sets the description for this label.
+        //! The description is shown in the label's tooltip, either on its own or
+        //! alongside the full text in case of elision.
+        void setDescription(const QString& description);
+        //! Returns the description for this label.
         const QString& Description() const { return description(); }
+        //! Returns the description for this label.
         const QString& description() const { return m_description; }
 
+        //! Sets the location of the ellipsis when eliding label text.
         void SetElideMode(Qt::TextElideMode mode) { setElideMode(mode); }
+        //! Sets the location of the ellipsis when eliding label text.
         void setElideMode(Qt::TextElideMode mode);
 
+        //! Refreshes the style on the label.
         void RefreshStyle() { refreshStyle(); }
+        //! Refreshes the style on the label.
         void refreshStyle();
 
+        //! Sets the object name for the label.
         void setObjectName(const QString &name);
+        //! Overrides the QLabel minimumSizeHint function to allow it to be shrunk further than its content.
         QSize minimumSizeHint() const override;
+        //! Overrides the QLabel sizeHint function to return the elided text size.
         QSize sizeHint() const override;
 
     protected:

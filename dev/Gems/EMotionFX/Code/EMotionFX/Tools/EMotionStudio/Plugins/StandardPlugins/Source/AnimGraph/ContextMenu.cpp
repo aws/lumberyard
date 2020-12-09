@@ -477,17 +477,14 @@ namespace EMStudio
                 menu.addSeparator();
             }
 
-            // check if we need to disable the delete nodes option as an undeletable node is selected
-            bool canDelete = false;
+            // check if there is deletable node selected
             const AZStd::vector<GraphNode*> selectedGraphNodes = nodeGraph->GetSelectedGraphNodes();
-            for (GraphNode* graphNode : selectedGraphNodes)
-            {
-                if (graphNode->GetIsDeletable())
-                {
-                    canDelete = true;
-                    break;
-                }
-            }
+            const bool canDelete = AZStd::any_of(
+                begin(selectedGraphNodes),
+                end(selectedGraphNodes),
+                [](const GraphNode* graphNode) {
+                    return graphNode->GetIsDeletable();
+                });
 
             if (canDelete)
             {

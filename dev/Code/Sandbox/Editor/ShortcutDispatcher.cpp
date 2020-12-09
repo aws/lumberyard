@@ -289,7 +289,7 @@ QList<QAction*> ShortcutDispatcher::FindCandidateActions(QObject* scopeRoot, con
 bool ShortcutDispatcher::FindCandidateActionAndFire(QObject* focusWidget, QShortcutEvent* shortcutEvent, QList<QAction*>& candidates, QSet<QObject*>& previouslyVisited)
 {
     candidates = FindCandidateActions(focusWidget, shortcutEvent->key(), previouslyVisited);
-    QSet<QAction*> candidateSet = QSet<QAction*>::fromList(candidates);
+    QSet<QAction*> candidateSet = QSet<QAction*>(candidates.begin(), candidates.end());
     QAction* chosenAction = nullptr;
     int numCandidates = candidateSet.size();
     if (numCandidates == 1)

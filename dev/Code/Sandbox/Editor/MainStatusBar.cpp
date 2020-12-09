@@ -155,7 +155,7 @@ QSize StatusBarItem::sizeHint() const
         hint.rwidth() += iconTextSpacing; //spacing
     }
     auto fm = fontMetrics();
-    hint.rwidth() += fm.width(CurrentText());
+    hint.rwidth() += fm.horizontalAdvance(CurrentText());
 
     hint.rwidth() += 2 * marginSpacing;
     hint.rheight() += 2 * marginSpacing;
@@ -188,7 +188,7 @@ void StatusBarItem::paintEvent(QPaintEvent* pe)
     }
     if (!CurrentText().isEmpty())
     {
-        painter.drawItemText(textRect, Qt::AlignLeft | Qt::AlignVCenter, this->palette(), true, CurrentText(), QPalette::Foreground);
+        painter.drawItemText(textRect, Qt::AlignLeft | Qt::AlignVCenter, this->palette(), true, CurrentText(), QPalette::WindowText);
     }
 
     if (!m_icon.isNull())

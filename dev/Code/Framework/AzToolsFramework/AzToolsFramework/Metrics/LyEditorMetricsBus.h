@@ -109,9 +109,6 @@ namespace AzToolsFramework
         /// Triggered when the user triggers a redo of a ComponentEntity object(s)
         virtual void Redo() {}
 
-        /// Triggered when the user triggers a clone of ComponentEntity object(s), before operation begins
-        virtual void EntitiesAboutToBeCloned() {}
-
         /// Triggered when the user triggers a clone of ComponentEntity object(s)), after operation completes
         virtual void EntitiesCloned() {}
 

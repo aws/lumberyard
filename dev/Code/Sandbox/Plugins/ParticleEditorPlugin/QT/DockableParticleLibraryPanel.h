@@ -33,7 +33,7 @@ public:
     };
 
     DockableParticleLibraryPanel(QWidget* parent)
-        : DockableLibraryPanel(parent)
+        : DockableLibraryPanel(parent, false)
     {
         //we remap to ensure parent actions will not get double mapped.
         RemapHotKeys();

@@ -616,8 +616,17 @@ void ViewportWidget::mouseReleaseEvent(QMouseEvent* ev)
 void ViewportWidget::wheelEvent(QWheelEvent* ev)
 {
     UiEditorMode editorMode = m_editorWindow->GetEditorMode();
-    QWheelEvent scaledEvent(WidgetToViewport(ev->pos()), ev->globalPos(), ev->pixelDelta(), ev->angleDelta(),
-        ev->delta(), ev->orientation(), ev->buttons(), ev->modifiers());
+    QWheelEvent scaledEvent(
+        WidgetToViewport(ev->position()),
+        ev->globalPosition(),
+        ev->pixelDelta(),
+        ev->angleDelta(),
+        ev->buttons(),
+        ev->modifiers(),
+        ev->phase(),
+        ev->inverted()
+    );
+
     if (editorMode == UiEditorMode::Edit)
     {
         // in Edit mode just send input to ViewportInteraction
@@ -821,8 +830,10 @@ void ViewportWidget::dropEvent(QDropEvent* event)
     }
 }
 
-void ViewportWidget::OnEntityPickModeStarted()
+void ViewportWidget::OnEntityPickModeStarted(AzToolsFramework::PickModeConfiguration pickModeConfiguration)
 {
+    AZ_UNUSED(pickModeConfiguration);
+
     m_inObjectPickMode = true;
     m_viewportInteraction->StartObjectPickMode();
 }

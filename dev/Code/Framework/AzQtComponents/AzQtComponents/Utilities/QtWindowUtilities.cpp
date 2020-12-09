@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
+#include <AzQtComponents/Utilities/ScreenUtilities.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <QApplication>
 #include <QDesktopWidget>
@@ -30,16 +31,27 @@ namespace AzQtComponents
 {
     QRect GetTotalScreenGeometry()
     {
-        QDesktopWidget* desktopWidget = QApplication::desktop();
-
         QRect totalScreenRect;
-        int numScreens = desktopWidget->screenCount();
+        int numScreens = QApplication::screens().count();
         for (int i = 0; i < numScreens; ++i)
         {
-            totalScreenRect = totalScreenRect.united(desktopWidget->screenGeometry(i));
+            totalScreenRect = totalScreenRect.united(QApplication::screens().at(i)->geometry());
         }
 
         return totalScreenRect;
+    }
+
+    void EnsureGeometryWithinScreenTop(QRect& geometry)
+    {
+        QScreen* screen = Utilities::ScreenAtPoint(geometry.center());
+        if (screen)
+        {
+            QRect screenRect = screen->geometry();
+            if (!screenRect.isNull() && geometry.top() < screenRect.top())
+            {
+                geometry.moveTop(screenRect.top());
+            }
+        }
     }
 
     void EnsureWindowWithinScreenGeometry(QWidget* widget)

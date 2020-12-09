@@ -59,7 +59,6 @@ protected:
     bool SetMaskLayer(uint32 layerId);
 
 protected slots:
-    void OnSliderChange();
     void UpdateTextureBrushSettings();
     void OnBrushResetBrightness();
     void SetLayerMaskSettingsToLayer();

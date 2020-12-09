@@ -24,6 +24,7 @@
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
 #include <LmbrCentral/Rendering/EditorCameraCorrectionBus.h>
+#include <LmbrCentral/Rendering/ClipVolumeComponentBus.h>
 
 #include "LightComponent.h"
 
@@ -81,6 +82,7 @@ namespace LmbrCentral
         , private AzFramework::AssetCatalogEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , private EditorCameraCorrectionRequestBus::Handler
+        , private ClipVolumeComponentNotificationBus::Handler
     {
     private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
@@ -126,6 +128,10 @@ namespace LmbrCentral
         // EditorCameraCorrectionRequestBus interface implementation
         // Light is aligned along the the x-axis so add a transform correction to align along the y-axis.
         AZ::Matrix3x3 GetTransformCorrection() override { return AZ::Matrix3x3::CreateRotationZ(-AZ::Constants::HalfPi); }
+
+        // ClipVolumeComponentNotificationBus::Handler
+        void OnClipVolumeCreated(IClipVolume* clipVolume) override;
+        void OnClipVolumeDestroyed(IClipVolume* clipVolume) override;
 
         ///////////////////////////////////////////
         // LightComponentEditorRequestBus Modifiers

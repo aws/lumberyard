@@ -66,19 +66,12 @@ namespace AzToolsFramework
         /// Creates an entity in the editor context.
         /// \return the EntityId for the created Entity
         virtual AZ::EntityId CreateNewEditorEntity(const char* name) = 0;
-        //! LUMBERYARD_DEPRECATED(LY-103316)
-        AZ_DEPRECATED(virtual AZ::Entity* CreateEditorEntity(const char* name) = 0;,
-            "CreateEditorEntity is deprecated, please use CreateNewEditorEntity");
 
         /// Creates an entity in the editor context.
         /// \param name The name to give the newly created entity.
         /// \param entityId The entity ID to create the new entity with.
         /// \return the EntityId for the created Entity
         virtual AZ::EntityId CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;
-        //! LUMBERYARD_DEPRECATED(LY-103316)
-        AZ_DEPRECATED(
-            virtual AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;,
-            "CreateEditorEntityWithId is deprecated, please use CreateNewEditorEntityWithId");
 
         /// Registers an existing entity with the editor context.
         virtual void AddEditorEntity(AZ::Entity* entity) = 0;
@@ -283,6 +276,12 @@ namespace AzToolsFramework
 
         //! Fired after the EditorEntityContext fails to export the root level slice to the game stream
         virtual void OnSaveStreamForGameFailure(AZStd::string_view /*failureString*/) {}
+
+        //! Fired when the user triggers a clone of ComponentEntity object(s), before operation begins
+        virtual void OnEntitiesAboutToBeCloned() {}
+
+        //! Fires when the user triggers a clone of ComponentEntity object(s)), after operation completes
+        virtual void OnEntitiesCloned() {}
 
     };
 

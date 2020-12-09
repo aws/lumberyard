@@ -37,7 +37,7 @@ namespace AZStd
         AZ_Assert(ret, "CloseHandle error: %d\n", GetLastError());
     }
 
-    AZ_FORCE_INLINE void semaphore::acquire()
+    inline void semaphore::acquire()
     {
         WaitForSingleObject(m_semaphore, AZ_INFINITE);
     }
@@ -45,16 +45,30 @@ namespace AZStd
     template <class Rep, class Period>
     AZ_FORCE_INLINE bool semaphore::try_acquire_for(const chrono::duration<Rep, Period>& rel_time)
     {
-        chrono::milliseconds timeToTry = rel_time;
-        return (WaitForSingleObject(m_semaphore, static_cast<DWORD>(timeToTry.count())) == AZ_WAIT_OBJECT_0);
+        chrono::milliseconds durationMilliseconds = rel_time;
+        DWORD millisWinAPI = static_cast<DWORD>(durationMilliseconds.count());
+        DWORD resultCode = WaitForSingleObject(m_semaphore, millisWinAPI);
+        return (resultCode == AZ_WAIT_OBJECT_0);
     }
 
-    AZ_FORCE_INLINE void semaphore::release(unsigned int releaseCount)
+    template <class Clock, class Duration>
+    AZ_FORCE_INLINE bool semaphore::try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
+    {
+        auto timeNow = AZStd::chrono::system_clock::now();
+        if (timeNow < abs_time)
+        {
+            chrono::milliseconds timeToTry = AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(abs_time - timeNow);
+            return try_acquire_for(timeToTry);
+        }
+        return false;
+    }
+
+    inline void semaphore::release(unsigned int releaseCount)
     {
         ReleaseSemaphore(m_semaphore, releaseCount, NULL);
     }
 
-    AZ_FORCE_INLINE semaphore::native_handle_type semaphore::native_handle()
+    inline semaphore::native_handle_type semaphore::native_handle()
     {
         return m_semaphore;
     }

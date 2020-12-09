@@ -15,7 +15,6 @@
 SUBFOLDERS = [
     'ResourceCompiler',
     'ResourceCompilerABC',
-    'ResourceCompilerImage',
     'ResourceCompilerPC',
     'ResourceCompilerXML',
     'ResourceCompilerScene',

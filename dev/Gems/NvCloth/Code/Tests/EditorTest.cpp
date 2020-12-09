@@ -10,18 +10,16 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
-#include <AzTest/AzTest.h>
-
-#include <AzCore/UnitTest/TestTypes.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+
+#include <Mocks/ISystemMock.h>
 
 #include <Components/ClothComponent.h>
 #include <Components/EditorClothComponent.h>
-#include <Utils/Allocators.h>
 
-namespace NvCloth
+#include <System/SystemComponent.h>
+
+namespace UnitTest
 {
     namespace
     {
@@ -42,7 +40,13 @@ namespace NvCloth
             if (s_app == nullptr)
             {
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-                AZ::AllocatorInstance<AzClothAllocator>::Create();
+
+                // override global environment
+                s_previousGEnv = gEnv;
+                s_mockGEnv = AZStd::make_unique<SSystemGlobalEnvironment>();
+                gEnv = s_mockGEnv.get();
+
+                NvCloth::SystemComponent::InitializeNvClothLibrary();
 
                 s_app = aznew AzToolsFramework::ToolsApplication;
                 AzToolsFramework::ToolsApplication::Descriptor appDescriptor;
@@ -54,8 +58,8 @@ namespace NvCloth
 
                 s_app->Start(appDescriptor);
 
-                s_app->RegisterComponentDescriptor(ClothComponent::CreateDescriptor());
-                s_app->RegisterComponentDescriptor(EditorClothComponent::CreateDescriptor());
+                s_app->RegisterComponentDescriptor(NvCloth::ClothComponent::CreateDescriptor());
+                s_app->RegisterComponentDescriptor(NvCloth::EditorClothComponent::CreateDescriptor());
             }
         }
 
@@ -67,15 +71,29 @@ namespace NvCloth
                 delete s_app;
                 s_app = nullptr;
 
-                AZ::AllocatorInstance<AzClothAllocator>::Destroy();
+                NvCloth::SystemComponent::TearDownNvClothLibrary();
+
+                // restore global environment
+                gEnv = s_previousGEnv;
+                s_mockGEnv.reset();
+                s_previousGEnv = nullptr;
+
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
             }
         }
 
         static AzToolsFramework::ToolsApplication* s_app;
+
+        static AZStd::unique_ptr<SSystemGlobalEnvironment> s_mockGEnv;
+
+        static SSystemGlobalEnvironment* s_previousGEnv;
     };
 
     AzToolsFramework::ToolsApplication* NvClothEditorTest::s_app = nullptr;
+
+    AZStd::unique_ptr<SSystemGlobalEnvironment> NvClothEditorTest::s_mockGEnv;
+
+    SSystemGlobalEnvironment* NvClothEditorTest::s_previousGEnv = nullptr;
 
     EntityPtr CreateInactiveEditorEntity(const char* entityName)
     {
@@ -99,7 +117,7 @@ namespace NvCloth
     TEST_F(NvClothEditorTest, EditorClothComponent_DependencyMissing_EntityIsInvalid)
     {
         EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        entity->CreateComponent<EditorClothComponent>();
+        entity->CreateComponent<NvCloth::EditorClothComponent>();
 
         // the entity should not be in a valid state because the cloth component requires a mesh or an actor component
         AZ::Entity::DependencySortOutcome sortOutcome = entity->EvaluateDependenciesGetDetails();
@@ -110,7 +128,7 @@ namespace NvCloth
     TEST_F(NvClothEditorTest, EditorClothComponent_MeshDependencySatisfied_EntityIsValid)
     {
         EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        entity->CreateComponent<EditorClothComponent>();
+        entity->CreateComponent<NvCloth::EditorClothComponent>();
         entity->CreateComponent(EditorMeshComponentTypeId);
 
         // the entity should be in a valid state because the cloth component requirement is satisfied
@@ -121,7 +139,7 @@ namespace NvCloth
     TEST_F(NvClothEditorTest, EditorClothComponent_ActorDependencySatisfied_EntityIsValid)
     {
         EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        entity->CreateComponent<EditorClothComponent>();
+        entity->CreateComponent<NvCloth::EditorClothComponent>();
         entity->CreateComponent(EditorActorComponentTypeId);
 
         // the entity should be in a valid state because the cloth component requirement is satisfied
@@ -133,12 +151,12 @@ namespace NvCloth
     {
 
         EntityPtr entity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        entity->CreateComponent<EditorClothComponent>();
+        entity->CreateComponent<NvCloth::EditorClothComponent>();
         entity->CreateComponent(EditorMeshComponentTypeId);
 
         // the cloth component should be compatible with multiple cloth components
-        entity->CreateComponent<EditorClothComponent>();
-        entity->CreateComponent<EditorClothComponent>();
+        entity->CreateComponent<NvCloth::EditorClothComponent>();
+        entity->CreateComponent<NvCloth::EditorClothComponent>();
 
         // the entity should be in a valid state because the cloth component requirement is satisfied
         AZ::Entity::DependencySortOutcome sortOutcome = entity->EvaluateDependenciesGetDetails();
@@ -149,14 +167,14 @@ namespace NvCloth
     {
         // create an editor entity with a cloth component and a mesh component
         EntityPtr editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        editorEntity->CreateComponent<EditorClothComponent>();
+        editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
         editorEntity->CreateComponent(EditorMeshComponentTypeId);
         editorEntity->Activate();
 
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
 
         // check that the runtime entity has the expected components
-        EXPECT_TRUE(gameEntity->FindComponent<ClothComponent>() != nullptr);
+        EXPECT_TRUE(gameEntity->FindComponent<NvCloth::ClothComponent>() != nullptr);
         EXPECT_TRUE(gameEntity->FindComponent(MeshComponentTypeId) != nullptr);
     }
 
@@ -164,17 +182,17 @@ namespace NvCloth
     {
         // create an editor entity with a cloth component and an actor component
         EntityPtr editorEntity = CreateInactiveEditorEntity("ClothComponentEditorEntity");
-        editorEntity->CreateComponent<EditorClothComponent>();
+        editorEntity->CreateComponent<NvCloth::EditorClothComponent>();
         editorEntity->CreateComponent(EditorActorComponentTypeId);
         editorEntity->Activate();
 
         EntityPtr gameEntity = CreateActiveGameEntityFromEditorEntity(editorEntity.get());
 
         // check that the runtime entity has the expected components
-        EXPECT_TRUE(gameEntity->FindComponent<ClothComponent>() != nullptr);
+        EXPECT_TRUE(gameEntity->FindComponent<NvCloth::ClothComponent>() != nullptr);
         EXPECT_TRUE(gameEntity->FindComponent(ActorComponentTypeId) != nullptr);
     }
 
     AZ_UNIT_TEST_HOOK();
     
-} // namespace NvCloth
+} // namespace UnitTest

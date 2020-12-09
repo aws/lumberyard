@@ -63,7 +63,7 @@ namespace Driller
     public:
         AZ_TYPE_INFO(DrillerMainWindow, "{91E48678-AEF8-474F-BB20-DDC51ACAA43A}");
         AZ_CLASS_ALLOCATOR(DrillerMainWindow,AZ::SystemAllocator,0);
-        DrillerMainWindow(QWidget* parent = NULL, Qt::WindowFlags flags = 0);
+        DrillerMainWindow(QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
         virtual ~DrillerMainWindow(void);
         DrillerMainWindow(const DrillerMainWindow&)
         {

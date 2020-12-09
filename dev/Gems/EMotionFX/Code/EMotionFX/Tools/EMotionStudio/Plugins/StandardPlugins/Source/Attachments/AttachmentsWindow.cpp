@@ -30,7 +30,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QMenu>
-#include <QPushButton>
+#include <QToolButton>
 #include <QShortcut>
 #include <QTableWidget>
 #include <QTableWidget>
@@ -124,11 +124,11 @@ namespace EMStudio
         mTableWidget->setColumnWidth(5, 32);
 
         // create buttons for the attachments dialog
-        mOpenAttachmentButton           = new QPushButton();
-        mOpenDeformableAttachmentButton = new QPushButton();
-        mRemoveButton                   = new QPushButton();
-        mClearButton                    = new QPushButton();
-        mCancelSelectionButton          = new QPushButton();
+        mOpenAttachmentButton           = new QToolButton();
+        mOpenDeformableAttachmentButton = new QToolButton();
+        mRemoveButton                   = new QToolButton();
+        mClearButton                    = new QToolButton();
+        mCancelSelectionButton          = new QToolButton();
 
         EMStudioManager::MakeTransparentButton(mOpenAttachmentButton,              "/Images/Icons/Open.svg",   "Open actor from file and add it as regular attachment");
         EMStudioManager::MakeTransparentButton(mOpenDeformableAttachmentButton,    "/Images/Icons/Open.svg",   "Open actor from file and add it as skin attachment");
@@ -204,15 +204,15 @@ namespace EMStudio
 
         // connect the controls to the slots
         connect(mTableWidget,                          &QTableWidget::itemSelectionChanged, this, &AttachmentsWindow::OnSelectionChanged);
-        connect(mOpenAttachmentButton,                 &QPushButton::clicked,              this, &AttachmentsWindow::OnOpenAttachmentButtonClicked);
-        connect(mOpenDeformableAttachmentButton,       &QPushButton::clicked,              this, &AttachmentsWindow::OnOpenDeformableAttachmentButtonClicked);
-        connect(mRemoveButton,                         &QPushButton::clicked,              this, &AttachmentsWindow::OnRemoveButtonClicked);
-        connect(mClearButton,                          &QPushButton::clicked,              this, &AttachmentsWindow::OnClearButtonClicked);
+        connect(mOpenAttachmentButton,                 &QToolButton::clicked,              this, &AttachmentsWindow::OnOpenAttachmentButtonClicked);
+        connect(mOpenDeformableAttachmentButton,       &QToolButton::clicked,              this, &AttachmentsWindow::OnOpenDeformableAttachmentButtonClicked);
+        connect(mRemoveButton,                         &QToolButton::clicked,              this, &AttachmentsWindow::OnRemoveButtonClicked);
+        connect(mClearButton,                          &QToolButton::clicked,              this, &AttachmentsWindow::OnClearButtonClicked);
         connect(mNodeSelectionWindow->GetNodeHierarchyWidget(),                        static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &AttachmentsWindow::OnAttachmentNodesSelected);
         connect(mNodeSelectionWindow,                                                  &NodeSelectionWindow::rejected,             this, &AttachmentsWindow::OnCancelAttachmentNodeSelection);
         connect(mNodeSelectionWindow->GetNodeHierarchyWidget()->GetTreeWidget(),       &QTreeWidget::itemSelectionChanged, this, &AttachmentsWindow::OnNodeChanged);
         connect(mEscapeShortcut, &QShortcut::activated, this, &AttachmentsWindow::OnEscapeButtonPressed);
-        connect(mCancelSelectionButton, &QPushButton::clicked, this, &AttachmentsWindow::OnEscapeButtonPressed);
+        connect(mCancelSelectionButton, &QToolButton::clicked, this, &AttachmentsWindow::OnEscapeButtonPressed);
 
         // reinit the window
         ReInit();

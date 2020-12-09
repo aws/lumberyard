@@ -19,8 +19,14 @@ namespace AZStd
 {
     /**
      * Condition variables provide synchronization primitives used to block a thread until notified by some other
-     * thread that some condition is met or until a system time is reached. \ref C++0x (30.5)
+     * thread that some condition is met or until a system time is reached. \ref C++11
      */
+    enum class cv_status // since C++11
+    {
+        no_timeout,
+        timeout,
+    };
+
     class condition_variable
     {
     public:
@@ -35,11 +41,11 @@ namespace AZStd
         template <class Predicate>
         void wait(unique_lock<mutex>& lock, Predicate pred);
         template <class Clock, class Duration>
-        bool wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time);
+        cv_status wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time);
         template <class Clock, class Duration, class Predicate>
         bool wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred);
         template <class Rep, class Period>
-        bool wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time);
+        cv_status wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time);
         template <class Rep, class Period, class Predicate>
         bool wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred);
         native_handle_type native_handle();
@@ -72,11 +78,11 @@ namespace AZStd
         template <class Lock, class Predicate>
         void wait(Lock& lock, Predicate pred);
         template <class Lock, class Clock, class Duration>
-        bool wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time);
+        cv_status wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time);
         template <class Lock, class Clock, class Duration, class Predicate>
         bool wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred);
         template <class Lock, class Rep, class Period>
-        bool wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time);
+        cv_status wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time);
         template <class Lock, class Rep, class Period, class Predicate>
         bool wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred);
         native_handle_type native_handle();

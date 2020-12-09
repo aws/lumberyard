@@ -11,10 +11,11 @@
 */
 #pragma once
 
+#include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Crc.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/any.h>
 #include <AzCore/std/containers/unordered_set.h>
-#include <AzCore/Math/Crc.h>
-#include <AzCore/Component/EntityId.h>
 
 namespace GraphCanvas
 {
@@ -215,4 +216,6 @@ namespace GraphCanvas
 
         AZStd::string m_failureReason;
     };
+
+    typedef AZ::Outcome<void, AZStd::string> CanHandleMimeEventOutcome;
 }

@@ -124,10 +124,7 @@ namespace EMotionFX
     // process the blend tree and calculate its output
     void BlendTree::Output(AnimGraphInstance* animGraphInstance)
     {
-        AZ_Assert(m_finalNode, "There should always be a final node. Something seems to be wrong with the blend tree creation.");
-
-        // get the output pose
-        AnimGraphPose* outputPose;
+        AnimGraphPose* outputPose = nullptr;
 
         // if this node is disabled, output the bind pose
         if (mDisabled)

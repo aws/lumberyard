@@ -91,7 +91,7 @@ namespace AzQtComponents
     {
         const QFontMetrics fontMetrics({ g_dockBarFontFamily, g_dockBarFontPointSize });
 
-        textWidth = fontMetrics.width(title);
+        textWidth = fontMetrics.horizontalAdvance(title);
         if (textWidth > MaxTabTitleWidth)
         {
             textWidth = MaxTabTitleWidth;

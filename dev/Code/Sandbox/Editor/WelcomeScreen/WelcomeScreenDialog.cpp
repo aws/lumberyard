@@ -21,18 +21,19 @@
 #include <Core/QtEditorApplication.h>
 #include <Editor/MainWindow.h>
 
-#include <QStringListModel>
-#include <QListView>
-#include <QToolTip>
-#include <QMenu>
-#include <QDesktopServices>
-#include <QFileDialog>
-#include <QUrl>
-#include <QTimer>
-#include <QMessageBox>
 #include <QApplication>
 #include <QDesktopWidget>
+#include <QDesktopServices>
+#include <QFileDialog>
+#include <QListView>
+#include <QMenu>
+#include <QMessageBox>
 #include <QSignalBlocker>
+#include <QScreen>
+#include <QStringListModel>
+#include <QTimer>
+#include <QToolTip>
+#include <QUrl>
 
 #include "NewsShared/ResourceManagement/ResourceManifest.h"
 #include "NewsShared/Qt/ArticleViewContainer.h"
@@ -49,10 +50,9 @@ static int GetSmallestScreenHeight()
     QDesktopWidget* desktopWidget = QApplication::desktop();
 
     int smallestHeight = -1;
-    int screenCount = desktopWidget->screenCount();
-    for (int i = 0; i < screenCount; i++)
+    for (QScreen* screen : QApplication::screens())
     {
-        int screenHeight = desktopWidget->availableGeometry(i).height();
+        int screenHeight = screen->availableGeometry().height();
         if ((smallestHeight < 0) || (smallestHeight > screenHeight))
         {
             smallestHeight = screenHeight;

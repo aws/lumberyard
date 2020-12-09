@@ -352,7 +352,7 @@ QString PanelWidget::saveCollapsedState()
 
 void PanelWidget::loadCollapsedState(const QString& str)
 {
-    QStringList uncollapsed = str.split("||", QString::SkipEmptyParts);
+    QStringList uncollapsed = str.split("||", Qt::SkipEmptyParts);
 
     // build a set so that we can quickly determine whether to uncollapse something
     QSet<QString> uncollapsedSet;
@@ -397,7 +397,7 @@ QString PanelWidget::saveAdvancedState()
 void PanelWidget::loadAdvancedState(const QString& str)
 {
 #ifdef _ENABLE_ADVANCED_BASIC_BUTTONS_
-    QStringList advanced = str.split("||", QString::SkipEmptyParts);
+    QStringList advanced = str.split("||", Qt::SkipEmptyParts);
 
     // build a set so that we can quickly determine whether a panel has advanced options visible
     QSet<QString> unadvancedSet;

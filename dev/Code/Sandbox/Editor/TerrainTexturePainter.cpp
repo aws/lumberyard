@@ -839,8 +839,8 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         // clip against heightmap borders
         int left = max((int)floor(fX - fHMRadius), 0);
         int top = max((int)floor(fY - fHMRadius), 0);
-        int width = min((int)ceil(fX + fHMRadius), hmapWidth);
-        int height = min((int)ceil(fY + fHMRadius), hmapHeight);
+        int width = min((int)ceil(fHMRadius * 2.0f), hmapWidth);
+        int height = min((int)ceil(fHMRadius * 2.0f), hmapHeight);
 
         // Update surface types at 3d engine terrain.
         m_heightmap->UpdateEngineTerrain(left, top, width, height, false, true);
@@ -1324,6 +1324,8 @@ private:
     //////////////////////////////////////////////////////////////////////////
     static void RefreshUI()
     {
+        CTerrainTexturePainter::Command_Activate();
+
         if (s_toolPanel)
         {
             s_toolPanel->SetBrush(CTerrainTexturePainter::m_brush);

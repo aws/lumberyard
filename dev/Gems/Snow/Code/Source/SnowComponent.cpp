@@ -44,7 +44,9 @@ namespace Snow
 
                 ->Event("Toggle", &SnowComponentRequestBus::Events::Toggle)
 
+                ->Event("SetEnabled", &SnowComponentRequestBus::Events::SetEnabled)
                 ->Event("IsEnabled", &SnowComponentRequestBus::Events::IsEnabled)
+                ->VirtualProperty("Enabled", "IsEnabled", "SetEnabled")
 
                 ->Event("SetRadius", &SnowComponentRequestBus::Events::SetRadius)
                 ->Event("GetRadius", &SnowComponentRequestBus::Events::GetRadius)
@@ -92,7 +94,6 @@ namespace Snow
 
                 ->Event("SetSnowOptions", &SnowComponentRequestBus::Events::SetSnowOptions)
                 ->Event("GetSnowOptions", &SnowComponentRequestBus::Events::GetSnowOptions)
-                ->VirtualProperty("SnowOptions", "GetSnowOptions", "SetSnowOptions")
 
                 ->Event("UpdateSnow", &SnowComponentRequestBus::Events::UpdateSnow)
                 ;
@@ -259,6 +260,12 @@ namespace Snow
     void SnowComponent::Toggle()
     {
         m_enabled = !m_enabled;
+        UpdateSnow();
+    }
+
+    void SnowComponent::SetEnabled(bool enabled)
+    {
+        m_enabled = enabled;
         UpdateSnow();
     }
 

@@ -66,7 +66,7 @@ namespace AssetProcessor
         int GetColumnCount() const;
         int GetRow() const;
         QVariant GetDataForColumn(int column) const;
-        QIcon GetIcon(const QFileIconProvider& iconProvider) const;
+        QIcon GetIcon() const;
         AssetTreeItem* GetParent() const;
         AssetTreeItem* GetChildFolder(QString folder) const;
 
@@ -77,5 +77,7 @@ namespace AssetProcessor
         AZStd::shared_ptr<AssetTreeItemData> m_data;
         AssetTreeItem* m_parent = nullptr;
         QIcon m_errorIcon;
+        QIcon m_folderIcon;
+        QIcon m_fileIcon;
     };
 }

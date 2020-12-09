@@ -4,7 +4,7 @@
       "../Common/Multiplayer/BehaviorContext/GridSystemContext_Unimplemented.cpp"
     ],
     "Source/MultiplayerLobbyServiceWrapper/Platform/iOS": [
-      "../Common/Multiplayer/MultiplayerLobbyComponent_Unimplemented.cpp"
+      "Multiplayer/MultiplayerLobbyComponent_iOS.cpp"
     ],
     "Platform/iOS": [
       "Multiplayer_GridMateServiceWrapper_Platform.h",

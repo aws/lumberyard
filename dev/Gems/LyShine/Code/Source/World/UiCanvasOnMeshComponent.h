@@ -19,6 +19,14 @@
 
 struct IPhysicalEntity;
 
+namespace AzFramework
+{
+    namespace RenderGeometry
+    {
+        struct RayResult;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiCanvasOnMeshComponent
     : public AZ::Component
@@ -33,9 +41,14 @@ public: // member functions
     UiCanvasOnMeshComponent();
 
     // UiCanvasOnMeshInterface
+#if ENABLE_CRY_PHYSICS
     bool ProcessCollisionInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint) override;
     bool ProcessRayHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const ray_hit& rayHit) override;
+#else
+    bool ProcessHitInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AzFramework::RenderGeometry::RayResult& rayResult) override;
+#endif // ENABLE_CRY_PHYSICS
     // ~UiCanvasOnMeshInterface
+
 
     // UiCanvasAssetRefListener
     void OnCanvasLoadedIntoEntity(AZ::EntityId uiCanvasEntity) override;
@@ -72,7 +85,12 @@ protected: // member functions
     void Deactivate() override;
     // ~AZ::Component
 
+#if ENABLE_CRY_PHYSICS
     bool ProcessCollisionInputEventInternal(const AzFramework::InputChannel::Snapshot& inputSnapshot, int triangleIndex, Vec3 hitPoint, IPhysicalEntity* collider, int partIndex);
+#else
+    bool ProcessCollisionInputEventInternal(const AzFramework::InputChannel::Snapshot& inputSnapshot, const AzFramework::RenderGeometry::RayResult& rayResult);
+#endif // ENABLE_CRY_PHYSICS
+
     AZ::EntityId GetCanvas();
 
     AZ_DISABLE_COPY_MOVE(UiCanvasOnMeshComponent);

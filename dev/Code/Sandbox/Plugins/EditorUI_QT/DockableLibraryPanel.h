@@ -48,7 +48,7 @@ AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 AZ_POP_DISABLE_DLL_EXPORT_BASECLASS_WARNING
     Q_OBJECT
 public:
-    DockableLibraryPanel(QWidget* parent);
+    DockableLibraryPanel(QWidget* parent, bool maximized = true);
     ~DockableLibraryPanel();
 
     void Init(const QString& panelName, CBaseLibraryManager* libraryManager);
@@ -156,7 +156,7 @@ signals:
     void SignalItemEnableStateChanged(CBaseLibraryItem* item, const bool& state);
     void SignalPopulateLibraryContextMenu(ContextMenu* toAddTo, const QString& libName);
     void SignalDecorateDefaultView(const QString& lib, DefaultViewWidget* view);
-    void SignalDuplicateItem(const QString& itemPath, QString pasteTo);
+    void SignalDuplicateItem(const QString& itemPath);
     void SignalItemPasted(IDataBaseItem* target, bool overrideSafety = false);
     void SignalPasteItemsToFolder(IDataBaseLibrary* lib, const QStringList& pasteList);
     void SignalCopyItems(QVector<CLibraryTreeViewItem*> items, bool copyAsChild = false);

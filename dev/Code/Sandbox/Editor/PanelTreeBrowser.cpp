@@ -65,7 +65,7 @@ void CObjectBrowserFileScanner::Scan(const QString& searchSpec)
         }
         QString fileSpec = m_searchSpec.mid(searchPath.length());
         int nToken = 0;
-        QStringList tokens = fileSpec.split(';', QString::SkipEmptyParts);
+        QStringList tokens = fileSpec.split(';', Qt::SkipEmptyParts);
 
         m_files.reserve(kDefaultAllocFileCount);
 

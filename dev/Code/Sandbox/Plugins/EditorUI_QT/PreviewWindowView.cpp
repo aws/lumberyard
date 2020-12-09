@@ -24,7 +24,6 @@
 #include <PreviewWindowView.h>
 #include <Controls/QToolTipWidget.h>
 #include "VariableWidgets/QAmazonDoubleSpinBox.h"
-#include "VariableWidgets/QCustomColorDialog.h"
 #include "UIFactory.h"
 #include "Utils.h"
 #include "ContextMenu.h"
@@ -391,13 +390,13 @@ void CPreviewWindowView::BuildPreviewWindowUI()
     m_cameraDropdownButton = new PreviewToolButton(this);
     m_cameraDropdownButton->setPopupMode(QToolButton::InstantPopup);
     QMenu* cameraDropdownMenu = new QMenu(this);
-    m_showEmitterOnly = cameraDropdownMenu->addAction(tr("show Emitter only"));
+    m_showEmitterOnly = cameraDropdownMenu->addAction(tr("Show Emitter only"));
     m_showEmitterOnly->setCheckable(true);
     m_showEmitterOnly->setChecked(true);
     m_showEmitterOnly->setData(0);
-    m_showEmitterChildren = cameraDropdownMenu->addAction(tr("show Emitter with all children"));
+    m_showEmitterChildren = cameraDropdownMenu->addAction(tr("Show Emitter with all children"));
     m_showEmitterChildren->setData(1);
-    m_showEmitterChildrenParents = cameraDropdownMenu->addAction(tr("show Emitter with all children and parents "));
+    m_showEmitterChildrenParents = cameraDropdownMenu->addAction(tr("Show Emitter with all children and parents"));
     m_showEmitterChildrenParents->setData(2);
     m_cameraDropdownButton->setMenu(cameraDropdownMenu);
     m_cameraDropdownButton->SetIconsForType(QString(":/particleQT/icons/emitteronly"));

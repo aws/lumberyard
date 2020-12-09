@@ -10,14 +10,19 @@
  *
  */
 
+#pragma once
+
 #include <AzTest/AzTest.h>
 #include <AssetValidationSystemComponent.h>
 
 #include <AzFramework/Asset/AssetSeedList.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <Tests/FileIOBaseTestTypes.h>
+#include <Tests/Utils/Utils.h>
 
 constexpr int NumTestAssets = 10;
+constexpr char ProjectName[] = "UnitTest";
 
 class MockValidationComponent : public AssetValidation::AssetValidationSystemComponent
     , public AZ::Data::AssetCatalogRequestBus::Handler
@@ -34,7 +39,7 @@ public:
         AssetValidation::AssetValidationSystemComponent::Activate();
     }
 
-    ~MockValidationComponent() 
+    ~MockValidationComponent()
     {
         AssetValidation::AssetValidationSystemComponent::Deactivate();
         AZ::Data::AssetCatalogRequestBus::Handler::BusDisconnect();
@@ -66,12 +71,13 @@ public:
             {
                 result.m_assetId = id;
                 // Internal paths should be lower cased as from the cache
-                result.m_relativePath = AZStd::string::format("assetpath%d", slotNum); 
+                result.m_relativePath = AZStd::string::format("assetpath%d", slotNum);
                 break;
             }
         }
         return result;
     }
+
     AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependencies(const AZ::Data::AssetId& id) override
     {
         AZStd::vector<AZ::Data::ProductDependency> dependencyList;
@@ -100,6 +106,7 @@ public:
     {
         return AddSeedsFor(seedList, sourceId);
     }
+
     bool TestRemoveSeedsFor(const AzFramework::AssetSeedList& seedList, AZ::u32 sourceId)
     {
         return RemoveSeedsFor(seedList, sourceId);
@@ -109,14 +116,15 @@ public:
     {
         return AddSeedList(seedListName);
     }
+
     bool TestRemoveSeedList(const char* seedListName)
     {
         return RemoveSeedList(seedListName);
     }
 
-    virtual AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> LoadSeedList(const char* fileName, AZStd::string& seedFilepath) override
+    AZ::Outcome<AzFramework::AssetSeedList, AZStd::string> LoadSeedList(const char* fileName, AZStd::string& seedFilepath) override
     {
-        if(m_validSeedPath == fileName)
+        if (m_validSeedPath == fileName)
         {
             seedFilepath = fileName;
             return AZ::Success(m_validSeedList);
@@ -129,8 +137,68 @@ public:
     AZ::Data::AssetId m_assetIds[NumTestAssets];
 };
 
-class AssetValidationTest
-    : public UnitTest::ScopedAllocatorSetupFixture
+struct AssetValidationTest
+    : UnitTest::ScopedAllocatorSetupFixture,
+    UnitTest::SetRestoreFileIOBaseRAII,
+    AzFramework::ApplicationRequests::Bus::Handler,
+    AzFramework::BootstrapReaderRequestBus::Handler
 {
+    AssetValidationTest() : UnitTest::SetRestoreFileIOBaseRAII(m_fileIO)
+    {
+
+    }
+
+    void NormalizePath(AZStd::string&) override
+    {
+        AZ_Assert(false, "Not implemented");
+    }
+
+    void NormalizePathKeepCase(AZStd::string&) override
+    {
+        AZ_Assert(false, "Not implemented");
+    }
+
+    void CalculateBranchTokenForAppRoot(AZStd::string& token) const override
+    {
+        AZ_Assert(false, "Not implemented");
+    }
+
+    void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override
+    {
+        AZ_Assert(false, "Not implemented");
+    }
+
+    const char* GetEngineRoot() const override
+    {
+        return m_tempDir.GetDirectory();
+    }
+
+    bool SearchConfigurationForKey(const AZStd::string& key, bool checkPlatform, AZStd::string& value) override
+    {
+        value = ProjectName;
+
+        return true;
+    }
+
+    void SetUp() override
+    {
+        using namespace ::testing;
+
+        ASSERT_TRUE(m_tempDir.IsValid());
+
+        AzFramework::ApplicationRequests::Bus::Handler::BusConnect();
+        AzFramework::BootstrapReaderRequestBus::Handler::BusConnect();
+    }
+
+    void TearDown() override
+    {
+        AzFramework::BootstrapReaderRequestBus::Handler::BusDisconnect();
+        AzFramework::ApplicationRequests::Bus::Handler::BusDisconnect();
+    }
+
+    bool CreateDummyFile(const char* path, const char* seedFileName, AZStd::string_view contents, AZStd::string& subfolderPath) const;
+
+    AZ::IO::LocalFileIO m_fileIO;
+    UnitTest::ScopedTemporaryDirectory m_tempDir;
 
 };

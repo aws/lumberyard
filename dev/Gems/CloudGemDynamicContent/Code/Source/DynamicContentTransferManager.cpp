@@ -183,7 +183,9 @@ namespace CloudCanvas
             {
                 behaviorContext->EBus<DynamicContentRequestBus>("DynamicContentRequestBus")
                     ->Event("RequestManifest", &DynamicContentRequestBus::Events::RequestManifest)
+                    ->Event("RequestVersionedManifest", &DynamicContentRequestBus::Events::RequestVersionedManifest)
                     ->Event("RequestFileStatus", &DynamicContentRequestBus::Events::RequestFileStatus)
+                    ->Event("RequestVersionedFileStatus", &DynamicContentRequestBus::Events::RequestVersionedFileStatus)
                     ->Event("ClearAllContent", &DynamicContentRequestBus::Events::ClearAllContent)
                     ->Event("RemovePak", &DynamicContentRequestBus::Events::RemovePak)
                     ->Event("LoadManifest", &DynamicContentRequestBus::Events::LoadManifest)
@@ -196,7 +198,9 @@ namespace CloudCanvas
                     ->Event("GetPakStatusString", &DynamicContentRequestBus::Events::GetPakStatusString)
                     ->Event("HandleWebCommunicatorUpdate", &DynamicContentRequestBus::Events::HandleWebCommunicatorUpdate)
                     ->Event("UpdateFileStatusList", &DynamicContentRequestBus::Events::UpdateFileStatusList)
+                    ->Event("UpdateVersionedFileStatusList", &DynamicContentRequestBus::Events::UpdateVersionedFileStatusList)
                     ->Event("UpdateFileStatus", &DynamicContentRequestBus::Events::UpdateFileStatus)
+                    ->Event("UpdateVersionedFileStatus", &DynamicContentRequestBus::Events::UpdateVersionedFileStatus)
                     ->Event("RequestDownload", &DynamicContentRequestBus::Events::RequestDownload)
                     ->Event("IsUpdated", &DynamicContentRequestBus::Events::IsUpdated)
                     ;
@@ -291,7 +295,13 @@ namespace CloudCanvas
 
         bool DynamicContentTransferManager::RequestManifest(const char* manifestName)
         {
-            UpdateManifest(manifestName ? manifestName : baseManifestFile, {});
+            const char* versionId = "";
+            return RequestVersionedManifest(manifestName, versionId);
+        }
+
+        bool DynamicContentTransferManager::RequestVersionedManifest(const char* manifestName, const char* versionId)
+        {
+            UpdateManifest(manifestName ? manifestName : baseManifestFile, {}, versionId);
             return true;
         }
 
@@ -410,7 +420,7 @@ namespace CloudCanvas
         }
 
         // Manifest handling
-        void DynamicContentTransferManager::UpdateManifest(const AZStd::string& manifestName, const AZStd::string& outputFile)
+        void DynamicContentTransferManager::UpdateManifest(const AZStd::string& manifestName, const AZStd::string& outputFile, const char* versionId)
         {
             AZStd::string pakName{ GetPakNameForManifest(manifestName) };
             AZStd::string localFileName{ outputFile };
@@ -431,7 +441,7 @@ namespace CloudCanvas
             SetFileInfo(manifestPtr);
             AddPendingPak(manifestPtr);
             manifestPtr->AddManifest(baseManifestFolder + manifestName);
-            RequestFileStatus(pakName.c_str(), writeFile.c_str(), true);
+            RequestFileStatus(pakName.c_str(), writeFile.c_str(), true, versionId);
         }
 
         bool DynamicContentTransferManager::HasUpdatingRequests()
@@ -449,7 +459,7 @@ namespace CloudCanvas
 
         AZStd::vector<AZStd::string> DynamicContentTransferManager::GetDownloadablePaks()
         {
-            AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
 
             AZStd::vector<AZStd::string> returnList;
             for (auto thisPair : m_fileList)
@@ -461,6 +471,23 @@ namespace CloudCanvas
                 }
             }
             return returnList;
+        }
+
+        AZStd::string DynamicContentTransferManager::GetDownloadablePakVersionId(const AZStd::string& fileName) const
+        {
+            AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
+
+            for (auto thisPair : m_fileList)
+            {
+                auto thisEntry = thisPair.second;
+                if (thisEntry->IsUserRequested() &&
+                    thisEntry->GetStatus() == DynamicContentFileInfo::FileStatus::WAITING_FOR_USER &&
+                    thisEntry->GetKeyName() == fileName)
+                {
+                    return thisEntry->GetVersionId();
+                }
+            }
+            return "";
         }
 
         bool DynamicContentTransferManager::LoadPak(const AZStd::string& fileName)
@@ -599,7 +626,7 @@ namespace CloudCanvas
 
         bool DynamicContentTransferManager::CanRequestFile(DynamicFileInfoPtr newFile) const
         {
-            AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
             auto oldIter = m_fileList.find(newFile->GetFileName());
             if (oldIter == m_fileList.end())
             {
@@ -631,7 +658,7 @@ namespace CloudCanvas
 
         void DynamicContentTransferManager::SetFileInfo(DynamicFileInfoPtr thisEntry)
         {
-            AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
             AZ_TracePrintf("CloudCanvas", "Adding dynamic file entry for %s (%s)", thisEntry->GetFileName().c_str(),thisEntry->GetFullLocalFileName().c_str());
             DynamicFileInfoPtr oldEntry = m_fileList[thisEntry->GetFileName()];
             m_fileList[thisEntry->GetFileName()] = thisEntry;
@@ -640,7 +667,7 @@ namespace CloudCanvas
 
         DynamicContentTransferManager::DynamicFileInfoPtr DynamicContentTransferManager::GetFileInfo(const char* fileName) const
         {
-            AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
+            AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
             auto thisEntry = m_fileList.find(AZStd::string{ fileName });
             if (thisEntry == m_fileList.end())
             {
@@ -835,8 +862,8 @@ namespace CloudCanvas
 
         int DynamicContentTransferManager::CheckFileList(const char* bucketName)
         {
-            AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
-            FileTransferSupport::FileRequestMap requestMap;
+            AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
+            DynamicContentRequestMap requestMap;
             for (auto thisEntry : m_fileList)
             {
                 DynamicFileInfoPtr filePtr = thisEntry.second;
@@ -848,6 +875,7 @@ namespace CloudCanvas
 
                 AZStd::string localStr(filePtr->GetFullLocalFileName());
                 AZStd::string fileKey(filePtr->GetKeyName());
+                AZStd::string versionId(filePtr->GetVersionId());
 
                 const bool cDirectFileAccess = true; // We want to use the AZ::Io DirectInstance system to work properly on clients running in release
                 filePtr->SetLocalHash(FileTransferSupport::CalculateMD5(localStr.c_str(), cDirectFileAccess));
@@ -855,7 +883,10 @@ namespace CloudCanvas
                 if (!filePtr->GetLocalHash().size() || filePtr->GetManifestHash() != filePtr->GetLocalHash())
                 {
                     AZStd::string bucketKey = filePtr->GetBucketPrefix() + fileKey;
-                    requestMap[bucketKey] = localStr;
+                    DynamicContentRequest fileRequest;
+                    fileRequest.WriteFile = localStr;
+                    fileRequest.VersionId = versionId;
+                    requestMap[bucketKey] = fileRequest;
                 }
                 else 
                 {
@@ -1004,18 +1035,28 @@ namespace CloudCanvas
 
         bool DynamicContentTransferManager::RequestFileStatus(const char* fileName, const char* outputFile)
         {
-            return RequestFileStatus(fileName, outputFile, false);
+            const char* versionId = "";
+            return RequestVersionedFileStatus(fileName, outputFile, versionId);
         }
 
-        bool DynamicContentTransferManager::RequestFileStatus(const char* fileName, const char* outputFile, bool manifestRequest)
+        bool DynamicContentTransferManager::RequestVersionedFileStatus(const char* fileName, const char* outputFile, const char* versionId)
         {
-            FileTransferSupport::FileRequestMap requestMap;
+            return RequestFileStatus(fileName, outputFile, false, versionId);
+        }
+
+        bool DynamicContentTransferManager::RequestFileStatus(const char* fileName, const char* outputFile, bool manifestRequest, const char* versionId)
+        {
+            DynamicContentRequestMap requestMap;
             AZStd::string writeFile{ outputFile };
             if (!writeFile.length())
             {
                 writeFile = GetUserPakFolder() + fileName;
             }
-            requestMap[AZStd::string(fileName)] = FileTransferSupport::ResolvePath(writeFile.c_str(), true);
+
+            DynamicContentRequest fileRequest;
+            fileRequest.WriteFile = FileTransferSupport::ResolvePath(writeFile.c_str(), true);
+            fileRequest.VersionId = versionId;
+            requestMap[AZStd::string(fileName)] = fileRequest;
 
             return RequestFileStatus(requestMap, manifestRequest);
         }
@@ -1032,7 +1073,7 @@ namespace CloudCanvas
             DynamicContentUpdateBus::Broadcast(&DynamicContentUpdate::FileStatusFailed, requestPtr->GetFullLocalFileName(), requestPtr->GetKeyName());
         }
 
-        bool DynamicContentTransferManager::RequestFileStatus(FileTransferSupport::FileRequestMap& requestMap, bool manifestRequest)
+        bool DynamicContentTransferManager::RequestFileStatus(DynamicContentRequestMap& requestMap, bool manifestRequest)
         {
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
             auto requestJob = PostClientContentRequestJob::Create([this](PostClientContentRequestJob* job)
@@ -1074,16 +1115,11 @@ namespace CloudCanvas
             },
             [this](PostClientContentRequestJob* job)
             {
-                AZStd::string requestString;
-                if (job->parameters.request_content.FileList.size())
-                {
-                    requestString = job->parameters.request_content.FileList.front();
-                }
                 auto requestList = job->parameters.request_content.FileList;
                 AZ_Warning("CloudCanvas", false, "Failed to retrieve status request list");
                 for (auto thisRequest : requestList)
                 {
-                    DynamicFileInfoPtr pakEntry = GetLocalEntryFromBucketKey(thisRequest.c_str());
+                    DynamicFileInfoPtr pakEntry = GetLocalEntryFromBucketKey(thisRequest.FileName.c_str());
                     if (pakEntry)
                     {
                         OnFileStatusFailed(pakEntry);
@@ -1092,11 +1128,21 @@ namespace CloudCanvas
             }
             );
 
-            FileTransferSupport::ValidateWritable(requestMap);
-
             for (auto thisFile : requestMap)
             {
-                auto thisEntry = GetLocalEntryFromBucketKey(thisFile.first.c_str());
+                AZStd::string fileName = thisFile.first;
+                AZStd::string versionId = thisFile.second.VersionId;
+                if (versionId.empty())
+                {
+                    versionId = GetDownloadablePakVersionId(fileName);
+                }
+
+                if (!FileTransferSupport::CheckWritableMakePath(thisFile.second.WriteFile))
+                {
+                    AZ_TracePrintf("CloudCanvas", "Can't write to %s", thisFile.second.WriteFile.c_str());
+                }
+
+                auto thisEntry = GetLocalEntryFromBucketKey(fileName.c_str());
                 if (thisEntry)
                 {
                     thisEntry->SetStatus(DynamicContentFileInfo::FileStatus::UPDATING);
@@ -1106,7 +1152,11 @@ namespace CloudCanvas
                         AddPendingPak(thisEntry);
                     }
                 }
-                requestJob->parameters.request_content.FileList.push_back(thisFile.first);
+
+                CloudGemDynamicContent::ServiceAPI::RequestDataItem requestDataItem;
+                requestDataItem.FileName = fileName;
+                requestDataItem.FileVersion = versionId;
+                requestJob->parameters.request_content.FileList.push_back(requestDataItem);
             }
             requestJob->Start();
 #endif
@@ -1135,7 +1185,7 @@ namespace CloudCanvas
         {   
             AZStd::vector<DynamicFileInfoPtr> removedVec;
             {
-                AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
+                AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
                 for(auto thisElement : m_fileList)
                 { 
                     removedVec.push_back(thisElement.second);
@@ -1158,7 +1208,7 @@ namespace CloudCanvas
         {
             DynamicFileInfoPtr returnPtr;
             {
-                AZStd::lock_guard<AZStd::mutex> fileLock(m_fileListMutex);
+                AZStd::lock_guard<AZStd::recursive_mutex> fileLock(m_fileListMutex);
                 auto infoIter = m_fileList.find(fileName);
                 if (infoIter == m_fileList.end())
                 {
@@ -1360,9 +1410,15 @@ namespace CloudCanvas
 
         bool DynamicContentTransferManager::UpdateFileStatus(const char* fileName, bool autoDownload)
         {
-            AZStd::vector<AZStd::string> requestList;
-            requestList.push_back(fileName);
-            return UpdateFileStatusList(requestList, autoDownload);
+            const char* versionId = "";
+            return UpdateVersionedFileStatus(fileName, autoDownload, versionId);
+        }
+
+        bool DynamicContentTransferManager::UpdateVersionedFileStatus(const char* fileName, bool autoDownload, const char* versionId)
+        {
+            AZStd::unordered_map<AZStd::string, AZStd::string> requestMap;
+            requestMap[fileName] = versionId;
+            return UpdateVersionedFileStatusList(requestMap, autoDownload);
         }
 
         bool DynamicContentTransferManager::RequestDownload(const AZStd::string& fileName, bool forceDownload)
@@ -1432,20 +1488,33 @@ namespace CloudCanvas
             AZStd::unordered_map<AZStd::string, AZStd::string> queryParameters;
             CloudCanvas::PresignedURLRequestBus::BroadcastResult(queryParameters, &CloudCanvas::IPresignedURLRequest::GetQueryParameters, requestPtr->GetRequestURL());
 
-            if (queryParameters[presignedUrlLifeTimeKey].empty())
+            AZStd::string presignedUrlLifeTimeStr = queryParameters[presignedUrlLifeTimeKey].empty() ?
+                queryParameters[cloudfrontPresignedUrlLifeTimeKey] : queryParameters[presignedUrlLifeTimeKey];
+            if (presignedUrlLifeTimeStr.empty())
             {
                 AZ_Warning("CloudCanvas", false, "Failed to find the life time of the request URL %s", requestPtr->GetRequestURL().c_str());
                 return true;
             }
 
-            AZ::u64 presignedUrlLifeTime = strtoll(queryParameters[presignedUrlLifeTimeKey].c_str(), nullptr, 0);
+            AZ::u64 presignedUrlLifeTime = strtoll(presignedUrlLifeTimeStr.c_str(), nullptr, 0);
             presignedUrlLifeTime = presignedUrlLifeTime * 1000;
 
             // Check whether the presigned URL is expired and retry the download
             return AZStd::GetTimeUTCMilliSecond() >= requestPtr->GetUrlCreationTimestamp() + presignedUrlLifeTime;
         }
 
-        bool DynamicContentTransferManager::UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList, bool autoDownload)
+        bool DynamicContentTransferManager::UpdateFileStatusList(const AZStd::vector<AZStd::string>& uploadRequests, bool autoDownload)
+        {
+            AZStd::unordered_map<AZStd::string, AZStd::string> requestMap;
+            for (const AZStd::string& fileName : uploadRequests)
+            {
+                requestMap[fileName] = "";
+            }
+                
+            return UpdateVersionedFileStatusList(requestMap, autoDownload);
+        }
+
+        bool DynamicContentTransferManager::UpdateVersionedFileStatusList(const AZStd::unordered_map<AZStd::string, AZStd::string>& requestMap, bool autoDownload)
         {
             auto requestJob = PostClientContentRequestJob::Create([autoDownload, this](PostClientContentRequestJob* job)
             {
@@ -1485,16 +1554,11 @@ namespace CloudCanvas
             },
                 [this](PostClientContentRequestJob* job)
             {
-                AZStd::string requestString;
-                if (job->parameters.request_content.FileList.size())
-                {
-                    requestString = job->parameters.request_content.FileList.front();
-                }
                 auto requestList = job->parameters.request_content.FileList;
                 AZ_Warning("CloudCanvas", false, "Failed to retrieve status request list");
                 for (auto thisRequest : requestList)
                 {
-                    DynamicFileInfoPtr pakEntry = GetLocalEntryFromBucketKey(thisRequest.c_str());
+                    DynamicFileInfoPtr pakEntry = GetLocalEntryFromBucketKey(thisRequest.FileName.c_str());
                     if (pakEntry)
                     {
                         OnFileStatusFailed(pakEntry);
@@ -1503,21 +1567,31 @@ namespace CloudCanvas
             }
             );
 
-            for (const auto& thisFile : requestList)
+            for (const auto& thisFile : requestMap)
             {
-                auto thisEntry = GetLocalEntryFromBucketKey(thisFile.c_str());
+                AZStd::string fileName = thisFile.first;
+                AZStd::string versionId = thisFile.second;
+                if (versionId.empty())
+                {
+                    versionId = GetDownloadablePakVersionId(fileName);
+                }
+
+                auto thisEntry = GetLocalEntryFromBucketKey(fileName.c_str());
                 if (!thisEntry)
                 {
-                    AZStd::string writeFile{ AZStd::string::format("%s%s", basePakFolder, thisFile.c_str()) };
+                    AZStd::string writeFile{ AZStd::string::format("%s%s", basePakFolder, fileName.c_str()) };
 
-                    thisEntry = AZStd::make_shared<DynamicContentFileInfo>(thisFile, writeFile);
+                    thisEntry = AZStd::make_shared<DynamicContentFileInfo>(fileName, writeFile);
                     thisEntry->SetRequestType(DynamicContentFileInfo::RequestType::STANDALONE);
                     SetFileInfo(thisEntry);
                 }
 
                 thisEntry->SetStatus(DynamicContentFileInfo::FileStatus::WAITING_FOR_USER);
 
-                requestJob->parameters.request_content.FileList.push_back(thisFile);
+                CloudGemDynamicContent::ServiceAPI::RequestDataItem requestDataItem;
+                requestDataItem.FileName = fileName;
+                requestDataItem.FileVersion = versionId;
+                requestJob->parameters.request_content.FileList.push_back(requestDataItem);
             }
             // Request manifest data including hash and size
             requestJob->parameters.request_content.ManifestData = true;

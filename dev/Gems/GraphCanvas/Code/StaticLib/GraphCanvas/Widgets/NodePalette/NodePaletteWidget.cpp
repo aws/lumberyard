@@ -79,9 +79,9 @@ namespace GraphCanvas
                 // pos, len
                 const AZStd::pair<int, int>& highlight = treeItem->GetHighlight();
                 QString preSelectedText = options.text.left(highlight.first);
-                int preSelectedTextLength = options.fontMetrics.width(preSelectedText);
+                int preSelectedTextLength = options.fontMetrics.horizontalAdvance(preSelectedText);
                 QString selectedText = options.text.mid(highlight.first, highlight.second);
-                int selectedTextLength = options.fontMetrics.width(selectedText);
+                int selectedTextLength = options.fontMetrics.horizontalAdvance(selectedText);
                 
                 int leftSpot = textRect.left() + preSelectedTextLength;
 

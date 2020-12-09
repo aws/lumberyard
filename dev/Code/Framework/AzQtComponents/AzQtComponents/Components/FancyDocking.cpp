@@ -24,6 +24,8 @@
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
+#include <AzQtComponents/Utilities/RandomNumberGenerator.h>
+#include <AzQtComponents/Utilities/ScreenUtilities.h>
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -36,6 +38,7 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QRandomGenerator>
 #include <QScopedValueRollback>
 #include <QScreen>
 #include <QStyle>
@@ -119,7 +122,6 @@ namespace AzQtComponents
     FancyDocking::FancyDocking(DockMainWindow* mainWindow, const char* identifierPrefix)
         : QWidget(mainWindow, Qt::WindowFlags(Qt::ToolTip | Qt::BypassWindowManagerHint | Qt::FramelessWindowHint))
         , m_mainWindow(mainWindow)
-        , m_desktopWidget(QApplication::desktop())
         , m_emptyWidget(new QWidget(this))
         , m_dropZoneHoverFadeInTimer(new QTimer(this))
         , m_ghostWidget(new FancyDockingGhostWidget(mainWindow))
@@ -146,8 +148,14 @@ namespace AzQtComponents
         // desktop screens being resized or added/removed so we can recalculate
         // our docking overlay
         updateDockingGeometry();
-        QObject::connect(m_desktopWidget, &QDesktopWidget::resized, this, &FancyDocking::updateDockingGeometry);
-        QObject::connect(m_desktopWidget, &QDesktopWidget::screenCountChanged, this, &FancyDocking::updateDockingGeometry);
+
+        for (auto screen : QApplication::screens())
+        {
+            QObject::connect(screen, &QScreen::geometryChanged, this, &FancyDocking::updateDockingGeometry);
+        }
+
+        QObject::connect(qApp, &QApplication::screenAdded, this, &FancyDocking::handleScreenAdded);
+        QObject::connect(qApp, &QApplication::screenRemoved, this, &FancyDocking::handleScreenRemoved);
 
         // Timer for updating our hovered drop zone opacity
         QObject::connect(m_dropZoneHoverFadeInTimer, &QTimer::timeout, this, &FancyDocking::onDropZoneHoverFadeInUpdate);
@@ -196,9 +204,11 @@ namespace AzQtComponents
 
         dockWidget->setWidget(mainWindow);
         dockWidget->show();
-        if (!geometry.isNull())
+        QRect adjustedGeometry = geometry;
+        AzQtComponents::EnsureGeometryWithinScreenTop(adjustedGeometry);
+        if (!adjustedGeometry.isNull())
         {
-            dockWidget->setGeometry(geometry);
+            dockWidget->setGeometry(adjustedGeometry);
         }
 
         return mainWindow;
@@ -257,7 +267,7 @@ namespace AzQtComponents
         QString name;
         do
         {
-            name = QString("%1%2").arg(prefix).arg(qrand(), 16);
+            name = QString("%1%2").arg(prefix).arg(GetRandomGenerator()->generate(), 16);
         } while (m_mainWindow->findChild<QDockWidget*>(name));
 
         return name;
@@ -270,7 +280,7 @@ namespace AzQtComponents
     void FancyDocking::updateDockingGeometry()
     {
         QRect totalScreenRect;
-        int numScreens = m_desktopWidget->screenCount();
+        int numScreens = QApplication::screens().count();
 
 #ifdef AZ_PLATFORM_WINDOWS
         for (QWidget* w : m_perScreenFullScreenWidgets) {
@@ -283,10 +293,10 @@ namespace AzQtComponents
         {
 #ifdef AZ_PLATFORM_WINDOWS
             QWidget* screenWidget = new QWidget(this);
-            screenWidget->setGeometry(m_desktopWidget->screenGeometry(i));
+            screenWidget->setGeometry(QApplication::screens().at(i)->geometry());
             m_perScreenFullScreenWidgets.push_back(screenWidget);
 #else
-            totalScreenRect = totalScreenRect.united(m_desktopWidget->screenGeometry(i));
+            totalScreenRect = totalScreenRect.united(QApplication::screens().at(i)->geometry());
 #endif
         }
 
@@ -297,6 +307,26 @@ namespace AzQtComponents
         // Update our list of screens whenever screens are added/removed so that we
         // don't have to query them every time
         m_desktopScreens = qApp->screens();
+    }
+
+    /**
+     * Handle a screen being added to the current layout
+     */
+    void FancyDocking::handleScreenAdded(QScreen* screen)
+    {
+        QObject::connect(screen, &QScreen::geometryChanged, this, &FancyDocking::updateDockingGeometry);
+
+        updateDockingGeometry();
+    }
+    
+    /**
+     * Handle a screen being removed from the current layout
+     */
+    void FancyDocking::handleScreenRemoved(QScreen* screen)
+    {
+        QObject::disconnect(screen, &QScreen::geometryChanged, this, &FancyDocking::updateDockingGeometry);
+
+        updateDockingGeometry();
     }
 
     /**
@@ -606,13 +636,16 @@ namespace AzQtComponents
      */
     QPoint FancyDocking::multiscreenMapFromGlobal(const QPoint& point) const
     {
-#ifdef AZ_PLATFORM_WINDOWS
-        for (int i = 0; i < m_desktopWidget->screenCount(); i++) {
-            QScreen* s = QGuiApplication::screens()[i];
-            if (s->geometry().contains(point)) {
-                qreal scaleFactor = QHighDpiScaling::factor(s);
-                return ((m_perScreenFullScreenWidgets[i]->mapFromGlobal(point) * scaleFactor) + m_perScreenFullScreenWidgets[i]->mapToGlobal({0, 0})) / scaleFactor;
+#if 0 //def AZ_PLATFORM_WINDOWS
+        int index = 0;
+        for (auto screen : QApplication::screens()) {
+            if (screen->geometry().contains(point)) {
+                qreal scaleFactor = QHighDpiScaling::factor(screen);
+                return (
+                    (m_perScreenFullScreenWidgets[index]->mapFromGlobal(point) * scaleFactor) +
+                    (m_perScreenFullScreenWidgets[index]->mapToGlobal({0, 0})) / scaleFactor);
             }
+            ++index;
         }
 
         // If the point isn't contained in any screen, return the regular mapFromGlobal() result for now
@@ -1584,10 +1617,11 @@ namespace AzQtComponents
             }
 
             // Handle snapping to the screen edges/other floating windows while dragging
-            int screenIndex = m_desktopWidget->screenNumber(globalPos);
-            AdjustForSnapping(placeholder, screenIndex);
+            QScreen* screen = Utilities::ScreenAtPoint(globalPos);
 
-            m_state.setPlaceholder(placeholder, screenIndex);
+            AdjustForSnapping(placeholder, screen);
+
+            m_state.setPlaceholder(placeholder, screen);
 
             m_ghostWidget->Enable();
             RepaintFloatingIndicators();
@@ -1596,7 +1630,7 @@ namespace AzQtComponents
         return m_dropZoneState.dragging();
     }
 
-    void FancyDocking::AdjustForSnapping(QRect& rect, int cursorScreenIndex)
+    void FancyDocking::AdjustForSnapping(QRect& rect, QScreen* cursorScreen)
     {
         m_state.snappedSide = 0;
 
@@ -1629,22 +1663,21 @@ namespace AzQtComponents
         }
 
         // Next, check if we can snap to the screen edges that the cursor is currently on
-        if (AdjustForSnappingToScreenEdges(rect, cursorScreenIndex))
+        if (AdjustForSnappingToScreenEdges(rect, cursorScreen))
         {
             return;
         }
 
         // Then, check the rest of the screens
-        int numScreens = m_desktopWidget->screenCount();
-        for (int i = 0; i < numScreens; ++i)
+        for (QScreen* screen : QApplication::screens())
         {
             // We already checked this one explicitly first, so move on
-            if (i == cursorScreenIndex)
+            if (screen == cursorScreen)
             {
                 continue;
             }
 
-            if (AdjustForSnappingToScreenEdges(rect, i))
+            if (AdjustForSnappingToScreenEdges(rect, screen))
             {
                 return;
             }
@@ -1659,9 +1692,9 @@ namespace AzQtComponents
         }
     }
 
-    bool FancyDocking::AdjustForSnappingToScreenEdges(QRect& rect, int screenIndex)
+    bool FancyDocking::AdjustForSnappingToScreenEdges(QRect& rect, QScreen* cursorScreen)
     {
-        QRect screenRect = m_desktopWidget->screenGeometry(screenIndex);
+        QRect screenRect = cursorScreen->geometry();
         if (screenRect.isNull())
         {
             return false;
@@ -2189,8 +2222,7 @@ namespace AzQtComponents
         }
 
         // Setup the new placeholder using the screen of its new position
-        int screenIndex = m_desktopWidget->screenNumber(newPosition);
-        QScreen* screen = m_desktopScreens[screenIndex];
+        QScreen* screen = Utilities::ScreenAtPoint(newPosition);
         m_state.setPlaceholder(QRect(newPosition, newSize), screen);
         updateFloatingPixmap();
 
@@ -2254,7 +2286,9 @@ namespace AzQtComponents
         if (styledDockWidget && styledDockWidget->isSingleFloatingChild())
         {
             // Reuse the existing container
-            styledDockWidget->window()->setGeometry(geometry);
+            QRect adjustedGeometry = geometry;
+            AzQtComponents::EnsureGeometryWithinScreenTop(adjustedGeometry);
+            styledDockWidget->window()->setGeometry(adjustedGeometry);
             styledDockWidget->activateWindow();
         }
         else
@@ -3125,6 +3159,18 @@ namespace AzQtComponents
             std::transform(subs.begin(), subs.end(), std::back_inserter(names),
                 [](QDockWidget* o) { return o->objectName(); });
             map[dockWidget->objectName()] = qMakePair(names, mainWindow->saveState());
+
+            // Store geometry for this floating dock widget. This could also be stored
+            // in the map since we don't need the main window's save state again, but
+            // that would involve a new save/restore version
+            if (mainWindow != m_mainWindow)
+            {
+                QString floatingDockWidgetName = dockWidget->objectName();
+                if (!floatingDockWidgetName.isEmpty())
+                {
+                    m_restoreFloatings[floatingDockWidgetName] = qMakePair(mainWindow->saveState(), dockWidget->geometry());
+                }
+            }
         }
 
         // Find all of our tab container dock widgets that hold our dock tab widgets
@@ -3289,8 +3335,17 @@ namespace AzQtComponents
                 skipTitleBarOverdraw = skipTitleBarOverdraw || shouldSkipTitleBarOverdraw(child);
             }
 
+            // Restore geometry for this floating dock widget
+            QRect restoredRect;
+            auto restoreFloating = m_restoreFloatings.find(floatingDockName);
+            if (restoreFloating != m_restoreFloatings.end())
+            {
+                restoredRect = restoreFloating->second;
+                m_restoreFloatings.erase(restoreFloating);
+            }
+
             // reparent and dock the child widgets to the new container now
-            QMainWindow* mainWindow = createFloatingMainWindow(floatingDockName, QRect(), skipTitleBarOverdraw);
+            QMainWindow* mainWindow = createFloatingMainWindow(floatingDockName, restoredRect, skipTitleBarOverdraw);
             for (auto t = childDockWidgets.begin(); t != childDockWidgets.end(); t++)
             {
                 QDockWidget* child = *t;

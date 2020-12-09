@@ -265,7 +265,7 @@ void LevelEditorMenuHandler::UpdateViewLayoutsMenu(ActionManager::MenuWrapper& l
     }
 
     QStringList layoutNames = m_viewPaneManager->LayoutNames();
-    qSort(layoutNames.begin(), layoutNames.end(), CompareLayoutNames);
+    std::sort(layoutNames.begin(), layoutNames.end(), CompareLayoutNames);
     layoutsMenu->clear();
     const int MAX_LAYOUTS = ID_VIEW_LAYOUT_LAST - ID_VIEW_LAYOUT_FIRST + 1;
 

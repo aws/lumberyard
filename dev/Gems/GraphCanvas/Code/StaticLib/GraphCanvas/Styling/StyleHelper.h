@@ -429,7 +429,7 @@ namespace GraphCanvas
                 {
                     QColor backgroundColor = GetAttribute(Styling::Attribute::BackgroundColor, QColor(0,0,0));
 
-                    config.m_stripeColor = backgroundColor.dark();
+                    config.m_stripeColor = backgroundColor.darker();
 
                     int totalDifference = 0;
 
@@ -439,7 +439,7 @@ namespace GraphCanvas
 
                     if (totalDifference < 150)
                     {
-                        config.m_stripeColor = backgroundColor.light();
+                        config.m_stripeColor = backgroundColor.lighter();
                     }
                 }
                 else
@@ -467,7 +467,7 @@ namespace GraphCanvas
                 {
                     QColor backgroundColor = GetAttribute(Styling::Attribute::BackgroundColor, QColor(0, 0, 0));
 
-                    QColor patternColor = backgroundColor.dark();
+                    QColor patternColor = backgroundColor.darker();
 
                     int totalDifference = 0;
 
@@ -477,7 +477,7 @@ namespace GraphCanvas
 
                     if (totalDifference < 150)
                     {
-                        patternColor = backgroundColor.light();
+                        patternColor = backgroundColor.lighter();
                     }
 
                     generator.m_colors.push_back(patternColor);

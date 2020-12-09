@@ -108,8 +108,21 @@ namespace EMStudio
     {
         m_pasteItems.clear();
         const QModelIndexList selectedIndexes = m_plugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+
         for (const QModelIndex& selectedIndex : selectedIndexes)
         {
+            if (selectedIndex.isValid())
+            {
+                const AnimGraphModel::ModelItemType itemType = selectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+                if (itemType == AnimGraphModel::ModelItemType::NODE)
+                {
+                    const EMotionFX::AnimGraphNode* node = selectedIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                    if (!node->GetIsDeletable())
+                    {
+                        continue;
+                    }
+                }
+            }
             m_pasteItems.emplace_back(selectedIndex);
         }
         if (!m_pasteItems.empty())

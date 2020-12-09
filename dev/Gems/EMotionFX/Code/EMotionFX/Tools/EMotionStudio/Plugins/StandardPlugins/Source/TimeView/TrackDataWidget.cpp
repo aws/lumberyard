@@ -16,12 +16,14 @@
 #include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewPlugin.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewShared.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/TimeView/TimeViewToolBar.h>
+
 #include <QCheckBox>
 #include <QComboBox>
-#include <QPainter>
-#include <QToolTip>
-#include <QPaintEvent>
 #include <QMenu>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPaintEvent>
+#include <QToolTip>
 
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/Algorithms.h>
@@ -220,8 +222,6 @@ namespace EMStudio
     void TrackDataWidget::PaintRecorder(QPainter& painter, const QRect& rect)
     {
         painter.setRenderHint(QPainter::TextAntialiasing, true);
-        //painter.setRenderHint( QPainter::Antialiasing, true );
-        //painter.setRenderHint( QPainter::HighQualityAntialiasing, true );
 
         EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
 
@@ -1617,18 +1617,24 @@ namespace EMStudio
     {
         plugin->SetRedrawFlag();
 
-        const int numDegrees    = event->delta() / 8;
-        const int numSteps      = numDegrees / 15;
-        float delta             = numSteps / 10.0f;
-
-        double zoomDelta = delta * 4 * MCore::Clamp(plugin->GetTimeScale() / 2.0, 1.0, 22.0);
-        if (event->orientation() == Qt::Vertical)
+        // Vertical
         {
+            const int numDegrees    = event->angleDelta().y() / 8;
+            const int numSteps      = numDegrees / 15;
+            float delta             = numSteps / 10.0f;
+
+            double zoomDelta = delta * 4 * MCore::Clamp(plugin->GetTimeScale() / 2.0, 1.0, 22.0);
             plugin->SetScale(plugin->GetTimeScale() + zoomDelta);
         }
 
-        if (event->orientation() == Qt::Horizontal)
+        // Horizontal
         {
+            const int numDegrees    = event->angleDelta().x() / 8;
+            const int numSteps      = numDegrees / 15;
+            float delta             = numSteps / 10.0f;
+
+            double zoomDelta = delta * 4 * MCore::Clamp(plugin->GetTimeScale() / 2.0, 1.0, 22.0);
+
             if (EMotionFX::GetRecorder().GetIsRecording() == false)
             {
                 if (delta > 0)

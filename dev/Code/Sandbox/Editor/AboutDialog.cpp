@@ -13,15 +13,16 @@
 
 #include "StdAfx.h"
 #include "AboutDialog.h"
+
 #include <ui_AboutDialog.h>
 
-#include <QLabel>
-#include <QDesktopServices>
-#include <QPainter>
-#include <QPixmap>
-#include <QMouseEvent>
 #include <QDesktopServices>
 #include <QFont>
+#include <QLabel>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPixmap>
+#include <QSvgWidget>
 
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -47,10 +48,15 @@ CAboutDialog::CAboutDialog(QString versionText, QString richTextCopyrightNotice,
     setStyleSheet( "CAboutDialog > QLabel#copyrightNotice { color: #AAAAAA; font-size: 9px; }\
                     CAboutDialog > QLabel#link { text-decoration: underline; color: #00A1C9; }");
 
-    m_backgroundImage = QPixmap(QStringLiteral(":/StartupLogoDialog/splashscreen_1_26.png"));
+    // Prepare background image
+    QImage backgroundImage(QStringLiteral(":/StartupLogoDialog/splashscreen_1_27.png"));
+    m_backgroundImage = QPixmap::fromImage(backgroundImage.scaled(m_enforcedWidth, m_enforcedHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+
+    // Draw the Lumberyard logo from svg
+    m_ui->m_logo->load(QStringLiteral(":/StartupLogoDialog/lumberyard_logo.svg"));
 
     // Prevent re-sizing
-    setFixedSize(m_enforcedWidth, aznumeric_cast<int>(m_enforcedWidth * m_enforcedRatio));
+    setFixedSize(m_enforcedWidth, m_enforcedHeight);
 }
 
 CAboutDialog::~CAboutDialog()
@@ -61,9 +67,7 @@ void CAboutDialog::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
 
-    // Enforce the sizing to avoid stretching the image
     QRect drawTarget = rect();
-    drawTarget.setHeight( aznumeric_cast<int>( drawTarget.width() * m_enforcedRatio ) );
     painter.drawPixmap(drawTarget, m_backgroundImage);
 }
 

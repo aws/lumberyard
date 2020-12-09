@@ -37,36 +37,6 @@ namespace AzQtComponents
 
 namespace AzToolsFramework
 {
-    //////////////////////////////////////////////////////////////////////////
-
-    // LUMBERYARD_DEPRECATED(LY-108272)
-    /*!
-     * \class PropertyVectorCtrl
-     * \brief Qt Widget that control holds an array of VectorElements.
-     * This control can be used to display any number of labeled float values with configurable row(s) & column(s)
-     */
-    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
-    class AZ_DEPRECATED(, "PropertyVectorCtrl is deprecated, please use AzQtComponents::VectorInput instead")
-        PropertyVectorCtrl
-        : public AzQtComponents::VectorInput
-    {
-        Q_OBJECT
-    public:
-        AZ_CLASS_ALLOCATOR(PropertyVectorCtrl, AZ::SystemAllocator, 0);
-
-        /**
-        * Configures and constructs a vector control
-        * @param parent The Parent QWidget
-        * @param elementCount Number of elements being managed by this vector control
-        * @param elementsPerRow Number of elements in every row
-        * @param customLabels A string that has custom labels that are use by the Vector elements
-        */
-        PropertyVectorCtrl(QWidget* parent, int elementCount, int elementsPerRow = -1, QString customLabels = "");
-    };
-    AZ_POP_DISABLE_WARNING
-
-    //////////////////////////////////////////////////////////////////////////
-
     /*!
      * \class VectorPropertyHandlerCommon
      * \brief Common functionality that is needed by handlers that need to handle a configurable

@@ -70,7 +70,7 @@ bool CLevelShaderCache::LoadBuffer(const QString& textBuffer, bool bClearOld)
     }
     m_filename = "";
 
-    for (auto resToken : textBuffer.split(QRegularExpression(QStringLiteral("[%1]").arg(separators)), QString::SkipEmptyParts))
+    for (auto resToken : textBuffer.split(QRegularExpression(QStringLiteral("[%1]").arg(separators)), Qt::SkipEmptyParts))
     {
         if (!resToken.isEmpty() && resToken[0] == '<')
         {

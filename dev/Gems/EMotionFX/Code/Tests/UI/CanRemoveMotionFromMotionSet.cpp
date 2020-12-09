@@ -91,7 +91,7 @@ namespace EMotionFX
 
         // Select the motion in the table.
         QList<QTableWidgetItem *> items = table->findItems("<undefined>", Qt::MatchExactly);
-        table->setItemSelected(items[0], true);
+        items[0]->setSelected(true);
 
         // Set up a watcher to press the ok button in the Really Delete dialog.
         ModalPopupHandler reallyDeletehandler;
@@ -173,7 +173,7 @@ namespace EMotionFX
 
         // Select the motion in the table.
         QList<QTableWidgetItem *> items = table->findItems("<undefined>", Qt::MatchExactly);
-        table->setItemSelected(items[0], true);
+        items[0]->setSelected(true);
 
         // Set up a watcher to press the ok button in the Really Delete dialog.
         ModalPopupHandler reallyDeletehandler;

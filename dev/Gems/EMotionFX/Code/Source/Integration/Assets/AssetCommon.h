@@ -15,6 +15,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <EMotionFX/Source/Allocators.h>
 #include <Integration/System/SystemCommon.h>
 
@@ -60,6 +61,15 @@ namespace EMotionFX
                 (void)id;
                 (void)type;
                 return aznew DataType();
+            }
+
+            AZ::Data::AssetId AssetMissingInCatalog(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override
+            {
+                // missing assets should at least get escalated to the top of the list.  Sub-handlers could override this and do
+                // additional things like substitute some default asset Id.
+                AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::EscalateAssetByUuid, asset.GetId().m_guid);
+
+                return AZ::Data::AssetId();
             }
 
             bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override

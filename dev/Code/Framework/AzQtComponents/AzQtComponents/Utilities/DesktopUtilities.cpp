@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Utilities/DesktopUtilities.h>
+
 #include <QDir>
 #include <QProcess>
 
@@ -19,17 +20,20 @@ namespace AzQtComponents
     void ShowFileOnDesktop(const QString& path)
     {
 #if defined(AZ_PLATFORM_WINDOWS)
-        if (QFileInfo(path).isDir())
+
+        // Launch explorer at the path provided
+        QStringList args;
+        if (!QFileInfo(path).isDir())
         {
-            // Launch explorer with the directory open and it's contents displayed
-            QProcess::startDetached(QStringLiteral("explorer \"\"%1\"\"").arg(QDir::toNativeSeparators(path)));
+            // Folders are just opened, files are selected
+            args << "/select,";
         }
-        else
-        {
-            // Launch explorer with the path itself selected and shown
-            QProcess::startDetached(QStringLiteral("explorer /select,\"\"%1\"\"").arg(QDir::toNativeSeparators(path)));
-        }
+        args << QDir::toNativeSeparators(path);
+
+        QProcess::startDetached("explorer", args);
+
 #else
+
         if (QFileInfo(path).isDir())
         {
             QProcess::startDetached("/usr/bin/osascript", { "-e",
@@ -43,6 +47,7 @@ namespace AzQtComponents
 
         QProcess::startDetached("/usr/bin/osascript", { "-e",
                     QStringLiteral("tell application \"Finder\" to activate") });
+
 #endif
     }
 

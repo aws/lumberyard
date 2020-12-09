@@ -115,9 +115,9 @@ namespace LmbrCentral
         struct ConnectionPolicy
             : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, typename Bus::Context::ConnectLockGuard& connectLock, const typename Bus::BusIdType& id = 0)
             {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, connectLock, id);
 
                 bool readyResult = false;
                 LmbrCentral::MaterialOwnerRequestBus::EventResult(

@@ -53,14 +53,16 @@ namespace AZStd
         AZ_Assert(result == 0, "sem_destroy error for max count semaphore:%s\n", strerror(errno));
     }
 
-    AZ_FORCE_INLINE void semaphore::acquire()
+    inline void semaphore::acquire()
     {
         int result = sem_post(&m_maxCountSemaphore);
         AZ_Assert(result == 0, "post error for max count semaphore:%s\n", strerror(errno));
 
         result = sem_wait(&m_semaphore);
         (void)result;
-        AZ_Assert(result == 0, "sem_wait error %s\n", strerror(errno));
+        // note that we could return 0, or we could return EINTR, and its okay to be 'interrupted' 
+        // by a system call.  Therefore, the only real error we care about is EINVAL.
+        AZ_Assert(result != EINVAL && result != EINTR, "sem_wait error %s\n", strerror(errno)); 
     }
 
     template <class Rep, class Period>
@@ -73,8 +75,22 @@ namespace AZStd
             continue; /* Restart if interrupted by handler */
         }
 
-        AZ_Assert(result == 0 || errno == ETIMEDOUT, "sem_timedwait error %s\n", strerror(errno));
+        // as above, EINVAL is the only "unexpected" code
+        AZ_Assert(result != EINVAL && result != EINTR, "sem_timedwait error %s\n", strerror(errno));
         return result == 0;
+    }
+
+    template <class Clock, class Duration>
+    AZ_FORCE_INLINE bool semaphore::try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
+    {
+        auto timeNow = chrono::system_clock::now();
+        if (timeNow >= abs_time)
+        {
+            // we already timed out.
+            return false;
+        }
+        auto timeDiff = abs_time - timeNow;
+        return try_acquire_for(timeDiff);
     }
 
     AZ_FORCE_INLINE void semaphore::release(unsigned int releaseCount)
@@ -96,7 +112,7 @@ namespace AZStd
         }
     }
 
-    AZ_FORCE_INLINE semaphore::native_handle_type semaphore::native_handle()
+    inline semaphore::native_handle_type semaphore::native_handle()
     {
         return &m_semaphore;
     }

@@ -890,7 +890,7 @@ namespace EMStudio
             const int rows = rowCount(modelIndex);
             for (int i = rows - 1; i >= 0; --i)
             {
-                const QModelIndex childItem = modelIndex.child(i, 0);
+                const QModelIndex childItem = modelIndex.model()->index(i, 0, modelIndex);
                 childModelIndexList.push_back(childItem);
             }
         }
@@ -1401,7 +1401,7 @@ namespace EMStudio
         const int rows = modelIndex.model()->rowCount(modelIndex);
         for (int i = rows - 1; i >= 0; --i)
         {
-            Remove(modelIndex.child(i, 0));
+            Remove(modelIndex.model()->index(i, 0, modelIndex));
         }
     }
 

@@ -84,8 +84,7 @@ DeployWorkerAndroid::DeployWorkerAndroid()
             m_adbPath = AZStd::move(AZStd::string::format("%s/platform-tools/adb", environment["LY_ANDROID_SDK"].GetString()));
 
             // make sure the adb daemon is running
-            AZStd::string startServerCmd = AZStd::move(AZStd::string::format("%s start-server", m_adbPath.c_str()));
-            RunBlockingCommand(startServerCmd);
+            RunBlockingCommand(m_adbPath.c_str(), { "start-server" });
         }
     }
     else
@@ -113,9 +112,7 @@ bool DeployWorkerAndroid::GetConnectedDevices(DeviceMap& connectedDevices) const
     const char* adbPath = m_adbPath.c_str();
 
     QString devicesOutput;
-    AZStd::string devicesCommand = AZStd::move(AZStd::string::format("%s devices", adbPath));
-
-    if (RunBlockingCommand(devicesCommand, &devicesOutput))
+    if (RunBlockingCommand(adbPath, { "devices" }, &devicesOutput))
     {
         const int devicePropertyCount = static_cast<int>(DeviceInfo::Property::TOTAL);
         const char* devicePropertyKeys[devicePropertyCount] = {
@@ -124,7 +121,7 @@ bool DeployWorkerAndroid::GetConnectedDevices(DeviceMap& connectedDevices) const
             "ro.build.version.release"
         };
 
-        QStringList lines = devicesOutput.split('\n', QString::SkipEmptyParts);
+        QStringList lines = devicesOutput.split('\n', Qt::SkipEmptyParts);
         for (const auto& line : lines)
         {
             QString trimmedLine = line.trimmed();
@@ -138,7 +135,7 @@ bool DeployWorkerAndroid::GetConnectedDevices(DeviceMap& connectedDevices) const
             }
 
             // using a regular expression to account for spaces and tabs
-            QStringList tokens = trimmedLine.split(QRegExp("\\s+"), QString::SkipEmptyParts);
+            QStringList tokens = trimmedLine.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
 
             QString deviceId = tokens[0];
             QString deviceStatus = tokens[1];
@@ -156,9 +153,7 @@ bool DeployWorkerAndroid::GetConnectedDevices(DeviceMap& connectedDevices) const
                     const char* propertyKey = devicePropertyKeys[i];
 
                     QString output;
-                    AZStd::string command = AZStd::move(AZStd::string::format("%s -s %s shell getprop %s", adbPath, deviceId.toStdString().c_str(), propertyKey));
-
-                    if (RunBlockingCommand(command, &output))
+                    if (RunBlockingCommand(adbPath, { "-s", deviceId, "shell", "getprop", propertyKey }, &output))
                     {
                         deviceInfo.SetProperty(static_cast<DeviceInfo::Property>(i), output.trimmed());
                     }
@@ -217,9 +212,7 @@ StringOutcome DeployWorkerAndroid::Prepare()
     // bootloader       - currently running the bootloader
     // device           - authorized for use
     QString deviceStatus;
-    AZStd::string deviceStatusCmd = AZStd::move(AZStd::string::format("%s -s %s get-state", adbPath, deviceId));
-
-    bool ret = RunBlockingCommand(deviceStatusCmd, &deviceStatus);
+    bool ret = RunBlockingCommand(adbPath, { "-s", deviceId, "get-state" }, &deviceStatus);
     if (!ret || deviceStatus.trimmed() != "device")
     {
         return AZ::Failure<AZStd::string>("Target device is either not ready or authorized for use");
@@ -229,9 +222,7 @@ StringOutcome DeployWorkerAndroid::Prepare()
     if (m_deploymentConfig.m_platformOption == PlatformOptions::Android_ARMv8)
     {
         QString deviceAbi;
-        AZStd::string deviceAbiCmd = AZStd::move(AZStd::string::format("%s -s %s shell getprop ro.product.cpu.abi", adbPath, deviceId));
-
-        if (!RunBlockingCommand(deviceAbiCmd, &deviceAbi))
+        if (!RunBlockingCommand(adbPath, { "-s", deviceId, "shell", "getprop", "ro.product.cpu.abi" }, &deviceAbi))
         {
             return AZ::Failure<AZStd::string>("Unexpected error occured during device validation");
         }
@@ -257,18 +248,15 @@ StringOutcome DeployWorkerAndroid::Prepare()
     m_installAPK = (m_deploymentConfig.m_cleanDevice || m_deploymentConfig.m_buildGame);
     if (!m_installAPK)
     {
-        AZStd::string packagesCmd = AZStd::move(AZStd::string::format("%s -s %s shell pm list packages %s", adbPath, deviceId, packageName));
-
         QString output;
-        RunBlockingCommand(packagesCmd, &output);
+        RunBlockingCommand(adbPath, { "-s", deviceId, "shell", "pm", "list", "packages", packageName }, &output);
 
         // empty output (after stripping preceding and trailing whitespace) indicates the package is not installed
         m_installAPK = output.trimmed().isEmpty();
     }
 
     // attempt to stop the app on the device
-    AZStd::string stopCmd = AZStd::move(AZStd::string::format("%s -s %s shell am force-stop %s", adbPath, deviceId, packageName));
-    RunBlockingCommand(stopCmd);
+    RunBlockingCommand(adbPath, { "-s", deviceId, "shell", "am", "force-stop", packageName });
 
     return AZ::Success(AZStd::string());
 }
@@ -279,18 +267,19 @@ StringOutcome DeployWorkerAndroid::Launch()
 
     if (!LaunchShaderCompiler())
     {
-        return AZ::Failure<AZStd::string>("An error occured while trying validate the Shader Compiler");
+        return AZ::Failure<AZStd::string>("An error occurred while trying validate the Shader Compiler");
     }
 
     const char* adbPath = m_adbPath.c_str();
     const char* deviceId = m_deploymentConfig.m_deviceId.c_str();
+    const QString tcpArgFormat("tcp:%1");
 
     if (    (m_deploymentConfig.m_useVFS || m_deploymentConfig.m_shaderCompilerUseAP)
         &&  IsLocalhost(m_deploymentConfig.m_assetProcessorIpAddress))
     {
-        const char* assetProcessorPort = m_deploymentConfig.m_assetProcessorPort.c_str();
-        AZStd::string reversePortCmd = AZStd::move(AZStd::string::format("%s -s %s reverse tcp:%s tcp:%s", adbPath, deviceId, assetProcessorPort, assetProcessorPort));
-        if (!RunBlockingCommand(reversePortCmd))
+        QString assetProcessorPort = tcpArgFormat.arg(m_deploymentConfig.m_assetProcessorPort.c_str());
+
+        if (!RunBlockingCommand(adbPath, { "-s", deviceId, "reverse", assetProcessorPort, assetProcessorPort }))
         {
             return AZ::Failure<AZStd::string>("Failed to run adb reverse on the Asset Processor port");
         }
@@ -299,9 +288,9 @@ StringOutcome DeployWorkerAndroid::Launch()
     if (    !m_deploymentConfig.m_shaderCompilerUseAP
         &&  IsLocalhost(m_deploymentConfig.m_shaderCompilerIpAddress))
     {
-        const char* shaderCompilerPort = m_deploymentConfig.m_shaderCompilerPort.c_str();
-        AZStd::string reversePortCmd = AZStd::move(AZStd::string::format("%s -s %s reverse tcp:%s tcp:%s", adbPath, deviceId, shaderCompilerPort, shaderCompilerPort));
-        if (!RunBlockingCommand(reversePortCmd))
+        QString shaderCompilerPort = tcpArgFormat.arg(m_deploymentConfig.m_shaderCompilerPort.c_str());
+
+        if (!RunBlockingCommand(adbPath, { "-s", deviceId, "reverse", shaderCompilerPort, shaderCompilerPort }))
         {
             return AZ::Failure<AZStd::string>("Failed to run adb reverse on the Shader Compiler port");
         }
@@ -309,24 +298,25 @@ StringOutcome DeployWorkerAndroid::Launch()
 
     if (IsLocalhost(m_deploymentConfig.m_deviceIpAddress))
     {
-        const AZ::u16 localPort = m_deploymentConfig.m_hostRemoteLogPort;
-        const char* remotePort = m_deploymentConfig.m_deviceRemoteLogPort.c_str();
+        QString localPort = tcpArgFormat.arg(m_deploymentConfig.m_hostRemoteLogPort);
+        QString remotePort = tcpArgFormat.arg(m_deploymentConfig.m_deviceRemoteLogPort.c_str());
 
-        AZStd::string forwardPortCmd = AZStd::move(AZStd::string::format("%s -s %s forward tcp:%hu tcp:%s", adbPath, deviceId, localPort, remotePort));
-        if (!RunBlockingCommand(forwardPortCmd))
+        if (!RunBlockingCommand(adbPath, { "-s", deviceId, "forward", localPort, remotePort }))
         {
             return AZ::Failure<AZStd::string>("Failed to run adb forward on the Remote Log port");
         }
     }
 
-    AZStd::string unlockScreenCmd = AZStd::move(AZStd::string::format("%s -s %s shell input keyevent 82", adbPath, deviceId));
-    if (!RunBlockingCommand(unlockScreenCmd))
+    // unlock the screen
+    if (!RunBlockingCommand(adbPath, { "-s", deviceId, "shell", "input", "keyevent", "82" }))
     {
         return AZ::Failure<AZStd::string>("Failed to unlock screen");
     }
 
-    AZStd::string runCmd = AZStd::move(AZStd::string::format("%s -s %s shell am start -n %s/.%sActivity", adbPath, deviceId, m_package.c_str(), m_deploymentConfig.m_projectName.c_str()));
-    if (!RunBlockingCommand(runCmd))
+    QStringList launchAppArgs = {
+        "-s", deviceId, "shell", "am", "start", "-n", QString("%1/.%2Activity").arg(m_package.c_str(), m_deploymentConfig.m_projectName.c_str())
+    };
+    if (!RunBlockingCommand(adbPath, launchAppArgs))
     {
         return AZ::Failure<AZStd::string>("Failed to launch application");
     }

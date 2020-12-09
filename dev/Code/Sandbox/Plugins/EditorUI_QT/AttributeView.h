@@ -27,7 +27,6 @@
 #include "VariableWidgets/QGradientColorDialog.h"
 #include "VariableWidgets/QColorSwatchWidget.h"
 #include "VariableWidgets/QGradientSwatchWidget.h"
-#include "VariableWidgets/QCustomColorDialog.h"
 
 #include <AzCore/std/functional.h>
 

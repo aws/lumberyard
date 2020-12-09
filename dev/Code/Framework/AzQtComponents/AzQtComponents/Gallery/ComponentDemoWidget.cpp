@@ -13,7 +13,7 @@
 #include "ComponentDemoWidget.h"
 #include <Gallery/ui_ComponentDemoWidget.h>
 
-#include <QSettings>
+#include <LyMetricsProducer/LyMetricsAPI.h>
 
 #include "AssetBrowserFolderPage.h"
 #include "BreadCrumbsPage.h"
@@ -24,36 +24,39 @@
 #include "ColorLabelPage.h"
 #include "ColorPickerPage.h"
 #include "ComboBoxPage.h"
+#include "DragAndDropPage.h"
+#include "FilteredSearchWidgetPage.h"
 #include "GradientSliderPage.h"
+#include "HyperlinkPage.h"
 #include "LineEditPage.h"
+#include "MenuPage.h"
 #include "ProgressIndicatorPage.h"
 #include "RadioButtonPage.h"
-#include "SegmentControlPage.h"
-#include "SliderPage.h"
-#include "SvgLabelPage.h"
-#include "TabWidgetPage.h"
-#include "ToggleSwitchPage.h"
-#include "TypographyPage.h"
-#include "SpinBoxPage.h"
-#include "StyleSheetPage.h"
-#include "FilteredSearchWidgetPage.h"
-#include "TableViewPage.h"
-#include "StyledDockWidgetPage.h"
-#include "TitleBarPage.h"
-#include "SliderComboPage.h"
-#include "MenuPage.h"
+#include "ReflectedPropertyEditorPage.h"
 #include "ScrollBarPage.h"
+#include "SegmentControlPage.h"
+#include "SliderComboPage.h"
+#include "SliderPage.h"
+#include "SplitterPage.h"
+#include "SpinBoxPage.h"
+#include "StyledDockWidgetPage.h"
+#include "StyleSheetPage.h"
+#include "SvgLabelPage.h"
+#include "TableViewPage.h"
+#include "TabWidgetPage.h"
+#include "TitleBarPage.h"
+#include "ToggleSwitchPage.h"
 #include "ToolBarPage.h"
 #include "TreeViewPage.h"
-#include "HyperlinkPage.h"
-#include "DragAndDropPage.h"
-#include "ReflectedPropertyEditorPage.h"
-#include "SplitterPage.h"
+#include "TypographyPage.h"
 
-#include <QMenuBar>
-#include <QMenu>
 #include <QAction>
 #include <QMap>
+#include <QMenu>
+#include <QMenuBar>
+#include <QSettings>
+
+#include <cctype>
 
 const QString g_pageIndexSettingKey = QStringLiteral("ComponentDemoWidgetPage");
 
@@ -113,9 +116,19 @@ ComponentDemoWidget::ComponentDemoWidget(bool legacyUISetting, QWidget* parent)
     }
 
     connect(ui->demoSelector, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), ui->demoWidgetStack, [this, spinBoxPage](int newIndex) {
+        QString demoSelectorText = ui->demoSelector->currentText();
         ui->demoWidgetStack->setCurrentIndex(newIndex);
 
-        QString demoSelectorText = ui->demoSelector->currentText();
+        if (m_metricsEnabled)
+        {
+            // Retrieve the name of the page that was just opened, and remove spaces.
+            AZStd::string pageName = demoSelectorText.toUtf8().data();
+            pageName.erase(AZStd::remove_if(pageName.begin(), pageName.end(), std::isspace), pageName.end());
+
+            // Send Metrics info for the new page that has been selected.
+            AZStd::string metricsEventName = "Open" + pageName;
+            LyMetrics_SendEvent("AmazonQtControlGallery", { { "Operation", metricsEventName.c_str() } });
+        }
 
         QSettings settings;
         settings.setValue(g_pageIndexSettingKey, demoSelectorText);
@@ -147,6 +160,8 @@ ComponentDemoWidget::ComponentDemoWidget(bool legacyUISetting, QWidget* parent)
     }
 
     ui->demoSelector->setCurrentIndex(savedIndex);
+
+    m_metricsEnabled = true;
 }
 
 ComponentDemoWidget::~ComponentDemoWidget()
@@ -161,13 +176,9 @@ void ComponentDemoWidget::addPage(QWidget* widget, const QString& title)
 
 void ComponentDemoWidget::setupMenuBar(bool legacyUISetting)
 {
-    auto fileMenu = menuBar()->addMenu("&File");
+    (void)legacyUISetting;
 
-    auto styleToggle = fileMenu->addAction("Enable UI 1.0");
-    styleToggle->setShortcut(QKeySequence("Ctrl+T"));
-    styleToggle->setCheckable(true);
-    styleToggle->setChecked(legacyUISetting);
-    QObject::connect(styleToggle, &QAction::toggled, this, &ComponentDemoWidget::styleChanged);
+    auto fileMenu = menuBar()->addMenu("&File");
 
     QAction* refreshAction = fileMenu->addAction("Refresh Stylesheet");
     QObject::connect(refreshAction, &QAction::triggered, this, &ComponentDemoWidget::refreshStyle);

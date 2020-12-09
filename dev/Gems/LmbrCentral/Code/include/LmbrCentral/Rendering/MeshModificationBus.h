@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/std/containers/set.h>
 
 struct IRenderMesh;
@@ -43,6 +44,7 @@ namespace LmbrCentral
     */
     class MeshModificationRequestHelper
         : public MeshModificationRequestBus::Handler
+        , public AZ::TickBus::Handler
     {
     public:
         struct MeshLODPrimIndex
@@ -57,9 +59,10 @@ namespace LmbrCentral
             }
         };
 
-        void Connect(BusIdType busId)
+        void Connect(MeshModificationRequestBus::BusIdType busId)
         {
             MeshModificationRequestBus::Handler::BusConnect(busId);
+            AZ::TickBus::Handler::BusConnect();
         }
 
         bool IsConnected()
@@ -69,6 +72,7 @@ namespace LmbrCentral
 
         void Disconnect()
         {
+            AZ::TickBus::Handler::BusDisconnect();
             MeshModificationRequestBus::Handler::BusDisconnect();
         }
 
@@ -87,8 +91,29 @@ namespace LmbrCentral
             return m_meshesToSendForEditing;
         }
 
+        bool GetMeshModified() const
+        {
+            return m_meshModified;
+        }
+
+        void SetMeshModified(bool value)
+        {
+            m_meshModified = value;
+        }
+
     private:
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override
+        {
+            m_meshModified = false;
+        }
+
+        int GetTickOrder() override
+        {
+            return AZ::TICK_PRE_RENDER;
+        }
+
         AZStd::set<MeshLODPrimIndex> m_meshesToSendForEditing;
+        bool m_meshModified = false;
     };
 
     /*

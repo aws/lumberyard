@@ -81,7 +81,6 @@ namespace AzQtComponents
     {
     }
 
-    // double click of the line edit will trigger the attached button
     void BrowseEdit::setAttachedButtonIcon(const QIcon& icon)
     {
         m_data->m_attachedButton->setIcon(icon);
@@ -222,13 +221,6 @@ namespace AzQtComponents
         }
 
         return QFrame::eventFilter(watched, event);
-    }
-
-    void BrowseEdit::mouseDoubleClickEvent(QMouseEvent* event)
-    {
-        event->setAccepted(true);
-
-        Q_EMIT attachedButtonTriggered();
     }
 
     bool BrowseEdit::event(QEvent* event)

@@ -539,6 +539,40 @@ namespace ScriptCanvasEditor
         return m_scriptCanvasId;
     }
 
+    bool VariableDockWidget::IsValidVariableType(const ScriptCanvas::Data::Type& dataType) const
+    {
+        bool isValid = false;
+
+        AZ::Uuid azType = ScriptCanvas::Data::ToAZType(dataType);
+
+        if (ScriptCanvas::Data::IsMapContainerType(dataType))
+        {            
+            auto mapTypes = ui->variablePalette->GetMapTypes();
+
+            auto findIter = AZStd::find(mapTypes.begin(), mapTypes.end(), azType);
+
+            isValid = findIter != mapTypes.end();
+        }
+        else if (ScriptCanvas::Data::IsVectorContainerType(dataType))
+        {
+            auto arrayTypes = ui->variablePalette->GetArrayTypes();
+
+            auto findIter = AZStd::find(arrayTypes.begin(), arrayTypes.end(), azType);
+
+            isValid = findIter != arrayTypes.end();
+        }
+        else
+        {
+            const auto& variableTypes = ui->variablePalette->GetVariableTypePaletteModel()->GetVariableTypes();
+
+            auto findIter = AZStd::find(variableTypes.begin(), variableTypes.end(), azType);
+
+            isValid = findIter != variableTypes.end();
+        }
+
+        return isValid;
+    }
+
     bool VariableDockWidget::IsShowingVariablePalette() const
     {
         return ui->stackedWidget->currentIndex() == ui->stackedWidget->indexOf(ui->variablePalettePage);

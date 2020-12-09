@@ -51,7 +51,6 @@ namespace UnitTest
             ON_CALL(*this, ProcessReadyAsync(_)).WillByDefault(Invoke(this, &GameLiftServerSDKWrapperMock::ProcessReadyAsyncMock));
             ON_CALL(*this, ProcessEnding()).WillByDefault(Return(successOutcome));
             ON_CALL(*this, ActivateGameSession()).WillByDefault(Return(successOutcome));
-            ON_CALL(*this, TerminateGameSession()).WillByDefault(Return(successOutcome));
             ON_CALL(*this, AcceptPlayerSession(_)).WillByDefault(Return(successOutcome));
             ON_CALL(*this,RemovePlayerSession(_)).WillByDefault(Return(successOutcome));
             ON_CALL(*this,DescribePlayerSessions(_)).WillByDefault(Return(describePlayerSessionsOutcome));
@@ -62,7 +61,6 @@ namespace UnitTest
         MOCK_METHOD1(ProcessReadyAsync, GenericOutcomeCallable(const Server::ProcessParameters &processParameters));
         MOCK_METHOD0(ProcessEnding, GenericOutcome());
         MOCK_METHOD0(ActivateGameSession, GenericOutcome());
-        MOCK_METHOD0(TerminateGameSession, GenericOutcome());
         MOCK_METHOD1(AcceptPlayerSession, GenericOutcome(const std::string& playerSessionId));
         MOCK_METHOD1(RemovePlayerSession, GenericOutcome(const char* playerSessionId));
         MOCK_METHOD1(DescribePlayerSessions, DescribePlayerSessionsOutcome(const Server::Model::DescribePlayerSessionsRequest &describePlayerSessionsRequest));

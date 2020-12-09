@@ -192,6 +192,6 @@ protected:
     unsigned int m_currentLibrary;
     bool m_amCreatingLib;
     const unsigned int m_defaultLibraryId = 0;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
 };
 #endif // QPresetSelectorWidget_h__

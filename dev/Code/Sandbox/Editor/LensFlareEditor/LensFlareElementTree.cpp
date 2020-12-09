@@ -177,7 +177,7 @@ void CLensFlareElementTree::OnRowsInserted(const QModelIndex& parent, int first,
     if (parent.isValid())
     {
         expand(parent);
-        SelectItem(parent.child(first, 0));
+        SelectItem(parent.model()->index(first, 0, parent));
         CallChangeListeners();
     }
 }
@@ -186,7 +186,7 @@ void CLensFlareElementTree::OnRowsRemoved(const QModelIndex& parent, int first, 
 {
     if (parent.isValid())
     {
-        SelectItem(parent.child(first, 0));
+        SelectItem(parent.model()->index(first, 0, parent));
         CallChangeListeners();
     }
 }
@@ -502,7 +502,7 @@ QVariant LensFlareElementTreeModel::data(const QModelIndex& index, int role) con
         return pElement->IsEnable() ? Qt::Checked : Qt::Unchecked;
 
     case Qt::UserRole:
-        return qVariantFromValue<CLensFlareElement*>(pElement);
+        return QVariant::fromValue<CLensFlareElement*>(pElement);
     }
 
     return {};
@@ -633,7 +633,7 @@ Qt::ItemFlags LensFlareElementTreeModel::flags(const QModelIndex& index) const
 {
     if (!index.isValid())
     {
-        return 0;
+        return Qt::ItemFlags();
     }
 
     auto pElement = index.data(Qt::UserRole).value<CLensFlareElement*>();

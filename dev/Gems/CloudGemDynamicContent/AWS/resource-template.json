@@ -141,7 +141,7 @@
                     "Permissions": [
                         {
                             "AbstractRole": "ServiceLambda",
-                            "Action": ["s3:GetObject", "s3:DeleteObject"],
+                            "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:DeleteObject"],
                             "ResourceSuffix": "/*"
                         },
                         {
@@ -230,7 +230,7 @@
                     "Permissions": [
                         {
                             "AbstractRole": "ServiceLambda",
-                            "Action": ["dynamodb:GetItem", "dynamodb:Scan", "dynamodb:UpdateItem", "dynamodb:DeleteItem"]
+                            "Action": [ "dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:UpdateItem", "dynamodb:DeleteItem" ]
                         } 
                     ]
                 }

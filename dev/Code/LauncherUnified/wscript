@@ -28,6 +28,7 @@ def build(bld):
 
         # Platform Specific
         platform_roots      = [{'root': 'Platform', 'export_includes': False}],
+        ios_rpath           = ['@executable_path/Frameworks'],
     
         test_file_list      = ['launcher_test.waf_files'],
         test_use            = ['AzTest'],

@@ -501,7 +501,7 @@ public:
         QString fileName(dir.filePath("test.txt"));
         CreateDummyFile(fileName);
         AZ::u64 result = GetFileHash(fileName.toUtf8());
-        UNIT_TEST_EXPECT_TRUE(result == 17241709254077376921);
+        UNIT_TEST_EXPECT_TRUE(result == AZ::u64(17241709254077376921ul));
         Q_EMIT UnitTestPassed();
     }
 };
@@ -518,7 +518,7 @@ public:
         QString fileName(dir.filePath("test.txt"));
         CreateDummyFile(fileName);
         AZ::u64 result = GetFileHash(fileName.toUtf8(), true);
-        UNIT_TEST_EXPECT_TRUE(result == 17241709254077376921);
+        UNIT_TEST_EXPECT_TRUE(result == AZ::u64(17241709254077376921ul));
         Q_EMIT UnitTestPassed();
     }
 };

@@ -10,7 +10,7 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
+#include <ISystem.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 
@@ -49,6 +49,13 @@ namespace NvCloth
 
     void ClothComponent::Activate()
     {
+        // Cloth components only run on clients.
+        AZ_Assert(gEnv, "Environment not ready");
+        if (!gEnv->IsClient())
+        {
+            return;
+        }
+
         LmbrCentral::MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
     }
 

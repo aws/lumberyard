@@ -49,7 +49,7 @@ namespace ImageProcessingEditor
     public slots:
 
         void OnChangeDownRes(int downRes);
-        void OnChangeFormat(const QString& format);
+        void OnChangeFormat(int index);
 
     protected:
         ////////////////////////////////////////////////////////////////////////

@@ -71,7 +71,7 @@ private:
 
     bool m_ignoreSliderChange;
     bool m_ignoreSpinnerChange;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
     QVector<double> m_StoredValue;
 };
 

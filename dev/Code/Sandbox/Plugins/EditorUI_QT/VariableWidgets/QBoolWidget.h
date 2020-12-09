@@ -29,7 +29,7 @@ public:
     bool m_previousState;
 protected:
     virtual bool event(QEvent* e) override;
-    QToolTipWidget* m_tooltip;
+    QToolTipWrapper* m_tooltip;
 };
 
 #endif // CRYINCLUDE_EDITORUI_QT_VARIABLE_WIDGETS_QBOOLWIDGET_H

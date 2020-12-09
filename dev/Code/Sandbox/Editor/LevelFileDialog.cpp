@@ -490,7 +490,7 @@ bool CLevelFileDialog::ValidateLevelPath(const QString& levelPath) const
     }
 
     // Split path
-    QStringList splittedPath = levelPath.split(QRegularExpression(QStringLiteral(R"([\\/])")), QString::SkipEmptyParts);
+    QStringList splittedPath = levelPath.split(QRegularExpression(QStringLiteral(R"([\\/])")), Qt::SkipEmptyParts);
 
     // This shouldn't happen, but be careful
     if (splittedPath.empty())

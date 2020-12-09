@@ -41,8 +41,8 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // FolderThumbnail
         //////////////////////////////////////////////////////////////////////////
-        static const char* FOLDER_ICON_PATH = "Editor/Icons/AssetBrowser/Folder_16.png";
-        static const char* GEM_ICON_PATH = "Editor/Icons/AssetBrowser/GemFolder_16.png";
+        static const char* FOLDER_ICON_PATH = "Editor/Icons/AssetBrowser/Folder_16.svg";
+        static const char* GEM_ICON_PATH = "Editor/Icons/AssetBrowser/GemFolder_16.svg";
 
         FolderThumbnail::FolderThumbnail(SharedThumbnailKey key, int thumbnailSize)
             : Thumbnail(key, thumbnailSize)
@@ -56,9 +56,9 @@ namespace AzToolsFramework
             const char* engineRoot = nullptr;
             AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
             AZ_Assert(engineRoot, "Engine Root not initialized");
-            AZStd::string iconPath = AZStd::string::format("%s%s", engineRoot, folderKey->IsGem() ? GEM_ICON_PATH : FOLDER_ICON_PATH);
+            QString iconPath = QString::fromUtf8(AZStd::string::format("%s%s", engineRoot, folderKey->IsGem() ? GEM_ICON_PATH : FOLDER_ICON_PATH).c_str());
 
-            m_pixmap = QPixmap(iconPath.c_str());
+            m_icon = QIcon(iconPath);
         }
 
         //////////////////////////////////////////////////////////////////////////

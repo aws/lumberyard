@@ -554,7 +554,7 @@ struct SANDBOX_API SEditorSettings
 
     SSliceSettings sliceSettings;
 
-    bool bEnableUI2;
+    bool bEnableUI2 = true;
 
     bool newViewportInteractionModel = false; ///< Toggle for new Viewport Interaction Model.
 

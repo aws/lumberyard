@@ -16,18 +16,21 @@
 #include "SplineInterpolators.h"
 #include "CurveEditorContent.h"
 
+#include <AzQtComponents/Components/Widgets/ColorPicker.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+
 #include <QGradientStops>
 #include <CurveEditor.h>
 #include <QBrush>
 
-#include "qpolygon.h"
+#include "QAmazonLineEdit.h"
+#include <qpolygon.h>
 #include <QtMath>
-#include "qtooltip.h"
+#include <qtooltip.h>
 #include "CurveEditorControl.h"
 #include "QMenu"
 #include "../ContextMenu.h"
-#include "qlayoutitem.h"
-#include "QCustomColorDialog.h"
+#include <qlayoutitem.h>
 #include "UIFactory.h"
 #include "CurveEditorControl.h"
 #include "../Utils.h"
@@ -163,7 +166,7 @@ QGradientColorPickerWidget::QGradientColorPickerWidget(SCurveEditorContent conte
     UpdateIcons();
 
     m_curveEditor->installEventFilter(this);
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
     m_dropShadow = new QGraphicsDropShadowEffect(m_curveEditor);
     m_dropShadow->setBlurRadius(4);
     m_dropShadow->setColor(Qt::black);
@@ -362,7 +365,7 @@ QGradientStops QGradientColorPickerWidget::GetStops()
         stops.push_back(m_hueStops[i].GetStop());
     }
 
-    qSort(stops.begin(), stops.end(), [=](const QGradientStop& s1, const QGradientStop& s2) -> bool{ return s1.first < s2.first; });
+    std::sort(stops.begin(), stops.end(), [=](const QGradientStop& s1, const QGradientStop& s2) -> bool{ return s1.first < s2.first; });
 
     return stops;
 }
@@ -926,12 +929,14 @@ void QGradientColorPickerWidget::resizeEvent(QResizeEvent* event)
 
 void QGradientColorPickerWidget::onPickColor(GradientKey* key)
 {
-    QCustomColorDialog* dlg = UIFactory::GetColorPicker(key->GetStop().second, false);
-    //disable mouse tracking to prevent an infinite loop
-    if (dlg->exec() == QDialog::Accepted)
+    const QColor existingColor = key->GetStop().second;
+
+    const AZ::Color color = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGB, AzQtComponents::fromQColor(existingColor), tr("Select Color"));
+    QColor selectedColor = AzQtComponents::ToQColor(color);
+    if (selectedColor != existingColor)
     {
         QGradientStop stop = key->GetStop();
-        stop.second = dlg->GetColor();
+        stop.second = selectedColor;
         key->SetStop(stop);
         OnGradientChanged();
     }

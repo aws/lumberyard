@@ -19,6 +19,7 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <native/utilities/AssetUtilEBusHelper.h>
+#include <AzCore/std/parallel/thread.h>
 
 using namespace AssetUtilities;
 
@@ -502,3 +503,91 @@ TEST_F(AssetUtilitiesTest, GetServerAddress_ReadFromConfig_Valid)
     QString assetServerAddressReturned = AssetUtilities::ServerAddress();
     EXPECT_STREQ(assetServerAddressReturned.toUtf8().data(), assetServerAddress.toUtf8().data());
 }
+
+
+TEST_F(AssetUtilitiesTest, CreateDirWithTimeout_Valid)
+{
+    QTemporaryDir tempDir;
+    QDir tempPath(tempDir.path());
+    QDir dir(tempPath.filePath("folder"));
+    unsigned int timeToWaitInSecs = 3;
+    AZStd::vector<AZStd::thread*> threadList;
+    AZStd::vector<bool> resultList;
+    AZStd::mutex resultMutex;
+    auto runFunc = [&]()
+    {
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));// sleeping to sync all the threads
+        bool result = AssetUtilities::CreateDirectoryWithTimeout(dir, timeToWaitInSecs);
+        AZStd::lock_guard<AZStd::mutex> locker(resultMutex);
+        resultList.push_back(result);
+    };
+
+    int numberOfThreads = 5;
+
+    ASSERT_FALSE(dir.exists());
+
+    for (int idx = 0; idx < numberOfThreads; idx++)
+    {
+        AZStd::thread* workerThread = new AZStd::thread(runFunc);
+        threadList.emplace_back(workerThread);
+    }
+
+    for (auto thread : threadList)
+    {
+        if (thread->joinable())
+        {
+            thread->join();
+        }
+        delete thread;
+    }
+
+    for (int idx = 0; idx < numberOfThreads; idx++)
+    {
+        ASSERT_TRUE(resultList[idx]);
+    }
+
+    ASSERT_TRUE(dir.exists());
+}
+
+TEST_F(AssetUtilitiesTest, CreateDir_InvalidDir_Timeout_Valid)
+{
+    QDir dir(":\folder");
+    unsigned int timeToWaitInSecs = 1;
+    AZStd::vector<AZStd::thread*> threadList;
+    AZStd::vector<bool> resultList;
+    AZStd::mutex resultMutex;
+    auto runFunc = [&]()
+    {
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));// sleeping to sync all the threads
+        bool result = AssetUtilities::CreateDirectoryWithTimeout(dir, timeToWaitInSecs);
+        AZStd::lock_guard<AZStd::mutex> locker(resultMutex);
+        resultList.push_back(result);
+    };
+
+    int numberOfThreads = 5;
+
+    ASSERT_FALSE(dir.exists());
+
+    for (int idx = 0; idx < numberOfThreads; idx++)
+    {
+        AZStd::thread* workerThread = new AZStd::thread(runFunc);
+        threadList.emplace_back(workerThread);
+    }
+
+    for (auto thread : threadList)
+    {
+        if (thread->joinable())
+        {
+            thread->join();
+        }
+        delete thread;
+    }
+
+    for (int idx = 0; idx < numberOfThreads; idx++)
+    {
+        ASSERT_FALSE(resultList[idx]);
+    }
+
+    ASSERT_FALSE(dir.exists());
+}
+

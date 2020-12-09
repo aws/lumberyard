@@ -48,7 +48,7 @@ DeployWorkerIos::DeployWorkerIos()
             const int killProcessDelayInMilliseconds = 30 * 1000; // 30 second timeout :(
 
             QString output(m_xcodebuildProcess->readAllStandardOutput());
-            QStringList lines = output.split('\n', QString::SkipEmptyParts);
+            QStringList lines = output.split('\n', Qt::SkipEmptyParts);
 
             for (const auto& line : lines)
             {
@@ -90,10 +90,10 @@ bool DeployWorkerIos::GetConnectedDevices(DeviceMap& connectedDevices) const
     const int deviceIdGroup = 3;
 
     QString output;
-    bool ret = RunBlockingCommand("instruments -s devices", &output);
+    bool ret = RunBlockingCommand("instruments", { "-s", "devices" }, &output);
     if (ret)
     {
-        QStringList lines = output.split('\n', QString::SkipEmptyParts);
+        QStringList lines = output.split('\n', Qt::SkipEmptyParts);
         QRegularExpression regex(physicalDeviceIdRegex);
 
         for (const auto& line : lines)
@@ -223,16 +223,20 @@ StringOutcome DeployWorkerIos::Launch()
 
     const char* projectName = m_deploymentConfig.m_projectName.c_str();
 
-    AZStd::string xcodebuildCommand = AZStd::move(AZStd::string::format(
-        "xcodebuild test -project %s -scheme %sIOSLauncher -destination \"platform=iOS,id=%s\" -configuration %s -only-testing:%sIOSLauncherTests/LumberyardXCTestWrapperTests/testRuntime RUN_WAF_BUILD=NO",
+    QStringList args = {
+        "test",
+        "-project",
         m_xcodeProject.c_str(),
-        projectName,
-        m_deploymentConfig.m_deviceId.c_str(),
+        "-scheme",
+        QString("%1IOSLauncher").arg(projectName),
+        "-destination",
+        QString("\"platform=iOS,id=%1\"").arg(m_deploymentConfig.m_deviceId.c_str()),
+        "-configuration",
         m_deploymentConfig.m_buildConfiguration.c_str(),
-        projectName
-    ));
-
-    m_xcodebuildProcess->start(xcodebuildCommand.c_str());
+        QString("-only-testing:%1IOSLauncherTests/LumberyardXCTestWrapperTests/testRuntime").arg(projectName),
+        "RUN_WAF_BUILD=NO"
+    };
+    m_xcodebuildProcess->start("xcodebuild", args);
     if (!m_xcodebuildProcess->waitForStarted())
     {
         return AZ::Failure<AZStd::string>("Failed to invoke xcodebuild");

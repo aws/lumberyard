@@ -72,6 +72,7 @@ namespace GridMate
 
             // Called when backfilling players via matchmaking 
             virtual void OnGameLiftGameSessionUpdated(const Aws::GameLift::Server::Model::UpdateGameSession& updateGameSession) {}
+            virtual void OnProcessEndFailed() {}
         };
 
         typedef AZ::EBus<GameLiftServerSystemEvents> GameLiftServerSystemEventsBus;

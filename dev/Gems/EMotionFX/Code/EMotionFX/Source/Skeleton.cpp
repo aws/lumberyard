@@ -26,8 +26,8 @@ namespace EMotionFX
     // constructor
     Skeleton::Skeleton()
     {
-        mNodes.SetMemoryCategory(EMFX_MEMCATEGORY_SKELETON);
-        mRootNodes.SetMemoryCategory(EMFX_MEMCATEGORY_SKELETON);
+        m_nodes.SetMemoryCategory(EMFX_MEMCATEGORY_SKELETON);
+        m_rootNodes.SetMemoryCategory(EMFX_MEMCATEGORY_SKELETON);
     }
 
 
@@ -50,17 +50,17 @@ namespace EMotionFX
     {
         Skeleton* result = Skeleton::Create();
 
-        const uint32 numNodes = mNodes.GetLength();
+        const uint32 numNodes = m_nodes.GetLength();
         result->ReserveNodes(numNodes);
-        result->mRootNodes = mRootNodes;
+        result->m_rootNodes = m_rootNodes;
 
         // clone the nodes
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            result->AddNode(mNodes[i]->Clone(result));
+            result->AddNode(m_nodes[i]->Clone(result));
         }
 
-        result->mBindPose = mBindPose;
+        result->m_bindPose = m_bindPose;
 
         return result;
     }
@@ -69,26 +69,28 @@ namespace EMotionFX
     // reserve memory
     void Skeleton::ReserveNodes(uint32 numNodes)
     {
-        mNodes.Reserve(numNodes);
+        m_nodes.Reserve(numNodes);
     }
 
 
     // add a node
     void Skeleton::AddNode(Node* node)
     {
-        mNodes.Add(node);
+        m_nodes.Add(node);
+        m_nodesMap[node->GetNameString()] = node;
     }
 
 
     // remove a node
     void Skeleton::RemoveNode(uint32 nodeIndex, bool delFromMem)
     {
+        m_nodesMap.erase(m_nodes[nodeIndex]->GetNameString());
         if (delFromMem)
         {
-            mNodes[nodeIndex]->Destroy();
+            m_nodes[nodeIndex]->Destroy();
         }
 
-        mNodes.Remove(nodeIndex);
+        m_nodes.Remove(nodeIndex);
     }
 
 
@@ -97,44 +99,37 @@ namespace EMotionFX
     {
         if (delFromMem)
         {
-            const uint32 numNodes = mNodes.GetLength();
+            const uint32 numNodes = m_nodes.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                mNodes[i]->Destroy();
+                m_nodes[i]->Destroy();
             }
         }
 
-        mNodes.Clear();
-        mBindPose.Clear();
+        m_nodes.Clear();
+        m_nodesMap.clear();
+        m_bindPose.Clear();
     }
 
 
     Node* Skeleton::FindNodeByName(const char* name) const
     {
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        auto iter = m_nodesMap.find(name);
+        if (iter != m_nodesMap.end())
         {
-            if (mNodes[i]->GetNameString() == name)
-            {
-                return mNodes[i];
-            }
+            return iter->second;
         }
-
         return nullptr;
     }
 
 
     Node* Skeleton::FindNodeByName(const AZStd::string& name) const
     {
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        auto iter = m_nodesMap.find(name);
+        if (iter != m_nodesMap.end())
         {
-            if (mNodes[i]->GetNameString() == name)
-            {
-                return mNodes[i];
-            }
+            return iter->second;
         }
-
         return nullptr;
     }
 
@@ -143,12 +138,12 @@ namespace EMotionFX
     Node* Skeleton::FindNodeByNameNoCase(const char* name) const
     {
         // check the names for all nodes
-        const uint32 numNodes = mNodes.GetLength();
+        const uint32 numNodes = m_nodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            if (AzFramework::StringFunc::Equal(mNodes[i]->GetNameString().c_str(), name, false /* no case */))
+            if (AzFramework::StringFunc::Equal(m_nodes[i]->GetNameString().c_str(), name, false /* no case */))
             {
-                return mNodes[i];
+                return m_nodes[i];
             }
         }
 
@@ -160,12 +155,12 @@ namespace EMotionFX
     Node* Skeleton::FindNodeByID(uint32 id) const
     {
         // check the ID's for all nodes
-        const uint32 numNodes = mNodes.GetLength();
+        const uint32 numNodes = m_nodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            if (mNodes[i]->GetID() == id)
+            if (m_nodes[i]->GetID() == id)
             {
-                return mNodes[i];
+                return m_nodes[i];
             }
         }
 
@@ -176,25 +171,36 @@ namespace EMotionFX
     // set a given node
     void Skeleton::SetNode(uint32 index, Node* node)
     {
-        mNodes[index] = node;
+        if (m_nodes[index])
+        {
+            m_nodesMap.erase(m_nodes[index]->GetNameString());
+            m_nodes[index]->Destroy();
+        }
+        m_nodes[index] = node;
+        m_nodesMap[node->GetNameString()] = node;
     }
 
 
     // set the number of nodes
     void Skeleton::SetNumNodes(uint32 numNodes)
     {
-        mNodes.Resize(numNodes);
-        mBindPose.SetNumTransforms(numNodes);
+        uint32 oldLength = m_nodes.GetLength();
+        m_nodes.Resize(numNodes);
+        for (uint32 i = oldLength; i < numNodes; ++i)
+        {
+            m_nodes[i] = nullptr;
+        }
+        m_bindPose.SetNumTransforms(numNodes);
     }
 
 
     // update the node indices
     void Skeleton::UpdateNodeIndexValues(uint32 startNode)
     {
-        const uint32 numNodes = mNodes.GetLength();
+        const uint32 numNodes = m_nodes.GetLength();
         for (uint32 i = startNode; i < numNodes; ++i)
         {
-            mNodes[i]->SetNodeIndex(i);
+            m_nodes[i]->SetNodeIndex(i);
         }
     }
 
@@ -202,38 +208,38 @@ namespace EMotionFX
     // reserve memory for the root nodes array
     void Skeleton::ReserveRootNodes(uint32 numNodes)
     {
-        mRootNodes.Reserve(numNodes);
+        m_rootNodes.Reserve(numNodes);
     }
 
 
     // add a root node
     void Skeleton::AddRootNode(uint32 nodeIndex)
     {
-        mRootNodes.Add(nodeIndex);
+        m_rootNodes.Add(nodeIndex);
     }
 
 
     // remove a given root node
     void Skeleton::RemoveRootNode(uint32 nr)
     {
-        mRootNodes.Remove(nr);
+        m_rootNodes.Remove(nr);
     }
 
 
     // remove all root nodes
     void Skeleton::RemoveAllRootNodes()
     {
-        mRootNodes.Clear();
+        m_rootNodes.Clear();
     }
 
 
     // log all node names
     void Skeleton::LogNodes()
     {
-        const uint32 numNodes = mNodes.GetLength();
+        const uint32 numNodes = m_nodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            MCore::LogInfo("%d = '%s'", i, mNodes[i]->GetName());
+            MCore::LogInfo("%d = '%s'", i, m_nodes[i]->GetName());
         }
     }
 
@@ -242,7 +248,7 @@ namespace EMotionFX
     uint32 Skeleton::CalcHierarchyDepthForNode(uint32 nodeIndex) const
     {
         uint32 result = 0;
-        Node* curNode = mNodes[nodeIndex];
+        Node* curNode = m_nodes[nodeIndex];
         while (curNode->GetParentNode())
         {
             result++;

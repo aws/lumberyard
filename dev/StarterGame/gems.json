@@ -22,7 +22,8 @@
         {
             "Path": "StarterGame/Gem",
             "Uuid": "0c2c51b1d69d4700a3c078f9d52dd37f",
-            "Version": "0.2.0"
+            "Version": "0.2.0",
+            "_comment": "StarterGame"
         },
         {
             "Path": "Gems/LyShine",
@@ -139,6 +140,12 @@
             "_comment": "PhysXDebug"
         },
         {
+            "Path": "Gems/CameraFramework",
+            "Uuid": "54f2763fe191432fa681ce4a354eedf5",
+            "Version": "0.1.0",
+            "_comment": "CameraFramework"
+        },
+        {
             "Path": "Gems/InputManagementFramework",
             "Uuid": "59b1b2acc1974aae9f18faddcaddac5b",
             "Version": "0.1.0",
@@ -209,6 +216,12 @@
             "Uuid": "81d5967d0b9b41d89754cce68a20882e",
             "Version": "0.1.0",
             "_comment": "GraphicsReflectContext"
+        },
+        {
+            "Path": "Gems/StartingPointCamera",
+            "Uuid": "834070b9537d44df83559e2045c3859f",
+            "Version": "0.1.0",
+            "_comment": "StartingPointCamera"
         },
         {
             "Path": "Gems/ScriptCanvas",

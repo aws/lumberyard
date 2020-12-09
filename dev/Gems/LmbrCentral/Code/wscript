@@ -23,13 +23,14 @@ def build(bld):
         win_features    = ['crcfix'],
         defines         = [define_enable_cry_physics],
         export_defines  = [define_enable_cry_physics],
+        platform_roots = [bld.PlatformRoot('Platform', export_includes=False)],
 
         editor       = dict(
 
-            platform_roots = [bld.PlatformRoot('Platform', export_includes=False)],
+            
             platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
-
+            platform_roots = [bld.PlatformRoot('Platform', export_includes=False)],
             use         = ['AzToolsFramework', 'AzQtComponents', 'AssetBuilderSDK'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
             includes    = ['include',
                            'Source',
@@ -46,7 +47,7 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS'],
 
-            defines        = ['LMBR_CENTRAL_EDITOR', 'METRICS_SYSTEM_COMPONENT_ENABLED', define_enable_cry_physics],
+            defines        = ['LMBR_CENTRAL_EDITOR', 'METRICS_SYSTEM_COMPONENT_ENABLED', define_enable_cry_physics, 'LMBR_CENTRAL_EDITOR_EXPORTS'],
             export_defines = [define_enable_cry_physics],
 
             darwin_uselib = ['AWS_CPP_SDK_CORE',

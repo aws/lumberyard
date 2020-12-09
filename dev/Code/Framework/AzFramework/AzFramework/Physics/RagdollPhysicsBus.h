@@ -58,8 +58,15 @@ namespace AzFramework
         /// @param initialState Contains pose and velocity information for initializing the ragdoll.
         virtual void EnableSimulation(const Physics::RagdollState& initialState) = 0;
 
+        /// Queues inserting the ragdoll into the physics simulation, to be executed before the next physics update.
+        /// @param initialState State for initializing the ragdoll positions, orientations and velocities.
+        virtual void EnableSimulationQueued(const Physics::RagdollState& initialState) = 0;
+
         /// Removes the ragdoll from physics simulation.
         virtual void DisableSimulation() = 0;
+
+        /// Queues removing the ragdoll from the physics simulation, to be executed before the next physics update.
+        virtual void DisableSimulationQueued() = 0;
 
         /// Gets a pointer to the underlying generic ragdoll object.
         virtual Physics::Ragdoll* GetRagdoll() = 0;
@@ -72,6 +79,11 @@ namespace AzFramework
         /// Updates the state for all of the nodes in the ragdoll based on the input state.
         /// @param ragdollState Contains the state with which to update the ragdoll.
         virtual void SetState(const Physics::RagdollState& ragdollState) = 0;
+
+        /// Queues updating the state for all of the bodies in the ragdoll using the input ragdoll state.
+        /// The new state is applied before the next physics update.
+        /// @param ragdollState The state with which to update the ragdoll.
+        virtual void SetStateQueued(const Physics::RagdollState& ragdollState) = 0;
 
         /// Writes the state for an individual node in the ragdoll to the provided output.
         /// The caller owns the output state and can safely manipulate it without affecting the physics simulation.

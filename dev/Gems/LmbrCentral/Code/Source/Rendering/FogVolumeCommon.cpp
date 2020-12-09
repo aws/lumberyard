@@ -109,7 +109,10 @@ namespace LmbrCentral
         AZ_Assert(configuration.m_volumeType != FogVolumeType::None, "[FogConfigToFogParams] Attempting to create a fog with invalid volume type")
 
         fogVolumeProperties.m_volumeType = static_cast<int>(configuration.m_volumeType);
-        fogVolumeProperties.m_size = AZVec3ToLYVec3(configuration.m_size);
+
+        static const AZ::Vector3 minSize = AZ::Vector3(0.001f, 0.001f, 0.001f);
+        fogVolumeProperties.m_size = AZVec3ToLYVec3(configuration.m_size.GetMax(minSize));
+
         fogVolumeProperties.m_color = AZColorToLYVec3(configuration.m_color);
         fogVolumeProperties.m_useGlobalFogColor = configuration.m_useGlobalFogColor;
         fogVolumeProperties.m_ignoresVisAreas = configuration.m_ignoresVisAreas;

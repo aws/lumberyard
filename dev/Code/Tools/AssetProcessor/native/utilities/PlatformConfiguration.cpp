@@ -246,7 +246,7 @@ namespace AssetProcessor
                 QVariant paramValue = loader.value("tags", QString());
                 QString platformTagString = paramValue.type() == QVariant::StringList ? paramValue.toStringList().join(",") : paramValue.toString();
 
-                QStringList platformTagsQt = platformTagString.split(QChar(','), QString::SkipEmptyParts);
+                QStringList platformTagsQt = platformTagString.split(QChar(','), Qt::SkipEmptyParts);
                 AZStd::unordered_set<AZStd::string> platformTagsAZ;
 
                 for (const QString& tag : platformTagsQt)
@@ -399,8 +399,8 @@ namespace AssetProcessor
                     QString includeTagString = includeParams.type() == QVariant::StringList ? includeParams.toStringList().join(",") : includeParams.toString();
                     QString excludeTagString = excludeParams.type() == QVariant::StringList ? excludeParams.toStringList().join(",") : excludeParams.toString();
 
-                    QStringList includeIdentifiers = includeTagString.split(QChar(','), QString::SkipEmptyParts);
-                    QStringList excludeIdentifiers = excludeTagString.split(QChar(','), QString::SkipEmptyParts);
+                    QStringList includeIdentifiers = includeTagString.split(QChar(','), Qt::SkipEmptyParts);
+                    QStringList excludeIdentifiers = excludeTagString.split(QChar(','), Qt::SkipEmptyParts);
 
                     AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
                     PopulatePlatformsForScanFolder(platforms, includeIdentifiers, excludeIdentifiers);
@@ -415,7 +415,7 @@ namespace AssetProcessor
                     // [ScanFolder My Gem]
                     // the portable key should absolutely not include the outputprefix because you can map
                     // multiple folders into the same output prefix, it is not a suitable unique identifier.
-                    QString oldDisplayName = group.split(" ", QString::SkipEmptyParts)[1];
+                    QString oldDisplayName = group.split(" ", Qt::SkipEmptyParts)[1];
                     QString scanFolderPortableKey = QString("from-ini-file-%1").arg(oldDisplayName);
 
                     // the new way of computing the display name involves taking everything after the "[ScanFolder " section name.
@@ -665,10 +665,11 @@ namespace AssetProcessor
 
         m_scanFolders.push_back(source);
 
-        qSort(m_scanFolders.begin(), m_scanFolders.end(), [](const ScanFolderInfo& a, const ScanFolderInfo& b)
+        std::stable_sort(m_scanFolders.begin(), m_scanFolders.end(), [](const ScanFolderInfo& a, const ScanFolderInfo& b)
             {
                 return a.GetOrder() < b.GetOrder();
-            });
+            }
+        );
     }
 
     void PlatformConfiguration::AddRecognizer(const AssetRecognizer& source)

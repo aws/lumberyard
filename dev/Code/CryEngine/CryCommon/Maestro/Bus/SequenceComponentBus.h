@@ -719,6 +719,11 @@ namespace Maestro
          */
         virtual void GetAssetDuration(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId) = 0;
 
+        /**
+         * Returns the asset type specified by the AZ::Script::Attributes::AssetType attribute that can exist on setter methods that take an asset id to specify which asset type may be required
+         */
+        virtual void GetAssetTypeName(AZStd::string& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress) = 0;
+
         //////////////////////////////////////////////////////////////////////////
         // Behaviors
         /**

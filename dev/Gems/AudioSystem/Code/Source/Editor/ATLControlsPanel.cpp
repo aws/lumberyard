@@ -183,7 +183,7 @@ namespace AudioControls
         {
             bool bIsValid = false;
             bool bHasChildren = false;
-            QModelIndex child = parent.child(0, 0);
+            QModelIndex child = parent.model()->index(0, 0, parent);
             for (int i = 1; child.isValid(); ++i)
             {
                 bHasChildren = true;
@@ -191,7 +191,7 @@ namespace AudioControls
                 {
                     bIsValid = true;
                 }
-                child = parent.child(i, 0);
+                child = parent.model()->index(i, 0, parent);
             }
 
             if (!bIsValid && IsValid(parent))

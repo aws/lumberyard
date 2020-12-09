@@ -22,44 +22,44 @@
 
 namespace Charts
 {
-	class Axis;
+    class Axis;
 }
 
 namespace Driller
 {
-	class AnnotationsProvider;
-	class AnnotationsDataView_Events;
-	class Annotation;
+    class AnnotationsProvider;
+    class AnnotationsDataView_Events;
+    class Annotation;
 
-	/** This version of the annotations header view sits above the per-frame events widget (near the bottom of hte main view).
-	* Its job is to show annotations that happen within a single frame (on an event-by-event basis!)
-	* It can actually work on any track thats willing to provide it with an axis.
-	*/
+    /** This version of the annotations header view sits above the per-frame events widget (near the bottom of hte main view).
+    * Its job is to show annotations that happen within a single frame (on an event-by-event basis!)
+    * It can actually work on any track thats willing to provide it with an axis.
+    */
 
-	class AnnotationHeaderView_Events : public QWidget
-	{
-		Q_OBJECT;
-	public:
-		AZ_CLASS_ALLOCATOR(AnnotationHeaderView_Events,AZ::SystemAllocator,0);
-		AnnotationHeaderView_Events(QWidget* parent = NULL, Qt::WindowFlags flags = 0);
-		virtual ~AnnotationHeaderView_Events(void);
+    class AnnotationHeaderView_Events : public QWidget
+    {
+        Q_OBJECT;
+    public:
+        AZ_CLASS_ALLOCATOR(AnnotationHeaderView_Events,AZ::SystemAllocator,0);
+        AnnotationHeaderView_Events(QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
+        virtual ~AnnotationHeaderView_Events(void);
 
-		void AttachToAxis(AnnotationsProvider* ptrAnnotations, Charts::Axis *target);
+        void AttachToAxis(AnnotationsProvider* ptrAnnotations, Charts::Axis *target);
 signals:
-		void InformOfMouseOverAnnotation(const Annotation& annotation);
-		void InformOfClickAnnotation(const Annotation& annotation);
-		
+        void InformOfMouseOverAnnotation(const Annotation& annotation);
+        void InformOfClickAnnotation(const Annotation& annotation);
+        
 public slots:
-		void RefreshView();
-		void ControllerSizeChanged(QSize newSize);
-		void OnScrubberFrameUpdate(FrameNumberType newFrame);
-	private:
-		AnnotationsProvider *m_ptrAnnotations;
-		AnnotationsDataView_Events *m_ptrDataView;
-		
-		virtual QSize sizeHint() const;
-	
-	};
+        void RefreshView();
+        void ControllerSizeChanged(QSize newSize);
+        void OnScrubberFrameUpdate(FrameNumberType newFrame);
+    private:
+        AnnotationsProvider *m_ptrAnnotations;
+        AnnotationsDataView_Events *m_ptrDataView;
+        
+        virtual QSize sizeHint() const;
+    
+    };
 
 }
 

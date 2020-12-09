@@ -1,7 +1,9 @@
 {
     "auto": {
         "Tests": [
-            "Tests/Test.cpp"
+            "Tests/Test.cpp",
+            "Tests/NvClothTest.cpp",
+            "Tests/NvClothTest.h"
         ]
     }
 }

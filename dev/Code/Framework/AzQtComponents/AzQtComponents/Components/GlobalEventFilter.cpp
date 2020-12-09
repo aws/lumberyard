@@ -42,20 +42,44 @@ namespace AzQtComponents
             {
                 auto wheelEvent = static_cast<QWheelEvent*>(e);
 
+                // If the scroll event is set to something other than begin/no phase, let the phased scroll logic in
+                // QApplication::notify handle the event
+                if (wheelEvent->phase() != Qt::NoScrollPhase && wheelEvent->phase() != Qt::ScrollBegin)
+                {
+                    return false;
+                }
+
                 // Make the wheel event fall through to windows underneath the mouse, even if they don't have focus. If
                 // we don't do this, the wheel event gets turned into a focus event, followed by a wheel event. This
                 // would cause a user scrolling on an unfocused QSpinBox to accidentally change the value, rather than
                 // scrolling the view.
-                QWidget* widget = QApplication::widgetAt(wheelEvent->globalPos());
+                QWidget* widget = QApplication::widgetAt(wheelEvent->globalPosition().toPoint());
                 if (widget && obj != widget)
                 {
-                    QPoint mappedPos = widget->mapFromGlobal(wheelEvent->globalPos());
+                    // Run the wheel event up the hierarchy of the target widget until the event is accepted, as the event
+                    // is no longer being propagated automatically in Qt5.15
+                    while (widget)
+                    {
+                        QPoint mappedPos = widget->mapFromGlobal(wheelEvent->globalPosition().toPoint());
 
-                    QWheelEvent wheelEventCopy(mappedPos, wheelEvent->globalPos(), wheelEvent->pixelDelta(),
-                        wheelEvent->angleDelta(), wheelEvent->delta(), wheelEvent->orientation(), wheelEvent->buttons(),
-                        wheelEvent->modifiers(), wheelEvent->phase(), wheelEvent->source());
-
-                    return QApplication::instance()->sendEvent(widget, &wheelEventCopy);
+                        QWheelEvent wheelEventCopy = QWheelEvent(
+                            mappedPos,
+                            wheelEvent->globalPosition().toPoint(),
+                            wheelEvent->pixelDelta(),
+                            wheelEvent->angleDelta(),
+                            wheelEvent->buttons(),
+                            wheelEvent->modifiers(),
+                            wheelEvent->phase(),
+                            wheelEvent->inverted(),
+                            wheelEvent->source()
+                        );
+                        QApplication::instance()->sendEvent(widget, &wheelEventCopy);
+                        if (wheelEventCopy.isAccepted())
+                        {
+                            return true;
+                        }
+                        widget = widget->parentWidget();
+                    }
                 }
             }
             break;

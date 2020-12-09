@@ -10,8 +10,6 @@
  *
  */
 
-#include <NvCloth_precompiled.h>
-
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
@@ -29,9 +27,11 @@ namespace NvCloth
 {
     namespace
     {
-        const char* StatusMessageSelectNode = "Select a node";
-        const char* StatusMessageNoAsset = "<No asset>";
-        const char* StatusMessageNoClothNodes = "<No cloth modifiers>";
+        const char* const StatusMessageSelectNode = "Select a node";
+        const char* const StatusMessageNoAsset = "<No asset>";
+        const char* const StatusMessageNoClothNodes = "<No cloth modifiers>";
+
+        const char* const AttributeSuffixMetersUnit = " m";
     }
 
     void EditorClothComponent::Reflect(AZ::ReflectContext* context)
@@ -61,8 +61,7 @@ namespace NvCloth
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorClothComponent::OnSimulatedInEditorToggled)
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorClothComponent::m_config)
-
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorClothComponent::OnConfigurationChanged)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorClothComponent::OnConfigurationChanged)
                     ;
 
                 editContext->Class<ClothConfiguration>("Cloth Configuration", "Configuration for cloth simulation.")
@@ -77,35 +76,64 @@ namespace NvCloth
                         "List of mesh nodes with cloth simulation data. These are the nodes selected inside Cloth Modifiers in FBX Editor Settings.")
                         ->Attribute(AZ::Edit::UIHandlers::EntityId, &ClothConfiguration::GetEntityId)
                         ->Attribute(AZ::Edit::Attributes::StringList, &ClothConfiguration::PopulateMeshNodeList)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
 
                     // Mass and Gravity
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_mass, "Mass",
-                        "Mass scale applied to all particles. Zero makes all particles static.")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        "Mass scale applied to all particles.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_useCustomGravity, "Custom Gravity", 
                         "When enabled it allows to set a custom gravity value for this cloth.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_customGravity, "Gravity", 
                         "Gravity applied to particles.")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::m_useCustomGravity)
+                        ->Attribute(AZ::Edit::Attributes::ReadOnly, &ClothConfiguration::IsUsingWorldBusGravity)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_gravityScale, "Gravity Scale", 
                         "Use this parameter to scale the gravity applied to particles.")
-
-                    // Animation Blend factor
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_animationBlendFactor,
-                        "Animation Blending", "Blend factor of cloth simulation with authored skinning animation.\n"
-                        "0: Cloth mesh fully simulated\n"
-                        "1: Cloth mesh fully animated\n")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
-                        ->Attribute(AZ::Edit::Attributes::Decimals, 6)
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::ShowAnimationBlendFactor)
 
                     // Global stiffness frequency
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_stiffnessFrequency, "Stiffness frequency",
                         "Stiffness exponent per second applied to damping, damping dragging, wind dragging, wind lifting, self collision stiffness, fabric stiffness, fabric compression, fabric stretch and tether constraint stiffness.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    
+                    // Motion Constraints
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Motion constraints")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_motionConstraintsMaxDistance, "Max Distance",
+                        "Maximum distance for motion constraints to limit particles movement during simulation.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_motionConstraintsScale, "Scale",
+                        "Scale value applied to all motion constraints.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 6)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_motionConstraintsBias, "Bias",
+                        "Bias value added to all motion constraints.")
+                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &ClothConfiguration::m_motionConstraintsStiffness, "Stiffness",
+                        "Stiffness for motion constraints.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.0001f)
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 6)
+                    
+                    // Backstop
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Backstop")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_backstopRadius, "Radius",
+                        "Maximum radius that will prevent the associated cloth particle from moving into that area.")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_backstopBackOffset, "Back offset",
+                        "Maximum offset for backstop spheres behind the cloth.")
+                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_backstopFrontOffset, "Front offset",
+                        "Maximum offset for backstop spheres in front of the cloth.")
+                        ->Attribute(AZ::Edit::Attributes::Suffix, AttributeSuffixMetersUnit)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ClothConfiguration::HasBackstopData)
 
                     // Damping
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Damping")
@@ -205,6 +233,8 @@ namespace NvCloth
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_continuousCollisionDetection, "Continuous detection", 
                         "Continuous collision detection improves collision by computing time of impact between cloth particles and colliders."
                         "The increase in quality comes with a cost in performance, it's recommended to use only when required.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_collisionAffectsStaticParticles, "Affects static particles",
+                        "When enabled colliders will move static particles (inverse mass 0).")
 
                     // Self collision
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Self collision")
@@ -347,6 +377,9 @@ namespace NvCloth
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_accelerationFilterIterations, "Acceleration filter Iterations", 
                         "Number of iterations to average delta time factor used for gravity and external acceleration.")
                         ->Attribute(AZ::Edit::Attributes::Min, 1)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ClothConfiguration::m_removeStaticTriangles, "Remove static triangles",
+                        "Removing static triangles improves performance by not taking into account triangles whose particles are all static.\n"
+                        "The removed static particles will not be present for collision or self collision during simulation.")
                     ;
             }
         }
@@ -359,9 +392,10 @@ namespace NvCloth
             {
                 return m_meshNodeList;
             };
-        m_config.m_showAnimationBlendFactorCallback = [this]()
+        m_config.m_hasBackstopDataCallback = [this]()
             {
-                return m_assetSupportsSkinnedAnimation;
+                auto meshNodeIt = m_meshNodesWithBackstopData.find(m_config.m_meshNode);
+                return meshNodeIt != m_meshNodesWithBackstopData.end();
             };
         m_config.m_getEntityIdCallback = [this]()
             {
@@ -410,6 +444,7 @@ namespace NvCloth
         }
 
         m_meshNodeList.clear();
+        m_meshNodesWithBackstopData.clear();
 
         AZStd::unique_ptr<AssetHelper> assetHelper = AssetHelper::CreateAssetHelper(GetEntityId());
         if (assetHelper)
@@ -417,7 +452,13 @@ namespace NvCloth
             // Gather cloth mesh node list
             assetHelper->GatherClothMeshNodes(m_meshNodeList);
 
-            m_assetSupportsSkinnedAnimation = assetHelper->DoesSupportSkinnedAnimation();
+            for (const auto& meshNode : m_meshNodeList)
+            {
+                if (ContainsBackstopData(assetHelper.get(), meshNode))
+                {
+                    m_meshNodesWithBackstopData.insert(meshNode);
+                }
+            }
         }
 
         if (m_meshNodeList.empty())
@@ -459,7 +500,7 @@ namespace NvCloth
         // Refresh UI
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
             &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
-            AzToolsFramework::Refresh_AttributesAndValues);
+            AzToolsFramework::Refresh_EntireTree);
     }
 
     void EditorClothComponent::OnMeshDestroyed()
@@ -471,10 +512,12 @@ namespace NvCloth
 
         m_clothComponentMesh.reset();
 
+        m_meshNodesWithBackstopData.clear();
+
         // Refresh UI
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
             &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
-            AzToolsFramework::Refresh_AttributesAndValues);
+            AzToolsFramework::Refresh_EntireTree);
     }
 
     bool EditorClothComponent::IsSimulatedInEditor() const
@@ -510,5 +553,32 @@ namespace NvCloth
         {
             m_clothComponentMesh->UpdateConfiguration(GetEntityId(), m_config);
         }
+    }
+
+    bool EditorClothComponent::ContainsBackstopData(AssetHelper* assetHelper, const AZStd::string& meshNode) const
+    {
+        if (!assetHelper)
+        {
+            return false;
+        }
+
+        // Obtain cloth mesh info
+        MeshNodeInfo meshNodeInfo;
+        MeshClothInfo meshClothInfo;
+        bool clothInfoObtained = assetHelper->ObtainClothMeshNodeInfo(meshNode,
+            meshNodeInfo, meshClothInfo);
+        if (!clothInfoObtained)
+        {
+            return false;
+        }
+
+        return AZStd::any_of(
+            meshClothInfo.m_backstopData.cbegin(),
+            meshClothInfo.m_backstopData.cend(),
+            [](const AZ::Vector2& backstop)
+            {
+                const float backstopRadius = backstop.GetY();
+                return backstopRadius > 0.0f;
+            });
     }
 } // namespace NvCloth

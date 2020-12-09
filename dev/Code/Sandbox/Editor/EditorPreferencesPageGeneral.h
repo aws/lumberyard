@@ -67,7 +67,6 @@ private:
         // Only used to tell if the user has changed this value since it requires a restart
         bool m_enableLegacyUIInitialValue;
         bool m_enableNewViewportInteractionModelInitialValue;
-        bool m_enableUI1InitialValue;
 
 
         // Callbacks when either m_enableNewViewportInteractionModel or m_enableLegacyUI

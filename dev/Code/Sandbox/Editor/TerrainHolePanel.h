@@ -49,9 +49,8 @@ public:
 protected:
     void OnHoleMake(bool v);
     void OnHoleRemove(bool v);
-    void OnReleasedcaptureRadius(int value);
+    void OnRadiusSliderValueChanged();
 
-    QSlider*    m_radius;
     CTerrainHoleTool* m_tool;
     QScopedPointer<Ui::CTerrainHolePanel> ui;
 };

@@ -219,8 +219,8 @@ namespace EMStudio
         {
             QColor backgroundColor = color;
             backgroundColor.setAlpha(50);
-            nameItem->setBackgroundColor(backgroundColor);
-            typeItem->setBackgroundColor(backgroundColor);
+            nameItem->setBackground(backgroundColor);
+            typeItem->setBackground(backgroundColor);
         }
 
         // handle selection

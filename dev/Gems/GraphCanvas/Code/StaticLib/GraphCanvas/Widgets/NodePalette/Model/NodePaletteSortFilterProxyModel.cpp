@@ -81,9 +81,32 @@ namespace GraphCanvas
         m_availableItems.clear();
     }
 
-    void NodePaletteAutoCompleteModel::AddAvailableItem(const GraphCanvas::GraphCanvasTreeItem* treeItem)
+    void NodePaletteAutoCompleteModel::AddAvailableItem(const GraphCanvas::GraphCanvasTreeItem* treeItem, bool signalAdd)
     {
+        if (signalAdd)
+        {
+            beginInsertRows(QModelIndex(), aznumeric_cast<int>(m_availableItems.size() - 1), aznumeric_cast<int>(m_availableItems.size() - 1));
+        }
+
         m_availableItems.push_back(treeItem);
+
+        if (signalAdd)
+        {
+            endInsertRows();
+        }
+    }
+
+    void NodePaletteAutoCompleteModel::RemoveAvailableItem(const GraphCanvas::GraphCanvasTreeItem* treeItem)
+    {
+        for (int i = 0; i < m_availableItems.size(); ++i)
+        {
+            if (m_availableItems[i] == treeItem)
+            {
+                beginRemoveRows(QModelIndex(), i, i);
+                m_availableItems.erase(m_availableItems.begin() + i);
+                endRemoveRows();
+            }
+        }
     }
 
     ////////////////////////////////////
@@ -173,6 +196,9 @@ namespace GraphCanvas
 
         GraphCanvas::GraphCanvasTreeModel* treeModel = static_cast<GraphCanvas::GraphCanvasTreeModel*>(sourceModel());
 
+        QObject::connect(treeModel, &GraphCanvas::GraphCanvasTreeModel::OnTreeItemAdded, this, &NodePaletteSortFilterProxyModel::OnModelElementAdded);
+        QObject::connect(treeModel, &GraphCanvas::GraphCanvasTreeModel::OnTreeItemAboutToBeRemoved, this, &NodePaletteSortFilterProxyModel::OnModelElementAboutToBeRemoved);
+
         const GraphCanvas::GraphCanvasTreeItem* treeItem = treeModel->GetTreeRoot();
 
         AZStd::list<const GraphCanvas::GraphCanvasTreeItem*> exploreItems;
@@ -187,10 +213,7 @@ namespace GraphCanvas
 
             int numChildren = currentItem->GetChildCount();
 
-            if ((currentItem->Flags(k_flagIndex) & Qt::ItemIsDragEnabled) != 0)
-            {
-                m_unfilteredAutoCompleteModel->AddAvailableItem(currentItem);
-            }
+            ProcessItemForUnfilteredModel(currentItem);
 
             for (int i = 0; i < numChildren; ++i)
             {
@@ -239,7 +262,7 @@ namespace GraphCanvas
 
             if ((currentItem->Flags(k_flagIndex) & Qt::ItemIsDragEnabled) != 0)
             {
-                m_sourceSlotAutoCompleteModel->AddAvailableItem(currentItem);
+                m_sourceSlotAutoCompleteModel->AddAvailableItem(currentItem, false);
             }
 
             for (int i = 0; i < numChildren; ++i)
@@ -278,6 +301,28 @@ namespace GraphCanvas
         else
         {
             return &m_unfilteredCompleter;
+        }
+    }
+
+    void NodePaletteSortFilterProxyModel::OnModelElementAdded(const GraphCanvasTreeItem* treeItem)
+    {
+        const bool signalAdd = true;
+        ProcessItemForUnfilteredModel(treeItem, signalAdd);
+    }
+
+    void NodePaletteSortFilterProxyModel::OnModelElementAboutToBeRemoved(const GraphCanvasTreeItem* treeItem)
+    {
+        m_unfilteredCompleter.setCompletionPrefix("");
+        m_unfilteredAutoCompleteModel->RemoveAvailableItem(treeItem);
+    }
+
+    void NodePaletteSortFilterProxyModel::ProcessItemForUnfilteredModel(const GraphCanvasTreeItem* currentItem, bool signalAdd)
+    {
+        const QModelIndex k_flagIndex;
+
+        if ((currentItem->Flags(k_flagIndex) & Qt::ItemIsDragEnabled) != 0)
+        {
+            m_unfilteredAutoCompleteModel->AddAvailableItem(currentItem, signalAdd);
         }
     }
 

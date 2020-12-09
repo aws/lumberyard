@@ -15,13 +15,16 @@
 #ifdef EDITOR_QT_UI_EXPORTS
 #include <VariableWidgets/QCustomColorDialog.moc>
 #endif
-#include "QColorPickerWidget.h"
+
 #include "QColorEyeDropper.h"
-#include <QEvent>
-#include <QSettings>
-#include <QDesktopWidget>
-#include <QDesktopServices>
+#include "QColorPickerWidget.h"
+
 #include <QApplication>
+#include <QDesktopServices>
+#include <QDesktopWidget>
+#include <QEvent>
+#include <QScreen>
+#include <QSettings>
 
 #define EDITOR_QTUI_COLORPICKER_HELP_DOC_LINK "https://docs.aws.amazon.com/console/lumberyard/color-picker"
 
@@ -209,8 +212,7 @@ void QCustomColorDialog::LoadSessionState()
     QSettings settings("Amazon", "Lumberyard");
     QString group = "Color Editor/";
     settings.beginGroup(group);
-    QRect desktop = QApplication::desktop()->availableGeometry();
-
+    QRect desktop = QApplication::primaryScreen()->availableGeometry();
 
     if (QWidget* topLevel = window())
     {

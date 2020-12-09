@@ -25,33 +25,28 @@ namespace AzQtComponents
 {
     class Style;
 
-    /**
-     * Class to provide extra functionality for working with QToolBar controls.
-     *
-     * QToolBar controls are styled in QToolBar.qss
-     *
-     */
+     //! Class to provide extra functionality for working with ToolBar controls.
     class AZ_QT_COMPONENTS_API ToolBar
     {
     public:
-
+        //! Style configuration for a specific ToolBar group.
         struct ToolBarConfig
         {
-            int itemSpacing;
-
-            QColor backgroundColor;
-            qreal borderWidth;
-            QColor borderColor;
+            int itemSpacing;            //!< Spacing value for the ToolBar items, in pixels. All directions get the same spacing.
+            QColor backgroundColor;     //!< Background color for this ToolBar group.
+            qreal borderWidth;          //!< ToolBar border width, in pixels.
+            QColor borderColor;         //!< Border color for this ToolBar group.
         };
 
+        //! Style configuration for the ToolBar class.
         struct Config
         {
-            ToolBarConfig primary;
-            ToolBarConfig secondary;
-
-            int defaultSpacing;
+            ToolBarConfig primary;      //!< Style configuration for primary toolbars
+            ToolBarConfig secondary;    //!< Style configuration for secondary toolbars
+            int defaultSpacing;         //!< Spacing value for default ToolBar items, in pixels. All directions get the same spacing.
         };
 
+        //! Enum used to specify the ToolBar icon size. Icon sizing is also affected by the toolbar group (primary/secondary).
         enum class ToolBarIconSize
         {
             IconNormal,
@@ -59,34 +54,21 @@ namespace AzQtComponents
             Default = IconNormal
         };
 
-        /*!
-        * Loads the config data from a settings object.
-        */
+        //! Sets the ToolBar style configuration.
+        //! @param settings The settings object to load the configuration from.
+        //! @return The new configuration of the ToolBar.
         static Config loadConfig(QSettings& settings);
-
-        /*!
-        * Returns default config data.
-        */
+        //! Gets the default ToolBar style configuration.
         static Config defaultConfig();
 
-        /*!
-        * Applies the MainToolBar styling to a QToolBar.
-        * Same as
-        *   AzQtComponents::Style::addClass(toolBar, "MainToolBar");
-        */
+        //! Applies the primary styling to a ToolBar.
         static void addMainToolBarStyle(QToolBar* toolbar);
 
-        /*!
-        * Applies the proper class to a QToolBar given an icon size.
-        * Same as
-        *   AzQtComponents::Style::addClass(toolBar, "{IconNormal, IconLarge}");
-        */
+        //! Sets the icon size on the toolbar to the size provided.
         static void setToolBarIconSize(QToolBar* toolbar, ToolBarIconSize size);
 
-        /*!
-        * Returns a pointer to the toolbar's expander button.
-        * Used to override the default toolbar overflow behavior.
-        */
+        //! Returns a pointer to the toolbar's expander button.
+        //! Used to override the default toolbar overflow behavior.
         static QToolButton* getToolBarExpansionButton(QToolBar* toolBar);
 
     private:

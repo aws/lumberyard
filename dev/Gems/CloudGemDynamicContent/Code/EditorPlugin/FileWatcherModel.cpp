@@ -180,7 +180,7 @@ namespace DynamicContent
         QString fullPath = fullPathToAssets.c_str();
         fullPath.replace("\\", "/");
 
-        QStringList pathList = fullPath.split("/", QString::SkipEmptyParts);
+        QStringList pathList = fullPath.split("/", Qt::SkipEmptyParts);
         if (pathList.size() >= 2)
         {
             pathList[pathList.size() - 2] = file.platformType;

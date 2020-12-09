@@ -36,6 +36,7 @@
 #include "ScreenFaderTrack.h"
 #include "TimeRangesTrack.h"
 #include "SoundTrack.h"
+#include "AssetTrack.h"
 
 #include <AzCore/std/sort.h>
 #include <AzCore/Math/MathUtils.h>
@@ -379,6 +380,9 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
             break;
         case AnimValueType::AssetBlend:
             pTrack = aznew CAssetBlendTrack;
+            break;
+        case AnimValueType::AssetId:
+            pTrack = aznew CAssetTrack;
             break;
         }
     }

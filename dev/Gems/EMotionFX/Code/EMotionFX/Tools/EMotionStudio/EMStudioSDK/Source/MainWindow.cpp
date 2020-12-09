@@ -401,7 +401,7 @@ namespace EMStudio
 
         // reset the application mode selection and connect it
         mApplicationMode->setCurrentIndex(-1);
-        connect(mApplicationMode, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::currentIndexChanged), this, &MainWindow::ApplicationModeChanged);
+        connect(mApplicationMode, qOverload<int>(&QComboBox::currentIndexChanged), this, qOverload<int>(&MainWindow::ApplicationModeChanged));
         mLayoutLoaded = false;
 
         // view item
@@ -1832,6 +1832,11 @@ namespace EMStudio
         mApplicationMode->blockSignals(false);
     }
 
+    void MainWindow::ApplicationModeChanged(int index)
+    {
+        QString text = mApplicationMode->itemText(index);
+        ApplicationModeChanged(text);
+    }
 
     // called when the application mode combo box changed
     void MainWindow::ApplicationModeChanged(const QString& text)
@@ -2309,7 +2314,7 @@ namespace EMStudio
             // not cause any slots to be fired, so dispatch the call manually.
             // Pass an empty string to duplicate the behavior of calling
             // currentText() on an empty combo box
-            ApplicationModeChanged("");
+            ApplicationModeChanged(0);
             return;
         }
 

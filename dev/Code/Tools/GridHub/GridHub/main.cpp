@@ -558,7 +558,7 @@ void CopyAndRun(bool failSilently)
         QFile::remove(targetProcPath);
         if (QFile::copy(sourceProcPath, targetProcPath))
         {
-            QProcess::startDetached(targetProcPath);
+            QProcess::startDetached(targetProcPath, QStringList());
         }
         else
         {
@@ -616,7 +616,7 @@ void RelaunchImage()
     unsigned int pathSize = MAXPATHLEN;
     if (_NSGetExecutablePath(path, &pathSize) == 0)
     {
-        QProcess::startDetached(path);
+        QProcess::startDetached(path, QStringList());
     }
 #endif
 }

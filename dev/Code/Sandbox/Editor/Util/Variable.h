@@ -198,6 +198,7 @@ struct IVariable
         DT_UI_ELEMENT,
         DT_COLORA,      // DT_COLOR with alpha channel
         DT_MOTION,      // Motion animation asset
+        DT_ASSET,
         DT_CURVE = BIT(7),  // Combined with other types
     };
 

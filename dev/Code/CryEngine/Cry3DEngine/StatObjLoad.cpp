@@ -711,7 +711,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
 
     m_nNodeCount = pCGF->GetNodeCount();
 
-    m_clothInverseMasses.clear();
+    m_clothData.clear();
 
     //////////////////////////////////////////////////////////////////////////
     // Find out number of meshes, and get pointer to the first found mesh.
@@ -835,7 +835,7 @@ bool CStatObj::LoadCGF_Int(const char* filename, bool bLod, unsigned long nLoadi
                     m_pMesh->Copy(*pFirstMesh);
                 }
 #endif
-                FillClothInverseMasses(*pFirstMesh);
+                FillClothData(*pFirstMesh);
             }
             else
             {
@@ -1393,7 +1393,7 @@ CStatObj* CStatObj::MakeStatObjFromCgfNode(CContentCGF* pCGF, CNodeCGF* pNode, b
     {
         _smart_ptr<IRenderMesh> pRenderMesh = pStatObj->MakeRenderMesh(pNode->pMesh, !m_bCanUnload);
         pStatObj->SetRenderMesh(pRenderMesh);
-        pStatObj->FillClothInverseMasses(*pNode->pMesh);
+        pStatObj->FillClothData(*pNode->pMesh);
     }
     else
     {
@@ -1419,21 +1419,20 @@ CStatObj* CStatObj::MakeStatObjFromCgfNode(CContentCGF* pCGF, CNodeCGF* pNode, b
     return pStatObj;
 }
 
-void CStatObj::FillClothInverseMasses(CMesh& mesh)
+void CStatObj::FillClothData(CMesh& mesh)
 {
-    m_clothInverseMasses.clear();
+    m_clothData.clear();
 
-    // NOTE: Using CMesh Colors stream with index 1 for cloth inverse masses
+    // NOTE: Using CMesh Colors stream with index 1 for cloth data
     const int ClothVertexBufferStreamIndex = 1;
     int numElements = 0;
-    auto meshColorStream = mesh.GetStreamPtrAndElementCount<SMeshColor>(CMesh::COLORS, ClothVertexBufferStreamIndex, &numElements);
+    const auto meshColorStream = mesh.GetStreamPtrAndElementCount<SMeshColor>(CMesh::COLORS, ClothVertexBufferStreamIndex, &numElements);
     if (meshColorStream && numElements > 0)
     {
-        m_clothInverseMasses.resize(numElements);
+        m_clothData.resize(numElements);
         for (int i = 0; i < numElements; ++i)
         {
-            const uint8 inverseMass = meshColorStream[i].GetRGBA().r;
-            m_clothInverseMasses[i] = static_cast<float>(inverseMass) / 255.0f;
+            m_clothData[i] = meshColorStream[i];
         }
     }
 }

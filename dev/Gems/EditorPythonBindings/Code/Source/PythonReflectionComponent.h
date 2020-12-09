@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include <EditorPythonBindings/EditorPythonBindingsSymbols.h>
+
 #include <AzCore/Component/Component.h>
 #include <EditorPythonBindings/EditorPythonBindingsBus.h>
 #include <Source/PythonCommon.h>
@@ -29,7 +31,7 @@ namespace EditorPythonBindings
         , private EditorPythonBindings::EditorPythonBindingsNotificationBus::Handler
     {
     public:
-        AZ_COMPONENT(PythonReflectionComponent, "{CBF32BE1-292C-4988-9E64-25127A8525A7}", AZ::Component);
+        AZ_COMPONENT(PythonReflectionComponent, PythonReflectionComponentTypeId, AZ::Component);
 
         static void Reflect(AZ::ReflectContext* context);
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);

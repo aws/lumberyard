@@ -25,50 +25,50 @@
 
 namespace Driller
 {
-	class AnnotationsProvider;
-	class AnnotationsDataView;
-	class Annotation;
+    class AnnotationsProvider;
+    class AnnotationsDataView;
+    class Annotation;
 
-	/** The annotation header view runs along the top of the channels, and shows annotation blips that can be hovered over.
-	*   this gives nice hit boxes for clicking that are not a sliver thick.
-	*/
+    /** The annotation header view runs along the top of the channels, and shows annotation blips that can be hovered over.
+    *   this gives nice hit boxes for clicking that are not a sliver thick.
+    */
 
-	class AnnotationHeaderView : public QWidget, private Ui::AnnotationHeaderView
-	{
-		Q_OBJECT;
-	public:
-		AZ_CLASS_ALLOCATOR(AnnotationHeaderView,AZ::SystemAllocator,0);
-		AnnotationHeaderView(AnnotationsProvider* ptrAnnotations, QWidget* parent = NULL, Qt::WindowFlags flags = 0);
-		virtual ~AnnotationHeaderView(void);
+    class AnnotationHeaderView : public QWidget, private Ui::AnnotationHeaderView
+    {
+        Q_OBJECT;
+    public:
+        AZ_CLASS_ALLOCATOR(AnnotationHeaderView,AZ::SystemAllocator,0);
+        AnnotationHeaderView(AnnotationsProvider* ptrAnnotations, QWidget* parent = NULL, Qt::WindowFlags flags = Qt::WindowFlags());
+        virtual ~AnnotationHeaderView(void);
 
-		struct HeaderViewState
-		{
-			int m_EndFrame;
-			int m_FramesInView;
-			int m_FrameOffset;
-		};
+        struct HeaderViewState
+        {
+            int m_EndFrame;
+            int m_FramesInView;
+            int m_FrameOffset;
+        };
 
-		const HeaderViewState& GetState() { return m_State; }
+        const HeaderViewState& GetState() { return m_State; }
 
-		void SetDataPointsInView( int count );
-		void SetEndFrame( FrameNumberType frame );
-		void SetSliderOffset( FrameNumberType frame );
+        void SetDataPointsInView( int count );
+        void SetEndFrame( FrameNumberType frame );
+        void SetSliderOffset( FrameNumberType frame );
 
 signals:
-		void OnOptionsClick();
-		void InformOfMouseOverAnnotation(const Annotation& annotation);
-		void InformOfClickAnnotation(const Annotation& annotation);
-		public slots:
-			void RefreshView();
+        void OnOptionsClick();
+        void InformOfMouseOverAnnotation(const Annotation& annotation);
+        void InformOfClickAnnotation(const Annotation& annotation);
+        public slots:
+            void RefreshView();
 
-	private:
-		HeaderViewState m_State;
+    private:
+        HeaderViewState m_State;
 
-		AnnotationsProvider *m_ptrAnnotations;				
-		
-		virtual QSize sizeHint() const;
-	
-	};
+        AnnotationsProvider *m_ptrAnnotations;                
+        
+        virtual QSize sizeHint() const;
+    
+    };
 
 }
 

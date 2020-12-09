@@ -422,7 +422,7 @@ namespace AZ
                 const int headerPadding = 5;
                 m_reportView->resizeColumnsToContents();
                 m_reportView->horizontalHeader()->resizeSection(0,
-                                                                fontMetrics().width("Status")
+                                                                fontMetrics().horizontalAdvance("Status")
                                                                 + style()->pixelMetric(QStyle::PM_HeaderMarkSize) + headerPadding);
             }
         } // SceneUI

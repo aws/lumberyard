@@ -142,7 +142,7 @@ QPresetSelectorWidget::QPresetSelectorWidget(QWidget* parent /*= 0*/)
     margins.setLeft(0);
     margins.setRight(0);
     layout.setContentsMargins(margins);
-    m_tooltip = new QToolTipWidget(this);
+    m_tooltip = new QToolTipWrapper(this);
     connect(&panelEditName, &QAmazonLineEdit::textChanged, this, [=](){m_tooltip->hide(); });
     QAction* libSaveAction = panelEditName.addAction(QIcon(":/particleQT/buttons/add_btn.png"), QLineEdit::TrailingPosition);
     connect(libSaveAction, &QAction::triggered, this, &QPresetSelectorWidget::OnPanelSaveButtonClicked);

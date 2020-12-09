@@ -453,16 +453,17 @@ namespace ScriptCanvas
 
             void FunctionNode::CompleteDeactivation()
             {
+                if (!m_runtimeComponent)
+                {
+                    return;
+                }
                 auto scriptCanvasId = m_runtimeComponent->GetExecutionContext().GetScriptCanvasId();
                 if (FunctionRequestBus::Handler::BusIsConnectedId(scriptCanvasId))
                 {
                     FunctionRequestBus::Handler::BusDisconnect(scriptCanvasId);
 
-                    if (m_runtimeComponent)
-                    {
-                        PushDataOut();
-                        m_runtimeComponent->Deactivate();
-                    }
+                    PushDataOut();
+                    m_runtimeComponent->Deactivate();
                 }
             }
 

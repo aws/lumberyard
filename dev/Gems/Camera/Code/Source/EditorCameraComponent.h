@@ -70,7 +70,13 @@ namespace Camera
         void SetFarClipDistance(float farClipDistance) override;
         void SetFrustumWidth(float width) override;
         void SetFrustumHeight(float height) override;
-        void MakeActiveView() override;
+        bool ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) const override;
+        bool UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) const override;
+        bool ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) const override;
+        bool UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) const override;
+        void GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix) const override;
+        bool IsActiveView() const override;
+        void SetActiveView(bool active) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -132,5 +138,6 @@ namespace Camera
         bool m_viewButton = false;
         float m_frustumViewPercentLength = 1.f;
         AZ::Color m_frustumDrawColor = AzFramework::ViewportColors::HoverColor;
+        bool m_autoActivate = true;
     };
 } // Camera

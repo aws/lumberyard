@@ -51,7 +51,7 @@ namespace AZStd
         SleepConditionVariableCS(AZ_COND_VAR_CAST(m_cond_var), lock.mutex()->native_handle(), AZ_INFINITE);
     }
     template <class Predicate>
-    inline void condition_variable::wait(unique_lock<mutex>& lock, Predicate pred)
+    AZ_FORCE_INLINE void condition_variable::wait(unique_lock<mutex>& lock, Predicate pred)
     {
         while (!pred())
         {
@@ -60,7 +60,7 @@ namespace AZStd
     }
 
     template <class Clock, class Duration>
-    inline bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time)
+    AZ_FORCE_INLINE cv_status condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time)
     {
         chrono::system_clock::time_point now = chrono::system_clock::now();
         if (now < abs_time)
@@ -68,33 +68,50 @@ namespace AZStd
             return wait_for(lock, abs_time - now);
         }
 
-        return false;
+        return cv_status::timeout;
     }
     template <class Clock, class Duration, class Predicate>
-    inline bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
-    {
-        chrono::system_clock::time_point now = chrono::system_clock::now();
-        if (now < abs_time)
-        {
-            return wait_for(lock, abs_time - now, pred);
-        }
-
-        return false;
-    }
-    template <class Rep, class Period>
-    inline bool condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time)
-    {
-        chrono::milliseconds toWait = rel_time;
-        // We need to make sure we use CriticalSection based mutex.
-        int ret = SleepConditionVariableCS(AZ_COND_VAR_CAST(m_cond_var), lock.mutex()->native_handle(), static_cast<DWORD>(toWait.count()));
-        return (ret == AZ_WAIT_OBJECT_0);
-    }
-    template <class Rep, class Period, class Predicate>
-    inline bool condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
+    AZ_FORCE_INLINE bool condition_variable::wait_until(unique_lock<mutex>& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
     {
         while (!pred())
         {
-            if (!wait_for(lock, rel_time))
+            if (wait_until(lock, abs_time) == cv_status::timeout)
+            {
+                return pred();
+            }
+        }
+        return pred();
+    }
+
+    template <class Rep, class Period>
+    AZ_FORCE_INLINE cv_status condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time)
+    {
+        chrono::milliseconds toWait = rel_time;
+        // We need to make sure we use CriticalSection based mutex.
+        // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleepconditionvariablecs
+        // indicates that this returns nonzero on success, zero on failure
+        // we need to return cv_status::timeout IFF a timeout occurred and no_timeout in all other situations
+        // including error.
+        int ret = SleepConditionVariableCS(AZ_COND_VAR_CAST(m_cond_var), lock.mutex()->native_handle(), static_cast<DWORD>(toWait.count()));
+        if (ret == 0)
+        {
+            int lastError = GetLastError();
+            // detect a sitaution where the mutex or the cond var are invalid, or the duration
+            AZ_Assert(lastError == AZ_ERROR_TIMEOUT, "Error from SleepConditionVariableCS: 0x%08x\n", lastError);
+            // asserts are continuable so we still check.
+            if (GetLastError() == AZ_ERROR_TIMEOUT)
+            {
+                return cv_status::timeout;
+            }
+        } 
+        return cv_status::no_timeout;
+    }
+    template <class Rep, class Period, class Predicate>
+    AZ_FORCE_INLINE bool condition_variable::wait_for(unique_lock<mutex>& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
+    {
+        while (!pred())
+        {
+            if (wait_for(lock, rel_time) == cv_status::timeout)
             {
                 return pred();
             }
@@ -141,7 +158,7 @@ namespace AZStd
     }
 
     template<class Lock>
-    inline void condition_variable_any::wait(Lock& lock)
+    AZ_FORCE_INLINE void condition_variable_any::wait(Lock& lock)
     {
         EnterCriticalSection(AZ_STD_MUTEX_CAST(m_mutex));
         lock.unlock();
@@ -151,7 +168,7 @@ namespace AZStd
         lock.lock();
     }
     template <class Lock, class Predicate>
-    inline void condition_variable_any::wait(Lock& lock, Predicate pred)
+    AZ_FORCE_INLINE void condition_variable_any::wait(Lock& lock, Predicate pred)
     {
         while (!pred())
         {
@@ -159,42 +176,57 @@ namespace AZStd
         }
     }
     template <class Lock, class Clock, class Duration>
-    inline bool condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time)
+    AZ_FORCE_INLINE cv_status condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time)
     {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
+        auto now = chrono::system_clock::now();
         if (now < abs_time)
         {
             return wait_for(lock, abs_time - now);
         }
 
-        return false;
+        return cv_status::no_timeout;
     }
     template <class Lock, class Clock, class Duration, class Predicate>
-    inline bool condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
+    AZ_FORCE_INLINE bool condition_variable_any::wait_until(Lock& lock, const chrono::time_point<Clock, Duration>& abs_time, Predicate pred)
     {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
-        if (now < abs_time)
+        while (!pred())
         {
-            return wait_for(lock, abs_time - now, pred);
+            if (wait_until(lock, abs_time) == cv_status::timeout)
+            {
+                return pred();
+            }
         }
-
-        return false;
+        return true;
     }
     template <class Lock, class Rep, class Period>
-    inline bool condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time)
+    AZ_FORCE_INLINE cv_status condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time)
     {
         chrono::milliseconds toWait = rel_time;
         EnterCriticalSection(&m_mutex);
         lock.unlock();
 
         // We need to make sure we use CriticalSection based mutex.
+        cv_status returnCode = cv_status::no_timeout;
         int ret = SleepConditionVariableCS(AZ_COND_VAR_CAST(m_cond_var), AZ_STD_MUTEX_CAST(m_mutex), toWait.count());
+        // according to MSDN docs, ret is 0 on FAILURE, and nonzero otherwise.
+        if (ret == 0)
+        {
+            int lastError = GetLastError();
+            // if we hit this assert, its likely a programmer error
+            // and the values passed into SleepConditionVariableCS are invalid.
+            AZ_Assert(lastError == AZ_ERROR_TIMEOUT, "Error from SleepConditionVariableCS: 0x%08x\n", lastError );
+
+            if (lastError == AZ_ERROR_TIMEOUT)
+            {
+                returnCode = cv_status::timeout;
+            }
+        }
         LeaveCriticalSection(&m_mutex);
         lock.lock();
-        return (ret == AZ_WAIT_OBJECT_0);
+        return returnCode;
     }
     template <class Lock, class Rep, class Period, class Predicate>
-    inline bool condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
+    AZ_FORCE_INLINE bool condition_variable_any::wait_for(Lock& lock, const chrono::duration<Rep, Period>& rel_time, Predicate pred)
     {
         while (!pred())
         {

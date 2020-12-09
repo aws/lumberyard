@@ -30,17 +30,18 @@ CTerrainHolePanel::CTerrainHolePanel(CTerrainHoleTool* tool, QWidget* pParent /*
 
     ui->setupUi(this);
 
-    m_radius = ui->radiusSlider;
     uint64 nTerrainWidth(1024);
     CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     if (pHeightmap)
     {
         nTerrainWidth = GetIEditor()->GetTerrainManager()->GetHeightmap()->GetWidth();
     }
-    float fMax = nTerrainWidth * 2.0f;
-    m_radius->setRange(1, 100 * log10(fMax));
+    ui->radiusSlider->setCurveMidpoint(0.1);
+    ui->radiusSlider->setRange(0.1, nTerrainWidth);
+
     SetRadius();
-    connect(m_radius, &QSlider::valueChanged, this, &CTerrainHolePanel::OnReleasedcaptureRadius);
+    auto sliderDoubleComboValueChanged = static_cast<void(AzQtComponents::SliderDoubleCombo::*)()>(&AzQtComponents::SliderDoubleCombo::valueChanged);
+    connect(ui->radiusSlider, sliderDoubleComboValueChanged, this, &CTerrainHolePanel::OnRadiusSliderValueChanged);
 
     m_removeHole = ui->HOLE_REMOVE;
     m_removeHole->setChecked(!m_tool->GetMakeHole());
@@ -69,13 +70,12 @@ void CTerrainHolePanel::OnHoleRemove(bool v)
 
 void CTerrainHolePanel::SetRadius()
 {
-    m_radius->setValue(log10(m_tool->GetBrushRadius() / 0.5f) * 100.0f);
+    ui->radiusSlider->setValue(m_tool->GetBrushRadius());
 }
 
-void CTerrainHolePanel::OnReleasedcaptureRadius(int value)
+void CTerrainHolePanel::OnRadiusSliderValueChanged()
 {
-    float fRadius = pow(10.0f, value / 100.0f);
-    m_tool->SetBrushRadius(fRadius * 0.5f);
+    m_tool->SetBrushRadius(ui->radiusSlider->value());
 }
 
 void CTerrainHolePanel::SetMakeHole(bool bEnable)

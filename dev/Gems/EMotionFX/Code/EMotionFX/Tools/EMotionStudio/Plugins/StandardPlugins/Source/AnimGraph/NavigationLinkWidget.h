@@ -13,7 +13,7 @@
 #pragma once
 
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
-#include <QtWidgets/QPushButton>
+#include <AzQtComponents/Components/Widgets/BreadCrumbs.h>
 #include <QtWidgets/QWidget>
 
 QT_FORWARD_DECLARE_CLASS(QPixmap)
@@ -21,31 +21,7 @@ QT_FORWARD_DECLARE_CLASS(QPixmap)
 namespace EMStudio
 {
     class AnimGraphPlugin;
-    class AnimGraphItemDelegate;
     class RoleFilterProxyModel;
-
-    class NavigationItemWidget
-        : public QPushButton
-    {
-        MCORE_MEMORYOBJECTCATEGORY(NavigationItemWidget, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
-        Q_OBJECT
-
-    public:
-        NavigationItemWidget(const QModelIndex& modelIndex, QWidget* parent = nullptr);
-
-    protected:
-        void enterEvent(QEvent* event) override;
-        void leaveEvent(QEvent* event) override;
-        void paintEvent(QPaintEvent* event) override;
-        QSize sizeHint() const override;
-
-    private slots:
-        void OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles);
-
-    private:
-        QPersistentModelIndex  m_modelIndex;
-        AnimGraphItemDelegate* m_itemDelegate;
-    };
 
     class NavigationLinkWidget
         : public QWidget
@@ -59,14 +35,17 @@ namespace EMStudio
 
     private slots:
         void OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent);
-        void OnItemClicked(const QModelIndex& newModelIndex);
+        void OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles);
+        void OnBreadCrumbsLinkClicked(const QString& linkPath, int linkIndex);
 
     private:
-        void AddToNavigation(const QModelIndex& modelIndex, bool isLastWidget = false);
+        void AddToNavigation(const QModelIndex& modelIndex);
+        void UpdateBreadCrumbsPath();
 
+        AzQtComponents::BreadCrumbs* m_breadCrumbs = nullptr;
+        AZStd::vector<QPersistentModelIndex> m_modelIndexes;
         AnimGraphPlugin* m_plugin;
         RoleFilterProxyModel* m_roleFilterProxyModel;
-        QPixmap m_navigationPathImg;
     };
 
 } // namespace EMStudio

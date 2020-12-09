@@ -119,13 +119,14 @@ namespace EMotionFX
         mMorphSetups.Add(nullptr);
 
         GetEventManager().OnCreateActor(this);
+        ActorNotificationBus::Broadcast(&ActorNotificationBus::Events::OnActorCreated, this);
     }
 
 
     // destructor
     Actor::~Actor()
     {
-        // trigger the OnDeleteActor event
+        ActorNotificationBus::Broadcast(&ActorNotificationBus::Events::OnActorDestroyed, this);
         GetEventManager().OnDeleteActor(this);
 
         // clear the node mirror data

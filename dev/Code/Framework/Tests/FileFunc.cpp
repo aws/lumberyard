@@ -169,7 +169,7 @@ static bool CreateDummyFile(const QString& fullPathToFile, const QString& tempSt
     }
     {
         QTextStream stream(&writer);
-        stream << tempStr << endl;
+        stream << tempStr << Qt::endl;
     }
     writer.close();
     return true;

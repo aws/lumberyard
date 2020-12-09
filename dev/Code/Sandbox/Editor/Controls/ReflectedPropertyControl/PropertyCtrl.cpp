@@ -13,6 +13,7 @@
 
 #include "PropertyCtrl.h"
 #include "PropertyAnimationCtrl.h"
+#include "PropertyAssetCtrl.h"
 #include "PropertyResourceCtrl.h"
 #include "PropertyGenericCtrl.h"
 #include "PropertyMiscCtrl.h"
@@ -59,6 +60,7 @@ void RegisterReflectedVarHandlers()
         EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew ColorCurveHandler());
         EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew FloatCurveHandler());
         EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew MotionPropertyWidgetHandler());
+        EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew AssetPropertyWidgetHandler());
     }
 }
 

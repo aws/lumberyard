@@ -20,9 +20,6 @@
 #include <QDockWidget>
 #include <QApplication>
 
-#if AZ_TRAIT_OS_PLATFORM_APPLE
-# include <QMacNativeWidget>
-#endif
 
 using namespace AzQtComponents;
 
@@ -55,9 +52,6 @@ static bool widgetShouldHaveCustomDecorations(const QWidget* w, AutoCustomWindow
     if (!w || qobject_cast<const WindowDecorationWrapper*>(w) ||
         qobject_cast<const QDockWidget*>(w) ||
         qobject_cast<const QFileDialog*>(w) || // QFileDialog is native
-#if AZ_TRAIT_OS_PLATFORM_APPLE
-        qobject_cast<const QMacNativeWidget*>(w) ||
-#endif
         w->property("HasNoWindowDecorations").toBool() || // Allows decorations to be disabled
         isQWinWidget(w))
     {

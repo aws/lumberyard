@@ -149,7 +149,7 @@ namespace Driller
         {
             if (row > 0 && row > lastSelectedRow + 1)
             {
-                m_stringList.swap(row, row - 1);
+                m_stringList.swapItemsAt(row, row - 1);
 
                 // Update the row to reflect it's new position.
                 row = row - 1;
@@ -191,7 +191,7 @@ namespace Driller
 
             if (row < m_stringList.size() - 1 && row < lastSelectedRow - 1)
             {
-                m_stringList.swap(row, row + 1);
+                m_stringList.swapItemsAt(row, row + 1);
                 row = row + 1;
             }
 

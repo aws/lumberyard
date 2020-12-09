@@ -25,7 +25,11 @@ namespace AzToolsFramework
 {
     namespace ComponentPaletteUtil
     {
-        bool OffersRequiredServices(const AZ::SerializeContext::ClassData* componentClass, const AZStd::vector<AZ::ComponentServiceType>& serviceFilter)
+        bool OffersRequiredServices(
+            const AZ::SerializeContext::ClassData* componentClass,
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter
+        )
         {
             AZ_Assert(componentClass, "Component class must not be null");
 
@@ -60,7 +64,26 @@ namespace AzToolsFramework
                 return false;
             }
 
+            //reject this component if it does offer any of the incompatible services
+            if (AZStd::find_first_of(
+                providedServices.begin(),
+                providedServices.end(),
+                incompatibleServiceFilter.begin(),
+                incompatibleServiceFilter.end()) != providedServices.end())
+            {
+                return false;
+            }
+
             return true;
+        }
+
+        bool OffersRequiredServices(
+            const AZ::SerializeContext::ClassData* componentClass,
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter
+        )
+        {
+            const AZStd::vector<AZ::ComponentServiceType> incompatibleServices;
+            return OffersRequiredServices(componentClass, serviceFilter, incompatibleServices);
         }
 
         bool IsAddableByUser(const AZ::SerializeContext::ClassData* componentClass)
@@ -99,6 +122,7 @@ namespace AzToolsFramework
             AZ::SerializeContext* serializeContext,
             const AzToolsFramework::ComponentFilter& componentFilter,
             const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter,
             ComponentDataTable &componentDataTable,
             ComponentIconTable &componentIconTable)
         {
@@ -115,7 +139,7 @@ namespace AzToolsFramework
 
                         // If none of the required services are offered by this component, or the component
                         // can not be added by the user, skip to the next component
-                        if (!OffersRequiredServices(componentClass, serviceFilter) || !IsAddableByUser(componentClass))
+                        if (!OffersRequiredServices(componentClass, serviceFilter, incompatibleServiceFilter) || !IsAddableByUser(componentClass))
                         {
                             return true;
                         }
@@ -142,10 +166,23 @@ namespace AzToolsFramework
                 });
         }
 
+        void BuildComponentTables(
+            AZ::SerializeContext* serializeContext,
+            const AzToolsFramework::ComponentFilter& componentFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+            ComponentDataTable& componentDataTable,
+            ComponentIconTable& componentIconTable)
+        {
+            const AZStd::vector<AZ::ComponentServiceType> incompatibleServices;
+            BuildComponentTables(serializeContext, componentFilter, serviceFilter, incompatibleServices, componentDataTable, componentIconTable);
+        }
+
         bool ContainsEditableComponents(
             AZ::SerializeContext* serializeContext,
             const AzToolsFramework::ComponentFilter& componentFilter,
-            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter)
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& incompatibleServiceFilter
+        )
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             
@@ -160,7 +197,7 @@ namespace AzToolsFramework
                     {
                         // If none of the required services are offered by this component, or the component
                         // can not be added by the user, skip to the next component
-                        if (!OffersRequiredServices(componentClass, serviceFilter) || !IsAddableByUser(componentClass))
+                        if (!OffersRequiredServices(componentClass, serviceFilter, incompatibleServiceFilter) || !IsAddableByUser(componentClass))
                         {
                             return true;
                         }
@@ -175,6 +212,15 @@ namespace AzToolsFramework
             return containsEditable;
         }
 
+        bool ContainsEditableComponents(
+            AZ::SerializeContext* serializeContext,
+            const AzToolsFramework::ComponentFilter& componentFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter
+        )
+        {
+            const AZStd::vector<AZ::ComponentServiceType> incompatibleServices;
+            return ContainsEditableComponents(serializeContext, componentFilter, serviceFilter, incompatibleServices);
+        }
 
         QRegExp BuildFilterRegExp(QStringList& criteriaList, AzToolsFramework::FilterOperatorType filterOperator)
         {
